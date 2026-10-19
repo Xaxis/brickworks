@@ -36,6 +36,10 @@ declare -A CMD=(
   # Top builds, this week's pick and small builds, and the owner's choice of
   # the pick on /admin: API routes only, with the bypass (supabase/discovery.sql).
   [discovery]="tools/web/discovery_flow.mjs --url=$P --out=$S/${TAG}_discovery"
+  # A designer's page (what their models earned) and their own numbers, for
+  # them alone and never cached: API routes only, with the bypass
+  # (supabase/designers.sql).
+  [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the

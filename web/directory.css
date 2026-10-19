@@ -323,3 +323,68 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	font-size: 12px; border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--ink);
 }
 .profile-form .choice, #mail .choice, #follows-choice .choice { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
+
+/* A designer's page (api/people.js earnedHtml, supabase/designers.sql): what
+   their models earned, builds finished and remixes leading, as tiles; the
+   model to start with; photos other people posted of their builds. And the
+   designer's own numbers (web/designs.js), on their profile and on Account,
+   marked as theirs alone by a dashed edge. */
+.earned {
+	list-style: none; padding: 0; margin: 4px 0 12px; max-width: 920px;
+	display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 138px), 1fr));
+}
+.earned li {
+	display: grid; align-content: start; gap: 0; padding: 11px 14px 12px; border-radius: 12px;
+	background: var(--panel); border: 1px solid var(--line);
+}
+.earned li.lead { border-top: 3px solid var(--accent); padding-top: 9px; }
+.earned b { font-size: 26px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.earned li.lead b { font-size: 32px; }
+.earned span { color: var(--ink-soft); font-size: 14px; line-height: 1.35; }
+.earned small { color: var(--ink-faint); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.person.designer .counts { font-size: 14.5px; }
+.start-with { margin: -8px 0 24px; color: var(--ink-soft); line-height: 2.1; }
+.start-with a:not(.cta) { color: var(--ink); font-weight: 600; }
+.start-with .cta { margin-left: 8px; vertical-align: middle; }
+.person.designer .models { margin-top: 12px; }
+.builds-of .build-strip { margin-top: 6px; }
+.build-strip figcaption > a + a { font-weight: 600; }
+a.model[data-builds] small + .tested { margin-top: 2px; }
+
+.designs {
+	margin: 0 0 30px; padding: 16px 18px 18px; border: 1px dashed var(--ink-faint); border-radius: var(--radius);
+	background: var(--bg-soft); max-width: 100%; min-width: 0;
+}
+.designs h2 { font-size: 22px; margin: 0 0 4px; }
+.designs .private { margin: 0 0 12px; font-size: 14px; color: var(--ink-soft); max-width: 72ch; }
+.designs .note { margin-top: 4px; }
+.designs .mine-totals { margin-bottom: 4px; }
+.design-rows { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 12px; }
+.design-row {
+	display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0;
+	background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+}
+.design-row .pic { display: block; border-radius: 8px; overflow: hidden; background: var(--bg-soft); aspect-ratio: 1200 / 630; }
+.design-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.design-row .pic.none { display: grid; place-items: center; color: var(--ink-faint); font-size: 13px; }
+.design-main { min-width: 0; }
+.design-main h3 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.design-main h3 a { color: var(--ink); }
+.design-meta { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-faint); }
+.design-numbers { margin: 10px 0 0; display: grid; gap: 8px 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.design-numbers dt { font-size: 13px; color: var(--ink-faint); }
+.design-numbers dd { margin: 0; display: grid; }
+.design-numbers dd b { font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.design-numbers dd small { font-size: 12.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.design-builders { margin-top: 10px; min-width: 0; }
+.design-builders p { margin: 0 0 6px; font-size: 14px; color: var(--ink-soft); }
+.design-builders .build-strip .build { width: min(200px, 60vw); }
+.design-builders .build-strip .build img { height: 140px; }
+.design-builders figcaption a { font-weight: 600; }
+@media (max-width: 620px) {
+	.design-row { grid-template-columns: minmax(0, 1fr); }
+	.design-row .pic { max-width: 220px; }
+	.design-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.earned b { font-size: 22px; }
+	.earned li.lead b { font-size: 26px; }
+}

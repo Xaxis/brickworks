@@ -33,7 +33,16 @@ async function followButton(button) {
     button.title = state.you_follow ? "You follow them: press to stop" : "See what they share in your feed";
     button.hidden = state.mine;
     for (const counted of document.querySelectorAll(`[data-followers="${handle}"], .person[data-handle="${handle}"] [data-followers]`)) {
-      counted.textContent = plural(state.followers, "follower");
+      // A designer's page draws it as a tile, its number large
+      // (api/people.js earnedHtml): kept so, the words beside it.
+      const big = counted.querySelector("b");
+      const words = counted.querySelector("span");
+      if (big && words) {
+        big.textContent = Number(state.followers).toLocaleString("en-US");
+        words.textContent = state.followers === 1 ? "follower" : "followers";
+      } else {
+        counted.textContent = plural(state.followers, "follower");
+      }
     }
   };
   const ask = async () => {

@@ -59,6 +59,20 @@
 //   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first;
 //                                 its first page counts as the feed opened
 //   GET  ?op=feed_count           (session) what came since it was opened
+//   GET  ?op=designs              (session) the caller's own models' last 30
+//                                 days: opens, builds finished, remixes,
+//                                 comments, and who built them; &handle=X
+//                                 only when X is theirs (api/_designers.js).
+//                                 Never kept by the CDN
+//
+// Designers (2026-10-19, supabase/designers.sql): a profile with models in
+// the gallery is a designer's page, and leads with what those models
+// earned: builds finished, remixes, Tested, comments, models, followers,
+// each the sum of what its cards say; the models by Top builds, each card
+// with its own builds, remixes and comments; and the photos other people
+// posted of their builds of them. The designer, signed in, sees on their
+// own page and on /profile how each of their models is doing, which
+// nobody else is shown.
 //
 // Follows and the feed (2026-10-18, supabase/follows.sql): an account 13 or
 // over follows a profile shown in public; a profile shows only how many
@@ -115,6 +129,7 @@ import {
 import {
   feed, feedCount, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
 } from "./_follows.js";
+import { designerOf, designs } from "./_designers.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -275,16 +290,24 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built, follows] = await Promise.all([
-    models(origin, { owner: person.account, tests }, pageOf(request.query || {})),
+  const [page, about, built, follows, designer] = await Promise.all([
+    models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
     followsOf(handle),
+    designerOf(originOf(request), handle, tests),
   ]);
+  // What their models earned (supabase/designers.sql), and each card's
+  // comments beside its builds and remixes.
+  const earned = designer && designer.ready ? designer : null;
+  const cards = page.models.map((card) => (earned ? { ...card, comments: earned.cards[card.id]?.comments ?? 0 } : card));
   return response.status(200).json({ handle: person.handle, name: person.name, bio: person.bio,
     since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
     followers: follows?.followers ?? 0, following: follows?.following ?? 0,
-    collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`, ...page });
+    designer: earned ? { models: earned.models, builds: earned.builds, remixes: earned.remixes,
+      comments: earned.comments, tested: earned.tested, likes: earned.likes, builders: earned.builders,
+      followers: follows?.followers ?? 0, photos: earned.photos } : null,
+    collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`, ...page, models: cards });
 }
 
 // ---------------------------------------------------------------------------
@@ -660,7 +683,7 @@ function html(response, status, body, { tests = false } = {}) {
   return response.status(status).end(body);
 }
 
-function head(origin, { title, about, url, image, robots = "" }) {
+function head(origin, { title, about, url, image, robots = "", mine = false }) {
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
@@ -681,34 +704,53 @@ ${url ? `<meta property="og:url" content="${escapeHtml(url)}">\n` : ""}<meta pro
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
-<script src="/follow.js" type="module"></script>`;
+<script src="/follow.js" type="module"></script>${mine ? `
+<script src="/designs.js" type="module"></script>` : ""}`;
 }
 
 /// A model's card, as the gallery draws one, made here so the page needs
 /// no script to show its models.
-export function cardHtml(card) {
+///
+/// [earned]: a designer's page's card (supabase/designers.sql), which leads
+/// with what the model earned, builds finished and remixes, then comments
+/// and likes, says its Tested mark, and never its views.
+export function cardHtml(card, { earned = false } = {}) {
   const picture = card.thumb ? `/m/${card.id}.webp${card.thumb.includes("?v=") ? `?v=${card.thumb.split("?v=")[1]}` : ""}`
     : card.image ? `/m/${card.id}.png` : "";
   const parts = count(card.parts, "part");
-  const said = card.views ? [count(card.views, "view")] : [];
-  if (card.likes) said.push(count(card.likes, "like"));
-  if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
-  if (card.builds) said.push(count(card.builds, "built", "built"));
-  return `<a class="model" href="/m/${card.id}" data-id="${card.id}">`
+  const said = [];
+  if (earned) {
+    if (card.builds) said.push(count(card.builds, "built", "built"));
+    if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
+    if (card.comments) said.push(count(card.comments, "comment"));
+    if (card.likes) said.push(count(card.likes, "like"));
+  } else {
+    if (card.views) said.push(count(card.views, "view"));
+    if (card.likes) said.push(count(card.likes, "like"));
+    if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
+    if (card.builds) said.push(count(card.builds, "built", "built"));
+  }
+  const tested = earned && card.tested ? `<small class="tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</small>` : "";
+  return `<a class="model" href="/m/${card.id}" data-id="${card.id}"${earned
+    ? ` data-builds="${Number(card.builds) || 0}" data-remixes="${Number(card.remixes) || 0}" data-comments="${Number(card.comments) || 0}"`
+    : ""}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${escapeHtml(card.name)}" width="1200" height="630" loading="lazy" decoding="async">`
       : "No picture"}</div>`
     + `<div class="words"><b title="${escapeHtml(card.name)}">${escapeHtml(card.name)}</b>`
     + `<span>${escapeHtml(card.author ? `${parts}, by ${card.author}` : parts)}</span>`
-    + `<small>${escapeHtml(said.join(" · "))}</small></div></a>`;
+    + `<small>${escapeHtml(said.join(" · "))}</small>${tested}</div></a>`;
 }
 
-function page(origin, { title, about, url, image, robots, main }) {
+// What the Tested mark means, said on hover, as the gallery's card says it.
+const TESTED_SAYS = "Stands at every step · every step reachable · every part made in its colour · nothing loose";
+
+function page(origin, { title, about, url, image, robots, main, mine = false }) {
   const { header, footer } = siteChrome();
   return `<!doctype html>
 <html lang="en">
 <head>
-${head(origin, { title, about, url, image, robots })}
+${head(origin, { title, about, url, image, robots, mine })}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -730,63 +772,116 @@ function missingPage(origin, what) {
 
 const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 
+/// The band a designer's page leads with: what their models earned, each
+/// the sum of what the cards below say. Builds finished and remixes first,
+/// as the gallery's Top builds weighs them; followers last. Followers is
+/// [data-followers], which web/follow.js counts again once somebody follows.
+function earnedHtml(earned, follows) {
+  const tile = (kind, n, one, many, lead = false, extra = "") =>
+    `<li class="${lead ? "lead" : ""}" data-earned="${kind}"${extra}><b>${escapeHtml(Number(n).toLocaleString("en-US"))}</b> `
+    + `<span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
+  return `<ul class="earned" aria-label="What their models earned">`
+    + tile("builds", earned.builds, "build finished", "builds finished", true)
+    + tile("remixes", earned.remixes, "remix", "remixes", true)
+    + tile("tested", earned.tested, "Tested", "Tested")
+    + tile("comments", earned.comments, "comment", "comments")
+    + tile("models", earned.models, "model in the gallery", "models in the gallery")
+    + (follows && follows.ready ? tile("followers", follows.followers, "follower", "followers", false, " data-followers") : "")
+    + "</ul>";
+}
+
+/// A strip of photos of real builds: [photos] each with its model's name;
+/// [by] says who built each, for the photos of a designer's models.
+function stripHtml(photos, { by = false } = {}) {
+  return photos.map((one) => `<figure class="build" id="photo-${one.id}"><a href="/m/${one.model}#photo-${one.id}">`
+    + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(`A build of ${one.model_name}`)}" `
+    + `width="${Number(one.width) || 1}" height="${Number(one.height) || 1}" loading="lazy" decoding="async"></a>`
+    + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="/m/${one.model}">${escapeHtml(one.model_name)}</a>`
+    + `${by ? `, built by ${one.by ? `<a href="/u/${escapeHtml(one.by.handle)}">${escapeHtml(one.by.name)}</a>` : "a builder"}` : ""}`
+    + "</figcaption></figure>").join("");
+}
+
 /// /u/X: a person's profile. Their name, what they said, since when, the
-/// models they listed and are credited for, and their public lists.
+/// models they listed and are credited for, and their public lists. With a
+/// model in the gallery it is a designer's page (supabase/designers.sql):
+/// what those models earned leads, then the photos other people posted of
+/// their builds, then the models by Top builds. The designer's own numbers
+/// are not in it: web/designs.js asks for them with their sign-in and puts
+/// them in #designs-mine, so this page, which the CDN keeps, is the same
+/// for everybody.
 async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
   const tests = testsAsked(request.query);
   const person = await personOf(handle);
   if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
-  const [shown, about, built, follows, following] = await Promise.all([
-    models(origin, { owner: person.account, tests }, 1),
+  const [shown, about, built, follows, following, designer] = await Promise.all([
+    models(origin, { owner: person.account, tests, sort: "top" }, 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
     followsOf(handle),
     followingOf(handle),
+    designerOf(origin, handle, tests),
   ]);
   const url = `${origin}/u/${person.handle}`;
+  const earned = designer && designer.ready && designer.models > 0 ? designer : null;
+  const cards = shown.models.map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
   // What they built of other people's models (and their own), from photos.
-  const builds = built.map((one) => `<figure class="build" id="photo-${one.id}"><a href="/m/${one.model}#photo-${one.id}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(`A build of ${one.model_name}`)}" `
-    + `width="${one.width}" height="${one.height}" loading="lazy" decoding="async"></a>`
-    + `<figcaption><a href="/m/${one.model}">${escapeHtml(one.model_name)}</a>`
-    + `${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}</figcaption></figure>`).join("");
+  const builds = stripHtml(built);
+  // What other people built of theirs.
+  const theirs = earned ? stripHtml(earned.photos, { by: true }) : "";
   const lists = (about?.collections || []).map((list) =>
     `<li><a href="/c/${list.id}">${escapeHtml(list.name)}</a> <span>${escapeHtml(count(list.count, "model"))}</span></li>`).join("");
   const since = Date.parse(person.created_at || "");
   const first = shown.models[0];
-  const main = `<div class="wrap person" data-handle="${escapeHtml(person.handle)}">
-  <p class="eyebrow">Builder</p>
+  // The model to start with: the first by Top builds, once somebody built it.
+  const start = earned && first && first.builds > 0 ? first : null;
+  const counts = earned
+    ? `${earnedHtml(earned, follows)}
+  <p class="counts"><span>${escapeHtml(count(earned.likes, "like"))}</span>${follows && follows.ready
+    ? `<span>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`
+    : `<p class="counts"><span>${escapeHtml(count(about?.models ?? 0, "model"))} in the gallery</span>
+    <span>${escapeHtml(count(about?.likes ?? 0, "like"))}</span>${follows && follows.ready
+      ? `<span data-followers>${escapeHtml(count(follows.followers, "follower"))}</span>`
+        + `<span>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`;
+  const main = `<div class="wrap person${earned ? " designer" : ""}" data-handle="${escapeHtml(person.handle)}">
+  <p class="eyebrow">${earned ? "Designer" : "Builder"}</p>
   <h1>${escapeHtml(person.name)}</h1>
   <p class="handle">@${escapeHtml(person.handle)}${Number.isFinite(since) ? ` · building here since ${SINCE.format(since)}` : ""}</p>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
-  <p class="counts"><span>${escapeHtml(count(about?.models ?? 0, "model"))} in the gallery</span>
-    <span>${escapeHtml(count(about?.likes ?? 0, "like"))}</span>${follows && follows.ready
-      ? `<span data-followers>${escapeHtml(count(follows.followers, "follower"))}</span>`
-        + `<span>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>
+  ${counts}
   ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
     data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>` : ""}
-  ${following.length ? `<section aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
-    <p class="note">${escapeHtml(person.name)} chose to show whom they follow.</p>
-    <ul class="lists">${following.map((one) => `<li><a href="/u/${escapeHtml(one.handle)}">${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
-  ${lists ? `<section aria-labelledby="lists-h"><h2 id="lists-h">Collections</h2><ul class="lists">${lists}</ul></section>` : ""}
+  ${start ? `<p class="start-with">Start with their most built:
+    <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
+    <a class="cta small" href="/app?view=${start.id}">Build it</a></p>` : ""}
+  <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
+  ${theirs ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">Built by others</h2>
+    <p class="note">${escapeHtml(earned.builders === 1 ? "One person" : `${earned.builders.toLocaleString("en-US")} people`)} posted photos of their real builds of ${escapeHtml(person.name)}’s models.</p>
+    <div class="build-strip">${theirs}</div></section>` : ""}
   <section aria-labelledby="models-h"><h2 id="models-h">Models</h2>
-  ${shown.models.length ? `<div class="models">${shown.models.map(cardHtml).join("")}</div>`
+  ${earned && shown.models.length > 1 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
+  ${shown.models.length ? `<div class="models">${cards.map((card) => cardHtml(card, { earned: Boolean(earned) })).join("")}</div>`
     : `<p class="note">Nothing in the gallery yet.</p>`}
   ${shown.more ? `<p class="note"><a href="/gallery?q=${encodeURIComponent(person.name)}">More in the gallery</a></p>` : ""}
   </section>
   ${builds ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">Built</h2>
     <p class="note">Photos of their real builds of models in the gallery.</p>
     <div class="build-strip">${builds}</div></section>` : ""}
+  ${following.length ? `<section aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
+    <p class="note">${escapeHtml(person.name)} chose to show whom they follow.</p>
+    <ul class="lists">${following.map((one) => `<li><a href="/u/${escapeHtml(one.handle)}">${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
+  ${lists ? `<section aria-labelledby="lists-h"><h2 id="lists-h">Collections</h2><ul class="lists">${lists}</ul></section>` : ""}
   <p class="note report-line"><button type="button" class="link" data-report="this profile"
     data-report-handle="${escapeHtml(person.handle)}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
 </div>`;
+  const told = earned
+    ? `${count(earned.models, "model")} by ${person.name}, ${count(earned.builds, "build")} finished and ${count(earned.remixes, "remix", "remixes")}: designed in Brickworks.`
+    : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`;
   return html(response, 200, page(origin, {
-    title: `${person.name} (@${person.handle}) — models built in Brickworks`,
-    about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160)
-      : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`,
-    url, image: first && first.image ? first.image : "", main,
+    title: `${person.name} (@${person.handle}) — ${earned ? "a designer in" : "models built in"} Brickworks`,
+    about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160) : told,
+    url, image: first && first.image ? first.image : "", main, mine: true,
   }), { tests });
 }
 
@@ -848,6 +943,7 @@ export default async function handler(request, response) {
       if (op === "following") return await getFollowing(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
+      if (op === "designs") return await designs(request, response, { origin: originOf(request) });
     } else if (request.method === "POST") {
       if (op === "photo_start") return await photoStart(request, response);
       if (op === "photo") return await photoKeep(request, response);

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow -->
 
 ## Sub-features
 
@@ -697,6 +697,41 @@ plan with Claude as the client.
   `needs` in `api/share.js`, kept on publish.
 - `needs backfill` (`tools/web/needs_backfill.mjs`): below.
 - `discovery browser flow` (`tools/web/discovery_flow.mjs`): below.
+- `designers' numbers` (`supabase/designers.sql`, 2026-10-19): table
+  `model_opens` (a model, a day, how many opened its page: kept by the
+  trigger `model_opens_count` after each insert into `model_views`, so
+  `count_view` is not replaced; read by no key), `designer_said(model_ids,
+  since)` (the comments each earned: shown to a visitor, in this life of
+  the link, not the owner's), `designer_page(wanted, tests)` (models,
+  builds, remixes, comments, tested, likes, builders, each card's comments,
+  the newest twelve photos by others; each the sum of the cards'),
+  `designer_mine(designer, days)` (each published model's last 1 to 90
+  days and in all, and up to six photos by others). Replaces no function.
+  `api/_designers.js`: `designerOf`, `designs` (`GET ?op=designs`, session;
+  `&handle=X` answers `{mine: false}` unless X is the caller's), `DAYS`
+  (30), `MINE_CACHE` (`private, no-store`, on every answer, a 401 too).
+  Before the file is applied the page is as before and `?op=designs`
+  answers `ready: false`.
+- `a designer's page` (`api/people.js` `profilePage`, `earnedHtml`,
+  `stripHtml`, `cardHtml(card, {earned})`): `/u/<handle>` with a model in
+  the gallery says Designer and leads with tiles (`ul.earned`, each
+  `li[data-earned]`: builds and remixes `.lead`, then tested, comments,
+  models, followers, `[data-followers]`, which `web/follow.js` keeps large
+  when it counts again), a line of likes and following, Start with their
+  most built (`.start-with`, Build it to `/app?view=<id>`), Built by others
+  (`.builds-of`), and the cards by Top builds (`a.model[data-builds]
+  [data-remixes][data-comments]`, "3 built · 1 remix · 1 comment", Tested,
+  never views). `?op=profile` gives `designer` and each card's `comments`.
+  The page is the same bytes for everybody; `#designs-mine` is empty and
+  hidden in it.
+- `your models as a designer` (`web/designs.js` `showDesigns`): on your own
+  `/u/<handle>` (How your models are doing) and on `/profile` (Your models,
+  as a designer; `web/profile.js`): totals (`.mine-totals`, opens and
+  builds finished leading), then a row a model (`li.design-row[data-id]`,
+  its numbers `dd[data-kind]`, the last 30 days large and in all beneath,
+  who built it with their photos). `document.documentElement.dataset.designs`
+  is `ready`, `empty`, `not-yet`, `not-mine`, `signed-out` or `trouble`.
+- `designers browser flow` (`tools/web/designers_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -1924,6 +1959,63 @@ checks, all ok, 2026-10-19, against the held relay with the live project
 then counts every part as named, and the set's shard comes from
 brickworks.diy/sets/). share_probe, against the same relay with the
 catalogue: 288 checks, all ok.
+
+A designer's page and their own numbers (`supabase/designers.sql`). The SQL
+first, in a transaction rolled back on the live project (the trial makes
+its own accounts and models inside it):
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers.sql \
+  --dry --try=tools/designers_try.sql --table=model_opens
+python3 tools/minitest.py tests/test_designers.py
+```
+
+It proves it when every line reads as its label says: model_views' days
+all counted in (0 missing), `count_view` true then false with the trigger
+off and on alike (views 1, visitors 1; opens today 1 only with it), the
+castle's opens 3 today, 5 and 7 kept; Ada's page models 1, builds 3,
+remixes 2, comments 2, tested 1, builders 2, the photos Ed's and Bob's and
+not hers or the hidden one; a visitor's count of test models 0; models,
+likes, builds, remixes and Tested all true against profile_page and the
+cards; comments true against the page; her own castle 8 opens (15 in
+all), 2 builds (3), 1 remix (2), 1 comment (2), the secret and the
+nameless among her models; Bob's only his two; days 1 and 90; Bob taken
+out and Cy under 13 no page; no grant on model_opens, row security on,
+the functions the service role's alone; the timings (docs/COMMUNITY.md,
+Designers); "rolled back, nothing kept". The tests: 10 passed.
+
+Then the code, in real browsers. Until designers.sql is applied the local
+server holds it (`--hold=model_opens`); once it is, a preview with the
+bypass, through its API alone:
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 9267 --hold=model_opens &
+node --env-file=.env tools/web/designers_flow.mjs --url=http://127.0.0.1:9267 --out=shots/designers
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designers_flow.mjs --url=<preview> --out=shots/designers
+```
+
+`designers_flow` proves it when it ends "designers: what a designer's models
+earned, and their own numbers for them alone (N checks, all ok)": three
+test models (the castle Tested), built on 3, 1 and 1 devices and opened by
+4, 1 and 2 visitors, Bob's remix, his comments and photo and Ada's answer;
+`?op=profile` models 2, builds 4, remixes 1, comments 2, Tested 1; signed
+out at 1280 and 390 px (`1_visitor-1280.png`, `2_visitor-390.png`)
+Designer, the tiles in order builds, remixes, tested, comments, models,
+followers, each the sum of the cards, the castle first ("3 built · 1 remix
+· 1 comment", Tested), no views, Bob's photo under Built by others, Start
+with their most built to `/app?view=<castle>`, none of Ada's own numbers;
+Bob signed in (`3_bob-*.png`) the same and `not-mine`, his follow making
+the tile "1 follower", his own page with his photo under Built,
+`?op=designs&handle=<hers>` `{"mine":false}`, plainly his own model only;
+Ada (`5_ada_own-1280.png` in dark, `6_ada_own-390.png`, `7_ada_account-*`,
+`8_ada_account-*`) the panel ready, totals 7 opens, 5 builds, 1 remix, 2
+comments, the castle first 4/3/1/1 with Bob's photo, the secret by link
+among them, every picture loaded, the same on Account; signed out and
+forged 401, a bad handle 400, every answer `private, no-store`, none from
+the CDN, Ada then Bob on one address each their own, her page the same
+bytes signed in or not, without tests public for 30 s with none of her
+test models; no page errors. 39 checks, all ok, 2026-10-19, against the
+held relay with the live project (about 2 minutes).
 
 The list, asked hard (reads only):
 
