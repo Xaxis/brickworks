@@ -729,6 +729,8 @@ func _tell_page() -> void:
 		"keeps": _store.keeps,
 		"panel": _share_panel.page_state() if _share_panel != null else {},
 		"view": _share_view.page_state() if _share_view != null else {},
+		# What the last finger on the model was taken as (_play_touch).
+		"finger": _finger_said,
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
 		"carried": _steps_carried,
@@ -1943,15 +1945,21 @@ func _enter_view() -> void:
 	_shell.read_only = true
 	# Somebody else's steps, to step through and not to change.
 	_steps.editable = false
-	# Nothing is taken hold of here: the grab's reading of the model's
-	# joints, and its telling the page twice a second where to take hold
-	# (every part of a body raycast for a handle), are not wanted. On 4,000
-	# parts of a slowed phone that was 260 to 460 ms of a frame every half
-	# second, and a page turned in such a frame waited for it
-	# (share_steps_flow --trace: the time was in the nodes' processing, not
-	# Main's).
+	# What moves is taken hold of and played with (_play_press), but only
+	# once the model is up, its steps worked out and its lattice told of its
+	# parts: the grab's reading of the joints waits till then (_ready_play),
+	# off this thread where there are threads. Read as the model opened, on
+	# 4,000 parts of a slowed phone it was 260 to 460 ms of a frame every
+	# half second with the handles (now found only when a page asks), and a
+	# page turned in such a frame waited for it (share_steps_flow --trace).
+	# What a drag says goes in the viewer's own pill, and what it changes is
+	# this visit's alone: the store writes nothing, and Reset undoes it.
 	if _grab_drag != null:
 		_grab_drag.set_process(false)
+		_grab_drag.say = _play_says
+		_grab_drag.edited = _played
+		_grab_drag.show_marks = false
+		_grab_drag.read_off_thread_from = 1
 	# The lattice is told of the parts once the model is up (what is under
 	# a pointer is all it is for here): over a second of a slowed phone's
 	# way to the first step on 4,000 parts.
@@ -1980,6 +1988,7 @@ func _enter_view() -> void:
 	# A changed model's step, offered to a builder who had got past it.
 	_share_view.build_from.connect(func(page: int) -> void: _enter_build(page))
 	_share_view.newest_wanted.connect(_open_newest)
+	_share_view.reset_wanted.connect(_play_reset)
 	# The big Build it of a phone sits above the timeline.
 	_share_view.floor_at = func() -> float:
 		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
@@ -2079,6 +2088,9 @@ var _ahead_count: int = 0
 ## Fetch the shared model and open it, read-only.
 func _view_shared() -> void:
 	_share_view.loading()
+	# Opened again (the newest version, Try again): nothing is played with
+	# until its joints are read for it.
+	_play_stop()
 	var began: int = Time.get_ticks_msec()
 	_view_phases = {}
 	var answer: Dictionary = await _shared.fetch(_viewing, _viewing_version)
@@ -2200,8 +2212,10 @@ func _view_shared() -> void:
 	if _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
 		_ready_the_pages()
 	# The lattice, for what is under a pointer, a slice a frame, once the
-	# first taps have had their frames.
-	get_tree().create_timer(2.0).timeout.connect(func() -> void: _store.register_later())
+	# first taps have had their frames; then what moves is read, to play.
+	get_tree().create_timer(2.0).timeout.connect(func() -> void:
+		await _store.register_later()
+		_ready_play())
 	if changed > 0:
 		_share_view.tell_changed(changed, int(kept["page"]))
 	if _build_wanted != NO_BUILD_WANTED:
@@ -2362,6 +2376,9 @@ func _enter_build(page: int = -1) -> void:
 		return
 	if _inventory.is_showing():
 		_inventory.hide_list()
+	# Built from the model as it was built, not as it was played with.
+	if _share_view.played:
+		_play_reset()
 	var made: Array[Instructions.Step] = _steps.steps()
 	# start() works the steps out a slice at a time with the progress bar,
 	# so it has to be waited for.
@@ -2738,25 +2755,365 @@ func _maybe_copy() -> void:
 	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was" % kept)
 
 
-## The mouse in the viewer: a left drag turns the view (Shift slides it),
-## and nothing else. The right and middle buttons and the wheel are the
-## camera's own (CadCamera), as they are in the builder.
+## The mouse in the viewer: a left drag on a part that moves moves it on its
+## joint (_play_press); any other left drag turns the view (Shift slides
+## it). The right and middle buttons and the wheel are the camera's own
+## (CadCamera), as they are in the builder.
 func _view_input(event: InputEvent) -> void:
+	# A finger's, emulated: the camera turns the view with the finger itself
+	# already (CadCamera), and the two together turned it twice; a finger
+	# plays by its own events (_play_touch).
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
+	var moved: InputEventMouseMotion = event as InputEventMouseMotion
+	if moved != null:
+		# Past a few pixels a press on a part is a drag: of the part on its
+		# joint if it moves there, else of the view from where it began.
+		if _press_brick != 0 and (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 \
+				and moved.position.distance_to(_press_at) > DRAG_SLOP:
+			var brick: int = _press_brick
+			_press_brick = 0
+			_grabbing = _play_press(brick, _press_at, _press_hold.held_ms())
+			if _grabbing:
+				_grab_drag.motion(moved.position)
+			else:
+				_start_left_nav("turn", _press_at)
+		return
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
-		return
-	# A finger's click, emulated: the camera turns the view with the finger
-	# itself already (CadCamera), and the two together turned it twice.
-	if button.device == InputEvent.DEVICE_ID_EMULATION:
 		return
 	if button.pressed:
 		if _over_panel_at(button.position):
 			return
 		_press_at = button.position
+		# A section swinging is caught where it is, as a hand would.
+		if _grab_drag != null and _grab_drag.is_swinging():
+			_grab_drag.catch()
+		var brick: int = _play_brick_at(button.position) if not button.shift_pressed else 0
+		if brick != 0:
+			_press_brick = brick
+			_press_hold.start()
+			return
 		_start_left_nav("slide" if button.shift_pressed else "turn", button.position)
+	elif _grabbing:
+		_grabbing = false
+		_grab_drag.release()
+	elif _press_brick != 0:
+		# A click on a part, not a drag: nothing to do.
+		_press_brick = 0
 	elif not _left_nav.is_empty():
 		_left_nav = ""
 		_camera.end_drag(MOUSE_BUTTON_LEFT)
+
+
+# -- play: what moves, moved as built, nothing kept --------------------------------
+
+## The history's depth when the model was ready to play: Reset undoes back to
+## it. -1 before then.
+var _play_depth: int = -1
+## Waiting for the grab to read the model's joints, to say what moves.
+var _play_reading: bool = false
+## A Reset asked for while a section was still being checked or falling:
+## done once it has come to rest.
+var _play_reset_due: bool = false
+## What moves, as Playable read it: {kind: [brick ids]}, the parts a person
+## would take hold of first.
+var play_found: Dictionary = {}
+## The finger on a part that may move (_play_touch): its index, the part,
+## where it came down, and whether it has taken hold.
+var _finger: int = -1
+var _finger_brick: int = 0
+var _finger_at := Vector2.ZERO
+var _finger_grabbing: bool = false
+## What the last finger's coming down and its drag were taken as, for a
+## check reading the page: "part", "chain", "not a part", "over a panel",
+## "a second finger", "turns the view" (pressed, nothing moved there).
+var _finger_said: String = ""
+## What the press took hold of, by Playable's word for it ("steering"), or
+## "" for a part with no such name; and where the drag last had it.
+var _play_kind: String = ""
+var _play_at: String = ""
+## How the pill names each, at the start of a sentence.
+const PLAY_NAMES: Dictionary = {"steering": "The steering", "turntable": "The turntable",
+	"boom": "The boom", "doors": "The door", "gears": "The gears", "pneumatics": "The cylinder",
+	"actuator": "The actuator", "rack": "The rack"}
+
+
+## The model is up and its lattice told of every part: the grab reads its
+## joints (a worker's work from 300 parts where there are threads), and once
+## they are read the viewer says what moves (_play_found).
+func _ready_play() -> void:
+	if _grab_drag == null or _share_view == null or _share_view.state != "ready":
+		return
+	_play_depth = _builder.history_depth()
+	_play_reading = true
+	_grab_drag.set_process(true)
+
+
+## What moves in the model as it stands, from the joints a drag uses
+## (Playable): sent with it when it is published, for its gallery card. Read
+## now if the grab has not read them yet.
+func _moves_now() -> PackedStringArray:
+	if _grab_drag == null:
+		return PackedStringArray()
+	_grab_drag.read_now()
+	return Playable.kinds(Playable.read(_grab_drag.read_bodies(), _world, _library,
+		_grab_drag.read_mechanism()))
+
+
+## Nothing played with: the model opened again, or not yet read.
+func _play_stop() -> void:
+	_play_reading = false
+	_play_depth = -1
+	_play_reset_due = false
+	play_found = {}
+	_finger = -1
+	_finger_grabbing = false
+	if _grab_drag != null:
+		if _grab_drag.is_grabbing() or _grab_drag.is_settling():
+			_grab_drag.cancel()
+		_grab_drag.set_process(false)
+	_grabbing = false
+	if _share_view != null:
+		_share_view.show_played(false)
+		_share_view.play_said("")
+		_share_view.show_play(PackedStringArray(), false, _touch_screen())
+
+
+## Each frame of the viewer: the joints read, said; a Reset asked for during
+## a fall, done once it lands.
+func _play_frame() -> void:
+	if _grab_drag == null:
+		return
+	if _finger != -1:
+		_touch_hold.saw()
+	if _play_reading and _grab_drag.is_ready():
+		_play_reading = false
+		_play_found()
+	if _play_reset_due and not _grab_drag.is_settling() and not _grab_drag.is_grabbing():
+		_play_reset_due = false
+		_play_reset()
+
+
+## What moves, read from the joints the grab found: said on the viewer.
+func _play_found() -> void:
+	play_found = Playable.read(_grab_drag.read_bodies(), _world, _library, _grab_drag.read_mechanism())
+	# Where a page that asks is told to take hold of each (a browser check).
+	var parts: Array = []
+	for kind: String in play_found:
+		parts.append([kind, int((play_found[kind] as Array)[0])])
+	_grab_drag.handle_parts = parts
+	_share_view.show_play(Playable.kinds(play_found), _grab_drag.anything_moves() or not play_found.is_empty(),
+		_touch_screen())
+
+
+func _touch_screen() -> bool:
+	return DisplayServer.is_touchscreen_available()
+
+
+## The part under [param at] that a press may take hold of, or 0: only once
+## what moves is read, with the whole model on show (a step's parts ahead
+## of it are not there to the eye, and are in a move's way), and not while
+## the step player has the window.
+func _play_brick_at(at: Vector2) -> int:
+	if _grab_drag == null or _share_view == null or not _share_view.play_ready \
+			or (_build_mode != null and _build_mode.is_open()):
+		return 0
+	if _steps.is_playing_back():
+		var shown: Vector2i = _steps.timeline_at()
+		if shown.x < shown.y:
+			return 0
+	var brick_id: int = _verbs.brick_at(at)
+	if brick_id == 0 or _store.scenery.has(brick_id):
+		return 0
+	return brick_id
+
+
+## The part a fingertip means at [param at], and where on the screen it is:
+## the one under it if that moves, else one that moves within a fingertip
+## of it (about 10 points), nearest first; else the one under it, which
+## turns the view. A steering wheel on a phone is a few points across, its
+## rim thinner than a fingertip: play_flow's finger, on the wheel's handle
+## to the CSS pixel, came down on the plate behind it. [brick id, point].
+func _play_brick_near(at: Vector2) -> Array:
+	var under: int = _play_brick_at(at)
+	if under == 0 or _moves_on_a_joint(under):
+		return [under, at]
+	var across: float = Room.across()
+	var pt: float = get_viewport().get_visible_rect().size.x / across if across > 0.0 else 1.0
+	for reach: float in [4.0, 7.0, 10.0]:
+		for step: int in 12:
+			var spot: Vector2 = at + Vector2.from_angle(TAU * float(step) / 12.0) * reach * pt
+			var brick_id: int = _play_brick_at(spot)
+			if brick_id != 0 and _moves_on_a_joint(brick_id):
+				return [brick_id, spot]
+	return [under, at]
+
+
+## Whether [param brick_id] hangs on a joint, as the grab read them.
+func _moves_on_a_joint(brick_id: int) -> bool:
+	var bodies: Bodies = _grab_drag.read_bodies() if _grab_drag != null else null
+	if bodies == null or not bodies.body_of.has(brick_id):
+		return false
+	var body: int = int(bodies.body_of[brick_id])
+	return bodies.parent_link.has(body) and not bodies.flexible.has(body)
+
+
+## A drag on [param brick_id], pressed at [param at] and held still
+## [param held_ms] first: taken hold of on its joint, as the builder's Select
+## does (GrabDrag), when it moves there. Held still a moment first, by the
+## end of its chain of joints. False when it does not move, said in the
+## viewer's pill: the drag turns the view instead.
+func _play_press(brick_id: int, at: Vector2, held_ms: int) -> bool:
+	if not _grab_drag.press(brick_id, at, {}, held_ms >= CHAIN_HOLD_MS):
+		return false
+	if not _grab_drag.is_moving():
+		_grab_drag.let_be()
+		return false
+	_share_view.hover("", at)
+	_play_kind = _kind_of(brick_id)
+	_play_says(_grab_drag.last_words if _play_kind.is_empty() else "")
+	_hover_outline.show_selection({})
+	_hovered = 0
+	return true
+
+
+## Which of what moves [param brick_id] is part of, by its body: "" for none.
+func _kind_of(brick_id: int) -> String:
+	var bodies: Bodies = _grab_drag.read_bodies()
+	if bodies == null or not bodies.body_of.has(brick_id):
+		return ""
+	var body: int = int(bodies.body_of[brick_id])
+	for kind: String in play_found:
+		for key: Variant in play_found[kind]:
+			if int(bodies.body_of.get(int(key), -1)) == body:
+				return kind
+	return ""
+
+
+## What a drag says, as the viewer's pill says it: what moves by the name a
+## visitor gives it and how far it has gone, and why it stopped ("The
+## steering, 30° — stopped: it meets the model"). The builder's own words
+## name parts and joints and weigh the model as they go; for a part with no
+## such name they are said, without the weighing.
+func _play_says(words: String) -> void:
+	if _share_view == null:
+		return
+	if _play_kind.is_empty() or not PLAY_NAMES.has(_play_kind) \
+			or (_grab_drag != null and _grab_drag.chain != null):
+		_share_view.play_said(words.get_slice(" · ", 0))
+		return
+	var held: Grab = _grab_drag.grab if _grab_drag != null else null
+	if held != null and held.state == "moves":
+		_play_at = held.position_words()
+	var name: String = PLAY_NAMES[_play_kind]
+	var why: String = words.get_slice(" · ", 0)
+	var stop: String = why.substr(why.find(" — ")) if why.find(" — stopped") >= 0 else ""
+	if held != null:
+		_share_view.play_said("%s, %s%s" % [name, _play_at, stop])
+	elif why.contains("swinging") or why.contains("coasting") or why.contains("checking"):
+		_share_view.play_said("%s — %s" % [name, why.get_slice(" — ", 1)])
+	elif why.contains("put back") or words.is_empty():
+		_share_view.play_said(words)
+	else:
+		var then: String = why.get_slice("; then it ", 1) if why.contains("; then it ") else ""
+		_share_view.play_said("%s, %s%s. Reset puts it back." % [name, _play_at,
+			("; then it " + then) if not then.is_empty() else ""])
+
+
+## A finger in the viewer, before the camera sees it: true when it is the
+## play's (the camera must not turn the view with it). One finger down on a
+## part that moves and dragged past a tap takes hold of it; a second finger
+## lets go of it and is the camera's pinch. Every finger's coming down and
+## lifting goes on to the camera, which counts the fingers. The first finger
+## is the one that comes down with none other down, whatever its index: a
+## browser numbers them as the page's touches do, and Chrome counts on from
+## the last gesture's (play_flow's finger was index 1).
+func _play_touch(event: InputEvent) -> bool:
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if touch != null:
+		if touch.pressed:
+			if _finger_grabbing:
+				_finger_grabbing = false
+				_grab_drag.release()
+				_finger = -1
+			elif _finger == -1 and _camera_fingers() == 0:
+				if _over_panel_at(touch.position) or _share_view.covers(touch.position) \
+						or (_steps.is_visible_in_tree() and _steps.get_global_rect().has_point(touch.position)):
+					_finger_said = "over a panel"
+					return false
+				if _grab_drag != null and _grab_drag.is_swinging():
+					_grab_drag.catch()
+				var near: Array = _play_brick_near(touch.position)
+				var brick_id: int = int(near[0])
+				_finger_said = "a part (%d, at %d, %d)" % [touch.index, roundi(touch.position.x),
+					roundi(touch.position.y)] if brick_id != 0 else "not a part"
+				if brick_id != 0:
+					_finger = touch.index
+					_finger_brick = brick_id
+					_finger_at = near[1]
+					_touch_hold.start()
+			else:
+				_finger = -1
+				_finger_said = "a second finger"
+			return false
+		if touch.index == _finger:
+			_finger = -1
+			if _finger_grabbing:
+				_finger_grabbing = false
+				_grab_drag.release()
+		return false
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if drag == null or drag.index != _finger:
+		return false
+	if _finger_grabbing:
+		_grab_drag.motion(drag.position)
+		return true
+	# Still a tap: the camera does not turn the view for it yet.
+	if drag.position.distance_to(_finger_at) <= CadCamera.TAP_SLOP:
+		return true
+	_finger_grabbing = _play_press(_finger_brick, _finger_at, _touch_hold.held_ms())
+	_finger_said = ("chain" if _grab_drag.chain != null else "part") if _finger_grabbing \
+		else "turns the view from #%d %s: %s" % [_finger_brick, _world.get_brick(_finger_brick).part_id
+			if _world.get_brick(_finger_brick) != null else "?", _grab_drag.last_words]
+	if not _finger_grabbing:
+		_finger = -1
+		return false
+	_grab_drag.motion(drag.position)
+	return true
+
+
+## How many fingers the camera has down.
+func _camera_fingers() -> int:
+	return _camera.fingers() if _camera != null else 0
+
+
+## Something moved and was let go (GrabDrag.edited, in the viewer): the
+## other copies of a sub-assembly follow as in the builder, and Reset is
+## offered. Nothing is written: the store is read-only.
+func _played() -> void:
+	if _verbs != null and _verbs.assemblies != null:
+		_verbs.assemblies.after_edit()
+	if _share_view != null:
+		_share_view.show_played(_play_depth >= 0 and _builder.history_depth() > _play_depth)
+
+
+## Reset: everything moved since the model was ready put back as it was
+## built, by undoing every play's step. A swing is stopped where it is
+## first; a section still being checked, or falling, comes to rest first.
+func _play_reset() -> void:
+	if _grab_drag == null or _play_depth < 0:
+		return
+	if _grab_drag.is_swinging():
+		_grab_drag.cancel()
+	if _grab_drag.is_settling() or _grab_drag.is_grabbing():
+		_play_reset_due = true
+		return
+	_builder.undo_steps(_builder.history_depth() - _play_depth)
+	_grab_drag.clear_marks()
+	_world.set_drawn({})
+	_share_view.show_played(false)
+	_share_view.play_said("Put back as it was built.")
 
 
 ## The keys a viewer answers to. True for one the builder's own handling
@@ -3847,6 +4204,7 @@ func _build_ui() -> void:
 	_share_panel.account = _account
 	_share_panel.store = _store
 	_share_panel.shared = _shared
+	_share_panel.moves_of = _moves_now
 	_share_panel.picture = _exports.picture
 	_share_panel.named = _bar.model_name
 	_share_panel.setup()
@@ -4017,6 +4375,9 @@ func _booklet_wanted() -> void:
 	if BookletMaker.busy:
 		_bar.say("already drawing the booklet…")
 		return
+	# A shared model's booklet is of the model as it was built.
+	if _share_view != null and _share_view.played:
+		_play_reset()
 	if OS.has_feature("web"):
 		BookletMaker.open_tab()
 	await _export_booklet()
@@ -4360,12 +4721,21 @@ func _fit_panels() -> void:
 
 
 ## The part of the window the model is seen in, for the camera to centre
-## the view on and frame to: the model's column, between the bars, as
-## model_cover samples it. A phone's drawer opens over most of the screen
+## the view on and frame to: the model's column, between the bars
+## (model_cover samples the part of it under the notices strip). A phone's drawer opens over most of the screen
 ## and is put away again to build, so there the column is taken as both
 ## drawers folded, and the model does not leap to the sliver beside one.
+##
+## And from the top of the column, where the notices strip shows when there
+## is something to say. A notice comes and goes by itself, and the banner
+## for a sub-assembly with a double-click on the model: the view centred
+## under the strip slid the model 22 px down from under the pointer as the
+## banner showed, and the next double-click, meant for the wing inside the
+## plane, found the plane's body there (assembly_probe).
 func _model_rect() -> Rect2:
 	var rect: Rect2 = _over_model.get_global_rect()
+	var top: float = (_over_model.get_parent() as Control).get_global_rect().position.y
+	rect = Rect2(rect.position.x, top, rect.size.x, rect.end.y - top)
 	if _columns == "drawers":
 		var across: float = get_viewport().get_visible_rect().size.x
 		rect.position.x = SideDock.RAIL_WIDTH
@@ -5315,6 +5685,7 @@ func _process_main(_delta: float) -> void:
 		_touch_hold.saw()
 	if not _viewing.is_empty():
 		_view_hover()
+		_play_frame()
 	else:
 		_select_hover()
 	if _cursors != null:
@@ -6235,6 +6606,7 @@ func _cursor_state() -> Cursors.Situation:
 	if not _viewing.is_empty():
 		var looking := Cursors.Situation.new()
 		looking.holding_view = _camera.is_dragging()
+		looking.holding_part = _grabbing or _finger_grabbing
 		looking.shift = Input.is_key_pressed(KEY_SHIFT)
 		looking.left_drag = Cursors.VERBS["slide" if looking.shift else "turn"]
 		return looking
@@ -6297,6 +6669,12 @@ func _input(event: InputEvent) -> void:
 	# model or not, so moving onto the bar lets go of the part.
 	if event is InputEventMouseMotion and not _viewing.is_empty():
 		_view_pointer = (event as InputEventMouseMotion).position
+	# A finger on a part that moves, in the viewer: the play's before the
+	# camera's (CadCamera turns the view with a finger by itself).
+	if not _viewing.is_empty() and (event is InputEventScreenTouch or event is InputEventScreenDrag) \
+			and _play_touch(event):
+		get_viewport().set_input_as_handled()
+		return
 	# And where every move left it, to the fraction of a pixel, or a press
 	# put it, and where the system said it was then (_true_point, _pointer).
 	if event is InputEventMouseMotion:

@@ -26,7 +26,7 @@
 //     panel's version.json found beside the build.
 //
 // Screenshots of every page at phone and laptop size go to --out.
-import { launch } from "./browser.mjs";
+import { launch, allPictures } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -370,10 +370,7 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
       await page.waitForFunction(() => !document.getElementById("models")
         || document.documentElement.dataset.gallery, null, { timeout: 20000 }).catch(() => {});
       // Every lazy picture in, so the full-page shot shows the page as read.
-      await page.evaluate(async () => {
-        for (const img of document.querySelectorAll("img[loading=lazy]")) img.loading = "eager";
-        await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
-      });
+      await allPictures(page);
       await page.waitForTimeout(400);
       const seen = await page.evaluate(() => ({
         scrollW: document.documentElement.scrollWidth,

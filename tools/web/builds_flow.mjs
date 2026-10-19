@@ -390,8 +390,9 @@ try {
   await visitor.goto(`${site}/gallery?tests=1&sort=builds`, { waitUntil: "load" });
   await until(visitor, () => document.documentElement.dataset.gallery === "ready", "the gallery", 60);
   const card = await visitor.evaluate((one) => {
-    const first = document.querySelector("a.model");
-    const mine = document.querySelector(`a.model[data-id="${one}"]`);
+    // The list's cards, not the front's shelves above it (the pick, small builds).
+    const first = document.querySelector("#models a.model");
+    const mine = document.querySelector(`#models a.model[data-id="${one}"]`);
     return { first: first?.dataset.id, said: mine?.querySelector("small")?.textContent || "",
       sorts: [...document.querySelectorAll("#sort option")].map((o) => o.textContent) };
   }, id);

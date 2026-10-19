@@ -497,7 +497,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
   mirror, hide and lock takes it whole. A double-click (or `Enter`) edits inside
-  it — a banner over the model says which, a click takes one part, a part put
+  it — a banner above the model says which, the model staying where it was
+  under the pointer, so a second double-click there goes a level deeper
+  (view.md's `centred on the model's column`), a click takes one part, a part put
   down goes into it — and `Esc` steps out a level. `Ctrl-D`/`Ctrl-C` of one is
   another copy of the same definition (`Wing#2`), and after any edit the other
   copies are built again from the edited one, mirrored where they were
@@ -691,7 +693,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   from above) runs `grab_probe -- --only=sweep --list=FILE` and writes
   `sweep_LABEL.jsonl` and `.md` to bench/results/grab13-2026-10-19 (G9's in
   grab9-2026-10-18, G11's in grab11-2026-10-18, G12's in grab12-2026-10-18); `table LABEL --against=OTHER`
-  sets two side by side (MECHANISMS §20: 51 of 168 before G12; §21: 55
+  sets two side by side (MECHANISMS §20: 51 of 168 before G12; §22: 55
   before G13). Each row says how far the steering
   arms turned; every shared sub-assembly is made its own before the turns;
   each Godot it starts gets a data folder of its own (`.scratch-data`), never
@@ -787,7 +789,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (tested along
   the way in steps that move no point more than 2 LDU, `Grab._walk`, and
   bisected to the last pose with room from the first step with none; G13,
-  MECHANISMS §21; a loop is put back as it was after the walk,
+  MECHANISMS §22; a loop is put back as it was after the walk,
   `Linkage.kept_state`, so its end is solved as if there were no steps; a
   free joint inside what moves that the model presses is turned aside,
   `Grab._push_aside`; a small section's drag tests its way for 2 ms a frame,

@@ -79,7 +79,13 @@ picture the assistant is shown.
   centred on the model's part of it (`model_cover`'s "view": between the
   columns, under the bars; on a phone, between the rails, since a drawer is
   put away to build) rather than on the window, where with one column open
-  the model sat 168 units to its side. Done by shifting the lens, not the
+  the model sat 168 units to its side. From the top of the column, the
+  notices strip's place included, so a notice coming or going never moves
+  the model: centred under the strip, the sub-assembly banner a double-click
+  shows slid it 22 px from under the pointer, and the next double-click
+  missed the part inside (2026-10-19). `assembly_probe` double-clicks twice
+  at a still pointer across a 600 ms frame and checks the part has not moved
+  going in or coming out (21.9 px before). Done by shifting the lens, not the
   camera: perspective is `PROJECTION_FRUSTUM` with the same 45° across the
   window's height and a `frustum_offset`; straight-on, `h_offset`/`v_offset`,
   which for parallel lines is the same picture. Fit (F, Home, the cube's fit

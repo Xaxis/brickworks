@@ -61,7 +61,7 @@
   }
 
   function fileCard(file) {
-    const copy = el("button", { type: "button", text: "Copy" });
+    const copy = el("button", { type: "button", class: "cta ghost small", text: "Copy" });
     copy.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(file.sha256);

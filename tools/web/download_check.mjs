@@ -30,7 +30,7 @@
 // the DevTools protocol. Playwright's userAgent option changes only the
 // first, and the page reads the other two first, so a "Mac" would have been
 // offered the Linux build and the check would have been checking nothing.
-import { launch } from "./browser.mjs";
+import { launch, allPictures } from "./browser.mjs";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
@@ -272,10 +272,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth,
     broken: [...document.images].filter((i) => i.complete && !i.naturalWidth).map((i) => i.src),
   }));
-  await page.evaluate(async () => {
-    for (const img of document.querySelectorAll("img[loading=lazy]")) img.loading = "eager";
-    await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
-  });
+  await allPictures(page);
   let seen = await look();
   if (seen.state !== "ready") fail(`the list did not load (${seen.state || "nothing said"})`);
   if (!args.url) {

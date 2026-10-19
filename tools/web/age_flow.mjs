@@ -173,12 +173,18 @@ try {
   listen(kidPage, "site, under 13");
   await kidPage.goto(`${site}/profile`, { waitUntil: "load" });
   await kidPage.waitForSelector("dialog.age[open]", { timeout: 30000 });
-  const asked = await kidPage.textContent("dialog.age");
+  // What a visitor reads: the dialog's words without its lists' options,
+  // which hold every year (2013 among them) and are not read out at once.
+  const asked = await kidPage.evaluate(() => {
+    const copy = document.querySelector("dialog.age").cloneNode(true);
+    for (const option of copy.querySelectorAll("option:not([hidden])")) option.remove();
+    return copy.textContent;
+  });
   check(`asked "${(await kidPage.textContent("dialog.age p")).trim()}"`, /When were you born\?/.test(asked));
   check("nothing about 13, or any age, before the answer", !/13|thirteen|old enough|must be/i.test(asked));
   await shot(kidPage, "2_site_question.png");
   await kidPage.selectOption("#age-month", String(thisMonth));
-  await kidPage.fill("#age-year", String(thisYear - 10));
+  await kidPage.selectOption("#age-year", String(thisYear - 10));
   await kidPage.click("#age-go");
   await kidPage.waitForSelector("#age-done", { timeout: 20000 });
   const after = await kidPage.textContent("dialog.age");
@@ -218,7 +224,7 @@ try {
     && !(await sideways(adultPage)));
   await shot(adultPage, "3_site_question_phone.png");
   await adultPage.selectOption("#age-month", "3");
-  await adultPage.fill("#age-year", String(thisYear - 30));
+  await adultPage.selectOption("#age-year", String(thisYear - 30));
   await adultPage.click("#age-go");
   await adultPage.waitForFunction(() => document.documentElement.dataset.profile === "ready", null, { timeout: 30000 });
   check("let straight on: no dialog, the profile form on", !(await adultPage.isVisible("dialog.age"))
@@ -247,7 +253,13 @@ try {
     for (;;) {
       const value = await app.evaluate(test, arg).catch(() => null);
       if (value) return value;
-      if (Date.now() > end) throw new Error(`${what}: not within ${seconds} s`);
+      if (Date.now() > end) {
+        // What the app said, and a picture, so a timeout says why.
+        const said = await app.evaluate(() => JSON.stringify({ account: window.brickworksAccount,
+          controls: Object.keys(window.brickworksControls || {}).slice(0, 12) })).catch((e) => String(e));
+        await shot(app, `timeout_${what.replace(/\W+/g, "_").slice(0, 40)}.png`).catch(() => {});
+        throw new Error(`${what}: not within ${seconds} s; the app said ${said}`);
+      }
       await app.waitForTimeout(500);
     }
   };

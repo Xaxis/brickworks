@@ -1827,7 +1827,7 @@ func _takes_stud(key: int, foot: Vector3, way: Vector3) -> bool:
 ## under it by the holes in its cap, 32 LDU above its bottom. Read as studs
 ## pressed on a face, the beam was a body of its own, hung on its coupling,
 ## and stayed where it stood when its bogie turned: six trains' bogies met
-## their own beam at the first degree (G13, MECHANISMS §21).
+## their own beam at the first degree (G13, MECHANISMS §22).
 func _in_a_hole_exactly(brick: BrickWorld.Brick, foot: Vector3, way: Vector3) -> bool:
 	var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
 	if shape == null:

@@ -44,7 +44,7 @@ const NEVER_MEET_MS := 30
 ## Where a turn stops, to within this, degrees.
 const STOP_TO := 0.15
 ## A move is tested along its way, not only where it ends (G13,
-## docs/MECHANISMS.md §21): in steps that move no point of what moves more
+## docs/MECHANISMS.md §22): in steps that move no point of what moves more
 ## than this, LDU. Judged by exact shapes, which may overlap by 1 LDU, the end
 ## of a move is often clear where its way is not: a bogie turned 30° under its
 ## buffer beam was clear there and went through the beam to get there.

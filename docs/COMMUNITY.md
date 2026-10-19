@@ -1,7 +1,8 @@
 # Community rules, and where each is enforced
 
 brickworks.diy has share links, a gallery, profiles, likes, remixes,
-collections, comments, photos of real builds, follows and a feed. These
+collections, comments, photos of real builds, follows and a feed, and
+designers' pages. These
 are the ground rules it stands on (2026-10-18), and the code that keeps each.
 The pages people read are `web/terms.html` (/terms) and
 `web/guidelines.html` (/guidelines); every site page's footer links both,
@@ -27,6 +28,19 @@ the pages say what the site does.
   and versions); until then a profile shows no Follow and no counts, /feed
   says it is not open yet, Account has no count, and the day's email is
   of comments only.
+- `supabase/discovery.sql` after builds.sql and tested.sql (it reads
+  `model_builds` and the Tested mark); until then Sort › Top builds lists
+  newest first, the gallery's front has no pick (Small builds is there, the
+  newest first), the admin page says This week's pick is not open yet, and
+  a signed-in person's gallery has no shares and no You can build now. Then
+  once, `node --env-file=.env tools/web/needs_backfill.mjs` (`--dry` first
+  reads only), which counts what the models published before it need; a
+  model published after is counted as it is published.
+- `supabase/designers.sql` after discovery.sql (it reads the tables of
+  builds, comments, tested, trust and follows); until then a profile is as
+  before (no tiles, its models newest first), and the designer's own
+  numbers say "not open on Brickworks yet". Opens are counted by the day
+  from the moment it is applied.
 
 ## The rules
 
@@ -192,6 +206,210 @@ each on /profile, every one off until ticked (`mail_choices.models`,
 `versions`, `photos`, `remixes`). It tells what came since the last email
 that went, or since the choice was made; a test account's is a dry run.
 
+## Discovery: a gallery that rewards designs that build
+
+`supabase/discovery.sql` (2026-10-19), the weights in `api/_directory.js`
+(`SCORE`), the front's shelves in `web/gallery.js`, the owner's choice in
+`api/admin.js` and `web/admin.js`, what models need and people own in
+`api/_owned.js`.
+
+**Top builds.** A sort beside Most built, by a score worked out in the
+database so the gallery pages by it (`gallery_score`): a build finished
+counts 3, a remix 2, the Tested mark 5. Views count for nothing, so a
+model is not lifted by being looked at; ties go to more builds, then the
+newest. The page says so under Sort while it is chosen. A build is the
+device count builds.sql keeps (once per device, never a robot's), a remix
+is one published from it, and the mark is its newest version's.
+
+**This week's pick**, at the top of the gallery's front (nothing searched
+or filtered), worked out from the past seven days: the best score of the
+week, counting the builds finished and the remixes listed in those seven
+days, and the Tested mark (`gallery_week`). A model is a candidate only
+when something in the week says it builds: a build finished, a remix
+listed, or it was listed that week and is Tested, so a quiet week has no
+pick rather than last month's. Its card says why ("Built twice this
+week", "New this week, and Tested"). The site's owner can choose another
+on `/admin` (Make it the pick, beside any model in the gallery or among
+the week's best five) for seven days, and End it to go back to the one
+worked out; the newest choice still in the gallery wins, and its card
+says "Chosen by Brickworks". A choice is kept in `gallery_picks`, which
+no key reads directly. A test account's model is never a visitor's pick.
+
+**Small builds**: a shelf on the front of the gallery's own Small size,
+under 200 parts, by Top builds, with See every small build
+(`/gallery?size=small&sort=top`) when there are more than eight. Why 200
+and not 150: on 2026-10-19 the gallery's seven models were 187, 350, 494,
+774, 1,037, 2,438 and 9,541 parts. At 150 the shelf would be empty; the one
+small model sits alone below a gap to 350, and the Size filter already
+calls under 200 Small, so the shelf and the filter mean one thing.
+
+**Build with what I own.** For a signed-in person with a collection
+(`/api/collection`, the app's Build › My collection…), every card in the
+gallery says how much of the model they own already ("✓ You have every
+part", "You have 1 of its 3 parts · 33%"), Sort has Parts I own (the
+largest share first, ties to more parts held), and the front has You can
+build now: the models every part of which is in their collection, by Top
+builds. Counted by part and colour, as the app's one-model check counts
+them (`src/collection/collection.gd`): a part by the number it means today
+(LDraw's moves), a colour by the one a shop files it under (Rubber Black
+is Black), another moulding of a part standing in for it (3794a for
+3794b), their sets through the sets' inventories (the app's own
+shards), spares when they said they kept them; a part nobody can own (a
+primitive drawn into a model, a sub-model a file names and does not
+carry) is left out, and a flexible part laid as segments too. Both sides
+are counted once and kept, so the gallery is one join in the database: a
+model's needs as it is published (`model_needs`), a person's pool the
+first time the gallery is asked for it after their collection changed
+(`collection_pools`). What a person owns is never shown to anybody else:
+the shares are only ever asked with their own sign-in (`mine=1`), the
+CDN never keeps such an answer, and the tables are read only through the
+functions. What the app's own check does that this does not: a part in
+another colour, or two smaller ones, offered as a swap, which the share
+never counts; and the app lets a lettered moulding stand in for the plain
+number but not the plain number for a lettered one, where the gallery
+lets either stand in for the other. A set no inventory has is said on the shelf, and
+its parts are not counted.
+
+**What it costs.** In the dry run (`tools/discovery_try.sql`), on a
+gallery of 5,000 listed models with 20,000 builds over 30 days, 1,000
+remixes and 500 Tested, made and rolled back inside it: Top builds 161 ms
+for its first page and 173 ms for page 81; Most built and newest 50 ms;
+the small shelf 19 ms; the week's best ten 103 ms; the pick 101 ms. On
+the project's own seven models: 4 to 7 ms, 4 to 6 ms, 2 ms. Every
+question builds.sql's list knew is answered the same, card for card and
+in order (16 on the project's models, 6 on the big gallery, deep pages
+among them). With every model of
+that gallery needing 60 lots (300,000 rows) and a collection of 2,000,
+5,000 and 20,000 lots (the most a collection holds), best of three in
+each of two runs on the shared database: Parts I own 123 to 132, 158 to
+160 and 343 to 367 ms for its first page; You can build now 82 to 141, 120
+to 189 and 322 to 420 ms; any other sort with each card's share 80 to 88
+ms whatever the collection's size (a page's shares are counted after the
+page is cut); keeping the pool 33 to 35, 88 to 91 and 364 to 543 ms, once
+per change. The cost is the join of the whole pool with every model's
+needs; keeping each person's shares as the pool is kept is the next step
+if a gallery of thousands makes it slow. The list's deep pages
+were made cheaper too: builds.sql's directory_models made a card for every
+model a page skipped (page 81 of Top builds took 665 ms that way); the
+page is now cut before its cards are made. The CDN keeps both answers 30
+seconds, as the list.
+
+## Designers: what a designer's models earned
+
+`supabase/designers.sql` (2026-10-19), the API in `api/_designers.js`, the
+page in `api/people.js` (`profilePage`, `earnedHtml`, `cardHtml` with
+`earned`), the designer's own numbers in `web/designs.js`.
+
+**A designer's page.** A profile with a model in the gallery
+(`/u/<handle>`) is a designer's: it says Designer, not Builder, and leads
+with what those models earned, as tiles: builds finished and remixes first
+(marked, as the gallery's Top builds weighs them), then Tested, comments,
+models in the gallery and followers. Each number is the sum of what the
+cards below it say, so the page never claims more than its models show:
+
+| Number | Counted as |
+|---|---|
+| Builds finished | `model_stats.builds`: once per device that reached the last step, never a robot's, as every card and Top builds count them |
+| Remixes | published remixes of it, by link or listed, as the card counts them |
+| Tested | its newest version marked Tested |
+| Comments | on its page in this life of its link, shown to a visitor (not hidden, not removed, by an account shown in public), and not the designer's own: an answer to a comment is not one earned (`designer_said`) |
+| Models | listed and credited, as the profile lists them |
+
+The models follow by Top builds, the most built first, and each card says
+its own "3 built · 1 remix · 1 comment", then likes, and its Tested mark;
+never its views. Under the tiles: the model to start with, the first by Top
+builds once somebody built it ("Start with their most built: …, 3 builds
+finished, Tested", with Build it, which opens it in the viewer), and the
+photos other people posted of their builds of these models (Built by
+others), each saying whose build it is. A builder's own photos of their own
+models are not among them. Likes and whom they follow stay as a line under
+the tiles. A profile with nothing in the gallery is as before.
+
+What a builder can do there (follow, report) is unchanged. A build is
+counted by device and nobody's account is kept with it, so a designer's
+own finish on their own device counts once, as it does everywhere else.
+
+**For the designer alone.** Signed in, on their own page (How your models
+are doing, under the follow line) and on Account (`/profile`, Your models,
+as a designer): every model they published, in the gallery or by link,
+credited or not, each with the last 30 days and in all since it was
+shared:
+
+- opens: visitors who opened its page, each once a day, never a robot
+  (`count_view`'s count, kept by the day in `model_opens`);
+- builds finished, remixes and comments, counted as on the page above;
+- who built it: the photos people posted of their builds ("I built it"),
+  up to six, each with its builder's name and a link to their profile.
+
+The busiest first (opens, then builds). Opens are kept by the day from the
+day the file is applied (with what `model_views` still held, today's and
+yesterday's); until 30 days have passed the panel says from when, and "in
+all" is the count since the model was shared.
+
+**Nobody else sees it, and no cache keeps it.** The page the CDN keeps
+(`/u/<handle>`, 30 seconds) is the same bytes for everybody and carries none
+of it: `#designs-mine` is empty and hidden, and `web/designs.js` fills it
+only when `GET /api/people?op=designs&handle=<the page's>` answers that the
+page is the caller's own (asked by anybody else it answers `{"mine":
+false}` and nothing more). The account asked for is the one the sign-in
+proves; nothing in the request can name another. Every answer, a refusal
+included, is `Cache-Control: private, no-store`. In the database the
+numbers come only from `designer_mine`, granted to the service role alone;
+`model_opens` is read by no key, the service role's included.
+
+**What it costs.** In the dry run (`tools/designers_try.sql`), on the live
+project's own data, the owner with the most models (seven): the page 1.5
+to 3.2 ms and the designer's own numbers 3.9 to 6.1 ms, in two runs. On a
+designer made inside it, 303 models with 30 days of opens on each (9,000
+rows), 3,000 builds, 600 comments and 300 photos by twenty people and 100
+remixes, best of three: the page 21 to 31 ms and their own numbers 46 to
+59 ms (185 KB of JSON). Who is shown
+in public is asked once a person, not once a comment or photo: asked of
+every one, the two took 110 to 250 ms.
+## Play: what moves, on its link and on its card
+
+`supabase/play.sql` (2026-10-19), the words in `src/assembly/playable.gd`
+and `api/_directory.js` (`MOVES`), the card in `web/gallery.js`, the
+viewer's play in `src/ui/share_view.gd` and `src/main.gd`
+(docs/MECHANISMS.md §21).
+
+Nobody can play with a model on Rebrickable. On its Brickworks link
+anybody can take hold of what moves and move it as it was built: steer
+the wheels by the steering wheel, swing the boom, open the doors, turn
+the gearbox by its input, on the editor's own joints, stops and
+couplings. Nothing is kept: the link's model never changes, and Reset
+puts it back.
+
+**What moves, on the card.** The app works out what moves as the model
+is published, from the joints a drag would use (`Playable.read`), and
+sends the words with it: steering, turntable, boom, doors, gears,
+pneumatics, actuator, rack. api/share.js takes those and no others, each
+once, and keeps them with the model's row (`shared_models.moves`). The
+gallery's card says them ("Moves: steering, boom"), and so does the
+list a session reads (`gallery`, below). A model published before, or
+from an app before this, has none until it is published again.
+
+**Technic or mechanism** now takes a model whose moves name a mechanism
+(any word but doors, `moves_mechanism`) as well as one whose parts are
+Technic (`technic`, as before). A house whose doors open is not a
+mechanism; a small racer with a working steering of few Technic parts
+is.
+
+**For a session.** The gallery tool (`src/net/gallery_tool.gd`) offers the
+gallery's own sorts (Top builds and Most built; Parts I own only with the
+person's own sign-in, `mine=1`, and refused with what to do when nobody is
+signed in), the front (`shelves=true`: this week's pick and why, the small
+builds, and what the person can build now), and says on each model how
+many built it, what moves in it and whether it is Tested.
+
+**What it costs.** In the dry run (`tools/play_try.sql`, on the live
+project inside a transaction rolled back): the column added to every row
+as an empty list (8 models), a word the app does not say and nine words
+refused, the cards saying what moves, Technic or mechanism finding the
+racer by its steering and the crane by its parts but not the house by
+its doors, a visitor's list of test models empty, the functions the
+service role's alone; Technic or mechanism's first page 4.2 ms.
+
 ## Reports reaching the owner
 
 A report (`api/people.js` `?op=report`, from the Report button or
@@ -327,6 +545,55 @@ counter-notice is by hand for now (`shared_models.barred`).
   before and after opening, the limit, the email's choices and its feed
   told once, an account taken out, the grants, and how long a feed takes,
   all rolled back.
+- `tools/discovery_try.sql`, run inside `tools/apply_sql.mjs --dry` with
+  `supabase/discovery.sql` after the live files: the score's weights, Top
+  builds' order and its paging (two at a time, nothing twice, and three
+  pages of 25 the same as one list on the big gallery), Most built and
+  newest as before, small builds, a visitor's list without test models,
+  the week's candidates and what is not one, the pick worked out, chosen,
+  passed over when it leaves the gallery, ended and run out, refusals (not
+  in the gallery, nobody's, 0 or 32 days, 40 written directly), an account
+  taken out, the grants, and the timings above, all rolled back.
+  `tests/test_discovery.py` holds the page's weights to the SQL's and the
+  stand-in's, discovery.sql's directory_models to every filter and sort of
+  builds.sql's, Parts I own to a collection's own sign-in, and the new
+  tables to no key at all. `tools/web/owned_probe.mjs` checks the sums
+  alone: a file's needs through its sub-models in the colour each is
+  placed in, both sides spelled one way, the shard a set is in, a pool of
+  sets and loose parts.
+- `tools/web/discovery_flow.mjs` against `relay_server.mjs
+  --hold=gallery_picks` (`tools/web/discovery_stand_in.mjs` answers
+  discovery.sql's functions in memory over the live project's models and
+  builds) or a deployment: four test models built and one Tested, Top
+  builds' order on the list and the page, the front's pick and small
+  builds signed out and signed in at 1280 and 390 px, the owner choosing
+  the pick on /admin and ending it, a model by link only refused; and a
+  collection with a real set in it: each card's share, Parts I own, You
+  can build now at 1280 and 390 px, refused signed out, and nothing of it
+  for somebody with no collection.
+- `tools/designers_try.sql`, run inside `tools/apply_sql.mjs --dry` with
+  `supabase/designers.sql` after the live files: `count_view` answering the
+  same with the trigger and without it, opens by the day and the last 30
+  (and 7) of them, a designer's page as anybody sees it with and without
+  tests (models, builds, remixes, comments, Tested, photos by others) and
+  each number the same as profile_page's and the sum of directory_models'
+  cards, the comments the same as the model's page shows less the owner's,
+  the designer's own numbers and nobody else's, days held to 1 to 90, an
+  account taken out and one under 13, what model_views held counted in
+  once, the grants, and the timings above, all rolled back.
+  `tests/test_designers.py` holds the file to additions alone, the cards'
+  definitions, the band's and the cards' order, the own numbers to the
+  caller's sign-in and `private, no-store`, and the cached page to none
+  of them.
+- `tools/web/designers_flow.mjs` against `relay_server.mjs
+  --hold=model_opens` (`tools/web/designers_stand_in.mjs` answers
+  designers.sql's two functions over the live project's tables) or a
+  deployment through its API alone: a designer's page signed out, signed
+  in as somebody else and as the designer, at 1280 and 390 px; the tiles
+  the sums of the cards, the castle first, no views; the designer's own
+  numbers on their page and on Account and nobody else's; and every answer
+  of them `private, no-store`, never from the CDN, the same address
+  answering each their own.
 - `tools/web/follows_flow.mjs` against `relay_server.mjs
   --hold=follows,model_comments,build_photos,report_photos --trust-stand-in`
   (`tools/web/follows_stand_in.mjs` answers follows.sql's functions in

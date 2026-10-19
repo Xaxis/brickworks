@@ -65,6 +65,23 @@ export async function quietCounter(context) {
   return context;
 }
 
+/// Every picture on the page loaded and decoded, hidden ones too, so a
+/// full-page shot or a card's naturalWidth shows the page as read. A lazy
+/// picture loads only when drawn near the view, and one in a hidden part of
+/// the page never does: its decode() never settles. The gallery's shelves
+/// hide while a search is asked, and share_flow, the one copy of this that
+/// did not make them eager first, waited on them for 45 minutes and held
+/// m84 (2026-10-19). And never more than [ms], whatever a picture does.
+export async function allPictures(page, ms = 30000) {
+  await page.evaluate(async (limit) => {
+    for (const img of document.querySelectorAll("img[loading=lazy]")) img.loading = "eager";
+    await Promise.race([
+      Promise.all([...document.images].map((img) => img.decode().catch(() => {}))),
+      new Promise((done) => setTimeout(done, limit)),
+    ]);
+  }, ms);
+}
+
 export async function launch(options = {}) {
   const { signedOut = false, realCounter = false, ...rest } = options;
   const browser = await chromium.launch({ ...rest, args: [...SOFTWARE, ...(rest.args || [])] });

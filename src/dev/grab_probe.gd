@@ -5441,7 +5441,7 @@ const STEERING: Array = [
 ## in the way, Grab._bends_aside); 10220-1's door turned back met what it was
 ## built against (Grab._built_touching).
 const MOVING: Array = [
-	# G13b (MECHANISMS §21): turned +30, 18 free joints inside the crane swing
+	# G13b (MECHANISMS §22): turned +30, 18 free joints inside the crane swing
 	# down, most of them 180°, and tested along its way the turn back met the
 	# brick 1 x 16 that swung, until a free joint pressed swings aside.
 	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable"],
@@ -5688,7 +5688,7 @@ func _says_what_meets() -> void:
 
 
 ## A made model whose way is blocked where its end is not (G13, MECHANISMS
-## §21): the made crane's arm on its hinge, and a plate 1 x 8 held over the
+## §22): the made crane's arm on its hinge, and a plate 1 x 8 held over the
 ## hinge on a tower beside it, in the arm's way a few tens of degrees over
 ## and clear of it lying flat. LDraw's own units, y down.
 const MADE_PATH := """0 An arm on a hinge, and a plate over its way
@@ -5719,7 +5719,7 @@ const MADE_PATH := """0 An arm on a hinge, and a plate over its way
 
 
 ## A move is tested along its way, not only where it ends (G13, MECHANISMS
-## §21): the made arm turned 90° over MCP each way. Towards the plate over it
+## §22): the made arm turned 90° over MCP each way. Towards the plate over it
 ## it stops where it meets the plate, which is clear of the arm lying flat; in
 ## m83, tested only where it ended, it went through the plate. The other way
 ## nothing is in its way and it goes all 90°.
@@ -5764,7 +5764,7 @@ func _path_check() -> void:
 
 
 ## Trains whose buffer beam (4022) sits on four studs of a plate that turns
-## (G13, MECHANISMS §21): [file, the beam, the plate under it, the part a
+## (G13, MECHANISMS §22): [file, the beam, the plate under it, the part a
 ## session turns]. The beam takes the studs in holes in its cap, 32 LDU above
 ## its bottom, where the catalogue reads no socket; read as studs pressed on a
 ## face, it was a body of its own and stayed while its plate turned through
@@ -6236,7 +6236,7 @@ static func _gaps_asked() -> Array:
 	return out
 
 
-## For tools/shape_gap.py (G13, MECHANISMS §21): for each of [constant GAPS],
+## For tools/shape_gap.py (G13, MECHANISMS §22): for each of [constant GAPS],
 ## where the two parts stand, the joint the move turns on, what holds the part
 ## met, and how far their exact shapes overlap with the moved one turned each
 ## way, half a degree at a time, with the convex pieces that overlap a degree

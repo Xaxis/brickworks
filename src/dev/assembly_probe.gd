@@ -304,11 +304,28 @@ func _saved_and_read_back() -> void:
 		return _snapshot_of(path) != each_before[path])
 	_check("...each copy the one it was, where it was (%s)" % (str(moved) if not moved.is_empty()
 		else "%d of them" % each_before.size()), moved.is_empty())
-	# Edit one wing of the reopened plane; the other still follows.
+	# Edit one wing of the reopened plane; the other still follows. Two
+	# levels down as a person goes there: a double-click, then another with
+	# the pointer where it was, across a frame as slow as a weak device's.
+	# Going into the plane shows its banner above the model. The view was
+	# centred under it, so the model slid 22 px down from under the pointer,
+	# and the second double-click found the plane's body where the wing had
+	# been. The slide eased over a tenth of a second, so this probe's aim,
+	# taken again partway through it, missed now and then on a busy box.
 	await _click_tool("mode_select")
-	await _double_click(_on(_of_part("Plane#1/Wing#1", "3034")))
-	await _double_click(_on(_of_part("Plane#1/Wing#1", "3034")))
-	_check("editing inside a wing of the reopened plane (%s)" % _tree.entered,
+	await _slow_frame()
+	await _frames(2)
+	var plate_3034: BrickWorld.Brick = _world.get_brick(_of_part("Plane#1/Wing#1", "3034"))
+	var at: Vector2 = _on(plate_3034.id)
+	var drawn_at: Vector2 = _screen(plate_3034.transform.origin)
+	await _double_click(at)
+	await _slow_frame()
+	await _frames(2)
+	var slid: float = _screen(plate_3034.transform.origin).distance_to(drawn_at)
+	_check("going into the plane leaves the model where it was under the pointer (%s, %.1f px)"
+		% [_tree.entered, slid], _tree.entered == "Plane#1" and slid < 0.5)
+	await _double_click(at)
+	_check("...and a double-click where it was goes on into the wing (%s)" % _tree.entered,
 		_tree.entered == "Plane#1/Wing#1")
 	var plate: int = _of_part("Plane#1/Wing#1", "3023")
 	_select_only([plate])
@@ -320,9 +337,17 @@ func _saved_and_read_back() -> void:
 	if _colour_of("Plane#1/Wing#2", "3023") != 15:
 		for brick: BrickWorld.Brick in _model():
 			print("    %s %s %d" % [Assemblies.path_of(brick), brick.part_id, brick.color_code])
+	await _slow_frame()
+	await _frames(2)
+	var inside_at: Vector2 = _screen(plate_3034.transform.origin)
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
+	await _slow_frame()
+	await _frames(2)
+	slid = _screen(plate_3034.transform.origin).distance_to(inside_at)
+	_check("...and coming out to the model, the banner gone, leaves it there too (\"%s\", %.1f px)"
+		% [_tree.entered, slid], _tree.entered.is_empty() and not _shell.banner.visible and slid < 0.5)
 	# Cut loose, a copy no longer follows.
 	_select_only(Array(_tree.ids_under("Plane#1/Wing#2")))
 	await _frames(2)
@@ -551,6 +576,17 @@ func _screen(point: Vector3) -> Vector2:
 func _frames(count: int) -> void:
 	for _n: int in count:
 		await process_frame
+
+
+## A frame as slow as a weak device draws (slow_frames_probe): slow in its
+## drawing, after the app's work for it, so what the view eases towards
+## over a tenth of a second is there by the next.
+func _slow_frame() -> void:
+	await RenderingServer.frame_post_draw
+	OS.delay_msec(SLOW_FRAME_MS)
+
+
+const SLOW_FRAME_MS := 600
 
 
 func _as_event(at: Vector2) -> Vector2:

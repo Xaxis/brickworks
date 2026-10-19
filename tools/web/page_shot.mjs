@@ -14,7 +14,7 @@
 // since its stylesheet and pictures are named from the root. For the
 // changelog, which tools/site.py fills in, put the site together first:
 //   python3 tools/site.py /tmp/site && node tools/web/page_shot.mjs --file=/tmp/site/changelog.html …
-import { launch } from "./browser.mjs";
+import { launch, allPictures } from "./browser.mjs";
 import { basename, dirname, resolve } from "node:path";
 import { serveDir } from "./static_server.mjs";
 
@@ -34,10 +34,7 @@ for (const [width, height] of sizes) {
   await page.goto(`${site.url}/${basename(file)}`, { waitUntil: "load" });
   // Every lazy picture in first: a full-page shot does not scroll, so the
   // ones below the fold would otherwise come out as empty frames.
-  await page.evaluate(async () => {
-    for (const img of document.querySelectorAll("img[loading=lazy]")) img.loading = "eager";
-    await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
-  });
+  await allPictures(page);
   await page.waitForTimeout(700);
   const out = args.sizes ? String(args.out).replace(/(\.png)?$/, `-${width}.png`) : args.out;
   await page.screenshot({ path: out, fullPage: args.full !== undefined, timeout: 120000 });

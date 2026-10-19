@@ -62,7 +62,24 @@ export const SORTS = {
   newest: "Newest", views: "Most viewed", likes: "Most liked", remixes: "Most remixed",
   // Built to the last step, once per device (supabase/builds.sql).
   builds: "Most built",
+  // By SCORE (supabase/discovery.sql gallery_score).
+  top: "Top builds",
 };
+
+/// The sorts only a signed-in person with a collection is offered (the list
+/// asked with mine=1): the largest share of its parts they own first
+/// (supabase/discovery.sql directory_models, api/_owned.js).
+export const MINE_SORTS = { owned: "Parts I own" };
+
+/// What Top builds and this week's pick weigh: a build finished, a remix,
+/// the Tested mark. supabase/discovery.sql gallery_score is the sum; these
+/// are its weights, for the page to say, and tests/test_discovery.py holds
+/// the two together.
+export const SCORE = { builds: 3, remixes: 2, tested: 5 };
+
+/// How many cards the small builds' shelf shows (op=shelves). The shelf is
+/// the Size filter's Small, SIZES.small: one meaning of small on the page.
+export const SHELF = 8;
 
 export const MAX_DESCRIPTION = 1000;
 export const MAX_TAGS = 8;
@@ -236,7 +253,7 @@ export const TESTS_CACHE = "private, no-store";
 
 /// The list's query string, checked: {asked, said}. asked is what
 /// directory_models takes; said is the query as understood, for the answer.
-export function listQuery(query, perPage, mostPages) {
+export function listQuery(query, perPage, mostPages, { mine = false } = {}) {
   const page = Number(query.page ?? 1);
   if (!Number.isInteger(page) || page < 1 || page > mostPages) {
     throw new Unacceptable(`page is a whole number from 1 to ${mostPages}`);
@@ -274,10 +291,35 @@ export function listQuery(query, perPage, mostPages) {
     said.tag = asked.tag = tag;
   }
   const sort = String(query.sort ?? "newest") || "newest";
-  if (!(sort in SORTS)) throw new Unacceptable(`sort is one of ${Object.keys(SORTS).join(", ")}`);
+  const sorts = mine ? { ...SORTS, ...MINE_SORTS } : SORTS;
+  if (!(sort in sorts)) {
+    throw new Unacceptable(sort in MINE_SORTS ? "sign in, and ask with mine=1, to sort by what you own"
+      : `sort is one of ${Object.keys(sorts).join(", ")}`, sort in MINE_SORTS ? 401 : 400);
+  }
   said.sort = asked.sort = sort;
+  // Only what the asker can build now, every piece in their collection.
+  const ready = String(query.ready ?? "").toLowerCase();
+  if (ready && ready !== "0" && ready !== "false") {
+    if (!YES.has(ready)) throw new Unacceptable("ready is 1 or left out");
+    if (!mine) throw new Unacceptable("sign in, and ask with mine=1, to see what you can build now", 401);
+    said.ready = asked.buildable = true;
+  }
   if (testsAsked(query)) said.tests = asked.tests = true;
   return { asked, said };
+}
+
+/// What can move in a model, as the app finds it from the model's joints
+/// when it is published (src/assembly/playable.gd: Playable.KINDS), in the
+/// order said: its card says them ("Moves: steering, boom"), and the
+/// "Technic or mechanism" filter takes any but doors as a mechanism
+/// (supabase/play.sql, which lists the same words).
+export const MOVES = ["steering", "turntable", "boom", "doors", "gears", "pneumatics", "actuator", "rack"];
+
+/// The moves a client is given: the known words, in their order.
+export function movesOf(given) {
+  if (!Array.isArray(given)) return [];
+  const said = new Set(given.map(String));
+  return MOVES.filter((word) => said.has(word));
 }
 
 /// A card as a client is given it: what directory_card read, and where its
@@ -294,6 +336,8 @@ export function cardOf(origin, row) {
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     // How many have built it to the last step (supabase/builds.sql).
     builds: Number(row.builds) || 0,
+    // What moves in it, as its app found (supabase/play.sql); none before.
+    moves: movesOf(row.moves),
     by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,

@@ -75,7 +75,9 @@ they have. A Claude connector belongs to the account that switched it on.
   to ask (an account from before the question, once). When it says
   `ask`, "One question first: When were you born?", twelve month buttons
   (`age_month_1`…`12`), the year (`age_year`), Carry on (`age_go`), and "The
-  date itself is not kept." Under 13, the screen then says what is open and
+  date itself is not kept." The site's own dialog (web/account.js) asks it
+  with two dropdowns side by side, Month by name and Year newest first,
+  drawn as its text boxes are. Under 13, the screen then says what is open and
   what is for 13 and over, and Start building (`age_done`) lets them in.
   `window.brickworksAccount` adds `age_ask` and `over_13`. Not asked offline
   or by a deployment that does not say `ask`.

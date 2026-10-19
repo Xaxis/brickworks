@@ -268,32 +268,42 @@ function askAge() {
     const said = document.createElement("p");
     said.textContent = "When were you born?";
     const form = document.createElement("form");
-    const monthLabel = document.createElement("label");
-    monthLabel.textContent = "Month";
-    const month = document.createElement("select");
-    month.id = "age-month";
-    month.required = true;
-    const none = document.createElement("option");
-    none.value = "";
-    none.textContent = "Choose…";
-    month.append(none);
-    MONTHS.forEach((name, at) => {
-      const option = document.createElement("option");
-      option.value = String(at + 1);
-      option.textContent = name;
-      month.append(option);
-    });
-    monthLabel.append(month);
-    const yearLabel = document.createElement("label");
-    yearLabel.textContent = "Year";
-    const year = document.createElement("input");
-    year.id = "age-year";
-    year.inputMode = "numeric";
-    year.autocomplete = "bday-year";
-    year.maxLength = 4;
-    year.required = true;
-    year.pattern = "[0-9]{4}";
-    yearLabel.append(year);
+    // Month and year as two dropdowns side by side, the way a date of birth
+    // is asked everywhere: the month by name, the years newest first.
+    const choose = (id, said, autocomplete, choices) => {
+      // Said once, inside the control; the label is there for a screen reader.
+      const label = document.createElement("label");
+      const words = document.createElement("span");
+      words.className = "visually-hidden";
+      words.textContent = said;
+      const select = document.createElement("select");
+      select.id = id;
+      select.required = true;
+      select.autocomplete = autocomplete;
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = said;
+      none.disabled = true;
+      none.selected = true;
+      none.hidden = true;
+      select.append(none);
+      for (const [value, text] of choices) {
+        const option = document.createElement("option");
+        option.value = String(value);
+        option.textContent = text;
+        select.append(option);
+      }
+      label.append(words, select);
+      return [label, select];
+    };
+    const thisYear = new Date().getFullYear();
+    const [monthLabel, month] = choose("age-month", "Month", "bday-month",
+      MONTHS.map((name, at) => [at + 1, name]));
+    const [yearLabel, year] = choose("age-year", "Year", "bday-year",
+      Array.from({ length: 111 }, (_, back) => [thisYear - back, String(thisYear - back)]));
+    const when = document.createElement("div");
+    when.className = "when";
+    when.append(monthLabel, yearLabel);
     const note = document.createElement("p");
     note.className = "said";
     note.setAttribute("role", "status");
@@ -308,7 +318,7 @@ function askAge() {
     const quiet = document.createElement("p");
     quiet.className = "note";
     quiet.textContent = "Brickworks asks everyone this once. The date itself is not kept.";
-    form.append(monthLabel, yearLabel, row, note, quiet);
+    form.append(when, row, note, quiet);
     dialog.append(title, said, form);
     document.body.append(dialog);
     let finished = false;

@@ -1,11 +1,13 @@
 // Your profile, /profile (profile.html): the name the gallery shows for you,
-// your favourites and your collections, from /api/people (api/people.js),
+// how your models are doing (designs.js), your favourites and your
+// collections, from /api/people (api/people.js),
 // signed in with the app's own sign-in in this browser (account.js).
 //
 // Every word — a name, a handle, a collection's, a model's — goes on the
 // page as text, never as markup; a link is built from an id or a handle
 // only when it is one.
 import { askAgeIfAsked, askToSignIn, call, email, signOut, signedIn } from "/account.js";
+import { showDesigns } from "/designs.js";
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -96,11 +98,11 @@ function listRow(list) {
   if (document.documentElement.dataset.young === "yes") box.disabled = true;
   const save = document.createElement("button");
   save.type = "button";
-  save.className = "cta ghost small";
+  save.className = "cta ghost";
   save.textContent = "Save";
   const drop = document.createElement("button");
   drop.type = "button";
-  drop.className = "cta ghost small";
+  drop.className = "cta ghost";
   drop.textContent = "Delete";
   const page = document.createElement("a");
   page.href = `/c/${list.id}`;
@@ -193,7 +195,8 @@ async function load() {
   const follows = answer.body.follows;
   $("follows-choice").hidden = !(follows && follows.ready) || young;
   $("shows-follows").checked = Boolean(follows && follows.shows_follows);
-  await favourites();
+  // How each model they shared is doing, for them alone (web/designs.js).
+  await Promise.all([favourites(), showDesigns($("designs"))]);
   document.documentElement.dataset.profile = "ready";
 }
 

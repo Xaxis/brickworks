@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Whether a stop the exact shapes call real is in the parts themselves (G13, docs/MECHANISMS.md §21).
+"""Whether a stop the exact shapes call real is in the parts themselves (G13, docs/MECHANISMS.md §22).
 
     tools/shape_gap.py [ROWS] [--cell=LDU]
 

@@ -18,6 +18,15 @@
 ## and one never shared; and the baseplate exactly as it was. Then each
 ## licence's words, from answers played here (FakeGallery), since what a
 ## session may do with a model is the point of saying whose it is.
+##
+## And from answers played here too, the gallery's newer questions
+## (2026-10-19): Top builds and Most built, each model's builds, what moves
+## in it and its Tested mark; Parts I own refused to nobody signed in and
+## asked with the person's session once they are; the front's pick, small
+## builds and what they can build now. -- --played runs only these and the
+## licences, with no server:
+##
+##   godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played
 extends SceneTree
 
 var _failures: int = 0
@@ -29,9 +38,26 @@ var _next: int = 0
 ## The tool, its requests answered here: a model with each licence.
 class FakeGallery extends GalleryTool:
 	var licence: Variant = null
+	## What was asked, and with which session.
+	var asked: Array = []
 
-	func _ask(path: String, _most: int) -> Dictionary:
+	func _ask(path: String, _most: int, token: String = "") -> Dictionary:
 		await (Engine.get_main_loop() as SceneTree).process_frame
+		asked.append([path, token])
+		var racer: Dictionary = {"id": "Fake000002", "name": "Played Racer", "author": "Played Builder",
+			"parts": 93, "licence": "cc-by-4.0", "views": 9, "likes": 2, "remixes": 1, "builds": 3,
+			"technic": false, "tested": true, "moves": ["steering", "boom"]}
+		if path.begins_with("/api/share?op=list"):
+			var card: Dictionary = racer.duplicate()
+			if not token.is_empty():
+				card["owned"] = {"pieces": 93, "have": 80, "share": 80.0 / 93.0}
+			return {"code": 200, "bytes": JSON.stringify({"models": [card], "more": false}).to_utf8_buffer()}
+		if path.begins_with("/api/share?op=shelves"):
+			var front: Dictionary = {"pick": {"chosen": false, "week": {"builds": 3, "remixes": 1},
+				"model": racer}, "small": {"label": "Small, under 200 parts", "models": [racer]}}
+			if not token.is_empty():
+				front["ready"] = {"models": [racer], "more": false}
+			return {"code": 200, "bytes": JSON.stringify(front).to_utf8_buffer()}
 		if path.begins_with("/api/share?id="):
 			var body: Dictionary = {"id": "Fake000001", "name": "Played Tower", "author": "Played Builder",
 				"parts": 3, "licence": licence, "url": "https://brickworks.diy/m/Fake000001",
@@ -56,6 +82,10 @@ func _run() -> void:
 	var playback: BuildPlayback = _main.get("_playback")
 	if playback != null:
 		playback.stop()
+	if "--played" in OS.get_cmdline_user_args():
+		await _played()
+		_done()
+		return
 	_socket = CommandSocket.new()
 	_socket.assistant = _main.get("_assistant")
 	_socket.app = _main
@@ -137,6 +167,14 @@ func _run() -> void:
 	_check("in a tab showing a shared model, still answered", said.begins_with("The gallery at "))
 	shell.read_only = false
 
+	await _played()
+	_done()
+
+
+## Each licence's words, and the gallery's newer questions, from answers
+## played here (FakeGallery): no server.
+func _played() -> void:
+	var said: String
 	print("── each licence, said ──")
 	var fake := FakeGallery.new()
 	fake.app = _main
@@ -156,7 +194,47 @@ func _run() -> void:
 		and said.contains("Its parts by kind: Brick 3"))
 	_check("the most used part named: %s" % said.get_slice("The most used: ", 1).left(60),
 		said.contains("2 x 3001 Brick 2 x 4"))
-	_done()
+
+	print("── Top builds, what moves, Parts I own, the front ──")
+	var offered: Array = (GalleryTool.definition()["input_schema"]["properties"]["sort"] as Dictionary)["enum"]
+	_check("the sorts offered are the gallery's: %s" % [offered], offered == ["newest", "views", "likes",
+		"remixes", "builds", "top", "owned"])
+	_check("and the front is offered", (GalleryTool.definition()["input_schema"]["properties"] as Dictionary).has("shelves"))
+	fake.asked.clear()
+	said = _text_of(await fake.run({"sort": "top"}))
+	_check("Top builds, said how it weighs: %s" % said.get_slice("\n", 0), said.contains("Top builds first")
+		and str(fake.asked[0][0]).contains("sort=top") and str(fake.asked[0][1]).is_empty())
+	_check("each model with its builds, what moves and its mark: %s" % said.get_slice("\n", 1),
+		said.contains("built 3 times") and said.contains("moves: steering, boom") and said.contains("Tested"))
+	said = _text_of(await fake.run({"sort": "builds"}))
+	_check("Most built: %s" % said.get_slice("\n", 0), said.contains("most built first"))
+	fake.asked.clear()
+	var account: Account = _main.get("_account")
+	var was: Account.State = account.state
+	account.state = Account.State.SIGNED_OUT
+	said = _text_of(await fake.run({"sort": "owned"}))
+	_check("Parts I own, to nobody signed in: told to sign in, nothing asked: %s" % said.left(70),
+		said.contains("signs in") and fake.asked.is_empty())
+	said = _text_of(await fake.run({"shelves": true}))
+	_check("the front: this week's pick, why, and its moves: %s" % said.get_slice("\n", 1).left(110),
+		said.contains("This week's pick (built 3 times this week, remixed once this week): Played Racer")
+		and said.get_slice("\n", 1).contains("moves: steering, boom"))
+	_check("the small builds: %s" % said.get_slice("\n", 2), said.contains("Small builds (Small, under 200 parts)"))
+	_check("and, signed out, what signing in would add", said.contains("Signed in with a collection"))
+	account.email = "probe.gallery@example.com"
+	account._access = "probe.gallery.signed.in"
+	account._expires_at = Time.get_unix_time_from_system() + 3600.0
+	account.state = Account.State.SIGNED_IN
+	fake.asked.clear()
+	said = _text_of(await fake.run({"sort": "owned"}))
+	_check("Parts I own, signed in: asked as them, mine=1, each card's share: %s" % said.get_slice("\n", 1).left(140),
+		str(fake.asked[0][0]).contains("mine=1") and str(fake.asked[0][0]).contains("sort=owned")
+		and str(fake.asked[0][1]) == "probe.gallery.signed.in" and said.contains("you own 80 of its 93 pieces"))
+	said = _text_of(await fake.run({"shelves": true}))
+	_check("the front, signed in: what they can build now", said.contains("You can build now")
+		and str(fake.asked[-1][0]).contains("op=shelves&mine=1"))
+	account._access = ""
+	account.state = was
 
 
 func _call(arguments: Dictionary) -> Dictionary:

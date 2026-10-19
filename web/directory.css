@@ -99,15 +99,6 @@
 /* Like, Favourite and Add to a collection, on a model's page (model-page.js);
    hidden until the script is there to make them work. */
 .marks { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin: 14px 0 0; }
-.marks .mark, .collect summary {
-	font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink); cursor: pointer;
-	background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-	padding: 8px 14px; min-height: 40px; list-style: none;
-}
-.marks .mark[aria-pressed="true"] { border-color: var(--accent); }
-.marks .mark:hover, .collect summary:hover { border-color: var(--ink-faint); }
-.collect summary::-webkit-details-marker { display: none; }
-.collect summary { display: inline-flex; align-items: center; width: fit-content; }
 .collect[open] summary { border-color: var(--ink-faint); }
 /* Open, it takes a row of its own and the page moves down for it: hung
    over the page from the button it ran off a laptop's right edge. */
@@ -122,28 +113,12 @@
 .collect-list label span { flex: 1; overflow-wrap: anywhere; }
 .collect-list small { color: var(--ink-faint); }
 .collect-new { display: flex; gap: 6px; }
-.collect-new input, .profile-form input, .profile-form textarea, .list-top input {
-	flex: 1; min-width: 0; font: inherit; font-size: 15px; color: var(--ink); background: var(--bg-soft);
-	border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
-}
+/* A name box beside its buttons: room for ten letters, then whatever is left;
+   it never pushes its row past a phone's edge. */
+.collect-new > input, .list-top > input { flex: 1 1 10em; width: 10em; }
 .marks .said { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--ink-soft); min-height: 1em; }
 .shared-by { margin: 0 0 8px; color: var(--ink-soft); }
 .shared-by a { color: var(--ink); }
-
-/* The sign-in that a page opens over itself (account.js). */
-dialog.sign-in {
-	width: min(420px, 92vw); border: 1px solid var(--line); border-radius: var(--radius);
-	background: var(--panel); color: var(--ink); padding: 22px; box-shadow: var(--shadow);
-}
-dialog.sign-in::backdrop { background: rgba(0, 0, 0, 0.55); }
-dialog.sign-in h2 { font-size: 22px; margin: 0 0 6px; }
-dialog.sign-in p { color: var(--ink-soft); margin: 0 0 14px; }
-dialog.sign-in label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); margin-bottom: 14px; }
-dialog.sign-in input {
-	font: inherit; font-size: 16px; color: var(--ink); background: var(--bg-soft);
-	border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
-}
-dialog.sign-in .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
 
 /* Cards of models, on a profile, a collection and your own page: the
    gallery's (gallery.html), the shape of a share's picture. */
@@ -166,7 +141,6 @@ a.model b {
 a.model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
 a.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
 .kept { display: grid; gap: 8px; align-content: start; }
-.cta.small { min-height: 36px; padding: 6px 12px; font-size: 14px; }
 
 /* A person, a collection, and your own page. */
 .person { padding: clamp(36px, 6vw, 64px) 0 80px; }
@@ -182,14 +156,12 @@ a.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: 
 .person .lists span { color: var(--ink-faint); font-size: 14px; margin-left: 6px; }
 .profile-form { display: grid; gap: 12px; max-width: 560px; margin: 8px 0 0; }
 .profile-form h2 { font-size: 22px; margin: 0; }
-.profile-form label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); }
 .profile-form .hint { font-size: 13px; color: var(--ink-faint); }
 .profile-form .hint b { color: var(--ink-soft); }
 .said { color: var(--ink-soft); font-size: 14.5px; min-height: 1em; margin: 6px 0 0; }
 .lists-mine { display: grid; gap: 12px; margin-top: 12px; }
 .list-mine { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg-soft); }
 .list-top { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
-.list-top .tick { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--ink-soft); }
 .list-top small { color: var(--ink-faint); }
 .list-mine details { margin-top: 8px; }
 .list-mine summary { cursor: pointer; color: var(--ink-soft); font-size: 14px; }
@@ -197,28 +169,10 @@ a.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: 
 
 /* Report it, on a model's, a profile's and a collection's page
    (report.js), and the dialog it opens; the takedown page's form. */
-button.link {
-	font: inherit; font-size: inherit; color: var(--ink-soft); background: none; border: 0;
-	padding: 0; text-decoration: underline; text-underline-offset: 0.18em; cursor: pointer;
-}
-button.link:hover { color: var(--ink); }
 .report-line { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .report-line a { color: var(--ink-soft); }
 dialog.report fieldset { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 2px; }
 dialog.report legend { font-size: 14.5px; color: var(--ink-soft); margin-bottom: 6px; }
-dialog.report label.choice {
-	display: flex; gap: 10px; align-items: center; color: var(--ink); font-size: 15px;
-	min-height: 36px; margin: 0; cursor: pointer;
-}
-dialog.report label.choice input { width: 18px; height: 18px; accent-color: var(--accent); padding: 0; }
-dialog.report textarea {
-	font: inherit; font-size: 15px; color: var(--ink); background: var(--bg-soft);
-	border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
-}
-.profile-form select {
-	font: inherit; font-size: 15px; color: var(--ink); background: var(--bg-soft);
-	border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; min-height: 40px;
-}
 .takedown section { max-width: 72ch; }
 .takedown section p { color: var(--ink-soft); }
 
@@ -258,13 +212,6 @@ a.model .tested { justify-self: start; font-size: 12px; font-weight: 600; color:
 .build-strip figcaption a { color: var(--ink); }
 .add-build { margin-top: 10px; }
 .add-build .build-form { display: grid; gap: 10px; max-width: 520px; margin-top: 4px; }
-.add-build .build-form label { display: grid; gap: 4px; font-weight: 600; font-size: 15px; }
-.add-build .build-form label small { font-weight: 400; color: var(--ink-faint); }
-.add-build .build-form input[type="text"] {
-	font: inherit; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line);
-	background: var(--panel); color: var(--ink); max-width: 100%;
-}
-.add-build .build-form input[type="file"] { max-width: 100%; font: inherit; }
 .add-build .said { margin: 6px 0 0; color: var(--ink-soft); }
 .hidden-builds { margin-top: 10px; }
 .person .builds-made .build-strip { margin-top: 6px; }
@@ -291,11 +238,7 @@ a.model .tested { justify-self: start; font-size: 12px; font-weight: 600; color:
 .model-page .comment-list .none { padding: 0; }
 .model-page .comment-new { margin-top: 14px; display: grid; gap: 8px; }
 .model-page .comment-on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.model-page .comment-on select, .model-page .comment-on input { font: inherit; max-width: 100%; }
-.model-page .comment-new textarea {
-	font: inherit; width: 100%; box-sizing: border-box; resize: vertical; min-height: 4.5em;
-	border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg); color: var(--ink);
-}
+.model-page .comment-new textarea { width: 100%; }
 .model-page .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .model-page .comment-new .note, .model-page .comment-why .note { margin: 0; }
 .model-page .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
@@ -322,4 +265,69 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .feed-row .tag {
 	font-size: 12px; border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--ink);
 }
-.profile-form .choice, #mail .choice, #follows-choice .choice { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
+
+
+/* A designer's page (api/people.js earnedHtml, supabase/designers.sql): what
+   their models earned, builds finished and remixes leading, as tiles; the
+   model to start with; photos other people posted of their builds. And the
+   designer's own numbers (web/designs.js), on their profile and on Account,
+   marked as theirs alone by a dashed edge. */
+.earned {
+	list-style: none; padding: 0; margin: 4px 0 12px; max-width: 920px;
+	display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 138px), 1fr));
+}
+.earned li {
+	display: grid; align-content: start; gap: 0; padding: 11px 14px 12px; border-radius: 12px;
+	background: var(--panel); border: 1px solid var(--line);
+}
+.earned li.lead { border-top: 3px solid var(--accent); padding-top: 9px; }
+.earned b { font-size: 26px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.earned li.lead b { font-size: 32px; }
+.earned span { color: var(--ink-soft); font-size: 14px; line-height: 1.35; }
+.earned small { color: var(--ink-faint); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.person.designer .counts { font-size: 14.5px; }
+.start-with { margin: -8px 0 24px; color: var(--ink-soft); line-height: 2.1; }
+.start-with a:not(.cta) { color: var(--ink); font-weight: 600; }
+.start-with .cta { margin-left: 8px; vertical-align: middle; }
+.person.designer .models { margin-top: 12px; }
+.builds-of .build-strip { margin-top: 6px; }
+.build-strip figcaption > a + a { font-weight: 600; }
+a.model[data-builds] small + .tested { margin-top: 2px; }
+
+.designs {
+	margin: 0 0 30px; padding: 16px 18px 18px; border: 1px dashed var(--ink-faint); border-radius: var(--radius);
+	background: var(--bg-soft); max-width: 100%; min-width: 0;
+}
+.designs h2 { font-size: 22px; margin: 0 0 4px; }
+.designs .private { margin: 0 0 12px; font-size: 14px; color: var(--ink-soft); max-width: 72ch; }
+.designs .note { margin-top: 4px; }
+.designs .mine-totals { margin-bottom: 4px; }
+.design-rows { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 12px; }
+.design-row {
+	display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0;
+	background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+}
+.design-row .pic { display: block; border-radius: 8px; overflow: hidden; background: var(--bg-soft); aspect-ratio: 1200 / 630; }
+.design-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.design-row .pic.none { display: grid; place-items: center; color: var(--ink-faint); font-size: 13px; }
+.design-main { min-width: 0; }
+.design-main h3 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.design-main h3 a { color: var(--ink); }
+.design-meta { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-faint); }
+.design-numbers { margin: 10px 0 0; display: grid; gap: 8px 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.design-numbers dt { font-size: 13px; color: var(--ink-faint); }
+.design-numbers dd { margin: 0; display: grid; }
+.design-numbers dd b { font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.design-numbers dd small { font-size: 12.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.design-builders { margin-top: 10px; min-width: 0; }
+.design-builders p { margin: 0 0 6px; font-size: 14px; color: var(--ink-soft); }
+.design-builders .build-strip .build { width: min(200px, 60vw); }
+.design-builders .build-strip .build img { height: 140px; }
+.design-builders figcaption a { font-weight: 600; }
+@media (max-width: 620px) {
+	.design-row { grid-template-columns: minmax(0, 1fr); }
+	.design-row .pic { max-width: 220px; }
+	.design-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.earned b { font-size: 22px; }
+	.earned li.lead b { font-size: 26px; }
+}

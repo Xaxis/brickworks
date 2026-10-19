@@ -74,6 +74,11 @@ const LICENCES: Array = [
 var account: Account
 var store: ModelStore
 var shared: SharedModels
+## What moves in the model as it stands (main.gd: Playable's words, from the
+## joints a drag uses), sent with it: its gallery card says them.
+var moves_of: Callable = Callable()
+## What the last publish sent of it.
+var moves: PackedStringArray = PackedStringArray()
 var picture: Picture
 ## The model's name as the bar has it.
 var named: Callable = func() -> String: return "Model"
@@ -555,6 +560,11 @@ func publish() -> void:
 	var body: Dictionary = {"name": name, "model": model}
 	if tested.has("tests"):
 		body["tested"] = tested
+	# What moves in it, from its joints: "Moves: steering, boom" on its card,
+	# and what its link lets anybody take hold of.
+	if moves_of.is_valid():
+		moves = moves_of.call()
+		body["moves"] = Array(moves)
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():
 		body["author"] = author
@@ -714,8 +724,11 @@ func controls_by_name() -> Dictionary:
 func page_state() -> Dictionary:
 	return {"open": visible, "state": state, "id": store.share_id if store != null else "",
 		"url": url, "embed": embed, "status": _status.text if _status != null else "",
+		"moves": Array(moves),
 		"listed": _list.button_pressed if _list != null else false,
 		"remixed_from": store.remixed_from if store != null else "",
+		"name": _name.text if _name != null else "",
+		"author": _author.text if _author != null else "",
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
 		"kind": _kind_id() if _kind != null else "",

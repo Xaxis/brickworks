@@ -234,21 +234,23 @@ try {
 
   await visitor.goto(`${site}/gallery?tests=1`, { waitUntil: "load" });
   await until(visitor, () => document.documentElement.dataset.gallery === "ready", "the gallery", 60);
+  // The list's own cards: the front's shelves (the pick, small builds)
+  // hide under a filter but stay in the page, holding copies of the cards.
   const cards = (wanted) => visitor.evaluate((which) => Object.fromEntries(Object.entries(which).map(([key, one]) => {
-    const card = document.querySelector(`a.model[data-id="${one}"]`);
+    const card = document.querySelector(`#models a.model[data-id="${one}"]`);
     return [key, card ? (card.dataset.tested === "yes" ? "marked" : "shown") : "absent"];
   })), wanted);
   const all = await cards(ids);
   check(`on the gallery, the stack's card is marked and the others not (${JSON.stringify(all)})`,
     all.passed === "marked" && all.failed === "shown" && all.none === "shown");
-  const chip = await visitor.evaluate((one) => document.querySelector(`a.model[data-id="${one}"] .tested`)?.title || "", ids.passed);
+  const chip = await visitor.evaluate((one) => document.querySelector(`#models a.model[data-id="${one}"] .tested`)?.title || "", ids.passed);
   check(`...the four on its card's hover: "${chip}"`, chip === LINE);
   await visitor.evaluate(() => { document.getElementById("filters").open = true; });
   await visitor.check("#tested");
   await until(visitor, () => document.documentElement.dataset.gallery === "ready"
     && location.search.includes("tested=1"), "Tested only", 60);
   const only = await cards(ids);
-  const others = await visitor.evaluate(() => [...document.querySelectorAll("a.model")].filter((a) => a.dataset.tested !== "yes").length);
+  const others = await visitor.evaluate(() => [...document.querySelectorAll("#models a.model")].filter((a) => a.dataset.tested !== "yes").length);
   check(`Tested only lists the stack and nothing untested (${JSON.stringify(only)}, ${others} unmarked)`,
     only.passed === "marked" && only.failed === "absent" && only.none === "absent" && others === 0);
   await shot(visitor, "2_gallery_tested_only.png");
@@ -301,6 +303,10 @@ try {
   await press(ownerPage, "tool_share");
   await until(ownerPage, () => (window.brickworksShare.panel || {}).open, "the Share panel");
   await type(ownerPage, "share_name", "Tested Flow From The App");
+  // Read back before Publish: keys reach a canvas drawn in software later
+  // than they are sent, and share_flow's name lost its last one (m84e).
+  await until(ownerPage, () => ((window.brickworksShare || {}).panel || {}).name === "Tested Flow From The App",
+    "the name typed", 45).catch(() => null);
   await press(ownerPage, "share_publish");
   const panel = await until(ownerPage, () => {
     const p = (window.brickworksShare || {}).panel || {};

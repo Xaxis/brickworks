@@ -41,7 +41,7 @@
 // own picture as og_image.png. Both accounts are deleted at the end, and
 // their rows with them; both models were taken down first, so no file is
 // left in the bucket.
-import { launch } from "./browser.mjs";
+import { launch, allPictures } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -187,9 +187,7 @@ async function galleryCards(name, query = "", settled = () => true) {
     await page.goto(`${site}/gallery?tests=1${query.replace(/^\?/, "&")}`, { waitUntil: "load", timeout: 120000 });
     await until(page, () => document.documentElement.dataset.gallery === "ready"
       || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
-    await page.evaluate(async () => {
-      await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
-    });
+    await allPictures(page);
     cards = await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
       id: a.dataset.id, href: a.getAttribute("href"), name: a.querySelector("b").textContent,
       about: a.querySelector("span").textContent,
@@ -222,16 +220,20 @@ try {
   const bricks = (await ownerPage.evaluate(() => window.brickworksState)).bricks;
   await press(ownerPage, "tool_share");
   await until(ownerPage, () => (window.brickworksShare.panel || {}).open, "the Share panel");
-  await type(ownerPage, "share_name", NAME);
-  await press(ownerPage, "share_credit");
-  await type(ownerPage, "share_author", AUTHOR);
   // One box at a time, each read back before the next: keys typed into a
   // canvas drawn in software arrive at the app later than they are sent,
   // and the tags' went nowhere while the description's were still landing.
+  // The name was published as "Share Flow Ca" at load 30, its last key
+  // still on its way when the next click landed (m84e).
   const shown = (field, want) => until(ownerPage, ([name, text]) => {
     const p = (window.brickworksShare || {}).panel || {};
     return p[name] === text ? p : null;
   }, `the ${field} typed`, 45, [field, want]).catch(() => ({}));
+  await type(ownerPage, "share_name", NAME);
+  await shown("name", NAME);
+  await press(ownerPage, "share_credit");
+  await type(ownerPage, "share_author", AUTHOR);
+  await shown("author", AUTHOR);
   await type(ownerPage, "share_tags", "car, flow test");
   await shown("tags", "car, flow test");
   await type(ownerPage, "share_about", ABOUT);
