@@ -7,12 +7,15 @@
 // list, and Open in Brickworks to copy it into their own account.
 //
 //   GET  ?id=X               the model, as the viewer loads it: name,
-//                            author, part count and the .mpd itself
+//                            author, part count and the .mpd itself, which
+//                            version it is and what each version changed;
+//                            with v=N, version N's .mpd
 //   GET  ?op=page&id=X       /m/X: the link's own page — a title and a
 //                            picture for anything that previews links,
-//                            and then the viewer
+//                            and then the viewer; with v=N, /m/X/v/N, an
+//                            older version's, marked as older
 //   GET  ?op=image&id=X      /m/X.png: that picture, rendered by the app
-//                            when it published
+//                            when it published; with v=N, /m/X/v/N.png
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
 //   GET  ?op=thumb&id=X      /m/X.webp: the small picture the gallery's
@@ -24,16 +27,20 @@
 //                            test models too, which nobody else is shown
 //   POST                     publish, with the session: {name, author?,
 //                            model, image?, thumb?, id?, listed?,
-//                            remixed_from?, description?, tags?, kind?,
-//                            licence?}. With an id, the owner's own link is
-//                            updated in place. listed puts it in the
-//                            gallery; remixed_from is the link it was
-//                            copied from (Open in Brickworks), which its
-//                            page names. What it says about itself is kept
-//                            on a republish that does not say it again.
+//                            remixed_from?, remixed_from_version?,
+//                            description?, tags?, kind?, licence?, note?}.
+//                            With an id, the owner's own link gets its
+//                            next version, and the one before is kept.
+//                            listed puts it in the gallery; remixed_from
+//                            is the link it was copied from (Open in
+//                            Brickworks), and remixed_from_version which
+//                            version of it, which its page names; note is
+//                            what its owner says changed. What it says
+//                            about itself is kept on a republish that does
+//                            not say it again.
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
-//   POST ?op=unpublish&id=X  the owner takes it down
+//   POST ?op=unpublish&id=X  the owner takes it down, every version of it
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns
@@ -62,6 +69,14 @@
 // gallery, newest first, while they ran (2026-10-17). A probe asks with
 // tests=1 to see them; such an answer is never kept by the CDN.
 //
+// Versions (2026-10-18, supabase/versions.sql, api/_versions.js): a
+// republish is the link's next version, and the one before it is kept,
+// its files renamed for its number (<id>.v<n>.mpd and .png) as the new one
+// takes the link's own. What changed is worked out here from the two
+// files: the parts by part and colour, the steps by number, and the first
+// step that differs, which keeps a builder's place on the new one
+// (src/assembly/build_steps.gd). A version is counted as a publish.
+//
 // The directory (2026-10-13, supabase/directory.sql, api/_directory.js)
 // searches, filters and sorts the gallery, and gives each model a page of
 // its own at /m/X: what its owner wrote about it, its tags, its kind and
@@ -83,12 +98,19 @@ import {
   looksLikePerson, modelHash, partFacts, siteChrome, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
+import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 
 export const MAX_MODEL_BYTES = 2 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 600 * 1024;
 export const MAX_THUMB_BYTES = 64 * 1024;
 const MAX_NAME = 80;
 const MAX_AUTHOR = 60;
+// What changed, as its owner says it: a line or two (supabase/versions.sql).
+const MAX_NOTE = 280;
+// How many of a link's versions an answer names, newest first: a builder
+// further back than this is told the model changed from step 1.
+const VERSIONS_SHOWN = 100;
+const VERSION = /^[1-9][0-9]{0,5}$/;
 const BUCKET = "shared-models";
 // The gallery's small pictures, in a bucket of their own
 // (supabase/directory.sql): shared-models takes only its two kinds of file.
@@ -362,7 +384,7 @@ async function wasShared(id) {
 async function ownRow(id) {
   if (!ID.test(id || "")) return null;
   const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published,listed,listed_at,barred,remixed_from,`
-    + "description,tags,kind,licence");
+    + "description,tags,kind,licence,parts,steps,bytes,has_image,updated_at");
   return rows[0] || null;
 }
 
@@ -454,6 +476,54 @@ async function barredFile(text) {
 async function mayList(owner) {
   const allowed = await db("rpc/may_list", { method: "POST", body: { account: owner } });
   return allowed === true;
+}
+
+// ---------------------------------------------------------------------------
+// Versions (supabase/versions.sql).
+
+/// A link's versions, newest first, as [{n, at, note, parts, steps, bytes,
+/// has_image, changes, first, from_version}]: read with the secret key, so
+/// only for a row already read as published, or for its owner. A link with
+/// none (published before its versions were kept, and not since) is its
+/// version 1, as the row says it is.
+async function versionsOf(id, row = null, limit = VERSIONS_SHOWN) {
+  const rows = await db(`share_versions?model=eq.${id}&select=n,at,note,parts,steps,bytes,has_image,changes,`
+    + `first_changed,remixed_from_version&order=n.desc&limit=${limit}`);
+  const versions = rows.map((one) => ({ n: one.n, at: one.at, note: one.note ?? null, parts: one.parts,
+    steps: one.steps ?? null, bytes: one.bytes, has_image: one.has_image === true,
+    changes: readChanges(one.changes), first: one.first_changed ?? null,
+    from_version: one.remixed_from_version ?? null }));
+  if (versions.length === 0 && row) {
+    versions.push({ n: 1, at: row.updated_at, note: null, parts: row.parts, steps: row.steps ?? null,
+      bytes: row.bytes, has_image: row.has_image === true, changes: null, first: null, from_version: null,
+      implied: true });
+  }
+  return versions;
+}
+
+/// Where version [n] of link [id] keeps its model or its picture: the
+/// newest at the link's own name, as every link always has, and an older
+/// one under its number beside it.
+const versionFile = (id, n, newest, kind) => (n === newest ? `${id}.${kind}` : `${id}.v${n}.${kind}`);
+
+/// The version a request asks for (?v=N), or null for the newest. A v that
+/// is not a version number is refused at this edge.
+function askedVersion(request) {
+  const given = request.query?.v;
+  if (given === undefined || given === null || given === "") return null;
+  if (!VERSION.test(String(given))) throw new Refusal("v is a version's number, from 1");
+  return Number(given);
+}
+
+/// Which version of the model it was remixed from its copy was made of:
+/// said when the copy was first shared and kept by each version after.
+const remixVersion = (versions) => versions.find((one) => one.from_version)?.from_version ?? null;
+
+/// A version as an answer says it.
+function versionSaid(origin, id, one, newest) {
+  return { n: one.n, at: one.at, note: one.note, said: saidOf(one.n, one.changes),
+    first_changed: one.first, parts: one.parts, steps: one.steps, newest: one.n === newest,
+    url: one.n === newest ? `${origin}/m/${id}` : `${origin}/m/${id}/v/${one.n}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -621,18 +691,31 @@ function smallCard(card) {
 /// viewer and into the app. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
-function sharePage(origin, id, model) {
-  const title = `${model.name} — a Brickworks model`;
+function sharePage(origin, id, model, versions = [], shown = null) {
+  const newest = versions[0]?.n ?? 1;
+  const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
+  // An older version: its own page, marked as older, its own picture and
+  // counts, its viewer, and the newest a click away. Never indexed: the
+  // link is what a search should find.
+  const old = version.n !== newest;
+  const title = old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
+  const viewer = `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
+  const shownModel = old ? { ...model, parts: version.parts } : model;
+  const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.png` : "")
+    : (model.has_image ? `/m/${id}.png` : "");
   const { header, footer } = siteChrome();
   const kind = kindLabel(model.kind);
   const about = model.description
     ? model.description.replace(/\s+/g, " ").slice(0, 157) + (model.description.length > 157 ? "…" : "")
     : "";
   // The one it came from, while it is listed; one shared only by link is
-  // not named.
+  // not named. And which version of it the copy was made of, when its app
+  // said: that version's page, which is the newest's while it is newest.
   const parent = (model.from || [])[0];
+  const fromVersion = remixVersion(versions);
   const fromLine = !parent ? "" : parent.id
     ? `<p class="from">Remixed from <a href="/m/${parent.id}">${escapeHtml(parent.name)}</a>`
+      + `${fromVersion ? `, <a class="from-version" href="/m/${parent.id}/v/${fromVersion}">version ${fromVersion}</a>` : ""}`
       + `${parent.author ? `, by ${escapeHtml(parent.author)}` : ""}</p>`
     : `<p class="from">Remixed from a model shared by link</p>`;
   // A model shared before the directory was not counted: its steps are
@@ -653,27 +736,30 @@ function sharePage(origin, id, model) {
 <html lang="en">
 <head>
 ${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url })}
-<link rel="stylesheet" href="/site.css">
+${old ? '<meta name="robots" content="noindex">\n' : ""}<link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/share-page.js" defer></script>
 <script src="/model-page.js" type="module"></script>
 <script src="/report.js" type="module"></script>
 ${structured(origin, id, model)}
 </head>
-<body data-viewer="${escapeHtml(`/app?view=${id}`)}" data-id="${id}">
+<body data-viewer="${escapeHtml(viewer)}" data-id="${id}" data-version="${version.n}" data-newest="${newest}">
 <a class="skip" href="#main">Skip to content</a>
 ${header}
 <main id="main">
 <article class="wrap model-page">
   <nav class="crumbs" aria-label="Where it is"><a href="/gallery">Gallery</a>${model.kind
     ? ` <span aria-hidden="true">›</span> <a href="/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}</nav>
+  ${old ? `<p class="old-version" role="note"><b>An older version.</b> This is version ${version.n} of
+    ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
   <div class="top">
-    <a class="picture" href="/app?view=${id}" aria-label="View ${escapeHtml(model.name)} in 3D">${model.has_image
-      ? `<img src="/m/${id}.png" alt="${escapeHtml(model.name)}" width="1200" height="630">`
+    <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
+      ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
-      <p class="by">${escapeHtml(describe(model))}</p>
+      <p class="by">${escapeHtml(describe(shownModel))}${newest > 1
+        ? ` · <a class="version-line" href="#versions-h">version ${version.n}${old ? ` of ${newest}` : ""}</a>` : ""}</p>
       ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a></p>` : ""}
       ${fromLine}
       <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join("")}</ul>
@@ -681,8 +767,8 @@ ${header}
         <span data-count="likes">${count(model.likes, "like")}</span>
         <span data-count="remixes">${count(model.remixes, "remix", "remixes")}</span></p>
       <div class="actions">
-        <a class="cta" href="/app?view=${id}">View in 3D</a>
-        <a class="cta ghost" href="/app?copy=${id}">Open in Brickworks</a>
+        <a class="cta" href="${escapeHtml(viewer)}">View in 3D</a>
+        <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
       </div>
       <div class="marks" id="marks" data-id="${id}" hidden>
         <button type="button" class="mark" data-mark="like" aria-pressed="false">Like</button>
@@ -700,6 +786,7 @@ ${header}
         data-report-model="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
     </div>
   </div>
+  ${versionsSection(id, versions, version)}
   ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
   ${tags ? `<ul class="tags" aria-label="Tags">${tags}</ul>` : ""}
@@ -718,6 +805,64 @@ ${header}
 </article>
 </main>
 ${footer}
+</body>
+</html>`;
+}
+
+/// What a page says of the model's versions, once it has more than one:
+/// the version shown, what changed in it (worked out from the files, and
+/// part by part on request) and what its owner said, how far a builder of
+/// the one before can carry on, and the others, newest first.
+function versionsSection(id, versions, shown) {
+  const newest = versions[0]?.n ?? 1;
+  if (newest <= 1 || !shown) return "";
+  const said = saidOf(shown.n, shown.changes);
+  const changes = shown.changes;
+  const lots = changes ? [...changes.added.map((lot) => `<li>Added ${escapeHtml(lotSaid(lot))}</li>`),
+    ...changes.removed.map((lot) => `<li>Removed ${escapeHtml(lotSaid(lot))}</li>`)].join("") : "";
+  const kept = shown.n > 1 && shown.first > 1
+    ? `<p class="kept">${shown.first === 2 ? "Step 1 is" : `Steps 1–${shown.first - 1} are`} as they were in
+      version ${shown.n - 1}: a builder who got that far can carry on.</p>` : "";
+  const others = versions.filter((one) => one.n !== shown.n).map((one) => {
+    const href = one.n === newest ? `/m/${id}` : `/m/${id}/v/${one.n}`;
+    const words = saidOf(one.n, one.changes).replace(/^Version \d+: /, "");
+    return `<li><a href="${href}">Version ${one.n}</a>${one.n === newest ? ", the newest" : ""}, `
+      + `${when(one.at)}${words ? `: ${escapeHtml(words)}` : ""}${one.note ? ` <q>${escapeHtml(one.note)}</q>` : ""}</li>`;
+  }).join("");
+  return `<section class="versions" aria-labelledby="versions-h"><h2 id="versions-h">Versions</h2>
+    <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : `Version ${shown.n}, the first.`}
+      <span class="when">${when(shown.at)}</span></p>
+    ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
+    ${kept}
+    ${lots ? `<details class="lots"><summary>Part by part</summary><ul>${lots}</ul></details>` : ""}
+    ${others ? `<h3>${shown.n === newest ? "Earlier versions" : "The others"}</h3><ol class="earlier">${others}</ol>` : ""}
+  </section>`;
+}
+
+/// /m/X/v/N for a version the model does not have.
+function noVersionPage(origin, id, model, asked, newest) {
+  const title = `There is no version ${asked} of this model`;
+  const { header, footer } = siteChrome();
+  return `<!doctype html>
+<html lang="en">
+<head>
+${pageHead(origin, model, id, title)}
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+${header}
+<main id="main">
+  <div class="wrap gone">
+    <h1>${escapeHtml(title)}</h1>
+    <p class="lede">${escapeHtml(model.name)} has ${count(newest, "version")}.</p>
+    <div class="actions"><a class="cta" href="/m/${id}">See the newest</a>
+      <a class="cta ghost" href="/gallery">See the gallery</a></div>
+  </div>
+</main>
+${footer || `<footer><small>${NOTICE}</small></footer>`}
 </body>
 </html>`;
 }
@@ -849,13 +994,21 @@ async function read(request, response) {
   if (op === "list") return gallery(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
 
+  // A version asked for, where there can be one: the page, its picture and
+  // the model. The gallery's small picture says which upload it is with a
+  // v of its own (cardOf), which is not a version.
+  const asked = ["page", "image", ""].includes(op) ? askedVersion(request) : null;
+
   if (op === "page") {
     const page = await modelPage(id);
     if (!page) {
       const gone = await missing(id);
       return html(response, gone.status, gonePage(origin, id, gone.unpublished));
     }
-    return html(response, 200, sharePage(origin, id, page));
+    const versions = await versionsOf(id, page);
+    const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
+    if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
+    return html(response, 200, sharePage(origin, id, page, versions, shown));
   }
 
   const row = await publishedRow(id);
@@ -869,8 +1022,15 @@ async function read(request, response) {
   }
 
   if (op === "image" || op === "thumb") {
-    const name = op === "image" ? `${id}.png` : `${id}.webp`;
-    const has = row && (op === "image" ? row.has_image : row.has_thumb);
+    let name = op === "image" ? `${id}.png` : `${id}.webp`;
+    let has = row && (op === "image" ? row.has_image : row.has_thumb);
+    // An older version's own picture, kept with it.
+    if (row && op === "image" && asked !== null) {
+      const versions = await versionsOf(id, row);
+      const one = versions.find((version) => version.n === asked);
+      has = Boolean(one && one.has_image);
+      if (one) name = versionFile(id, one.n, versions[0].n, "png");
+    }
     const picture = has ? await getFile(name) : null;
     if (!picture) return response.status(404).setHeader("Cache-Control", "no-store").end("");
     response.setHeader("Content-Type", op === "image" ? "image/png" : "image/webp");
@@ -897,14 +1057,26 @@ async function read(request, response) {
   // not named.
   const parent = row.remixed_from ? await publishedRow(row.remixed_from) : null;
   const from = parent && parent.listed ? parent : null;
-  const model = await getFile(`${id}.mpd`);
+  // Which version: the newest unless one is asked for, and each version's
+  // first changed step, for a builder's place (BuildSteps.changed_since).
+  const versions = await versionsOf(id, row);
+  const newest = versions[0].n;
+  const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
+  if (!shown) {
+    return response.status(404).json({ error: `There is no version ${asked} of this model: `
+      + `it has ${count(newest, "version")}.`, unpublished: false, newest });
+  }
+  const model = await getFile(versionFile(id, shown.n, newest, "mpd"));
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   return response.status(200).json({
     id,
     name: row.name,
     author: row.author,
-    parts: row.parts,
+    parts: shown.n === newest ? row.parts : shown.parts,
     updated_at: row.updated_at,
+    version: shown.n,
+    newest,
+    versions: versions.map((one) => versionSaid(origin, id, one, newest)),
     listed: row.listed === true,
     licence: row.licence ?? null,
     // What its owner said about it, for a session reading it as a
@@ -912,7 +1084,8 @@ async function read(request, response) {
     description: row.description ?? null,
     tags: row.tags || [],
     kind: row.kind ?? null,
-    remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}` } : null,
+    remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
+      version: remixVersion(versions) } : null,
     ...links(origin, id),
     model: model.toString("utf8"),
   });
@@ -1000,10 +1173,18 @@ async function publish(request, response) {
   }
   const listed = body.listed === true;
   const about = saidAbout(body);
+  // What its owner says changed in this version, if anything.
+  const note = cleanText(body.note, MAX_NOTE) || null;
+  const fromVersion = body.remixed_from_version;
+  if (fromVersion !== undefined && fromVersion !== null
+      && !(Number.isInteger(fromVersion) && fromVersion >= 1 && fromVersion <= 100000)) {
+    throw new Refusal("remixed_from_version is a version's number, from 1");
+  }
   // What a stranger may not be shown, in a name or anywhere it is said
   // (api/_names.js): before anything is counted or stored.
   const said = namesTrouble({ "The name": [name, "name"], "The credit": [author, "name"],
-    "A tag": [about.tags, "name"], "The description": [about.description, "words"] });
+    "A tag": [about.tags, "name"], "The description": [about.description, "words"],
+    "What changed": [note, "words"] });
   if (said) throw new Refusal(said);
 
   let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
@@ -1065,6 +1246,46 @@ async function publish(request, response) {
     if (!existing) return deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`]).catch(() => {}).then(() => { throw trouble; });
     throw trouble;
   };
+
+  // Its next version, and the one before kept: the newest's files are
+  // renamed for its number before the new one takes the link's own, and
+  // what changed is worked out from the two models. A link taken down has
+  // no versions left (unpublish), and shared again it starts at 1; any a
+  // takedown before versions were kept left behind go first.
+  const republish = Boolean(existing && existing.published);
+  let earlier = [];
+  let changes = null;
+  if (republish) {
+    earlier = await versionsOf(id, existing, 1);
+    const last = earlier[0];
+    if (last.implied) {
+      // Shared before its versions were kept, and not since: its version 1
+      // is written down now, as it is.
+      await db("share_versions", { method: "POST", body: { model: id, n: 1, at: last.at, parts: last.parts,
+        steps: last.steps, bytes: last.bytes, has_image: last.has_image } });
+    }
+    const before = await getFile(`${id}.mpd`);
+    if (before) {
+      await putFile(`${id}.v${last.n}.mpd`, before, "text/plain");
+      changes = changesBetween(before.toString("utf8"), body.model);
+    }
+    const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
+    if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");
+  } else if (existing) {
+    await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
+  }
+  const n = republish ? earlier[0].n + 1 : 1;
+  // Which version of the model it was copied from, when it is a copy and
+  // its app said: one that model has, or none. Kept by a republish that
+  // does not say it again, as remixed_from is.
+  let remixedFromVersion = null;
+  if (parent && fromVersion) {
+    const parentNewest = (await versionsOf(parent.id, null, 1))[0]?.n ?? 1;
+    remixedFromVersion = fromVersion <= parentNewest ? fromVersion : null;
+  } else if (remixedFrom && republish) {
+    remixedFromVersion = earlier[0].from_version ?? null;
+  }
+
   await putFile(`${id}.mpd`, body.model, "text/plain").catch(dropNew);
   if (picture) await putFile(`${id}.png`, picture, "image/png").catch(dropNew);
   else if (existing) await deleteFiles([`${id}.png`]).catch(() => {});
@@ -1081,12 +1302,18 @@ async function publish(request, response) {
   } else {
     await db("shared_models", { method: "POST", body: { id, owner, ...row } }).catch(dropNew);
   }
+  // The version itself, after its model's row (it is that row's).
+  const first = n === 1 ? null : changes ? changes.first : 1;
+  await db("share_versions", { method: "POST", body: { model: id, n, at: now, note, parts, steps, bytes,
+    has_image: Boolean(picture), changes, first_changed: first, remixed_from_version: remixedFromVersion } });
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
     id, name, author, parts, bytes, published: true, updated: Boolean(existing),
-    listed, remixed_from: remixedFrom, gallery: `${origin}/gallery`,
+    listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
+    version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
+    version_url: `${origin}/m/${id}/v/${n}`,
     ...links(origin, id),
   });
 }
@@ -1103,9 +1330,13 @@ async function unpublish(request, response) {
     method: "PATCH", body: { published: false, listed: false, listed_at: null,
       updated_at: new Date().toISOString() } });
   // The row stays, so the link can say it was taken down, and a
-  // republish from the same model keeps the same link. The files go.
-  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`]);
-  return response.status(200).json({ id, published: false });
+  // republish from the same model keeps the same link. The files go, every
+  // version's, and then the versions themselves.
+  const versions = await db(`share_versions?model=eq.${id}&select=n`);
+  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`,
+    ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`])]);
+  await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
+  return response.status(200).json({ id, published: false, versions: versions.length });
 }
 
 // ---------------------------------------------------------------------------

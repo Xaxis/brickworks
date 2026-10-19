@@ -15,7 +15,8 @@
 // routes), so Claude's sign-in is found here where it is found there: the
 // OAuth metadata under /.well-known/, /oauth/register, /oauth/token and
 // /oauth/revoke, and /oauth/authorize, which is the page web/authorize.html;
-// and a shared model's /m/<id>, /m/<id>.png, /m/<id>.webp and /m/<id>/embed
+// and a shared model's /m/<id>, /m/<id>.png, /m/<id>.webp and /m/<id>/embed,
+// and an older version's /m/<id>/v/<n> and /m/<id>/v/<n>.png
 // (api/share.js), a profile's /u/<handle> and a collection's /c/<id>
 // (api/people.js).
 // Other files in web/ are served as they are.
@@ -35,6 +36,16 @@ import { extname, join, normalize } from "node:path";
 
 const port = Number(process.argv[2] || 8790);
 const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
+// Tables the live project does not have yet, kept in this process
+// (tools/web/held_tables.mjs): --hold=share_versions proves the code that
+// uses supabase/versions.sql before the file is applied. What they hold is
+// at /__held/<table>, on this machine only.
+const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
+const heldTables = holding.length ? await import("./held_tables.mjs") : null;
+if (heldTables) {
+  heldTables.hold(holding);
+  console.log(`holding ${holding.join(", ")} here, not in the project`);
+}
 const routes = new Map();
 const web = new URL("../../web/", import.meta.url);
 
@@ -50,6 +61,9 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
+  // An older version of it, and that version's picture.
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
@@ -110,6 +124,12 @@ function page(pathname) {
 
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
+  const asked = heldTables && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+  if (asked) {
+    const rows = heldTables.rowsOf(asked[1]);
+    outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
+    return outgoing.end(JSON.stringify(rows));
+  }
   const query = Object.fromEntries(url.searchParams);
   let handler = null;
   const found = /^\/api\/([a-z]+)\/?$/.exec(url.pathname);
@@ -120,6 +140,7 @@ http.createServer(async (incoming, outgoing) => {
     query.op = mapped[2];
     const captured = mapped[0].exec(url.pathname);
     if (captured[1] && mapped[1] === "share") query.id = captured[1];
+    if (captured[2] && mapped[1] === "share") query.v = captured[2];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
   }

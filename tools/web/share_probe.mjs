@@ -695,9 +695,11 @@ async function theDirectory(tokenA) {
     "a card: kind, tags, licence, steps, counts; no owner, no description");
   check(String(card.thumb || "").startsWith(`${base}/m/${gate}.webp?v=`) && card.image === `${base}/m/${gate}.png`,
     `and its small picture, by a versioned address (${card.thumb})`);
-  r = await call(`/m/${gate}.webp`);
+  // Asked at the versioned address the gallery's cards use: its v is the
+  // upload's, not a version of the model (supabase/versions.sql).
+  r = await call(`/m/${gate}.webp${new URL(card.thumb || "http://x/").search}`);
   check(r.status === 200 && r.headers.get("content-type") === "image/webp" && r.bytes.equals(Buffer.from(THUMB, "base64")),
-    `the small picture: 200 image/webp, the bytes published (${r.status})`);
+    `the small picture at that address: 200 image/webp, the bytes published (${r.status})`);
   r = await call(`/api/share?id=${gate}`);
   check(r.json?.description?.startsWith("A gatehouse") && r.json?.tags?.length === 3 && r.json?.kind === "castle"
     && r.json?.licence === "cc-by-sa-4.0",
