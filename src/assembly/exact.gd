@@ -217,11 +217,17 @@ static func parse(bytes: PackedByteArray) -> Shape:
 		at += 6
 		if bytes.size() < at + 6 * (nv + nn + ne):
 			return null
-		var piece := Piece.new()
+		# Read into arrays of its own and handed over whole: appended to the
+		# piece's own, each one went through the piece (G14a: a shape of 316
+		# pieces took 9 ms to read).
+		var verts := PackedVector3Array()
+		verts.resize(nv)
 		for v: int in nv:
-			piece.verts.append(Vector3(bytes.decode_s16(at), bytes.decode_s16(at + 2),
-				bytes.decode_s16(at + 4)) * scale)
+			verts[v] = Vector3(bytes.decode_s16(at), bytes.decode_s16(at + 2),
+				bytes.decode_s16(at + 4)) * scale
 			at += 6
+		var normals := PackedVector3Array()
+		var edges := PackedVector3Array()
 		for n: int in nn + ne:
 			var d := Vector3(bytes.decode_s16(at), bytes.decode_s16(at + 2),
 				bytes.decode_s16(at + 4))
@@ -229,25 +235,35 @@ static func parse(bytes: PackedByteArray) -> Shape:
 			if d.length_squared() < 1.0:
 				continue
 			if n < nn:
-				piece.normals.append(d.normalized())
+				normals.append(d.normalized())
 			else:
-				piece.edges.append(d.normalized())
-		if piece.verts.is_empty():
+				edges.append(d.normalized())
+		if verts.is_empty():
 			continue
-		piece.lo = piece.verts[0]
-		piece.hi = piece.verts[0]
-		for v: Vector3 in piece.verts:
-			piece.lo = piece.lo.min(v)
-			piece.hi = piece.hi.max(v)
-		for n: Vector3 in piece.normals:
+		var piece := Piece.new()
+		var lo: Vector3 = verts[0]
+		var hi: Vector3 = verts[0]
+		for v: Vector3 in verts:
+			lo = lo.min(v)
+			hi = hi.max(v)
+		var spans := PackedFloat32Array()
+		spans.resize(normals.size() * 2)
+		for k: int in normals.size():
+			var n: Vector3 = normals[k]
 			var low: float = INF
 			var high: float = -INF
-			for v: Vector3 in piece.verts:
+			for v: Vector3 in verts:
 				var d: float = v.dot(n)
 				low = minf(low, d)
 				high = maxf(high, d)
-			piece.spans.append(low)
-			piece.spans.append(high)
+			spans[2 * k] = low
+			spans[2 * k + 1] = high
+		piece.verts = verts
+		piece.normals = normals
+		piece.edges = edges
+		piece.lo = lo
+		piece.hi = hi
+		piece.spans = spans
 		shape.pieces.append(piece)
 	_tree_of(shape)
 	return shape
