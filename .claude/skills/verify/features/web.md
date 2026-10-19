@@ -1759,17 +1759,30 @@ rows, Bob following 0; no grant to any key, row security on, only the
 service role executing; and how long a feed takes (3 to 5 ms on
 2026-10-18); "rolled back, nothing kept".
 
-Then the code, in real browsers, against a local server holding
-follows.sql (`--hold=follows`, `tools/web/follows_stand_in.mjs`) with
-comments.sql's functions (`model_comments`, whose day's email asks it for
-the feed), the photos' table and buckets, and trust.sql stood in (so an
-account can be under 13). Needs `build/web`; `--site` leaves the app out:
+Then the code, in real browsers. follows.sql is applied (rel-m82), so the
+way a preview runs it is a local server with nothing held, every table the
+live project's, or the preview itself; the flow reads the day's email back
+through `comment_digest_kept` with the secret key, from the id the API
+answered the comment with (no key reads `comment_digests`), and never
+knocks. Needs `build/web`; `--site` leaves the app out:
 
 ```sh
-node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web \
+node --env-file=.env tools/web/relay_server.mjs 9250 --static=build/web &
+BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=http://127.0.0.1:9250 --out=shots/follows   # .env sourced
+BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=<preview> --out=shots/follows
+```
+
+Or against a local server holding follows.sql in memory (`--hold=follows`,
+`tools/web/follows_stand_in.mjs`) with comments.sql's functions
+(`model_comments`, whose day's email asks it for the feed), the photos'
+table and buckets, and trust.sql stood in: the flow sees `/__held/follows`
+answer, reads the held digests, and knocks once (the stand-ins claim
+nothing real):
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 9251 --static=build/web \
   --hold=follows,model_comments,build_photos,report_photos --trust-stand-in &
-BW_STAND_IN=http://127.0.0.1:9240 node --env-file=.env tools/web/follows_flow.mjs \
-  --url=http://127.0.0.1:9240 --out=shots/follows
+node --env-file=.env tools/web/follows_flow.mjs --url=http://127.0.0.1:9251 --out=shots/follows
 ```
 
 `follows_flow` proves it when it ends "follows: a follow, the feed, the
@@ -1788,12 +1801,15 @@ with its panel's line and Open your feed (`9_app_account-phone.png`,
 their links to `#photo-<id>` and `#comment-<id>`, the count gone on the
 page, from the API, back in the gallery and in the app (`6_feed_opened.png`,
 `11_app_account_panel.png`); his day's email a dry run with the comment and
-3 from the feed, each with its link, and no second from the knock; Cy under
+3 from the feed (its subject), each with its link, and, held, no second
+from the knock; Cy under
 13 told why beside Follow and refused 422 (`7_under_13.png`); his profile
 listing Ada only once he ticks Show (`8_profile_choices.png`), hers still
 only counting; letting her go; and Older, strictly before a row to the
-microsecond, a time that is not one 400. 53 checks, all ok, against the local relay
-on 2026-10-18, about 4 minutes with the app.
+microsecond, a time that is not one 400. 52 checks, all ok, on the live
+project through a relay with nothing held and `BW_BYPASS` set, and 53
+(the knock) against the held relay, 2026-10-18, about 4 minutes each with
+the app.
 
 The list, asked hard (reads only):
 
