@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:carried parts in a browser, cli:LDraw files in storage -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:carried parts in a browser, cli:LDraw files in storage -->
 
 ## Sub-features
 
@@ -234,6 +234,52 @@ Whether what you built is still there tomorrow, and still means the same thing.
   given a different model over its port autosaves into its own session; both
   stopped and started again one after the other, the first reopens the model
   written last and the second the other one, not the same one twice.
+- `new tab or window`: File, New tab in a browser (New window on the
+  desktop, Ctrl+Shift+N there; the browser keeps Ctrl+T, Ctrl+N and
+  Ctrl+Shift+N) starts another model in a tab of its own, this one left as
+  it is (`TabSession.open_another`, 2026-10-19). The owner asked how a person
+  even starts a new model in another tab: there was no way from the app, and
+  a tab opened by hand came up on the newest model no tab held. On the web it
+  opens `?new=1` on the deployment's own path, in the click itself
+  (`Shell.IN_THE_PRESS`: a browser opens a tab only in answer to one),
+  `noopener` so the two pages do not share one thread; `claimTab` takes a new
+  id at once for `?new`, never one another tab left, and takes `new` out of
+  the address once chosen, so a reload keeps the tab's session as any tab's.
+  On the desktop the app starts again (`OS.create_instance` with
+  `TabSession.window_arguments`: `--path` when run from source, the renderer
+  this window uses, `-- --new-session`; not this run's own switches, so not
+  `--mcp` or `--model`), and `_claim_here(false)` takes a new session. Either
+  begins on an empty baseplate, Untitled, its working model written at once
+  (Main, `TabSession.opened_new`), and a working model with no parts comes
+  back empty under its name (`ModelStore.left_empty`): it came back as the
+  example car, so a reload after New, or of a new tab, showed the car. The
+  window's own in `AppTools.WINDOW_ONLY` (no tool: a session works in the tab
+  it is connected to); `command_probe` skips it, since it starts a window.
+- `new window probe`: `tools/probe.sh new_window_probe` (headless). A session
+  nobody holds with a tower of four, written moments before; the probe's
+  window has the car. File's second row is New window, with its tooltip and
+  Ctrl+Shift+N (Ctrl+N still New); pressing it starts a second process that
+  holds a session of its own (its `/proc` command line has `--new-session`),
+  not the tower's, its working model written at once with no parts and
+  Untitled; the tower's session is still nobody's and unchanged, and the
+  probe's window has its car. Then the same command line without the flag
+  takes the tower's session, the newest no window holds. It stops both copies
+  (every child of its process) by id. Not in the suite: two more copies of the
+  app take ~20 s each to come up.
+- `new tab browser flow`: `tools/web/newtab_flow.mjs`, against a local export
+  (`node tools/web/relay_server.mjs 8890 --static=build/web`, `.env`
+  sourced, signed in as the test account). An older tab renamed and closed,
+  so its session is nobody's (stored, with its name on its
+  `0 !BRICKWORKS TITLE` line: the example car keeps its own first line);
+  tab A renamed. File > New tab clicked in A (the
+  menu's second row, by position) opens B at `?new=1` on the same path; B has
+  an id of its own (not A's, not the older one's), `?new` gone from its
+  address, an empty baseplate, Untitled, and its empty working model stored
+  under its session; A is as it was. B reloaded is B and still empty; a 2 x 4
+  brick put down in it, stored, and B reloaded again keeps it. A third tab
+  opened by hand takes the older model's session, as before. Pictures of the
+  File menu at 1280 and 390 px wide (`1_file_menu.png`,
+  `6_file_menu_390.png`).
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and

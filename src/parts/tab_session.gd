@@ -20,6 +20,12 @@
 ## holds — so closing the browser, or the app, and coming back opens what
 ## was there, as it always did — and otherwise starts a new one.
 ##
+## File, New tab (New window on the desktop) opens one on a new model
+## ([method open_another]): it takes a new id at once, never one another
+## left, and begins on an empty baseplate. There was no way to start a
+## second model from the app: a person had to open the site again
+## themselves, and that tab came up on an older model nobody held.
+##
 ## The id is also what Claude is shown: every tab with the connector on is
 ## a target of its own, called by this id and its model's name (api/mcp.js).
 class_name TabSession
@@ -38,6 +44,9 @@ const LEGACY_CONNECTOR := "user://claude_connector.json"
 ## so every minute, Main): a window that crashed lets its session go after
 ## three minutes, and at once where the system can say its process has gone.
 const HELD_FOR_S := 180
+## What a window opened by New window is started with: a session of its
+## own, not one another window left. The web's is ?new in the address.
+const NEW_WINDOW := "--new-session"
 
 static var _id: String = ""
 ## A run driven from the command line (a design, a render, a benchmark) is
@@ -57,6 +66,53 @@ static func id() -> String:
 ## in one process, each with its own working state.
 static func use(given: String) -> void:
 	_id = given
+
+
+## This tab or window was opened by New tab or New window: it begins on an
+## empty baseplate (Main), not on the sample a first visit is shown.
+static func opened_new() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("window.brickworksTabNew === true", true))
+	return OS.get_cmdline_user_args().has(NEW_WINDOW)
+
+
+## File, New tab: the app again in a tab of its own, on a new model, this
+## one left as it is. Opened in the click itself, since a browser lets a
+## page open a tab only in answer to one (Shell.IN_THE_PRESS); noopener,
+## so the two pages do not share one thread. On the desktop, New window:
+## the app started again ([method window_arguments]).
+static func open_another() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""
+			(() => {
+				const there = new URL(location.href);
+				there.search = "?new=1";
+				there.hash = "";
+				window.open(there.href, "_blank", "noopener");
+			})();
+		""", true)
+		return
+	var pid: int = OS.create_instance(window_arguments())
+	if pid <= 0:
+		push_warning("could not start another window")
+
+
+## How New window starts the app again: as this one draws, from the same
+## project when it runs from source, and with a session of its own. Not this
+## run's own switches (a model to open, a port, a script): the new window is
+## the app as it opens for anyone, on a new model.
+static func window_arguments() -> PackedStringArray:
+	var arguments := PackedStringArray()
+	if not OS.has_feature("template"):
+		arguments.append_array(["--path", ProjectSettings.globalize_path("res://")])
+	if DisplayServer.get_name() == "headless":
+		arguments.append("--headless")
+	else:
+		arguments.append_array([
+			"--rendering-driver", RenderingServer.get_current_rendering_driver_name(),
+			"--rendering-method", RenderingServer.get_current_rendering_method()])
+	arguments.append_array(["--", NEW_WINDOW])
+	return arguments
 
 
 ## Where else a model is saved from, in words: another tab in a browser,
@@ -100,8 +156,8 @@ static func _claim() -> void:
 		# person's next window would have opened.
 		_id = "probe"
 	else:
-		_id = _claim_here()
-		takes_legacy = true
+		_id = _claim_here(not opened_new())
+		takes_legacy = not opened_new()
 	DirAccess.make_dir_recursive_absolute(ROOT + _id)
 	if takes_legacy:
 		_move(LEGACY_AUTOSAVE, autosave())
@@ -116,11 +172,12 @@ static func _move(from: String, to: String) -> void:
 	DirAccess.rename_absolute(from, to)
 
 
-## A window's session: the newest nobody holds, or a new one.
-static func _claim_here() -> String:
+## A window's session: the newest nobody holds, or a new one. Only a new
+## one when not [param reclaim] (New window).
+static func _claim_here(reclaim: bool = true) -> String:
 	DirAccess.make_dir_recursive_absolute(ROOT)
 	var free: Array = []
-	for name: String in DirAccess.get_directories_at(ROOT):
+	for name: String in DirAccess.get_directories_at(ROOT) if reclaim else PackedStringArray():
 		if shaped(name) and not _held(name):
 			free.append([_latest(name), name])
 	free.sort()

@@ -43,7 +43,9 @@ everyone who added one.
 ## Several tabs
 
 A person often has two Brickworks tabs open on two models, and a Claude
-chat for each. Each chat has to stay in its own tab. Since 2026-10-17:
+chat for each. Each chat has to stay in its own tab. A second tab on a new
+model is **File, New tab** (New window on the desktop), since 2026-10-19.
+Since 2026-10-17:
 
 1. **Each tab has a name to say.** The toolbar shows it while Claude can
    reach the tab: `Tab k7qd`. Account says it in full: "This tab is k7qd

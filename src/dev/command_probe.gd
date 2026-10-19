@@ -39,7 +39,7 @@ const SKIP: Dictionary = {
 	"import_mesh": "file dialog", "mosaic": "file dialog", "brickify": "file dialog",
 	"account": "network", "share": "network", "connector": "network",
 	"ask_claude": "network", "website": "opens a browser", "quit": "leaves the app",
-	"full_screen": "the window, not the app",
+	"full_screen": "the window, not the app", "new_window": "starts another window",
 }
 
 var _failures: int = 0

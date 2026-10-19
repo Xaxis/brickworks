@@ -277,11 +277,27 @@ func restore_fetched() -> int:
 	return _restored(text, await open_text_fetched(text, autosave().get_file()))
 
 
-## The working model's text from the last session, or "".
+## The working model's text from the last session, or "". "" too for one
+## with no parts, which is begun again as it was left, under its name
+## ([member left_empty]).
 func _autosaved() -> String:
 	unrestored = ""
+	left_empty = false
 	var path: String = autosave()
-	return FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+	if text.is_empty() or _has_parts(text):
+		return text
+	var name: String = title_in(text, "")
+	_begin_as(name if not name.is_empty() else UNTITLED)
+	left_empty = true
+	return ""
+
+
+## The working model came back with no parts because it had none: the
+## person left the baseplate empty (New, Clear, the last part taken off), or
+## the tab was opened by New tab. Main shows it so, not the sample car a
+## first visit is shown, which is what a reload after New brought back.
+var left_empty: bool = false
 
 
 ## How many parts of [param text], opened as [param result], came back, the
@@ -446,7 +462,12 @@ func _saved_over_elsewhere(path: String, name: String) -> bool:
 ## writes over somebody's model with new work.
 func begin(name: String) -> void:
 	var wanted: String = name.strip_edges()
-	title = UNTITLED if wanted.is_empty() or wanted == UNTITLED else _free_name(wanted)
+	_begin_as(UNTITLED if wanted.is_empty() or wanted == UNTITLED else _free_name(wanted))
+
+
+## [method begin] under [param named] as it is.
+func _begin_as(named: String) -> void:
+	title = named
 	# Nothing in it is missing, so the autosave may keep it — empty too.
 	whole = true
 	emptied = true
