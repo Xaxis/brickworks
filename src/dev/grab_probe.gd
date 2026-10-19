@@ -5352,6 +5352,9 @@ const STEERING: Array = [
 const MOVING: Array = [
 	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable"],
 	["res://vendor/omr/files/10220-1.mpd", "door"],
+	# G12 (MECHANISMS §20): turned +30, the right door's slope 75 met the one
+	# built beside it by their covers at once; their shapes are clear.
+	["res://vendor/omr/files/10295-1.mpd", "boom"],
 ]
 
 
@@ -5492,6 +5495,15 @@ func _moving_check(path: String, kind: String) -> void:
 	_check("%s: its %s %s turns %s and is back to %.3f LDU%s" % [name, kind, str(found.get("driver", "?")),
 		", ".join(turns), float(found.get("back_ldu", -1.0)), "" if str(found.get("result")) == "moves"
 		else ": " + str(found.get("cause", "not found")).left(200)], str(found.get("result")) == "moves")
+	# Where a turn stopped where two parts meet, the parts themselves meet
+	# there (G12): their exact shapes, the part a degree on.
+	var covers := PackedStringArray()
+	for step: Dictionary in found.get("steps", []):
+		var met: Dictionary = step.get("meeting", {})
+		if str(met.get("verdict", "")) == "false":
+			covers.append(str(met.get("pair", "")))
+	_check("%s: no turn of its %s stopped where only the covers of two parts meet%s" % [name, kind,
+		"" if covers.is_empty() else " (" + ", ".join(covers) + ")"], covers.is_empty() and not found.is_empty())
 	_builder.forget_history()
 
 

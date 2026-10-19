@@ -1195,7 +1195,8 @@ func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 			continue
 		if _overlapped_at_rest(other):
 			skip[other] = true
-		elif not _slides_over(key, mesh, to, other) and not _touching(mesh, to, other):
+		elif not _slides_over(key, mesh, to, other) and not _touching(mesh, to, other) \
+				and not _clear_exactly(key, to, other):
 			return PackedInt64Array([other])
 	return PackedInt64Array()
 
@@ -1212,7 +1213,7 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 		if _overlapped_at_rest(other):
 			skip[other] = true
 		elif _scrubs(key, other) or _bends_aside(other) or _slides_over(key, mesh, to, other) \
-				or _touching(mesh, to, other):
+				or _touching(mesh, to, other) or _clear_exactly(key, to, other):
 			skip[other] = true
 			forgiven.append(other)
 		else:
@@ -1221,6 +1222,27 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 	for other: int in forgiven:
 		skip.erase(other)
 	return hit
+
+
+## Whether [param key] at [param to] and [param other] where it stands are
+## clear of each other by their exact shapes (Exact: BrickNet's convex
+## pieces), overlapping by no more than the 1 LDU a build check allows: what
+## their covers met, 2 LDU cells that each reach past the part, the parts do
+## not. 10220-1's floor (a plate with rounded pins beside a tile 2 x 4),
+## 10295-1's door (two slopes 75 built side by side) and 10185-1's hinge
+## plates on a plate with studs on one edge would not turn at all by their
+## covers, and their shapes are clear of each other at every degree. A part
+## with no exact shape is judged by its cover.
+func _clear_exactly(key: int, to: Transform3D, other: int) -> bool:
+	var a: BrickWorld.Brick = world.get_brick(key)
+	var b: BrickWorld.Brick = world.get_brick(other)
+	if a == null or b == null:
+		return false
+	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
+	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
+	if shape_a == null or shape_b == null or not shape_a.has_pieces() or not shape_b.has_pieces():
+		return false
+	return Exact.clash(Exact.Item.new(shape_a, to), Exact.Item.new(shape_b, b.transform)).is_empty()
 
 
 ## Whether [param other] bends out of the way: a hose's piece, a string's,
