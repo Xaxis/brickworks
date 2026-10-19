@@ -221,3 +221,19 @@ dialog.report textarea {
 }
 .takedown section { max-width: 72ch; }
 .takedown section p { color: var(--ink-soft); }
+
+/* The Tested mark (api/_tested.js): small and green, the four results on
+   hover (its title) and on a tap (the page's opens; a card's title). A
+   failing one is only ever its owner's note (.tested-note). */
+.tested-mark { margin: 0 0 10px; }
+.tested-mark summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
+	font-size: 14px; font-weight: 600; color: var(--green); border: 1px solid var(--green); border-radius: 999px;
+	padding: 2px 10px; }
+.tested-mark summary::-webkit-details-marker { display: none; }
+.tested-mark .tested-says { margin-top: 8px; font-size: 14.5px; color: var(--ink-soft); }
+.tested-mark .tested-says ul { margin: 0 0 6px; padding-left: 20px; }
+.tested-note { margin: 0 0 12px; padding: 10px 12px; border-radius: 9px; border: 1px dashed var(--ink-faint);
+	color: var(--ink-soft); font-size: 14.5px; overflow-wrap: anywhere; }
+.tested-note b { color: var(--ink); }
+a.model .tested { justify-self: start; font-size: 12px; font-weight: 600; color: var(--green);
+	border: 1px solid var(--green); border-radius: 999px; padding: 0 8px; margin-top: 4px; }

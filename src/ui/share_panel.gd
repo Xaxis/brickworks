@@ -26,6 +26,14 @@
 ## copied from somebody's link says so when it is published
 ## (ModelStore.remixed_from), and its page names the one it came from.
 ##
+## And tested as it goes up (2026-10-18, Tested): built by the very steps
+## the link carries, it stands at every step, no part of a step goes in the
+## air or behind what is built, every part is made in its colour, nothing
+## is loose. What the app found goes with it, and the server keeps it as
+## this app's finding (api/_tested.js). Passed, the link is marked Tested
+## for everybody; failed, the status line says which test and why, and only
+## its owner is ever told.
+##
 ## And what the model's page and the gallery say about it (2026-10-13, the
 ## directory): a few lines about it, tags, its kind — guessed from the name
 ## and the tags (ModelKinds), for its owner to change — and a licence, CC
@@ -99,6 +107,10 @@ var version_said: String = ""
 ## Said to an account under 13, under the box it cannot tick.
 var _young: Label
 var _guidelines: LinkButton
+## What the last publish's tests found (Tested.check), and what the panel
+## said of it to its owner.
+var tested: Dictionary = {}
+var tested_said: String = ""
 var _status: Label
 var _publish: Button
 var _link_box: VBoxContainer
@@ -530,13 +542,19 @@ func publish() -> void:
 		return
 	# Its build steps, worked out here once and carried with it, so a phone
 	# opening the link to build from does not work them out (SharedPages).
-	_status.text = "Working out its steps for the link…"
+	# And tested by them as it goes (Tested): the four tests the "Tested"
+	# mark is, sent with it as this app's finding.
+	_status.text = "Working out its steps for the link, and testing it…"
 	var steps_job: Working.Job = Working.begin("Working out the steps of “%s” for its link…" % name)
 	await steps_job.shown()
-	model = await SharedPages.attach(model, store.library, store, steps_job)
+	var made: Dictionary = await SharedPages.attach_tested(model, store.library, store, steps_job)
 	steps_job.end()
+	model = str(made["text"])
+	tested = made["tested"]
 	_status.text = "Publishing…"
 	var body: Dictionary = {"name": name, "model": model}
+	if tested.has("tests"):
+		body["tested"] = tested
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():
 		body["author"] = author
@@ -601,6 +619,13 @@ func publish() -> void:
 		_status.text = _status.text.strip_edges()
 	_note.text = ""
 	_show_note(true)
+	# Whether it is marked Tested, or which test it failed and why: a note
+	# to its designer, which nobody else is shown.
+	var kept: Variant = said.get("tested")
+	tested_said = Tested.words(tested)
+	if kept is Dictionary and not bool((kept as Dictionary).get("kept", false)) and tested.has("tests"):
+		tested_said = "Not tested: %s." % str((kept as Dictionary).get("why", "it could not be kept"))
+	_status.text = "%s %s" % [_status.text, tested_said]
 
 
 func unpublish() -> void:
@@ -698,6 +723,7 @@ func page_state() -> Dictionary:
 		"note": _note.text if _note != null else "",
 		"note_shown": _note.is_visible_in_tree() if _note != null else false,
 		"version": version, "said": version_said,
+		"tested": tested, "tested_said": tested_said, "tested_passed": Tested.passed(tested),
 		"remixed_from_version": store.remixed_from_version if store != null else 0,
 		"guidelines": guidelines_url(),
 		"list_disabled": _list.disabled if _list != null else false,

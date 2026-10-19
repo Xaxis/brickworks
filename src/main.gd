@@ -2100,6 +2100,8 @@ func _view_shared() -> void:
 		if one is Dictionary and int((one as Dictionary).get("n", 0)) == _view_version:
 			said = str((one as Dictionary).get("said", ""))
 	_share_view.show_version(_view_version, _view_newest, said)
+	# Marked Tested, when this version passed the app's four tests.
+	_share_view.show_tested(shared["tested"] if shared.get("tested") is Dictionary else {})
 	_show_name(name)
 	_set_address(_view_address())
 	_lay_baseplate()

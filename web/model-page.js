@@ -11,6 +11,33 @@ const marks = document.getElementById("marks");
 const id = marks && marks.dataset.id;
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
 
+// What the app found of this model as it was published, for its owner
+// alone: a model that failed one of the four tests says which, plainly, as
+// a note to its designer. api/share.js ?op=tested answers only the model's
+// own account, so nobody else is ever shown a failure.
+const note = document.getElementById("tested-note");
+if (note && /^[A-Za-z0-9]{10}$/.test(note.dataset.id || "") && signedIn()) noteForOwner(note);
+
+async function noteForOwner(note) {
+  const version = /^[1-9][0-9]{0,5}$/.test(note.dataset.version || "") ? `&v=${note.dataset.version}` : "";
+  const answer = await call(`/api/share?op=tested&id=${note.dataset.id}${version}`);
+  const tested = answer.status === 200 && answer.body ? answer.body.tested : null;
+  if (!tested || tested.passed) return;
+  const head = document.createElement("b");
+  head.textContent = tested.cleared ? "Not marked Tested: Brickworks cleared its mark." : "Not marked Tested.";
+  note.replaceChildren(head, " Only you see this. ");
+  for (const name of ["stands", "steps", "parts", "whole"]) {
+    const one = tested.tests && tested.tests[name];
+    if (!one || one.ok) continue;
+    const line = document.createElement("span");
+    line.dataset.failed = name;
+    line.textContent = `${one.said}: ${one.why}. `;
+    note.append(line);
+  }
+  note.hidden = false;
+  document.documentElement.dataset.testedNote = "shown";
+}
+
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
   const keep = marks.querySelector('[data-mark="favourite"]');

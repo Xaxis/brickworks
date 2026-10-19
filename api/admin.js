@@ -27,6 +27,10 @@
 //   POST /api/admin?op=bar&id=X          take the account that shares X out of it
 //   POST /api/admin?op=unbar&account=U   let account U list again
 //   POST /api/admin?op=dismiss&report=N  let report N go: nothing wrong
+//   POST /api/admin?op=untest&id=X&v=N   clear the Tested mark of version N
+//                                        of model X (the newest without v):
+//                                        the app's finding, which the server
+//                                        cannot check (supabase/tested.sql)
 //
 // Restored 2026-10-11 with accounts, without the tiers and the design
 // budget the first one managed: those belonged to the proxy that spent
@@ -86,7 +90,7 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  const acts = { unlist, bar, unbar, dismiss };
+  const acts = { unlist, bar, unbar, dismiss, untest };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
@@ -95,7 +99,7 @@ export default async function handler(request, response) {
     }
   }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar or dismiss" });
+    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss or untest" });
   }
 
   try {
@@ -196,8 +200,44 @@ async function dismiss(request, response) {
   return response.status(200).json({ report, resolution: "dismissed" });
 }
 
+/// A Tested mark cleared: the app said it passed, and the site's owner says
+/// it should not be shown. Kept, with when and why, so it is not shown
+/// again; the model's next version is tested afresh.
+async function untest(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a link: ?id=<ten characters>" });
+  let n = Number(request.query?.v || 0);
+  if (!n) {
+    const newest = await db(`share_versions?model=eq.${id}&select=n&order=n.desc&limit=1`);
+    n = newest[0]?.n ?? 0;
+  }
+  if (!Number.isInteger(n) || n < 1) return response.status(404).json({ error: "no version of that model" });
+  const why = String(request.query?.why || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 280)
+    || "Cleared by Brickworks";
+  const rows = await db(`share_tests?model=eq.${id}&n=eq.${n}`, { method: "PATCH",
+    body: { cleared_at: new Date().toISOString(), cleared_why: why }, prefer: "return=representation" });
+  if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "that version is not tested" });
+  return response.status(200).json({ id, version: n, cleared: true, why });
+}
+
+/// Every Tested mark showing, newest first, with its model's name; none
+/// while supabase/tested.sql is not applied.
+async function marks() {
+  try {
+    const rows = await db("share_tests?passed=is.true&cleared_at=is.null&select=model,n,at,app,parts,steps"
+      + "&order=at.desc&limit=200");
+    const ids = [...new Set(rows.map((row) => row.model))];
+    const names = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&select=id,name,published`) : [];
+    const named = new Map(names.map((one) => [one.id, one]));
+    return rows.filter((row) => named.get(row.model)?.published)
+      .map((row) => ({ ...row, name: named.get(row.model)?.name ?? null }));
+  } catch {
+    return [];
+  }
+}
+
 async function report() {
-  const [listed, tabs, gallery, reports, barred] = await Promise.all([
+  const [listed, tabs, gallery, reports, barred, tested] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
     asServer("/rest/v1/relay_tabs?select=owner,seen_at,open&owner=not.is.null"),
     // What strangers can see in /gallery right now, and whose it is.
@@ -207,6 +247,7 @@ async function report() {
     asServer("/rest/v1/reports?resolved_at=is.null&select=id,model,handle,collection,reason,note,contact,at,"
       + "shared_models(name,owner,listed,published)&order=at.desc&limit=300"),
     asServer("/rest/v1/barred_accounts?select=account,at,reason&order=at.desc&limit=200"),
+    marks(),
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
@@ -259,5 +300,6 @@ async function report() {
     })),
     barred: barred.map((one) => ({ account: one.account, at: one.at, reason: one.reason,
       email: emails.get(one.account) || null })),
+    tested,
   };
 }

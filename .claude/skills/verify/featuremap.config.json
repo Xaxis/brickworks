@@ -2343,6 +2343,34 @@
       "entry": "tools/web/digest_flow.mjs",
       "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest   (.env sourced, MASTER_EMAIL; never knocks a real deployment)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the Tested mark's four tests",
+      "entry": "src/assembly/tested.gd",
+      "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "tested probe",
+      "entry": "src/dev/tested_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/tested_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the Tested mark kept and shown",
+      "entry": "api/_tested.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/tested.sql --dry --try=tools/tested_try.sql --table=share_tests   (then the tested browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "tested browser flow",
+      "entry": "tools/web/tested_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web --hold=share_tests & node --env-file=.env tools/web/tested_flow.mjs --url=http://127.0.0.1:8923 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/tested.sql is applied)",
+      "area": "web"
     }
   ]
 }

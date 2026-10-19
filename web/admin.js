@@ -124,6 +124,35 @@ function draw(data) {
   }
   say("gallery-note", data.gallery?.length ? "" : "Nothing is listed.");
 
+  // Marked Tested: the app's finding, to clear when it should not be there.
+  const tested = $("tested");
+  tested.replaceChildren();
+  for (const mark of data.tested || []) {
+    const row = document.createElement("tr");
+    const name = document.createElement("td");
+    name.className = "model";
+    const link = document.createElement("a");
+    link.href = `/m/${encodeURIComponent(mark.model)}`;
+    link.textContent = mark.name || mark.model;
+    name.append(link);
+    row.append(name);
+    cell(row, String(mark.n), "n");
+    cell(row, String(mark.app));
+    cell(row, Number(mark.parts).toLocaleString(), "n");
+    cell(row, Number(mark.steps).toLocaleString(), "n");
+    cell(row, when(mark.at));
+    const act = document.createElement("td");
+    const clear = document.createElement("button");
+    clear.textContent = "Clear the mark";
+    clear.addEventListener("click", () => confirm(`Clear the Tested mark of version ${mark.n}?`)
+      && post(`op=untest&id=${encodeURIComponent(mark.model)}&v=${encodeURIComponent(mark.n)}`,
+        "tested-note", "Cleared: it is not marked Tested anywhere now."));
+    act.append(clear);
+    row.append(act);
+    tested.append(row);
+  }
+  say("tested-note", data.tested?.length ? "" : "Nothing is marked Tested.");
+
   // What was reported: strangers' words again, so text and never markup.
   const reports = $("reports");
   reports.replaceChildren();

@@ -22,13 +22,19 @@
 //                            cards show, made by the app beside the big one
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
 //                            a time, searched (q), filtered (kind, size,
-//                            instructions, technic, tag) and sorted (sort:
-//                            newest, views, likes, remixes); with tests=1,
-//                            test models too, which nobody else is shown
+//                            instructions, technic, tested, tag) and sorted
+//                            (sort: newest, views, likes, remixes); with
+//                            tests=1, test models too, which nobody else
+//                            is shown
+//   GET  ?op=tested&id=X     the owner's own: what the app found of the
+//                            newest version, every test and why, passed
+//                            or not (with v=N, version N's)
 //   POST                     publish, with the session: {name, author?,
 //                            model, image?, thumb?, id?, listed?,
 //                            remixed_from?, remixed_from_version?,
-//                            description?, tags?, kind?, licence?, note?}.
+//                            description?, tags?, kind?, licence?, note?,
+//                            tested?}. tested is what the app found of the
+//                            model as it published it (api/_tested.js).
 //                            With an id, the owner's own link gets its
 //                            next version, and the one before is kept.
 //                            listed puts it in the gallery; remixed_from
@@ -77,6 +83,15 @@
 // step that differs, which keeps a builder's place on the new one
 // (src/assembly/build_steps.gd). A version is counted as a publish.
 //
+// The Tested mark (2026-10-18, supabase/tested.sql, api/_tested.js): the
+// app tests a model as it publishes it — it stands at every step, every
+// step can be reached, every part is made in its colour, nothing is loose —
+// and sends what it found. It is kept with the version, as the app's own
+// finding and the app version's, once it is found to be of this very file
+// and the steps the file carries; this server cannot run the tests. A pass
+// is shown on the page, the card and the viewer; a failure only to its
+// owner; the site's owner can clear either (api/admin.js ?op=untest).
+//
 // The directory (2026-10-13, supabase/directory.sql, api/_directory.js)
 // searches, filters and sorts the gallery, and gives each model a page of
 // its own at /m/X: what its owner wrote about it, its tags, its kind and
@@ -103,6 +118,7 @@ import {
   looksLikePerson, modelHash, partFacts, siteChrome, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
+import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { publicTrouble } from "./_trust.js";
 
@@ -692,12 +708,24 @@ function smallCard(card) {
     + `<b>${escapeHtml(card.name)}</b><span>${escapeHtml(describe(card))}</span></a>`;
 }
 
+/// The Tested mark, for a version that passed (api/_tested.js publicMark):
+/// small, the four results on hover (its title) and on a tap (it opens),
+/// and whose finding it is. Nothing for any other version.
+function testedMark(mark) {
+  if (!mark) return "";
+  return `<details class="tested-mark" data-tested="yes"><summary title="${escapeHtml(mark.line)}">`
+    + `<span class="tick" aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
+    + `<ul>${mark.said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
+    + `<p class="note">Worked out by the Brickworks app ${escapeHtml(mark.app)} as it was published, `
+    + `building it by its own ${count(mark.steps, "step")}.</p></div></details>`;
+}
+
 /// /m/X: the model's own page. What its owner said about it, what it is,
 /// its counts, its licence and its remix tree, with the way into the 3D
 /// viewer and into the app. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
-function sharePage(origin, id, model, versions = [], shown = null) {
+function sharePage(origin, id, model, versions = [], shown = null, mark = null) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -768,7 +796,9 @@ ${header}
         ? ` · <a class="version-line" href="#versions-h">version ${version.n}${old ? ` of ${newest}` : ""}</a>` : ""}</p>
       ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a></p>` : ""}
       ${fromLine}
+      ${testedMark(mark)}
       <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join("")}</ul>
+      <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
       <p class="counts"><span data-count="views">${count(model.views, "view")}</span>
         <span data-count="likes">${count(model.likes, "like")}</span>
         <span data-count="remixes">${count(model.remixes, "remix", "remixes")}</span></p>
@@ -996,6 +1026,7 @@ async function read(request, response) {
   const origin = originOf(request);
 
   if (op === "mine") return mine(request, response, origin);
+  if (op === "tested") return testedOwn(request, response);
   if (op === "sweep") return sweep(request, response);
   if (op === "list") return gallery(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
@@ -1014,7 +1045,8 @@ async function read(request, response) {
     const versions = await versionsOf(id, page);
     const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
     if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
-    return html(response, 200, sharePage(origin, id, page, versions, shown));
+    const mark = publicMark(await markOf(db, id, shown.n));
+    return html(response, 200, sharePage(origin, id, page, versions, shown, mark));
   }
 
   const row = await publishedRow(id);
@@ -1074,7 +1106,11 @@ async function read(request, response) {
   }
   const model = await getFile(versionFile(id, shown.n, newest, "mpd"));
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
+  // The mark this version passed, for the viewer's bar; a failure is its
+  // owner's alone (?op=tested), so here it is no mark at all.
+  const tested = publicMark(await markOf(db, id, shown.n));
   return response.status(200).json({
+    tested,
     id,
     name: row.name,
     author: row.author,
@@ -1140,9 +1176,49 @@ async function mine(request, response, origin) {
   response.setHeader("Cache-Control", "private, no-store");
   const owner = await signedIn(request);
   const rows = await db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred&order=updated_at.desc`);
+  const marks = await newestMarks(rows.filter((row) => row.published).map((row) => row.id));
   return response.status(200).json({
-    shared: rows.map((row) => ({ ...row, ...links(origin, row.id) })),
+    shared: rows.map((row) => ({ ...row, ...links(origin, row.id), tested: ownerMark(marks.get(row.id)) })),
   });
+}
+
+/// The mark of each link's newest version, for its owner: id -> row. A
+/// newest version with none is untested, whatever an older one passed.
+async function newestMarks(ids) {
+  const out = new Map();
+  for (let at = 0; at < ids.length; at += 100) {
+    const some = ids.slice(at, at + 100).join(",");
+    if (!some) continue;
+    try {
+      const [versions, marks] = await Promise.all([
+        db(`share_versions?model=in.(${some})&select=model,n&order=n.desc`),
+        db(`share_tests?model=in.(${some})&select=model,n,at,app,parts,steps,tests,passed,cleared_at,cleared_why`
+          + "&order=n.desc"),
+      ]);
+      const newest = new Map();
+      for (const one of versions) if (!newest.has(one.model)) newest.set(one.model, one.n);
+      for (const one of marks) {
+        if (!out.has(one.model) && one.n === (newest.get(one.model) ?? 1)) out.set(one.model, one);
+      }
+    } catch {
+      // Before tested.sql: nothing is tested.
+    }
+  }
+  return out;
+}
+
+/// ?op=tested&id=X: what the app found of the owner's own model, every
+/// test and why — the note to its designer a failing mark is. Nobody else's.
+async function testedOwn(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const owner = await signedIn(request);
+  const id = String(request.query?.id || "");
+  const row = await ownRow(id);
+  if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
+  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  const asked = askedVersion(request);
+  const n = asked ?? (await versionsOf(id, row, 1))[0].n;
+  return response.status(200).json({ id, version: n, tested: ownerMark(await markOf(db, id, n)) });
 }
 
 /// What the owner says about the model, checked at this edge: undefined
@@ -1171,6 +1247,8 @@ async function publish(request, response) {
   const { parts, bytes, steps, ownSteps, technic } = checkModel(body.model);
   const picture = checkImage(body.image);
   const thumb = checkThumb(body.thumb);
+  // What the app found, checked against this very file (api/_tested.js).
+  const finding = checkTested(body.tested, body.model);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   const author = cleanText(body.author, MAX_AUTHOR) || null;
@@ -1317,6 +1395,21 @@ async function publish(request, response) {
   const first = n === 1 ? null : changes ? changes.first : 1;
   await db("share_versions", { method: "POST", body: { model: id, n, at: now, note, parts, steps, bytes,
     has_image: Boolean(picture), changes, first_changed: first, remixed_from_version: remixedFromVersion } });
+  // What the app found of this version, kept with it as the app's finding.
+  // One that cannot be kept, or a table not there yet, never stops the
+  // publish: the version is then untested, and the answer says why.
+  let kept = null;
+  if (finding?.row) {
+    try {
+      await db("share_tests", { method: "POST", body: { model: id, n, at: now, ...finding.row } });
+      kept = { kept: true, passed: finding.row.passed, by: "app", app: finding.row.app,
+        tests: ownerMark({ ...finding.row, n, at: now }).tests };
+    } catch {
+      kept = { kept: false, why: "Brickworks could not keep what it found just now" };
+    }
+  } else if (finding?.refused) {
+    kept = { kept: false, why: finding.refused };
+  }
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
@@ -1324,7 +1417,7 @@ async function publish(request, response) {
     listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
-    version_url: `${origin}/m/${id}/v/${n}`,
+    version_url: `${origin}/m/${id}/v/${n}`, tested: kept,
     ...links(origin, id),
   });
 }

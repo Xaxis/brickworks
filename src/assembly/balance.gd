@@ -87,6 +87,12 @@ var library: PartLibrary
 var lattice: BrickLattice
 ## Bricks that are the floor and not the model: the baseplate under it.
 var floor_ids: Dictionary = {}
+## Where each stud joint's studs are, by the pair's ids (Vector2i(lower,
+## upper) -> [method _overlap]): kept from one weighing to the next when a
+## caller hands the same dictionary to each, as Tested does weighing a model
+## at every step. Comparing the two parts' boxes was most of a weighing:
+## 2.6 s of 2.65 for 75060's 2,014 parts, many of them turned.
+var overlaps: Dictionary = {}
 
 
 ## One stud joint and what it carries.
@@ -661,22 +667,13 @@ func _find_bridges(boxes: Dictionary) -> void:
 		var child: int = _bridge_edges[e]
 		var lower: int = _edge_lower[int(e)]
 		var upper: int = _edge_b[int(e)] if _edge_a[int(e)] == lower else _edge_a[int(e)]
-		var lid: PackedInt32Array = BrickLattice.moved_by(boxes[_ids[lower]], Vector3i(0, 1, 0))
-		var theirs: PackedInt32Array = boxes[_ids[upper]]
-		var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
-		var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
-		for i: int in range(0, lid.size(), 6):
-			for j: int in range(0, theirs.size(), 6):
-				var x0: int = maxi(lid[i], theirs[j])
-				var x1: int = mini(lid[i + 3], theirs[j + 3])
-				var y0: int = maxi(lid[i + 1], theirs[j + 1])
-				var y1: int = mini(lid[i + 4], theirs[j + 4])
-				var z0: int = maxi(lid[i + 2], theirs[j + 2])
-				var z1: int = mini(lid[i + 5], theirs[j + 5])
-				if x1 <= x0 or y1 <= y0 or z1 <= z0:
-					continue
-				lo = Vector3i(mini(lo.x, x0), mini(lo.y, y0), mini(lo.z, z0))
-				hi = Vector3i(maxi(hi.x, x1), maxi(hi.y, y1), maxi(hi.z, z1))
+		var pair := Vector2i(_ids[lower], _ids[upper])
+		var met: Variant = overlaps.get(pair)
+		if met == null:
+			met = _overlap(boxes[_ids[lower]], boxes[_ids[upper]])
+			overlaps[pair] = met
+		var lo: Vector3i = (met as Array)[0]
+		var hi: Vector3i = (met as Array)[1]
 		if lo.x == 0x7FFFFFFF:
 			continue
 		var y: float = lo.y * BrickLattice.CELL
@@ -698,6 +695,27 @@ func _find_bridges(boxes: Dictionary) -> void:
 			"centre": Vector3(x_from + wide * 0.5, y, z_from + deep * 0.5),
 			"normal": Vector3.UP if child == upper else Vector3.DOWN,
 			"studs": studs, "corners": corners})
+
+
+## Where a stud joint's studs are: the cells [param lower]'s boxes lifted one
+## cell share with [param upper]'s, as [lowest corner, highest corner].
+static func _overlap(lower: PackedInt32Array, upper: PackedInt32Array) -> Array:
+	var lid: PackedInt32Array = BrickLattice.moved_by(lower, Vector3i(0, 1, 0))
+	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
+	for i: int in range(0, lid.size(), 6):
+		for j: int in range(0, upper.size(), 6):
+			var x0: int = maxi(lid[i], upper[j])
+			var x1: int = mini(lid[i + 3], upper[j + 3])
+			var y0: int = maxi(lid[i + 1], upper[j + 1])
+			var y1: int = mini(lid[i + 4], upper[j + 4])
+			var z0: int = maxi(lid[i + 2], upper[j + 2])
+			var z1: int = mini(lid[i + 5], upper[j + 5])
+			if x1 <= x0 or y1 <= y0 or z1 <= z0:
+				continue
+			lo = Vector3i(mini(lo.x, x0), mini(lo.y, y0), mini(lo.z, z0))
+			hi = Vector3i(maxi(hi.x, x1), maxi(hi.y, y1), maxi(hi.z, z1))
+	return [lo, hi]
 
 
 ## Whether a pose puts a moving part through the floor.

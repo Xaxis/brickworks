@@ -21,6 +21,10 @@
 ## step; one who had not got that far is left where they were (BuildSteps.
 ## changed_since).
 ##
+## A version that passed the four tests the app ran as it was published is
+## marked Tested beside its name (2026-10-18, api/_tested.js), the four on
+## hover and, on a tap, on the version line.
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -54,6 +58,9 @@ var remixed_from: Dictionary = {}
 var version: int = 1
 var newest: int = 1
 var version_said: String = ""
+## The Tested mark this version passed (show_tested), or empty.
+var tested: Dictionary = {}
+var _tested: Button
 ## The step a builder's place was changed from, while they are told so;
 ## 0 when it holds.
 var changed_from: int = 0
@@ -145,11 +152,42 @@ func _build_bar() -> void:
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.clip_contents = true
 	row.add_child(words)
+	var title := HBoxContainer.new()
+	title.add_theme_constant_override("separation", 8)
+	words.add_child(title)
 	_name = Label.new()
 	_name.add_theme_font_size_override("font_size", 16)
 	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name.text = "A shared model"
-	words.add_child(_name)
+	# Small and green, before the name, for a version that passed: after a
+	# name that trims to fit, it went to the far end of the bar.
+	_tested = Button.new()
+	_tested.text = "Tested"
+	_tested.focus_mode = Control.FOCUS_NONE
+	_tested.add_theme_font_size_override("font_size", 11)
+	for colour: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		_tested.add_theme_color_override(colour, Color(0.45, 0.85, 0.5))
+	var badge := StyleBoxFlat.new()
+	badge.bg_color = Color(0.45, 0.85, 0.5, 0.12)
+	badge.border_color = Color(0.45, 0.85, 0.5, 0.8)
+	badge.set_border_width_all(1)
+	badge.set_corner_radius_all(8)
+	badge.content_margin_left = 7
+	badge.content_margin_right = 7
+	badge.content_margin_top = 1
+	badge.content_margin_bottom = 1
+	for look: String in ["normal", "hover", "pressed"]:
+		_tested.add_theme_stylebox_override(look, badge)
+	_tested.visible = false
+	_tested.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# A tap says the four on the version line, where a phone has no hover.
+	_tested.pressed.connect(func() -> void:
+		_version.visible = true
+		_version.modulate = Color(0.6, 0.95, 0.65)
+		_version.text = _tested.tooltip_text)
+	title.add_child(_tested)
+	title.add_child(_name)
 	_about = Label.new()
 	_about.add_theme_font_size_override("font_size", 12)
 	_about.modulate = Color(1, 1, 1, 0.7)
@@ -405,6 +443,19 @@ func show_version(shown: int, last: int, said: String) -> void:
 	_version.tooltip_text = ("Open version %d, the newest" % newest) if old else ""
 
 
+## The Tested mark, for a version that passed the four tests the app ran
+## as it was published ({said, app, steps}, api/_tested.js): a small mark
+## beside the name, the four on hover, or on a tap, which says them on the
+## version line. Nothing for any other version.
+func show_tested(mark: Dictionary) -> void:
+	tested = mark if bool(mark.get("tested", false)) else {}
+	_tested.visible = not tested.is_empty()
+	var said: Array = tested.get("said", []) if tested.get("said") is Array else []
+	_tested.tooltip_text = ("%s. Worked out by the Brickworks app %s as it was published, from its own steps."
+		% [" · ".join(PackedStringArray(said.map(func(one: Variant) -> String: return str(one)))),
+			str(tested.get("app", ""))]) if not tested.is_empty() else ""
+
+
 func ready_to_look() -> void:
 	state = "ready"
 	_card.visible = false
@@ -545,4 +596,5 @@ func page_state() -> Dictionary:
 		"title": _card_title.text if _card.visible else "",
 		"says": _card_words.text if _card.visible else "", "hover": _hover.text if _hover.visible else "",
 		"version": version, "newest": newest, "version_line": _version.text if _version.visible else "",
-		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else ""}
+		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else "",
+		"tested": _tested.visible, "tested_says": _tested.tooltip_text}

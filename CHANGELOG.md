@@ -15,6 +15,23 @@ whole cycle.
 
 ### Added
 
+- A "Tested" mark on shared models. As a model is published, the app
+  builds it by the steps its link carries and tests four things: it stands
+  at every step, weighed as the build check weighs it; no part of a step
+  is put down in the air or hidden behind what is already built, by the
+  booklet's own rules; every part is made in its colour, by the
+  catalogue's colour lists; and nothing is loose. A model that passes all
+  four is marked Tested on its page, its gallery card and in the viewer,
+  with the four results on hover or a tap, and the gallery has a Tested
+  only filter. A model that fails one is told which and why, plainly, in
+  the Share panel and on its own page, and only its owner sees it. The
+  server cannot run the tests, so it keeps what the app found as the app's
+  finding, with the app's version, once it has checked that the finding is
+  of the very file and steps published; the site's owner can clear a mark
+  from the admin page. A 2,042-part set is tested in about 2 seconds; a
+  model that would take more than 15 goes untested rather than hold its
+  share. Needs `supabase/tested.sql` applied before the code that writes
+  it is deployed.
 - Versions of a shared model. Publishing a model again makes its next
   version and keeps the one before: the link shows the newest, and
   `/m/<id>/v/<n>` shows an older one, marked as older, with the newest a

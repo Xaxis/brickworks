@@ -34,16 +34,31 @@ const MOST_BYTES := 1900000
 ## or as it was when they cannot be worked out.
 static func attach(text: String, library: PartLibrary, store: ModelStore,
 		job: Working.Job = null) -> String:
+	return str((await attach_tested(text, library, store, job, false))["text"])
+
+
+## [param text] with its steps at its end, as [method attach], and what the
+## Tested mark found of the model built by those very steps (Tested.check),
+## worked out on the same world: {"text", "tested"}, "tested" {} when there
+## are no steps to carry, or [param test] is false. The finding names the
+## text it is of (Tested.fingerprint), so it goes with this text alone.
+static func attach_tested(text: String, library: PartLibrary, store: ModelStore,
+		job: Working.Job = null, test: bool = true) -> Dictionary:
 	var bare: String = strip(text)
-	var made: Dictionary = await pages_for(bare, library, store, job)
+	var made: Dictionary = await pages_for(bare, library, store, job, test)
 	if made.is_empty():
-		return bare
+		return {"text": bare, "tested": {}}
 	var lines := PackedStringArray()
 	lines.append(HEAD + JSON.stringify(made["head"]))
 	for step: Dictionary in made["steps"]:
 		lines.append(PAGE + JSON.stringify(step))
 	var out: String = bare.strip_edges(false, true) + "\r\n" + "\r\n".join(lines) + "\r\n"
-	return out if out.to_utf8_buffer().size() <= MOST_BYTES else bare
+	if out.to_utf8_buffer().size() > MOST_BYTES:
+		return {"text": bare, "tested": {}}
+	var tested: Dictionary = made.get("tested", {})
+	if tested.has("tests"):
+		tested["model"] = Tested.fingerprint(out)
+	return {"text": out, "tested": tested}
 
 
 ## [param text] without carried steps.
@@ -85,7 +100,7 @@ static func order_of(world: BrickWorld, scenery: Dictionary) -> Array:
 
 ## {"head", "steps"} for [param text], or {} when it has nothing to build.
 static func pages_for(text: String, library: PartLibrary, store: ModelStore,
-		job: Working.Job = null) -> Dictionary:
+		job: Working.Job = null, test: bool = false) -> Dictionary:
 	var model: LdrModel = LdrModel.parse(text, "model")
 	if model == null:
 		return {}
@@ -140,6 +155,17 @@ static func pages_for(text: String, library: PartLibrary, store: ModelStore,
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
 		world, library, {}, {}, asked, mode == StepsBar.AUTHORS)
 	var order: Array = order_of(world, {})
+	# The Tested mark, on the world the steps were worked out on: its parts'
+	# covers in a lattice of its own, as the builder makes them.
+	var tested: Dictionary = {}
+	if test and not steps.is_empty() and not asked.cancelled and store.builder != null:
+		var lattice := BrickLattice.new()
+		lattice.keeps_columns = false
+		for brick: BrickWorld.Brick in world.bricks():
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if mesh != null:
+				lattice.occupy_boxes(brick.id, store.builder.boxes_for(mesh, brick.transform))
+		tested = await Tested.check(world, lattice, library, steps, {}, asked)
 	_let_go(world)
 	if steps.is_empty() or asked.cancelled:
 		return {}
@@ -151,7 +177,7 @@ static func pages_for(text: String, library: PartLibrary, store: ModelStore,
 		out.append(_step_to(step, index))
 	return {"head": {"v": VERSION, "model": fingerprint(text), "order": order[1],
 		"parts": (order[0] as Array).size(), "mode": mode, "steps": steps.size()},
-		"steps": out}
+		"steps": out, "tested": tested}
 
 
 ## The steps carried in [param text], for the bricks of [param world] as the
