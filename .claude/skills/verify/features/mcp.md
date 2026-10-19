@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -292,6 +292,68 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   answered in a tab showing a shared model too (`_while_looking`). In
   `AppTools.GUIDE`. The viewer's JSON carries `description`, `tags` and
   `kind` for it since then.
+- **The second walk-through** (2026-10-19, rel-m86; transcripts in
+  `bench/results/mcpwalk2-2026-10-19/`, git-ignored). Real Claude Code
+  sessions on the subscription (`claude -p` with `--strict-mcp-config
+  --mcp-config <file> --tools "" --restricted`, under `env -u
+  ANTHROPIC_API_KEY`) against a windowed app on its own data, the gallery
+  from rel-m86's API on this machine (`relay_server.mjs` over the real
+  project, read-only use), a collection of two sets on the device. Asked
+  what a person asks, they met six gaps, each now answered in the MCP layer:
+  - "find the most built small model and open it": the list said nothing of
+    builds at nought, so "most built" read as a count the list left out; and
+    a session could only read a gallery model and send the person to its
+    page. Each line now says "not built yet" at nought (`GalleryTool._built`);
+    `open` says how many built it and its Tested mark; and **`open_model
+    link=<id>`** (or its `/m/` address) opens a copy saved in the person's
+    models under a name of its own, remixed from its link, as Open in
+    Brickworks does (`AppTools._open_link`, after main's `_maybe_copy`),
+    refused over changes not saved as any open is.
+  - "what in this model moves? steer it left and back": move_part needed
+    part=, so a session tried five parts one at a time to find the kart's
+    steering, and pose_model said "Nothing here turns". **move_part with no
+    part=** now changes nothing and lists what moves: what its link's card
+    says (`Playable.read`, the words "Moves: steering, boom" and the part a
+    person takes hold of for each), then every body on a joint a drag
+    moves, biggest first, by a part that moves it, with its joint and where
+    (`AppTools._what_moves`, 16 at most). pose_model's refusal (`NO_JOINTS`)
+    and the guide point to it.
+  - "what can I build from my collection?": parts_list which="buildable"
+    measured only the saved models, so a person with two sets was told
+    nothing could be built. It now ranks what My collection's What can I
+    build? ranks (`CollectionDialog._fill_build`): saved models, the
+    examples and the official LDraw models of real sets, most of it owned
+    first, 25 at most unless limit= is given.
+  - "who made the orrery, has anybody built it or commented, follow them":
+    a session could say none of it. `open` now reads its comments (`?op=comments`:
+    the count, closed or not, the three newest quoted as people wrote them,
+    hidden ones left out) and the photos of real builds (`?op=photos`); a
+    list names a model's designer as "by Name (@handle)"; **`designer=<handle>`**
+    reads their page (`api/people.js ?op=profile`): who they are, what their
+    models earned, their models by Top builds. Liking, commenting and
+    following stay the person's own on the site, and the answers say where
+    (`GalleryTool.FOLLOWING`); nothing here writes to the account.
+  - `tools/mcp_tools.json` is a gallery behind rel-m86 (the sorts and
+    shelves), so `mcp_sync_probe` fails; not yet written again (`--
+    --write`), and it must be after this unit's definitions too.
+  Checked by `src/dev/mcp_walk_probe.gd` (headless: the kart's listing,
+  the part it names steering 15 parts and back, the pose pointer; a played
+  gallery answer opened by its address, saved, remixed from it, refused
+  over unsaved changes and for a bad link; a collection of the Bench's
+  pieces ranking the Bench first, with the official models) and
+  `gallery_tool_probe -- --played` (nought builds, builds and Tested on
+  open, comments newest first without the hidden one, photos, the designer's
+  handle and page, a handle nobody has, one that is not a handle). Both
+  pass; against rel-m86's app_tools.gd and gallery_tool.gd, 17 of
+  mcp_walk_probe's checks and 14 of the gallery's fail.
+  Seen and left: a session wanting to animate a steering move_part turns
+  could not (animate_model and pose_model take only sub-assemblies on a
+  hinge, a turntable or a clip, and its assembly held both halves of the
+  turntable); `Playable` names the Technic Go-Kart's beam steering
+  "boom" (it has no part named a steering arm); a session misread
+  render_model's "top" view, which is oblique, as the steering not turned
+  (a front render shows it turned); move_part's "now 30°" is that call's
+  turn, not the angle from where it was built (as G8 found).
 
 ## How to reach it
 
@@ -332,7 +394,8 @@ godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
-godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front; no server
+godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
+godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, a gallery copy, What can I build?
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)

@@ -23,7 +23,11 @@
 ## (2026-10-19): Top builds and Most built, each model's builds, what moves
 ## in it and its Tested mark; Parts I own refused to nobody signed in and
 ## asked with the person's session once they are; the front's pick, small
-## builds and what they can build now. -- --played runs only these and the
+## builds and what they can build now; a model nobody built said so, and
+## one opened saying how many built it, its Tested mark, its comments and
+## photos of real builds, and how to open a copy (open_model link=); a
+## list naming its designer's handle, and designer= reading their page,
+## with where the person follows them. -- --played runs only these and the
 ## licences, with no server:
 ##
 ##   godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played
@@ -38,6 +42,8 @@ var _next: int = 0
 ## The tool, its requests answered here: a model with each licence.
 class FakeGallery extends GalleryTool:
 	var licence: Variant = null
+	## How many built each model to its last step.
+	var built: int = 3
 	## What was asked, and with which session.
 	var asked: Array = []
 
@@ -45,8 +51,24 @@ class FakeGallery extends GalleryTool:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		asked.append([path, token])
 		var racer: Dictionary = {"id": "Fake000002", "name": "Played Racer", "author": "Played Builder",
-			"parts": 93, "licence": "cc-by-4.0", "views": 9, "likes": 2, "remixes": 1, "builds": 3,
-			"technic": false, "tested": true, "moves": ["steering", "boom"]}
+			"parts": 93, "licence": "cc-by-4.0", "views": 9, "likes": 2, "remixes": 1, "builds": built,
+			"technic": false, "tested": true, "moves": ["steering", "boom"],
+			"by": {"handle": "played", "name": "Played Builder"}}
+		if path.begins_with("/api/people?op=comments&id="):
+			return {"code": 200, "bytes": JSON.stringify({"count": 2, "open": true, "comments": [
+				{"by": "Ann", "handle": "ann", "body": "Built it twice!\nLove it", "at": "2026-10-18T10:00:00Z"},
+				{"by": "Played Builder", "handle": "played", "by_owner": true, "body": "Thank you",
+					"at": "2026-10-18T11:00:00Z"},
+				{"by": "Hidden", "hidden": true, "body": "not shown", "at": "2026-10-18T12:00:00Z"}]}).to_utf8_buffer()}
+		if path.begins_with("/api/people?op=photos&id="):
+			return {"code": 200, "bytes": JSON.stringify({"photos": [{"id": "p1"}]}).to_utf8_buffer()}
+		if path == "/api/people?op=profile&handle=played":
+			return {"code": 200, "bytes": JSON.stringify({"handle": "played", "name": "Played Builder",
+				"bio": "I build racers.", "url": "https://brickworks.diy/u/played", "designer": {"models": 1,
+				"builds": 3, "remixes": 1, "comments": 2, "tested": 1, "likes": 2, "followers": 5},
+				"models": [racer.merged({"comments": 2})], "more": false}).to_utf8_buffer()}
+		if path.begins_with("/api/people?op=profile"):
+			return {"code": 404, "bytes": JSON.stringify({"error": "nobody has that handle"}).to_utf8_buffer()}
 		if path.begins_with("/api/share?op=list"):
 			var card: Dictionary = racer.duplicate()
 			if not token.is_empty():
@@ -61,7 +83,8 @@ class FakeGallery extends GalleryTool:
 		if path.begins_with("/api/share?id="):
 			var body: Dictionary = {"id": "Fake000001", "name": "Played Tower", "author": "Played Builder",
 				"parts": 3, "licence": licence, "url": "https://brickworks.diy/m/Fake000001",
-				"description": "A tower.", "tags": ["tower"], "kind": "castle",
+				"description": "A tower.", "tags": ["tower"], "kind": "castle", "builds": built,
+				"tested": {"tested": true, "line": "builds step by step · stands on its own"},
 				"model": "0 Played\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
 					+ "1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat\n"}
 			return {"code": 200, "bytes": JSON.stringify(body).to_utf8_buffer()}
@@ -208,6 +231,47 @@ func _played() -> void:
 		said.contains("built 3 times") and said.contains("moves: steering, boom") and said.contains("Tested"))
 	said = _text_of(await fake.run({"sort": "builds"}))
 	_check("Most built: %s" % said.get_slice("\n", 0), said.contains("most built first"))
+	# A model nobody built says so: a session read the count left out at
+	# nought as one the list did not give (mcpwalk2, t1).
+	fake.built = 0
+	said = _text_of(await fake.run({"sort": "builds", "size": "small"}))
+	_check("a model nobody built says so: %s" % said.get_slice("\n", 1).left(140),
+		said.get_slice("\n", 1).contains("not built yet"))
+	said = _text_of(await fake.run({"open": "Fake000001", "picture": false}))
+	_check("...and opened, says nobody has built it, and its Tested mark: %s"
+		% said.get_slice("Nobody", 1).get_slice("\n", 0).left(60),
+		said.contains("Nobody has built it to its last step yet.")
+		and said.contains("Tested: builds step by step · stands on its own."))
+	fake.built = 3
+	said = _text_of(await fake.run({"open": "Fake000001", "picture": false}))
+	_check("opened, how many built it: %s" % said.get_slice("Built to", 1).get_slice("\n", 0),
+		said.contains("Built to its last step 3 times."))
+	_check("...and how to open a copy of it, as Open in Brickworks does",
+		said.contains("open_model link=Fake000001"))
+	# Who made it, what people said and built, and what is the person's own
+	# to do: a session asked could say none of it (mcpwalk2, t5).
+	_check("...its comments, newest first, the hidden one left out: %s" % said.get_slice("Comments: ", 1).get_slice("\n", 0),
+		said.contains("Comments: 2; the newest, as people wrote them:\n  Played Builder (@played) (its designer): \"Thank you\"\n  Ann (@ann): \"Built it twice! Love it\"")
+		and not said.contains("not shown"))
+	_check("...the photos of real builds: %s" % said.get_slice("Photos of real builds: ", 1).get_slice("\n", 0),
+		said.contains("Photos of real builds: 1, on its page."))
+	_check("...and that liking, commenting and following are the person's own",
+		said.contains("following its designer are the person's own"))
+	said = _text_of(await fake.run({"sort": "top"}))
+	_check("a list names the designer's handle: %s" % said.get_slice("\n", 1).left(80),
+		said.contains("by Played Builder (@played)"))
+	said = _text_of(await fake.run({"designer": "@Played"}))
+	_check("a designer's page: %s" % said.get_slice("\n", 0), said.begins_with(
+		"Played Builder (@played, https://brickworks.diy/u/played): I build racers."))
+	_check("...what their models earned: %s" % said.get_slice("\n", 1), said.get_slice("\n", 1)
+		== "What their models earned: 1 models, built 3 times, 1 remixes, 1 Tested, 2 comments, 2 likes, 5 followers.")
+	_check("...their models, Top builds first, with comments", said.contains("Their models, Top builds first:\n- Played Racer")
+		and said.contains("· 2 comments"))
+	_check("...and where the person follows them", said.contains("Follow is on the designer's page, https://brickworks.diy/u/played"))
+	said = _text_of(await fake.run({"designer": "nobody-here"}))
+	_check("a handle nobody has: %s" % said, said == "Nobody has the handle @nobody-here.")
+	said = _text_of(await fake.run({"designer": "not a handle!"}))
+	_check("a handle that is not one: %s" % said.left(60), said.begins_with("designer is a designer's handle"))
 	fake.asked.clear()
 	var account: Account = _main.get("_account")
 	var was: Account.State = account.state
