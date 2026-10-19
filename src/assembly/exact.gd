@@ -523,7 +523,7 @@ static func _extent(verts: PackedVector3Array, way: Vector3) -> float:
 ## overlap are found by the two shapes' trees ([method _tree_of]), and asked
 ## in the order every pair was asked before, b's pieces then a's: a steering
 ## arm of 176 pieces beside a Technic brick of 316, asked every pair's boxes,
-## took 1.5 ms (G14a).
+## took 1.5 ms, and by the trees 0.4 (G14a).
 static func _overlapping(a: Shape, b: Shape, rel: Transform3D, allowed: float,
 		first: bool) -> Array:
 	var hits: Array = []
