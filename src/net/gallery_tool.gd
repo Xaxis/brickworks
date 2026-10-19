@@ -10,13 +10,25 @@
 ## they allow is in every answer, because whatever a session makes from it
 ## is its builder's work too.
 ##
+## The gallery's front too (2026-10-19): this week's pick and the small
+## builds' shelf, and, for a person signed in with a collection, what they
+## can build now; and the sorts the gallery has, Top builds and Most built,
+## and Parts I own for that person. Each model says what moves in it, as its
+## app found from its joints ("moves: steering, boom"), which its link lets
+## anybody take hold of and move.
+##
 ## A tool of AppTools (gallery), served wherever the app's tools are: the
 ## desktop's MCP port, My Claude and the connector.
 class_name GalleryTool
 extends RefCounted
 
 const SIZES: Array[String] = ["small", "medium", "large"]
-const SORTS: Array[String] = ["newest", "views", "likes", "remixes"]
+const SORTS: Array[String] = ["newest", "views", "likes", "remixes", "builds", "top", "owned"]
+## Each sort as a heading says it.
+const SORT_WORDS: Dictionary = {"newest": "newest first", "views": "most viewed first",
+	"likes": "most liked first", "remixes": "most remixed first", "builds": "most built first",
+	"top": "Top builds first (a build finished counts 3, a remix 2, the Tested mark 5)",
+	"owned": "the largest share of its parts you own first"}
 ## How much of a model is read: the server's own limit (api/share.js).
 const MOST_MODEL := 3 * 1024 * 1024
 const MOST_PICTURE := 128 * 1024
@@ -36,7 +48,11 @@ static func definition() -> Dictionary:
 		"description": ("Search brickworks.diy/gallery, the models people built in Brickworks and "
 			+ "shared, and open one as a reference. With no open: a page of models matching q "
 			+ "(words of a name, a builder, a tag or a description), kind, size, technic, "
-			+ "instructions, sorted by sort; each with its link id, part count, credit and licence. "
+			+ "instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a "
+			+ "collection); each with its link id, part count, credit, licence, how many built it and "
+			+ "what moves in it (steering, a boom: anybody can move them on its link). shelves=true: "
+			+ "the gallery's front, this week's pick and the small builds, and what the person can "
+			+ "build now from their collection. "
 			+ "open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, "
 			+ "its parts by kind and the most used, its credit and its licence, and its picture — "
 			+ "to learn how it is built. Read-only: nothing on the baseplate changes. Credit its "
@@ -47,7 +63,10 @@ static func definition() -> Dictionary:
 			"size": {"type": "string", "enum": SIZES},
 			"technic": {"type": "boolean", "description": "only Technic models and mechanisms"},
 			"instructions": {"type": "boolean", "description": "only models with their builder's own steps"},
-			"sort": {"type": "string", "enum": SORTS},
+			"sort": {"type": "string", "enum": SORTS, "description": "newest when omitted; owned only for "
+				+ "a person signed in with a collection"},
+			"shelves": {"type": "boolean", "description": "the gallery's front: this week's pick, the small "
+				+ "builds, and what the person can build now"},
 			"page": {"type": "integer", "description": "1 when omitted"},
 			"open": {"type": "string", "description": "a model's link id, from a search, to read it"},
 			"picture": {"type": "boolean", "description": "with open: its picture too; true when omitted"},
@@ -60,7 +79,64 @@ func run(input: Dictionary) -> Variant:
 	var opened: String = str(input.get("open", "")).strip_edges()
 	if not opened.is_empty():
 		return await _open(opened, bool(input.get("picture", true)))
+	if bool(input.get("shelves", false)):
+		return await _shelves()
 	return await _search(input)
+
+
+## The person's session for the gallery's own question about them (mine=1):
+## their share of each model's parts. "" when nobody is signed in.
+func _token() -> String:
+	var account: Account = app.get("_account") as Account if app != null else null
+	if account == null or not account.signed_in():
+		return ""
+	return await account.access_token()
+
+
+## The gallery's front: this week's pick, the small builds, and with a
+## collection what the person can build now (api/share.js ?op=shelves).
+func _shelves() -> String:
+	var token: String = await _token()
+	var answer: Dictionary = await _ask("/api/share?op=shelves" + ("&mine=1" if not token.is_empty() else ""),
+		256 * 1024, token)
+	var body: Variant = _json(answer)
+	if int(answer["code"]) != 200 or not body is Dictionary:
+		return _trouble(answer, body)
+	var front: Dictionary = body
+	var lines := PackedStringArray(["The gallery's front at %s:" % Deployment.api_base()])
+	var pick: Variant = front.get("pick")
+	if pick is Dictionary and (pick as Dictionary).get("model") is Dictionary:
+		var picked: Dictionary = pick
+		var week: Dictionary = picked["week"] if picked.get("week") is Dictionary else {}
+		var why := PackedStringArray()
+		if bool(picked.get("chosen", false)):
+			why.append("chosen by Brickworks")
+		if int(week.get("builds", 0)) > 0:
+			why.append("built %s this week" % _times(int(week["builds"])))
+		if int(week.get("remixes", 0)) > 0:
+			why.append("remixed %s this week" % _times(int(week["remixes"])))
+		lines.append("This week's pick%s: %s" % [" (" + ", ".join(why) + ")" if not why.is_empty() else "",
+			_line(picked["model"])])
+	else:
+		lines.append("This week's pick: none this week.")
+	var small: Dictionary = front["small"] if front.get("small") is Dictionary else {}
+	var shelf: Array = small["models"] if small.get("models") is Array else []
+	lines.append("Small builds (%s), Top builds first:%s" % [str(small.get("label", "under 200 parts")),
+		"" if not shelf.is_empty() else " none yet."])
+	for one: Variant in shelf:
+		if one is Dictionary:
+			lines.append("- " + _line(one))
+	if front.get("ready") is Dictionary:
+		var ready: Array = (front["ready"] as Dictionary).get("models", [])
+		lines.append("You can build now, every piece in your collection:%s" % ("" if not ready.is_empty()
+			else " nothing yet."))
+		for one: Variant in ready:
+			if one is Dictionary:
+				lines.append("- " + _line(one))
+	elif token.is_empty():
+		lines.append("Signed in with a collection, the person is told what they can build now.")
+	lines.append("gallery open=<id> reads one as a reference; sort=top lists the gallery by Top builds.")
+	return "\n".join(lines)
 
 
 func _search(input: Dictionary) -> String:
@@ -90,19 +166,25 @@ func _search(input: Dictionary) -> String:
 		said.append("with their builder's own steps")
 	var sort: String = str(input.get("sort", "newest"))
 	if not SORTS.has(sort):
-		return "sort is newest, views, likes or remixes."
+		return "sort is %s." % ", ".join(SORTS)
+	# Parts I own is the person's own question: with their session, and
+	# only once they are signed in.
+	var token: String = await _token() if sort == "owned" else ""
+	if sort == "owned" and token.is_empty():
+		return ("sort=owned is Parts I own: the person signs in to Brickworks, with their parts kept in "
+			+ "Collection, and asks again.")
+	if not token.is_empty():
+		asked.append("mine=1")
 	asked.append("sort=" + sort)
 	var page: int = maxi(1, int(input.get("page", 1)))
 	asked.append("page=%d" % page)
-	var answer: Dictionary = await _ask("/api/share?" + "&".join(asked), 256 * 1024)
+	var answer: Dictionary = await _ask("/api/share?" + "&".join(asked), 256 * 1024, token)
 	var body: Variant = _json(answer)
 	if int(answer["code"]) != 200 or not body is Dictionary:
 		return _trouble(answer, body)
 	var models: Array = (body as Dictionary).get("models", [])
 	var heading: String = "The gallery at %s%s, %s, page %d" % [Deployment.api_base(),
-		"" if said.is_empty() else " (" + ", ".join(said) + ")",
-		{"newest": "newest first", "views": "most viewed first", "likes": "most liked first",
-			"remixes": "most remixed first"}[sort], page]
+		"" if said.is_empty() else " (" + ", ".join(said) + ")", SORT_WORDS[sort], page]
 	if models.is_empty():
 		return "%s: nothing%s." % [heading, " matches" if not said.is_empty() else " is listed"]
 	var lines := PackedStringArray(["%s:" % heading])
@@ -110,22 +192,8 @@ func _search(input: Dictionary) -> String:
 	for one: Variant in models:
 		if not one is Dictionary:
 			continue
-		var model: Dictionary = one
 		number += 1
-		var facts := PackedStringArray(["%s parts" % _count(int(model.get("parts", 0)))])
-		if model.get("author") is String:
-			facts[0] += ", by %s" % model["author"]
-		if model.get("kind") is String:
-			facts.append(str(model["kind"]))
-		facts.append(_licence_name(model.get("licence")))
-		facts.append("%d views, %d likes, %d remixes" % [int(model.get("views", 0)),
-			int(model.get("likes", 0)), int(model.get("remixes", 0))])
-		if bool(model.get("own_steps", false)):
-			facts.append("its builder's own steps")
-		if bool(model.get("technic", false)):
-			facts.append("Technic")
-		lines.append("%d. %s (%s) — %s" % [number, model.get("name", "?"), model.get("id", "?"),
-			" · ".join(facts)])
+		lines.append("%d. %s" % [number, _line(one)])
 	if bool((body as Dictionary).get("more", false)):
 		lines.append("More: page=%d." % (page + 1))
 	lines.append("gallery open=<id> reads one as a reference. What you make from it is its builder's "
@@ -232,6 +300,42 @@ func _reading(text: String) -> PackedStringArray:
 	return lines
 
 
+## One model of a list: "name (id) — 93 parts, by X · licence · counts ·
+## built 3 times · moves: steering · Tested".
+static func _line(model: Dictionary) -> String:
+	var facts := PackedStringArray(["%s parts" % _count(int(model.get("parts", 0)))])
+	if model.get("author") is String:
+		facts[0] += ", by %s" % model["author"]
+	if model.get("kind") is String:
+		facts.append(str(model["kind"]))
+	facts.append(_licence_name(model.get("licence")))
+	facts.append("%d views, %d likes, %d remixes" % [int(model.get("views", 0)),
+		int(model.get("likes", 0)), int(model.get("remixes", 0))])
+	var builds: int = int(model.get("builds", 0))
+	if builds > 0:
+		facts.append("built %s" % _times(builds))
+	if bool(model.get("own_steps", false)):
+		facts.append("its builder's own steps")
+	if bool(model.get("technic", false)):
+		facts.append("Technic")
+	var moves: Array = model["moves"] if model.get("moves") is Array else []
+	if not moves.is_empty():
+		facts.append("moves: %s" % ", ".join(PackedStringArray(moves.map(func(one: Variant) -> String:
+			return str(one)))))
+	if bool(model.get("tested", false)):
+		facts.append("Tested")
+	if model.get("owned") is Dictionary and (model["owned"] as Dictionary).get("pieces") != null:
+		var owned: Dictionary = model["owned"]
+		facts.append("you own %s of its %s pieces" % [_count(int(owned.get("have", 0))),
+			_count(int(owned.get("pieces", 0)))])
+	return "%s (%s) — %s" % [model.get("name", "?"), model.get("id", "?"), " · ".join(facts)]
+
+
+## "once", "twice", "3 times".
+static func _times(n: int) -> String:
+	return "once" if n == 1 else ("twice" if n == 2 else "%s times" % _count(n))
+
+
 static func _licence_name(licence: Variant) -> String:
 	return str(LICENCES[licence][0]) if licence is String and LICENCES.has(licence) else "no licence chosen"
 
@@ -260,13 +364,17 @@ static func _trouble(answer: Dictionary, body: Variant) -> String:
 
 
 ## One request to this app's own deployment (Deployment.api_base), never
-## anywhere a session names: {code, bytes}.
-func _ask(path: String, most: int) -> Dictionary:
+## anywhere a session names: {code, bytes}. With [param token], as the
+## person signed in: their own share of each model's parts (mine=1).
+func _ask(path: String, most: int, token: String = "") -> Dictionary:
 	var request := HTTPRequest.new()
 	request.body_size_limit = most
 	request.timeout = 60.0
 	app.add_child(request)
-	if request.request(Deployment.api_base() + path, ["Accept: application/json"]) != OK:
+	var headers := PackedStringArray(["Accept: application/json"])
+	if not token.is_empty():
+		headers.append("Authorization: Bearer " + token)
+	if request.request(Deployment.api_base() + path, headers) != OK:
 		request.queue_free()
 		return {"code": 0, "bytes": PackedByteArray()}
 	var got: Array = await request.request_completed

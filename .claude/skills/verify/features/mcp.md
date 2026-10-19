@@ -272,8 +272,15 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   `Deployment.api_base`; never a URL a session names) for `q`, `kind` (the
   gallery's own kinds, `ModelKinds`), `size`, `technic`, `instructions`, `sort`
   and `page`: one line a model with its link id, part count, credit, kind,
-  licence, counts, own steps and Technic, then how to read one and to credit
-  its builder. `open=<id>`: the viewer's own request (`/api/share?id=`), read
+  licence, counts, how many built it, own steps, Technic, what moves in it
+  ("moves: steering, boom") and its Tested mark, then how to read one and to
+  credit its builder. The sorts are the gallery's (2026-10-19): newest,
+  views, likes, remixes, `builds` (Most built), `top` (Top builds, said how
+  it weighs) and `owned` (Parts I own: asked with the person's own session
+  and `mine=1`, each line saying how many of its pieces they own; refused in
+  words, asking nothing, when nobody is signed in). `shelves=true`: the
+  gallery's front (`?op=shelves`): this week's pick and why, the small
+  builds, and with a sign-in what they can build now. `open=<id>`: the viewer's own request (`/api/share?id=`), read
   compactly — the link, the credit, what its owner wrote, its kind and tags,
   its licence said as what a session may do with it (CC BY, CC BY-SA, all
   rights reserved, or none chosen: learn, do not copy), what it was remixed
@@ -325,6 +332,7 @@ godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
+godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front; no server
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)
@@ -422,7 +430,14 @@ the list gave (one check a model: the seven seed models, 2026-10-13); the
 baseplate's part count unchanged, and still answered while the tab shows a
 shared model; then, from answers played by `FakeGallery`, each licence's
 words, the owner's description, kind and tags, a size and kinds read from the
-file, and the most used part named. `mcp_check.py`, with the app's
+file, and the most used part named. And, played too, the newer questions: the
+seven sorts offered and `shelves`; Top builds and Most built said; a line's
+builds, moves and Tested mark; Parts I own refused to nobody signed in with
+nothing asked, then asked as the person (`mine=1`, their session) with "you
+own 80 of its 93 pieces"; the front's pick and why ("built 3 times this week,
+remixed once this week") with its moves, the small builds, and what they can
+build now only when signed in. `-- --played` runs only the played part, with
+no server (18 checks, all ok, 2026-10-19). `mcp_check.py`, with the app's
 `BRICKWORKS_API` at a deployment that has the directory (or the local
 functions), also searches the gallery over MCP and opens a model with its
 licence, size and picture as an MCP image block: the newest the list itself

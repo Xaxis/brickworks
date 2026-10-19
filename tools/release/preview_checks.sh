@@ -40,6 +40,12 @@ declare -A CMD=(
   # them alone and never cached: API routes only, with the bypass
   # (supabase/designers.sql).
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
+  # Play in a shared model's view: 8808-1's steering turned by its wheel,
+  # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
+  # frames held to 33 ms. Published from a throwaway account, deleted
+  # after; API routes only, with the bypass (supabase/play.sql's card when
+  # it is applied).
+  [play]="tools/web/play_flow.mjs --url=$P --publish --out=$S/${TAG}_play"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the
@@ -112,7 +118,7 @@ run() {
 # frames for 7 moves, and 16 every time alone (2026-10-13). grab times the
 # page's longest wait in a drag: paired, the four-bar's read 551 ms (m54).
 # frames holds the app's own work a frame on 75969-1 (200 ms, select all 400).
-SOLO=" idle arrival progress cursor render_open grab share_steps frames "
+SOLO=" idle arrival progress cursor render_open grab share_steps frames play "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED

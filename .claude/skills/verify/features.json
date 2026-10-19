@@ -531,7 +531,7 @@
       "id": "cli:gallery tool probe",
       "kind": "cli",
       "entry": "src/dev/gallery_tool_probe.gd",
-      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced)",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced; -- --played for the licences, the sorts, the moves and the front from played answers, no server)",
       "area": "mcp",
       "tests": []
     },
@@ -748,6 +748,14 @@
       "tests": []
     },
     {
+      "id": "cli:play browser flow",
+      "kind": "cli",
+      "entry": "tools/web/play_flow.mjs",
+      "reach": "node tools/web/play_flow.mjs --url=http://127.0.0.1:8771 --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 8771 --parts assets/generated/parts --delay 0 --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd; a preview: preview_checks.sh ... play, which publishes from a throwaway account)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:prints and stickers in a browser",
       "kind": "cli",
       "entry": "tools/web/studio_flow.mjs",
@@ -923,6 +931,14 @@
       "kind": "cli",
       "entry": "src/dev/share_pages_probe.gd",
       "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd   (-- --write IN OUT ... writes each IN with its steps carried to OUT)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:share play probe",
+      "kind": "cli",
+      "entry": "src/dev/share_play_probe.gd",
+      "reach": "tools/probe.sh share_play_probe   (windowed: godot --path . --resolution 1280x800 --script src/dev/share_play_probe.gd)",
       "area": "web",
       "tests": []
     },
@@ -1889,7 +1905,7 @@
       "id": "lib:the gallery over mcp",
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
-      "reach": "the gallery tool (AppTools): search brickworks.diy/gallery, open=<id> reads one as a reference with its credit and licence",
+      "reach": "the gallery tool (AppTools): search brickworks.diy/gallery (sort top, builds, and owned with the person's sign-in; each model's builds, moves and Tested mark), shelves=true for the week's pick, the small builds and what they can build now, open=<id> reads one as a reference with its credit and licence",
       "area": "mcp",
       "tests": []
     },
@@ -1954,6 +1970,22 @@
       "kind": "lib",
       "entry": "api/_versions.js",
       "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/versions.sql --dry --try=tools/versions_try.sql --table=share_versions   (.env sourced; then the versions browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:what moves in a model",
+      "kind": "lib",
+      "entry": "src/assembly/playable.gd",
+      "reach": "tools/probe.sh share_play_probe   (Playable.read on 8808-1: steering by its steering wheel; and what the Share panel sends as moves)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:what moves on a gallery card",
+      "kind": "lib",
+      "entry": "supabase/play.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/play.sql --dry --try=tools/play_try.sql --table=shared_models   (the words held together by tests/test_play.py; the card in web/gallery.js; api/share.js checkMoves)",
       "area": "web",
       "tests": []
     },
@@ -2488,6 +2520,14 @@
       "tests": [
         "tests/fixtures/collection/fake_rebrickable.py"
       ]
+    },
+    {
+      "id": "ui:play in a shared model",
+      "kind": "ui",
+      "entry": "src/ui/share_view.gd",
+      "reach": "https://brickworks.diy/m/<id> of a model with something that moves: once its joints are read the pill under the bar says Moves: ... and Drag a part that moves; drag it (a finger on a phone), Reset puts it back  (main._play_press, _play_touch, _play_reset)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:pointer cursors",
