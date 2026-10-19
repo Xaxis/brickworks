@@ -1295,6 +1295,13 @@ func _ready_ahead() -> void:
 		return
 	var started: int = Time.get_ticks_msec()
 	_ready_for = world.revision
+	# The parts' exact shapes, read here: a worker reads only those already
+	# read, and Bodies takes a stud in one of their holes (a train's buffer
+	# beam's) and lodges a part with none by them (G13).
+	var part_ids: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		part_ids[brick.part_id] = true
+	Exact.shapes_for(library, part_ids.keys())
 	_still = world.copy_for_reading()
 	_still_lattice = builder.lattice.copy_for_reading()
 	var floor_ids: Dictionary = scenery.duplicate()

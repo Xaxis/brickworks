@@ -3354,3 +3354,107 @@ its hinge, where its hinge plates met the plate beside them at once. Also
   (10179-1, 21318-1).
 - From G11: 8074-1's grader, 6753-1's tow truck, steering loops too big to
   solve, and 23 steering sets and 71 moving things not back.
+
+## 21. A move tested along its way (G13)
+
+G12 made two parts block a move only where their exact shapes overlap. A
+session's move_part, and a big section's check when the pointer pauses,
+still tested only where the move ended. With covers, a flush neighbour also
+blocked the end, so a move that would have gone through something stayed
+put anyway. With exact shapes the end is often clear when the way is not:
+G12's sweep found eight things turning both ways through a stop its judge
+calls real at the first degree. G13 tests the way, then decides the eight.
+
+**The base.** rel-m83 (b1108e94: G12 and covers2), swept with G12's judge
+from a copy of it: the steering sweep over its 181 files (`sweep_before`)
+and the moving sweep over G12's 260 sets (`movesweep_before`). The tables
+are in bench/results/grab13-2026-10-19.
+
+**Along the way** (`Grab._walk`). A turn, a slide or a ball's turn is
+tested in steps from where it stands (a big section shown on trust, from
+the last pose checked) towards where it was asked. It stops at the first
+step with no room, bisected back to STOP_TO from there. A step moves no
+point of what moves more than 2 LDU (`PATH_LDU`): the corners of each
+tested part's box, placed as the move places it a degree on (a slide's LDU
+on), measured once a grab (`Grab._path_rate`), so gears the move drives,
+what hangs on them and a loop's other bodies count as they move. A turn's
+step is between 0.1° and 3°. A loop is solved at each step, so its way is
+tested in at most six steps a move and two a drag's frame, on its
+quarter-degree grid, and its
+pose is kept at each step, so the next is solved from it: solved from where
+the move began, 42024-1's loop of 36 joints took 172 ms a frame and four
+steering four-bars came back 2 to 5 LDU off. Each part is tested only
+as often as it goes 2 LDU: a hinge's own pieces, which stand next to
+something all the way round, are tested a few times in a turn that tests a
+boom's tip at every step. A part not tested at a step may be up to 2 LDU of
+its own way from where it was last tested, so a stop can leave such a part
+into another by that much. A step asks each turned cover where something
+is (BrickLattice.TurnedCover) rather than working it out whole. The end is
+tested whole, as before. A drag does the same each frame within its
+budget, and a big section shown on trust is checked on a pause from the
+last pose checked, a step at a time, each part as often as it goes 2 LDU
+(`Grab.verify_step`): every part at every step kept 42081-1's arm, 653
+parts, 10 s after it was let go. A swing under its own weight already
+tested its way (Swing, every TEST_LDU).
+
+**What a move may go through** (`Grab._pair_forgiven`). A grab forgave for
+good every part whose cover overlapped the moving side's where it began,
+for every moving part. A cover reaches past its part, so a move stopped
+where two parts just meet begins the next with their covers into each
+other. Tested along its way, 10220-1's door stopped at 5° where its plate 1
+x 1 round meets the tile it was built against, then turned -60 from there
+with its plate 2 x 8 through that tile, and met it coming back at -17°. Now
+only the pair that overlapped is forgiven: the plate 1 x 1 round may go on
+through the tile, the plate 2 x 8 may not. Where one of the two has no exact
+shape, its cover judges it, and what overlapped any moving part is forgiven
+for all of them, as before: 42042-1's winch drum, a file's own part, met an
+axle by their covers 66° round. What touched as built is kept
+for later grabs as a pair too, and only where the two exact shapes overlap
+as built (a file's parts built into each other) or one has none
+(`Grab._forgiven_at_rest`): flush parts are for the exact shapes to judge.
+A section of up to 80 parts has what it touches read at the press, as a
+loop's was, so what touched as built is kept whatever the first move met.
+
+**The eight stops, decided** (`grab_probe -- --only=gapjudge`, then
+`tools/shape_gap.py`; `gapjudge.jsonl` and `shape_gap.json`). Each pair was
+also set side by side as the parts' own solids: each part voxelised from its
+LDraw geometry at 0.5 LDU, as the covers are at 2, with its studs put back
+(voxelise leaves a stud's open barrel out, and a stud is what meets a
+buffer beam), the moved one turned half a degree at a time to 30° each way.
+In the six trains the exact shapes and the solids first overlap by more
+than 1 LDU at the same half degree both ways, and in 21019-1 within half a
+degree. In 3180-1, one way, the solids stay clear where the shapes overlap
+by 1.02 LDU. So a buffer beam's convex pieces do not fill the space under
+it, and the judge is right about the shapes. What was wrong is what was
+read as moving.
+
+- **The six trains: false, the reading's error.** In each, the buffer
+  beam (4022) sits on four studs of a plate that turns: BrickNet joins its
+  four holes to them. The app read it as a body of its own, hung by a hinge
+  on its coupling (2920), and it stayed where it stood while its plate, or
+  the bogie built against it, turned into it. The holes are in the beam's
+  cap, 32 LDU above its bottom face, where the catalogue's sockets are read
+  from. The lattice found the studs in the beam, but the beam and its
+  coupling turn against each other, and by their faces the studs were put
+  in the coupling, which has no socket: studs pressed on a face, holding
+  nothing. Where the part chosen by faces has no socket, a stud the lattice
+  found in a part with one of BrickNet's holes for it is in that part
+  (`Bodies._sits_on`), and one of BrickNet's holes or tubes takes a stud as
+  a socket does (`Bodies._in_a_hole_exactly`). The beam is one body with its
+  plate and turns with it. In 10015-1 and 4543-1 the coupling then met its
+  magnet (73092, an obsolete part with no exact shape), held by nothing. A
+  part held by nothing that shares no cell with anything, where it or what
+  it is in has no exact shape, is now held by what goes through its middle,
+  else by what its box is most into (`Bodies._lodge`): the magnet by its
+  coupling, 8074-1's belt wheel by its axle and the half pin by the wheel.
+  Two parts with exact shapes are not: lodged so, 42042-1's winch was read
+  into a loop of 63 joints. The shapes are read on the main thread before a
+  big model's joints are read on a worker (`GrabDrag._ready_ahead`).
+- **21019-1's turntable: real.** A bracket (99781) stands on two studs of
+  the plate 8 x 8 on the turntable, and its own studs are in tiles of the
+  side that stays: the build holds the turntable, which in the real tower
+  sets a leg's angle. Its solids overlap from 1.5° one way.
+- **3180-1's boom: false one way.** The tanker turns its container
+  cupboard (4532) into the cupboard's own door (4533), which the app reads
+  as held by nothing: the door's hinge in the cupboard is not read, and
+  both have exact shapes, so it is not lodged either (left, below).

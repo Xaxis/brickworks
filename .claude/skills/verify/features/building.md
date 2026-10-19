@@ -660,8 +660,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   8832-1 (the round rack 2790a, loose in its holder) and 42043-1 (18942 in
   its housing 18940). Each turns back by the turn measured from where it
   stood. `-- --only=moving` (in the full run): 8074-1's crane on its
-  turntable (a cable bends out of the way) and 10220-1's door (what touched
-  as built is forgiven in each later grab) moved +30, -60 and back, and
+  turntable (a cable bends out of the way; G13: both ways, not back, its
+  inner free joints swing 180° on the first turn) and 10220-1's door (what
+  touched as built is forgiven in each later grab, as a pair: G13) moved
+  +30, -60 and back, and
   10295-1's right door (G12, MECHANISMS §20: two parts block a move only
   where their exact shapes overlap, `Grab._clear_exactly`); each also
   checks that no turn stopped where only the two parts' covers met.
@@ -671,15 +673,26 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`Bodies._grooves_by_shape`). `-- --only=kingpin` (in the full run):
   9392-1's steering arm on two balls turns on the line through them
   (`Grab._kingpin`). `-- --only=meets` (in the full run): a move
-  stopped by the model names the two parts that met (`GrabDrag._met_words`);
+  stopped by the model names the two parts that met (`GrabDrag._met_words`),
+  and (G13) a made arm turned 90° towards a plate over its way stops at the
+  plate, which a test of the end alone went through, and goes all 90° the
+  other way (`-- --only=path`). `-- --only=beams` (in the full run, and with
+  `--only=moving`): 10205-1's and 10183-1's buffer beam is one body with the
+  plate it sits on and turns with it. `-- --only=gapjudge` (or
+  `--gap=FILE:DRIVER:MOVER:OTHER` for another pair) writes, for the
+  eight stops G12 left (MECHANISMS §20), where the two parts stand, what
+  holds the part met, and their exact shapes' overlap each half degree, to
+  `gapjudge.jsonl`; `tools/shape_gap.py` (numpy and scipy) sets that against
+  the parts' own solids, voxelised with their studs at 0.5 LDU;
   `-- --only=sockets`: 42111-1's steering links (2739a, sockets drawn as
   plain rounds) hang on their towballs by ball joints. Every OMR set with a
   steering: `tools/steer_sweep.py run LABEL` (181 files, four headless jobs
   under heavy, ~20 min; `--only=SET,...`, `--shots` windowed with pictures
   from above) runs `grab_probe -- --only=sweep --list=FILE` and writes
-  `sweep_LABEL.jsonl` and `.md` to bench/results/grab12-2026-10-18 (G9's in
-  grab9-2026-10-18, G11's in grab11-2026-10-18); `table LABEL --against=OTHER`
-  sets two side by side (MECHANISMS §20: 51 of 168 before G12). Each row says how far the steering
+  `sweep_LABEL.jsonl` and `.md` to bench/results/grab13-2026-10-19 (G9's in
+  grab9-2026-10-18, G11's in grab11-2026-10-18, G12's in grab12-2026-10-18); `table LABEL --against=OTHER`
+  sets two side by side (MECHANISMS §20: 51 of 168 before G12; §21: 55
+  before G13). Each row says how far the steering
   arms turned; every shared sub-assembly is made its own before the turns;
   each Godot it starts gets a data folder of its own (`.scratch-data`), never
   the owner's app data (opening a real set saves the parts it carries).
@@ -715,7 +728,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   status bar and in move_part's answer. A tyre scrubs on the baseplate and a
   part that bends (a hose, a cable or rubber band skin) is never in a move's
   way; what touched where the model was built is forgiven in each later
-  grab as in the first (`Grab._built_touching`).
+  grab as in the first (`Grab._built_touching`), pair by pair and only
+  where their exact shapes overlap as built or one has none; what a moving
+  part's cover overlaps where a grab begins is forgiven for that part alone
+  (`Grab._pair_forgiven`, G13: 10220-1's door went on through the tile one
+  of its parts had stopped at).
 - `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
   bodies (two studs or more, an axle in an axle hole, glue: one body; two
   joints on different lines between two bodies: one body) and the joints
@@ -735,6 +752,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   biggest, at most 300 parts) lodged in another is held by what it is lodged
   in (`Bodies._lodge`, MECHANISMS §16): an axle in a pin's stop bush or a
   joiner, a gear a file carries as a part of its own, a log in a gripper.
+  A lone part sharing no cell with anything, where it or what it is in has
+  no exact shape, is held by what goes through its middle, else by what its
+  box is most into (G13: 8074-1's belt wheel on its axle, 10015-1's magnet in
+  its coupling).
   A hose, a tube or a chain (`Flex.strung`) bends: it closes no loop, carries
   nothing on and is tested for room by nothing (`Bodies.flexible`).
   Racks (MECHANISMS §19): a rack in its housing (18942 in 18940) slides on
@@ -750,14 +771,23 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   parts, unless a body standing on the floor (within 2 LDU of the piece's
   lowest point, not by a tyre) is heavier (`Bodies.anchor_why`; not the
   heaviest outright, which a shell's box fools; MECHANISMS §18). Studs pressed on a part with no socket hold only in
-  its holes (`Bodies.pressed_on`); why parts are one body is kept
+  its holes (`Bodies.pressed_on`), or in one of BrickNet's holes or tubes
+  (`Bodies._in_a_hole_exactly`, G13: a train's buffer beam 4022 takes the
+  plate's studs in its cap, above its bottom face, where the catalogue reads
+  no socket); a stud the lattice finds in two parts that turn against each
+  other is in the one its foot meets the face of, but where that one has no
+  socket, in the one the lattice found with a BrickNet hole for it
+  (`Bodies._sits_on`); why parts are one body is kept
   (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
-  revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
+  revision, on a worker from 300 parts (`GrabDrag._ready_ahead`), the parts'
+  exact shapes read first on the main thread.
   `grab_probe -- --survey FILE` prints the bodies and joints.
 - `moving a body on its joint` (`src/assembly/grab.gd`, `Grab`): one grab's
   state, pure until `commit`: `begin` (what moves, on what, or "rigid",
-  "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (bisected to
-  the last pose with room), `follow` (the pointer's ray to an angle, a slide
+  "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (tested along
+  the way in steps that move no point more than 2 LDU, `Grab._walk`, and
+  bisected to the last pose with room from the first step with none; G13,
+  MECHANISMS §21), `follow` (the pointer's ray to an angle, a slide
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
 - `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
