@@ -32,6 +32,7 @@ declare -A CMD=(
   [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"
+  [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the
