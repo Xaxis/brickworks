@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow -->
 
 ## Sub-features
 
@@ -662,6 +662,41 @@ plan with Claude as the client.
   the window's focus and every five minutes. `brickworksState.feed`:
   `count`, `account`, `panel`.
 - `follows browser flow` (`tools/web/follows_flow.mjs`): below.
+- `Top builds and this week's pick` (`supabase/discovery.sql`, 2026-10-19):
+  `gallery_score` (a build finished 3, a remix 2, the Tested mark 5; views
+  nothing), `directory_models` with sort `top` (and `owned`, a pool's
+  shares, `buildable`; the page cut before its cards are made),
+  `gallery_week` / `gallery_week_counts` / `gallery_week_of` (the past seven
+  days), `gallery_pick` (the owner's newest open choice still in the
+  gallery, or the week's best), `gallery_choose_pick`, `gallery_end_pick`,
+  `gallery_choices`; tables `gallery_picks`, `model_needs`,
+  `model_needs_kept`, `collection_pools`, `collection_pools_kept`, read by no
+  key. `api/_directory.js` `SORTS.top` "Top builds", `MINE_SORTS.owned`
+  "Parts I own", `SCORE`, `SHELF` (8); `api/share.js` `?op=shelves` (pick,
+  small builds under 200 parts by Top builds, and with `mine=1` You can
+  build now) and `?op=list&mine=1` (each card's `owned: {pieces, have,
+  share}`, sort `owned`, `ready=1`), never kept by the CDN with `mine=1`.
+- `the gallery's front shelves` (`web/gallery.js`): on `/gallery` with
+  nothing asked, This week's pick (a wide card, its why: "Built twice this
+  week", "New this week, and Tested", "Chosen by Brickworks"), You can
+  build now (signed in: the shelf, or how to tell Brickworks what you own),
+  Small builds (sideways inside itself on a phone, See every small build
+  past eight); a card's "✓ You have every part" / "You have N of its M
+  parts · P%"; under Sort › Top builds the line saying how it weighs.
+  `document.documentElement.dataset.shelves` is `ready` once drawn.
+- `choosing this week's pick` (`web/admin.js`, `api/admin.js`): This week's
+  pick on `/admin` (what visitors see, the open choices with End, the
+  week's best five with Make it the pick), and Make it the pick beside every
+  model in the gallery's table; `?op=pick&id=X&days=N`, `?op=unpick&pick=N`.
+- `build with what I own` (`api/_owned.js`): `ownedFacts` (from
+  `_part_facts.json`, which `tools/web/part_facts.mjs` now writes with every
+  part number, the moved ones and the colours' plain codes), `keyed`,
+  `familyOf` (a mould letter left off, as the app lets another moulding
+  stand in), `shardOf`, `readShard`, `poolOf`, `freshPool` (a pool counted again the
+  first time it is asked after the collection changed); `checkModel`'s
+  `needs` in `api/share.js`, kept on publish.
+- `needs backfill` (`tools/web/needs_backfill.mjs`): below.
+- `discovery browser flow` (`tools/web/discovery_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -1817,6 +1852,78 @@ microsecond, a time that is not one 400. 52 checks, all ok, on the live
 project through a relay with nothing held and `BW_BYPASS` set, and 53
 (the knock) against the held relay, 2026-10-18, about 4 minutes each with
 the app.
+
+Discovery (2026-10-19): Top builds, this week's pick, small builds, and
+build with what I own. The SQL first, after the live files, in one
+rolled-back transaction, and the sums alone:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql \
+  --dry --try=tools/discovery_try.sql --table=gallery_picks
+node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets
+python3 tools/minitest.py tests/test_discovery.py
+node --env-file=.env tools/web/needs_backfill.mjs --dry --facts=<part_facts.mjs output>
+```
+
+The dry run proves it when every line says what its label says: the
+weights 11, 12, 5, 5, 0; Top builds Wall, Tower, Bridge, Barn, Mill,
+Longer; pages DiscTry002/001, 003/004, 006/005; Most built and newest as
+before; small builds Wall, Tower, Barn; a visitor's 0; the week Tower 11,
+Bridge 5, Barn 5; the pick Tower worked out, a visitor's none; Mill
+chosen until a week from now with its own week; unlisted and nobody's
+`not_in_gallery`, 0 and 32 days refused, 40 written directly refused;
+Barn chosen, the open choices newest first, Barn unlisted passed over for
+Mill, Mill ended back to Tower, ended once not again, Bridge run out not
+the pick; an account taken out: none in the week, not the pick; Bob's
+cards Barn 1/1, Tower 3/3, Bridge not counted, Wall 1/3, Mill 50/300, none
+with no pool; Parts I own Tower, Barn, Wall, Mill, Bridge; build now
+Tower, Barn; no grant on the five tables to any key, row security on, only
+the service role executing; three pages of 25 the same as one list; the
+timings (docs/COMMUNITY.md, Discovery: Top builds about 170 ms and Parts I
+own 125 to 360 ms on 5,000 models and 300,000 need rows); "rolled back,
+nothing kept". `owned_probe` ends "owned_probe: 11 checks, all ok".
+`needs_backfill --dry` names the seven real models' parts and lots, keeping
+nothing.
+
+Then the code, in real browsers. Until discovery.sql is applied the local
+server holds it (`--hold=gallery_picks`, `tools/web/discovery_stand_in.mjs`)
+over the live project's models, builds, Tested marks and collections; once
+it is, a preview with the bypass, through its API alone. The admin part
+signs in as `MASTER_EMAIL` (a code minted, nothing sent):
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 9252 --hold=gallery_picks &
+node --env-file=.env tools/web/discovery_flow.mjs --url=http://127.0.0.1:9252 --out=shots/discovery
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/discovery_flow.mjs --url=<preview> --out=shots/discovery
+```
+
+`discovery_flow` proves it when it ends "discovery: Top builds, this
+week's pick, small builds, the owner's choice, and what you can build":
+four test models listed, Tower's finding kept as passed, builds counted
+2, 3, 1; Top builds tower, wall, hall, shed on the list and the page with
+its line (`1_top_builds.png`), Most built wall first, a visitor's none,
+`tests=maybe` 400; the pick Tower with its week (11), small builds Tower
+then Wall without Hall; the front signed out and signed in at 1280 and 390
+px (`2_front_*.png`), the pick "Built twice this week", You can build now
+asking for a collection only when signed in, the small shelf scrolling
+inside itself on a phone (`3_small_shelf_*.png`), the pick a link; on
+`/admin` Make it the pick beside Shed, its row "no: a test account's"
+(`4_admin_pick_now.png`, `5_admin_choices.png`), the front's pick Shed
+"Chosen by Brickworks" on a phone (`6_front_chosen-390.png`), a visitor's
+never, the model by link only 422 in words, anybody else 404, End back to
+Tower; Bob's collection (a real set, an unknown one, six loose bricks)
+read as 3/3, 3/3, 1/3, 5/210 with his pool's lots, pieces and one unknown
+set, Parts I own offered him and ordering tower, shed, wall, hall, ready=1
+tower, shed, signed out 401 both ways and no shares without mine=1, You
+can build now tower, shed at 1280 and 390 px (`7_build_now-*.png`,
+`8_build_now_shelf-390.png`), the page by Parts I own with "You have 1 of
+its 3 parts · 33%" (`9_parts_i_own.png`); Ada with no collection asked to
+tell what she owns (`10_no_collection-390.png`); no page errors. 48
+checks, all ok, 2026-10-19, against the held relay with the live project
+(about 4 minutes), with the catalogue beside api/ and without it (a pool
+then counts every part as named, and the set's shard comes from
+brickworks.diy/sets/). share_probe, against the same relay with the
+catalogue: 288 checks, all ok.
 
 The list, asked hard (reads only):
 

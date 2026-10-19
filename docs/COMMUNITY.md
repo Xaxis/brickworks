@@ -27,6 +27,14 @@ the pages say what the site does.
   and versions); until then a profile shows no Follow and no counts, /feed
   says it is not open yet, Account has no count, and the day's email is
   of comments only.
+- `supabase/discovery.sql` after builds.sql and tested.sql (it reads
+  `model_builds` and the Tested mark); until then Sort › Top builds lists
+  newest first, the gallery's front has no pick (Small builds is there, the
+  newest first), the admin page says This week's pick is not open yet, and
+  a signed-in person's gallery has no shares and no You can build now. Then
+  once, `node --env-file=.env tools/web/needs_backfill.mjs` (`--dry` first
+  reads only), which counts what the models published before it need; a
+  model published after is counted as it is published.
 
 ## The rules
 
@@ -192,6 +200,94 @@ each on /profile, every one off until ticked (`mail_choices.models`,
 `versions`, `photos`, `remixes`). It tells what came since the last email
 that went, or since the choice was made; a test account's is a dry run.
 
+## Discovery: a gallery that rewards designs that build
+
+`supabase/discovery.sql` (2026-10-19), the weights in `api/_directory.js`
+(`SCORE`), the front's shelves in `web/gallery.js`, the owner's choice in
+`api/admin.js` and `web/admin.js`, what models need and people own in
+`api/_owned.js`.
+
+**Top builds.** A sort beside Most built, by a score worked out in the
+database so the gallery pages by it (`gallery_score`): a build finished
+counts 3, a remix 2, the Tested mark 5. Views count for nothing, so a
+model is not lifted by being looked at; ties go to more builds, then the
+newest. The page says so under Sort while it is chosen. A build is the
+device count builds.sql keeps (once per device, never a robot's), a remix
+is one published from it, and the mark is its newest version's.
+
+**This week's pick**, at the top of the gallery's front (nothing searched
+or filtered), worked out from the past seven days: the best score of the
+week, counting the builds finished and the remixes listed in those seven
+days, and the Tested mark (`gallery_week`). A model is a candidate only
+when something in the week says it builds: a build finished, a remix
+listed, or it was listed that week and is Tested, so a quiet week has no
+pick rather than last month's. Its card says why ("Built twice this
+week", "New this week, and Tested"). The site's owner can choose another
+on `/admin` (Make it the pick, beside any model in the gallery or among
+the week's best five) for seven days, and End it to go back to the one
+worked out; the newest choice still in the gallery wins, and its card
+says "Chosen by Brickworks". A choice is kept in `gallery_picks`, which
+no key reads directly. A test account's model is never a visitor's pick.
+
+**Small builds**: a shelf on the front of the gallery's own Small size,
+under 200 parts, by Top builds, with See every small build
+(`/gallery?size=small&sort=top`) when there are more than eight. Why 200
+and not 150: on 2026-10-19 the gallery's seven models were 187, 350, 494,
+774, 1,037, 2,438 and 9,541 parts. At 150 the shelf would be empty; the one
+small model sits alone below a gap to 350, and the Size filter already
+calls under 200 Small, so the shelf and the filter mean one thing.
+
+**Build with what I own.** For a signed-in person with a collection
+(`/api/collection`, the app's Build › My collection…), every card in the
+gallery says how much of the model they own already ("✓ You have every
+part", "You have 1 of its 3 parts · 33%"), Sort has Parts I own (the
+largest share first, ties to more parts held), and the front has You can
+build now: the models every part of which is in their collection, by Top
+builds. Counted by part and colour, as the app's one-model check counts
+them (`src/collection/collection.gd`): a part by the number it means today
+(LDraw's moves), a colour by the one a shop files it under (Rubber Black
+is Black), another moulding of a part standing in for it (3794a for
+3794b), their sets through the sets' inventories (the app's own
+shards), spares when they said they kept them; a part nobody can own (a
+primitive drawn into a model, a sub-model a file names and does not
+carry) is left out, and a flexible part laid as segments too. Both sides
+are counted once and kept, so the gallery is one join in the database: a
+model's needs as it is published (`model_needs`), a person's pool the
+first time the gallery is asked for it after their collection changed
+(`collection_pools`). What a person owns is never shown to anybody else:
+the shares are only ever asked with their own sign-in (`mine=1`), the
+CDN never keeps such an answer, and the tables are read only through the
+functions. What the app's own check does that this does not: a part in
+another colour, or two smaller ones, offered as a swap, which the share
+never counts; and the app lets a lettered moulding stand in for the plain
+number but not the plain number for a lettered one, where the gallery
+lets either stand in for the other. A set no inventory has is said on the shelf, and
+its parts are not counted.
+
+**What it costs.** In the dry run (`tools/discovery_try.sql`), on a
+gallery of 5,000 listed models with 20,000 builds over 30 days, 1,000
+remixes and 500 Tested, made and rolled back inside it: Top builds 161 ms
+for its first page and 173 ms for page 81; Most built and newest 50 ms;
+the small shelf 19 ms; the week's best ten 103 ms; the pick 101 ms. On
+the project's own seven models: 4 to 7 ms, 4 to 6 ms, 2 ms. Every
+question builds.sql's list knew is answered the same, card for card and
+in order (16 on the project's models, 6 on the big gallery, deep pages
+among them). With every model of
+that gallery needing 60 lots (300,000 rows) and a collection of 2,000,
+5,000 and 20,000 lots (the most a collection holds), best of three in
+each of two runs on the shared database: Parts I own 123 to 132, 158 to
+160 and 343 to 367 ms for its first page; You can build now 82 to 141, 120
+to 189 and 322 to 420 ms; any other sort with each card's share 80 to 88
+ms whatever the collection's size (a page's shares are counted after the
+page is cut); keeping the pool 33 to 35, 88 to 91 and 364 to 543 ms, once
+per change. The cost is the join of the whole pool with every model's
+needs; keeping each person's shares as the pool is kept is the next step
+if a gallery of thousands makes it slow. The list's deep pages
+were made cheaper too: builds.sql's directory_models made a card for every
+model a page skipped (page 81 of Top builds took 665 ms that way); the
+page is now cut before its cards are made. The CDN keeps both answers 30
+seconds, as the list.
+
 ## Reports reaching the owner
 
 A report (`api/people.js` `?op=report`, from the Report button or
@@ -327,6 +423,32 @@ counter-notice is by hand for now (`shared_models.barred`).
   before and after opening, the limit, the email's choices and its feed
   told once, an account taken out, the grants, and how long a feed takes,
   all rolled back.
+- `tools/discovery_try.sql`, run inside `tools/apply_sql.mjs --dry` with
+  `supabase/discovery.sql` after the live files: the score's weights, Top
+  builds' order and its paging (two at a time, nothing twice, and three
+  pages of 25 the same as one list on the big gallery), Most built and
+  newest as before, small builds, a visitor's list without test models,
+  the week's candidates and what is not one, the pick worked out, chosen,
+  passed over when it leaves the gallery, ended and run out, refusals (not
+  in the gallery, nobody's, 0 or 32 days, 40 written directly), an account
+  taken out, the grants, and the timings above, all rolled back.
+  `tests/test_discovery.py` holds the page's weights to the SQL's and the
+  stand-in's, discovery.sql's directory_models to every filter and sort of
+  builds.sql's, Parts I own to a collection's own sign-in, and the new
+  tables to no key at all. `tools/web/owned_probe.mjs` checks the sums
+  alone: a file's needs through its sub-models in the colour each is
+  placed in, both sides spelled one way, the shard a set is in, a pool of
+  sets and loose parts.
+- `tools/web/discovery_flow.mjs` against `relay_server.mjs
+  --hold=gallery_picks` (`tools/web/discovery_stand_in.mjs` answers
+  discovery.sql's functions in memory over the live project's models and
+  builds) or a deployment: four test models built and one Tested, Top
+  builds' order on the list and the page, the front's pick and small
+  builds signed out and signed in at 1280 and 390 px, the owner choosing
+  the pick on /admin and ending it, a model by link only refused; and a
+  collection with a real set in it: each card's share, Parts I own, You
+  can build now at 1280 and 390 px, refused signed out, and nothing of it
+  for somebody with no collection.
 - `tools/web/follows_flow.mjs` against `relay_server.mjs
   --hold=follows,model_comments,build_photos,report_photos --trust-stand-in`
   (`tools/web/follows_stand_in.mjs` answers follows.sql's functions in
