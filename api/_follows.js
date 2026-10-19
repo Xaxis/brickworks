@@ -196,9 +196,12 @@ export async function feed(request, response, { origin }) {
   const given = request.query?.before;
   let before = null;
   if (given !== undefined && given !== "") {
-    const at = Date.parse(String(given));
-    if (!Number.isFinite(at)) throw new Unacceptable("before is a time, as a row of the feed gives it");
-    before = new Date(at).toISOString();
+    // As the row gave it, to the microsecond: made a millisecond's time, a
+    // row in the same millisecond as the last one shown would be skipped.
+    before = String(given);
+    if (!/^[0-9][0-9T:.+\-Z ]{9,39}$/.test(before) || !Number.isFinite(Date.parse(before))) {
+      throw new Unacceptable("before is a time, as a row of the feed gives it");
+    }
   }
   // The first page is the feed opened: the count clears.
   const page = await call("feed_of", { viewer: asker, before, size: 30, mark: before === null },

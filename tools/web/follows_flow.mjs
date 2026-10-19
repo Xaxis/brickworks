@@ -310,6 +310,14 @@ try {
   await shot(bobPage, "6_feed_opened.png", true);
   const cleared = await api("/api/people?op=feed_count", { token: bob.access_token });
   check(`the count cleared: ${cleared.body.count}`, cleared.body.count === 0);
+  // Older, as the page asks for it: strictly before the last row shown,
+  // at that row's own time to the microsecond.
+  const whole = (await api("/api/people?op=feed", { token: bob.access_token })).body.rows || [];
+  const older = await api(`/api/people?op=feed&before=${encodeURIComponent(whole[1]?.at || "")}`, { token: bob.access_token });
+  check(`older than the second row: ${(older.body.rows || []).map((one) => one.kind).join(", ")}`,
+    whole.length === 4 && JSON.stringify((older.body.rows || []).map((one) => one.link)) === JSON.stringify(whole.slice(2).map((one) => one.link)));
+  const badly = await api("/api/people?op=feed&before=yesterday", { token: bob.access_token });
+  check(`a time that is not one: ${badly.status}`, badly.status === 400);
   await bobPage.goto(`${site}/gallery`, { waitUntil: "load" });
   await bobPage.waitForTimeout(1500);
   account = await accountDrawn(bobPage);

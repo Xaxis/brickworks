@@ -1642,6 +1642,12 @@ BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0
 BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest
 ```
 
+`trust.sql` is applied now (m81): run `age_flow` against a relay without
+`--trust-stand-in` and without `BW_STAND_IN`. With the stand-in its ages
+never reach the database's own triggers, which refuse the profile, the
+public list and the listing (three 502s, 2026-10-18); without it, 42 checks
+all ok the same evening.
+
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every
 page's footer links `/terms` and `/guidelines`; each topic on
@@ -1785,7 +1791,8 @@ page, from the API, back in the gallery and in the app (`6_feed_opened.png`,
 3 from the feed, each with its link, and no second from the knock; Cy under
 13 told why beside Follow and refused 422 (`7_under_13.png`); his profile
 listing Ada only once he ticks Show (`8_profile_choices.png`), hers still
-only counting; letting her go. 52 checks, all ok, against the local relay
+only counting; letting her go; and Older, strictly before a row to the
+microsecond, a time that is not one 400. 53 checks, all ok, against the local relay
 on 2026-10-18, about 4 minutes with the app.
 
 The list, asked hard (reads only):
