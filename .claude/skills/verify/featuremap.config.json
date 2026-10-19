@@ -2287,6 +2287,41 @@
       "entry": "src/assembly/swing.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=coast   (by hand: on a gear or a wheel on a free axle, drag it round and let go while it turns; it coasts and stops against its bearing's friction)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "terms and guidelines",
+      "entry": "web/guidelines.html",
+      "reach": "https://brickworks.diy/guidelines and /terms  (linked from every page's footer and beside Publish)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "age question",
+      "entry": "api/_trust.js",
+      "reach": "sign in as a new account: the app's sign-in screen asks it, and /profile on the site (once supabase/trust.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "POST /api/account?op=age",
+      "entry": "api/account.js",
+      "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "age browser flow",
+      "entry": "tools/web/age_flow.mjs",
+      "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0.0.1:8742 --out=shots/age   (.env sourced; relay_server.mjs --static=build/web --trust-stand-in)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "report digest browser flow",
+      "entry": "tools/web/digest_flow.mjs",
+      "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest   (.env sourced, MASTER_EMAIL; never knocks a real deployment)",
+      "area": "web"
     }
   ]
 }

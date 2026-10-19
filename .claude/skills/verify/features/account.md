@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age -->
 
 ## Sub-features
 
@@ -57,8 +57,26 @@ they have. A Claude connector belongs to the account that switched it on.
   from `EMAIL_FROM_FALLBACK` and logs that it did. Never says whether an
   address has an account; does say when the email could not be sent (502).
 - `GET /api/account` with `Authorization: Bearer`: also `signed_in`, `email`,
-  `master` (cache `private, no-store`). Without: the public answer
-  (`enabled`, `url`, `key`, `parts_url`, `assistant`), cacheable.
+  `master` (cache `private, no-store`), and `age: {ask, over_13}` once
+  `supabase/trust.sql` is applied (left out before, and when the database
+  cannot be asked). Without: the public answer (`enabled`, `url`, `key`,
+  `parts_url`, `assistant`), cacheable.
+- `POST /api/account?op=age` (2026-10-18, Bearer, `{month, year}`): the age
+  question's answer. 422 for a month or year that is not one (or not come
+  yet), 503 before trust.sql; otherwise `{age}`. Turned into 13-or-over in
+  `api/_trust.js` (a birthday this month counts as had) and let go: only
+  `profiles.over_13` and `age_asked_at` are kept, never the date. An answer
+  stands — a second try returns the first — except that an under-13 answer
+  is asked again a year on. See [web](web.md) for what it refuses.
+- `the age question in the sign-in screen` (`src/ui/sign_in_gate.gd`,
+  `Account.age_ask`, `over_13`, `asking_who`, `answer_age`): after a sign-in
+  the screen stays up ("Signing you in…") for `/api/account`; when it says
+  `ask`, "One question first: When were you born?", twelve month buttons
+  (`age_month_1`…`12`), the year (`age_year`), Carry on (`age_go`), and "The
+  date itself is not kept." Under 13, the screen then says what is open and
+  what is for 13 and over, and Start building (`age_done`) lets them in.
+  `window.brickworksAccount` adds `age_ask` and `over_13`. Not asked offline
+  or by a deployment that does not say `ask`.
 - `GET /api/admin` (`api/admin.js`): MASTER_EMAIL only (404 for everyone
   else signed in, 401 signed out): accounts from Supabase's admin API with
   joined and last sign-in, connectors per owner from `relay_tabs`, whether
@@ -162,7 +180,11 @@ they have. A Claude connector belongs to the account that switched it on.
   `?op=mine` for one with (so updating a listed link does not unlist it), and
   disabled with a word when Brickworks took the model out; sent as `listed`
   on every publish, and the status says when it is listed. A model copied with
-  Open in Brickworks sends `remixed_from`.
+  Open in Brickworks sends `remixed_from`. Beside Publish (2026-10-18):
+  "Publishing means you agree to the guidelines" (`share_guidelines`, opens
+  `/guidelines` on the deployment). For an account under 13 List it in the
+  gallery and Show who made it are off, with a line why; `page_state` says
+  `list_disabled`, `credit_disabled`, `young` and `guidelines`.
 - `Open in Brickworks` (`main._maybe_copy`, `/app?copy=<id>`): the viewer's
   button. The app as everyone gets it, sign-in screen and all; once somebody
   is signed in and what was on the baseplate is back, the shared model is
@@ -305,6 +327,13 @@ in, `/admin` refusing the account, Account then Sign out bringing the
 screen back with the session gone, and no security-policy refusals. `--master`
 also signs the owner's account in (no email sent) and checks the admin page
 lists the accounts.
+
+`account_flow` answers the age question 13 or over when it is asked (once
+`supabase/trust.sql` is applied). `tools/web/session.mjs` `mintSession` answers
+it 13 or over for every account it signs in but `MASTER_EMAIL`'s (in the
+database, and in a local stand-in named by `BW_STAND_IN`), so flows that list
+or make a profile are not stopped by it; `{ age: false }` leaves it to be
+asked, as `age_flow` does.
 
 Every other browser flow here starts signed in: `tools/web/browser.mjs` mints a
 session of the test account (`delivered+brickworks-tests@resend.dev`,
