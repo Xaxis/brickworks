@@ -523,7 +523,8 @@ try {
   await press(ownerPage, "share_publish");
   const unlisted = await until(ownerPage, () => {
     const p = (window.brickworksShare || {}).panel || {};
-    return (p.state === "published" && /^Updated/.test(p.status)) || p.state === "failed" ? p : null;
+    // "Updated", or since versions (72eb1ae6) "Version 2 is up at this link".
+    return (p.state === "published" && /^(Updated|Version \d+ is up)/.test(p.status)) || p.state === "failed" ? p : null;
   }, "updating the link", 180);
   check(`updated, not listed: ${unlisted.status}`, unlisted.state === "published" && unlisted.listed === false
     && !/gallery/.test(unlisted.status));
