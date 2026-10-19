@@ -228,6 +228,9 @@ var tests: int = 0
 var frame_solve_ms: float = 0.0
 var frame_test_ms: float = 0.0
 var frame_tests: int = 0
+## This frame's slowest part to test, and how long it took: "#id part ms".
+var frame_slowest_us: int = 0
+var frame_slowest_said: String = ""
 ## The slowest part to test in a drag, and on what: for a probe.
 var slowest_us: int = 0
 var slowest_said: String = ""
@@ -1146,6 +1149,9 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 			cover_us = Time.get_ticks_usec() - part_began
 			hit = _blocked(key, mesh, to, packed)
 		var part_us: int = Time.get_ticks_usec() - part_began
+		if part_us > frame_slowest_us:
+			frame_slowest_us = part_us
+			frame_slowest_said = "#%d %s %.1f ms" % [key, brick.part_id, part_us / 1000.0]
 		if part_us > slowest_us:
 			slowest_us = part_us
 			slowest_said = "#%d %s: cover %.1f ms, blockers %.1f ms; its box is into #%d %s's" % [key,
@@ -1693,6 +1699,8 @@ func turn_to(degrees: float) -> float:
 	frame_solve_ms = 0.0
 	frame_test_ms = 0.0
 	frame_tests = 0
+	frame_slowest_us = 0
+	frame_slowest_said = ""
 	var wanted: float = degrees
 	if link.detent > 0.0:
 		wanted = roundf(wanted / link.detent) * link.detent
@@ -2163,6 +2171,8 @@ func slide_to(along: float) -> float:
 	frame_solve_ms = 0.0
 	frame_test_ms = 0.0
 	frame_tests = 0
+	frame_slowest_us = 0
+	frame_slowest_said = ""
 	var wanted: float = clampf(along, _range.x, _range.y)
 	if budget_ms < INF and not is_nan(_wall) and (wanted - _wall) * (_wall - shift) >= 0.0 \
 			and absf(_wall - shift) < absf(wanted - shift) + 0.001:

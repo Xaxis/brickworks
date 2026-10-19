@@ -25,8 +25,8 @@ LDU. Each job runs under ~/.claude/claude-core/bin/heavy, with a data folder
 of its own (.scratch-data, never the owner's app data); a set that takes
 longer than --timeout seconds (300) is stopped and said so, and its job goes on
 from the next. Rows go to bench/results/grab13-2026-10-19/sweep_LABEL.jsonl and
-the table to sweep_LABEL.md (Grab 9's are in grab9-2026-10-18, Grab 11's in
-grab11-2026-10-18, Grab 12's in grab12-2026-10-18).
+the table to sweep_LABEL.md, or to the folder SWEEP_OUT names (Grab 9's are in
+grab9-2026-10-18, Grab 11's in grab11-2026-10-18, Grab 12's in grab12-2026-10-18).
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OMR = ROOT / "vendor" / "omr" / "files"
 PARTS = ROOT / "vendor" / "ldraw" / "parts"
 TABLE = ROOT / "assets" / "ldraw" / "gears.json"
-OUT = Path("/mnt/Projects/brickworks/bench/results/grab13-2026-10-19")
+OUT = Path(os.environ.get("SWEEP_OUT", "/mnt/Projects/brickworks/bench/results/grab13-2026-10-19"))
 HEAVY = Path.home() / ".claude" / "claude-core" / "bin" / "heavy"
 GPU = Path.home() / ".claude" / "claude-core" / "bin" / "gpu"
 
