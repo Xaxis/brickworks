@@ -83,12 +83,12 @@
     "3590": {"reach": [-30.0, 10.0]},
     "7557": {"reach": [-30.0, 10.0]}
   },
-  "racks_about": "Gear racks, in the app's axes (the part's own frame, +Y up): teeth along x, from and to the first and last tooth's middle as the LDraw file draws them, every one 8 LDU apart (ten teeth to four studs, so racks laid end to end keep their pitch); a pinion's centre stands pitch_line + its pitch radius above the rack's origin, measured on the OMR's sets (docs/MECHANISMS.md, section 12); z is where the teeth are across the rack, [lo, hi]. round: the 1980s steering rack (2790a), a rod ringed with teeth 8 LDU apart, which a pinion meets from any side: pitch_line is then from the rod's line, measured on the eleven OMR sets that have it (an 8 at 16 to 18.9). groove: a channel open underneath, which studs standing up into it (half pins) guide along the rack's line (87761 and 64781, as their files draw them). housing: the part a rack slides in, on its line (18942 in 18940), its origin in the housing's frame at housing_at give or take a cell; its pinion measured on 42043-1 and 42078-1 (a 12 at 40).",
+  "racks_about": "Gear racks, in the app's axes (the part's own frame, +Y up): teeth along x, from and to the first and last tooth's middle as the LDraw file draws them, every one 8 LDU apart (ten teeth to four studs, so racks laid end to end keep their pitch); a pinion's centre stands pitch_line + its pitch radius above the rack's origin, measured on the OMR's sets (docs/MECHANISMS.md, section 12); z is where the teeth are across the rack, [lo, hi]. round: the 1980s steering rack (2790a), a rod ringed with teeth 8 LDU apart, which a pinion meets from any side: pitch_line is then from the rod's line, measured on the eleven OMR sets that have it (an 8 at 16 to 18.9). groove: a channel open underneath, which studs standing up into it (half pins) guide along the rack's line (87761 and 64781, as their files draw them; the racks with holes, 6630, 6592 and 32185, have one 12 LDU across, a stud's width, between their end holes, and the plate under 8448-1's rack stands its studs in it). housing: the part a rack slides in, on its line (18942 in 18940), its origin in the housing's frame at housing_at give or take a cell; its pinion measured on 42043-1 and 42078-1 (a 12 at 40).",
   "racks": {
     "3743": {"teeth": 10, "from": -36.0, "to": 36.0, "pitch_line": 4.0, "z": [-10.0, 10.0]},
-    "6630": {"teeth": 12, "from": -44.0, "to": 44.0, "pitch_line": 2.0, "z": [-10.0, 10.0]},
-    "6592": {"teeth": 18, "from": -68.0, "to": 68.0, "pitch_line": 2.0, "z": [-10.0, 10.0]},
-    "32185": {"teeth": 26, "from": -100.0, "to": 100.0, "pitch_line": 0.0, "z": [-10.0, 10.0]},
+    "6630": {"teeth": 12, "from": -44.0, "to": 44.0, "pitch_line": 2.0, "z": [-10.0, 10.0], "groove": true},
+    "6592": {"teeth": 18, "from": -68.0, "to": 68.0, "pitch_line": 2.0, "z": [-10.0, 10.0], "groove": true},
+    "32185": {"teeth": 26, "from": -100.0, "to": 100.0, "pitch_line": 0.0, "z": [-10.0, 10.0], "groove": true},
     "6574": {"teeth": 6, "from": -20.0, "to": 20.0, "pitch_line": 4.0, "z": [-10.0, 10.0]},
     "87761": {"teeth": 6, "from": -20.0, "to": 20.0, "pitch_line": 5.0, "z": [-7.0, 7.0], "groove": true},
     "64781": {"teeth": 22, "from": -84.0, "to": 84.0, "pitch_line": 5.0, "z": [-7.0, 7.0], "groove": true},

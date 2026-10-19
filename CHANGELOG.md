@@ -457,6 +457,34 @@ whole cycle.
   is in the way". `tools/move_sweep.py` moves every real set's turntable,
   doors and booms both ways and back over MCP and writes a table of what
   moves and what stopped each one.
+- Parts built flush against each other no longer stop a move at the first
+  degree. A grab finds room with cells 2 LDU across, and each cell reaches
+  a little past its part, so two parts built side by side met as soon as
+  either moved: 10295-1's right door, the floors of 10185-1 and 10220-1,
+  and a hinge plate on a plate with studs on one edge. Where the cells meet,
+  the move now asks the two parts' exact shapes, the same shapes the build
+  check uses, and stops only where those overlap by more than 1 LDU. A part
+  without an exact shape is still judged by its cells. Of 382 doors,
+  turntables and booms in 260 real sets, 145 now turn both ways and back,
+  up from 103, and three more sets steer (8285-1, 42035-1 and 5510-1).
+  `tools/move_sweep.py` judges every stop the same way and says whether the
+  real parts meet there or only their cells did. A door that stops against
+  its frame counts as moving to its stop. A thing counts as turning only
+  when it turns a whole degree, not when free joints inside it swing.
+- The steering racks with holes (6630, 6592 and 32185) slide on the studs
+  standing in the channel underneath them. 8448-1's rack sat on a plate's
+  studs and was read as one with the frame, so in all five of its models
+  the pinion turned and the rack did not. The studs are found from the
+  rack's shape, so they still hold it once it has slid off their grid.
+  8448-1's rack and 5533-1's now slide with their pinion and come back.
+  8448-1's second turn still stops where a steering link meets a wheel rim,
+  so it does not yet steer both ways.
+- A steering arm hung on two ball joints, upper and lower, turns on the
+  line through them, as a real kingpin does. It used to be refused as "on
+  a ball in a closed loop". 9392-1's arm turns that way.
+- Reading a model's joints on two threads at once no longer stops the
+  app. The cache of each part's axles and holes is now filled under a
+  lock.
 - What stays when you move a part of a model is chosen on purpose, not by
   weight alone. It is a part you locked, else what stands on the
   baseplate's studs, else the body with the most parts, unless something

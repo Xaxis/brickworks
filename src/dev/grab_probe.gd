@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab11-2026-10-18"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab12-2026-10-18"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -259,6 +259,11 @@ func _run() -> void:
 	if only.is_empty() or only == "moving":
 		for one: Array in MOVING:
 			await _moving_check(str(one[0]), str(one[1]))
+	if only.is_empty() or only == "grooved":
+		for one: Array in GROOVED:
+			await _grooved_check(str(one[0]), float(one[1]))
+	if only.is_empty() or only == "kingpin":
+		await _kingpin_check()
 	if only.is_empty() or only == "hoses" or only == "hose":
 		# --hose=WORD runs only the cases whose name has it ("made" the made one).
 		var asked_hose: String = ""
@@ -5402,6 +5407,19 @@ const STEERING: Array = [
 const MOVING: Array = [
 	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable"],
 	["res://vendor/omr/files/10220-1.mpd", "door"],
+	# G12 (MECHANISMS §20): turned +30, the right door's slope 75 met the one
+	# built beside it by their covers at once; their shapes are clear.
+	["res://vendor/omr/files/10295-1.mpd", "boom"],
+]
+
+
+## Steering racks that slide where they stand (G12): the racks with holes
+## (32185, 6630) are channels underneath, and the studs of the plate under
+## each ride in it (the gear table's groove). Each [file, least LDU the rack
+## goes on the first turn].
+const GROOVED: Array = [
+	["res://vendor/omr/files/8448-1_Racer.mpd", 1.0],
+	["res://vendor/omr/files/5533-1.mpd", 1.0],
 ]
 
 
@@ -5542,6 +5560,74 @@ func _moving_check(path: String, kind: String) -> void:
 	_check("%s: its %s %s turns %s and is back to %.3f LDU%s" % [name, kind, str(found.get("driver", "?")),
 		", ".join(turns), float(found.get("back_ldu", -1.0)), "" if str(found.get("result")) == "moves"
 		else ": " + str(found.get("cause", "not found")).left(200)], str(found.get("result")) == "moves")
+	# Where a turn stopped where two parts meet, the parts themselves meet
+	# there (G12): their exact shapes, the part a degree on.
+	var covers := PackedStringArray()
+	for step: Dictionary in found.get("steps", []):
+		var met: Dictionary = step.get("meeting", {})
+		if str(met.get("verdict", "")) == "false":
+			covers.append(str(met.get("pair", "")))
+	_check("%s: no turn of its %s stopped where only the covers of two parts meet%s" % [name, kind,
+		"" if covers.is_empty() else " (" + ", ".join(covers) + ")"], covers.is_empty() and not found.is_empty())
+	_builder.forget_history()
+
+
+## A grooved rack slides on the studs in its groove (G12): the pinion turned
+## +30 over MCP moves the rack along its line.
+func _grooved_check(path: String, least: float) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\n%s's rack slides on the studs in its groove" % name)
+	var row: Dictionary = await _sweep_one(path)
+	var steps: Array = row.get("steps", [])
+	var went: float = float((steps[0] as Dictionary).get("rack_ldu", 0.0)) if not steps.is_empty() else 0.0
+	_check("%s: turned +30 at its %s, the rack goes %.2f LDU along its line%s" % [name, str(row.get("kind", "")),
+		went, "" if absf(went) >= least else ": " + str(row.get("cause", "")).left(200)], absf(went) >= least)
+	# Read again where it slid to, it is still in its groove: turned -60, it
+	# comes back along it (8448-1's, read off the cells, was lodged in the
+	# steering arm it touched and went on the same way).
+	var back: float = float((steps[1] as Dictionary).get("rack_ldu", went)) if steps.size() > 1 else went
+	_check("%s: turned -60 after, the rack comes back along its groove, from %+.2f to %+.2f LDU" % [name, went,
+		back], absf(went) >= least and (back - went) * signf(went) < -0.5)
+	_builder.forget_history()
+
+
+## A steering arm on two balls turns on the line through them (G12,
+## Grab._kingpin): 9392-1's arm (6571) hangs on its upper and lower
+## wishbones' towballs, which stay where they are as it turns.
+func _kingpin_check() -> void:
+	print("\na steering arm on two balls turns on the line through them")
+	if not await _open("res://vendor/omr/files/9392-1.mpd"):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var arm: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "6571" and arm == 0:
+			arm = brick.id
+	var balls: Array = []
+	if arm != 0:
+		for link: Bodies.Link in bodies.touching.get(int(bodies.body_of[arm]), []):
+			if link.kind == "ball":
+				balls.append(link.point)
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	trial.shared_mechanism = _grab._mechanism
+	var state: String = trial.begin(arm, _world.get_brick(arm).transform.origin) if arm != 0 else "no arm"
+	var still: float = INF
+	var got: float = 0.0
+	if state == "moves" and trial.mode == "turn":
+		got = trial.turn_to(2.0)
+		var at: Transform3D = trial.placed.get(arm, _world.get_brick(arm).transform)
+		var was: Transform3D = _world.get_brick(arm).transform
+		still = 0.0
+		for point: Vector3 in [trial.pivot, trial.pivot + trial.axis * 10.0]:
+			still = maxf(still, (at * (was.affine_inverse() * point)).distance_to(point))
+	_check("9392-1: its steering arm #%d on %d balls is taken as a turn on its kingpin (%s, %s), turned %.2f° with the kingpin's line %.3f LDU from where it stood" % [
+		arm, balls.size(), state, trial.mode, got, still], state == "moves" and trial.mode == "turn"
+		and absf(got) > 0.5 and still < 0.01)
 	_builder.forget_history()
 
 
@@ -5809,6 +5895,34 @@ func _move_sweep_one(path: String) -> Dictionary:
 		thing["stays"] = bodies.stays_words(anchor).left(120)
 		var before: Dictionary = _snapshot()
 		var own: PackedInt64Array = bodies.members.get(int(bodies.body_of.get(driver, 0)), PackedInt64Array([driver]))
+		# Pictures before and turned each way (--sweep-shots, windowed): framed
+		# on the thing and what stands within 3 studs of it, from along its
+		# joint's line (a turntable's from above), so it turns in the picture.
+		var shots: bool = _windowed and "--sweep-shots" in OS.get_cmdline_user_args()
+		var framed := PackedInt64Array()
+		var view := Vector3.UP
+		if shots:
+			var near := AABB()
+			for n: int in own.size():
+				var mine: BrickWorld.Brick = _world.get_brick(int(own[n]))
+				var here: AABB = mine.transform * _library.parts[mine.part_id].bounds
+				near = here if n == 0 else near.merge(here)
+			near = near.grow(60.0)
+			for brick: BrickWorld.Brick in _world.bricks():
+				if not _store.scenery.has(brick.id) and near.has_point(brick.transform.origin):
+					framed.append(brick.id)
+			view = link.axis.normalized() if link.axis != Vector3.ZERO else Vector3.UP
+			if view.y < -0.2:
+				view = -view
+			view = (view + Vector3(0.12, 0.3, 0.18)).normalized()
+		var picture := func(when: String) -> void:
+			_frame_on(framed)
+			_camera.look_from(view)
+			await _camera_still()
+			await _frames(3)
+			await _shot("move_%s_%s" % [path.get_file().get_basename(), kind], when)
+		if shots:
+			await picture.call("0_before")
 		var ok: bool = true
 		var moved_once: bool = false
 		var went_so_far: float = 0.0
@@ -5831,11 +5945,16 @@ func _move_sweep_one(path: String) -> Dictionary:
 				if turn_way == Vector3.ZERO and absf(went_so_far) >= 1.0:
 					turn_way = _way_turned(driver, start_at) * signf(went_so_far)
 			await _frames(2)
+			if shots:
+				await picture.call({"one way": "1_turned_+30", "the other way": "2_turned_-30"}.get(str(step[1]),
+					"3_back"))
 			var moved: bool = said.contains("Moved")
 			var still: bool = _world.get_brick(anchor_part).transform.is_equal_approx(anchor_at)
 			var found: RegExMatch = now_re.search(said)
 			var record: Dictionary = {"asked": asked, "said": said.replace("\n", " | ").left(500),
 				"moved": moved, "stays_still": still, "now": float(found.get_string(1)) if found != null else 0.0}
+			if said.contains(" meets "):
+				record["meeting"] = _judge_meeting(said, driver, asked)
 			moved_once = moved_once or moved
 			var step_ok: bool = moved and still
 			if str(step[1]) == "back":
@@ -5875,6 +5994,66 @@ func _move_sweep_one(path: String) -> Dictionary:
 	return row
 
 
+## Whether a move that stopped where two parts meet ([param said]: "the A
+## (#a) meets the B (#b)") stopped where the real parts do (G12, MECHANISMS
+## §20): the moving part turned [constant _JUDGE_ON] degrees on past where
+## it stands (a click hinge its next click), the way the step asked ([param
+## way]), against the other where it
+## stands, by their exact shapes (Exact: BrickNet's convex pieces, which a
+## build check refuses where they overlap by more than 1 LDU). Worked out
+## here from a grab of its own, not from what the move said of it.
+## {"verdict": "real" (they overlap there: a stop the parts make), "false"
+## (clear there: the 2 LDU cells of a cover met), or "unjudged" (a part with
+## no exact shape, or not one the grab moves), "pair", "depth" (LDU there),
+## "as_built" (LDU where they stand)}.
+const _JUDGE_ON := 1.0
+
+
+func _judge_meeting(said: String, driver: int, way: float) -> Dictionary:
+	var pair_re := RegEx.create_from_string("\\(#([0-9]+)\\) meets the .*?\\(#([0-9]+)\\)")
+	var hit: RegExMatch = pair_re.search(said)
+	if hit == null:
+		return {"verdict": "unjudged", "why": "no pair named"}
+	var mover: int = int(hit.get_string(1))
+	var other: int = int(hit.get_string(2))
+	var out: Dictionary = {"pair": "#%d #%d" % [mover, other]}
+	var a: BrickWorld.Brick = _world.get_brick(mover)
+	var b: BrickWorld.Brick = _world.get_brick(other)
+	var shape_a: Exact.Shape = Exact.shape_for(_library, a.part_id) if a != null else null
+	var shape_b: Exact.Shape = Exact.shape_for(_library, b.part_id) if b != null else null
+	if shape_a == null or shape_b == null or not shape_a.has_pieces() or not shape_b.has_pieces():
+		out["verdict"] = "unjudged"
+		out["why"] = "no exact shape for %s" % (a.part_id if shape_a == null or not shape_a.has_pieces()
+			else b.part_id)
+		return out
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = _grab._bodies
+	trial.hose_fits = _grab._hose_fits
+	trial.shared_mechanism = _grab._mechanism
+	var state: String = trial.begin(driver, _world.get_brick(driver).transform.origin)
+	if state != "moves" or trial.mode != "turn":
+		out["verdict"] = "unjudged"
+		out["why"] = "the driver does not turn (%s)" % state
+		return out
+	# A click hinge goes a click at a time: judged at its next click.
+	var on: float = maxf(_JUDGE_ON, trial.link.detent if trial.link != null else 0.0)
+	out["on"] = on
+	var poses: Dictionary = trial.transforms_at(signf(way) * on)
+	if not poses.has(mover):
+		out["verdict"] = "unjudged"
+		out["why"] = "#%d is not moved by the grab" % mover
+		return out
+	var there: Dictionary = Exact.clash(Exact.Item.new(shape_a, poses[mover]), Exact.Item.new(shape_b, b.transform))
+	var here: Dictionary = Exact.clash(Exact.Item.new(shape_a, a.transform), Exact.Item.new(shape_b, b.transform))
+	out["depth"] = snappedf(float(there.get("depth", 0.0)), 0.01)
+	out["as_built"] = snappedf(float(here.get("depth", 0.0)), 0.01)
+	out["verdict"] = "real" if not there.is_empty() else "false"
+	return out
+
+
 ## What a steering's pinion and rack are read as, for finding why one does
 ## not turn (--only=steerdebug --steer-set=FILE): the rack's body and its
 ## joints, what the pinion's turn is read as, and what a turn of 30 does.
@@ -5882,6 +6061,18 @@ func _steer_debug(path: String) -> void:
 	if not await _open(path):
 		return
 	_grab._ready_now()
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--first="):
+			var tools := AppTools.new()
+			tools.app = _main
+			tools.assistant = _main.get("_assistant")
+			await _own_all_copies()
+			for move: String in arg.trim_prefix("--first=").split(","):
+				var said: String = str(await tools.run("move_part", {"part": "#" + move.get_slice(":", 0),
+					"degrees": float(move.get_slice(":", 1))}))
+				print("  FIRST %s: %s" % [move, said.replace("\n", " | ").left(600)])
+				await _frames(2)
+				_grab._ready_now()
 	var bodies: Bodies = _grab._bodies
 	var named := func(key: int) -> String:
 		var brick: BrickWorld.Brick = _world.get_brick(key)
@@ -5982,6 +6173,20 @@ func _steer_debug(path: String) -> void:
 		for one: String in ids:
 			for edge: Array in bodies.joined_by.get(int(one), []):
 				print("    #%s joined to %s by %s" % [one, named.call(int(edge[0])), edge[1]])
+	# Every joint of a part's body (--links=ID): its kind, the body on the
+	# other side, where and along what, and which is its parent's.
+	for arg: String in OS.get_cmdline_user_args():
+		if not arg.begins_with("--links="):
+			continue
+		var key: int = int(arg.trim_prefix("--links="))
+		if not bodies.body_of.has(key):
+			continue
+		var body: int = int(bodies.body_of[key])
+		print("  links of %s, %s" % [named.call(key), body_words.call(body)])
+		for link: Bodies.Link in bodies.touching.get(body, []):
+			print("    %s%s to %s at %s axis %s, pairs %s" % [link.kind, " (PARENT)"
+				if bodies.parent_link.get(body) == link else "", body_words.call(link.other(body)),
+				link.point.snapped(Vector3.ONE * 0.1), link.axis.snapped(Vector3.ONE * 0.01), link.pairs])
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--turn="):
 			# --turn=ID, or --turn=SET:ID for one set of several.

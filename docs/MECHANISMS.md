@@ -3136,3 +3136,221 @@ more than 3.5 ms: laid every one every frame, 42080-1's took 10.3 and failed
 it. The whole probe ran 406 checks at load 30 to 37 and failed five, all
 timing: the four-bar's drawing share and the hose frames; each passes run
 alone at low load.
+
+## 20. Real stops and false ones (G12)
+
+G11's moving sweep left "two parts meet" as the biggest cause, 158 of 327
+failures, and could not tell a real stop from a false one. A door turned
+against its frame should stop there, and the sweep should count that as
+moving to its stop. A plate that met the tile built flush beside it at the
+first degree should not stop at all. G12 makes the sweep tell the two
+apart, fixes the false ones in general, and then takes on the steering
+left over, most sets first.
+
+**The base.** m81 (ec9133ea, every grab unit), swept again with this
+unit's judge (below), from a copy of it: the steering sweep
+(`sweep_before`) and the moving sweep over all 749 files
+(`movesweep_before`). The tables are in bench/results/grab12-2026-10-18.
+
+| | before (m81) |
+|---|---|
+| sets that steer, of those with a steering | 51 of 168 |
+| things that turn both ways and back, of the 749 files' 576 | 240 |
+| and that turn as far as their real parts let them | 10 |
+
+**Telling a real stop from a false one.** Where a move stops where two
+parts meet, the sweep now works out a grab of its own on the same part and
+turns the moving part a degree further, the way the move was going. A
+click hinge is turned to its next click instead. It then asks whether the
+two parts' exact shapes overlap there (`grab_probe._judge_meeting`). The
+shapes are BrickNet's convex pieces, the same ones the build check uses,
+and they meet when they overlap by more than 1 LDU. A stop is "real" when
+they overlap, "false" when only the parts' 2 LDU covers met, and "not
+judged" when one of the two parts has no exact shape. A file's own printed
+or fan-made part is one case. So is a part that swung on under its own
+weight after it stopped, or a driver that is held rigidly once it has
+turned (`meeting` in each row). A thing counts as **moving to its stop**
+when a turn that did not move at all met real parts, the other turn moved,
+what stays stayed, and the turn back put it where it stood
+(`move_sweep.to_its_stop`). In the base, the 565 steps stopped where two
+parts meet were 195 real, 198 covers only and 172 not judged.
+
+The false ones were parts built flush: 10220-1's plate with rounded pins
+beside a tile 2 x 4, 10295-1's two slopes 75 side by side, a hinge plate on
+10185-1's plate with studs on one edge, 10256-1's plate 1 x 8 beside a
+plate 1 x 6, two plates on 10184-1's brick 2 x 3, 8285-1's angle connector
+on an axle pin. Each part's cover reaches past the part, and at the first
+degree the cells of a turned cover cross the cells of the neighbour. The
+real ones were mostly a door or a lid closed against what it rests on
+(6693-1's car roof, its hinge top against its base), and a train's plate
+against its buffer beam. By the 1 LDU rule, a bogie on a pin built flush
+under its buffer beam overlaps it by 1.3 to 1.7 LDU a degree on, both ways
+(10015-1, 10183-1, 10205-1). It counts as real, which a person looking at
+the train may doubt; it is left as the build check would judge it.
+
+**Two parts meet where their shapes do** (`Grab._clear_exactly`). A grab
+still finds room with its covers, which is fast. Where a cover meets
+another part, it now asks the two parts' exact shapes at that pose, and
+the part is stopped only where they overlap by more than the 1 LDU the
+build check allows. A part with no exact shape is still judged by its
+cover. On the web the shapes come as the geometry does, and until they
+arrive the cover decides. The cost is a test of the two parts' convex
+pieces, and only where a cover has met something.
+
+**Racks with holes ride in their groove.** The racks with holes (6630,
+6592, 32185) are drawn as channels underneath, 12 LDU across between their
+end holes, which is a stud's width. 8448-1's rack (32185) lies on a plate
+2 x 10, and the plate's studs stand up in the channel. The rack was read
+as gripped by those studs, so it was one body with the frame, and in all
+five of 8448-1's models the pinion turned against nothing. The gear table
+now marks the three as grooved, as G11 marked 87761 and 64781. Turned
+once, 8448-1's rack slid 1.96 LDU, and the next reading found none of the
+studs. Their tips are in the groove, which the rack's cover leaves empty,
+and the rack was then lodged in the steering arm it touched and carried by
+it. The studs standing in a grooved rack's groove are now found from the
+rack's shape, wherever it has slid to (`Bodies._grooves_by_shape`). 5533-1's
+rack (6630) goes 5.33 LDU and back. 8448-1's goes 1.96 LDU and comes back
+0.75 LDU on the second turn, which then stops where a steering link meets
+a wheel rim (left, below).
+
+**A steering arm on two balls turns on its kingpin.** The steering arms
+with ball joints (15460, 32186, 6571) hang on an upper and a lower ball,
+which work as their kingpin, plus a third ball for the track rod. A grab
+of one was refused "on a ball in a closed loop", because a ball has no
+line to turn about. A part on a ball in a loop that also hangs on a second
+ball now turns on the line through the two balls' middles (`Grab._kingpin`;
+`Linkage.read`'s `driver_line`). The second ball must be on a body held on
+a line of its own or on what stays, so a track rod hung only on balls is
+not taken for a kingpin. Both balls stay where they are as the arm turns,
+and the loop moves the rest. 9392-1's arm turns on it with its kingpin
+0.000 LDU from where it stood. Its turn then stops where the track rod
+meets a beam, and 4404-1's loop closes neither way (left, below).
+
+**The joints' cache under a lock.** A sweep job and a probe run each died
+on a broken key in `Joints._lines`, the cache of each part's axles and
+holes. The model's joints are read on a worker once it has stood still,
+and on the main thread when move_part asks before that reading is done.
+The two filled the cache at once. It is now filled under a lock.
+
+**Steering, swept** (`sweep_before`, `sweep_after`).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| before (m81) | 51 of 168 |
+| after (all of G12) | 54 of 168 |
+
+No set that steered stopped. 8285-1 steers because its angle connector
+no longer meets the axle pin beside it by their covers at once. 42035-1 and
+5510-1 steer because their turn back no longer stops short, where they
+came back 0.53 and 0.07 LDU off before. In all 33 sets that steer at a
+pinion and have steering arms, the arms turn with the rack.
+
+| what stopped it | before | after |
+|---|---|---|
+| the rack (or far arm) did not move | 33 | 44 |
+| not back where it stood | 21 | 23 |
+| something is in the way at once | 18 | 7 |
+| the pinion turned, its rack did not (one body with what it turns in) | 15 | 10 |
+| held rigidly | 9 | 9 |
+| its arm hangs on a ball in a loop | 8 | 5 |
+| its loops are too big to solve | 7 | 8 |
+| its loop has no freedom | 4 | 6 |
+| what stays moved | 1 | 1 |
+| held by a worm or a screw | 1 | 1 |
+
+"The rack did not move" grew, because sets that were refused at once now
+turn and stop further on. Among them are 8448-1's five models, which stop
+on the second turn, and 9392-1's two, which stop where a track rod meets a
+beam. Five that met something at once are also here: 42055-1, 42056-1,
+42078-1's dump truck, 42108-1 and 8880-1. 5533-1's rack goes 5.33 LDU and
+back the other way, but does not come back where it stood.
+
+**The other moving things, swept** (`movesweep_before` over all 749 files;
+`movesweep_after` and `movesweep_beforesub` over the same 260). The after
+sweep moved, as G11's did, every set whose things two parts stopped, that
+hang on a ball in a loop, or that have a rack with holes, plus every fourth
+set of the rest: 260 sets and 382 things. A turn now counts only when the
+thing itself turns a whole degree. A turn stopped at once used to say
+"Moved" when free joints inside the thing swung down, and four things
+(42068-1's turntable, 4432-1's door, 4993-1's and 5974-1's booms) passed
+as moving in m81 without turning (`move_sweep.moves`).
+
+| the same 260 sets | both ways and back | to its stop | turn at all | two parts meet | steps stopped by covers only |
+|---|---|---|---|---|---|
+| before (m81) | 103 of 382 | 5 | 245 | 139 | 162 |
+| after (all of G12) | 145 of 382 | 15 | 300 | 59 | 15 |
+
+By kind, both ways and back: turntables 34 to 46, doors 25 to 34, booms and
+arms 44 to 65. No thing that turned both ways and back before stops now.
+
+| what stopped it | before | after |
+|---|---|---|
+| moves, not back where it stood | 54 | 71 |
+| two parts meet at once: their covers only | 54 | 6 |
+| its loop has no freedom | 38 | 44 |
+| two parts meet at once: the real parts | 33 | 16 |
+| held rigidly | 18 | 19 |
+| not back, two parts meet on the way back: not judged | 16 | 17 |
+| two parts meet at once: not judged | 16 | 11 |
+| not back, two parts meet on the way back: their covers only | 13 | 0 |
+| held by a worm or a screw | 10 | 10 |
+| not back, two parts meet on the way back: the real parts | 7 | 9 |
+| its loops are too big to solve | 7 | 7 |
+| moves to its stop (the real parts meet) | 5 | 15 |
+| it did not move | 4 | 4 |
+| what stays moved | 3 | 7 |
+| other (a head on a ball in a loop) | 1 | 1 |
+
+"Not back" grew because more things turn now. Of the 71, most hang on a
+pin or an axle without friction and swing down under their weight once
+let go, which is right, and the sweep counts it as not back. "Two parts
+meet at once: the real parts" fell from 33 to 16, and not every one of
+those fell for a good reason (left, below).
+
+**Proved** (bench/results/grab12-2026-10-18/`probes/`), on a box shared
+with other sessions: `grab_probe` windowed on the GPU lease, in full
+(`grab_probe_full.log`), ran 451 checks and all passed. That is the 442 it
+had and nine new ones. 10295-1's right door opens one way and stops at
+once the other, where its real parts meet. Three moving cases have no turn
+stopped where only covers met. Two grooved racks pass two checks each, and
+there is one kingpin check. No timing check failed, so
+none had to be run alone. mechanism_probe (54 checks), mechanism_sets (2
+sets), simulate_probe (41) and placing_probe (36) pass, `tools/gears.py
+check` finds no problems, and tests/test_gears.py passes 6. Each new check
+fails with its fix taken out. This was tried once in a copy: 10295-1's two
+checks without `Grab._clear_exactly`, all four grooved checks without the
+table's grooves, 8448-1's second check without the reading by shape, and
+the kingpin check without `Grab._kingpin`, where the arm is refused again.
+Pictures (`steer_SET_*.png`, `move_SET_KIND_*.png`, before and after each
+turn). 5510-1's front wheels turn one way and then the other. 3741-1's B
+model's locomotive turns on its coupling against its tender, which its
+covers held at once both ways in m81. 10185-1's first floor swings open on
+its hinge, where its hinge plates met the plate beside them at once. Also
+10295-1's right door, and 8285-1's front wheels, from above.
+
+**Left for later.**
+- A session's move tests where it ends, not the way there. With covers,
+  a flush neighbour also blocked the end, so a move stayed put. With exact
+  shapes the end is often clear. Eight things that now turn both ways pass
+  a stop the judge calls real at the first degree. Six are trains: 10015-1,
+  10183-1 and its caboose, 10205-1, 3741-1's B model and 4543-1, each a bogie
+  or a coupling under a buffer beam. The others are 21019-1's turntable and
+  3180-1's boom. The bogies turn in the real trains, and a buffer beam's
+  convex pieces may fill the space under it. A move_part that tests its way
+  a few degrees at a time comes next, with both sweeps run again.
+- What the joints are read as after a move, from where the parts stand.
+  8448-1's steering link loses the ball on its arm, and the second turn
+  stops where it meets a wheel rim (five models). 4432-1's door is read on
+  another joint. 10185-1's first floor, 4404-1's kingpin loop and 9393-1
+  lock. 10295-1's door and 75969-1's roof are held rigidly on the way back.
+  G11's studs off the grid belong here too.
+- Ball-jointed steering arms still refused: 10265-1, 10295-1 and its 911
+  Turbo, 42021-1 and 41999-1. The ball they are taken by is on a rod hung
+  only on balls, so no kingpin is found.
+- The judge's own limits. A part on a free pin that swings after its move
+  is judged where it came to rest. 21311-1 and 8147-1 read as covers only.
+  A click hinge is judged at its next click, and one that meets something
+  between two clicks, and is clear at the click, reads as covers only
+  (10179-1, 21318-1).
+- From G11: 8074-1's grader, 6753-1's tow truck, steering loops too big to
+  solve, and 23 steering sets and 71 moving things not back.

@@ -24,8 +24,9 @@ what stays never moves, and the last turn puts every part back within 0.02
 LDU. Each job runs under ~/.claude/claude-core/bin/heavy, with a data folder
 of its own (.scratch-data, never the owner's app data); a set that takes
 longer than --timeout seconds (300) is stopped and said so, and its job goes on
-from the next. Rows go to bench/results/grab11-2026-10-18/sweep_LABEL.jsonl and
-the table to sweep_LABEL.md (Grab 9's are in grab9-2026-10-18).
+from the next. Rows go to bench/results/grab12-2026-10-18/sweep_LABEL.jsonl and
+the table to sweep_LABEL.md (Grab 9's are in grab9-2026-10-18, Grab 11's in
+grab11-2026-10-18).
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OMR = ROOT / "vendor" / "omr" / "files"
 PARTS = ROOT / "vendor" / "ldraw" / "parts"
 TABLE = ROOT / "assets" / "ldraw" / "gears.json"
-OUT = Path("/mnt/Projects/brickworks/bench/results/grab11-2026-10-18")
+OUT = Path("/mnt/Projects/brickworks/bench/results/grab12-2026-10-18")
 HEAVY = Path.home() / ".claude" / "claude-core" / "bin" / "heavy"
 GPU = Path.home() / ".claude" / "claude-core" / "bin" / "gpu"
 
@@ -204,8 +205,8 @@ def _run_job(sets: list[str], label: str, job: int, timeout: float, shots: bool 
         listing = OUT / f"{what}_{label}_{job}.list"
         listing.write_text("".join(f"vendor/omr/files/{s}\n" for s in left))
         done_before = len(rows_path.read_text().splitlines()) if rows_path.exists() else 0
-        # Windowed on the GPU lease for pictures; else headless under heavy.
-        command = ([str(GPU), "env", "MESA_VK_WSI_DEBUG=sw", "xvfb-run", "-a", "godot", "--path", str(ROOT),
+        # Windowed on the GPU lease for pictures, under heavy as every run is; else headless under heavy.
+        command = ([str(HEAVY), str(GPU), "env", "MESA_VK_WSI_DEBUG=sw", "xvfb-run", "-a", "godot", "--path", str(ROOT),
                     "--resolution", "1400x900"] if shots else [str(HEAVY), "godot", "--headless", "--path", str(ROOT)])
         process = subprocess.Popen(
             command + ["--script", "src/dev/grab_probe.gd", "--", f"--only={what}", f"--list={listing}",
