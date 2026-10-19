@@ -1715,9 +1715,12 @@ func turn_to(degrees: float) -> float:
 		return angle
 	_wall = NAN
 	loop_short = false
-	if linkage != null:
-		# On a quarter-degree grid: a part's turned cover is kept per turn
-		# (Builder.boxes_for), so a drag back over the same ground finds them.
+	if linkage != null and budget_ms < INF:
+		# A drag's, on a quarter-degree grid: a part's turned cover is kept
+		# per turn (Builder.boxes_for), so a drag back over the same ground
+		# finds them. A session's turn is the degrees it asks (G14a): put on
+		# the grid, a turn back by as far as a stop found off it had gone
+		# overshot, and 6987-1's loop came back 0.29 LDU from where it began.
 		wanted = snappedf(wanted, LOOP_GRID)
 	if linkage != null and not linkage.is_slide():
 		# As far as the loop closes towards it.
