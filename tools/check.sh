@@ -326,6 +326,13 @@ run "pose and animate" "${screen[@]}" godot --path . --resolution 1400x900 \
 # real set asked about first. Pictures in shots/hidden_colours/.
 run "hidden colours" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/hidden_colours_probe.gd
+# With the assistant off, a complete CAD with no word of AI anywhere, and
+# whole again when it is turned on. Never in the suite until 2026-10-19,
+# when it was found failing on main: a picture's base64 in the booklet.
+run "no AI" "${screen[@]}" godot --path . --resolution 1280x800 \
+  --script src/dev/noai_probe.gd
+run "no AI, then the assistant back" "${screen[@]}" godot --path . --resolution 1280x800 \
+  --script src/dev/noai_probe.gd -- --assistant=on
 # The window's commands as MCP tools again, with a window this time: a
 # render comes back with its picture, and the picture and the booklet are
 # written where Export writes (the probe's own folder, not Downloads).

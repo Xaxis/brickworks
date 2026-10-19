@@ -58,6 +58,10 @@ func _ok(ok: bool, what: String) -> void:
 
 func _run() -> void:
 	_ai = RegEx.create_from_string(AI_WORDS)
+	# The check reads words, not a picture's bytes, and still finds a word.
+	_ok(_ai.search(_readable("<img src=\"data:image/png;base64,AB/AI+cdT\">\n0 !: Qk/AI+x")) == null
+		and _ai.search(_readable("<p>Made with AI</p>")) != null,
+		"the AI check reads what a person reads, not a picture's base64")
 	_forget(OUT)
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -398,14 +402,14 @@ func _build_by_hand() -> void:
 	var html: String = FileAccess.get_file_as_string(booklet)
 	_ok(wrote.begins_with("wrote ") and html.length() > 1000,
 		"the booklet: %s" % wrote)
-	_ok(_ai.search(html) == null, "...with no word of AI in it")
+	_ok(_ai.search(_readable(html)) == null, "...with no word of AI in it%s" % _quoted(_readable(html)))
 	var bar: ModelBar = _main.get("_bar")
 	wrote = await bar.export_now(folder)
 	var path: String = wrote.trim_prefix("wrote ")
 	var ldr: String = FileAccess.get_file_as_string(path)
 	_ok(wrote.begins_with("wrote ") and ldr.count("3001.dat") == 3,
 		"the LDraw file, three bricks in it: %s" % wrote.get_file())
-	_ok(_ai.search(ldr) == null, "...with no word of AI in it")
+	_ok(_ai.search(_readable(ldr)) == null, "...with no word of AI in it%s" % _quoted(_readable(ldr)))
 	wrote = await exports.model_3d("glb")
 	_ok(wrote.begins_with("wrote ") or wrote.contains(".glb"), "a GLB: %s" % wrote.get_file())
 	var found: PackedStringArray = _ai_in_window()
@@ -488,6 +492,27 @@ func _rows(popup: PopupMenu) -> String:
 		if not popup.is_item_separator(index):
 			rows.append(popup.get_item_text(index))
 	return ", ".join(rows)
+
+
+## A file as a person reads it: without the pictures written into it as
+## base64 (an HTML data: address, an LDraw !DATA block). Their letters are
+## not words, and one booklet in three or so had "/AI+" among a picture's
+## bytes, which the word boundaries took for the word (2026-10-19).
+func _readable(text: String) -> String:
+	var data := RegEx.create_from_string("(?m)data:[^\"'\\s)]+|^0 !: .*$")
+	return data.sub(text, "", true)
+
+
+## Where a file says a word of AI, a few words either side of each: "" when
+## it says none.
+func _quoted(text: String) -> String:
+	var said := PackedStringArray()
+	for found: RegExMatch in _ai.search_all(text):
+		var from: int = maxi(found.get_start() - 40, 0)
+		said.append("\"…%s…\"" % text.substr(from, found.get_end() + 40 - from).replace("\n", " "))
+		if said.size() == 4:
+			break
+	return "" if said.is_empty() else ": " + ", ".join(said)
 
 
 static func _listed(found: PackedStringArray) -> String:
