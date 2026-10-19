@@ -170,7 +170,6 @@ const drawn = (page) => page.evaluate(() => ({
   rules: [...document.querySelectorAll("#rules li")].map((li) => li.textContent),
   groups: Object.fromEntries([...document.querySelectorAll("#groups section")].map((s) => [s.id.replace("group-", ""), {
     heading: s.querySelector("h2")?.textContent || "", note: s.querySelector(".note")?.textContent || "",
-    why: s.querySelector(".why-not")?.textContent || "",
     entries: [...s.querySelectorAll(".kept")].map((k) => ({ id: k.dataset.entry,
       card: Boolean(k.querySelector("a.model .frame") && k.querySelector("a.model b")),
       lines: [...k.querySelectorAll(".challenge-said")].map((x) => x.textContent),
@@ -178,6 +177,7 @@ const drawn = (page) => page.evaluate(() => ({
   winners: [...document.querySelectorAll("#winner-cards .kept")].map((k) => ({ id: k.dataset.entry,
     line: k.querySelector(".challenge-said")?.textContent || "" })),
   winnersShown: !document.getElementById("winners")?.hidden,
+  why: [...document.querySelectorAll("#groups .why-not")].map((p) => p.textContent),
 }));
 
 let master = null;
@@ -427,7 +427,7 @@ try {
     await cyPage.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(cyPage, () => document.documentElement.dataset.challenge === "open", "the challenge for Cy");
     const c = await drawn(cyPage);
-    check(`Cy, under 13: no vote buttons, and "${c.groups.hand.why}"`, /13 and over/.test(c.groups.hand.why)
+    check(`Cy, under 13: no vote buttons, and once "${c.why[0]}"`, c.why.length === 1 && /13 and over/.test(c.why[0])
       && c.groups.hand.entries.every((one) => !one.button));
     await pictures(cyPage);
     await shot(cyPage, "8_challenge_cy-390.png");
@@ -485,7 +485,7 @@ try {
     check("...nothing sideways at 390 px", !(await sideways(page)));
     await pictures(page);
     await page.evaluate(() => document.querySelector(".wins")?.scrollIntoView());
-    await shot(page, "10_designer_won-390.png", false);
+    await shot(page, "10_designer_won-390.png");
     await visitor.close();
   }
   const list = await api("/api/share?op=list&tests=1&sort=newest");

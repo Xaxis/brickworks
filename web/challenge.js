@@ -178,12 +178,6 @@ function draw() {
       : c.state === "ended" ? `${counted(n, "entry", "entries")}, the most voted first.`
         : `${counted(n, "entry", "entries")}, the first entered first. Votes are counted when it ends.`;
     section.append(head, note);
-    if (c.state === "open" && state.you && !state.you.may_vote && state.you.why_not) {
-      const why = document.createElement("p");
-      why.className = "note why-not";
-      why.textContent = state.you.why_not;
-      section.append(why);
-    }
     const grid = document.createElement("div");
     grid.className = "models";
     for (const entry of (group.entries || []).filter((one) => ID.test(String(one.id)))) {
@@ -196,6 +190,13 @@ function draw() {
     }
     if (n) section.append(grid);
     $("groups").append(section);
+  }
+  // Why this account has no vote buttons, said once above the entries.
+  if (c.state === "open" && state.you && !state.you.may_vote && state.you.why_not) {
+    const why = document.createElement("p");
+    why.className = "note why-not";
+    why.textContent = state.you.why_not;
+    $("groups").prepend(why);
   }
   document.documentElement.dataset.challenge = c.state;
 }
