@@ -375,7 +375,7 @@ const BALL_RADIUS := 8.0
 ## socket, as a towball on a trailer always is, does not: 3184's 2508
 ## towballs in 98263's sockets held nothing, and 235 parts floated.
 static func balls(entries: Array) -> Dictionary:
-	var sockets: Dictionary = {}   ## bucket -> Array of [key, middle]
+	var sockets: Dictionary = {}   ## bucket -> Array of [key, middle, way, half its length]
 	var found: Array = []          ## [key, middle]
 	for entry: Array in entries:
 		var part: Lbm.PartMesh = entry[2]
@@ -385,22 +385,11 @@ static func balls(entries: Array) -> Dictionary:
 		for connector: Lbm.Connector in part.connectors:
 			if connector.kind == "ball":
 				found.append([entry[0], at * connector.position])
-			elif connector.kind == "socket":
-				var middle: Vector3 = at * connector.position
-				var box: Vector3i = _bucket(middle)
-				if not sockets.has(box):
-					sockets[box] = []
-				(sockets[box] as Array).append([entry[0], middle])
-			elif connector.kind == "bore" and absf(connector.radius - BALL_RADIUS) <= ROUND_FIT * 0.5 \
-					and connector.length > 0.0 and connector.length <= BALL_RADIUS * 2.0:
-				# A socket drawn as plain rounds, a bore a ball's size and no
-				# longer than the ball (2739a's ends, a steering link on its
-				# towball): its middle is the socket's.
-				var middle: Vector3 = at * (connector.position + connector.axis * connector.length * 0.5)
-				var box: Vector3i = _bucket(middle)
-				if not sockets.has(box):
-					sockets[box] = []
-				(sockets[box] as Array).append([entry[0], middle])
+		for socket: Array in _sockets(part, at):
+			var box: Vector3i = _bucket(socket[0])
+			if not sockets.has(box):
+				sockets[box] = []
+			(sockets[box] as Array).append([entry[0]] + socket)
 	var held: Dictionary = {}
 	for ball: Array in found:
 		var home: Vector3i = _bucket(ball[1])
@@ -408,11 +397,51 @@ static func balls(entries: Array) -> Dictionary:
 			for dy: int in [-1, 0, 1]:
 				for dz: int in [-1, 0, 1]:
 					for socket: Array in sockets.get(home + Vector3i(dx, dy, dz), []):
-						if socket[0] != ball[0] \
-								and (socket[1] as Vector3).distance_to(ball[1]) <= BALL_SLACK:
+						if socket[0] != ball[0] and _in_socket(ball[1], socket[1], socket[2], socket[3]):
 							_add(held, ball[0], socket[0])
 							_add(held, socket[0], ball[0])
 	return held
+
+
+## The middles of [param part]'s sockets, placed at [param at] ([method
+## _sockets]).
+static func sockets_of(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for socket: Array in _sockets(part, at):
+		out.append(socket[0])
+	return out
+
+
+## [param part]'s sockets placed at [param at], each [its middle, the way
+## along it, half its length]: its socket connectors (no way, no length),
+## and a bore a ball's size and no longer than the ball, a socket drawn as
+## plain rounds (2739a's ends, a steering link on its towball; 15459's and
+## 32005's ends, on a steering arm's balls).
+static func _sockets(part: Lbm.PartMesh, at: Transform3D) -> Array:
+	var out: Array = []
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind == "socket":
+			out.append([at * connector.position, Vector3.ZERO, 0.0])
+		elif connector.kind == "bore" and absf(connector.radius - BALL_RADIUS) <= ROUND_FIT * 0.5 \
+				and connector.length > 0.0 and connector.length <= BALL_RADIUS * 2.0:
+			out.append([at * (connector.position + connector.axis * connector.length * 0.5),
+				(at.basis * connector.axis).normalized(), connector.length * 0.5])
+	return out
+
+
+## Whether a ball whose middle is at [param ball] is in a socket ([method
+## _sockets]): within [constant BALL_SLACK] of its middle, or of the line
+## of a socket drawn as a bore, along as far as the bore goes. A bore's
+## middle is not the ball's where the socket is drawn in pieces: 32005's
+## ends and 2736's towball stand 2 LDU apart along it as 42021-1 is built,
+## which its steering's turn left 2.001 off, and the turn back lost the
+## track rod from its ball.
+static func _in_socket(ball: Vector3, middle: Vector3, way: Vector3, half: float) -> bool:
+	var gap: Vector3 = ball - middle
+	if way == Vector3.ZERO:
+		return gap.length() <= BALL_SLACK
+	var along: float = gap.dot(way)
+	return (gap - way * along).length() <= BALL_SLACK and absf(along) <= half + BALL_SLACK
 
 
 ## [param more]'s joints added to [param into]'s, both key -> {key -> true}.

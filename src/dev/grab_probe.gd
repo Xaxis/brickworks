@@ -278,7 +278,13 @@ func _run() -> void:
 		for one: Array in GROOVED:
 			await _grooved_check(str(one[0]), float(one[1]))
 	if only.is_empty() or only == "kingpin":
-		await _kingpin_check()
+		await _kingpin_check("res://vendor/omr/files/9392-1.mpd", "6571")
+		# G14b: 15460's balls in 15459's sockets drawn as rounds, each read at
+		# its own middle (Bodies._ball_middle), so two of them are a kingpin.
+		await _kingpin_check("res://vendor/omr/files/10295-1.mpd", "15460")
+	if only.is_empty() or only == "swept":
+		for one: Array in SWEPT_STEERING:
+			await _swept_steering_check(str(one[0]), str(one[1]))
 	if only.is_empty() or only == "hoses" or only == "hose":
 		# --hose=WORD runs only the cases whose name has it ("made" the made one).
 		var asked_hose: String = ""
@@ -5449,6 +5455,18 @@ const MOVING: Array = [
 	# G12 (MECHANISMS §20): turned +30, the right door's slope 75 met the one
 	# built beside it by their covers at once; their shapes are clear.
 	["res://vendor/omr/files/10295-1.mpd", "boom"],
+	# G14b (MECHANISMS §24): the cupboard's door (4533) on the hinge only
+	# BrickNet's labels name (Bodies._labelled_hinge); held by nothing, it
+	# did not move.
+	["res://vendor/omr/files/3180-1.mpd", "door"],
+]
+## Steering the sweep's way (tools/steer_sweep.py), each [set, why]: it
+## steers both ways and back over MCP (G14b, MECHANISMS §24).
+const SWEPT_STEERING: Array = [
+	# Its pinion, on an axle through the big ball joint's socket that no hole
+	# names, was lodged in the socket and held the whole front axle; a pinion
+	# in another piece's rack turns where it is lodged (Bodies._driving_pinion).
+	["res://vendor/omr/files/41999-1.mpd", "a lodged pinion turns on its axis"],
 ]
 
 
@@ -5633,15 +5651,16 @@ func _grooved_check(path: String, least: float) -> void:
 ## A steering arm on two balls turns on the line through them (G12,
 ## Grab._kingpin): 9392-1's arm (6571) hangs on its upper and lower
 ## wishbones' towballs, which stay where they are as it turns.
-func _kingpin_check() -> void:
-	print("\na steering arm on two balls turns on the line through them")
-	if not await _open("res://vendor/omr/files/9392-1.mpd"):
+func _kingpin_check(path: String, arm_part: String) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\na steering arm on two balls turns on the line through them: %s" % name)
+	if not await _open(path):
 		return
 	_grab._ready_now()
 	var bodies: Bodies = _grab._bodies
 	var arm: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id == "6571" and arm == 0:
+		if brick.part_id == arm_part and arm == 0:
 			arm = brick.id
 	var balls: Array = []
 	if arm != 0:
@@ -5664,9 +5683,27 @@ func _kingpin_check() -> void:
 		still = 0.0
 		for point: Vector3 in [trial.pivot, trial.pivot + trial.axis * 10.0]:
 			still = maxf(still, (at * (was.affine_inverse() * point)).distance_to(point))
-	_check("9392-1: its steering arm #%d on %d balls is taken as a turn on its kingpin (%s, %s), turned %.2f° with the kingpin's line %.3f LDU from where it stood" % [
-		arm, balls.size(), state, trial.mode, got, still], state == "moves" and trial.mode == "turn"
+	_check("%s: its steering arm #%d on %d balls is taken as a turn on its kingpin (%s, %s), turned %.2f° with the kingpin's line %.3f LDU from where it stood" % [
+		name, arm, balls.size(), state, trial.mode, got, still], state == "moves" and trial.mode == "turn"
 		and absf(got) > 0.5 and still < 0.01)
+	_builder.forget_history()
+
+
+## A set's steering turned as the sweep turns it (_sweep_one): +30, -60 and
+## back over MCP, the rack or the far arm going one way and the other, what
+## stays still, and every part back within 0.02 LDU.
+func _swept_steering_check(path: String, why: String) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\n%s steers both ways and back (%s)" % [name, why])
+	var row: Dictionary = await _sweep_one(path)
+	var went := PackedStringArray()
+	for step: Dictionary in row.get("steps", []):
+		went.append("%s %s" % ["moved" if bool(step.get("moved")) else "held",
+			("%+.2f LDU" % float(step["rack_ldu"])) if step.has("rack_ldu")
+			else ("%.1f°" % float(step.get("follower_deg", 0.0)))])
+	_check("%s: turned at its %s %s, %s, back to %.4f LDU%s" % [name, str(row.get("kind", "")),
+		str(row.get("driver", "")), ", ".join(went), float(row.get("back_ldu", -1.0)),
+		"" if bool(row.get("steers")) else ": " + str(row.get("cause", "")).left(200)], bool(row.get("steers")))
 	_builder.forget_history()
 
 
@@ -6363,12 +6400,22 @@ func _steer_debug(path: String) -> void:
 			tools.app = _main
 			tools.assistant = _main.get("_assistant")
 			await _own_all_copies()
+			var was: Dictionary = _snapshot()
 			for move: String in arg.trim_prefix("--first=").split(","):
 				var said: String = str(await tools.run("move_part", {"part": "#" + move.get_slice(":", 0),
 					"degrees": float(move.get_slice(":", 1))}))
 				print("  FIRST %s: %s" % [move, said.replace("\n", " | ").left(600)])
 				await _frames(2)
 				_grab._ready_now()
+				# Every part off where it stood by more than 0.02 LDU, and its body.
+				var off := PackedStringArray()
+				for key: Variant in was:
+					var now: BrickWorld.Brick = _world.get_brick(int(key))
+					if now != null and (was[key] as Transform3D).origin.distance_to(now.transform.origin) > 0.02:
+						off.append("#%d %s %.2f (body %d)" % [int(key), now.part_id,
+							(was[key] as Transform3D).origin.distance_to(now.transform.origin),
+							int(_grab._bodies.body_of.get(int(key), -1))])
+				print("    off: %s" % ", ".join(off))
 	var bodies: Bodies = _grab._bodies
 	var named := func(key: int) -> String:
 		var brick: BrickWorld.Brick = _world.get_brick(key)
@@ -6378,7 +6425,7 @@ func _steer_debug(path: String) -> void:
 		var ids: PackedInt64Array = bodies.members.get(body, PackedInt64Array())
 		var parts := PackedStringArray()
 		for key: int in ids.slice(0, 10):
-			parts.append(_world.get_brick(key).part_id)
+			parts.append("%s#%d" % [_world.get_brick(key).part_id, key])
 		return "body %d (%d parts%s%s): %s" % [body, ids.size(), ", ANCHOR " + bodies.stays_words(body)
 			if bodies.anchors.has(body) else "", ", parent %d by %s" % [int(bodies.parent_of[body]),
 			(bodies.parent_link[body] as Bodies.Link).kind] if bodies.parent_of.has(body) else "", " ".join(parts)]
@@ -6481,11 +6528,45 @@ func _steer_debug(path: String) -> void:
 						nearest = "%s (kind %d sub %d) at %s way %s, %.1f LDU off" % [shape.named(k), shape.kind[k],
 							shape.sub[k], frame.origin.snapped(Vector3.ONE * 0.1),
 							(-frame.basis.y).normalized().snapped(Vector3.ONE * 0.01), off]
-			print("      nearest exact connector: %s; in a hole exactly: %s" % [nearest,
-				bodies._in_a_hole_exactly(into, stud[2], stud[3])])
+			print("      nearest exact connector: %s; in a hole exactly: %s; no sockets %s, faces %s, takes %s, up %s" % [
+				nearest, bodies._in_a_hole_exactly(into, stud[2], stud[3]), bodies._no_sockets(into.id),
+				bodies._faces(into.id, stud[3]), bodies._takes_stud(into.id, stud[2], stud[3]),
+				into.transform.basis.y.snapped(Vector3.ONE * 0.01)])
 		for one: String in ids:
 			for edge: Array in bodies.joined_by.get(int(one), []):
 				print("    #%s joined to %s by %s" % [one, named.call(int(edge[0])), edge[1]])
+	# What holds a part to what stays (--held=ID), join by join; and what
+	# holds two parts as one (--why=A,B).
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--why="):
+			var ends: PackedStringArray = arg.trim_prefix("--why=").split(",")
+			print("  why %s and %s are one:" % [named.call(int(ends[0])), named.call(int(ends[1]))])
+			for step: Array in bodies._path(int(ends[0]), int(ends[1])):
+				print("    %s" % bodies._join_words(int(step[0]), int(step[1]), str(step[2])))
+		if arg.begins_with("--held="):
+			print("  held %s: %s" % [named.call(int(arg.trim_prefix("--held="))),
+				bodies.held_words(int(arg.trim_prefix("--held=")))])
+	# Where each part's balls and sockets are (--balls=A,B), and which of
+	# them Joints.balls finds in the other: a ball lost from its socket.
+	for arg: String in OS.get_cmdline_user_args():
+		if not arg.begins_with("--balls="):
+			continue
+		var ball_entries: Array = []
+		for one: String in arg.trim_prefix("--balls=").split(","):
+			var brick: BrickWorld.Brick = _world.get_brick(int(one))
+			if brick == null:
+				continue
+			var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+			ball_entries.append([brick.id, brick.transform, mesh])
+			var balls := PackedStringArray()
+			for connector: Lbm.Connector in mesh.connectors:
+				if connector.kind == "ball":
+					balls.append(str((brick.transform * connector.position).snapped(Vector3.ONE * 0.01)))
+			var sockets := PackedStringArray()
+			for middle: Vector3 in Joints.sockets_of(mesh, brick.transform):
+				sockets.append(str(middle.snapped(Vector3.ONE * 0.01)))
+			print("  %s: balls %s; sockets %s" % [named.call(brick.id), ", ".join(balls), ", ".join(sockets)])
+		print("    Joints.balls: %s" % Joints.balls(ball_entries))
 	# Every joint of a part's body (--links=ID): its kind, the body on the
 	# other side, where and along what, and which is its parent's.
 	for arg: String in OS.get_cmdline_user_args():

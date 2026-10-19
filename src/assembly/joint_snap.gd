@@ -159,16 +159,23 @@ class End extends RefCounted:
 		return (b * e - d) / denominator
 
 
-## A part's ends in its own frame, worked out once per part.
+## A part's ends in its own frame, worked out once per part. Bodies asks on
+## a worker as well as on the main thread (a stud on a part's side, in a
+## hole or not): the cache is filled under a lock, as Joints._lines is.
+## Two threads writing it at once stopped the app (10265-1, G14b).
 static var _ends: Dictionary = {}
+static var _ends_lock := Mutex.new()
 
 
 static func ends_of(part: Lbm.PartMesh) -> Array:
 	if part == null:
 		return []
 	var key: int = part.get_instance_id()
-	if _ends.has(key):
-		return _ends[key]
+	_ends_lock.lock()
+	var known: Variant = _ends.get(key)
+	_ends_lock.unlock()
+	if known != null:
+		return known
 	var out: Array = []
 	for connector: Lbm.Connector in part.connectors:
 		var end := End.new()
@@ -233,7 +240,9 @@ static func ends_of(part: Lbm.PartMesh) -> Array:
 				and (gap - a.axis * gap.dot(a.axis)).length() < 0.5 and gap.dot(a.axis) < 0.0:
 			a.back = gap.length()
 			b.back = gap.length()
+	_ends_lock.lock()
 	_ends[key] = out
+	_ends_lock.unlock()
 	return out
 
 

@@ -321,7 +321,7 @@ func _chosen() -> String:
 			_kingpin = _kingpin_of(body, link)
 			if _kingpin == Vector3.ZERO:
 				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
-					+ "of a part on one of the loop's turning joints (its crank).") % _named())
+					+ "of a part on one of the loop's turning joints (its crank).") % bodies.named([body]))
 		loop = Linkage.read(bodies, link, body, couplings, _kingpin)
 	if loop != null and loop.why.is_empty():
 		# A linear actuator's screw holds its loop where it is: only its rod
@@ -494,7 +494,9 @@ func _chosen() -> String:
 		rest.merge(flex.rests())
 	begin_took["hoses"] = flex.read_ms if flex != null else 0.0
 	placed = rest.duplicate()
-	said = "%s %s" % [_named(), link.words()]
+	# In a loop, the part taken, not all the loop moves: a session that took
+	# a steering knuckle read "the Technic Beam 13, 34 parts".
+	said = "%s %s" % [bodies.named([body]) if linkage != null else _named(), link.words()]
 	if linkage != null:
 		said += ", in %s" % linkage.said()
 	return state
