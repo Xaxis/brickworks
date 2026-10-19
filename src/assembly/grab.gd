@@ -273,6 +273,7 @@ func _chosen() -> String:
 		couplings = offer[0]
 		geared.assign(offer[1])
 	linkage = null
+	_kingpin = Vector3.ZERO
 	var loop: Linkage = null
 	var other_words: String = ""
 	if not held.is_empty() or not geared.is_empty():
@@ -280,9 +281,11 @@ func _chosen() -> String:
 		other_words = held[0].words().trim_prefix("on ") if not held.is_empty() \
 			else "by %s" % geared[0].said(world)
 		if link.axis == Vector3.ZERO:
-			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
-				+ "of a part on one of the loop's turning joints (its crank).") % _named())
-		loop = Linkage.read(bodies, link, body, couplings)
+			_kingpin = _kingpin_of(body, link)
+			if _kingpin == Vector3.ZERO:
+				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
+					+ "of a part on one of the loop's turning joints (its crank).") % _named())
+		loop = Linkage.read(bodies, link, body, couplings, _kingpin)
 	if loop != null and loop.why.is_empty():
 		# A linear actuator's screw holds its loop where it is: only its rod
 		# drawn along it, or its input turned, moves it.
@@ -386,7 +389,7 @@ func _chosen() -> String:
 			weighted += (brick.transform * info.bounds.get_center()) * g
 	_centre = weighted / maxf(grams, 0.000001)
 	pivot = link.point
-	axis = link.axis.normalized()
+	axis = (link.axis if _kingpin == Vector3.ZERO else _kingpin).normalized()
 	mode = "ball" if axis == Vector3.ZERO else "turn"
 	if linkage != null and linkage.is_slide():
 		# Its loop lets it slide and not turn: a scissor lift's foot.
@@ -455,6 +458,37 @@ func _chosen() -> String:
 	if linkage != null:
 		said += ", in %s" % linkage.said()
 	return state
+
+
+## The line a part grabbed on a ball in a loop turns on, or ZERO: where it
+## hangs on another ball as well, on a body held on a line of its own (a
+## hinge, an axle) or on what stays, it turns on the line through the two
+## balls' middles, which keeps both where they are, as a steering arm turns
+## on its upper and lower ball joints (15460 on 10295-1's wishbones, 6571 on
+## 4404-1's frame and swing arm). A third ball, a track rod's on a rod hung
+## only on balls, is not a kingpin's: the loop moves it.
+var _kingpin := Vector3.ZERO
+
+
+func _kingpin_of(child: int, ball: Bodies.Link) -> Vector3:
+	if not _held_on_a_line(ball.other(child)):
+		return Vector3.ZERO
+	var best := Vector3.ZERO
+	for joined: Bodies.Link in bodies.touching.get(child, []):
+		if joined == ball or joined.kind != "ball" or joined.axis != Vector3.ZERO \
+				or not _held_on_a_line(joined.other(child)):
+			continue
+		var line: Vector3 = joined.point - ball.point
+		if line.length() > BrickLattice.STUD * 0.5 and line.length() > best.length():
+			best = line
+	return best.normalized() if best != Vector3.ZERO else Vector3.ZERO
+
+
+## Whether [param body] stays, or hangs on a joint with a line (not only on
+## balls, as a track rod does).
+func _held_on_a_line(body: int) -> bool:
+	var up: Bodies.Link = bodies.parent_link.get(body)
+	return up == null or up.axis != Vector3.ZERO
 
 
 ## What moves, in words: named by its rigid bodies, not a hose it carries,

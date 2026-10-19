@@ -133,13 +133,22 @@ var last_residual := PackedFloat64Array()
 
 ## The loops round [param driver] (a tree link) and its [param child]:
 ## every closing joint whose loop runs through a joint that moves, and every
-## joint of those loops, until nothing more is added.
-static func read(from: Bodies, driver: Bodies.Link, child: int, couplings: Array = []) -> Linkage:
+## joint of those loops, until nothing more is added. A ball driver turns
+## about [param driver_line] through its middle where one is given: a
+## steering arm on two balls turns on the line through both (its kingpin,
+## Grab._kingpin).
+static func read(from: Bodies, driver: Bodies.Link, child: int, couplings: Array = [],
+		driver_line: Vector3 = Vector3.ZERO) -> Linkage:
 	var out := Linkage.new()
 	out.bodies = from
 	out._offered = couplings
+	out._driver_line = driver_line
 	out._read(driver, child)
 	return out
+
+
+## The line a ball driver turns on (read), or ZERO.
+var _driver_line := Vector3.ZERO
 
 
 ## The joints on the way from the anchor to one end of a closing joint, or
@@ -244,13 +253,14 @@ func _read(driver: Bodies.Link, child: int) -> void:
 		links.append(link)
 		child_of.append(kid)
 		parent_of.append(int(bodies.parent_of[kid]))
-		_axis.append(link.axis.normalized())
+		var line: Vector3 = _driver_line if link == driver and _driver_line != Vector3.ZERO else link.axis
+		_axis.append(line.normalized())
 		_point.append(link.point)
 		turn_col.append(cols)
 		if not link.turns:
 			_still[cols] = true
 		cols += 1
-		if link.axis == Vector3.ZERO:
+		if line == Vector3.ZERO:
 			# A ball: three turns, about x, then y, then z where it stood.
 			cols += 2
 			slide_col.append(-1)

@@ -262,6 +262,8 @@ func _run() -> void:
 	if only.is_empty() or only == "grooved":
 		for one: Array in GROOVED:
 			await _grooved_check(str(one[0]), float(one[1]))
+	if only.is_empty() or only == "kingpin":
+		await _kingpin_check()
 	if only.is_empty() or only == "hoses" or only == "hose":
 		# --hose=WORD runs only the cases whose name has it ("made" the made one).
 		var asked_hose: String = ""
@@ -5536,6 +5538,46 @@ func _grooved_check(path: String, least: float) -> void:
 	var back: float = float((steps[1] as Dictionary).get("rack_ldu", went)) if steps.size() > 1 else went
 	_check("%s: turned -60 after, the rack comes back along its groove, from %+.2f to %+.2f LDU" % [name, went,
 		back], absf(went) >= least and (back - went) * signf(went) < -0.5)
+	_builder.forget_history()
+
+
+## A steering arm on two balls turns on the line through them (G12,
+## Grab._kingpin): 9392-1's arm (6571) hangs on its upper and lower
+## wishbones' towballs, which stay where they are as it turns.
+func _kingpin_check() -> void:
+	print("\na steering arm on two balls turns on the line through them")
+	if not await _open("res://vendor/omr/files/9392-1.mpd"):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var arm: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "6571" and arm == 0:
+			arm = brick.id
+	var balls: Array = []
+	if arm != 0:
+		for link: Bodies.Link in bodies.touching.get(int(bodies.body_of[arm]), []):
+			if link.kind == "ball":
+				balls.append(link.point)
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	trial.shared_mechanism = _grab._mechanism
+	var state: String = trial.begin(arm, _world.get_brick(arm).transform.origin) if arm != 0 else "no arm"
+	var still: float = INF
+	var got: float = 0.0
+	if state == "moves" and trial.mode == "turn":
+		got = trial.turn_to(2.0)
+		var at: Transform3D = trial.placed.get(arm, _world.get_brick(arm).transform)
+		var was: Transform3D = _world.get_brick(arm).transform
+		still = 0.0
+		for point: Vector3 in [trial.pivot, trial.pivot + trial.axis * 10.0]:
+			still = maxf(still, (at * (was.affine_inverse() * point)).distance_to(point))
+	_check("9392-1: its steering arm #%d on %d balls is taken as a turn on its kingpin (%s, %s), turned %.2f° with the kingpin's line %.3f LDU from where it stood" % [
+		arm, balls.size(), state, trial.mode, got, still], state == "moves" and trial.mode == "turn"
+		and absf(got) > 0.5 and still < 0.01)
 	_builder.forget_history()
 
 
