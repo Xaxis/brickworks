@@ -25,6 +25,12 @@
 ## and the tags (ModelKinds), for its owner to change — and a licence, CC
 ## BY unless they choose otherwise. With the big picture goes a small one
 ## for the gallery's cards, so a page of them is quick on a phone.
+##
+## Beside Publish, the community guidelines (2026-10-18, web/guidelines.html):
+## publishing means agreeing to them. And for an account that said it is
+## under 13 (Account.over_13, supabase/trust.sql), List it in the gallery and
+## Show who made it are off, with a line saying why; sharing by link is as
+## it is for anyone. The server refuses both for such an account too.
 class_name SharePanel
 extends PanelContainer
 
@@ -76,6 +82,9 @@ var _words_for: String = "-"
 var _licence: OptionButton
 var _licence_says: Label
 var _list: CheckBox
+## Said to an account under 13, under the box it cannot tick.
+var _young: Label
+var _guidelines: LinkButton
 var _status: Label
 var _publish: Button
 var _link_box: VBoxContainer
@@ -210,6 +219,10 @@ func setup() -> void:
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
 	form.add_child(_list)
+	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
+		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
+	_young.visible = false
+	form.add_child(_young)
 
 	_publish = Button.new()
 	_publish.text = "Publish"
@@ -217,6 +230,19 @@ func setup() -> void:
 	_publish.focus_mode = Control.FOCUS_NONE
 	_publish.pressed.connect(publish)
 	column.add_child(_publish)
+	# What publishing agrees to, where it is agreed to.
+	# One line, never wrapped: a wrapping label in a row is given no width
+	# and stands one letter to a line down the panel.
+	var agree := HBoxContainer.new()
+	agree.add_theme_constant_override("separation", 4)
+	column.add_child(agree)
+	var agree_words: Label = _line("Publishing means you agree to the", 11, 0.7)
+	agree_words.autowrap_mode = TextServer.AUTOWRAP_OFF
+	agree.add_child(agree_words)
+	_guidelines = Look.link("guidelines", 11)
+	_guidelines.tooltip_text = "What may be shared here, credit and licences, and what gets a model taken out"
+	_guidelines.pressed.connect(func() -> void: OS.shell_open(guidelines_url()))
+	agree.add_child(_guidelines)
 
 	_status = _line("", 12, 0.85)
 	column.add_child(_status)
@@ -257,6 +283,30 @@ func setup() -> void:
 	_done.focus_mode = Control.FOCUS_NONE
 	_done.pressed.connect(func() -> void: visible = false)
 	column.add_child(_done)
+
+
+## The community guidelines, on the site this app talks to.
+static func guidelines_url() -> String:
+	return Deployment.api_base() + "/guidelines"
+
+
+## Whether the account said it is under 13: then nothing it shares is
+## listed or credited (the server refuses both too).
+func _kept_private() -> bool:
+	return account != null and account.over_13 is bool and account.over_13 == false
+
+
+## The boxes an account under 13 cannot tick, off, and why.
+func _follow_age() -> void:
+	var young: bool = _kept_private()
+	_young.visible = young
+	if young:
+		_list.button_pressed = false
+		_list.disabled = true
+		_credit.button_pressed = false
+		_credit.disabled = true
+	else:
+		_credit.disabled = false
 
 
 func _line(text: String, size: int, alpha: float) -> Label:
@@ -371,6 +421,7 @@ func open() -> void:
 	else:
 		_status.text = "This model has a link. Publish again to update what it shows."
 		_check_link(store.share_id, fresh)
+	_follow_age()
 
 
 ## Whether the model's link is up or was taken down, so the buttons say
@@ -395,6 +446,7 @@ func _check_link(id: String, words: bool = true) -> void:
 				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
 			_list.disabled = barred
+			_follow_age()
 			_status.text = ("Shared at this link. Publish again to update what it shows."
 				if up else "Taken down. Publish again to bring it back at the same link.")
 			if up and _list.button_pressed:
@@ -569,7 +621,7 @@ func controls_by_name() -> Dictionary:
 	var named_controls: Dictionary = {"share_name": _name, "share_credit": _credit,
 		"share_about": _about, "share_tags": _tags, "share_kind": _kind,
 		"share_licence": _licence, "share_list": _list, "share_publish": _publish,
-		"share_done": _done}
+		"share_guidelines": _guidelines, "share_done": _done}
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
 	if _link_box.is_visible_in_tree():
@@ -590,7 +642,11 @@ func page_state() -> Dictionary:
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
 		"kind": _kind_id() if _kind != null else "",
-		"licence": _licence_id() if _licence != null else ""}
+		"licence": _licence_id() if _licence != null else "",
+		"guidelines": guidelines_url(),
+		"list_disabled": _list.disabled if _list != null else false,
+		"credit_disabled": _credit.disabled if _credit != null else false,
+		"young": _young.visible if _young != null else false}
 
 
 ## Escape closes it, like the other panels.

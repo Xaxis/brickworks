@@ -725,6 +725,10 @@ func _tell_page() -> void:
 			"email": _account.email,
 			"offline": _account.offline,
 			"gated": _gated(),
+			# The age question (supabase/trust.sql): whether it is asked,
+			# and the answer as the deployment keeps it.
+			"age_ask": _account.age_ask,
+			"over_13": _account.over_13,
 		}), true)
 	# And where Claude stands: listening here, which of its apps are
 	# connected to the account, and the panel's line about it — what a

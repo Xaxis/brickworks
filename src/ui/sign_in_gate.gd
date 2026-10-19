@@ -14,6 +14,15 @@
 ## being ended; and "cannot reach Brickworks" with Try again when there is
 ## nowhere to sign in — a first start with no connection.
 ##
+## Then, once, the age question (2026-10-18, supabase/trust.sql): the month
+## and year they were born, asked of everyone the same way, with nothing
+## before the answer to say which answer opens what. The deployment keeps
+## only whether that is 13 or over ([method Account.answer_age]). Under 13,
+## the screen says afterwards what is and is not open to them — building,
+## keeping models and sharing by link are; the gallery and anything public
+## are not — and lets them in. Not asked offline, nor by a deployment from
+## before the question.
+##
 ## Not shown at all when nobody is in front of the window: a probe, a
 ## headless run, or a command-line run that renders, exports or designs
 ## and quits (Main._gate_wanted). And not when the deployment has no
@@ -34,6 +43,20 @@ var _checking: Label
 var _unreachable: VBoxContainer
 var _retry: Button
 var _shown_form: bool = false
+var _title: Label
+var _age: VBoxContainer
+var _months: Array[Button] = []
+var _year: LineEdit
+var _age_go: Button
+var _age_note: Label
+var _thanks: VBoxContainer
+var _thanks_go: Button
+## The answer was under 13 and the screen is saying what that means.
+var _thanking: bool = false
+var _answering: bool = false
+
+const MONTHS: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
 func setup(with_account: Account) -> void:
@@ -87,11 +110,11 @@ func setup(with_account: Account) -> void:
 	name_label.modulate = Color(1, 1, 1, 0.75)
 	mark.add_child(name_label)
 
-	var title := Label.new()
-	title.text = "Sign in to start building"
-	title.add_theme_font_size_override("font_size", 20)
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(title)
+	_title = Label.new()
+	_title.text = "Sign in to start building"
+	_title.add_theme_font_size_override("font_size", 20)
+	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_title)
 
 	_ended = _line("", 12, 1.0)
 	_ended.add_theme_color_override("font_color", Color(1.0, 0.72, 0.45))
@@ -116,6 +139,8 @@ func setup(with_account: Account) -> void:
 	_unreachable.add_child(_retry)
 	column.add_child(_unreachable)
 
+	_build_age(column)
+
 	column.add_child(HSeparator.new())
 	# What an account is and is not, where it is asked for.
 	# Claude only for a device that has the assistant (Settings, Assistant (AI)).
@@ -128,6 +153,102 @@ func setup(with_account: Account) -> void:
 	_follow()
 
 
+## The age question, and what an answer under 13 means, said after it.
+## Neutral: the same question for everyone, no hint before it of what
+## either answer opens.
+func _build_age(column: VBoxContainer) -> void:
+	_age = VBoxContainer.new()
+	_age.add_theme_constant_override("separation", 10)
+	column.add_child(_age)
+	_age.add_child(_line("When were you born?", 15, 0.95))
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	_age.add_child(grid)
+	var group := ButtonGroup.new()
+	for at: int in MONTHS.size():
+		var month := Button.new()
+		month.text = MONTHS[at]
+		month.toggle_mode = true
+		month.button_group = group
+		month.focus_mode = Control.FOCUS_NONE
+		month.custom_minimum_size = Vector2(52, 34)
+		month.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		month.add_theme_font_size_override("font_size", 13)
+		grid.add_child(month)
+		_months.append(month)
+	_year = LineEdit.new()
+	_year.placeholder_text = "Year"
+	_year.max_length = 4
+	_year.custom_minimum_size = Vector2(0, 36)
+	_year.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+	_year.keep_editing_on_text_submit = true
+	_year.text_submitted.connect(func(_t: String) -> void: _answer())
+	_age.add_child(_year)
+	_age_go = Button.new()
+	_age_go.text = "Carry on"
+	_age_go.custom_minimum_size = Vector2(0, 36)
+	_age_go.focus_mode = Control.FOCUS_NONE
+	_age_go.pressed.connect(_answer)
+	_age.add_child(_age_go)
+	_age_note = _line("", 12, 1.0)
+	_age_note.add_theme_color_override("font_color", Color(1.0, 0.72, 0.45))
+	_age_note.visible = false
+	_age.add_child(_age_note)
+	_age.add_child(_line("Brickworks asks everyone this once. The date itself is not kept.",
+		11, 0.6))
+
+	_thanks = VBoxContainer.new()
+	_thanks.add_theme_constant_override("separation", 10)
+	column.add_child(_thanks)
+	_thanks.add_child(_line("Thank you. You can build here, keep your models and share "
+		+ "them by link with anyone you choose.", 14, 0.9))
+	_thanks.add_child(_line("The gallery, a public profile and a name shown on a link "
+		+ "are for people 13 and over, so they are not open on this account.", 13, 0.75))
+	_thanks_go = Button.new()
+	_thanks_go.text = "Start building"
+	_thanks_go.custom_minimum_size = Vector2(0, 36)
+	_thanks_go.focus_mode = Control.FOCUS_NONE
+	_thanks_go.pressed.connect(func() -> void:
+		_thanking = false
+		_follow())
+	_thanks.add_child(_thanks_go)
+
+
+## The month chosen, 1 to 12, or 0 for none.
+func _month() -> int:
+	for at: int in _months.size():
+		if _months[at].button_pressed:
+			return at + 1
+	return 0
+
+
+func _answer() -> void:
+	if _answering:
+		return
+	var month: int = _month()
+	var typed: String = _year.text.strip_edges()
+	var this_year: int = int(Time.get_datetime_dict_from_system()["year"])
+	if month == 0 or not typed.is_valid_int() or typed.length() != 4 \
+			or int(typed) > this_year or int(typed) < this_year - 120:
+		_age_note.text = "Choose the month, and type the year as four digits."
+		_age_note.visible = true
+		return
+	_answering = true
+	_age_go.disabled = true
+	_age_note.visible = false
+	var problem: String = await account.answer_age(month, int(typed))
+	_answering = false
+	_age_go.disabled = false
+	if not problem.is_empty():
+		_age_note.text = problem
+		_age_note.visible = true
+		return
+	_thanking = account.over_13 == false
+	_follow()
+
+
 func _ready() -> void:
 	get_viewport().size_changed.connect(_fit)
 	_fit()
@@ -137,6 +258,13 @@ func _ready() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
+	if _thanks.visible:
+		return {"age_done": _thanks_go}
+	if _age.visible:
+		var asked: Dictionary = {"age_year": _year, "age_go": _age_go}
+		for at: int in _months.size():
+			asked["age_month_%d" % (at + 1)] = _months[at]
+		return asked
 	var named: Dictionary = _form.controls_by_name()
 	named["signin_retry"] = _retry
 	return named
@@ -158,8 +286,17 @@ func _fit() -> void:
 
 func _follow() -> void:
 	var state: int = account.state
-	visible = not account.lets_in()
-	_checking.visible = state == Account.State.CHECKING
+	var signed_in: bool = state == Account.State.SIGNED_IN
+	var asking_age: bool = signed_in and account.age_ask and not _thanking
+	var waiting: bool = signed_in and account.asking_who and not asking_age and not _thanking
+	if not signed_in:
+		_thanking = false
+	visible = not account.lets_in() or asking_age or waiting or _thanking
+	_title.text = "One question first" if asking_age else (
+		"Welcome to Brickworks" if _thanking else "Sign in to start building")
+	_age.visible = asking_age
+	_thanks.visible = _thanking and signed_in
+	_checking.visible = state == Account.State.CHECKING or waiting
 	_form.visible = state == Account.State.SIGNED_OUT
 	_unreachable.visible = state == Account.State.UNREACHABLE
 	_ended.text = account.ended

@@ -61,6 +61,16 @@ var offline: bool = false
 ## Why the last session ended, in words, for the gate to say. Empty when
 ## nothing ended — a first visit, or a sign-out the person asked for.
 var ended: String = ""
+## The age question (2026-10-18, supabase/trust.sql), asked once: whether
+## the deployment wants it answered, and the answer as it keeps it — true
+## for 13 or over, false for under 13, null when not said or not known.
+## Only the deployment decides; the app asks and shows.
+var age_ask: bool = false
+var over_13: Variant = null
+## Asking the deployment who this is, just after a sign-in: the sign-in
+## screen stays up for that one request, so the age question, when there
+## is one, comes before the builder rather than over it.
+var asking_who: bool = false
 
 ## What the deployment said about itself: whether it has accounts, and
 ## where to sign in. Set before this is added to the tree.
@@ -282,22 +292,60 @@ func _renew() -> String:
 	return outcome
 
 
-## Whether this is the owner's account: asked of the deployment, which
-## checks the token the way the relay does. Only for the account panel's
-## admin link, so a failure just leaves it off.
+## Who this is, asked of the deployment, which checks the token the way
+## the relay does: whether it is the owner's account (the account panel's
+## admin link) and whether to ask the age question. A failure leaves both
+## as they were and lets them in: an offline start, or a deployment from
+## before the question, asks nothing.
 func _ask_who() -> void:
 	if _access.is_empty():
 		return
+	asking_who = true
+	changed.emit()
 	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/account",
 		PackedStringArray(["authorization: Bearer " + _access]),
 		HTTPClient.METHOD_GET, "")
+	asking_who = false
 	var body: Variant = reply.get("body")
-	if int(reply.get("code", 0)) != 200 or typeof(body) != TYPE_DICTIONARY:
-		return
-	var said: Dictionary = body
-	if bool(said.get("signed_in", false)) and bool(said.get("master", false)) != master:
+	if int(reply.get("code", 0)) == 200 and typeof(body) == TYPE_DICTIONARY \
+			and bool((body as Dictionary).get("signed_in", false)):
+		var said: Dictionary = body
 		master = bool(said.get("master", false))
+		_take_age(said.get("age"))
+	changed.emit()
+
+
+## The age as the deployment said it: {ask, over_13}, or nothing.
+func _take_age(age: Variant) -> void:
+	if not age is Dictionary:
+		return
+	age_ask = bool((age as Dictionary).get("ask", false))
+	var said: Variant = (age as Dictionary).get("over_13")
+	over_13 = bool(said) if said is bool else null
+
+
+## Answer the age question: the month (1 to 12) and the year of birth, sent
+## once to the deployment, which keeps only whether that is 13 or over
+## (api/account.js) and never the date. Empty when it took the answer, or
+## something to show.
+func answer_age(month: int, year: int) -> String:
+	var token: String = await access_token()
+	if token.is_empty():
+		return "Sign in again to carry on."
+	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/account?op=age",
+		PackedStringArray(["content-type: application/json", "authorization: Bearer " + token]),
+		HTTPClient.METHOD_POST, JSON.stringify({"month": month, "year": year}))
+	var body: Variant = reply.get("body")
+	var code: int = int(reply.get("code", 0))
+	if code == 200 and body is Dictionary:
+		_take_age((body as Dictionary).get("age"))
 		changed.emit()
+		return ""
+	if body is Dictionary and (body as Dictionary).has("error"):
+		return str((body as Dictionary)["error"])
+	if code == 0:
+		return "Could not reach Brickworks. Check your connection and try again."
+	return "Brickworks could not take that just now (%d). Try again in a minute." % code
 
 
 func _keep(body: Dictionary) -> void:
@@ -335,6 +383,9 @@ func _forget(why: String) -> void:
 	user_id = ""
 	master = false
 	offline = false
+	age_ask = false
+	over_13 = null
+	asking_who = false
 	ended = why
 	if keeps:
 		_clear()
