@@ -146,12 +146,37 @@ async function api(pathname, { method = "GET", token, body } = {}) {
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }
 
-/// What the local relay holds (comments_stand_in.mjs), or what the project
-/// has once comments.sql is applied there, read with the secret key.
+/// The ids of the dry runs the API said it told the owner of (its answer
+/// to a comment, told: {state: "dry", id}), as the page posted them.
+const toldIds = [];
+const hearing = [];
+
+/// Watch [page] for the API's answers to the comments it posts.
+function hearTold(page) {
+  page.on("response", (reply) => {
+    if (reply.request().method() !== "POST" || !/\/api\/people\?op=comment$/.test(reply.url())) return;
+    hearing.push(reply.json().then((said) => { if (said?.told?.id) toldIds.push(said.told.id); }).catch(() => {}));
+  });
+}
+
+/// The owner's dry runs: what the local relay holds (comments_stand_in.mjs),
+/// or, on a deployment, each one the API said it told, as the project kept
+/// it (comment_digest_kept, with the secret key). The project's tables are
+/// the server's alone: not even the secret key reads comment_digests, so
+/// the preview's answer was always none (m81).
 async function heldDigests(owner) {
   const local = await fetch(`${site}/__held/comment_digests`, { headers }).catch(() => null);
   if (local && local.ok) return (await local.json()).filter((one) => one.owner === owner);
-  return [];
+  await Promise.all(hearing);
+  const kept = [];
+  for (const one of toldIds) {
+    const reply = await fetch(`${SUPABASE}/rest/v1/rpc/comment_digest_kept`, { method: "POST",
+      headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      body: JSON.stringify({ one }) }).catch(() => null);
+    const row = reply && reply.ok ? await reply.json().catch(() => null) : null;
+    if (row && row.owner === owner) kept.push(row);
+  }
+  return kept;
 }
 
 /// The comments on the model's page, as drawn.
@@ -206,6 +231,7 @@ try {
   const writing = await context({ as: writer });
   let page = await writing.newPage();
   listen(page, "builder");
+  hearTold(page);
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
   let now = await untilDrawn(page, (d) => d.shown && d.form, "the comment box");
   check(`the comments are on the page with a box to add one (${now.items.length} so far)`, now.items.length === 0 && now.form);

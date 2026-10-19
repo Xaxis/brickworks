@@ -1689,7 +1689,14 @@ comment, gone from the page and kept; and the app at 390 x 844: the viewer's
 count, step 4's in the step player, its comments tapped, one added there
 (the count up, on the page "on step 4 of version 2"), a visitor and an
 account under 13 reading with their reasons. Pictures `1_` to `11_` in
-`--out`. 44 checks, all ok, against the local relay on 2026-10-18 (a run
+`--out`. On a deployment (`BW_BYPASS=$VERCEL_BYPASS`, `--url=<preview>`)
+the owner's dry run is read back as the project kept it: the flow hears
+the API's answer to each comment the page posts (`told: {state: "dry",
+id}`) and asks `comment_digest_kept` for it with the secret key, since no
+key reads comment_digests itself. Before that it read only the relay's
+held table, and on m81's preview said `a dry run (): "undefined"` while the
+server had told the owner (43 checks, all ok, on m81's preview,
+2026-10-18). 44 checks, all ok, against the local relay on 2026-10-18 (a run
 takes about 4 minutes, the export first ~3). The stand-in keeps what it
 holds for the life of the relay, so a second run sees the first's comments
 on the admin page: the flow scopes its admin checks to its own model.
