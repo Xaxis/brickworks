@@ -332,7 +332,7 @@ func motion(screen: Vector2) -> void:
 	if grab.unchecked and grab.linkage != null and grab.stopped:
 		line += " — stopped: it meets the model (found to a tenth of a degree when you pause)"
 	elif grab.unchecked and grab.linkage == null:
-		line += " — more to test than a frame allows: checked when you pause"
+		line += " — too big to test every frame: checked when you pause"
 	elif grab.loop_short:
 		line += " — stopped: its loop closes no further that way"
 	elif grab.stopped and not grab.stretch_words.is_empty():
