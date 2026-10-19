@@ -205,8 +205,8 @@ def _run_job(sets: list[str], label: str, job: int, timeout: float, shots: bool 
         listing = OUT / f"{what}_{label}_{job}.list"
         listing.write_text("".join(f"vendor/omr/files/{s}\n" for s in left))
         done_before = len(rows_path.read_text().splitlines()) if rows_path.exists() else 0
-        # Windowed on the GPU lease for pictures; else headless under heavy.
-        command = ([str(GPU), "env", "MESA_VK_WSI_DEBUG=sw", "xvfb-run", "-a", "godot", "--path", str(ROOT),
+        # Windowed on the GPU lease for pictures, under heavy as every run is; else headless under heavy.
+        command = ([str(HEAVY), str(GPU), "env", "MESA_VK_WSI_DEBUG=sw", "xvfb-run", "-a", "godot", "--path", str(ROOT),
                     "--resolution", "1400x900"] if shots else [str(HEAVY), "godot", "--headless", "--path", str(ROOT)])
         process = subprocess.Popen(
             command + ["--script", "src/dev/grab_probe.gd", "--", f"--only={what}", f"--list={listing}",

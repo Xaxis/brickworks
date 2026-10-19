@@ -75,7 +75,8 @@ def _rows(label: str) -> list[dict]:
 VERDICT_WORDS = {"real": "the real parts", "false": "their covers only", "unjudged": "not judged"}
 
 
-SWUNG = re.compile(r"then swung|swung down|under its own weight until|free joints? inside it swung|then the loop turned")
+SWUNG = re.compile(r"then swung|swung down|under its own weight until|free joints? inside it swung"
+                   r"|then the loop turned")
 
 
 def _met(step: dict) -> str:
@@ -91,28 +92,48 @@ def _met(step: dict) -> str:
     return str((step.get("meeting") or {}).get("verdict", ""))
 
 
+def _turned(step: dict) -> bool:
+    """Whether a turn turned the thing itself, a whole degree or more. A turn stopped at once
+    says "Moved" too where free joints inside the thing swung down."""
+    return bool(step.get("moved")) and abs(float(step.get("now", 0.0))) >= 1.0
+
+
+def moves(thing: dict) -> bool:
+    """Both ways and back: each of the two turns turned the thing, what stays stayed, and the
+    turn back put it where it stood (grab_probe's "moves", which took a turn stopped at once
+    with free joints swinging inside it as moved)."""
+    steps = thing.get("steps", [])
+    return thing.get("result") == "moves" and len(steps) >= 2 and all(_turned(s) for s in steps[:2])
+
+
 def to_its_stop(thing: dict) -> bool:
     """Whether a thing that did not move both ways and back moves as far as its real parts let
-    it: a turn that did not move at all met the real parts (a door against its frame), the
-    other moved, what stays stayed, and the turn back put it where it stood."""
+    it: a turn that did not turn it met the real parts (a door against its frame), the other
+    turned it, what stays stayed, and the turn back put it where it stood."""
     steps = thing.get("steps", [])
-    if thing.get("result") == "moves" or len(steps) < 3:
+    if moves(thing) or len(steps) < 3 or not steps[2].get("ok"):
         return False
     turns = steps[:2]
-    if not any(s.get("moved") for s in turns) or not steps[2].get("ok"):
+    if not any(_turned(s) for s in turns):
         return False
-    return all(s.get("stays_still", True) and (s.get("moved") or _met(s) == "real") for s in turns)
+    return all(s.get("stays_still", True) and (_turned(s) or _met(s) == "real") for s in turns)
 
 
 def cause_of(thing: dict) -> str:
     """Why a thing did not move both ways and back, short enough to group by. Where two
     parts met, whether the real parts meet there or only their covers."""
-    if thing.get("result") == "moves":
+    if moves(thing):
         return "moves both ways and back"
     if to_its_stop(thing):
         return "moves to its stop (the real parts meet)"
     steps = thing.get("steps", [])
     said = str(thing.get("cause", ""))
+    if thing.get("result") == "moves":
+        # The probe's "moves", but a turn stopped short of a degree.
+        short = next(s for s in steps[:2] if not _turned(s))
+        if _met(short):
+            return "two parts meet at once: " + VERDICT_WORDS[_met(short)]
+        return "it did not turn (only free joints inside it swung)"
     failed = next((n for n, s in enumerate(steps) if not s.get("ok")), -1)
     if failed == 2 and _met(steps[2]) and not re.search(r"what stays moved", said):
         return "not back, two parts meet on the way back: " + VERDICT_WORDS[_met(steps[2])]
@@ -147,18 +168,18 @@ def table(label: str, against: str = "") -> str:
     things = [(row, thing) for row in rows for thing in row.get("things", [])]
     lines = [f"# Moving things sweep: {label}", ""]
     by_kind = Counter(t.get("kind") for _, t in things)
-    moves = Counter(t.get("kind") for _, t in things if t.get("result") == "moves")
-    either = Counter(t.get("kind") for _, t in things if t.get("moved_once"))
+    both = Counter(t.get("kind") for _, t in things if moves(t))
+    either = Counter(t.get("kind") for _, t in things if any(_turned(s) for s in t.get("steps", [])))
     lines.append(f"{len(rows)} sets tried, {sum(1 for r in rows if r.get('things'))} with something that moves on a"
                  f" joint; {len(things)} things moved.")
     lines.append("")
     stop = Counter(t.get("kind") for _, t in things if to_its_stop(t))
-    lines.append("| kind | things | move at all | both ways and back | to its stop (the real parts meet) |")
+    lines.append("| kind | things | turn at all | both ways and back | to its stop (the real parts meet) |")
     lines.append("|---|---|---|---|---|")
     for kind in ("turntable", "door", "boom"):
-        lines.append(f"| {kind} | {by_kind.get(kind, 0)} | {either.get(kind, 0)} | {moves.get(kind, 0)} |"
+        lines.append(f"| {kind} | {by_kind.get(kind, 0)} | {either.get(kind, 0)} | {both.get(kind, 0)} |"
                      f" {stop.get(kind, 0)} |")
-    lines.append(f"| all | {len(things)} | {sum(either.values())} | {sum(moves.values())} | {sum(stop.values())} |")
+    lines.append(f"| all | {len(things)} | {sum(either.values())} | {sum(both.values())} | {sum(stop.values())} |")
     # Every step two parts stopped, at once or on the way, by how it was judged.
     met = Counter(_met(s) for _, t in things for s in t.get("steps", []) if _met(s))
     if met:
@@ -166,11 +187,11 @@ def table(label: str, against: str = "") -> str:
         lines.append("Steps stopped where two parts meet: " + ", ".join(
             f"{met.get(v, 0)} {VERDICT_WORDS[v]}" for v in ("real", "false", "unjudged")) + ".")
     if before:
-        was = sum(1 for t in before.values() if t.get("result") == "moves")
+        was = sum(1 for t in before.values() if moves(t))
         lines.append("")
         lines.append(f"Against {against}: {was} moved both ways and back then.")
     lines.append("")
-    causes = Counter(cause_of(t) for _, t in things if t.get("result") != "moves")
+    causes = Counter(cause_of(t) for _, t in things if not moves(t))
     lines.append("| cause | things |")
     lines.append("|---|---|")
     for cause, count in causes.most_common():
@@ -187,11 +208,13 @@ def table(label: str, against: str = "") -> str:
         one = went(steps[0]) if len(steps) > 0 else ""
         other = went(steps[1]) if len(steps) > 1 else ""
         back = f"{thing['back_ldu']:.3f}" if "back_ldu" in thing else ""
-        result = "moves" if thing.get("result") == "moves" else cause_of(thing)
+        result = "moves" if moves(thing) else cause_of(thing)
         was = before.get((row["set"], thing.get("kind")))
-        if was is not None and (was.get("result") == "moves") != (thing.get("result") == "moves"):
-            result += " (was " + ("moves" if was.get("result") == "moves" else cause_of(was)) + ")"
-        detail = "" if thing.get("result") == "moves" else " — " + str(thing.get("cause", ""))[:160].replace("|", "/")
+        if was is not None and moves(was) != moves(thing):
+            result += " (was " + ("moves" if moves(was) else cause_of(was)) + ")"
+        why = str(thing.get("cause", "")) or next((str(s.get("said", "")).split(" | ")[1] for s in steps[:2]
+                                                  if not _turned(s) and " | " in str(s.get("said", ""))), "")
+        detail = "" if moves(thing) else " — " + why[:160].replace("|", "/")
         lines.append(f"| {row['set']} | {thing.get('kind')} | {thing.get('driver', '')} | {thing.get('joint', '')} |"
                      f" {one} | {other} | {back} | {result}{detail} |")
     quiet = [r for r in rows if not r.get("things")]
