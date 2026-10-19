@@ -42,6 +42,15 @@ cd "$W" || exit 1
 if [ -e "$(git rev-parse --git-dir)/merging" ]; then echo "SHIP: a merge in $W is still running its gates"; exit 1; fi
 SHA=$(git rev-parse --short HEAD)
 git -C $R merge-base --is-ancestor main HEAD || { echo "SHIP: $SHA does not contain main"; exit 1; }
+# A new browser flow that no check runs proves nothing on a deployment: play
+# and designers were proven only against the local server and held m87 three
+# times there (2026-10-19). Each one added since main is named in
+# preview_checks.sh, or marked there "# local only: NAME" with why.
+unwired=""
+for f in $(git diff --name-only --diff-filter=A main HEAD -- 'tools/web/*_flow.mjs'); do
+  grep -qF "$(basename "$f")" "$HERE/preview_checks.sh" || unwired="$unwired $(basename "$f")"
+done
+[ -z "$unwired" ] || { echo "SHIP: held, a new flow no check runs:$unwired (name it in preview_checks.sh, or mark it there '# local only: NAME')"; exit 1; }
 set -a; . $R/.env; set +a
 # SHIP_REUSE=1: the preview this TAG already made, if it was made from this
 # very commit. A timing check that failed under load held a release twice
