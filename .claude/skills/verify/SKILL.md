@@ -10,6 +10,10 @@ description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAsse
 - **Where does a feature live?** Look it up in `features.json` (`id`, `entry`, `reach`,
   `tests`), then read `features/<area>.md` for its recipe.
 - **What did my change touch?** `$FM affected` (add `--since <base>` on a branch).
+  It follows imports, so it never lists a browser flow that visits a changed
+  page by its address: for any change to `web/` or `api/`, also run
+  `tools/release/flows_for.py --since <base>` and run the preview checks it
+  names (three flows broke on Discovery's gallery that way and held m84).
   Every feature it lists is in scope.
 - **Keeping it current:** when you add, rename, move or remove a feature, run
   `$FM generate --write`, update the matching `features/<area>.md`, and confirm
