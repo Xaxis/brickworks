@@ -5,7 +5,7 @@
 //   python3 tools/web/serve.py build/web 9441 --parts assets/generated/parts --delay 0 \
 //       --share L00kM0del1=vendor/omr/files/6392-1.mpd --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd &
 //   set -a; . ./.env; set +a
-//   node tools/web/look_cost.mjs --url=http://127.0.0.1:9441 --out=DIR --mode=cuts
+//   node tools/web/look_cost.mjs --url=http://127.0.0.1:9441 --out=DIR --mode=cuts --rounds=1 [--label=B1]
 //   node tools/web/look_cost.mjs --url=http://127.0.0.1:9441 --out=DIR --mode=acts [--gate]
 //
 // Scenes: "empty", the editor with nothing on the baseplate; "model", the
@@ -14,12 +14,20 @@
 // 800 at 1x by the mouse; "phone", 390 x 844 at 3x.
 //
 // --mode=cuts: for each scene and size, each of --cuts is pinned in the
-// page (window.brickworksLookAsk) and --frames frames drawn on purpose and
-// timed, by the app (the time from one drawing's end to the next's, less
-// the frame's own work) and by the page (the gaps between its frames), in
-// --rounds rounds with the cuts taken in turn, so the box's load falls on
-// each alike. "none" is the look as it is; "ui" the interface not drawn;
-// "ladder" every cut the app would make. Needs a build with FrameBudget.
+// page (window.brickworksLookAsk), with "none" (the look as it is) between
+// every two, so each cut has the look as it is just before and just after
+// it, under the same load. Each is timed by --measure: "turn" (the
+// default), what a drawn frame took while the view turned --steps moves,
+// up to a WebGL fence after them (SwiftShader draws behind the page: the
+// page's own gaps were 17 ms for some turns and 2 s for the next, with
+// nothing changed, as frames queued and then were waited for); "look",
+// --frames drawn on purpose and timed by the app
+// (from one drawing's end to the next's, less the frame's own work) and by
+// the page; "both". "ui" is the interface not drawn, "ladder" every cut the
+// app would make. A build without FrameBudget (the base a branch is paired
+// with) measures "none" alone, --base times: run it and the branch in
+// turn (A B A B), never all of one and then all of the other. Every row
+// says the box's load (1, 5 and 15 minutes) when it was measured.
 //
 // --mode=acts: the acts a person makes, timed by the page on any build:
 // in the editor, the view turned (a right drag), a part dragged (a left
@@ -27,8 +35,8 @@
 // hand swept across the model; in the viewer, the steering wheel turned
 // (Play). Each says its drawn frames and the gap between them, and the
 // look the app chose by then (none on a build without FrameBudget).
-// --gate: and fails unless the app chose a lighter look on every page,
-// which a build without FrameBudget never does.
+// --gate: and fails unless the app chose a lighter look on every page by
+// the end of its acts, which a build without FrameBudget never does.
 //
 // Writes DIR/look_<mode>.json. Says the box's load beside every number:
 // a frame drawn in software on a shared box costs what the box lets it.
@@ -46,11 +54,14 @@ const out = String(args.out || "shots/look_cost");
 const mode = String(args.mode || "cuts");
 const rounds = Number(args.rounds || 2);
 const frames = Number(args.frames || 10);
+const steps = Number(args.steps || 12);
+const measure = String(args.measure || "turn");
+const label = String(args.label || "");
 const modelId = String(args["model-id"] || "L00kM0del1");
 const shareId = String(args["share-id"] || "Pl4yFl0w01");
 const sizes = String(args.sizes || "laptop,phone").split(",");
 const scenes = String(args.scenes || "empty,model,share").split(",");
-const CUTS = String(args.cuts || "none,msaa,glow,shadow_soft,shadow_size,shadow,scale,dense,ui,ladder").split(",");
+const CUTS = String(args.cuts || "none,dense,msaa,scale,shadow,glow,ui,ladder").split(",");
 const SIZES = {
   laptop: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
   phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
@@ -105,14 +116,21 @@ async function until(page, test, what, seconds = 300, arg = null) {
   for (;;) {
     const value = await page.evaluate(test, arg).catch(() => null);
     if (value) return value;
-    if (Date.now() > end) throw new Error(`${what}: not within ${seconds} s`);
+    if (Date.now() > end) {
+      // What the app said last, and the page's last frames: what a wait
+      // that never ends was waiting on.
+      const said = await page.evaluate(() => ({ look: (window.brickworksState || {}).look,
+        frames: (window.lookFrames || { frames: [] }).frames.slice(-5) })).catch(() => null);
+      throw new Error(`${what}: not within ${seconds} s (${JSON.stringify(said)})`);
+    }
     await page.waitForTimeout(500);
   }
 }
 // The page's frames from [from] on: how many, how many drew, and the gaps
 // between the drawn ones (start to start: what a person waits a step).
-async function framesSince(page, from) {
-  const list = await page.evaluate((a) => window.lookFrames.frames.filter(([s]) => s >= a), from);
+async function framesSince(page, from, until = Infinity) {
+  const list = await page.evaluate(([a, b]) => window.lookFrames.frames.filter(([s]) => s >= a && s < b),
+    [from, until === Infinity ? 1e15 : until]);
   const drawn = list.filter(([, , c]) => c > 0);
   const gaps = [];
   for (let n = 1; n < drawn.length; n++) gaps.push(drawn[n][0] - drawn[n - 1][0]);
@@ -163,76 +181,190 @@ async function open(browser, size, scene) {
 
 // --- cuts --------------------------------------------------------------------
 
-async function measureCut(page, cut, ladder) {
-  const cuts = cut === "none" ? [] : cut === "ladder" ? ladder : [cut];
-  // Asked, then looked at once it is taken: the app reads the ask at its
-  // next telling of the page (Main._tell_page).
-  await page.evaluate((c) => { window.brickworksLookAsk = { cuts: c }; }, cuts);
-  await until(page, (c) => {
-    const l = (window.brickworksState || {}).look || {};
-    return l.pinned && JSON.stringify(l.cuts) === JSON.stringify(c);
-  }, `the cuts ${cuts}`, 120, cuts);
-  // A frame drawn with them first, then the look.
+// The view turned by a right drag from the middle of the window and back
+// to it, [steps] moves in all: each move waits for the page's main thread,
+// so on a slow device the frames come back to back. Pressed at the same
+// point and let go there, every turn ends at the view it began from. (A
+// drag that ended 10 px lower each time tilted the view over the model in
+// a run's 17 turns, and its "none" fell from 1,004 to 126 ms a frame.)
+async function turn(page, size, moves = steps) {
+  const shape = SIZES[size].viewport;
+  const at = (await page.evaluate(() => (window.brickworksControls || {}).view).catch(() => null))
+    || { x: shape.width / 2, y: shape.height / 2 };
+  const span = Math.min(150, Math.round(shape.width / 3));
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down({ button: "right" });
+  await page.mouse.move(at.x + span, at.y, { steps: Math.ceil(moves / 2) });
+  await page.mouse.move(at.x, at.y, { steps: Math.floor(moves / 2) });
+  await page.mouse.up({ button: "right" });
+}
+
+// A fence after everything the page has asked of WebGL so far, and when it
+// passed. In a browser drawing in software, SwiftShader draws in Chromium's
+// GPU process, behind the page: the page hands a frame over in the
+// display's 17 ms, and a dozen of them can be queued before it has to wait,
+// so what a frame cost is when the drawing is done, not when it was asked.
+async function fenced(page, seconds = 600) {
+  await page.evaluate(() => {
+    const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+    const gl = canvas.getContext("webgl2");
+    window.lookFence = { gl, sync: gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0), put: performance.now() };
+    gl.flush();
+  });
+  const end = Date.now() + seconds * 1000;
+  for (;;) {
+    const done = await page.evaluate(() => {
+      const f = window.lookFence;
+      if (f.gl.getSyncParameter(f.sync, f.gl.SYNC_STATUS) !== f.gl.SIGNALED) return null;
+      f.gl.deleteSync(f.sync);
+      return { put: f.put, passed: performance.now() };
+    });
+    if (done) return done;
+    if (Date.now() > end) throw new Error(`a fence: not passed within ${seconds} s`);
+    await page.waitForTimeout(25);
+  }
+}
+
+// One cut measured: pinned (a build with FrameBudget), a frame drawn with
+// it, then timed by --measure: "turn", what a drawn frame took while the
+// view turned, from the turn's start until a fence after it passed, with
+// what was drawn before it finished first; "look", --frames drawn on
+// purpose and timed by the app and the page; "both".
+async function measureCut(page, size, cut, ladder) {
+  const row = { cut };
+  if (ladder) {
+    const cuts = cut === "none" ? [] : cut === "ladder" ? ladder : [cut];
+    // Asked, then looked at once it is taken: the app reads the ask at its
+    // next telling of the page (Main._tell_page).
+    await page.evaluate((c) => { window.brickworksLookAsk = { cuts: c }; }, cuts);
+    await until(page, (c) => {
+      const l = (window.brickworksState || {}).look || {};
+      return l.pinned && JSON.stringify(l.cuts) === JSON.stringify(c);
+    }, `the cuts ${cuts}`, 180, cuts);
+  }
   await page.waitForTimeout(1500);
-  const from = await now(page);
-  const looks = ((await look(page)) || {}).looks || 0;
-  await page.evaluate((n) => { window.brickworksLookAsk = { look: n }; }, frames);
-  const l = await until(page, ([n, was]) => {
-    const x = (window.brickworksState || {}).look || {};
-    return x.looks > was && x.looking === 0 && (x.timed || []).length >= Math.min(3, n) ? x : null;
-  }, "the look done", 600, [frames, looks]);
-  const page_side = await framesSince(page, from);
-  return { cut, app_ms: median(l.timed), app_timed: l.timed, page_gap_ms: page_side.gap_median_ms,
-    drawn: page_side.drawn, load: load() };
+  if (ladder && measure !== "turn") {
+    const from = await now(page);
+    const looks = ((await look(page)) || {}).looks || 0;
+    await page.evaluate((n) => { window.brickworksLookAsk = { look: n }; }, frames);
+    const l = await until(page, ([n, was]) => {
+      const x = (window.brickworksState || {}).look || {};
+      return x.looks > was && x.looking === 0 ? x : null;
+    }, "the look done", 600, [frames, looks]);
+    const seen = await framesSince(page, from);
+    Object.assign(row, { app_ms: median(l.timed), app_timed: l.timed, look_gap_ms: seen.gap_median_ms,
+      look_drawn: seen.drawn });
+  }
+  if (measure !== "look") {
+    const drained = await fenced(page);
+    const from = await now(page);
+    await turn(page, size);
+    const done = await fenced(page);
+    const seen = await framesSince(page, from, done.put);
+    const app = ((await look(page)) || {}).timed || [];
+    Object.assign(row, { turn_ms: Math.round(((done.passed - from) / Math.max(1, seen.drawn)) * 10) / 10,
+      turn_drawn: seen.drawn, turn_wait_ms: Math.round(done.passed - done.put),
+      drained_ms: Math.round(drained.passed - drained.put), turn_gap_ms: seen.gap_median_ms,
+      turn_app_ms: ladder ? median(app.slice(-6)) : undefined });
+  }
+  row.uptime = loadavg().map((x) => Math.round(x * 10) / 10);
+  row.at = new Date().toISOString();
+  return row;
+}
+
+// The cuts in the order measured: "none" between every two (--between),
+// so each cut has a look as it is just before and just after it, under the
+// same load. A build without FrameBudget measures "none" alone, as often
+// as --base times.
+function order(size, budget) {
+  if (!budget) return Array(Number(args.base || 3)).fill("none");
+  const wanted = CUTS.filter((c) => c !== "none" && (c !== "dense" || SIZES[size].deviceScaleFactor > 1));
+  if (args.between === "false") return ["none", ...wanted];
+  return ["none", ...wanted.flatMap((c) => [c, "none"])];
 }
 
 async function cutsMode(browser) {
   const rows = [];
+  const save = () => writeFileSync(path.join(out, "look_cuts.json"), JSON.stringify({ site, label, rows }, null, 1));
   for (const size of sizes) {
     for (const scene of scenes) {
       log(`${size}, ${scene}: opening`);
       const { context, page } = await open(browser, size, scene);
       const first = await look(page);
-      if (!first) throw new Error("this build has no FrameBudget (window.brickworksState.look)");
-      log(`${size}, ${scene}: the app chose ${JSON.stringify(first.cuts)} (judged ${JSON.stringify(first.judged)})`);
-      const wanted = CUTS.filter((c) => c !== "dense" || SIZES[size].deviceScaleFactor > 1);
+      log(`${size}, ${scene}: ${first ? `the app chose ${JSON.stringify(first.cuts)} (judged ${JSON.stringify(first.judged)})`
+        : "no FrameBudget in this build: the look as it is, alone"}`);
+      // Each cut drawn once before any is measured: the first frames with a
+      // look SwiftShader has not drawn before build its programs for it.
+      if (first && args.warm !== "false") {
+        for (const cut of new Set(order(size, first))) {
+          const cuts = cut === "none" ? [] : cut === "ladder" ? first.ladder : [cut];
+          await page.evaluate((c) => { window.brickworksLookAsk = { cuts: c }; }, cuts);
+          await until(page, (c) => {
+            const l = (window.brickworksState || {}).look || {};
+            return l.pinned && JSON.stringify(l.cuts) === JSON.stringify(c);
+          }, `the cuts ${cuts}`, 180, cuts);
+          await turn(page, size, 4);
+          await fenced(page);
+        }
+        log(`${size}, ${scene}: each cut drawn once`);
+      }
       for (let round = 1; round <= rounds; round++) {
-        for (const cut of wanted) {
-          const row = { size, scene, round, ...(await measureCut(page, cut, first.ladder)) };
+        for (const cut of order(size, first)) {
+          const row = { size, scene, round, ...(await measureCut(page, size, cut, first ? first.ladder : null)) };
           rows.push(row);
-          log(`  ${size} ${scene} r${round} ${cut}: app ${row.app_ms} ms, page ${row.page_gap_ms} ms (${row.drawn} drawn)`);
-          writeFileSync(path.join(out, "look_cuts.json"), JSON.stringify({ site, rows }, null, 1));
+          log(`  ${size} ${scene} r${round} ${cut}: turn ${row.turn_ms ?? "-"} ms a frame (${row.turn_drawn ?? 0} drawn, `
+            + `the last done ${row.turn_wait_ms} ms after; page gap ${row.turn_gap_ms} ms)`
+            + `${row.app_ms !== undefined ? `, look: app ${row.app_ms} ms, page ${row.look_gap_ms} ms` : ""}`);
+          save();
         }
       }
-      await page.evaluate(() => { window.brickworksLookAsk = { cuts: null }; });
+      if (first) await page.evaluate(() => { window.brickworksLookAsk = { cuts: null }; });
       await page.screenshot({ path: path.join(out, `${size}_${scene}.png`) }).catch(() => {});
       await context.close();
     }
   }
-  // The table: each cut's median over the rounds, and against "none".
+  // Each cut against the looks as they are on either side of it: the
+  // ratio cancels the box's load as it drifts.
   const table = {};
-  for (const r of rows) {
+  for (let n = 0; n < rows.length; n++) {
+    const r = rows[n];
     const key = `${r.size} ${r.scene}`;
-    table[key] = table[key] || {};
-    (table[key][r.cut] = table[key][r.cut] || []).push(r.app_ms);
+    const t = (table[key] = table[key] || {});
+    const ms = r.turn_ms ?? r.app_ms;
+    (t[r.cut] = t[r.cut] || { ms: [], ratio: [] }).ms.push(ms);
+    const before = rows[n - 1];
+    const after = rows[n + 1];
+    if (r.cut !== "none" && before && after && before.cut === "none" && after.cut === "none"
+        && `${before.size} ${before.scene}` === key && `${after.size} ${after.scene}` === key) {
+      const base = ((before.turn_ms ?? before.app_ms) + (after.turn_ms ?? after.app_ms)) / 2;
+      t[r.cut].ratio.push(Math.round((ms / base) * 100) / 100);
+    }
   }
-  console.log("\ncut costs (the app's timing, ms a drawn frame, median of the rounds; saved against none):");
+  console.log("\ncut costs (ms a drawn frame, median of the rounds; x the looks as they are either side):");
   for (const [key, cuts] of Object.entries(table)) {
-    const base = median(cuts.none || [0]);
-    console.log(`  ${key}: ${Object.entries(cuts).map(([c, v]) => `${c} ${median(v)}${c === "none" ? "" : ` (${Math.round(100 * (1 - median(v) / base))}%)`}`).join(", ")}`);
+    console.log(`  ${key}: ${Object.entries(cuts).map(([c, v]) => `${c} ${median(v.ms)}`
+      + `${v.ratio.length ? ` (x${median(v.ratio)})` : ""}`).join(", ")}`);
   }
-  writeFileSync(path.join(out, "look_cuts.json"), JSON.stringify({ site, rows, table }, null, 1));
+  writeFileSync(path.join(out, "look_cuts.json"), JSON.stringify({ site, label, rows, table }, null, 1));
 }
 
 // --- acts --------------------------------------------------------------------
 
+// An act timed as cuts are: from its start, with what was drawn before it
+// done first, until a fence after it passed (fenced), and the frames it
+// drew by then.
 async function act(page, name, doing, settle = 1500) {
+  await fenced(page);
   const from = await now(page);
   const began = Date.now();
   await doing();
+  const done = await fenced(page);
   await page.waitForTimeout(settle);
-  const row = { act: name, ms: Date.now() - began, ...(await framesSince(page, from)), load: load() };
-  log(`    ${name}: ${row.drawn} drawn in ${row.ms} ms, ${row.gap_median_ms} ms apart (worst ${row.gap_worst_ms})`);
+  const seen = await framesSince(page, from, done.put);
+  const row = { act: name, ms: Date.now() - began, ...seen, done_ms: Math.round(done.passed - from),
+    ms_a_frame: Math.round(((done.passed - from) / Math.max(1, seen.drawn)) * 10) / 10, load: load() };
+  log(`    ${name}: ${row.drawn} drawn, done ${row.done_ms} ms after it began, ${row.ms_a_frame} ms a frame`
+    + ` (page gap ${row.gap_median_ms} ms)`);
   return row;
 }
 
@@ -330,13 +462,23 @@ async function actsMode(browser) {
       log(`${size}, ${scene}: opening`);
       const { context, page } = await open(browser, size, scene);
       const chosen = await look(page);
-      log(`  the look: ${chosen ? JSON.stringify(chosen.cuts) : "(no FrameBudget in this build)"}`);
+      log(`  the look: ${chosen ? `${JSON.stringify(chosen.cuts)} (judged ${JSON.stringify(chosen.judged)}, `
+        + `a frame by the last look's fence ${chosen.fenced ?? "-"} ms)` : "(no FrameBudget in this build)"}`);
       const acts = scene === "share" ? await viewerActs(page) : await editorActs(page, size);
-      for (const r of acts) rows.push({ size, scene, look: chosen ? chosen.cuts : null, ...r });
+      // And after them: the first look, of frames drawn after a rest, can
+      // see them cheap (the first few after a rest cost a twentieth of the
+      // rest), and the app goes on timing every frame it draws.
+      const ended = await look(page);
+      log(`  the look after: ${ended ? `${JSON.stringify(ended.cuts)} (judged ${JSON.stringify(ended.judged)})` : "-"}`);
+      for (const r of acts) {
+        rows.push({ size, scene, look: chosen ? chosen.cuts : null, look_after: ended ? ended.cuts : null,
+          ...r, uptime: loadavg().map((x) => Math.round(x * 10) / 10) });
+      }
       if (args.gate) {
-        const lighter = Boolean(chosen && chosen.cuts.length > 0);
+        const lighter = Boolean(ended && ended.cuts.length > 0);
         console.log(`  ${lighter ? "ok  " : "FAIL"}  ${size} ${scene}: drawn in software, the app chose a lighter look `
-          + `(${chosen ? JSON.stringify(chosen.cuts) : "none: no FrameBudget"}; judged ${chosen ? JSON.stringify(chosen.judged) : "-"})`);
+          + `by the end of the acts (${ended ? JSON.stringify(ended.cuts) : "none: no FrameBudget"}; `
+          + `judged ${ended ? JSON.stringify(ended.judged) : "-"})`);
         if (!lighter) failed += 1;
       }
       await page.screenshot({ path: path.join(out, `${size}_${scene}_acts.png`) }).catch(() => {});

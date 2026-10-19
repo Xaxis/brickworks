@@ -11,14 +11,20 @@
 ## Every drawn frame that follows a drawn frame is timed: from the end of
 ## one drawing to the end of the next, less that frame's own work (its
 ## scripts, from process_frame to drawing). On a graphics card that is the
-## display's pace, 7 to 17 ms. In software it is the drawing. Two seconds
-## after the window is up the app draws a few frames on purpose and times
-## them, and it goes on timing every frame it draws anyway. When the fastest
-## fifth of the last few frames is still over SLOW_MS, the next of CUTS is
-## made, and the frames after it timed again: the order is what buys the
-## most for the least seen (measured in docs/SLOW_DEVICES.md). A device that
-## never draws a slow frame never has anything cut, and nothing here writes
-## to the renderer until something is.
+## display's pace, 7 to 17 ms. Two seconds after the window is up the app
+## draws a few frames on purpose and times them, and it goes on timing every
+## frame it draws anyway. When the fastest fifth of the last few frames is
+## still over SLOW_MS, the next of CUTS is made, and the frames after it
+## timed again: the order is what buys the most for the least seen
+## (measured in docs/SLOW_DEVICES.md). A device that never draws a slow
+## frame never has anything cut, and nothing here writes to the renderer
+## until something is.
+##
+## In a browser a frame's timing is when it was handed to the browser's GPU
+## process, which draws it later: in software a dozen frames can be handed
+## over at the display's 17 ms each while each takes 0.4 to 2 s to draw. So
+## on the web a look ends with a fence (GpuFence) after its frames, and is
+## judged again by when the drawing was done.
 ##
 ## Only lowered, never raised again in a session: a device slow once is
 ## slow, and raising it to find out costs the slow frames again.
@@ -51,11 +57,18 @@ const WARM_FRAMES := 2
 ## "scale": the 3D drawn at SCALE of a pixel to the point, and stretched;
 ## "msaa": the model's edges no longer drawn four samples deep;
 ## "glow": the glow round bright faces;
-## "shadow_soft": the sun's shadow edge filtered from one sample, not 13;
-## "shadow_size": the sun's shadow atlas at half its size across;
 ## "shadow": the sun's shadow itself, its light brought up to match;
 ## "ssao": the occlusion in corners (Forward+ only; the web has none).
-const CUTS: Array[String] = ["ssao", "dense", "msaa", "glow", "shadow_soft", "shadow_size", "shadow", "scale"]
+## Ordered by what each bought in a browser drawing in software, paired
+## with the build before (docs/SLOW_DEVICES.md): dense and scale about
+## halved a frame, msaa took a third off (half with a model in), the shadow
+## a fifth, glow next to nothing. msaa goes before scale: on a laptop it
+## bought as much, and edges drawn one sample deep are seen far less than
+## the whole view drawn at half. The sun's shadow filtered harder and its
+## atlas made smaller were rungs once; they bought no more than the shadow
+## gone, and both are the RenderingServer's for every light, so they would
+## have lowered the photo-real render's shadows too.
+const CUTS: Array[String] = ["ssao", "dense", "msaa", "scale", "shadow", "glow"]
 ## Pixels to the point the 3D is drawn at when "scale" is cut.
 const SCALE := 0.5
 ## Cuts a check may make that are no part of the ladder: "ui", the
@@ -75,6 +88,8 @@ var timed: Array[float] = []
 var judged: Array = []
 ## How many looks have been taken.
 var looks: int = 0
+## What a frame of the last look cost by its fence, in ms, or -1.
+var fenced: float = -1.0
 
 var _viewport: Viewport = null
 var _environment: Environment = null
@@ -89,9 +104,20 @@ var _began_us: int = 0
 var _own_us: int = 0
 var _last_drawn_us: int = 0
 var _last_drawn_frame: int = -1
-## Frames left to draw on purpose for a look, and warm frames to skip.
+## Frames left to time for a look, warm frames to skip, and the frames a
+## look has drawn and may draw.
 var _looking: int = 0
 var _warm: int = 0
+var _look_drawn: int = 0
+var _look_most: int = 0
+## The look's fence (GpuFence, on the web): when the look began, its
+## frames' own work, whether any was drawn apart from the one before, and
+## the fence once it is put in after its last frame.
+var _look_began_us: int = 0
+var _look_own_us: int = 0
+var _look_apart: bool = false
+var _look_open: bool = false
+var _fence: int = 0
 var _first_look_at: int = 0
 var _since_cut: int = 0
 
@@ -170,6 +196,14 @@ static func judge(samples: Array[float]) -> float:
 func _frame_begins() -> void:
 	_began_us = Time.get_ticks_usec()
 	_own_us = 0
+	if _look_open and _looking == 0:
+		_look_open = false
+		# A look held apart (GpuFence) waited between its frames: its time
+		# to the fence is not its frames' cost.
+		_fence = 0 if _look_apart else GpuFence.put()
+	if _fence > 0 and GpuFence.passed(_fence):
+		_fence = 0
+		_fenced_look()
 	if _looking > 0:
 		# Drawing on purpose: a write to the renderer, of what it already
 		# has, is a frame drawn (IdleDraw).
@@ -183,12 +217,45 @@ func _frame_begins() -> void:
 		look()
 
 
-## Draw a few frames on purpose and time them.
+## Draw frames on purpose until [frames] of them are timed.
+##
+## Only a frame drawn right after a drawn frame is timed, and the drawing
+## can be held between two (GpuFence, while the parts bin's pictures are
+## read back), so a look counts the frames it timed, not the frames it
+## drew. Held apart every time, it ends after three times as many drawn,
+## with what it has: a look that ended at ten drawn with two of them timed
+## left a check waiting for a third forever (2026-10-19).
+##
+## And on the web a look ends with a fence after its frames, and is judged
+## again by when the fence passes. A browser hands each frame to its GPU
+## process and goes on: in software the frames it timed were a dozen at the
+## display's 17 ms, and SwiftShader then took 0.4 to 2 s to draw each one
+## (docs/SLOW_DEVICES.md). On the desktop there is no fence, and the
+## timing is the drawing's.
 func look(frames: int = LOOK_FRAMES) -> void:
 	looks += 1
 	_looking = frames
 	_warm = WARM_FRAMES
+	_look_drawn = 0
+	_look_most = (frames + WARM_FRAMES) * 3
+	_look_began_us = Time.get_ticks_usec()
+	_look_own_us = 0
+	_look_apart = false
+	_look_open = true
+	_fence = 0
 	timed.clear()
+
+
+## The look's fence passed: what each of its frames cost, less their own
+## work, and cut by that where the frames timed said quick.
+func _fenced_look() -> void:
+	if _look_drawn < 2:
+		return
+	var spent_us: int = Time.get_ticks_usec() - _look_began_us - _look_own_us
+	fenced = snappedf(spent_us / 1000.0 / _look_drawn, 0.1)
+	if pinned or cuts_for(fenced) == 0:
+		return
+	_decide(fenced)
 
 
 func _drawing() -> void:
@@ -204,7 +271,12 @@ func _drawn() -> void:
 	_last_drawn_us = now
 	_last_drawn_frame = frame
 	if _looking > 0:
-		_looking -= 1
+		_look_drawn += 1
+		_look_own_us += _own_us
+		if _look_drawn > 1 and not follows:
+			_look_apart = true
+		if _look_drawn >= _look_most:
+			_looking = 0
 	# A frame out of view is paced by the connector's clock, not drawn for
 	# anyone (Main._watch_view): not this device's speed.
 	if not follows or FramePace.unwatched:
@@ -212,6 +284,8 @@ func _drawn() -> void:
 	if _warm > 0:
 		_warm -= 1
 		return
+	if _looking > 0:
+		_looking -= 1
 	take(spent_us / 1000.0)
 
 
@@ -227,11 +301,14 @@ func take(ms: float) -> void:
 	var cost: float = judge(timed)
 	if cost < 0.0:
 		return
+	_decide(cost)
+
+
+## Judged [cost] ms a frame: under SLOW_MS nothing is cut and the look ends;
+## over it, the next rungs, more the further over, and a look at once.
+func _decide(cost: float) -> void:
 	var more: int = cuts_for(cost)
-	if more == 0:
-		_looking = 0
-		return
-	if cuts.size() >= _ladder.size():
+	if more == 0 or cuts.size() >= _ladder.size():
 		_looking = 0
 		return
 	var next: Array[String] = cuts.duplicate()
@@ -269,7 +346,7 @@ func page_state() -> Dictionary:
 	return {"cuts": cuts, "pinned": pinned, "watching": watching,
 		"timed": timed.map(func(ms: float) -> float: return snappedf(ms, 0.1)),
 		"cost": snappedf(judge(timed), 0.1), "judged": judged,
-		"ladder": _ladder, "looking": _looking, "looks": looks,
+		"ladder": _ladder, "looking": _looking, "looks": looks, "fenced": fenced,
 		"drawn": Engine.get_frames_drawn()}
 
 
@@ -297,14 +374,6 @@ func _set_cut(cut: String, on: bool) -> void:
 				else ProjectSettings.get_setting_with_override("rendering/anti_aliasing/quality/msaa_3d") as Viewport.MSAA
 		"dense", "scale":
 			pass
-		"shadow_soft":
-			RenderingServer.directional_soft_shadow_filter_set_quality(
-				RenderingServer.SHADOW_QUALITY_HARD if on else _setting_quality())
-		"shadow_size":
-			var size: int = ProjectSettings.get_setting_with_override(
-				"rendering/lights_and_shadows/directional_shadow/size")
-			RenderingServer.directional_shadow_atlas_set_size(size / 2 if on else size,
-				ProjectSettings.get_setting_with_override("rendering/lights_and_shadows/directional_shadow/16_bits"))
 		"shadow":
 			_sun.shadow_enabled = not on
 			_sun.light_energy = _sun_energy_unshadowed if on else _sun_energy
@@ -334,9 +403,3 @@ static func device_ratio() -> float:
 	elif DisplayServer.get_name() != "headless":
 		ratio = DisplayServer.screen_get_scale()
 	return maxf(ratio, 1.0)
-
-
-static func _setting_quality() -> RenderingServer.ShadowQuality:
-	return ProjectSettings.get_setting_with_override(
-		"rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality") \
-		as RenderingServer.ShadowQuality

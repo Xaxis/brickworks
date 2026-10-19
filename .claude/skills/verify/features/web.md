@@ -784,16 +784,20 @@ plan with Claude as the client.
   `moves`; `web/gallery.js` "Moves: steering, boom" on the card
   (`data-moves`).
 - `share play probe` (`src/dev/share_play_probe.gd`): below.
-- `what a frame costs in a browser` (`tools/web/look_cost.mjs`): WIP. It
-  serves the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
+- `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
+  the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
   --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd`, with .env sourced, and
   runs in Chromium on SwiftShader at 1280 x 800 and 390 x 844 (3x).
-  `--mode=cuts` pins each cut in the page, draws ten frames on purpose and
-  times them, in rounds. `--mode=acts` (orbit, a part dragged, a brick
-  swept in hand, and Play's steering drag) runs on any build, and `--gate`
-  fails where the app chose no lighter look. The only run so far is on the
-  empty editor at 1280 x 800. A later interleaved run hung waiting for a
-  look to finish (600 s), which still needs a fix.
+  `--mode=cuts --rounds=1` pins each cut in the page with "none" between
+  every two and times a turn of the view up to a WebGL fence after it
+  (SwiftShader draws behind the page, so the page's own frame gaps are
+  17 ms whatever a frame costs). A build without FrameBudget measures
+  "none" alone (`--base=3`): run the base and the branch in turn, A B A B,
+  each row saying the load. The first row of each scene is a warm-up.
+  `--mode=acts` (orbit, a part dragged, a brick swept in hand, and Play's
+  steering drag) runs on any build; `--gate` fails where the app chose no
+  lighter look by the end of the acts, which a build without FrameBudget
+  never does. Numbers: docs/SLOW_DEVICES.md.
 - `play browser flow` (`tools/web/play_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
