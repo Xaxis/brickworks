@@ -4360,12 +4360,21 @@ func _fit_panels() -> void:
 
 
 ## The part of the window the model is seen in, for the camera to centre
-## the view on and frame to: the model's column, between the bars, as
-## model_cover samples it. A phone's drawer opens over most of the screen
+## the view on and frame to: the model's column, between the bars
+## (model_cover samples the part of it under the notices strip). A phone's drawer opens over most of the screen
 ## and is put away again to build, so there the column is taken as both
 ## drawers folded, and the model does not leap to the sliver beside one.
+##
+## And from the top of the column, where the notices strip shows when there
+## is something to say. A notice comes and goes by itself, and the banner
+## for a sub-assembly with a double-click on the model: the view centred
+## under the strip slid the model 22 px down from under the pointer as the
+## banner showed, and the next double-click, meant for the wing inside the
+## plane, found the plane's body there (assembly_probe).
 func _model_rect() -> Rect2:
 	var rect: Rect2 = _over_model.get_global_rect()
+	var top: float = (_over_model.get_parent() as Control).get_global_rect().position.y
+	rect = Rect2(rect.position.x, top, rect.size.x, rect.end.y - top)
 	if _columns == "drawers":
 		var across: float = get_viewport().get_visible_rect().size.x
 		rect.position.x = SideDock.RAIL_WIDTH
