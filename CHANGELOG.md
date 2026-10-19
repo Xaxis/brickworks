@@ -64,6 +64,13 @@ whole cycle.
 
 ### Changed
 
+- The browser check of grabbing parts now times what the app does when a
+  swinging part is let go and when it comes to rest and is kept, and fails
+  past a tenth of a second. A release was held on a wait of several
+  seconds at that moment in a browser drawing in software. It was the
+  drawing: the release before waited as long on the same machine under the
+  same load, and the app's own work there is a quarter of a millisecond at
+  the let-go and 16 ms at the keep.
 - What is placed on a booklet page goes with its step. A step's picture,
   parts list, number, callout, words, pictures and arrows are kept with the
   room the step had on its page (`0 !BRICKWORKS PANEL`); when a merge, a

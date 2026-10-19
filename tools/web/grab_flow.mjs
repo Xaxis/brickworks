@@ -62,6 +62,16 @@ const stallLimit = Number(args.stall || 5000);
 const stalls = [];
 let drawWorst = 0;
 const workLimit = Number(args.work || 33);
+// The app's own work when a swing is let go and when it is kept, ms: a
+// tenth of a second, about when a person sees a click wait. And the reading
+// of the model's joints after the keep, which waits for the model to stand
+// still a quarter second first: a quarter second. On this box, in software
+// at load 11 to 21 and with the browser held to two cores alike, the
+// crane's let-go is 0.2 to 0.3 ms, its keep 15 ms (the flywheel's 66), the
+// reading 44 to 82 ms. The page's wait in the same seconds is SwiftShader
+// drawing the swing's first frames (MECHANISMS section 14).
+const keepLimit = Number(args.keep || 100);
+const readLimit = Number(args.read || 250);
 const first = args.bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
   : url;
@@ -177,6 +187,22 @@ async function open(file) {
     await page.waitForTimeout(3000);
   }
   throw new Error("no file picker came up");
+}
+// The app's own work at the let-go and at the keep of the swing that came to
+// rest as [rested], and at the reading of the model's joints after it
+// (GrabDrag.let_go_ms, kept_ms, ready_ms): the swing's frames are gated each
+// on their own, and these were gated by nothing. Waits for the reading,
+// which comes a quarter second after the keep.
+async function letGoAndKeep(rested, what) {
+  const read = (rested && await until(grab, (g) => g.ready && g.revision === rested.revision
+    && !g.swinging && !g.grabbing, 30)) || rested || {};
+  const onThread = read.ready_off_thread ? "on a worker" : "on this thread";
+  check(Boolean(rested) && Number(read.let_go_ms) <= keepLimit && Number(read.kept_ms) <= keepLimit
+    && (read.ready_off_thread || Number(read.ready_ms) <= readLimit),
+    `the app's own work letting ${what} go and keeping it stays under ${keepLimit} ms, and reading `
+    + `its joints again under ${readLimit}: let go ${read.let_go_ms} ms, kept ${read.kept_ms} ms, `
+    + `read again ${read.ready_ms} ms ${onThread}`);
+  return { let_go_ms: read.let_go_ms, kept_ms: read.kept_ms, ready_ms: read.ready_ms };
 }
 async function heartbeat() {
   await page.evaluate(() => {
@@ -507,6 +533,7 @@ try {
       `the app's own work in a swing frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
       + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
     stalls.push([stall, "the swing"]);
+    const kept = await letGoAndKeep(rested, "the pendulum");
     // A frame steps the swing at most a quarter second and 8 ms of the app's
     // work: where the page draws slower than that (software drawing on a
     // loaded box), the swing is drawn slower than it is.
@@ -517,7 +544,7 @@ try {
     timings.swing_fps = perSecond;
     timings.swing = { frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
       worst_ms: rested && rested.swing_worst_ms, stall_ms: stall, simulated_s: rested && rested.swing_s,
-      clock_s: rested && rested.swing_clock_s, page_frames: gaps };
+      clock_s: rested && rested.swing_clock_s, page_frames: gaps, ...kept };
     await page.keyboard.press("Control+z");
     await page.waitForTimeout(2500);
     const drawn = await swingOnce(true);
@@ -624,10 +651,11 @@ try {
       `the app's own work in a coasting frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
       + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
     stalls.push([stall, "the flick"]);
+    const coastKept = await letGoAndKeep(rested, "the flywheel");
     timings.coast = { said: rested && rested.said, deg_s: rested && rested.coast_deg_s,
       frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
       worst_ms: rested && rested.swing_worst_ms, simulated_s: rested && rested.swing_s,
-      clock_s: rested && rested.swing_clock_s, stall_ms: stall };
+      clock_s: rested && rested.swing_clock_s, stall_ms: stall, ...coastKept };
     await shot("10_flywheel_after.png");
   }
   // A pneumatic tube laid from a hole on the floor to one on an arm on a
