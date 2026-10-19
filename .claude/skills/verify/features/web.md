@@ -855,7 +855,11 @@ plan with Claude as the client.
   `--mode=acts` (orbit, a part dragged, a brick swept in hand, and Play's
   steering drag) runs on any build; `--gate` fails where the app chose no
   lighter look by the end of the acts, which a build without FrameBudget
-  never does. Numbers: docs/SLOW_DEVICES.md.
+  never does. Each act says the cuts in force when it began and any made
+  during it. The acts begin once the page is quiet, which comes sooner on
+  a build that draws less while loading; `--from=30` begins them 30 s after
+  the engine started, so two builds paired are turned at the same moment.
+  Numbers: docs/SLOW_DEVICES.md.
 - `play browser flow` (`tools/web/play_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):

@@ -34,9 +34,12 @@
 // drag from the middle of the model, undone after) and a 2 x 4 brick in
 // hand swept across the model; in the viewer, the steering wheel turned
 // (Play). Each says its drawn frames and the gap between them, and the
-// look the app chose by then (none on a build without FrameBudget).
+// look the app chose by then (none on a build without FrameBudget): the
+// cuts in force when it began, and any made during it.
 // --gate: and fails unless the app chose a lighter look on every page by
 // the end of its acts, which a build without FrameBudget never does.
+// --from=SECONDS: the acts begin no sooner than that after the engine
+// started, so builds paired are turned at the same moment after loading.
 //
 // Writes DIR/look_<mode>.json. Says the box's load beside every number:
 // a frame drawn in software on a shared box costs what the box lets it.
@@ -357,14 +360,20 @@ async function act(page, name, doing, settle = 1500) {
   await fenced(page);
   const from = await now(page);
   const began = Date.now();
+  // The look the act began with: whether its frames were drawn with the
+  // cuts already made, or the cuts came during it.
+  const before = await look(page);
   await doing();
   const done = await fenced(page);
   await page.waitForTimeout(settle);
   const seen = await framesSince(page, from, done.put);
+  const after = await look(page);
   const row = { act: name, ms: Date.now() - began, ...seen, done_ms: Math.round(done.passed - from),
-    ms_a_frame: Math.round(((done.passed - from) / Math.max(1, seen.drawn)) * 10) / 10, load: load() };
+    ms_a_frame: Math.round(((done.passed - from) / Math.max(1, seen.drawn)) * 10) / 10, load: load(),
+    cuts_before: before ? before.cuts : null, cuts_after: after ? after.cuts : null };
   log(`    ${name}: ${row.drawn} drawn, done ${row.done_ms} ms after it began, ${row.ms_a_frame} ms a frame`
-    + ` (page gap ${row.gap_median_ms} ms)`);
+    + ` (page gap ${row.gap_median_ms} ms)${before ? `, cut when it began ${JSON.stringify(before.cuts)}`
+      + `${JSON.stringify(after.cuts) !== JSON.stringify(before.cuts) ? `, by its end ${JSON.stringify(after.cuts)}` : ""}` : ""}`);
   return row;
 }
 
@@ -461,6 +470,14 @@ async function actsMode(browser) {
     for (const scene of scenes) {
       log(`${size}, ${scene}: opening`);
       const { context, page } = await open(browser, size, scene);
+      // --from=SECONDS: the acts begin no sooner than that long after the
+      // engine started, so two builds are turned at the same moment: by
+      // default they begin once the page is quiet, which comes sooner on a
+      // build that draws less while it loads.
+      if (args.from) {
+        await until(page, (s) => ((window.brickworksState || {}).now || 0) >= s * 1000,
+          `${args.from} s after the engine started`, Number(args.from) + 600, Number(args.from));
+      }
       const chosen = await look(page);
       log(`  the look: ${chosen ? `${JSON.stringify(chosen.cuts)} (judged ${JSON.stringify(chosen.judged)}, `
         + `a frame by the last look's fence ${chosen.fenced ?? "-"} ms)` : "(no FrameBudget in this build)"}`);

@@ -24,7 +24,11 @@
 ## process, which draws it later: in software a dozen frames can be handed
 ## over at the display's 17 ms each while each takes 0.4 to 2 s to draw. So
 ## on the web a look ends with a fence (GpuFence) after its frames, and is
-## judged again by when the drawing was done.
+## judged again by when the drawing was done. A look whose frames were held
+## apart (GpuFence, while the parts bin's pictures are read back) is judged
+## by its frames after the last hold, the card having finished everything
+## before them; with too few of those, it is taken again once nothing holds
+## the drawing.
 ##
 ## Only lowered, never raised again in a session: a device slow once is
 ## slow, and raising it to find out costs the slow frames again.
@@ -49,6 +53,12 @@ const LOOK_FRAMES := 10
 ## The first frames of a look, before any is timed: shaders compiled for
 ## the first time cost more than a frame does.
 const WARM_FRAMES := 2
+## A look held apart with too few frames after the hold to judge is taken
+## again once nothing has held the drawing for UNHELD_MS, and at most AGAIN
+## times in a row: the parts bin's read-backs in the empty editor, in
+## Chromium on SwiftShader, followed each other 26 to 128 ms apart.
+const UNHELD_MS := 1000
+const AGAIN := 3
 
 ## What is cut, in order. Each is a thing the frame stops drawing:
 ## "dense": on a screen of more than one device pixel to the point (a
@@ -110,14 +120,19 @@ var _looking: int = 0
 var _warm: int = 0
 var _look_drawn: int = 0
 var _look_most: int = 0
-## The look's fence (GpuFence, on the web): when the look began, its
-## frames' own work, whether any was drawn apart from the one before, and
-## the fence once it is put in after its last frame.
+## The look's fence (GpuFence, on the web): when the frames it times began
+## (the look, or its last frame held apart from the one before), how many
+## they are and their own work, and the fence once it is put in after the
+## last.
 var _look_began_us: int = 0
+var _look_run: int = 0
 var _look_own_us: int = 0
-var _look_apart: bool = false
 var _look_open: bool = false
 var _fence: int = 0
+## Whether a look held apart is to be taken again, and how many looks in a
+## row were held apart with too few frames after it to judge.
+var _again: bool = false
+var _held_looks: int = 0
 var _first_look_at: int = 0
 var _since_cut: int = 0
 
@@ -198,9 +213,18 @@ func _frame_begins() -> void:
 	_own_us = 0
 	if _look_open and _looking == 0:
 		_look_open = false
-		# A look held apart (GpuFence) waited between its frames: its time
-		# to the fence is not its frames' cost.
-		_fence = 0 if _look_apart else GpuFence.put()
+		# Judged by a fence after its frames, timed from the look's start or
+		# from its last frame held apart (GpuFence), when the card had done
+		# everything asked of it. With too few after that to judge, as many
+		# as a look not held draws, it is taken again once nothing holds the
+		# drawing. The editor's first look is drawn while the parts bin reads
+		# its pictures back, and on a slow device the cuts it did not judge
+		# came during the first turn of the view, at 512 ms a frame against
+		# 274 once cut (2026-10-19).
+		var enough: bool = _look_run == _look_drawn or _look_run >= WARM_FRAMES + JUDGED
+		_held_looks = 0 if enough else _held_looks + 1
+		_again = not enough and _held_looks <= AGAIN
+		_fence = GpuFence.put() if enough else 0
 	if _fence > 0 and GpuFence.passed(_fence):
 		_fence = 0
 		_fenced_look()
@@ -214,6 +238,8 @@ func _frame_begins() -> void:
 		return
 	if _first_look_at > 0 and Time.get_ticks_msec() >= _first_look_at:
 		_first_look_at = 0
+		look()
+	elif _again and GpuFence.unheld_ms() >= UNHELD_MS and cuts.size() < _ladder.size():
 		look()
 
 
@@ -231,16 +257,18 @@ func _frame_begins() -> void:
 ## process and goes on: in software the frames it timed were a dozen at the
 ## display's 17 ms, and SwiftShader then took 0.4 to 2 s to draw each one
 ## (docs/SLOW_DEVICES.md). On the desktop there is no fence, and the
-## timing is the drawing's.
+## timing is the drawing's. A look held apart is judged by its frames after
+## the last hold, or taken again when they are too few (_frame_begins).
 func look(frames: int = LOOK_FRAMES) -> void:
 	looks += 1
+	_again = false
 	_looking = frames
 	_warm = WARM_FRAMES
 	_look_drawn = 0
 	_look_most = (frames + WARM_FRAMES) * 3
 	_look_began_us = Time.get_ticks_usec()
+	_look_run = 0
 	_look_own_us = 0
-	_look_apart = false
 	_look_open = true
 	_fence = 0
 	timed.clear()
@@ -249,10 +277,10 @@ func look(frames: int = LOOK_FRAMES) -> void:
 ## The look's fence passed: what each of its frames cost, less their own
 ## work, and cut by that where the frames timed said quick.
 func _fenced_look() -> void:
-	if _look_drawn < 2:
+	if _look_run < 2:
 		return
 	var spent_us: int = Time.get_ticks_usec() - _look_began_us - _look_own_us
-	fenced = snappedf(spent_us / 1000.0 / _look_drawn, 0.1)
+	fenced = snappedf(spent_us / 1000.0 / _look_run, 0.1)
 	if pinned or cuts_for(fenced) == 0:
 		return
 	_decide(fenced)
@@ -272,9 +300,14 @@ func _drawn() -> void:
 	_last_drawn_frame = frame
 	if _looking > 0:
 		_look_drawn += 1
-		_look_own_us += _own_us
 		if _look_drawn > 1 and not follows:
-			_look_apart = true
+			# Held apart (GpuFence): the drawing waited for the card to
+			# finish everything asked of it, so the fence times from here.
+			_look_began_us = _began_us
+			_look_run = 0
+			_look_own_us = 0
+		_look_run += 1
+		_look_own_us += _own_us
 		if _look_drawn >= _look_most:
 			_looking = 0
 	# A frame out of view is paced by the connector's clock, not drawn for

@@ -31,6 +31,10 @@
 ## 3. With --shots, the window at three views once the first look is over.
 ##    On the graphics card, run here and in a checkout without FrameBudget,
 ##    the pictures are the same byte for byte (cmp).
+## 4. A look held apart, the drawing stopped between two of its frames as
+##    GpuFence stops it on the web while the parts bin's pictures are read
+##    back, with too few frames after the hold to judge, is taken again once
+##    let go; on the graphics card that cuts nothing either.
 extends SceneTree
 
 const MODEL := "res://models/house.ldr"
@@ -159,8 +163,38 @@ func _run() -> void:
 			var file: String = shots.path_join("view_%d.png" % n)
 			image.save_png(file)
 			print("    picture: %s" % file)
+	if budget != null and budget_script.get("AGAIN") != null:
+		await _held_apart(budget, software)
 	print("look probe: %s" % ("every check passed" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures > 0 else 0)
+
+
+## 4. A look whose frames are held apart: the drawing stopped for three
+## frames after its fourth, and let go, which leaves at most seven after
+## it, fewer than a look not held draws.
+func _held_apart(budget: Node, software: bool) -> void:
+	var before: int = int(budget.get("looks"))
+	budget.call("look")
+	var drawn: int = Engine.get_frames_drawn()
+	while Engine.get_frames_drawn() < drawn + 4:
+		await process_frame
+	RenderingServer.render_loop_enabled = false
+	for _n: int in 3:
+		await process_frame
+	RenderingServer.render_loop_enabled = true
+	var began: int = Time.get_ticks_msec()
+	var told: Dictionary = budget.call("page_state")
+	while Time.get_ticks_msec() - began < 30000:
+		await process_frame
+		told = budget.call("page_state")
+		if int(told["looks"]) >= before + 2 and int(told["looking"]) == 0:
+			break
+	_check("a look held apart with too few frames after it is taken again once let go (%d looks after it)"
+		% (int(told["looks"]) - before - 1),
+		int(told["looks"]) >= before + 2)
+	if not software:
+		_check("and on a graphics card it cuts nothing (%s, judged %s)" % [str(told["cuts"]), str(told["cost"])],
+			(told["cuts"] as Array).is_empty())
 
 
 ## Until nothing has been drawn for a second and a half, or 20 s.

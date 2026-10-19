@@ -359,12 +359,19 @@ picture the assistant is shown.
   shadow, glow; ssao first on Forward+), several at once when frames are
   4x or 16x over. On the web a look also ends with a fence (`GpuFence`)
   and is judged again by when the drawing was done: the page hands frames
-  over at 17 ms while SwiftShader draws each in 0.3 to 2 s. It never raises
+  over at 17 ms while SwiftShader draws each in 0.3 to 2 s. A look whose
+  frames were held apart (the parts bin's read-backs, `GpuFence`) is
+  timed to its fence from its last frame after a hold, when the card had
+  finished everything; with fewer than eight frames after it, the look is
+  taken again once the drawing has gone unheld a second
+  (`GpuFence.unheld_ms`), up to three times in a row. So the empty editor
+  is cut on its own while it loads, not at the first turn of the view. It never raises
   the look again. A probe leaves it off unless it calls `watch()`. The page
   reads `brickworksState.look`, and a check pins cuts with
   `window.brickworksLookAsk = {cuts: [...] | null, look: N}`.
   `tools/probe.sh look_probe` checks the judgment on a budget of its own,
-  and on the GPU that nothing is cut. `-- --shots=DIR` writes three views
+  and on the GPU that nothing is cut, and that a look held apart (the
+  drawing stopped between its frames) is taken again and cuts nothing. `-- --shots=DIR` writes three views
   to `cmp` against a checkout before: identical to rel-m87 on Forward+, and
   on Compatibility through zink (the env is in the probe's header; under
   Xvfb without it, Compatibility draws on llvmpipe, in software).
