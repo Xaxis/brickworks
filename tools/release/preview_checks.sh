@@ -71,6 +71,9 @@ declare -A CMD=(
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"
   [tabpair]="tools/web/tabpair_flow.mjs --url=$P/app --out=$S/${TAG}_tabpair"
+  # File > New tab: a second tab on an empty model of its own, kept across
+  # a reload, the first tab untouched (src/parts/tab_session.gd).
+  [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
