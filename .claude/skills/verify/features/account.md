@@ -73,9 +73,12 @@ they have. A Claude connector belongs to the account that switched it on.
   typed the screen stays up ("Signing you in…") for `/api/account`; a start
   with a kept session lets them in at once and puts the screen back up only
   to ask (an account from before the question, once). When it says
-  `ask`, "One question first: When were you born?", twelve month buttons
-  (`age_month_1`…`12`), the year (`age_year`), Carry on (`age_go`), and "The
-  date itself is not kept." Under 13, the screen then says what is open and
+  `ask`, "One question first: When were you born?", two dropdowns side by
+  side, Month by name (`age_month`) and Year newest first (`age_year`), each
+  opened by a click, its item found by typing in the open list and chosen
+  with Enter; Carry on (`age_go`), and "The date itself is not kept." The
+  site's dialog (web/account.js) asks it the same way, two `<select>`s
+  styled as its text boxes. gate_probe chooses June and 1996 by real input. Under 13, the screen then says what is open and
   what is for 13 and over, and Start building (`age_done`) lets them in.
   `window.brickworksAccount` adds `age_ask` and `over_13`. Not asked offline
   or by a deployment that does not say `ask`.

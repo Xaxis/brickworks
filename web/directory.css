@@ -139,10 +139,20 @@ dialog.sign-in::backdrop { background: rgba(0, 0, 0, 0.55); }
 dialog.sign-in h2 { font-size: 22px; margin: 0 0 6px; }
 dialog.sign-in p { color: var(--ink-soft); margin: 0 0 14px; }
 dialog.sign-in label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); margin-bottom: 14px; }
-dialog.sign-in input {
-	font: inherit; font-size: 16px; color: var(--ink); background: var(--bg-soft);
-	border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+dialog.sign-in input, dialog.sign-in select {
+	font: inherit; font-size: 16px; color: var(--ink); background-color: var(--bg-soft);
+	border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; min-height: 46px;
 }
+/* A dropdown drawn as the text boxes are, its arrow the page's ink. */
+dialog.sign-in select {
+	appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
+	background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+		linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+	background-position: right 18px center, right 13px center;
+	background-size: 5px 5px; background-repeat: no-repeat;
+}
+dialog.sign-in select:invalid { color: var(--ink-soft); }
+dialog.sign-in .when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
 dialog.sign-in .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
 
 /* Cards of models, on a profile, a collection and your own page: the
