@@ -195,23 +195,34 @@ static func through(entries: Array) -> Array:
 ## eye, which Joints.rounds forgives only inside the eye. Taken as a hole
 ## here, the top swung a quarter turn into its own base was buildable.
 static var _lines: Dictionary = {}
+## The model's joints are read on a worker as well as on the main thread
+## (GrabDrag._ready_ahead, _ready_now): the cache is filled under a lock. Two
+## threads writing it at once broke a key, and the reading stopped the app.
+static var _lines_lock := Mutex.new()
 
 
 static func _lines_of(part: Lbm.PartMesh) -> Array:
 	var key: int = part.get_instance_id()
-	if not _lines.has(key):
-		var shafts: Array = Mechanism._shaft_of(part)
-		var named: Array = []
-		for hole: Array in Mechanism._holes_of(part, shafts):
-			for connector: Lbm.Connector in part.connectors:
-				if (connector.kind == "pin_hole" or connector.kind == "axle_hole") \
-						and Mechanism._same_line(connector.position,
-							connector.axis.normalized(), hole[1], hole[2]) \
-						and connector.position.distance_to(hole[1]) < 1.0:
-					named.append(hole)
-					break
-		_lines[key] = [shafts, named]
-	return _lines[key]
+	_lines_lock.lock()
+	var known: Variant = _lines.get(key)
+	_lines_lock.unlock()
+	if known != null:
+		return known
+	var shafts: Array = Mechanism._shaft_of(part)
+	var named: Array = []
+	for hole: Array in Mechanism._holes_of(part, shafts):
+		for connector: Lbm.Connector in part.connectors:
+			if (connector.kind == "pin_hole" or connector.kind == "axle_hole") \
+					and Mechanism._same_line(connector.position,
+						connector.axis.normalized(), hole[1], hole[2]) \
+					and connector.position.distance_to(hole[1]) < 1.0:
+				named.append(hole)
+				break
+	var lines: Array = [shafts, named]
+	_lines_lock.lock()
+	_lines[key] = lines
+	_lines_lock.unlock()
+	return lines
 
 
 ## Gears whose teeth are in each other's, both ways round: key -> {other key
