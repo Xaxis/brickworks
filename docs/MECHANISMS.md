@@ -3713,7 +3713,10 @@ allowed. Steps judged to stop on covers only went from 15 to 19: five new
 passed. The one that failed is a timing check: 7191-1's big section let go,
 its keeping frame 119 ms against 100, 94 of it the commit (`Grab.commit`,
 which this branch does not touch). It ran at load 47; G13's run kept it in
-67 ms, 53 the commit, at load 15 to 28. 8074-1's turntable is
+67 ms, 53 the commit, at load 15 to 28. Run alone (`-- --only=big`) beside
+rel-m87 at the same time, at load about 28, both pass: G13b 64 ms (52 the
+commit), rel-m87 75 (55). Alone at load 46, G13b took 249 (`big_ab`).
+8074-1's turntable is
 checked back again: +30, -60, +30 and back to 0.000 LDU, and no turn
 stopped on covers only. `-- --only=path` and `-- --only=beams` pass, and
 10220-1's door turns +4°, -9°, +5° and back to 0.000 LDU. Beside it,
