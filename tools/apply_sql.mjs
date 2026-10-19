@@ -9,6 +9,10 @@
 //                                               rolled back: what it would make, and FILE's
 //                                               queries' rows, run after it inside it
 //
+// A file that redefines directory_card or directory_models: also run
+// tools/sql_compare.mjs FILE NEWKEYS, which checks the gallery answers as
+// it did before (the last file applied wins, and can drop another's work).
+//
 // The file runs in one transaction, so a statement that fails leaves the
 // database as it was. When the project has Supabase's migration table
 // (supabase_migrations.schema_migrations, which the Supabase CLI keeps) the
