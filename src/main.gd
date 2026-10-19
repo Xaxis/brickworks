@@ -1972,7 +1972,7 @@ func _enter_view() -> void:
 	_build_mode = BuildMode.new()
 	_build_mode.thumbnails = _thumbnails
 	$HUD.add_child(_build_mode)
-	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1))
+	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1, true))
 	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
@@ -1986,6 +1986,8 @@ func _enter_view() -> void:
 	# A step scrubbed shows and hides parts under a pointer that has not moved.
 	_steps.reveal.connect(func(_ids: Dictionary) -> void:
 		_hovered_from = Vector2(-1, -1))
+	# The viewer's timeline stepped onto its last step: built, along it.
+	_steps.stepped_to_end.connect(_count_built)
 
 
 ## The timeline's bricks on screen, as a set: the history's, and the end's
@@ -2102,6 +2104,12 @@ func _view_shared() -> void:
 	_share_view.show_version(_view_version, _view_newest, said)
 	# Marked Tested, when this version passed the app's four tests.
 	_share_view.show_tested(shared["tested"] if shared.get("tested") is Dictionary else {})
+	# How many have built it, and whether this device is one of them.
+	var builds: Variant = shared.get("builds")
+	_built_said = {"sent": 0, "counted": SharedModels.built_counted(_viewing),
+		"builds": int(builds) if builds is float or builds is int else -1}
+	_share_view.built = _built_said
+	_share_view.show_builds(int(_built_said["builds"]))
 	_show_name(name)
 	_set_address(_view_address())
 	_lay_baseplate()
@@ -2283,8 +2291,10 @@ func _ready_the_pages() -> void:
 ## Put [param page] on screen: what is built by then, the rest out of
 ## sight; what was built before it faded; its new parts outlined; its
 ## parts along the bottom; the view the booklet would draw it from. And
-## kept as where this device is on the link.
-func _build_go(page: int) -> void:
+## kept as where this device is on the link. [param stepped]: turned to
+## by Next (the button, a swipe, the keys) from the page before, which on
+## the last page is the model built (_count_built).
+func _build_go(page: int, stepped: bool = false) -> void:
 	if _build_pages == null or not _build_mode.is_open():
 		return
 	if page > _build_pages.last():
@@ -2295,7 +2305,12 @@ func _build_go(page: int) -> void:
 	var took: Dictionary = {}
 	var lap: int = started
 	page = _build_pages.clamped(page)
+	var from: int = _build_page
 	_build_page = page
+	# The last step reached from the one before it: built. Not a jump on
+	# the progress bar, nor coming back to a place kept on it.
+	if stepped and page >= 1 and page == _build_pages.last() and from == page - 1:
+		_count_built()
 	# A page is a count of the order the pages add bricks in, as a step of
 	# the timeline is, and its fading the page before's parts faded and
 	# its own not: the step's parts changed, never the whole model. It was
@@ -2460,12 +2475,47 @@ func _leave_build() -> void:
 	_camera.frame(_built_bounds())
 
 
+## A model shared by link built to its last step on this device, in the
+## step player or on the viewer's timeline: counted once per device, ever
+## (api/share.js ?op=built), with no account and nothing about who. Sent
+## unless this device's finish of the link was counted already; any answer
+## from the server marks it so, and one that never came does not, so a
+## later finish tries again. Never waited on by a page turn.
+## [member _built_said] is what a check reads of it.
+var _built_said: Dictionary = {"sent": 0, "counted": false, "builds": -1}
+var _built_asking: bool = false
+
+
+func _count_built() -> void:
+	if _viewing.is_empty() or _built_asking:
+		return
+	if SharedModels.built_counted(_viewing):
+		_built_said["counted"] = true
+		_share_view.built = _built_said
+		return
+	_built_asking = true
+	_built_said["sent"] = int(_built_said["sent"]) + 1
+	var answer: Dictionary = await _shared.built(_viewing, SharedModels.device_key(), _view_version)
+	_built_asking = false
+	if int(answer.get("code", 0)) != 200:
+		return
+	SharedModels.mark_built(_viewing)
+	_built_said["counted"] = true
+	var body: Variant = answer.get("body")
+	if body is Dictionary and ((body as Dictionary).get("builds") is float
+			or (body as Dictionary).get("builds") is int):
+		_built_said["builds"] = int((body as Dictionary)["builds"])
+		_share_view.show_builds(int(_built_said["builds"]))
+	_share_view.built = _built_said
+
+
 ## The step player as a check reads it (tools/web/build_flow.mjs,
 ## share_view_probe): the page and what it says, and what the world draws.
 func build_state() -> Dictionary:
 	if _build_mode == null:
 		return {}
 	var said: Dictionary = _build_mode.page_state()
+	said["built"] = _built_said.duplicate()
 	if not _build_mode.is_open():
 		return said
 	said["faded"] = _world.faded_ids().size()
@@ -2583,7 +2633,7 @@ func _looking_key(key: InputEventKey) -> bool:
 	if _build_mode != null and _build_mode.is_open():
 		match key.keycode:
 			KEY_RIGHT, KEY_SPACE, KEY_PAGEDOWN, KEY_ENTER:
-				_build_go(_build_page + 1)
+				_build_go(_build_page + 1, true)
 			KEY_LEFT, KEY_PAGEUP, KEY_BACKSPACE:
 				_build_go(_build_page - 1)
 			KEY_HOME:

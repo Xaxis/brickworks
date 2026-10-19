@@ -90,6 +90,20 @@ class FakeShared extends SharedModels:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		return {"code": 200, "body": {"shared": []}}
 
+	## Builds finished, as api/share.js ?op=built counts them: once per
+	## device and link. Kept across viewers, as the server keeps them.
+	static var built_calls: Array[Dictionary] = []
+	static var counted_keys: Dictionary = {}
+
+	func built(id: String, device: String, version: int = 1) -> Dictionary:
+		built_calls.append({"id": id, "device": device, "version": version})
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		var counted: bool = not counted_keys.has(device + id)
+		counted_keys[device + id] = true
+		var builds: int = counted_keys.keys().filter(func(key: String) -> bool:
+			return key.ends_with(id)).size()
+		return {"code": 200, "body": {"counted": counted, "builds": builds}}
+
 
 func _initialize() -> void:
 	_run()
@@ -366,6 +380,11 @@ func _close_viewer() -> void:
 func _build_it(text: String, count: int) -> void:
 	print("\nbuild it: the step player")
 	BuildSteps._kept.clear()
+	# This device's finishes, in a file of the probe's own, from nothing.
+	SharedModels.kept_at = BUILT_FILE
+	_forget_built()
+	FakeShared.built_calls.clear()
+	FakeShared.counted_keys.clear()
 	var view: ShareView = await _open_viewer(text, count)
 	_ok(view != null, "the link opens again to build from")
 	if view == null:
@@ -508,8 +527,113 @@ func _build_it(text: String, count: int) -> void:
 		await _key(KEY_RIGHT, false)
 	_ok(not mode.is_open() and _shown(world, store) == count,
 		"past the last step, Finish puts the whole model back")
+	await _built_once(text, count, view, mode)
 	await _close_viewer()
 	BuildSteps._kept.clear()
+	_forget_built()
+
+
+## A finish counted once per device (api/share.js ?op=built): the step
+## player's last page reached by Next from the page before it sends one,
+## and never again for the link; a jump to the last page, coming back to it
+## and the viewer opening on the finished model send nothing; the viewer's
+## timeline stepped onto its last step from the one before counts a link
+## not counted yet, once.
+func _built_once(text: String, count: int, view: ShareView, mode: BuildMode) -> void:
+	print("\nbuilt: a finish counted once per device")
+	var calls: Array[Dictionary] = FakeShared.built_calls
+	var device: String = str(calls[0].get("device", "")) if calls.size() >= 1 else ""
+	_ok(calls.size() == 1 and calls[0]["id"] == ID and int(calls[0]["version"]) == 1
+		and RegEx.create_from_string("^[0-9a-f]{32}$").search(device) != null,
+		"Next onto the last page sent one finish, with this device's key and the version (%s)" % [calls])
+	var said: Dictionary = view.page_state()["built"]
+	_ok(int(said["sent"]) == 1 and said["counted"] == true and int(said["builds"]) == 1
+		and str(view.page_state()["about"]).contains("1 built"),
+		"...counted, and the count said back on the about line (%s, \"%s\")" % [said, view.page_state()["about"]])
+	_ok(SharedModels.device_key() == device and SharedModels.built_counted(ID)
+		and FileAccess.file_exists(BUILT_FILE),
+		"...the device's key and that it was counted kept on this device, in %s" % BUILT_FILE)
+	# Build it again: on the last page, where it was left; not counted again.
+	await _press(view.controls_by_name()["view_build"])
+	await _settle()
+	var pages: BuildSteps = _main.get("_build_pages")
+	var last: int = pages.last()
+	_ok(mode.is_open() and int(_main.call("build_state")["page"]) == last
+		and FakeShared.built_calls.size() == 1,
+		"Build it again comes back to the last page, and sends nothing")
+	await _press(mode.controls_by_name()["build_back"])
+	await _press(mode.controls_by_name()["build_next"])
+	await _settle()
+	_ok(int(_main.call("build_state")["page"]) == last and FakeShared.built_calls.size() == 1,
+		"Back, and Next onto the last page again: nothing more sent")
+	await _press(mode.controls_by_name()["build_close"])
+	await _press(view.controls_by_name()["view_build"])
+	await _settle()
+	await _key(KEY_HOME, false)
+	for _n: int in last:
+		await _key(KEY_RIGHT, false)
+	await _settle()
+	_ok(int(_main.call("build_state")["page"]) == last and FakeShared.built_calls.size() == 1,
+		"Close, Build it again and Next from the cover to the last page: nothing more sent")
+
+	print("\nbuilt: a link this device has not finished")
+	_forget_built()
+	await _key(KEY_HOME, false)
+	await _key(KEY_RIGHT, false)
+	mode.page_wanted.emit(last)
+	await _settle()
+	_ok(int(_main.call("build_state")["page"]) == last and FakeShared.built_calls.size() == 1,
+		"a jump to the last page on the progress bar is not a finish")
+	await _key(KEY_HOME, false)
+	await _key(KEY_END, false)
+	await _settle()
+	_ok(int(_main.call("build_state")["page"]) == last and FakeShared.built_calls.size() == 1,
+		"...nor is End")
+	await _press(mode.controls_by_name()["build_close"])
+	await _settle()
+	var steps: StepsBar = _main.get("_steps")
+	_ok(steps.is_playing_back() and steps.timeline_at().x == steps.timeline_at().y
+		and FakeShared.built_calls.size() == 1,
+		"the timeline back at the finished model: not a finish")
+	steps.step_back()
+	steps.step_forward()
+	await _settle()
+	_ok(FakeShared.built_calls.size() == 2 and SharedModels.built_counted(ID)
+		and str(FakeShared.built_calls[1]["device"]) != device,
+		"the timeline stepped onto its last step from the one before: one finish sent (%s)"
+		% [FakeShared.built_calls.slice(1)])
+	steps.step_back()
+	steps.step_forward()
+	await _settle()
+	_ok(FakeShared.built_calls.size() == 2, "...and again: nothing more")
+	await _close_viewer()
+
+	_forget_built()
+	view = await _open_viewer(text, count, {"builds": 4})
+	_ok(view != null and str(view.page_state()["about"]).contains("4 built")
+		and FakeShared.built_calls.size() == 2 and view.page_state()["built"]["counted"] == false,
+		"opened again on another device: \"%s\", and opening it is not a finish"
+		% (view.page_state()["about"] if view != null else "no viewer"))
+	if view == null:
+		return
+	steps = _main.get("_steps")
+	steps.to_start()
+	steps.to_end()
+	steps.step_back()
+	steps.to_end()
+	await _settle()
+	_ok(FakeShared.built_calls.size() == 2, "the timeline jumped to its end is not a finish")
+	var said_page: Dictionary = _main.call("build_state")
+	_ok(said_page.get("built") is Dictionary and said_page["built"].has("sent"),
+		"the step player's state says it too (%s)" % said_page.get("built"))
+
+
+const BUILT_FILE := "user://share_probe_built.cfg"
+
+
+func _forget_built() -> void:
+	if FileAccess.file_exists(BUILT_FILE):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BUILT_FILE))
 
 
 ## Versions of the link: the viewer's version line, and a builder's place

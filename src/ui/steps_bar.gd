@@ -116,6 +116,8 @@ signal edit_wanted(op: String)
 ## "new_page" ... (Shell.edit_look does it).
 signal look_wanted(op: String)
 signal closed
+## Stepped forward onto the last step from the step before it (step_forward).
+signal stepped_to_end
 
 ## Its buttons and the slider by name, for the page to find (controls_by_name).
 var _named: Dictionary = {}
@@ -679,7 +681,16 @@ func _forget_ghosts() -> void:
 ## The next step's end in the build order; ten bricks on, as made.
 func step_forward() -> void:
 	_stop_play()
+	var from: int = _shown
 	_show(_next_stop(1))
+	# The last step put on, a step forward from the step before it: the
+	# model built to its end along its steps (Main counts it, for a link).
+	# Never the timeline opening on the finished model, a jump to the end,
+	# a drag or playback: those are looking, not building.
+	if (_mode == 0 or _mode == AUTHORS) and not _step_ends.is_empty() \
+			and _shown >= _length() and from < _length() \
+			and from >= (_step_ends[-2] if _step_ends.size() >= 2 else 0):
+		stepped_to_end.emit()
 
 
 func step_back() -> void:

@@ -60,6 +60,11 @@ var newest: int = 1
 var version_said: String = ""
 ## The Tested mark this version passed (show_tested), or empty.
 var tested: Dictionary = {}
+## How many devices have built it to its last step (api/share.js ?op=built),
+## said on the about line once there is one; -1 not known.
+var builds: int = -1
+## This run's finish of it, as Main counts it: {sent, counted, builds}.
+var built: Dictionary = {"sent": 0, "counted": false, "builds": -1}
 var _tested: Button
 ## The step a builder's place was changed from, while they are told so;
 ## 0 when it holds.
@@ -417,14 +422,28 @@ func show_model(shown_name: String, shown_author: String, part_count: int, at: S
 	link = at
 	remixed_from = from if not str(from.get("url", "")).is_empty() else {}
 	_name.text = shown_name
-	_about.text = "%s part%s%s%s" % [_count(part_count), "" if part_count == 1 else "s",
-		(" · by " + shown_author) if not shown_author.is_empty() else "",
-		(" · remixed from " + str(remixed_from.get("name", ""))) if not remixed_from.is_empty() else ""]
+	_say_about()
 	var linked: bool = not remixed_from.is_empty()
 	_about.mouse_filter = Control.MOUSE_FILTER_STOP if linked else Control.MOUSE_FILTER_IGNORE
 	_about.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if linked else Control.CURSOR_ARROW
 	_about.tooltip_text = ("Open “%s”, the model this one was remixed from" % remixed_from.get("name", "")
 		if linked else "")
+
+
+## The about line: the parts, who made it, how many have built it, and
+## what it was remixed from.
+func _say_about() -> void:
+	_about.text = "%s part%s%s%s%s" % [_count(parts), "" if parts == 1 else "s",
+		(" · by " + author) if not author.is_empty() else "",
+		(" · %s built" % _count(builds)) if builds > 0 else "",
+		(" · remixed from " + str(remixed_from.get("name", ""))) if not remixed_from.is_empty() else ""]
+
+
+## How many devices have built it to its last step, as the server said.
+func show_builds(count: int) -> void:
+	builds = count
+	if not model_name.is_empty():
+		_say_about()
 
 
 ## Which version of the link this is ([param shown] of [param last]), and
@@ -597,4 +616,5 @@ func page_state() -> Dictionary:
 		"says": _card_words.text if _card.visible else "", "hover": _hover.text if _hover.visible else "",
 		"version": version, "newest": newest, "version_line": _version.text if _version.visible else "",
 		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else "",
-		"tested": _tested.visible, "tested_says": _tested.tooltip_text}
+		"tested": _tested.visible, "tested_says": _tested.tooltip_text,
+		"built": built.duplicate(), "builds": builds}

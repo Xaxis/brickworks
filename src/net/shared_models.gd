@@ -92,6 +92,90 @@ func mine(token: String) -> Dictionary:
 	return await _fetch("/api/share?op=mine", HTTPClient.METHOD_GET, token, "")
 
 
+## The model at [param id] built to its last step on this device ([param
+## device], device_key()), on [param version] of it: {code, body: {counted,
+## builds}}. No account and nothing about the builder: the server keeps a
+## key made from the link and the device's own random number, so the same
+## device is counted once (api/share.js ?op=built). Off the web the app says
+## it is the app, which is how the server tells it from a robot; in a
+## browser the page's own request says it.
+func built(id: String, device: String, version: int = 1) -> Dictionary:
+	return await _fetch("/api/share?op=built&id=" + id.uri_encode(), HTTPClient.METHOD_POST, "",
+		JSON.stringify({"device": device, "v": maxi(version, 1)}))
+
+
+# -- builds finished, once per device ---------------------------------------
+#
+# A model built to its last step is counted once per device (api/share.js
+# ?op=built): the device is a random number it made for itself, never tied
+# to an account, and which links it has been counted for. In the browser
+# both are in localStorage, beside the place kept per link (BuildSteps);
+# off the web in one small file under user://, the one thing a desktop
+# viewer keeps: without it, every run of the app would be a new device.
+
+const DEVICE_KEY := "brickworks.device"
+const BUILT_AS := "brickworks.built."
+const DEVICE := "^[0-9a-f]{32}$"
+## Where the desktop keeps them; a probe points it at a file of its own.
+static var kept_at: String = "user://built_once.cfg"
+
+
+## This device's own random number, 32 lowercase hex: made the first time
+## it is asked for and kept. A value of the wrong shape is no value, and a
+## new one is made.
+static func device_key() -> String:
+	var kept: String = ""
+	if OS.has_feature("web"):
+		var text: Variant = JavaScriptBridge.eval(
+			"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
+			% JSON.stringify(DEVICE_KEY), true)
+		kept = str(text) if text is String else ""
+	else:
+		var file := ConfigFile.new()
+		if file.load(kept_at) == OK:
+			var value: Variant = file.get_value("device", "key", "")
+			kept = value if value is String else ""
+	if RegEx.create_from_string(DEVICE).search(kept) != null:
+		return kept
+	var made: String = Crypto.new().generate_random_bytes(16).hex_encode()
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("(function(){try{localStorage.setItem(%s,%s)}catch(e){}})()"
+			% [JSON.stringify(DEVICE_KEY), JSON.stringify(made)], true)
+	else:
+		var file := ConfigFile.new()
+		file.load(kept_at)
+		file.set_value("device", "key", made)
+		file.save(kept_at)
+	return made
+
+
+## Whether this device's finish of [param link] has been counted: then it
+## is not sent again.
+static func built_counted(link: String) -> bool:
+	if OS.has_feature("web"):
+		var text: Variant = JavaScriptBridge.eval(
+			"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
+			% JSON.stringify(BUILT_AS + link), true)
+		return text is String and text == "1"
+	var file := ConfigFile.new()
+	if file.load(kept_at) != OK:
+		return false
+	var value: Variant = file.get_value("built", link, false)
+	return value is bool and value
+
+
+## Keep that this device's finish of [param link] was counted.
+static func mark_built(link: String) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("(function(){try{localStorage.setItem(%s,'1')}catch(e){}})()"
+			% JSON.stringify(BUILT_AS + link), true)
+		return
+	var file := ConfigFile.new()
+	file.load(kept_at)
+	file.set_value("built", link, true)
+	file.save(kept_at)
+
+
 ## One request on a throwaway node, as Account._fetch does: an
 ## HTTPRequest takes one call at a time.
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:
@@ -102,6 +186,11 @@ func _fetch(path: String, method: int, token: String, body: String) -> Dictionar
 	var headers := PackedStringArray(["content-type: application/json"])
 	if not token.is_empty():
 		headers.append("authorization: Bearer " + token)
+	# Off the web the app says what it is, so a build finished on a desktop
+	# is told from a robot's request (api/share.js ?op=built). In a browser
+	# the browser's own goes, and cannot be changed.
+	if not OS.has_feature("web"):
+		headers.append("User-Agent: Brickworks/%s (desktop)" % BuildInfo.version())
 	if http.request(Deployment.api_base() + path, headers, method, body) != OK:
 		http.queue_free()
 		return {"code": 0, "body": null}
