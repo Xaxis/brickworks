@@ -372,6 +372,14 @@
       "tests": []
     },
     {
+      "id": "cli:design browser flow",
+      "kind": "cli",
+      "entry": "tools/web/design_flow.mjs",
+      "reach": "node tools/web/design_flow.mjs --out=shots/design   (no network, no account: tools/web/design_stand_in.mjs answers the API; --url=<deployment> for a preview, --root=DIR for another checkout)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:design from a brief",
       "kind": "cli",
       "entry": "tools/design.py",
@@ -2195,6 +2203,14 @@
       "entry": "src/ai/claude_code.gd",
       "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "ui:design system",
+      "kind": "ui",
+      "entry": "web/site.css",
+      "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
+      "area": "web",
       "tests": []
     },
     {

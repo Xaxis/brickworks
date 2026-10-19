@@ -58,12 +58,7 @@
    filters fold into one line, opened with a tap. */
 .finder { display: grid; gap: 12px; margin: 0 0 14px; }
 .search { display: flex; gap: 8px; }
-.search input {
-	flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink);
-	background: var(--panel); border: 1px solid var(--line); border-radius: 11px;
-	padding: 11px 14px; min-height: 46px;
-}
-.search input::placeholder { color: var(--ink-faint); }
+.search input { flex: 1; }
 .search button { flex: none; }
 .filters { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-soft); }
 .filters summary {
@@ -76,12 +71,8 @@
 .filters summary .said { color: var(--ink-soft); font-weight: 500; font-size: 14px; margin-left: auto; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 2px 14px 14px; }
 .filter-row label { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--ink-soft); }
-.filter-row select, .order select {
-	font: inherit; font-size: 15px; color: var(--ink); background: var(--panel);
-	border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; min-height: 40px; max-width: 100%;
-}
-.filter-row .tick { min-height: 40px; cursor: pointer; }
-.filter-row .tick input { width: 18px; height: 18px; accent-color: var(--accent); }
+.filter-row .tick { align-items: center; }
+.filter-row .tick input { margin: 0; }
 .order-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 16px; }
 .order { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--ink-soft); }
 .found { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
@@ -117,7 +108,7 @@
 .model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
 .model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
 .state { margin: 0; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); }
-.state button { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+.state .link { color: var(--ink); }
 .more { margin-top: 26px; }
 .yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
 
@@ -255,7 +246,7 @@
 		</p>
 		<p class="state" id="nothing" hidden>
 			Nothing in the gallery matches that.
-			<button type="button" id="clear">Clear the search and the filters</button>
+			<button type="button" class="link" id="clear">Clear the search and the filters</button>
 		</p>
 		<p class="state" id="broken" hidden>
 			The gallery did not load just now. Try again in a minute.

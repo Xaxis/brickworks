@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, ui:design system, cli:design browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow -->
 
 ## Sub-features
 
@@ -596,6 +596,20 @@ plan with Claude as the client.
   asked yet is told to answer first before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
+- `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19): the
+  site's controls, in one place and both schemes: a field (every input,
+  select, textarea and file picker, styled by element at zero specificity,
+  so none is the browser's; a dropdown is the text box with its own arrow),
+  a checkbox and radio (`label.choice`), the buttons the site uses (`.cta`,
+  `.cta.ghost` and any bare button, `button.link`, `.small`, `.big`), the
+  `dialog` (sign-in, age, report) and `.card`; tokens `--field`,
+  `--control-h` 44, `--control-radius` 10. The copies in `web/directory.css`,
+  `web/gallery.html`, `web/download.html`, `web/takedown.html`,
+  `web/admin.html` and `web/authorize.html` are gone; the last two now link
+  `/site.css`. The owner's example was the age question's bare month
+  dropdown beside a full-size year box.
+- `design browser flow` (`tools/web/design_flow.mjs`, preview check
+  `[design]`): every page and dialog, below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
   `api/people.js`, 2026-10-18; **not applied to the live project**: the
   owner applies it at release, after `trust.sql` and before the deploy;
@@ -1717,6 +1731,35 @@ BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://12
 never reach the database's own triggers, which refuse the profile, the
 public list and the listing (three 502s, 2026-10-18); without it, 42 checks
 all ok the same evening.
+
+The design system, with no network and no account (pages from the
+checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
+`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`):
+
+```sh
+heavy node tools/web/design_flow.mjs --out=shots/design              # this checkout
+heavy node tools/web/design_flow.mjs --root=<an old export> --out=…   # an older site, to see it fail
+node tools/web/design_flow.mjs --url=<preview>                        # a deployment's pages, the API stood in
+```
+
+It visits home, gallery (its filters opened at 390), a model's page (signed
+out: Report it opens the report dialog; signed in: the collect panel, the
+comment form, and I built it's photo form with its file picker), an older
+version, the embed card, a person, a collection, the feed, Account (signed
+out: Sign in and its code step; signed in: the age question for an account
+not asked yet), admin, authorize, compare, download, faq, changelog, terms,
+guidelines, privacy, takedown and the 404 page, at 390 and 1280, light and
+dark, signed out and in. It fails a visible control the browser drew its
+own way (a `menulist` dropdown, a checkbox in its own colour, 13.33 px type),
+controls of one kind on a page that differ (fields in type, height,
+corners, border or fill; buttons of one size), and a page wider than 390
+with anything open. It proves it when it ends `design flow: N pages and
+dialogs, M controls; P checks passed, 0 failed` (2026-10-19: 188, 1,264,
+188, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
+and api/, given as `--root=`) it fails the age question by name:
+`select#age-month … the browser's own dropdown (appearance auto)`, its
+13.33 px type, and the year box differing from it in type, corners, fill
+and height. Pictures of every state in --out.
 
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every
