@@ -2233,7 +2233,11 @@ gallery's page from the checkout with its list played: the racer's card
 "Moves: steering", the house's "Moves: doors", the hut's nothing, Technic or
 mechanism asking `technic=1`. With `--publish`, once play.sql is applied,
 the list asked with tests and technic finds the published racer with
-`["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`.
+`["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`. On a
+deployment the link is the model's page, which does not go on by itself
+(only serve.py redirects), so the flow presses View in 3D as a person
+does: 37 checks, all ok, 2026-10-19, on a preview (about 2 minutes); before
+that it waited 600 s on the page and failed.
 
 The monthly challenge (`supabase/challenges.sql`). The SQL first, in a
 transaction rolled back on the live project (the trial makes its own

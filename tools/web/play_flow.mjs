@@ -21,7 +21,8 @@
 // by the mouse; a phone, 390 x 844 at three device pixels to the point,
 // touch, by a finger):
 //
-//   1. /m/<id> goes on to the viewer; once its joints are read it says what
+//   1. /m/<id> goes on to the viewer (on a deployment by its page's View in
+//      3D, as a person goes); once its joints are read it says what
 //      moves and how ("Moves: steering", "Drag a part that moves"; on the
 //      phone, "Touch a part that moves and drag it"), inside the page.
 //   2. The steering wheel taken where the app says it shows (its handle,
@@ -264,8 +265,14 @@ try {
     const touch = async (type, at) => cdp.send("Input.dispatchTouchEvent", { type,
       touchPoints: at ? [{ x: at.x, y: at.y, id: 1, radiusX: 4, radiusY: 4, force: 1 }] : [] });
 
-    // 1. The link, as somebody follows it.
+    // 1. The link, as somebody follows it. On a deployment it is the
+    // model's page (api/share.js), and View in 3D goes on to the viewer;
+    // serve.py sends the browser straight on.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
+    const view = page.locator('a.cta[href^="/app?view="]');
+    if (await view.count()) {
+      await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), view.first().click()]);
+    }
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the shared model opened", 600);
     const ready = await until(page, () => {
       const p = ((window.brickworksShare || {}).view || {}).play || {};
