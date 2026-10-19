@@ -113,6 +113,10 @@ func _run() -> void:
 			_move_frames = maxi(1, int(arg.trim_prefix("--move-frames=")))
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
+		if arg.begins_with("--slow-lay="):
+			# Every hose's laying made slower by this many microseconds: the cost
+			# checks must fail on it (FlexFollow.slow_usec).
+			FlexFollow.slow_usec = int(arg.trim_prefix("--slow-lay="))
 		if arg == "--check-covers":
 			# Every turned part asked where something is is also worked out
 			# whole, and the two answers compared (Grab.check_covers).
@@ -269,7 +273,7 @@ func _run() -> void:
 		await _socket_rounds()
 	if only.is_empty() or only == "moving":
 		for one: Array in MOVING:
-			await _moving_check(str(one[0]), str(one[1]), bool(one[2]) if one.size() > 2 else true)
+			await _moving_check(str(one[0]), str(one[1]))
 	if only.is_empty() or only == "grooved":
 		for one: Array in GROOVED:
 			await _grooved_check(str(one[0]), float(one[1]))
@@ -543,6 +547,34 @@ const HOSES: Array = [
 ## every frame, 42080-1's six took 8.
 const HOSES_FRAME_MS := 3.5
 
+
+## A grab's hoses laid again cost a drag's frame within its budget (G10),
+## judged by what load cannot make slower (G13b): each hose laid again where
+## it stands, the fastest of seven layings (FlexFollow.lay_cost). A frame lays
+## while the budget lasts and at least one, so it costs no more than the budget
+## and the costliest laying. The worst frame of the drag, [param worst_ms], is
+## said, not judged: timed by the wall clock, 42080-1's tubes took 16.8 ms of a
+## frame at load 28 and 3.7 on the same code a few minutes later, and held a
+## release.
+func _lay_checks(name: String, held: Grab, worst_ms: float, rests: int) -> void:
+	var costs := PackedFloat64Array()
+	for item: FlexFollow.Item in held.flex.items:
+		costs.append(held.flex.lay_cost(item, held.placed))
+	var total: float = 0.0
+	var costliest: float = 0.0
+	for one: float in costs:
+		total += one
+		costliest = maxf(costliest, one)
+	var bent: int = maxi(costs.size(), 1)
+	_check(("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms a hose, the fastest of "
+		+ "seven layings each; the drag's worst frame %.2f ms, said, not judged)")
+		% [name, costs.size(), total / float(bent), worst_ms], total / float(bent) <= 2.0)
+	_check(("%s: and they fit a drag's frame (the budget %.1f ms and the costliest laying %.2f: %.2f, of %.1f; "
+		+ "%d frames to lay every one at rest)") % [name, FlexFollow.BUDGET_MS, costliest,
+		FlexFollow.BUDGET_MS + costliest, HOSES_FRAME_MS, rests], FlexFollow.BUDGET_MS + costliest <= HOSES_FRAME_MS)
+	_timings["hoses_cost_" + name.get_slice(":", 0)] = {"hoses": costs.size(), "per_hose_ms": total / float(bent),
+		"costliest_ms": costliest, "worst_frame_ms": worst_ms}
+
 ## A made model: a tower on the floor with an arm on a hinge, a Technic brick
 ## with a hole on the arm and one on the floor beside it, for a tube laid
 ## between the holes. LDraw's own units, y down.
@@ -710,9 +742,7 @@ func _hose_made() -> void:
 	_check("hoses: turned 20°, the tube's ends stay in their holes (%.3f LDU)" % miss, miss < 0.3)
 	_check("hoses: and it is as long as it was (%.2f against %.2f LDU)" % [float(shape.get("length", 0.0)),
 		float(rest_shape["length"])], absf(float(shape.get("length", 0.0)) - float(rest_shape["length"])) < 1.0)
-	_check("hoses: laying it again costs a few ms a frame (%.2f ms at worst)" % worst_ms, worst_ms <= 2.0)
-	_check("hoses: and fits a drag's frame (%.2f ms at worst, the budget %.1f)" % [worst_ms, FlexFollow.BUDGET_MS],
-		worst_ms <= HOSES_FRAME_MS)
+	_lay_checks("hoses: the made tube", held, worst_ms, rests)
 	var moved: int = held.commit(held.step_words())
 	await _frames(2)
 	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
@@ -942,12 +972,7 @@ func _hose_set(name: String, path: String, word: String, degrees: float, ask: St
 	_check("%s: it keeps its length (%.2f against %.2f LDU)" % [name, float(shape.get("length", 0.0)),
 		length_was], absf(float(shape.get("length", 0.0)) - length_was) < maxf(1.0, length_was * 0.01))
 	var bent: int = held.flex.items.size()
-	_check("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms at worst, %.2f a hose)" % [
-		name, bent, worst_ms, worst_ms / float(bent)], worst_ms / float(bent) <= 2.0)
-	# Laid every one every frame, 42080-1's six took 8 ms on a quiet box and
-	# 77 on a loaded one: past the budget the rest are carried a frame.
-	_check("%s: and they fit a drag's frame (%.2f ms at worst, the budget %.1f; %d frames to lay every one at rest)"
-		% [name, worst_ms, FlexFollow.BUDGET_MS, rests], worst_ms <= HOSES_FRAME_MS)
+	_lay_checks(name, held, worst_ms, rests)
 	_timings["hoses_" + path.get_file().get_basename()] = {"hoses": bent, "worst_ms": worst_ms,
 		"first_ms": first_ms, "fit_off_ldu": fit, "bend_points": item.controls.size(),
 		"read_ahead_ms": _grab.ready_took.get("hoses", -1)}
@@ -5416,12 +5441,10 @@ const STEERING: Array = [
 ## in the way, Grab._bends_aside); 10220-1's door turned back met what it was
 ## built against (Grab._built_touching).
 const MOVING: Array = [
-	# G13 (MECHANISMS §21): turned +30, 18 free joints inside the crane swing
-	# down, most of them 180°, and tested along its way the turn back meets
-	# the model where the brick 1 x 16 that swung now stands: checked to turn
-	# both ways (the belt wheel on its axle, which it went through in m83),
-	# not to come back. Left for later: a free joint pressed swings aside.
-	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable", false],
+	# G13b (MECHANISMS §21): turned +30, 18 free joints inside the crane swing
+	# down, most of them 180°, and tested along its way the turn back met the
+	# brick 1 x 16 that swung, until a free joint pressed swings aside.
+	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable"],
 	["res://vendor/omr/files/10220-1.mpd", "door"],
 	# G12 (MECHANISMS §20): turned +30, the right door's slope 75 met the one
 	# built beside it by their covers at once; their shapes are clear.
@@ -5562,7 +5585,7 @@ func _socket_rounds() -> void:
 	_builder.forget_history()
 
 
-func _moving_check(path: String, kind: String, back: bool = true) -> void:
+func _moving_check(path: String, kind: String) -> void:
 	var name: String = path.get_file().get_basename()
 	print("\n%s's %s moved both ways and back over MCP" % [name, kind])
 	var row: Dictionary = await _move_sweep_one(path)
@@ -5573,14 +5596,9 @@ func _moving_check(path: String, kind: String, back: bool = true) -> void:
 	var turns := PackedStringArray()
 	for step: Dictionary in found.get("steps", []):
 		turns.append("%+.0f°" % float(step.get("now", 0.0)) if bool(step.get("moved")) else "no")
-	var steps: Array = found.get("steps", [])
-	var both_ways: bool = steps.size() >= 2 and bool(steps[0].get("moved")) and bool(steps[1].get("moved")) \
-		and absf(float(steps[0].get("now", 0.0))) >= 1.0 and absf(float(steps[1].get("now", 0.0))) >= 1.0
-	_check("%s: its %s %s turns %s%s%s" % [name, kind, str(found.get("driver", "?")), ", ".join(turns),
-		" and is back to %.3f LDU" % float(found.get("back_ldu", -1.0)) if back else " (both ways)",
-		"" if (str(found.get("result")) == "moves" if back else both_ways)
-		else ": " + str(found.get("cause", "not found")).left(200)],
-		str(found.get("result")) == "moves" if back else both_ways)
+	_check("%s: its %s %s turns %s and is back to %.3f LDU%s" % [name, kind, str(found.get("driver", "?")),
+		", ".join(turns), float(found.get("back_ldu", -1.0)), "" if str(found.get("result")) == "moves"
+		else ": " + str(found.get("cause", "not found")).left(200)], str(found.get("result")) == "moves")
 	# Where a turn stopped where two parts meet, the parts themselves meet
 	# there (G12): their exact shapes, the part a degree on.
 	var covers := PackedStringArray()

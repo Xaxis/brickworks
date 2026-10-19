@@ -171,6 +171,12 @@ var _wall: float = NAN
 ## A frame's room test may run this long, ms (GrabDrag sets it); past it a
 ## turn is taken on trust and checked on a pause or at the release.
 var budget_ms: float = INF
+## A drag's frame may test a small section's way this long, ms (GrabDrag sets
+## it where [member budget_ms] has no end); past it the turn is shown on trust
+## and the rest of the way checked from the last step tested, the next frame,
+## on a pause or at the release (G13b). A small section is still bisected at
+## once where its way meets something.
+var walk_budget_ms: float = INF
 ## Let go and settled under its weight (once), and what that said.
 var settled: bool = false
 var swung: String = ""
@@ -229,9 +235,11 @@ var slowest_said: String = ""
 ## worked out for this grab and way of moving; 0 until then.
 var _step: float = 0.0
 ## A check on a pause's walk ([method verify_step]): where each part was last
-## tested, brick id -> degrees or LDU, and where the walk began.
+## tested, brick id -> degrees or LDU, and where the walk began; and a loop's
+## pose kept when it began (Linkage.kept_state), [] for none.
 var _verify_last: Dictionary = {}
 var _verify_base: float = 0.0
+var _verify_kept: Array = []
 ## How far each tested part goes at most for a unit of the move, LDU
 ## ([method _path_rate]): brick id -> LDU. A part near the joint's line is
 ## tested along the way only as often as it goes [constant PATH_LDU].
@@ -279,6 +287,7 @@ func begin_link(joined: Bodies.Link, child: int, at: Vector3) -> String:
 ## press on, its weight, how it moves, the gears it drives.
 func _chosen() -> String:
 	_step = 0.0
+	_pushed.clear()
 	if state != "moves":
 		return state
 	var clock: int = Time.get_ticks_usec()
@@ -878,6 +887,8 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 	for key: int in moving:
 		# Not squared up: a file's own six-decimal turns would read as moved.
 		out[key] = move * (rest[key] as Transform3D)
+	if not _pushed.is_empty():
+		_turn_pushed(out)
 	if mechanism != null and not coupled.is_empty():
 		var driven: Dictionary = mechanism.pose_of(deg_to_rad(degrees) * _drive_sign, coupled)
 		for key: int in coupled:
@@ -1682,6 +1693,7 @@ func turn_to(degrees: float) -> float:
 		wanted = roundf(wanted / link.detent) * link.detent
 	if is_equal_approx(wanted, angle):
 		return angle
+	_end_verify_walk()
 	# Past the wall it met last, the same way: still there, and not asked
 	# again, so a pointer pressed on past a stop costs nothing a frame.
 	if not is_nan(_wall) and (wanted - _wall) * (_wall - angle) >= 0.0 \
@@ -1706,9 +1718,16 @@ func turn_to(degrees: float) -> float:
 	var walked: Array = _walk(_checked_angle if unchecked else angle, wanted, began)
 	var room: int = int(walked[0])
 	var at: Dictionary = {}
+	# The way not tested this frame (a loop's drag): checked on a pause.
+	var way_left: bool = room == 2
+	if way_left:
+		room = 1
 	if room == 1:
 		at = transforms_at(wanted)
 		room = _test(at, 0, _budget_left(began)).x
+		if room == 0 and budget_ms == INF and _push_aside(wanted):
+			room = 1
+			at = transforms_at(wanted)
 		if room == 0:
 			walked = [0, walked[1], wanted]
 	elif room == -1:
@@ -1718,7 +1737,7 @@ func turn_to(degrees: float) -> float:
 		# pointer says and checked when it pauses or is let go
 		# ([method verify_step]), from the last step that had room, rather
 		# than hold the frame.
-		_shown_on_trust(room == 1, wanted, float(walked[1]))
+		_shown_on_trust(room == 1 and not way_left, wanted, float(walked[1]))
 		angle = wanted
 		placed = at
 		_keep_loop()
@@ -1728,7 +1747,8 @@ func turn_to(degrees: float) -> float:
 		# Met something, on a section too big to bisect in a frame: it stands
 		# at the last step that had room, and the stop is found a round a
 		# frame (verify_step), on a pause or at the release.
-		_stand_at(float(walked[1]))
+		if not way_left:
+			_stand_at(float(walked[1]))
 		_met_on_trust(float(walked[2]), angle)
 		return angle
 	var low: float = float(walked[1])
@@ -1812,6 +1832,10 @@ func verify_step() -> bool:
 		return true
 	var now: float = angle if mode == "turn" else shift
 	var began: int = Time.get_ticks_usec()
+	if _verifying_hi == null and linkage != null and _verify_kept.is_empty():
+		# The pose shown, solved from where the move began, kept to come back
+		# to once the way to it is checked ([method _walk]).
+		_verify_kept = linkage.kept_state()
 	while _verifying_hi == null:
 		var next: float = _next_step(_checked_angle, now)
 		# As a move's own walk tests them: each part as often as it goes
@@ -1837,9 +1861,11 @@ func verify_step() -> bool:
 				_verify_last[key] = next
 			_keep_loop()
 			if next == now:
+				_end_verify_walk()
 				unchecked = false
 				return true
 			continue
+		_end_verify_walk()
 		_verifying_hi = next
 		_verifying_lo = _checked_angle
 	var hi: float = float(_verifying_hi)
@@ -1871,6 +1897,90 @@ func verify_step() -> bool:
 	return false
 
 
+## Free joints inside what moves, turned aside by what pressed them (G13b):
+## child body -> degrees about its own joint, from where it stood.
+var _pushed: Dictionary = {}
+## How far a free joint inside what moves is turned aside at most, degrees.
+const PUSH_MOST := 90.0
+
+
+## Turn each free joint inside what moves that something pressed aside, as
+## [member _pushed] has it, where [param out] (brick id -> Transform3D, as
+## [method transforms_at] has it) puts what carries it.
+func _turn_pushed(out: Dictionary) -> void:
+	for child: int in _pushed:
+		var joined: Bodies.Link = bodies.parent_link.get(child)
+		var carrier: int = int(bodies.parent_of.get(child, -1))
+		if joined == null or not bodies.members.has(carrier):
+			continue
+		var carrier_key: int = int((bodies.members[carrier] as PackedInt64Array)[0])
+		if not out.has(carrier_key):
+			continue
+		var carried: Transform3D = (out[carrier_key] as Transform3D) * (rest[carrier_key] as Transform3D).affine_inverse()
+		var turn_point: Vector3 = carried * joined.point
+		var way: Vector3 = (carried.basis * joined.axis).normalized()
+		var turn: Transform3D = Transform3D(Basis.IDENTITY, turn_point) \
+			* Transform3D(Basis(way, deg_to_rad(float(_pushed[child]))), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -turn_point)
+		for key: int in bodies.parts_of(bodies.beyond(child)):
+			if out.has(key):
+				out[key] = turn * (out[key] as Transform3D)
+
+
+## The free joint inside what moves that carries [param key]: the body hung on
+## a joint that does not hold by friction, below the grabbed one, as [method
+## _settle_inside] swings them. -1 for none.
+func _free_inside(key: int) -> int:
+	var ours: Dictionary = {}
+	for one: int in moving_bodies:
+		ours[one] = true
+	var at: int = int(bodies.body_of.get(key, -1))
+	while ours.has(at) and at != body:
+		var joined: Bodies.Link = bodies.parent_link.get(at)
+		var parent: int = int(bodies.parent_of.get(at, -1))
+		if joined != null and joined != link and not joined.holds and joined.axis != Vector3.ZERO \
+				and ours.has(parent):
+			return at
+		at = parent
+	return -1
+
+
+## A free joint inside what moves swings aside when the model presses on what
+## it carries, rather than stop the section (G13b): where a turn at [param
+## value] has no room and the part that met something hangs on such a joint,
+## that joint is turned aside a little more each way until it has room, up to
+## [constant PUSH_MOST]. 8074-1's crane, turned back over its start, met the
+## brick 1 x 16 its first turn had swung down on a free pin. True when it then
+## has room there.
+func _push_aside(value: float) -> bool:
+	if linkage != null or mode == "ball" or blocked_by.size() != 2:
+		return false
+	var child: int = _free_inside(int(blocked_by[0]))
+	if child < 0:
+		return false
+	var was: float = float(_pushed.get(child, 0.0))
+	var tried: float = 1.0
+	while tried <= PUSH_MOST:
+		for way: float in [1.0, -1.0]:
+			_pushed[child] = was + way * tried
+			if _test(_pose_at(value), 0, INF, false).x == 1:
+				return true
+		tried *= 2.0
+	if is_zero_approx(was):
+		_pushed.erase(child)
+	else:
+		_pushed[child] = was
+	return false
+
+
+## A loop's pose kept as it was when a pause's walk began, the walk over or
+## cut short by a move ([method verify_step]).
+func _end_verify_walk() -> void:
+	if linkage != null and not _verify_kept.is_empty():
+		linkage.restore_kept(_verify_kept)
+	_verify_kept = []
+
+
 ## Where everything stands with the joint at [param value]: degrees for a
 ## turn, LDU for a slide.
 func _pose_at(value: float) -> Dictionary:
@@ -1889,9 +1999,10 @@ func _set_value(value: float) -> void:
 
 ## What is left of [member budget_ms] since [param began] (usec), ms.
 func _budget_left(began: int) -> float:
-	if budget_ms == INF:
+	var budget: float = minf(budget_ms, walk_budget_ms)
+	if budget == INF:
 		return INF
-	return budget_ms - float(Time.get_ticks_usec() - began) / 1000.0
+	return budget - float(Time.get_ticks_usec() - began) / 1000.0
 
 
 ## Test the way from [param from] (degrees or LDU), which has room, towards
@@ -1900,6 +2011,25 @@ func _budget_left(began: int) -> float:
 ## with room, the first with none]; or [-1, the last step with room, the next]
 ## when [member budget_ms] since [param began] runs out first.
 func _walk(from: float, to: float, began: int) -> Array:
+	if linkage != null and budget_ms < INF:
+		# A loop's drag: its way is left to a pause or the release ([method
+		# verify_step]), and only where the pointer says is tested a frame, as
+		# before G13. Solved a step at a time in the frame, 42024-1's actuator,
+		# a loop of 36 joints, took 62 ms a frame on average and 181 at 95%.
+		return [2, from, to]
+	# A loop is solved at each step from the step before, kept for it, and
+	# left as it was when the walk ends: where the move ends is solved from
+	# where it began, as if there were no steps (G13b). Where it ended
+	# depended on how many steps the way took, and fourteen sets' steering,
+	# turned out and back, came back 0.03 to 0.19 LDU off.
+	var began_kept: Array = linkage.kept_state() if linkage != null else []
+	var walked: Array = _walk_steps(from, to, began)
+	if linkage != null:
+		linkage.restore_kept(began_kept)
+	return walked
+
+
+func _walk_steps(from: float, to: float, began: int) -> Array:
 	var clear: float = from
 	# Where each part was last tested: one that would go further than
 	# PATH_LDU by the step after this one is tested at this one. A turned
@@ -1927,13 +2057,14 @@ func _walk(from: float, to: float, began: int) -> Array:
 				due[key] = true
 		if not due.is_empty():
 			var r: Vector2i = _test(_pose_at(next), 0, left, false, due)
+			if r.x == 0 and budget_ms == INF and _push_aside(next):
+				r.x = 1
 			if r.x != 1:
 				return [r.x, clear, next]
 			for key: int in due:
 				last[key] = next
-			# A loop is solved from the pose kept: kept a step at a time, each
-			# step is solved from the last, not from where the move began. From
-			# where it began, 42024-1's 36-joint loop took 172 ms a frame.
+			# Each step solved from the last, not from where the move began:
+			# from there, 42024-1's 36-joint loop took 172 ms a frame.
 			_keep_loop()
 		clear = next
 	return [1, clear, to]
@@ -2036,6 +2167,7 @@ func slide_to(along: float) -> float:
 		stopped = true
 		return shift
 	_wall = NAN
+	_end_verify_walk()
 	if linkage != null:
 		# A slide in a loop goes as far as the loop takes it.
 		var solving: int = Time.get_ticks_usec()
@@ -2051,6 +2183,9 @@ func slide_to(along: float) -> float:
 	var walked: Array = _walk(_checked_angle if unchecked else shift, wanted, began)
 	var room: int = int(walked[0])
 	var at: Dictionary = {}
+	var way_left: bool = room == 2
+	if way_left:
+		room = 1
 	if room == 1:
 		at = transforms_at(angle, wanted)
 		room = _test(at, 0, _budget_left(began)).x
@@ -2064,13 +2199,14 @@ func slide_to(along: float) -> float:
 		# checked on a pause or at the release (verify_step). 42081-1's boom,
 		# 262 parts on its actuator, was bisected by whole tests at its stop:
 		# 164 of them, 31 s in one frame.
-		_shown_on_trust(room == 1, wanted, float(walked[1]))
+		_shown_on_trust(room == 1 and not way_left, wanted, float(walked[1]))
 		shift = wanted
 		placed = at
 		_keep_loop()
 		return shift
 	if budget_ms < INF:
-		_stand_at(float(walked[1]))
+		if not way_left:
+			_stand_at(float(walked[1]))
 		_met_on_trust(float(walked[2]), shift)
 		return shift
 	var low: float = float(walked[1])

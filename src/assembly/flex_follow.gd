@@ -427,6 +427,9 @@ func _port(item: Item, n: int, move: Transform3D) -> Flex.Port:
 ## of a cylinder's drag frame on a quiet box and 77 on a loaded one: a stall
 ## every frame in a browser, which has one thread.
 const BUDGET_MS := 2.0
+## Every laying made this much slower, microseconds: 0 but where a probe shows
+## that a check of the laying's cost fails on a real slowdown (G13b).
+static var slow_usec: int = 0
 ## A drag's laying draws a hose by at most this many points, and the laying
 ## it is kept as by [constant POINTS] (the same curve, drawn finer).
 const DRAG_POINTS := 50.0
@@ -490,6 +493,25 @@ func lay_into(at: Dictionary, full: bool = false) -> void:
 	lay_ms = float(Time.get_ticks_usec() - started) / 1000.0
 
 
+## How long laying [param item] again takes where [param at] (brick id ->
+## Transform3D) puts its ends, as a drag lays it, ms: the fastest of [param
+## repeats] layings of that pose, 0 where its ends move together. Other jobs
+## on the box make a laying, or a whole frame, slower by the wall clock; not
+## the fastest of several, which is the laying's own work (G13b: a frame's
+## worst on a loaded box held a release on 42080-1's tubes).
+func lay_cost(item: Item, at: Dictionary, repeats: int = 7) -> float:
+	var one: Transform3D = _moved(item, 0, at)
+	var other: Transform3D = _moved(item, 1, at)
+	if _same(one, other):
+		return 0.0
+	var fastest: float = INF
+	for _n: int in repeats:
+		var began: int = Time.get_ticks_usec()
+		_lay(item, one, other, false)
+		fastest = minf(fastest, float(Time.get_ticks_usec() - began) / 1000.0)
+	return fastest
+
+
 ## Whether the item was last laid for exactly [param moves].
 static func _laid_for(item: Item, moves: Array) -> bool:
 	return not item.base_for.is_empty() and _same(moves[0], item.base_for[0]) \
@@ -529,6 +551,8 @@ static func step_for(item: Item) -> float:
 
 
 func _lay(item: Item, one: Transform3D, other: Transform3D, fine: bool = true) -> void:
+	if slow_usec > 0:
+		OS.delay_usec(slow_usec)
 	var a: Flex.Port = _port(item, 0, one)
 	var b: Flex.Port = _port(item, 1, other)
 	var step: float = FlexFollow.step_for(item) if fine else maxf(Flex.SAMPLE, item.length / DRAG_POINTS)

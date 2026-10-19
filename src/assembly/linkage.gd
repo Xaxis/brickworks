@@ -1328,6 +1328,40 @@ func keep() -> void:
 var _gear_at_keep: Array = []
 
 
+## Everything a solve leaves behind, to come back to ([method restore_kept]):
+## the pose kept, where q stands, the last solve remembered, the slope the
+## next solve starts from and the part that spins on its own. A move tested a
+## step at a time (Grab._walk) keeps each step to solve the next from it, and
+## then puts all of it back, so where the move ends is solved as if there
+## were no steps (G13b). Kept step by step, fourteen sets' steering, turned
+## out and back, came back 0.03 to 0.19 LDU off; with the pose put back but
+## the slope left as the steps had it, 0.5 LDU.
+func kept_state() -> Array:
+	return [kept.duplicate(), _gear_at_keep.duplicate(true), _keeps, q.duplicate(), _gear_kept.duplicate(true),
+		_memo_keep, _memo_col, _memo_asked, _memo_got, _memo_q.duplicate(), _memo_gears.duplicate(true),
+		_slope.duplicate(), _slope_col, _part_found.duplicate(true), _part_col, _part_rate]
+
+
+## Put back [param state] ([method kept_state]), as if nothing since.
+func restore_kept(state: Array) -> void:
+	kept = (state[0] as PackedFloat64Array).duplicate()
+	_gear_at_keep = (state[1] as Array).duplicate(true)
+	_keeps = int(state[2])
+	q = (state[3] as PackedFloat64Array).duplicate()
+	_gear_kept = (state[4] as Array).duplicate(true)
+	_memo_keep = int(state[5])
+	_memo_col = int(state[6])
+	_memo_asked = float(state[7])
+	_memo_got = float(state[8])
+	_memo_q = (state[9] as PackedFloat64Array).duplicate()
+	_memo_gears = (state[10] as Array).duplicate(true)
+	_slope = (state[11] as PackedFloat64Array).duplicate()
+	_slope_col = int(state[12])
+	_part_found = (state[13] as Array).duplicate(true)
+	_part_col = int(state[14])
+	_part_rate = float(state[15])
+
+
 ## Whether the driver can move at all: the loop closes a little way one way
 ## or the other. A loop held rigid (a triangle of beams, a four-bar with a
 ## friction-free joint pinned twice) closes neither way.

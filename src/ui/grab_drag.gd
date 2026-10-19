@@ -35,6 +35,8 @@ var topple_on_baseplate: bool = false
 const FRAME_BUDGET_MS := 10.0
 ## A loop's room test may run this long in a frame, ms.
 const LOOP_BUDGET_MS := 24.0
+## A small section's way may be tested this long in a frame, ms (Grab.walk_budget_ms).
+const WALK_BUDGET_MS := 2.0
 ## More parts than this moving is a big section.
 const BIG_SECTION := 40
 ## A pause this long, ms, is when a turn moved on trust is checked.
@@ -199,6 +201,10 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	# parts' covers afresh (a steering's two wheels, 11 ms each).
 	grab.budget_ms = FRAME_BUDGET_MS if grab.moving.size() > BIG_SECTION \
 		else (LOOP_BUDGET_MS if grab.linkage != null else INF)
+	# A small section's way, tested a step at a time (G13), within a share of
+	# the frame: a turntable's and a ball joint's worst frames were 5.6 and 8.3
+	# ms without one.
+	grab.walk_budget_ms = WALK_BUDGET_MS if grab.budget_ms == INF else INF
 	if state == "rigid":
 		# Carried as a part, as before; but a part with a joint its body
 		# holds still (a steering column held to its deck) says what holds
@@ -267,10 +273,10 @@ func motion(screen: Vector2) -> void:
 	_told_at = now
 	_told_stopped = grab.stopped
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
-	if grab.unchecked and grab.linkage != null:
+	if grab.unchecked and grab.linkage != null and grab.stopped:
 		line += " — stopped: it meets the model (found to a tenth of a degree when you pause)"
-	elif grab.unchecked:
-		line += " — too big to test every frame: checked when you pause"
+	elif grab.unchecked and grab.linkage == null:
+		line += " — more to test than a frame allows: checked when you pause"
 	elif grab.loop_short:
 		line += " — stopped: its loop closes no further that way"
 	elif grab.stopped and not grab.stretch_words.is_empty():

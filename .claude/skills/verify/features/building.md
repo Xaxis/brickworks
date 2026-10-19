@@ -660,10 +660,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   8832-1 (the round rack 2790a, loose in its holder) and 42043-1 (18942 in
   its housing 18940). Each turns back by the turn measured from where it
   stood. `-- --only=moving` (in the full run): 8074-1's crane on its
-  turntable (a cable bends out of the way; G13: both ways, not back, its
-  inner free joints swing 180° on the first turn) and 10220-1's door (what
-  touched as built is forgiven in each later grab, as a pair: G13) moved
-  +30, -60 and back, and
+  turntable (a cable bends out of the way; G13b: its inner free joints swing
+  180° on the first turn, and the turn back turns aside the one it presses)
+  and 10220-1's door (what touched as built is forgiven in each later grab,
+  as a pair: G13) moved +30, -60 and back, and
   10295-1's right door (G12, MECHANISMS §20: two parts block a move only
   where their exact shapes overlap, `Grab._clear_exactly`); each also
   checks that no turn stopped where only the two parts' covers met.
@@ -787,7 +787,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (tested along
   the way in steps that move no point more than 2 LDU, `Grab._walk`, and
   bisected to the last pose with room from the first step with none; G13,
-  MECHANISMS §21), `follow` (the pointer's ray to an angle, a slide
+  MECHANISMS §21; a loop is put back as it was after the walk,
+  `Linkage.kept_state`, so its end is solved as if there were no steps; a
+  free joint inside what moves that the model presses is turned aside,
+  `Grab._push_aside`; a small section's drag tests its way for 2 ms a frame,
+  `walk_budget_ms`, the rest checked on a pause), `follow` (the pointer's ray to an angle, a slide
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
 - `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
@@ -963,7 +967,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and named by move_part; 42080-1's arm lowered 6° with its tubes from the cab
   (its T-pieces, held by nothing, hold nothing by a tube's length)
   (saved and reopened, LDCad's path between the new ends), 42043-1's cylinder,
-  42050-1's ribbed hoses.
+  42050-1's ribbed hoses. What laying them costs a frame is judged by each
+  hose laid again where it stands, the fastest of seven layings
+  (`FlexFollow.lay_cost`): a hose's mean at most 2 ms, and the budget plus the
+  costliest laying within 3.5. The drag's worst frame, a wall-clock figure
+  other jobs on the box inflate, is said, not judged (G13b). `--slow-lay=US`
+  makes every laying that many microseconds slower (`FlexFollow.slow_usec`):
+  at 3000 the cost checks fail, as they must.
   `grab_probe -- --flex-survey FILE...` lists every
   flexible thing held at both ends and the joint between its ends (FLEX rows).
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
