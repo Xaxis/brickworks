@@ -145,6 +145,13 @@ by number, or round two sprockets; item= lays an existing one again.
 or a clip) and swings one to an angle, as far as it has room. \
 animate_model: poses at moments, played smoothly between and rendered as \
 an animation.
+ - Motions: a model keeps its own named movements in its file ("Open the \
+doors", "Steer left and right"), played by its real joints as a drag moves \
+them. list_motions lists them, and suggests some from what moves; \
+define_motion keeps one (tracks of keys on joints named as move_part names \
+them, or a driver turned so many times); play_motion plays one (reverse, \
+a sequence), leaving the model where it ends; render_motion renders one as \
+a WebP and an MP4, as a job.
  - move_part: moves a part on its joint as the person's drag does, \
 with everything built on it, the gears it drives, and the balance after; \
 with only part= it says what would move and changes nothing; with no part= \
@@ -208,7 +215,7 @@ says yes.
 reference — its size, parts, credit, licence and picture. Read-only. Credit \
 its builder and keep to its licence in anything made from it.
  - job: what takes long on a big model (render_model, animate_model's \
-rendering, export_model's studio, picture and instructions, make_art, \
+rendering, render_motion, export_model's studio, picture and instructions, make_art, \
 brickify) \
 answers at once with a job number while it works in the app. job {"id": N} \
 waits up to 10 s for it to end, then says how far it has got, or gives its \
@@ -432,6 +439,90 @@ func definitions() -> Array:
 					}}},
 				"turntable": {"type": "boolean", "description": "turn the model round once over it"},
 				"render": {"type": "boolean", "description": "true when omitted"},
+			}},
+		},
+		{
+			"name": "list_motions",
+			"description": ("The model's own motions, kept in its file (\"Open the doors\", "
+				+ "\"Steer left and right\"): each with its joints as move_part names them, their "
+				+ "keys (seconds, and places from where the model was built: degrees turned, or "
+				+ "studs slid), its driver, the motion it follows, and what it was last found to "
+				+ "do: where each joint ended, or where it stopped and on what. A joint whose part "
+				+ "is gone is said so. Then motions suggested from what moves (doors, steering, a "
+				+ "boom, a turntable, gears, a rack), each tried for room, which define_motion "
+				+ "keeps. Changes nothing."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"suggest": {"type": "boolean", "description": "suggest motions from what moves; true when omitted"},
+			}},
+		},
+		{
+			"name": "define_motion",
+			"description": ("Keep a named motion in the model, as a builder names it (\"Open the "
+				+ "dome\"), played by the real joints as a drag moves them. tracks= each a joint "
+				+ "(a part's number \"#80\" or a sub-assembly's name, as move_part names them) "
+				+ "and its keys: t= seconds, place= degrees turned from where the model was built "
+				+ "(studs slid, with slide=true), how= ease (the default), linear or hold. Or "
+				+ "driver= a joint turned turns= times over seconds=, from where it stands: what "
+				+ "it drives through gears, racks and linkages follows. after= the motion it "
+				+ "follows, for a sequence. suggested=true keeps list_motions' suggestion of that "
+				+ "name; remove=true takes a motion out. It is saved with the model (its autosave, "
+				+ "a save, an export, a shared link), one undo step, and answers by playing it "
+				+ "once and putting the model back: where each joint ended, or stopped and on what."),
+			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
+				"properties": {
+				"name": {"type": "string", "description": "what a builder calls it: Open the doors"},
+				"tracks": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+					"required": ["joint", "keys"], "properties": {
+						"joint": {"type": "string", "description": "a part's number (#80) or a sub-assembly's name"},
+						"slide": {"type": "boolean", "description": "slid along its line, places in studs"},
+						"keys": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+							"required": ["t", "place"], "properties": {
+								"t": {"type": "number", "description": "seconds from the start"},
+								"place": {"type": "number", "description": "degrees (or studs) from where it was built"},
+								"how": {"type": "string", "enum": ["ease", "linear", "hold"]},
+							}}},
+					}}},
+				"driver": {"type": "object", "additionalProperties": false, "required": ["joint", "turns"],
+					"properties": {
+						"joint": {"type": "string", "description": "a crank, an axle or a gear: #N or a sub-assembly"},
+						"turns": {"type": "number", "description": "turns; less than 0 the other way"},
+						"seconds": {"type": "number", "description": "how long; 4 when omitted"},
+					}},
+				"after": {"type": "string", "description": "the motion this one follows"},
+				"suggested": {"type": "boolean", "description": "keep list_motions' suggestion of this name"},
+				"remove": {"type": "boolean"},
+			}},
+		},
+		{
+			"name": "play_motion",
+			"description": ("Play one of the model's motions (list_motions) through its real "
+				+ "joints, as a drag moves them: a joint stops where it meets the model, and gears, "
+				+ "racks and linkages follow. The model is left where the motion ends, one undo "
+				+ "step. reverse=true plays it backwards (closes what it opened; a driver turns "
+				+ "back), sequence=true plays the whole sequence it is in (after=), in order. The "
+				+ "answer says where each joint ended or stopped and on what, how the model then "
+				+ "stands, and carries a picture of its frames."),
+			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
+				"properties": {
+				"name": {"type": "string"},
+				"reverse": {"type": "boolean"},
+				"sequence": {"type": "boolean"},
+			}},
+		},
+		{
+			"name": "render_motion",
+			"description": ("Render one of the model's motions as an animation, a WebP and an MP4 "
+				+ "(where ffmpeg is installed) where Render saves, framed on what it moves, without "
+				+ "changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= "
+				+ "480x300 or 720p. Needs the app in a window, and is a job (job gives the result, "
+				+ "with a picture of its frames)."),
+			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
+				"properties": {
+				"name": {"type": "string"},
+				"reverse": {"type": "boolean"},
+				"sequence": {"type": "boolean"},
+				"fps": {"type": "integer", "enum": [12, 24]},
+				"size": {"type": "string", "enum": ["480x300", "720p"]},
 			}},
 		},
 		{
@@ -745,6 +836,14 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _simulate(input, work)
 		"animate_model":
 			return await _animate(input, work)
+		"list_motions":
+			return _list_motions(input)
+		"define_motion":
+			return _define_motion(input)
+		"play_motion":
+			return await _play_motion(input)
+		"render_motion":
+			return await _render_motion(input, work)
 		"undo":
 			return await _undo(input)
 		"open_model":
@@ -805,6 +904,7 @@ func refusal(tool: String, input: Dictionary) -> String:
 
 ## The tools that change the model.
 const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_flex", "pose_model", "move_part",
+	"define_motion", "play_motion",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
 	"make_sections", "break_out_section"]
 
@@ -828,7 +928,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not bool(input.get("record", false))
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
-		"suggest_sections", "evaluate_section", "booklet_layout":
+		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions":
 			return true
 	return false
 
@@ -1485,7 +1585,32 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 	if not StudioRender.possible():
 		return ("Set %s. Rendering it needs something to draw with, and this app is running "
 			% said + "without a window; the person can play it from Build, Pose and animate.")
-	var frames: int = await panel.render_animation(work, "hero")
+	# One path: the keys are a motion, defined and played once through Grab
+	# (MotionPlayer), as a kept motion plays; Pose's joints by their
+	# sub-assemblies, taken as a drag takes them.
+	var player: MotionPlayer = app.get("_motions")
+	var motion := Motions.Motion.new()
+	motion.name = "Animation"
+	motion.seconds = panel.animation.length()
+	for path: String in panel.animation.paths():
+		var joint: Variant = player.joint_named(path, false, false)
+		if joint is String:
+			return "Set %s. Nothing rendered: %s" % [said, joint]
+		var track := Motions.Track.new()
+		track.joint = joint
+		for key: Dictionary in panel.animation.keys:
+			if (key["angles"] as Dictionary).has(path):
+				track.add_key(float(key["t"]), float(key["angles"][path]), "EASE")
+		motion.tracks.append(track)
+	var played: MotionPlayer.Played = player.play(motion, false, panel.animation.fps)
+	var poses: Array = played.frames.slice(0, panel.animation.frame_count())
+	# The model turned round once with nothing on its joints: frames that
+	# move nothing, turned.
+	while poses.size() < panel.animation.frame_count():
+		poses.append(poses.back() if not poses.is_empty() else {})
+	var frames: int = await panel.render_poses(poses, panel.animation.fps,
+		func(n: int) -> float: return panel.animation.turn_at(panel.animation.time_of(n)),
+		panel._sheet_frames(poses.size()), work, "hero", "_animation")
 	if frames <= 0 or not panel._last.has("kept"):
 		return "Nothing rendered: %s" % panel.rendered_words()
 	# Its own words, not the panel's line, whose "— 3 s" at the end is how
@@ -1495,18 +1620,349 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		int(panel._last["seconds"]), str(panel._last["kept"])]])
 	# A part that met the model stood still in the frames past it, and the
 	# answer said only how many frames there were (31070-1's windscreen).
-	for short: String in panel.short_words():
-		lines.append("%s; the frames that ask for more show it there." % short)
+	for item: MotionPlayer.Item in played.items:
+		if not item.stop_words.is_empty():
+			lines.append("%s; the frames that ask for more show it there." % item.stop_words)
+	for line: String in played.refused:
+		lines.append("%s, so it stood still." % line)
 	var times: Array = []
 	var picture: Image = panel.sheet(times)
 	if picture == null:
 		return "\n".join(lines)
+	lines.append("The picture: its frames at %s, left to right and down." % _times_words(times))
+	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
+
+
+static func _times_words(times: Array) -> String:
 	var at := PackedStringArray()
 	for t: float in times:
 		at.append("%d s" % roundi(t) if is_equal_approx(snappedf(t, 0.1), roundf(t)) else "%.1f s" % t)
-	lines.append("The picture: its frames at %s, left to right and down." % ", ".join(at))
-	return [{"type": "text", "text": "\n".join(lines)}, {"type": "image", "source": {"type": "base64",
-		"media_type": "image/png", "data": Marshalls.raw_to_base64(picture.save_png_to_buffer())}}]
+	return ", ".join(at)
+
+
+static func _picture_block(picture: Image) -> Dictionary:
+	return {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+		"data": Marshalls.raw_to_base64(picture.save_png_to_buffer())}}
+
+
+# -- motions ------------------------------------------------------------------------
+
+
+## list_motions: the model's motions and what each was last found to do,
+## then the ones suggested from what moves. Changes nothing.
+func _list_motions(input: Dictionary) -> String:
+	var player: MotionPlayer = app.get("_motions")
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	if player == null:
+		return "This app has no motions."
+	if world.brick_count() - store.scenery.size() <= 0:
+		return "Nothing is built yet."
+	var motions: Motions = player.motions()
+	var lines := PackedStringArray()
+	if motions.is_empty():
+		lines.append("The model has no motions of its own yet.")
+	else:
+		lines.append("The model's motions, kept in its file (places from where it was built):")
+		for motion: Motions.Motion in motions.list:
+			lines.append_array(_motion_words(player, motion, true))
+	if bool(input.get("suggest", true)):
+		var offered: Array = player.suggest().filter(func(one: Motions.Motion) -> bool:
+			return motions.named(one.name) == null)
+		if not offered.is_empty():
+			lines.append(("Suggested from what moves, each tried for room (define_motion {\"name\": "
+				+ "\"%s\", \"suggested\": true} keeps one):") % (offered[0] as Motions.Motion).name)
+			for motion: Motions.Motion in offered:
+				lines.append_array(_motion_words(player, motion, false))
+		elif motions.is_empty():
+			lines.append("Nothing in it moves as a link's card names things (doors, steering, a boom, "
+				+ "a turntable, gears, a rack): move_part with no part= lists every joint, and "
+				+ "define_motion makes a motion of any of them.")
+	lines.append("play_motion {\"name\": …} plays one (reverse=true backwards); render_motion renders "
+		+ "it. Nothing was changed.")
+	return "\n".join(lines)
+
+
+## A motion in lines: its name and length, each joint's keys and where it
+## stands now, its driver, and with [param kept] what it last did.
+func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> PackedStringArray:
+	var out := PackedStringArray()
+	out.append("  \"%s\", %s s%s:" % [motion.name, Motions.num(motion.length(), 2),
+		(", after \"%s\"" % motion.after) if not motion.after.is_empty() else ""])
+	for track: Motions.Track in motion.tracks:
+		if player.parts_of(track.joint).is_empty():
+			out.append("    %s: %s." % [motion.name, player.gone_words(track.joint)])
+			continue
+		var keys := PackedStringArray()
+		for key: Array in track.keys:
+			keys.append("%s s %s%s" % [Motions.num(float(key[0]), 2), _place(float(key[1]), track.joint),
+				"" if str(key[2]) == "EASE" else " " + str(key[2]).to_lower()])
+		out.append("    %s %s: %s; it stands at %s now." % [player.joint_words(track.joint),
+			"slid" if track.joint.mode == "slide" else "turned", ", ".join(keys),
+			_place(player.at_now(track.joint), track.joint)])
+	if motion.driver != null:
+		if player.parts_of(motion.driver).is_empty():
+			out.append("    %s: %s." % [motion.name, player.gone_words(motion.driver)])
+		else:
+			out.append("    %s turned %s time%s in %s s, from where it stands, with what it drives."
+				% [player.joint_words(motion.driver), Motions.num(motion.turns, 2),
+				"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 2)])
+	if kept:
+		var last: String = str(player.results.get(motion.name.to_lower(), ""))
+		out.append("    Last played: %s." % last if not last.is_empty()
+			else "    Not played since the model was opened.")
+	return out
+
+
+static func _place(value: float, joint: Motions.Joint) -> String:
+	return "%s studs" % Balance.studs(value) if joint.mode == "slide" else "%d°" % roundi(value)
+
+
+## define_motion: a motion kept in the model, one undo step, played once to
+## check with the model put back.
+func _define_motion(input: Dictionary) -> String:
+	var player: MotionPlayer = app.get("_motions")
+	var builder: Builder = app.get("_builder")
+	if player == null:
+		return "This app has no motions."
+	var name: String = str(input.get("name", "")).strip_edges().replace('"', "'")
+	if name.is_empty():
+		return "Give name= what a builder would call it: \"Open the doors\"."
+	var motions: Motions = player.motions()
+	if bool(input.get("remove", false)):
+		if motions.named(name) == null:
+			return "No motion %s to take out: %s." % [Motions.quoted(name), _motion_names(motions)]
+		var had: Motions = motions.copy()
+		motions.remove(name)
+		builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
+		return "Took %s out of the model. One step: undo puts it back." % Motions.quoted(name)
+	var motion: Motions.Motion = null
+	if bool(input.get("suggested", false)):
+		var offered: Array = player.suggest()
+		for one: Motions.Motion in offered:
+			if one.name.to_lower() == name.to_lower():
+				motion = one
+		if motion == null:
+			var names := PackedStringArray()
+			for one: Motions.Motion in offered:
+				names.append(Motions.quoted(one.name))
+			return "No suggestion called %s: %s." % [Motions.quoted(name), "list_motions suggests "
+				+ ", ".join(names) if not names.is_empty() else "nothing here is suggested"]
+	else:
+		var made: Variant = _motion_from(player, name, input)
+		if made is String:
+			return "%s Nothing was kept." % made
+		motion = made
+	motion.after = str(input.get("after", motion.after)).strip_edges().replace('"', "'")
+	if motion.after.to_lower() == name.to_lower():
+		return "A motion cannot follow itself. Nothing was kept."
+	if not motion.after.is_empty() and motions.named(motion.after) == null:
+		return "No motion %s for it to follow: %s. Nothing was kept." % [Motions.quoted(motion.after),
+			_motion_names(motions)]
+	var replaced: bool = motions.named(name) != null
+	var had: Motions = motions.copy()
+	motions.put(motion)
+	builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
+		"changed" if replaced else "made", Motions.quoted(name)])
+	var played: MotionPlayer.Played = player.play(motion)
+	var joints: int = motion.joints().size()
+	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check, and the "
+		+ "model put back: %s. play_motion plays it; one step: undo takes it out.") % [
+		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
+		"" if joints == 1 else "s", player.said(played)]
+
+
+## A motion from define_motion's tracks= and driver=, or why not.
+func _motion_from(player: MotionPlayer, name: String, input: Dictionary) -> Variant:
+	var motion := Motions.Motion.new()
+	motion.name = name
+	var seen: Array = []
+	for raw: Variant in input.get("tracks", []):
+		if not (raw is Dictionary) or not (raw as Dictionary).has("joint"):
+			return "Each track is {\"joint\": \"#80\", \"keys\": [{\"t\": 0, \"place\": 0}, ...]}."
+		var given: Dictionary = raw
+		var joint: Variant = player.joint_named(str(given["joint"]), bool(given.get("slide", false)))
+		if joint is String:
+			return "%s" % joint
+		if seen.has(joint):
+			return "%s is in two tracks: give one its keys." % str(given["joint"])
+		seen.append(joint)
+		var track := Motions.Track.new()
+		track.joint = joint
+		for key: Variant in given.get("keys", []):
+			if not (key is Dictionary) or not (key as Dictionary).has("t") or not (key as Dictionary).has("place"):
+				return "Each key is {\"t\": seconds, \"place\": degrees from where it was built, \"how\": \"ease\"}."
+			var t: float = float(key["t"])
+			if t < 0.0 or t > Motions.MOST_SECONDS:
+				return "A key's t is seconds from the start, 0 to %d: %s is not." % [int(Motions.MOST_SECONDS),
+					str(key["t"])]
+			var how: String = str((key as Dictionary).get("how", "ease")).to_upper()
+			if not how in Motions.HOWS:
+				return "how= is ease, linear or hold: %s is not." % str(key["how"])
+			track.add_key(t, float(key["place"]), how)
+		if track.keys.is_empty():
+			return "%s has no keys: give keys= [{\"t\": 0, \"place\": 0}, {\"t\": 2, \"place\": 90}]." \
+				% str(given["joint"])
+		motion.tracks.append(track)
+	if input.get("driver") is Dictionary:
+		var driver: Dictionary = input["driver"]
+		var joint: Variant = player.joint_named(str(driver.get("joint", "")))
+		if joint is String:
+			return "%s" % joint
+		if is_zero_approx(float(driver.get("turns", 0.0))):
+			return "driver= turns= how many times to turn it, not 0."
+		motion.driver = joint
+		motion.turns = clampf(float(driver["turns"]), -100.0, 100.0)
+		motion.driver_seconds = clampf(float(driver.get("seconds", 4.0)), 0.1, Motions.MOST_SECONDS)
+	if motion.tracks.is_empty() and motion.driver == null:
+		return ("Give tracks= (each a joint and its keys) or driver= (a joint and how many times to "
+			+ "turn it); list_motions suggests some.")
+	return motion
+
+
+static func _motion_names(motions: Motions) -> String:
+	if motions.is_empty():
+		return "the model has none yet (list_motions suggests some)"
+	var names := PackedStringArray()
+	for motion: Motions.Motion in motions.list:
+		names.append(Motions.quoted(motion.name))
+	return "the model has " + ", ".join(names)
+
+
+## The motions play_motion and render_motion name: one, or with
+## sequence=true the sequence it is in, in order (reversed, backwards); or
+## a String saying why not.
+func _motions_asked(input: Dictionary) -> Variant:
+	var player: MotionPlayer = app.get("_motions")
+	if player == null:
+		return "This app has no motions."
+	var motions: Motions = player.motions()
+	var name: String = str(input.get("name", "")).strip_edges()
+	if motions.named(name) == null:
+		return "No motion %s: %s." % [Motions.quoted(name), _motion_names(motions)]
+	var order: Array = motions.sequence(name) if bool(input.get("sequence", false)) else [motions.named(name)]
+	if bool(input.get("reverse", false)):
+		order.reverse()
+	return order
+
+
+## play_motion: played and kept where it ends, one undo step, said with a
+## picture of its frames.
+func _play_motion(input: Dictionary) -> Variant:
+	var asked: Variant = _motions_asked(input)
+	if asked is String:
+		return asked
+	var player: MotionPlayer = app.get("_motions")
+	var builder: Builder = app.get("_builder")
+	var panel: PosePanel = app.get("_pose")
+	var reverse: bool = bool(input.get("reverse", false))
+	var depth: int = builder.history_depth()
+	var lines := PackedStringArray()
+	var stills: Array = []
+	var times: Array = []
+	var standing: String = ""
+	var elapsed: float = 0.0
+	var went: bool = false
+	for motion: Motions.Motion in asked:
+		var played: MotionPlayer.Played = player.play(motion, reverse, MotionPlayer.PLAY_FPS, true)
+		went = went or played.went()
+		lines.append("Played %s%s (%s s): %s." % [Motions.quoted(motion.name), " backwards" if reverse
+			else "", Motions.num(played.seconds, 2), player.said(played)])
+		if not played.frames.is_empty():
+			standing = played.standing
+			for n: int in _sheet_of(played, (asked as Array).size()):
+				stills.append(played.frames[n])
+				times.append(elapsed + float(n) / float(played.fps))
+		elapsed += played.seconds
+	builder.fold_since(depth, "played %s" % ", ".join((asked as Array).map(func(one: Motions.Motion) -> String:
+		return Motions.quoted(one.name))))
+	if builder.history_depth() == depth:
+		lines.append("It ends where it began: the model stands as it was." if went else "Nothing moved.")
+	else:
+		if not standing.is_empty():
+			lines.append("Now: %s." % standing)
+		lines.append("One step: undo takes it back%s." % ("" if reverse else
+			"; play_motion reverse=true plays it back"))
+	var text: String = "\n".join(lines)
+	if stills.is_empty() or panel == null or not StudioRender.possible():
+		return text
+	var images: Array = await panel.draw_stills(stills)
+	if images.is_empty():
+		return text
+	text += "\nThe picture: its frames at %s, left to right and down." % _times_words(times)
+	return [{"type": "text", "text": text}, _picture_block(PosePanel.sheet_of(images))]
+
+
+## Which of [param played]'s frames a picture shows: at its keys when it has
+## two to four, else four spread out; with [param of] motions, its start and
+## end.
+static func _sheet_of(played: MotionPlayer.Played, of: int = 1) -> Array:
+	var last: int = played.frames.size() - 1
+	if of > 1:
+		return [0, last] if of <= 2 else [last]
+	var out: Array = []
+	if played.key_times.size() >= 2 and played.key_times.size() <= PosePanel.SHEET_MOST:
+		for t: float in played.key_times:
+			var n: int = clampi(roundi(t * played.fps), 0, last)
+			if not out.has(n):
+				out.append(n)
+	else:
+		for k: int in PosePanel.SHEET_MOST:
+			var n: int = roundi(float(k) * float(last) / float(PosePanel.SHEET_MOST - 1))
+			if not out.has(n):
+				out.append(n)
+	return out
+
+
+## render_motion: the motion's frames drawn and kept as an animation,
+## framed on what it moves; the model as it was after.
+func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
+	var asked: Variant = _motions_asked(input)
+	if asked is String:
+		return asked
+	if not StudioRender.possible():
+		return ("Rendering needs something to draw with, and this app is running without a window: "
+			+ "play_motion plays it.")
+	var player: MotionPlayer = app.get("_motions")
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	var panel: PosePanel = app.get("_pose")
+	var reverse: bool = bool(input.get("reverse", false))
+	var fps: int = 24 if int(input.get("fps", 12)) == 24 else 12
+	var poses: Array = []
+	var lines := PackedStringArray()
+	var depth: int = builder.history_depth()
+	var many: bool = (asked as Array).size() > 1
+	for motion: Motions.Motion in asked:
+		# A sequence's next motion begins where the last ended: each kept,
+		# and all of it undone once drawn.
+		var played: MotionPlayer.Played = player.play(motion, reverse, fps, many)
+		poses.append_array(played.frames)
+		lines.append("%s: %s." % [Motions.quoted(motion.name), player.said(played)])
+	while builder.history_depth() > depth:
+		await verbs.press("undo")
+	if poses.is_empty():
+		return "Nothing to draw: %s" % "; ".join(lines)
+	var settings: RenderSettings = panel.settings
+	var size_was: Vector2i = settings.size
+	settings.size = Vector2i(1280, 720) if str(input.get("size", "")) == "720p" else Vector2i(480, 300)
+	var sheet_at: Array = []
+	for k: int in PosePanel.SHEET_MOST:
+		sheet_at.append(roundi(float(k) * float(poses.size() - 1) / float(PosePanel.SHEET_MOST - 1)))
+	var title: String = "_" + str((asked as Array)[0].name).to_snake_case() + ("_backwards" if reverse else "")
+	var frames: int = await panel.render_poses(poses, fps, func(_n: int) -> float: return 0.0,
+		sheet_at, work, "hero", title)
+	settings.size = size_was
+	if frames <= 0 or not panel._last.has("kept"):
+		return "Nothing rendered: %s" % panel.rendered_words()
+	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s: %s." % [frames, fps,
+		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]), str(panel._last["kept"])])
+	var times: Array = []
+	var picture: Image = panel.sheet(times)
+	if picture == null:
+		return "\n".join(lines)
+	lines.append("The picture: its frames at %s, left to right and down." % _times_words(times))
+	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
 
 
 # -- simulating -------------------------------------------------------------------

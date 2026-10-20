@@ -143,7 +143,7 @@ func _run() -> void:
 	var sent: int = 0
 	for call: Array in [["parts_list", {}], ["parts_list", {"which": "need"}],
 			["gallery", {"q": "castle"}], ["job", {}], ["suggest_sections", {}],
-			["evaluate_section", {"suggestion": 1}], ["booklet_layout", {}]]:
+			["evaluate_section", {"suggestion": 1}], ["booklet_layout", {}], ["list_motions", {}]]:
 		_called[str(call[0])] = true
 		var was: String = _standing(app_world)
 		sent += 1

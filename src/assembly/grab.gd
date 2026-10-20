@@ -276,8 +276,20 @@ var _rates: Dictionary = {}
 ## took hold of it. [param selection] (brick id -> true), when it holds the
 ## part and more, is moved as one about what joins it to the rest.
 func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
-	part = brick_id
 	_hold = at
+	pick(brick_id, selection)
+	if not bodies.body_of.has(brick_id):
+		return state
+	return _chosen()
+
+
+## Which joint taking hold of [param brick_id] (with [param selection], as
+## [method begin] has it) moves, and the bodies on either side of it, without
+## what moving it asks (the sweeps, the gears, a loop): what a motion needs
+## to measure where the joint stands (MotionPlayer). [member state] is
+## "moves" with [member body] and [member link] set, or why not.
+func pick(brick_id: int, selection: Dictionary = {}) -> String:
+	part = brick_id
 	if bodies == null or bodies.revision != world.revision:
 		bodies = Bodies.read(world, library, builder.lattice, bodies.scenery if bodies != null else {},
 			builder.locked)
@@ -287,7 +299,7 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 		_from_selection(selection)
 	else:
 		_from_part(brick_id)
-	return _chosen()
+	return state
 
 
 ## Take hold of [param child]'s body and all beyond it on [param joined],

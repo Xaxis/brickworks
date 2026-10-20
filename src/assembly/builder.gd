@@ -526,6 +526,13 @@ func _apply(step: Dictionary) -> Dictionary:
 			world.broken_out.erase(section)
 		return {"undo": "sectionout", "path": section, "record": had}
 
+	# The model's motions (Motions): the whole set as it was, its own
+	# reverse. Copies, so a motion changed later is not changed in the past.
+	if step.get("undo", "") == "motions":
+		var had: Motions = world.motions.copy() if world.motions != null else Motions.new()
+		world.motions = (step["motions"] as Motions).copy()
+		return {"undo": "motions", "motions": had}
+
 	# How the booklet shows its steps (BookletLooks): the whole table as it
 	# was, its own reverse.
 	if step.get("undo", "") == "steplooks":
@@ -1371,7 +1378,7 @@ func extend_last(steps: Array) -> void:
 ## Everything kept since the history was [param depth] deep, as one step:
 ## one call of a session's tool is one undo, however many of the window's
 ## own commands it took (AppTools). The newest first, as they are undone.
-func fold_since(depth: int) -> void:
+func fold_since(depth: int, words: String = "") -> void:
 	if _history.size() <= depth + 1:
 		return
 	var steps: Array = []
@@ -1380,7 +1387,8 @@ func fold_since(depth: int) -> void:
 		var last: Dictionary = _history.pop_back()
 		said.insert(0, _words_for(last))
 		steps.append(last)
-	_history.append({"undo": "group", "steps": steps, "words": "; ".join(said)})
+	_history.append({"undo": "group", "steps": steps,
+		"words": words if not words.is_empty() else "; ".join(said)})
 
 
 ## A brick laid again as another number is the same brick to the history:

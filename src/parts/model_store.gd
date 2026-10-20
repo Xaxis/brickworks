@@ -954,6 +954,12 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	model_floor = said if said != null else ModelFloor.preferred()
 	from_set = set_in(text)
 	hidden_scheme = HiddenColours.read(text)
+	world.motions = Motions.read(text)
+	if not world.motions.is_empty():
+		# Where each part stood as the file has it: a joint is measured from
+		# here, so a door saved open is known to be open (Motions.Joint.at).
+		for brick: BrickWorld.Brick in world.bricks():
+			world.motions.snapshot[brick.id] = brick.transform
 	example = false
 	_phase("meta")
 	loaded.emit(title, placed)
@@ -1067,6 +1073,35 @@ func _live_source() -> SourceFile:
 ## How far the model on the baseplate was moved to stand on the ground when
 ## it opened: taken off again when it is written, so the file keeps its
 ## coordinates. Zero for a model made here.
+## Brings a motion's joint's AT up to where it stands now (MotionPlayer.
+## rebase), asked of each as the model is written, so the file says where
+## it stood; unset, what the motion last knew is written.
+var motion_rebase: Callable = Callable()
+
+
+## The model's motions as lines (Motions.lines), each joint's ref and where
+## it stands written as the model now is: its part's place, in the file's
+## coordinates, and how far it stands from where it was built.
+func _motion_lines() -> PackedStringArray:
+	var motions: Motions = world.motions
+	if motions == null or motions.is_empty():
+		return PackedStringArray()
+	var back: Vector3 = _lift_now()
+	for joint: Motions.Joint in motions.joints:
+		if motion_rebase.is_valid():
+			motion_rebase.call(joint)
+		var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
+		if joint.by == "part" and lead != null and lead.part_id == joint.part:
+			joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+	return motions.lines()
+
+
+## How far the model was lifted to stand on the ground as it opened: a
+## file's coordinates are a part's place less this.
+func lift() -> Vector3:
+	return _lift_now()
+
+
 func _lift_now() -> Vector3:
 	if world == null or world.generation() != _opened_in:
 		return Vector3.ZERO
@@ -1353,6 +1388,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		kept = LdcadPath.written_into(kept, _live_source(), library)
 		kept = model_floor.written_into(kept) if model_floor != null else kept
 		kept = HiddenColours.written_into(kept, hidden_scheme)
+		kept = Motions.written_into(kept, _motion_lines())
 		kept = _with_looks(kept)
 		made.append(kept if set_in(kept) == from_set else with_set(kept, from_set))
 		return
@@ -1453,6 +1489,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
+	text = Motions.written_into(text, _motion_lines())
 	text = _with_looks(text, true)
 	if model != world:
 		model.free()

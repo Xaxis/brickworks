@@ -133,6 +133,11 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 			if not drawn or not bool(input.get("render", true)):
 				return {}
 			return {"words": "Rendering %s's animation…" % model, "cancel": true}
+		"render_motion":
+			if not built or not drawn:
+				return {}
+			return {"words": "Rendering %s's motion %s…" % [model, Motions.quoted(str(input.get("name", "")))],
+				"cancel": true}
 		"colour_hidden_parts":
 			# Ninety-six pictures of the whole model, and on a big one the
 			# booklet's steps worked out: past the minutes a session waits.

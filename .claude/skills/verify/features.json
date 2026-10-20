@@ -708,6 +708,14 @@
       "tests": []
     },
     {
+      "id": "cli:motions probe",
+      "kind": "cli",
+      "entry": "src/dev/motions_probe.gd",
+      "reach": "tools/probe.sh motions_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1's doors, 8808-1's steering, 4096-1's boom, 8841-1's chassis driven from its wheel, 31070-1's windscreen stopped; each defined over MCP, saved as .mpd and opened again, played, reversed, rendered; an .ldr, an .io, the autosave)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:needs backfill",
       "kind": "cli",
       "entry": "tools/web/needs_backfill.mjs",
@@ -1685,6 +1693,14 @@
       "tests": []
     },
     {
+      "id": "lib:motions",
+      "kind": "lib",
+      "entry": "src/assembly/motions.gd",
+      "reach": "tools/probe.sh motions_probe   (a model's own named movements as 0 !BRICKWORKS MOTION lines: read, written the same every time, a joint's ref and AT)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:moving a body on its joint",
       "kind": "lib",
       "entry": "src/assembly/grab.gd",
@@ -1746,6 +1762,14 @@
       "entry": "src/assembly/attach.gd",
       "reach": "godot --headless --path . --script src/dev/by_connector_probe.gd  (-- --out=DIR writes each case for verify.py)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:playing motions",
+      "kind": "lib",
+      "entry": "src/assembly/motion_player.gd",
+      "reach": "tools/probe.sh motions_probe   (over MCP: list_motions, define_motion, play_motion, render_motion; each track's joint turned through Grab, stops said, suggestions from what moves)",
+      "area": "view",
       "tests": []
     },
     {

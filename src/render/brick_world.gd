@@ -229,6 +229,9 @@ var unit_steps: Dictionary = {}
 ## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
 ## sub-models' and the booklet's own. Changed only by the history's steps.
 var step_looks: Dictionary = {}
+## The model's own named movements (Motions: "Open the doors"), read from
+## its file and written into it. Changed only by the history's steps.
+var motions: Motions = null
 ## The sections broken out of the model to be worked on (Sections.break_out):
 ## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;
 ## "home": brick id -> the Transform3D it stood at}. Changed only by the
@@ -453,6 +456,7 @@ func clear() -> void:
 	_next_id = 1
 	unit_steps.clear()
 	step_looks.clear()
+	motions = null
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
@@ -609,6 +613,7 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	copy.keeps_history = false
 	copy.unit_steps = unit_steps.duplicate()
 	copy.step_looks = step_looks.duplicate(true)
+	copy.motions = motions
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):
 			continue

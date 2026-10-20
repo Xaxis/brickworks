@@ -1116,14 +1116,10 @@ class Turning extends RefCounted:
 ## it ("#14", a sub-assembly's name): its Turning, from the joint's degrees
 ## from where it was built; or a String saying why it cannot turn.
 func turning_for_session(asked: String) -> Variant:
-	var ids: Array = _named_parts(asked.strip_edges())
-	if ids.is_empty():
-		return "no part or sub-assembly %s" % asked
-	if not is_ready():
-		_ready_now()
-	var held: Grab = _taken(ids)
-	if held.state != "moves":
-		return held.why if not held.why.is_empty() else "%s does not move" % asked
+	var taken: Variant = held_for_session(asked)
+	if taken is String:
+		return taken
+	var held: Grab = taken
 	if held.mode != "turn":
 		return "%s %s; an animation turns a joint" % [asked, "slides" if held.mode == "slide" else "turns on a ball"]
 	var built: float = held.from_built()
@@ -1131,6 +1127,75 @@ func turning_for_session(asked: String) -> Variant:
 	turning.held = held
 	turning.offset = built if not is_nan(built) else 0.0
 	return turning
+
+
+## [param asked] taken hold of as move_part takes it ("#14", a sub-assembly's
+## name): a Grab begun on it, nothing moved yet, or a String saying why it
+## cannot move. A motion's track (MotionPlayer) is one of these.
+func held_for_session(asked: String) -> Variant:
+	var ids: Array = _named_parts(asked.strip_edges())
+	if ids.is_empty():
+		return "no part or sub-assembly %s" % asked
+	return held_of(ids, asked)
+
+
+## [param ids] (the part taken first) taken hold of as a drag takes them,
+## named [param asked] in what is said: a Grab begun, or why not.
+func held_of(ids: Array, asked: String = "") -> Variant:
+	if not is_ready():
+		_ready_now()
+	var held: Grab = _taken(ids)
+	if held.state != "moves":
+		return held.why if not held.why.is_empty() else "%s does not move" % (
+			asked if not asked.is_empty() else "#%d" % int(ids[0]))
+	return held
+
+
+## [param ids] picked as [method held_of] takes them, without what moving
+## them asks (Grab.pick): which joint, and its two sides.
+func picked_of(ids: Array) -> Grab:
+	if not is_ready():
+		_ready_now()
+	var held := Grab.new()
+	held.world = world
+	held.builder = builder
+	held.library = library
+	held.bodies = _bodies
+	var selection: Dictionary = {}
+	if ids.size() > 1:
+		for key: int in ids:
+			selection[key] = true
+	held.pick(int(ids[0]), selection)
+	return held
+
+
+## The parts a session names ([method _named_parts]): a part's number, or
+## every part of a sub-assembly.
+func named_parts(asked: String) -> Array:
+	return _named_parts(asked.strip_edges())
+
+
+## A motion's grabs kept where they stand (MotionPlayer): each one's copies
+## made their own first, as a session's move makes them, and all of it one
+## step to undo, called [param words]. Returns how many parts moved.
+func keep_held(grabs: Array, words: String) -> int:
+	var depth: int = builder.history_depth()
+	var moved: int = 0
+	for held: Grab in grabs:
+		_own_copies(held)
+		moved += held.commit(words)
+	builder.fold_since(depth, words)
+	if moved > 0:
+		edited.call()
+	return moved
+
+
+## How the model stands with [param placed] where it says, in words ("it
+## stands", "it would tip over to the left..."), or "" when it is not weighed.
+func standing_with(placed: Dictionary) -> String:
+	if _judge == null:
+		return ""
+	return _standing_words(_judge.weigh_pose(placed), false)
 
 
 ## Where [param held]'s joint stands from where the model was built (Grab.
