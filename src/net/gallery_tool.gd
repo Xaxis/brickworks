@@ -413,8 +413,9 @@ static func motions_words(motions: Motions) -> String:
 	var said := PackedStringArray()
 	for motion: Motions.Motion in motions.list:
 		var joints: int = motion.tracks.size()
-		said.append("%s (%s s, %s)" % [Motions.quoted(motion.name), Motions.num(motion.length(), 1),
-			"a driver" if motion.driver != null else "%d joint%s" % [joints, "" if joints == 1 else "s"]])
+		said.append("%s (%s s, %s)" % [Motions.quoted(motion.name), Motions.num(motions.seconds_of(motion), 1),
+			"a sequence of %d" % motion.sequence.size() if motion.is_sequence()
+			else "a driver" if motion.driver != null else "%d joint%s" % [joints, "" if joints == 1 else "s"]])
 	return "Its motions (%d): %s." % [said.size(), ", ".join(said)]
 
 

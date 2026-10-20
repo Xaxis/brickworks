@@ -403,6 +403,47 @@ func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, ke
 	return played
 
 
+## What playing motions one after another did (play_in_order).
+class Run extends RefCounted:
+	## Each motion as it played (Played), in order.
+	var played: Array = []
+	## Every frame of them all, each with every part any of them moves
+	## where it stands at that moment (MotionRender.whole_frames).
+	var frames: Array = []
+	## Each motion's own frames, as played.
+	var each: Array = []
+
+	## How the model stands where the last that moved left it.
+	func standing() -> String:
+		for k: int in range(played.size() - 1, -1, -1):
+			if not (played[k] as Played).standing.is_empty():
+				return (played[k] as Played).standing
+		return ""
+
+	func went() -> bool:
+		return played.any(func(one: Played) -> bool: return one.went())
+
+	func stopped() -> bool:
+		return played.any(func(one: Played) -> bool: return one.stopped())
+
+
+## [param order] (Motions.Motion, each a motion of its own: Motions.flat)
+## played and kept one after another, each [param reverse]d, so each begins
+## where the one before left the model: one step called [param words]. A
+## sequence, Play all, a link's press of a sequence.
+func play_in_order(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Run:
+	var run := Run.new()
+	var depth: int = builder.history_depth()
+	for motion: Motions.Motion in order:
+		var one: Played = play(motion, reverse, fps, true, words if order.size() == 1 else "")
+		run.played.append(one)
+		run.each.append(one.frames)
+	for frames: Array in MotionRender.whole_frames(run.each):
+		run.frames.append_array(frames)
+	builder.fold_since(depth, words)
+	return run
+
+
 ## [param track]'s joint taken hold of for playing: an Item with its Grab,
 ## or with none and why in its stop words.
 func _item_for(track: Motions.Track, driver: bool) -> Item:

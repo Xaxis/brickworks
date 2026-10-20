@@ -19,6 +19,14 @@
 ##     from an .ldr and an .io; a door saved open opens no further; an edit
 ##     elsewhere keeps them; a part taken off is said by name; define is one
 ##     undo step; animate_model is a motion played once.
+##  7. The observatory of the third MCP walk (tests/fixtures/mcpwalk3), with
+##     the session's "Show it all", a copy of the back wall's tracks, made a
+##     real sequence (unit 5): defined over MCP, its line saved and read
+##     back byte for byte, played (the dome, then the telescope, then the
+##     back wall), backwards in reverse order to where it was built,
+##     rendered whole, a motion of it taken out and said by name with its
+##     line kept, undone; the file's AFTER chain still plays; and the
+##     picture of the back wall's panels is from the view that sees them.
 extends SceneTree
 
 const DOORS := "res://vendor/omr/files/1484-1.mpd"
@@ -26,6 +34,9 @@ const RACER := "res://vendor/omr/files/8808-1.mpd"
 const CRANE := "res://vendor/omr/files/4096-1_Crane.mpd"
 const CHASSIS := "res://vendor/omr/files/8841-1_Chassis.mpd"
 const WINDSCREEN := "res://vendor/omr/files/31070-1.mpd"
+const OBSERVATORY := "res://tests/fixtures/mcpwalk3/observatory.ldr"
+const SHOW := "Show it all"
+const SHOWS: Array = ["Open the dome panel", "Extend the telescope", "Open the back wall panels"]
 
 var _failures: int = 0
 var _main: Node
@@ -77,6 +88,7 @@ func _run() -> void:
 	await _windscreen()
 	await _ldr()
 	await _assembly()
+	await _observatory()
 	print("")
 	if _failures == 0:
 		print("motions: defined over MCP, saved and opened again, played, reversed and rendered on "
@@ -360,6 +372,140 @@ func _assembly() -> void:
 	_print(said)
 	_check("...and the name finds the flap again, which plays", said.contains("went from 0° to 20°")
 		and said.contains("One step"))
+
+
+# -- a sequence: the observatory's "Show it all" -----------------------------------
+
+
+func _observatory() -> void:
+	print("── the observatory: Show it all, a sequence ──")
+	if not await _open(OBSERVATORY):
+		return
+	var built: Dictionary = _poses()
+	var had: PackedStringArray = _motion_lines(_store.to_text("Observatory"))
+	var said: String = await _say("define_motion", {"name": SHOW, "sequence": SHOWS})
+	_print(said)
+	_check("define_motion makes the session's \"Show it all\" a sequence of the three",
+		said.begins_with("Changed \"Show it all\" in the model, a sequence of 3"))
+	_check("...checked once, each from where the one before left the model: the telescope out clear",
+		said.contains("\"Extend the telescope\":") and said.contains("slid") and not said.contains("stops at"))
+	_check("...the model put back (%d parts off), one undo step" % _off(built)[0],
+		_off(built)[0] == 0 and _builder.history_depth() == 1)
+	var refused: String = await _say("define_motion", {"name": "Loop", "sequence": ["Loop"]})
+	_check("a sequence that plays itself is refused: %s" % refused, refused.contains("cannot play itself"))
+	refused = await _say("define_motion", {"name": "Twice", "sequence": ["Open the dome", "Nothing"]})
+	_check("...and one naming a motion the model lacks: %s" % refused.left(60),
+		refused.begins_with("No motion \"Open the dome\""))
+	var lines: PackedStringArray = _motion_lines(_store.to_text("Observatory"))
+	_print("\n".join(lines))
+	var line: String = '0 !BRICKWORKS MOTION "Show it all" SEQUENCE "Open the dome panel" "Extend the telescope" "Open the back wall panels"'
+	_check("its line is the sequence by name, in order, in place of the copied tracks (%d lines, %d before)"
+		% [lines.size(), had.size()], lines.has(line) and not "\n".join(lines).contains('MOTION_TRACK "Show it all"')
+		and lines.size() == had.size() - 6)
+	_check("...and the other motions' lines, AFTER and all, are as they were",
+		Array(lines).filter(func(one: String) -> bool: return not one.contains('"Show it all"')) \
+		== Array(had).filter(func(one: String) -> bool: return not one.contains('"Show it all"')))
+	var file: String = _out.path_join("observatory show.ldr")
+	_write(file, _store.to_text("Observatory"))
+	if not await _open(file):
+		return
+	var again: PackedStringArray = _motion_lines(_store.to_text("Observatory"))
+	_check("saved and opened again, its %d lines come back byte for byte" % again.size(), again == lines)
+	var listed: String = await _say("list_motions", {"suggest": false})
+	_print(listed)
+	_check("list_motions says it is a sequence, and of what",
+		listed.contains("\"Show it all\", 8 s, a sequence: \"Open the dome panel\", then \"Extend the telescope\", then \"Open the back wall panels\""))
+	built = _poses()
+	var depth: int = _builder.history_depth()
+	var answer: Dictionary = await _rpc("tools/call", {"name": "play_motion", "arguments": {"name": SHOW}})
+	said = _text(answer)
+	_print(said)
+	var dome: int = _player.motions().named("Open the dome panel").tracks[0].joint.lead
+	var doors: Array = _player.motions().named("Open the back wall panels").tracks.map(
+		func(track: Motions.Track) -> int: return track.joint.lead)
+	var order: Array = [said.find("Played \"Open the dome panel\""), said.find("Played \"Extend the telescope\""),
+		said.find("Played \"Open the back wall panels\"")]
+	_check("play_motion plays the three in order: %s" % str(order), order[0] >= 0 and order[0] < order[1]
+		and order[1] < order[2])
+	var moved: Array = _off(built)
+	var turned: float = rad_to_deg((built[dome] as Transform3D).basis.get_rotation_quaternion().angle_to(
+		_world.get_brick(dome).transform.basis.get_rotation_quaternion()))
+	_check("...the dome open %.0f°, the telescope out, the panels open: %d parts moved, one step" % [turned,
+		moved[0]], absf(turned - 110.0) < 2.0 and moved[0] > 20 and _builder.history_depth() == depth + 1
+		and doors.all(func(id: int) -> bool: return not (built[id] as Transform3D).is_equal_approx(
+			_world.get_brick(id).transform)))
+	if _windowed:
+		var sheet: Image = _image_of(answer)
+		if sheet != null:
+			sheet.save_png(_out.path_join("observatory_show_played.png"))
+		_check("...with a picture, its view said (%s)" % said.get_slice("The picture:", 1).strip_edges().left(120),
+			sheet != null and said.contains("view=\""))
+	said = await _say("play_motion", {"name": SHOW, "reverse": true})
+	_print(said)
+	order = [said.find("Played \"Open the back wall panels\" backwards"),
+		said.find("Played \"Extend the telescope\" backwards"), said.find("Played \"Open the dome panel\" backwards")]
+	var back: Array = _off_tolerant(built)
+	_check("backwards, in reverse order (%s), to where it was built: %d parts off (%.3f LDU, %.2f°)" % [
+		str(order), back[0], back[1], back[2]], order[0] >= 0 and order[0] < order[1] and order[1] < order[2]
+		and int(back[0]) == 0)
+	# The back wall's panels, behind the dome: from the front corner they
+	# are hardly seen, so the picture is from where they are.
+	var walls: MotionPlayer.Played = _player.play(_player.motions().named("Open the back wall panels"))
+	var seen: Dictionary = MotionRender.seen_from(_world, _main.get("_library"), walls.frames)
+	var view: String = MotionRender.best_view(seen)
+	_print(str(seen))
+	_check("the back wall's panels are seen best from %s (%d%%), not the front corner (%d%%)" % [view,
+		roundi(float(seen.get(view, 0.0)) * 100.0), roundi(float(seen["hero"]) * 100.0)], view != "hero"
+		and float(seen[view]) > float(seen["hero"]) + MotionRender.BETTER_BY)
+	var domed: MotionPlayer.Played = _player.play(_player.motions().named("Open the dome panel"))
+	seen = MotionRender.seen_from(_world, _main.get("_library"), domed.frames)
+	_print(str(seen))
+	_check("...and the dome panel, high on top, from wherever sees it: %s (%d%%)" % [
+		MotionRender.best_view(seen), roundi(float(seen[MotionRender.best_view(seen)]) * 100.0)],
+		float(seen[MotionRender.best_view(seen)]) > 0.5)
+	if _windowed:
+		answer = await _rpc("tools/call", {"name": "play_motion", "arguments": {"name": "Open the back wall panels"}})
+		said = _text(answer)
+		_print(said)
+		var sheet: Image = _image_of(answer)
+		if sheet != null:
+			sheet.save_png(_out.path_join("observatory_back_wall_played.png"))
+		_check("play_motion's picture of the back wall's panels says its view: %s" % said.get_slice(
+			"The picture:", 1).strip_edges(), said.contains("view=\"%s\"" % view))
+		await _say("undo", {})
+		var rendered: Dictionary = await _finished(await _rpc("tools/call", {"name": "render_motion",
+			"arguments": {"name": SHOW}}))
+		said = _text(rendered)
+		_print(said)
+		var panel: PosePanel = _main.get("_pose")
+		var frames: int = 0
+		for one: String in SHOWS:
+			frames += roundi(_player.motions().named(one).length() * 12.0) + 1
+		_check("render_motion renders it whole: %s, %s" % [said.get_slice(":", 0), str(panel._last.get("name", ""))],
+			said.contains("Rendered %d frames" % frames) and str(panel._last.get("name", "")).ends_with("Show it all.webp")
+			and int(_off_tolerant(built)[0]) == 0)
+	# A motion of it taken out is said by name, and its line is kept.
+	await _say("define_motion", {"name": "Extend the telescope", "remove": true})
+	listed = await _say("list_motions", {"suggest": false})
+	_check("a motion of it taken out is said by name: %s" % listed.get_slice("Show it all\": ", 1).get_slice("\n", 0),
+		listed.contains("\"Show it all\": the model has no motion \"Extend the telescope\""))
+	_check("...and its line is kept as it was", _motion_lines(_store.to_text("Observatory")).has(line))
+	said = await _say("play_motion", {"name": SHOW})
+	_print(said)
+	_check("...played, the other two play and the gone one is passed over", said.contains("passed over")
+		and said.contains("Played \"Open the dome panel\"") and said.contains("Played \"Open the back wall panels\"")
+		and not said.contains("Played \"Extend the telescope\""))
+	await _say("undo", {})
+	await _say("undo", {})
+	_check("...undone, the telescope's motion is back and the model as built (%d off)" % _off_tolerant(built)[0],
+		_player.motions().named("Extend the telescope") != null and int(_off_tolerant(built)[0]) == 0)
+	# The file's AFTER chain still plays: the telescope after the dome.
+	said = await _say("play_motion", {"name": "Extend the telescope", "sequence": true})
+	_print(said)
+	_check("the file's AFTER chain plays as before: the dome, then the telescope, not the sequence",
+		said.find("Played \"Open the dome panel\"") >= 0 and said.find("Played \"Open the dome panel\"")
+		< said.find("Played \"Extend the telescope\"") and not said.contains("back wall"))
+	await _say("undo", {})
 
 
 # -- a motion saved, opened, played, reversed and rendered -----------------------

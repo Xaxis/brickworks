@@ -18,6 +18,14 @@
 ##     steering wheel dragged while recording turns the arms through the
 ##     rack when played (Grab's loop); the editor offers only joints that
 ##     move; a slider moved puts a key, undo takes it out.
+##  3. The observatory of the third MCP walk (unit 5): the session's
+##     copied "Show it all" removed, New sequence keeps every motion in
+##     order as one (one step, undone and redone), Down, Take out and Add
+##     each one step and undone, Play plays the dome, the telescope and
+##     the back wall each from where the last left the model, every frame
+##     with every part, Play backwards puts it as built; the list shows it
+##     as a row, and saved and opened again its line comes back byte for
+##     byte.
 ## Pictures of the panel in each state (suggested, list, recording,
 ## editing) in OUT_DIR, named by the window's size: PROBE_SIZE=1280x720
 ## tools/probe.sh runs it at that size too.
@@ -25,6 +33,8 @@ extends SceneTree
 
 const DOORS := "res://vendor/omr/files/1484-1.mpd"
 const RACER := "res://vendor/omr/files/8808-1.mpd"
+const OBSERVATORY := "res://tests/fixtures/mcpwalk3/observatory.ldr"
+const SHOWS: Array = ["Open the dome panel", "Extend the telescope", "Open the back wall panels"]
 
 var _failures: int = 0
 var _main: Node
@@ -82,6 +92,7 @@ func _run() -> void:
 		return
 	await _doors()
 	await _racer()
+	await _observatory()
 	print("")
 	if _failures == 0:
 		print("motions panel: kept, played both ways, recorded from a drag, edited by its joints, "
@@ -395,6 +406,125 @@ func _racer() -> void:
 		frames == roundi(recorded.length() * 12.0) + 1 and _panel._last.has("kept"))
 	_panel.close()
 	_check("Close stops drawing anything over the model", _world.drawn_ids().is_empty() and not _panel.is_processing())
+
+
+# -- the observatory: a sequence ------------------------------------------------------------
+
+
+func _row_names() -> Array:
+	return _panel._row_buttons.map(func(r: Dictionary) -> String: return str(r["name"]))
+
+
+func _shown_order() -> Array:
+	var motion: Motions.Motion = _player.motions().named("Show it all")
+	return Array(motion.sequence) if motion != null else []
+
+
+func _observatory() -> void:
+	print("── the observatory: a sequence ──")
+	if not await _open(OBSERVATORY):
+		return
+	_builder.forget_history()
+	_shell.run("pose")
+	await _frames(8)
+	var built: Dictionary = _poses()
+	_check("the panel lists the walk's four motions (%s)" % str(_row_names()), _row_names().size() == 4
+		and _row_names().has("Show it all"))
+	# The session's "Show it all" was a copy of the back wall's tracks.
+	await _click(_panel._row_buttons[_row_names().find("Show it all")]["edit"])
+	await _click(_panel._remove)
+	_check("its copied \"Show it all\" taken out (%s)" % str(_row_names()), _panel._view == "list"
+		and not _row_names().has("Show it all"))
+	var depth: int = _builder.history_depth()
+	await _click(_panel._new_sequence)
+	_check("New sequence keeps every motion, in order, as one (%s), one step" % str(_shown_order()),
+		_panel._view == "sequence" and _shown_order() == SHOWS and _builder.history_depth() == depth + 1
+		and _panel._seq_name.text == "Show it all")
+	_check("...its rows in order, each with Up, Down and Take out", _panel._seq_buttons.size() == 3
+		and _panel._seq_buttons[0]["up"].disabled and not _panel._seq_buttons[0]["down"].disabled
+		and _panel._seq_buttons[2]["down"].disabled)
+	_fits("a sequence")
+	await _shots("observatory_sequence")
+	await _undo()
+	_check("...undone, it is gone and the list is back", _player.motions().named("Show it all") == null
+		and _panel._view == "list")
+	_shell.run("redo")
+	await _frames(6)
+	_check("...redone, it is a row like any motion (%s)" % str(_row_names()), _row_names().has("Show it all"))
+	await _click(_panel._row_buttons[_row_names().find("Show it all")]["edit"])
+	_check("Edit on its row opens it", _panel._view == "sequence" and _panel._seq_buttons.size() == 3)
+	depth = _builder.history_depth()
+	await _click(_panel._seq_buttons[0]["down"])
+	_check("Down plays the dome later (%s), one step" % str(_shown_order()), _shown_order() == [SHOWS[1],
+		SHOWS[0], SHOWS[2]] and _builder.history_depth() == depth + 1)
+	await _undo()
+	_check("...undone, the order is back (%s), the editor still open" % str(_shown_order()),
+		_shown_order() == SHOWS and _panel._view == "sequence")
+	await _click(_panel._seq_buttons[2]["up"])
+	_check("Up plays the back wall sooner (%s)" % str(_shown_order()), _shown_order() == [SHOWS[0], SHOWS[2],
+		SHOWS[1]])
+	await _undo()
+	await _click(_panel._seq_buttons[1]["out"])
+	_check("Take out takes the telescope out of it (%s), the motion kept" % str(_shown_order()),
+		_shown_order() == [SHOWS[0], SHOWS[2]] and _player.motions().named(SHOWS[1]) != null)
+	await _undo()
+	var pick: int = -1
+	for n: int in _panel._seq_pick.item_count:
+		if str(_panel._seq_pick.get_item_metadata(n)) == SHOWS[0]:
+			pick = n
+	_panel._seq_pick.select(pick)
+	await _click(_panel._seq_add)
+	_check("Add plays the dome again at its end (%s)" % str(_shown_order()), _shown_order().size() == 4
+		and _shown_order()[3] == SHOWS[0])
+	await _undo()
+	_check("...and every change undone: %s, at the depth it was made at" % str(_shown_order()),
+		_shown_order() == SHOWS and _builder.history_depth() == depth)
+	# Played: each from where the one before left the model.
+	await _click(_panel._seq_play)
+	var sizes: Dictionary = {}
+	for frame: Dictionary in _panel._frames:
+		sizes[frame.size()] = true
+	_check("Play plays it (%d frames), every frame with every part it moves (%s)" % [_panel._frames.size(),
+		str(sizes.keys())], _panel.is_playing() and _panel._frames.size() == 99 and sizes.size() == 1)
+	await _frames(40)
+	await _shots("observatory_sequence_playing")
+	await _until_played()
+	var said: String = _panel.status_words()
+	print("    " + said.left(400))
+	var dome: int = _player.motions().named(SHOWS[0]).tracks[0].joint.lead
+	var turned: float = rad_to_deg((built[dome] as Transform3D).basis.get_rotation_quaternion().angle_to(
+		_world.get_brick(dome).transform.basis.get_rotation_quaternion()))
+	var moved: Array = _off_ids(built, [], 0.05)
+	_check("...in order, each said, the dome open %.0f° and %d parts moved, one step" % [turned, moved[0]],
+		said.begins_with("Played \"Show it all\", 3 in order") and said.find(SHOWS[0]) < said.find(SHOWS[1])
+		and said.find(SHOWS[1]) < said.find(SHOWS[2]) and absf(turned - 110.0) < 2.0 and int(moved[0]) > 20
+		and _builder.history_depth() == depth + 1)
+	await _shots("observatory_sequence_played")
+	await _click(_panel._seq_reverse)
+	await _until_played()
+	var back: Array = _off_ids(built, [], 0.05)
+	_check("Play backwards, in reverse order, puts it as built: %d parts off (%s)" % [back[0],
+		_panel.status_words().left(90)], int(back[0]) == 0
+		and _panel.status_words().begins_with("Played \"Show it all\" backwards"))
+	await _click(_panel._seq_back)
+	_check("the list shows it as a row, with Play, Play backwards and Edit", _row_names().has("Show it all")
+		and not _panel._row_buttons[_row_names().find("Show it all")]["play"].disabled)
+	_fits("the list with a sequence")
+	await _shots("observatory_list")
+	# Saved and opened again.
+	var text: String = _store.to_text("Observatory")
+	var lines: PackedStringArray = _motion_lines(text)
+	var file: String = _out.path_join("observatory_sequence.ldr")
+	_write(file, text)
+	if not await _open(file):
+		return
+	_shell.run("pose")
+	await _frames(8)
+	var again: PackedStringArray = _motion_lines(_store.to_text("Observatory"))
+	_check("saved and opened again, its %d lines come back byte for byte, the sequence's among them" % lines.size(),
+		again == lines and lines.has('0 !BRICKWORKS MOTION "Show it all" SEQUENCE "Open the dome panel" '
+		+ '"Extend the telescope" "Open the back wall panels"') and _row_names().has("Show it all"))
+	_panel.close()
 
 
 # -- the panel, as a person uses it ---------------------------------------------------------

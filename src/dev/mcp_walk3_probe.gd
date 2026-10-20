@@ -18,7 +18,7 @@
 ##    telescope with view_model to find out.
 ##  - Two tracks in one motion, the dome and the wheel: the one that stops
 ##    on the other's part says the tracks are tested apart, and to make it
-##    a motion of its own with after=. The session took the dome to have
+##    a motion of its own in a sequence. The session took the dome to have
 ##    opened too late.
 ##  - Played backwards, a wheel whose rack is held now says what holds it
 ##    (or turns back), not "it slides; a motion turns this joint"; move_part
@@ -137,8 +137,8 @@ func _motions() -> void:
 		{"joint": "#%d" % gear, "keys": [{"t": 0, "place": 0}, {"t": 2, "place": 0, "how": "hold"},
 			{"t": 6, "place": 612}]}]})
 	print("    " + said)
-	_check("two tracks, one stopping on the other's part, say they are tested apart and to use after=",
-		said.contains("tested as if the others stood still") and said.contains("after="))
+	_check("two tracks, one stopping on the other's part, say they are tested apart and to use a sequence",
+		said.contains("tested as if the others stood still") and said.contains("sequence="))
 	await _say("define_motion", {"name": "Dome and telescope", "remove": true})
 
 

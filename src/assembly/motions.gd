@@ -9,12 +9,15 @@
 ##   0 !BRICKWORKS MOTION_KEY "Open the doors" 1 2 90 EASE
 ##   0 !BRICKWORKS MOTION_TRACK "Open the doors" 2 TURN AT 0 JOINT ASSEMBLY "Door Right"
 ##   0 !BRICKWORKS MOTION_DRIVER "Turn the crank" TURNS 3 SECONDS 4 AT 0 JOINT PART 4185 71 0 -40 60
+##   0 !BRICKWORKS MOTION "Show it all" SEQUENCE "Open the doors" "Turn the crank"
 ##
 ## A track is one joint and its keys: a time, a place (degrees turned, or
 ## studs slid, from where the model was built) and how it gets there (EASE,
 ## LINEAR or HOLD). A driver turns its joint so many times over so long,
 ## from wherever it stands, and what it drives through gears, racks and
-## linkages goes with it as Grab couples it.
+## linkages goes with it as Grab couples it. A sequence is a motion made of
+## motions, by name: each played from where the one before left the model,
+## and backwards in reverse order.
 ##
 ## A joint is found again by its ref: a sub-assembly by name, else the part
 ## the motion takes hold of, by its number, colour and place (LDraw's
@@ -125,8 +128,13 @@ class Track extends RefCounted:
 
 class Motion extends RefCounted:
 	var name: String = ""
-	## The motion this one follows, "" for none.
+	## The motion this one follows, "" for none. Kept for the files that
+	## have it: a sequence names an order now (docs/MOTIONS.md, unit 5).
 	var after: String = ""
+	## A sequence: the motions it plays, by name, in order; empty for a
+	## motion of its own tracks or driver. A name the model has no motion
+	## of is kept, and said when played.
+	var sequence := PackedStringArray()
 	## How long it runs, at least, seconds: its keys may end sooner.
 	var seconds: float = 0.0
 	var tracks: Array = []
@@ -143,6 +151,9 @@ class Motion extends RefCounted:
 		if driver != null:
 			most = maxf(most, driver_seconds)
 		return maxf(most, 0.0)
+
+	func is_sequence() -> bool:
+		return not sequence.is_empty()
 
 	## Every joint it moves.
 	func joints() -> Array:
@@ -247,6 +258,7 @@ func copy() -> Motions:
 		made.seconds = motion.seconds
 		made.turns = motion.turns
 		made.driver_seconds = motion.driver_seconds
+		made.sequence = motion.sequence.duplicate()
 		if motion.driver != null:
 			made.driver = map.get(motion.driver, motion.driver.copy())
 		for track: Track in motion.tracks:
@@ -259,14 +271,17 @@ func copy() -> Motions:
 
 
 ## The motions in order of play: each after the one it follows, the rest
-## as listed. [param from] (a name) gives the sequence it is in, from its
-## first: every motion linked to it by AFTER.
+## as listed. [param from] (a name) gives the chain it is in, from its
+## first: every motion linked to it by AFTER (a file's; a sequence is
+## never in a chain).
 func sequence(from: String) -> Array:
 	var start: Motion = named(from)
 	if start == null:
 		return []
+	if start.is_sequence():
+		return [start]
 	var seen: Dictionary = {start: true}
-	while not start.after.is_empty() and named(start.after) != null and not seen.has(named(start.after)):
+	while not start.after.is_empty() and _chained(named(start.after)) and not seen.has(named(start.after)):
 		start = named(start.after)
 		seen[start] = true
 	var out: Array = [start]
@@ -274,7 +289,7 @@ func sequence(from: String) -> Array:
 	while true:
 		var next: Motion = null
 		for motion: Motion in list:
-			if motion.after.to_lower() == at.name.to_lower() and not out.has(motion):
+			if not motion.is_sequence() and motion.after.to_lower() == at.name.to_lower() and not out.has(motion):
 				next = motion
 				break
 		if next == null:
@@ -284,17 +299,68 @@ func sequence(from: String) -> Array:
 	return out
 
 
-## Every motion in order of play (Play all): each sequence from its first,
-## each motion after the one it follows, the sequences as their first
-## motions are listed.
+static func _chained(motion: Motion) -> bool:
+	return motion != null and not motion.is_sequence()
+
+
+## Every motion in order of play (Play all): each chain from its first,
+## each motion after the one it follows, the chains as their first
+## motions are listed. Not the sequences: what they play is here already.
 func in_order() -> Array:
 	var out: Array = []
 	for motion: Motion in list:
-		if out.has(motion):
+		if out.has(motion) or motion.is_sequence():
 			continue
 		for one: Motion in sequence(motion.name):
 			if not out.has(one):
 				out.append(one)
+	return out
+
+
+## The motions [param motion] plays, in order: itself, or a sequence's
+## members, a sequence in it played through; [param reverse] in reverse
+## order. [param missing] gets each name it gives that the model has no
+## motion of, or that would play the sequence inside itself, as words.
+func played_by(motion: Motion, reverse: bool = false, missing: Array = []) -> Array:
+	var out: Array = []
+	_play_into(motion, out, [], missing)
+	if reverse:
+		out.reverse()
+	return out
+
+
+func _play_into(motion: Motion, out: Array, within: Array, missing: Array) -> void:
+	if not motion.is_sequence():
+		out.append(motion)
+		return
+	within.append(motion)
+	for name: String in motion.sequence:
+		var one: Motion = named(name)
+		if one == null:
+			missing.append("%s: the model has no motion %s" % [quoted(motion.name), quoted(name)])
+		elif within.has(one):
+			missing.append("%s: %s would play %s inside itself" % [quoted(motion.name), quoted(name),
+				quoted(one.name)])
+		else:
+			_play_into(one, out, within, missing)
+	within.pop_back()
+
+
+## How long [param motion] runs, seconds: a sequence its members' lengths
+## together.
+func seconds_of(motion: Motion) -> float:
+	var total: float = 0.0
+	for one: Motion in played_by(motion):
+		total += one.length()
+	return total
+
+
+## [param order] with every sequence in it played through (played_by),
+## each [param reverse]d.
+func flat(order: Array, reverse: bool = false, missing: Array = []) -> Array:
+	var out: Array = []
+	for motion: Motion in order:
+		out.append_array(played_by(motion, reverse, missing))
 	return out
 
 
@@ -315,6 +381,12 @@ func free_name(words: String) -> String:
 func lines() -> PackedStringArray:
 	var out := PackedStringArray()
 	for motion: Motion in list:
+		if motion.is_sequence():
+			var names := PackedStringArray()
+			for one: String in motion.sequence:
+				names.append(quoted(one))
+			out.append("%s %s SEQUENCE %s" % [META, quoted(motion.name), " ".join(names)])
+			continue
 		out.append('%s %s AFTER %s SECONDS %s' % [META, quoted(motion.name), quoted(motion.after),
 			num(motion.length(), 3)])
 		for n: int in motion.tracks.size():
@@ -408,9 +480,14 @@ static func read(text: String) -> Motions:
 				ok = false
 		if not ok:
 			out.unread.append(line)
-	# A motion that moves nothing is nothing.
+	# A motion that moves nothing and plays nothing is nothing; a sequence
+	# has no tracks of its own.
+	for one: Motion in out.list:
+		if one.is_sequence() and (not one.tracks.is_empty() or one.driver != null):
+			one.tracks.clear()
+			one.driver = null
 	out.list = out.list.filter(func(one: Motion) -> bool:
-		return not one.tracks.is_empty() or one.driver != null)
+		return not one.tracks.is_empty() or one.driver != null or one.is_sequence())
 	out._tidy_joints()
 	return out
 
@@ -420,6 +497,12 @@ var unread := PackedStringArray()
 
 
 static func _read_motion(motion: Motion, rest: PackedStringArray) -> bool:
+	if not rest.is_empty() and rest[0] == "SEQUENCE":
+		var names: PackedStringArray = rest.slice(1)
+		if names.is_empty() or Array(names).any(func(one: String) -> bool: return one.strip_edges().is_empty()):
+			return false
+		motion.sequence = names
+		return true
 	var n: int = 0
 	while n + 1 < rest.size():
 		match rest[n]:

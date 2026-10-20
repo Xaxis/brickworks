@@ -3283,26 +3283,33 @@ func _play_motion(name: String) -> void:
 	_motion_stop()
 	var back: bool = _share_view.motions_out.has(name.to_lower())
 	var began: int = Time.get_ticks_usec()
-	var played: MotionPlayer.Played = _motions.play(motion, back, MotionPlayer.PLAY_FPS, true,
+	# A sequence plays each of its motions from where the one before left
+	# the model, and backwards in reverse order: one step, as one motion.
+	var run: MotionPlayer.Run = _motions.play_in_order(_world.motions.played_by(motion, back), back,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
-	_motion_last = {"name": motion.name, "backwards": back, "frames": played.frames.size(),
-		"ms": snappedf((Time.get_ticks_usec() - began) / 1000.0, 0.1), "stopped": played.stopped(),
-		"waited_ms": waited,
-		"joints": played.items.map(func(item: MotionPlayer.Item) -> Array:
+	var items: Array = []
+	var refused := PackedStringArray()
+	for played: MotionPlayer.Played in run.played:
+		items.append_array(played.items)
+		refused.append_array(played.refused)
+	_motion_last = {"name": motion.name, "backwards": back, "frames": run.frames.size(),
+		"ms": snappedf((Time.get_ticks_usec() - began) / 1000.0, 0.1), "stopped": run.stopped(),
+		"waited_ms": waited, "motions": run.played.size(),
+		"joints": items.map(func(item: MotionPlayer.Item) -> Array:
 			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}
-	if played.items.is_empty():
+	if items.is_empty():
 		_share_view.play_said(_visitor_words("“%s” does not play: %s." % [motion.name,
-			"; ".join(played.refused)]))
+			"; ".join(refused) if not refused.is_empty() else "nothing in it moves here"]))
 		return
 	_share_view.show_motion_out(motion.name, not back)
 	var stops := PackedStringArray()
-	for item: MotionPlayer.Item in played.items:
+	for item: MotionPlayer.Item in items:
 		if not item.stop_words.is_empty():
 			stops.append(item.stop_words)
 	_motion_said = _visitor_words(("“%s” stopped short: %s." % [motion.name, "; ".join(stops)])
 		if not stops.is_empty() else ("“%s” put back." % motion.name) if back
 		else "“%s” played. Press it again to put it back." % motion.name)
-	_motion_frames = played.frames
+	_motion_frames = run.frames
 	_motion_began = Time.get_ticks_msec()
 	_motion_shown = 0
 	# The model stands where it ends already: its first frame drawn at once.
