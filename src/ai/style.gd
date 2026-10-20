@@ -38,9 +38,16 @@ const TOLERANCE := 4.0
 
 static var _norms: Dictionary = {}
 static var _loaded: bool = false
+## Read at first use, under a lock: a build's check and Brickify read the
+## norms on a worker, and a table put on one thread while another copies
+## it leaves the copy holding nothing, as Mechanism's gear table did
+## (racefix, 2026-10-20). Their callers read them here first, but a lock
+## does not depend on every caller remembering to.
+static var _norms_lock := Mutex.new()
 
 
 static func norms() -> Dictionary:
+	_norms_lock.lock()
 	if not _loaded:
 		_loaded = true
 		for path: String in NORMS:
@@ -50,7 +57,9 @@ static func norms() -> Dictionary:
 			if parsed is Dictionary:
 				_norms = parsed
 				break
-	return _norms
+	var read: Dictionary = _norms
+	_norms_lock.unlock()
+	return read
 
 
 ## A part's kinds as tools/style.py names them, in letters: c curve,

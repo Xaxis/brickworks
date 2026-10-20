@@ -11787,9 +11787,6 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	_standing_held = true
 	await _ensure_parts(model)
 	Style.norms()
-	# Its table of which parts are a hose's pieces filled here, not raced on
-	# the worker (Joints.held_otherwise).
-	Flex.kind_of_piece("")
 	var named: Dictionary = {}
 	for placement: Placement in model.placements:
 		named[placement.part] = true

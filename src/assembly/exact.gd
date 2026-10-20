@@ -169,8 +169,14 @@ class Item extends RefCounted:
 
 
 static var _next_id: int = 1
-## mesh hash -> Shape, or null where there is none. Main thread only.
+## mesh hash -> Shape, or null where there is none. Filled on the main
+## thread only, and read on workers too: Bodies reads a big model's shapes
+## on one as it opens (GrabDrag) while the main thread reads others in, and
+## a Dictionary read while another thread adds to it can be read mid-way.
+## So it is read and filled under a lock, as Joints._lines is (racefix,
+## 2026-10-20).
 static var _shapes: Dictionary = {}
+static var _shapes_lock := Mutex.new()
 ## Verdicts between two shapes at one relative pose: key -> [depth, piece a,
 ## piece b, axis] or []. Shared by checks on different threads.
 static var _verdicts: Dictionary = {}
@@ -284,8 +290,12 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
 	if info == null or info.mesh_hash.is_empty():
 		return null
-	if _shapes.has(info.mesh_hash):
-		return _shapes[info.mesh_hash]
+	_shapes_lock.lock()
+	var known: bool = _shapes.has(info.mesh_hash)
+	var kept: Shape = _shapes.get(info.mesh_hash)
+	_shapes_lock.unlock()
+	if known:
+		return kept
 	if OS.get_thread_caller_id() != OS.get_main_thread_id():
 		return null
 	# Already asked for: a look in the browser's pack for a file that is not
@@ -300,19 +310,29 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
 		library.request_exact(part_id)
 		return null
+	_shapes_lock.lock()
 	_shapes[info.mesh_hash] = shape
+	_shapes_lock.unlock()
 	return shape
 
 
 ## Kept from a fetch: the web build's way in (PartLibrary._on_fetched_exact).
 static func keep(mesh_hash: String, bytes: PackedByteArray) -> void:
-	_shapes[mesh_hash] = parse(bytes) if not bytes.is_empty() else null
+	var shape: Shape = parse(bytes) if not bytes.is_empty() else null
+	_shapes_lock.lock()
+	_shapes[mesh_hash] = shape
+	_shapes_lock.unlock()
 
 
 ## Whether the shape for a part has been looked for (found or not).
 static func known(library: PartLibrary, part_id: String) -> bool:
 	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
-	return info == null or info.mesh_hash.is_empty() or _shapes.has(info.mesh_hash)
+	if info == null or info.mesh_hash.is_empty():
+		return true
+	_shapes_lock.lock()
+	var known: bool = _shapes.has(info.mesh_hash)
+	_shapes_lock.unlock()
+	return known
 
 
 ## The shapes for these parts, id -> Shape (absent where there is none), for a
@@ -465,13 +485,27 @@ static func overlaps(a: Item, b: Item) -> Array:
 ## Directions over the sphere, a Fibonacci lattice of 128: every direction is
 ## within 13.7 degrees of one of them, so a convex set reaching no further
 ## than H along each reaches no further than H * [constant SPHERE_SLACK].
-static var _sphere := PackedVector3Array()
+## Made as the class loads, not at first use: a build's check runs on a
+## worker while a second check runs here (Assistant._checked), and two
+## threads appending to one array at once break it, as two filling
+## Mechanism's gear table did (racefix, 2026-10-20).
+static var _sphere: PackedVector3Array = _lattice_of_directions(128)
 const SPHERE_SLACK := 1.03
 ## And about a line, 7.5 degrees apart: 1 / cos(7.5 degrees) = 1.0086.
 const ROUND_STEPS := 24
 const ROUND_SLACK := 1.009
 ## A whole turn, in radians (TAU here is the overlap a build allows).
 const TAU_TURN := 2.0 * PI
+
+
+static func _lattice_of_directions(count: int) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var turn: float = PI * (3.0 - sqrt(5.0))
+	for n: int in count:
+		var y: float = 1.0 - 2.0 * (float(n) + 0.5) / float(count)
+		var r: float = sqrt(1.0 - y * y)
+		out.append(Vector3(cos(turn * n) * r, y, sin(turn * n) * r))
+	return out
 
 
 ## How far the overlap of piece [param pa] of [param a] and piece [param pb]
@@ -487,12 +521,6 @@ static func overlap_reach(a: Item, pa: int, b: Item, pb: int, point: Vector3,
 	var ways := PackedVector3Array()
 	var slack: float = SPHERE_SLACK
 	if line == Vector3.ZERO:
-		if _sphere.is_empty():
-			var turn: float = PI * (3.0 - sqrt(5.0))
-			for n: int in 128:
-				var y: float = 1.0 - 2.0 * (float(n) + 0.5) / 128.0
-				var r: float = sqrt(1.0 - y * y)
-				_sphere.append(Vector3(cos(turn * n) * r, y, sin(turn * n) * r))
 		ways = _sphere
 	else:
 		var across: Vector3 = line.cross(Vector3.UP if absf(line.y) < 0.9 else Vector3.RIGHT).normalized()

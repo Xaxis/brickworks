@@ -69,17 +69,27 @@ const CHAIN_SLACK := 1.0
 const Z := Vector3(0, 0, 1)
 const Y := Vector3(0, 1, 0)
 
-static var _table: Dictionary = {}
+## Read as the class loads, and never put again. It was read at first use,
+## and the first use can be on two threads at once: Grab reads a big model's
+## joints on a worker as it opens (GrabDrag "read the model's joints") while
+## a session's look_at_model asks for the turntables here. Both read the
+## file, and the second to put its table freed the first's while the other
+## thread was copying it: the copy held nothing, and its is_empty() read
+## address 0x34, signal 11 on the main thread at this function (Dubai, 750
+## parts; 35 of 80 runs of table_race_probe; racefix, 2026-10-20). A worker
+## reaches this only through code that has loaded the class already.
+static var _table: Dictionary = _read_table()
 
 
 ## The gear table: {"gears": part -> spec, "turntables", "driving_rings",
 ## "ring_carriers", "clutch_gears", "chains"...}. See assets/ldraw/gears.json.
 static func table() -> Dictionary:
-	if _table.is_empty():
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(TABLE))
-		if parsed is Dictionary:
-			_table = parsed
 	return _table
+
+
+static func _read_table() -> Dictionary:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(TABLE))
+	return parsed if parsed is Dictionary else {}
 
 
 ## One part's entry in the table, empty for a part that is not a gear.

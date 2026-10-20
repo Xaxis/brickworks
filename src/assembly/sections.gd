@@ -339,7 +339,6 @@ func _lap(what: String, since: int) -> int:
 func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionary:
 	await Minifig.index_paced(library)
 	var at: int = Time.get_ticks_usec()
-	Flex.kind_of_piece("")
 	var named: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:
 		named[brick.part_id] = true

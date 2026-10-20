@@ -1330,20 +1330,28 @@ static func kind_of(part_ids: Array) -> String:
 
 
 ## part -> the kind it is a piece of. No part is a piece of two kinds.
-static var _piece_kinds: Dictionary = {}
+## Filled as the class loads, not at first use: the first use can be on a
+## worker reading a big model's joints (GrabDrag, Balance's weigh) and here
+## at once, and two threads filling one Dictionary at once breaks it, as
+## Mechanism's gear table did (racefix, 2026-10-20).
+static var _piece_kinds: Dictionary = _pieces_of_kinds()
 
 
 ## Which kind a part is a segment, end or link of: "" for any other part.
 static func kind_of_piece(part_id: String) -> String:
-	if _piece_kinds.is_empty():
-		for kind: String in KINDS:
-			var spec: Dictionary = KINDS[kind]
-			for key: String in ["segment", "end", "middle", "link"]:
-				if spec.has(key):
-					_piece_kinds[str(spec[key])] = kind
-			for part: Variant in spec.get("ends", []):
-				_piece_kinds[str(part)] = kind
 	return str(_piece_kinds.get(part_id, ""))
+
+
+static func _pieces_of_kinds() -> Dictionary:
+	var out: Dictionary = {}
+	for kind: String in KINDS:
+		var spec: Dictionary = KINDS[kind]
+		for key: String in ["segment", "end", "middle", "link"]:
+			if spec.has(key):
+				out[str(spec[key])] = kind
+		for part: Variant in spec.get("ends", []):
+			out[str(part)] = kind
+	return out
 
 
 ## The flexible items in the world: every sub-model whose bricks are all
@@ -1424,7 +1432,6 @@ static func strung(library: PartLibrary, part_id: String) -> String:
 	var kit: String = _kit_of(part_id)
 	if info != null and not kit.is_empty() and info.name.begins_with("~"):
 		# The kind the flex tool lays, where it lays another piece of it.
-		kind_of_piece("")
 		for laid: String in _piece_kinds:
 			if _kit_of(laid) == kit:
 				return str(_piece_kinds[laid])
