@@ -53,6 +53,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import omr  # noqa: E402
+from ldraw.parser import read_text  # noqa: E402
 import style  # noqa: E402
 
 FILES = ROOT / "vendor" / "omr" / "files"
@@ -369,7 +370,7 @@ def build(most: int, out: Path, texts: Path, clusters_a_set: int) -> int:
     for at, path in enumerate(files):
         if at % 100 == 0:
             print(f"  {at}/{len(files)} models, {len(entries)} kept", flush=True)
-        text = path.read_text(errors="replace")
+        text = read_text(path)
         lowered = text.lower()
         if "non-commercial" in lowered:
             skipped["non-commercial"] += 1

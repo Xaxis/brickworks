@@ -43,6 +43,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import snippets  # noqa: E402
+from ldraw.parser import read_text  # noqa: E402
 import style  # noqa: E402
 from bench.judge import DIMENSIONS  # noqa: E402
 from bench.run import RESULTS  # noqa: E402
@@ -117,7 +118,7 @@ def _built(measured: dict, ldr: Path, parts: style.Parts) -> tuple[str, list[lis
     said.append(f"plain bricks and plates {pct('plain')}%")
     shaped: Counter = Counter()
     if ldr.exists():
-        model = style.read(ldr.read_text(errors="replace"))
+        model = style.read(read_text(ldr))
         for placed in model.placed:
             info = parts.get(placed.part, model.embedded)
             if not style.building(info) or info is None:

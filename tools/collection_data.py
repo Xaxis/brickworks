@@ -62,6 +62,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import rebrickable as rb  # noqa: E402
+from ldraw.parser import read_text  # noqa: E402
 
 GENERATED = ROOT / "assets" / "generated"
 OUT = GENERATED / "sets"
@@ -101,7 +102,7 @@ def _drawn_with(part: str) -> list[str]:
         path = folder / f"{part}.dat"
         if path.exists():
             out = []
-            for line in path.read_text(errors="replace").splitlines():
+            for line in read_text(path).splitlines():
                 words = line.split()
                 if len(words) >= 15 and words[0] == "1":
                     out.append(" ".join(words[14:]).lower().removesuffix(".dat"))

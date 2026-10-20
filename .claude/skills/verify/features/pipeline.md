@@ -103,6 +103,12 @@ tools/export.sh linux                 # one of them
   colour availability and element fields. Always follow it with
   `tools/refresh_catalogue.py`.
 
+- **Every LDraw file a tool reads goes through `ldraw.parser.read_text`**:
+  UTF-8 as the spec says, Latin-1 for a file that is not. Read as Latin-1,
+  54 names and 299 keywords said "ThÃ©oden" and "90Â°" (2026-10-20).
+  `refresh_catalogue.py` re-reads names and keywords both, so a header fix
+  needs no mesh build; `search_probe` fails on any name still misread.
+
 - **The shipped catalogue predates shafts and bores (2026-10-10).** The round
   joints the checker forgives (`geometry.md`, `round joints`) are records in
   each part's `.lbm`, kinds `shaft` and `bore`, whose gender byte is a radius in

@@ -27,6 +27,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from ldraw.parser import read_text
 from rebrickable import BIG_PIECE, piece_size
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,7 +42,7 @@ def read_ldr(path: Path) -> list[tuple[str, int]]:
     not parts.  Counted as parts they read as five unknown shapes and
     inflated a cruiser's 49 to 54.
     """
-    text = path.read_text(errors="replace").splitlines()
+    text = read_text(path).splitlines()
     files = {" ".join(line.split()[2:]).lower()
              for line in text if line.split()[:2] == ["0", "FILE"]}
     parts = []

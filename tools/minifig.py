@@ -57,7 +57,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from ldraw.geometry import flatten  # noqa: E402
 from ldraw.library import Library  # noqa: E402
-from ldraw.parser import SubfileRef  # noqa: E402
+from ldraw.parser import SubfileRef, read_text  # noqa: E402
 
 OMR = ROOT / "vendor" / "omr" / "files"
 LDRAW = ROOT / "vendor" / "ldraw"
@@ -236,7 +236,7 @@ def figures(parts: Parts) -> list[dict]:
     as loose ones."""
     found = []
     for path in sorted(OMR.glob("*")):
-        files = _submodels(path.read_text(errors="replace"))
+        files = _submodels(read_text(path))
         for name in files:
             flat: list[tuple[str, Mat, int]] = []
             _flatten(parts, files, name, IDENTITY, flat, 0)
@@ -683,7 +683,7 @@ TYPE1 = re.compile(r"^1\s+(\S+)\s+((?:\S+\s+){12})(.+?)\s*$")
 
 def _type1(path: Path) -> list[tuple[Mat, str]]:
     out = []
-    for line in path.read_text(encoding="latin-1").splitlines():
+    for line in read_text(path).splitlines():
         found = TYPE1.match(line.strip())
         if not found:
             continue
@@ -706,7 +706,7 @@ def library_assemblies(library: Library, minifig: dict[str, str]) -> list[tuple[
         if not root.is_dir():
             continue
         for path in sorted(root.glob("*.dat")):
-            text = path.read_text(encoding="latin-1")
+            text = read_text(path)
             if text.startswith("0 ~Moved"):
                 continue
             placed: list[tuple[str, Mat]] = []
@@ -953,7 +953,7 @@ def _own_lines(path: Path, help_lines: bool = False) -> list[tuple[str, str, Mat
     With help_lines, the ones its HELP lines write out instead — how the
     library says a part goes on another it does not include."""
     out = []
-    for line in path.read_text(encoding="latin-1").splitlines():
+    for line in read_text(path).splitlines():
         line = line.strip()
         if help_lines:
             found = re.match(r"^0\s+!HELP\s+(1\s.*)$", line)

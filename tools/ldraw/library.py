@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-from .parser import Command, normalise_filename, parse_text
+from .parser import Command, mended, normalise_filename, parse_text, read_text
 
 
 class Detail(Enum):
@@ -225,9 +225,7 @@ class Library:
         return parsed
 
     def _parse_file(self, name: str, path: Path) -> LDrawFile:
-        # LDraw files are Latin-1 in practice; a handful carry accented
-        # author names that are not valid UTF-8.
-        text = path.read_text(encoding="latin-1")
+        text = read_text(path)
         commands = [command for _, command in parse_text(text)]
 
         ldfile = LDrawFile(name=name, path=path, commands=commands)
@@ -274,7 +272,7 @@ def _read_header(ldfile: LDrawFile, text: str) -> None:
             # The header ends at the first drawing command.
             break
 
-        body = line[1:].strip()
+        body = mended(line[1:].strip())
         if first:
             ldfile.description = body
             first = False

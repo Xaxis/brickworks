@@ -40,6 +40,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from .parser import read_text
+
 # The two inheritance codes are not real colours; they are resolved
 # during flattening (see parser.py).  LDConfig does declare them, as
 # Main_Colour and Edge_Colour under "Internal Common Material", so they
@@ -152,7 +154,7 @@ class Palette:
 
     @classmethod
     def from_file(cls, path: str | Path) -> "Palette":
-        text = Path(path).read_text(encoding="latin-1")
+        text = read_text(path)
         return cls.from_text(text)
 
     @classmethod
