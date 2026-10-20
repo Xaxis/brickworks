@@ -4782,9 +4782,12 @@ causes, each enough:
   clear, was never tested at all. What was left out for the turn alone
   (`_turn_only`) is tested again when it slides.
 
-After: the carriage slides until it meets the bearing, clear of it by
-their exact shapes, and nothing that moved is into either bearing (the
-numbers are `grab_probe`'s, below).
+After: "slid 5.1 studs along (asked 6 studs); it stopped where the Technic
+Brick 1 x 2 with Hole (#150) meets the Technic Brick 1 x 2 with Hole
+(#151)", the carriage at x = 19.6 studs, 1.99 LDU into the bearing by their
+exact shapes: within a cover's cell (2 LDU), which is where the room test
+finds two parts meet (the shapes only forgive what the covers met; G13's
+left for later). Nothing else that moved is into either bearing.
 
 ### A part stopped against another, moved on into it
 
@@ -4842,3 +4845,18 @@ change that keeps the loop closed: the free columns' Jacobian's least-norm
 answer for the driver's turn, weighted as `FRICTION_WEIGHT` weights it), and
 both sweeps run again on it. `grab_probe -- --only=bigstep` prints where it
 stands as a GAP.
+
+### Checked
+
+On the final code: `grab_probe` headless whole, 172 passed (the base's 164
+and this unit's 8), and the same 35 that need a pointer failing, as on the
+base; in a window `--only=bearing` (2), `--only=path` (6, and the exact
+shape's two GAPs), `--only=bigstep` (the drift's two GAPs); and headless
+`--only=steering` (36), `--only=clipped` (4), `--only=grooved` (4),
+`--only=worms` (34), `--only=loops` (15). `motions_probe` (70),
+`telescope_probe` (32, its three gaps), `simulate_probe` (41),
+`placing_probe` and `mcp_walk3_probe` (20) pass. The walk's "Extend the
+telescope" now stops at 574° of the 612°, where the carriage meets its
+bearing: it slid on into it before, "clear all the way", and that check now
+asks that it does not stop on the dome. The steering sweep (181 sets) is
+not run here: the bearings' test touches every loop's room test.
