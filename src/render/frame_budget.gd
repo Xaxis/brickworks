@@ -63,7 +63,8 @@ const WARM_FRAMES := 2
 ## frames read as the page's pace, as they did timed by the page.
 const IN_FLIGHT := 2
 ## Far over the budget a few frames say so as surely as six: SOON frames
-## timed by their fences, each over FAR_MS, are judged at once. A 3x phone
+## timed by their fences, each over FAR_MS, are judged at once, by the
+## second fastest of them as six are. A 3x phone
 ## drawn in software was judged by its look's twelfth frame, 15 to 19 s in
 ## at 1.3 s each (docs/SLOW_DEVICES.md). FAR_MS is many page frames, so no
 ## page's pace reads as it.
@@ -229,9 +230,12 @@ static func judge(samples: Array[float]) -> float:
 func _frame_begins() -> void:
 	_began_us = Time.get_ticks_usec()
 	_own_us = 0
-	# The look's frames the card has done, in order, each timed by its fence.
+	# The look's frames the card has done, in order, timed by their fences.
+	var done: Array = []
 	while not _queued.is_empty() and bool(_passed.call(int(_queued[0][0]))):
-		_fenced_frame(_queued.pop_front())
+		done.append(_queued.pop_front())
+	if not done.is_empty():
+		_fenced(done)
 	if _looking > 0:
 		# Drawing on purpose: a write to the renderer, of what it already
 		# has, is a frame drawn (IdleDraw). On the web only while the card is
@@ -266,27 +270,37 @@ func look(frames: int = LOOK_FRAMES) -> void:
 	timed.clear()
 
 
-## A frame of a look the card has done, its fence seen passed as this
-## process frame began: timed from when it began, or from when the card had
-## done the frame before it if that was later, less its own work. Held
-## apart (GpuFence holds the drawing while the parts bin's pictures are
-## read back) or not, that is its own drawing. A frame of a look before a
-## cut is no part of the look after it.
-func _fenced_frame(frame: Array) -> void:
-	var from_us: int = maxi(int(frame[1]), _done_us)
-	var ms: float = maxf(0.0, (_began_us - from_us - int(frame[2])) / 1000.0)
+## Frames of a look the card has done, [done], their fences seen passed as
+## this process frame began: timed from when the first began, or from when
+## the card had done the frame before it if that was later, less their own
+## work, shared between them. Seen one at a time the second of two was
+## timed at nothing: a 3x phone in software turned, its frames queued at
+## the page's pace, was judged at 82 ms a frame and drew each in 200
+## (2026-10-20). Held apart (GpuFence holds the drawing while the parts
+## bin's pictures are read back) or not, that is their own drawing. A frame
+## of a look before a cut is no part of the look after it.
+func _fenced(done: Array) -> void:
+	var spent_us: int = _began_us - maxi(int(done[0][1]), _done_us)
+	for frame: Array in done:
+		spent_us -= int(frame[2])
+	var ms: float = maxf(0.0, spent_us / 1000.0 / done.size())
 	_done_us = _began_us
-	if int(frame[3]) != looks or FramePace.unwatched:
+	if FramePace.unwatched:
 		return
-	fenced = snappedf(ms, 0.1)
-	_count(ms)
-	if pinned or timed.size() < SOON:
-		return
-	var least: float = INF
-	for each: float in timed.slice(-SOON):
-		least = minf(least, each)
-	if least > FAR_MS:
-		_decide(least)
+	for frame: Array in done:
+		if int(frame[3]) != looks:
+			continue
+		fenced = snappedf(ms, 0.1)
+		_count(ms)
+		# Far over the budget: judged at once, by the second fastest of
+		# the last few, as six are.
+		if pinned or timed.size() < SOON or int(frame[3]) != looks:
+			continue
+		var last: Array[float] = []
+		last.assign(timed.slice(-SOON))
+		last.sort()
+		if last[0] > FAR_MS:
+			_decide(last[JUDGED_BY])
 
 
 func _drawing() -> void:
@@ -306,7 +320,7 @@ func _drawn() -> void:
 		if _look_drawn >= _look_most:
 			_looking = 0
 		if fences:
-			# Timed when the card has drawn it (_fenced_frame).
+			# Timed when the card has drawn it (_fenced).
 			_queued.append([int(_put.call()), _began_us, _own_us, looks])
 			return
 	# A frame out of view is paced by the connector's clock, not drawn for

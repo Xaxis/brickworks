@@ -358,21 +358,24 @@ picture the assistant is shown.
   the last six is over 50 ms, it cuts the next rung (dense, msaa, scale,
   shadow, glow; ssao first on Forward+), several at once when frames are
   4x or 16x over, and looks again while a rung is left (a look after the
-  last drew 12 frames standing still in `outline_check`, m93). On the web a look also ends with a fence (`GpuFence`)
-  and is judged again by when the drawing was done: the page hands frames
-  over at 17 ms while SwiftShader draws each in 0.3 to 2 s. A look whose
-  frames were held apart (the parts bin's read-backs, `GpuFence`) is
-  timed to its fence from its last frame after a hold, when the card had
-  finished everything; with fewer than eight frames after it, the look is
-  taken again once the drawing has gone unheld a second
-  (`GpuFence.unheld_ms`), up to three times in a row. So the empty editor
-  is cut on its own while it loads, not at the first turn of the view. It never raises
-  the look again. A probe leaves it off unless it calls `watch()`. The page
+  last drew 12 frames standing still in `outline_check`, m93). On the web each frame of a look has a fence
+  after it (`GpuFence`) and is timed by when the card passed it, from when
+  the card had done the frame before: the page hands frames over at 17 ms
+  while SwiftShader draws each in 0.3 to 2 s. The look draws its next frame
+  only while fewer than two of its frames are still to be drawn
+  (`IN_FLIGHT`), skips no warm frames, and three in a row each over 200 ms
+  (`SOON`, `FAR_MS`) are judged at once: a slow device is cut after three
+  frames, not twelve, and no frame at full cost is left queued ahead of
+  the cut. Holds (the parts bin's read-backs) cannot fool a frame timed
+  by its own fence. So the empty editor is cut on its own while it loads,
+  not at the first turn of the view. It never raises the look again. A probe leaves it off unless it calls `watch()`. The page
   reads `brickworksState.look`, and a check pins cuts with
   `window.brickworksLookAsk = {cuts: [...] | null, look: N}`.
   `tools/probe.sh look_probe` checks the judgment on a budget of its own,
-  and on the GPU that nothing is cut, and that a look held apart (the
-  drawing stopped between its frames) is taken again and cuts nothing. `-- --shots=DIR` writes three views
+  on the GPU that nothing is cut, and a look timed by fences of a card of
+  its own (`FrameBudget.fence_by`): a quick one, the drawing stopped
+  inside the look, cuts nothing; a slow one (400 ms) is judged after three
+  frames, never more than two ahead of it. `-- --shots=DIR` writes three views
   to `cmp` against a checkout before: identical to rel-m87 on Forward+, and
   on Compatibility through zink (the env is in the probe's header; under
   Xvfb without it, Compatibility draws on llvmpipe, in software).
