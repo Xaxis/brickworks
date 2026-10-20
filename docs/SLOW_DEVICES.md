@@ -348,6 +348,26 @@ Two things this build got wrong first, each found in these runs:
   862 to 878 and three, and every rung was cut by 30.1 to 31.5 s instead
   of 33.1 (main 31.5 to 34.0 in four runs).
 
+Checked on this branch's final export, load 2.7 to 12 on 24 cores:
+`look_cost.mjs --mode=acts --gate` on every page, 6 of 6 (every rung cut
+by 11.0 to 20.5 s; the phone's CPU not slowed there). `idle_check.mjs`
+settled 12 s after the view showed, then drew 0 of 901 engine frames in
+15 s standing still; a wheel notch, the - key and the ghost of 3001 in
+hand were each drawn and quiet again. `outline_check.mjs` over Orthanc: 0
+frames of the window in 5 s with the wizard outlined, none off screen, at
+1x and 2x (292 and 1,220 yellow pixels round him). The frames gate on
+75969-1 passed: the orbit's own work 17.5 ms at the 95th percentile
+(median 12.5), select all 34.2 ms (922 selected), Next at most 10 ms.
+`look_probe` on the RX 6700 XT, on Forward+ and on Compatibility through
+zink: view_0, view_1 and view_2 byte for byte as main's; the first look
+timed 6.1 to 6.7 ms and cut nothing. Its fourth check, a look held apart
+taken again, went with the look held apart; it now gives the app's own
+budget fences of a card of its own (`FrameBudget.fence_by`): a quick card,
+the drawing stopped for three frames inside the look, judged quick (1.8
+and 6.6 ms) and cut nothing; a card at 400 ms a frame was judged after
+three frames, 1,214 and 1,215 ms after the look began, never more than two
+frames behind, two rungs cut.
+
 ## Standing still: Render's set made ready
 
 What drew a frame of the window as each hold ended, standing still over
