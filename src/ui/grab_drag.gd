@@ -1081,9 +1081,13 @@ func _swept_words(held: Grab) -> String:
 	var to := Vector3.ZERO
 	var count: int = 0
 	for key: Variant in held.placed:
-		if held.rest.has(key):
-			from += (held.rest[key] as Transform3D).origin
-			to += (held.placed[key] as Transform3D).origin
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null and library != null else null
+		if held.rest.has(key) and mesh != null:
+			# The part's middle: a door's own origin is on its hinge.
+			var middle: Vector3 = mesh.bounds.get_center()
+			from += (held.rest[key] as Transform3D) * middle
+			to += (held.placed[key] as Transform3D) * middle
 			count += 1
 	if count == 0:
 		return ""

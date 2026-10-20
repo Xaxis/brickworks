@@ -447,8 +447,9 @@ whole cycle.
   one stands beside a rack and not in them, with how far to move it.
 - A model Claude saved under a name of its own no longer counts as unsaved:
   opening another model straight after asked to save it first.
-- Claude reads a joint's height in plates, as everywhere else, where it
-  was given in studs.
+- When Claude turns a part, it is told which way the part went (a door
+  into the model or out from it), and a joint's height comes in plates, as
+  everywhere else, where it was given in studs.
 - The app no longer crashes when Claude looks at your model while a big
   one is still opening. A model of 600 parts or more has its joints read
   in the background as it opens, and Claude's look at it read the same
