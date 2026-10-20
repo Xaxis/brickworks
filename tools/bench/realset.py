@@ -1116,6 +1116,7 @@ def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
         out.append(f"| {key} | {_cell(_median(ours), share)} | {_cell(_median(theirs), share)} | "
                    + (f"{'+' if gap >= 0 else ''}{_cell(gap, share)}" if gap is not None else "")
                    + " |")
+    out += ["", gave_up_said(found)]
     held = [r["number"] for r in found if r.get("design", {}).get("model")
             and not r.get("held_out_said")]
     if held:
@@ -1123,6 +1124,21 @@ def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
                 "session never searched the real-set index, or its checkout cannot hold a set "
                 "out (src/ai/real_snippets.gd)."]
     return "\n".join(out) + "\n"
+
+
+def gave_up_said(found: list[dict]) -> str:
+    """How many pictures the arm's designs were shown as letters because none came in
+    time (run.py's pictures_given_up): a design shown letters judges worse, so a lever
+    compared on an arm that had them is compared with that against it."""
+    counted = [r for r in found if "pictures_given_up" in r.get("design", {})]
+    had = [(r["number"], int(r["design"]["pictures_given_up"])) for r in counted
+           if r["design"]["pictures_given_up"]]
+    said = (f"Pictures given up for the letters (no drawer in time): "
+            f"{sum(n for _, n in had)} over {len(counted)} designs counted")
+    said += (", in " + ", ".join(f"{number} ({n})" for number, n in had) if had else ", none")
+    if len(counted) < len(found):
+        said += f"; {len(found) - len(counted)} recorded before the count was kept"
+    return said + "."
 
 
 # -- two arms -------------------------------------------------------------------

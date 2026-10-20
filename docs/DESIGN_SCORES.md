@@ -345,7 +345,7 @@ the same four ran beside another agent's realset run on a checkout from
 before this, whose windowed designs held the lease 86 minutes of the run's 54,
 both slots most of the time: the four designs' 31 drawers held it 5.6 minutes,
 other agents' probes waited up to 9 minutes (behind those designs and this
-test's own picture check, a window that held a slot 8 minutes), 24 of 89 pictures
+test's own picture check, a window that held a slot 8 minutes), 29 of 104 pictures
 waited out the 2 minutes a picture may wait and were the letters, and the
 sessions ran 19 to 24 minutes against 6 to 15, the fourth (9470-1) out to its
 45-minute timeout against 14.5. So a third and fourth worker

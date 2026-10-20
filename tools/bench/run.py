@@ -231,6 +231,20 @@ def _stop_leftovers(port: int) -> list[int]:
     return [pid for pid, _args in ended]
 
 
+# What LeasedShots says when a picture never came: the session was shown the
+# model as letters instead, and a design shown letters judges worse, so a
+# lever's numbers carry how many each design had (realset's report).
+GAVE_UP = ("leased shots: no picture within", "drawers ended without the picture")
+
+
+def pictures_given_up(log: Path) -> int:
+    """Pictures a headless design's app gave up on, read from its Godot log."""
+    if not log.exists():
+        return 0
+    return sum(1 for line in log.read_text(errors="replace").splitlines()
+               if any(said in line for said in GAVE_UP))
+
+
 def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | None,
            extra: tuple[str, ...] = (), app: Path = ROOT) -> dict:
     """The real loop on one brief; `extra` goes to the app after the bench's own
@@ -248,6 +262,9 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
             if late:
                 result["moved"] = result.get("moved", []) + late
                 _write_json(done, result)
+        if "pictures_given_up" not in result and (run_dir / "godot_design.log").exists():
+            result["pictures_given_up"] = pictures_given_up(run_dir / "godot_design.log")
+            _write_json(done, result)
         return result
     ldr = run_dir / "design.ldr"
     if canned is not None:
@@ -301,6 +318,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         "commit": sha, "port": port, "model": ldr.exists() and ldr.stat().st_size > 0,
         **({} if app == ROOT else {"app": str(app)}),
         "finished": finished[-1][:300] if finished else "",
+        "pictures_given_up": pictures_given_up(run_dir / "godot_design.log"),
         "moved": _tidy_user_dir(since, text, port, run_dir / "saves"),
         "stopped": _stop_leftovers(port),
     }
