@@ -841,6 +841,8 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	if world.brick_count() - scenery.size() <= 0:
 		_status.text = "There is nothing on the baseplate to render yet."
 		return PackedStringArray()
+	if kind == "animation":
+		_list_motions()
 	if kind == "animation" and _order_of(chosen_motion()).is_empty():
 		_status.text = "Keep a motion first: Build, Motions… makes them."
 		return PackedStringArray()

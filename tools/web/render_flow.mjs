@@ -1,5 +1,6 @@
-// File, Render… in a real browser: Quick and Good pictures and a short
-// turntable, each downloaded, with the page answering throughout.
+// File, Render… in a real browser: Quick and Good pictures, a short
+// turntable and an animation of a motion, each downloaded, with the page
+// answering throughout.
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/render_flow.mjs --url=https://<preview>.vercel.app/app --bypass=$VERCEL_BYPASS --out=shots/render_web
@@ -14,7 +15,11 @@
 // state is read from window.brickworksRender.
 //
 // Presses the toolbar's Render, waits for the draft, then: Quick at 1080p,
-// Good at 720p, a 24-frame turntable at 720p, and a Best it cancels. Fails
+// Good at 720p, a 24-frame turntable at 720p, and a Best it cancels. Then
+// opens a small crane from a file whose main model carries a motion (its
+// turret turned a quarter round in 1 s, docs/MOTIONS.md) and renders it
+// from Render's Animation, framed on what moves: a WebP of the motion's 25
+// frames named after the model and the motion. Fails
 // if a control never appears, a render downloads nothing, a PNG is not the
 // size chosen, the WebP is not an animation of 24 frames that the browser
 // decodes, Cancel leaves a render running, the page stops answering for
@@ -40,9 +45,43 @@ const first = args.bypass
   : url;
 mkdirSync(out, { recursive: true });
 
+// The crane flex_pose_flow builds on, with a motion of its own in the main
+// model's head, where the app writes them.
+const crane = path.resolve(out, "crane_motion.mpd");
+writeFileSync(crane, [
+  "0 FILE crane_motion.ldr",
+  "0 Crane motion",
+  "0 Name: crane_motion.ldr",
+  '0 !BRICKWORKS MOTION "Turn the turret" AFTER "" SECONDS 1',
+  '0 !BRICKWORKS MOTION_TRACK "Turn the turret" 1 TURN AT 0 JOINT PART 3680 7 0 -8 -80',
+  '0 !BRICKWORKS MOTION_KEY "Turn the turret" 1 0 0 EASE',
+  '0 !BRICKWORKS MOTION_KEY "Turn the turret" 1 1 90 EASE',
+  "1 7 -60 -24 60 1 0 0 0 1 0 0 0 1 3700.dat",
+  "1 7 20 -24 60 1 0 0 0 1 0 0 0 1 3700.dat",
+  "1 7 0 -8 -80 1 0 0 0 1 0 0 0 1 3680.dat",
+  "1 16 0 -8 -80 1 0 0 0 1 0 0 0 1 turret.ldr",
+  "0",
+  "0 FILE turret.ldr",
+  "0 Turret",
+  "0 Name: turret.ldr",
+  "1 7 0 0 0 1 0 0 0 1 0 0 0 1 3679.dat",
+  "1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3937.dat",
+  "1 16 0 -24 0 1 0 0 0 1 0 0 0 1 arm.ldr",
+  "0",
+  "0 FILE arm.ldr",
+  "0 Arm",
+  "0 Name: arm.ldr",
+  "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3938.dat",
+  "1 4 0 -8 -50 0 0 1 0 1 0 -1 0 0 3795.dat",
+  "0",
+  "",
+].join("\n"));
+
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
 const page = await context.newPage();
+page.choosers = [];
+page.on("filechooser", (chooser) => page.choosers.push(chooser));
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 page.on("console", (m) => {
@@ -96,7 +135,7 @@ async function renderAndKeep(button, label, minutes) {
   const download = page.waitForEvent("download", { timeout: minutes * 60000 }).catch(() => null);
   const started = Date.now();
   await press(button);
-  const kind = button === "render_turntable" ? "turntable" : "picture";
+  const kind = { render_turntable: "turntable", render_animation: "animation" }[button] || "picture";
   let seen = null;
   let began = false;
   for (let n = 0; n < minutes * 120; n++) {
@@ -122,6 +161,28 @@ async function renderAndKeep(button, label, minutes) {
     + ` the render's longest frame ${seen && seen.worst_frame_ms} ms, ${seen && seen.worst_step})`);
   facts[label] = { seconds, stall, status: seen && seen.status, file };
   return { file, seen, stall, seconds };
+}
+
+// Open, From a file, and the file given to the page's chooser.
+async function openFile(file) {
+  const at = await where("open", 120);
+  for (let n = 0; n < 3; n++) {
+    page.choosers.length = 0;
+    await page.mouse.click(at.x, at.y);
+    await page.waitForTimeout(4000 + 4000 * n);
+    await page.mouse.click(at.x + 40, at.y + 22);
+    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
+      await page.waitForTimeout(500);
+    }
+    const picker = page.choosers.shift();
+    if (picker) {
+      await picker.setFiles(file);
+      return;
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(3000);
+  }
+  throw new Error("no file picker came up");
 }
 
 function pngSize(file) {
@@ -242,6 +303,50 @@ try {
   check(`Cancel stops Best (was ${running.working} at ${Math.round((running.fraction || 0) * 100)}%, then "${stopped.status}")`,
     running.working === "picture" && stopped.working === "" && /Cancel/.test(stopped.status || "")
     && !downloadedAnyway);
+
+  // Animation: the crane's own motion, framed on what moves.
+  await press("render_close");
+  await openFile(crane);
+  let opened = null;
+  for (let n = 0; n < 480 && !opened; n++) {
+    const now = await page.evaluate(() => window.brickworksState || {});
+    if (now.bricks === 7 && !/arriving/.test(now.said || "")) opened = now;
+    else await page.waitForTimeout(500);
+  }
+  check(`the crane with a motion of its own opened (${opened ? opened.bricks : "no"} parts)`, Boolean(opened));
+  await page.waitForTimeout(3000);
+  await press("tool_render");
+  await where("render_animation", 30);
+  // Animation sits under Turntable in the choices: scrolled to, as a person does.
+  const light = await where("render_light", 10);
+  if (light) {
+    await page.mouse.move(light.x, light.y);
+    for (let n = 0; n < 8; n++) {
+      await page.mouse.wheel(0, 240);
+      await page.waitForTimeout(200);
+    }
+    await page.waitForTimeout(1100);
+  }
+  await press("render_quick");
+  await press("render_size_720p");
+  await press("render_camera_moves");
+  const animation = await renderAndKeep("render_animation", "5_animation", 30);
+  const animationFrames = animation.file ? webpFrames(animation.file) : -1;
+  const animationName = animation.file ? path.basename(animation.file).replace(/^5_animation_/, "") : "";
+  check(`Animation downloads "${animationName}", an animated WebP of the motion's 25 frames (${animationFrames})`,
+    animationFrames === 25 && / Turn the turret\.webp$/.test(animationName)
+    && animation.seen && animation.seen.kind === "animation");
+  if (animation.file) {
+    const data = readFileSync(animation.file).toString("base64");
+    const decoded = await page.evaluate(async (b64) => {
+      const image = new Image();
+      image.src = `data:image/webp;base64,${b64}`;
+      try { await image.decode(); } catch { return null; }
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    }, data);
+    check(`and the browser decodes it (${decoded ? `${decoded.width}x${decoded.height}` : "no"})`,
+      decoded && decoded.width === 1280 && decoded.height === 720);
+  }
 
   const worst = await worstStall();
   // Measured against the app itself on the same machine: in a browser

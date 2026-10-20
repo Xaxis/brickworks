@@ -40,6 +40,18 @@ whole cycle.
   chosen. Claude's animate_model keeps its keys as the motion
   "Animation", to play here.
 
+- File, Render… has Animation beside Turntable: choose one of the
+  model's motions, or All, in order, and Render animation plays it and
+  keeps every frame at the quality, size, light and lens chosen for a
+  picture. The camera is as the picture is (As I see it), or fitted to
+  what the moving parts sweep through the whole motion (Framed on what
+  moves), so a crane's boom fills the frame rather than sitting small in
+  the whole model's box. The files are named after the model and the
+  motion, "Crane Lift the boom.webp" and ".mp4", numbered when one of that
+  name is already there; in a browser the WebP downloads. Progress and
+  Cancel as for a turntable. The Motions panel's Render animation and
+  Claude's render_motion draw it the same way.
+
 - Delete your account, from your account page on brickworks.diy:
   Settings, Delete this account, with your address typed to confirm. It
   goes with everything of yours on the server: your shared models and

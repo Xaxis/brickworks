@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1324,7 +1324,18 @@ picture the assistant is shown.
   three Poly Haven HDRIs (`assets/hdri/`, CC0, docs/ATTRIBUTION.md), turned
   round by "Light from"; the contact shadow; the view looked at or six
   presets; a full-frame focal length; f-stop and focus (Best); Best's frames;
-  a turntable's 24-72 frames. Done, a picture downloads (browser) or is
+  a turntable's 24-72 frames; Animation, one of the model's motions or
+  All, in order (`Motions.in_order`), its camera As I see it (as the
+  picture is) or Framed on what moves (`RenderSettings.on_what_moves`: the
+  camera fitted to the corners of every moving part in every frame,
+  `MotionRender.swept`, `StudioRender._fit_points`, the set still laid
+  under the model and the sweep). Animation is `MotionRender`, the one path
+  the Motions panel's Render animation (`PosePanel.render_poses`) and
+  render_motion take: the frames played through Grab (`frames_of`; a
+  sequence kept motion by motion and taken back with
+  `Builder.take_back_to`, redo kept) and the files named after the model
+  and the motion, numbered when taken (`RenderOutput.begin_animation`,
+  "main Open the doors 2.webp"). Done, a picture downloads (browser) or is
   written to Downloads (desktop, "Show in folder"); a turntable is an
   animated WebP (`src/render/animated_webp.gd`, stills from
   `save_webp_to_buffer` put in the animated container by hand), and on the
@@ -1608,6 +1619,20 @@ MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --
 # turntable downloaded and decoded, Best cancelled, and the page never waiting
 # more than --stall seconds
 node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=shots/render_web
+# (also: a crane opened from a file with a motion in its head, rendered from
+# Animation framed on what moves: "<model> Turn the turret.webp", 25 frames,
+# decoded at 1280x720; tools/release/preview_checks.sh runs it as `render`)
+# File, Render's Animation pressed as a person presses it
+# (src/dev/motions_render_probe.gd): 1484-1's doors as I see it and framed
+# on what moves (every frame, frames that differ where the doors move, the
+# sweep filling more of the frame framed on it, the second file numbered),
+# All, in order (both motions, the gate closing last, redo kept), Cancel part
+# way (nothing kept); 4096-1's boom framed on what moves filling the frame
+# against the whole model's box; the same camera, the same places and the
+# same pixels within the renderer's own as the panel's Render animation and
+# render_motion. Pictures of the dialog at each window size.
+tools/probe.sh motions_render_probe bench/results/motions4-2026-10-20
+PROBE_SIZE=1280x720 tools/probe.sh motions_render_probe bench/results/motions4-2026-10-20 pictures
 # Build, Motions…, a new motion on a crane: the turret's and the arm's
 # sliders (Grab's joints), a click on the track a key, stopped short where
 # the arm meets the turret and said; keys at 0, 1 and 2 s whose frames, read

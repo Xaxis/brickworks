@@ -279,3 +279,47 @@ Left for later units:
 - A joint carried by another is moved alone while its slider is dragged
   (from where the model stands); its key, and the frames, carry it.
 - Recording keeps one joint a drag; a chain drag and a ball are not recorded.
+
+## What unit 4 built (motions4, 2026-10-20)
+
+**File, Render… has Animation** beside Turntable, in the dialog's own look:
+Render animation in the row of Render picture and Render turntable, and
+under Turntable's frames an Animation heading with the motion to draw (the
+model's motions as listed, then All, in order, `Motions.in_order`, when
+there are two or more; "No motions yet: Build, Motions… makes them" and the
+button off when there are none), the camera (As I see it, Framed on what
+moves) and a line of what it comes to. Quality, size, background, light,
+lens and depth of field are the picture's; the frames go at the turntable's
+24 a second. Nothing else in the dialog moved.
+
+- **One path** (`MotionRender`, `src/render/motion_render.gd`): the frames
+  (`frames_of`: each motion played through Grab, a sequence each from where
+  the last ended, kept while the next is played and taken back after with
+  `Builder.take_back_to`, which puts the person's redo back as it was), and
+  drawing them (`draw`, `StudioRender.animate`). The dialog's Animation, the
+  Motions panel's Render animation (`PosePanel.render_poses`) and
+  render_motion all go through it, and name their files the same way.
+- **As I see it** is the camera the picture has (the dialog's Camera: the
+  view you are looking at, unless another is chosen). **Framed on what
+  moves** looks from the same side and fits the frame to the corners of
+  every moving part in every frame (`MotionRender.swept`,
+  `StudioRender._fit_points`, `RenderSettings.on_what_moves`), not to a
+  box: a box's corners stand far off a boom rising on a diagonal, and that
+  is what left unit 1's crane small. The sweep, the floor and the contact
+  shadow are still laid under the whole model and what it sweeps, and the
+  clip planes take in all of it. render_motion frames on what moves from
+  three-quarters, as it said it did; the panel's Render animation draws as
+  I see it.
+- **Files** `<model> <motion>.webp` and `.mp4` and a folder of its frames
+  (`RenderOutput.begin_animation`), "main Open the doors.webp", then "main
+  Open the doors 2.webp" when that is taken; All, in order is "<model> all
+  in order". In a browser the WebP downloads (the browser numbers its own).
+  Stills and turntables keep their names (`model_render.png`,
+  `model_turntable.webp`), written over as before.
+- Progress on the dialog's bar, frame by frame; Cancel and Escape stop it
+  and keep nothing; the finished frames loop in the dialog as a
+  turntable's do.
+
+Proof: `src/dev/motions_render_probe.gd` (`tools/probe.sh
+motions_render_probe`, and `PROBE_SIZE=1280x720 … OUT_DIR pictures`), the
+dialog pressed as a person presses it.

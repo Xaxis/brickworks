@@ -120,6 +120,11 @@ declare -A CMD=(
   [frames]="tools/web/cad_frames.mjs --url=$P/app $B --gate --arrive=300 --only=orbit,select_all,step --out=$S/${TAG}_frames_web $R/vendor/omr/files/75969-1.mpd"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
+  # File, Render…: Quick and Good pictures, a 24-frame turntable, Best
+  # cancelled, and a crane's own motion from Animation framed on what moves
+  # (docs/MOTIONS.md), each downloaded and decoded; the page's longest wait
+  # held to twice the app's own: alone, below.
+  [render]="tools/web/render_flow.mjs --url=$P/app $B --out=$S/${TAG}_render_web"
   # Build it from a shared link on a slowed phone: each page turn timed, and
   # the first step's arrival; publishes from a throwaway account, deleted after.
   # A shared link built on a throttled phone: every step and turn timed and
@@ -148,7 +153,7 @@ run() {
 # discovery works out the week's pick from every test model built this week:
 # paired with designers, whose castle was built three times, it took the
 # pick and the small builds shelf (2026-10-19).
-SOLO=" idle arrival progress cursor render_open grab share_steps frames play discovery "
+SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED
