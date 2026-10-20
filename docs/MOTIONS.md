@@ -361,3 +361,102 @@ Left for later:
   the next.
 - render_motion has no camera choice: it frames on what moves, from
   three-quarters.
+## What unit 3 built (motions3, 2026-10-20)
+
+Links, the gallery and a session, for a model that carries motions.
+
+- **The link's buttons** (`ShareView`, `src/ui/share_view.gd`; main.gd's
+  `_play_motion`). Once the viewer has read the model's joints (as Play
+  does), a model with motions has a button for each in the play pill,
+  under "Play its motions", in Reset's face, wrapping as the pill's words
+  do, a fingertip tall on a phone: "Press one to play it, and again to put
+  it back. Or drag a part that moves." (a touch screen: "Tap one…").
+  Pressed, it plays through Grab as the Motions panel plays it
+  (`MotionPlayer.play`, kept: one history step), its frames drawn over the
+  model 12 a second (`BrickWorld.set_drawn`), the first at once, and the
+  button stays lit (the pill's yellow) while the model stands where it
+  ends: "“Open the gates” played. Press it again to put it back." Pressed
+  again it plays backwards: "“Open the gates” put back." A joint that
+  stops is said in a visitor's words, each part by its name
+  ("stopped short: the Fence Gate 1 x 4 x 2 stops at 62°…", `_visitor_words`).
+  Reset undoes every play's step, a drag's and a motion's alike, and puts
+  every button out; Build it does the same first. Nothing is kept: the
+  store is read-only, as for a drag. A drag still moves a part. A model
+  without motions keeps Play as it was. What the last press played is told
+  to the page (`brickworksShare.motion`: its joints from and to, frames,
+  the press's own ms); `brickworksShare.view.play` has `motions` and
+  `motions_out`; the buttons are `view_motion_1`… in `brickworksControls`.
+- **The card and the page** (`api/_directory.js` `motionsIn`, `motionsOf`,
+  `movesWords`; `api/share.js` `keepMoves`, the page's facts;
+  `web/cards.js` `motionWords`). The server reads the names from the very
+  text published, as the app reads them (a motion that moves something,
+  each name once whatever its case, at most 12 of 60 characters), so any
+  app that writes the lines gets the card. Kept with the model's row
+  (`supabase/motions.sql`: `shared_models.motions`, `motion_names_ok`,
+  `directory_card` with `motions`), in the same request as the words
+  Playable found. The card says "Moves: open the dome, extend the
+  telescope" (each begun in lower case when it begins with a plain word,
+  three and "and N more"), the page all of them in its facts; a model
+  without motions says Playable's words, on its page too now. Until
+  motions.sql is applied the request with the names fails, the words are
+  kept alone, the publish answers `motions: null`, and the card says the
+  words: nothing else changes.
+- **A session** (`GalleryTool`, `AppTools`). A gallery list's line says
+  `motions: "Open the gates", "Open the mailbox"`; `gallery open=` reads
+  them from the file: `Its motions (2): "Open the gates" (2 s, 2 joints),
+  "Open the mailbox" (1 s, 1 joint).`, and how to play one (`open_model
+  link=`, then `play_motion name=`). `open_model` says the same of
+  whatever it opened, so a session that opens a model knows its motions'
+  names without asking `list_motions`.
+
+A first press can come before the parts' exact shapes have arrived (the
+web build fetches each as a check first asks for it). Judged by the parts'
+covers, "Open the gates" stopped one gate at 6° of 90°, where it met the
+mailbox's box, on the local relay; with the shapes it opens clear. So once
+the motions are offered every part's shape is asked for (eight a frame),
+and a press waits, saying "Getting “Open the gates” ready…", until they are
+here, or ten seconds, and until the grab has come to rest: a press during
+a settle had done nothing at all.
+
+Proof: `tools/probe.sh share_play_probe` (66 checks, its section 8 on
+1484-1 with `tests/fixtures/motions/1484-1.motions` written into it): the
+two buttons; Open the gates pressed by the mouse, its frames drawn (2 parts
+moving, 1.9 s), both gates at 90.0°, the mailbox still, the button lit;
+Open the mailbox at 90.0°; the gates pressed again back where they were
+built (0 off); Reset, every part as built; nothing published or written; a
+press 50 to 93 ms of one frame on this machine (load 30 to 42).
+`tools/web/play_flow.mjs --publish` through the local relay
+(`relay_server.mjs --static=build/web`, the live database, a throwaway
+account deleted after): at 1280 by the mouse and at 390 by a finger with
+the CPU slowed four times, each button inside the page and clear of the
+view cube (34 px tall on the phone), each motion played (the gates 0° to
+-90°, the mailbox 0° to 90°, `brickworksShare.motion`), lit, the gates taken back to 0°, Reset,
+the link's text unchanged; the press's own work 180 ms (laptop) and 713 ms
+(phone, slowed) for the gates' 25 frames, 44 and 171 ms for the mailbox's
+13; the first press waited 12.4 s and 10.1 s for the shapes at a load of
+40. The house's page says "Moves: doors" until motions.sql is applied (its
+publish answered `motions: null`), at both sizes, light and dark; the
+gallery's page from the checkout says "Moves: open the dome, extend the
+telescope, open the back wall panels and 1 more" of a card with four.
+`gallery_tool_probe -- --played` (37 checks): a list's line and `open=`
+name them, `open_model link=` names them, and `play_motion` plays "Open
+the gates" by that name (both gates 90°). The SQL: `tools/apply_sql.mjs
+supabase/motions.sql --dry --try=tools/motions_try.sql` and
+`tools/sql_compare.mjs supabase/motions.sql motions` (17 of 17 the same),
+`tests/test_motions.py`. share_view_probe (173), share_flow (49) and
+discovery_flow (48) through the same relay, as before. The viewer's frame
+gate, play_flow's racer drag on the phone slowed four times, is the box's
+at a load of 26 to 47 on 24 cores: the build before this (rel-m115's) 64.3
+and 20.9 ms at worst, this one 15.1 and 44.2, in turn (held to 33 ms; 7.5
+on the laptop). What runs a frame here is three checks of empty lists
+until a motion plays.
+
+Left for later:
+- supabase/motions.sql is written and dry-run, not applied: until it is,
+  a card says Playable's words, and a model published before it says its
+  motions only once published again.
+- A press works a motion's frames out at once (`MotionPlayer.play`): 713
+  ms of a phone slowed four times for two gates over 2 s, one long frame.
+  Worked out a few frames at a time it would not stall.
+- The gallery's search does not find a model by its motions' names.
+- A link plays one motion at a time: no Play all, no sequence (AFTER).

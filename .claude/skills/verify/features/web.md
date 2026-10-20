@@ -870,9 +870,19 @@ plan with Claude as the client.
   doing; let go, Reset (`view_reset`) undoes every play's step; Build it
   and the booklet put it back first. Nothing is written (the store is
   read-only). `brickworksShare.view.play`: `ready`, `shown`, `moves`,
-  `title`, `says`, `played`, `reset`, `touch`; the page that sets
-  `window.brickworksGrabAsk` gets the play's handles first in
+  `title`, `says`, `played`, `reset`, `touch`, `motions`, `motions_out`; the
+  page that sets `window.brickworksGrabAsk` gets the play's handles first in
   `brickworksGrab.handles` (`play: "steering"`, `GrabDrag.handle_parts`).
+  A model with motions of its own (docs/MOTIONS.md, unit 3, 2026-10-20): the
+  pill says "Play its motions" with a button each (`view_motion_1`…, Reset's
+  face, a fingertip tall on a phone) and "Press one to play it, and again to
+  put it back…" ("Tap one…" on a touch screen); pressed, `main._play_motion`
+  plays it through `MotionPlayer.play` kept (one step), its frames drawn
+  12 a second (`_motion_frame`, `BrickWorld.set_drawn`), the button lit while
+  it stands where it ends; pressed again it plays backwards; Reset undoes a
+  motion's step as a drag's and puts every button out. What the last press
+  played: `brickworksShare.motion` (`name`, `backwards`, `joints` [name,
+  from, to], `stopped`, `frames`, `ms`).
 - `what moves in a model` (`src/assembly/playable.gd`, `Playable.read`,
   `kinds`, `words`, `KINDS`, `MECHANISMS`): steering, turntable, boom,
   doors, gears, pneumatics, actuator, rack, from `Bodies` and the gear
@@ -884,8 +894,16 @@ plan with Claude as the client.
   `api/share.js` `checkMoves` (400 on a word it does not know) and
   `keepMoves` (never stops a publish; `moves: null` in the answer before
   the file is applied), `api/_directory.js` `MOVES`, `movesOf`, `cardOf`'s
-  `moves`; `web/gallery.js` "Moves: steering, boom" on the card
-  (`data-moves`).
+  `moves`; `web/cards.js` "Moves: steering, boom" on the card
+  (`data-moves`). And a model's own motions (`supabase/motions.sql`, not
+  applied until the owner does): `shared_models.motions` (names, 12 at most
+  of 60 characters, `motion_names_ok`), `directory_card` with `motions`;
+  `api/_directory.js` `motionsIn` (the names read from the text published),
+  `motionsOf`, `movesWords`; `keepMoves` sends both in one request, and
+  the words alone when that fails (`motions: null` in the answer before the
+  file is applied); the card "Moves: open the dome, extend the telescope"
+  (`motionWords`, three and "and N more", `data-motions`), the page's facts
+  all of them, or the words.
 - `share play probe` (`src/dev/share_play_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
   the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
@@ -2260,6 +2278,27 @@ house, nor the hut), everything all four, a visitor's none; the three
 functions the service role's alone; the filter's first page about 4 ms.
 `test_play` ends "6 passed".
 
+A model's own motions on its card (`supabase/motions.sql`, after play.sql),
+the same way, and the gallery's answers compared before and after it:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/motions.sql --dry --try=tools/motions_try.sql --table=shared_models
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/sql_compare.mjs supabase/motions.sql motions
+python3 tools/minitest.py tests/test_motions.py
+```
+
+The dry run proves it when it ends "rolled back, nothing kept" with: every
+model's `motions` `{}` and none null; thirteen names, 61 characters, a line
+break, a space first and an empty name refused by
+`shared_models_motion_names`, twelve allowed, null refused; the cards
+saying `["Open the gates","Open the mailbox"]`, the observatory's three and
+`[]` beside their `moves`; the list asked with tests saying the same;
+Technic or mechanism as play.sql made it (the observatory and the racer);
+the house's page (`directory_model`) with its motions; a visitor's list of
+test models empty; `directory_card` and `motion_names_ok` the service
+role's alone; a visitor's first page about 7 ms (2026-10-20). The compare
+ends "17 of 17 answered the same". `test_motions` ends "5 passed".
+
 The viewer in the real scene, on 8808-1 (a window: on Xvfb under `gpu`;
 about a minute on the GPU):
 
@@ -2282,7 +2321,16 @@ means the wheel, and a finger (index 1, as a browser numbers it) turns it
 -24° with the camera still, and Reset again; a drag on the chassis turns
 the view and moves nothing; Build it after a play opens on the model as
 built; and published from the builder, the panel sends `moves:
-["steering"]`. Pictures in `shots/play/`. About a minute on the GPU.
+["steering"]`. Then (section 8, 2026-10-20, 66 checks in all) 1484-1 with
+`tests/fixtures/motions/1484-1.motions` written into it: "Play its motions"
+with `view_motion_1` and `_2`; Open the gates pressed, its frames drawn (2
+parts moving, about 1.9 s), both gates at 90.0°, the mailbox still, the
+button lit and Reset offered; Open the mailbox at 90.0°; the gates pressed
+again back where they were built (0 off), the mailbox still open; Reset,
+every part as built, nothing lit; a press's own cost said (50 to 93 ms
+here); nothing published, nothing written, the text unchanged. Pictures in
+`shots/play/` (`5_motions.png` to `7_motions_reset.png`). About two
+minutes on the GPU.
 
 In a browser, on a local export (serve.py plays the link), then on a
 preview through the API alone:
@@ -2313,8 +2361,21 @@ by a finger slowed four times 18.8 and 22.9 ms on Grab 16, 34.7 to 42.3 on
 m101), Reset offered and inside the page, the pill clear of the view cube,
 the link's text unchanged, Reset putting it back; then the
 gallery's page from the checkout with its list played: the racer's card
-"Moves: steering", the house's "Moves: doors", the hut's nothing, Technic or
-mechanism asking `technic=1`. With `--publish`, once play.sql is applied,
+"Moves: steering", the house's "Moves: doors", the hut's nothing, the
+observatory's "Moves: open the dome, extend the telescope, open the back
+wall panels and 1 more" (its four motions), Technic or mechanism asking
+`technic=1`. With `--publish` (or `--house=ID`, serve.py serving the file
+`--write-house=FILE` writes), the house with its two motions too, at each
+size: the buttons inside the page, clear of the cube, 34 px tall on the
+phone; each played (`brickworksShare.motion`: the gates 0° to -90°, the
+mailbox 0° to 90°) and lit, the press's own work and its wait for the
+parts' shapes said (laptop 180 and 44 ms, the first press waiting 12.4 s;
+the phone slowed four times 713 and 171 ms, 10.1 s; local relay, load 40,
+2026-10-20); the gates pressed again back to 0°; Reset; the text unchanged.
+And its page's facts, "Moves: doors" before motions.sql (`motions: null`),
+"Moves: open the gates, open the mailbox" after, at 390 and 1280, light and
+dark. The local relay (`relay_server.mjs 9120 --static=build/web`, .env
+sourced) sends `/app?view=` on to `/?view=`; the flow follows either. With `--publish`, once play.sql is applied,
 the list asked with tests and technic finds the published racer with
 `["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`. On a
 deployment the link is the model's page, which does not go on by itself

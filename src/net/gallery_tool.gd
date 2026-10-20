@@ -15,7 +15,9 @@
 ## can build now; and the sorts the gallery has, Top builds and Most built,
 ## and Parts I own for that person. Each model says what moves in it, as its
 ## app found from its joints ("moves: steering, boom"), which its link lets
-## anybody take hold of and move.
+## anybody take hold of and move, and its own motions by name ("motions:
+## "Open the dome", "Extend the telescope"", docs/MOTIONS.md), which its link
+## plays by a button each, and play_motion plays once it is opened.
 ##
 ## A tool of AppTools (gallery), served wherever the app's tools are: the
 ## desktop's MCP port, My Claude and the connector.
@@ -58,7 +60,8 @@ static func definition() -> Dictionary:
 			+ "(words of a name, a builder, a tag or a description), kind, size, technic, "
 			+ "instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a "
 			+ "collection); each with its link id, part count, credit, licence, how many built it and "
-			+ "what moves in it (steering, a boom: anybody can move them on its link). shelves=true: "
+			+ "what moves in it (steering, a boom: anybody can move them on its link) and its own "
+			+ "motions by name (open_model link= opens a copy, and play_motion plays them). shelves=true: "
 			+ "the gallery's front, this week's pick and the small builds, and what the person can "
 			+ "build now from their collection. "
 			+ "open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, "
@@ -298,6 +301,10 @@ func _open(id: String, with_picture: bool) -> Variant:
 		lines.append("Remixed from %s (%s)." % [(shared["remixed_from"] as Dictionary).get("name", "?"),
 			(shared["remixed_from"] as Dictionary).get("url", "")])
 	lines.append_array(_reading(str(shared.get("model", ""))))
+	var motions: String = motions_words(Motions.read(str(shared.get("model", ""))))
+	if not motions.is_empty():
+		lines.append("%s Its link plays each by a button; open_model link=%s opens a copy, and play_motion "
+			% [motions, id] + "name= plays one there.")
 	lines.append(("Read-only: nothing on the baseplate changed. Build your own; to start from this "
 		+ "one instead, open_model link=%s opens a copy in the person's models, as Open in "
 		+ "Brickworks on its page does. Liking it, commenting and following its designer are the "
@@ -397,6 +404,20 @@ func _reading(text: String) -> PackedStringArray:
 	return lines
 
 
+## A model's own motions in a line, as its file has them: "Its motions (2):
+## "Open the gates" (2 s, 2 joints), "Turn the crank" (4 s, a driver)."; ""
+## for none. What a session names to play_motion.
+static func motions_words(motions: Motions) -> String:
+	if motions == null or motions.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for motion: Motions.Motion in motions.list:
+		var joints: int = motion.tracks.size()
+		said.append("%s (%s s, %s)" % [Motions.quoted(motion.name), Motions.num(motion.length(), 1),
+			"a driver" if motion.driver != null else "%d joint%s" % [joints, "" if joints == 1 else "s"]])
+	return "Its motions (%d): %s." % [said.size(), ", ".join(said)]
+
+
 ## One model of a list: "name (id) — 93 parts, by X · licence · counts ·
 ## built 3 times · moves: steering · Tested".
 static func _line(model: Dictionary) -> String:
@@ -423,6 +444,10 @@ static func _line(model: Dictionary) -> String:
 	if not moves.is_empty():
 		facts.append("moves: %s" % ", ".join(PackedStringArray(moves.map(func(one: Variant) -> String:
 			return str(one)))))
+	var motions: Array = model["motions"] if model.get("motions") is Array else []
+	if not motions.is_empty():
+		facts.append("motions: %s" % ", ".join(PackedStringArray(motions.map(func(one: Variant) -> String:
+			return Motions.quoted(str(one))))))
 	if bool(model.get("tested", false)):
 		facts.append("Tested")
 	if model.get("owned") is Dictionary and (model["owned"] as Dictionary).get("pieces") != null:

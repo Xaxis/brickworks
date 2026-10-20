@@ -27,8 +27,14 @@
 ## one opened saying how many built it, its Tested mark, its comments and
 ## photos of real builds, and how to open a copy (open_model link=); a
 ## list naming its designer's handle, and designer= reading their page,
-## with where the person follows them. -- --played runs only these and the
-## licences, with no server:
+## with where the person follows them.
+##
+## And a model's own motions (docs/MOTIONS.md, 2026-10-20): 1484-1 with
+## tests/fixtures/motions/1484-1.motions written into it, its card naming its
+## motions in a list, opened naming each with its length and joints; then
+## open_model link= opening a copy of it (the link answered here) names them,
+## and play_motion plays one by that name: both gates swing open.
+## -- --played runs only these and the licences, with no server:
 ##
 ##   godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played
 extends SceneTree
@@ -46,6 +52,8 @@ class FakeGallery extends GalleryTool:
 	var built: int = 3
 	## What was asked, and with which session.
 	var asked: Array = []
+	## A model with motions of its own, its text, in place of the tower.
+	var house: String = ""
 
 	func _ask(path: String, _most: int, token: String = "") -> Dictionary:
 		await (Engine.get_main_loop() as SceneTree).process_frame
@@ -71,6 +79,8 @@ class FakeGallery extends GalleryTool:
 			return {"code": 404, "bytes": JSON.stringify({"error": "nobody has that handle"}).to_utf8_buffer()}
 		if path.begins_with("/api/share?op=list"):
 			var card: Dictionary = racer.duplicate()
+			if not house.is_empty():
+				card["motions"] = ["Open the gates", "Open the mailbox"]
 			if not token.is_empty():
 				card["owned"] = {"pieces": 93, "have": 80, "share": 80.0 / 93.0}
 			return {"code": 200, "bytes": JSON.stringify({"models": [card], "more": false}).to_utf8_buffer()}
@@ -80,6 +90,10 @@ class FakeGallery extends GalleryTool:
 			if not token.is_empty():
 				front["ready"] = {"models": [racer], "more": false}
 			return {"code": 200, "bytes": JSON.stringify(front).to_utf8_buffer()}
+		if path.begins_with("/api/share?id=") and not house.is_empty():
+			return {"code": 200, "bytes": JSON.stringify({"id": "M0ti0nsGa1", "name": "Played House",
+				"author": "Played Builder", "parts": 211, "licence": "cc-by-4.0",
+				"url": "https://brickworks.diy/m/M0ti0nsGa1", "model": house}).to_utf8_buffer()}
 		if path.begins_with("/api/share?id="):
 			var body: Dictionary = {"id": "Fake000001", "name": "Played Tower", "author": "Played Builder",
 				"parts": 3, "licence": licence, "url": "https://brickworks.diy/m/Fake000001",
@@ -299,6 +313,69 @@ func _played() -> void:
 		and str(fake.asked[-1][0]).contains("op=shelves&mine=1"))
 	account._access = ""
 	account.state = was
+	await _motions()
+
+
+## A shared model's own motions, named to a session so it can play them.
+class FakeShared extends SharedModels:
+	var answer: Dictionary = {}
+
+	func fetch(_id: String, _version: int = 0) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return answer
+
+
+func _motions() -> void:
+	print("── a model's own motions ──")
+	var house: String = FileAccess.get_file_as_string("res://vendor/omr/files/1484-1.mpd")
+	if house.is_empty():
+		_check("1484-1 is here (tools/fetch_data.sh)", false)
+		return
+	house = Motions.written_into(house, FileAccess.get_file_as_string(
+		"res://tests/fixtures/motions/1484-1.motions").strip_edges().split("\n"))
+	var fake := FakeGallery.new()
+	fake.app = _main
+	fake.house = house
+	var said: String = _text_of(await fake.run({"sort": "top"}))
+	_check("a list names a model's motions: %s" % said.get_slice("\n", 1).get_slice(" · motions", 1).left(80),
+		said.get_slice("\n", 1).contains("motions: \"Open the gates\", \"Open the mailbox\""))
+	said = _text_of(await fake.run({"open": "M0ti0nsGa1", "picture": false}))
+	var line: String = said.get_slice("Its motions", 1).get_slice("\n", 0)
+	_check("opened, each with its length and joints: Its motions%s" % line, said.contains(
+		"Its motions (2): \"Open the gates\" (2 s, 2 joints), \"Open the mailbox\" (1 s, 1 joint)."))
+	_check("...and how to play one: open_model link=, then play_motion",
+		said.contains("open_model link=M0ti0nsGa1 opens a copy, and play_motion name= plays one there."))
+	if _socket == null:
+		_socket = CommandSocket.new()
+		_socket.assistant = _main.get("_assistant")
+		_socket.app = _main
+		_main.add_child(_socket)
+		await process_frame
+	var shared := FakeShared.new()
+	shared.answer = {"code": 200, "body": {"id": "M0ti0nsGa1", "name": "Played House", "author": "Played Builder",
+		"licence": "cc-by-4.0", "url": "https://brickworks.diy/m/M0ti0nsGa1", "version": 1, "model": house}}
+	var was: Variant = _main.get("_shared")
+	_main.set("_shared", shared)
+	said = _text(await _rpc("tools/call", {"name": "open_model",
+		"arguments": {"link": "M0ti0nsGa1", "discard_changes": true}}))
+	_check("open_model link= names its motions: %s" % said.get_slice("Its motions", 1).left(90),
+		said.begins_with("Opened a copy of Played House") and said.contains(
+			"Its motions (2): \"Open the gates\" (2 s, 2 joints), \"Open the mailbox\" (1 s, 1 joint). "
+			+ "play_motion name= plays one"))
+	var world: BrickWorld = _main.get("_world")
+	var gates: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == "3186":
+			gates[brick.id] = brick.transform
+	said = _text(await _rpc("tools/call", {"name": "play_motion", "arguments": {"name": "Open the gates"}}))
+	var turned: Array = gates.keys().map(func(id: int) -> float: return rad_to_deg(
+		(world.get_brick(id).transform.basis.orthonormalized() * (gates[id] as Transform3D).basis.orthonormalized()
+			.inverse()).get_rotation_quaternion().get_angle()))
+	_check("...and play_motion plays it by that name: %s (gates %s°)" % [said.get_slice("\n", 0).left(110),
+		", ".join(turned.map(func(d: float) -> String: return "%.0f" % d))],
+		said.begins_with("Played \"Open the gates\"") and turned.size() == 2
+		and turned.all(func(d: float) -> bool: return absf(d - 90.0) < 2.0))
+	_main.set("_shared", was)
 
 
 func _call(arguments: Dictionary) -> Dictionary:

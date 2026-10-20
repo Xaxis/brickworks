@@ -744,6 +744,8 @@ func _tell_page() -> void:
 		"view": _share_view.page_state() if _share_view != null else {},
 		# What the last finger on the model was taken as (_play_touch).
 		"finger": _finger_said,
+		# What the last motion's button played (_play_motion).
+		"motion": _motion_last,
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
 		"carried": _steps_carried,
@@ -2060,6 +2062,7 @@ func _enter_view() -> void:
 	_share_view.build_from.connect(func(page: int) -> void: _enter_build(page))
 	_share_view.newest_wanted.connect(_open_newest)
 	_share_view.reset_wanted.connect(_play_reset)
+	_share_view.motion_wanted.connect(_play_motion)
 	# The big Build it of a phone sits above the timeline.
 	_share_view.floor_at = func() -> float:
 		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
@@ -2890,6 +2893,30 @@ var _play_reset_due: bool = false
 ## What moves, as Playable read it: {kind: [brick ids]}, the parts a person
 ## would take hold of first.
 var play_found: Dictionary = {}
+## A motion played from its button (_play_motion): its frames, drawn over
+## the model 12 a second while the model already stands where it ends; when
+## it began, the frame drawn, and what is said once it has played.
+var _motion_frames: Array = []
+var _motion_began: int = 0
+var _motion_shown: int = -1
+var _motion_said: String = ""
+## A press that came while the grab was busy, or the parts' shapes were on
+## their way: played once they are (or [constant SHAPES_WAIT_MS] after it),
+## not dropped. And the parts whose exact shapes are still to be asked for,
+## a few a frame, once the model's motions are offered.
+var _motion_due: String = ""
+var _motion_due_at: int = 0
+var _shapes_to_ask: Array = []
+var _shape_parts: Array = []
+## How long a press waits for the parts' shapes: judged by their covers, a
+## motion's first press on the web stopped a gate at 6° of 90°, where the
+## shapes, fetched as the check asks for them, let it open (play_flow, on
+## the local relay).
+const SHAPES_WAIT_MS := 10000
+## What the last press played, for a page that checks it (play_flow.mjs):
+## its name, which way, each joint from where to where, whether one
+## stopped, its frames and what working them out cost, ms.
+var _motion_last: Dictionary = {}
 ## The finger on a part that may move (_play_touch): its index, the part,
 ## where it came down, and whether it has taken hold.
 var _finger: int = -1
@@ -2945,10 +2972,15 @@ func _play_stop() -> void:
 			_grab_drag.cancel()
 		_grab_drag.set_process(false)
 	_grabbing = false
+	_motion_stop()
+	_motion_due = ""
+	_shapes_to_ask = []
+	_shape_parts = []
 	if _share_view != null:
 		_share_view.show_played(false)
 		_share_view.play_said("")
 		_share_view.show_play(PackedStringArray(), false, _touch_screen())
+		_share_view.show_motions(PackedStringArray())
 
 
 ## Each frame of the viewer: the joints read, said; a Reset asked for during
@@ -2964,6 +2996,19 @@ func _play_frame() -> void:
 	if _play_reset_due and not _grab_drag.is_settling() and not _grab_drag.is_grabbing():
 		_play_reset_due = false
 		_play_reset()
+	if not _motion_frames.is_empty():
+		_motion_frame()
+	# A few shapes asked for a frame: a look in the browser's pack costs a
+	# couple of milliseconds a part.
+	for _n: int in mini(8, _shapes_to_ask.size()):
+		var part_id: String = _shapes_to_ask.pop_back()
+		if not Exact.known(_library, part_id):
+			Exact.shape_for(_library, part_id)
+	if not _motion_due.is_empty() and not _grab_drag.is_settling() and not _grab_drag.is_grabbing() \
+			and (not _shapes_coming() or Time.get_ticks_msec() > _motion_due_at + SHAPES_WAIT_MS):
+		var name: String = _motion_due
+		_motion_due = ""
+		_play_motion(name)
 
 
 ## What moves, read from the joints the grab found: said on the viewer.
@@ -2976,6 +3021,22 @@ func _play_found() -> void:
 	_grab_drag.handle_parts = parts
 	_share_view.show_play(Playable.kinds(play_found), _grab_drag.anything_moves() or not play_found.is_empty(),
 		_touch_screen())
+	# The model's own motions, a button each, in place of what Playable names.
+	var names := PackedStringArray()
+	if _world.motions != null:
+		for motion: Motions.Motion in _world.motions.list:
+			names.append(motion.name)
+	_share_view.show_motions(names)
+	# And every part's exact shape asked for now, so a motion is judged by
+	# them and not by the parts' covers (Exact.shape_for fetches on the web).
+	_shape_parts = []
+	if not names.is_empty():
+		var seen: Dictionary = {}
+		for brick: BrickWorld.Brick in _world.bricks():
+			if not seen.has(brick.part_id):
+				seen[brick.part_id] = true
+				_shape_parts.append(brick.part_id)
+	_shapes_to_ask = _shape_parts.duplicate()
 
 
 func _touch_screen() -> bool:
@@ -3180,11 +3241,122 @@ func _play_reset() -> void:
 	if _grab_drag.is_settling() or _grab_drag.is_grabbing():
 		_play_reset_due = true
 		return
+	_motion_stop()
+	_motion_due = ""
+	_motion_due_at = 0
 	_builder.undo_steps(_builder.history_depth() - _play_depth)
 	_grab_drag.clear_marks()
 	_world.set_drawn({})
 	_share_view.show_played(false)
+	_share_view.motions_home()
 	_share_view.play_said("Put back as it was built.")
+
+
+## A motion's button on the viewer: [param name] played through Grab as the
+## builder's Motions panel plays it (MotionPlayer), so a joint stops where it
+## meets the model and gears and racks follow, kept for this visit only: one
+## step that Reset undoes, and the store writes nothing. Pressed while it
+## stands where it ends, it plays backwards, which takes it back. Its frames
+## are drawn as it goes (_motion_frame).
+func _play_motion(name: String) -> void:
+	if _motions == null or _grab_drag == null or _play_depth < 0 or _world.motions == null:
+		return
+	var motion: Motions.Motion = _world.motions.named(name)
+	if motion == null:
+		return
+	if _grab_drag.is_swinging():
+		_grab_drag.cancel()
+	# Played as soon as it can be, not dropped: once the grab is at rest and
+	# the parts' shapes are here, or have been waited for long enough.
+	var now: int = Time.get_ticks_msec()
+	var waiting: bool = _grab_drag.is_grabbing() or _grab_drag.is_settling() or (_shapes_coming()
+		and now < (_motion_due_at if _motion_due_at > 0 else now) + SHAPES_WAIT_MS)
+	if waiting:
+		if _motion_due_at == 0:
+			_motion_due_at = now
+		_motion_due = motion.name
+		_share_view.play_said("Getting “%s” ready…" % motion.name)
+		return
+	var waited: int = now - _motion_due_at if _motion_due_at > 0 else 0
+	_motion_due = ""
+	_motion_due_at = 0
+	_motion_stop()
+	var back: bool = _share_view.motions_out.has(name.to_lower())
+	var began: int = Time.get_ticks_usec()
+	var played: MotionPlayer.Played = _motions.play(motion, back, MotionPlayer.PLAY_FPS, true,
+		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
+	_motion_last = {"name": motion.name, "backwards": back, "frames": played.frames.size(),
+		"ms": snappedf((Time.get_ticks_usec() - began) / 1000.0, 0.1), "stopped": played.stopped(),
+		"waited_ms": waited,
+		"joints": played.items.map(func(item: MotionPlayer.Item) -> Array:
+			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}
+	if played.items.is_empty():
+		_share_view.play_said(_visitor_words("“%s” does not play: %s." % [motion.name,
+			"; ".join(played.refused)]))
+		return
+	_share_view.show_motion_out(motion.name, not back)
+	var stops := PackedStringArray()
+	for item: MotionPlayer.Item in played.items:
+		if not item.stop_words.is_empty():
+			stops.append(item.stop_words)
+	_motion_said = _visitor_words(("“%s” stopped short: %s." % [motion.name, "; ".join(stops)])
+		if not stops.is_empty() else ("“%s” put back." % motion.name) if back
+		else "“%s” played. Press it again to put it back." % motion.name)
+	_motion_frames = played.frames
+	_motion_began = Time.get_ticks_msec()
+	_motion_shown = 0
+	# The model stands where it ends already: its first frame drawn at once.
+	_world.set_drawn(_motion_frames[0])
+	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
+
+
+## Whether a part's exact shape is still to be asked for or on its way.
+func _shapes_coming() -> bool:
+	if not _shapes_to_ask.is_empty():
+		return true
+	for part_id: String in _shape_parts:
+		if _library.is_exact_on_its_way(part_id):
+			return true
+	return false
+
+
+## The playing motion's frame for now, drawn; its words said once it ends. A
+## drag taken up stops it where it is: the model stands where it ends.
+func _motion_frame() -> void:
+	if _grab_drag != null and _grab_drag.is_grabbing():
+		_motion_stop()
+		return
+	var n: int = (Time.get_ticks_msec() - _motion_began) * MotionPlayer.PLAY_FPS / 1000
+	if n >= _motion_frames.size():
+		_motion_stop()
+		_share_view.play_said(_motion_said)
+	elif n != _motion_shown:
+		_motion_shown = n
+		_world.set_drawn(_motion_frames[n])
+
+
+## The playing motion's frames put away: the model drawn where it stands.
+func _motion_stop() -> void:
+	if _motion_frames.is_empty():
+		return
+	_motion_frames = []
+	_motion_shown = -1
+	_world.set_drawn({})
+
+
+## A motion's words as a visitor reads them: each part by its name, not its
+## number in the model ("#143 stops at 62°" is "the Fence Gate 1 x 4 x 2
+## stops at 62°").
+func _visitor_words(words: String) -> String:
+	var said: String = RegEx.create_from_string("\\s*\\(#\\d+\\)").sub(words, "", true)
+	var found: Array[RegExMatch] = RegEx.create_from_string("#(\\d+)").search_all(said)
+	found.reverse()
+	for one: RegExMatch in found:
+		var brick: BrickWorld.Brick = _world.get_brick(one.get_string(1).to_int())
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id) if brick != null else null
+		if info != null:
+			said = said.left(one.get_start()) + "the " + Inventory._tidy(info.name) + said.substr(one.get_end())
+	return said
 
 
 ## The keys a viewer answers to. True for one the builder's own handling

@@ -23,14 +23,27 @@
 ##   5. A drag on the chassis, which does not move: the view turns, no part
 ##      moves.
 ##   6. Build it after a play: the step player shows the model as built.
+##   7. Published from the builder, what moves goes with it.
+##   8. A model with motions of its own (docs/MOTIONS.md): 1484-1 with
+##      tests/fixtures/motions/1484-1.motions written into it, "Open the
+##      gates" and "Open the mailbox", opened by its link. A button for each
+##      in the pill; each pressed as a person presses it plays through Grab,
+##      its frames drawn as it goes, and the model stands where it ends with
+##      the button lit; pressed again it plays backwards and the parts are
+##      back where they were built; Reset puts everything back. Nothing is
+##      written, nothing published, the link's text unchanged.
 ##
 ## Pictures in shots/play/: 1_ready.png, 2_turned.png, 3_reset.png,
-## 4_finger.png.
+## 4_finger.png, 5_motions.png, 6_played.png, 7_motions_reset.png.
 extends SceneTree
 
 const SHOTS := "res://shots/play/"
 const ID := "Pl4yVi3w01"
 const SET := "res://vendor/omr/files/8808-1.mpd"
+## The house with its gates and mailbox, and the motions written into it.
+const HOUSE := "res://vendor/omr/files/1484-1.mpd"
+const HOUSE_MOTIONS := "res://tests/fixtures/motions/1484-1.motions"
+const HOUSE_ID := "M0ti0nsVw1"
 
 var _failures: int = 0
 var _main: Node
@@ -124,6 +137,8 @@ func _run() -> void:
 	_ok(str(said["title"]).begins_with("Moves: ") and (said["moves"] as Array).has("steering"),
 		"what moves is named: %s" % said["title"])
 	_ok(str(said["says"]).begins_with("Drag a part that moves"), "and how to move it: %s" % said["says"])
+	_ok((said["motions"] as Array).is_empty() and not view.controls_by_name().has("view_motion_1"),
+		"a model without motions of its own has no motion buttons: Play as it was")
 	_ok(store.read_only and not store.keeps, "the store writes nothing")
 	var found: Dictionary = _main.get("play_found")
 	var steering: Array = found.get("steering", [])
@@ -337,6 +352,10 @@ func _run() -> void:
 	for _n: int in 10:
 		await process_frame
 	await _published_moves(text)
+	_main.queue_free()
+	for _n: int in 10:
+		await process_frame
+	await _motions_link()
 	_finish()
 
 
@@ -376,6 +395,153 @@ func _published_moves(text: String) -> void:
 		"it sent what moves, from its joints: %s" % [moves])
 	_ok(Playable.words(PackedStringArray(moves)).begins_with("Moves: steering"),
 		"which its card says: %s" % Playable.words(PackedStringArray(moves)))
+
+
+## 8. A model with motions of its own, opened by its link: a button each,
+## played and taken back, and Reset.
+func _motions_link() -> void:
+	print("\n8. a model with motions of its own, opened by its link")
+	var house: String = FileAccess.get_file_as_string(HOUSE)
+	var lines: PackedStringArray = FileAccess.get_file_as_string(HOUSE_MOTIONS).strip_edges().split("\n")
+	_ok(not house.is_empty() and lines.size() == 11, "1484-1 and its motions' %d lines" % lines.size())
+	if house.is_empty():
+		return
+	var text: String = Motions.written_into(house, lines)
+	var served: String = text.sha256_text()
+	var files_before: PackedStringArray = _files_under("user://")
+	var fake := FakeShared.new()
+	fake.answer = {"code": 200, "body": {"id": HOUSE_ID, "name": "Probe House", "author": "Probe Builder",
+		"parts": 211, "url": "https://brickworks.diy/m/" + HOUSE_ID, "model": text}}
+	_main = load("res://src/main.tscn").instantiate()
+	_main.set("_viewing", HOUSE_ID)
+	_main.set("_shared", fake)
+	root.add_child(_main)
+	var view: ShareView = null
+	for _n: int in 2400:
+		await process_frame
+		view = _main.get("_share_view")
+		if view != null and view.state in ["ready", "failed", "gone"]:
+			break
+	_ok(view != null and view.state == "ready", "the house opened (%s)" % (view.state if view != null else "none"))
+	if view == null or view.state != "ready":
+		return
+	var steps: StepsBar = _main.get("_steps")
+	var since: int = Time.get_ticks_msec()
+	while steps.is_starting() and Time.get_ticks_msec() - since < 120000:
+		await process_frame
+	since = Time.get_ticks_msec()
+	while view.play_motions.is_empty() and Time.get_ticks_msec() - since < 120000:
+		await process_frame
+	await _settle()
+	var world: BrickWorld = _main.get("_world")
+	var store: ModelStore = _main.get("_store")
+	var said: Dictionary = view.page_state()["play"]
+	_ok(said["shown"] and said["motions"] == ["Open the gates", "Open the mailbox"],
+		"the pill has its motions: %s" % [said["motions"]])
+	_ok(said["title"] == "Play its motions" and str(said["says"]).begins_with("Press one to play it"),
+		"and says how: %s / %s" % [said["title"], said["says"]])
+	var named: Dictionary = view.controls_by_name()
+	_ok(named.has("view_motion_1") and named.has("view_motion_2")
+		and (named["view_motion_1"] as Button).text == "Open the gates",
+		"a button each, in Reset's face, on the viewer")
+	_ok(store.read_only and not store.keeps, "the store writes nothing")
+	var gates: Array = []
+	var mailbox: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == "3186":
+			gates.append(brick.id)
+		elif brick.part_id == "4346p03":
+			mailbox = brick.id
+	_ok(gates.size() == 2 and mailbox != 0, "it has two gates and a mailbox (%d, #%d)" % [gates.size(), mailbox])
+	var before: Dictionary = _snapshot(world)
+	await _save("5_motions.png")
+
+	print("\n  Open the gates, pressed")
+	var drawn_most: int = 0
+	await _press(named["view_motion_1"])
+	var playing: Dictionary = view.page_state()["play"]
+	_ok(str(playing["says"]).begins_with("Playing “Open the gates”"), "it says it is playing: %s" % playing["says"])
+	since = Time.get_ticks_msec()
+	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+		drawn_most = maxi(drawn_most, world.drawn_ids().size())
+		await process_frame
+	var took: int = Time.get_ticks_msec() - since
+	_ok(drawn_most >= 2 and world.drawn_ids().is_empty(),
+		"its frames were drawn as it went (%d parts drawn moving, %.1f s), then put away" % [drawn_most, took / 1000.0])
+	var turned: Array = gates.map(func(id: int) -> float: return _turned(world, before, id))
+	_ok(turned.all(func(d: float) -> bool: return absf(d - 90.0) < 2.0),
+		"both gates swung open, %s°" % ", ".join(turned.map(func(d: float) -> String: return "%.1f" % d)))
+	_ok(absf(_turned(world, before, mailbox)) < 0.1, "the mailbox did not move")
+	var after: Dictionary = view.page_state()["play"]
+	_ok(after["motions_out"] == ["Open the gates"] and (named["view_motion_1"] as Button).button_pressed,
+		"its button is lit while the gates stand open")
+	_ok(after["reset"] and str(after["says"]).contains("Press it again to put it back"),
+		"Reset offered, and it says: %s" % after["says"])
+	await _save("6_played.png")
+
+	print("\n  Open the mailbox, pressed")
+	await _press(named["view_motion_2"])
+	await _played_out()
+	_ok(absf(_turned(world, before, mailbox) - 90.0) < 2.0, "the mailbox opened, %.1f°" % _turned(world, before, mailbox))
+	_ok(view.page_state()["play"]["motions_out"] == ["Open the gates", "Open the mailbox"], "both lit")
+
+	print("\n  Open the gates, pressed again")
+	await _press(named["view_motion_1"])
+	await _played_out()
+	var gates_off: int = gates.filter(func(id: int) -> bool: return absf(_turned(world, before, id)) > 0.1).size()
+	_ok(gates_off == 0, "pressed again it plays backwards: both gates back where they were built (%d off)" % gates_off)
+	_ok(absf(_turned(world, before, mailbox) - 90.0) < 2.0, "the mailbox still open")
+	var back: Dictionary = view.page_state()["play"]
+	_ok(back["motions_out"] == ["Open the mailbox"] and not (named["view_motion_1"] as Button).button_pressed,
+		"the gates' button is not lit: %s" % back["says"])
+
+	print("\n  Reset")
+	named = view.controls_by_name()
+	_ok(named.has("view_reset"), "Reset is on the viewer")
+	if named.has("view_reset"):
+		await _press(named["view_reset"])
+	await _settle()
+	_ok(_differing(world, before) == 0, "every part back where it was built (%d differ)" % _differing(world, before))
+	var reset: Dictionary = view.page_state()["play"]
+	_ok((reset["motions_out"] as Array).is_empty() and not reset["reset"] and not view.played,
+		"no button lit, Reset gone: %s" % reset["says"])
+	await _save("7_motions_reset.png")
+
+	# What a press costs the app: the motion's frames worked out at once
+	# (MotionPlayer.play), on this machine.
+	var began: int = Time.get_ticks_usec()
+	_main.call("_play_motion", "Open the gates")
+	var cost_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	print("    a press of Open the gates (2 s, two gates) costs %.1f ms of one frame here" % cost_ms)
+	await _played_out()
+	named = view.controls_by_name()
+	if named.has("view_reset"):
+		await _press(named["view_reset"])
+	await _settle()
+	_ok(_differing(world, before) == 0, "Reset again: as built")
+	_ok(fake.published.is_empty() and fake.asked == [HOUSE_ID], "nothing published; the link asked for once")
+	_ok(str(fake.answer["body"]["model"]).sha256_text() == served, "the text the link served is unchanged")
+	var new_files: Array = []
+	for file: String in _files_under("user://"):
+		if not files_before.has(file) and not file.contains("shader_cache") and not file.contains("vulkan"):
+			new_files.append(file)
+	_ok(new_files.is_empty() and store.read_only, "nothing was written to the data folder (%s)" % [new_files])
+
+
+## Until the playing motion's frames are drawn and put away.
+func _played_out() -> void:
+	var since: int = Time.get_ticks_msec()
+	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+		await process_frame
+	await _settle()
+
+
+## How far [param id] has turned since [param before], degrees.
+func _turned(world: BrickWorld, before: Dictionary, id: int) -> float:
+	var was: Transform3D = before[id]
+	var now: Transform3D = world.get_brick(id).transform
+	return rad_to_deg((now.basis.orthonormalized() * was.basis.orthonormalized().inverse()).get_rotation_quaternion()
+		.get_angle())
 
 
 ## A spot over [param key] on the screen and its joint's line there:

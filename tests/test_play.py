@@ -93,8 +93,10 @@ def test_directory_card_keeps_every_key_of_builds_sql_and_says_what_moves() -> N
 
 def test_the_card_a_client_is_given_says_what_moves() -> None:
     assert re.search(r"^\s*moves: movesOf\(row\.moves\),$", DIRECTORY, flags=re.M)
-    gallery = (ROOT / "web/gallery.js").read_text()
-    assert "line.textContent = `Moves: ${moves.join(\", \")}`;" in gallery
+    # Every page's card is web/cards.js's (the gallery's own moved there):
+    # its motions' names when it has them (supabase/motions.sql), else these.
+    cards = (ROOT / "web/cards.js").read_text()
+    assert "line.textContent = `Moves: ${motions.length ? motionWords(motions, 3) : moves.join(\", \")}`;" in cards
 
 
 def test_only_additions() -> None:

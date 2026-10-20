@@ -51,6 +51,14 @@ whole cycle.
   name is already there; in a browser the WebP downloads. Progress and
   Cancel as for a turntable. The Motions panel's Render animation and
   Claude's render_motion draw it the same way.
+- A shared model's motions play on its link. Its view has a button for
+  each, "Open the dome", "Extend the telescope", over the model: press
+  one and it plays, its button lit while the model stands where it
+  ends; press it again and it goes back. Reset puts everything back, and
+  nothing is kept. A model without motions plays as before, by dragging
+  what moves. Its gallery card and its page say what it does, "Moves:
+  open the dome, extend the telescope", and Claude's gallery and
+  open_model name each motion, for play_motion to play.
 
 - Delete your account, from your account page on brickworks.diy:
   Settings, Delete this account, with your address typed to confirm. It

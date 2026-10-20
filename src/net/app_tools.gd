@@ -2177,10 +2177,19 @@ func _open(input: Dictionary) -> String:
 		if landed <= 0 and store.awaited.is_empty():
 			return "Could not read that version of %s." % chosen.name
 		return ("Opened %s as saved %s: %d parts. look_at_model to see it. The person's Save "
-			+ "makes it the newest save.") % [chosen.name, kept[version - 1].when(), landed]
+			+ "makes it the newest save.") % [chosen.name, kept[version - 1].when(), landed] + _opened_motions()
 	var placed: int = await bar.open_with_progress(chosen.path)
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed]
+	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] + _opened_motions()
+
+
+## What a model just opened can play, by name, for play_motion: its own
+## motions as its file has them (GalleryTool.motions_words); "" for none.
+func _opened_motions() -> String:
+	var world: BrickWorld = app.get("_world")
+	var said: String = GalleryTool.motions_words(world.motions if world != null else null)
+	return "" if said.is_empty() else (" %s play_motion name= plays one; list_motions says what "
+		+ "each moves.") % said
 
 
 ## open_model link=: a gallery model copied into the person's own models and
@@ -2237,7 +2246,7 @@ func _open_link(link: String, discard: bool) -> String:
 		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
 		+ "it. Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
-		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms]
+		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms] + _opened_motions()
 
 
 # -- the parts list and the collection ------------------------------------------------
