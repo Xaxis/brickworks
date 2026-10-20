@@ -1,0 +1,89 @@
+0 FILE telescope.ldr
+0 A telescope that tilts and extends: an extension wheel turns a pinion on the tilt line, whose rack slides the tube; a tilt wheel turns the cradle; a friction pin in each gear chain
+0 Name: telescope.ldr
+0 Author: Brickworks
+0 !BRICKWORKS FLOOR BASEPLATE 32 32 288
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 stand.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 extension_wheel.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 tilt_wheel.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 cradle.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 tube.ldr
+0
+
+0 FILE stand.ldr
+0 Stand
+0 Name: stand.ldr
+0 Author: Brickworks
+1 71 -50 -24 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 -50 -48 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 -50 -72 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 -50 -96 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 -50 -120 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 -50 -144 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 -50 -168 0 0 0 1 0 1 0 -1 0 0 3702.dat
+1 71 50 -24 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 50 -48 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 50 -72 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 50 -96 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 50 -120 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 50 -144 0 0 0 1 0 1 0 -1 0 0 3008.dat
+1 71 50 -168 0 0 0 1 0 1 0 -1 0 0 3702.dat
+1 1 -60 -158 20 1 0 0 0 1 0 0 0 1 2780.dat
+1 1 60 -158 20 1 0 0 0 1 0 0 0 1 2780.dat
+0
+
+0 FILE extension_wheel.ldr
+0 Extension wheel
+0 Name: extension_wheel.ldr
+0 Author: Brickworks
+1 0 -60 -158 -20 1 0 0 0 1 0 0 0 1 3706.dat
+1 14 -10 -158 -20 0 0 1 0 1 0 -1 0 0 3647.dat
+1 7 -70 -158 -20 0 0 1 0 1 0 -1 0 0 4019.dat
+1 7 -70 -158 20 0 0 1 0 1 0 -1 0 0 6542b.dat
+1 0 -90 -158 60 1 0 0 0 1 0 0 0 1 32073.dat
+1 7 -70 -158 60 0 0 1 0 1 0 -1 0 0 4019.dat
+1 4 -120 -158 60 0 0 1 0 1 0 -1 0 0 4185a.dat
+0
+
+0 FILE tilt_wheel.ldr
+0 Tilt wheel
+0 Name: tilt_wheel.ldr
+0 Author: Brickworks
+1 7 70 -158 20 0 0 1 0 1 0 -1 0 0 6542b.dat
+1 0 90 -158 60 1 0 0 0 1 0 0 0 1 32073.dat
+1 7 70 -158 60 0 0 1 0 1 0 -1 0 0 4019.dat
+1 2 120 -158 60 0 0 1 0 1 0 -1 0 0 4185a.dat
+0
+
+0 FILE cradle.ldr
+0 Cradle
+0 Name: cradle.ldr
+0 Author: Brickworks
+1 72 0 -80 0 0 0 1 0 1 0 -1 0 0 3029.dat
+1 72 0 -104 110 1 0 0 0 1 0 0 0 1 3004.dat
+1 72 0 -128 110 1 0 0 0 1 0 0 0 1 32064b.dat
+1 72 0 -104 -110 1 0 0 0 1 0 0 0 1 3004.dat
+1 72 0 -128 -110 1 0 0 0 1 0 0 0 1 32064b.dat
+1 0 0 -118 0 0 0 -1 0 1 0 1 0 0 3708.dat
+1 72 -30 -104 -20 0 0 1 0 1 0 -1 0 0 3004.dat
+1 72 -30 -128 -20 0 0 1 0 1 0 -1 0 0 3004.dat
+1 72 -30 -136 -20 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 -30 -144 -20 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 30 -104 -20 0 0 1 0 1 0 -1 0 0 3004.dat
+1 72 30 -128 -20 0 0 1 0 1 0 -1 0 0 3004.dat
+1 72 30 -136 -20 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 30 -144 -20 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 -30 -168 -20 0 0 1 0 1 0 -1 0 0 3700.dat
+1 72 30 -168 -20 0 0 1 0 1 0 -1 0 0 32064b.dat
+1 0 60 -158 -20 1 0 0 0 1 0 0 0 1 3705.dat
+1 7 70 -158 -20 0 0 1 0 1 0 -1 0 0 4019.dat
+0
+
+0 FILE tube.ldr
+0 Tube
+0 Name: tube.ldr
+0 Author: Brickworks
+1 15 0 -128 10 1 0 0 0 1 0 0 0 1 3700.dat
+1 15 0 -136 0 0 0 1 0 1 0 -1 0 0 3795.dat
+1 7 -10 -144 0 0 0 1 0 1 0 -1 0 0 3743.dat
+0
