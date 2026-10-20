@@ -36,7 +36,7 @@
 // against main every check from "the page draws the model in 3D" on fails.
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { join } from "node:path";
 
@@ -217,7 +217,10 @@ let account = "";
 let host = null;
 const conns = [];
 try {
-  if (!hostDir) throw new Error("--host=<basic-host dir>: ext-apps' examples/basic-host, built (dist/) with its node_modules");
+  if (!hostDir || hostDir === "true" || !existsSync(join(hostDir, "serve.ts"))) {
+    throw new Error(`--host=<basic-host dir>: ext-apps' examples/basic-host, built (dist/) with its node_modules; `
+      + `"${hostDir}" has no serve.ts`);
+  }
   console.log(`the model in Claude, interactive, in basic-host, at ${site}, as ${email}\n`);
   const signedIn = await mintSession(email);
   account = signedIn.kept.user_id;
@@ -289,7 +292,8 @@ try {
   host.stdout.on("data", (d) => { hostSaid += d; });
   host.stderr.on("data", (d) => { hostSaid += d; });
   for (let n = 0; n < 60 && !/Sandbox server/.test(hostSaid); n++) await sleep(500);
-  check(/Sandbox server/.test(hostSaid), `basic-host serves the host on ${port} and its sandbox on ${port + 1}`);
+  check(/Sandbox server/.test(hostSaid), `basic-host serves the host on ${port} and its sandbox on ${port + 1}`
+    + (/Sandbox server/.test(hostSaid) ? "" : ` (it said: ${hostSaid.trim().split("\n").slice(-3).join(" | ").slice(0, 200) || "nothing"})`));
   // Its build asks for the sandbox at localhost:8081, the other origin.
   await context.route(/^http:\/\/localhost:8081\//, async (route) => {
     const moved = route.request().url().replace("http://localhost:8081/", `http://localhost:${port + 1}/`);

@@ -90,7 +90,10 @@ declare -A CMD=(
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"
   # ext-apps' basic-host, built: BW_APP_HOST names its examples/basic-host.
-  [app_host]="tools/web/app_host_check.mjs --url=$P/app --host=${BW_APP_HOST:-} --out=$S/${TAG}_app_host"
+  # The host is kept in the main checkout (bench/data, git-ignored); a
+  # session's shell that set BW_APP_HOST did not outlive it, and the check
+  # ran with no host at all (2026-10-19).
+  [app_host]="tools/web/app_host_check.mjs --url=$P/app --host=${BW_APP_HOST:-$R/bench/data/ext-apps-host/basic-host} --out=$S/${TAG}_app_host"
   [focus]="tools/web/focus_check.mjs --url=$P/app $B --out=$S/${TAG}_focus"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"

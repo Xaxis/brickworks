@@ -349,8 +349,21 @@ try {
   const plainViewed = await aPicture(plain);
   check(!shownOf(plainLooked) && !shownOf(plainViewed) && !plainLooked.result?.structuredContent,
     "...its answers carry nothing for a viewer");
-  check(JSON.stringify(texts(plainLooked)) === JSON.stringify(texts(looked)),
-    "...and look_at_model's words are the same, word for word");
+  const firstApart = (a, b) => {
+    const x = a.join("\n").split("\n"); const y = b.join("\n").split("\n");
+    const n = x.findIndex((line, i) => line !== y[i]);
+    return n < 0 && x.length === y.length ? "" : `line ${n}: "${String(x[n]).slice(0, 90)}" / "${String(y[n]).slice(0, 90)}"`;
+  };
+  // The first line names the tab, and a second chat in it is warned that
+  // another chat has been working there (Two chats, two tabs, 2026-10-17):
+  // that line differs by design. What the model is must not.
+  const header = (t) => t.join("\n").split("\n")[0];
+  const body = (t) => t.join("\n").split("\n").slice(1);
+  const sameTab = header(texts(plainLooked)).split(".")[0] === header(texts(looked)).split(".")[0];
+  const apart = firstApart(body(texts(plainLooked)), body(texts(looked)));
+  check(sameTab && !apart, `...and look_at_model's words are the same, word for word, under a line naming the same tab`
+    + `${!sameTab ? ` (tab lines: "${header(texts(plainLooked)).slice(0, 60)}" / "${header(texts(looked)).slice(0, 60)}")` : ""}`
+    + `${apart ? ` (${apart})` : ""}`);
   check(ownKinds(plainViewed) === ownKinds(viewed) && JSON.stringify(ownTexts(plainViewed)) === JSON.stringify(ownTexts(viewed))
       && images(plainViewed)[0]?.mimeType === images(viewed)[0]?.mimeType,
     `...and view_model's words and picture the same (${kinds(plainViewed)})`);
