@@ -956,7 +956,9 @@
       "entry": "tools/collection_data.py",
       "reach": "python3 tools/collection_data.py   (--check writes nothing; needs vendor/rebrickable)",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_collection.py"
+      ]
     },
     {
       "id": "cli:share browser flow",

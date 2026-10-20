@@ -402,6 +402,13 @@ whole cycle.
 
 ### Fixed
 
+- A BrickLink Studio file opens whole when it uses a part newer than the
+  library. Studio carries every part's shape in the file, and now any part
+  the library has not got is taken from there, where it used to be left
+  out and named in the status bar: found by its number, or by BrickLink's
+  where the two differ, drawn with its print and in the colours you expect.
+  It joins the parts bin under From Studio, and a model saved afterwards
+  carries it, so it opens anywhere.
 - A model's page opened by somebody signed in who is not its owner no
   longer shows a refused request in their browser's console: asking
   whether the model failed one of its tests, to tell its owner, is now

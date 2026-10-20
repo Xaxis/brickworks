@@ -12,7 +12,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkModel } from "../../api/share.js";
-import { keyed, poolOf, resolvePart, shardOf } from "../../api/_owned.js";
+import { deriveOwnedFacts, keyed, poolOf, resolvePart, shardOf } from "../../api/_owned.js";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -72,6 +72,32 @@ check(`another moulding stands in, as the app lets it: 3794a and 3794b are one; 
 const none = { known: null, moved: new Map(), plain: new Map() };
 check("with no catalogue to ask, every part is counted as named",
   sorted(keyed([["prim/4-4cyli", 16, 3]], none)) === "prim/4-4cyli 16 3");
+
+console.log("parts nobody owns on their own");
+// As Collection.ownable: a set's own model drew its hose segment by segment
+// and its stickers one by one, and measured short of the set that holds the
+// hose and the sheet.
+const derived = deriveOwnedFacts({ parts: [
+  { id: "3001", name: "Brick  2 x  4", category: "Brick", kind: "Part" },
+  { id: "3815", name: "~Minifig Hips (Obsolete)", category: "Obsolete", kind: "Part" },
+  { id: "4073", name: "~Moved to 6141", category: "Moved", kind: "Part", moved_to: "6141" },
+  { id: "756", name: "~Hose Flexible Segment Center Section", category: "Hose", kind: "Part" },
+  { id: "30104k02", name: "Minifig Chain Link", category: "Minifig Accessory", kind: "Part Flexible_Section" },
+  { id: "821410b", name: "Sticker  1.6 x  3.5", category: "Sticker", kind: "Part" },
+  { id: "71533k03", name: "~Technic Pneumatic Tube Segment", category: "Technic", kind: "Part Flexible_Section" },
+  { id: "166", name: "~Moved to 71533k03", category: "Moved", kind: "Part", moved_to: "71533k03" },
+] }, []);
+check(`a sticker, a link, a ~ piece and a number moved to one are not owned alone; an obsolete or moved number is: ${derived.known.join(", ")}`,
+  derived.known.join(",") === "3001,3815,4073");
+const catalogueFile = path.join(root, "assets/generated/catalogue.json");
+if (existsSync(catalogueFile)) {
+  const real = deriveOwnedFacts(JSON.parse(readFileSync(catalogueFile, "utf8")), []);
+  const held = new Set(real.known);
+  check(`...and in the catalogue: 756 ${held.has("756")}, 30104k02 ${held.has("30104k02")}, 166 ${held.has("166")}, `
+    + `3815 ${held.has("3815")}, 4073 ${held.has("4073")}, 3001 ${held.has("3001")}`,
+    !held.has("756") && !held.has("30104k02") && !held.has("166") && held.has("3815") && held.has("4073")
+    && held.has("3001"));
+}
 
 console.log("sets through their inventories");
 const sets = args.sets ? String(args.sets) : path.join(root, "assets/generated/sets");

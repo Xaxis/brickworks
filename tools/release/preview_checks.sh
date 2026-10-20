@@ -74,6 +74,10 @@ declare -A CMD=(
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
+  # My collection in a real browser: a throwaway account imports a parts
+  # export, adds a set, reads what is short and ranks what it can build;
+  # the account and its collection are deleted after (tools/web/collection_flow.mjs).
+  [collection]="tools/web/collection_flow.mjs --url=$P/app --out=$S/${TAG}_collection"
   # local only: tabwalk_flow.mjs. Real Claude Code sessions on the
   # subscription build in two tabs at once: about 15 minutes and the plan's
   # quota a run, and Claude's answers vary, so a release cannot wait on it.

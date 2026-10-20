@@ -16,8 +16,12 @@
 // would use in the menu (exportStudio says which, and why not its name
 // typed), catches the download and reads it with Python's
 // zipfile: model.ldr, .info, errorPartList.err and a thumbnail. Opens that
-// file again through the picker and checks the same six parts. Last, a
+// file again through the picker and checks the same six parts. Then a
 // picture renamed .io: the status bar has to say it is not a Studio file.
+// Last, tests/fixtures/studio/whole_2025.io, whose parts the library has not
+// got all come from the file (a BrickLink-only print, a Part Designer decal
+// and two parts newer than the library, one carried by BrickLink's number):
+// six of six, none said left out, the prints drawn (4_whole.png).
 // Every result is read off window.brickworksState; pictures in --out. It
 // fails if a step does not happen or a script error reaches the console.
 import { launch } from "./browser.mjs";
@@ -37,6 +41,7 @@ const first = bypass
 const out = resolve(args.out || "shots/io_web");
 mkdirSync(out, { recursive: true });
 const bay = resolve("tests/fixtures/studio/bay_2025.io");
+const whole = resolve("tests/fixtures/studio/whole_2025.io");
 const notStudio = `${out}/holiday.io`;
 copyFileSync(resolve("web/favicon-32.png"), notStudio);
 
@@ -213,6 +218,15 @@ await open(notStudio);
 const refused = await until((s) => /not a Studio \.io file/.test(s.said || ""), 60);
 ok(Boolean(refused) && (await state()).bricks === 6,
   `a picture renamed .io is refused, the model left as it was: "${(await state()).said}"`);
+
+// A Studio file whose parts the library has not got: each from the file.
+await open(whole);
+const wholeSaid = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
+ok(Boolean(wholeSaid) && (await state()).bricks === 6 && /^opened 6 parts/.test(wholeSaid.said)
+  && !/not shown|left out|not in the library/.test(wholeSaid.said),
+  `whole_2025.io opens whole, its parts the library has not got from the file: ${(await state()).bricks} parts, "${wholeSaid ? wholeSaid.said : (await state()).said}"`);
+await page.waitForTimeout(6000);
+await shot("4_whole.png");
 await browser.close();
 
 for (const line of errors.slice(0, 8)) console.log(`  error: ${line}`);

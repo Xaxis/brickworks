@@ -71,6 +71,7 @@ func _run() -> void:
 	_store.builder = _builder
 	_store.library = _library
 	_picker = ModelFilePicker.new()
+	_picker.library = _library
 	get_root().add_child(_picker)
 	_picker.picked.connect(func(text: String, _name: String) -> void: _picked = text)
 	_picker.failed.connect(func(why: String) -> void: _failed = why)

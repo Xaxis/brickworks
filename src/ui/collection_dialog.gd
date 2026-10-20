@@ -638,6 +638,7 @@ func _export(shop: String) -> void:
 
 func _fill_build() -> void:
 	_clear_rows(_build_rows)
+	_controls.erase("collection_open_first")
 	if _busy:
 		return
 	_busy = true
@@ -681,11 +682,11 @@ func _fill_build() -> void:
 			_build_rows.add_child(_label("…and %d more" % (_ranked.size() - shown), 12, 0.5))
 			break
 		shown += 1
-		_build_rows.add_child(_build_row(candidate, shown == 1))
+		_build_rows.add_child(_build_row(candidate))
 	_tell_page()
 
 
-func _build_row(candidate: Dictionary, first: bool) -> Control:
+func _build_row(candidate: Dictionary) -> Control:
 	var cover: Dictionary = candidate["cover"]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
@@ -713,7 +714,10 @@ func _build_row(candidate: Dictionary, first: bool) -> Control:
 		go.disabled = page.is_empty()
 		go.pressed.connect(func() -> void: OS.shell_open(OMR_PAGE + page))
 	row.add_child(go)
-	if first:
+	# The flows' hook is the first row that opens in the app. On the web an
+	# official set's model only links out, and since m95 matched them to their
+	# sets one often ranks first.
+	if go.text == "Open" and not _controls.has("collection_open_first"):
 		_controls["collection_open_first"] = go
 	return row
 

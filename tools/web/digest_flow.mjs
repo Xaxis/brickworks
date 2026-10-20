@@ -154,7 +154,8 @@ try {
     const box = tr.getBoundingClientRect();
     return { asked: tr.classList.contains("asked"), text: tr.innerText, inView: box.top >= 0 && box.bottom <= innerHeight };
   }, reportId);
-  check(`the admin page shows that report, marked and in view (${row ? row.text.replace(/\s+/g, " ").slice(0, 60) : "no row"})`,
+  check(`the admin page shows that report, marked and in view (${row ? `${row.asked ? "marked" : "NOT marked"}, `
+    + `${row.inView ? "in view" : "NOT in view"}: ` + row.text.replace(/\s+/g, " ").slice(0, 60) : "no row"})`,
     Boolean(row?.asked && row?.inView && /copied/.test(row.text)));
   await shot(desk, "2_admin_at_the_link.png");
   await admin.close();

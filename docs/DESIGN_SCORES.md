@@ -984,6 +984,152 @@ subjects), `realset-2026-10-17-technique-base-vs-builtbodies/` and
 `brickbench-2026-10-16-armature` (arm `builtbodies`; the round's own
 `compare.md` kept) and `technique4-2026-10-17/compare-figfaces-builtbodies.md`.
 
+### Technique: the model planned before its first brick (2026-10-19, tried, not shipped)
+
+Five levers came at technique after the body was settled or offered advice
+before it, and none moved the judge: a session settles how it builds at its
+first submission, from memory and square, and real sub-assemblies shown before
+then were read and not used. This one had the session make the choice itself,
+sub-assembly by sub-assembly, before the massing, from counts of how the real
+ones of each kind are built, and held its first build to that plan. Sessions
+planned, and built to the plan. Technique against the sets did not move beyond
+noise. It is on the branch `technique2`, not on main.
+
+**The lever** (`plan_build`, src/ai/build_plan.gd).
+- A session names three or more sub-assemblies, as a set's bags would be, and
+  what each is. The answer counts how the eight real sub-assemblies nearest each
+  are built (`RealSnippets.built_like`: the brief's line first where its pieces
+  have as many of the words as any line's, then any line; one a set, 8 parts or
+  more, the set under test held out), with three examples. The session then
+  says how each is built: stacked, sideways, hinged, angled, brackets, sloped or
+  curved. Stacked where 60% of the real ones are not needs a why.
+- Step 1 of the instructions' head names it, and how_real_sets_build_this's
+  answer leads with it. A session on a brief that submits 20 parts or more with
+  no plan is sent back once.
+- A first build whose planned sub-assembly, found by name among its assemblies,
+  is not built so is sent back, naming it, the way and how that way is built
+  here, up to three times, or until the plan is changed with a why. The check
+  counts the parts in its box: on their side, turned, sloped or curved, 15% and
+  two at least; on a joint or a bracket, two.
+- `build_plan_probe`, 22 checks.
+
+**Three versions on the tune half,** each read in its transcripts before the
+next (bench/results/technique2-2026-10-19/digests/).
+- *v1* (`f2e8e31`): the plan only in how_real_sets_build_this's answer, the
+  no-plan send-back, a build not as planned sent back once. The sheep's session
+  read it, built 58 bricks from memory and planned only when sent back: its two
+  submission boxes, "sheep" with every way at once, then the same model. A plan
+  made after the massing is the stacked model again. Stopped after one design.
+- *v2* (`76a7e30`): plan_build in the head's step 1, three sub-assemblies at
+  least. Both sessions run planned before any brick, within 25 seconds, and
+  lost technique both ways as main's did: "A is mostly stacked slopes and simple
+  brick columns" against "the scorpion's angled legs and pincers on clips and
+  hinges". The scorpion, planned hinged, angled, sideways and curved, was sent
+  back with 0 of its 28 parts on a joint, came again unchanged and was built.
+  Sent back once is advice again. Stopped after two.
+- *v3* (`65c7259`): sent back up to three times, and a way is a share of the
+  sub-assembly, not one part. Run on all ten.
+
+**What v3's sessions did** (all ten tune transcripts):
+- Every one planned before its first brick, 10 to 63 seconds in, 3 to 7
+  sub-assemblies, 47 in all. 4 were planned stacked alone; 7 more named stacked
+  first among their ways.
+- Nine of ten first builds were sent back for a sub-assembly not built as
+  planned, 20 times in all. Eight sessions gave whys, 25 in all: "a
+  raised arch 1x6 gives the bridge its hump, as Adventurers bridges did"; the
+  others built the way in.
+- Jungle River planned its palms "angled, curved" and built them leaning on
+  sections, and won technique both ways ("a leaning, segmented palm trunk, an
+  arched ruin"), where main's lost it. The End won it, as main's did. The other
+  eight lost it as ever: Tokyo "mostly stacks plain round bricks and walls"
+  against "the tower legs from angled sub-assemblies"; the Telehandler "stacked
+  system bricks with a few Technic bricks and pins added for looks" against "a
+  worm gear and screw to raise the boom"; Shelob, at 12% joints as main's, "legs
+  straight plates fixed at single angles" against "multi-jointed legs".
+
+**The tune half,** both arms in the same harness, drawn on the GPU, one design a
+subject: main (`7299b56`, arm `t2base`) against v3 (`t2plan3`).
+
+| dimension | main preferred to the set | v3 preferred to the set | main minus v3, paired (95%) | v3 preferred to main, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 25% (8-56) | 15% (4-46) | +10 (-10, +35) | 50% (24-76) |
+| surface | 30% (11-60) | 30% (11-60) | 0 (-20, +20) | 45% (20-73) |
+| colour | 30% (11-60) | 35% (14-65) | -5 (-15, 0) | 65% (35-86) |
+| technique | 10% (2-40) | 20% (6-51) | -10 (-30, 0) | 75% (44-92) |
+| creativity | 30% (11-60) | 30% (11-60) | 0 (-30, +30) | 60% (31-83) |
+| overall | 15% (4-46) | 20% (6-51) | -5 (-30, +15) | 55% (27-80) |
+
+- Technique leaned to v3 both ways of judging it, 4 verdicts of 20 against 2
+  and 75% head to head, and neither interval leaves out a tie. Likeness leaned
+  to main. The two subjects v3 won technique on are the river and The End;
+  main's two were The End's.
+
+**The proof half,** run once on v3, against main in the same harness.
+
+| dimension | main preferred to the set | v3 preferred to the set | main minus v3, paired (95%) | v3 preferred to main, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 25% (8-56) | 20% (6-51) | +5 (-20, +35) | 45% (20-73) |
+| surface | 25% (8-56) | 40% (17-69) | -15 (-45, +15) | 60% (31-83) |
+| colour | 20% (6-51) | 20% (6-51) | 0 (-15, +15) | 65% (35-86) |
+| technique | 0% (0-28) | 10% (2-40) | -10 (-25, 0) | 50% (24-76) |
+| creativity | 25% (8-56) | 35% (14-65) | -10 (-35, +15) | 55% (27-80) |
+| overall | 20% (6-51) | 20% (6-51) | 0 (-25, +20) | 50% (24-76) |
+
+- **Technique against the sets did not move beyond noise:** 2 verdicts of 20
+  against main's none, the paired interval reaching zero, and head to head the
+  judge split technique evenly. The two were the bee ("builds the face sideways
+  with SNOT and mounts the antennae and wings on hinge and clip plates at
+  angles") and Jack & Sally ("Sally's hair as tidy SNOT side panels"), each
+  one order of two. Nothing fell beyond noise; surface and colour leaned to
+  v3. Not shipped.
+- Every proof session planned before its first submission too, 10 to 195
+  seconds in, five or six sub-assemblies each.
+
+**What they are made of** (medians, ours against the sets):
+
+| | shapes per 100 parts | SNOT | joints | 1 x 1 | tiles |
+|---|---|---|---|---|---|
+| tune, main | 26.9 | 7% | 1% | 29% | 15% |
+| tune, v3 | 23.4 | 12% | 1% | 29% | 22% |
+| tune, the sets | 29.2 | 35% | 7% | 19% | 7% |
+| proof, main | 15.4 | 2% | 0% | 29% | 16% |
+| proof, v3 | 17.6 | 12% | 0% | 25% | 20% |
+| proof, the sets | 28.4 | 25% | 3% | 13% | 11% |
+
+SNOT moved on both halves, 5 and 10 points toward the sets, more than any
+technique lever before it moved a median; joints did not. The build check read
+main's designs on both halves and v3's on the tune half: a median 0%
+floating. v3's proof designs were not audited.
+
+**What it says.**
+- *Planning reaches the body; the plan's ways are the session's own.* A plan
+  asked for in step 1 is made before any brick, every time, where a body shown
+  there was used once in twenty. Held to, it is built: SNOT rose from 7% to 12%
+  on the tune half and from 2% to 12% on the proof. But the ways a session chooses are the ones it can lay from
+  memory, faces on side studs and a few curves on a stacked body, "stacked"
+  first in most; the real sets' ways that the judge names (legs on several joints, a
+  tower's legs as angled arches, a worm drive) were planned in a few
+  sub-assemblies and built as one hinge where the set has a jointed limb.
+- *The judge still reads the whole.* Where a plan put the angle into the
+  silhouette (the river's palms), technique was won; where it put a technique
+  into a box the judge did not look at, nothing changed.
+- *Next.* The plan is the right place, and its evidence is the weak part: by
+  words alone the nearest real sub-assemblies are often of another kind (a
+  gear train's "stage 2" for a stage roof, a dressing table's cone legs for a
+  sheep's). What
+  would test the idea harder is evidence that is the real set's own build of
+  that kind of thing at that size, shown as a picture and its joint parts, and
+  a plan answered with the way that makes the silhouette (the angle, the
+  joints), not the finish. Laid, not described: the app's patterns for jointed
+  legs and booms (`exp/builtbodies-2026-10-17`) as what a "hinged" or "angled"
+  sub-assembly is built from when planned.
+
+Results: `bench/results/realset-2026-10-19-t2base/` (main, both halves),
+`realset-2026-10-19-t2plan3/` (v3, both halves),
+`realset-2026-10-19-t2base-vs-t2plan3/` (head to head), v1's and v2's partial
+arms `realset-2026-10-19-t2plan/` and `-t2plan2/`, and the sessions' digests in
+`technique2-2026-10-19/digests/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

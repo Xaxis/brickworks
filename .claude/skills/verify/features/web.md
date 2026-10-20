@@ -725,7 +725,10 @@ plan with Claude as the client.
   model in the gallery's table; `?op=pick&id=X&days=N`, `?op=unpick&pick=N`.
 - `build with what I own` (`api/_owned.js`): `ownedFacts` (from
   `_part_facts.json`, which `tools/web/part_facts.mjs` now writes with every
-  part number, the moved ones and the colours' plain codes), `keyed`,
+  part number anybody owns on its own, the moved ones and the colours' plain
+  codes; `ownable` leaves out stickers, links of a hose or chain drawn link
+  by link and LDraw's ~ pieces, a moved number judged by its target, as
+  `Collection.ownable` does, 2026-10-19), `keyed`,
   `familyOf` (a mould letter left off, as the app lets another moulding
   stand in), `shardOf`, `readShard`, `poolOf`, `freshPool` (a pool counted again the
   first time it is asked after the collection changed); `checkModel`'s
