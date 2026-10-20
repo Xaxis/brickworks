@@ -4693,8 +4693,9 @@ fails on cde834b2: 15 fail there, none here.
    slides its tube 21.333 LDU a turn in Grab and in Simulate.
 
 Also checked, after: `simulate_probe` (41 ok, windowed), `grab_probe`'s
-racks (43), loops (13), steer (27), steering (36), actuators (38), follow
-(5), cardan (3) and swing (28) in a window, all passing, and headless the
+racks (43), loops (13), steer (27), steering (36), worms (34), actuators
+(38), follow (5), cardan (3), swing (28), scissor (5), kart2 (3), moving
+(18) and big (5) in a window, all passing, and headless the
 same 164 passed as on cde834b2 (its 35 that fail headless need a pointer,
 there as here); `mechanism_probe` (54), `axle_probe` (48), `joints_probe`
 (57), `app_tools_probe` (103), `mcp_walk_probe` (33), `mcp_sync_probe`,
