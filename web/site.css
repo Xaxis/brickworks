@@ -297,7 +297,7 @@ main > section + section { border-top: 1px solid var(--line); }
    the title, a lede), then what it has; .prose for the pages that are
    words (questions, the legal pages), narrower and quieter. */
 .page { padding: var(--page-top) 0 var(--section); }
-.page-head { margin: 0 0 var(--s-6); }
+.page-head { margin-bottom: var(--s-6); }
 /* A page made of wraps side by side under <main>, its head the first. */
 main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .page-head .lede { margin-bottom: 0; }
