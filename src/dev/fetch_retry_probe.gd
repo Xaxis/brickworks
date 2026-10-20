@@ -8,10 +8,11 @@
 ## 3709b on a loaded box). A phone's connection drops the same way.
 ##
 ## The library is pointed at nothing on disk, so every part is fetched, from
-## a host this probe runs on 127.0.0.1:9191 that answers from the checkout's
-## assets/generated and fails on purpose: 3709b twice with a 503, 3673 once
-## by cutting the connection (HTTP 0), 4519 always 404, 3649 four times (one
-## more than the library asks). Then the crane is opened, and:
+## a host this probe runs on 127.0.0.1:9191 (or the next port free) that
+## answers from the checkout's assets/generated and fails on purpose: 3709b
+## twice with a 503, 3673 once by cutting the connection (HTTP 0), 4519
+## always 404, 3649 four times (one more than the library asks). Then the
+## crane is opened, and:
 ##
 ## - each fault that may pass is asked again, after 2, 6 and 12 s, and a 404
 ##   once only; what arrives late is put down;
@@ -62,6 +63,7 @@ const CRANE := [
 const PARTS := 29
 
 var _failures: int = 0
+var _port: int = PORT
 var _server := TCPServer.new()
 var _peers: Array[Dictionary] = []
 ## File name -> [how, times]: answered so the first `times` asks (every ask
@@ -92,10 +94,13 @@ func _tick() -> void:
 
 func _run() -> void:
 	await process_frame
-	if _server.listen(PORT, "127.0.0.1") != OK:
-		print("  FAIL  could not listen on %d" % PORT)
-		quit(1)
-		return
+	# The first port free from PORT, so two runs at once do not meet.
+	while _server.listen(_port, "127.0.0.1") != OK:
+		_port += 1
+		if _port >= PORT + 9:
+			print("  FAIL  could not listen on %d to %d" % [PORT, PORT + 8])
+			quit(1)
+			return
 	process_frame.connect(_tick)
 	_check("a fault that may pass is asked again, an answer is not",
 		PartLibrary.may_pass(HTTPRequest.RESULT_SUCCESS, 0)
@@ -126,7 +131,7 @@ func _run() -> void:
 	# pack does not carry.
 	_library._root = "user://no_parts/"
 	_library.release_geometry()
-	_library.remote_parts = "http://127.0.0.1:%d/" % PORT
+	_library.remote_parts = "http://127.0.0.1:%d/" % _port
 
 	var hash_of := func(part_id: String) -> String:
 		return (_library.parts[part_id] as PartLibrary.PartInfo).mesh_hash + ".lbm"
