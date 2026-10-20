@@ -495,8 +495,14 @@ func _first_open(method: String) -> void:
 		var until: int = Time.get_ticks_msec() + 30000
 		var was: int = Time.get_ticks_usec()
 		var idle_worst: float = 0.0
+		# And the window not drawn for it: each step was a frame of the
+		# whole window, model and all (StudioRender._draw_alone). One, for
+		# the set's own nodes laid out after they are made, is drawn.
+		var drawn: int = -1
 		while Time.get_ticks_msec() < until and (dialog.renderer == null
 				or bool(dialog.renderer.get("_warming"))):
+			if dialog.renderer == null:
+				drawn = Engine.get_frames_drawn()
 			await process_frame
 			var at: int = Time.get_ticks_usec()
 			if dialog.renderer != null:
@@ -504,6 +510,8 @@ func _first_open(method: String) -> void:
 			was = at
 		print("    made ready while left alone: %s, its longest frame %.0f ms"
 			% [str(dialog.renderer != null), idle_worst])
+		_say("made ready while left alone, the window drawn for it at most once: %d frames of it"
+			% (Engine.get_frames_drawn() - drawn), drawn >= 0 and Engine.get_frames_drawn() - drawn <= 1)
 	await _timed_open("first open", budget, method)
 	var preview: Texture2D = (dialog.get("_preview") as TextureRect).texture
 	if preview != null:

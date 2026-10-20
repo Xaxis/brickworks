@@ -519,7 +519,7 @@ func _build() -> void:
 	for view: SubViewport in [_scene, _base, _out]:
 		await _draw([view])
 		_doing("setting up the viewports")
-		await GpuFence.finished()
+		await _finished()
 	await _draw([_sums[0]])
 	_doing("setting up the viewports")
 	var probe: Image = await _read(_sums[0])
@@ -535,6 +535,10 @@ func _build() -> void:
 var _warming: bool = false
 var _idle: Callable
 var _wanted: bool = false
+## While warming up: whether nothing had changed but the set when it last
+## took up again after a wait, so that what it has changed since is the
+## set's alone, and drawn alone (see [method _draw_alone]).
+var _alone: bool = false
 
 
 ## The set made ready ahead of the first render, the window's first open of
@@ -562,6 +566,7 @@ func warm_up(idle: Callable) -> void:
 		return
 	_warming = true
 	_idle = idle
+	_look()
 	await _build()
 	# Their shapes as a render makes them (see _dress and _contact_shadow),
 	# taken away again after: a mesh left on the contact shadow is the
@@ -571,6 +576,9 @@ func warm_up(idle: Callable) -> void:
 	await _draw([_scene])
 	_backdrop.mesh = null
 	_contact.mesh = null
+	if _alone:
+		_draw_alone([])
+	_alone = false
 	_step = ""
 	_warming = false
 	_wanted = false
@@ -621,8 +629,24 @@ func _draw(views: Array) -> bool:
 ## to rasterise: the card is waited for first, a frame at a time, with the
 ## page answering (GpuFence).
 func _read(view: SubViewport) -> Image:
-	await GpuFence.finished()
+	await _finished()
 	return view.get_texture().get_image()
+
+
+## The card left to finish what it was asked (GpuFence). While warming up,
+## what the set has changed since it last looked is drawn alone first:
+## otherwise the window draws a frame of its own for it once the wait ends.
+func _finished() -> void:
+	if _alone:
+		_draw_alone([])
+	await GpuFence.finished()
+	_look()
+
+
+## Taken up again after a wait: whether what changes from here is the set's
+## alone (see [member _alone]).
+func _look() -> void:
+	_alone = _warming and not _wanted and not RenderingServer.has_changed()
 
 
 ## The layer a thing is put on to be drawn alone: nothing else is on it.
@@ -690,7 +714,7 @@ func _warm(view: SubViewport) -> bool:
 		thing.layers = layers
 		if not done:
 			break
-		await GpuFence.finished()
+		await _finished()
 		_warmed[setup + _kind(thing)] = true
 	for n: int in lights.size():
 		lights[n].layers = seen[n]
@@ -754,13 +778,22 @@ static func _kind(thing: GeometryInstance3D) -> String:
 func _draw_now(views: Array) -> bool:
 	# Made ready ahead of time only while nobody is using the window: one
 	# who starts to meanwhile is not given its frames, unless a render is
-	# waiting on it.
-	while _warming and not _wanted and not _idle.call():
-		await get_tree().process_frame
+	# waiting on it. And only while nothing else wants a frame of it: the
+	# set is then drawn alone (_draw_alone). FrameBudget's look draws
+	# frames on purpose, and the set drawn while it looked held each of its
+	# frames apart, one a hold: over Orthanc in software it was never
+	# judged until the set was ready, 40 s in (2026-10-19).
+	if _warming and not _wanted and not (_alone and _idle.call()):
+		while _warming and not _wanted and not (_idle.call() and not RenderingServer.has_changed()):
+			await get_tree().process_frame
+		_look()
 	var names := PackedStringArray()
 	for view: SubViewport in views:
 		names.append(str(view.name))
 	_doing("drawing %s at %s" % [",".join(names), str((views[0] as SubViewport).size)])
+	if _alone and _warming and not _wanted:
+		_draw_alone(views)
+		return true
 	for view: SubViewport in views:
 		view.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var drawn: int = Engine.get_frames_drawn()
@@ -768,7 +801,52 @@ func _draw_now(views: Array) -> bool:
 		await get_tree().process_frame
 		if _cancelled:
 			return false
+	_look()
 	return true
+
+
+## Whether the window is left out of the frames until its next one begins
+## (see [method _draw_alone]).
+static var _window_left_out: bool = false
+
+
+## Made ready ahead of time, these viewports are drawn now and alone: not
+## in a frame of the window.
+##
+## Each was a frame of the whole window, model and all, for a set eight
+## pixels square. Over Orthanc in Chromium on SwiftShader the warm-up's six
+## frames each held the page 1 to 5 s for the window's model, a frame at the
+## end of each hold, with nobody touching it: the frames
+## tools/web/outline_check.mjs counted standing still, put down to the
+## parts bin (2026-10-19). So this one draw is forced here with the
+## window's viewport left out, and the window is put back as its next frame
+## begins (frame_pre_draw comes before anything is drawn); the screen shows
+## what it showed meanwhile. Only when nothing but the set has changed since
+## the window's last frame ([member _alone]): a change of the window's
+## waiting to be drawn is a frame of it anyway, and these are drawn in it,
+## as before. Called with no viewports, it draws what the set changed and
+## nothing, so that the window does not draw a frame for that either.
+##
+## Not a frame of the window: the frame signals are held for it, so what
+## times or waits on the window's frames (FrameBudget, OwnFrames) does not
+## take it for one, and Engine's count of frames drawn stays as it was.
+static func _draw_alone(views: Array) -> void:
+	var window: RID = (Engine.get_main_loop() as SceneTree).root.get_viewport_rid()
+	for view: SubViewport in views:
+		view.render_target_update_mode = SubViewport.UPDATE_ONCE
+	RenderingServer.viewport_set_update_mode(window, RenderingServer.VIEWPORT_UPDATE_DISABLED)
+	RenderingServer.set_block_signals(true)
+	RenderingServer.force_draw(false)
+	RenderingServer.set_block_signals(false)
+	if _window_left_out:
+		return
+	_window_left_out = true
+	# Put back where the window is drawn from on, and not a change itself:
+	# frame_pre_draw comes before the server forgets what has changed.
+	RenderingServer.frame_pre_draw.connect(func() -> void:
+		_window_left_out = false
+		RenderingServer.viewport_set_update_mode(window, RenderingServer.VIEWPORT_UPDATE_WHEN_VISIBLE),
+		CONNECT_ONE_SHOT)
 
 
 ## Copy the model on to the stage, a slice a frame (FramePace), unless what

@@ -288,6 +288,52 @@ those twelve frames kept the page from going quiet, so its acts began
 later, after its cuts. It stays for a look with too few frames after its
 last hold to judge.
 
+## Standing still: Render's set made ready
+
+What drew a frame of the window as each hold ended, standing still over
+Orthanc, was not the parts bin. Traced by GpuFence's callers on
+2026-10-19 (local export of main, m101, Chromium on SwiftShader): the bin's
+32 pictures went in two holds within 10 s of the model opening, a frame
+each; the six holds after them, 4 to 5 s each, were Render's panel making
+its set ready while nobody used the window (`RenderDialog._warm_when_idle`,
+`StudioRender.warm_up`). Each step drew a set eight pixels square in a
+frame of the whole window, model and all, and the hold was that frame
+rasterised. FrameBudget's look, wanting frames, got one at the end of each
+hold, so it was held apart until the set was ready, 40 s in.
+
+Now the set is drawn alone: a draw forced with the window's viewport left
+out, the window put back as its next frame begins
+(`StudioRender._draw_alone`), and only when nothing else has changed since
+the window's last frame. Each step waits until nothing else wants a frame,
+the look included, so the look runs first and the set after it. One frame
+of the window is still drawn, once, for the set's own nodes laid out after
+they are made (`render_probe.gd -- --first-open`: 1 on Forward+ and on
+Compatibility in software, 7 and 9 before).
+
+`tools/web/outline_check.mjs` counts frames of the window apart from those
+drawn off screen alone (a draw, clear or copy into the page's own picture
+is the window's). Standing still with the wizard outlined, frames of the
+window in 5 s, at 1x and 2x:
+
+| build | run 1 | run 2 |
+|---|---|---|
+| main (m101) | 5 and 5 (load 17) | 5 and 5 (load 21) |
+| this branch | 0 and 0, 4 and 5 off screen (load 10-17) | 0 and 0, 2 and 4 off screen (load 21) |
+
+The outline round the wizard was drawn in every run (292 and 1,220 yellow
+pixels, as on main), and the bin's pictures in sight with it. Against the
+same exports: `idle_check.mjs` 0 of 902 frames drawn in 15 s standing
+still, a wheel notch, the - key and the ghost each drawn and quiet after;
+`render_open_check.mjs` the same on both builds (75 programs linked before
+the press, the first open 6, its longest frame 82 ms here and 84 on main,
+the second open none); the frames gate on 75969-1 passed (orbit 17.3 ms at
+the 95th percentile, select all 32.3 ms, Next at most 10.2 ms).
+`look_probe` on the GPU drew its three views byte for byte as main's, and
+`placeholder_probe` saw every tile in sight become its picture.
+`render_probe.gd -- --first-open` under Compatibility in software is over
+its 100 ms on both builds at load 19 (main 109 and 107 ms, this 148 and
+117), its warm-up drawing the window once here and 9 times on main.
+
 ## The frames gate
 
 `tools/web/cad_frames.mjs --gate --arrive=300 --only=orbit,select_all,step`
@@ -354,11 +400,9 @@ on Forward+ and Compatibility (above), and look_cost is what measured it.
   judged 80 s in, between the parts bin's read-backs, and the look after it
   drew 12 frames in the 5 s `tools/web/outline_check.mjs` stands still
   with a figure outlined (bar: one a second). On m87 and m91 it drew 1.
-  Without that look it draws 4 and 5 (two runs at 1x and 2x): the parts
-  bin reading its pictures back, one frame as each hold ends, four holds
-  of 0.8 to 1 s in the 5 s with the look lowered. m91 was reading them
-  then too, but at its full look one hold took 4.2 s (2x) and 3.4 s (1x),
-  so a single frame fell in the 5 s.
+  Without that look it drew 4 and 5 (two runs at 1x and 2x), one frame as
+  each hold ended. Those were put down to the parts bin's pictures; they
+  were Render's set made ready (Standing still, below), and draw none now.
 - Nothing measurable in the app's own work (the frames gate above), and
   nothing on a capable device (the pictures above).
 

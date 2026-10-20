@@ -59,7 +59,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   guard cut through and in x-ray, and the hover — what selecting changed must lie round the parts, not
   over them, and go all the way round. Run it at `--resolution 2800x1800 --
   --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
-  picture at 1x and 2x, and its frames standing still; before the picture it
+  picture at 1x and 2x, and its frames of the window standing still (what is
+  drawn off screen alone counted apart); before the picture it
   leaves the page 6 s (`--idle`) with no input and looks at the selection
   four times a second, which nothing but input may take away. It failed on
   the live site with the selection there all along: the parts bin's
