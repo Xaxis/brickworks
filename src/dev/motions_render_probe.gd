@@ -87,7 +87,9 @@ func _run() -> void:
 		await _doors()
 		await _crane()
 	print("")
-	if _failures == 0:
+	if _failures == 0 and pictures_only:
+		print("motions render: the dialog with Animation chosen, every control inside it")
+	elif _failures == 0:
 		print("motions render: File, Render's Animation drew 1484-1's doors and 4096-1's boom as seen "
 			+ "and framed on what moves, named and numbered, cancelled, the same frames as the panel and "
 			+ "render_motion")
