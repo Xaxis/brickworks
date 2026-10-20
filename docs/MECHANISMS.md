@@ -4664,7 +4664,10 @@ fails on cde834b2: 13 fail there, none here.
    slides 15.997 LDU. A gear swung about another line (a hub's on a steered
    wheel) is left out, and so is a mesh that would bring in what carries a
    gear: 8062-1's steering took in its cab of hinges, 13 joints for 5, and
-   the cab took a sixth of the rack's travel.
+   the cab took a sixth of the rack's travel. So is a worm standing still
+   against the gear the loop turns: it holds the gear (section 13), and a
+   tractor's sower dragged from its gear's side turned 720° with the worm's
+   mesh in its loop.
 5. **A frame named so is held still body by body** (`Simulation._frame_held`).
    Simulate held every part of a sub-assembly named Stand, Frame, Base or
    Chassis. The telescope's Stand lists the friction pin its tilt chain's
@@ -4675,7 +4678,6 @@ fails on cde834b2: 13 fail there, none here.
    of it is the frame's. The tilt wheel now slides the tube 8.003 LDU in
    Simulate, 7.995 in Grab. The orrery's frame and its periods are as they
    were.
-
 6. **A session can lay a pinion in its rack** (`Joints.meshing`). The check
    every edit_model, submit_design and placed part goes through forgives a
    gear's teeth in its partner's, but did not know racks: laid again part
@@ -4685,10 +4687,20 @@ fails on cde834b2: 13 fail there, none here.
    y=8.75". Half a plate up is 4 LDU off the rack's pitch line, past the 3
    Racks reads as a mesh: a pinion moved where the check says meshes
    nothing, and its wheel turns only its gears. Whether the owner's Claude
-   met this is not known; it is what a session building a rack meets. A
-   pinion in a rack is now said and forgiven as a mesh ("an 8 in rack
-   3743"), and the rig laid so slides its tube 21.333 LDU a turn in Grab
-   and in Simulate.
+   met this is not known; it is what a session building a rack meets, and
+   it would make claim 1 true of Grab as well. A pinion in a rack is now
+   said and forgiven as a mesh ("an 8 in rack 3743"), and the rig laid so
+   slides its tube 21.333 LDU a turn in Grab and in Simulate.
+
+Also checked, after: `simulate_probe` (41 ok, windowed), `grab_probe`'s
+racks (43), loops (13), steer (27), steering (36), actuators (38), follow
+(5), cardan (3) and swing (28) in a window, all passing, and headless the
+same 164 passed as on cde834b2 (its 35 that fail headless need a pointer,
+there as here); `mechanism_probe` (54), `axle_probe` (48), `joints_probe`
+(57), `app_tools_probe` (103), `mcp_walk_probe` (33), `mcp_sync_probe`,
+`animation_probe` (23) and `placing_probe` (38). `simulate_mechanism`'s
+description says it turns a rack and a crank's rod and slider
+(`tools/mcp_tools.json` written again).
 
 ### What is left
 
