@@ -894,6 +894,14 @@ func turn_selection(quarter_turns: int) -> int:
 	# bring it back exactly where it was: the middle of a turned box can
 	# round to a different stud than the middle of the box before it.
 	var pivot: Vector3 = Carry.pivot_of(bricks, library)
+	if posmod(quarter_turns, 4) == 2:
+		# Half round, as a mirror both ways: any point on a half stud each
+		# way takes studs onto studs, so the middle, and it lands on its own
+		# footprint. A quarter's stud centre or corner can be half a stud
+		# off it, and put the selection a stud over (mirror_selection).
+		var middle: Vector3 = _bounds_of(alive, Transform3D.IDENTITY).get_center()
+		pivot = Vector3(snappedf(middle.x, BrickLattice.STUD * 0.5), pivot.y,
+			snappedf(middle.z, BrickLattice.STUD * 0.5))
 	if _turned_last == _turn_state(alive):
 		pivot = _turned_about
 	var around: Transform3D = Transform3D(Basis.IDENTITY, pivot) \
@@ -902,9 +910,13 @@ func turn_selection(quarter_turns: int) -> int:
 	var turned: int = _reposition(func(at: Transform3D) -> Transform3D:
 		return _tidy(around * at, BrickLattice.is_square_to_grid(at.basis)),
 		"turned %s" % _many(alive.size()))
-	if turned > 0:
+	# Kept only where a quarter turn could go round it too: a stud centre or
+	# corner both ways.
+	if turned > 0 and is_zero_approx(fposmod(pivot.x - pivot.z, BrickLattice.STUD)):
 		_turned_about = pivot
 		_turned_last = _turn_state(alive)
+	elif turned > 0:
+		_turned_last = ""
 	return turned
 
 

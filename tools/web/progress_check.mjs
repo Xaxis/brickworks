@@ -470,6 +470,11 @@ try {
       await measure(page, "brickify", press(page, "brickify_go"),
         async (s, c) => Boolean(s.tree && s.tree["bunny#1"]) && !c.brickify_go,
         async () => true, 600);
+      // Its card ("bunny" is down) closed, as a person closes it: left up, it
+      // lay over the timeline's Done, the timeline stayed at Orthanc's first
+      // step, and Ctrl-A after it took that step's two parts (2026-10-19).
+      const card = (await h.controls()).brickify_done;
+      if (card) await page.mouse.click(card.x, card.y);
     } else {
       console.log("FAIL  brickify: no file chooser came up");
       failures += 1;

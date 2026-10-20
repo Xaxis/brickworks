@@ -14,8 +14,10 @@
 ## opened as File, Open opens it, all of it mirrored left to right and front
 ## to back, and its figures one at a time, each taken back by one undo; its
 ## first step on the timeline mirrored where it stands; the same two bricks
-## built between their neighbours; and a mirror whose reflection lands on a
-## part not selected, refused, with nothing changed.
+## built between their neighbours; a half turn of each, which went round the
+## same point and a stud over too, and the pair turned half round and then a
+## quarter, on the studs; and a mirror whose reflection lands on a part not
+## selected, refused, with nothing changed.
 extends SceneTree
 
 var _failures: int = 0
@@ -73,11 +75,16 @@ func _run() -> void:
 	for axis: int in [0, 2]:
 		_verbs.select_by("all")
 		await _in_place(axis, "its first step", true)
+	_verbs.select_by("all")
+	await _half_turn("its first step")
 	await _main.call("_toggle_steps")
 	await _quiet()
 
 	print("the same two bricks, built between their neighbours")
 	await _between()
+
+	print("the same two bricks alone, half round and then a quarter")
+	await _turns()
 
 	print("a reflection onto a part not selected")
 	await _refused()
@@ -112,6 +119,25 @@ func _in_place(axis: int, name: String, exact: bool = false) -> void:
 		_builder.undo()
 		await _frames(2)
 	_check("...and one undo puts it back", _snapshot() == before)
+
+
+## The selection turned half round where it stands, as the properties
+## panel's Turn of 180 does: like a mirror both ways, onto its own footprint.
+func _half_turn(name: String) -> void:
+	var chosen: int = _builder.selection.size()
+	var before: Dictionary = _snapshot()
+	var was: AABB = _footprint()
+	var turned: int = _builder.turn_selection_by(180.0)
+	_check("%s, %d parts, turned half round where it stands: %d" % [name, chosen, turned],
+		turned == chosen and chosen > 0)
+	_check("...onto the footprint it had (%s)" % _footprint(), _footprint().is_equal_approx(was))
+	var again: int = _builder.turn_selection_by(180.0)
+	_check("...and half round again, back exactly where it was (%d)" % again,
+		again == chosen and _snapshot() == before)
+	for _n: int in (1 if turned > 0 else 0) + (1 if again > 0 else 0):
+		_builder.undo()
+		await _frames(2)
+	_check("...and the undos put it back", _snapshot() == before)
 
 
 ## Each minifigure of Orthanc, a sub-model standing apart, mirrored where it
@@ -150,16 +176,45 @@ func _between() -> void:
 	for brick: BrickWorld.Brick in _world.bricks():
 		if not pair.has(brick.transform) and not _store.scenery.has(brick.id):
 			neighbours[brick.id] = brick.transform
-	for axis: int in [0, 2]:
-		# By where they stand: an undo puts a part back under a new id.
+	# By where they stand: an undo puts a part back under a new id.
+	var select_pair: Callable = func() -> void:
 		_builder.selection.clear()
 		for brick: BrickWorld.Brick in _world.bricks():
 			if pair.has(brick.transform):
 				_builder.selection[brick.id] = true
+	for axis: int in [0, 2]:
+		select_pair.call()
 		await _in_place(axis, "a 2 x 6 and a 1 x 6", true)
+	select_pair.call()
+	await _half_turn("a 2 x 6 and a 1 x 6")
 	var kept: bool = neighbours.keys().all(func(id: int) -> bool:
 		return _world.get_brick(id) != null and _world.get_brick(id).transform == neighbours[id])
 	_check("...and the four beside them are where they were", kept)
+
+
+## The pair alone, turned half round about its middle and then a quarter
+## about a stud: every part still on the studs, its box from stud edge to
+## stud edge.
+func _turns() -> void:
+	_main.call("clear_model")
+	await _quiet()
+	var along_z := Basis(Vector3(0, 0, -1), Vector3.UP, Vector3(1, 0, 0))
+	_builder.selection.clear()
+	_builder.selection[_put("2456", 0, Vector3(400, 24, 100), along_z)] = true
+	_builder.selection[_put("3009", 0, Vector3(430, 24, 100), along_z)] = true
+	await _frames(3)
+	var half: int = _builder.turn_selection_by(180.0)
+	var quarter: int = _builder.turn_selection(1)
+	var edges: Array = []
+	for brick_id: int in _builder.selection:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		var box: AABB = (brick.transform * _builder.library.mesh_for(brick.part_id).bounds).abs()
+		for at: float in [box.position.x, box.position.z, box.end.x, box.end.z]:
+			edges.append(at)
+	var on_studs: bool = edges.all(func(at: float) -> bool:
+		return is_zero_approx(fposmod(at + 0.01, BrickLattice.STUD) - 0.01))
+	_check("turned half round (%d), then a quarter (%d), on the studs: %s" % [half, quarter,
+		str(edges)], half == 2 and quarter == 2 and on_studs)
 
 
 ## Two 1 x 2 bricks a stud apart and a third, not selected, where the

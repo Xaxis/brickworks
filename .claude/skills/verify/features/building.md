@@ -126,7 +126,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `move and turn a selection`: `X` with a selection picks it up to follow the
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
-  same point each time, so four turns come back exactly.
+  same point each time, so four turns come back exactly. Half round (the
+  properties panel's Turn of 180) goes round the middle on a half stud each
+  way and lands on its own footprint, as Mirror does (`mirror_probe`).
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
