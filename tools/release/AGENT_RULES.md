@@ -48,6 +48,13 @@ date says when.
 - **Take the GPU per job, not per batch.** A batch that holds the lease for
   its whole run held both GPU slots for 45 minutes while a probe waited
   (2026-10-19). Wrap each design, render or windowed probe on its own.
+- **A measurement longer than an hour is the lead's, not yours.** An agent
+  sat four hours waiting on a 44-design proof run, doing nothing, and the
+  owner asked why anything had been running that long (2026-10-20). Prove
+  the change on something short (a probe, the tune half's first few), then
+  commit and hand over: the exact command, what it writes, how to read the
+  result and the bar for ready. Then stop. The lead runs it and reads it,
+  or starts a short agent to.
 - **Never end your turn while a job of yours runs.** A background job's notice
   does not wake an agent that has gone idle: three agents sat idle for hours
   on 2026-10-19 (ownedsets 3.5 h, then studioio and tabwalk) waiting for one.
