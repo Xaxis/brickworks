@@ -261,9 +261,14 @@ made linear and one put by a slider, undone; Play all in order and its
 undo; saved and opened again with the 37 lines byte for byte; a motion
 defined over MCP in the open panel, and gone again on undo. 8808-1's
 steering kept and played both ways through its rack; the wheel recorded
-turns both arms when played; every joint offered moves; Render animation
-drew the motion. 48 checks at 1400 × 900 and at 1280 × 720; pictures in
-`bench/results/motions2-2026-10-20/`. pose_probe, animation_probe,
+turns both arms when played; every joint offered moves, and the last one,
+scrolled to, takes a key; Render animation drew the motion. 49 checks at
+1400 × 900 and at 1280 × 720 (the editor, its joints found, open in 270
+to 410 ms on 1484-1); pictures in `bench/results/motions2-2026-10-20/`.
+With the panel open on 75969-1 (922 parts) in a browser, `cad_frames.mjs
+--gate --motions` passed: an orbit's own work 39.8 ms at its 95th
+percentile (of 200), select all 70 ms (of 400), Next at worst 28.5 ms (of
+200). pose_probe, animation_probe,
 mcp_walk_probe, flex_ui_probe and anim_walk_probe drive the panel in place
 of Pose's sliders and keys; flex_pose_flow makes a crane's motion in a
 browser.

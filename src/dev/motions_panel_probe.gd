@@ -384,6 +384,7 @@ func _racer() -> void:
 		and recorded.tracks.size() == tracks_before + 1 and _builder.history_depth() == depth_now + 1)
 	await _undo()
 	await _frames(4)
+	recorded = _player.motions().named("Steer left")
 	# Render animation: the motion chosen, drawn and kept.
 	var frames: int = await _panel.render_animation()
 	_check("Render animation draws the motion being edited (%d frames): %s" % [frames, _panel.status_words().left(90)],
