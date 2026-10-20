@@ -72,6 +72,8 @@ const KEPT_STUDS := 0.1
 ## A new motion's first key is at this time, s: a slider moved there moves
 ## its joint from where it stands to where it is put.
 const FIRST_SECONDS := 2.0
+## Beside Record, until it is pressed.
+const RECORD_WORDS := "then drag parts in the view"
 ## A motion's editor offers this many joints besides its own, until More.
 const FEW_JOINTS := 5
 ## The panel's lists stop this far above the window's foot, px.
@@ -992,6 +994,7 @@ func record() -> void:
 	_rec_tracks = []
 	_rec_refused = PackedStringArray()
 	_record.text = "Stop"
+	_record_words.text = "recording: drag the parts in the view"
 	_set_buttons()
 	_say("Recording %s: drag the parts that move in the view, as far and as fast as they should go. "
 		% Motions.quoted(_edited().name) + "Stop when it is done.")
@@ -1007,6 +1010,7 @@ func stop_recording() -> void:
 		_end_drag()
 	_recording = false
 	_record.text = "Record"
+	_record_words.text = RECORD_WORDS
 	var motion: Motions.Motion = _edited()
 	var drags: int = _rec_drags
 	var put_back: bool = drags > 0 and builder.history_depth() - _rec_depth == drags
@@ -1658,7 +1662,7 @@ func _build_editor(into: Control) -> void:
 	_record = _button(recording, "Record", record,
 		"Record drags: every drag of a part in the view, kept as keys at the times it happened")
 	_record_words = Label.new()
-	_record_words.text = "then drag parts in the view"
+	_record_words.text = RECORD_WORDS
 	_record_words.add_theme_font_size_override("font_size", 11)
 	_record_words.modulate = Color(1, 1, 1, 0.6)
 	recording.add_child(_record_words)

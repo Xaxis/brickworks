@@ -15,6 +15,20 @@ whole cycle.
 
 ### Added
 
+- Build, Motions… (it was Pose and animate…): a model's own named
+  movements, "Open the doors" or "Steer left and right", saved with it.
+  What moves is offered as motions to keep, one press each. Play plays
+  one in the view and leaves the model where it ends; Play backwards
+  takes it back; Play all runs them in order, and Loop runs it until
+  Stop. The panel says where a part stopped and what it met. New motion:
+  name it, press Record and drag the real parts in the view, and each
+  drag is kept as keys at the times it happened, the model put back
+  after; or set it joint by joint, with a slider for each joint that
+  moves and its keys on a strip of time, each eased, linear or held.
+  Every change is one step to undo. Render animation draws the motion
+  chosen. Claude's animate_model keeps its keys as the motion
+  "Animation", to play here.
+
 - Delete your account, from your account page on brickworks.diy:
   Settings, Delete this account, with your address typed to confirm. It
   goes with everything of yours on the server: your shared models and

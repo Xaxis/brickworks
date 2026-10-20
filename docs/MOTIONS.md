@@ -192,3 +192,85 @@ Left for later units, or for Grab:
 - The window (unit 2), links and the gallery (unit 3), File > Render >
   Animation (unit 4).
 
+## What unit 2 built (motions2, 2026-10-20)
+
+The window: **Build, Motions…** (it was Pose and animate…). The name is
+the panel's subject now: a builder looking for "open the dome" reads
+Motions; "Pose" named the sliders of sub-assemblies, which are gone from it
+(pose_model keeps them over MCP). The panel is `PosePanel`
+(`src/ui/pose_panel.gd`), in the frame, fonts, buttons and sliders of its
+neighbours (Simulate, Hidden colours), over the model's left edge.
+
+- **The list.** The model's motions, a row each: its name (a radio: the one
+  Render animation draws), Play, Play backwards, Edit. Play plays it through
+  Grab (`MotionPlayer.play`, kept: one step), its frames drawn over the model
+  12 a second (`BrickWorld.set_drawn`), and says what it found in unit 1's
+  words: "Played "Open the doors": #122 went from 0° to -90°, clear all the
+  way". Play backwards closes what Play opened. Play all plays every motion
+  in order (`Motions.in_order`: each after the one it follows, the rest as
+  listed), each from where the last left the model, one step. Loop plays it
+  again until Stop.
+- **Suggested from what moves.** `MotionPlayer.suggest`'s motions the model
+  has not kept, each with Keep (one step), its joints and reach in its
+  tooltip.
+- **New motion and Record.** New motion opens the editor on a motion not yet
+  kept, its name ready to type over. Record puts the Select tool in hand and
+  listens: each Grab drag in the view (`GrabDrag.grab`) is sampled 30 times a
+  second while held, measured from where its joint stood (the joint as a
+  motion names it, `MotionPlayer.joint_named`, after the drag is kept, and
+  its place `at_now` less the grab's turn), and thinned to the fewest keys
+  within 2° or a tenth of a stud of it (Douglas-Peucker), with a key where
+  the drag was kept (a swing or a settle after it). The clock starts at the
+  first drag's press; pauses between drags stay. Grab's stops and couplings
+  are the drag's own, and played again they are Grab's again (8808-1's
+  steering wheel recorded turns both arms through the rack). Stop undoes the
+  drags (when the history since Record holds only them), so the model is
+  back where it stood, and keeps the motion as one step; a ball, or a chain
+  dragged after holding still, is said and not recorded.
+- **By its joints.** The editor: Name (renamed is one step, and a motion that
+  followed it follows the new name), Remove (one step), Record, Play, Play
+  backwards, At (the time: the model drawn as the motion has it then, played
+  to look), then a slider for each joint: the motion's own, then what moves
+  (`MotionPlayer.movable`: Playable's doors, steering, boom first, then the
+  rest biggest first, five until Show all; a joint with no room to move 10°
+  or half a stud either way, held as a motion holds it, is not offered). A
+  slider moves its joint through Grab as it is dragged (`MotionPlayer.hold`,
+  `step_to`) and, let go, puts a key at that time where the joint got to; the
+  first key of a joint at a time past 0 puts one at 0 where it stood. Under
+  each slider, its keys on a strip (`PosePanel.KeyStrip`): a key pressed is
+  chosen (Eased, Linear or Held, or Remove key), dragged it moves in time; a
+  press between keys sets the time there. A driver motion is said, not
+  edited.
+- **Render animation** draws the chosen motion (or the one in the editor)
+  through `render_poses`, as render_motion does, 12 or 24 a second, 480 ×
+  300 or 720p. Turn the model round once is not in the panel: File, Render
+  has Turntable, and animate_model keeps turntable=.
+- **One history.** Every change is a "motions" step. The panel reads the
+  history each frame it is open (its depth and its newest step, an int and a
+  reference), so an undo, a redo or a motion a session defines over MCP shows
+  in it at once. Closed it does not process; open and idle it draws nothing.
+  animate_model keeps its keys as the motion "Animation" (one step), so a
+  session's animation is in the panel to play.
+
+Proof: `src/dev/motions_panel_probe.gd` (`tools/probe.sh motions_panel_probe`,
+and `PROBE_SIZE=1280x720` for the small window), clicks and drags as a
+person: 1484-1's doors kept, played open and backwards shut (0 parts off); a
+gate recorded from a 50° drag (4 to 6 keys over 0.7 to 0.9 s), the model put
+back, one step, and played to where the drag left it (0 parts off); a key
+made linear and one put by a slider, undone; Play all in order and its
+undo; saved and opened again with the 37 lines byte for byte; a motion
+defined over MCP in the open panel, and gone again on undo. 8808-1's
+steering kept and played both ways through its rack; the wheel recorded
+turns both arms when played; every joint offered moves; Render animation
+drew the motion. 48 checks at 1400 × 900 and at 1280 × 720; pictures in
+`bench/results/motions2-2026-10-20/`. pose_probe, animation_probe,
+mcp_walk_probe, flex_ui_probe and anim_walk_probe drive the panel in place
+of Pose's sliders and keys; flex_pose_flow makes a crane's motion in a
+browser.
+
+Left for later units:
+- AFTER is set over MCP only; the panel plays it, and lists motions in the
+  order they were made.
+- A joint carried by another is moved alone while its slider is dragged
+  (from where the model stands); its key, and the frames, carry it.
+- Recording keeps one joint a drag; a chain drag and a ball are not recorded.

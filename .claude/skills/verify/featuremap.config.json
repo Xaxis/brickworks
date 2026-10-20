@@ -1233,9 +1233,9 @@
     },
     {
       "kind": "ui",
-      "label": "pose and animate",
+      "label": "motions panel",
       "entry": "src/ui/pose_panel.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd   (by hand: Build, Pose and animate…; a sub-assembly on a hinge or a turntable gets a slider)",
+      "reach": "tools/probe.sh motions_panel_probe [-- OUT_DIR]   (by hand: Build, Motions…; a suggestion kept, Play and Play backwards, New motion, Record and drag a part in the view, a joint's slider puts a key)",
       "area": "view"
     },
     {
@@ -1249,7 +1249,7 @@
       "kind": "cli",
       "label": "animation probe",
       "entry": "src/dev/animation_probe.gd",
-      "reach": "tools/probe.sh animation_probe   (windowed, on the GPU: 31070-1's back window posed out and back stands where it was built, Play changes nothing, animate_model on 8808-1's steering framed with the window zoomed out, then played and rendered from Pose and animate, a part that meets the model said, an MP4 after a longer one of the same name)",
+      "reach": "tools/probe.sh animation_probe   (windowed, on the GPU: 31070-1's back window posed out and back stands where it was built, Play of a motion on it changes nothing, animate_model on 8808-1's steering framed with the window zoomed out, then played and rendered from Build, Motions… as the motion \"Animation\", a part that meets the model said, an MP4 after a longer one of the same name)",
       "area": "view"
     },
     {
@@ -1276,7 +1276,7 @@
     {
       "label": "hoses and chains by hand in a browser",
       "entry": "tools/web/flex_pose_flow.mjs",
-      "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, poses a crane and downloads its animation; the posing half needs the pose panel merged)",
+      "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, makes a motion of a crane's two joints in Build, Motions… and downloads its animation)",
       "kind": "cli",
       "area": "building"
     },
@@ -2685,6 +2685,13 @@
       "label": "motions probe",
       "entry": "src/dev/motions_probe.gd",
       "reach": "tools/probe.sh motions_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1's doors, 8808-1's steering, 4096-1's boom, 8841-1's chassis driven from its wheel, 31070-1's windscreen stopped; each defined over MCP, saved as .mpd and opened again, played, reversed, rendered; an .ldr, an .io, the autosave)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "motions panel probe",
+      "entry": "src/dev/motions_panel_probe.gd",
+      "reach": "tools/probe.sh motions_panel_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe [-- OUT_DIR]   (windowed, on the GPU: Build, Motions… driven by clicks and drags on 1484-1's doors and 8808-1's steering: a suggestion kept, played both ways, a drag recorded as a motion with the model put back, a key's way and a slider's key, play all, undo, saved and opened again, a motion defined over MCP shown in the open panel, Render animation; pictures of each state)",
       "area": "view"
     }
   ]

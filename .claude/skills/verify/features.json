@@ -131,7 +131,7 @@
       "id": "cli:animation probe",
       "kind": "cli",
       "entry": "src/dev/animation_probe.gd",
-      "reach": "tools/probe.sh animation_probe   (windowed, on the GPU: 31070-1's back window posed out and back stands where it was built, Play changes nothing, animate_model on 8808-1's steering framed with the window zoomed out, then played and rendered from Pose and animate, a part that meets the model said, an MP4 after a longer one of the same name)",
+      "reach": "tools/probe.sh animation_probe   (windowed, on the GPU: 31070-1's back window posed out and back stands where it was built, Play of a motion on it changes nothing, animate_model on 8808-1's steering framed with the window zoomed out, then played and rendered from Build, Motions\u2026 as the motion \"Animation\", a part that meets the model said, an MP4 after a longer one of the same name)",
       "area": "view",
       "tests": []
     },
@@ -587,7 +587,7 @@
       "id": "cli:hoses and chains by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/flex_pose_flow.mjs",
-      "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, poses a crane and downloads its animation; the posing half needs the pose panel merged)",
+      "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, makes a motion of a crane's two joints in Build, Motions\u2026 and downloads its animation)",
       "area": "building",
       "tests": []
     },
@@ -705,6 +705,14 @@
       "entry": "tools/web/moderation_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:motions panel probe",
+      "kind": "cli",
+      "entry": "src/dev/motions_panel_probe.gd",
+      "reach": "tools/probe.sh motions_panel_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe [-- OUT_DIR]   (windowed, on the GPU: Build, Motions\u2026 driven by clicks and drags on 1484-1's doors and 8808-1's steering: a suggestion kept, played both ways, a drag recorded as a motion with the model put back, a key's way and a slider's key, play all, undo, saved and opened again, a motion defined over MCP shown in the open panel, Render animation; pictures of each state)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2536,6 +2544,14 @@
       "tests": []
     },
     {
+      "id": "ui:motions panel",
+      "kind": "ui",
+      "entry": "src/ui/pose_panel.gd",
+      "reach": "tools/probe.sh motions_panel_probe [-- OUT_DIR]   (by hand: Build, Motions\u2026; a suggestion kept, Play and Play backwards, New motion, Record and drag a part in the view, a joint's slider puts a key)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:mould maker",
       "kind": "ui",
       "entry": "src/minifig/mould_editor.gd",
@@ -2678,14 +2694,6 @@
       "kind": "ui",
       "entry": "src/ui/cursors.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd   (in a browser: node tools/web/cursor_check.mjs --url=<a preview>/app)",
-      "area": "view",
-      "tests": []
-    },
-    {
-      "id": "ui:pose and animate",
-      "kind": "ui",
-      "entry": "src/ui/pose_panel.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd   (by hand: Build, Pose and animate\u2026; a sub-assembly on a hinge or a turntable gets a slider)",
       "area": "view",
       "tests": []
     },
