@@ -4613,7 +4613,7 @@ certain.
 ### What was fixed
 
 None changes the interface. Each is a check of `telescope_probe` that
-fails on cde834b2: 13 fail there, none here.
+fails on cde834b2: 15 fail there, none here.
 
 1. **Simulate turns a loop as a drag turns it** (`Simulation._take_hold`,
    `hold_with`; the panel and `simulate_mechanism` through

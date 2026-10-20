@@ -705,7 +705,7 @@ gear train keeps the gear reading's poses (docs/MECHANISMS.md section 27).
 `tools/probe.sh telescope_probe` checks it on five rigs in `src/dev/fixtures/`
 (`rack_wheel`, `crank_slider`, `tilt_cradle`, `telescope.mpd`, `friction_arms`) and
 the orrery, in Simulate, in Grab and over MCP; it ends on "telescope: every check
-passed, 3 gaps left as docs/MECHANISMS.md section 27 says", and fails 13 on
+passed, 3 gaps left as docs/MECHANISMS.md section 27 says", and fails 15 on
 cde834b2.
 
 The probe ends on "simulate: a driver clicked, played, scrubbed and recorded, …".
