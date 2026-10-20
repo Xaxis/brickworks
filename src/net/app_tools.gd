@@ -1683,7 +1683,7 @@ func _list_motions(input: Dictionary) -> String:
 ## stands now, its driver, and with [param kept] what it last did.
 func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> PackedStringArray:
 	var out := PackedStringArray()
-	out.append("  \"%s\", %s s%s:" % [motion.name, Balance.tidy(motion.length()),
+	out.append("  \"%s\", %s s%s:" % [motion.name, Motions.num(motion.length(), 2),
 		(", after \"%s\"" % motion.after) if not motion.after.is_empty() else ""])
 	for track: Motions.Track in motion.tracks:
 		if player.parts_of(track.joint).is_empty():
@@ -1691,7 +1691,7 @@ func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> 
 			continue
 		var keys := PackedStringArray()
 		for key: Array in track.keys:
-			keys.append("%s s %s%s" % [Balance.tidy(float(key[0])), _place(float(key[1]), track.joint),
+			keys.append("%s s %s%s" % [Motions.num(float(key[0]), 2), _place(float(key[1]), track.joint),
 				"" if str(key[2]) == "EASE" else " " + str(key[2]).to_lower()])
 		out.append("    %s %s: %s; it stands at %s now." % [player.joint_words(track.joint),
 			"slid" if track.joint.mode == "slide" else "turned", ", ".join(keys),
@@ -1701,8 +1701,8 @@ func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> 
 			out.append("    %s: %s." % [motion.name, player.gone_words(motion.driver)])
 		else:
 			out.append("    %s turned %s time%s in %s s, from where it stands, with what it drives."
-				% [player.joint_words(motion.driver), Balance.tidy(motion.turns),
-				"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Balance.tidy(motion.driver_seconds)])
+				% [player.joint_words(motion.driver), Motions.num(motion.turns, 2),
+				"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 2)])
 	if kept:
 		var last: String = str(player.results.get(motion.name.to_lower(), ""))
 		out.append("    Last played: %s." % last if not last.is_empty()
@@ -1764,7 +1764,7 @@ func _define_motion(input: Dictionary) -> String:
 	var joints: int = motion.joints().size()
 	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check, and the "
 		+ "model put back: %s. play_motion plays it; one step: undo takes it out.") % [
-		"Changed" if replaced else "Kept", Motions.quoted(name), Balance.tidy(motion.length()), joints,
+		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
 		"" if joints == 1 else "s", player.said(played)]
 
 
@@ -1863,7 +1863,7 @@ func _play_motion(input: Dictionary) -> Variant:
 		var played: MotionPlayer.Played = player.play(motion, reverse, MotionPlayer.PLAY_FPS, true)
 		went = went or played.went()
 		lines.append("Played %s%s (%s s): %s." % [Motions.quoted(motion.name), " backwards" if reverse
-			else "", Balance.tidy(played.seconds), player.said(played)])
+			else "", Motions.num(played.seconds, 2), player.said(played)])
 		if not played.frames.is_empty():
 			standing = played.standing
 			for n: int in _sheet_of(played, (asked as Array).size()):
@@ -1952,7 +1952,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	if frames <= 0 or not panel._last.has("kept"):
 		return "Nothing rendered: %s" % panel.rendered_words()
 	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s: %s." % [frames, fps,
-		Balance.tidy(float(frames - 1) / float(fps)), int(panel._last["seconds"]), str(panel._last["kept"])])
+		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]), str(panel._last["kept"])])
 	var times: Array = []
 	var picture: Image = panel.sheet(times)
 	if picture == null:

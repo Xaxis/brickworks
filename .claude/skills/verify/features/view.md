@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1431,6 +1431,21 @@ picture the assistant is shown.
   lights are put on too), the card left to finish each (`GpuFence`) before
   the next; and every picture is read back only once the card has finished
   it (`_read`), so a read-back no longer holds the page while it rasterises.
+- `motions` and `playing motions` (`src/assembly/motions.gd`,
+  `src/assembly/motion_player.gd`; docs/MOTIONS.md): a model's own named
+  movements, "Open the doors", kept in its file as `0 !BRICKWORKS MOTION`,
+  `MOTION_TRACK`, `MOTION_KEY` and `MOTION_DRIVER` lines in the head of the
+  main model after the floor's, written the same every time (the save, the
+  autosave, an export, an .io, a shared link's text) and read as the file
+  opens (`BrickWorld.motions`; define and remove are a "motions" history
+  step). A track's joint is found by its sub-assembly or its part's number,
+  colour and place, and measured from where the model was built (AT, so a
+  door saved open opens no further). Played through Grab (`GrabDrag.held_of`,
+  a frame at a time, loops 3° at a time), it stops where it meets the model
+  and says so by name and degree; kept, one undo step. Suggested from what
+  moves (Playable). Over MCP only in unit 1: list_motions, define_motion,
+  play_motion, render_motion (Render animation's path,
+  `PosePanel.render_poses`); animate_model is a motion played once.
 - `render open check` (`tools/web/render_open_check.mjs`): the Render
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
@@ -1608,6 +1623,15 @@ MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --
 # pose_model marks 8808-1's steering arms as having no room to turn. 15 of
 # its 23 checks fail on 32bccfcc.
 tools/probe.sh animation_probe
+# A model's own motions on real sets (src/dev/motions_probe.gd): 1484-1's
+# doors suggested and kept, 8808-1's steering both ways through its rack,
+# 4096-1's boom lifted, 8841-1's chassis driven from its steering wheel,
+# 31070-1's windscreen stopped and said; each defined over MCP, saved as .mpd
+# and opened again with its lines byte for byte, played, reversed, rendered
+# (a WebP and an MP4 whose frames move); a door saved open opens no further;
+# a part taken off is said; an .ldr, an .io and the autosave carry them.
+# Headless it checks all but the renders.
+tools/probe.sh motions_probe
 # Every way of recording what moves, walked on five real sets, every answer
 # printed and every file kept (src/dev/anim_walk_probe.gd: checks nothing;
 # the audit's evidence)

@@ -5,8 +5,9 @@
 ##   godot --path . --resolution 1400x900 --script src/dev/motions_probe.gd
 ##   ... -- OUT_DIR   (where the files go; shots/motions when not given)
 ##
-##  1. 10220-1's doors: list_motions suggests opening them, define_motion
-##     keeps that, and played they open and backwards they close.
+##  1. 1484-1's doors, two gates and a mailbox: list_motions suggests
+##     opening them, define_motion keeps that, and played they open and
+##     backwards they close.
 ##  2. 8808-1's steering, left and right through its rack: both front arms
 ##     turn, one way and then the other.
 ##  3. 4096-1's crane: its boom lifts.
@@ -20,7 +21,7 @@
 ##     undo step; animate_model is a motion played once.
 extends SceneTree
 
-const DOORS := "res://vendor/omr/files/10220-1.mpd"
+const DOORS := "res://vendor/omr/files/1484-1.mpd"
 const RACER := "res://vendor/omr/files/8808-1.mpd"
 const CRANE := "res://vendor/omr/files/4096-1_Crane.mpd"
 const CHASSIS := "res://vendor/omr/files/8841-1_Chassis.mpd"
@@ -90,7 +91,7 @@ func _run() -> void:
 
 
 func _doors() -> void:
-	print("── 10220-1: open the doors ──")
+	print("── 1484-1: open the doors ──")
 	if not await _open(DOORS):
 		return
 	var built: Dictionary = _poses()
