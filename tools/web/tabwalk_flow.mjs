@@ -249,8 +249,10 @@ async function partsOf(page, id) {
   }), `${USER}/sessions/${id}/autosave.ldr`);
   return text.split(/\r?\n/).filter((line) => line.startsWith("1 ")).map((line) => line.trim()).sort().join("\n");
 }
-// The parts once the tab has kept what it shows: the count it shows, held
-// still for a few seconds, then what it stored.
+// The parts once the tab has kept what it shows: the count it shows held
+// still, then what it stored, read until two reads 4 s apart agree. Read
+// once, the stored model was a minifigure short, which is how a reload
+// losing it was found (CommandSocket.model_changed).
 async function settledParts(tab) {
   let last = -1;
   for (let n = 0; n < 40; n++) {
@@ -259,8 +261,13 @@ async function settledParts(tab) {
     last = now;
     await wait(3000);
   }
-  await wait(6000);
-  const parts = await partsOf(tab.page, tab.id);
+  let parts = await partsOf(tab.page, tab.id);
+  for (let n = 0; n < 10; n++) {
+    await wait(4000);
+    const again = await partsOf(tab.page, tab.id);
+    if (again === parts) break;
+    parts = again;
+  }
   return { bricks: last, parts, count: parts ? parts.split("\n").length : 0 };
 }
 
@@ -269,17 +276,23 @@ const log = [];
 async function stage(name, { account = false } = {}) {
   const row = { stage: name, at: new Date().toISOString(), tabs: {} };
   for (const tab of TABS) {
+    const kept = await settledParts(tab);
+    await tab.page.mouse.move(640, 500);
+    await wait(800);
+    await tab.page.screenshot({ path: `${out}/${name}_${tab.label}.png` });
     if (account) {
       await accountOpen(tab.page);
       await wait(1500);
+      await tab.page.mouse.move(640, 790);
+      await wait(800);
+      await tab.page.screenshot({ path: `${out}/${name}_${tab.label}_account.png` });
     }
     const c = await claude(tab.page);
-    const kept = await settledParts(tab);
+    if (account) await accountShut(tab.page);
     row.tabs[tab.label] = { id: tab.id, badge: c.badge, chats: c.chats, account_says: c.account_says,
       bricks: kept.bricks, parts: kept.count };
     tab.kept = kept;
-    await tab.page.screenshot({ path: `${out}/${name}_${tab.label}.png` });
-    if (account) await accountShut(tab.page);
+    writeFileSync(`${out}/${name}_${tab.label}.parts`, `${kept.parts}\n`);
   }
   log.push(row);
   writeFileSync(`${out}/stages.json`, JSON.stringify(log, null, 2));
@@ -364,6 +377,15 @@ async function walk(mcpConfig) {
   const last = log[log.length - 1].tabs;
   check(`A says two chats work in it: "${last.A.badge}"`, last.A.badge === `2 Claude chats · tab ${A.id}`);
   check(`B still says one: "${last.B.badge}"`, last.B.badge === `Claude working · tab ${B.id}`);
+
+  console.log("\n5. both tabs reloaded: what the chats built is kept");
+  for (const tab of TABS) {
+    const shown = last[tab.label].bricks;
+    await tab.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
+    await settle(tab.page);
+    const back = (await state(tab.page)).bricks;
+    check(`${tab.label} reloaded has ${back} parts, as it showed (${shown})`, back === shown);
+  }
 }
 
 const TABS = [{ label: "A" }, { label: "B" }];
