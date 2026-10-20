@@ -2278,6 +2278,27 @@ house, nor the hut), everything all four, a visitor's none; the three
 functions the service role's alone; the filter's first page about 4 ms.
 `test_play` ends "6 passed".
 
+A model's own motions on its card (`supabase/motions.sql`, after play.sql),
+the same way, and the gallery's answers compared before and after it:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/motions.sql --dry --try=tools/motions_try.sql --table=shared_models
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/sql_compare.mjs supabase/motions.sql motions
+python3 tools/minitest.py tests/test_motions.py
+```
+
+The dry run proves it when it ends "rolled back, nothing kept" with: every
+model's `motions` `{}` and none null; thirteen names, 61 characters, a line
+break, a space first and an empty name refused by
+`shared_models_motion_names`, twelve allowed, null refused; the cards
+saying `["Open the gates","Open the mailbox"]`, the observatory's three and
+`[]` beside their `moves`; the list asked with tests saying the same;
+Technic or mechanism as play.sql made it (the observatory and the racer);
+the house's page (`directory_model`) with its motions; a visitor's list of
+test models empty; `directory_card` and `motion_names_ok` the service
+role's alone; a visitor's first page about 7 ms (2026-10-20). The compare
+ends "17 of 17 answered the same". `test_motions` ends "5 passed".
+
 The viewer in the real scene, on 8808-1 (a window: on Xvfb under `gpu`;
 about a minute on the GPU):
 

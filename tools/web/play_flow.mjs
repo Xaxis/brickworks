@@ -232,7 +232,9 @@ async function galleryCards(size, shape) {
   await page.evaluate(() => document.querySelector('a.model[data-id="Pl4yCard01"]').scrollIntoView({ block: "center" }));
   await page.waitForTimeout(400);
   await shot(page, `${size}_5_gallery.png`);
+  // Dark, on the card with motions of its own.
   await page.emulateMedia({ colorScheme: "dark" });
+  await page.evaluate(() => document.querySelector('a.model[data-id="Pl4yCard04"]').scrollIntoView({ block: "center" }));
   await page.waitForTimeout(300);
   await shot(page, `${size}_5_gallery_dark.png`);
   await page.emulateMedia({ colorScheme: "light" });
@@ -267,7 +269,7 @@ async function houseLink(size, shape) {
   await page.goto(`${site}/m/${houseId}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
   if (cta) {
-    await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
+    await Promise.all([page.waitForURL(/\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
   }
   await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the house opened", 600);
   const ready = await until(page, () => {
@@ -308,7 +310,7 @@ async function houseLink(size, shape) {
     check(`"${name}" played: ${joints.map((j) => `${j[0]} ${j[1]}° to ${j[2]}°`).join(", ") || "nothing"}; lit; "${done ? done.p.says : ""}"`,
       Boolean(done) && joints.length > 0 && joints.every((j) => Math.abs(j[2] - j[1]) >= 80) && !done.m.stopped
       && /Press it again to put it back/.test(done.p.says));
-    if (done) say(`the press worked out ${done.m.frames} frames in ${done.m.ms} ms of the app's own time${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""} (said, not judged)`);
+    if (done) say(`the press worked out ${done.m.frames} frames in ${done.m.ms} ms of the app's own time${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""}, after waiting ${done.m.waited_ms} ms for the grab and the parts' shapes (said, not judged)`);
   }
   await page.waitForTimeout(600);
   await shot(page, `${size}_7_played.png`);
@@ -439,11 +441,12 @@ try {
     // 1. The link, as somebody follows it.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
     // On a deployment the link is the model's own page, whose button opens
-    // it in the app (the local relay goes straight on); m87's preview waited
-    // 600 s on the page for an app that was never opened.
+    // it in the app (serve.py goes straight on); m87's preview waited
+    // 600 s on the page for an app that was never opened. The local relay
+    // (relay_server.mjs --static) sends /app?view= on to /?view=.
     const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
     if (cta) {
-      await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
+      await Promise.all([page.waitForURL(/\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
     }
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the shared model opened", 600);
     const ready = await until(page, () => {

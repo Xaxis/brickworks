@@ -47,9 +47,11 @@ declare -A CMD=(
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
-  # frames held to 33 ms. Published from a throwaway account, deleted
-  # after; API routes only, with the bypass (supabase/play.sql's card when
-  # it is applied).
+  # frames held to 33 ms; and 1484-1 with motions of its own, each played
+  # by its button and taken back, Reset, and its page saying what it does.
+  # Published from a throwaway account, deleted after; API routes only,
+  # with the bypass (supabase/play.sql's and motions.sql's card when they
+  # are applied).
   [play]="tools/web/play_flow.mjs --url=$P --publish --out=$S/${TAG}_play"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
