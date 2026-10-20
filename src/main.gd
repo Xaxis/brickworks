@@ -4131,6 +4131,7 @@ func _build_ui() -> void:
 	_pose.look = _render.look
 	_pose.rig_lights = _render.rig_lights
 	_pose.named = _bar.model_name
+	_pose.turning_for = _grab_drag.turning_for_session
 	_over_model.add_child(_pose)
 	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_pose.position = Vector2(12, 48)

@@ -21,9 +21,11 @@
 ##  - "Show me it turning": animate_model takes the steering by its part, as
 ##    move_part names it, in degrees from where it was built: the frames it
 ##    would draw turn both front wheels as move_part does, nothing on the
-##    baseplate moves, and asked only to set keys it says it draws them in
-##    a render alone. The session's car steered with move_part and
-##    animate_model said nothing turns.
+##    baseplate moves, and asked only to set keys it sets them, and Build,
+##    Pose and animate's Play turns the wheels and puts them back. The
+##    session's car steered with move_part and animate_model said nothing
+##    turns; then keys on a part were refused unless rendered, and keys a
+##    render left in the panel played nothing (animaudit, 2026-10-20).
 ##  - "Find the most built small model and open it": open_model link= opens
 ##    a copy of a gallery model (its answer played here, FakeShared) saved
 ##    in the person's models under its own name and remixed from its link;
@@ -151,10 +153,10 @@ func _what_moves() -> void:
 func _animate(steering: int, before: Dictionary) -> void:
 	var grabbing: GrabDrag = _main.get("_grab_drag")
 	var turning: Variant = grabbing.turning_for_session("#%d" % steering)
-	_check("a part on its joint is a joint to animate", turning is Callable)
-	if not turning is Callable:
+	_check("a part on its joint is a joint to animate", turning is GrabDrag.Turning)
+	if not turning is GrabDrag.Turning:
 		return
-	var placed: Dictionary = (turning as Callable).call(25.0)
+	var placed: Dictionary = (turning as GrabDrag.Turning).placed_at(25.0)
 	var at: Dictionary = before.duplicate()
 	at.merge(placed, true)
 	_check("its frame at 25° turns both front wheels, not the back ones (%d parts)" % placed.size(),
@@ -163,8 +165,26 @@ func _animate(steering: int, before: Dictionary) -> void:
 	_check("...and moves nothing on the baseplate", _same(_poses(), before))
 	var keys: Array = [{"t": 0, "angles": {"#%d" % steering: 0}}, {"t": 1, "angles": {"#%d" % steering: 25}}]
 	var said: String = await _say("animate_model", {"keys": keys, "render": false})
-	_check("keys alone: it says it turns in a render only: %s" % said.left(70),
-		said.begins_with("#%d turns in a rendered animation only" % steering))
+	_check("keys alone are set for the person to play: %s" % said.left(70),
+		said.begins_with("Set 2 keys over 1.0 s") and said.contains("plays it"))
+	# Play, as the person presses it: the steering turns in the window, and
+	# when it ends every part stands where it was built. Refused before, and
+	# keys left by a render played nothing.
+	var pose: PosePanel = _main.get("_pose")
+	_main.call("open_pose")
+	await process_frame
+	pose.play()
+	var turned_while_playing: bool = false
+	for _n: int in 240:
+		await process_frame
+		if _turned(before, _poses(), 10) and _turned(before, _poses(), 11):
+			turned_while_playing = true
+		if not pose._playing:
+			break
+	_check("...and Play turns both front wheels", turned_while_playing)
+	_check("...and puts them back where they were built when it ends", not pose._playing
+		and _same(_poses(), before))
+	pose.close()
 	said = await _say("animate_model", {"keys": keys})
 	_check("keys to render, headless: set, and why it is not drawn: %s" % said.left(60),
 		said.begins_with("Set 2 keys over 1.0 s") and said.contains("without a window"))

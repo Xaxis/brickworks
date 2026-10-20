@@ -125,6 +125,12 @@ func begin_turntable(model: String, settings: RenderSettings,
 	if not OS.has_feature("web"):
 		_frames_dir = where().path_join(_base)
 		DirAccess.make_dir_recursive_absolute(_frames_dir)
+		# The last run's frames, written over by this one's: the MP4 is made
+		# of every frame_N in the folder, and 24 frames after 48 made an MP4
+		# of 48 with the last run's second half.
+		for old: String in DirAccess.get_files_at(_frames_dir):
+			if old.begins_with("frame_") and old.ends_with(".png"):
+				DirAccess.remove_absolute(_frames_dir.path_join(old))
 
 
 ## One frame of it: into the WebP, and on the desktop a PNG in the folder.
@@ -220,12 +226,16 @@ func _mp4() -> String:
 	var out: String = where().path_join(_base + ".mp4")
 	var colour: Color = _settings.backdrop if _settings != null else Color.WHITE
 	var size: Vector2i = _frame_size
+	var rate: int = _settings.fps if _settings != null else 24
 	# An MP4 has no alpha: a transparent turntable goes on its backdrop
 	# colour, and both sides even, which H.264's colour format needs.
 	var arguments: PackedStringArray = ["-y", "-hide_banner", "-loglevel", "error",
-		"-framerate", str(_settings.fps if _settings != null else 24),
+		"-framerate", str(rate),
 		"-i", _frames_dir.path_join("frame_%04d.png"),
-		"-f", "lavfi", "-i", "color=c=0x%s:s=%dx%d" % [colour.to_html(false), size.x, size.y],
+		# At the frames' own rate: the overlay goes at its backdrop's, and a
+		# colour is 25 a second unless told, so 12 a second came out as 25
+		# with every frame shown twice or three times, unevenly.
+		"-f", "lavfi", "-i", "color=c=0x%s:s=%dx%d:r=%d" % [colour.to_html(false), size.x, size.y, rate],
 		"-filter_complex",
 		"[1][0]overlay=shortest=1,pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p",
 		"-c:v", "libx264", "-crf", "18", "-movflags", "+faststart", out]

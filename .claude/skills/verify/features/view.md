@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1402,16 +1402,23 @@ picture the assistant is shown.
   in a hole read as a hinge, and swung, the tube tore off its other hole.
   Dragging moves it live (`Poser.stand`, nothing to undo); letting go, or a
   click on the track, keeps it as one step ("posed Arm at 45°"), as far as it
-  has room, pressing only on what it is joined to (`Poser.settle`, a bisection
-  between where it was and where it was asked; the panel says where it
-  stopped). A joint inside another turns about its rest axis first and the
-  outer carries it (`Poser.transforms_for`). After an undo the angles are read
+  has room, pressing only on what it is joined to or overlapped at rest
+  (`Poser.settle`, a bisection between where it was and where it was asked;
+  the panel says where it stopped; `Poser.rest_cells`: 31070-1's back window
+  came back 6 LDU short without it). A joint inside another turns about its
+  rest axis first and the outer carries it (`Poser.transforms_for`, from rest,
+  never squared up: Play rewrote 73 parts of 31070-1 that way). After an undo the angles are read
   back off the parts (`Poser.read_back`), or found afresh if the model changed.
   At rest sets every joint to 0. Key at / Add key keeps every angle at a time;
   `PoseAnimation` runs each joint through its keys as a monotone cubic
   (Fritsch–Carlson): exact at each key, eased at the ends, never past a key.
+  A key may also name a part on its joint as move_part does ("#80", a
+  session's animate_model): Play and Render animation turn it as a drag does
+  (`GrabDrag.Turning`, taken afresh each time from `turning_for`).
   Play runs it in the window; Turn the model round once adds a turntable;
-  Render animation draws it Quick at 480 × 300 or 720p, 12 or 24 a second,
+  Render animation draws it Quick at 480 × 300 or 720p, 12 or 24 a second
+  (a session's framed on the model and what it sweeps, `view` "hero"; the
+  person's through their own camera),
   without a contact shadow (drawn once, it would be the rest pose's), with the
   frame drawn last shown in the panel. A browser downloads
   `<model>_animation.webp`; the desktop writes the frames, the WebP and, with
@@ -1590,6 +1597,21 @@ node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out
 # back; three keys whose frames, read off the renderer's own copy, turn each
 # joint through its keys; Render animation's frames, WebP and MP4
 MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd
+# What the animation audit found broken, on real sets (docs/ANIMATION.md;
+# src/dev/animation_probe.gd):
+# 31070-1's back window posed out and back stands where it was built, Play
+# of keys on its 8 joints moves nothing, animate_model on 8808-1's steering
+# with the window zoomed far out spans over half its frame and its answer
+# carries its frames, the panel then plays and renders the session's keys,
+# Cancel stops a render, a part that meets the model at once is said, and an
+# MP4 of 6 frames after one of 12 of the same name is 6 at 12 a second; and
+# pose_model marks 8808-1's steering arms as having no room to turn. 15 of
+# its 23 checks fail on 32bccfcc.
+tools/probe.sh animation_probe
+# Every way of recording what moves, walked on five real sets, every answer
+# printed and every file kept (src/dev/anim_walk_probe.gd: checks nothing;
+# the audit's evidence)
+~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/anim_walk_probe.gd -- --into=shots/anim_walk
 # The first open of Render in a fresh browser, every frame timed (the engine's
 # frame callback, WebGL calls in it, the programs it linked): fails past
 # --budget ms (250) for any frame from the press to the draft, of the first

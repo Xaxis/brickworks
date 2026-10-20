@@ -1246,6 +1246,20 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "animation probe",
+      "entry": "src/dev/animation_probe.gd",
+      "reach": "tools/probe.sh animation_probe   (windowed, on the GPU: 31070-1's back window posed out and back stands where it was built, Play changes nothing, animate_model on 8808-1's steering framed with the window zoomed out, then played and rendered from Pose and animate, a part that meets the model said, an MP4 after a longer one of the same name)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "animation walk",
+      "entry": "src/dev/anim_walk_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/anim_walk_probe.gd -- --into=DIR [--only=steering,crane,door,gears,figure]   (prints and keeps every way of recording what moves on five real sets, as docs/ANIMATION.md measured them; checks nothing)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "keyframed animation",
       "entry": "src/assembly/pose_animation.gd",

@@ -1297,6 +1297,11 @@ const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable or a clip
 	+ "move_part with no part= lists them, and animate_model takes them by part (#14).")
 
 
+## The turns a joint pose_model lists is tried at, each way, before it is
+## said to have no room to turn.
+const STUCK_DEGREES: Array[float] = [10.0, 90.0]
+
+
 func _pose(input: Dictionary) -> String:
 	var panel: PosePanel = app.get("_pose")
 	# The assemblies a design named are sub-models only once tagged, as a
@@ -1308,10 +1313,27 @@ func _pose(input: Dictionary) -> String:
 		return "Nothing here turns: " + NO_JOINTS
 	if not input.has("joint"):
 		var said := PackedStringArray()
+		var stuck: int = 0
 		for n: int in joints.size():
 			var one: Poser.Joint = joints[n]
-			said.append("  %d. %s, on its %s, at %d° (%d parts)" % [n + 1,
-				Assemblies.label(one.path), one.kind(), roundi(one.angle), one.ids.size()])
+			# A sub-assembly the file names is not always what moves: real
+			# sessions asked to raise 4096-1's boom swung its one joint +45
+			# and -45, both stopped at 0, before move_part found the boom.
+			# A wheel on its axle has room at a quarter turn and none at 10°
+			# (8808-1's rear axle): its turned cover is coarser than its shape.
+			var held: bool = true
+			for degrees: float in STUCK_DEGREES:
+				if panel.poser.has_room_to(one, degrees) or panel.poser.has_room_to(one, -degrees):
+					held = false
+					break
+			if held:
+				stuck += 1
+			said.append("  %d. %s, on its %s, at %d° (%d parts)%s" % [n + 1,
+				Assemblies.label(one.path), one.kind(), roundi(one.angle), one.ids.size(),
+				", with no room to turn 10° or 90° either way" if held else ""])
+		if stuck > 0:
+			said.append("A joint with no room is often not what moves: move_part with no part= "
+				+ "lists what a drag moves, and animate_model takes those by part (#14).")
 		return "Joints:\n%s\npose_model {\"joint\": \"1\", \"degrees\": 45} swings one." \
 			% "\n".join(said)
 	var asked: String = str(input["joint"]).strip_edges()
@@ -1412,7 +1434,7 @@ static func _joint_named(joints: Array[Poser.Joint], asked: String) -> Poser.Joi
 	return null
 
 
-func _animate(input: Dictionary, work: Working.Job = null) -> String:
+func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: PosePanel = app.get("_pose")
 	if assistant != null:
 		assistant._tag_assemblies()
@@ -1426,8 +1448,8 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 	# A part on its joint as move_part turns it (a kart's steering on its
 	# pins): pose_model's joints are sub-assemblies on a hinge, a turntable
 	# or a clip, and a session that steered a car with move_part could not
-	# animate it (bench/results/mcpwalk2-2026-10-19, t3).
-	var carried: Dictionary = {}   ## "#N" -> GrabDrag.turning_for_session's function
+	# animate it (bench/results/mcpwalk2-2026-10-19, t3). The panel turns
+	# it by its name, as Play and Render animation run the keys.
 	var grabbing: GrabDrag = app.get("_grab_drag")
 	for raw: Variant in keys:
 		if not (raw is Dictionary) or not (raw as Dictionary).has("t"):
@@ -1447,16 +1469,11 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 					return ("No joint %s: %s. Joints are pose_model's, by number or name, or a part on "
 						% [str(name), turning_part] + "its joint as move_part names it (#14).")
 				path = "#%s" % str(name).strip_edges().trim_prefix("#")
-				if not carried.has(path):
-					carried[path] = turning_part
 			elif joint == null:
 				return ("No joint %s. %s" % [str(name), "pose_model lists them."
 					if not joints.is_empty() else "Nothing here turns: " + NO_JOINTS])
 			angles[path] = clampf(float(given[name]), -180.0, 180.0)
 		made.append([t, angles])
-	if not carried.is_empty() and not bool(input.get("render", true)):
-		return ("%s turns in a rendered animation only: Build, Pose and animate plays pose_model's "
-			% ", ".join(carried.keys()) + "joints. Leave render= out to draw it.")
 	panel.animation.keys.clear()
 	for one: Array in made:
 		panel.animation.add_key(float(one[0]), one[1])
@@ -1468,12 +1485,28 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 	if not StudioRender.possible():
 		return ("Set %s. Rendering it needs something to draw with, and this app is running "
 			% said + "without a window; the person can play it from Build, Pose and animate.")
-	panel.carried = carried
-	var frames: int = await panel.render_animation(work)
-	panel.carried = {}
-	if frames <= 0:
+	var frames: int = await panel.render_animation(work, "hero")
+	if frames <= 0 or not panel._last.has("kept"):
 		return "Nothing rendered: %s" % panel.rendered_words()
-	return "%s: %s" % [said.left(1).to_upper() + said.substr(1), panel.rendered_words()]
+	# Its own words, not the panel's line, whose "— 3 s" at the end is how
+	# long drawing took: a session read it as an MP4 cut short of its 4 s.
+	var lines := PackedStringArray(["%s: %d frames, %d a second, drawn in %d s: %s." % [
+		said.left(1).to_upper() + said.substr(1), frames, panel.animation.fps,
+		int(panel._last["seconds"]), str(panel._last["kept"])]])
+	# A part that met the model stood still in the frames past it, and the
+	# answer said only how many frames there were (31070-1's windscreen).
+	for short: String in panel.short_words():
+		lines.append("%s; the frames that ask for more show it there." % short)
+	var times: Array = []
+	var picture: Image = panel.sheet(times)
+	if picture == null:
+		return "\n".join(lines)
+	var at := PackedStringArray()
+	for t: float in times:
+		at.append("%d s" % roundi(t) if is_equal_approx(snappedf(t, 0.1), roundf(t)) else "%.1f s" % t)
+	lines.append("The picture: its frames at %s, left to right and down." % ", ".join(at))
+	return [{"type": "text", "text": "\n".join(lines)}, {"type": "image", "source": {"type": "base64",
+		"media_type": "image/png", "data": Marshalls.raw_to_base64(picture.save_png_to_buffer())}}]
 
 
 # -- simulating -------------------------------------------------------------------
