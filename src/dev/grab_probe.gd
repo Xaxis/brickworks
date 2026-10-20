@@ -4392,7 +4392,8 @@ func _coast_case() -> void:
 					await _clean_shot("coast " + ("train" if train else "flywheel") + ("_slow" if slow_ms > 0 else ""), "2_mid")
 			await process_frame
 		await _settled()
-		print("    mid-coast the status line said: %s" % said_mid)
+		print("    mid-coast the status line said: %s; the app's own work at the let-go %.2f ms, at the keep %.2f ms"
+			% [said_mid, _grab.let_go_ms, _grab.kept_ms])
 		_check("%s: while it coasts the status line says so: %s" % [name, said_mid], said_mid.contains("coasting at"))
 		# By hand from the parts and the teeth.
 		var turning: Array = [[bodies.parts_of([wheel]), link.point, link.axis.normalized(), 1.0]]

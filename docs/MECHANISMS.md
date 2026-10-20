@@ -4087,3 +4087,126 @@ of 467: those four, and 8448-1's racer (above).
 - A 2 x 2 turntable under a wheel plate, held by the plate's studs (not
   begun).
 - 42110-1 and the loops too big to solve.
+
+## 25. A loop's own joints, and keeping a move (Grab 15)
+
+G14a left two things. 21019-1's turntable went through a clip: its first
+turn moves 267 parts as a loop of 11 joints, nothing tests a joint's own
+two parts against each other, and the turn left a plate with a handle
+(#86) 2.42 LDU into the plate with a clip on that handle (#124); the next
+grab began with them into each other, forgave them, and went 60° through.
+Testing a loop's joint pairs every frame mended it and tripled 8808-1's
+room test a frame. And keeping a move cost most of the 100 ms a keep may
+take: grab_flow's flywheel 89.8 to 92 ms on quiet previews, 119 at load 20,
+and 7191-1's big section's keeping frame, which G13b and G14a traced to
+`Grab.commit`.
+
+**The base.** f6db180c (live m98: G14a and G14b in), against G14b's own
+sweeps: `movesweep_final` (183 of 405 things move both ways and back) and
+`sweep_g14b` (57 of 168 sets steer), copied with the lists of their sets
+into bench/results/grab15-2026-10-19 as `movesweep_g14b` and `sweep_g14b`.
+Each sweep ran from a copy of the worktree, one shard under heavy.
+
+### Where a keep's time went
+
+Timed part by part inside `Grab.commit` (natively, `grab_probe -- --only=coast`
+and `--only=big`):
+
+- **The coasted flywheel** (a gear 40 and its axle, kept where they came to
+  rest): 59.9 ms, of which 57.4 the gear's turned cover. A part kept at a
+  new turn has no cover kept for it, and `BrickLattice.boxes_for_turned`
+  worked one out cell by cell: `cells_for_turned` found each line's cells,
+  put each in a dictionary and a list, and `compress` sorted them back into
+  runs along x. The gear's cover is 300 boxes, its turned cells 12,935.
+- **7191-1's big section** (132 parts on an axle, 60,514 boxes of cover):
+  the keeping frame 107 ms, the commit 87. Its cells were worked out on a
+  worker before the keep, but putting them in still worked out each
+  cover's bound (24 ms) and its rows (34 ms), and taking the old ones out
+  spent 20 ms on nothing: `_bounds.get(brick_id, _bound_of(packed))` works
+  the default out whether it is wanted or not, so every part's old cover was
+  gone over box by box. Its buckets, in and out, were 5 ms.
+
+**A turned cover a line at a time** (`BrickLattice.boxes_for_turned`,
+`_runs_of_box`, `_slabs_of`). For each box, each line of cells along x
+within its reach gets its run from the fifteen slabs of the separating axis
+test, each axis once a turn (a turn about one line gives several twice), and
+a slab with no x says which lines of a row are touched at all. A cell within
+0.01 of touching is asked exactly, as `cells_for_turned` asks it, and where
+an axis was taken for a twin that leans from it by a rounding or a hair's
+turn, the band grows by how far that lean can move a slab over the box. The
+runs of a line from several boxes are joined where they meet, and the lines
+are taken in the order `compress` met them, so the boxes come out the same
+and in the same order. `turned_probe` holds it to `compress(cells_for_turned)`
+over 486 turns of real parts (90 from the catalogue at random with the
+flywheel's and a few joints' parts; about the vertical, about x, at random,
+by a hundredth to a third of a degree, and off the origin): the same boxes
+in the same order on all 486, 29.2 s cell by cell against 6.9 s.
+
+**A big section's covers ready to put in** (`BrickLattice.cover_for`,
+`occupy_moved`). The worker that works out a big section's cells now works
+out each cover's bound and rows too, as `occupy_boxes` would, and the keep
+puts them in as they are. And `release` asks for the bound it keeps before
+working one out.
+
+| the keep | before (f6db180c) | Grab 15 |
+|---|---|---|
+| grab_flow's flywheel, in a browser (SwiftShader, local server, the two builds in turn) | 151.8, 94.5, 91.1 ms (load 18, 11, 15) | 29.6, 31.3, 34.2 ms (load 19, 14, 15) |
+| grab_flow's pendulum | 26.7, 14.8, 21.6 ms | 11.9, 16.0, 18.3 ms |
+| the coasted flywheel, natively | 59.9 ms (57.4 its cover) | 27 to 35 ms |
+| 7191-1's big section's keeping frame, natively | 100 to 107 ms (commit 81 to 87) | 18 ms (commit 7) |
+
+### A loop's joints test their own parts
+
+`Grab._meeting_pairs`, at the press: each pair of parts that makes one of the
+loop's joints (`Bodies.Link.pairs`, of `Linkage.links` and its closing
+joints), where the two can meet as the joint turns. Not where either is a
+pin, an axle or a round part on the joint's line (`_thin_on`, `_round_on`),
+which turns in place; not where a plane square to the line keeps them apart
+further than the joint slides (a beam on a beam, by their boxes' reach along
+the line). And only a hinge's, a click hinge's or a turntable's (`PAIR_KINDS`).
+
+`Grab._pair_clear_at`, in every room test of a loop after its moving parts:
+the joint's turn about its line and slide along it, read from where the two
+stand, and the pair asked by their exact shapes only where those are past
+what was already found clear, which then grows to take them in. Where the
+two were into each other as the grab began, or one has no exact shape, the
+pair is forgiven, as the rest of the room test forgives such a pair; that is
+asked when the pair is first tested, not at the press. A test cut short by
+its budget goes on from the pair it reached, and a pair whose last test
+would take the frame past its budget waits for the next.
+
+**21019-1.** The loop does not turn the clip on its handle so much as slide
+it: the joint is a clip on a bar, which `_slide_on` lets slide half a stud
+each way, and the loop closed by sliding the clip 4.3 LDU along the handle's
+bar into the plate the handle is on, turned 0.03°. Now the turntable turns
++0.3° and -1° before the clip's plate meets the handle's plate (judged real
+a degree on, 1.77 LDU, the sweep's judge) and comes back to 0.0004 LDU. The
+moving sweep's row, and `grab_probe -- --only=moving`, which now moves it too.
+G13 found the build holds this turntable, so a turn of a degree is what the
+model allows.
+
+**Only hinges, clips and turntables.** Tested at every joint, an axle's or a
+pin's too, the steering sweep (`old_code/sweep_g15allkinds`) lost no set
+that steered, but 16 steered less far before they stopped: 8448-1's racer
+and its four other models 1° where they steered 11°, 5533-1 2° where 10°,
+8049-1 7° where 30°, 4896-1, 7347-1 and 9394-1 alike. In the two taken
+apart, a towball slid along its axle into its rack (8448-1) and a steering
+arm along its axle into the brick it is in (5533-1), 1 to 2 LDU: an axle's
+slide is read as far as the axle reaches, not as far as a flange lets it,
+and a loop whose other joints are read loosely closes by those slides.
+Those pairs are left out (below, the sets again).
+
+**A loop's drag leaves the pairs to its pause.** Asked in every frame of a
+drag, the six pairs of 8808-1's steering (its two arms each through two
+plates' holes, `4261` in `4262`) took the room test from 0.5 ms a frame to
+5 to 10 natively. A loop's drag already tests only where the pointer is, a
+frame, and its way on a pause or the release (G13b); its joints' pairs go
+with the way (`_test`'s `pairs`, from `turn_to` and `slide_to`).
+
+| 8808-1's steering dragged 3° a frame to its stop and back (`room_cost_probe.gd`, natively) | before | Grab 15 |
+|---|---|---|
+| room tests a frame, mean | 0.54 ms | 0.40 ms |
+| at worst (the frame that meets the stop and reads the brick's shape) | 10.8 ms | 5.9 ms |
+| a pause's check of the way | 0.3 to 0.5 ms | 5.3 to 10.4 ms |
+| the press | 6 to 10 ms | 6 to 10 ms |
+| where it stops | ±108° | ±108° |

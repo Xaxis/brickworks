@@ -221,10 +221,10 @@ var _rest_overlap: Dictionary = {}
 ## them about the other.
 var _joint_pairs: Array = []
 ## For each of [member _joint_pairs], its joint's turn, radians, and slide,
-## LDU, from where the grab began, as far as each was found clear, and
-## whether the two were into each other there: [least turn, most turn,
-## least slide, most slide, PAIR_UNKNOWN, PAIR_APART_AT_REST or
-## PAIR_FORGIVEN].
+## LDU, from where the grab began, as far as each was found clear, whether
+## the two were into each other there, and what testing them last took:
+## [least turn, most turn, least slide, most slide, PAIR_UNKNOWN,
+## PAIR_APART_AT_REST or PAIR_FORGIVEN, ms].
 var _pair_clear: Array = []
 const PAIR_UNKNOWN := 0.0
 const PAIR_APART_AT_REST := 1.0
@@ -1197,13 +1197,25 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 			break
 	# Then the loop's own joints, each pair of parts that make one (counted on
 	# from the moving parts, so a test cut short goes on from where it was).
+	# A pair's test is not begun where what it took last would pass the
+	# budget, unless it is the first this call asks: a steering arm against
+	# the plate its kingpin is in took 8808-1's pause 20 ms past its budget on
+	# a phone at a quarter speed.
 	while result == 1 and pairs and n < keys.size() + _joint_pairs.size():
-		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
+		var spent: float = float(Time.get_ticks_usec() - started) / 1000.0
+		var k: int = n - keys.size()
+		if budget < INF and (spent > budget or n > from and spent + float(_pair_clear[k][5]) > budget):
 			result = -1
 			break
 		n += 1
-		if not _pair_clear_at(n - 1 - keys.size(), at):
+		var asked: int = Time.get_ticks_usec()
+		if not _pair_clear_at(k, at):
 			result = 0
+		var took: float = float(Time.get_ticks_usec() - asked) / 1000.0
+		if took > 0.05:
+			var kept: PackedFloat64Array = _pair_clear[k]
+			kept[5] = took
+			_pair_clear[k] = kept
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
 	frame_test_ms += test_ms
 	frame_tests += 1
@@ -1269,7 +1281,7 @@ func _meeting_pairs() -> void:
 			_joint_pairs.append([one, other, local, square,
 				(b.transform.basis.inverse() * a.transform.basis).inverse(),
 				a.transform.affine_inverse() * joined.point, b.transform.affine_inverse() * joined.point])
-			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN]))
+			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN, 0.0]))
 
 
 ## The joints whose own two parts are tested against each other in a loop
@@ -1323,7 +1335,7 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 			return true
 	if Exact.clash(Exact.Item.new(shape_a, at_one), Exact.Item.new(shape_b, at_other)).is_empty():
 		_pair_clear[n] = PackedFloat64Array([minf(clear[0], turn), maxf(clear[1], turn),
-			minf(clear[2], slide), maxf(clear[3], slide), clear[4]])
+			minf(clear[2], slide), maxf(clear[3], slide), clear[4], clear[5]])
 		return true
 	blocked_by = [one, other] if moving.has(one) else [other, one]
 	met = int(blocked_by[0])
