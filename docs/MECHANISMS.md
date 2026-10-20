@@ -3958,9 +3958,10 @@ and on the main thread. With a stud rule tried below, it asked often enough
 that the two filled JointSnap's cache at once and the app stopped (10265-1),
 as Joints' did in G12. It is filled under a lock.
 
-**Steering, swept** (`sweep_f7`, the final code, over the 79 files that
-steer or whose cause changed in a sweep of all 181 with the rules taken out
-below, `sweep_f2`; merged over G13b's rows as `sweep_g14b`).
+**Steering, swept** (`sweep_f8`, the final code merged with main, over the
+79 files that steer or whose cause changed in a sweep of all 181 with the
+rules taken out below, `sweep_f2`; merged over G13b's rows as
+`sweep_g14b`).
 
 | | sets that steer, of those with a steering |
 |---|---|
