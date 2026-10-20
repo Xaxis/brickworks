@@ -928,6 +928,10 @@ func _meshes_moved(loop: Linkage, offered: Array) -> Array:
 		var other: int = int(bodies.body_of.get(coupling.other.key, -1))
 		if one < 0 or other < 0 or one == other or moved.has(one) == moved.has(other):
 			continue
+		# A worm standing still holds its gear: no mesh to turn it back by
+		# (_worm_holding says so). A tractor's sower, on a 24, turned 720°.
+		if coupling.how == "worm" and moved.has(other):
+			continue
 		var gear: Mechanism.Gear = coupling.one if moved.has(one) else coupling.other
 		# The loop joint that carries it: its own, or the nearest one in.
 		var at: int = one if moved.has(one) else other

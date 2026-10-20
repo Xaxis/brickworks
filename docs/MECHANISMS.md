@@ -4599,6 +4599,10 @@ An 8 tooth pinion moves its rack 8 teeth a turn, 8 LDU each (section 12):
 | 4. Tilting nudges the tube about 0.4 stud: the pinion held still, the tilt rolls the rack along it | **False.** 0.000: the tube goes round with the cradle. | True. 7.999 LDU for a 45° tilt. | **True.** 64 LDU x 45/360 = 8 LDU, 0.4 stud, for a 45° tilt with an 8 (0.2 stud at 22.5°). `tilt_cradle`: 7.992. The telescope was 3.998 from its cradle (the extension chain turned half) and 0.000 from its tilt wheel (the tube carried as if fixed); now 7.999 and 7.995. |
 | 5. Friction pins in the gear chains stop the droop when let go | (no weight in Simulate) | (no weight) | **True, and for the telescope only now.** The beam on a friction pin holds at 30.0°; on a plain pin it swings to -18.5°, where it meets the model. The telescope tilted by its cradle and let go drooped before: "the loop turned 62° under its own weight: no joint in it holds by friction", its chains read out of its loop; now it holds at 45°, as from its tilt wheel. |
 
+![rack_wheel in Simulate before and now, 1.5 turns of the wheel in](mechanisms/rack_wheel_simulate_before_after.webp)
+
+![crank_slider in Simulate before and now, the crank at 120°](mechanisms/crank_slider_simulate_before_after.webp)
+
 On real bricks claim 4 is the geometry above, and claim 5 is likely but
 unmeasured: the cradle and tube (24.1 g, their centre 16.1 mm across the
 tilt line at 45°) pull 0.38 N·cm about it, through a 1:1 chain onto a
