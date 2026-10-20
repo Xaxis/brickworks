@@ -35,6 +35,9 @@ var eye: Camera3D
 var look: Environment
 var rig_lights: Array[DirectionalLight3D] = []
 var named: Callable = func() -> String: return "Model"
+## A drag's reading of the joints (GrabDrag), read ahead: the mechanism is
+## turned as a drag turns it (Simulation.hold_with). Read here when null.
+var grabbing: GrabDrag = null
 ## Where desktop files go; Downloads when empty. A probe points it elsewhere.
 var folder: String = ""
 
@@ -159,7 +162,7 @@ func read() -> void:
 func read_mechanism() -> Simulation:
 	var bricks: Array = world.bricks()
 	if bricks.size() < READ_OFF_THREAD_FROM or OS.has_feature("nothreads"):
-		return Simulation.read(bricks, library, scenery)
+		return _held(Simulation.read(bricks, library, scenery))
 	var still: BrickWorld = world.copy_for_reading()
 	var standing: Array = still.bricks()
 	# Every mesh it reads, loaded here first: a reader may not load one.
@@ -175,7 +178,22 @@ func read_mechanism() -> Simulation:
 	WorkerTasks.collect(task)
 	library.end_reading(task)
 	still.free()
-	return made[0]
+	return _held(made[0])
+
+
+## [param simulation] read in the world as a drag reads it, with the drag's
+## joints when they are read for the model as it stands.
+func _held(simulation: Simulation) -> Simulation:
+	if simulation == null or builder == null:
+		return simulation
+	var joints: Bodies = grabbing.read_bodies() if grabbing != null else null
+	if joints == null and world.brick_count() >= READ_OFF_THREAD_FROM:
+		# Read ahead off the frame once the model stands still (GrabDrag); not
+		# read here on it, where a big model's joints hold the window.
+		simulation.grab_note = "the joints a drag reads are not read yet"
+		return simulation
+	simulation.hold_with(world, builder, joints)
+	return simulation
 
 
 const READ_OFF_THREAD_FROM := 600
@@ -241,7 +259,7 @@ func weigh() -> void:
 	balance = null
 	furthest = {}
 	weighed_poses = []
-	if sim == null or sim.turning.is_empty() or shell == null:
+	if sim == null or not sim.moves_anything() or shell == null:
 		_weighed.text = ""
 		return
 	weighed_poses = sim.poses(sim.cycle(), BALANCE_FRAMES)
@@ -315,7 +333,7 @@ func play() -> void:
 	if playing:
 		_stop()
 		return
-	if sim == null or sim.turning.is_empty():
+	if sim == null or not sim.moves_anything():
 		_status.text = "Nothing turns from this driver."
 		return
 	playing = true
@@ -586,7 +604,7 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	var lines := PackedStringArray()
 	lines.append("Driven by %s (%s); the base is %s. %s." % [simulation.named_with_parts(body, 2),
 		how, simulation.base_said, str(simulation.solved.get("said", ""))])
-	if simulation.turning.is_empty():
+	if not simulation.moves_anything():
 		lines.append("Nothing else turns from it.")
 	else:
 		lines.append("Against the base (sidereal):" if ref < 0
@@ -597,7 +615,7 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	# The balance over the cycle, through the same weighing the panel uses,
 	# drawn nowhere: the person's window is left as it was.
 	var worst: float = 0.0
-	if not simulation.turning.is_empty() and shell != null:
+	if simulation.moves_anything() and shell != null:
 		var cycle: Array = simulation.poses(simulation.cycle(), BALANCE_FRAMES)
 		var report: Balance.Report = await shell.weigh_balance(cycle, false)
 		if report != null and not report.empty:

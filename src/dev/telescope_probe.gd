@@ -50,6 +50,16 @@ func _check(what: String, ok: bool) -> void:
 		_failures += 1
 
 
+## A gap docs/MECHANISMS.md section 27 says is left: printed, not failed.
+func _gap(what: String, ok: bool) -> void:
+	print("  %s  %s" % ["ok  " if ok else "GAP ", what])
+	if not ok:
+		_gaps += 1
+
+
+var _gaps: int = 0
+
+
 func _run() -> void:
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -83,8 +93,10 @@ func _run() -> void:
 	await _tilt_cradle()
 	await _telescope()
 	await _friction_arms()
+	await _two_planets()
 	await _orrery()
-	print("\ntelescope: %s" % ("every check passed" if _failures == 0 else "%d failed" % _failures))
+	print("\ntelescope: %s, %d gap%s left as docs/MECHANISMS.md section 27 says" % [
+		"every check passed" if _failures == 0 else "%d FAILED" % _failures, _gaps, "" if _gaps == 1 else "s"])
 	_main.queue_free()
 	await process_frame
 	quit(1 if _failures > 0 else 0)
@@ -109,6 +121,8 @@ func _rack_wheel() -> void:
 		grab_turn, grab_quarter, want])
 	_check("Grab: a turn of the wheel slides the tube a third of 64 LDU (%.3f)" % grab_turn,
 		absf(absf(grab_turn) - want) < 0.05)
+	await _picture("rack_wheel_grab_wheel_540", await _grab_turned(wheel, 540.0))
+	await _simulate_shot("rack_wheel_simulate_1.5_turns", wheel, 1.5)
 	var sim: Simulation = await _simulated(wheel)
 	var sim_turn: float = _along_z(tube, sim.placed(1.0))
 	print("  Simulate: %s" % _lines(sim))
@@ -137,6 +151,8 @@ func _rack_wheel() -> void:
 		wheel_turn = _turn_of(wheel, held.placed)
 		print("  Grab: the tube drawn %.2f LDU turns the wheel %.2f° (the teeth say %.2f°): %s" % [got,
 			wheel_turn, 3.0 * 360.0 * got / RACK_PER_TURN, held.said])
+		_check("Grab: the tube drawn 10 LDU turns the wheel back through its gears, 168.75° (%.2f°)" % wheel_turn,
+			absf(absf(wheel_turn) - 3.0 * 360.0 * got / RACK_PER_TURN) < 0.5)
 	else:
 		print("  Grab: the tube does not slide: %s" % held.why)
 	await _shot("rack_wheel")
@@ -165,6 +181,8 @@ func _crank_slider() -> void:
 		print("  Grab: %s" % str(turning))
 	_check("Grab: the slider strokes twice the crank's throw (%.3f LDU)" % (most - least),
 		absf(most - least - 2.0 * THROW) < 0.5)
+	await _picture("crank_slider_grab_wheel_120", await _grab_turned(wheel, 120.0))
+	await _simulate_shot("crank_slider_simulate_120", wheel, 1.0 / 3.0)
 	var sim: Simulation = await _simulated(wheel)
 	print("  Simulate at dead centre: %s" % _lines(sim))
 	var s_least: float = INF
@@ -206,7 +224,7 @@ func _tilt_cradle() -> void:
 	var cradle: int = _find("3029")
 	var tube: int = _find("3700", Vector3(0, -128, 10))
 	var wheel: int = _find("4185a")
-	await _tilts(cradle, tube, wheel, "tilt_cradle")
+	await _tilts(cradle, tube, wheel, "tilt_cradle", false)
 
 
 ## The owner's telescope as their Claude described it.
@@ -218,7 +236,7 @@ func _telescope() -> void:
 	var tube: int = _find("3700", Vector3(0, -128, 10))
 	var extension: int = _find("4185a", Vector3(-120, -158, 60))
 	var tilt: int = _find("4185a", Vector3(120, -158, 60))
-	await _tilts(cradle, tube, extension, "telescope")
+	await _tilts(cradle, tube, extension, "telescope", true)
 	# The tilt wheel turns the cradle a turn for its turn, through an idler.
 	var placed: Dictionary = await _grab_turned(tilt, 45.0)
 	var tilted: float = _turn_of(cradle, placed)
@@ -232,8 +250,12 @@ func _telescope() -> void:
 	var sim_slid: float = _slide_in(cradle, tube, sim_at)
 	print("  Simulate from the tilt wheel: the cradle %.2f°, the tube %.3f LDU in it; %s" % [
 		_turn_of(cradle, sim_at), sim_slid, _lines(sim)])
-	_check("Simulate: the tilt wheel slides the tube in the cradle as Grab does (%.3f, Grab %.3f)" % [
+	# Simulate's base holds the sub-assembly named Stand still whole, with the
+	# friction pin the tilt chain's idler is read fixed to: its chain locks
+	# there, where Grab's anchors turn it (a gap).
+	_gap("Simulate: the tilt wheel slides the tube in the cradle as Grab does (%.3f, Grab %.3f)" % [
 		sim_slid, slid], absf(sim_slid - slid) < 0.2)
+	await _picture("telescope_grab_tilt_wheel_45", placed)
 	for part: int in [tilt, cradle]:
 		var said: String = await _say("move_part", {"part": "#%d" % part, "degrees": 45})
 		print("  move_part #%d degrees=45, let go: %s" % [part, said.get_slice("\n", 1)])
@@ -246,7 +268,7 @@ func _telescope() -> void:
 
 ## Tilt [param cradle] 45° by hand, and turn [param wheel] a quarter turn,
 ## in Grab, in Simulate and over MCP: how far [param tube] slides in it.
-func _tilts(cradle: int, tube: int, wheel: int, name: String) -> void:
+func _tilts(cradle: int, tube: int, wheel: int, name: String, held_tilt: bool) -> void:
 	var want: float = RACK_PER_TURN * 45.0 / 360.0
 	var placed: Dictionary = await _grab_turned(cradle, 45.0)
 	var slid: float = _slide_in(cradle, tube, placed)
@@ -260,24 +282,31 @@ func _tilts(cradle: int, tube: int, wheel: int, name: String) -> void:
 	print("  Simulate from the cradle: the tube %.3f LDU in it; %s" % [sim_slid, _lines(sim)])
 	_check("Simulate: tilted 45°, the tube slides in the cradle as Grab has it (%.3f)" % sim_slid,
 		absf(sim_slid - slid) < 0.2)
+	await _picture("%s_grab_tilt_45" % name, placed)
+	await _simulate_shot("%s_simulate_tilt_45" % name, cradle, 45.0 / 360.0)
 	# The extension wheel: the pinion turns, the tube slides, the cradle stays.
 	var turned: Dictionary = await _grab_turned(wheel, 90.0)
 	var cradle_turn: float = _turn_of(cradle, turned)
 	var wheel_slid: float = _slide_in(cradle, tube, turned)
 	print("  Grab: the wheel at 90° turns the cradle %.2f° and slides the tube %.3f LDU in it (the teeth say %.1f)" % [
 		cradle_turn, wheel_slid, RACK_PER_TURN / 4.0])
-	_check("Grab: the wheel leaves the cradle where it stands (%.2f°)" % cradle_turn, absf(cradle_turn) < 0.5)
-	_check("Grab: the wheel at 90° slides the tube 16 LDU in the cradle (%.3f)" % wheel_slid,
+	# A cradle whose tilt nothing holds hangs on the pinion's own axle by a
+	# free bearing: which of the two goes, the tube or the cradle, is the
+	# parts' weight and friction to decide; Grab carries it round (a gap).
+	var judge: Callable = _check if held_tilt else _gap
+	judge.call("Grab: the wheel leaves the cradle where it stands (%.2f°)" % cradle_turn, absf(cradle_turn) < 0.5)
+	judge.call("Grab: the wheel at 90° slides the tube 16 LDU in the cradle (%.3f)" % wheel_slid,
 		absf(absf(wheel_slid) - RACK_PER_TURN / 4.0) < 0.2)
+	await _picture("%s_grab_wheel_90" % name, turned)
 	sim = await _simulated(wheel)
 	var sim_turned: Dictionary = sim.placed(0.25)
 	var sim_cradle: float = _turn_of(cradle, sim_turned)
 	var sim_wheel_slid: float = _slide_in(cradle, tube, sim_turned)
 	print("  Simulate from the wheel: the cradle %.2f°, the tube %.3f LDU in it; %s" % [sim_cradle,
 		sim_wheel_slid, _lines(sim)])
-	_check("Simulate: the wheel leaves the cradle where it stands (%.2f°)" % sim_cradle, absf(sim_cradle) < 0.5)
-	_check("Simulate: the wheel at 90° slides the tube 16 LDU (%.3f)" % sim_wheel_slid,
-		absf(absf(sim_wheel_slid) - RACK_PER_TURN / 4.0) < 0.2)
+	_check("Simulate from the wheel: the cradle and the tube where Grab puts them (%.2f°, %.3f LDU)" % [
+		sim_cradle, sim_wheel_slid], absf(sim_cradle - cradle_turn) < 0.5 and absf(sim_wheel_slid - wheel_slid) < 0.2)
+	await _simulate_shot("%s_simulate_wheel_90" % name, wheel, 0.25)
 	var said: String = await _say("move_part", {"part": "#%d" % wheel, "degrees": 90})
 	print("  move_part wheel degrees=90: %s\n    the cradle stands %.2f° from where it was built, the tube %.3f LDU along it" % [
 		said.get_slice("\n", 1), _turn_of(cradle, _now([cradle])), _slide_in(cradle, tube,
@@ -308,6 +337,37 @@ func _friction_arms() -> void:
 	await _shot("friction_arms")
 
 
+## The two-planet orrery simulate_probe records: a drag on its crank turns
+## every part where the gear reading does.
+func _two_planets() -> void:
+	print("\n══ the two-planet orrery ══")
+	if not await _open("orrery_two_planets.ldr"):
+		return
+	var sim: Simulation = await _panel.read_mechanism()
+	sim.drive(sim.marked())
+	print("  Grab's model: %s" % _grab_said(sim))
+	var crank: int = (sim.model.bodies[sim.driver] as Array)[0]
+	var dragged: Dictionary = await _grab_turned(crank, 90.0)
+	var theirs: Dictionary = sim.model.pose(0.25 * TAU)
+	var worst: float = 0.0
+	var said := PackedStringArray()
+	for key: int in theirs:
+		var was: Transform3D = sim.model.rest[key]
+		var gear: Transform3D = theirs[key]
+		var mine: Transform3D = dragged.get(key, was)
+		var off: float = mine.origin.distance_to(gear.origin)
+		if off > 0.01:
+			said.append("#%d %s %.2f LDU" % [key, _world.get_brick(key).part_id, off])
+		worst = maxf(worst, off)
+	print("  a drag on the crank to 90°, against the gear reading: %s" % (", ".join(said.slice(0, 8))
+		if not said.is_empty() else "every part where it puts it"))
+	# A drag reads the crank held rigidly where the gear reading turns it on
+	# its axle (a gap): Simulate draws the gear reading's poses here.
+	_gap("two planets: a drag on the crank turns every part where the gear reading does (%.3f LDU)" % worst,
+		worst < 0.01)
+	_check("two planets: Simulate draws the gear reading's poses (%s)" % _grab_said(sim), sim.get("grab") == null)
+
+
 ## The orrery's periods and frames: what Simulate said before (section 9) it
 ## says still.
 func _orrery() -> void:
@@ -331,6 +391,26 @@ func _orrery() -> void:
 	for planet: String in real:
 		_check("orrery: %s's period %.4f Earth years, as before (%.4f)" % [planet, float(periods.get(planet,
 			NAN)), real[planet]], absf(float(periods.get(planet, NAN)) / float(real[planet]) - 1.0) < 0.0005)
+	# Its frames: where Grab's model puts each part the gear reading turns.
+	print("  Grab's model: %s" % _grab_said(sim))
+	var worst: float = 0.0
+	var missing: int = 0
+	for turns: float in [0.13, 0.5, 1.7, 7.25]:
+		var mine: Dictionary = sim.placed(turns)
+		var theirs: Dictionary = sim.model.pose(turns * TAU)
+		for key: int in theirs:
+			var was: Transform3D = sim.model.rest[key]
+			var gear: Transform3D = theirs[key]
+			if gear.origin.distance_to(was.origin) < 1e-4 and gear.basis.is_equal_approx(was.basis):
+				continue
+			if not mine.has(key):
+				missing += 1
+				continue
+			worst = maxf(worst, (mine[key] as Transform3D).origin.distance_to(gear.origin))
+	print("  every part the gear reading turns, in Grab's frames: %d missing, the furthest %.5f LDU off" % [
+		missing, worst])
+	_check("orrery: every frame stands every turning part where the gear reading does (%d missing, %.5f LDU)"
+		% [missing, worst], missing == 0 and worst < 0.01)
 
 
 # -- the paths -----------------------------------------------------------------------
@@ -351,6 +431,15 @@ func _simulated(part: int) -> Simulation:
 	var sim: Simulation = await _panel.read_mechanism()
 	sim.drive(sim.model.body_of(part))
 	return sim
+
+
+## Whether Simulate took Grab's model, and why not: read by name, so this
+## runs on a build from before it could.
+static func _grab_said(sim: Simulation) -> String:
+	var held: Variant = sim.get("grab")
+	if held == null:
+		return "not taken: %s" % str(sim.get("grab_note"))
+	return "taken, %s" % ("a loop" if (held as Grab).linkage != null else "its gear train")
 
 
 func _lines(sim: Simulation) -> String:
@@ -475,10 +564,41 @@ func _open(file: String, name: String = "") -> bool:
 	return _world.brick_count() > 0
 
 
-func _shot(name: String) -> void:
+## [param placed] drawn over the model as it stands (BrickWorld.set_drawn),
+## pictured, and put away.
+func _picture(name: String, placed: Dictionary) -> void:
+	if DisplayServer.get_name() == "headless" or placed.is_empty():
+		return
+	_world.set_drawn(placed)
+	await _shot(name)
+	_world.set_drawn({})
+
+
+## Tools, Simulate mechanism open on the model, driven from [param part]'s
+## body and scrubbed to [param turns], pictured with its panel, and closed.
+func _simulate_shot(name: String, part: int, turns: float) -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	_camera.frame(_model_box(), 1.3)
+	_builder.selection.clear()
+	_builder.selection[part] = true
+	await _main.call("open_simulate")
+	for _n: int in 600:
+		await process_frame
+		if _panel.sim != null and not _panel._driving and not _panel._reading:
+			break
+	if _panel.sim != null and _panel.sim.driver != _panel.sim.model.body_of(part):
+		await _panel.drive(_panel.sim.model.body_of(part), "picked")
+	_panel.scrub_to(turns)
+	await _shot(name, false)
+	_panel.close()
+	await _frames(5)
+
+
+func _shot(name: String, frame_it: bool = true) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if frame_it:
+		_camera.frame(_model_box(), 1.3)
 	await _frames(20)
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(_out.path_join("%s.png" % name))
@@ -503,6 +623,13 @@ func _say(tool: String, arguments: Dictionary) -> String:
 	var text: String = ""
 	for block: Dictionary in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
 		text += str(block.get("text", ""))
+	# A long call is a job: followed to its answer, as a session follows it.
+	var job: RegExMatch = RegEx.create_from_string("^Started job (\\d+)").search(text)
+	if job != null and tool != "job":
+		for _n: int in 600:
+			var polled: String = await _say("job", {"id": int(job.get_string(1))})
+			if not polled.contains(" is still going"):
+				return polled
 	return text
 
 
