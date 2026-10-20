@@ -379,7 +379,7 @@ func _chosen() -> String:
 				break
 			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin)
 			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size() \
-					or not _only_bearings(loop, wider):
+					or wider.links.size() <= loop.links.size() or not _only_bearings(loop, wider):
 				break
 			couplings.append_array(more)
 			loop = wider
@@ -927,6 +927,12 @@ func _meshes_moved(loop: Linkage, offered: Array) -> Array:
 		var one: int = int(bodies.body_of.get(coupling.one.key, -1))
 		var other: int = int(bodies.body_of.get(coupling.other.key, -1))
 		if one < 0 or other < 0 or one == other or moved.has(one) == moved.has(other):
+			continue
+		# The gear it would turn must turn on a joint of its own: one held with
+		# what stays locks the loop (8020-1's truck, steered back, did not move).
+		var still: int = other if moved.has(one) else one
+		var bearing: Bodies.Link = bodies.parent_link.get(still)
+		if bodies.anchors.has(still) or bearing == null or not bearing.turns:
 			continue
 		# A worm standing still holds its gear: no mesh to turn it back by
 		# (_worm_holding says so). A tractor's sower, on a 24, turned 720°.
