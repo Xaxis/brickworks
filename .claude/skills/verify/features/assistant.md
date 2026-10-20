@@ -2374,8 +2374,10 @@ pixels), what windows differ by from run to run; and a design's log shows its pi
 RADV device. 2026-10-20, Dubai 21052-1 (750 parts, a printed nameplate made in
 its session): corner, front, top, close and back byte for byte; the recolour
 picture 4 to 9 of 1,048,576 pixels off in two runs, where windows asked the same differed from
-each other by 1 to 9 on it from run to run (scattered single pixels, most likely
-ties between faces broken by the order things were made in). Before the drawer staged when the app would, the
+each other by 1 to 9 on it from run to run. Over four windows and two drawers
+the same ten pixels, on grey edges, each take one of two values, and each
+drawer's picture is byte for byte one a window drew: a tie on one MSAA sample,
+most likely, broken by the order a restaged stage's batches are drawn in. Before the drawer staged when the app would, the
 close view was 58 pixels off. A picture that waited out `MOST_WAIT_S` (124 s
 in the queue) is the letters, and its request is taken back: the drawer that
 came later drew from the next one on.

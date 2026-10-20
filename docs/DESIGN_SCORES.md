@@ -335,7 +335,8 @@ lease (`src/ai/leased_shots.gd`) that starts in 5-10 s and stays up to 20 s
 after its last picture, 2 s when another job waits. The pictures are the
 window's: on Dubai (21052-1) five views byte for byte, and a change's picture
 4 to 9 pixels of a million off, where two windows differ by 1 to 9 on it from
-run to run (`tools/bench/leased_shots_check.py`). Four tune designs (3932-1,
+run to run: each drawer's change picture is byte for byte one a window drew in
+another run (`tools/bench/leased_shots_check.py`). Four tune designs (3932-1,
 7410-1, 40148-1, 9470-1) at two workers took 24.6 minutes; their 25 drawers
 held the lease 15.6 of their 42 minutes of sessions (37%, against all of it in
 a window), and every picture with something in it was drawn (61; the 9 with
