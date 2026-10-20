@@ -4667,7 +4667,9 @@ fails on cde834b2: 15 fail there, none here.
    the cab took a sixth of the rack's travel. So is a worm standing still
    against the gear the loop turns: it holds the gear (section 13), and a
    tractor's sower dragged from its gear's side turned 720° with the worm's
-   mesh in its loop.
+   mesh in its loop. And so is a gear held with what stays, with no joint
+   of its own to turn on: 8020-1's truck, steered and steered back, took
+   such a mesh into its loop and locked ("It did not move").
 5. **A frame named so is held still body by body** (`Simulation._frame_held`).
    Simulate held every part of a sub-assembly named Stand, Frame, Base or
    Chassis. The telescope's Stand lists the friction pin its tilt chain's
