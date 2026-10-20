@@ -67,11 +67,13 @@ const HOW_WORDS: Array = ["Eased", "Linear", "Held"]
 ## A drag recorded is sampled at most this often, s, then thinned to keys
 ## no further than [constant KEPT_DEG] (or [constant KEPT_STUDS]) from it.
 const SAMPLE_EVERY := 1.0 / 30.0
-const KEPT_DEG := 1.0
-const KEPT_STUDS := 0.05
+const KEPT_DEG := 2.0
+const KEPT_STUDS := 0.1
 ## A new motion's first key is at this time, s: a slider moved there moves
 ## its joint from where it stands to where it is put.
 const FIRST_SECONDS := 2.0
+## A motion's editor offers this many joints besides its own, until More.
+const FEW_JOINTS := 5
 ## The panel's lists stop this far above the window's foot, px.
 const FOOT := 44.0
 const WIDE := 344
@@ -99,6 +101,8 @@ var _edit_reverse: Button
 var _time: HSlider
 var _time_words: Label
 var _joint_rows: VBoxContainer
+var _more: Button
+var _all_joints: bool = false
 var _key_row: HBoxContainer
 var _key_words: Label
 var _how: OptionButton
@@ -167,8 +171,7 @@ var _quiet: bool = false
 ## What was last seen of the model and its history: any change refreshes
 ## the lists (an undo, a motion a session defined).
 var _seen_generation: int = -1
-var _seen_depth: int = -1
-var _seen_step: Dictionary = {}
+var _seen_history: Array = []
 var _seen_motions: Motions = null
 var _seen_revision: int = -1
 var _suggested: Array = []
@@ -259,8 +262,7 @@ func _offered() -> Array:
 
 func _refresh() -> void:
 	_seen_generation = world.generation()
-	_seen_depth = builder.history_depth()
-	_seen_step = builder.last_step()
+	_seen_history = _history_now()
 	_seen_motions = world.motions
 	_seen_revision = world.revision
 	_list_box.visible = _view == "list"
@@ -275,8 +277,7 @@ func _refresh() -> void:
 
 func _fill_list() -> void:
 	var motions: Motions = _motions()
-	for child: Node in _motion_rows.get_children():
-		child.queue_free()
+	_clear(_motion_rows)
 	_row_buttons.clear()
 	if motions.named(_chosen) == null:
 		_chosen = (motions.list[0] as Motions.Motion).name if not motions.is_empty() else ""
@@ -310,8 +311,7 @@ func _fill_list() -> void:
 		_row_buttons.append({"pick": pick, "play": forward, "back": backward, "edit": edit, "name": name})
 	_play_all.visible = motions.list.size() > 1
 	_loop.visible = not motions.is_empty()
-	for child: Node in _suggest_rows.get_children():
-		child.queue_free()
+	_clear(_suggest_rows)
 	_keep_buttons.clear()
 	var offered: Array = _offered()
 	_suggest_heading.visible = not offered.is_empty()
@@ -480,6 +480,7 @@ func edit(name: String) -> void:
 	_editing_name = motion.name
 	_chosen = motion.name
 	_draft = null
+	_all_joints = false
 	_at = 0.0
 	_key_joint = null
 	_key_index = -1
@@ -495,6 +496,7 @@ func new_motion() -> void:
 	_draft = Motions.Motion.new()
 	_draft.name = _motions().free_name("New motion")
 	_view = "edit"
+	_all_joints = false
 	_editing_name = ""
 	_at = FIRST_SECONDS
 	_key_joint = null
@@ -558,8 +560,7 @@ func _change(words: String, edit_with: Callable) -> void:
 	builder.record([{"undo": "motions", "motions": had}], words)
 	_chosen = motion.name
 	_look = null
-	_seen_depth = builder.history_depth()
-	_seen_step = builder.last_step()
+	_seen_history = _history_now()
 	_seen_motions = world.motions
 
 
@@ -579,18 +580,22 @@ func _fill_editor() -> void:
 	_time.set_value_no_signal(_at)
 	_time_words.text = "%s s" % Motions.num(_at, 1)
 	_quiet = false
-	for child: Node in _joint_rows.get_children():
-		child.queue_free()
+	_clear(_joint_rows)
 	_joint_parts.clear()
-	# Its tracks' joints first, then the others that move.
+	# Its tracks' joints first, then the others that move: a few, or all.
 	var joints: Array = []
 	for track: Motions.Track in motion.tracks:
 		joints.append(track.joint)
+	var others: int = 0
 	for joint: Motions.Joint in player.movable():
 		if not joints.any(func(one: Motions.Joint) -> bool: return one == joint or one.same_ref(joint)):
 			joints.append(joint)
-	for joint: Motions.Joint in joints:
-		_joint_row(motion, joint)
+			others += 1
+	var shown: int = joints.size() if _all_joints else mini(joints.size(), maxi(motion.tracks.size(), 0) + FEW_JOINTS)
+	for n: int in shown:
+		_joint_row(motion, joints[n])
+	_more.visible = shown < joints.size()
+	_more.text = "Show all %d joints that move" % (joints.size() - motion.tracks.size()) if others > 0 else ""
 	if joints.is_empty():
 		var none := Label.new()
 		none.text = ("Nothing in the model moves on a joint a drag moves: a hinge, a turntable, "
@@ -1447,13 +1452,23 @@ func _process(delta: float) -> void:
 			_draft = null
 			_view = "list"
 			_refresh()
-		elif builder.history_depth() != _seen_depth or not is_same(builder.last_step(), _seen_step) \
-				or world.motions != _seen_motions:
+		elif not _same_history(_seen_history) or world.motions != _seen_motions:
 			if world.revision != _seen_revision:
 				_look = null
 				_undraw()
 			_refresh()
 	_tell_page()
+
+
+## The history as it stands: its depth and its newest step, the same
+## dictionary until something is done, undone or redone.
+func _history_now() -> Array:
+	return [builder.history_depth(), builder.last_step() if builder.history_depth() > 0 else null]
+
+
+func _same_history(seen: Array) -> bool:
+	return seen.size() == 2 and int(seen[0]) == builder.history_depth() \
+		and (builder.history_depth() == 0 or is_same(seen[1], builder.last_step()))
 
 
 func _input(event: InputEvent) -> void:
@@ -1682,6 +1697,13 @@ func _build_editor(into: Control) -> void:
 	_joint_rows = VBoxContainer.new()
 	_joint_rows.add_theme_constant_override("separation", 6)
 	_edit_box.add_child(_joint_rows)
+	_more = _button(_edit_box, "Show all joints", func() -> void:
+		_all_joints = true
+		_fill_editor()
+		_set_buttons()
+		_fit_later(), "Every joint in the model that moves, each with its slider")
+	_more.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_more.visible = false
 	_key_row = HBoxContainer.new()
 	_key_row.add_theme_constant_override("separation", 6)
 	_key_row.visible = false
@@ -1720,6 +1742,13 @@ func _button(into: Control, words: String, action: Callable, tip: String) -> But
 	button.pressed.connect(action)
 	into.add_child(button)
 	return button
+
+
+## Rows taken out at once, so the panel is measured without them.
+static func _clear(box: Container) -> void:
+	for child: Node in box.get_children():
+		box.remove_child(child)
+		child.queue_free()
 
 
 func _fit_later() -> void:

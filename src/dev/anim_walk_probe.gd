@@ -5,9 +5,10 @@
 ##   ... -- --into=DIR --only=steering,crane,door,gears,figure
 ##
 ## For each set it asks what moves (move_part with no part=), what poses
-## (pose_model, and Build, Pose and animate's sliders), animates the part
-## that moves (animate_model by its part, and the Pose panel's own keys
-## where it has a joint), plays it in the window, and renders it; gears are
+## (pose_model, and the sliders a new motion in Build, Motions… offers),
+## animates the part that moves (animate_model by its part, and a motion
+## made in the panel by its first joint's slider), plays it in the window,
+## and renders it; gears are
 ## recorded by Simulate as well. Every answer is printed and every file kept
 ## in DIR (one folder a set), with a picture of the window beside each.
 ## Headless it reads and answers but draws nothing.
@@ -98,14 +99,18 @@ func _walk(name: String) -> void:
 	var poses: String = await _say("pose_model", {})
 	print("── pose_model {} ──\n" + poses)
 	print("  [moved so far: %d]" % _differing(before))
-	# A person: Build, Pose and animate…
+	# A person: Build, Motions…, a new motion's sliders.
 	_shell.run("pose")
 	await _frames(5)
+	_pose.new_motion()
+	await _frames(5)
+	var player: MotionPlayer = _main.get("_motions")
 	var labels := PackedStringArray()
-	for one: Poser.Joint in _pose.poser.joints:
-		labels.append("%s (%s, %d parts)" % [Assemblies.label(one.path), one.kind(), one.ids.size()])
-	print("── Pose panel: %d slider(s) ──\n  %s\n  status: %s" % [labels.size(), "\n  ".join(labels),
-		_pose._status.text])
+	for row: Dictionary in _pose._joint_parts:
+		labels.append("%s (%s, %d parts)" % [player.joint_words(row["joint"]), (row["joint"] as Motions.Joint).mode,
+			player.parts_of(row["joint"]).size()])
+	print("── Motions panel, a new motion: %d slider(s) ──\n  %s\n  status: %s" % [labels.size(),
+		"\n  ".join(labels), _pose.status_words()])
 	print("  [moved so far: %d]" % _differing(before))
 	await _shot("1_pose_panel")
 	await _pose_reach()
@@ -125,7 +130,7 @@ func _walk(name: String) -> void:
 	if part > 0:
 		await _session_animation(part, swing, before)
 		print("  [moved so far: %d]" % _differing(before))
-	if not _pose.poser.joints.is_empty():
+	if not _pose._joint_parts.is_empty():
 		await _person_animation(swing, before)
 		print("  [moved so far: %d]" % _differing(before))
 	if name == "gears":
@@ -139,8 +144,8 @@ func _walk(name: String) -> void:
 ## How far each of Pose's sliders goes each way, against what move_part
 ## says moves with the same part: the two notions of what moves, side by side.
 func _pose_reach() -> void:
-	print("── each Pose slider, ±90° and back, against move_part on its first part ──")
-	for one: Poser.Joint in _pose.poser.joints.duplicate():
+	print("── each of pose_model's joints, ±90° and back, against move_part on its first part ──")
+	for one: Poser.Joint in _pose.joints_now().duplicate():
 		var path: String = one.path
 		var up: float = _pose.set_angle(path, 90.0)
 		_pose.set_angle(path, 0.0)
@@ -188,32 +193,34 @@ func _session_animation(part: int, swing: float, before: Dictionary) -> void:
 	await _frames(20)
 
 
-## The Pose panel's own keys, as a person makes them: the first slider swung
-## out and back, Add key at each, Play, Render animation.
+## A motion made in Build, Motions… as a person makes one: its first
+## joint's slider swung out at 1.5 s and back at 3 s, Play, Render animation.
 func _person_animation(swing: float, before: Dictionary) -> void:
-	var one: Poser.Joint = _pose.poser.joints[0]
-	_pose.animation.keys.clear()
-	_pose._key_time.value = 0.0
-	_pose.add_key()
-	var reached: float = _pose.set_angle(one.path, swing)
-	print("── a person: %s swung to %d°: %s" % [Assemblies.label(one.path), roundi(swing),
-		_pose._status.text])
-	_pose._key_time.value = 1.5
-	_pose.add_key()
-	print("  [moved so far: %d]" % _differing(before))
-	_pose.set_angle(one.path, 0.0)
-	print("  [back at 0: moved so far: %d]" % _differing(before))
-	_pose._key_time.value = 3.0
-	_pose.add_key()
-	print("  keys: %d over %.1f s, %d frames at %d a second (reached %.0f°)" % [
-		_pose.animation.keys.size(), _pose.animation.length(), _pose.animation.frame_count(),
-		_pose.animation.fps, reached])
-	_pose.play()
+	var player: MotionPlayer = _main.get("_motions")
+	if _pose._view != "edit":
+		_pose.new_motion()
+		await _frames(3)
+	var joint: Motions.Joint = _pose._joint_parts[0]["joint"]
+	var from: float = player.at_now(joint)
+	for step: Array in [[1.5, from + swing], [3.0, from]]:
+		_pose.set_time(float(step[0]))
+		_pose._hold_slider(joint)
+		_pose._move_held(float(step[1]))
+		_pose._let_go_slider(float(step[1]))
+		await _frames(2)
+		print("── a person: %s at %s s: %s" % [player.joint_name(joint), Motions.num(float(step[0]), 1),
+			_pose.status_words()])
+	var motion: Motions.Motion = _pose._edited()
+	if motion == null:
+		print("  no motion was made")
+		return
+	print("  keys: %s over %s s" % [str((motion.tracks[0] as Motions.Track).keys), Motions.num(motion.length(), 2)])
+	_pose.play(motion.name)
 	await _frames(30)
 	await _shot("4_person_playing")
-	while _pose._playing:
+	while _pose.is_playing():
 		await process_frame
-	print("  [played: moved so far: %d]" % _differing(before))
+	print("  [played: moved so far: %d] %s" % [_differing(before), _pose.status_words()])
 	if not StudioRender.possible():
 		return
 	var asked_at: int = Time.get_ticks_msec()

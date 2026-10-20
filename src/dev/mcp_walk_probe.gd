@@ -21,8 +21,9 @@
 ##  - "Show me it turning": animate_model takes the steering by its part, as
 ##    move_part names it, in degrees from where it was built: the frames it
 ##    would draw turn both front wheels as move_part does, nothing on the
-##    baseplate moves, and asked only to set keys it sets them, and Build,
-##    Pose and animate's Play turns the wheels and puts them back. The
+##    baseplate moves, and asked only to set keys it keeps them as the
+##    motion "Animation", whose Play in Build, Motions… turns the wheels and
+##    Play backwards puts them back. The
 ##    session's car steered with move_part and animate_model said nothing
 ##    turns; then keys on a part were refused unless rendered, and keys a
 ##    render left in the panel played nothing (animaudit, 2026-10-20).
@@ -167,22 +168,28 @@ func _animate(steering: int, before: Dictionary) -> void:
 	var said: String = await _say("animate_model", {"keys": keys, "render": false})
 	_check("keys alone are set for the person to play: %s" % said.left(70),
 		said.begins_with("Set 2 keys over 1.0 s") and said.contains("plays it"))
-	# Play, as the person presses it: the steering turns in the window, and
-	# when it ends every part stands where it was built. Refused before, and
-	# keys left by a render played nothing.
+	# Play, as the person presses it in Build, Motions…, where the keys are
+	# the motion "Animation": the steering turns in the window and stays
+	# where it ends, and Play backwards puts every part where it was built.
+	# Refused before, and keys left by a render played nothing.
 	var pose: PosePanel = _main.get("_pose")
 	_main.call("open_pose")
 	await process_frame
-	pose.play()
+	pose.play("Animation")
 	var turned_while_playing: bool = false
 	for _n: int in 240:
 		await process_frame
 		if _turned(before, _poses(), 10) and _turned(before, _poses(), 11):
 			turned_while_playing = true
-		if not pose._playing:
+		if not pose.is_playing():
 			break
 	_check("...and Play turns both front wheels", turned_while_playing)
-	_check("...and puts them back where they were built when it ends", not pose._playing
+	pose.play("Animation", true)
+	for _n: int in 240:
+		await process_frame
+		if not pose.is_playing():
+			break
+	_check("...and Play backwards puts them back where they were built", not pose.is_playing()
 		and _same(_poses(), before))
 	pose.close()
 	said = await _say("animate_model", {"keys": keys})

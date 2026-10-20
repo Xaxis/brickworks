@@ -18,7 +18,9 @@
 # PROBE_DATA=DIR names one instead. The exit is the probe's, 1 when
 # the script failed to load (Godot exits 0 for that), and 3 when the
 # probe skipped itself.
-# PROBE_DRY=1 prints the command and runs nothing.
+# PROBE_DRY=1 prints the command and runs nothing. PROBE_SIZE=WxH runs
+# a windowed probe in a window of that size instead of its header's (Xvfb
+# has no window manager, so a probe cannot resize its own window).
 set -u
 name=${1:?usage: probe.sh NAME [ARGS…]}; shift
 name=${name%.gd}; name=${name##*/}
@@ -57,7 +59,7 @@ case " $block " in
       godot --headless --path . --script "$file" "${tail[@]}") ;;
   *)
     size=$(grep -oE -- '--resolution [0-9]+x[0-9]+' <<<"$block" | head -1 | cut -d' ' -f2)
-    size=${size:-1400x900}
+    size=${PROBE_SIZE:-${size:-1400x900}}
     how="in a ${size} window on the GPU"
     cmd=("${heavy[@]}" "${gpu[@]}" env XDG_DATA_HOME="$data" MESA_VK_WSI_DEBUG=sw
       xvfb-run -a --server-args="-screen 0 ${size}x24"

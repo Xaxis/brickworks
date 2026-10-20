@@ -19,7 +19,8 @@
 ##     rack when played (Grab's loop); the editor offers only joints that
 ##     move; a slider moved puts a key, undo takes it out.
 ## Pictures of the panel in each state (suggested, list, recording,
-## editing) at 1400x900 and 1280x720 in OUT_DIR.
+## editing) in OUT_DIR, named by the window's size: PROBE_SIZE=1280x720
+## tools/probe.sh runs it at that size too.
 extends SceneTree
 
 const DOORS := "res://vendor/omr/files/1484-1.mpd"
@@ -145,10 +146,13 @@ func _doors() -> void:
 	_check("Play backwards closes them to where they were built (%d parts off, %.3f LDU)" % [closed[0], closed[1]],
 		int(closed[0]) == 0)
 	# Record a gate opened by hand.
+	var asked_at: int = Time.get_ticks_msec()
 	await _click(_panel._new)
+	print("    the editor, its joints found, opened in %d ms (with the click's frames)" % (Time.get_ticks_msec() - asked_at))
 	_check("New motion opens the editor on a new one, its name chosen to type over (%s)" % _panel._name.text,
 		_panel._view == "edit" and _panel._name.has_focus() and _panel._draft != null)
 	await _type("Open the gate")
+	var at_record: int = _builder.history_depth()
 	await _click(_panel._record)
 	_check("Record listens, and says to drag (%s)" % _panel.status_words().left(60),
 		_panel.is_recording() and _panel._record.text == "Stop")
@@ -156,7 +160,7 @@ func _doors() -> void:
 	await _shots("doors_recording")
 	var gate: Motions.Joint = motion.tracks[0].joint
 	var before_drag: Dictionary = _poses()
-	var dragged: Grab = await _drag(_player.parts_of(gate), 50.0, 14)
+	var dragged: Grab = await _drag(_player.parts_of(gate), 50.0, 25)
 	await _button(_last_screen, false)
 	await _settled()
 	await _frames(4)
@@ -173,8 +177,8 @@ func _doors() -> void:
 		recorded != null and recorded.tracks.size() == 1 and (recorded.tracks[0] as Motions.Track).keys.size() >= 2)
 	_check("...the model back where it was (%d parts off)" % _off(before_drag)[0],
 		int(_off_ids(before_drag, [], 0.05)[0]) == 0)
-	_check("...one undo step for the kept motion (history %d, was %d before the drag, %d at Stop)" % [
-		_builder.history_depth(), depth + 1, depth_before_stop], _builder.history_depth() == depth + 2)
+	_check("...one undo step for the kept motion (history %d, was %d at Record, %d at Stop)" % [
+		_builder.history_depth(), at_record, depth_before_stop], _builder.history_depth() == at_record + 1)
 	if recorded == null:
 		return
 	await _click(_panel._edit_play)
@@ -222,6 +226,7 @@ func _doors() -> void:
 		(recorded.tracks[0] as Motions.Track).keys.size() == keys_before
 		and (_panel._joint_parts[0]["strip"] as PosePanel.KeyStrip).times.size() == keys_before)
 	# Play all, from the list.
+	var before_all: Dictionary = _poses()
 	await _click(_panel._back)
 	_check("All motions goes back to the list, both there", _panel._view == "list" and _panel._row_buttons.size() == 2)
 	await _click(_panel._play_all)
@@ -232,8 +237,8 @@ func _doors() -> void:
 		and _panel.status_words().contains("\"Open the gate\":"))
 	await _undo()
 	await _frames(4)
-	_check("...one step: undo puts the model back (%d parts off)" % _off_ids(built, [], 0.05)[0],
-		int(_off_ids(built, [], 0.05)[0]) == 0)
+	_check("...one step: undo puts the model back as it stood (%d parts off)" % _off_ids(before_all, [], 0.05)[0],
+		int(_off_ids(before_all, [], 0.05)[0]) == 0)
 	# Saved and opened again: the lines come back, and the panel lists them.
 	var text: String = _store.to_text("Doors and gate")
 	var lines: PackedStringArray = _motion_lines(text)
@@ -306,12 +311,13 @@ func _racer() -> void:
 	# Record the steering wheel turned by hand.
 	await _click(_panel._new)
 	await _type("Steer left")
+	var at_record: int = _builder.history_depth()
 	await _click(_panel._record)
 	_fits("recording")
 	await _shots("racer_recording")
 	var wheel: int = _wheel()
 	var before: Dictionary = _poses()
-	var dragged: Grab = await _drag([wheel], 40.0, 10) if wheel != 0 else null
+	var dragged: Grab = await _drag([wheel], 40.0, 20) if wheel != 0 else null
 	await _button(_last_screen, false)
 	await _settled()
 	await _frames(4)
@@ -323,7 +329,7 @@ func _racer() -> void:
 	var recorded: Motions.Motion = _player.motions().named("Steer left")
 	print("    " + _panel.status_words())
 	_check("Stop keeps \"Steer left\", the model put back (%d parts off), one step" % _off_ids(before, [], 0.05)[0],
-		recorded != null and int(_off_ids(before, [], 0.05)[0]) == 0 and _builder.history_depth() == depth + 2)
+		recorded != null and int(_off_ids(before, [], 0.05)[0]) == 0 and _builder.history_depth() == at_record + 1)
 	if recorded == null:
 		return
 	await _click(_panel._edit_play)
@@ -384,24 +390,17 @@ func _fits(state: String) -> void:
 		str(view.size)], view.encloses(rect) and clear)
 
 
-## The window as it is in [param state], at 1400 x 900 and 1280 x 720.
+## The window as it is in [param state], named by its size: run at
+## 1400 x 900, and with PROBE_SIZE=1280x720 at that (a display without a
+## window manager will not resize the window).
 func _shots(name: String) -> void:
-	for size: Vector2i in [Vector2i(1400, 900), Vector2i(1280, 720)]:
-		if DisplayServer.window_get_size() != size:
-			DisplayServer.window_set_size(size)
-			await _frames(12)
-		_panel._fit()
-		await _frames(4)
-		await RenderingServer.frame_post_draw
-		var image: Image = root.get_texture().get_image()
-		var path: String = _out.path_join("%s_%dx%d.png" % [name, size.x, size.y])
-		image.save_png(path)
-		print("    picture: %s" % path)
-		if size.y == 720:
-			_fits("%s at 1280x720" % name)
-	DisplayServer.window_set_size(Vector2i(1400, 900))
-	await _frames(12)
-	_panel._fit()
+	await _frames(4)
+	await RenderingServer.frame_post_draw
+	var image: Image = root.get_texture().get_image()
+	var size: Vector2i = DisplayServer.window_get_size()
+	var path: String = _out.path_join("%s_%dx%d.png" % [name, size.x, size.y])
+	image.save_png(path)
+	print("    picture: %s" % path)
 
 
 func _click(control: Control) -> void:
@@ -495,7 +494,7 @@ func _drag(ids: Array, degrees: float, steps: int) -> Grab:
 	for n: int in range(1, steps + 1):
 		var turned: Vector3 = _about(grab.pivot, grab.axis, degrees * n / steps) * hold
 		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
-		await _frames(3)
+		await _frames(1)
 	await create_timer(0.1).timeout
 	await _move(_last_screen + Vector2(0.5, 0), MOUSE_BUTTON_MASK_LEFT)
 	return grab

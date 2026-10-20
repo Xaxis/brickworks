@@ -3,20 +3,22 @@
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/animation_probe.gd
 ##
-##  1. 31070-1's back window, Build, Pose and animate's slider swung to 70°
-##     and back to 0°, stands where it was built: it stopped 6 LDU and 4°
-##     short, the room test meeting what it was built against.
-##  2. Play of keys on every joint leaves every part where it was built: it
-##     squared up 73 parts' LDraw matrices, with no step to undo.
+##  1. 31070-1's back window, pose_model's joint swung to 70° and back to
+##     0°, stands where it was built: it stopped 6 LDU and 4° short, the
+##     room test meeting what it was built against.
+##  2. Play of a motion on it, out and back, in Build, Motions…, leaves
+##     every part where it was built: Pose's Play once squared up 73 parts'
+##     LDraw matrices, with no step to undo.
 ##  3. "Show me the steering turning" on 8808-1, by its part, with the
 ##     window zoomed far out: the session's animation frames the car. It was
 ##     drawn through the window's camera, a dot. The answer carries its
 ##     frames at its keys, and says how long drawing took as that: a real
 ##     session read "— 3 s" as an MP4 cut short, and had not seen it.
-##  4. Then the person opens Pose and animate, where the session's keys are:
-##     Play turns the steering and puts it back, and Render animation draws
-##     it turning. Both stood still: the part was turned for one render only.
-##     Cancel a few frames into a render stops it, and moves nothing.
+##  4. Then the person opens Build, Motions…, where the session's keys are
+##     the motion "Animation": Play turns the steering and puts it back, and
+##     Render animation draws it turning. Both once stood still: the part was
+##     turned for one render only. Cancel a few frames into a render stops
+##     it, and moves nothing.
 ##  5. A part that meets the model at once (31070-1's windscreen): the
 ##     answer says where it stopped. It said only how many frames it drew.
 ##     And pose_model says which of its joints have no room to turn: real
@@ -93,13 +95,11 @@ func _doors() -> void:
 	if not await _open(DOORS):
 		return
 	var built: Dictionary = _poses()
-	_main.call("open_pose")
-	await _frames(5)
 	var window: Poser.Joint = null
-	for one: Poser.Joint in _pose.poser.joints:
+	for one: Poser.Joint in _pose.joints_now():
 		if Assemblies.label(one.path) == "Back Window":
 			window = one
-	_check("Pose and animate has the back window on its hinge", window != null)
+	_check("pose_model has the back window on its hinge", window != null)
 	if window == null:
 		return
 	var reached: float = _pose.set_angle(window.path, 70.0)
@@ -108,21 +108,22 @@ func _doors() -> void:
 	var off: Array = _off(built)
 	_check("...and back to 0° it stands where it was built (%d parts off, by %.2f LDU at most)"
 		% [off[0], off[1]], int(off[0]) == 0)
-	_pose.animation.keys.clear()
-	_pose._key_time.value = 0.0
-	_pose.add_key()
-	_pose.set_angle(window.path, 40.0)
-	_pose._key_time.value = 1.0
-	_pose.add_key()
-	_pose.set_angle(window.path, 0.0)
-	_pose.play()
+	var kept: String = await _say("define_motion", {"name": "Swing the back window", "tracks": [
+		{"joint": "Back Window", "keys": [{"t": 0, "place": 0}, {"t": 1, "place": 40}, {"t": 2, "place": 0}]}]})
+	_check("a motion on it, out and back: %s" % kept.get_slice("\n", 0).left(70), kept.begins_with("Kept"))
+	_main.call("open_pose")
+	await _frames(5)
+	_pose.play("Swing the back window")
+	var swung: bool = false
 	for _n: int in 300:
 		await process_frame
-		if not _pose._playing:
+		if not _world.drawn_ids().is_empty():
+			swung = true
+		if not _pose.is_playing():
 			break
 	off = _off(built)
-	_check("Play of keys on its %d joints leaves every part where it was built (%d off)"
-		% [_pose.poser.joints.size(), off[0]], not _pose._playing and int(off[0]) == 0)
+	_check("Play of it in Build, Motions… swings it and leaves every part where it was built (%d off)"
+		% off[0], swung and not _pose.is_playing() and int(off[0]) == 0)
 	_pose.close()
 	await _frames(3)
 	# The windscreen's angle connector, which move_part says meets the
@@ -199,26 +200,30 @@ func _racer() -> void:
 	if first != null:
 		first.save_png(_out.path_join("session_first_frame.png"))
 	_check("...and the model stands as it was built", int(_off(built)[0]) == 0)
-	# The person, then, in Pose and animate, where the session's keys are.
+	# The person, then, in Build, Motions…, where the session's keys are.
 	_camera.frame(_model_box(), 1.25)
 	await _frames(20)
 	_main.call("open_pose")
 	await _frames(5)
-	_check("the session's keys are the panel's (%d)" % _pose.animation.keys.size(),
-		_pose.animation.keys.size() == 4)
-	_pose.play()
+	var animation: Motions.Motion = (_main.get("_motions") as MotionPlayer).motions().named("Animation")
+	_check("the session's keys are the panel's motion \"Animation\" (%d keys)" % (
+		(animation.tracks[0] as Motions.Track).keys.size() if animation != null else 0),
+		animation != null and (animation.tracks[0] as Motions.Track).keys.size() == 4
+		and _pose._row_buttons.any(func(row: Dictionary) -> bool: return str(row["name"]) == "Animation"))
+	_pose.play("Animation")
 	var turned: Dictionary = {}
 	for _n: int in 400:
 		await process_frame
 		for id: int in arms:
-			if not (_world.get_brick(id).transform.basis as Basis).is_equal_approx(
-					(built[id] as Transform3D).basis):
+			var at: Variant = _world.drawn_ids().get(id)
+			if at != null and not (at as Transform3D).basis.is_equal_approx((built[id] as Transform3D).basis):
 				turned[id] = true
-		if not _pose._playing:
+		if not _pose.is_playing():
 			break
 	_check("Play turns both steering arms in the window (%d of 2)" % turned.size(), turned.size() == 2)
-	_check("...and puts every part back where it was built", not _pose._playing
-		and int(_off(built)[0]) == 0)
+	_check("...and ends with every part back where it was built", not _pose.is_playing()
+		and int(_off_tolerant(built)[0]) == 0)
+	_pose._chosen = "Animation"
 	var frames: int = await _pose.render_animation()
 	said = _pose.rendered_words()
 	var start: Image = _frame_of(said, 1)
@@ -310,6 +315,27 @@ func _off(built: Dictionary) -> Array:
 			count += 1
 			if was != null:
 				most = maxf(most, (was as Transform3D).origin.distance_to(brick.transform.origin))
+	return [count, most]
+
+
+## As [method _off], within 0.05 LDU and a tenth of a degree: a play kept
+## where it ends is laid down again through Grab, and a loop's slide
+## comes back within a thousandth of an LDU.
+func _off_tolerant(built: Dictionary) -> Array:
+	var count: int = 0
+	var most: float = 0.0
+	for brick: BrickWorld.Brick in _world.bricks():
+		var was: Variant = built.get(brick.id)
+		if was == null:
+			count += 1
+			continue
+		var off: float = (was as Transform3D).origin.distance_to(brick.transform.origin)
+		var a: Basis = (was as Transform3D).basis.orthonormalized()
+		var b: Basis = brick.transform.basis.orthonormalized()
+		var chord: float = maxf(a.x.distance_to(b.x), maxf(a.y.distance_to(b.y), a.z.distance_to(b.z)))
+		if off > 0.05 or chord > 0.0018:
+			count += 1
+			most = maxf(most, off)
 	return [count, most]
 
 
