@@ -882,6 +882,7 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	builder.forget_history()
 	scenery.clear()
 	awaited.clear()
+	_told_not_coming = false
 	_phase("clear")
 	_source = source
 	_opened_in = world.generation()
@@ -1196,6 +1197,26 @@ static func title_meta_in(text: String) -> String:
 var awaited: Array[LdrModel.Placement] = []
 var _awaited_in: int = -1
 var _missing_at_open: int = 0
+## Whether [method not_coming] has said this model's count.
+var _told_not_coming: bool = false
+
+
+## [param part_id] could not be fetched, asked again too
+## (PartLibrary.RETRY_AFTER). How many of the open model's parts could not
+## be loaded, the first time that leaves none of them on its way; 0 before,
+## and after. They stay awaited: kept in the file a save writes, and put down
+## if they arrive after all. Until 2026-10-20 a part whose fetch failed
+## waited for ever and nothing said so (m115's preview: a crane short its
+## 3709b).
+func not_coming(part_id: String) -> int:
+	if _told_not_coming or awaited.is_empty() or world.generation() != _awaited_in \
+			or not awaited.any(func(p: LdrModel.Placement) -> bool: return p.part_id == part_id):
+		return 0
+	for placement: LdrModel.Placement in awaited:
+		if library.is_on_its_way(placement.part_id):
+			return 0
+	_told_not_coming = true
+	return awaited.size()
 
 
 ## Put down what was waiting for [param part_id]. Returns how many landed;
@@ -1473,6 +1494,20 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	for path: Variant in instances:
 		var entry: Dictionary = instances[path]
 		entry["frame"] = back * (entry["frame"] as Transform3D)
+	# What has not arrived, or could not be fetched, goes out last, where the
+	# file had it. Someone else's file carries it below (carried_into); the
+	# app's own was saved without it: a model saved on a phone that lost a
+	# part's fetch lost the part (fetch_retry_probe, 2026-10-20).
+	if _live_source() == null and world.generation() == _awaited_in:
+		for waiting: LdrModel.Placement in awaited:
+			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
+				back * waiting.transform, waiting.step)
+			held.group = waiting.group
+			# In its sub-model where the file still has it; loose otherwise,
+			# which a tree writes rather than leaving it out.
+			var unit: String = Assemblies.path_from(waiting.group, waiting.unit)
+			held.unit = unit if instances.has(unit) else ""
+			placements.append(held)
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
 	var known: Dictionary = library.parts if library != null else {}
