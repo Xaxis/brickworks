@@ -400,9 +400,9 @@ fi
 
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
-# Always uploaded as a preview, even when the domain is the destination.
+# Always uploaded unpromoted, even when the domain is the destination.
 #
-# --prod promotes on upload, so the check that follows runs against a
+# --prod alone promotes on upload, so the check that follows runs against a
 # build that is already the one everybody is getting. It did its job
 # once — caught a parse error that stopped the app loading at all — and
 # reported it as "deploy FAILED" after the broken build had been live
@@ -414,7 +414,17 @@ log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # outright on fourteen thousand files, and then twice returned a 500 as
 # an HTML page that the CLI tried to parse as JSON. Neither is
 # something this end can fix, and neither happens with one upload.
-npx --yes vercel@48 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN" >"$log" 2>&1
+#
+# --prod --skip-domain: a production build that no domain points at until
+# it is promoted. Vercel builds a team's production deployments before its
+# previews, and while the team's other projects deployed to production one
+# after another, a preview of this one sat queued for 49 minutes, twice,
+# until the release gave up (m112, 2026-10-20). Staged, it waits its turn
+# as production does, and promoting it moves the domain onto this build
+# rather than queueing a second one. Preview and production differ only in
+# a key no page or API here reads, so the checks see what production runs.
+npx --yes vercel@48 deploy --prebuilt --prod --skip-domain --yes --archive=tgz \
+  --token "$VERCEL_TOKEN" >"$log" 2>&1
 code=$?
 url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' "$log" | tail -1)"
 if [ $code -ne 0 ] || [ -z "$url" ]; then
