@@ -317,6 +317,9 @@ try {
   await page.waitForTimeout(3000);
   await press("tool_render");
   await where("render_animation", 30);
+  // Quick and 720p at the top of the choices, before they scroll away.
+  await press("render_quick");
+  await press("render_size_720p");
   // Animation sits under Turntable in the choices: scrolled to, as a person does.
   const light = await where("render_light", 10);
   if (light) {
@@ -327,8 +330,6 @@ try {
     }
     await page.waitForTimeout(1100);
   }
-  await press("render_quick");
-  await press("render_size_720p");
   await press("render_camera_moves");
   const animation = await renderAndKeep("render_animation", "5_animation", 30);
   const animationFrames = animation.file ? webpFrames(animation.file) : -1;

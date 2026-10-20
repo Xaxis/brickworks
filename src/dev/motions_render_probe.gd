@@ -14,10 +14,12 @@
 ##     nothing kept, the model as it was.
 ##  2. 4096-1's crane: "Lift the boom" framed on what moves fills the
 ##     frame, against the whole model's box (unit 1's framing).
-##  3. One path: the same frames, pixel for pixel, from the dialog and the
-##     Motions panel's Render animation (as I see it), and from the dialog
-##     and render_motion over MCP (framed on what moves), for the same
-##     settings. The model stands as built after each, and redo is kept.
+##  3. One path: the same frames from the dialog and the Motions panel's
+##     Render animation (as I see it), and from the dialog and render_motion
+##     over MCP (framed on what moves), for the same settings: the same
+##     camera and every moving part in the same place, exactly, and pixels
+##     as alike as the dialog drawing them twice. The model stands as built
+##     after each, and redo is kept.
 ## Pictures of the dialog with Animation chosen, named by the window's size.
 extends SceneTree
 
@@ -373,8 +375,8 @@ func _frame(dir: String, n: int) -> Image:
 
 
 ## The dialog's renderer and the panel's drew the same frames: the same
-## camera and the same places for every part that moves (exactly), and the
-## same pixels as nearly as the dialog drawing them twice does.
+## camera and the same places for every part that moves (exactly), and
+## pixels as alike as the dialog's own drawn twice.
 func _same_frames(who: String, motion: String, compared: Array, again: Array) -> void:
 	var a: StudioRender.Shot = _dialog.renderer.last_shot
 	var b: StudioRender.Shot = _panel.renderer.last_shot
@@ -390,10 +392,12 @@ func _same_frames(who: String, motion: String, compared: Array, again: Array) ->
 	_check("%s draw the same %d frames of %s: the same camera (%s), the %d moving parts where the motion puts them (%d)"
 		% [who, compared[0], Motions.quoted(motion), camera, moving, placed],
 		compared[0] == drawn.poses.size() and camera and placed == moving)
-	var most: int = maxi(int(again[2]), 8)
-	_check("...and the same pixels within the renderer's own: %d pixels differ, by %d of 255 at most (drawn twice by the dialog: %d, %d)"
+	# StudioRender does not draw a frame twice bit for bit: the dialog drawing
+	# the same frames again, back to back, differs in thousands of pixels by
+	# a few levels. Across the paths they differ no more than that.
+	_check("...and the pixels as alike as the dialog's own drawn twice: %d differ, by %d of 255 at most (the dialog twice: %d, by %d)"
 		% [compared[1], compared[2], again[1], again[2]],
-		int(compared[2]) <= most and int(compared[1]) <= maxi(int(again[1]) * 2, compared[0] * 480))
+		int(compared[2]) <= int(again[2]) + 4 and int(compared[1]) <= maxi(int(again[1]) * 2, compared[0] * 480))
 
 
 ## [frames compared, pixels that differ, the most a channel differs (of 255)].

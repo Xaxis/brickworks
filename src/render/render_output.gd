@@ -1,6 +1,6 @@
 ## Where a render goes: a download in a browser; on the desktop, a file in
-## Downloads, and for a turntable its frames in a folder, an animated WebP
-## beside them and, where ffmpeg is installed, an MP4.
+## Downloads, and for a turntable or an animation its frames in a folder, an
+## animated WebP beside them and, where ffmpeg is installed, an MP4.
 ##
 ## Encoding is done on a worker where there are workers: a 4K PNG is a
 ## second or two of a browser's one thread otherwise, and the page would
@@ -112,8 +112,8 @@ func give(bytes: PackedByteArray, name: String, mime: String) -> String:
 	return line
 
 
-## Begin a turntable for [param model] — or, called "_animation", any run
-## of frames kept the same way.
+## Begin a turntable for [param model] — or, with another suffix, any run
+## of frames kept the same way (Simulate's "_mechanism").
 func begin_turntable(model: String, settings: RenderSettings,
 		suffix: String = "_turntable") -> void:
 	_begin(file_name(model, suffix, "x").get_basename(), settings)
