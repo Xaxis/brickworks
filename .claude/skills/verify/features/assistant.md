@@ -2373,10 +2373,12 @@ for byte and any picture that differs does so by no more than `--most` (16
 pixels), what windows differ by from run to run; and a design's log shows its pictures drawn, the drawers on the
 RADV device. 2026-10-20, Dubai 21052-1 (750 parts, a printed nameplate made in
 its session): corner, front, top, close and back byte for byte; the recolour
-picture 9 of 1,048,576 pixels off, where windows asked the same differed from
+picture 4 to 9 of 1,048,576 pixels off in two runs, where windows asked the same differed from
 each other by 1 to 9 on it from run to run (scattered single pixels, most likely
 ties between faces broken by the order things were made in). Before the drawer staged when the app would, the
-close view was 58 pixels off.
+close view was 58 pixels off. A picture that waited out `MOST_WAIT_S` (124 s
+in the queue) is the letters, and its request is taken back: the drawer that
+came later drew from the next one on.
 Four tune designs at two workers: 61 pictures drawn, the drawers holding the
 lease 15.6 of the sessions' 42 minutes; `~/.claude/claude-core/bin/gpu --status`
 names a drawer `godot --script res://src/dev/draw_shots.gd`.
