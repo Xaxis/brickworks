@@ -491,6 +491,13 @@ whole cycle.
 - When Claude turns a part, it is told which way the part went (a door
   into the model or out from it), and a joint's height comes in plates, as
   everywhere else, where it was given in studs.
+- Suggest sections on a big model opened straight after another works on
+  the whole model again. The parts new to it were read in the background
+  without their shapes, so no pin, axle or clip joined anything: 10179-1
+  came out as twelve sections, one of 3,517 parts in three pieces, where
+  it is 49. The build check, the weighing and Grab's reading of the
+  joints, each done in the background on a big model, read every part's
+  shape the same way now.
 - The app no longer crashes when Claude looks at your model while a big
   one is still opening. A model of 600 parts or more has its joints read
   in the background as it opens, and Claude's look at it read the same
