@@ -589,8 +589,8 @@ func _own_words(played: Played, item: Item) -> String:
 		return ""
 	for other: Item in played.items:
 		if other != item and other.grab != null and other.grab.moving.has(item.met):
-			return (" (the part it meets is one %s moves: a motion's joints are each tested as if "
-				+ "the others stood still, so make that a motion of its own and this one after= it; "
+			return (" (what it meets is moved by %s, another joint of this motion: a motion's joints are "
+				+ "each tested as if the others stood still, so make that a motion of its own and this one after= it; "
 				+ "play_motion sequence=true plays them in order, each from where the last left the "
 				+ "model)") % other.name
 	return ""

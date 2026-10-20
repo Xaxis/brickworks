@@ -73,6 +73,11 @@ pinion, which Grab drives (1.7 turns, 5.4 studs out). Two 60616b doors in
 | move_part's joint | "axle at x=16 y=6.7 z=14.5 studs", "a loop of 1 joints (1 axle), closed by 0 and a 8 tooth pinion" | "axle at x=16 z=14.5 studs, 16.75 plates up", "a loop of 1 joint (1 axle), closed by an 8 tooth pinion in rack 3743" |
 | check_design with a rack | nothing | "brick 3 (8 tooth) is in the teeth of rack brick 1: a turn of it slides the rack 3.20 studs"; two plates high: "is beside rack brick 1 and not in its teeth: it meshes 16 LDU from where it stands, 2 plates down" |
 
+`tools/probe.sh mcp_walk3_probe`: 20 of 20 pass; against the walk's
+base (40c4ff2e, the frame check left out as it cannot load there) 13 of
+its 17 fail. app_tools_probe, motions_probe, mcp_probe, read_only_probe
+and mcp_walk_probe pass on it.
+
 ## Left, with the evidence
 
 - **A moved joint fuses where it lands (engine, Bodies/Grab).** After a

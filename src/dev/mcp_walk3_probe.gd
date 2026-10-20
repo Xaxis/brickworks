@@ -24,6 +24,9 @@
 ##    (or turns back), not "it slides; a motion turns this joint"; move_part
 ##    not "it is already there". A door turned to 90° and then held says
 ##    what holds it, not only that it is part of the biggest body.
+##  - A door turned says which way it went, into the model or out from it:
+##    the rerun's session opened its back doors -100° and 100° and could not
+##    tell from four views which way either had gone.
 ##  - move_part says a joint's height in plates, as look_at_model does, and
 ##    its loop "closed by an 8 tooth pinion", not "closed by 0 and a 8".
 ##  - A play's frames carry every part the sequence moves (play_motion's
@@ -163,6 +166,10 @@ func _held() -> void:
 	await _open()
 	var door: int = _brick("60616b")
 	said = await _say("move_part", {"part": "#%d" % door, "degrees": 90})
+	print("    " + _line_with(said, "Moved "))
+	_check("a door turned says which way it went, into the model or out from it",
+		RegEx.create_from_string("its middle went [0-9.]+ studs toward [+-][xz], (into|out from) the model")
+		.search(said) != null)
 	said = await _say("move_part", {"part": "#%d" % door})
 	print("    " + said.get_slice("\n", 0))
 	_check("a door turned to 90° moves on, or says what holds it there",

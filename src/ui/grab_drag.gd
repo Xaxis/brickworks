@@ -1013,6 +1013,8 @@ func for_session(input: Dictionary) -> String:
 			else "it is already there."))
 		return "\n".join(lines)
 	var slid: String = MotionPlayer.slid_words(held)
+	if slid.is_empty():
+		slid = _swept_words(held)
 	lines.append("Moved %d part%s: %s%s (asked %s)%s%s%s%s." % [moved, "" if moved == 1 else "s",
 		{"turn": "turned ", "slide": "slid "}.get(held.mode, ""), held.position_words(), asked_for,
 		("; it stopped where %s holds it, pulled to its full length" % held.stretch_words)
@@ -1065,6 +1067,44 @@ func for_session(input: Dictionary) -> String:
 	edited.call()
 	last_words = "\n".join(lines)
 	return last_words
+
+
+## Which way a turn carried what it moved: "its middle went 2.1 studs
+## toward +z, into the model". A session opened a back door -100° and its
+## twin 100°, could not tell from four views which way either had gone, and
+## kept its motion the other way round. Empty for a slide, which says its
+## way, or a turn that leaves its middle where it was (a wheel, a gear).
+func _swept_words(held: Grab) -> String:
+	if held.mode != "turn":
+		return ""
+	var from := Vector3.ZERO
+	var to := Vector3.ZERO
+	var count: int = 0
+	for key: Variant in held.placed:
+		if held.rest.has(key):
+			from += (held.rest[key] as Transform3D).origin
+			to += (held.placed[key] as Transform3D).origin
+			count += 1
+	if count == 0:
+		return ""
+	var moved: Vector3 = (to - from) / float(count)
+	if moved.length() < BrickLattice.STUD * 0.5:
+		return ""
+	var centre := Vector3.ZERO
+	var all: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			centre += brick.transform.origin
+			all += 1
+	var side: String = ""
+	if all > 0:
+		var out: Vector3 = from / float(count) - centre / float(all)
+		var level := Vector3(moved.x, 0.0, moved.z)
+		out.y = 0.0
+		if level.length() > BrickLattice.STUD * 0.5 and out.length() > BrickLattice.STUD:
+			side = ", into the model" if level.dot(out) < 0.0 else ", out from the model"
+	return "its middle went %s studs %s%s" % [Balance.studs(moved.length() / BrickLattice.STUD),
+		MotionPlayer._toward(moved), side]
 
 
 ## Why [param held], asked to turn, only slides: the loop it is in is held

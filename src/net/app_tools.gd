@@ -1887,8 +1887,12 @@ func _play_motion(input: Dictionary) -> Variant:
 			else "", Motions.num(played.seconds, 2), player.said(played)])
 		if not played.frames.is_empty():
 			standing = played.standing
-			for n: int in _sheet_of(played, (asked as Array).size()):
-				# A motion's first frame is the one before's last.
+			var sheet: Array = _sheet_of(played, (asked as Array).size())
+			# Where a sequence begins, then each motion's end: a motion's
+			# first frame is the one before's last.
+			if picks.is_empty() and not sheet.has(0):
+				sheet.push_front(0)
+			for n: int in sheet:
 				if n > 0 or picks.is_empty():
 					picks.append([each.size(), n, elapsed + float(n) / float(played.fps)])
 		each.append(played.frames)
