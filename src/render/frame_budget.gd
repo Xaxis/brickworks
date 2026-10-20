@@ -51,10 +51,10 @@ const FIRST_LOOK_MS := 2000
 const LOOK_FRAMES := 10
 ## The first frames of a look, before any is timed: shaders compiled for
 ## the first time cost more than a frame does. Not on the web, where each
-## frame is timed by its fence and a judgment goes by the fastest: the
+## frame is timed by its fence and judged by the second fastest: there the
 ## first after a cut, building its programs, took 1.9 times the next in
 ## Chromium on SwiftShader, and the first of the first look waited for what
-## the page had queued before it, but neither is ever the fastest.
+## the page had queued before it, one slow frame a look either way.
 const WARM_FRAMES := 2
 ## On the web, how many of a look's frames may be drawn by the page and not
 ## yet by the card. Two, not one: a frame is timed from when the card had
@@ -64,10 +64,10 @@ const WARM_FRAMES := 2
 const IN_FLIGHT := 2
 ## Far over the budget a few frames say so as surely as six: SOON frames
 ## timed by their fences, each over FAR_MS, are judged at once, by the
-## second fastest of them as six are. A 3x phone
-## drawn in software was judged by its look's twelfth frame, 15 to 19 s in
-## at 1.3 s each (docs/SLOW_DEVICES.md). FAR_MS is many page frames, so no
-## page's pace reads as it.
+## second fastest of them as six are. A 3x phone drawn in software was
+## judged by its look's twelfth frame, 15 to 19 s in at 1.3 s each
+## (docs/SLOW_DEVICES.md). FAR_MS is many page frames, so no page's pace
+## reads as it.
 const SOON := 3
 const FAR_MS := SLOW_MS * 4.0
 
@@ -294,7 +294,7 @@ func _fenced(done: Array) -> void:
 		_count(ms)
 		# Far over the budget: judged at once, by the second fastest of
 		# the last few, as six are.
-		if pinned or timed.size() < SOON or int(frame[3]) != looks:
+		if pinned or timed.size() < SOON:
 			continue
 		var last: Array[float] = []
 		last.assign(timed.slice(-SOON))
