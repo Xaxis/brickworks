@@ -5911,12 +5911,24 @@ func _shapeless_check() -> void:
 		_check("shapeless: turned %+.0f° towards the plate %s, the arm stops at %+.1f°, its boxes %.2f LDU into the "
 			% [toward, name, first_at, first_in] + "plate's", toward != 0.0 and absf(first_at) >= 5.0
 			and absf(first_at) < 80.0)
-		_check("shapeless: turned %+.0f° on into the plate %s, it goes %+.1f° more, its boxes %.2f LDU into the plate's: %s"
-			% [toward, name, second_at, second_in, second.get_slice("\n", 0).left(120)],
-			absf(second_at) <= 1.0 and second_in <= first_in + Grab.TOUCHING + 0.01)
+		# With both exact shapes the pair is still forgiven whole where it
+		# begins (MECHANISMS §28): judged by its shapes, 42050-1's, 5533-1's
+		# and 4002020-1's steering stopped short.
+		var no_further: bool = absf(second_at) <= 1.0 and second_in <= first_in + Grab.TOUCHING + 0.01
+		if shapeless:
+			_check("shapeless: turned %+.0f° on into the plate %s, it goes %+.1f° more, its boxes %.2f LDU into the plate's: %s"
+				% [toward, name, second_at, second_in, second.get_slice("\n", 0).left(120)], no_further)
+		else:
+			print("  %s  shapeless: turned %+.0f° on into the plate %s, it goes %+.1f° more, its boxes %.2f LDU into the plate's"
+				% ["ok  " if no_further else "GAP ", toward, name, second_at, second_in])
 		var away: float = turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": -toward})))
-		_check("shapeless: turned %+.0f° away from the plate %s, it goes all of it (%+.1f°)" % [-toward, name, away],
-			absf(away) >= 89.0)
+		if shapeless:
+			_check("shapeless: turned %+.0f° away from the plate %s, it goes all of it (%+.1f°)" % [-toward, name, away],
+				absf(away) >= 89.0)
+		else:
+			# Gone into the plate, the arm is read as joined to it.
+			print("  %s  shapeless: turned %+.0f° away from the plate %s, it goes %+.1f°" % ["ok  " if absf(away) >= 89.0
+				else "GAP ", -toward, name, away])
 		if shapeless:
 			Exact._shapes.erase(info.mesh_hash)
 		_builder.forget_history()
@@ -5944,9 +5956,12 @@ func _bearing_check() -> void:
 	var went: float = (_world.get_brick(150).transform.origin - was).length() / BrickLattice.STUD
 	var into: Dictionary = Exact.clash(Exact.Item.new(Exact.shape_for(_library, "3700"), _world.get_brick(150).transform),
 		Exact.Item.new(Exact.shape_for(_library, "3700"), _world.get_brick(151).transform))
-	_check("bearing: the carriage drawn 6 studs along its axle goes %.2f studs, and is %s its bearing #151: %s" % [went,
-		"clear of" if into.is_empty() else "%.2f LDU into" % float(into.get("depth", 0.0)),
-		said.get_slice("\n", 1).left(160)], into.is_empty() and went > 0.5 and went < 6.0)
+	# To a cover's cell: the covers find where two parts meet, and the exact
+	# shapes only forgive what the covers met.
+	var depth: float = 0.0 if into.is_empty() else float(into.get("depth", 0.0))
+	_check("bearing: the carriage drawn 6 studs along its axle goes %.2f studs, and is %.2f LDU into its bearing #151 "
+		% [went, depth] + "(a cover's cell is %.0f): %s" % [BrickLattice.CELL, said.get_slice("\n", 1).left(160)],
+		depth <= BrickLattice.CELL and went > 0.5 and went < 6.0)
 	var into_bearings := PackedStringArray()
 	for brick: BrickWorld.Brick in _world.bricks():
 		if brick.id in [147, 148, 151]:
@@ -5958,9 +5973,9 @@ func _bearing_check() -> void:
 			var them: BrickWorld.Brick = _world.get_brick(bearing)
 			var hit: Dictionary = Exact.clash(Exact.Item.new(shape, brick.transform),
 				Exact.Item.new(Exact.shape_for(_library, them.part_id), them.transform))
-			if not hit.is_empty() and float(hit.get("depth", 0.0)) > 1.0:
+			if not hit.is_empty() and float(hit.get("depth", 0.0)) > BrickLattice.CELL:
 				into_bearings.append("#%d into #%d" % [brick.id, bearing])
-	_check("bearing: nothing that moved is into either bearing of the axle (#147, #151)%s" % (
+	_check("bearing: nothing that moved is further than a cover's cell into either bearing of the axle (#147, #151)%s" % (
 		"" if into_bearings.is_empty() else ": " + ", ".join(into_bearings)), into_bearings.is_empty())
 	_builder.forget_history()
 

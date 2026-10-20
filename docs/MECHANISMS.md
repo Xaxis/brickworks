@@ -4794,24 +4794,29 @@ meets the plate. Turned -90° again from there:
 
 | the plate | 21b2f95b | now |
 |---|---|---|
-| with its exact shape | 6° more, a box 12 LDU into the plate's, until the arm's Plate 1 x 2 meets it; then the arm is read as part of the plate and will not move | "It did not move: the Brick 1 x 2 (#11) meets the Plate 1 x 8 (#22) at once" |
 | with none (a browser before the shape is fetched) | all 90°, through the plate; turned back +90° it stops at 66° on the plate | 0°, stopped where it is; +90° back, all of it |
+| with its exact shape | 6° more, a box 12 LDU into the plate's, until the arm's Plate 1 x 2 meets it; then the arm is read as part of the plate and will not move | the same (left, below) |
 
 Where a move stops, the two covers (2 LDU cells that reach past their
 parts) overlap, and a pair whose covers overlap where a grab begins was
-forgiven for the whole grab (G13). Now:
+forgiven for the whole grab (G13). Now, where one of the two has no exact
+shape, the covers judge, and cannot tell parts built flush from parts into
+each other: the pair is forgiven only as far as the boxes were into each
+other where the grab began, or as built, and `TOUCHING` (1 LDU) more
+(`_no_deeper`). Away and back is forgiven, on into it is not. The same for
+what a cover forgives every moving part (42042-1's winch drum: `--only=worms`
+passes, 34 checks).
 
-- **Both with exact shapes:** forgiven only where the shapes are into each
-  other where the grab began (a file's parts built so); else the shapes
-  judge them (`_clear_exactly`), as they judge every other pair. Whether
-  they are into each other was already asked at the press
-  (`_forgiven_at_rest`, for what touched as built); `_rest_with` keeps the
-  answer.
-- **One with none:** the covers judge, and cannot tell parts built flush
-  from parts into each other. Forgiven only as far as the boxes were into
-  each other where the grab began, or as built, and `TOUCHING` (1 LDU)
-  more (`_no_deeper`): away and back is forgiven, on into it is not. The
-  same for what a cover forgives every moving part (42042-1's winch drum).
+**Left: two exact shapes stopped against each other.** Forgiven only where
+the shapes are into each other where the grab began, and judged by them
+otherwise (`_clear_exactly`, their clash at rest already asked at the press
+by `_forgiven_at_rest`), the made arm stopped at once. But three steerings
+stopped short: 42050-1's at 10° of 30, where an axle joiner (#45) meets the
+axle pin in it (#46), back 0.295 LDU off (it was 0.006); 5533-1's at 2°,
+its steering arm on its plate; 4002020-1's turntable +1°, -32° (+13°, -44°).
+Their parts were forgiven as they stood since G13, and judged by their
+shapes the loops close through them. Each stop needs reading (a joint
+Bodies does not see, or a loop's reading) before the rule can go in.
 
 ### A loop turned in one big step drifts (not fixed)
 

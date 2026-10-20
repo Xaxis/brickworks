@@ -2005,13 +2005,7 @@ func _pair_forgiven(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -
 		return true
 	var with: Dictionary = _rest_with(other)
 	if with.has(key) or _touched_as_built(key, other):
-		# Two exact shapes judge each other, unless they were into each other
-		# where it began (a file's parts built so): forgiven whole, the made
-		# arm stopped by its brick against a plate went on 6° through the
-		# plate on its next move, until its next part met it.
-		if _both_exact(key, other):
-			return bool(with.get(key, true))
-		return _no_deeper(key, other, mesh, to)
+		return _both_exact(key, other) or _no_deeper(key, other, mesh, to)
 	if _both_exact(key, other):
 		return false
 	# Not for the parts joined to it: an axle is in its bearing as built, and
@@ -2062,8 +2056,8 @@ func _both_exact(one: int, other: int) -> bool:
 
 
 ## The moving parts whose covers overlap [param other]'s where they stand, kept
-## for the grab, each with whether [method _forgiven_at_rest] forgives it; so
-## forgiven, each pair is kept as touching as built.
+## for the grab; each pair is kept as touching as built where [method
+## _forgiven_at_rest] says.
 func _rest_with(other: int) -> Dictionary:
 	if _rest_overlap.has(other):
 		return _rest_overlap[other]
@@ -2072,8 +2066,8 @@ func _rest_with(other: int) -> Dictionary:
 	if not boxes.is_empty():
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
 			if moving.has(key) or followers.has(key):
-				with[key] = _forgiven_at_rest(key, other)
-				if bool(with[key]):
+				with[key] = true
+				if _forgiven_at_rest(key, other):
 					_keep_built_touching(key, other)
 	_rest_overlap[other] = with
 	return with
