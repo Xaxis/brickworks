@@ -599,7 +599,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   falls over (`Topple`, below) in 0.5 s, in the same step. Escape puts it
   back. Past 40 moving parts a frame's room test stops at 10 ms and the rest
   is checked on pauses and, let go, on a worker (`Grab.verify_step`,
-  "checked when you pause"); a stop met and not yet found is dropped once
+  "checked when you pause"), and kept with its cells, bounds and rows worked
+  out on a worker (`BrickLattice.cover_for`; Grab 15: 7191-1's keeping frame
+  107 ms to 18, `grab_probe -- --only=big`); a stop met and not yet found is dropped once
   the section stands where its whole test finds room (`Grab._shown_on_trust`),
   and a slide drawn on past a stop is not tested again; a press on a big model
   before its joints are read says so. A turned part whose cover is not kept is
@@ -739,7 +741,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   where their exact shapes overlap as built or one has none; what a moving
   part's cover overlaps where a grab begins is forgiven for that part alone
   (`Grab._pair_forgiven`, G13: 10220-1's door went on through the tile one
-  of its parts had stopped at).
+  of its parts had stopped at). A loop's own joints turn their two parts
+  against each other, and each pair that can meet as its joint turns is
+  tested against each other by exact shapes (`Grab._meeting_pairs`,
+  `_pair_clear_at`; not a pin, an axle or a round part on the joint's line,
+  nor two parts a plane square to it keeps apart), asked only past the turns
+  and slides already found clear, and in a loop's drag on the pause, not each
+  frame (Grab 15, MECHANISMS §25: 21019-1's turntable stops where its plate
+  with a handle meets the clip's plate, and comes back; the moving sweep's
+  row).
 - `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
   bodies (two studs or more, an axle in an axle hole, glue: one body; two
   joints on different lines between two bodies: one body) and the joints
@@ -1026,7 +1036,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   own work at the let-go and at the keep (`let_go_ms`, `kept_ms` on the
   page), each under 100 ms (`--keep=MS`), and on the joints read again
   after it (`ready_ms`) under 250 ms (`--read=MS`). The crane's: 0.2 to 0.3,
-  15 (the flywheel's 66) and 51 to 82 ms. The page's wait
+  15 (the flywheel's 66) and 51 to 82 ms. Grab 15 (MECHANISMS §25): the
+  flywheel's keep 30 to 34 ms, against m98's 91 to 152 run beside it, its
+  gear's turned cover worked out a line of cells at a time. The page's wait
   at a let-go is SwiftShader drawing the swing's first frames, and grows
   with the box's load: with the browser held to three cores
   (`taskset -c`), m78 and m79 alike waited 8 s (MECHANISMS §14, letgo).

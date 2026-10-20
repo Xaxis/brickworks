@@ -212,6 +212,23 @@ var _spin_with: Dictionary = {}
 ## Parts met, each with the moving parts whose covers overlapped it where
 ## they stood: brick id -> {moving id: true} ([method _rest_with]).
 var _rest_overlap: Dictionary = {}
+## A loop's own joints' parts that can meet as the joints turn ([method
+## _meeting_pairs]): [part, the part across its joint, the joint's line in
+## the second's frame, a line square to it there, the first's turn against
+## the second where the grab began, inverted, the joint's point in the
+## first's frame, and in the second's]. Each pair turns (and slides) against
+## each other on its joint, and the rest of the room test never asks one of
+## them about the other.
+var _joint_pairs: Array = []
+## For each of [member _joint_pairs], its joint's turn, radians, and slide,
+## LDU, from where the grab began, as far as each was found clear, whether
+## the two were into each other there, and what testing them last took:
+## [least turn, most turn, least slide, most slide, PAIR_UNKNOWN,
+## PAIR_APART_AT_REST or PAIR_FORGIVEN, ms].
+var _pair_clear: Array = []
+const PAIR_UNKNOWN := 0.0
+const PAIR_APART_AT_REST := 1.0
+const PAIR_FORGIVEN := 2.0
 ## The last part that met something, and what it met: [moving, met].
 var blocked_by: Array = []
 ## The last moving part that met something or went through the floor.
@@ -482,6 +499,7 @@ func _chosen() -> String:
 						_spin_with[key] = int(linkage.parent_of[n])
 					else:
 						_on_the_line[key] = true
+	_meeting_pairs()
 	var shaft_moves: bool = moving.has(link.shaft_part)
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
 	if linkage == null:
@@ -1084,7 +1102,10 @@ func has_room(at: Dictionary) -> bool:
 ## is a turn asked once, and asks each cover where something is instead.
 ## [param due], when not empty, the only moving parts tested (brick id ->
 ## true): a step along the way tests those that have gone far enough.
-func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Dictionary = {}) -> Vector2i:
+## [param pairs]: a loop's own joints' parts against each other too ([member
+## _joint_pairs]), which a loop's drag leaves to its pause.
+func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Dictionary = {},
+		pairs: bool = true) -> Vector2i:
 	var started: int = Time.get_ticks_usec()
 	tests += 1
 	if flex != null and from == 0:
@@ -1174,10 +1195,152 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 			stretch_words = ""
 			result = 0
 			break
+	# Then the loop's own joints, each pair of parts that make one (counted on
+	# from the moving parts, so a test cut short goes on from where it was).
+	# A pair's test is not begun where what it took last would pass the
+	# budget, unless it is the first this call asks: a steering arm against
+	# the plate its kingpin is in took 8808-1's pause 20 ms past its budget on
+	# a phone at a quarter speed.
+	while result == 1 and pairs and n < keys.size() + _joint_pairs.size():
+		var spent: float = float(Time.get_ticks_usec() - started) / 1000.0
+		var k: int = n - keys.size()
+		if budget < INF and (spent > budget or n > from and spent + float(_pair_clear[k][5]) > budget):
+			result = -1
+			break
+		n += 1
+		var asked: int = Time.get_ticks_usec()
+		if not _pair_clear_at(k, at):
+			result = 0
+		var took: float = float(Time.get_ticks_usec() - asked) / 1000.0
+		if took > 0.05:
+			var kept: PackedFloat64Array = _pair_clear[k]
+			kept[5] = took
+			_pair_clear[k] = kept
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
 	frame_test_ms += test_ms
 	frame_tests += 1
 	return Vector2i(result, n if result == -1 else 0)
+
+
+## A loop's joints turn their own two parts against each other, and nothing
+## else tests one against the other: 21019-1's turntable turned a loop of 11
+## joints 10°, and left a plate with a handle 2.42 LDU into the plate with
+## a clip on its handle; the next grab began with them into each other,
+## forgave them, and went 60° through the clip. Each pair of parts that makes
+## one of the loop's joints is tested against each other, by their exact
+## shapes, but not one that cannot meet as the joint turns: a pin, an axle
+## or a round part on the joint's line, which turns in place, or two parts a
+## plane square to the line keeps apart (a beam on a beam), further than the
+## joint slides. Only a hinge's, a click hinge's or a turntable's ([constant
+## PAIR_KINDS]): two parts built side by side to turn against each other, as
+## 21019-1's clip on its handle, which the loop slid along the handle's bar
+## 4.3 LDU into the handle's plate. An axle or a pin may slide in its hole as
+## far as its reading lets it, and a loop whose other joints are read loosely
+## closes by those slides: tested, 8448-1's racer and 5533-1 steered 1° and
+## 2° before a towball and a steering arm met the rack and the brick they are
+## in, 1 to 2 LDU along the axle (they steered 11° and 10°). Not a ball's
+## either. Asked every frame, the six pairs of 8808-1's steering (its arms in
+## two plates each) took its drag's room test from 0.5 ms a frame to 5 to 10,
+## so a loop's drag asks them on the pause, with its way ([method turn_to]).
+func _meeting_pairs() -> void:
+	_joint_pairs.clear()
+	_pair_clear.clear()
+	if linkage == null:
+		return
+	var joints: Array[Bodies.Link] = []
+	joints.append_array(linkage.links)
+	joints.append_array(linkage.closing)
+	for joined: Bodies.Link in joints:
+		if not joined.kind in PAIR_KINDS:
+			continue
+		var line: Vector3 = joined.axis.normalized()
+		var apart: float = PAIR_APART - joined.slide.x - joined.slide.y
+		for pair: Array in joined.pairs:
+			var one: int = int(pair[0])
+			var other: int = int(pair[1])
+			if not moving.has(one) and not moving.has(other):
+				continue
+			var a: BrickWorld.Brick = world.get_brick(one)
+			var b: BrickWorld.Brick = world.get_brick(other)
+			var mesh_a: Lbm.PartMesh = library.mesh_for(a.part_id) if a != null else null
+			var mesh_b: Lbm.PartMesh = library.mesh_for(b.part_id) if b != null else null
+			if mesh_a == null or mesh_b == null:
+				continue
+			var turns_in_place: bool = false
+			for key: int in [one, other]:
+				if _thin_on(key, joined.point, line) or _round_on(key, joined.point, line):
+					turns_in_place = true
+			if turns_in_place:
+				continue
+			var reach_a: Vector2 = Grab._reach_along(a.transform, mesh_a.bounds, line)
+			var reach_b: Vector2 = Grab._reach_along(b.transform, mesh_b.bounds, line)
+			if reach_a.y <= reach_b.x + apart or reach_b.y <= reach_a.x + apart:
+				continue
+			var local: Vector3 = (b.transform.basis.inverse() * line).normalized()
+			var square: Vector3 = (Vector3.UP if absf(local.y) < 0.9 else Vector3.RIGHT).cross(local).normalized()
+			_joint_pairs.append([one, other, local, square,
+				(b.transform.basis.inverse() * a.transform.basis).inverse(),
+				a.transform.affine_inverse() * joined.point, b.transform.affine_inverse() * joined.point])
+			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN, 0.0]))
+
+
+## The joints whose own two parts are tested against each other in a loop
+## ([method _meeting_pairs]).
+const PAIR_KINDS: Array[String] = ["hinge", "click", "turntable"]
+## Two parts' boxes this far into each other along a joint's line, LDU, are
+## kept apart by a plane square to it ([method _meeting_pairs]): faces
+## built flush.
+const PAIR_APART := 0.5
+## A joint turned this far past the turns found clear, radians, or slid this
+## far, LDU, is asked again ([method _pair_clear_at]).
+const PAIR_SAME := 0.0001
+const PAIR_SLIDE_SAME := 0.01
+
+
+## Whether the [param n]th of [member _joint_pairs] is clear of each other at
+## [param at]: asked by their exact shapes only where the joint has turned or
+## slid past what was already found clear, which then grows to take it in.
+## Where the two meet, [member blocked_by] says them.
+func _pair_clear_at(n: int, at: Dictionary) -> bool:
+	var pair: Array = _joint_pairs[n]
+	var one: int = pair[0]
+	var other: int = pair[1]
+	var at_one: Transform3D = at.get(one, rest.get(one, world.get_brick(one).transform))
+	var at_other: Transform3D = at.get(other, rest.get(other, world.get_brick(other).transform))
+	var turned: Basis = at_other.basis.inverse() * at_one.basis * (pair[4] as Basis)
+	var line: Vector3 = pair[2]
+	var square: Vector3 = pair[3]
+	var to: Vector3 = turned * square
+	var turn: float = atan2(line.dot(square.cross(to)), square.dot(to))
+	var slide: float = (at_other.affine_inverse() * (at_one * (pair[5] as Vector3)) - (pair[6] as Vector3)).dot(line)
+	var clear: PackedFloat64Array = _pair_clear[n]
+	if clear[4] == PAIR_FORGIVEN or turn >= clear[0] - PAIR_SAME and turn <= clear[1] + PAIR_SAME \
+			and slide >= clear[2] - PAIR_SLIDE_SAME and slide <= clear[3] + PAIR_SLIDE_SAME:
+		return true
+	var a: BrickWorld.Brick = world.get_brick(one)
+	var b: BrickWorld.Brick = world.get_brick(other)
+	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
+	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
+	if clear[4] == PAIR_UNKNOWN:
+		# Into each other where the grab began, or one with no exact shape
+		# (covers cannot judge a joint's own pieces): forgiven, as the rest of
+		# the room test forgives such a pair. Asked here, not at the press:
+		# for six pairs, reading their shapes and asking took 8808-1's
+		# steering's press from 6 ms to 19.
+		clear[4] = PAIR_FORGIVEN if shape_a == null or shape_b == null or not shape_a.has_pieces() \
+			or not shape_b.has_pieces() or not Exact.clash(Exact.Item.new(shape_a, a.transform),
+			Exact.Item.new(shape_b, b.transform)).is_empty() else PAIR_APART_AT_REST
+		_pair_clear[n] = clear
+		if clear[4] == PAIR_FORGIVEN:
+			return true
+	if Exact.clash(Exact.Item.new(shape_a, at_one), Exact.Item.new(shape_b, at_other)).is_empty():
+		_pair_clear[n] = PackedFloat64Array([minf(clear[0], turn), maxf(clear[1], turn),
+			minf(clear[2], slide), maxf(clear[3], slide), clear[4], clear[5]])
+		return true
+	blocked_by = [one, other] if moving.has(one) else [other, one]
+	met = int(blocked_by[0])
+	stretch_words = ""
+	return false
 
 
 ## Where [param key] is tested for room with the parts at [param at]: a part
@@ -1787,7 +1950,10 @@ func turn_to(degrees: float) -> float:
 		room = 1
 	if room == 1:
 		at = transforms_at(wanted)
-		room = _test(at, 0, _budget_left(began)).x
+		# A loop's drag: its joints' own parts are asked on the pause, with
+		# its way ([method verify_step]). Asked every frame, 8808-1's steering
+		# drag spent 5 to 10 ms a frame on them, against 0.5 ms for the rest.
+		room = _test(at, 0, _budget_left(began), true, {}, not way_left).x
 		if room == 0 and budget_ms == INF and _push_aside(wanted):
 			room = 1
 			at = transforms_at(wanted)
@@ -2253,7 +2419,7 @@ func slide_to(along: float) -> float:
 		room = 1
 	if room == 1:
 		at = transforms_at(angle, wanted)
-		room = _test(at, 0, _budget_left(began)).x
+		room = _test(at, 0, _budget_left(began), true, {}, not way_left).x
 		if room == 0:
 			walked = [0, walked[1], wanted]
 	elif room == -1:
@@ -3254,11 +3420,14 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 			_built_at[key] = rest[key]
 		world.move_brick(key, to)
 		builder.lattice.release(key)
-		# Worked out ahead, a share a frame, for a big section (GrabDrag).
-		# Not a hose's: its cells were worked out where a drag drew it.
-		var boxes: Variant = cells.get(key) if not hose_keys.has(key) else null
-		builder.lattice.occupy_boxes(key, boxes if boxes != null
-			else builder.boxes_for(library.mesh_for(brick.part_id), to))
+		# Worked out ahead, a share a frame, for a big section (GrabDrag):
+		# its cover, bound and rows (BrickLattice.cover_for). Not a hose's:
+		# its cells were worked out where a drag drew it.
+		var cover: Variant = cells.get(key) if not hose_keys.has(key) else null
+		if cover != null:
+			builder.lattice.occupy_moved(key, cover, Vector3i.ZERO)
+		else:
+			builder.lattice.occupy_boxes(key, builder.boxes_for(library.mesh_for(brick.part_id), to))
 	var moved: int = steps.size() + swapping.size()
 	if flex != null and not swapping.is_empty():
 		steps.append_array(flex.swap(builder, placed, rest))

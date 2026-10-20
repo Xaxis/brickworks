@@ -82,6 +82,10 @@ var worst_settle_ms: float = 0.0
 ## Of those: checking where it stops, and working out its cells.
 var worst_verify_ms: float = 0.0
 var worst_lay_ms: float = 0.0
+## The worst frame of checking the way while the pointer rests, held: a
+## big section's, or a loop's, whose joints' own parts are asked then
+## (Grab._meeting_pairs).
+var worst_pause_ms: float = 0.0
 ## The hoses the last grab bent (Grab.flex), and the most laying them again
 ## took in one of its frames, ms.
 var hoses: int = 0
@@ -226,6 +230,7 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	worst_ms = 0.0
 	worst_settle_ms = 0.0
 	worst_verify_ms = 0.0
+	worst_pause_ms = 0.0
 	worst_lay_ms = 0.0
 	worst_follow_ms = 0.0
 	worst_weigh_ms = 0.0
@@ -1214,8 +1219,10 @@ func _process(_delta: float) -> void:
 	# A big section moved on trust: checked while the pointer rests, and,
 	# let go, before it is kept.
 	if grab != null and grab.unchecked and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
+		var pausing: int = Time.get_ticks_usec()
 		grab.verify_step()
 		world.set_drawn(grab.drawn())
+		worst_pause_ms = maxf(worst_pause_ms, float(Time.get_ticks_usec() - pausing) / 1000.0)
 	# Hoses carried while the pointer moved, laid while it rests, a frame's
 	# budget at a time (FlexFollow.lay_into).
 	elif grab != null and grab.flex != null and grab.flex.carried_now > 0 \
@@ -1236,7 +1243,8 @@ func _process(_delta: float) -> void:
 			var cells: Builder = builder
 			_lay_task = WorkerTasks.add(func() -> void:
 				for item: Array in work:
-					out[item[0]] = cells.boxes_for(item[1], item[2]), false, "lay a section's cells")
+					out[item[0]] = BrickLattice.cover_for(cells.boxes_for(item[1], item[2])), false,
+					"lay a section's cells")
 		if _lay_task >= 0:
 			if WorkerThreadPool.is_task_completed(_lay_task):
 				WorkerTasks.collect(_lay_task)
@@ -1245,7 +1253,8 @@ func _process(_delta: float) -> void:
 			var key: int = _lay_keys.pop_back()
 			var brick: BrickWorld.Brick = world.get_brick(key)
 			if brick != null:
-				_laid[key] = builder.boxes_for(library.mesh_for(brick.part_id), _laying.placed[key])
+				_laid[key] = BrickLattice.cover_for(builder.boxes_for(library.mesh_for(brick.part_id),
+					_laying.placed[key]))
 		worst_lay_ms = maxf(worst_lay_ms, float(Time.get_ticks_usec() - began) / 1000.0)
 		if _lay_keys.is_empty() and _lay_task < 0:
 			var held: Grab = _laying
@@ -1555,6 +1564,8 @@ func _tell_page() -> void:
 	state["worst_follow_ms"] = snappedf(worst_follow_ms, 0.01)
 	state["worst_follow_said"] = worst_follow_said
 	state["worst_weigh_ms"] = snappedf(worst_weigh_ms, 0.01)
+	state["worst_pause_ms"] = snappedf(worst_pause_ms, 0.01)
+	state["worst_settle_ms"] = snappedf(worst_settle_ms, 0.01)
 	state["hoses"] = hoses
 	state["hose_worst_ms"] = snappedf(hose_worst_ms, 0.01)
 	state["handles_found"] = handles_found

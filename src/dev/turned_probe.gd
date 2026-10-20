@@ -63,12 +63,79 @@ func _initialize() -> void:
 		new_ms * 3 < old_ms)
 	_lattice_answers(rng)
 	_asked_answers(rng)
+	_real_covers()
 	print("")
 	if _failures == 0:
 		print("a turned part takes the cells it always did, quickly")
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
+
+
+## Real parts' turned covers as boxes (BrickLattice.boxes_for_turned), worked
+## out a line of cells at a time, against the cells cell by cell merged
+## (compress(cells_for_turned)), as they were until Grab 15: the same boxes in
+## the same order, quicker. A gear 40 coasted to a stop and kept spent 57 of
+## its keep's 60 ms on its cover (MECHANISMS §25). The parts at random from
+## the catalogue, with the flywheel's and a few joints'; turned about an
+## axis at random, about the vertical, about x, by a hair (a hundredth of a
+## degree to a third, so an axis of the turn is a twin of one of the grid's
+## and one slab is read for both), and moved off the origin.
+func _real_covers() -> void:
+	var library := PartLibrary.new()
+	if not library.load_catalogue():
+		_check("the catalogue loads, for real parts' covers", false)
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 15
+	var ids: Array = ["3649", "3705", "3894", "32524", "3001", "3647", "61252", "4532", "4261"]
+	var all: Array = library.parts.keys()
+	while ids.size() < 90:
+		ids.append(all[rng.randi_range(0, all.size() - 1)])
+	var same: int = 0
+	var tried: int = 0
+	var old_us: int = 0
+	var new_us: int = 0
+	var first_difference: String = ""
+	for id: String in ids:
+		var mesh: Lbm.PartMesh = library.mesh_for(id)
+		if mesh == null or mesh.boxes.is_empty():
+			continue
+		for trial: int in 6:
+			var basis := Basis(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1),
+				rng.randf_range(-1, 1)).normalized(), rng.randf_range(-PI, PI))
+			if trial == 0:
+				basis = Basis(Vector3.UP, deg_to_rad(float(rng.randi_range(1, 89))))
+			elif trial == 1:
+				basis = Basis(Vector3.RIGHT, deg_to_rad(float(rng.randi_range(1, 359)) * 0.5))
+			elif trial == 4:
+				basis = Basis([Vector3.UP, Vector3.RIGHT, Vector3.BACK][rng.randi_range(0, 2)],
+					deg_to_rad(rng.randf_range(0.01, 0.3)))
+			elif trial == 5:
+				basis = Basis(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1),
+					rng.randf_range(-1, 1)).normalized(), deg_to_rad(rng.randf_range(0.01, 0.3)))
+			if BrickLattice.is_square_to_grid(basis):
+				continue
+			var origin := Vector3i.ZERO if trial != 3 else Vector3i(rng.randi_range(-90, 90),
+				rng.randi_range(-5, 60), rng.randi_range(-90, 90))
+			var t0: int = Time.get_ticks_usec()
+			var was: PackedInt32Array = BrickLattice.compress(BrickLattice.cells_for_turned(mesh.boxes,
+				origin, basis))
+			var t1: int = Time.get_ticks_usec()
+			var now: PackedInt32Array = BrickLattice.boxes_for_turned(mesh.boxes, origin, basis)
+			var t2: int = Time.get_ticks_usec()
+			old_us += t1 - t0
+			new_us += t2 - t1
+			tried += 1
+			if was == now:
+				same += 1
+			elif first_difference.is_empty():
+				first_difference = "%s turned %s: %d boxes cell by cell, %d by lines" % [id,
+					basis.get_euler(), was.size() / 6, now.size() / 6]
+	_check("real parts turned: the same boxes in the same order by lines as cell by cell, %d of %d%s"
+		% [same, tried, "" if first_difference.is_empty() else " — " + first_difference], same == tried)
+	_check("and quicker: %d ms cell by cell, %d ms by lines" % [old_us / 1000, new_us / 1000],
+		new_us * 2 < old_us)
 
 
 ## What the lattice says of turned covers, against every pair of boxes.

@@ -4392,7 +4392,8 @@ func _coast_case() -> void:
 					await _clean_shot("coast " + ("train" if train else "flywheel") + ("_slow" if slow_ms > 0 else ""), "2_mid")
 			await process_frame
 		await _settled()
-		print("    mid-coast the status line said: %s" % said_mid)
+		print("    mid-coast the status line said: %s; the app's own work at the let-go %.2f ms, at the keep %.2f ms"
+			% [said_mid, _grab.let_go_ms, _grab.kept_ms])
 		_check("%s: while it coasts the status line says so: %s" % [name, said_mid], said_mid.contains("coasting at"))
 		# By hand from the parts and the teeth.
 		var turning: Array = [[bodies.parts_of([wheel]), link.point, link.axis.normalized(), 1.0]]
@@ -5458,6 +5459,10 @@ const MOVING: Array = [
 	# BrickNet's labels name (Bodies._labelled_hinge); held by nothing, it
 	# was no door on a joint.
 	["res://vendor/omr/files/6765-1.mpd", "door"],
+	# Grab 15 (MECHANISMS §25): its turntable turns a loop of 11 joints, one
+	# a plate with a clip on a plate with a handle; untested against each
+	# other, the turn left them into each other and the next went through.
+	["res://vendor/omr/files/21019-1.mpd", "turntable"],
 ]
 ## Steering the sweep's way (tools/steer_sweep.py), each [set, why]: it
 ## steers both ways and back over MCP (G14b, MECHANISMS §24).
