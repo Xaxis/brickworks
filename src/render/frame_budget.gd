@@ -50,7 +50,11 @@ const JUDGED_BY := 1
 const FIRST_LOOK_MS := 2000
 const LOOK_FRAMES := 10
 ## The first frames of a look, before any is timed: shaders compiled for
-## the first time cost more than a frame does.
+## the first time cost more than a frame does. Not on the web, where each
+## frame is timed by its fence and a judgment goes by the fastest: the
+## first after a cut, building its programs, took 1.9 times the next in
+## Chromium on SwiftShader, and the first of the first look waited for what
+## the page had queued before it, but neither is ever the fastest.
 const WARM_FRAMES := 2
 ## On the web, how many of a look's frames may be drawn by the page and not
 ## yet by the card. Two, not one: a frame is timed from when the card had
@@ -256,7 +260,7 @@ func _frame_begins() -> void:
 func look(frames: int = LOOK_FRAMES) -> void:
 	looks += 1
 	_looking = frames
-	_warm = WARM_FRAMES
+	_warm = 0 if fences else WARM_FRAMES
 	_look_drawn = 0
 	_look_most = (frames + WARM_FRAMES) * 3
 	timed.clear()

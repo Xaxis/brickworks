@@ -215,8 +215,8 @@ func _fenced(budget: Node, budget_script: Script, software: bool) -> void:
 			% [float(told["cost"]), str(told["cuts"])],
 			float(told["cost"]) >= 0.0 and float(told["cost"]) < slow and str(told["cuts"]) == str(cut_before))
 
-	# A slow card, 400 ms a frame: judged after its warm frames and SOON
-	# more, not after a dozen, with at most IN_FLIGHT of them drawn ahead.
+	# A slow card, 400 ms a frame: judged after SOON frames, not after a
+	# dozen, with at most IN_FLIGHT of them drawn ahead.
 	card["ms"] = 400
 	card["ahead"] = 0
 	var cut_at: int = (budget.get("cuts") as Array).size()
@@ -230,7 +230,7 @@ func _fenced(budget: Node, budget_script: Script, software: bool) -> void:
 				and int((budget.call("page_state") as Dictionary)["looking"]) == 0:
 			break
 	var took: int = Time.get_ticks_msec() - began
-	var frames: int = int(budget_script.get("WARM_FRAMES")) + int(budget_script.get("SOON"))
+	var frames: int = int(budget_script.get("SOON"))
 	told = budget.call("page_state")
 	print("    a slow card: judged %s, %d ms after the look began, %d frames ahead at most" % [str(told["judged"]), took, int(card["ahead"])])
 	_check("a slow card is never more than %d frames behind the look (%d)" % [in_flight, int(card["ahead"])],
