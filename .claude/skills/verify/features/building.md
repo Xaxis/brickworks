@@ -750,7 +750,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   frame (Grab 15, MECHANISMS §25), and not at all where no piece of one shares
   a place along the line and a distance from it with a piece of the other
   (`Grab._about_line`, `_pieces_apart`, Grab 16: 8808-1's six pairs). A pause
-  checks a loop's way 8 ms a frame (`GrabDrag.PAUSE_BUDGET_MS`,
+  checks a loop's way 4 ms a frame (`GrabDrag.PAUSE_BUDGET_MS`,
   `Grab.pause_budget_ms`). `-- --only=clipped` (MECHANISMS §26): 4002020-1's
   turntable, whose loop holds a clip on a bar with a ball end, turns +13°,
   -44° and back to 0.0001 LDU; 21019-1's, whose clip fills its handle's bar,
