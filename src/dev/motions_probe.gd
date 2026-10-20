@@ -257,6 +257,11 @@ func _windscreen() -> void:
 		_check("animate_model, as a motion played once, says where it stopped",
 			said.contains("#143 stops at 0° of the 30° asked"))
 		_check("...and the model stands as it was built", _off(built)[0] == 0)
+		said = _text(await _finished(await _rpc("tools/call", {"name": "animate_model", "arguments":
+			{"turntable": true}})))
+		_print(said)
+		_check("animate_model with only the model turned round still renders it",
+			said.contains(": 12 frames, 12 a second") and said.contains(".webp"))
 
 
 ## A small model of plain parts in an .ldr (no sub-models): a door on a

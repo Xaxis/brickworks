@@ -1604,6 +1604,10 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		motion.tracks.append(track)
 	var played: MotionPlayer.Played = player.play(motion, false, panel.animation.fps)
 	var poses: Array = played.frames.slice(0, panel.animation.frame_count())
+	# The model turned round once with nothing on its joints: frames that
+	# move nothing, turned.
+	while poses.size() < panel.animation.frame_count():
+		poses.append(poses.back() if not poses.is_empty() else {})
 	var frames: int = await panel.render_poses(poses, panel.animation.fps,
 		func(n: int) -> float: return panel.animation.turn_at(panel.animation.time_of(n)),
 		panel._sheet_frames(poses.size()), work, "hero", "_animation")
