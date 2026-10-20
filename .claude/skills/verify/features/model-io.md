@@ -397,14 +397,27 @@ Whether what you built is still there tomorrow, and still means the same thing.
   in the status bar — every opened file's missing parts are named so (`open_text`'s
   `missing_ids`). The 2025 set placed 1,498 of 1,501 with three BrickLink-only
   prints named; it now places all 1,501 with the three prints drawn
-  (`decor_probe -- --real=`). The 2021 one all 103. `bay_2025.io`'s Part
+  (`decor_probe -- --real=`). The 2021 one all 103. Since 2026-10-19 any other
+  part the library has not got as one of its own comes from the file too (the
+  picker hands `StudioIo.read` the library; `StudioDecor.carried`): a part newer
+  than the library, which `model.ldr` names by LDraw's number and `model2.ldr`
+  carries by that number or by BrickLink's, found then by the line of
+  `model2.ldr` that puts a part where `model.ldr`'s line does
+  (`StudioDecor.bricklink_names`; lines that do not match map nothing). Its
+  colours are BrickLink's there and come out LDraw's (`_colour`, through
+  `colors.json`'s `bricklink`). `whole_2025.io` (a `bl_` print, a Part Designer
+  decal, `3070bpr9104` carried as BrickLink's `3070bpb9104`, and `65999`) placed
+  4 of 6 before and 6 of 6 since, each print drawn, BrickLink's black (11) as
+  LDraw's 0 and not light turquoise; saved as `.mpd` it carries all four, and
+  opens whole into a library that has never seen them (`io_probe`, and
+  `io_flow.mjs`'s last step in a browser, `4_whole.png`). `bay_2025.io`'s Part
   Designer part (a `1 16 … 3001.dat` in `CustomParts/parts/`) is built where the
   checkout has the LDraw library and named as left out where it has not (the
   web build): `io_probe` and `handbuild_probe` expect whichever this checkout can do.
   `tests/fixtures/studio/make_fixtures.py` makes `bay_2025.io` and
   `bay_2021.io` (locked by the system's `zip -P`) in those two shapes, and
   `bay_aes.io`, with `model2.ldr` in BrickLink's numbers so reading the wrong
-  member fails. A damaged member makes Godot print `ERROR: Condition "err !=
+  member fails, and `whole_2025.io` (`make_fixtures.py whole`). A damaged member makes Godot print `ERROR: Condition "err !=
   1"` from its inflater: expected in `io_probe`'s refusals, not a failure.
 - `save as a studio model` (`src/ui/exports.gd` `studio_io`, `StudioIo.pack`):
   File, Export → BrickLink Studio model (.io) writes `<name>.io` (downloaded in
@@ -619,7 +632,7 @@ godot --headless --path . --script src/dev/restore_probe.gd  # a failed design c
 godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still mean something
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
-godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, write, round trip, refusals
+godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, parts only the file has, write, round trip, refusals
 godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
 godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
 # ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py
@@ -636,7 +649,7 @@ godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: th
 godot --headless --path . --script src/dev/mesh_export_probe.gd -- --orthanc   # ...and the castle and Orthanc, every format, timed (~6 min)
 node tools/web/model3d_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: the car's GLB from the menu, downloaded and read
 python3 tests/fixtures/studio/make_fixtures.py   # after changing what the .io fixtures hold
-node tools/web/io_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: open an .io, export one, open it again
+node tools/web/io_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: open an .io, export one, open it again, then whole_2025.io
 python3 tools/ldd_map.py vendor/ldraw.xml   # after a newer ldraw.xml: assets/ldraw/ldd.json again
 tools/check.sh --network   # adds open_probe: opening the way the browser has to
 # several tabs, one browser: a local export served with the relay, .env sourced

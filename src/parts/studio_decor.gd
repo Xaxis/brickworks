@@ -31,10 +31,11 @@
 ## BrickLink's number with bl_ before it (bl_3068pb2483).
 ##
 ## Read ([method carried]): every part model.ldr names that is Studio's — a
-## bl_ part, or one from CustomParts — is flattened from its source with its
-## pictures, and written as an LDraw part with each picture's faces in a
-## PLANAR !TEXMAP block and the picture as a !DATA section, appended to the
-## model text. An affine map of a triangle's coordinates is exactly a PLANAR
+## bl_ part, one from CustomParts, or any other the library has not got (a
+## part newer than it) — is flattened from its source with its pictures,
+## and written as an LDraw part with each picture's faces in a PLANAR
+## !TEXMAP block and the picture as a !DATA section, appended to the model
+## text. An affine map of a triangle's coordinates is exactly a PLANAR
 ## projection (its gradients across the face are the projection's axes), so
 ## faces sharing one map share one block, and a decal's box is one block
 ## for all its faces. The model then opens as one that carries its parts
@@ -240,11 +241,11 @@ static func _has_own(library: PartLibrary, id: String) -> bool:
 
 ## The part names of model.ldr ([param own], its sections) as model2.ldr
 ## ([param studio]) names the same lines: lowercase file name -> model2.ldr's.
-## Each section holds the same lines in both, in the same order, so the n-th
-## part of one is the n-th of the other; a pair counts only where both put
-## the part in the same place, so a file whose lines do not match maps
-## nothing. A model.ldr section is paired with model2.ldr's of its name, its
-## first (the model itself) with model2.ldr's first.
+## A section is the same model in both, so a line of one is the line of the
+## other that puts a part in the same place (the n-th of them, where several
+## do); a line nothing in the other matches maps nothing. A model.ldr section
+## is paired with model2.ldr's of its name, its first (the model itself) with
+## model2.ldr's first.
 static func bricklink_names(own: Dictionary, studio: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	if own.is_empty() or studio.is_empty():
@@ -255,34 +256,34 @@ static func bricklink_names(own: Dictionary, studio: Dictionary) -> Dictionary:
 			other = studio.keys()[0]
 		if other.is_empty():
 			continue
-		var theirs: Array = _placements(studio[other])
-		var n: int = 0
-		for mine: Array in _placements(own[section]):
-			if n >= theirs.size():
-				break
-			var paired: Array = theirs[n]
-			n += 1
-			if out.has(mine[0]) or mine[0] == paired[0]:
-				continue
-			var same: bool = true
-			for k: int in 12:
-				same = same and absf(float(mine[1][k]) - float(paired[1][k])) < 0.01
-			if same:
-				out[mine[0]] = paired[0]
+		var theirs: Dictionary = {}            ## place -> names, in order
+		for placed: Array in _placements(studio[other]):
+			if not theirs.has(placed[1]):
+				theirs[placed[1]] = []
+			(theirs[placed[1]] as Array).append(placed[0])
+		var taken: Dictionary = {}             ## place -> how many matched
+		for placed: Array in _placements(own[section]):
+			var there: Array = theirs.get(placed[1], [])
+			var n: int = int(taken.get(placed[1], 0))
+			taken[placed[1]] = n + 1
+			if n < there.size() and placed[0] != there[n] and not out.has(placed[0]):
+				out[placed[0]] = there[n]
 	return out
 
 
-## A section's type-1 lines: [lowercase file name, its twelve numbers], in order.
+## A section's type-1 lines, in order: [lowercase file name, where it puts the
+## part], the place its twelve numbers to a hundredth of an LDU.
 static func _placements(lines: PackedStringArray) -> Array:
 	var out: Array = []
 	for raw: String in lines:
 		var tokens: PackedStringArray = raw.replace("\t", " ").split(" ", false)
 		if tokens.size() < 15 or tokens[0] != "1":
 			continue
-		var numbers := PackedFloat64Array()
+		var place := PackedStringArray()
 		for word: String in tokens.slice(2, 14):
-			numbers.append(word.to_float())
-		out.append([" ".join(tokens.slice(14)).strip_edges().to_lower().replace("\\", "/"), numbers])
+			place.append("%.2f" % (snappedf(word.to_float(), 0.01) + 0.0))
+		out.append([" ".join(tokens.slice(14)).strip_edges().to_lower().replace("\\", "/"),
+			" ".join(place)])
 	return out
 
 

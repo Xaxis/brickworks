@@ -471,10 +471,12 @@ def make_whole() -> None:
         line(3, 20, -8, "%s.dat" % WHOLE_DESIGNED),
         line(-1, 0, 0, "submodel group 1"),
         "0 NOFILE",
+        # The sub-model's lines in another order than model.ldr's: a part is
+        # matched by where it is, not by which line it is.
         "0 FILE SubModel Group 1"] + _header("SubModel Group 1", "SubModel Group 1", 3) + [
-        line(86, 60, -8, "%s.dat" % NEWER_BRICKLINK),
         line(11, 100, -8, "3068.dat"),
         line(7, 140, -24, "%s.dat" % NEWER_SAME),
+        line(86, 60, -8, "%s.dat" % NEWER_BRICKLINK),
         "0 NOFILE",
         "0 FILE %s.dat" % NEW_PRINT,
         "0 Tile 2 x 2 with Blue Target and Red Bar Pattern",
