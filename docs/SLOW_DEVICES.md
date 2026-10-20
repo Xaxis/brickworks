@@ -354,6 +354,11 @@ on Forward+ and Compatibility (above), and look_cost is what measured it.
   judged 80 s in, between the parts bin's read-backs, and the look after it
   drew 12 frames in the 5 s `tools/web/outline_check.mjs` stands still
   with a figure outlined (bar: one a second). On m87 and m91 it drew 1.
+  Without that look it draws 4 and 5 (two runs at 1x and 2x): the parts
+  bin reading its pictures back, one frame as each hold ends, four holds
+  of 0.8 to 1 s in the 5 s with the look lowered. m91 was reading them
+  then too, but at its full look one hold took 4.2 s (2x) and 3.4 s (1x),
+  so a single frame fell in the 5 s.
 - Nothing measurable in the app's own work (the frames gate above), and
   nothing on a capable device (the pictures above).
 
