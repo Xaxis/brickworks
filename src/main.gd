@@ -4147,6 +4147,7 @@ func _build_ui() -> void:
 	_motions.store = _store
 	_motions.grabbing = _grab_drag
 	_pose.player = _motions
+	_render.player = _motions
 	_pose.grabbing = _grab_drag
 	_pose.select_tool = func() -> void:
 		if _builder.is_carrying():

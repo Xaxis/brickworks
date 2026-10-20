@@ -1,6 +1,6 @@
 ## Where a render goes: a download in a browser; on the desktop, a file in
-## Downloads, and for a turntable its frames in a folder, an animated WebP
-## beside them and, where ffmpeg is installed, an MP4.
+## Downloads, and for a turntable or an animation its frames in a folder, an
+## animated WebP beside them and, where ffmpeg is installed, an MP4.
 ##
 ## Encoding is done on a worker where there are workers: a 4K PNG is a
 ## second or two of a browser's one thread otherwise, and the page would
@@ -112,12 +112,47 @@ func give(bytes: PackedByteArray, name: String, mime: String) -> String:
 	return line
 
 
-## Begin a turntable for [param model] — or, called "_animation", any run
-## of frames kept the same way.
+## Begin a turntable for [param model] — or, with another suffix, any run
+## of frames kept the same way (Simulate's "_mechanism").
 func begin_turntable(model: String, settings: RenderSettings,
 		suffix: String = "_turntable") -> void:
+	_begin(file_name(model, suffix, "x").get_basename(), settings)
+
+
+## Begin an animation of [param model]'s motion [param motion], kept the
+## same way and named as a person says it: "1484-1 Open the doors.webp",
+## numbered "1484-1 Open the doors 2" when one of that name is already
+## where it goes (a browser numbers its downloads itself).
+func begin_animation(model: String, motion: String, settings: RenderSettings) -> void:
+	_begin(animation_name(model, motion), settings)
+
+
+## The name an animation of [param motion] is kept under, without its
+## extension: the model's name (its last part only, so no title can put a
+## file outside the folder) and the motion's, as they are written.
+func animation_name(model: String, motion: String) -> String:
+	var own: String = model.replace("\\", "/").get_file().strip_edges()
+	var base: String = ("%s %s" % [own if not own.is_empty() else "Model",
+		motion.strip_edges()]).validate_filename()
+	if OS.has_feature("web"):
+		return base
+	var named: String = base
+	var n: int = 2
+	while FileAccess.file_exists(where().path_join(named + ".webp")) \
+			or FileAccess.file_exists(where().path_join(named + ".mp4")):
+		named = "%s %d" % [base, n]
+		n += 1
+	return named
+
+
+## The name the frames being kept go under, without an extension.
+func base_name() -> String:
+	return _base
+
+
+func _begin(base: String, settings: RenderSettings) -> void:
 	_settings = settings
-	_base = file_name(model, suffix, "x").get_basename()
+	_base = base
 	_webp = AnimatedWebP.new(settings.fps)
 	_webp.with_alpha(settings.transparent)
 	_frame_size = Vector2i.ZERO

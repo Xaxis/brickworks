@@ -279,3 +279,85 @@ Left for later units:
 - A joint carried by another is moved alone while its slider is dragged
   (from where the model stands); its key, and the frames, carry it.
 - Recording keeps one joint a drag; a chain drag and a ball are not recorded.
+
+## What unit 4 built (motions4, 2026-10-20)
+
+**File, Render… has Animation** beside Turntable, in the dialog's own look:
+Render animation in the row of Render picture and Render turntable, and
+under Turntable's frames an Animation heading with the motion to draw (the
+model's motions as listed, then All, in order, `Motions.in_order`, when
+there are two or more; "No motions yet: Build, Motions… makes them" and the
+button off when there are none), the camera (As I see it, Framed on what
+moves) and a line of what it comes to. Quality, size, background, light,
+lens and depth of field are the picture's; the frames go at the turntable's
+24 a second. Nothing else in the dialog moved.
+
+- **One path** (`MotionRender`, `src/render/motion_render.gd`): the frames
+  (`frames_of`: each motion played through Grab, a sequence each from where
+  the last ended, kept while the next is played and taken back after with
+  `Builder.take_back_to`, which puts the person's redo back as it was), and
+  drawing them (`draw`, `StudioRender.animate`). The dialog's Animation, the
+  Motions panel's Render animation (`PosePanel.render_poses`) and
+  render_motion all go through it, and name their files the same way.
+- **As I see it** is the camera the picture has (the dialog's Camera: the
+  view you are looking at, unless another is chosen). **Framed on what
+  moves** looks from the same side and fits the frame to the corners of
+  every moving part in every frame (`MotionRender.swept`,
+  `StudioRender._fit_points`, `RenderSettings.on_what_moves`), not to a
+  box: a box's corners stand far off a boom rising on a diagonal, and that
+  is what left unit 1's crane small. The sweep, the floor and the contact
+  shadow are still laid under the whole model and what it sweeps, and the
+  clip planes take in all of it. render_motion frames on what moves from
+  three-quarters, as it said it did; the panel's Render animation draws as
+  I see it.
+- **Files** `<model> <motion>.webp` and `.mp4` and a folder of its frames
+  (`RenderOutput.begin_animation`), "main Open the doors.webp", then "main
+  Open the doors 2.webp" when that is taken; All, in order is "<model> all
+  in order". In a browser the WebP downloads (the browser numbers its own).
+  Stills and turntables keep their names (`model_render.png`,
+  `model_turntable.webp`), written over as before.
+- Progress on the dialog's bar, frame by frame; Cancel and Escape stop it
+  and keep nothing; the finished frames loop in the dialog as a
+  turntable's do.
+
+Proof: `src/dev/motions_render_probe.gd` (`tools/probe.sh
+motions_render_probe`, and `PROBE_SIZE=1280x720 … OUT_DIR pictures`), the
+dialog pressed as a person presses it, 34 checks:
+- 1484-1's "Open the doors" at 720p, Quick: 49 frames of 49 as I see it
+  and framed on what moves, each a WebP of 49 frames, an MP4 and 49 PNGs,
+  the second named "main Open the doors 2.webp" (1484-1.mpd's model is
+  called main). What changes from the first frame to the last spans 13% ×
+  12% of the frame as I see it and 41% × 47% framed on what moves. All, in
+  order (with "Close the first gate" after it): 86 frames, the gate
+  closing in the last of them (44,969 pixels differ from the doors open),
+  the model as built and the redo kept. Cancel part way: "Cancelled.", no
+  WebP.
+- 4096-1's "Lift the boom" (45°) framed on what moves: the boom's sweep
+  over 52% × 90% of the frame, against 47% × 63% framed as unit 1 framed
+  it (the whole model's box with the sweep's, from three-quarters).
+- One path: the dialog and the panel's Render animation (as I see it),
+  and the dialog and render_motion (framed on what moves, three-quarters),
+  for the same settings: the same camera and every moving part in the same
+  place on the last frame, exactly; the pixels differ in 5,484 and 7,927
+  places by at most 8 and 7 of 255, as the dialog drawing the same frames
+  twice does (1,284 by 11; 7,927 by 5). StudioRender does not draw a frame
+  twice bit for bit.
+- The dialog at 1400 × 900 and 1280 × 720 with every Animation control in
+  it; pictures in `bench/results/motions4-2026-10-20/`.
+
+In a browser (`tools/web/render_flow.mjs`, `render` in
+`tools/release/preview_checks.sh`, run on a local export): a small crane
+opened from a file with a motion in its head, rendered from Animation
+framed on what moves, downloaded "Crane motion Turn the turret.webp", 25
+frames, decoded at 1280 × 720, in 23 s, the page's longest wait 1,084 ms;
+the flow's 13 checks passed. render_probe (41), motions_probe (70),
+motions_panel_probe (51), pose_probe (25) and animation_probe (24) pass.
+
+Left for later:
+- The draft in the dialog is the still; framed on what moves is seen only
+  once rendered (the frames loop in the dialog then).
+- The list of motions is read when the dialog opens and as a render
+  starts: a motion a session defines while the dialog is open shows at
+  the next.
+- render_motion has no camera choice: it frames on what moves, from
+  three-quarters.

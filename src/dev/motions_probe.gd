@@ -416,7 +416,7 @@ func _round_trip(label: String, name: String, built: Dictionary) -> void:
 		"arguments": {"name": name}}))
 	said = _text(rendered)
 	_print(said)
-	var webp: String = _out.path_join(RenderOutput.file_name(label, "_" + name.to_snake_case(), "webp"))
+	var webp: String = _out.path_join(str((_main.get("_pose") as PosePanel)._last.get("name", "")))
 	var mp4: String = webp.get_basename() + ".mp4"
 	_check("...rendered as a job, a WebP and an MP4, the model as it was", said.contains("Rendered ")
 		and FileAccess.file_exists(webp) and (FileAccess.file_exists(mp4) or RenderOutput.ffmpeg().is_empty())

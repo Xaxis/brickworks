@@ -98,7 +98,7 @@ func _whole_frames() -> void:
 	var a1 := Transform3D(Basis.IDENTITY, Vector3(10, 0, 0))
 	var b0 := Transform3D(Basis.IDENTITY, Vector3(0, 5, 0))
 	var b1 := Transform3D(Basis.IDENTITY, Vector3(0, 9, 0))
-	var whole: Array = AppTools._whole_frames([[{1: a0}, {1: a1}], [{2: b0}, {2: b1}]])
+	var whole: Array = MotionRender.whole_frames([[{1: a0}, {1: a1}], [{2: b0}, {2: b1}]])
 	_check("the first motion's frames hold the second's part where it began",
 		(whole[0][0] as Dictionary).get(2) == b0 and (whole[0][1] as Dictionary).get(2) == b0)
 	_check("...and the second's hold the first's where it ended",

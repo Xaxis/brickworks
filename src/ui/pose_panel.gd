@@ -1213,26 +1213,29 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 	_let_go_slider()
 	_undraw()
 	var fps: int = int(RATES[maxi(_rate.selected, 0)])
-	var played: MotionPlayer.Played = player.play(motion, false, fps, false)
-	if played.frames.is_empty():
-		_say("Nothing to draw: %s." % player.said(played))
+	var drawn: MotionRender = MotionRender.frames_of(player, [motion], false, fps)
+	if drawn.poses.is_empty():
+		_say("Nothing to draw: %s" % drawn.lines[0])
 		return 0
 	var sheet_at: Array = []
 	for k: int in SHEET_MOST:
-		sheet_at.append(roundi(float(k) * float(played.frames.size() - 1) / float(SHEET_MOST - 1)))
-	return await render_poses(played.frames, fps, func(_n: int) -> float: return 0.0, sheet_at, job, view,
-		"_" + motion.name.to_snake_case())
+		sheet_at.append(roundi(float(k) * float(drawn.poses.size() - 1) / float(SHEET_MOST - 1)))
+	return await render_poses(drawn.poses, fps, func(_n: int) -> float: return 0.0, sheet_at, job, view,
+		motion.name)
 
 
 ## Draw [param poses] (one a frame: brick id -> Transform3D of the parts
 ## that move), [param fps] a second, the model turned [param turn_at] (frame
-## -> turns) round, and keep them as Render animation keeps its frames: a
-## WebP, and on the desktop the frames and an MP4, named after the model
-## and [param suffix]. [param sheet_at]: the frames kept for [method sheet].
-## A motion is rendered this way (render_motion, Render animation), as its
-## frames. Returns how many were drawn.
+## -> turns) round, and keep them as File, Render's Animation keeps its
+## frames (MotionRender): a WebP, and on the desktop the frames and an MP4,
+## named after the model and [param motion]. [param sheet_at]: the frames
+## kept for [method sheet]. [param on_what_moves]: framed on what the parts
+## sweep, from [param view]'s direction. A motion is rendered this way
+## (render_motion, Render animation), as its frames. Returns how many were
+## drawn.
 func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
-		job: Working.Job = null, view: String = "", suffix: String = "_animation") -> int:
+		job: Working.Job = null, view: String = "", motion: String = "Animation",
+		on_what_moves: bool = false) -> int:
 	if _working or world == null or poses.is_empty():
 		return 0
 	_ready_renderer()
@@ -1246,29 +1249,24 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 	chosen.frames = frames
 	if not view.is_empty():
 		chosen.view = view
+	chosen.on_what_moves = on_what_moves
 	var output := RenderOutput.new()
 	output.folder = folder
-	var model: String = str(named.call())
-	output.begin_turntable(model, chosen, suffix)
+	output.begin_animation(str(named.call()), motion, chosen)
 	_sheet = {}
 	_sheet_fps = fps
 	var stop: Callable = renderer.cancel
 	if job != null:
 		job.count(0, frames)
 		job.cancel_wanted.connect(stop)
-	var done: int = await renderer.animate(world, chosen, frames,
-		func(n: int) -> Dictionary: return poses[n],
-		turn_at,
-		poser.reach(poses),
+	var done: int = await MotionRender.draw(renderer, world, chosen, poses, turn_at, output,
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
 			_frame.visible = visible
 			if sheet_at.has(n):
 				_sheet[n] = image
 			if job != null:
-				job.count(n + 1)
-			await output.add_frame(n, image))
-	await output.settle()
+				job.count(n + 1))
 	if job != null:
 		job.cancel_wanted.disconnect(stop)
 	var lines := PackedStringArray()
@@ -1286,8 +1284,7 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		_progress.value = 0.0
 		return done
 	_progress.value = 1.0
-	_last = {"frames": done, "bytes": output.last_bytes,
-		"name": RenderOutput.file_name(model, suffix, "webp"),
+	_last = {"frames": done, "bytes": output.last_bytes, "name": output.base_name() + ".webp",
 		"paths": Array(output.paths), "kept": "; ".join(lines), "seconds": roundi(seconds)}
 	_say("%d frames — %s — %.0f s." % [done, "; ".join(lines), seconds])
 	_fit_later()
