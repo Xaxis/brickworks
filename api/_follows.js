@@ -168,9 +168,28 @@ export async function follow(request, response) {
   return response.status(200).json({ handle, ...stateSaid(said), signed_in: true });
 }
 
+/// Whom [account] follows, for them alone and whatever they chose to show:
+/// [{handle, name}], the newest first; null before supabase/account.sql.
+async function followingMine(account) {
+  const said = await call("follow_list_mine", { account }, () => null);
+  return Array.isArray(said) ? said : null;
+}
+
+/// ?op=following&handle=X: whom X follows, when they show it. With no
+/// handle and a sign-in: whom you follow, for you alone (your account
+/// page), never kept by the CDN.
 export async function getFollowing(request, response) {
-  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   const handle = handleOf(request.query?.handle);
+  if (!handle && !request.query?.handle) {
+    response.setHeader("Cache-Control", "private, no-store");
+    const asker = await who(request);
+    if (!asker) throw refused("sign_in");
+    // Before account.sql: not the list, only that it is not there yet
+    // (ready: false), and the page says how many from follow_state.
+    const mine = await followingMine(asker);
+    return response.status(200).json({ mine: true, ready: mine !== null, following: mine || [] });
+  }
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   if (!handle) throw refused("nobody");
   return response.status(200).json({ handle, following: await followingOf(handle) });
 }

@@ -14,6 +14,30 @@ lacks goes into `site.css` and this page, in the same commit.
 This is the website only. The app (src/ui/) has its own look and is not
 part of it.
 
+**And one site, not fourteen pages (2026-10-20).** The owner: "the main nav
+has too many links… the entirety of the cohesive site". Each page had its
+own copy of the header (seven links) and footer (eight different ones), and
+sized its own titles, from 26 to 74 px. Now:
+
+- **The shell.** One header and one footer, written once in
+  `web/_shell.html`. `python3 tools/site_shell.py` writes them into every
+  page of web/ that has a site header, marking the link to the page itself
+  (`aria-current`); `tests/test_site_shell.py` fails when a page's copy
+  differs, or the header has more than four things. The server's pages
+  (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
+  `siteChrome`). Edit `_shell.html`, then run the script; never a page's
+  copy. The header: Gallery · Download · Account (Sign in until you are,
+  web/follow.js) · **Open the app**; on a phone the mark, the way in and
+  Menu. The footer: the mark and a row of links (Compare, FAQ, Changelog,
+  Source, Privacy, Terms, Guidelines, Takedown), then every notice
+  docs/TRADEMARKS.md asks for, small and quiet.
+- **One type scale** (`--t-display`, `--t-h1`, `--t-h2`, `--t-h3`,
+  `--t-lede`, `--t-small`, `--t-tiny`): `h1` is a page's title at `--t-h1`
+  on every page; the landing page's one line is `h1.display`; `h2` a
+  section's. A page does not size its own titles.
+- **One rhythm** (`--s-1` 4 px to `--s-7` 48 px, `--page-top` above a
+  page's title, `--section` between sections).
+
 ## Tokens
 
 The colours were already there (`--bg`, `--panel`, `--line`, `--ink`,
@@ -56,7 +80,25 @@ controls:
 - **Dialog**: the `dialog` element (sign in and the age question in
   `web/account.js`, report it in `web/report.js`): a `--panel` card, its
   title an h2, the form, the buttons last with the primary first.
-- **Card**: `.card`.
+- **Card**: `.card`, a panel of words.
+- **Model card**: `.model` (`web/cards.js` `modelCard` draws it), the one
+  card for a shared model on every page: the gallery, the landing page's
+  strip, a profile, a collection, your account. In `.models` (a grid),
+  `.models.compact` (more to a row, beside a rail) or `.models.row` (one
+  row that scrolls inside itself, never the page). Its Tested mark is
+  `.model .tested`.
+- **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
+  space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
+  `.lede`), then its sections. `.prose` for a page of words (the FAQ's
+  width, the legal pages), narrower and quieter.
+- **Empty**: `.state`, a dashed box for what has nothing yet.
+- **Page index**: `.subnav`, the sections of a long page (your account):
+  a rail beside them on a laptop, a row across the top on a phone that
+  scrolls inside itself; the one on screen `aria-current="true"`.
+- **Settings**: `.settings`, a panel of `.setting` rows, what a setting is
+  (an `h3` and a line) and its control beside it, under it on a phone;
+  `.wide` takes the whole row. What cannot be undone is `.setting.danger`
+  and its button `.cta.ghost.danger`, in `--bad`.
 
 ## The check
 

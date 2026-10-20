@@ -24,9 +24,13 @@
 //      /u/<owner>: the owner's profile, the house credited to them.
 //   5. Each page at 390 and 1280 px: no console error, no refused request,
 //      nothing scrolling sideways.
+//   6. /profile again, as the home it is: their name and their page at the
+//      top, its sections, the header saying Account; then Delete this
+//      account, their address typed to confirm, and they are signed out and
+//      gone from the sign-in service (api/account.js ?op=delete).
 //
-// Both accounts are deleted at the end, and everything of theirs with them;
-// the house is taken down first, so no file is left. Pictures in --out.
+// The owner's account is deleted at the end, and everything of theirs with
+// it; the house is taken down first, so no file is left. Pictures in --out.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintCode, mintSession } from "./session.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -55,6 +59,19 @@ const visitorEmail = `delivered+bw-people-visitor-${rand}@resend.dev`;
 const ownerHandle = `flow-owner-${rand}`;
 const visitorHandle = `flow-visitor-${rand}`;
 const LIST = `Houses I like ${rand}`;
+
+// Step 6 deletes the visitor's account from its own page.
+let visitorId = "";
+let deletedByPage = false;
+
+/// Whether the sign-in service has an account at [email].
+async function accountExists(email) {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const secret = process.env.SUPABASE_SECRET_KEY || "";
+  const listed = await (await fetch(`${base}/auth/v1/admin/users?page=1&per_page=1000`, {
+    headers: { apikey: secret, authorization: `Bearer ${secret}` } })).json();
+  return (listed.users || []).some((u) => (u.email || "").toLowerCase() === email.toLowerCase());
+}
 
 let failed = 0;
 const check = (what, ok) => {
@@ -234,6 +251,47 @@ try {
     await shot(small, `6_${name}-phone.png`);
   }
   await phone.close();
+
+  // --- 6. The account page as a home, then the account deleted from it.
+  console.log("their account page, and deleting the account from it");
+  await page.goto(`${site}/profile`, { waitUntil: "load", timeout: 60000 });
+  await page.waitForFunction(() => document.documentElement.dataset.profile === "ready", null, { timeout: 30000 }).catch(() => {});
+  state = await page.evaluate(() => ({ title: document.getElementById("title").textContent,
+    page: document.querySelector("#handle-line a")?.getAttribute("href") || "",
+    rail: [...document.querySelectorAll(".subnav a")].map((a) => a.textContent),
+    following: document.getElementById("following-said").textContent,
+    owned: document.getElementById("owned-said").textContent,
+    claude: document.getElementById("claude-said").textContent,
+    favourites: [...document.querySelectorAll("#favourites a.model")].map((a) => a.dataset.id),
+    nav: document.querySelector(".site-head .nav a[data-account]")?.firstChild?.textContent.trim() || "" }));
+  check(`one page that is theirs: "${state.title}", ${state.page}, ${state.rail.join(" · ")}`,
+    state.title === "Flow Visitor" && state.page === `/u/${visitorHandle}` && state.rail.length === 7);
+  check(`its sections drawn: the house kept; following "${state.following.slice(0, 30)}"; sets "${state.owned.slice(0, 30)}"; `
+    + `Claude "${state.claude.slice(0, 30)}"`, state.favourites.includes(modelId) && /^Nobody yet/.test(state.following)
+    && /^Tell Brickworks what you own/.test(state.owned) && /^Not connected/.test(state.claude));
+  check(`the header says Account while signed in: "${state.nav}"`, state.nav === "Account");
+  await shot(page, "7_account-laptop.png");
+  visitorId = await page.evaluate(() => {
+    try {
+      return JSON.parse(localStorage.getItem("brickworks.session") || "{}").user_id || "";
+    } catch {
+      return "";
+    }
+  });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.click("#delete-part summary");
+  await page.fill("#delete-confirm", visitorEmail);
+  await page.click("#delete-go");
+  await page.waitForFunction(() => document.documentElement.dataset.deleted === "yes", null, { timeout: 30000 }).catch(() => {});
+  state = await page.evaluate(() => ({ deleted: document.documentElement.dataset.deleted === "yes",
+    out: !document.getElementById("signed-out").hidden, said: document.querySelector("#signed-out .lede").textContent,
+    kept: localStorage.getItem("brickworks.session"),
+    nav: document.querySelector(".site-head .nav a[data-account]")?.textContent.trim() || "" }));
+  check(`deleted from its own page: signed out, the header says "${state.nav}", "${state.said.slice(0, 40)}"`,
+    state.deleted && state.out && !state.kept && state.nav === "Sign in" && /deleted/.test(state.said));
+  deletedByPage = state.deleted && !(await accountExists(visitorEmail));
+  check("and gone from the sign-in service", deletedByPage);
+  await shot(page, "8_account_deleted-laptop.png");
   await stranger.close();
   await context.close();
 } catch (trouble) {
@@ -250,14 +308,19 @@ try {
   // How often each did things (supabase/moderation.sql act_log), which does
   // not go with an account.
   const secret = process.env.SUPABASE_SECRET_KEY || "";
-  for (const email of [ownerEmail, visitorEmail]) {
+  // The visitor deleted their own (step 6): never minted again, which would
+  // make the account anew.
+  const ids = [];
+  for (const email of deletedByPage ? [ownerEmail] : [ownerEmail, visitorEmail]) {
     const one = await mintSession(email).catch(() => null);
-    if (one && one.kept.user_id) {
-      await fetch(`${String(process.env.SUPABASE_URL || "").replace(/\/+$/, "")}/rest/v1/act_log?who=eq.${one.kept.user_id}`,
-        { method: "DELETE", headers: { apikey: secret, authorization: `Bearer ${secret}` } }).catch(() => {});
-    }
+    if (one && one.kept.user_id) ids.push(one.kept.user_id);
   }
-  const gone = [await deleteAccount(ownerEmail), await deleteAccount(visitorEmail)];
+  if (deletedByPage && visitorId) ids.push(visitorId);
+  for (const id of ids) {
+    await fetch(`${String(process.env.SUPABASE_URL || "").replace(/\/+$/, "")}/rest/v1/act_log?who=eq.${id}`,
+      { method: "DELETE", headers: { apikey: secret, authorization: `Bearer ${secret}` } }).catch(() => {});
+  }
+  const gone = [await deleteAccount(ownerEmail), deletedByPage || await deleteAccount(visitorEmail)];
   check("both throwaway accounts deleted, and everything of theirs with them", gone.every(Boolean));
 }
 console.log(failed ? `${failed} FAILED` : "people can sign in from a model, like it, keep it, collect it and be found by name");

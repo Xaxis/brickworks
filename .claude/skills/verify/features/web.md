@@ -533,12 +533,24 @@ plan with Claude as the client.
   collected by <their profile>", its description and its listed models in the
   order they were put there. Every word escaped; og tags and a canonical link.
 - `your profile page` (`web/profile.html`, `web/profile.js`): `/profile`,
-  noindex. Signed out: Sign in (the dialog of `site sign-in`). Signed in: the
-  address it is for (only they see it), the name, handle and about-you form
-  (empty for a new account), Save and See your profile; favourites as cards
-  with Let it go; collections — a name to make a new one, each with its name,
-  Public, Save, Delete, Its page when public, and what is in it with Take it
-  out.
+  noindex, titled Your account (rebuilt 2026-10-20 as one page, not a stack of
+  forms). Signed out: one line of what an account gives, and Sign in (the
+  dialog of `site sign-in`). Signed in: their name, initial, `/u/` page and
+  follower counts at the top with Your public page (`#view`) and Your feed
+  (`#to-feed`); a rail of the sections (`.subnav`); their models
+  (`designs.js`), favourites with Let it go, collections (a name to make a new
+  one, each with its name, Public, Save, Delete, Its page when public, and what
+  is in it with Take it out), the sets they own and what in the gallery they
+  build (`/api/collection`, `/api/share?op=shelves&mine=1`), whom they follow
+  (`/api/people?op=following` with no handle: theirs, for them alone), the
+  photos of their builds; then Settings: the name, handle and about-you form,
+  email and what is emailed, privacy (the age answer, showing whom they
+  follow), the Claude connection (`/api/oauth?op=connections`, Disconnect
+  with a confirm), Sign out, and Delete this account (`api/account.js
+  ?op=delete`, their address typed to confirm: the files of their build
+  photos and of photos of their models deleted, then the account, every row
+  of theirs cascading; the site owner's refused). people_flow deletes its
+  visitor this way.
 - `like and keep a model` (`web/model-page.js`): on `/m/<id>`, hidden
   until the script runs: Like (aria-pressed, the count beside the views
   updated), Favourite, Add to a collection (each list ticked or not, a new
@@ -632,7 +644,13 @@ plan with Claude as the client.
   `web/gallery.html`, `web/download.html`, `web/takedown.html`,
   `web/admin.html` and `web/authorize.html` are gone; the last two now link
   `/site.css`. The owner's example was the age question's bare month
-  dropdown beside a full-size year box.
+  dropdown beside a full-size year box. Since 2026-10-20 also the shell (one
+  header of four things and one footer, `web/_shell.html`,
+  `tools/site_shell.py`), one type scale (`--t-*`) and rhythm (`--s-*`,
+  `--page-top`, `--section`), the page template (`.page`, `.page-head`,
+  `.prose`), the one model card (`.model`, drawn by `web/cards.js`, in
+  `.models`, `.models.compact` or `.models.row`), `.state`, `.subnav`,
+  `.settings`/`.setting` and `.danger`.
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
   `[design]`): every page and dialog, below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
@@ -1455,31 +1473,40 @@ plan with Claude as the client.
   rules out a `<base>`. The CSP's script hash is of that served copy. **An unknown
   address answers 404 with `web/404.html`**, at any depth and inside `/b/<sha>/`;
   it used to 308 to `/`. `/parts/` and `/sets/` keep their plain-text 404s.
-- `landing page` (`web/index.html`, `web/site.css`, the pictures in `web/img/`):
-  short on purpose (2026-10-13, the owner: "overly wordy and verbose and none
-  elegant ... brickworks is much more than an ai tool, its also a fully advanced
-  expert cad system"): under 500 words, from 2,564. The first screen says what
-  a Studio or LDD user cannot do there, without a word about AI (a builder on
-  Reddit, the same day: "that Assistant looks worryingly AI ... a LOT of us
-  ... building freely"): a hero (one line; a sub-line of in any browser with
-  nothing to install, checks that it stands and which joints would fail,
-  turns gear trains at their real ratios (Tools, Simulate mechanism), Studio
-  `.io` in and out, 3D, renders and booklets; Open Brickworks and
-  Download; the builder at work on the castle, `img/hero-*.webp`, under a
-  window's bar with the app's address); `#features`, three pictures (Will it
-  stand?, Technic and mechanisms, Booklets) and six more things in a few words each;
-  `#assistant`, the assistant as one optional pillar, an engineer's assistant
-  that checks the physics and designs on request, and how to build without it
-  (View, Assistant closes its column); `#gallery`, "Made in Brickworks"; one
-  footer. Claim only what ships: gear trains went on the page the day Tools,
-  Simulate mechanism merged, not before. Every
+- `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
+  pictures in `web/img/`): rebuilt 2026-10-20 (the owner: "complete garbage";
+  before that, 2026-10-13, "overly wordy and verbose and none elegant ...
+  brickworks is much more than an ai tool, its also a fully advanced expert cad
+  system"). It shows rather than says: the hero is one line ("A complete CAD
+  for LEGO® models", `h1.display`), one sub-line (in your browser, nothing to
+  install, free), one primary action (Open Brickworks) and a quiet link to the
+  desktop download, over the builder at work on the castle
+  (`img/hero-*.webp`) under a window's bar with the app's address; `#features`,
+  six pictures from the app of what a Studio or LDD user cannot do there, one
+  line each (Will it stand?, gears at their real ratios on the orrery,
+  grabbing a boom on its hinges, Studio `.io` both ways, booklets, every part
+  at true size) and one sentence of the rest, with a link to /compare;
+  `#made`, a strip from the live gallery (`landing.js`: Top builds from
+  `/api/share?op=list&sort=top`, asked as it nears the screen, a card put in
+  only once its picture has decoded and the strip shown only once three are,
+  so it can never show a dead card; `data-strip` on `<html>` says how many);
+  `#assistant` last, short, off until you turn it on. Claim only what ships:
+  gear trains went on the page the day Tools, Simulate mechanism merged, not
+  before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
   in both schemes), a skip link, a sticky bar with a `<details>` menu under 860
-  px (no script: the CSP runs none inline), and one footer. Pictures are WebP at
-  two widths, taken from the live app at a device ratio of two
-  (`tools/web/app_shot.mjs --ratio=2`, or `BW_RATIO=2` before any flow that
-  launches through `browser.mjs`), with `srcset`, `width` and `height`; all but
-  the hero load lazily. `img/manifest.json` says where each came from and holds
+  px (no script: the CSP runs none inline), and one footer: the header and
+  footer are `web/_shell.html`, written into every page by `tools/site_shell.py`
+  (`tests/test_site_shell.py` fails on a page that differs). Pictures are WebP at
+  the widths a laptop and a phone need (the landing page's six at 400, 720 and
+  full, `sizes` the tile's own width, not the screen's: a phone at twice its
+  density took 310 KB of 1200s when it said 100vw), taken from the live app at
+  a device ratio of two (`tools/web/app_shot.mjs --ratio=2`, or `BW_RATIO=2`
+  before any flow that launches through `browser.mjs`), with `srcset`, `width`
+  and `height`; all but the hero load lazily. Weigh a change to it by what the
+  page fetched (`encodedBodySize`), scrolled to its foot, at 390 and 1280 px
+  against the live one (2026-10-20: 206/264 KB at load/scrolled on a phone and
+  146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
   its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
   as numbered steps with what it costs (`#claude`), the questions (FAQPage
   JSON-LD), the dimensions. `privacy page` (`web/privacy.html`): what an account

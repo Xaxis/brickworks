@@ -2,12 +2,13 @@
  {
   "slug": "stability",
   "files": {
-   "640": "stability-640.webp",
-   "1200": "stability-1200.webp"
+   "1200": "stability-1200.webp",
+   "400": "stability-400.webp",
+   "720": "stability-720.webp"
   },
   "width": 1200,
   "height": 900,
-  "source": "src/dev/balance_view_probe.gd in a 3200 x 1800 window (the 1600 x 900 layout at 2x; MESA_VK_WSI_DEBUG=sw xvfb-run, godot --resolution 3200x1800), shots/balance/1_tips.png, 2026-10-13, cropped to 900,560 1360 x 1020",
+  "source": "src/dev/balance_view_probe.gd in a 3200 x 1800 window (the 1600 x 900 layout at 2x; MESA_VK_WSI_DEBUG=sw xvfb-run, godot --resolution 3200x1800), shots/balance/1_tips.png, 2026-10-13, cropped to 900,560 1360 x 1020; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "Tools, Check stability",
   "alt": "Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.",
   "caption": "Will it stand?"
@@ -15,51 +16,27 @@
  {
   "slug": "technic",
   "files": {
-   "640": "technic-640.webp",
-   "1200": "technic-1200.webp"
+   "1200": "technic-1200.webp",
+   "400": "technic-400.webp",
+   "720": "technic-720.webp"
   },
   "width": 1200,
   "height": 900,
-  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 --model=res://models/kart.ldr --click=outliner --fold=assistant --click=cube_zoom_in --click=cube_zoom_in --click=cube_zoom_in --click=view (3200 x 1800, 2026-10-13), cropped to 1184,480 1520 x 1140",
+  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 --model=res://models/kart.ldr --click=outliner --fold=assistant --click=cube_zoom_in --click=cube_zoom_in --click=cube_zoom_in --click=view (3200 x 1800, 2026-10-13), cropped to 1184,480 1520 x 1140; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "Technic go-kart in the builder",
   "alt": "A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.",
   "caption": "Technic."
  },
  {
-  "slug": "galaxy",
-  "files": {
-   "1200": "galaxy-1200.webp",
-   "640": "galaxy-640.webp"
-  },
-  "width": 912,
-  "height": 912,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a922749254032cacc/shots/art/galaxy_top.png",
-  "subject": "galaxy (Brick Art)",
-  "alt": "A square LEGO® mosaic seen straight from above: a spiral galaxy in light and dark blue round tiles curling around a glowing yellow and white core, on a black background scattered with white round-tile stars.",
-  "caption": "A spiral galaxy, built as a Brick Art mosaic."
- },
- {
-  "slug": "owl",
-  "files": {
-   "1200": "owl-1200.webp",
-   "640": "owl-640.webp"
-  },
-  "width": 1200,
-  "height": 900,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/owl_r2.ldr, rendered with src/dev/render_probe.gd --quality=best --size=1600x1200 (Compatibility, in software), cropped",
-  "subject": "owl designed by Claude",
-  "alt": "A studio render of a barn owl built from LEGO® bricks: a white face with large black eyes, a tan head, dark tan folded wings and a white chest, perched on a brown log on a small black base scattered with leaves, flowers and a grey mouse.",
-  "caption": "A barn owl Claude designed, brick by brick."
- },
- {
   "slug": "booklet",
   "files": {
-   "640": "booklet-640.webp",
-   "1200": "booklet-1200.webp"
+   "1200": "booklet-1200.webp",
+   "400": "booklet-400.webp",
+   "720": "booklet-720.webp"
   },
   "width": 1200,
   "height": 900,
-  "source": "BW_RATIO=2 node tools/web/booklet_flow.mjs --url=https://brickworks.diy/app, page-3.png (2036 x 1506, 2026-10-13), cropped to 4:3",
+  "source": "BW_RATIO=2 node tools/web/booklet_flow.mjs --url=https://brickworks.diy/app, page-3.png (2036 x 1506, 2026-10-13), cropped to 4:3; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "building instructions booklet",
   "alt": "A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.",
   "caption": "The booklet."
@@ -77,45 +54,6 @@
   "subject": "the builder at work (hero)",
   "alt": "The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.",
   "caption": "The builder, with the castle's gatehouse selected."
- },
- {
-  "slug": "castle",
-  "files": {
-   "1200": "castle-1200.webp",
-   "640": "castle-640.webp"
-  },
-  "width": 1024,
-  "height": 768,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/castle.png",
-  "subject": "castle designed by Claude",
-  "alt": "A grey stone LEGO® castle on a green baseplate ringed by a blue moat: crenellated walls and square towers flying red pennants, one tower under a timber roof, an arched gateway and a paved courtyard inside.",
-  "caption": "A castle Claude designed from one sentence."
- },
- {
-  "slug": "tower",
-  "files": {
-   "640": "tower-640.webp",
-   "1024": "tower-1024.webp"
-  },
-  "width": 1024,
-  "height": 1024,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/orthanc-corner.webp",
-  "subject": "Wizard's Tower (models/orthanc.ldr), designed by Claude",
-  "alt": "A wizard's tower in black LEGO® bricks: a tall faceted tower of four clustered piers, every face a panel of grille between grey string courses, rising to four curved horns around a summit where two wizards stand, on a terraced plinth with grey crags and two guards at the stair.",
-  "caption": "Wizard's Tower: 9,541 parts, furnished floors behind its open back, designed by Claude from one paragraph."
- },
- {
-  "slug": "car",
-  "files": {
-   "1200": "car-1200.webp",
-   "640": "car-640.webp"
-  },
-  "width": 1200,
-  "height": 900,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/car_r2.ldr, rendered with src/dev/render_probe.gd --quality=best --size=1600x1200 (Compatibility, in software), cropped",
-  "subject": "car",
-  "alt": "A studio render of a red LEGO® sports car with white racing stripes, a black rear wing and grey wheels, its driver in a red helmet beside it holding a gold trophy, and a black and red Formula sign on the ground in front.",
-  "caption": "A sports car and its driver, designed by Claude."
  },
  {
   "slug": "compare-tabs",
@@ -163,11 +101,13 @@
   "slug": "compare-io",
   "files": {
    "640": "compare-io-640.webp",
-   "1200": "compare-io-1200.webp"
+   "1200": "compare-io-1200.webp",
+   "400": "compare-io-400.webp",
+   "720": "compare-io-720.webp"
   },
   "width": 1200,
   "height": 750,
-  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene io: the tree's tab, File, Export, the .io line lit",
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene io: the tree's tab, File, Export, the .io line lit; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "File, Export, BrickLink Studio model (.io)",
   "alt": "The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.",
   "caption": "Your Studio files, in and out"
@@ -197,5 +137,33 @@
   "subject": "the kart's booklet in its own tab",
   "alt": "The go-kart's building instructions in a browser tab of their own beside the app's tabs: step 17, a box of the one part it adds above a drawing of the nearly finished kart, a progress bar along the foot, and Print at the top.",
   "caption": "Instructions in one press"
+ },
+ {
+  "slug": "simulate",
+  "files": {
+   "1200": "compare-simulate.webp",
+   "400": "simulate-400.webp",
+   "720": "simulate-720.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "compare-simulate.webp (the poster of /compare's gear train video), scaled to 640 x 400 for the landing page, 2026-10-20; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
+  "subject": "Simulate mechanism on the orrery",
+  "alt": "Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.",
+  "caption": "Gear trains at their real ratios."
+ },
+ {
+  "slug": "grab",
+  "files": {
+   "960": "grab-960.webp",
+   "400": "grab-400.webp",
+   "720": "grab-720.webp"
+  },
+  "width": 960,
+  "height": 600,
+  "source": "bench/results/grab13-2026-10-19/actuator_42024-1_3_after.png (tools/web/grab_flow.mjs on 42024-1 Container Truck, 1400 x 900), cropped to 334,166 966 x 604, 2026-10-20; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
+  "subject": "a Technic boom moved by hand",
+  "alt": "The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.",
+  "caption": "Grab it and it moves like the real one."
  }
 ]

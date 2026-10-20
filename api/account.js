@@ -17,6 +17,19 @@
 //   account that has answered keeps its answer: a second try changes
 //   nothing, and what comes back is the answer it gave.
 //
+//   POST ?op=delete, with a token and {confirm: <the account's address>}:
+//   the account deleted, and everything of it (2026-10-20). The address
+//   typed again is the confirmation, so a stray click or a stolen page
+//   cannot do it. The files of the build photos it posted, and of those
+//   posted of its models, are deleted from storage first, by name, since
+//   storage keeps no link to the account; then the account itself, and
+//   with it every row that names it (each table's owner column cascades:
+//   its models, versions, comments, favourites,
+//   collections, follows, its collection of sets and its Claude
+//   connections). Model files no row owns any longer go with the daily
+//   sweep (api/share.js). The site owner's account is refused: it holds
+//   the admin page.
+//
 // Everyone who uses Brickworks signs in (2026-10-11). There were
 // accounts before, until 2026-10-09, so that one of them could design on
 // the project's key; they went with that, and came back because the
@@ -32,7 +45,7 @@
 // anyone reinstalling.
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
-import { dbConfigured } from "./_db.js";
+import { db, dbConfigured } from "./_db.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
 
 export default async function handler(request, response) {
@@ -51,8 +64,11 @@ export default async function handler(request, response) {
   if (request.method === "POST" && String(request.query?.op || "") === "age") {
     return takeAge(request, response);
   }
+  if (request.method === "POST" && String(request.query?.op || "") === "delete") {
+    return deleteAccount(request, response);
+  }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=age" });
+    return response.status(405).json({ error: "GET, or POST ?op=age or ?op=delete" });
   }
 
   const enabled = authConfigured();
@@ -149,5 +165,70 @@ async function takeAge(request, response) {
   } catch (trouble) {
     console.error(`account: the age was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not take that just now. Try again in a minute." });
+  }
+}
+
+/// The account deleted, at its own asking, with its address typed again.
+async function deleteAccount(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!authConfigured() || !dbConfigured()) {
+    return response.status(503).json({ error: "Accounts are not configured here." });
+  }
+  let claims;
+  try {
+    claims = await verify(bearer(request));
+  } catch (error) {
+    const status = error instanceof AuthError ? error.status : 401;
+    return response.status(status).json({ error: error.message });
+  }
+  let body = request.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
+  }
+  const address = String(claims.email || "").trim().toLowerCase();
+  const typed = String(body?.confirm || "").trim().toLowerCase();
+  if (!address || typed !== address) {
+    return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
+  }
+  if (isMaster(claims)) {
+    return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });
+  }
+  const account = claims.sub;
+  try {
+    // The files of the build photos it posted, and of those posted of its
+    // models (their rows go with the models), by name: storage keeps no
+    // link to the account.
+    let photos = [];
+    try {
+      const models = (await db(`shared_models?owner=eq.${account}&select=id`)).map((one) => one.id);
+      const ofModels = models.length ? await db(`build_photos?model=in.(${models.join(",")})&select=id`) : [];
+      const own = await db(`build_photos?account=eq.${account}&select=id`);
+      photos = [...new Map([...own, ...ofModels].map((one) => [one.id, one])).values()];
+    } catch (trouble) {
+      if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
+    }
+    const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+    const key = process.env.SUPABASE_SECRET_KEY;
+    // Exactly these files of build-photos (api/_builds.js PHOTOS), not
+    // imported from there: this route answers every start of the app, and
+    // _builds.js brings the picture decoders with it.
+    for (let at = 0; at < photos.length; at += 100) {
+      const files = await fetch(`${base}/storage/v1/object/build-photos`, {
+        method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify({ prefixes: photos.slice(at, at + 100).map((one) => `${one.id}.jpg`) }),
+        signal: AbortSignal.timeout(20000) });
+      if (!files.ok) throw new Error(`storage DELETE build-photos: ${files.status}`);
+    }
+    const gone = await fetch(`${base}/auth/v1/admin/users/${account}`, {
+      method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
+    if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
+    return response.status(200).json({ deleted: true, photos: photos.length });
+  } catch (trouble) {
+    console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
   }
 }

@@ -30,11 +30,6 @@
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <link rel="stylesheet" href="/site.css">
 <style>
-.page { padding: clamp(48px, 8vw, 96px) 0; max-width: 760px; }
-.page h1 { font-size: clamp(34px, 5vw, 50px); }
-.page h2 { font-size: 19px; margin: 34px 0 6px; letter-spacing: -0.01em; }
-.page p { color: var(--ink-soft); margin: 0 0 12px; }
-.page p b { color: var(--ink); font-weight: 620; }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -45,28 +40,22 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
-			<a href="/#features">Features</a>
-			<a href="/#assistant">Assistant</a>
-			<a href="/faq">FAQ</a>
 			<a href="/download">Download</a>
-			<a href="/profile" data-account>Account</a>
+			<a href="/profile" data-account>Sign in</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<nav class="menu-list" aria-label="Menu">
 				<a href="/gallery">Gallery</a>
-				<a href="/#features">Features</a>
-				<a href="/#assistant">Assistant</a>
-				<a href="/faq">FAQ</a>
 				<a href="/download">Download</a>
-				<a href="/profile" data-account>Account</a>
+				<a href="/profile" data-account>Sign in</a>
 			</nav>
 		</details>
 	</div>
 </header>
 
-<main id="main" class="wrap page">
+<main id="main" class="wrap page prose">
 	<h1>Privacy</h1>
 	<p class="lede">
 		Your account is your email address, and that is nearly all there is of
@@ -90,47 +79,37 @@
 	<h2>Your models</h2>
 	<p>Saved in your browser or on your computer, not on a server. A model is put online only when you share it by link, and taken down when you say.</p>
 
+	<h2>Deleting your account</h2>
+	<p>On <a href="/profile">your account</a>, under Settings: <b>Delete this account</b>, with your address typed to confirm. The account goes, and with it everything of yours on the server: the models you shared and their versions, comments, favourites, collections, follows, the photos of your builds and of your models, the sets you own and your Claude connections. It cannot be undone.</p>
+
 	<h2>Your visit</h2>
 	<p>We count visits with our own privacy-friendly analytics. It sets no cookies and stores nothing on your device; your IP address is used only to make a daily anonymous count and is never stored. To opt out on this site, open any page with <a href="/?ov_ignore=1">?ov_ignore=1</a>. Shared models, people’s pages and signing in are never counted.</p>
 
-	<p class="note">Every line of it is <a href="https://github.com/Xaxis/brickworks">on GitHub</a>, so none of this has to be taken on trust. Updated 16 October 2026.</p>
+	<p class="note">Every line of it is <a href="https://github.com/Xaxis/brickworks">on GitHub</a>, so none of this has to be taken on trust. Updated 20 October 2026.</p>
 </main>
 
 <footer class="site-foot">
 	<div class="wrap">
-		<div class="foot-cols">
-			<div>
-				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
-			</div>
-			<nav aria-label="Product">
-				<h2>Product</h2>
-				<ul>
-					<li><a href="/app">Open the app</a></li>
-					<li><a href="/gallery">Gallery</a></li>
-					<li><a href="/download">Download</a></li>
-					<li><a href="/changelog">Changelog</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Learn">
-				<h2>Learn</h2>
-				<ul>
-					<li><a href="/faq">FAQ</a></li>
-					<li><a href="/privacy" aria-current="page">Privacy</a></li>
-					<li><a href="/terms">Terms of use</a></li>
-					<li><a href="/guidelines">Community guidelines</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Project">
-				<h2>Project</h2>
-				<ul>
-					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
-				</ul>
+		<div class="foot-top">
+			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+			<nav class="foot-links" aria-label="More">
+				<a href="/compare">Compare</a>
+				<a href="/faq">FAQ</a>
+				<a href="/changelog">Changelog</a>
+				<a href="https://github.com/Xaxis/brickworks">Source</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/terms">Terms</a>
+				<a href="/guidelines">Guidelines</a>
+				<a href="/takedown">Takedown</a>
 			</nav>
 		</div>
 		<div class="legal">
+			<p>
+				Models in the gallery are made and shared by the people credited, or by
+				someone who chose not to be; Brickworks does not check them before they
+				are listed. Something that should not be there? Press Report on its
+				page, or see <a href="/takedown">takedown requests</a>.
+			</p>
 			<p>
 				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
 				community, licensed
@@ -144,7 +123,7 @@
 				LEGO® is a trademark of the LEGO Group of companies which does not
 				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
 				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group.
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
 			</p>
 		</div>
 	</div>

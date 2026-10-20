@@ -1592,7 +1592,7 @@
       "kind": "ui",
       "label": "your profile page",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in, name and handle, favourites, collections)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; your models, favourites, collections, sets, following, builds; settings, the Claude connection, delete the account)",
       "area": "web"
     },
     {
