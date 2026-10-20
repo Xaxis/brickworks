@@ -1036,7 +1036,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   own work at the let-go and at the keep (`let_go_ms`, `kept_ms` on the
   page), each under 100 ms (`--keep=MS`), and on the joints read again
   after it (`ready_ms`) under 250 ms (`--read=MS`). The crane's: 0.2 to 0.3,
-  15 (the flywheel's 66) and 51 to 82 ms. The page's wait
+  15 (the flywheel's 66) and 51 to 82 ms. Grab 15 (MECHANISMS §25): the
+  flywheel's keep 30 to 34 ms, against m98's 91 to 152 run beside it, its
+  gear's turned cover worked out a line of cells at a time. The page's wait
   at a let-go is SwiftShader drawing the swing's first frames, and grows
   with the box's load: with the browser held to three cores
   (`taskset -c`), m78 and m79 alike waited 8 s (MECHANISMS §14, letgo).

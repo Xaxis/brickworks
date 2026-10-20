@@ -1292,7 +1292,7 @@ const PAIR_KINDS: Array[String] = ["hinge", "click", "turntable"]
 ## built flush.
 const PAIR_APART := 0.5
 ## A joint turned this far past the turns found clear, radians, or slid this
-## far, LDU, is asked again ([method _joints_clear]).
+## far, LDU, is asked again ([method _pair_clear_at]).
 const PAIR_SAME := 0.0001
 const PAIR_SLIDE_SAME := 0.01
 
@@ -1952,7 +1952,7 @@ func turn_to(degrees: float) -> float:
 		at = transforms_at(wanted)
 		# A loop's drag: its joints' own parts are asked on the pause, with
 		# its way ([method verify_step]). Asked every frame, 8808-1's steering
-		# drag spent 5 to 10 ms a frame on them, against 0.3 ms for the rest.
+		# drag spent 5 to 10 ms a frame on them, against 0.5 ms for the rest.
 		room = _test(at, 0, _budget_left(began), true, {}, not way_left).x
 		if room == 0 and budget_ms == INF and _push_aside(wanted):
 			room = 1
