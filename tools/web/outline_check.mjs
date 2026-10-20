@@ -121,19 +121,21 @@ function yellow(picture, box) {
   return count;
 }
 
-// In the page before anything else runs: each engine frame, and whether it
-// asked WebGL to draw (idle_check.mjs has the long form).
+// In the page before anything else runs: each engine frame, whether it
+// asked WebGL to draw (idle_check.mjs has the long form), and whether any of
+// that reached the window: drawn, cleared or copied into the page's own
+// picture rather than a viewport's off screen.
 function instrument() {
   const perf = { frames: [], cur: null };
   window.brickworksIdle = perf;
   const real = window.requestAnimationFrame.bind(window);
   const timed = (callback) => (time) => {
     if (perf.cur) { callback(time); return; }
-    const frame = { t0: performance.now(), draws: 0 };
+    const frame = { t0: performance.now(), draws: 0, window: 0 };
     perf.cur = frame;
     try { callback(time); } finally {
       perf.cur = null;
-      perf.frames.push([frame.t0, frame.draws]);
+      perf.frames.push([frame.t0, frame.draws, frame.window]);
       if (perf.frames.length > 20000) perf.frames.splice(0, 10000);
     }
   };
@@ -144,10 +146,21 @@ function instrument() {
     set(f) { inner = f; },
   });
   const gl = WebGL2RenderingContext.prototype;
+  const toWindow = (context) => context.getParameter(context.DRAW_FRAMEBUFFER_BINDING) === null;
   for (const name of ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced"]) {
     const was = gl[name];
     gl[name] = function (...a) {
-      if (perf.cur) perf.cur.draws += 1;
+      if (perf.cur) {
+        perf.cur.draws += 1;
+        if (toWindow(this)) perf.cur.window += 1;
+      }
+      return was.apply(this, a);
+    };
+  }
+  for (const name of ["blitFramebuffer", "clear"]) {
+    const was = gl[name];
+    gl[name] = function (...a) {
+      if (perf.cur && toWindow(this)) perf.cur.window += 1;
       return was.apply(this, a);
     };
   }
@@ -229,10 +242,19 @@ try {
     const from = await page.evaluate(() => performance.now());
     await page.waitForTimeout(seconds * 1000);
     const frames = await page.evaluate((since) => window.brickworksIdle.frames.filter((f) => f[0] >= since), from);
-    const drawn = frames.filter((f) => f[1] > 0).length;
-    ok(drawn <= seconds, `standing still with him outlined: ${drawn} frames drawn in ${seconds} s (${frames.length} engine frames)`);
+    // A frame of the window is the cost the bar is for: the whole model
+    // again, a second or more of it in software. Render's set made ready
+    // while nobody uses the window draws eight pixels square, off screen
+    // and alone (StudioRender._draw_alone), and is counted apart. Each of
+    // its steps was a frame of the window: the frames counted here
+    // standing still, a frame as each of its holds ended, put down to the
+    // parts bin's pictures until a trace named it (2026-10-19).
+    const drawn = frames.filter((f) => f[2] > 0).length;
+    const apart = frames.filter((f) => f[1] > 0 && f[2] === 0).length;
+    ok(drawn <= seconds, `standing still with him outlined: ${drawn} frames of the window drawn in ${seconds} s, `
+      + `${apart} off screen alone (${frames.length} engine frames)`);
     ok(errors.length === 0, `no script or shader errors${errors.length ? ": " + errors.join(" | ") : ""}`);
-    report[`${ratio}x`] = { picked, idle_looks: held.length, idle_lost: lost.length, yellow_before: was, yellow_after: is, drawn, frames: frames.length, errors };
+    report[`${ratio}x`] = { picked, idle_looks: held.length, idle_lost: lost.length, yellow_before: was, yellow_after: is, drawn, apart, frames: frames.length, errors };
     await page.close();
   }
 } finally {
