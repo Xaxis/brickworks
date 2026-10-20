@@ -1858,8 +1858,10 @@ func _play_motion(input: Dictionary) -> Variant:
 	var times: Array = []
 	var standing: String = ""
 	var elapsed: float = 0.0
+	var went: bool = false
 	for motion: Motions.Motion in asked:
 		var played: MotionPlayer.Played = player.play(motion, reverse, MotionPlayer.PLAY_FPS, true)
+		went = went or played.went()
 		lines.append("Played %s%s (%s s): %s." % [Motions.quoted(motion.name), " backwards" if reverse
 			else "", Balance.tidy(played.seconds), player.said(played)])
 		if not played.frames.is_empty():
@@ -1871,7 +1873,7 @@ func _play_motion(input: Dictionary) -> Variant:
 	builder.fold_since(depth, "played %s" % ", ".join((asked as Array).map(func(one: Motions.Motion) -> String:
 		return Motions.quoted(one.name))))
 	if builder.history_depth() == depth:
-		lines.append("Nothing moved.")
+		lines.append("It ends where it began: the model stands as it was." if went else "Nothing moved.")
 	else:
 		if not standing.is_empty():
 			lines.append("Now: %s." % standing)

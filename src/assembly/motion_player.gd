@@ -27,6 +27,12 @@ const SHORT_STUDS := 0.05
 const PLACE_SLACK := 4.0
 ## Frames a second a motion is played at when it is not rendered.
 const PLAY_FPS := 12
+## A loop is turned at most this far in one step, degrees, or slid this
+## far, studs: asked 11° at once, 8808-1's steering loop drifted along its
+## column's free slide, and turned 90° and -90° and back it stood 1.28 LDU
+## out (3° steps: 0.001 LDU).
+const LOOP_STEP_DEG := 3.0
+const LOOP_STEP_STUDS := 0.25
 
 var world: BrickWorld
 var builder: Builder
@@ -35,6 +41,10 @@ var store: ModelStore
 var grabbing: GrabDrag
 ## What each motion was last found to do: its name, lower case -> words.
 var results: Dictionary = {}
+## How far each driven motion's driver turned when last played forward and
+## kept, degrees: played backwards it turns back as far, so a driver that
+## stopped at a rack's end comes back to where it began. Name, lower case.
+var _driven: Dictionary = {}
 var _suggested: Array = []
 var _suggested_at: int = -1
 
@@ -209,6 +219,10 @@ func rebase(joint: Motions.Joint) -> void:
 	if joint.measured:
 		var ours: BrickWorld.Brick = world.get_brick(joint.ours)
 		var theirs: BrickWorld.Brick = world.get_brick(joint.theirs)
+		if ours == null or theirs == null:
+			# Its part taken off: what it last knew stands, to be found again.
+			joint.measured = false
+			return
 		joint.base_rel = theirs.transform.affine_inverse() * ours.transform
 
 
@@ -298,6 +312,14 @@ class Played extends RefCounted:
 				return true
 		return false
 
+	## Whether any joint moved on the way, wherever it ended.
+	func went() -> bool:
+		for item: Item in items:
+			if item.high - item.low > (MotionPlayer.SHORT_DEG if item.joint.mode == "turn"
+					else MotionPlayer.SHORT_STUDS):
+				return true
+		return false
+
 
 ## Play [param motion] a frame at a time, [param reverse] from its end to
 ## its start (a driver turned back as many times), at [param fps]. With
@@ -317,9 +339,11 @@ func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, ke
 		var driven := Motions.Track.new()
 		driven.joint = motion.driver
 		var start: float = at_now(motion.driver)
+		var turn: float = 360.0 * motion.turns
+		if reverse:
+			turn = -float(_driven.get(motion.name.to_lower(), turn))
 		driven.add_key(0.0, start, "LINEAR")
-		driven.add_key(motion.driver_seconds, start + 360.0 * motion.turns * (-1.0 if reverse else 1.0),
-			"LINEAR")
+		driven.add_key(motion.driver_seconds, start + turn, "LINEAR")
 		tracks.append(driven)
 	for track: Motions.Track in tracks:
 		var item: Item = _item_for(track, track.joint == motion.driver and motion.driver != null)
@@ -360,6 +384,11 @@ func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, ke
 		var grabs: Array = order.map(func(item: Item) -> Grab: return item.grab)
 		played.kept = grabbing.keep_held(grabs, words if not words.is_empty()
 			else "played %s" % Motions.quoted(motion.name))
+		for item: Item in played.items:
+			if item.driver and not reverse:
+				_driven[motion.name.to_lower()] = item.to - item.from
+			elif item.driver:
+				_driven.erase(motion.name.to_lower())
 	results[motion.name.to_lower()] = said(played)
 	return played
 
@@ -410,10 +439,18 @@ static func _shift_for(item: Item, first_t: float) -> float:
 ## and note how far short it stopped.
 func _step(item: Item, place: float) -> void:
 	var held: Grab = item.grab
-	if item.joint.mode == "slide":
-		held.slide_to((place - item.shift) * BrickLattice.STUD)
-	else:
-		held.turn_to(place - item.shift)
+	var from: float = held.shift / BrickLattice.STUD if item.joint.mode == "slide" else held.angle
+	var to: float = place - item.shift
+	var steps: int = 1
+	if held.linkage != null:
+		steps = maxi(ceili(absf(to - from) / (LOOP_STEP_STUDS if item.joint.mode == "slide"
+			else LOOP_STEP_DEG)), 1)
+	for n: int in range(1, steps + 1):
+		var value: float = lerpf(from, to, float(n) / float(steps))
+		if item.joint.mode == "slide":
+			held.slide_to(value * BrickLattice.STUD)
+		else:
+			held.turn_to(value)
 	var reached: float = _reached(item)
 	item.low = minf(item.low, reached)
 	item.high = maxf(item.high, reached)
@@ -517,8 +554,9 @@ func suggest() -> Array:
 			# The way it opens is the way it has room: a door is built shut
 			# against its frame.
 			var way: float = float(room[1]) if absf(float(room[1])) > absf(float(room[2])) else float(room[2])
-			if absf(way) >= 5.0:
-				_track(motion, room[0], [[0.0, 0.0], [2.0, way]])
+			# A rail with a little play is not a door to open.
+			if absf(way) >= 15.0:
+				_track(motion, room[0], [[0.0, 0.0], [2.0, roundf(way)]])
 		_offer(motion)
 	if found.has("steering"):
 		var id: int = int((found["steering"] as Array)[0])

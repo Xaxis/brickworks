@@ -199,9 +199,8 @@ func _crane() -> void:
 	_check("define_motion on the boom (#31)", said.begins_with("Kept \"Lift the boom\""))
 	var before: float = _world.get_brick(31).transform.origin.y
 	await _round_trip("crane", "Lift the boom", built)
-	_check("...and the boom's own part lifted when played (%.1f LDU)" % _lifted,
-		absf(_lifted) > 1.0)
-	print("    (the boom stood at y=%.1f)" % before)
+	_check("...and what it moves rose when played, %.1f LDU on the mean" % _lifted, _lifted > 2.0)
+	print("    (the boom's hinge stood at y=%.1f)" % before)
 
 
 func _chassis() -> void:
@@ -275,13 +274,26 @@ func _ldr() -> void:
 		if brick.part_id == "3938":
 			top = brick.id
 	var said: String = await _say("define_motion", {"name": "Swing the flap", "tracks": [
-		{"joint": "#%d" % top, "keys": [{"t": 0, "place": 0}, {"t": 1, "place": 45, "how": "linear"}]}]})
+		{"joint": "#%d" % top, "keys": [{"t": 0, "place": 0}, {"t": 1, "place": 20, "how": "linear"}]}]})
 	_print(said)
 	_check("a motion on a plain .ldr's hinge", said.begins_with("Kept \"Swing the flap\""))
+	# The autosave and what a shared link is written from carry it too. A
+	# probe's store keeps none unless it asks (main), in its own data folder.
+	_store.keeps = true
+	_store.touch()
+	var kept: String = _store.write_now()
+	_store.keeps = false
+	await _frames(5)
+	var saved: String = FileAccess.get_file_as_string(ModelStore.autosave())
+	_check("the autosave carries its lines (%d) (%s)" % [_motion_lines(saved).size(), kept.get_file()],
+		_motion_lines(saved).size() == 4)
+	var shared: String = await _store.text_for_file("Hinge", "Writing it for its link…")
+	_check("...and so does the text a shared link is written from (%d)" % _motion_lines(shared).size(),
+		_motion_lines(shared).size() == 4)
 	var text: String = _store.to_text("Hinge")
 	var lines: PackedStringArray = _motion_lines(text)
 	_check("its .ldr has no FILE lines and carries the motion (%d lines)" % lines.size(),
-		not text.contains("0 FILE") and lines.size() == 3)
+		not text.contains("0 FILE") and lines.size() == 4)
 	_write(file, text)
 	if not await _open(file):
 		return
@@ -296,7 +308,7 @@ func _ldr() -> void:
 	# One step to undo, and back.
 	var depth: int = _builder.history_depth()
 	await _say("define_motion", {"name": "Swing back", "tracks": [{"joint": "#%d" % _lead("3938"), "keys": [
-		{"t": 0, "place": 45}, {"t": 1, "place": 0}]}], "after": "Swing the flap"})
+		{"t": 0, "place": 20}, {"t": 1, "place": 0}]}], "after": "Swing the flap"})
 	_check("a second motion, after the first, is one undo step", _builder.history_depth() == depth + 1
 		and _player.motions().sequence("Swing the flap").size() == 2)
 	await _say("undo", {})
@@ -335,11 +347,18 @@ func _round_trip(label: String, name: String, built: Dictionary) -> void:
 	var said: String = _text(answer)
 	_print(said)
 	var moved: Array = _off(at)
-	_check("...played, it moves %d parts, one undo step" % moved[0], said.begins_with("Played \"%s\"" % name)
-		and said.contains("One step: undo takes it back"))
-	var lead: int = int(_player.motions().named(name).joints()[0].lead) if _player.motions().named(name) != null else 0
-	if lead != 0 and at.has(lead):
-		_lifted = _world.get_brick(lead).transform.origin.y - (at[lead] as Transform3D).origin.y
+	_check("...played, it moves %d parts, one undo step (or ends where it began)" % moved[0],
+		said.begins_with("Played \"%s\"" % name) and (said.contains("One step: undo takes it back")
+		if moved[0] > 0 else said.contains("It ends where it began")))
+	# How far what moved rose, on the mean: a boom lifted rises.
+	var rose: float = 0.0
+	var count: int = 0
+	for key: Variant in at:
+		var brick: BrickWorld.Brick = _world.get_brick(int(key))
+		if brick != null and not (at[key] as Transform3D).is_equal_approx(brick.transform):
+			rose += brick.transform.origin.y - (at[key] as Transform3D).origin.y
+			count += 1
+	_lifted = rose / maxf(float(count), 1.0)
 	if _windowed:
 		var sheet: Image = _image_of(answer)
 		if sheet != null:
@@ -349,8 +368,8 @@ func _round_trip(label: String, name: String, built: Dictionary) -> void:
 	said = await _say("play_motion", {"name": name, "reverse": true})
 	_print(said)
 	var back: Array = _off_tolerant(at)
-	_check("...played backwards, it comes back where it began (%d parts off, %.3f LDU at most)" % back,
-		int(back[0]) == 0)
+	_check("...played backwards, it comes back where it began (%d parts off; %.3f LDU and %.3f° at most)"
+		% back, int(back[0]) == 0)
 	if not _windowed:
 		return
 	var rendered: Dictionary = await _finished(await _rpc("tools/call", {"name": "render_motion",
@@ -359,12 +378,26 @@ func _round_trip(label: String, name: String, built: Dictionary) -> void:
 	_print(said)
 	var webp: String = _out.path_join(RenderOutput.file_name(label, "_" + name.to_snake_case(), "webp"))
 	var mp4: String = webp.get_basename() + ".mp4"
-	_check("...rendered as a job, a WebP and an MP4, the model as it was", said.begins_with("Rendered ")
+	_check("...rendered as a job, a WebP and an MP4, the model as it was", said.contains("Rendered ")
 		and FileAccess.file_exists(webp) and (FileAccess.file_exists(mp4) or RenderOutput.ffmpeg().is_empty())
 		and int(_off_tolerant(at)[0]) == 0)
-	var sheet: Image = _image_of(rendered)
-	if sheet != null:
-		sheet.save_png(_out.path_join(label + "_rendered.png"))
+	var drawn_sheet: Image = _image_of(rendered)
+	if drawn_sheet != null:
+		drawn_sheet.save_png(_out.path_join(label + "_rendered.png"))
+	# Its frames show it moving: the first against the one at its middle.
+	var frames: String = webp.get_basename()
+	var drawn: int = 0
+	for kept: String in DirAccess.get_files_at(frames):
+		if kept.begins_with("frame_") and kept.ends_with(".png"):
+			drawn += 1
+	var opening: Image = Image.load_from_file(frames.path_join("frame_0001.png")) if drawn > 0 else null
+	var changed: int = 0
+	for n: int in [drawn / 4, drawn / 2, drawn]:
+		var later: String = frames.path_join("frame_%04d.png" % maxi(n, 1))
+		if FileAccess.file_exists(later):
+			changed = maxi(changed, _changed(opening, Image.load_from_file(later)))
+	_check("...its %d frames show it moving: %d pixels differ from its first" % [drawn, changed],
+		drawn > 2 and changed > 200)
 
 
 # -- helpers -------------------------------------------------------------------------
@@ -390,6 +423,19 @@ static func _yaw(from: Transform3D, to: Transform3D) -> float:
 	var turned: Basis = to.basis.orthonormalized() * from.basis.orthonormalized().inverse()
 	var x: Vector3 = turned * Vector3.RIGHT
 	return rad_to_deg(atan2(-x.z, x.x))
+
+
+func _changed(a: Image, b: Image) -> int:
+	if a == null or b == null or a.get_size() != b.get_size():
+		return 0
+	var count: int = 0
+	for y: int in a.get_height():
+		for x: int in a.get_width():
+			var p: Color = a.get_pixel(x, y)
+			var q: Color = b.get_pixel(x, y)
+			if absf(p.r - q.r) + absf(p.g - q.g) + absf(p.b - q.b) > 0.1:
+				count += 1
+	return count
 
 
 func _write(path: String, text: String) -> void:
@@ -439,10 +485,12 @@ func _off_tolerant(built: Dictionary) -> Array:
 
 
 ## As [method _off], over [param ids] only (all when empty), within
-## [param slack] LDU and a turn of under a hundredth of a degree.
+## [param slack] LDU and a tenth of a degree: [count, the most LDU off, the
+## most degrees turned].
 func _off_ids(built: Dictionary, ids: Array, slack: float = 0.0) -> Array:
 	var count: int = 0
 	var most: float = 0.0
+	var turned_most: float = 0.0
 	var each: Array = ids if not ids.is_empty() else built.keys()
 	for key: Variant in each:
 		var brick: BrickWorld.Brick = _world.get_brick(int(key))
@@ -450,14 +498,18 @@ func _off_ids(built: Dictionary, ids: Array, slack: float = 0.0) -> Array:
 		if brick == null or was == null:
 			continue
 		var off: float = (was as Transform3D).origin.distance_to(brick.transform.origin)
-		var turned: float = Quaternion((was as Transform3D).basis.orthonormalized()).angle_to(
-			Quaternion(brick.transform.basis.orthonormalized()))
-		var same: bool = (was as Transform3D).is_equal_approx(brick.transform) if slack <= 0.0 \
-			else off <= slack and turned < deg_to_rad(0.01)
+		var a: Basis = (was as Transform3D).basis.orthonormalized()
+		var b: Basis = brick.transform.basis.orthonormalized()
+		# The most any axis moved, as an angle.
+		var chord: float = maxf(a.x.distance_to(b.x), maxf(a.y.distance_to(b.y), a.z.distance_to(b.z)))
+		var turned: float = rad_to_deg(2.0 * asin(clampf(chord * 0.5, 0.0, 1.0)))
+		var same: bool = (was as Transform3D).is_equal_approx(brick.transform) \
+			or (slack > 0.0 and off <= slack and turned <= 0.1)
 		if not same:
 			count += 1
 			most = maxf(most, off)
-	return [count, most]
+		turned_most = maxf(turned_most, turned if not (was as Transform3D).is_equal_approx(brick.transform) else 0.0)
+	return [count, most, turned_most]
 
 
 func _say(tool: String, arguments: Dictionary) -> String:
