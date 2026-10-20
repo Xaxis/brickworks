@@ -294,7 +294,15 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   `picture=false` leaves it out. Nothing on the baseplate changes, and it is
   answered in a tab showing a shared model too (`_while_looking`). In
   `AppTools.GUIDE`. The viewer's JSON carries `description`, `tags` and
-  `kind` for it since then.
+  `kind` for it since then. A model's own motions (docs/MOTIONS.md, unit 3,
+  2026-10-20): a list's line says them, `motions: "Open the gates", "Open
+  the mailbox"` (the card's `motions`, once supabase/motions.sql is
+  applied); `open=` reads them from the file itself (`Motions.read`,
+  `GalleryTool.motions_words`): `Its motions (2): "Open the gates" (2 s, 2
+  joints), "Open the mailbox" (1 s, 1 joint).` and how to play one
+  (`open_model link=`, then `play_motion name=`). `open_model` names the
+  motions of whatever it opened (a saved model, a version, an example, a
+  link's copy) the same way (`AppTools._opened_motions`).
 - **The second walk-through** (2026-10-19, rel-m86; transcripts in
   `bench/results/mcpwalk2-2026-10-19/`, git-ignored). Real Claude Code
   sessions on the subscription (`claude -p` with `--strict-mcp-config

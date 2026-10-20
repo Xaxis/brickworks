@@ -279,3 +279,51 @@ Left for later units:
 - A joint carried by another is moved alone while its slider is dragged
   (from where the model stands); its key, and the frames, carry it.
 - Recording keeps one joint a drag; a chain drag and a ball are not recorded.
+
+## What unit 3 built (motions3, 2026-10-20)
+
+Links, the gallery and a session, for a model that carries motions.
+
+- **The link's buttons** (`ShareView`, `src/ui/share_view.gd`; main.gd's
+  `_play_motion`). Once the viewer has read the model's joints (as Play
+  does), a model with motions has a button for each in the play pill,
+  under "Play its motions", in Reset's face, wrapping as the pill's words
+  do, a fingertip tall on a phone: "Press one to play it, and again to put
+  it back. Or drag a part that moves." (a touch screen: "Tap one…").
+  Pressed, it plays through Grab as the Motions panel plays it
+  (`MotionPlayer.play`, kept: one history step), its frames drawn over the
+  model 12 a second (`BrickWorld.set_drawn`), the first at once, and the
+  button stays lit (the pill's yellow) while the model stands where it
+  ends: "“Open the gates” played. Press it again to put it back." Pressed
+  again it plays backwards: "“Open the gates” put back." A joint that
+  stops is said in a visitor's words, each part by its name
+  ("stopped short: the Fence Gate 1 x 4 x 2 stops at 62°…", `_visitor_words`).
+  Reset undoes every play's step, a drag's and a motion's alike, and puts
+  every button out; Build it does the same first. Nothing is kept: the
+  store is read-only, as for a drag. A drag still moves a part. A model
+  without motions keeps Play as it was. What the last press played is told
+  to the page (`brickworksShare.motion`: its joints from and to, frames,
+  the press's own ms); `brickworksShare.view.play` has `motions` and
+  `motions_out`; the buttons are `view_motion_1`… in `brickworksControls`.
+- **The card and the page** (`api/_directory.js` `motionsIn`, `motionsOf`,
+  `movesWords`; `api/share.js` `keepMoves`, the page's facts;
+  `web/cards.js` `motionWords`). The server reads the names from the very
+  text published, as the app reads them (a motion that moves something,
+  each name once whatever its case, at most 12 of 60 characters), so any
+  app that writes the lines gets the card. Kept with the model's row
+  (`supabase/motions.sql`: `shared_models.motions`, `motion_names_ok`,
+  `directory_card` with `motions`), in the same request as the words
+  Playable found. The card says "Moves: open the dome, extend the
+  telescope" (each begun in lower case when it begins with a plain word,
+  three and "and N more"), the page all of them in its facts; a model
+  without motions says Playable's words, on its page too now. Until
+  motions.sql is applied the request with the names fails, the words are
+  kept alone, the publish answers `motions: null`, and the card says the
+  words: nothing else changes.
+- **A session** (`GalleryTool`, `AppTools`). A gallery list's line says
+  `motions: "Open the gates", "Open the mailbox"`; `gallery open=` reads
+  them from the file: `Its motions (2): "Open the gates" (2 s, 2 joints),
+  "Open the mailbox" (1 s, 1 joint).`, and how to play one (`open_model
+  link=`, then `play_motion name=`). `open_model` says the same of
+  whatever it opened, so a session that opens a model knows its motions'
+  names without asking `list_motions`.

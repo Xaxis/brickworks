@@ -232,6 +232,10 @@ async function galleryCards(size, shape) {
   await page.evaluate(() => document.querySelector('a.model[data-id="Pl4yCard01"]').scrollIntoView({ block: "center" }));
   await page.waitForTimeout(400);
   await shot(page, `${size}_5_gallery.png`);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.waitForTimeout(300);
+  await shot(page, `${size}_5_gallery_dark.png`);
+  await page.emulateMedia({ colorScheme: "light" });
   // Technic or mechanism, ticked as a person ticks it.
   await page.evaluate(() => { const d = document.querySelector("details.filters, .filters details"); if (d) d.open = true; });
   await page.locator("#technic").check({ force: true });

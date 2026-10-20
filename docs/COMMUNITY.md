@@ -402,6 +402,18 @@ gallery's card says them ("Moves: steering, boom"), and so does the
 list a session reads (`gallery`, below). A model published before, or
 from an app before this, has none until it is published again.
 
+**Its own motions, on its card** (`supabase/motions.sql`, 2026-10-20,
+docs/MOTIONS.md). A model that carries motions of its own ("Open the
+dome", "Extend the telescope") has a button for each on its link, and its
+card and page say them in its builder's words, "Moves: open the dome,
+extend the telescope" (three on a card, then "and 2 more"; all twelve at
+most on its page), in place of the words above. api/share.js reads the
+names from the very text published (`motionsIn`: each once, only a motion
+that moves something, 60 characters at most), so no app has to send them,
+and keeps them with the model's row (`shared_models.motions`). Until the
+file is applied there is nowhere to keep them: the words are kept alone,
+the publish answers `motions: null`, and the card says the words.
+
 **Technic or mechanism** now takes a model whose moves name a mechanism
 (any word but doors, `moves_mechanism`) as well as one whose parts are
 Technic (`technic`, as before). A house whose doors open is not a

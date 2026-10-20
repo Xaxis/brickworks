@@ -870,9 +870,19 @@ plan with Claude as the client.
   doing; let go, Reset (`view_reset`) undoes every play's step; Build it
   and the booklet put it back first. Nothing is written (the store is
   read-only). `brickworksShare.view.play`: `ready`, `shown`, `moves`,
-  `title`, `says`, `played`, `reset`, `touch`; the page that sets
-  `window.brickworksGrabAsk` gets the play's handles first in
+  `title`, `says`, `played`, `reset`, `touch`, `motions`, `motions_out`; the
+  page that sets `window.brickworksGrabAsk` gets the play's handles first in
   `brickworksGrab.handles` (`play: "steering"`, `GrabDrag.handle_parts`).
+  A model with motions of its own (docs/MOTIONS.md, unit 3, 2026-10-20): the
+  pill says "Play its motions" with a button each (`view_motion_1`…, Reset's
+  face, a fingertip tall on a phone) and "Press one to play it, and again to
+  put it back…" ("Tap one…" on a touch screen); pressed, `main._play_motion`
+  plays it through `MotionPlayer.play` kept (one step), its frames drawn
+  12 a second (`_motion_frame`, `BrickWorld.set_drawn`), the button lit while
+  it stands where it ends; pressed again it plays backwards; Reset undoes a
+  motion's step as a drag's and puts every button out. What the last press
+  played: `brickworksShare.motion` (`name`, `backwards`, `joints` [name,
+  from, to], `stopped`, `frames`, `ms`).
 - `what moves in a model` (`src/assembly/playable.gd`, `Playable.read`,
   `kinds`, `words`, `KINDS`, `MECHANISMS`): steering, turntable, boom,
   doors, gears, pneumatics, actuator, rack, from `Bodies` and the gear
@@ -884,8 +894,16 @@ plan with Claude as the client.
   `api/share.js` `checkMoves` (400 on a word it does not know) and
   `keepMoves` (never stops a publish; `moves: null` in the answer before
   the file is applied), `api/_directory.js` `MOVES`, `movesOf`, `cardOf`'s
-  `moves`; `web/gallery.js` "Moves: steering, boom" on the card
-  (`data-moves`).
+  `moves`; `web/cards.js` "Moves: steering, boom" on the card
+  (`data-moves`). And a model's own motions (`supabase/motions.sql`, not
+  applied until the owner does): `shared_models.motions` (names, 12 at most
+  of 60 characters, `motion_names_ok`), `directory_card` with `motions`;
+  `api/_directory.js` `motionsIn` (the names read from the text published),
+  `motionsOf`, `movesWords`; `keepMoves` sends both in one request, and
+  the words alone when that fails (`motions: null` in the answer before the
+  file is applied); the card "Moves: open the dome, extend the telescope"
+  (`motionWords`, three and "and N more", `data-motions`), the page's facts
+  all of them, or the words.
 - `share play probe` (`src/dev/share_play_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
   the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
