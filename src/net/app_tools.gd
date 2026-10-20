@@ -149,8 +149,7 @@ an animation.
 with everything built on it, the gears it drives, and the balance after; \
 with only part= it says what would move and changes nothing; with no part= \
 it lists what moves in the model (steering, a boom...) and the parts to take hold of.
- - simulate_mechanism: turns a gear train, and a rack or a crank's rod it \
-drives, from its driver (a crank, an \
+ - simulate_mechanism: turns a gear train from its driver (a crank, an \
 axle, a sub-assembly named Crank or Motor) as Tools, Simulate does: each \
 arm's turns per driver turn, its period in a reference's turns (Earth \
 years) against the real one, what locks it, what floats, and the balance \
