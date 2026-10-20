@@ -46,6 +46,10 @@ var samples: int = 0
 ## For a turntable: how many pictures round, and how many a second.
 var frames: int = 36
 var fps: int = 24
+## For an animation of a motion: framed on what its parts sweep through the
+## whole of it ("framed on what moves"), from the view's direction, rather
+## than as the view is ("as I see it").
+var on_what_moves: bool = false
 ## The key light casts no shadow. For a probe, to measure the shadow by
 ## what taking it away changes.
 var no_shadows: bool = false

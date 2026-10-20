@@ -256,7 +256,7 @@ func _keep_last(as_name: String) -> void:
 		if file.ends_with(".webp") or file.ends_with(".mp4"):
 			dir.rename(file, into.path_join(file))
 	for sub: String in dir.get_directories():
-		if sub.ends_with("_animation") or sub.ends_with("_mechanism"):
+		if sub.ends_with(" Animation") or sub.ends_with("_mechanism"):
 			dir.rename(sub, into.path_join(sub))
 	print("  kept in %s: %s" % [into, ", ".join(DirAccess.get_files_at(into))])
 

@@ -3494,6 +3494,16 @@ static func _many(count: int) -> String:
 
 ## Undo this many steps at once: going back through the history to a
 ## point in it. Returns how many were undone.
+## Undo back to [param depth] what was kept only to be taken back (a
+## motion kept so the next plays from where it ends, to render them), and
+## put [param redo] back as redo was before it: nothing to redo is lost to
+## a render, and the steps taken back are not offered to redo.
+func take_back_to(depth: int, redo: Array) -> void:
+	while _history.size() > depth and undo():
+		pass
+	_redo.assign(redo)
+
+
 func undo_steps(count: int) -> int:
 	var done: int = 0
 	while done < count and undo():

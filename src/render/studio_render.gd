@@ -335,9 +335,13 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 ## sweep through, for the framing. The model itself is not touched; its
 ## copy on the stage is moved, and copied again for the next render.
 ## [param each] gets each frame as it is finished. Returns how many were
-## drawn, all of them unless cancelled.
+## drawn, all of them unless cancelled. [param swept] is the points the
+## moving parts pass through (each one's corners, every frame): with
+## [member RenderSettings.on_what_moves] the camera is fitted to them, which
+## a box's corners far off the parts' own would leave small in the frame.
 func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: Callable,
-		turn_at: Callable, reach: AABB, each: Callable) -> int:
+		turn_at: Callable, reach: AABB, each: Callable,
+		swept: PackedVector3Array = PackedVector3Array()) -> int:
 	if _busy or not possible() or world == null:
 		return 0
 	_busy = true
@@ -347,6 +351,7 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 	_quicken()
 	var done: int = 0
 	_reach = reach
+	_swept = swept
 	var turning: bool = false
 	for n: int in frames:
 		if not is_zero_approx(float(turn_at.call(n))):
@@ -374,6 +379,7 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 				break
 	_pivot.rotation = Vector3.ZERO
 	_reach = AABB()
+	_swept = PackedVector3Array()
 	# The copy on the stage stands as the last frame did, not as the model
 	# does: copied again next time.
 	_staged = []
@@ -383,6 +389,8 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 
 ## The box an animation's moving parts sweep, framed with the model.
 var _reach := AABB()
+## The points they pass through, for a frame fitted to them alone.
+var _swept := PackedVector3Array()
 ## Brick id in the world -> its copy's on the stage.
 var _staged_ids: Dictionary = {}
 
@@ -914,10 +922,15 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		return false
 	if _bounds.size.length() <= 0.0:
 		return false
+	# The set (the sweep, the floor, the contact shadow) is laid under the
+	# model and everything its parts sweep; the camera frames that too, or
+	# with [member RenderSettings.on_what_moves] only what the parts sweep.
 	if _reach.size.length() > 0.0:
 		_bounds = _bounds.merge(_reach)
+	var moves: bool = settings.on_what_moves and _reach.size.length() > 0.0
 	var plan: Plan = plan_for(settings)
-	var shot: Shot = aim(settings, _bounds, turning)
+	var shot: Shot = aim(settings, _reach if moves else _bounds, turning, _bounds,
+		_swept if moves else PackedVector3Array())
 	last_shot = shot
 	last_samples = plan.samples
 	_pivot.position = Vector3(_bounds.get_center().x, 0.0, _bounds.get_center().z)
@@ -1064,7 +1077,11 @@ func _meter(shot: Shot, picture: Vector2i) -> float:
 
 ## Where the camera goes for these settings, framing [param bounds].
 ## [param turning]: the model will turn, so frame what it sweeps through.
-func aim(settings: RenderSettings, bounds: AABB, turning: bool = false) -> Shot:
+## [param whole]: all there is to draw, when the frame is only part of it
+## (an animation framed on what moves): the clip planes take it in.
+## [param points]: fitted to these rather than [param bounds]' corners.
+func aim(settings: RenderSettings, bounds: AABB, turning: bool = false,
+		whole: AABB = AABB(), points: PackedVector3Array = PackedVector3Array()) -> Shot:
 	var shot := Shot.new()
 	shot.fov = settings.fov_degrees()
 	var aspect: float = float(settings.size.x) / float(maxi(settings.size.y, 1))
@@ -1077,8 +1094,10 @@ func aim(settings: RenderSettings, bounds: AABB, turning: bool = false) -> Shot:
 			Vector3(reach * 2.0, bounds.size.y, reach * 2.0))
 	var view: String = settings.view if VIEWS.has(settings.view) else "hero"
 	# Perspective is a frustum shifted to the model's column (CadCamera);
-	# the picture is centred on what the view looks at either way.
-	if view == "current" and eye != null and eye.projection != Camera3D.PROJECTION_ORTHOGONAL:
+	# the picture is centred on what the view looks at either way. Framed on
+	# what moves, the window's view gives its direction and the frame is fitted.
+	if view == "current" and eye != null and eye.projection != Camera3D.PROJECTION_ORTHOGONAL \
+			and not settings.on_what_moves:
 		var from: Transform3D = eye.global_transform
 		var forward: Vector3 = -from.basis.z.normalized()
 		var focus: Vector3 = eye.call("focus_now") if eye.has_method("focus_now") \
@@ -1095,21 +1114,25 @@ func aim(settings: RenderSettings, bounds: AABB, turning: bool = false) -> Shot:
 		elif view != "current":
 			direction = Vector3(VIEWS[view][1])
 		shot.basis = _looking_from(direction.normalized())
-		shot.origin = _fit(shot.basis, frame, shot.fov, aspect)
-	# Clip planes round the model and the sweep behind it.
-	var radius: float = frame.size.length() * 0.5
-	var nearest: float = INF
-	var farthest: float = 0.0
-	var forward_axis: Vector3 = -shot.basis.z
-	for n: int in 8:
-		var corner: Vector3 = _corner(frame, n)
-		var depth_here: float = (corner - shot.origin).dot(forward_axis)
-		nearest = minf(nearest, depth_here)
-		farthest = maxf(farthest, depth_here)
-	shot.near = clampf(nearest * 0.5, 0.5, 200.0)
-	shot.far = maxf(farthest, 1.0) + radius * 90.0
-	shot.focus_distance = maxf(lerpf(nearest, farthest, clampf(settings.focus, 0.0, 1.0)),
-		shot.near * 2.0)
+		shot.origin = _fit(shot.basis, frame, shot.fov, aspect) if points.is_empty() or turning \
+			else _fit_points(shot.basis, points, shot.fov, aspect)
+	# Clip planes round the model and the sweep behind it; the focus across
+	# what is framed.
+	var clipped: AABB = frame if whole.size == Vector3.ZERO else frame.merge(whole)
+	var radius: float = clipped.size.length() * 0.5
+	var depths: Array = []
+	for box: AABB in [clipped, frame]:
+		var nearest: float = INF
+		var farthest: float = 0.0
+		for n: int in 8:
+			var depth_here: float = (_corner(box, n) - shot.origin).dot(-shot.basis.z)
+			nearest = minf(nearest, depth_here)
+			farthest = maxf(farthest, depth_here)
+		depths.append([nearest, farthest])
+	shot.near = clampf(float(depths[0][0]) * 0.5, 0.5, 200.0)
+	shot.far = maxf(float(depths[0][1]), 1.0) + radius * 90.0
+	shot.focus_distance = maxf(lerpf(float(depths[1][0]), float(depths[1][1]),
+		clampf(settings.focus, 0.0, 1.0)), shot.near * 2.0)
 	if settings.f_stop > 0.0:
 		# A real lens on a real-sized model: an LDU is 0.4 mm.
 		shot.aperture = settings.focal_mm / settings.f_stop * 0.5 / 0.4
@@ -1137,22 +1160,34 @@ static func _looking_from(direction: Vector3) -> Basis:
 ## Back the camera off until every corner of [param box] is inside the
 ## frame, then slide it so the model is in the middle of it.
 static func _fit(basis: Basis, box: AABB, fov: float, aspect: float) -> Vector3:
+	var corners := PackedVector3Array()
+	for n: int in 8:
+		corners.append(_corner(box, n))
+	return _fit_points(basis, corners, fov, aspect)
+
+
+## As [method _fit], every one of [param points] inside the frame.
+static func _fit_points(basis: Basis, points: PackedVector3Array, fov: float,
+		aspect: float) -> Vector3:
 	var tan_up: float = tan(deg_to_rad(fov) * 0.5) * FILL
 	var tan_across: float = tan_up * aspect
+	var box := AABB(points[0], Vector3.ZERO)
+	for point: Vector3 in points:
+		box = box.expand(point)
 	var target: Vector3 = box.get_center()
 	var origin: Vector3 = target
 	for _round: int in 4:
 		var need: float = 0.0
-		for n: int in 8:
-			var corner: Vector3 = _corner(box, n) - target
+		for point: Vector3 in points:
+			var corner: Vector3 = point - target
 			var back: float = corner.dot(basis.z)
 			need = maxf(need, back + absf(corner.dot(basis.x)) / tan_across)
 			need = maxf(need, back + absf(corner.dot(basis.y)) / tan_up)
 		origin = target + basis.z * need
 		var low := Vector2(INF, INF)
 		var high := Vector2(-INF, -INF)
-		for n: int in 8:
-			var seen: Vector3 = _corner(box, n) - origin
+		for point: Vector3 in points:
+			var seen: Vector3 = point - origin
 			var depth: float = maxf(-seen.dot(basis.z), 0.001)
 			var at := Vector2(seen.dot(basis.x) / depth, seen.dot(basis.y) / depth)
 			low = low.min(at)

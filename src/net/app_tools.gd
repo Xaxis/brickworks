@@ -1628,7 +1628,7 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		poses.append(poses.back() if not poses.is_empty() else {})
 	var frames: int = await panel.render_poses(poses, panel.animation.fps,
 		func(n: int) -> float: return panel.animation.turn_at(panel.animation.time_of(n)),
-		panel._sheet_frames(poses.size()), work, "hero", "_animation")
+		panel._sheet_frames(poses.size()), work, "hero", ANIMATION)
 	if frames <= 0 or not panel._last.has("kept"):
 		return "Nothing rendered: %s" % panel.rendered_words()
 	# Its own words, not the panel's line, whose "— 3 s" at the end is how
@@ -1933,7 +1933,8 @@ static func _sheet_of(played: MotionPlayer.Played, of: int = 1) -> Array:
 
 
 ## render_motion: the motion's frames drawn and kept as an animation,
-## framed on what it moves; the model as it was after.
+## framed on what it moves, as File, Render's Animation draws it
+## (MotionRender); the model as it was after.
 func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var asked: Variant = _motions_asked(input)
 	if asked is String:
@@ -1942,23 +1943,12 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 		return ("Rendering needs something to draw with, and this app is running without a window: "
 			+ "play_motion plays it.")
 	var player: MotionPlayer = app.get("_motions")
-	var builder: Builder = app.get("_builder")
-	var verbs: EditVerbs = app.get("_verbs")
 	var panel: PosePanel = app.get("_pose")
 	var reverse: bool = bool(input.get("reverse", false))
 	var fps: int = 24 if int(input.get("fps", 12)) == 24 else 12
-	var poses: Array = []
-	var lines := PackedStringArray()
-	var depth: int = builder.history_depth()
-	var many: bool = (asked as Array).size() > 1
-	for motion: Motions.Motion in asked:
-		# A sequence's next motion begins where the last ended: each kept,
-		# and all of it undone once drawn.
-		var played: MotionPlayer.Played = player.play(motion, reverse, fps, many)
-		poses.append_array(played.frames)
-		lines.append("%s: %s." % [Motions.quoted(motion.name), player.said(played)])
-	while builder.history_depth() > depth:
-		await verbs.press("undo")
+	var drawn: MotionRender = MotionRender.frames_of(player, asked, reverse, fps)
+	var poses: Array = drawn.poses
+	var lines: PackedStringArray = drawn.lines
 	if poses.is_empty():
 		return "Nothing to draw: %s" % "; ".join(lines)
 	var settings: RenderSettings = panel.settings
@@ -1967,9 +1957,10 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var sheet_at: Array = []
 	for k: int in PosePanel.SHEET_MOST:
 		sheet_at.append(roundi(float(k) * float(poses.size() - 1) / float(PosePanel.SHEET_MOST - 1)))
-	var title: String = "_" + str((asked as Array)[0].name).to_snake_case() + ("_backwards" if reverse else "")
+	var title: String = ", ".join((asked as Array).map(func(one: Motions.Motion) -> String: return one.name)) \
+		+ (" backwards" if reverse else "")
 	var frames: int = await panel.render_poses(poses, fps, func(_n: int) -> float: return 0.0,
-		sheet_at, work, "hero", title)
+		sheet_at, work, "hero", title, true)
 	settings.size = size_was
 	if frames <= 0 or not panel._last.has("kept"):
 		return "Nothing rendered: %s" % panel.rendered_words()

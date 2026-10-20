@@ -1,4 +1,5 @@
-## File, Render…: a picture of the model worth keeping, or a turntable.
+## File, Render…: a picture of the model worth keeping, a turntable, or an
+## animation of one of its motions (docs/MOTIONS.md, "Render").
 ##
 ## Studio's Eyesight asks for a quality, a size and a background and then
 ## shows nothing until it has finished; Mecabricks sends the model to a
@@ -12,6 +13,13 @@
 ## a browser tab answer throughout; the bar says how far it has got, Cancel
 ## or Escape stops it, and when it is done the picture is downloaded, or
 ## on the desktop written to Downloads.
+##
+## Animation plays one of the model's motions, or all of them in order,
+## through Grab (MotionRender, the path the Motions panel's Render
+## animation and render_motion take too) and keeps every frame, at the
+## quality, size, light and lens chosen for a picture: the camera as the
+## picture is ("As I see it") or fitted to what the parts sweep through
+## the whole motion ("Framed on what moves").
 class_name RenderDialog
 extends PanelContainer
 
@@ -27,6 +35,8 @@ var rig_lights: Array[DirectionalLight3D] = []
 var named: Callable = func() -> String: return "Model"
 ## Where desktop files go; Downloads when empty. A probe points it elsewhere.
 var folder: String = ""
+## The model's motions, played through Grab (main's), for Animation.
+var player: MotionPlayer
 
 var settings := RenderSettings.new()
 var renderer: StudioRender
@@ -43,6 +53,8 @@ const BACKGROUNDS: Array = [["White", Color(1, 1, 1)], ["Grey", Color(0.74, 0.75
 	["None", Color(1, 1, 1)]]
 const STOPS: Array = [["Off", 0.0], ["f/16", 16.0], ["f/8", 8.0], ["f/4", 4.0], ["f/2", 2.0]]
 const FRAMES: Array = [24, 36, 48, 72]
+## Animation's camera: [words, framed on what moves].
+const CAMERAS: Array = [["As I see it", false], ["Framed on what moves", true]]
 const SAMPLES: Array = [16, 32, 64, 128]
 
 var _preview: TextureRect
@@ -69,13 +81,19 @@ var _lens_note: Label
 var _samples: OptionButton
 var _frames: Array[Button] = []
 var _frames_note: Label
+var _motion: OptionButton
+var _cameras: Array[Button] = []
+var _animation_note: Label
 var _picture_button: Button
 var _turntable_button: Button
+var _animation_button: Button
 var _cancel_button: Button
 var _again_button: Button
 var _close_button: Button
 
 var _background: int = 0
+## Animation's camera: fitted to what the parts sweep (RenderSettings.on_what_moves).
+var _on_what_moves: bool = false
 var _preview_due: int = -1
 var _working: String = ""
 var _last: Dictionary = {}
@@ -166,6 +184,7 @@ func open() -> void:
 	if eye != null and settings.view == "current" and _last.is_empty():
 		settings.focal_mm = roundf(RenderSettings.focal_for(eye.fov, settings.size))
 		_focal.set_value_no_signal(settings.focal_mm)
+	_list_motions()
 	_describe()
 	visible = true
 	if _scrim != null:
@@ -236,7 +255,7 @@ func close() -> void:
 
 
 func is_rendering() -> bool:
-	return _working == "picture" or _working == "turntable"
+	return _working == "picture" or _working == "turntable" or _working == "animation"
 
 
 ## Where the render being drawn goes, while it is.
@@ -377,6 +396,8 @@ func _build() -> void:
 		"Draw it at the size and quality chosen, and keep it", true)
 	_turntable_button = _button(actions, "Render turntable", func() -> void: _start("turntable"),
 		"Turn the model round once and keep every frame as an animation")
+	_animation_button = _button(actions, "Render animation", func() -> void: _start("animation"),
+		"Play the motion chosen under Animation and keep every frame")
 	_cancel_button = _button(actions, "Cancel", _cancel, "Stop rendering (Escape)")
 	_cancel_button.visible = false
 	_again_button = _button(actions, "Download again", _again, "")
@@ -513,6 +534,19 @@ func _build() -> void:
 		settings.frames = int(FRAMES[n])
 		_describe())
 	_frames_note = _note(right)
+
+	_heading(right, "Animation")
+	_motion = OptionButton.new()
+	_motion.add_theme_font_size_override("font_size", 12)
+	_motion.item_selected.connect(func(_index: int) -> void: _describe())
+	right.add_child(_motion)
+	var camera_names: Array = []
+	for choice: Array in CAMERAS:
+		camera_names.append(choice[0])
+	_cameras = _segments(right, camera_names, 0, func(n: int) -> void:
+		_on_what_moves = bool(CAMERAS[n][1])
+		_describe())
+	_animation_note = _note(right)
 
 
 static func _platform_samples() -> int:
@@ -674,8 +708,39 @@ func _pick_background(n: int) -> void:
 	_ask_preview()
 
 
+## The model's motions to choose from, the one chosen kept when it is still
+## there; "All, in order" when there are two or more.
+func _list_motions() -> void:
+	var was: String = chosen_motion()
+	_motion.clear()
+	var motions: Motions = player.motions() if player != null and world != null else null
+	var names: Array = []
+	for motion: Motions.Motion in motions.list if motions != null else []:
+		names.append(motion.name)
+	if names.size() > 1:
+		names.append(MotionRender.ALL)
+	for name: String in names:
+		_motion.add_item(name)
+		_motion.set_item_metadata(_motion.item_count - 1, name)
+		if name == was:
+			_motion.select(_motion.item_count - 1)
+	if names.is_empty():
+		_motion.add_item("No motions yet: Build, Motions… makes them")
+		_motion.set_item_metadata(0, "")
+	_motion.disabled = names.is_empty() or is_rendering()
+	_animation_button.disabled = names.is_empty() or is_rendering()
+
+
+## The motion Animation draws, by name: MotionRender.ALL for every one in
+## order, "" for none.
+func chosen_motion() -> String:
+	if _motion == null or _motion.selected < 0:
+		return ""
+	return str(_motion.get_item_metadata(_motion.selected))
+
+
 ## What the choices come to, in words: what each grade does here, what the
-## lens is, what the turntable is.
+## lens is, what the turntable and the animation are.
 func _describe() -> void:
 	var full: bool = StudioRender.full_renderer()
 	match settings.quality:
@@ -707,6 +772,27 @@ func _describe() -> void:
 	_frames_note.text = "%d frames, %.1f s at %d a second, as an animated WebP%s." % [
 		settings.frames, seconds, settings.fps,
 		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
+	var order: Array = _order_of(chosen_motion())
+	if order.is_empty():
+		_animation_note.text = "A motion is a named movement of the model's joints: Build, Motions… keeps them."
+		return
+	var length: float = 0.0
+	for motion: Motions.Motion in order:
+		length += motion.length()
+	_animation_note.text = "%s: %.1f s at %d a second, %s, as an animated WebP%s." % [
+		chosen_motion(), length, settings.fps,
+		"framed on what its parts sweep through" if _on_what_moves else "the camera as the picture is",
+		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
+
+
+## The motions [param name] plays, in order.
+func _order_of(name: String) -> Array:
+	if player == null or world == null or name.is_empty():
+		return []
+	var motions: Motions = player.motions()
+	if name == MotionRender.ALL:
+		return motions.in_order()
+	return [motions.named(name)] if motions.named(name) != null else []
 
 
 # -- drawing ---------------------------------------------------------------------
@@ -755,6 +841,9 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	if world.brick_count() - scenery.size() <= 0:
 		_status.text = "There is nothing on the baseplate to render yet."
 		return PackedStringArray()
+	if kind == "animation" and _order_of(chosen_motion()).is_empty():
+		_status.text = "Keep a motion first: Build, Motions… makes them."
+		return PackedStringArray()
 	if renderer.is_busy():
 		renderer.cancel()
 		while renderer.is_busy():
@@ -774,7 +863,9 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	_output = output
 	var model: String = str(named.call())
 	var lines := PackedStringArray()
-	if kind == "picture":
+	if kind == "animation":
+		lines = await _animate(chosen, output, model)
+	elif kind == "picture":
 		_shown = null
 		var image: Image = await renderer.render(world, chosen)
 		if image != null:
@@ -814,13 +905,53 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	_output = null
 	_set_working(false)
 	if lines.is_empty():
-		_status.text = "Cancelled." if not _status.text.begins_with("could not") else _status.text
+		_status.text = "Cancelled." if not (_status.text.begins_with("could not")
+			or _status.text.begins_with("Nothing to draw")) else _status.text
 		_progress.value = 0.0
 		return lines
 	_progress.value = 1.0
 	_status.text = "%s — %.0f s." % ["; ".join(lines), seconds]
 	_again_button.visible = true
 	_again_button.text = "Download again" if OS.has_feature("web") else "Show in folder"
+	return lines
+
+
+## Animation: the chosen motion, or all in order, played through Grab and
+## drawn a frame at a time as [param chosen] says, kept by [param output]
+## (MotionRender, as the Motions panel and render_motion draw one). The
+## lines to show; none when cancelled or there was nothing to play.
+func _animate(chosen: RenderSettings, output: RenderOutput, model: String) -> PackedStringArray:
+	var name: String = chosen_motion()
+	var order: Array = _order_of(name)
+	var drawn: MotionRender = MotionRender.frames_of(player, order, false, chosen.fps)
+	if drawn.poses.is_empty():
+		_status.text = "Nothing to draw: %s" % "; ".join(drawn.lines)
+		return PackedStringArray()
+	chosen.frames = drawn.poses.size()
+	chosen.on_what_moves = _on_what_moves
+	output.begin_animation(model, "all in order" if name == MotionRender.ALL else name, chosen)
+	var looped: Array[ImageTexture] = []
+	if _job != null:
+		_job.count(0, chosen.frames)
+	var done: int = await MotionRender.draw(renderer, world, chosen, drawn.poses,
+		func(_n: int) -> float: return 0.0, output,
+		func(n: int, image: Image) -> void:
+			_show_scaled(image)
+			looped.append(_preview.texture as ImageTexture)
+			if _job != null:
+				_job.count(n + 1))
+	if done < chosen.frames:
+		return PackedStringArray()
+	_status.text = "Putting the frames together…"
+	if _job != null:
+		_job.say(_status.text)
+		_job.count(0, 0)
+	var lines: PackedStringArray = await output.finish_turntable()
+	_loop = looped
+	_loop_at = 0.0
+	_last = {"kind": "animation", "frames": done, "bytes": output.last_bytes,
+		"width": chosen.size.x, "height": chosen.size.y, "motion": name,
+		"name": output.base_name() + ".webp", "output": output}
 	return lines
 
 
@@ -841,8 +972,9 @@ func _set_working(on: bool) -> void:
 	_turntable_button.disabled = on
 	_cancel_button.visible = on
 	_again_button.visible = false if on else _again_button.visible
-	for button: Button in _quality + _sizes + _backgrounds + _frames:
+	for button: Button in _quality + _sizes + _backgrounds + _frames + _cameras:
 		button.disabled = on
+	_list_motions()
 
 
 func _cancel() -> void:
@@ -859,7 +991,7 @@ func _again() -> void:
 		if _last["kind"] == "picture":
 			_status.text = await output.keep_picture(_last["image"], str(named.call()))
 		else:
-			_status.text = "The turntable was downloaded as %s." % _last["name"]
+			_status.text = "The %s was downloaded as %s." % [_last["kind"], _last["name"]]
 		return
 	if output != null and not output.paths.is_empty():
 		OS.shell_show_in_file_manager(output.paths[output.paths.size() - 1])
@@ -914,8 +1046,12 @@ func controls_by_name() -> Dictionary:
 		named_controls["render_bg_" + _backgrounds[n].text.to_lower()] = _backgrounds[n]
 	for n: int in _frames.size():
 		named_controls["render_frames_" + _frames[n].text] = _frames[n]
+	named_controls["render_camera_seen"] = _cameras[0]
+	named_controls["render_camera_moves"] = _cameras[1]
 	named_controls["render_picture"] = _picture_button
 	named_controls["render_turntable"] = _turntable_button
+	named_controls["render_animation"] = _animation_button
+	named_controls["render_motion"] = _motion
 	named_controls["render_cancel"] = _cancel_button
 	named_controls["render_again"] = _again_button
 	named_controls["render_close"] = _close_button
@@ -935,7 +1071,7 @@ func _tell_page() -> void:
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
 		state["worst_step"] = renderer.worst_step
-	for key: String in ["kind", "width", "height", "bytes", "name", "frames"]:
+	for key: String in ["kind", "width", "height", "bytes", "name", "frames", "motion"]:
 		if _last.has(key):
 			state[key] = _last[key]
 	var said: String = JSON.stringify(state)
