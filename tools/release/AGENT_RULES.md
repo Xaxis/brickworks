@@ -46,13 +46,17 @@ date says when.
 - **Take the GPU per job, not per batch.** A batch that holds the lease for
   its whole run held both GPU slots for 45 minutes while a probe waited
   (2026-10-19). Wrap each design, render or windowed probe on its own.
-- Wait on a long run only by starting it with run_in_background and taking its
-  notification. No trailing `&` inside it: that detaches the job and the
-  notice comes at once. Never end a turn waiting on a job you did not start
-  that way: one agent sat idle three and a half hours for a notice that never
-  came (2026-10-19). Never loop on a file or spin (`read -t` on /dev/zero spun
-  a core, 2026-10-16). Give every run a timeout; a timeout includes the time
-  it waits in heavy's or the GPU's queue.
+- **Never end your turn while a job of yours runs.** A background job's notice
+  does not wake an agent that has gone idle: three agents sat idle for hours
+  on 2026-10-19 (ownedsets 3.5 h, then studioio and tabwalk) waiting for one.
+  Start a long job with run_in_background (no trailing `&` inside it: that
+  detaches it), note its PID, then wait in the foreground on that PID, ten
+  minutes a call, as often as it takes:
+  `timeout 590 tail --pid=PID -f /dev/null` (it ends when the job does). Or
+  keep working on something else and check the job between steps. Never loop
+  on a file or spin (`read -t` on /dev/zero spun a core, 2026-10-16). Give
+  every run a timeout; a timeout includes the time it waits in heavy's or the
+  GPU's queue.
 - Never `pgrep -f`/`pkill -f` a pattern that appears in your own command line.
   Kill only processes you started, by PID. Stop every server you start.
 - Scratch files only in the scratch folder the brief names; ports only in the
