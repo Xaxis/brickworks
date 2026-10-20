@@ -327,3 +327,50 @@ Links, the gallery and a session, for a model that carries motions.
   link=`, then `play_motion name=`). `open_model` says the same of
   whatever it opened, so a session that opens a model knows its motions'
   names without asking `list_motions`.
+
+A first press can come before the parts' exact shapes have arrived (the
+web build fetches each as a check first asks for it). Judged by the parts'
+covers, "Open the gates" stopped one gate at 6° of 90°, where it met the
+mailbox's box, on the local relay; with the shapes it opens clear. So once
+the motions are offered every part's shape is asked for (eight a frame),
+and a press waits, saying "Getting “Open the gates” ready…", until they are
+here, or ten seconds, and until the grab has come to rest: a press during
+a settle had done nothing at all.
+
+Proof: `tools/probe.sh share_play_probe` (66 checks, its section 8 on
+1484-1 with `tests/fixtures/motions/1484-1.motions` written into it): the
+two buttons; Open the gates pressed by the mouse, its frames drawn (2 parts
+moving, 1.9 s), both gates at 90.0°, the mailbox still, the button lit;
+Open the mailbox at 90.0°; the gates pressed again back where they were
+built (0 off); Reset, every part as built; nothing published or written; a
+press 50 to 93 ms of one frame on this machine (load 30 to 42).
+`tools/web/play_flow.mjs --publish` through the local relay
+(`relay_server.mjs --static=build/web`, the live database, a throwaway
+account deleted after): at 1280 by the mouse and at 390 by a finger with
+the CPU slowed four times, each button inside the page and clear of the
+view cube (34 px tall on the phone), each motion played (the gates 0° to
+-90°, the mailbox 0° to 90°, `brickworksShare.motion`), lit, the gates taken back to 0°, Reset,
+the link's text unchanged; the press's own work 180 ms (laptop) and 713 ms
+(phone, slowed) for the gates' 25 frames, 44 and 171 ms for the mailbox's
+13; the first press waited 12.4 s and 10.1 s for the shapes at a load of
+40. The house's page says "Moves: doors" until motions.sql is applied (its
+publish answered `motions: null`), at both sizes, light and dark; the
+gallery's page from the checkout says "Moves: open the dome, extend the
+telescope, open the back wall panels and 1 more" of a card with four.
+`gallery_tool_probe -- --played` (37 checks): a list's line and `open=`
+name them, `open_model link=` names them, and `play_motion` plays "Open
+the gates" by that name (both gates 90°). The SQL: `tools/apply_sql.mjs
+supabase/motions.sql --dry --try=tools/motions_try.sql` and
+`tools/sql_compare.mjs supabase/motions.sql motions` (17 of 17 the same),
+`tests/test_motions.py`. share_view_probe (173), share_flow (49) and
+discovery_flow (48) through the same relay, as before.
+
+Left for later:
+- supabase/motions.sql is written and dry-run, not applied: until it is,
+  a card says Playable's words, and a model published before it says its
+  motions only once published again.
+- A press works a motion's frames out at once (`MotionPlayer.play`): 713
+  ms of a phone slowed four times for two gates over 2 s, one long frame.
+  Worked out a few frames at a time it would not stall.
+- The gallery's search does not find a model by its motions' names.
+- A link plays one motion at a time: no Play all, no sequence (AFTER).

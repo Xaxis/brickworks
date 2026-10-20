@@ -51,7 +51,9 @@
 // and "Open the mailbox". With --publish it is published too, from the same
 // account (to a deployment, or to tools/web/relay_server.mjs's local relay);
 // locally, serve.py --share M0ti0nsFl1=FILE serves the file that
-// --write-house=FILE writes, and --house=M0ti0nsFl1 names it. At each size:
+// --write-house=FILE writes, and --house=M0ti0nsFl1 names it; --no-house
+// leaves it out (a build from before motions, its drag timed beside this
+// one's). At each size:
 //
 //   5. Its link's pill says "Play its motions" with a button each, inside
 //      the page and clear of the view cube; on the phone a fingertip tall.
@@ -401,6 +403,9 @@ if (args.publish) {
   id = published.id;
   console.log(`published 8808-1 as ${id} (${published.parts} parts), moves kept: ${JSON.stringify(published.moves)}`);
   // The house, its motions in its text; what moves as the app finds it.
+  // --no-house leaves it out (a build from before motions, timed beside).
+}
+if (args.publish && !args["no-house"]) {
   const again = await fetch(`${site}/api/share`, {
     method: "POST",
     headers: { ...headers, "content-type": "application/json", authorization: `Bearer ${token}` },

@@ -562,8 +562,14 @@ builds, moves and Tested mark; Parts I own refused to nobody signed in with
 nothing asked, then asked as the person (`mine=1`, their session) with "you
 own 80 of its 93 pieces"; the front's pick and why ("built 3 times this week,
 remixed once this week") with its moves, the small builds, and what they can
-build now only when signed in. `-- --played` runs only the played part, with
-no server (18 checks, all ok, 2026-10-19). `mcp_check.py`, with the app's
+build now only when signed in. And a model's own motions (1484-1 with
+`tests/fixtures/motions/1484-1.motions`): its list line `motions: "Open the
+gates", "Open the mailbox"`, `open=` saying `Its motions (2): "Open the
+gates" (2 s, 2 joints), "Open the mailbox" (1 s, 1 joint).` and how to play
+one, `open_model link=` (the link answered by a `FakeShared`) naming them,
+and `play_motion` playing "Open the gates" by that name, both gates 90°.
+`-- --played` runs only the played part, with no server (37 checks, all ok,
+2026-10-20). `mcp_check.py`, with the app's
 `BRICKWORKS_API` at a deployment that has the directory (or the local
 functions), also searches the gallery over MCP and opens a model with its
 licence, size and picture as an MCP image block: the newest the list itself

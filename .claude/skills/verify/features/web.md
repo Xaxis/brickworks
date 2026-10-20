@@ -2321,7 +2321,16 @@ means the wheel, and a finger (index 1, as a browser numbers it) turns it
 -24° with the camera still, and Reset again; a drag on the chassis turns
 the view and moves nothing; Build it after a play opens on the model as
 built; and published from the builder, the panel sends `moves:
-["steering"]`. Pictures in `shots/play/`. About a minute on the GPU.
+["steering"]`. Then (section 8, 2026-10-20, 66 checks in all) 1484-1 with
+`tests/fixtures/motions/1484-1.motions` written into it: "Play its motions"
+with `view_motion_1` and `_2`; Open the gates pressed, its frames drawn (2
+parts moving, about 1.9 s), both gates at 90.0°, the mailbox still, the
+button lit and Reset offered; Open the mailbox at 90.0°; the gates pressed
+again back where they were built (0 off), the mailbox still open; Reset,
+every part as built, nothing lit; a press's own cost said (50 to 93 ms
+here); nothing published, nothing written, the text unchanged. Pictures in
+`shots/play/` (`5_motions.png` to `7_motions_reset.png`). About two
+minutes on the GPU.
 
 In a browser, on a local export (serve.py plays the link), then on a
 preview through the API alone:
@@ -2352,8 +2361,21 @@ by a finger slowed four times 18.8 and 22.9 ms on Grab 16, 34.7 to 42.3 on
 m101), Reset offered and inside the page, the pill clear of the view cube,
 the link's text unchanged, Reset putting it back; then the
 gallery's page from the checkout with its list played: the racer's card
-"Moves: steering", the house's "Moves: doors", the hut's nothing, Technic or
-mechanism asking `technic=1`. With `--publish`, once play.sql is applied,
+"Moves: steering", the house's "Moves: doors", the hut's nothing, the
+observatory's "Moves: open the dome, extend the telescope, open the back
+wall panels and 1 more" (its four motions), Technic or mechanism asking
+`technic=1`. With `--publish` (or `--house=ID`, serve.py serving the file
+`--write-house=FILE` writes), the house with its two motions too, at each
+size: the buttons inside the page, clear of the cube, 34 px tall on the
+phone; each played (`brickworksShare.motion`: the gates 0° to -90°, the
+mailbox 0° to 90°) and lit, the press's own work and its wait for the
+parts' shapes said (laptop 180 and 44 ms, the first press waiting 12.4 s;
+the phone slowed four times 713 and 171 ms, 10.1 s; local relay, load 40,
+2026-10-20); the gates pressed again back to 0°; Reset; the text unchanged.
+And its page's facts, "Moves: doors" before motions.sql (`motions: null`),
+"Moves: open the gates, open the mailbox" after, at 390 and 1280, light and
+dark. The local relay (`relay_server.mjs 9120 --static=build/web`, .env
+sourced) sends `/app?view=` on to `/?view=`; the flow follows either. With `--publish`, once play.sql is applied,
 the list asked with tests and technic finds the published racer with
 `["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`. On a
 deployment the link is the model's page, which does not go on by itself
