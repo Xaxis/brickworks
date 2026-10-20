@@ -357,7 +357,8 @@ picture the assistant is shown.
   draws frames on purpose until ten are timed. Where the second fastest of
   the last six is over 50 ms, it cuts the next rung (dense, msaa, scale,
   shadow, glow; ssao first on Forward+), several at once when frames are
-  4x or 16x over. On the web a look also ends with a fence (`GpuFence`)
+  4x or 16x over, and looks again while a rung is left (a look after the
+  last drew 12 frames standing still in `outline_check`, m93). On the web a look also ends with a fence (`GpuFence`)
   and is judged again by when the drawing was done: the page hands frames
   over at 17 ms while SwiftShader draws each in 0.3 to 2 s. A look whose
   frames were held apart (the parts bin's read-backs, `GpuFence`) is

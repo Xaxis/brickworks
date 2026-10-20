@@ -254,6 +254,18 @@ func _judgment(budget_script: Script) -> void:
 	var more: Array = budget.get("cuts")
 	_check("six frames of two seconds cut three more (%s)" % str(more),
 		more.size() == 4 and str(more) == str(ladder.slice(0, 4)))
+	# A look after the last rung could cut nothing, and its frames were drawn
+	# while a person stood still (outline_check, 2026-10-19).
+	var told: Dictionary = budget.call("page_state")
+	if more.size() < ladder.size():
+		_check("with a rung left, it looks again at once (%d frames to time)" % int(told["looking"]),
+			int(told["looking"]) > 0)
+		for ms: float in [2000.0, 2100.0, 1900.0, 2050.0, 1980.0, 2200.0]:
+			budget.call("take", ms)
+		more = budget.get("cuts")
+		told = budget.call("page_state")
+	_check("the last rung cut (%s), and no look after it (%d frames to time)" % [str(more), int(told["looking"])],
+		more.size() == ladder.size() and int(told["looking"]) == 0)
 	budget.call("pin", ["glow", "msaa", "shadow"] as Array[String])
 	_check("pinned, glow is off, the view one sample deep, and the sun casts no shadow at its unshadowed energy",
 		not environment.glow_enabled and view.msaa_3d == Viewport.MSAA_DISABLED
