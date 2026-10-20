@@ -4705,10 +4705,11 @@ there as here); `mechanism_probe` (54), `axle_probe` (48), `joints_probe`
 (`tools/steer_sweep.py`, 181 sets, `sweeps/sweep_mechverify2.md` in the
 results): 60 of 168 steer both ways and back, as Grab 16's `g16final`, and
 not one set's verdict changed (the first run, before the guard of fix 4,
-lost 8020-1's truck). The move sweep against `g16final`, on the 43 sets it
-reached and on the sets whose things turn gears or close a loop: not one
-thing's verdict changed (`sweeps/movesweep_mechverify_part1.jsonl`,
-`movesweep_mechgear_0.jsonl`). `simulate_mechanism`'s
+lost 8020-1's truck). The move sweep against `g16final`, stopped at the
+time box: the first 43 sets (68 things, before fix 4's last guards) and 35
+of the 87 sets whose things turn gears or close a loop (64 things): not
+one thing's verdict changed (`sweeps/movesweep_mechverify_part1.jsonl`,
+`movesweep_mechgear_0.jsonl`); the other 52 are not run. `simulate_mechanism`'s
 description says it turns a rack and a crank's rod and slider
 (`tools/mcp_tools.json` written again).
 
