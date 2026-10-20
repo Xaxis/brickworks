@@ -396,11 +396,20 @@ const chose = await call(token, session, "select_tab", { tab: wood.id });
 check(`select_tab ${wood.id}: "${chose.words.split("\n").pop()}"`, chose.words.includes(`go to tab ${wood.id} now`));
 // Closed as a person closes a tab: if a write is still on its way the page
 // asks first, and they say leave.
-wood.page.on("dialog", (dialog) => dialog.accept().catch(() => {}));
+const asked = [];
+wood.page.on("dialog", (dialog) => {
+  asked.push(dialog.type());
+  dialog.accept().catch(() => {});
+});
+const unstored = await wood.page.evaluate(() => (window.brickworksUnstored ? window.brickworksUnstored() : -1));
+const closing = Date.now();
 await wood.page.close({ runBeforeUnload: true });
 await wait(3000);
+console.log(`        closing ${wood.id} at ${new Date(closing).toISOString()}: ${unstored} write(s) not yet stored, ${asked.length ? asked.join(", ") + " asked" : "nothing asked"}, `
+  + `${wood.page.isClosed() ? "closed" : "NOT closed"} after ${Date.now() - closing} ms`);
 const gone = await call(token, session, "edit_model", {
   add: [{ part: "3005", color: 4, x: 0, y: 0, z: 20, rot: 0 }] });
+console.log(`        ${gone.error ? "refused" : "answered"}: ${gone.words.slice(0, 400).split("\n").join("\n        ")}`);
 check(`the tree's tab closed, the session's next call says so: "${gone.words.split(".")[0]}"`,
   // Closed before the call reached it, nothing was done; closed with the
   // call in it, the relay cannot know, and says so. Both are honest.
