@@ -83,11 +83,12 @@ async function until(test, seconds) {
 }
 
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
-ok(await until(async () => Boolean((await controls()).open), 400), "the app came up");
-await page.waitForTimeout(Number(args.load || 15000));
-const view = (await controls()).view;
+const came = ok(await until(async () => Boolean((await controls()).open), 400), "the app came up");
+if (came) await page.waitForTimeout(Number(args.load || 15000));
+else await shot("never_up.png");
+const view = (await controls()).view || { x: 700, y: 450 };
 
-for (const [files, name, triangles, pictures] of CASES) {
+for (const [files, name, triangles, pictures] of came ? CASES : []) {
   // The chooser, from a key pressed over the model; again if none came,
   // since the app reads a key at its next frame and a software frame can
   // take seconds.

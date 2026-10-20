@@ -113,7 +113,11 @@ studs, against a greedy stack of standard bricks and legolization:
    BrickLink's price guide needs a seller's keys.*
 8. **Model and sculpture modes**, to 128 studs, the second tier of
    techniques behind an option.
-9. **Every file people have**: PLY, 3MF, VOX, FBX.
+9. **Every file people have**: PLY, 3MF, VOX, FBX. *Done 2026-10-20,
+   section 12: all four read from bytes in the desktop app and the
+   browser, and an OBJ chosen with its picture coloured by it; the bench's
+   PLY originals and Spot lay cell for cell as their converted copies; 26
+   bad files refused, each saying why, in under a millisecond but one.*
 
 What makes it clearly the best is a public bench on which it is the only
 tool that lays every model whole, in one piece, standing, closer to the
@@ -143,7 +147,7 @@ with a price and a booklet attached (section 4, "The target").
 | **Blender voxel add-ons** (a free brick generator, Legolizer, LegoIT) [lego-gen] | Free or paid | Voxels for a render | No | No | No | Texture | No | Mesh |
 | **AI stylisers** (Tripo "Stylize", Neural4D) [tripo-node] | Paid | A mesh styled as bricks, voxels or Minecraft blocks [tripo-node] | No | No | No | Texture | No | GLB |
 | **Small open repositories** [img2lego] [brickalize] [brickr-qt] [cv2ldr] | Mostly no licence, 0–48 stars | Bricks (img2lego claims slopes, wedges, curved slopes) | Rarely | No | Connectivity at most | Some | Some write a BrickLink wanted list | LDraw or images |
-| **Brickworks Brickify** ([brickify.gd](../src/assembly/brickify.gd)) | Free, browser and desktop | Parts on the plate grid: bricks inside, plates at the surface | Straight, curved and inverted slopes, wedges, corner rounds, tiles | Studs-sideways bricks with tiles on flat flanks | Checked as a design is (overlaps, support, one piece; not weighed), then mended: what fails is taken out | Oklab match to 41 current solid colours | The booklet; a BrickLink wanted list and Rebrickable CSV of any model | LDraw, `.io`, glTF, OBJ, STL. In: OBJ, STL, glTF, GLB |
+| **Brickworks Brickify** ([brickify.gd](../src/assembly/brickify.gd)) | Free, browser and desktop | Parts on the plate grid: bricks inside, plates at the surface | Straight, curved and inverted slopes, wedges, corner rounds, tiles | Studs-sideways bricks with tiles on flat flanks | Checked as a design is (overlaps, support, one piece; not weighed), then mended: what fails is taken out | Oklab match to 41 current solid colours | The booklet; a BrickLink wanted list and Rebrickable CSV of any model | LDraw, `.io`, glTF, OBJ, STL. In: OBJ, STL, glTF, GLB, PLY, 3MF, VOX, FBX |
 
 Not found anywhere: a mesh converter inside Mecabricks, LeoCAD, LDCad or
 Bricksmith; the LEGO Group's own is a photo mosaic of 1x1 plates [mosaic40179].
@@ -768,6 +772,12 @@ the engine.
 
 **Measure.** The bench's 14 read with no conversion; a fixture of each format
 in `brickify_probe`.
+
+*Done 2026-10-20 (section 12).* PLY, 3MF, VOX and FBX are read, and an OBJ
+chosen with one picture takes it; the fixtures are in a probe of their own,
+`mesh_formats_probe`, beside ten real files from public sources. A voxel
+is a stud when the size is the model's longest side in voxels. USDZ is
+refused, saying so: Godot has no reader for it.
 
 ### What each unit moves
 
@@ -3022,3 +3032,10 @@ All read on 2026-10-15.
 [m-x1]: https://airandspace.si.edu/collection-objects/bell-x-1/nasm_A19510007000
 [m-benchy]: https://www.3dbenchy.com/license/
 [m-tholos]: https://sketchfab.com/3d-models/greek-tholos-b4fbe06384ba439e93643fc8818e5da4
+
+**Files of other kinds** (section 12), fetched 2026-10-20
+
+[3mf-samples]: https://github.com/3MFConsortium/3mf-samples (commit 665e20d, BSD-2-Clause: `examples/material/dodeca_chain_loop_color.3mf`, `multipletextures.3mf`, `pyramid_vertexcolor.3mf`, `examples/production/cube_gears_prod.3mf`)
+[voxel-model]: https://github.com/ephtracy/voxel-model (commit 3bff8fe, MIT: `vox/character/chr_knight.vox`, `vox/anim/T-Rex.vox`, `vox/scan/dragon.vox`, `vox/monument/monu1.vox`, `vox/procedure/menger.vox`)
+[dot-vox]: https://github.com/dust-engine/dot_vox (commit 27673ab, MIT: `src/resources/axes.vox`, a MagicaVoxel 0.99 scene of ten shapes)
+[ogt-vox]: https://github.com/jpaver/opengametools/blob/master/src/ogt_vox.h (its `k_default_vox_palette`, against which MagicaVoxel's own palette here was checked)

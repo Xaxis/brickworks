@@ -709,8 +709,8 @@ class ThreeMF extends RefCounted:
 				return
 			total += each
 			if total > MOST_TRIANGLES:
-				out.error = "that 3MF lays more than %d triangles; at most %d can be brought in" \
-					% [MOST_TRIANGLES, MOST_TRIANGLES]
+				out.error = "that 3MF lays more than %d triangles, more than can be brought in" \
+					% MOST_TRIANGLES
 				return
 		for item: Array in top.items:
 			lay(item[0], int(item[1]), item[2], 0)

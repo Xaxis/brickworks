@@ -520,7 +520,7 @@ func _refused() -> void:
 			nested += '<component objectid="%d"/>' % (n - 1)
 		nested += '</components></object>'
 	_refuse("a 3MF of a cube placed ten times, ten times over, eight deep (1.2 billion "
-		+ "triangles)", _model_3mf(nested, '<item objectid="9"/>'), "deep.3mf", "at most")
+		+ "triangles)", _model_3mf(nested, '<item objectid="9"/>'), "deep.3mf", "more than can")
 	_refuse("a 3MF triangle naming a corner it does not have", _model_3mf(
 		'<object id="1"><mesh><vertices><vertex x="0" y="0" z="0"/></vertices><triangles>'
 		+ '<triangle v1="0" v2="1" v3="2"/></triangles></mesh></object>', '<item objectid="1"/>'),
@@ -690,9 +690,9 @@ func _real(dir: String) -> void:
 		var mesh: MeshFile = MeshFile.read(FileAccess.get_file_as_bytes(dir.path_join(name)), name)
 		var took: int = Time.get_ticks_msec() - t0
 		var box: AABB = mesh.bounds()
-		_check("%s: %d triangles in %d ms, %s, %.1f x %.1f x %.1f, %d pictures%s" % [name,
+		_check("%s: %d triangles in %d ms, %s, %s to %s, holding %.0f, %d pictures%s" % [name,
 			mesh.triangle_count(), took, "coloured" if mesh.coloured else "no colour",
-			box.size.x, box.size.y, box.size.z, mesh.textures.size(),
+			box.position, box.end, _volume(mesh), mesh.textures.size(),
 			(": " + mesh.error) if mesh.error else ""], mesh.error.is_empty())
 		if mesh.error.is_empty():
 			var options := Brickify.Options.new()

@@ -1025,7 +1025,7 @@
       "kind": "lib",
       "label": "3d model files",
       "entry": "src/parts/mesh_file.gd",
-      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "reach": "tools/probe.sh mesh_formats_probe (PLY, 3MF, VOX, FBX, an OBJ and a picture; --bench=bench/data/brickify, --real=DIR); godot --headless --path . --script src/dev/brickify_probe.gd (OBJ, STL, glTF)",
       "area": "brickify"
     },
     {
