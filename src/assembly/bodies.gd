@@ -765,7 +765,8 @@ func _lodge(entries: Array, candidates: Array) -> void:
 						most = shared
 						best = other
 						from = lone
-			if best != 0 and not _unknown_shape(lone) and not _unknown_shape(best):
+			if best != 0 and not _unknown_shape(lone) and not _unknown_shape(best) \
+					and not (_door(lone) and not _labelled_hinge(lone, best).is_empty()):
 				best = 0
 		if best == 0:
 			continue
@@ -784,6 +785,35 @@ func _lodge(entries: Array, candidates: Array) -> void:
 				true, 0.0, Vector2(reach, reach), rack])
 			Bodies._piece_join(up, piece, into)
 			continue
+		# And a pinion standing in another piece's rack turns on its own axis
+		# where it is lodged: 41999-1's steering pinion, on an axle through
+		# the big ball joint's socket that no hole names, was lodged in the
+		# socket and held its rack and the whole front axle still.
+		var driving: Array = _driving_pinion(keys, piece, up)
+		if not driving.is_empty():
+			var mesh: Racks.Pinion = driving[0]
+			candidates.append([best, mesh.gear, "axle", mesh.centre, mesh.axis, true, 0.0,
+				Vector2.ZERO, mesh.gear])
+			Bodies._piece_join(up, piece, into)
+			continue
+		# A door held by nothing, lodged in a part that BrickNet's labels name
+		# a hinge with, hangs on that hinge ([method _labelled_hinge]): 3180-1's
+		# cupboard door (4533), whose pins the file draws as rounds of one size
+		# end to end with the cupboard's (4532), which no round reads as in a
+		# bore, was held by nothing and did not swing. Only a door, a hatch
+		# or a lid (Playable.door_named), and only on what it is lodged in:
+		# read for any part, 6765-1's carriage tongue was hinged to its
+		# turntable's base and the turntable's turn moved the carriage; read
+		# for every pair, 9397-1's universal joint gained its second hinge
+		# and its steering's loop 44 joints, too many to solve; read for a
+		# door on any part, 10264-1's roller door, once its spool had
+		# turned, hung on the spool.
+		if keys.size() == 1 and _door(from):
+			var hinge: Array = _labelled_hinge(from, best)
+			if not hinge.is_empty():
+				candidates.append([best, from, "hinge", hinge[0], hinge[1], true, 0.0, Vector2.ZERO, 0])
+				Bodies._piece_join(up, piece, into)
+				continue
 		_join(from, best, "lodged")
 		lodged_in[from] = best
 		var root: int = _find(from)
@@ -825,6 +855,28 @@ func _driven_rack(keys: Array, piece: int, up: Dictionary) -> Array:
 			near.append([brick.id, brick.part_id, brick.transform])
 	for mesh: Racks.Pinion in Racks.find(near):
 		return [mesh.rack, mesh.gear]
+	return []
+
+
+## A pinion among [param keys] (one piece, [param piece] in [param up])
+## standing in a rack of another piece (Racks.find): [the mesh], or empty.
+func _driving_pinion(keys: Array, piece: int, up: Dictionary) -> Array:
+	var gears: Array = []
+	for key: int in keys:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var spec: Dictionary = Mechanism.spec_of(brick.part_id) if brick != null else {}
+		if not spec.is_empty() and int(spec.get("teeth", 0)) > 0:
+			gears.append([key, brick.part_id, brick.transform])
+	if gears.is_empty():
+		return []
+	var near: Array = gears.duplicate()
+	for brick: BrickWorld.Brick in world.bricks():
+		if _up.has(brick.id) and Bodies._piece_find(up, _find(brick.id)) != piece \
+				and Racks.is_rack(brick.part_id):
+			near.append([brick.id, brick.part_id, brick.transform])
+	for mesh: Racks.Pinion in Racks.find(near):
+		if not mesh.screw and keys.has(mesh.gear):
+			return [mesh]
 	return []
 
 
@@ -1870,6 +1922,38 @@ func _studs_under(low: int, high: int) -> Array:
 		if box.has_point(tip) and absf(box.position.y + 1.0 - foot.y) <= 1.5:
 			out.append([foot, way])
 	return out
+
+
+## The hinge BrickNet's labels name between parts [param a] and [param b]:
+## [where, its line], or empty. Two hinge connectors of one subtype and
+## opposite halves, within Exact.POS_THR and on one line (Exact.meets). Off
+## the main thread, only the shapes already read.
+func _labelled_hinge(a: int, b: int) -> Array:
+	var main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
+	var items: Array = []
+	for key: int in [a, b]:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		if brick == null or (not main and not Exact.known(library, brick.part_id)):
+			return []
+		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+		if shape == null or not shape.kind.has(Exact.HINGE):
+			return []
+		items.append(Exact.Item.new(shape, brick.transform))
+	for one: Array in (items[0] as Exact.Item).world():
+		if (items[0] as Exact.Item).shape.kind[int(one[0])] != Exact.HINGE:
+			continue
+		for other: Array in (items[1] as Exact.Item).world():
+			if (items[1] as Exact.Item).shape.kind[int(other[0])] != Exact.HINGE:
+				continue
+			if Exact.meets(items, [0, one[0], one[1], one[2], one[3]], [1, other[0], other[1], other[2], other[3]]):
+				return [one[1], one[2]]
+	return []
+
+
+## Whether [param key] is a door, a hatch, a lid or the like by its name.
+func _door(key: int) -> bool:
+	var info: PartLibrary.PartInfo = _info(key)
+	return info != null and Playable.door_named(info.name)
 
 
 ## The middle of the ball that is in the other's socket: a plate with two
