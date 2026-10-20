@@ -4848,12 +4848,12 @@ stands as a GAP.
 
 ### Checked
 
-On the final code: `grab_probe` headless whole, 172 passed (the base's 164
-and this unit's 8), and the same 35 that need a pointer failing, as on the
-base; in a window `--only=bearing` (2), `--only=path` (6, and the exact
-shape's two GAPs), `--only=bigstep` (the drift's two GAPs); and headless
-`--only=steering` (36), `--only=clipped` (4), `--only=grooved` (4),
-`--only=worms` (34), `--only=loops` (15). `motions_probe` (70),
+On the final code: `grab_probe` headless whole, 172 passed (the base's 164,
+loops, racks, worms, steering and all, and this unit's 8), and the same 35
+that need a pointer failing, as on the base; in a window `--only=bearing`
+(2) and `--only=path` (6, and the exact shape's two GAPs); headless
+`--only=steering` (36), `--only=clipped` (4) and `--only=grooved` (4), the
+three that stopped short with the exact-shape rule. `motions_probe` (70),
 `telescope_probe` (32, its three gaps), `simulate_probe` (41),
 `placing_probe` and `mcp_walk3_probe` (20) pass. The walk's "Extend the
 telescope" now stops at 574° of the 612°, where the carriage meets its
