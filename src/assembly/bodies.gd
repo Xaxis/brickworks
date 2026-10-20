@@ -1127,7 +1127,15 @@ func held_words(part: int) -> String:
 		return ""
 	stays = "%s is part of what stays: %s" % [_part_named(part), stays]
 	var at: int = int((anchor_why[body] as Array)[1])
-	var path: Array = _path(part, at) if at != 0 and at != part else []
+	if at == 0:
+		# The biggest body, held by no part in particular: what joins this
+		# part to it. A door opened to 90° was "part of what stays", with
+		# its top stud read into the wall brick over it.
+		var own := PackedStringArray()
+		for edge: Array in (joined_by.get(part, []) as Array).slice(0, 2):
+			own.append(_join_words(part, int(edge[0]), str(edge[1])))
+		return stays if own.is_empty() else "%s, and %s" % [stays, Bodies._and(own)]
+	var path: Array = _path(part, at) if at != part else []
 	if path.is_empty() or path.size() > 3:
 		return stays
 	var steps := PackedStringArray()
@@ -1153,6 +1161,11 @@ func overruled_words(part: int) -> String:
 	# hub read as on a hinge in the axle it grips is no joint at all.
 	var best: Array = []
 	for near: Array in near_first:
+		# Near it, or it is not what holds this part: a door left held at 90°
+		# in a big body was said to be held by a carriage's bearing across
+		# the model.
+		if int(near[0]) > 3:
+			break
 		if _path(int(near[1][0]), int(near[1][1])).size() >= 2:
 			best = near[1]
 			break

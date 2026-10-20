@@ -2707,6 +2707,13 @@
       "entry": "src/dev/telescope_probe.gd",
       "reach": "tools/probe.sh telescope_probe   (a session's telescope claims on five rigs of src/dev/fixtures/ in Simulate, Grab and move_part: a rack's tube slides 64/3 LDU a wheel turn, a crank's slider strokes 40 LDU and is not locked, a 45° tilt rolls the tube 8 LDU along a held pinion, a friction pin holds; the orrery's periods and frames as before; GAP lines are section 27's leftovers; headless it measures without pictures)",
       "area": "geometry"
+    },
+    {
+      "kind": "cli",
+      "label": "mcp walk 3 probe",
+      "entry": "src/dev/mcp_walk3_probe.gd",
+      "reach": "tools/probe.sh mcp_walk3_probe   (what the third MCP walk-through's session met on its observatory, tests/fixtures/mcpwalk3/observatory.ldr: define_motion checked after the motions it follows, the rack a wheel slides said, two tracks that meet told to use after=, a held loop and a held door said with what holds them, a joint's height in plates, a sequence's frames whole, saved under another name and opened with no unsaved warning, check_design saying a gear in or beside a rack)",
+      "area": "mcp"
     }
   ]
 }

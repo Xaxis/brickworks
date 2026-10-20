@@ -15890,6 +15890,7 @@ func _drive_said(model: Model, entries: Array, meshing: Dictionary,
 				+ "their centres %s LDU (%s studs) apart, and these are %s"
 				% [_tidy(a.radius + b.radius), _studs((a.radius + b.radius) / STUD),
 					_tidy(apart)])
+	lines.append_array(_racks_said(entries))
 	var by_axle: Dictionary = {}   ## index -> [grips, turns in], each an Array of numbers
 	for one: Array in Joints.through(entries):
 		var shaft: int = one[0]
@@ -15925,6 +15926,81 @@ func _drive_said(model: Model, entries: Array, meshing: Dictionary,
 ## How far past meshing two gears in one plane may be and still be said to
 ## nearly mesh, LDU: two teeth of module 1.
 const NEARLY_MESH := 6.0
+
+
+## Which gears stand in a rack's teeth, as Grab drives them (Racks.find),
+## and which stand by one and not in its teeth, with how far to move them.
+## A session stood a 3743 on its side against an 8 tooth gear, was told
+## nothing either way in thirteen checks, and built its telescope to slide
+## level instead, taking the app to read a rack only lying flat.
+func _racks_said(entries: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	var stood: Array = []   ## [index, part, Transform3D], as Racks.find reads them
+	for entry: Array in entries:
+		stood.append([int(entry[0]), str(entry[3]), entry[1]])
+	var racks: Dictionary = Racks.table()
+	var meshed: Dictionary = {}
+	for mesh: Racks.Pinion in Racks.find(stood):
+		meshed[Vector2i(mesh.gear, mesh.rack)] = true
+		out.append("  brick %d (%d tooth) is in the teeth of rack brick %d: a turn of it slides the rack %s studs"
+			% [mesh.gear, mesh.teeth, mesh.rack, _studs(Racks.pitch() * float(mesh.teeth) / STUD)])
+	var per_tooth: float = float(Mechanism.table().get("ldu_per_tooth", 1.25))
+	for rack: Array in stood:
+		var spec: Dictionary = racks.get(rack[1], {})
+		if spec.is_empty() or bool(spec.get("round", false)):
+			continue
+		var rack_at: Transform3D = rack[2]
+		var inverse: Transform3D = rack_at.affine_inverse()
+		for gear: Array in stood:
+			var gear_spec: Dictionary = Mechanism.spec_of(gear[1])
+			if gear_spec.is_empty() or not str(gear_spec.get("kind", "")) in ["spur", "double"] \
+					or str(gear_spec.get("axis", "z")) != "z" or int(gear_spec.get("teeth", 0)) <= 0 \
+					or meshed.has(Vector2i(int(gear[0]), int(rack[0]))) or out.size() >= WORTH_SAYING * 2:
+				continue
+			var gear_at: Transform3D = gear[2]
+			var local: Vector3 = inverse * (gear_at * (Vector3.BACK * float(gear_spec.get("plane", 0.0))))
+			var z: Array = spec.get("z", [-10.0, 10.0])
+			# Beside it: within a stud and a half of its teeth every way.
+			if local.x < float(spec["from"]) - STUD or local.x > float(spec["to"]) + STUD \
+					or local.z < float(z[0]) - STUD or local.z > float(z[1]) + STUD \
+					or absf(local.y - float(spec["pitch_line"])) > STUD * 1.5:
+				continue
+			var teeth: int = int(gear_spec["teeth"])
+			var across: Vector3 = (rack_at.basis * Vector3.BACK).normalized()
+			var why: String
+			if absf((inverse.basis * (gear_at.basis * Vector3.BACK)).normalized().z) < Racks.SQUARE:
+				why = "its axle must run across the rack's teeth, %s" % _axis_words(across)
+			else:
+				var want := Vector3(clampf(local.x, float(spec["from"]), float(spec["to"])),
+					float(spec["pitch_line"]) + per_tooth * float(teeth),
+					clampf(local.z, float(z[0]), float(z[1])))
+				var move: Vector3 = rack_at.basis * (want - local)
+				if move.length() < 1.0:
+					continue
+				why = "it meshes %s LDU from where it stands, %s" % [_tidy(move.length()), _way_words(move)]
+			out.append("  brick %d (%d tooth) is beside rack brick %d and not in its teeth: %s" % [
+				int(gear[0]), teeth, int(rack[0]), why])
+	return out
+
+
+## "along x", "up and down": the world axis [param way] runs most along.
+static func _axis_words(way: Vector3) -> String:
+	var most: int = way.abs().max_axis_index()
+	return "up and down" if most == Vector3.AXIS_Y else "along %s" % ("x" if most == Vector3.AXIS_X else "z")
+
+
+## "1.5 plates up and 0.1 studs toward +x": [param move] in the words a
+## placement takes, its two biggest parts.
+static func _way_words(move: Vector3) -> String:
+	var parts: Array = []
+	if absf(move.y) >= 0.5:
+		parts.append([absf(move.y), "%s plates %s" % [_tidy(absf(move.y) / 8.0), "up" if move.y > 0.0 else "down"]])
+	if absf(move.x) >= 0.5:
+		parts.append([absf(move.x), "%s studs toward %sx" % [_tidy(absf(move.x) / STUD), "+" if move.x > 0.0 else "-"]])
+	if absf(move.z) >= 0.5:
+		parts.append([absf(move.z), "%s studs toward %sz" % [_tidy(absf(move.z) / STUD), "+" if move.z > 0.0 else "-"]])
+	parts.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+	return " and ".join(PackedStringArray(parts.slice(0, 2).map(func(one: Array) -> String: return one[1])))
 
 
 ## Whether [param index] is in a section, turned, that turns on a joint

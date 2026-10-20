@@ -409,6 +409,24 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   a 2x2 turntable under a wheel plate gripped by its studs did not turn
   (t3 built a single-stud pivot instead); an animation of a small car was
   drawn small, through the window's camera (framed since, docs/ANIMATION.md).
+- **The third walk-through** (mcpwalk3, 2026-10-20; docs/MCP_WALK3.md): a
+  session built the owner's observatory (a hinged dome panel, a telescope
+  slid out by a rack and a wheel, two back panels) and gave it motions.
+  What it met is answered: define_motion checks a motion after the ones it
+  follows; a turn says the rack it slid, how far and which way
+  (`MotionPlayer.slid_words`, in play_motion, define_motion, render_motion
+  and move_part); a track stopped on a part another track of its motion
+  moves is told tracks are tested apart, use after=; a loop or a door a
+  move left held says what holds it (`GrabDrag.held_loop_words`,
+  `Bodies.held_words` naming the part's own joins to the biggest body);
+  play_motion's picture of a sequence has every moved part where it stood
+  then (`AppTools._whole_frames`); render_motion takes view= and says when
+  what moves is low behind the model; a model saved under another name is
+  not unsaved work (`ModelStore._saved_as`); move_part gives a joint's
+  height in plates; check_design says a gear in or beside a rack's teeth
+  (`Assistant._racks_said`). Checked by `src/dev/mcp_walk3_probe.gd`
+  (headless, on `tests/fixtures/mcpwalk3/observatory.ldr`); the walk and
+  its reruns are in `bench/results/mcpwalk3-2026-10-20/`.
 
 ## How to reach it
 
@@ -451,6 +469,7 @@ godot --headless --path . --script src/dev/app_tools_probe.gd      # the window'
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
 godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, the steering's angle, animating it, a gallery copy, What can I build?
+tools/probe.sh mcp_walk3_probe                                      # what the 2026-10-20 walk-through met on its observatory: motions after others, a rack's slide said, held joints said, a sequence's frames, saved and opened, racks in check_design
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)

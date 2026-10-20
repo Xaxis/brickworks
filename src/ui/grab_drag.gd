@@ -939,10 +939,8 @@ func for_session(input: Dictionary) -> String:
 		var span: Vector2 = held.slide_range()
 		slides = "; slides %s studs back or %s on along its line" % [
 			Balance.studs(-span.x / BrickLattice.STUD), Balance.studs(span.y / BrickLattice.STUD)]
-	var at: Vector3 = held.pivot / BrickLattice.STUD
-	lines.append("%s (%s at x=%s y=%s z=%s studs, %s%s); %d bod%s move together%s." % [
-		_capital(held.said), kind, Balance.studs(at.x), Balance.studs(at.y), Balance.studs(at.z),
-		how, slides, held.moving_bodies.size(), "y" if held.moving_bodies.size() == 1 else "ies",
+	lines.append("%s (%s at %s, %s%s); %d bod%s move together%s." % [
+		_capital(held.said), kind, at_words(held.pivot), how, slides, held.moving_bodies.size(), "y" if held.moving_bodies.size() == 1 else "ies",
 		(", and %d part%s of the gear train it drives" % [held.coupled.size(),
 			"" if held.coupled.size() == 1 else "s"]) if not held.coupled.is_empty() else ""])
 	# The graph read for this revision, as a drag weighs with.
@@ -1011,16 +1009,20 @@ func for_session(input: Dictionary) -> String:
 	if moved == 0:
 		lines.append("It did not move: %s" % (("%s holds it, pulled to its full length." % held.stretch_words)
 			if stopped and not held.stretch_words.is_empty() else _in_the_way(held)
-			if stopped else "it is already there."))
+			if stopped else held_loop_words(held) + "." if input.has("degrees") and held.mode == "slide"
+			else "it is already there."))
 		return "\n".join(lines)
-	lines.append("Moved %d part%s: %s%s (asked %s)%s%s%s." % [moved, "" if moved == 1 else "s",
+	var slid: String = MotionPlayer.slid_words(held)
+	if slid.is_empty():
+		slid = _swept_words(held)
+	lines.append("Moved %d part%s: %s%s (asked %s)%s%s%s%s." % [moved, "" if moved == 1 else "s",
 		{"turn": "turned ", "slide": "slid "}.get(held.mode, ""), held.position_words(), asked_for,
 		("; it stopped where %s holds it, pulled to its full length" % held.stretch_words)
 			if stopped and not held.stretch_words.is_empty()
 			else ("; it stopped where %s" % (_met_words(held) if not _met_words(held).is_empty()
 				else "it meets the model")) if stopped else "",
 		"; then " + swung if not swung.is_empty() else "",
-		"; " + own if not own.is_empty() else ""])
+		"; " + own if not own.is_empty() else "", "; " + slid if not slid.is_empty() else ""])
 	if held.mode != "ball":
 		var stands: String = _from_built_words(held)
 		lines.append("Its joint now stands %s; %s= %s it on from there." % [stands
@@ -1065,6 +1067,74 @@ func for_session(input: Dictionary) -> String:
 	edited.call()
 	last_words = "\n".join(lines)
 	return last_words
+
+
+## Which way a turn carried what it moved: "its middle went 2.1 studs
+## toward +z, into the model". A session opened a back door -100° and its
+## twin 100°, could not tell from four views which way either had gone, and
+## kept its motion the other way round. Empty for a slide, which says its
+## way, or a turn that leaves its middle where it was (a wheel, a gear).
+func _swept_words(held: Grab) -> String:
+	if held.mode != "turn":
+		return ""
+	var from := Vector3.ZERO
+	var to := Vector3.ZERO
+	var count: int = 0
+	for key: Variant in held.placed:
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null and library != null else null
+		if held.rest.has(key) and mesh != null:
+			# The part's middle: a door's own origin is on its hinge.
+			var middle: Vector3 = mesh.bounds.get_center()
+			from += (held.rest[key] as Transform3D) * middle
+			to += (held.placed[key] as Transform3D) * middle
+			count += 1
+	if count == 0:
+		return ""
+	var moved: Vector3 = (to - from) / float(count)
+	if moved.length() < BrickLattice.STUD * 0.5:
+		return ""
+	var centre := Vector3.ZERO
+	var all: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			centre += brick.transform.origin
+			all += 1
+	var side: String = ""
+	if all > 0:
+		var out: Vector3 = from / float(count) - centre / float(all)
+		var level := Vector3(moved.x, 0.0, moved.z)
+		out.y = 0.0
+		if level.length() > BrickLattice.STUD * 0.5 and out.length() > BrickLattice.STUD:
+			side = ", into the model" if level.dot(out) < 0.0 else ", out from the model"
+	return "its middle went %s studs %s%s" % [Balance.studs(moved.length() / BrickLattice.STUD),
+		MotionPlayer._toward(moved), side]
+
+
+## Why [param held], asked to turn, only slides: the loop it is in is held
+## still, said with what holds it. Turned back, the observatory's wheel was
+## "already there", and played backwards "it slides": the carriage its rack
+## rides on had stopped with its plate on a bearing's studs, and was read as
+## joined to the walls there.
+func held_loop_words(held: Grab) -> String:
+	var holding := PackedStringArray()
+	if held.linkage != null:
+		for mesh: Racks.Pinion in held.linkage.racks:
+			var said: String = _bodies.held_words(mesh.rack) if _bodies != null else ""
+			if not said.is_empty():
+				holding.append(said)
+	return ("it does not turn here, only slides along its line%s. A part moved to where its studs or "
+		+ "holes meet another's is read as joined there: undo the move that put it there, or stop it "
+		+ "short of that place") % ((", because what it turns is held: " + "; ".join(holding))
+		if not holding.is_empty() else "")
+
+
+## Where a joint stands, as look_at_model says a place: "x=16 z=14.5
+## studs, 16.75 plates up". It said "y=6.7 studs", the plates look_at_model
+## gives as 16.75 counted in studs.
+static func at_words(point: Vector3) -> String:
+	return "x=%s z=%s studs, %s plates up" % [Balance.studs(point.x / BrickLattice.STUD),
+		Balance.studs(point.z / BrickLattice.STUD), Balance.studs(point.y / BrickLattice.PLATE)]
 
 
 ## [param ids] taken hold of as a drag takes them, the first by itself or

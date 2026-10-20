@@ -445,6 +445,25 @@ whole cycle.
 
 ### Fixed
 
+- Claude gets your model's motions right when it plays them. A motion
+  that follows another ("Extend the telescope" after "Open the dome
+  panel") is checked after it, where it used to be checked alone and said
+  to stop on the shut dome. Turning a wheel says how far the rack it drives
+  slid, and which way. The picture of a sequence shows each moment as it
+  was, where it showed the telescope slid out through the shut dome. A
+  render can be taken from the back (view=), and says when what a motion
+  moves is behind the model from the camera.
+- When a joint will not move after a motion, Claude is told what holds it
+  ("the studs of the Door grip the Brick 1 x 6 above it") and what to do,
+  where it was told the part was "already there" or only part of the
+  biggest body.
+- Claude's design check says when a gear stands in a rack's teeth, and when
+  one stands beside a rack and not in them, with how far to move it.
+- A model Claude saved under a name of its own no longer counts as unsaved:
+  opening another model straight after asked to save it first.
+- When Claude turns a part, it is told which way the part went (a door
+  into the model or out from it), and a joint's height comes in plates, as
+  everywhere else, where it was given in studs.
 - The app no longer crashes when Claude looks at your model while a big
   one is still opening. A model of 600 parts or more has its joints read
   in the background as it opens, and Claude's look at it read the same
