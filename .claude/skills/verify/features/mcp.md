@@ -354,9 +354,18 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
     keys now take a part on its joint as move_part names it ("#7"), in
     degrees from where it was built: each frame is the grab's own turn
     (`GrabDrag.turning_for_session`: its stops, its loop, the gears it
-    drives), drawn by `PosePanel.render_animation` over pose's joints
-    (`PosePanel.carried`) and never put on the baseplate. render=false with
-    one is refused: the window's Play plays pose's joints.
+    drives), drawn by `PosePanel.render_animation` over pose's joints and
+    never put on the baseplate. The panel takes it afresh by its name each
+    time (`PosePanel.turning_for`, `GrabDrag.Turning`), so render=false sets
+    keys the person's Play turns, and keys a render left there play and
+    render again; the answer says where a part stopped short ("#143 stops at
+    0° of the 30° asked: …"). A session's render is framed on the model and
+    what it sweeps ("hero", as simulate_mechanism's recording is), not drawn
+    through the window's camera, and the answer carries its frames at its
+    keys as one picture (`PosePanel.sheet`), with "drawn in N s" for how
+    long drawing took. pose_model's list marks a joint with no room to turn
+    10° or 90° either way and points to move_part (`Poser.has_room_to`)
+    (animaudit, 2026-10-20; docs/ANIMATION.md).
   Checked by `src/dev/mcp_walk_probe.gd` (headless: the kart's listing,
   its card saying steering and not boom, the part it names turning both
   front wheels and not the back ones, 20° then 15° said as 35° from where
@@ -395,8 +404,8 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   was taken; the kart's frame is beams on single friction pins, so a turn
   of knuckle #7 can shear it as the loop solves (friction is not weighed);
   a 2x2 turntable under a wheel plate gripped by its studs did not turn
-  (t3 built a single-stud pivot instead); an animation of a small car is
-  drawn small in Pose's 480 x 300 frame.
+  (t3 built a single-stud pivot instead); an animation of a small car was
+  drawn small, through the window's camera (framed since, docs/ANIMATION.md).
 
 ## How to reach it
 

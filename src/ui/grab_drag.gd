@@ -1085,11 +1085,36 @@ func _taken(ids: Array) -> Grab:
 	return held
 
 
+## A part on its joint turned for an animation, as move_part turns it (its
+## stops, its loop, the gears it drives), without moving anything.
+class Turning extends RefCounted:
+	var held: Grab
+	## Where the joint stood from where it was built when it was taken.
+	var offset: float = 0.0
+	## The furthest short of a frame's angle it stopped, degrees, and why.
+	var short_by: float = 0.0
+	var short_words: String = ""
+
+	## Where everything it moves stands at [param degrees] from where it was
+	## built: brick id -> Transform3D.
+	func placed_at(degrees: float) -> Dictionary:
+		var reached: float = held.turn_to(degrees - offset) + offset
+		# A click hinge stands on its clicks: the nearest is not short of it.
+		var detent: float = held.link.detent if held.link != null else 0.0
+		var asked: float = degrees if detent <= 0.0 \
+			else roundf((degrees - offset) / detent) * detent + offset
+		var short: float = absf(asked - reached)
+		if short > short_by + 0.5:
+			short_by = short
+			var met: String = GrabDrag._met_words(held)
+			short_words = "stops at %d° of the %d° asked%s" % [roundi(reached), roundi(asked),
+				": " + met if not met.is_empty() else ""]
+		return held.placed.duplicate()
+
+
 ## A session's animate_model naming a part on its joint, as move_part names
-## it ("#14", a sub-assembly's name): a function from the joint's degrees
-## from where it was built to where everything it moves stands then, turned
-## as move_part turns it (its stops, its loop, the gears it drives) without
-## moving anything; or a String saying why it cannot turn.
+## it ("#14", a sub-assembly's name): its Turning, from the joint's degrees
+## from where it was built; or a String saying why it cannot turn.
 func turning_for_session(asked: String) -> Variant:
 	var ids: Array = _named_parts(asked.strip_edges())
 	if ids.is_empty():
@@ -1102,10 +1127,10 @@ func turning_for_session(asked: String) -> Variant:
 	if held.mode != "turn":
 		return "%s %s; an animation turns a joint" % [asked, "slides" if held.mode == "slide" else "turns on a ball"]
 	var built: float = held.from_built()
-	var offset: float = built if not is_nan(built) else 0.0
-	return func(degrees: float) -> Dictionary:
-		held.turn_to(degrees - offset)
-		return held.placed.duplicate()
+	var turning := Turning.new()
+	turning.held = held
+	turning.offset = built if not is_nan(built) else 0.0
+	return turning
 
 
 ## Where [param held]'s joint stands from where the model was built (Grab.

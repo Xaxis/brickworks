@@ -272,27 +272,84 @@ func play() -> void:
 	_playing = true
 	_play_at = 0.0
 	_play.text = "Stop"
+	_played = _turnings()
+	_played_from = {}
 
 
 func _stop() -> void:
 	_playing = false
 	_play.text = "Play"
 	# Back as the pose stands: playing moved only what is drawn.
+	for brick_id: Variant in _played_from:
+		if world.get_brick(int(brick_id)) != null:
+			world.move_brick(int(brick_id), _played_from[brick_id])
+	_played = {}
+	_played_from = {}
 	poser.stand(poser.angles())
 	_seen_revision = world.revision
 
 
-## Parts on joints a session's animation turns that are not pose joints
-## (a part on its pin, as move_part names it): a key's name -> a function
-## from its degrees to where what it moves stands (GrabDrag.
-## turning_for_session). Drawn by [method render_animation] alone.
-var carried: Dictionary = {}
+## A part on its joint that is not a pose joint, as move_part names it
+## ("#14": a steering on its pins, a wheel), keyed by a session: its name ->
+## a GrabDrag.Turning, or a String saying why it cannot turn
+## (GrabDrag.turning_for_session; main sets it).
+var turning_for: Callable
+## What Play turns of those, and where each part they moved stood before.
+var _played: Dictionary = {}
+var _played_from: Dictionary = {}
+## What the last render's parts on their joints stopped short of: lines.
+var _short: PackedStringArray = PackedStringArray()
+
+
+## The keys' parts on their joints (not pose joints): name -> Turning.
+## Taken afresh each time, on the model as it stands. Kept only for the one
+## render, a session's keys stayed in the panel, and Play and Render
+## animation then drew a steering keyed to turn standing still.
+func _turnings() -> Dictionary:
+	var out: Dictionary = {}
+	if not turning_for.is_valid():
+		return out
+	for path: String in animation.paths():
+		if poser.joint(path) != null:
+			continue
+		var turning: Variant = turning_for.call(path)
+		if turning is GrabDrag.Turning:
+			out[path] = turning
+	return out
+
+
+## Stand the parts as the keys say at [param t]: the pose joints, then the
+## parts on their joints Play turns.
+func _stand_at(t: float) -> void:
+	var angles: Dictionary = animation.angles_at(t)
+	poser.stand(angles)
+	for path: String in _played:
+		var placed: Dictionary = (_played[path] as GrabDrag.Turning).placed_at(
+			float(angles.get(path, 0.0)))
+		for brick_id: Variant in placed:
+			var brick: BrickWorld.Brick = world.get_brick(int(brick_id))
+			if brick == null:
+				continue
+			if not _played_from.has(brick_id):
+				_played_from[brick_id] = brick.transform
+			world.move_brick(int(brick_id), placed[brick_id])
+
+
+## What the last render's parts on their joints stopped short of, for a
+## session: "#14 stops at 12° of the 30° asked: … meets …".
+func short_words() -> PackedStringArray:
+	return _short
 
 
 ## Draw every frame and keep them. Returns how many were drawn.
 ## [param job], from a session (ToolJobs), is the bar along the foot of the
-## window that counts the frames, and whose Cancel stops it.
-func render_animation(job: Working.Job = null) -> int:
+## window that counts the frames, and whose Cancel stops it. [param view] is
+## RenderSettings.view: the person's own camera when empty; a session's is
+## "hero", framed on the model and what it sweeps, since it cannot see the
+## window (SimulatePanel.record_of). Through the window's camera, a session's
+## render drew 8808-1 30% of the picture wide, and 2% once the window had
+## been zoomed out.
+func render_animation(job: Working.Job = null, view: String = "") -> int:
 	if _working or world == null:
 		return 0
 	if animation.keys.is_empty() and not animation.turntable:
@@ -320,19 +377,30 @@ func render_animation(job: Working.Job = null) -> int:
 	var started: int = Time.get_ticks_msec()
 	var frames: int = animation.frame_count()
 	var poses: Array = []
+	var carried: Dictionary = _turnings()
 	for n: int in frames:
 		var angles: Dictionary = animation.angles_at(animation.time_of(n))
 		var placed: Dictionary = poser.transforms_for(angles)
 		for path: String in carried:
-			placed.merge((carried[path] as Callable).call(float(angles.get(path, 0.0))), true)
+			placed.merge((carried[path] as GrabDrag.Turning).placed_at(
+				float(angles.get(path, 0.0))), true)
 		poses.append(placed)
+	_short = PackedStringArray()
+	for path: String in carried:
+		var turning: GrabDrag.Turning = carried[path]
+		if not turning.short_words.is_empty():
+			_short.append("%s %s" % [path, turning.short_words])
 	var chosen: RenderSettings = settings.copy()
 	chosen.fps = animation.fps
 	chosen.frames = frames
+	if not view.is_empty():
+		chosen.view = view
 	var output := RenderOutput.new()
 	output.folder = folder
 	var model: String = str(named.call())
 	output.begin_turntable(model, chosen, "_animation")
+	_sheet = {}
+	var sheet_at: Array = _sheet_frames(frames)
 	var stop: Callable = renderer.cancel
 	if job != null:
 		job.count(0, frames)
@@ -344,6 +412,8 @@ func render_animation(job: Working.Job = null) -> int:
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
 			_frame.visible = true
+			if sheet_at.has(n):
+				_sheet[n] = image
 			if job != null:
 				job.count(n + 1)
 			await output.add_frame(n, image))
@@ -367,9 +437,61 @@ func render_animation(job: Working.Job = null) -> int:
 	_progress.value = 1.0
 	_last = {"frames": done, "bytes": output.last_bytes,
 		"name": RenderOutput.file_name(model, "_animation", "webp"),
-		"paths": Array(output.paths)}
+		"paths": Array(output.paths), "kept": "; ".join(lines), "seconds": roundi(seconds)}
 	_status.text = "%d frames — %s — %.0f s." % [done, "; ".join(lines), seconds]
 	return done
+
+
+## A few frames of the last render, frame number -> Image: at its keys, or
+## spread over it. A session cannot see the window or play a file, and the
+## first that animated 8808-1's steering said it had not watched it.
+var _sheet: Dictionary = {}
+const SHEET_MOST := 4
+const SHEET_WIDE := 480
+const SHEET_GAP := 4
+
+
+## Which frames go in the sheet: each key's, or four spread out when there
+## are more keys or none.
+func _sheet_frames(frames: int) -> Array:
+	var out: Array = []
+	if animation.keys.size() >= 2 and animation.keys.size() <= SHEET_MOST:
+		for key: Dictionary in animation.keys:
+			out.append(clampi(roundi(float(key["t"]) * animation.fps), 0, frames - 1))
+	else:
+		for n: int in SHEET_MOST:
+			out.append(roundi(float(n) * float(frames - 1) / float(SHEET_MOST - 1)))
+	return out
+
+
+## The last render's sheet as one picture, two frames to a row, each at
+## most SHEET_WIDE across; null when nothing was drawn. [param times] is
+## filled with each frame's time, in order. At half of 480 × 300 a session
+## found them "too small to judge", and posed the model again to look.
+func sheet(times: Array = []) -> Image:
+	if _sheet.is_empty():
+		return null
+	var numbers: Array = _sheet.keys()
+	numbers.sort()
+	var first: Image = _sheet[numbers[0]]
+	var scale: float = minf(1.0, float(SHEET_WIDE) / float(maxi(first.get_width(), 1)))
+	var cell := Vector2i(maxi(roundi(first.get_width() * scale), 1),
+		maxi(roundi(first.get_height() * scale), 1))
+	var across: int = mini(numbers.size(), 2)
+	var rows: int = ceili(float(numbers.size()) / 2.0)
+	# A line between the frames: without one, a session read the crane in
+	# four frames as one picture of it moving about the frame.
+	var step: Vector2i = cell + Vector2i(SHEET_GAP, SHEET_GAP)
+	var out := Image.create(step.x * across - SHEET_GAP, step.y * rows - SHEET_GAP, false,
+		Image.FORMAT_RGBA8)
+	out.fill(Color(0.35, 0.35, 0.38))
+	for k: int in numbers.size():
+		var frame: Image = (_sheet[numbers[k]] as Image).duplicate()
+		frame.convert(Image.FORMAT_RGBA8)
+		frame.resize(cell.x, cell.y, Image.INTERPOLATE_BILINEAR)
+		out.blit_rect(frame, Rect2i(Vector2i.ZERO, cell), Vector2i((k % 2) * step.x, (k / 2) * step.y))
+		times.append(animation.time_of(int(numbers[k])))
+	return out
 
 
 func is_rendering() -> bool:
@@ -407,8 +529,7 @@ func _process(delta: float) -> void:
 				_show_angles()
 	if _playing:
 		_play_at += delta
-		var t: float = minf(_play_at, animation.length())
-		poser.stand(animation.angles_at(t))
+		_stand_at(minf(_play_at, animation.length()))
 		if _play_at >= animation.length() + 0.5:
 			_stop()
 	_tell_page()

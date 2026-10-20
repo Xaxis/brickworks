@@ -43,6 +43,12 @@ class Joint extends RefCounted:
 var joints: Array[Joint] = []
 ## Where every part that turns stood at rest: brick id -> Transform3D.
 var rest: Dictionary = {}
+## The lattice's cells of each of them there: brick id -> its boxes. What a
+## part overlapped at rest is not in its way: the cells are 2 LDU, coarser
+## than a hinge's fit, and 31070-1's back window swung up and let go at 0
+## stopped 6 LDU and 4 degrees short of where it was built. Grab learned the
+## same (Grab._built_touching).
+var rest_cells: Dictionary = {}
 
 
 ## Every joint in the model, its rest where its parts stand now. Returns
@@ -50,6 +56,7 @@ var rest: Dictionary = {}
 func find() -> int:
 	joints.clear()
 	rest.clear()
+	rest_cells.clear()
 	if assemblies == null:
 		return 0
 	for path: String in assemblies.paths():
@@ -77,6 +84,7 @@ func find() -> int:
 		joints.append(joint)
 		for brick_id: int in ids:
 			rest[brick_id] = world.get_brick(brick_id).transform
+			rest_cells[brick_id] = builder.lattice.boxes_of(brick_id)
 	joints.sort_custom(func(a: Joint, b: Joint) -> bool:
 		if a.depth != b.depth:
 			return a.depth < b.depth
@@ -114,9 +122,10 @@ func transforms_for(wanted: Dictionary) -> Dictionary:
 			* Transform3D(Basis.IDENTITY, -one.point)
 		for brick_id: int in one.ids:
 			out[brick_id] = around * (out[brick_id] as Transform3D)
-	for brick_id: Variant in out:
-		var at: Transform3D = out[brick_id]
-		out[brick_id] = Transform3D(at.basis.orthonormalized(), at.origin)
+	# Each is turned from its rest, never from the last frame, so nothing
+	# drifts to be squared up. Squared up, Play rewrote every part of every
+	# joint keyed, turned up to 0.0006 on 8808-1's LDraw matrices, with no
+	# step to undo.
 	return out
 
 
@@ -190,7 +199,8 @@ func _has_room(one: Joint, placed: Dictionary, start: Dictionary) -> bool:
 		var packed: PackedInt32Array = builder.boxes_for(library.mesh_for(brick.part_id),
 			placed[brick_id])
 		for other: int in builder.lattice.blockers_boxes(packed):
-			if not moving.has(other) and not one.partners.has(other):
+			if not moving.has(other) and not one.partners.has(other) \
+					and not _touched_at_rest(brick_id, other):
 				free = false
 				break
 		if not free:
@@ -201,6 +211,23 @@ func _has_room(one: Joint, placed: Dictionary, start: Dictionary) -> bool:
 			builder.lattice.occupy_boxes(brick_id, builder.boxes_for(
 				library.mesh_for(brick.part_id), start[brick_id]))
 	return free
+
+
+## Whether [param one] has room to turn [param degrees] from where it
+## stands, the other joints held. Changes nothing.
+func has_room_to(one: Joint, degrees: float) -> bool:
+	var now: Dictionary = angles()
+	var wanted: Dictionary = now.duplicate()
+	wanted[one.path] = one.angle + degrees
+	return _has_room(one, transforms_for(wanted), transforms_for(now))
+
+
+## Whether [param brick_id] overlapped [param other] where both stood at
+## rest ([member rest_cells]; a part that does not turn, where it stands).
+func _touched_at_rest(brick_id: int, other: int) -> bool:
+	var mine: PackedInt32Array = rest_cells.get(brick_id, PackedInt32Array())
+	var theirs: PackedInt32Array = rest_cells.get(other, builder.lattice.boxes_of(other))
+	return not mine.is_empty() and not theirs.is_empty() and BrickLattice._overlaps(mine, theirs)
 
 
 ## Whether the parts stand as the joints' angles say: false once something
