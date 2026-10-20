@@ -146,5 +146,22 @@ while [ $# -gt 0 ]; do
   if [ $# -gt 0 ]; then run "$1" & shift; fi
   wait
 done
-for n in $ALONE; do run "$n"; done
+# Timing checks measure the app's own work, which still slows when the box is
+# busy: m87's play and m98's grab held at load 20-42 and passed alone at 3-10
+# (2026-10-19). Each waits for the one-minute load to fall under CALM_LOAD,
+# from one budget of CALM_WAIT seconds for the whole battery, so a busy box
+# delays a release by minutes, never hours; then it runs anyway. The load
+# each began at goes in TAG_calm.log, to read beside a timing failure.
+calm_left=${CALM_WAIT:-900}
+calm() {
+  local load waited=0
+  while :; do
+    load=$(cut -d' ' -f1 /proc/loadavg)
+    awk -v l="$load" -v c="${CALM_LOAD:-12}" 'BEGIN { exit !(l < c) }' && break
+    [ "$calm_left" -le 0 ] && break
+    sleep 15; waited=$((waited + 15)); calm_left=$((calm_left - 15))
+  done
+  echo "$1 began at load $load after ${waited}s" >> "$S/${TAG}_calm.log"
+}
+for n in $ALONE; do calm "$n"; run "$n"; done
 echo done >> "$S/$TAG.out"

@@ -73,6 +73,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   release runs its own scripts and knows its own checks. m87 was started
   from main's copy and held on "no such check" for the three it added
   (2026-10-19). `RELEASE_HERE` pins a copy on purpose.
+- A timing check (the SOLO ones) waits for the one-minute load to fall under
+  `CALM_LOAD` (12), from one `CALM_WAIT` budget (900 s) for the battery, then
+  runs anyway; `<tag>_calm.log` says the load each began at. m87's play and
+  m98's grab held at load 20-42 and passed alone at 3-10 (2026-10-19).
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
