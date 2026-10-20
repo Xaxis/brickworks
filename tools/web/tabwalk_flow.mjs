@@ -229,6 +229,7 @@ async function accountShut(page) {
     await press(page, "account_done");
     await until(async () => !(await open()), 5);
   }
+  if (await open()) await page.keyboard.press("Escape");
 }
 // The model as the tab keeps it in the browser: its part lines, sorted.
 async function partsOf(page, id) {
@@ -247,7 +248,10 @@ async function partsOf(page, id) {
       get.onerror = () => { db.close(); done(""); };
     };
   }), `${USER}/sessions/${id}/autosave.ldr`);
-  return text.split(/\r?\n/).filter((line) => line.startsWith("1 ")).map((line) => line.trim()).sort().join("\n");
+  // Parts alone: a saved model is kept with its sub-models, and the lines
+  // naming them come and go with the save, not with the parts.
+  return text.split(/\r?\n/).filter((line) => /^1 .*\.dat\s*$/i.test(line)).map((line) => line.trim())
+    .sort().join("\n");
 }
 // The parts once the tab has kept what it shows: the count it shows held
 // still, then what it stored, read until two reads 4 s apart agree. Read
@@ -445,6 +449,8 @@ try {
     const landed = popups[popups.length - 1] || "";
     tab.message = landed.includes("?q=") ? decodeURIComponent(landed.split("?q=")[1].split("&")[0]) : "";
     check(`${tab.label}: New chat for this tab hands claude.ai "${tab.message}"`, tab.message.includes(tab.id));
+    // Back from the claude.ai tab it opened, as the person comes back.
+    await tab.page.bringToFront();
     await accountShut(tab.page);
   }
   await stage("0_two_tabs");

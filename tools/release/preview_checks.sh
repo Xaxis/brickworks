@@ -74,6 +74,11 @@ declare -A CMD=(
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
+  # local only: tabwalk_flow.mjs. Real Claude Code sessions on the
+  # subscription build in two tabs at once: about 15 minutes and the plan's
+  # quota a run, and Claude's answers vary, so a release cannot wait on it.
+  # tabpair above holds the same rules with scripted chats. Run it by hand
+  # after a change to the relay's tabs or the connector (its header says how).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
