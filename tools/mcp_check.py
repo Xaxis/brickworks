@@ -33,6 +33,7 @@ import os
 import signal
 import socket
 import subprocess
+import tempfile
 import sys
 import time
 import urllib.request
@@ -117,9 +118,14 @@ def listening(port: int) -> bool:
 def start_app(port: int) -> subprocess.Popen:
     """A headless app with the port open. Killed by whoever started it."""
     log = open("/tmp/brickworks-mcp-check-%d.log" % port, "w")
+    # Never the person's own app data (app_userdata/Brickworks under the
+    # default XDG_DATA_HOME): an app started here keeps its own (2026-10-20).
+    environment = dict(os.environ)
+    if environment.get("XDG_DATA_HOME", "") in ("", str(Path.home() / ".local" / "share")):
+        environment["XDG_DATA_HOME"] = tempfile.mkdtemp(prefix="brickworks-mcp-check-data.")
     app = subprocess.Popen(
         ["godot", "--headless", "--path", str(ROOT), "--", "--mcp=%d" % port],
-        stdout=log, stderr=subprocess.STDOUT,
+        stdout=log, stderr=subprocess.STDOUT, env=environment,
         # Its own process group, so terminating it cannot reach this one.
         start_new_session=True)
     waited = time.time()

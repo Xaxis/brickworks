@@ -21,6 +21,16 @@ set -uo pipefail
 # whatever directory it was started from, which for a deploy means
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
+# Never the person's own app data (~/.local/share/godot/app_userdata/
+# Brickworks, their models and settings): a Godot left to the default
+# XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
+# (2026-10-20), and check.sh relied on whoever called it. A run here gets
+# a data folder of its own unless it was given one.
+if [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
+  XDG_DATA_HOME="$(mktemp -d "${TMPDIR:-/tmp}/brickworks-check-data.XXXXXX")"
+  export XDG_DATA_HOME
+  echo "  (app data for this run: $XDG_DATA_HOME)"
+fi
 
 # In this machine's queue for heavy jobs, where it has one. Several
 # projects share the box, and the windowed probes starve above a load of

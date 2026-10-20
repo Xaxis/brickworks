@@ -34,6 +34,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import tempfile
 import sys
 import time
 from pathlib import Path
@@ -149,6 +150,11 @@ def _run(command: list[str], *, quiet: bool, started: float,
     # says "no picture in time" in its log.  --gpu takes the lease.
     if gpu:
         environment.setdefault("GODOT_GPU", "1")
+    # Never the person's own app data (app_userdata/Brickworks under the
+    # default XDG_DATA_HOME): the design goes to --out, and the app's
+    # settings and autosave go to a folder of this run's (2026-10-20).
+    if environment.get("XDG_DATA_HOME", "") in ("", str(Path.home() / ".local" / "share")):
+        environment["XDG_DATA_HOME"] = tempfile.mkdtemp(prefix="brickworks-design-data.")
     process = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, bufsize=1, env=environment,
