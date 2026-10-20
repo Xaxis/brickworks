@@ -318,6 +318,8 @@ class Played extends RefCounted:
 	var order: Array = []
 	var count: int = 0
 	var next: int = 0
+	## The longest one frame took to work out, ms.
+	var frame_ms: float = 0.0
 
 	func stopped() -> bool:
 		for item: Item in items:
@@ -399,12 +401,14 @@ func begin(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS) -
 func advance(played: Played, until: int = 0) -> bool:
 	var length: float = played.seconds
 	while played.next < played.count:
+		var began: int = Time.get_ticks_usec()
 		var t: float = minf(float(played.next) / float(played.fps), length)
 		for item: Item in played.items:
 			var when: float = t if item.driver or not played.reverse else length - t
 			_step(item, item.track.place_at(when))
 		played.frames.append(_composed(played.order))
 		played.next += 1
+		played.frame_ms = maxf(played.frame_ms, (Time.get_ticks_usec() - began) / 1000.0)
 		if until > 0 and Time.get_ticks_usec() >= until:
 			break
 	return played.next >= played.count
@@ -473,6 +477,11 @@ func play_in_order(order: Array, reverse: bool, words: String, fps: int = PLAY_F
 	return paced.run
 
 
+## How long a paced run waits for the joints to be read on a worker before
+## it reads them itself, ms.
+const READ_WAIT_MS := 1000
+
+
 ## play_in_order's work, done a slice at a time ([method pace_on]): a
 ## link's press on a phone worked out two gates' 25 frames at once, 713 ms
 ## of one frame with the CPU slowed four times.
@@ -488,10 +497,17 @@ class Paced extends RefCounted:
 	var at: int = 0
 	var playing: Played = null
 	var done: bool = false
-	## How many slices it took, the longest of them and all of them, ms.
+	## How many slices it took, the longest of them and all of them, ms;
+	## and the longest of what cannot be cut: a motion's joints taken hold
+	## of, one frame, a motion kept.
 	var slices: int = 0
 	var longest_ms: float = 0.0
 	var total_ms: float = 0.0
+	var hold_ms: float = 0.0
+	var frame_ms: float = 0.0
+	var keep_ms: float = 0.0
+	## When its last motion was kept, ms.
+	var kept_at: int = 0
 
 
 func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Paced:
@@ -514,16 +530,28 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 	var until: int = began + int(budget_ms * 1000.0) if budget_ms > 0.0 else 0
 	while until == 0 or Time.get_ticks_usec() < until:
 		if paced.playing == null:
+			# The next motion begins where the last left the model, whose
+			# joints are read again: on a worker for a big model, waited
+			# for here (a second at most) rather than read in this frame.
+			if until > 0 and paced.at > 0 and paced.at < paced.order.size() and not grabbing.is_ready() \
+					and grabbing.reads_ahead() and Time.get_ticks_msec() - paced.kept_at < READ_WAIT_MS:
+				break
 			if paced.at >= paced.order.size():
 				for frames: Array in MotionRender.whole_frames(paced.run.each):
 					paced.run.frames.append_array(frames)
 				builder.fold_since(paced.depth, paced.words)
 				paced.done = true
 				break
+			var held_at: int = Time.get_ticks_usec()
 			paced.playing = begin(paced.order[paced.at], paced.reverse, paced.fps)
+			paced.hold_ms = maxf(paced.hold_ms, (Time.get_ticks_usec() - held_at) / 1000.0)
 			continue
 		if advance(paced.playing, until):
+			paced.frame_ms = maxf(paced.frame_ms, paced.playing.frame_ms)
+			var kept_at: int = Time.get_ticks_usec()
 			finish(paced.playing, true, paced.words if paced.order.size() == 1 else "")
+			paced.keep_ms = maxf(paced.keep_ms, (Time.get_ticks_usec() - kept_at) / 1000.0)
+			paced.kept_at = Time.get_ticks_msec()
 			paced.run.played.append(paced.playing)
 			paced.run.each.append(paced.playing.frames)
 			paced.playing = null

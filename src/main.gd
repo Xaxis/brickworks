@@ -3323,7 +3323,8 @@ func _pace_motion() -> void:
 		refused.append_array(played.refused)
 	_motion_last = {"name": motion.name, "backwards": back, "frames": run.frames.size(),
 		"ms": snappedf(paced.total_ms, 0.1), "longest_ms": snappedf(paced.longest_ms, 0.1),
-		"slices": paced.slices, "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
+		"slices": paced.slices, "hold_ms": snappedf(paced.hold_ms, 0.1), "frame_ms": snappedf(paced.frame_ms, 0.1),
+		"keep_ms": snappedf(paced.keep_ms, 0.1), "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
 		"motions": run.played.size(),
 		"joints": items.map(func(item: MotionPlayer.Item) -> Array:
 			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}

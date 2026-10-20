@@ -232,6 +232,9 @@ whole cycle.
 - Claude's play_motion shows its picture from the side that sees most of
   what moves, and says which: a back wall's doors opened behind a dome are
   pictured from the back, not the front corner. view= chooses one.
+- Pressing a motion's button on a shared link no longer holds the page
+  while the motion is worked out: it is worked out a little each frame, so
+  a slow phone keeps drawing while it does.
 
 - brickworks.diy is one site. Every page has the same header, with four
   things in it (Gallery, Download, Account, Open the app), and the same

@@ -544,8 +544,10 @@ func _motions_link() -> void:
 	var cost_ms: float = (Time.get_ticks_usec() - began) / 1000.0
 	await _played_out()
 	last = _main.get("_motion_last")
-	print("    a press of Open the gates (2 s, two gates): %.1f ms of the frame it came in, %s ms in all over %s slices, the longest %s ms"
-		% [cost_ms, str(last.get("ms")), str(last.get("slices")), str(last.get("longest_ms"))])
+	print(("    a press of Open the gates (2 s, two gates): %.1f ms of the frame it came in, %s ms in all over %s slices, "
+		+ "the longest %s ms; the most a hold of its joints took %s ms, a frame %s ms, keeping it %s ms")
+		% [cost_ms, str(last.get("ms")), str(last.get("slices")), str(last.get("longest_ms")), str(last.get("hold_ms")),
+		str(last.get("frame_ms")), str(last.get("keep_ms"))])
 	# main.MOTION_SLICE_MS is 40: a slice ends after the frame that passes it.
 	_ok(float(last.get("longest_ms", 999.0)) <= 80.0,
 		"no slice of a press much past its 40 ms (%s ms at most)" % str(last.get("longest_ms")))
@@ -570,9 +572,14 @@ func _motions_link() -> void:
 			if not (paced.run.frames[n] as Dictionary).has(key) \
 					or not (paced.run.frames[n][key] as Transform3D).is_equal_approx(whole.frames[n][key]):
 				same = false
-	_ok(same and paced.slices > 3 and paced.longest_ms < 2.0 + paced.total_ms / float(paced.run.frames.size()) * 3.0 + 20.0,
-		"in 2 ms slices it is the same %d frames over %d slices, the longest %.1f ms of %.1f in all"
-		% [paced.run.frames.size(), paced.slices, paced.longest_ms, paced.total_ms])
+	# A slice is at least one thing that cannot be cut: a hold of the
+	# joints, one frame, or keeping it.
+	var most_unit: float = maxf(paced.hold_ms, maxf(paced.frame_ms, paced.keep_ms))
+	_ok(same and paced.slices > 3 and paced.longest_ms <= most_unit + 2.0 + 5.0,
+		("in 2 ms slices it is the same %d frames over %d slices, the longest %.1f ms of %.1f in all: no more than "
+		+ "the most of one thing (a hold %.1f ms, a frame %.1f ms, keeping it %.1f ms) and the slice")
+		% [paced.run.frames.size(), paced.slices, paced.longest_ms, paced.total_ms, paced.hold_ms, paced.frame_ms,
+		paced.keep_ms])
 	_builder_undo()
 	await _played_out()
 	named = view.controls_by_name()
