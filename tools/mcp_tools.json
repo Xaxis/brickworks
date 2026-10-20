@@ -4523,7 +4523,7 @@
       "readOnlyHint": false,
       "title": "Animate the model"
     },
-    "description": "Animate the model as Build, Pose's keys do: poses at moments, played smoothly between (an arm raised over two seconds and lowered again, doors opening), the model turned round once as well if asked, and rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], joints by number or name from pose_model's list, or a part on its joint as move_part names it (\"#14\": a steering, a wheel, an arm on its pin), each in degrees from where it was built. Rendering needs the app in a window and is a job (job gives the result); render=false only sets the keys, for the person to play.",
+    "description": "Animate the model: poses at moments, played smoothly between (an arm raised over two seconds and lowered again, doors opening), the model turned round once as well if asked, and rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], joints by number or name from pose_model's list, or a part on its joint as move_part names it (\"#14\": a steering, a wheel, an arm on its pin), each in degrees from where it was built. Rendering needs the app in a window and is a job (job gives the result). The keys are kept as the model's motion \"Animation\" (list_motions, play_motion), which the person plays in Build, Motions…; render=false only keeps them.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {

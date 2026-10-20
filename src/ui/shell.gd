@@ -464,7 +464,7 @@ const DOING: Dictionary = {
 	"export_picture": "Taking a picture of the model…",
 	"export_bricklink": "Exporting the BrickLink wanted list…",
 	"export_rebrickable": "Exporting the parts list…",
-	"render": "Opening Render…", "pose": "Opening Pose and animate…",
+	"render": "Opening Render…", "pose": "Opening Motions…",
 	"instructions": "Making the instructions…", "share": "Opening Share…",
 	"undo": "Undoing…", "redo": "Redoing…", "history": "Going back…",
 	"cut_parts": "Cutting…", "copy": "Copying…", "paste": "Pasting…",
@@ -657,8 +657,8 @@ func _define() -> void:
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/pose_panel.gd.
-	_add("pose", "Pose and animate…", 0, func() -> void: app.call("open_pose"), something,
-		"A slider for every part on a hinge or a turntable, and keys made an animation")
+	_add("pose", "Motions…", 0, func() -> void: app.call("open_pose"), something,
+		"The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered")
 	_add("instructions", "Instructions…", 0, _instructions, something,
 		"Building instructions for this model, step by step")
 	_add("share", "Share…", 0, func() -> void: app.call("_share_wanted"), something,

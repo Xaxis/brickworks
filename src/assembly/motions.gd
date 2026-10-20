@@ -284,6 +284,30 @@ func sequence(from: String) -> Array:
 	return out
 
 
+## Every motion in order of play (Play all): each sequence from its first,
+## each motion after the one it follows, the sequences as their first
+## motions are listed.
+func in_order() -> Array:
+	var out: Array = []
+	for motion: Motion in list:
+		if out.has(motion):
+			continue
+		for one: Motion in sequence(motion.name):
+			if not out.has(one):
+				out.append(one)
+	return out
+
+
+## A name no motion has: [param words], or with a number after it.
+func free_name(words: String) -> String:
+	if named(words) == null:
+		return words
+	var n: int = 2
+	while named("%s %d" % [words, n]) != null:
+		n += 1
+	return "%s %d" % [words, n]
+
+
 # -- the lines in the file --------------------------------------------------------
 
 

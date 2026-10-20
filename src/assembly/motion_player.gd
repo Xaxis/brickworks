@@ -534,6 +534,93 @@ func said(played: Played) -> String:
 	return "; ".join(lines)
 
 
+## [param joint] taken hold of to be moved by hand (the motions panel's
+## slider for it): an Item whose grab moves it from where it stands, or
+## with none and why in its stop words. [method step_to] moves it.
+func hold(joint: Motions.Joint) -> Item:
+	var track := Motions.Track.new()
+	track.joint = joint
+	var item: Item = _item_for(track, false)
+	if item.grab != null:
+		track.add_key(0.0, item.from)
+		item.shift = item.from
+	return item
+
+
+## [param item]'s joint moved towards [param place] as far as it has room,
+## and where it got to; its stop words say where and on what it stopped,
+## if it did, this time.
+func step_to(item: Item, place: float) -> float:
+	item.short_by = 0.0
+	item.stop_words = ""
+	_step(item, place)
+	return _reached(item)
+
+
+## The joints a drag moves that have room to, each once, as a motion takes
+## them (a part, or the sub-assembly that moves alike): what the motions
+## panel offers a slider for, biggest first, [param most] at most, a part
+## Playable names (a door, a steering wheel) taken first. A ball is not
+## offered, nor a joint with no room to turn 10° either way (a wheel its
+## arch holds). Tried on its Grab, nothing changes; kept while the model
+## has the same parts (a pose moves no joint in or out).
+func movable(most: int = 16) -> Array:
+	motions()
+	var key: Array = [world.generation(), world.brick_count()]
+	if key == _movable_for:
+		return _movable
+	_movable = []
+	_movable_for = key
+	grabbing.read_now()
+	var bodies: Bodies = grabbing.read_bodies()
+	if bodies == null:
+		return _movable
+	var named: Dictionary = {}
+	for ids: Variant in Playable.read(bodies, world, library, grabbing.read_mechanism()).values():
+		for id: Variant in ids:
+			named[int(id)] = true
+	var moving: Array = []   ## [parts, body]
+	for body: Variant in bodies.parent_link:
+		if not bodies.flexible.has(body):
+			moving.append([(bodies.members.get(body, PackedInt64Array()) as PackedInt64Array).size(), int(body)])
+	moving.sort_custom(func(x: Array, y: Array) -> bool: return int(x[0]) > int(y[0]))
+	for one: Array in moving:
+		if _movable.size() >= most:
+			break
+		var ids: PackedInt64Array = bodies.members[one[1]]
+		var by: int = int(ids[0])
+		for id: int in ids:
+			if named.has(id):
+				by = id
+				break
+		var found: Variant = _joint_and_held("#%d" % by, false, true)
+		if found is String:
+			continue
+		var joint: Motions.Joint = found[0]
+		var held: Grab = found[1]
+		if (held.mode == "slide" and not held.can_slide()) or (held.mode == "turn" and not _turns_at_all(held)):
+			continue
+		if _movable.any(func(other: Motions.Joint) -> bool: return other == joint or other.same_ref(joint)):
+			continue
+		_movable.append(joint)
+	return _movable
+
+
+var _movable: Array = []
+var _movable_for: Array = []
+
+
+## Whether [param held] has room to turn 10° one way or the other.
+static func _turns_at_all(held: Grab) -> bool:
+	var one: float = held.turn_to(10.0)
+	held.turn_to(0.0)
+	if absf(one) >= SHORT_DEG:
+		return true
+	var other: float = held.turn_to(-10.0)
+	held.turn_to(0.0)
+	return absf(other) >= SHORT_DEG
+
+
 # -- suggested from what moves -------------------------------------------------------------
 
 

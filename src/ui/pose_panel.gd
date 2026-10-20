@@ -1,20 +1,37 @@
-## Build, Pose and animate…: a slider for every joint a sub-assembly turns
-## on, keys at moments, and the animation those keys make, rendered.
+## Build, Motions…: the model's own named movements (docs/MOTIONS.md):
+## "Open the doors", "Steer left and right", "Lift the boom". The owner
+## (2026-10-20): "for my observatory one might be 'open dome panel' and
+## another 'extend telescope'".
 ##
-## The sliders are the pose (Poser): drag one and the sub-assembly swings
-## about its real hinge or turntable as the slider goes, and letting go
-## keeps it there as one step to undo — as far as it has room for, and the
-## panel says where it stopped. Add key keeps every joint's angle at the
-## time beside it; two or three keys are an animation (PoseAnimation),
-## eased in and out, that Play runs in the window and Render animation
-## draws off screen in pieces a frame at a time (StudioRender.animate), so
-## the window and a browser tab keep answering. In a browser it downloads
-## as an animated WebP; on the desktop the frames, the WebP and, where
-## ffmpeg is installed, an MP4 go to Downloads (RenderOutput).
+## The panel lists the model's motions, each with Play and Play backwards;
+## Play all runs them in order (each after the one it follows), and Loop
+## runs it again until Stop. Playing goes through Grab (MotionPlayer), so a
+## joint stops where it meets the model and the panel says where and on
+## what; the model is left where it ends, one step to undo, so Play
+## backwards closes what Play opened. What moves (MotionPlayer.suggest) is
+## offered as motions to keep, one press each.
+##
+## A motion is made, or changed, in its editor: named; recorded by dragging
+## the real parts with Grab in the view (every drag kept as keys at the
+## times it happened, Grab's stops and gears with it, and the model put
+## back after); or set joint by joint, a slider for each of Grab's joints
+## that has room to move (the joints Pose's sliders were) and its keys on a
+## strip of time, each eased, linear or held. Every change is one step of
+## the history (Builder's "motions"), so undo, the file and a session over
+## MCP see the same motions, and a motion a session defines shows here.
+##
+## Render animation draws the chosen motion off screen a frame at a time
+## (StudioRender.animate), as render_motion does: in a browser an animated
+## WebP; on the desktop the frames, the WebP and, where ffmpeg is
+## installed, an MP4 go to Downloads (RenderOutput).
+##
+## pose_model and animate_model (AppTools) keep the joints and keys they
+## had here: [member poser] and [member animation].
 class_name PosePanel
 extends PanelContainer
 
-## The model changed: a joint was set.
+## The model's parts moved: a joint set, or the drags a recording made
+## put back. (A motion kept or changed is a step the store hears itself.)
 signal changed()
 
 var world: BrickWorld
@@ -28,7 +45,16 @@ var rig_lights: Array[DirectionalLight3D] = []
 var named: Callable = func() -> String: return "Model"
 ## Where desktop files go; Downloads when empty. A probe points it elsewhere.
 var folder: String = ""
+## The model's motions, played through Grab (main's).
+var player: MotionPlayer
+## Grab in the view (main's): what a drag holds while Record listens.
+var grabbing: GrabDrag
+## Puts the Select tool in hand, so a drag in the view takes hold of a part
+## on its joint (main's).
+var select_tool: Callable = func() -> void: pass
 
+## pose_model's joints (a sub-assembly on a hinge or a turntable) and
+## animate_model's keys, for a session over MCP.
 var poser := Poser.new()
 var animation := PoseAnimation.new()
 var renderer: StudioRender
@@ -36,41 +62,123 @@ var settings := RenderSettings.new()
 
 const SIZES: Array = [["480 × 300", Vector2i(480, 300)], ["720p", Vector2i(1280, 720)]]
 const RATES: Array = [12, 24]
+## How the keys go, as a builder says it, in the order Motions.HOWS has them.
+const HOW_WORDS: Array = ["Eased", "Linear", "Held"]
+## A drag recorded is sampled at most this often, s, then thinned to keys
+## no further than [constant KEPT_DEG] (or [constant KEPT_STUDS]) from it.
+const SAMPLE_EVERY := 1.0 / 30.0
+const KEPT_DEG := 1.0
+const KEPT_STUDS := 0.05
+## A new motion's first key is at this time, s: a slider moved there moves
+## its joint from where it stands to where it is put.
+const FIRST_SECONDS := 2.0
+## The panel's lists stop this far above the window's foot, px.
+const FOOT := 44.0
+const WIDE := 344
 
-var _rows: VBoxContainer
-var _sliders: Array[HSlider] = []
-var _readouts: Array[Label] = []
-var _empty: Label
-var _rest: Button
-var _key_time: SpinBox
-var _add_key: Button
-var _keys_box: VBoxContainer
-var _play: Button
-var _turntable: CheckBox
+var _title: Label
+var _close: Button
+var _body: ScrollContainer
+var _list_box: VBoxContainer
+var _motion_rows: VBoxContainer
+var _picks := ButtonGroup.new()
+var _none: Label
+var _play_all: Button
+var _loop: CheckBox
+var _suggest_heading: Label
+var _suggest_rows: VBoxContainer
+var _new: Button
+var _edit_box: VBoxContainer
+var _back: Button
+var _remove: Button
+var _name: LineEdit
+var _record: Button
+var _record_words: Label
+var _edit_play: Button
+var _edit_reverse: Button
+var _time: HSlider
+var _time_words: Label
+var _joint_rows: VBoxContainer
+var _key_row: HBoxContainer
+var _key_words: Label
+var _how: OptionButton
+var _drop_key: Button
+var _driver_words: Label
 var _rate: OptionButton
 var _size: OptionButton
 var _render: Button
 var _cancel: Button
-var _close: Button
 var _progress: ProgressBar
 var _status: Label
 var _frame: TextureRect
+## Each motion row's buttons, by the row's number, for a browser test.
+var _row_buttons: Array = []
+var _keep_buttons: Array = []
+## The joint rows: [{joint, slider, readout, strip}], as listed.
+var _joint_parts: Array = []
 
-var _dragging: String = ""
-var _drag_from: float = 0.0
-var _quiet: bool = false
+## "list" or "edit".
+var _view: String = "list"
+## The motion Render animation draws, by name.
+var _chosen: String = ""
+## The motion in the editor: the model's own of [member _editing_name], or
+## a new one not kept until its first key.
+var _editing_name: String = ""
+var _draft: Motions.Motion = null
+var _at: float = 0.0
+## The key chosen on a strip: its joint and its number in its track.
+var _key_joint: Motions.Joint = null
+var _key_index: int = -1
+## The edited motion played to look (nothing changes), for the time slider:
+## null when it must be played again.
+var _look: MotionPlayer.Played = null
+var _drawn: bool = false
+## A joint's slider held: the item its grab moves, and what it was asked.
+var _held: MotionPlayer.Item = null
+var _held_joint: Motions.Joint = null
+
+## Playing: the frames drawn, the next one, and the button that stops it.
 var _playing: bool = false
-var _play_at: float = 0.0
+var _frames: Array = []
+var _frame_at: float = 0.0
+var _shown: int = -1
+var _stop_button: Button = null
+var _stop_words: String = ""
+
+## Recording: when it began (the first drag's press), the depth of the
+## history then, the drags kept, the grab held and its samples, and the
+## tracks made so far: [{joint, keys}].
+var _recording: bool = false
+var _rec_clock: int = -1
+var _rec_depth: int = 0
+var _rec_drags: int = 0
+var _rec_grab: Grab = null
+var _rec_part: int = 0
+var _rec_mode: String = ""
+var _rec_depth_at_press: int = 0
+var _rec_samples: Array = []
+var _rec_tracks: Array = []
+var _rec_refused := PackedStringArray()
+
 var _working: bool = false
 var _fraction: float = 0.0
 var _last: Dictionary = {}
+var _quiet: bool = false
+## What was last seen of the model and its history: any change refreshes
+## the lists (an undo, a motion a session defined).
+var _seen_generation: int = -1
+var _seen_depth: int = -1
+var _seen_step: Dictionary = {}
+var _seen_motions: Motions = null
 var _seen_revision: int = -1
+var _suggested: Array = []
 var _told_page: String = ""
 var _told_page_at: int = 0
 
 
 func _ready() -> void:
 	visible = false
+	set_process(false)
 	settings.quality = RenderSettings.Quality.QUICK
 	settings.size = SIZES[0][1]
 	settings.contact_shadow = false
@@ -79,302 +187,1017 @@ func _ready() -> void:
 
 
 func open() -> void:
-	poser.world = world
-	poser.builder = builder
-	poser.library = library
-	poser.assemblies = assemblies
-	_read_pose()
 	visible = true
-	_status.text = "Drag a slider to swing that part about its joint." if not poser.joints.is_empty() \
-		else ""
+	set_process(true)
+	_view = "list"
+	_draft = null
+	_editing_name = ""
+	_suggested = player.suggest() if player != null else []
+	_refresh()
+	if _motions().is_empty():
+		_say("Keep a suggestion, or press New motion to make one." if not _offered().is_empty()
+			else "Press New motion, then Record and drag the parts that move, or set them joint by joint.")
+	else:
+		_say("Press Play to watch a motion. Edit changes it, or renames or removes it.")
+	get_viewport().size_changed.connect(_fit_later)
+
+
+func close() -> void:
+	if _recording:
+		stop_recording()
+	if _playing:
+		_stop_playing()
+	if renderer != null and renderer.is_busy():
+		renderer.cancel()
+	_let_go_slider()
+	_undraw()
+	visible = false
+	set_process(false)
+	if get_viewport().size_changed.is_connected(_fit_later):
+		get_viewport().size_changed.disconnect(_fit_later)
 
 
 ## The joints as the model stands, without the panel: for a session over
-## MCP (AppTools), which then swings one with [method set_angle].
+## MCP (AppTools' pose_model), which then swings one with [method set_angle].
 func joints_now() -> Array[Poser.Joint]:
 	poser.world = world
 	poser.builder = builder
 	poser.library = library
 	poser.assemblies = assemblies
-	if poser.joints.is_empty() or _seen_revision != world.revision:
-		_read_pose()
+	if poser.joints.is_empty() or not (poser.holds() or poser.read_back()):
+		poser.find()
 	return poser.joints
 
 
-func close() -> void:
-	if _playing:
-		_stop()
-	if renderer != null and renderer.is_busy():
-		renderer.cancel()
-	visible = false
-
-
-## The joints as the model stands: the angles kept if the parts still stand
-## as they say, read back off the parts after an undo, found afresh
-## otherwise (the model changed, or this is the first time).
-func _read_pose() -> void:
-	if poser.joints.is_empty() or not (poser.holds() or poser.read_back()):
-		poser.find()
-	_seen_revision = world.revision
-	_fill_joints()
-
-
-# -- the sliders -----------------------------------------------------------------
-
-
-func _fill_joints() -> void:
-	for child: Node in _rows.get_children():
-		child.queue_free()
-	_sliders.clear()
-	_readouts.clear()
-	_empty.visible = poser.joints.is_empty()
-	_rest.visible = not poser.joints.is_empty()
-	for one: Poser.Joint in poser.joints:
-		var row := VBoxContainer.new()
-		row.add_theme_constant_override("separation", 0)
-		_rows.add_child(row)
-		var top := HBoxContainer.new()
-		row.add_child(top)
-		var called := Label.new()
-		called.text = "%s, on its %s" % [Assemblies.label(one.path), one.kind()]
-		called.add_theme_font_size_override("font_size", 12)
-		called.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		called.clip_text = true
-		top.add_child(called)
-		var readout := Label.new()
-		readout.add_theme_font_size_override("font_size", 12)
-		readout.text = "%d°" % roundi(one.angle)
-		top.add_child(readout)
-		var slider := HSlider.new()
-		slider.min_value = -180.0
-		slider.max_value = 180.0
-		slider.step = 1.0
-		slider.focus_mode = Control.FOCUS_NONE
-		slider.custom_minimum_size = Vector2(260, 18)
-		var track := StyleBoxFlat.new()
-		track.bg_color = Color(1, 1, 1, 0.16)
-		track.set_corner_radius_all(2)
-		track.content_margin_top = 2
-		track.content_margin_bottom = 2
-		slider.add_theme_stylebox_override("slider", track)
-		slider.set_value_no_signal(one.angle)
-		var path: String = one.path
-		slider.drag_started.connect(func() -> void:
-			_dragging = path
-			_drag_from = poser.joint(path).angle)
-		slider.drag_ended.connect(func(_changed: bool) -> void:
-			var from: float = _drag_from
-			_dragging = ""
-			_settle(path, slider.value, from))
-		slider.value_changed.connect(func(value: float) -> void:
-			if _quiet:
-				return
-			readout.text = "%d°" % roundi(value)
-			if _dragging == path:
-				var wanted: Dictionary = poser.angles()
-				wanted[path] = value
-				poser.stand(wanted)
-			else:
-				# A click on the track: there at once.
-				_settle(path, value, poser.joint(path).angle))
-		row.add_child(slider)
-		_sliders.append(slider)
-		_readouts.append(readout)
-
-
-## A joint let go at [param value]: as far as it has room for.
-func _settle(path: String, value: float, from: float) -> void:
-	var reached: float = poser.settle(path, value, from)
-	_seen_revision = world.revision
-	_show_angles()
-	if absf(reached - value) > 0.5:
-		_status.text = "%s stops at %d°: any further and it runs into something." % [
-			Assemblies.label(path), roundi(reached)]
-	else:
-		_status.text = "%s at %d°." % [Assemblies.label(path), roundi(reached)]
-	changed.emit()
-
-
-func _show_angles() -> void:
-	_quiet = true
-	for n: int in mini(_sliders.size(), poser.joints.size()):
-		_sliders[n].set_value_no_signal(poser.joints[n].angle)
-		_readouts[n].text = "%d°" % roundi(poser.joints[n].angle)
-	_quiet = false
-
-
-func at_rest() -> void:
-	for one: Poser.Joint in poser.joints:
-		if not is_zero_approx(one.angle):
-			poser.settle(one.path, 0.0, one.angle)
-	_seen_revision = world.revision
-	_show_angles()
-	_status.text = "Every joint back where it was when posing began."
-	changed.emit()
-
-
-## Set a joint as a slider let go there does. For a probe and a browser
-## check that cannot drag.
+## Swing one of pose_model's joints as far as it has room, one step to
+## undo. Returns where it got to.
 func set_angle(path: String, value: float) -> float:
 	var one: Poser.Joint = poser.joint(path)
 	if one == null:
 		return 0.0
-	_settle(path, value, one.angle)
+	poser.settle(path, value, one.angle)
+	changed.emit()
 	return poser.joint(path).angle
 
 
-# -- keys and the animation ----------------------------------------------------------
+func _motions() -> Motions:
+	return player.motions() if player != null else Motions.new()
 
 
-func add_key() -> void:
-	if poser.joints.is_empty():
-		_status.text = "There is no joint to key: nothing here turns on a hinge or a turntable."
-		return
-	var t: float = _key_time.value
-	animation.add_key(t, poser.angles())
-	_key_time.value = t + 1.0
-	_fill_keys()
-	_status.text = "Key %d at %.1f s. Pose the next one, then Add key again." % [
-		animation.keys.size(), t]
+func _say(words: String) -> void:
+	_status.text = words
 
 
-func _fill_keys() -> void:
-	for child: Node in _keys_box.get_children():
-		child.queue_free()
-	for n: int in animation.keys.size():
-		var key: Dictionary = animation.keys[n]
-		var row := HBoxContainer.new()
-		_keys_box.add_child(row)
-		var words := PackedStringArray()
-		var angles: Dictionary = key["angles"]
-		for path: Variant in angles:
-			words.append("%s %d°" % [Assemblies.label(str(path)), roundi(float(angles[path]))])
-		var label := Label.new()
-		label.text = "%.1f s — %s" % [float(key["t"]), ", ".join(words)]
-		label.add_theme_font_size_override("font_size", 11)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.clip_text = true
-		row.add_child(label)
-		var index: int = n
-		var drop := _button(row, "×", func() -> void:
-			animation.remove_key(index)
-			_fill_keys(), "Take this key out")
-		drop.custom_minimum_size = Vector2(24, 0)
+# -- the list ----------------------------------------------------------------------------
 
 
-func play() -> void:
-	if _playing:
-		_stop()
-		return
-	if animation.keys.is_empty():
-		_status.text = "Add a key or two first: pose, Add key, pose again, Add key."
-		return
-	_playing = true
-	_play_at = 0.0
-	_play.text = "Stop"
-	_played = _turnings()
-	_played_from = {}
+## Suggestions the model has not kept yet.
+func _offered() -> Array:
+	var motions: Motions = _motions()
+	return _suggested.filter(func(one: Motions.Motion) -> bool: return motions.named(one.name) == null)
 
 
-func _stop() -> void:
-	_playing = false
-	_play.text = "Play"
-	# Back as the pose stands: playing moved only what is drawn.
-	for brick_id: Variant in _played_from:
-		if world.get_brick(int(brick_id)) != null:
-			world.move_brick(int(brick_id), _played_from[brick_id])
-	_played = {}
-	_played_from = {}
-	poser.stand(poser.angles())
+func _refresh() -> void:
+	_seen_generation = world.generation()
+	_seen_depth = builder.history_depth()
+	_seen_step = builder.last_step()
+	_seen_motions = world.motions
 	_seen_revision = world.revision
+	_list_box.visible = _view == "list"
+	_edit_box.visible = _view == "edit"
+	if _view == "list":
+		_fill_list()
+	else:
+		_fill_editor()
+	_set_buttons()
+	_fit_later()
 
 
-## A part on its joint that is not a pose joint, as move_part names it
-## ("#14": a steering on its pins, a wheel), keyed by a session: its name ->
-## a GrabDrag.Turning, or a String saying why it cannot turn
-## (GrabDrag.turning_for_session; main sets it).
-var turning_for: Callable
-## What Play turns of those, and where each part they moved stood before.
-var _played: Dictionary = {}
-var _played_from: Dictionary = {}
-## What the last render's parts on their joints stopped short of: lines.
-var _short: PackedStringArray = PackedStringArray()
+func _fill_list() -> void:
+	var motions: Motions = _motions()
+	for child: Node in _motion_rows.get_children():
+		child.queue_free()
+	_row_buttons.clear()
+	if motions.named(_chosen) == null:
+		_chosen = (motions.list[0] as Motions.Motion).name if not motions.is_empty() else ""
+	_none.visible = motions.is_empty()
+	for motion: Motions.Motion in motions.list:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		_motion_rows.add_child(row)
+		var name: String = motion.name
+		var pick := CheckBox.new()
+		pick.button_group = _picks
+		pick.text = name
+		pick.tooltip_text = "%s, %s s%s. Chosen, Render animation draws it" % [name,
+			Motions.num(motion.length(), 1), (", after %s" % Motions.quoted(motion.after))
+			if not motion.after.is_empty() else ""]
+		pick.add_theme_font_size_override("font_size", 12)
+		pick.focus_mode = Control.FOCUS_NONE
+		pick.clip_text = true
+		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pick.custom_minimum_size = Vector2(96, 0)
+		pick.set_pressed_no_signal(name == _chosen)
+		pick.pressed.connect(func() -> void:
+			_chosen = name
+			_set_buttons())
+		row.add_child(pick)
+		var forward := _button(row, "Play", func() -> void: play(name), "Play it in the view")
+		var backward := _button(row, "Play backwards", func() -> void: play(name, true),
+			"Play it from its end to its start: what Play opened, this closes")
+		var edit := _button(row, "Edit", func() -> void: edit(name),
+			"Change its joints and keys, record it again, rename it or remove it")
+		_row_buttons.append({"pick": pick, "play": forward, "back": backward, "edit": edit, "name": name})
+	_play_all.visible = motions.list.size() > 1
+	_loop.visible = not motions.is_empty()
+	for child: Node in _suggest_rows.get_children():
+		child.queue_free()
+	_keep_buttons.clear()
+	var offered: Array = _offered()
+	_suggest_heading.visible = not offered.is_empty()
+	_suggest_rows.visible = not offered.is_empty()
+	for motion: Motions.Motion in offered:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		_suggest_rows.add_child(row)
+		var words := Label.new()
+		words.text = motion.name
+		words.tooltip_text = _suggestion_words(motion)
+		words.mouse_filter = Control.MOUSE_FILTER_PASS
+		words.add_theme_font_size_override("font_size", 12)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.clip_text = true
+		row.add_child(words)
+		var name: String = motion.name
+		_keep_buttons.append(_button(row, "Keep", func() -> void: keep_suggestion(name),
+			"Keep it as one of the model's motions: saved with the model"))
 
 
-## The keys' parts on their joints (not pose joints): name -> Turning.
-## Taken afresh each time, on the model as it stands. Kept only for the one
-## render, a session's keys stayed in the panel, and Play and Render
-## animation then drew a steering keyed to turn standing still.
-func _turnings() -> Dictionary:
-	var out: Dictionary = {}
-	if not turning_for.is_valid():
-		return out
-	for path: String in animation.paths():
-		if poser.joint(path) != null:
-			continue
-		var turning: Variant = turning_for.call(path)
-		if turning is GrabDrag.Turning:
-			out[path] = turning
+## A suggestion said: each joint and how far it goes, tried for room.
+func _suggestion_words(motion: Motions.Motion) -> String:
+	var parts := PackedStringArray()
+	for track: Motions.Track in motion.tracks:
+		var most: float = 0.0
+		for key: Array in track.keys:
+			if absf(float(key[1]) - track.joint.at) > absf(most):
+				most = float(key[1]) - track.joint.at
+		parts.append("%s %s" % [player.joint_words(track.joint), _place_words(most, track.joint)])
+	if motion.driver != null:
+		parts.append("%s turned %s time%s" % [player.joint_words(motion.driver),
+			Motions.num(motion.turns, 2), "" if is_equal_approx(motion.turns, 1.0) else "s"])
+	return "%s: %s, over %s s" % [motion.name, ", ".join(parts), Motions.num(motion.length(), 1)]
+
+
+## Keep the suggestion called [param name] as one of the model's motions:
+## one step to undo.
+func keep_suggestion(name: String) -> void:
+	for one: Motions.Motion in _offered():
+		if one.name == name:
+			var motions: Motions = _motions()
+			var had: Motions = motions.copy()
+			motions.put(one)
+			builder.record([{"undo": "motions", "motions": had}], "kept the motion %s" % Motions.quoted(name))
+			_chosen = name
+			_refresh()
+			_say("Kept %s. Play plays it; undo takes it out." % Motions.quoted(name))
+			return
+
+
+# -- playing ------------------------------------------------------------------------------
+
+
+## Play the motion [param name] in the view, [param reverse] from its end
+## to its start, and leave the model where it ends: one step to undo. A
+## press while it plays stops it.
+func play(name: String, reverse: bool = false) -> void:
+	var button: Button = _button_for(name, reverse)
+	if _playing:
+		var same: bool = _stop_button == button
+		_stop_playing()
+		if same:
+			return
+	if _recording or _working:
+		return
+	var motion: Motions.Motion = _motion_named(name)
+	if motion == null:
+		return
+	_let_go_slider()
+	_undraw()
+	var played: MotionPlayer.Played = player.play(motion, reverse, MotionPlayer.PLAY_FPS, true,
+		"played %s%s" % [Motions.quoted(motion.name), " backwards" if reverse else ""])
+	_stop_words = "%s %s%s: %s." % ["Played", Motions.quoted(motion.name), " backwards" if reverse else "",
+		player.said(played)]
+	if not played.standing.is_empty():
+		_stop_words += " Now %s." % played.standing
+	_look = null
+	_begin_playing(played.frames, button)
+
+
+## Every motion in order of play (each after the one it follows), each
+## from where the last left the model: one step to undo.
+func play_all() -> void:
+	if _playing:
+		var same: bool = _stop_button == _play_all
+		_stop_playing()
+		if same:
+			return
+	if _recording or _working:
+		return
+	var order: Array = _motions().in_order()
+	if order.is_empty():
+		return
+	_let_go_slider()
+	_undraw()
+	var depth: int = builder.history_depth()
+	var frames: Array = []
+	var lines := PackedStringArray()
+	for motion: Motions.Motion in order:
+		var played: MotionPlayer.Played = player.play(motion, false, MotionPlayer.PLAY_FPS, true)
+		frames.append_array(played.frames)
+		lines.append("%s: %s" % [Motions.quoted(motion.name), player.said(played)])
+	builder.fold_since(depth, "played every motion")
+	_stop_words = "Played all %d in order. %s." % [order.size(), "; ".join(lines)]
+	_look = null
+	_begin_playing(frames, _play_all)
+
+
+func _begin_playing(frames: Array, button: Button) -> void:
+	_frames = frames
+	_frame_at = 0.0
+	_shown = -1
+	_playing = not frames.is_empty()
+	_say(_stop_words)
+	if not _playing:
+		return
+	_stop_button = button
+	if button != null:
+		button.text = "Stop"
+	_set_buttons()
+
+
+func _stop_playing() -> void:
+	_playing = false
+	_frames = []
+	if _stop_button != null and is_instance_valid(_stop_button):
+		_stop_button.text = "Play all" if _stop_button == _play_all else (
+			"Play backwards" if _stop_button.get_meta("backwards", false) else "Play")
+	_stop_button = null
+	_undraw()
+	_set_buttons()
+
+
+func _button_for(name: String, reverse: bool) -> Button:
+	if _view == "edit":
+		return _edit_reverse if reverse else _edit_play
+	for row: Dictionary in _row_buttons:
+		if str(row["name"]) == name:
+			return row["back"] if reverse else row["play"]
+	return null
+
+
+func _draw_frame(frame: Dictionary) -> void:
+	world.set_drawn(frame)
+	_drawn = true
+
+
+func _undraw() -> void:
+	if _drawn:
+		world.set_drawn({})
+		_drawn = false
+
+
+# -- the editor -----------------------------------------------------------------------------
+
+
+## The editor on the motion [param name].
+func edit(name: String) -> void:
+	if _recording or _playing or _working:
+		return
+	var motion: Motions.Motion = _motions().named(name)
+	if motion == null:
+		return
+	_view = "edit"
+	_editing_name = motion.name
+	_chosen = motion.name
+	_draft = null
+	_at = 0.0
+	_key_joint = null
+	_key_index = -1
+	_look = null
+	_refresh()
+	_say("Move the time, then a joint's slider: a key there. Record makes it again from drags.")
+
+
+## The editor on a new motion, kept once it has its first key.
+func new_motion() -> void:
+	if _recording or _playing or _working:
+		return
+	_draft = Motions.Motion.new()
+	_draft.name = _motions().free_name("New motion")
+	_view = "edit"
+	_editing_name = ""
+	_at = FIRST_SECONDS
+	_key_joint = null
+	_key_index = -1
+	_look = null
+	_refresh()
+	_name.grab_focus()
+	_name.select_all()
+	_say("Name it, then press Record and drag the parts that move in the view. Or set it here: "
+		+ "a joint's slider puts a key at the time above.")
+
+
+func back_to_list() -> void:
+	if _recording:
+		stop_recording()
+	if _playing:
+		_stop_playing()
+	_let_go_slider()
+	_undraw()
+	_view = "list"
+	_draft = null
+	_editing_name = ""
+	_refresh()
+
+
+## The motion being edited, or null.
+func _edited() -> Motions.Motion:
+	if _draft != null:
+		return _draft
+	return _motions().named(_editing_name) if not _editing_name.is_empty() else null
+
+
+func _motion_named(name: String) -> Motions.Motion:
+	if _draft != null and _draft.name == name:
+		return _draft
+	return _motions().named(name)
+
+
+## A change to the edited motion, as one step of the history called
+## [param words]: [param edit] changes it (a Motions.Motion). A new one is
+## kept by its first change.
+func _change(words: String, edit_with: Callable) -> void:
+	var motions: Motions = _motions()
+	var had: Motions = motions.copy()
+	var motion: Motions.Motion = _edited()
+	if motion == null:
+		return
+	edit_with.call(motion)
+	if _draft != null:
+		if motion.tracks.is_empty() and motion.driver == null:
+			return
+		motion.name = motions.free_name(motion.name.strip_edges() if not motion.name.strip_edges().is_empty()
+			else "New motion")
+		motions.put(motion)
+		_draft = null
+		_editing_name = motion.name
+		words = "made the motion %s" % Motions.quoted(motion.name)
+	else:
+		# Its joints the ones kept, where a track was added.
+		motions.put(motion)
+	builder.record([{"undo": "motions", "motions": had}], words)
+	_chosen = motion.name
+	_look = null
+	_seen_depth = builder.history_depth()
+	_seen_step = builder.last_step()
+	_seen_motions = world.motions
+
+
+func _fill_editor() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null:
+		_view = "list"
+		_list_box.visible = true
+		_edit_box.visible = false
+		_fill_list()
+		return
+	_quiet = true
+	if not _name.has_focus():
+		_name.text = motion.name
+	_remove.visible = _draft == null
+	_time.max_value = maxf(motion.length() + FIRST_SECONDS, 4.0)
+	_time.set_value_no_signal(_at)
+	_time_words.text = "%s s" % Motions.num(_at, 1)
+	_quiet = false
+	for child: Node in _joint_rows.get_children():
+		child.queue_free()
+	_joint_parts.clear()
+	# Its tracks' joints first, then the others that move.
+	var joints: Array = []
+	for track: Motions.Track in motion.tracks:
+		joints.append(track.joint)
+	for joint: Motions.Joint in player.movable():
+		if not joints.any(func(one: Motions.Joint) -> bool: return one == joint or one.same_ref(joint)):
+			joints.append(joint)
+	for joint: Motions.Joint in joints:
+		_joint_row(motion, joint)
+	if joints.is_empty():
+		var none := Label.new()
+		none.text = ("Nothing in the model moves on a joint a drag moves: a hinge, a turntable, "
+			+ "a pin or an axle in a round hole.")
+		none.add_theme_font_size_override("font_size", 12)
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.custom_minimum_size = Vector2(WIDE - 24, 0)
+		_joint_rows.add_child(none)
+	_driver_words.visible = motion.driver != null
+	if motion.driver != null:
+		_driver_words.text = "It turns %s %s time%s in %s s, from wherever it stands; what it drives follows." % [
+			player.joint_words(motion.driver), Motions.num(motion.turns, 2),
+			"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 1)]
+	_show_key()
+
+
+func _track_of(motion: Motions.Motion, joint: Motions.Joint) -> Motions.Track:
+	for track: Motions.Track in motion.tracks:
+		if track.joint == joint or track.joint.same_ref(joint):
+			return track
+	return null
+
+
+## Where [param joint] is at the editor's time: as its track says, else
+## where it stands.
+func _place_at(motion: Motions.Motion, joint: Motions.Joint) -> float:
+	var track: Motions.Track = _track_of(motion, joint)
+	return track.place_at(_at) if track != null else player.at_now(joint)
+
+
+func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
+	var row := VBoxContainer.new()
+	row.add_theme_constant_override("separation", 1)
+	_joint_rows.add_child(row)
+	var top := HBoxContainer.new()
+	row.add_child(top)
+	var called := Label.new()
+	var gone: bool = player.parts_of(joint).is_empty()
+	called.text = "%s, %s" % [player.joint_words(joint), "turning" if joint.mode == "turn" else "sliding"]
+	called.tooltip_text = called.text
+	called.mouse_filter = Control.MOUSE_FILTER_PASS
+	called.add_theme_font_size_override("font_size", 12)
+	called.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	called.clip_text = true
+	top.add_child(called)
+	var readout := Label.new()
+	readout.add_theme_font_size_override("font_size", 12)
+	top.add_child(readout)
+	var track: Motions.Track = _track_of(motion, joint)
+	if gone:
+		readout.text = ""
+		var words := Label.new()
+		words.text = player.gone_words(joint).left(1).to_upper() + player.gone_words(joint).substr(1) + "."
+		words.add_theme_font_size_override("font_size", 11)
+		words.modulate = Color(1, 1, 1, 0.7)
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.custom_minimum_size = Vector2(WIDE - 24, 0)
+		row.add_child(words)
+		return
+	var slider := HSlider.new()
+	_style_slider(slider)
+	if joint.mode == "turn":
+		slider.min_value = -180.0
+		slider.max_value = 180.0
+		slider.step = 1.0
+	else:
+		slider.min_value = -12.0
+		slider.max_value = 12.0
+		slider.step = 0.05
+	var place: float = _place_at(motion, joint)
+	if joint.mode == "turn":
+		slider.min_value = minf(slider.min_value, floorf(place))
+		slider.max_value = maxf(slider.max_value, ceilf(place))
+	slider.set_value_no_signal(place)
+	readout.text = _place_words(place, joint)
+	slider.tooltip_text = "Where it is at the time above: moved, a key there"
+	slider.drag_started.connect(func() -> void: _hold_slider(joint))
+	slider.drag_ended.connect(func(_changed: bool) -> void: _let_go_slider(slider.value))
+	slider.value_changed.connect(func(value: float) -> void:
+		if _quiet:
+			return
+		readout.text = _place_words(value, joint)
+		if _held != null and _held_joint == joint:
+			_move_held(value)
+		else:
+			# A click on the track: a key there at once.
+			_hold_slider(joint)
+			_move_held(value)
+			_let_go_slider(value))
+	row.add_child(slider)
+	var strip := KeyStrip.new()
+	strip.custom_minimum_size = Vector2(0, 14)
+	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip.span = _time.max_value
+	strip.now = _at
+	strip.tooltip_text = "Its keys: a key pressed is chosen, dragged it moves in time; pressed between, the time goes there"
+	if track != null:
+		for key: Array in track.keys:
+			strip.times.append(float(key[0]))
+	if _key_joint == joint:
+		strip.chosen = _key_index
+	strip.picked.connect(func(index: int) -> void: _pick_key(joint, index))
+	strip.moved.connect(func(index: int, t: float) -> void: _move_key(joint, index, t))
+	strip.timed.connect(func(t: float) -> void: set_time(t))
+	strip.visible = track != null
+	row.add_child(strip)
+	_joint_parts.append({"joint": joint, "slider": slider, "readout": readout, "strip": strip})
+
+
+static func _place_words(value: float, joint: Motions.Joint) -> String:
+	if joint.mode == "slide":
+		return "%s studs" % Motions.num(value, 2)
+	return "%d°" % roundi(value)
+
+
+func _style_slider(slider: HSlider) -> void:
+	slider.focus_mode = Control.FOCUS_NONE
+	# The wheel scrolls the list, and sets no key.
+	slider.scrollable = false
+	slider.custom_minimum_size = Vector2(WIDE - 40, 18)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# A track to see, as Simulate's scrub has.
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(1, 1, 1, 0.16)
+	track.set_corner_radius_all(2)
+	track.content_margin_top = 2
+	track.content_margin_bottom = 2
+	slider.add_theme_stylebox_override("slider", track)
+
+
+## The editor's time set to [param t] seconds: each slider where its joint
+## is then, and the model drawn there (played to look: nothing changes).
+func set_time(t: float) -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null:
+		return
+	_at = clampf(snappedf(t, 0.05), 0.0, _time.max_value)
+	_quiet = true
+	_time.set_value_no_signal(_at)
+	_quiet = false
+	_time_words.text = "%s s" % Motions.num(_at, 1)
+	_show_places(motion)
+	_show_time(motion)
+
+
+func _show_places(motion: Motions.Motion) -> void:
+	_quiet = true
+	for part: Dictionary in _joint_parts:
+		var place: float = _place_at(motion, part["joint"])
+		(part["slider"] as HSlider).set_value_no_signal(place)
+		(part["readout"] as Label).text = _place_words(place, part["joint"])
+		(part["strip"] as KeyStrip).now = _at
+		(part["strip"] as KeyStrip).queue_redraw()
+	_quiet = false
+
+
+## The model drawn as the edited motion has it at the editor's time.
+func _show_time(motion: Motions.Motion) -> void:
+	if motion.tracks.is_empty() and motion.driver == null:
+		return
+	if _look == null:
+		_look = player.play(motion, false, MotionPlayer.PLAY_FPS, false)
+	if _look.frames.is_empty():
+		return
+	_draw_frame(_look.frames[clampi(roundi(_at * float(_look.fps)), 0, _look.frames.size() - 1)])
+
+
+## A joint's slider taken hold of: its joint held on its Grab.
+func _hold_slider(joint: Motions.Joint) -> void:
+	if _recording or _playing or _working:
+		return
+	_let_go_slider()
+	var item: MotionPlayer.Item = player.hold(joint)
+	if item.grab == null:
+		_say("%s: %s." % [player.joint_name(joint), item.stop_words])
+		return
+	_held = item
+	_held_joint = joint
+
+
+func _move_held(place: float) -> void:
+	if _held == null:
+		return
+	player.step_to(_held, place)
+	var drawn: Dictionary = world.drawn_ids().duplicate() if _drawn else {}
+	drawn.merge(_held.grab.drawn(), true)
+	_draw_frame(drawn)
+
+
+## The slider let go at [param place]: a key at the editor's time, where
+## its joint got to, one step to undo. With no place, only let go.
+func _let_go_slider(place: float = NAN) -> void:
+	if _held == null:
+		return
+	var item: MotionPlayer.Item = _held
+	var joint: Motions.Joint = _held_joint
+	_held = null
+	_held_joint = null
+	if is_nan(place):
+		return
+	var reached: float = player.step_to(item, place)
+	var stopped: String = item.stop_words
+	var from: float = item.from
+	var at: float = _at
+	var name: String = _edited().name if _edited() != null else ""
+	_change("set %s at %s s in %s" % [player.joint_name(joint), Motions.num(at, 1), Motions.quoted(name)],
+		func(motion: Motions.Motion) -> void:
+			var track: Motions.Track = _track_of(motion, joint)
+			if track == null:
+				track = Motions.Track.new()
+				track.joint = joint
+				# It goes from where it stands to where it is put.
+				if at > 0.0:
+					track.add_key(0.0, snappedf(from, 0.01), "EASE")
+				motion.tracks.append(track)
+			var how: String = "EASE"
+			for key: Array in track.keys:
+				if absf(float(key[0]) - at) < 0.001:
+					how = str(key[2])
+			track.add_key(at, snappedf(reached, 0.01), how))
+	var motion: Motions.Motion = _edited()
+	var track: Motions.Track = _track_of(motion, joint) if motion != null else null
+	if track != null:
+		_key_joint = track.joint
+		for n: int in track.keys.size():
+			if absf(float(track.keys[n][0]) - at) < 0.001:
+				_key_index = n
+	_fill_editor()
+	_set_buttons()
+	if not stopped.is_empty():
+		_say("%s. The key is there." % (stopped.left(1).to_upper() + stopped.substr(1)))
+	else:
+		_say("%s at %s at %s s." % [player.joint_name(joint), _place_words(reached, joint), Motions.num(at, 1)])
+	_undraw()
+	_show_time(motion)
+
+
+func _pick_key(joint: Motions.Joint, index: int) -> void:
+	var motion: Motions.Motion = _edited()
+	var track: Motions.Track = _track_of(motion, joint) if motion != null else null
+	if track == null or index >= track.keys.size():
+		return
+	_key_joint = track.joint
+	_key_index = index
+	set_time(float(track.keys[index][0]))
+	for part: Dictionary in _joint_parts:
+		(part["strip"] as KeyStrip).chosen = index if part["joint"] == joint else -1
+		(part["strip"] as KeyStrip).queue_redraw()
+	_show_key()
+
+
+## The chosen key moved to [param t] seconds.
+func _move_key(joint: Motions.Joint, index: int, t: float) -> void:
+	var motion: Motions.Motion = _edited()
+	var track: Motions.Track = _track_of(motion, joint) if motion != null else null
+	if track == null or index >= track.keys.size():
+		return
+	t = clampf(snappedf(t, 0.05), 0.0, Motions.MOST_SECONDS)
+	var key: Array = (track.keys[index] as Array).duplicate()
+	if absf(float(key[0]) - t) < 0.001:
+		return
+	_change("moved a key of %s to %s s" % [player.joint_name(joint), Motions.num(t, 2)],
+		func(edited_motion: Motions.Motion) -> void:
+			var own: Motions.Track = _track_of(edited_motion, joint)
+			own.keys.remove_at(index)
+			own.add_key(t, float(key[1]), str(key[2])))
+	var moved: Motions.Track = _track_of(_edited(), joint)
+	_key_joint = moved.joint
+	_key_index = -1
+	for n: int in moved.keys.size():
+		if absf(float(moved.keys[n][0]) - t) < 0.001:
+			_key_index = n
+	_at = t
+	_fill_editor()
+	_show_time(_edited())
+
+
+func _show_key() -> void:
+	var motion: Motions.Motion = _edited()
+	var track: Motions.Track = _track_of(motion, _key_joint) if motion != null and _key_joint != null else null
+	_key_row.visible = track != null and _key_index >= 0 and _key_index < track.keys.size()
+	if not _key_row.visible:
+		return
+	var key: Array = track.keys[_key_index]
+	_key_words.text = "Key at %s s, %s:" % [Motions.num(float(key[0]), 2), player.joint_name(track.joint)]
+	_quiet = true
+	_how.select(maxi(Motions.HOWS.find(str(key[2])), 0))
+	_quiet = false
+
+
+## The chosen key's way there: one of Motions.HOWS.
+func set_how(how: String) -> void:
+	var joint: Motions.Joint = _key_joint
+	var index: int = _key_index
+	if joint == null or index < 0 or not how in Motions.HOWS:
+		return
+	_change("made a key of %s %s" % [player.joint_name(joint), HOW_WORDS[Motions.HOWS.find(how)].to_lower()],
+		func(motion: Motions.Motion) -> void:
+			var track: Motions.Track = _track_of(motion, joint)
+			if track != null and index < track.keys.size():
+				track.keys[index][2] = how)
+	_say("That key's way there is %s now." % HOW_WORDS[Motions.HOWS.find(how)].to_lower())
+	_fill_editor()
+
+
+func remove_key() -> void:
+	var joint: Motions.Joint = _key_joint
+	var index: int = _key_index
+	var motion: Motions.Motion = _edited()
+	var track: Motions.Track = _track_of(motion, joint) if motion != null and joint != null else null
+	if track == null or index < 0 or index >= track.keys.size():
+		return
+	var last: bool = track.keys.size() == 1
+	if last and motion.tracks.size() == 1 and motion.driver == null:
+		_say("It is the motion's only key: Remove takes the motion out.")
+		return
+	_change("took a key of %s out" % player.joint_name(joint), func(edited_motion: Motions.Motion) -> void:
+		var own: Motions.Track = _track_of(edited_motion, joint)
+		own.keys.remove_at(index)
+		if own.keys.is_empty():
+			edited_motion.tracks.erase(own))
+	_key_index = -1
+	_key_joint = null
+	_fill_editor()
+	_say("Key taken out%s. Undo puts it back." % (", and the joint with it" if last else ""))
+
+
+## The edited motion called [param words]: one step to undo. A motion
+## that followed it follows it by its new name.
+func rename(words: String) -> void:
+	words = words.strip_edges().replace('"', "'")
+	var motion: Motions.Motion = _edited()
+	if motion == null or words.is_empty() or words == motion.name:
+		return
+	if _draft != null:
+		_draft.name = words
+		return
+	var other: Motions.Motion = _motions().named(words)
+	if other != null and other != motion:
+		_say("The model has a motion called %s already: give this one another name." % Motions.quoted(words))
+		_name.text = motion.name
+		return
+	var was: String = motion.name
+	var motions: Motions = _motions()
+	var had: Motions = motions.copy()
+	for one: Motions.Motion in motions.list:
+		if one.after.to_lower() == was.to_lower():
+			one.after = words
+	motion.name = words
+	builder.record([{"undo": "motions", "motions": had}], "renamed the motion %s %s" % [Motions.quoted(was),
+		Motions.quoted(words)])
+	_editing_name = words
+	_chosen = words
+	_refresh()
+	_say("Renamed %s. Undo gives it its old name." % Motions.quoted(words))
+
+
+## Take the edited motion out of the model: one step to undo.
+func remove_motion() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or _draft != null:
+		return
+	var name: String = motion.name
+	var motions: Motions = _motions()
+	var had: Motions = motions.copy()
+	motions.remove(name)
+	builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
+	back_to_list()
+	_say("Took %s out. Undo puts it back." % Motions.quoted(name))
+
+
+# -- recording ----------------------------------------------------------------------------
+
+
+## Record: every drag in the view from now until Stop is kept as keys of
+## the edited motion, at the times it happened, and the model put back.
+func record() -> void:
+	if _recording:
+		stop_recording()
+		return
+	if _playing or _working or _edited() == null:
+		return
+	_let_go_slider()
+	_undraw()
+	if _name.has_focus():
+		rename(_name.text)
+		_name.release_focus()
+	select_tool.call()
+	_recording = true
+	_rec_clock = -1
+	_rec_depth = builder.history_depth()
+	_rec_drags = 0
+	_rec_grab = null
+	_rec_tracks = []
+	_rec_refused = PackedStringArray()
+	_record.text = "Stop"
+	_set_buttons()
+	_say("Recording %s: drag the parts that move in the view, as far and as fast as they should go. "
+		% Motions.quoted(_edited().name) + "Stop when it is done.")
+
+
+## Stop recording: the drags kept as the motion's keys (in place of the
+## keys it had), the model put back where it stood when Record was
+## pressed, and the motion one step to undo.
+func stop_recording() -> void:
+	if not _recording:
+		return
+	if _rec_grab != null:
+		_end_drag()
+	_recording = false
+	_record.text = "Record"
+	var motion: Motions.Motion = _edited()
+	var drags: int = _rec_drags
+	var put_back: bool = drags > 0 and builder.history_depth() - _rec_depth == drags
+	if put_back:
+		builder.undo_steps(drags)
+		changed.emit()
+	var tracks: Array = _rec_tracks
+	_rec_tracks = []
+	if tracks.is_empty() or motion == null:
+		_set_buttons()
+		_say("Nothing was dragged, so nothing was kept.%s" % (" " + "; ".join(_rec_refused) + "."
+			if not _rec_refused.is_empty() else ""))
+		return
+	var name: String = motion.name
+	_change("recorded the motion %s" % Motions.quoted(name), func(edited_motion: Motions.Motion) -> void:
+		edited_motion.tracks = []
+		edited_motion.driver = null
+		edited_motion.seconds = 0.0
+		for made: Dictionary in tracks:
+			var track := Motions.Track.new()
+			track.joint = made["joint"]
+			for key: Array in made["keys"]:
+				track.add_key(float(key[0]), float(key[1]), "EASE")
+			edited_motion.tracks.append(track))
+	var edited_now: Motions.Motion = _edited()
+	_at = edited_now.length() if edited_now != null else 0.0
+	_key_joint = null
+	_key_index = -1
+	_refresh()
+	var keys: int = 0
+	for made: Dictionary in tracks:
+		keys += (made["keys"] as Array).size()
+	_say("Kept %s: %d drag%s of %d joint%s, %d keys over %s s. %s Play plays it; undo takes it back.%s" % [
+		Motions.quoted(edited_now.name if edited_now != null else name), drags, "" if drags == 1 else "s",
+		tracks.size(), "" if tracks.size() == 1 else "s", keys,
+		Motions.num(edited_now.length() if edited_now != null else 0.0, 1),
+		"The model is back where it was." if put_back else "The model stands where the drags left it.",
+		(" " + "; ".join(_rec_refused) + ".") if not _rec_refused.is_empty() else ""])
+
+
+## A frame while recording: the grab held sampled, and a drag let go and
+## kept made keys.
+func _record_frame() -> void:
+	var held: Grab = grabbing.grab if grabbing != null else null
+	if held != null and held.state == "moves" and held != _rec_grab:
+		if _rec_grab != null:
+			_end_drag()
+		if held.mode == "ball":
+			if not _rec_refused.has(_ball_words(held)):
+				_rec_refused.append(_ball_words(held))
+			return
+		_rec_grab = held
+		_rec_part = held.part
+		_rec_mode = held.mode
+		_rec_depth_at_press = builder.history_depth()
+		_rec_samples = []
+		if _rec_clock < 0:
+			_rec_clock = Time.get_ticks_usec()
+	if grabbing != null and grabbing.chain != null and not _rec_refused.has(CHAIN_WORDS):
+		_rec_refused.append(CHAIN_WORDS)
+	if _rec_grab == null:
+		return
+	if held == _rec_grab:
+		var t: float = float(Time.get_ticks_usec() - _rec_clock) / 1000000.0
+		if _rec_samples.is_empty() or t - float((_rec_samples.back() as Array)[0]) >= SAMPLE_EVERY:
+			_rec_samples.append([t, _grab_value(held)])
+		return
+	# Let go: kept once it has settled, swung or fallen.
+	if grabbing.is_settling():
+		return
+	_end_drag()
+
+
+const CHAIN_WORDS := ("A part held still and then dragged moves its chain of joints, which is not "
+	+ "recorded: press and drag at once")
+
+
+func _ball_words(held: Grab) -> String:
+	return "#%d turns on a ball, which a motion does not turn" % held.part
+
+
+func _grab_value(held: Grab) -> float:
+	return held.shift / BrickLattice.STUD if held.mode == "slide" else held.angle
+
+
+## The drag held let go and kept: its samples as keys of its joint, from
+## where the joint stood before it to where it was kept.
+func _end_drag() -> void:
+	var held: Grab = _rec_grab
+	_rec_grab = null
+	if held == null or _rec_samples.is_empty():
+		return
+	if builder.history_depth() <= _rec_depth_at_press:
+		return
+	_rec_drags += 1
+	var t_end: float = float(Time.get_ticks_usec() - _rec_clock) / 1000000.0
+	var found: Variant = player.joint_named("#%d" % _rec_part, _rec_mode == "slide", true)
+	if found is String:
+		_rec_refused.append(str(found))
+		return
+	var joint: Motions.Joint = found
+	for made: Dictionary in _rec_tracks:
+		var other: Motions.Joint = made["joint"]
+		if other == joint or other.same_ref(joint) or (other.lead != 0 and other.lead == joint.lead
+				and other.mode == joint.mode):
+			joint = other
+	# Where it was kept, and so where it stood before it: the grab counts
+	# from where it was grabbed.
+	var kept: float = player.at_now(joint)
+	var before: float = kept - _grab_value(held)
+	var samples: Array = []
+	for sample: Array in _rec_samples:
+		samples.append([float(sample[0]), before + float(sample[1])])
+	if absf(float((samples.back() as Array)[1]) - kept) > (KEPT_DEG if joint.mode == "turn" else KEPT_STUDS):
+		samples.append([maxf(t_end, float((samples.back() as Array)[0]) + SAMPLE_EVERY), kept])
+	var keys: Array = _thinned(samples, KEPT_DEG if joint.mode == "turn" else KEPT_STUDS)
+	for made: Dictionary in _rec_tracks:
+		if made["joint"] == joint:
+			(made["keys"] as Array).append_array(keys)
+			return
+	_rec_tracks.append({"joint": joint, "keys": keys})
+
+
+## [param samples] ([t, place]) thinned to the fewest that keep every
+## sample within [param slack] of the line through them (Douglas-Peucker),
+## snapped as the file writes them.
+static func _thinned(samples: Array, slack: float) -> Array:
+	if samples.size() <= 2:
+		return samples.map(func(one: Array) -> Array: return [snappedf(float(one[0]), 0.001),
+			snappedf(float(one[1]), 0.01)])
+	var keep: Array = []
+	keep.resize(samples.size())
+	keep.fill(false)
+	keep[0] = true
+	keep[samples.size() - 1] = true
+	var spans: Array = [[0, samples.size() - 1]]
+	while not spans.is_empty():
+		var span: Array = spans.pop_back()
+		var a: Array = samples[span[0]]
+		var b: Array = samples[span[1]]
+		var worst: float = 0.0
+		var at: int = -1
+		for n: int in range(int(span[0]) + 1, int(span[1])):
+			var s: Array = samples[n]
+			var along: float = (float(s[0]) - float(a[0])) / maxf(float(b[0]) - float(a[0]), 0.000001)
+			var off: float = absf(float(s[1]) - lerpf(float(a[1]), float(b[1]), along))
+			if off > worst:
+				worst = off
+				at = n
+		if at >= 0 and worst > slack:
+			keep[at] = true
+			spans.append([span[0], at])
+			spans.append([at, span[1]])
+	var out: Array = []
+	for n: int in samples.size():
+		if keep[n]:
+			out.append([snappedf(float(samples[n][0]), 0.001), snappedf(float(samples[n][1]), 0.01)])
 	return out
 
 
-## Stand the parts as the keys say at [param t]: the pose joints, then the
-## parts on their joints Play turns.
-func _stand_at(t: float) -> void:
-	var angles: Dictionary = animation.angles_at(t)
-	poser.stand(angles)
-	for path: String in _played:
-		var placed: Dictionary = (_played[path] as GrabDrag.Turning).placed_at(
-			float(angles.get(path, 0.0)))
-		for brick_id: Variant in placed:
-			var brick: BrickWorld.Brick = world.get_brick(int(brick_id))
-			if brick == null:
-				continue
-			if not _played_from.has(brick_id):
-				_played_from[brick_id] = brick.transform
-			world.move_brick(int(brick_id), placed[brick_id])
+func is_recording() -> bool:
+	return _recording
 
 
-## What the last render's parts on their joints stopped short of, for a
-## session: "#14 stops at 12° of the 30° asked: … meets …".
-func short_words() -> PackedStringArray:
-	return _short
+func is_playing() -> bool:
+	return _playing
 
 
-## Draw every frame and keep them. Returns how many were drawn.
-## [param job], from a session (ToolJobs), is the bar along the foot of the
-## window that counts the frames, and whose Cancel stops it. [param view] is
-## RenderSettings.view: the person's own camera when empty; a session's is
-## "hero", framed on the model and what it sweeps, since it cannot see the
-## window (SimulatePanel.record_of). Through the window's camera, a session's
-## render drew 8808-1 30% of the picture wide, and 2% once the window had
-## been zoomed out.
+# -- rendering -----------------------------------------------------------------------------
+
+
+## The motion chosen (or edited) drawn as an animation and kept: what
+## Render animation does. [param job], from a session (ToolJobs), is the bar
+## along the foot of the window. [param view] is RenderSettings.view: the
+## person's own camera when empty. Returns how many frames were drawn.
 func render_animation(job: Working.Job = null, view: String = "") -> int:
 	if _working or world == null:
 		return 0
-	if animation.keys.is_empty() and not animation.turntable:
-		_status.text = "Add a key or two, or tick Turn the model round once, first."
+	var motion: Motions.Motion = _edited() if _view == "edit" else _motions().named(_chosen)
+	if motion == null:
+		_say("Keep or make a motion first: Render animation draws the one chosen.")
 		return 0
 	if _playing:
-		_stop()
-	var frames: int = animation.frame_count()
-	var poses: Array = []
-	var carried: Dictionary = _turnings()
-	for n: int in frames:
-		var angles: Dictionary = animation.angles_at(animation.time_of(n))
-		var placed: Dictionary = poser.transforms_for(angles)
-		for path: String in carried:
-			placed.merge((carried[path] as GrabDrag.Turning).placed_at(
-				float(angles.get(path, 0.0))), true)
-		poses.append(placed)
-	_short = PackedStringArray()
-	for path: String in carried:
-		var turning: GrabDrag.Turning = carried[path]
-		if not turning.short_words.is_empty():
-			_short.append("%s %s" % [path, turning.short_words])
-	return await render_poses(poses, animation.fps,
-		func(n: int) -> float: return animation.turn_at(animation.time_of(n)),
-		_sheet_frames(frames), job, view, "_animation")
+		_stop_playing()
+	_let_go_slider()
+	_undraw()
+	var fps: int = int(RATES[maxi(_rate.selected, 0)])
+	var played: MotionPlayer.Played = player.play(motion, false, fps, false)
+	if played.frames.is_empty():
+		_say("Nothing to draw: %s." % player.said(played))
+		return 0
+	var sheet_at: Array = []
+	for k: int in SHEET_MOST:
+		sheet_at.append(roundi(float(k) * float(played.frames.size() - 1) / float(SHEET_MOST - 1)))
+	return await render_poses(played.frames, fps, func(_n: int) -> float: return 0.0, sheet_at, job, view,
+		"_" + motion.name.to_snake_case())
 
 
 ## Draw [param poses] (one a frame: brick id -> Transform3D of the parts
@@ -382,15 +1205,15 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 ## -> turns) round, and keep them as Render animation keeps its frames: a
 ## WebP, and on the desktop the frames and an MP4, named after the model
 ## and [param suffix]. [param sheet_at]: the frames kept for [method sheet].
-## A motion is rendered this way too (render_motion), as its frames.
-## Returns how many were drawn.
+## A motion is rendered this way (render_motion, Render animation), as its
+## frames. Returns how many were drawn.
 func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		job: Working.Job = null, view: String = "", suffix: String = "_animation") -> int:
 	if _working or world == null or poses.is_empty():
 		return 0
 	_ready_renderer()
 	_working = true
-	_set_working(true)
+	_set_buttons()
 	_last = {}
 	var started: int = Time.get_ticks_msec()
 	var frames: int = poses.size()
@@ -415,7 +1238,7 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		poser.reach(poses),
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
-			_frame.visible = true
+			_frame.visible = visible
 			if sheet_at.has(n):
 				_sheet[n] = image
 			if job != null:
@@ -426,23 +1249,24 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		job.cancel_wanted.disconnect(stop)
 	var lines := PackedStringArray()
 	if done == frames:
-		_status.text = "Putting the frames together…"
+		_say("Putting the frames together…")
 		if job != null:
 			job.say(_status.text)
 			job.count(0, 0)
 		lines = await output.finish_turntable()
 	_working = false
-	_set_working(false)
+	_set_buttons()
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 	if lines.is_empty():
-		_status.text = "Cancelled." if done < frames else "Nothing was kept."
+		_say("Cancelled." if done < frames else "Nothing was kept.")
 		_progress.value = 0.0
 		return done
 	_progress.value = 1.0
 	_last = {"frames": done, "bytes": output.last_bytes,
 		"name": RenderOutput.file_name(model, suffix, "webp"),
 		"paths": Array(output.paths), "kept": "; ".join(lines), "seconds": roundi(seconds)}
-	_status.text = "%d frames — %s — %.0f s." % [done, "; ".join(lines), seconds]
+	_say("%d frames — %s — %.0f s." % [done, "; ".join(lines), seconds])
+	_fit_later()
 	return done
 
 
@@ -474,8 +1298,8 @@ func _ready_renderer() -> void:
 			_fraction = fraction
 			_progress.value = fraction
 			if _working:
-				_status.text = "%s… %d%%" % [words.substr(0, 1).to_upper() + words.substr(1),
-					roundi(fraction * 100.0)])
+				_say("%s… %d%%" % [words.substr(0, 1).to_upper() + words.substr(1),
+					roundi(fraction * 100.0)]))
 	renderer.library = library
 	renderer.scenery = scenery
 	renderer.eye = eye
@@ -497,8 +1321,8 @@ const SHEET_WIDE := 480
 const SHEET_GAP := 4
 
 
-## Which frames go in the sheet: each key's, or four spread out when there
-## are more keys or none.
+## Which of animate_model's frames go in the sheet: each key's, or four
+## spread out when there are more keys or none.
 func _sheet_frames(frames: int) -> Array:
 	var out: Array = []
 	if animation.keys.size() >= 2 and animation.keys.size() <= SHEET_MOST:
@@ -560,35 +1384,75 @@ func rendered_words() -> String:
 	return _status.text
 
 
-func _set_working(on: bool) -> void:
-	_render.disabled = on
-	_play.disabled = on
-	_add_key.disabled = on
-	_cancel.visible = on
-	for slider: HSlider in _sliders:
-		slider.editable = not on
+## What the panel says now.
+func status_words() -> String:
+	return _status.text
+
+
+## Which buttons answer now: none while a render draws; only Stop while a
+## motion plays or Record listens.
+func _set_buttons() -> void:
+	var busy: bool = _working or _recording
+	for row: Dictionary in _row_buttons:
+		for key: String in ["play", "back", "edit", "pick"]:
+			var button: BaseButton = row[key]
+			if is_instance_valid(button):
+				button.disabled = busy or (_playing and button != _stop_button and key != "pick")
+	for button: Button in _keep_buttons:
+		if is_instance_valid(button):
+			button.disabled = busy or _playing
+	_play_all.disabled = busy or (_playing and _stop_button != _play_all)
+	_new.disabled = busy or _playing
+	var motion: Motions.Motion = _edited()
+	var empty: bool = motion == null or (motion.tracks.is_empty() and motion.driver == null)
+	_edit_play.disabled = busy or empty or (_playing and _stop_button != _edit_play)
+	_edit_reverse.disabled = busy or empty or (_playing and _stop_button != _edit_reverse)
+	_record.disabled = _working or _playing
+	_back.disabled = _working
+	_remove.disabled = busy or _playing
+	_name.editable = not busy
+	_time.editable = not (busy or _playing)
+	for part: Dictionary in _joint_parts:
+		(part["slider"] as HSlider).editable = not (busy or _playing)
+	var has: bool = _view == "edit" and not empty or _view == "list" and not _chosen.is_empty()
+	_render.disabled = _working or _recording or _playing or not has
+	_cancel.visible = _working
 
 
 func _process(delta: float) -> void:
-	if not visible:
-		return
-	# Something else moved the parts — an undo, an edit: read the pose again.
-	if not _playing and not _working and _dragging.is_empty() \
-			and world.revision != _seen_revision:
-		_seen_revision = world.revision
-		if not poser.holds():
-			var kept: int = poser.joints.size()
-			if not poser.read_back():
-				poser.find()
-			if poser.joints.size() != kept or _sliders.size() != poser.joints.size():
-				_fill_joints()
-			else:
-				_show_angles()
+	if _recording:
+		_record_frame()
 	if _playing:
-		_play_at += delta
-		_stand_at(minf(_play_at, animation.length()))
-		if _play_at >= animation.length() + 0.5:
-			_stop()
+		if grabbing != null and grabbing.is_grabbing():
+			_stop_playing()
+		else:
+			_frame_at += delta * float(MotionPlayer.PLAY_FPS)
+			var n: int = int(_frame_at)
+			if n >= _frames.size():
+				if _loop.button_pressed and _frames.size() > 1:
+					_frame_at = 0.0
+					n = 0
+				else:
+					_stop_playing()
+					_say(_stop_words)
+					n = -1
+			if n >= 0 and n != _shown:
+				_shown = n
+				_draw_frame(_frames[n])
+	elif not _recording and not _working and _held == null:
+		# Something else changed the motions or the model: an undo, a redo,
+		# a motion a session defined, another model opened.
+		if world.generation() != _seen_generation:
+			_suggested = player.suggest()
+			_draft = null
+			_view = "list"
+			_refresh()
+		elif builder.history_depth() != _seen_depth or not is_same(builder.last_step(), _seen_step) \
+				or world.motions != _seen_motions:
+			if world.revision != _seen_revision:
+				_look = null
+				_undraw()
+			_refresh()
 	_tell_page()
 
 
@@ -596,12 +1460,22 @@ func _input(event: InputEvent) -> void:
 	if not visible or not (event is InputEventKey):
 		return
 	var key: InputEventKey = event
-	if key.pressed and not key.echo and key.keycode == KEY_ESCAPE:
-		if _working:
-			renderer.cancel()
-		else:
-			close()
-		get_viewport().set_input_as_handled()
+	if not key.pressed or key.echo or key.keycode != KEY_ESCAPE:
+		return
+	# A drag's own Escape puts it back.
+	if grabbing != null and grabbing.is_grabbing():
+		return
+	if _working:
+		renderer.cancel()
+	elif _recording:
+		stop_recording()
+	elif _playing:
+		_stop_playing()
+	elif _view == "edit":
+		back_to_list()
+	else:
+		close()
+	get_viewport().set_input_as_handled()
 
 
 # -- building ------------------------------------------------------------------------
@@ -624,67 +1498,35 @@ func _build() -> void:
 	add_child(column)
 	var header := HBoxContainer.new()
 	column.add_child(header)
-	var title := Label.new()
-	title.text = "Pose and animate"
-	title.add_theme_font_size_override("font_size", 14)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
+	_title = Label.new()
+	_title.text = "Motions"
+	_title.add_theme_font_size_override("font_size", 14)
+	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_title)
 	_close = _button(header, "Close", close, "Back to building (Escape)")
-	_rows = VBoxContainer.new()
-	_rows.add_theme_constant_override("separation", 6)
-	column.add_child(_rows)
-	_empty = Label.new()
-	_empty.text = ("Nothing here turns on a joint yet. Make the part that should turn a "
-		+ "sub-assembly (Edit, Make sub-assembly), standing on a hinge, a clip or a turntable.")
-	_empty.add_theme_font_size_override("font_size", 12)
-	_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_empty.custom_minimum_size = Vector2(280, 0)
-	column.add_child(_empty)
-	_rest = _button(column, "At rest", at_rest, "Every joint back where it was when posing began")
+	_body = ScrollContainer.new()
+	_body.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_body.custom_minimum_size = Vector2(WIDE, 0)
+	column.add_child(_body)
+	var inner := VBoxContainer.new()
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_theme_constant_override("separation", 6)
+	_body.add_child(inner)
+	_build_list(inner)
+	_build_editor(inner)
 	column.add_child(HSeparator.new())
-	var heading := Label.new()
-	heading.text = "Animation"
-	heading.add_theme_font_size_override("font_size", 12)
-	heading.modulate = Color(1, 1, 1, 0.55)
-	column.add_child(heading)
-	var keyed := HBoxContainer.new()
-	keyed.add_theme_constant_override("separation", 6)
-	column.add_child(keyed)
-	var at := Label.new()
-	at.text = "Key at"
-	at.add_theme_font_size_override("font_size", 12)
-	keyed.add_child(at)
-	_key_time = SpinBox.new()
-	_key_time.min_value = 0.0
-	_key_time.max_value = 60.0
-	_key_time.step = 0.5
-	_key_time.suffix = "s"
-	_key_time.custom_minimum_size = Vector2(84, 0)
-	keyed.add_child(_key_time)
-	_add_key = _button(keyed, "Add key", add_key, "Keep every joint's angle at this moment")
-	_keys_box = VBoxContainer.new()
-	_keys_box.add_theme_constant_override("separation", 2)
-	column.add_child(_keys_box)
-	var playing := HBoxContainer.new()
-	playing.add_theme_constant_override("separation", 6)
-	column.add_child(playing)
-	_play = _button(playing, "Play", play, "Run it in the window")
-	_turntable = CheckBox.new()
-	_turntable.text = "Turn the model round once"
-	_turntable.add_theme_font_size_override("font_size", 12)
-	_turntable.focus_mode = Control.FOCUS_NONE
-	_turntable.toggled.connect(func(on: bool) -> void: animation.turntable = on)
-	playing.add_child(_turntable)
-	var choices := HBoxContainer.new()
-	choices.add_theme_constant_override("separation", 6)
-	column.add_child(choices)
+	var rendering := HBoxContainer.new()
+	rendering.add_theme_constant_override("separation", 6)
+	column.add_child(rendering)
+	_render = _button(rendering, "Render animation", func() -> void: render_animation(),
+		"Draw the chosen motion and keep it: an animated WebP, and on the desktop the frames and an MP4")
 	_rate = OptionButton.new()
 	_rate.add_theme_font_size_override("font_size", 12)
 	_rate.focus_mode = Control.FOCUS_NONE
 	for rate: int in RATES:
-		_rate.add_item("%d frames a second" % rate)
-	_rate.item_selected.connect(func(index: int) -> void: animation.fps = int(RATES[index]))
-	choices.add_child(_rate)
+		_rate.add_item("%d a second" % rate)
+	_rate.tooltip_text = "Frames a second"
+	rendering.add_child(_rate)
 	_size = OptionButton.new()
 	_size.add_theme_font_size_override("font_size", 12)
 	_size.focus_mode = Control.FOCUS_NONE
@@ -692,12 +1534,7 @@ func _build() -> void:
 		_size.add_item(str(size[0]))
 	_size.item_selected.connect(func(index: int) -> void:
 		settings.size = SIZES[index][1])
-	choices.add_child(_size)
-	var rendering := HBoxContainer.new()
-	rendering.add_theme_constant_override("separation", 6)
-	column.add_child(rendering)
-	_render = _button(rendering, "Render animation", render_animation,
-		"Draw every frame and keep them: an animated WebP, and on the desktop the frames and an MP4")
+	rendering.add_child(_size)
 	_cancel = _button(rendering, "Cancel", func() -> void:
 		if renderer != null:
 			renderer.cancel(), "Stop rendering (Escape)")
@@ -710,7 +1547,7 @@ func _build() -> void:
 	_progress.custom_minimum_size = Vector2(0, 5)
 	column.add_child(_progress)
 	_frame = TextureRect.new()
-	_frame.custom_minimum_size = Vector2(280, 120)
+	_frame.custom_minimum_size = Vector2(WIDE, 120)
 	_frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_frame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	column.add_child(_frame)
@@ -719,9 +1556,158 @@ func _build() -> void:
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 11)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(280, 0)
+	_status.custom_minimum_size = Vector2(WIDE, 0)
+	_status.max_lines_visible = 6
 	_status.modulate = Color(1, 1, 1, 0.8)
 	column.add_child(_status)
+
+
+func _heading(into: Control, words: String) -> Label:
+	var heading := Label.new()
+	heading.text = words
+	heading.add_theme_font_size_override("font_size", 12)
+	heading.modulate = Color(1, 1, 1, 0.55)
+	into.add_child(heading)
+	return heading
+
+
+func _build_list(into: Control) -> void:
+	_list_box = VBoxContainer.new()
+	_list_box.add_theme_constant_override("separation", 6)
+	into.add_child(_list_box)
+	_heading(_list_box, "The model's motions")
+	_motion_rows = VBoxContainer.new()
+	_motion_rows.add_theme_constant_override("separation", 3)
+	_list_box.add_child(_motion_rows)
+	_none = Label.new()
+	_none.text = "None yet. A motion is a named movement of the model: Open the doors, Lift the boom."
+	_none.add_theme_font_size_override("font_size", 12)
+	_none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_none.custom_minimum_size = Vector2(WIDE - 24, 0)
+	_list_box.add_child(_none)
+	var playing := HBoxContainer.new()
+	playing.add_theme_constant_override("separation", 8)
+	_list_box.add_child(playing)
+	_play_all = _button(playing, "Play all", play_all,
+		"Play every motion in order, each after the one it follows")
+	_loop = CheckBox.new()
+	_loop.text = "Loop"
+	_loop.tooltip_text = "Play it again and again until Stop"
+	_loop.add_theme_font_size_override("font_size", 12)
+	_loop.focus_mode = Control.FOCUS_NONE
+	playing.add_child(_loop)
+	_list_box.add_child(HSeparator.new())
+	_suggest_heading = _heading(_list_box, "Suggested from what moves")
+	_suggest_rows = VBoxContainer.new()
+	_suggest_rows.add_theme_constant_override("separation", 3)
+	_list_box.add_child(_suggest_rows)
+	_new = _button(_list_box, "New motion", new_motion,
+		"Make a motion: name it, then Record and drag the parts, or set its joints one by one")
+	_new.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+
+
+func _build_editor(into: Control) -> void:
+	_edit_box = VBoxContainer.new()
+	_edit_box.add_theme_constant_override("separation", 6)
+	_edit_box.visible = false
+	into.add_child(_edit_box)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	_edit_box.add_child(top)
+	_back = _button(top, "All motions", back_to_list, "Back to the list of the model's motions (Escape)")
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(gap)
+	_remove = _button(top, "Remove", remove_motion, "Take this motion out of the model (undo puts it back)")
+	var naming := HBoxContainer.new()
+	naming.add_theme_constant_override("separation", 6)
+	_edit_box.add_child(naming)
+	var called := Label.new()
+	called.text = "Name"
+	called.add_theme_font_size_override("font_size", 12)
+	naming.add_child(called)
+	_name = LineEdit.new()
+	_name.add_theme_font_size_override("font_size", 12)
+	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name.placeholder_text = "Open the dome"
+	_name.max_length = 60
+	_name.tooltip_text = "What a builder calls it: Open the dome, Extend the telescope"
+	_name.text_submitted.connect(func(words: String) -> void:
+		rename(words)
+		_name.release_focus())
+	_name.focus_exited.connect(func() -> void: rename(_name.text))
+	naming.add_child(_name)
+	var recording := HBoxContainer.new()
+	recording.add_theme_constant_override("separation", 6)
+	_edit_box.add_child(recording)
+	_record = _button(recording, "Record", record,
+		"Record drags: every drag of a part in the view, kept as keys at the times it happened")
+	_record_words = Label.new()
+	_record_words.text = "then drag parts in the view"
+	_record_words.add_theme_font_size_override("font_size", 11)
+	_record_words.modulate = Color(1, 1, 1, 0.6)
+	recording.add_child(_record_words)
+	var playing := HBoxContainer.new()
+	playing.add_theme_constant_override("separation", 6)
+	_edit_box.add_child(playing)
+	_edit_play = _button(playing, "Play", func() -> void: play(_edited().name if _edited() != null else ""),
+		"Play it in the view")
+	_edit_reverse = _button(playing, "Play backwards", func() -> void:
+		play(_edited().name if _edited() != null else "", true),
+		"Play it from its end to its start")
+	_edit_reverse.set_meta("backwards", true)
+	var timing := HBoxContainer.new()
+	timing.add_theme_constant_override("separation", 6)
+	_edit_box.add_child(timing)
+	var at := Label.new()
+	at.text = "At"
+	at.add_theme_font_size_override("font_size", 12)
+	timing.add_child(at)
+	_time = HSlider.new()
+	_style_slider(_time)
+	_time.custom_minimum_size = Vector2(200, 18)
+	_time.min_value = 0.0
+	_time.max_value = 4.0
+	_time.step = 0.05
+	_time.tooltip_text = "The time in the motion: the model is drawn as it is then"
+	_time.value_changed.connect(func(value: float) -> void:
+		if not _quiet:
+			set_time(value))
+	timing.add_child(_time)
+	_time_words = Label.new()
+	_time_words.add_theme_font_size_override("font_size", 12)
+	_time_words.custom_minimum_size = Vector2(44, 0)
+	timing.add_child(_time_words)
+	_heading(_edit_box, "Its joints")
+	_joint_rows = VBoxContainer.new()
+	_joint_rows.add_theme_constant_override("separation", 6)
+	_edit_box.add_child(_joint_rows)
+	_key_row = HBoxContainer.new()
+	_key_row.add_theme_constant_override("separation", 6)
+	_key_row.visible = false
+	_edit_box.add_child(_key_row)
+	_key_words = Label.new()
+	_key_words.add_theme_font_size_override("font_size", 12)
+	_key_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_key_words.clip_text = true
+	_key_row.add_child(_key_words)
+	_how = OptionButton.new()
+	_how.add_theme_font_size_override("font_size", 12)
+	_how.focus_mode = Control.FOCUS_NONE
+	for words: String in HOW_WORDS:
+		_how.add_item(words)
+	_how.tooltip_text = "How it gets to this key: eased in and out, at one speed, or held until then"
+	_how.item_selected.connect(func(index: int) -> void:
+		if not _quiet:
+			set_how(Motions.HOWS[index]))
+	_key_row.add_child(_how)
+	_drop_key = _button(_key_row, "Remove key", remove_key, "Take this key out")
+	_driver_words = Label.new()
+	_driver_words.add_theme_font_size_override("font_size", 12)
+	_driver_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_driver_words.custom_minimum_size = Vector2(WIDE - 24, 0)
+	_driver_words.visible = false
+	_edit_box.add_child(_driver_words)
 
 
 func _button(into: Control, words: String, action: Callable, tip: String) -> Button:
@@ -736,23 +1722,61 @@ func _button(into: Control, words: String, action: Callable, tip: String) -> But
 	return button
 
 
+func _fit_later() -> void:
+	_fit.call_deferred()
+
+
+## The lists as tall as they need, or as the window leaves room for above
+## its foot, scrolling past that; the panel no bigger than what it shows.
+func _fit() -> void:
+	if not visible:
+		return
+	var parent: Control = get_parent() as Control
+	var tall: float = parent.size.y if parent != null else get_viewport_rect().size.y
+	var inner: Control = _body.get_child(0) as Control
+	var wanted: float = inner.get_combined_minimum_size().y
+	_body.custom_minimum_size.y = 0.0
+	var others: float = get_combined_minimum_size().y
+	var room: float = tall - position.y - FOOT - others
+	_body.custom_minimum_size.y = clampf(wanted, minf(wanted, 80.0), maxf(room, 80.0))
+	reset_size()
+
+
 # -- for a browser test ---------------------------------------------------------------
 
 
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	var out: Dictionary = {"pose_rest": _rest, "pose_add_key": _add_key, "pose_key_time": _key_time,
-		"pose_play": _play, "pose_turntable": _turntable, "pose_rate": _rate, "pose_size": _size,
-		"pose_render": _render, "pose_cancel": _cancel, "pose_close": _close}
-	for n: int in _sliders.size():
-		out["pose_slider_%d" % n] = _sliders[n]
-	return out
+	var out: Dictionary = {"motions_close": _close, "motions_render": _render, "motions_cancel": _cancel,
+		"motions_rate": _rate, "motions_size": _size}
+	if _view == "list":
+		out.merge({"motions_play_all": _play_all, "motions_loop": _loop, "motions_new": _new})
+		for n: int in _row_buttons.size():
+			var row: Dictionary = _row_buttons[n]
+			out["motion_pick_%d" % n] = row["pick"]
+			out["motion_play_%d" % n] = row["play"]
+			out["motion_back_%d" % n] = row["back"]
+			out["motion_edit_%d" % n] = row["edit"]
+		for n: int in _keep_buttons.size():
+			out["motion_keep_%d" % n] = _keep_buttons[n]
+	else:
+		out.merge({"motions_back": _back, "motions_remove": _remove, "motions_name": _name,
+			"motions_record": _record, "motions_play": _edit_play, "motions_reverse": _edit_reverse,
+			"motions_time": _time, "motions_how": _how, "motions_drop_key": _drop_key})
+		for n: int in _joint_parts.size():
+			out["motions_joint_%d" % n] = _joint_parts[n]["slider"]
+	var shown: Dictionary = {}
+	for key: String in out:
+		var control: Control = out[key]
+		if is_instance_valid(control) and control.is_visible_in_tree():
+			shown[key] = control
+	return shown
 
 
-## What the panel is doing, for a browser test: window.brickworksPose, with
-## each slider's ends on the page so a click can set an angle as a person's
-## would. Web builds only.
+## What the panel is doing, for a browser test: window.brickworksMotions,
+## with each joint slider's ends and the time slider's on the page, so a
+## click can set them as a person's would. Web builds only.
 func _tell_page() -> void:
 	if not OS.has_feature("web"):
 		return
@@ -763,19 +1787,36 @@ func _tell_page() -> void:
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
+	var ends := func(control: Control) -> Dictionary:
+		if not control.is_visible_in_tree():
+			return {}
+		var rect: Rect2 = to_window * control.get_global_rect()
+		return {"x0": roundi(rect.position.x / per_css), "x1": roundi(rect.end.x / per_css),
+			"y": roundi(rect.get_center().y / per_css)}
+	var motions: Array = []
+	for motion: Motions.Motion in _motions().list:
+		motions.append({"name": motion.name, "seconds": snappedf(motion.length(), 0.01),
+			"tracks": motion.tracks.size()})
 	var joints: Array = []
-	for n: int in poser.joints.size():
-		var one: Poser.Joint = poser.joints[n]
-		var entry: Dictionary = {"path": one.path, "angle": roundi(one.angle), "kind": one.kind()}
-		if n < _sliders.size() and _sliders[n].is_visible_in_tree():
-			var rect: Rect2 = to_window * _sliders[n].get_global_rect()
-			entry["x0"] = roundi(rect.position.x / per_css)
-			entry["x1"] = roundi(rect.end.x / per_css)
-			entry["y"] = roundi(rect.get_center().y / per_css)
+	var edited: Motions.Motion = _edited()
+	for part: Dictionary in _joint_parts:
+		var joint: Motions.Joint = part["joint"]
+		var track: Motions.Track = _track_of(edited, joint) if edited != null else null
+		var entry: Dictionary = {"name": player.joint_name(joint), "mode": joint.mode,
+			"place": snappedf((part["slider"] as HSlider).value, 0.01),
+			"min": (part["slider"] as HSlider).min_value, "max": (part["slider"] as HSlider).max_value,
+			"keys": track.keys.size() if track != null else 0}
+		entry.merge(ends.call(part["slider"]))
 		joints.append(entry)
-	var state: Dictionary = {"open": visible, "joints": joints, "keys": animation.keys.size(),
-		"playing": _playing, "working": _working, "fraction": snappedf(_fraction, 0.01),
-		"status": _status.text, "frames_planned": animation.frame_count()}
+	var fps: int = int(RATES[maxi(_rate.selected, 0)])
+	var chosen: Motions.Motion = edited if _view == "edit" else _motions().named(_chosen)
+	var state: Dictionary = {"open": visible, "view": _view, "motions": motions,
+		"suggested": _offered().map(func(one: Motions.Motion) -> String: return one.name),
+		"chosen": chosen.name if chosen != null else "", "editing": edited.name if edited != null else "",
+		"at": _at, "time": ends.call(_time), "time_max": _time.max_value, "joints": joints,
+		"recording": _recording, "playing": _playing, "working": _working,
+		"fraction": snappedf(_fraction, 0.01), "status": _status.text,
+		"frames_planned": roundi(chosen.length() * fps) + 1 if chosen != null else 0}
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
 		state["worst_step"] = renderer.worst_step
@@ -785,4 +1826,73 @@ func _tell_page() -> void:
 	if said == _told_page:
 		return
 	_told_page = said
-	JavaScriptBridge.eval("window.brickworksPose = %s" % said, true)
+	JavaScriptBridge.eval("window.brickworksMotions = %s" % said, true)
+
+
+## A joint's keys on a strip of the motion's time: a mark at each key,
+## the chosen one in the accent, and a line where the editor's time is.
+## A key pressed is chosen and can be dragged along; a press between the
+## keys sets the time there.
+class KeyStrip extends Control:
+	signal picked(index: int)
+	signal moved(index: int, t: float)
+	signal timed(t: float)
+
+	var times: Array = []
+	## The seconds the strip spans, from 0.
+	var span: float = 4.0
+	var now: float = 0.0
+	var chosen: int = -1
+	var _dragging: int = -1
+	var _drag_t: float = 0.0
+	const NEAR := 7.0
+	const INSET := 8.0
+
+	func _x_of(t: float) -> float:
+		return INSET + (size.x - 2.0 * INSET) * clampf(t / maxf(span, 0.01), 0.0, 1.0)
+
+	func _t_of(x: float) -> float:
+		return clampf((x - INSET) / maxf(size.x - 2.0 * INSET, 1.0), 0.0, 1.0) * span
+
+	func _draw() -> void:
+		var mid: float = size.y * 0.5
+		draw_rect(Rect2(INSET, mid - 2.0, size.x - 2.0 * INSET, 4.0), Color(1, 1, 1, 0.16))
+		draw_line(Vector2(_x_of(now), 0.0), Vector2(_x_of(now), size.y), Look.ACCENT, 1.0)
+		for n: int in times.size():
+			var t: float = _drag_t if n == _dragging else float(times[n])
+			var x: float = _x_of(t)
+			var r: float = 4.5
+			var colour: Color = Look.ACCENT if n == chosen else Color(1, 1, 1, 0.85)
+			draw_colored_polygon(PackedVector2Array([Vector2(x, mid - r), Vector2(x + r, mid),
+				Vector2(x, mid + r), Vector2(x - r, mid)]), colour)
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			var press: InputEventMouseButton = event
+			if press.pressed:
+				var nearest: int = -1
+				var best: float = NEAR
+				for n: int in times.size():
+					var off: float = absf(_x_of(float(times[n])) - press.position.x)
+					if off <= best:
+						best = off
+						nearest = n
+				if nearest >= 0:
+					chosen = nearest
+					_dragging = nearest
+					_drag_t = float(times[nearest])
+					picked.emit(nearest)
+				else:
+					timed.emit(_t_of(press.position.x))
+				accept_event()
+			elif _dragging >= 0:
+				var index: int = _dragging
+				_dragging = -1
+				if absf(_drag_t - float(times[index])) > 0.02:
+					moved.emit(index, _drag_t)
+				queue_redraw()
+				accept_event()
+		elif event is InputEventMouseMotion and _dragging >= 0:
+			_drag_t = snappedf(_t_of((event as InputEventMouseMotion).position.x), 0.05)
+			queue_redraw()
+			accept_event()

@@ -419,7 +419,7 @@ func definitions() -> Array:
 		},
 		{
 			"name": "animate_model",
-			"description": ("Animate the model as Build, Pose's keys do: poses at moments, "
+			"description": ("Animate the model: poses at moments, "
 				+ "played smoothly between (an arm raised over two seconds and lowered "
 				+ "again, doors opening), the model turned round once as well if asked, and "
 				+ "rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) "
@@ -427,8 +427,9 @@ func definitions() -> Array:
 				+ "joints by number or name from pose_model's list, or a part on its joint as "
 				+ "move_part names it (\"#14\": a steering, a wheel, an arm on its pin), each "
 				+ "in degrees from where it was built. Rendering needs the app "
-				+ "in a window and is a job (job gives the result); render=false only sets "
-				+ "the keys, for the person to play."),
+				+ "in a window and is a job (job gives the result). The keys are kept as the "
+				+ "model's motion \"Animation\" (list_motions, play_motion), which the person plays "
+				+ "in Build, Motions…; render=false only keeps them."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"keys": {"type": "array", "items": {"type": "object", "additionalProperties": false,
 					"required": ["t", "angles"], "properties": {
@@ -1451,6 +1452,10 @@ func _pose(input: Dictionary) -> String:
 	return "%s at %d°." % [Assemblies.label(joint.path), roundi(reached)]
 
 
+## The motion animate_model keeps its keys as.
+const ANIMATION := "Animation"
+
+
 ## Bodies listed by move_part with no part=; the rest are counted.
 const MOST_MOVING := 16
 
@@ -1580,28 +1585,40 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 	panel.animation.turntable = turning
 	var said: String = "%d key%s over %.1f s%s" % [made.size(), "" if made.size() == 1 else "s",
 		panel.animation.length(), ", turning round once" if turning else ""]
-	if not bool(input.get("render", true)):
-		return "Set %s: Build, Pose and animate plays it." % said
-	if not StudioRender.possible():
-		return ("Set %s. Rendering it needs something to draw with, and this app is running "
-			% said + "without a window; the person can play it from Build, Pose and animate.")
-	# One path: the keys are a motion, defined and played once through Grab
-	# (MotionPlayer), as a kept motion plays; Pose's joints by their
-	# sub-assemblies, taken as a drag takes them.
+	# One path: the keys are a motion, kept in the model as "Animation" (the
+	# person plays it in Build, Motions…), and played once through Grab
+	# (MotionPlayer) to render; Pose's joints by their sub-assemblies, taken
+	# as a drag takes them.
 	var player: MotionPlayer = app.get("_motions")
 	var motion := Motions.Motion.new()
-	motion.name = "Animation"
+	motion.name = ANIMATION
 	motion.seconds = panel.animation.length()
 	for path: String in panel.animation.paths():
 		var joint: Variant = player.joint_named(path, false, false)
 		if joint is String:
-			return "Set %s. Nothing rendered: %s" % [said, joint]
+			return "Nothing kept or rendered: %s" % joint
 		var track := Motions.Track.new()
 		track.joint = joint
 		for key: Dictionary in panel.animation.keys:
 			if (key["angles"] as Dictionary).has(path):
 				track.add_key(float(key["t"]), float(key["angles"][path]), "EASE")
 		motion.tracks.append(track)
+	var kept: String = ""
+	if not motion.tracks.is_empty():
+		var motions: Motions = player.motions()
+		var replaced: bool = motions.named(ANIMATION) != null
+		var had: Motions = motions.copy()
+		motions.put(motion)
+		var builder: Builder = app.get("_builder")
+		builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
+			"changed" if replaced else "made", Motions.quoted(ANIMATION)])
+		kept = (" Kept as the motion %s: the person plays it in Build, Motions…, and play_motion "
+			+ "plays it; one step: undo takes it out.") % Motions.quoted(ANIMATION)
+	if not bool(input.get("render", true)):
+		return "Set %s.%s" % [said, kept]
+	if not StudioRender.possible():
+		return ("Set %s. Rendering it needs something to draw with, and this app is running "
+			% said + "without a window.%s" % kept)
 	var played: MotionPlayer.Played = player.play(motion, false, panel.animation.fps)
 	var poses: Array = played.frames.slice(0, panel.animation.frame_count())
 	# The model turned round once with nothing on its joints: frames that
