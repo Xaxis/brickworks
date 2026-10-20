@@ -400,7 +400,8 @@ tools/probe.sh mesh_formats_probe
 #   a loop or 1.2 billion triangles deep, a scene holding itself, voxels a
 #   million apart, USDZ); six fixtures laid at 24 studs, one piece; at 12
 #   studs a voxel of scene.vox is a stud (12 x 4 studs, 20 plates).
-#   2026-10-20 at a load of 10 to 30: 53 ok in about 90 s.
+#   2026-10-20 at a load of 10 to 30: 54 ok in about 90 s (the picker
+#   refusing a USDZ and a .txt as MeshFile does among them).
 #   --bench=bench/data/brickify (a checkout's, git-ignored): the Stanford
 #   bunny and Armadillo PLYs and Spot (OBJ and PNG, no .mtl) as they came,
 #   against bench/data/brickify/prepared's converted copies: the same cells
@@ -410,6 +411,18 @@ tools/probe.sh mesh_formats_probe
 #   minutes. --real=DIR reads and lays every .3mf/.vox/.ply/.fbx in DIR:
 #   docs/BRICKIFY.md section 12 has the ten measured and where they are from.
 ```
+
+In a browser, every kind of file: `tools/web/mesh_formats_flow.mjs` presses
+Control+I eight times, answering the chooser with each fixture in
+`tests/fixtures/brickify/formats/` (the OBJ and its PNG together), and waits
+for the panel to come up holding it (`window.brickworksState.brickify_read`:
+name, triangles, coloured, pictures, up), with the desktop's triangles and in
+colour, then presses Cancel; an FBX refused passes only as "this build cannot
+read". Wired into `tools/release/preview_checks.sh` as `mesh_formats`.
+2026-10-20 on a local export of the branch (`--export-release Web` after
+`tools/web_pack.py`, which a worktree needs for `assets/web/`; `serve.py` on
+a port of its own), Chromium on SwiftShader: 17 of 17, each file in the panel
+a second or two after it is chosen, the FBX read too.
 
 In a browser: `tools/web/brickify_flow.mjs` presses Ctrl-I, answers the page's file
 chooser with the bunny, types 30 into the size, presses Brickify, and reads

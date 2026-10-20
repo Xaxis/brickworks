@@ -70,8 +70,7 @@ func take(bytes: PackedByteArray, file_name: String, extras: Dictionary = {}) ->
 		failed.emit("could not read that file")
 		return
 	if not file_name.get_extension().to_lower() in MeshFile.KINDS:
-		failed.emit("%s is not a 3D model this can brickify — %s" % [file_name,
-			MeshFile.NAMED])
+		failed.emit(MeshFile.refusal(file_name))
 		return
 	picked.emit(bytes, file_name, extras)
 
@@ -135,6 +134,7 @@ func _from_browser(arguments: Array) -> void:
 		else:
 			extras[name] = data
 	if main.is_empty():
-		failed.emit("none of those is a 3D model — choose an %s" % MeshFile.NAMED)
+		failed.emit(MeshFile.refusal(str(extras.keys()[0])) if extras.size() == 1
+			else "none of those is a 3D model — choose an %s" % MeshFile.NAMED)
 		return
 	take(bytes, main, extras)

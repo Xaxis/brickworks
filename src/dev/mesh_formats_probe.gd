@@ -552,6 +552,16 @@ func _refused() -> void:
 		.to_ascii_buffer(), "not.fbx", "could not read")
 	_refuse("a USDZ, which nothing here reads", "PK".to_ascii_buffer(), "model.usdz",
 		"save it from your 3D program")
+	# And the picker says the same before reading it.
+	var picker := MeshFilePicker.new()
+	var heard: Array = []
+	picker.failed.connect(func(why: String) -> void: heard.append(why))
+	picker.take("PK".to_ascii_buffer(), "model.usdz")
+	picker.take("a note".to_ascii_buffer(), "notes.txt")
+	picker.free()
+	_check("the picker refuses them as MeshFile does: %s" % [heard],
+		heard.size() == 2 and str(heard[0]).contains("is USD")
+		and str(heard[1]).contains(MeshFile.NAMED))
 
 
 ## [param zip] with member [param member]'s size restated as [param size].

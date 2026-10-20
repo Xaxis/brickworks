@@ -1011,7 +1011,7 @@
       "kind": "ui",
       "label": "brickify a 3d model",
       "entry": "src/ui/brickify_dialog.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd  (or I in the app; node tools/web/brickify_flow.mjs --url=<a preview>/app in a browser)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd  (or I in the app; node tools/web/brickify_flow.mjs --url=<a preview>/app in a browser, and node tools/web/mesh_formats_flow.mjs --url=<a preview>/app for every kind of file)",
       "area": "brickify"
     },
     {

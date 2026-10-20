@@ -121,13 +121,8 @@ static func read(bytes: PackedByteArray, file_name: String,
 				return out
 			_scene(ClassDB.instantiate("FBXDocument"), ClassDB.instantiate("FBXState"), bytes,
 				file_name, extras, out)
-		"usdz", "usd", "usdc", "usda":
-			out.error = ("%s is USD, which nothing here can read: save it from your 3D program "
-				+ "as glTF, FBX or OBJ") % file_name.get_file()
-			return out
 		_:
-			out.error = "%s is not a 3D model this can bring in — %s" % [file_name.get_file(),
-				NAMED]
+			out.error = refusal(file_name)
 			return out
 	if not out.error.is_empty():
 		return out
@@ -138,8 +133,8 @@ static func read(bytes: PackedByteArray, file_name: String,
 		out.error = "%s has %d triangles; at most %d can be brought in" % [
 			file_name.get_file(), out.triangle_count(), MOST_TRIANGLES]
 		return out
-	# Filled in whole where a reader gave none: a scan's millions a corner
-	# at a time took a second.
+	# Filled in whole where a reader gave none, not a corner at a time: a
+	# scan has millions.
 	if out.colours.is_empty():
 		out.colours.resize(out.positions.size())
 		out.colours.fill(Color.WHITE)
@@ -154,6 +149,15 @@ static func read(bytes: PackedByteArray, file_name: String,
 	if out.normals.size() != out.positions.size():
 		out.normals = smooth_normals(out.positions, CREASE_DEGREES)
 	return out
+
+
+## Why a file of a kind not in [constant KINDS] is not read, in words a
+## person can act on.
+static func refusal(file_name: String) -> String:
+	if file_name.get_extension().to_lower() in ["usdz", "usd", "usdc", "usda"]:
+		return ("%s is USD, which nothing here can read: save it from your 3D program as "
+			+ "glTF, FBX or OBJ") % file_name.get_file()
+	return "%s is not a 3D model this can bring in — %s" % [file_name.get_file(), NAMED]
 
 
 ## The files a model names beside itself, as it names them: an OBJ's

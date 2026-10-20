@@ -2834,6 +2834,249 @@ browser runs), every Godot run with a data folder of its own
   is the release's. Its booklet took 740 s to arrive in SwiftShader at a
   load of 40 to 50, most of it drawing 51 steps' pictures in software.
 
+## 12. Unit 9, done: every file people have (2026-10-20)
+
+Unit 9 of the plan. On `main` today (`dfdced6`), Brickify reads OBJ, STL,
+glTF and GLB, and nothing else: two of the bench's fourteen models, the
+Stanford bunny and the Armadillo, came as PLY scans and were converted to
+OBJ to be read, and Spot, an OBJ that came with its picture and no `.mtl`,
+came in grey until the bench wrote it one. Branch `brickfmt`, from `main`
+at `dfdced6`.
+
+**In short.** Brickify now reads PLY, 3MF, MagicaVoxel's VOX and FBX, in
+the desktop app and in the browser alike, and an OBJ chosen with one
+picture and no `.mtl` takes the picture as its colours. All of it is read
+from the file's bytes, as before, since a browser has no path. The bench's
+two PLY originals and Spot, read as they came, are measured and laid
+exactly as their converted copies are: the same cells in the same colours
+at 24 and 48 studs, and the same parts. Ten real files from public sources
+read and lay in one piece. Twenty-six malformed or hostile files
+are refused, each saying why, in under a millisecond but one (a zip of 64
+MB of nothing, in 0.23 s). Nothing on screen changed but what the file chooser
+accepts and what a refusal says.
+
+### What each reads (`MeshFile`)
+
+- **PLY**, the scanners' format: text, and binary in either byte order,
+  read by the header's own account of its elements and their properties in
+  order, so anything not wanted is stepped over by its size (the
+  Armadillo's face has a byte of "intensity" before its corners, and a
+  file may carry edges or materials after its faces). A vertex's
+  position, its normal if it has one, and its colour, a byte or a fraction
+  a channel (`red`, `r` or `diffuse_red`); a face of any number of
+  corners, fanned from its first, and its own colour if it has one. Y up,
+  as the Stanford scans are; the panel's Up turns any other. Not read: a
+  texture a PLY names (MeshLab's `TextureFile`), which is rare beside
+  vertex colours.
+- **3MF**, the printing sites' format: a zip of XML, unpacked from bytes
+  by the zip reader Studio files already use (`StudioIo`): Godot's own
+  `ZIPReader` reads only from a path. The root model is the one
+  `_rels/.rels` names. Its build's items are laid, each placed by its
+  transform; an object is a mesh or components placing other objects,
+  placed in turn, and an object in another model file of the zip (3MF's
+  production extension, `p:path`, as Bambu Studio writes) is read from
+  there. A part placed in a mirror is turned the other way round, so it
+  still faces out. Colours: a triangle's own (`pid` and `p1`, or `p1` to
+  `p3` a corner at a time), or else its object's (`pid`, `pindex`), from
+  base materials' display colours, colour groups, or a texture group's
+  places on a picture in the zip. A support object is left out. Z up, as a
+  printer has it. Not read: composite materials and multi-properties
+  (left white), and the colours a slicer paints in its own attributes
+  (Bambu's `paint_color`, PrusaSlicer's `mmu_segmentation`).
+- **VOX**, MagicaVoxel's: each model's size and voxels, its palette (or
+  MagicaVoxel's own when the file brings none, checked entry for entry
+  against `ogt_vox.h`'s [ogt-vox]), and since MagicaVoxel 0.99 its scene:
+  transforms, groups and shapes placing the models, each turned (the
+  packed rotation byte) and moved about its own middle at its first frame,
+  a hidden node or layer left out. A file from before scenes, whose models
+  past the first were an animation's frames (MagicaVoxel's T-Rex), is its
+  first model. What comes in is the outside of the voxels: each face no
+  voxel covers, two triangles in its voxel's colour, a voxel a unit cube,
+  Z up. So Brickify reads it as any mesh.
+- **A voxel and a stud.** Brickify's size control decides, as for any
+  model: the size is studs along the longest side, 24 to begin with. So a
+  model N voxels along its longest side is laid at 24/N studs a voxel, and
+  set to N studs it is a voxel a stud, each voxel a stud across and two and
+  a half plates tall (a cube, as a stud's 8 mm is two and a half of a
+  plate's 3.2 mm). At 12 studs the 12-voxel `scene.vox` is 12 x 4 studs and
+  20 plates tall, its 82 voxels 225 plates' cells (205 at exactly two and a
+  half each: a voxel's top falls mid-plate every other voxel). No control
+  was added.
+- **FBX**, the animation tools' format, through Godot's own reader
+  (`FBXDocument`, ufbx 0.21.3), which the desktop and the browser builds
+  of Godot 4.7.2 both have (its name is in the web template's
+  `godot.wasm`, and the browser flow reads the fixture). Named by
+  `ClassDB`, never outright, so a build without it would still load
+  `MeshFile` and refuse an FBX in words ("this build cannot read"). Laid
+  as glTF is: every mesh, placed by its nodes, Y up and a metre a unit (a
+  centimetre in the file comes in as 0.01). Colours as Godot reads them: a
+  material's colour is taken as linear, as Blender and Maya write it, and
+  turned to sRGB; vertex colours are sRGB, as Blender writes them by
+  default, and kept (a glTF's are linear and turned). Pictures packed in
+  the FBX come with it; pictures it names outside itself, chosen with it,
+  are written beside it for the reader as a .gltf's are, which no real FBX
+  here has tried.
+- **An OBJ and one picture.** When no material of the OBJ names a picture
+  that was chosen, and exactly one picture was chosen with it, that
+  picture is its texture wherever its faces have places on one (`vt`). On
+  the desktop, which is given the OBJ alone, the one picture beside an
+  OBJ that names no material library is read with it, as the files an OBJ
+  names are; with two pictures there and nothing to say which, neither is
+  guessed at.
+- **USDZ** is refused, by the file chooser too, saying to save it as glTF,
+  FBX or OBJ: Godot has no USD reader, and its USDC is a binary crate of
+  its own.
+
+### What each refuses, and how fast
+
+Everything is checked against what is there before it is believed: a
+count against the bytes left, a list's length before it is read, an index
+against what it indexes, a zip member's stated size against what may be
+unpacked (no more than `MAX_BYTES`, 96 MB, all of them together) and what
+it unpacks to against what it stated (Godot's inflater is given exactly
+that much room and its CRC checks it), triangles against `MOST_TRIANGLES`
+(1.5 million) before any is made, and a VOX's voxels (4.2 million) and the
+box they spread over (33.5 million cells) before a cell is laid. Each
+refusal, measured in `mesh_formats_probe`:
+
+| File | Says | ms |
+|---|---|---|
+| a binary PLY cut in half | "that PLY says it has 5148 vertices, and is cut short before them" | 0.1 |
+| a PLY claiming a million vertices in 48 bytes | "…cut short before them" | 0.0 |
+| a PLY claiming two billion vertices | "that PLY has 2000000000 vertices; at most 4500000 can be brought in" | 0.0 |
+| a PLY claiming two million faces | "…at most 1500000 triangles can be brought in" | 0.1 |
+| a face of 255 corners with one there | "that PLY is cut short in its faces" | 0.1 |
+| a face naming vertex 7 of 3 | "a face of that PLY names vertex 7, and it has 3" | 0.1 |
+| points with no faces | "that PLY is 3 points with no surfaces between them: a scan is made a surface first (MeshLab's Screened Poisson does it)" | 0.0 |
+| an unknown format, not a PLY | "…neither text nor binary PLY", "…no header saying what is in it" | 0.0 |
+| not a zip, or a zip cut short | "that 3MF is not the zip a 3MF is: it is damaged, or not a 3MF" | 0.1 |
+| a model stating 4 GB unpacked | "that 3MF unpacks to more than 96.00 MiB, more than can be brought in" | 0.1 |
+| a model unpacking to more than it states | "that 3MF is damaged: 3dmodel.model in it does not unpack" | 0.1 |
+| 64 MB of nothing, zipped to 65 KB | "bomb.3mf has no surfaces in it" | 229 |
+| objects placing each other in a loop | "that 3MF's objects place each other in a loop" | 0.2 |
+| a cube placed ten times, ten times over, eight deep (1.2 billion triangles) | "that 3MF lays more than 1500000 triangles, more than can be brought in" | 0.5 |
+| a triangle naming a missing corner, an item naming a missing object | "…a triangle naming a corner it does not have", "…lays object 4, which it does not have" | 0.1 |
+| a VOX cut short, or not one | "that .vox is cut short", "that is not a MagicaVoxel .vox file" | 0.1 |
+| voxels more than their chunk, a model no voxels across | "…cut short in its voxels", "…a model 0 × 2 × 2 voxels, which is not a size" | 0.0 |
+| a scene holding itself | "that .vox is damaged in its scene: a node is missing, or they hold each other" | 0.2 |
+| two voxels a million apart | "that .vox spreads over 1000001 × 1001 × 1001 voxels; at most 33554432 can be brought in" | 0.1 |
+| not an FBX; a USDZ | "could not read not.fbx as FBX"; "model.usdz is USD, which nothing here can read: save it from your 3D program as glTF, FBX or OBJ" | 0.2 |
+
+### The numbers
+
+**Fixtures** (`MeshFormatSamples`, made in code, CC0, in
+`tests/fixtures/brickify/formats/`), each read back as it was made, then
+laid at 24 studs, buildable in one piece:
+
+| File | Read | What came in | Laid at 24 studs |
+|---|---|---|---|
+| `bunny.ply`, text, Windows line ends | 26 ms | the bunny's 1,716 triangles, corners within 0.00001, colours within half a byte | 687 parts, White, Bright Pink, Black |
+| `bunny_binary.ply`, little-endian | 34 ms | corners exactly, normals as given, colours as fractions | |
+| `prism.ply`, big-endian, doubles | 0.4 ms | two six-cornered ends and six four-cornered sides fanned into 20 triangles, 8 red and 12 blue, flat and facing out | 1,022 parts |
+| `shapes.3mf` | 1.1 ms | 46 triangles, the support left out, a mirrored cube facing out (2,000 mm³ for 2,000), a second file's cube blue, a triangle coloured a corner at a time, a square on its picture's two halves | 274 parts |
+| `scene.vox` | 1.0 ms | the outside of two models, 300 triangles in their three colours, one moved and the other turned to run along y, the third hidden | 123 parts |
+| `plain.vox` | 0.2 ms | MagicaVoxel's own colours 1, 36, 216, 255 and 37: ffffff, ff0000, ee0000, 111111, ccffff | |
+| `bunny.fbx`, binary, zlib arrays | 5.0 ms | all 1,716 of the bunny's triangles where its moved node puts them, vertex colours within 0.003; the cube's 12 in its material's red exactly | 133 parts |
+| `spotty.obj` and `spotty.png` | 0.2 ms | no colour alone; with the picture, 6 triangles red and 6 blue | 2,273 parts |
+
+**The bench's own files, as they came** (`--bench=bench/data/brickify`):
+
+| Model | Read | Measured at 24 and 48 studs | Laid at 24 studs |
+|---|---|---|---|
+| Stanford bunny, `bun_zipper.ply` (text) | 69,451 triangles in 450 ms | 6,943 and 55,137 cells, every one the same and in the same colour as the converted copy's | 1,183 parts, the same as the copy's, colour for colour |
+| Armadillo, `Armadillo.ply` (big-endian, a byte before each face) | 345,944 triangles in 2.9 s (the converted OBJ: 3.2 s) | 2,409 and 18,991, every one the same | 692 parts, the same |
+| Spot, `spot_triangulated.obj` and its picture, no `.mtl` | 5,856 triangles in 81 ms, coloured | 4,829 and 39,166, every one the same, colours too | 998 parts in 7 colours, the same |
+
+A corner of the PLY and of its OBJ copy differ by a few parts in a
+billion (Godot's text-to-number rounding in the OBJ), and no cell moved.
+So the bench's numbers stand as measured, and PLY needs no conversion for
+Brickify. Of the Armadillo's 2.9 s, about half is the reading and half the
+normals worked out for a scan that gives none, as for the OBJ.
+
+**Real files** (fetched into a folder of their own and only read; sources
+and licences below), each laid at 24 studs, buildable in one piece; the
+times are one run's, at a load of 10 to 30:
+
+| File | Source | Read | Laid |
+|---|---|---|---|
+| `dodeca_chain_loop_color.3mf` | 3MF Consortium [3mf-samples], BSD-2-Clause | 7,680 triangles in 91 ms, coloured | 394 parts in 8 colours and its stand |
+| `cube_gears_prod.3mf` (production extension, objects in other files) | the same | 25,692 triangles in 275 ms | 503 parts |
+| `multipletextures.3mf` (two JPEG pictures) | the same | 96,692 triangles in 1.3 s, 2 pictures | 1,128 parts, nearly all black: its picture is the Hubble deep field |
+| `pyramid_vertexcolor.3mf` (a colour a corner) | the same | 4 triangles in 19 ms | 3,063 parts in 37 colours |
+| `chr_knight.vox` | MagicaVoxel's own models [voxel-model], MIT | 1,460 triangles in 18 ms | 676 parts in 14 colours |
+| `T-Rex.vox` (8 frames, no scene) | the same | its first frame, 2,528 triangles in 15 ms | 571 parts |
+| `dragon.vox` (a scan) | the same | 156,580 triangles in 457 ms | 981 parts |
+| `monu1.vox` | the same | 66,444 triangles in 975 ms | 682 parts |
+| `menger.vox` (no palette) | the same | 672,768 triangles in 1.8 s | 4,122 parts in 89 s |
+| `axes.vox` (a MagicaVoxel 0.99 scene: four models placed ten times) | dot_vox's test files [dot-vox], MIT | 32,040 triangles in 119 ms, holding 12,452 voxels from (-20, -16, 0) to (240, 249, 199), as an independent reading of its scene in Python places them | 273 parts |
+
+**In the browser** (`tools/web/mesh_formats_flow.mjs`): against a local
+export of the branch (`--export-release Web`, `serve.py` on port 9081,
+Chromium on SwiftShader), all 17 checks pass: each of the eight fixtures, chosen
+through the page's own file chooser (the OBJ with its picture, the two
+together), comes up in the Brickify panel in a second or two with the
+triangles the desktop reads, in colour, its pictures and its up; the FBX
+too, so the browser build has Godot's FBX reader and nothing is refused
+there. Pictures of each panel are in the flow's `--out`.
+
+### Proof
+
+On the branch, every Godot run with a data folder of its own
+(`XDG_DATA_HOME`), so nothing of the owner's app data was read or written,
+each changed script through `godot --check-only` first:
+
+- `mesh_formats_probe` (headless, new, `tools/probe.sh`): all 54 checks
+  pass at a load of 10 to 30, in about 90 s: the fixtures as the samples
+  write them, each read back as it was made, the 26 refusals and the
+  picker refusing the same way, six fixtures laid in one piece, and a voxel
+  a stud at 12 studs. With `--bench=…` and `--real=…` (the bench in about
+  three minutes more): the tables above, all pass, 89 checks (run before
+  the picker's check was added, which touches neither); every real VOX holds exactly as many voxels as its first
+  model's chunk says (1,272 for the T-Rex, 398, 40,265, 160,000 and 156,942),
+  so each comes in whole, closed and facing out. **Broken on purpose, it
+  fails**: with a mirrored part's triangles left as they were, the 3MF's two
+  cubes hold 0 mm³ for 2,000 (one of them faces in); with an FBX's vertex
+  colours turned from linear as a glTF's are, the bunny's were 0.217 out.
+- `brickify_probe`: 84 of 84, as on `main`: OBJ, STL, GLB and a .gltf with
+  its .bin read through the shared `_scene`, the forty-stud bunny 1,943
+  parts upright.
+- `brickify_ui_probe` in a window on the GPU: 21 of 21.
+- `app_tools_probe`: all pass, a path that is no 3D model refused as "not
+  an OBJ, STL, glTF, GLB, PLY, 3MF, VOX or FBX file"; `mcp_sync_probe` all
+  pass, `tools/mcp_tools.json` written again for the brickify tool's
+  description and its `file=` and `url=`, the instructions' head still
+  3,312 characters.
+- `godot --headless --path . --quit`: every script parses; the trademark
+  test, 25 passed.
+- `featuremap affected --since dfdced6`: the 3D model files, the Brickify
+  panel, the window's commands over MCP and the MCP's step are covered by
+  the runs above. The change to `main.gd` is the page's state for the
+  flow, built only in a browser (`_tell_page`), which the flow proves.
+
+### What is left
+
+- **The bench's prepare step** (`tools/bench/brickify_bench.py prepare`)
+  still writes the PLYs as OBJ and gives Spot a `.mtl`. Brickify no longer
+  needs either, and lays the originals the same, so the numbers stand; the
+  outside tools' copy still needs trimesh's conversion, and trimesh is not
+  on this machine, so the step was left as it is rather than changed
+  unrun.
+- **The menu still says** "3D model to brickify (.obj, .stl, .gltf,
+  .glb)…", and the panel's tooltip "an OBJ, STL or glTF model". Both are
+  words on the app's screen, which this unit was not to change; the file
+  chooser itself lists every kind. One word for the owner.
+- **Colours a slicer paints** (Bambu Studio, PrusaSlicer) are its own
+  attributes, not 3MF's materials, and come in white; a PLY's texture is
+  not read. Each is a reader of its own once a file that needs it turns up.
+- **A VOX's materials** (glass, metal, light) are read as their colour
+  alone.
+- **The Armadillo's reading** is 1.4 s of GDScript a value at a time; a
+  block read whole for an element of fixed size would be faster, if a
+  scan's wait matters (it is read on a worker, so the page keeps drawing).
+- **The browser flow** ran against a local export, not a preview: a
+  preview is the release's. It is wired into
+  `tools/release/preview_checks.sh` as `mesh_formats`.
+
 ## Each model, every arm
 
 As section 3 measures them. *Coverage* is Brickify's own figure, the share of the measured studs and plates inside a part; it has none for an outside build. *Lost95* and *Added95* are the 95th percentiles, in studs, of the model's surface from the build's and the build's from the model's. legolization ran at 24 studs only, and its time is its whole run.
