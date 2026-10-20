@@ -39,6 +39,14 @@
 ## link's, read-only, and a reload opens it as built. main.gd takes the
 ## press (_play_press) and works out what moves (Playable).
 ##
+## Its motions (2026-10-20, docs/MOTIONS.md): a model that carries motions
+## of its own ("Open the dome", "Extend the telescope") has a button for
+## each in the pill, in Reset's face. Pressed, it plays through Grab as the
+## builder's Motions panel plays it (main.gd's _play_motion), and stays lit
+## while the model stands where it ends; pressed again it plays backwards,
+## which takes it back. Reset puts everything back. A drag still moves a
+## part as before.
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -58,6 +66,9 @@ signal newest_wanted
 signal build_from(page: int)
 ## Reset: what was moved put back as it was built.
 signal reset_wanted
+## A motion's button: [param name] played, or played backwards when it
+## stands where it ends.
+signal motion_wanted(name: String)
 
 ## loading, parts, ready, gone, failed.
 var state: String = "loading"
@@ -128,6 +139,14 @@ var _play_title: Label
 var _play_words: Label
 var _play_reset: Button
 var _play_said: String = ""
+## The model's own motions, by name, a button each; those standing where
+## they end (played and not taken back), by name in lower case.
+var play_motions: PackedStringArray = PackedStringArray()
+var motions_out: Dictionary = {}
+var _motion_row: HFlowContainer
+var _motion_buttons: Array[Button] = []
+var _play_pt: float = 1.0
+var _play_narrow: bool = false
 
 
 func _ready() -> void:
@@ -437,6 +456,10 @@ func _build_play() -> void:
 	_play_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_play_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_play_title)
+	# The model's own motions, a button each, wrapping as the words do.
+	_motion_row = HFlowContainer.new()
+	_motion_row.visible = false
+	words.add_child(_motion_row)
 	_play_words = Label.new()
 	_play_words.modulate = Color(1, 1, 1, 0.8)
 	_play_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -477,7 +500,24 @@ func _fit_play(pt: float, narrow: bool) -> void:
 	# gutters, so the pill never covers the cube.
 	var room: float = size.x - (180.0 if narrow else 24.0) * pt if size.x > 0.0 else 600.0
 	_play_words.custom_minimum_size = Vector2(clampf(room, 140.0 * pt, 380.0 * pt), 0.0)
+	_play_pt = pt
+	_play_narrow = narrow
+	_motion_row.custom_minimum_size = Vector2(_play_words.custom_minimum_size.x, 0.0)
+	_motion_row.add_theme_constant_override("h_separation", roundi(6.0 * pt))
+	_motion_row.add_theme_constant_override("v_separation", roundi(6.0 * pt))
+	for button: Button in _motion_buttons:
+		_fit_motion(button)
 	_play.reset_size()
+
+
+## A motion's button at the pill's size: Reset's face and words, a finger's
+## height on a phone, and the title's yellow while it stands where it ends.
+func _fit_motion(button: Button) -> void:
+	var points: float = 14.0 if _play_narrow else 13.0
+	button.add_theme_font_size_override("font_size", roundi(points * _play_pt))
+	button.custom_minimum_size = Vector2(0.0, roundi((34.0 if _play_narrow else 0.0) * _play_pt))
+	for colour: String in ["font_pressed_color", "font_hover_pressed_color"]:
+		button.add_theme_color_override(colour, Color(0.98, 0.78, 0.12))
 
 
 ## What moves, now that its joints are read: [param moves] Playable's words
@@ -492,14 +532,69 @@ func show_play(moves: PackedStringArray, any: bool, on_touch: bool) -> void:
 	_fit_big()
 
 
+## The model's own motions, by [param names]: a button each, in the order
+## the file has them; none for a model without. Each stands as built.
+func show_motions(names: PackedStringArray) -> void:
+	play_motions = names
+	motions_out.clear()
+	for button: Button in _motion_buttons:
+		button.queue_free()
+	_motion_buttons.clear()
+	for name: String in names:
+		var button := Button.new()
+		button.text = name
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.tooltip_text = "Play “%s”" % name
+		_face(button)
+		_fit_motion(button)
+		button.pressed.connect(func() -> void:
+			# Lit or not as the model stands, which main.gd says once it plays.
+			button.set_pressed_no_signal(motions_out.has(name.to_lower()))
+			motion_wanted.emit(name))
+		_motion_row.add_child(button)
+		_motion_buttons.append(button)
+	if not names.is_empty():
+		play_ready = true
+	_say_play()
+	_fit_big()
+
+
+## [param name] stands where it ends ([param out]: its button lit, and
+## pressed again it plays backwards), or back where it began.
+func show_motion_out(name: String, out: bool) -> void:
+	if out:
+		motions_out[name.to_lower()] = true
+	else:
+		motions_out.erase(name.to_lower())
+	for button: Button in _motion_buttons:
+		if button.text == name:
+			button.set_pressed_no_signal(out)
+			button.tooltip_text = ("Play “%s” backwards: put it back" if out else "Play “%s”") % name
+
+
+## Every motion back where it began: Reset.
+func motions_home() -> void:
+	for name: String in play_motions:
+		show_motion_out(name, false)
+
+
 func _hint() -> String:
+	if not play_motions.is_empty():
+		if touch:
+			return "Tap one to play it, and again to put it back. Or touch a part that moves and drag it."
+		return "Press one to play it, and again to put it back. Or drag a part that moves."
 	if touch:
 		return "Touch a part that moves and drag it. Drag anywhere else to turn the model."
 	return "Drag a part that moves. Drag anywhere else to turn the model."
 
 
 func _say_play() -> void:
-	_play_title.text = Playable.words(play_moves) if not play_moves.is_empty() else "Parts of it move"
+	if not play_motions.is_empty():
+		_play_title.text = "Play its motions"
+	else:
+		_play_title.text = Playable.words(play_moves) if not play_moves.is_empty() else "Parts of it move"
+	_motion_row.visible = not play_motions.is_empty()
 	_play_words.text = _play_said if not _play_said.is_empty() else _hint()
 	_play_reset.visible = played
 	_play.reset_size()
@@ -792,6 +887,8 @@ func controls_by_name() -> Dictionary:
 		named["view_play"] = _play
 		if _play_reset.visible:
 			named["view_reset"] = _play_reset
+		for n: int in _motion_buttons.size():
+			named["view_motion_%d" % (n + 1)] = _motion_buttons[n]
 	return named
 
 
@@ -807,7 +904,10 @@ func page_state() -> Dictionary:
 		"comment_step": comments.step,
 		"play": {"ready": play_ready, "shown": _play.is_visible_in_tree(), "moves": Array(play_moves),
 			"title": _play_title.text, "says": _play_words.text, "played": played,
-			"reset": _play_reset.is_visible_in_tree(), "touch": touch}}.merged(comments.page_state() if _pill_shown()
+			"reset": _play_reset.is_visible_in_tree(), "touch": touch,
+			"motions": Array(play_motions), "motions_out": Array(play_motions).filter(
+				func(name: String) -> bool: return motions_out.has(name.to_lower()))}}.merged(
+			comments.page_state() if _pill_shown()
 			else {"comments": 0, "comments_open": false, "comments_shown": [], "comments_where": [],
 				"comment_why_not": "",
 				"comment_can_write": false, "comment_said": "", "comment_pill": ""})

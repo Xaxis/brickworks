@@ -2060,6 +2060,7 @@ func _enter_view() -> void:
 	_share_view.build_from.connect(func(page: int) -> void: _enter_build(page))
 	_share_view.newest_wanted.connect(_open_newest)
 	_share_view.reset_wanted.connect(_play_reset)
+	_share_view.motion_wanted.connect(_play_motion)
 	# The big Build it of a phone sits above the timeline.
 	_share_view.floor_at = func() -> float:
 		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
@@ -2890,6 +2891,13 @@ var _play_reset_due: bool = false
 ## What moves, as Playable read it: {kind: [brick ids]}, the parts a person
 ## would take hold of first.
 var play_found: Dictionary = {}
+## A motion played from its button (_play_motion): its frames, drawn over
+## the model 12 a second while the model already stands where it ends; when
+## it began, the frame drawn, and what is said once it has played.
+var _motion_frames: Array = []
+var _motion_began: int = 0
+var _motion_shown: int = -1
+var _motion_said: String = ""
 ## The finger on a part that may move (_play_touch): its index, the part,
 ## where it came down, and whether it has taken hold.
 var _finger: int = -1
@@ -2945,10 +2953,12 @@ func _play_stop() -> void:
 			_grab_drag.cancel()
 		_grab_drag.set_process(false)
 	_grabbing = false
+	_motion_stop()
 	if _share_view != null:
 		_share_view.show_played(false)
 		_share_view.play_said("")
 		_share_view.show_play(PackedStringArray(), false, _touch_screen())
+		_share_view.show_motions(PackedStringArray())
 
 
 ## Each frame of the viewer: the joints read, said; a Reset asked for during
@@ -2964,6 +2974,8 @@ func _play_frame() -> void:
 	if _play_reset_due and not _grab_drag.is_settling() and not _grab_drag.is_grabbing():
 		_play_reset_due = false
 		_play_reset()
+	if not _motion_frames.is_empty():
+		_motion_frame()
 
 
 ## What moves, read from the joints the grab found: said on the viewer.
@@ -2976,6 +2988,12 @@ func _play_found() -> void:
 	_grab_drag.handle_parts = parts
 	_share_view.show_play(Playable.kinds(play_found), _grab_drag.anything_moves() or not play_found.is_empty(),
 		_touch_screen())
+	# The model's own motions, a button each, in place of what Playable names.
+	var names := PackedStringArray()
+	if _world.motions != null:
+		for motion: Motions.Motion in _world.motions.list:
+			names.append(motion.name)
+	_share_view.show_motions(names)
 
 
 func _touch_screen() -> bool:
@@ -3180,11 +3198,90 @@ func _play_reset() -> void:
 	if _grab_drag.is_settling() or _grab_drag.is_grabbing():
 		_play_reset_due = true
 		return
+	_motion_stop()
 	_builder.undo_steps(_builder.history_depth() - _play_depth)
 	_grab_drag.clear_marks()
 	_world.set_drawn({})
 	_share_view.show_played(false)
+	_share_view.motions_home()
 	_share_view.play_said("Put back as it was built.")
+
+
+## A motion's button on the viewer: [param name] played through Grab as the
+## builder's Motions panel plays it (MotionPlayer), so a joint stops where it
+## meets the model and gears and racks follow, kept for this visit only: one
+## step that Reset undoes, and the store writes nothing. Pressed while it
+## stands where it ends, it plays backwards, which takes it back. Its frames
+## are drawn as it goes (_motion_frame).
+func _play_motion(name: String) -> void:
+	if _motions == null or _grab_drag == null or _play_depth < 0 or _world.motions == null:
+		return
+	var motion: Motions.Motion = _world.motions.named(name)
+	if motion == null or _grab_drag.is_grabbing() or _grab_drag.is_settling():
+		return
+	if _grab_drag.is_swinging():
+		_grab_drag.cancel()
+	_motion_stop()
+	var back: bool = _share_view.motions_out.has(name.to_lower())
+	var played: MotionPlayer.Played = _motions.play(motion, back, MotionPlayer.PLAY_FPS, true,
+		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
+	if played.items.is_empty():
+		_share_view.play_said(_visitor_words("“%s” does not play: %s." % [motion.name,
+			"; ".join(played.refused)]))
+		return
+	_share_view.show_motion_out(motion.name, not back)
+	var stops := PackedStringArray()
+	for item: MotionPlayer.Item in played.items:
+		if not item.stop_words.is_empty():
+			stops.append(item.stop_words)
+	_motion_said = _visitor_words(("“%s” stopped short: %s." % [motion.name, "; ".join(stops)])
+		if not stops.is_empty() else ("“%s” put back." % motion.name) if back
+		else "“%s” played. Press it again to put it back." % motion.name)
+	_motion_frames = played.frames
+	_motion_began = Time.get_ticks_msec()
+	_motion_shown = 0
+	# The model stands where it ends already: its first frame drawn at once.
+	_world.set_drawn(_motion_frames[0])
+	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
+
+
+## The playing motion's frame for now, drawn; its words said once it ends. A
+## drag taken up stops it where it is: the model stands where it ends.
+func _motion_frame() -> void:
+	if _grab_drag != null and _grab_drag.is_grabbing():
+		_motion_stop()
+		return
+	var n: int = (Time.get_ticks_msec() - _motion_began) * MotionPlayer.PLAY_FPS / 1000
+	if n >= _motion_frames.size():
+		_motion_stop()
+		_share_view.play_said(_motion_said)
+	elif n != _motion_shown:
+		_motion_shown = n
+		_world.set_drawn(_motion_frames[n])
+
+
+## The playing motion's frames put away: the model drawn where it stands.
+func _motion_stop() -> void:
+	if _motion_frames.is_empty():
+		return
+	_motion_frames = []
+	_motion_shown = -1
+	_world.set_drawn({})
+
+
+## A motion's words as a visitor reads them: each part by its name, not its
+## number in the model ("#143 stops at 62°" is "the Fence Gate 1 x 4 x 2
+## stops at 62°").
+func _visitor_words(words: String) -> String:
+	var said: String = RegEx.create_from_string("\\s*\\(#\\d+\\)").sub(words, "", true)
+	var found: Array[RegExMatch] = RegEx.create_from_string("#(\\d+)").search_all(said)
+	found.reverse()
+	for one: RegExMatch in found:
+		var brick: BrickWorld.Brick = _world.get_brick(one.get_string(1).to_int())
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id) if brick != null else null
+		if info != null:
+			said = said.left(one.get_start()) + "the " + Inventory._tidy(info.name) + said.substr(one.get_end())
+	return said
 
 
 ## The keys a viewer answers to. True for one the builder's own handling
