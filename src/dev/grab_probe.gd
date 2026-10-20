@@ -5775,7 +5775,8 @@ func _path_check() -> void:
 	var tools := AppTools.new()
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
-	var now_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	# move_part says "turned 30°" since MCP walk 2, "now 30°" before.
+	var now_re := RegEx.create_from_string("(?:now|turned) (-?[0-9.]+)°")
 	var went: Array = []
 	for degrees: float in [90.0, -90.0]:
 		var before: Dictionary = _snapshot()
@@ -5835,7 +5836,8 @@ func _beam_check(one: Array) -> void:
 	var turned: float = rad_to_deg(beam_at.basis.get_rotation_quaternion().angle_to(
 		_world.get_brick(beam).transform.basis.get_rotation_quaternion()))
 	_check("%s: turned +30 at #%d, it goes all 30° and its beam turns with it, %.1f° (%s)" % [name, driver, turned,
-		said.get_slice("\n", 1).left(200)], said.contains("now 30°") and absf(turned - 30.0) < 0.5)
+		said.get_slice("\n", 1).left(200)], (said.contains("now 30°") or said.contains("turned 30°"))
+		and absf(turned - 30.0) < 0.5)
 	_builder.undo()
 	await _frames(2)
 	_check("%s: one undo puts it back (%s)" % [name, _differs(before)], _differs(before) == "none differs")

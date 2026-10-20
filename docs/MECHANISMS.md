@@ -3951,7 +3951,19 @@ with the line still, as well as 9392-1's; `-- --only=swept` steers 41999-1
 the sweep's way, both ways and back; `-- --only=moving` swings 3180-1's
 cupboard door +30, -60 and back. Each fails on G13b's code, as its sweep
 row there shows: 10295-1's arm refused on a ball, 41999-1 refused on a
-ball, 3180-1 with no door on a joint. GRAB_PROBE
+ball, 3180-1 with no door on a joint.
+
+`grab_probe` in full through `tools/probe.sh` (`probes/grab_probe_full.log`,
+at load 2 to 8) ran 467 checks: 462 passed. Four that failed fail on
+rel-m89 too: the path checks and the two beams checks read "now 30°" in
+move_part's words, which say "turned 30°" since MCP walk 2 (run alone on
+rel-m89's code, `--only=path` fails both). They now read either. The fifth
+is G14b's: 8448-1's racer, turned +30 at its pinion, goes all 30° and its
+rack 5.33 LDU (rel-m89: 11°, where a steering link met a liftarm, and 1.94
+LDU); read again where it stopped, its loop has two hinges more and is
+locked, so the turn back does not bring the rack back. The steering sweep
+counts 8448-1's racer among those whose rack does not move, before and
+after. Pictures: 41999-1 from above, before and turned each way.
 
 **Left for later.**
 - A loop's leftover freedom: 42021-1's lever on one pin off its column,
@@ -3968,3 +3980,5 @@ ball, 3180-1 with no door on a joint. GRAB_PROBE
   begun).
 - 42110-1, whose loop now reaches 41 joints, and the loops too big to
   solve before.
+- 8448-1's racer: its steering turns further now, and read again where it
+  stopped its loop is locked (above).
