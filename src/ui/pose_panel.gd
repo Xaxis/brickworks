@@ -183,6 +183,9 @@ var _rec_tracks: Array = []
 var _rec_refused := PackedStringArray()
 
 var _working: bool = false
+## The model the last render's frame shown is of (BrickWorld.generation):
+## another model's is not shown.
+var _frame_for: int = -1
 var _fraction: float = 0.0
 var _last: Dictionary = {}
 var _quiet: bool = false
@@ -284,6 +287,8 @@ func _refresh() -> void:
 	_seen_history = _history_now()
 	_seen_motions = world.motions
 	_seen_revision = world.revision
+	if _frame_for != world.generation():
+		_frame.visible = false
 	_list_box.visible = _view == "list"
 	_edit_box.visible = _view == "edit"
 	_seq_box.visible = _view == "sequence"
@@ -1460,6 +1465,7 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
 			_frame.visible = visible
+			_frame_for = world.generation()
 			if sheet_at.has(n):
 				_sheet[n] = image
 			if job != null:

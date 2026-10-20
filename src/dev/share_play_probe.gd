@@ -464,7 +464,7 @@ func _motions_link() -> void:
 	var playing: Dictionary = view.page_state()["play"]
 	_ok(str(playing["says"]).begins_with("Playing “Open the gates”"), "it says it is playing: %s" % playing["says"])
 	since = Time.get_ticks_msec()
-	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+	while _motion_busy() and Time.get_ticks_msec() - since < 10000:
 		drawn_most = maxi(drawn_most, world.drawn_ids().size())
 		await process_frame
 	var took: int = Time.get_ticks_msec() - since
@@ -516,7 +516,7 @@ func _motions_link() -> void:
 	await _press(named["view_motion_3"])
 	drawn_most = 0
 	since = Time.get_ticks_msec()
-	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+	while _motion_busy() and Time.get_ticks_msec() - since < 10000:
 		drawn_most = maxi(drawn_most, world.drawn_ids().size())
 		await process_frame
 	turned = gates.map(func(id: int) -> float: return _turned(world, before, id))
@@ -537,12 +537,43 @@ func _motions_link() -> void:
 		await _press(named["view_reset"])
 	await _settle()
 
-	# What a press costs the app: the motion's frames worked out at once
-	# (MotionPlayer.play), on this machine.
+	# What a press costs the app: its frames worked out a slice a frame
+	# (MotionPlayer.pace_on, main.MOTION_SLICE_MS), on this machine.
 	var began: int = Time.get_ticks_usec()
 	_main.call("_play_motion", "Open the gates")
 	var cost_ms: float = (Time.get_ticks_usec() - began) / 1000.0
-	print("    a press of Open the gates (2 s, two gates) costs %.1f ms of one frame here" % cost_ms)
+	await _played_out()
+	last = _main.get("_motion_last")
+	print("    a press of Open the gates (2 s, two gates): %.1f ms of the frame it came in, %s ms in all over %s slices, the longest %s ms"
+		% [cost_ms, str(last.get("ms")), str(last.get("slices")), str(last.get("longest_ms"))])
+	# main.MOTION_SLICE_MS is 40: a slice ends after the frame that passes it.
+	_ok(float(last.get("longest_ms", 999.0)) <= 80.0,
+		"no slice of a press much past its 40 ms (%s ms at most)" % str(last.get("longest_ms")))
+	named = view.controls_by_name()
+	if named.has("view_reset"):
+		await _press(named["view_reset"])
+	await _settle()
+	# Sliced as thin as a slow phone's frame would slice it: the same frames,
+	# over many slices, none much past one frame's work.
+	var player: MotionPlayer = _main.get("_motions")
+	var gates_motion: Motions.Motion = world.motions.named("Open the gates")
+	var whole: MotionPlayer.Run = player.play_in_order([gates_motion], false, "played it whole")
+	_builder_undo()
+	var paced: MotionPlayer.Paced = player.pace([gates_motion], false, "played it sliced")
+	var slices: int = 0
+	while not player.pace_on(paced, 2.0) and slices < 1000:
+		slices += 1
+		await process_frame
+	var same: bool = paced.run.frames.size() == whole.frames.size()
+	for n: int in mini(paced.run.frames.size(), whole.frames.size()):
+		for key: Variant in whole.frames[n]:
+			if not (paced.run.frames[n] as Dictionary).has(key) \
+					or not (paced.run.frames[n][key] as Transform3D).is_equal_approx(whole.frames[n][key]):
+				same = false
+	_ok(same and paced.slices > 3 and paced.longest_ms < 2.0 + paced.total_ms / float(paced.run.frames.size()) * 3.0 + 20.0,
+		"in 2 ms slices it is the same %d frames over %d slices, the longest %.1f ms of %.1f in all"
+		% [paced.run.frames.size(), paced.slices, paced.longest_ms, paced.total_ms])
+	_builder_undo()
 	await _played_out()
 	named = view.controls_by_name()
 	if named.has("view_reset"):
@@ -558,10 +589,20 @@ func _motions_link() -> void:
 	_ok(new_files.is_empty() and store.read_only, "nothing was written to the data folder (%s)" % [new_files])
 
 
+## Whether a press is being worked out, or its frames drawn.
+func _motion_busy() -> bool:
+	return _main.get("_motion_paced") != null or not (_main.get("_motion_frames") as Array).is_empty()
+
+
+func _builder_undo() -> void:
+	var builder: Builder = _main.get("_builder")
+	builder.undo_steps(1)
+
+
 ## Until the playing motion's frames are drawn and put away.
 func _played_out() -> void:
 	var since: int = Time.get_ticks_msec()
-	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+	while _motion_busy() and Time.get_ticks_msec() - since < 10000:
 		await process_frame
 	await _settle()
 
