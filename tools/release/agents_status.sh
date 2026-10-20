@@ -8,7 +8,7 @@
 # in its messages. Per worktree: its branch, whether it is locked, minutes
 # since its last commit on top of main, tracked files changed and not
 # committed, and the processes working inside it. Flags:
-#   STALE  no commit of its own for 60 minutes or more
+#   STALE  tracked changes not committed, and no commit of its own for 60 minutes
 #   IDLE   nothing running inside it, yet it is locked (an agent holds it)
 set -u
 R=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
@@ -26,7 +26,10 @@ for d in "$R"/.claude/worktrees/*/; do
     case "$c" in "$d"|"$d"/*) echo x;; esac; done | wc -l)
   flags=""
   if [ "$locked" = yes ]; then
-    if [ -z "$own" ] || [ $(( (now - own) / 60 )) -ge 60 ]; then flags="$flags STALE"; fi
+    # Stale is work at risk: changed and not committed for an hour. An agent
+    # whose output goes to git-ignored results (a long bench run) commits
+    # nothing for hours and loses nothing (realset2, 2026-10-19).
+    if [ "$dirty" -gt 0 ] && { [ -z "$own" ] || [ $(( (now - own) / 60 )) -ge 60 ]; }; then flags="$flags STALE"; fi
     [ "$procs" -eq 0 ] && flags="$flags IDLE"
   fi
   printf '%-16s %-7s %9s %6s %6s %s\n' "${w:0:16}" "$locked" "$age" "$dirty" "$procs" "$flags"
