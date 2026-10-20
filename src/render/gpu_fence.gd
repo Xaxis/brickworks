@@ -129,12 +129,6 @@ static var _held_from: int = 0
 static var _let_go_at: int = 0
 
 
-## How long nothing has held the drawing, in ms: 0 while a wait does.
-## FrameBudget takes a look held apart again once this has gone a while.
-static func unheld_ms() -> int:
-	return 0 if _holding > 0 else Time.get_ticks_msec() - _let_go_at
-
-
 ## Each time the drawing was held, on the page, as [when it began, how long]
 ## in the engine's ms (window.brickworksHolds, the last 200): a browser check
 ## cannot tell a frame held from a frame nothing asked for.

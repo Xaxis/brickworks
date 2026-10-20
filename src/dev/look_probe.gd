@@ -31,10 +31,11 @@
 ## 3. With --shots, the window at three views once the first look is over.
 ##    On the graphics card, run here and in a checkout without FrameBudget,
 ##    the pictures are the same byte for byte (cmp).
-## 4. A look held apart, the drawing stopped between two of its frames as
-##    GpuFence stops it on the web while the parts bin's pictures are read
-##    back, with too few frames after the hold to judge, is taken again once
-##    let go; on the graphics card that cuts nothing either.
+## 4. A look timed by fences, as on the web, on a card of a speed the
+##    probe chooses: a quick one, the drawing held inside the look as
+##    GpuFence holds it while the parts bin's pictures are read back, is
+##    judged quick and cuts nothing on the graphics card; a slow one is
+##    judged after a few frames, never more than two of them ahead of it.
 extends SceneTree
 
 const MODEL := "res://models/house.ldr"
@@ -163,17 +164,39 @@ func _run() -> void:
 			var file: String = shots.path_join("view_%d.png" % n)
 			image.save_png(file)
 			print("    picture: %s" % file)
-	if budget != null and budget_script.get("AGAIN") != null:
-		await _held_apart(budget, software)
+	if budget != null and budget_script.get("IN_FLIGHT") != null:
+		await _fenced(budget, budget_script, software)
 	print("look probe: %s" % ("every check passed" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures > 0 else 0)
 
 
-## 4. A look whose frames are held apart: the drawing stopped for three
-## frames after its fourth, and let go, which leaves at most seven after
-## it, fewer than a look not held draws.
-func _held_apart(budget: Node, software: bool) -> void:
-	var before: int = int(budget.get("looks"))
+## 4. A card of [card].ms a frame: each fence passes that long after it was
+## put in or after the card had done the one before it, whichever is later,
+## as SwiftShader draws a page's frames one after another behind it.
+## [card].ahead is the most frames the card was ever behind by.
+func _fenced(budget: Node, budget_script: Script, software: bool) -> void:
+	var card: Dictionary = {"ms": 2, "next": 1, "done": {}, "last": 0, "ahead": 0}
+	var put := func() -> int:
+		var now: int = Time.get_ticks_msec()
+		var n: int = card["next"]
+		card["next"] = n + 1
+		var ahead: int = 1
+		for m: int in card["done"]:
+			if int(card["done"][m]) > now:
+				ahead += 1
+		card["ahead"] = maxi(int(card["ahead"]), ahead)
+		card["last"] = maxi(now, int(card["last"])) + int(card["ms"])
+		card["done"][n] = card["last"]
+		return n
+	var passed := func(n: int) -> bool:
+		return Time.get_ticks_msec() >= int((card["done"] as Dictionary).get(n, 0))
+	budget.call("fence_by", put, passed)
+	var in_flight: int = int(budget_script.get("IN_FLIGHT"))
+	var slow: float = float(budget_script.get("SLOW_MS"))
+
+	# A quick card, the drawing stopped for three frames after the look's
+	# fourth and let go.
+	var cut_before: Array = (budget.get("cuts") as Array).duplicate()
 	budget.call("look")
 	var drawn: int = Engine.get_frames_drawn()
 	while Engine.get_frames_drawn() < drawn + 4:
@@ -182,19 +205,51 @@ func _held_apart(budget: Node, software: bool) -> void:
 	for _n: int in 3:
 		await process_frame
 	RenderingServer.render_loop_enabled = true
-	var began: int = Time.get_ticks_msec()
+	await _look_over(budget)
 	var told: Dictionary = budget.call("page_state")
+	print("    a quick card: timed %s ms by fences, %d frames ahead at most" % [str(told["timed"]), int(card["ahead"])])
+	_check("a look timed by fences times its frames (%d)" % (told["timed"] as Array).size(),
+		(told["timed"] as Array).size() >= 4)
+	if not software:
+		_check("on a graphics card, held inside the look, it is judged quick (%.1f ms) and cuts nothing (%s)"
+			% [float(told["cost"]), str(told["cuts"])],
+			float(told["cost"]) >= 0.0 and float(told["cost"]) < slow and str(told["cuts"]) == str(cut_before))
+
+	# A slow card, 400 ms a frame: judged after its warm frames and SOON
+	# more, not after a dozen, with at most IN_FLIGHT of them drawn ahead.
+	card["ms"] = 400
+	card["ahead"] = 0
+	var cut_at: int = (budget.get("cuts") as Array).size()
+	var ladder: int = (told["ladder"] as Array).size()
+	var judged_at: int = (budget.get("judged") as Array).size()
+	var began: int = Time.get_ticks_msec()
+	budget.call("look")
 	while Time.get_ticks_msec() - began < 30000:
 		await process_frame
-		told = budget.call("page_state")
-		if int(told["looks"]) >= before + 2 and int(told["looking"]) == 0:
+		if (budget.get("judged") as Array).size() > judged_at or int(budget.get("looks")) > 0 \
+				and int((budget.call("page_state") as Dictionary)["looking"]) == 0:
 			break
-	_check("a look held apart with too few frames after it is taken again once let go (%d looks after it)"
-		% (int(told["looks"]) - before - 1),
-		int(told["looks"]) >= before + 2)
-	if not software:
-		_check("and on a graphics card it cuts nothing (%s, judged %s)" % [str(told["cuts"]), str(told["cost"])],
-			(told["cuts"] as Array).is_empty())
+	var took: int = Time.get_ticks_msec() - began
+	var frames: int = int(budget_script.get("WARM_FRAMES")) + int(budget_script.get("SOON"))
+	told = budget.call("page_state")
+	print("    a slow card: judged %s, %d ms after the look began, %d frames ahead at most" % [str(told["judged"]), took, int(card["ahead"])])
+	_check("a slow card is never more than %d frames behind the look (%d)" % [in_flight, int(card["ahead"])],
+		int(card["ahead"]) <= in_flight)
+	if cut_at < ladder:
+		_check("and is judged after %d of its frames, %d ms (bar %d), cutting two (%s)"
+			% [frames, took, (frames + 1) * 400 + 500, str(told["cuts"])],
+			took <= (frames + 1) * 400 + 500 and (told["cuts"] as Array).size() == mini(cut_at + 2, ladder))
+	else:
+		print("    (every rung was already cut: nothing for the slow card to judge)")
+
+
+## Until the look in hand has timed its frames, or 30 s.
+func _look_over(budget: Node) -> void:
+	var began: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - began < 30000:
+		await process_frame
+		if int((budget.call("page_state") as Dictionary)["looking"]) == 0:
+			return
 
 
 ## Until nothing has been drawn for a second and a half, or 20 s.
