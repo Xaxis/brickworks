@@ -9,9 +9,23 @@
 // only when it is one. Each section asks for its own and draws what came,
 // so one that cannot be read leaves the others standing.
 import { age, askAgeIfAsked, askToSignIn, call, email, signOut, signedIn } from "/account.js";
-import { counted, modelCard } from "/cards.js";
-import { showDesigns } from "/designs.js";
 import { showFeedCount } from "/follow.js";
+
+// What only a signed-in page draws (cards.js, designs.js), fetched as the
+// page starts when this browser has a sign-in, and not at all when not:
+// the page a visitor who is not signed in gets is two lines and a button.
+let counted;
+let modelCard;
+let showDesigns;
+let drawing = null;
+function drawn() {
+  drawing ||= Promise.all([import("/cards.js"), import("/designs.js")]).then(([cards, designs]) => {
+    ({ counted, modelCard } = cards);
+    ({ showDesigns } = designs);
+  });
+  return drawing;
+}
+if (signedIn()) drawn();
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -282,7 +296,7 @@ async function load() {
     document.documentElement.dataset.profile = "signed-out";
     return;
   }
-  const answer = await call("/api/people?op=me");
+  const [answer] = await Promise.all([call("/api/people?op=me"), drawn()]);
   if (answer.status === 401) {
     signOut();
     return load();
