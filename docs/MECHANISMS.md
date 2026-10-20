@@ -4679,7 +4679,7 @@ fails on cde834b2: 15 fail there, none here.
    held when a part of the frame in it is not a pin or an axle, or when all
    of it is the frame's. The tilt wheel now slides the tube 8.003 LDU in
    Simulate, 7.995 in Grab. The orrery's frame and its periods are as they
-   were.
+   were. Where a frame is named the gear reading is built twice.
 6. **A session can lay a pinion in its rack** (`Joints.meshing`). The check
    every edit_model, submit_design and placed part goes through forgives a
    gear's teeth in its partner's, but did not know racks: laid again part
@@ -4701,7 +4701,14 @@ racks (43), loops (13), steer (27), steering (36), worms (34), actuators
 same 164 passed as on cde834b2 (its 35 that fail headless need a pointer,
 there as here); `mechanism_probe` (54), `axle_probe` (48), `joints_probe`
 (57), `app_tools_probe` (103), `mcp_walk_probe` (33), `mcp_sync_probe`,
-`animation_probe` (23) and `placing_probe` (38). `simulate_mechanism`'s
+`animation_probe` (23) and `placing_probe` (38). The steering sweep
+(`tools/steer_sweep.py`, 181 sets, `sweeps/sweep_mechverify2.md` in the
+results): 60 of 168 steer both ways and back, as Grab 16's `g16final`, and
+not one set's verdict changed (the first run, before the guard of fix 4,
+lost 8020-1's truck). The move sweep against `g16final`, on the 43 sets it
+reached and on the sets whose things turn gears or close a loop: not one
+thing's verdict changed (`sweeps/movesweep_mechverify_part1.jsonl`,
+`movesweep_mechgear_0.jsonl`). `simulate_mechanism`'s
 description says it turns a rack and a crank's rod and slider
 (`tools/mcp_tools.json` written again).
 
