@@ -223,6 +223,9 @@ async function accountOpen(page) {
 }
 async function accountShut(page) {
   const open = () => page.evaluate(() => Boolean((window.brickworksControls || {}).account_done));
+  // Account grows a line after New chat for this tab, and its Done is told
+  // to the page again only once it has stayed put: open, but not yet listed.
+  await until(open, 5);
   for (let n = 0; n < 3 && await open(); n++) {
     await page.mouse.move(5, 790);
     await page.waitForTimeout(800);
