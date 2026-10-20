@@ -97,6 +97,7 @@ func _run() -> void:
 		DirAccess.make_dir_recursive_absolute(_shots)
 	await process_frame
 
+	_read_aside()
 	_stud_cells()
 	var sets: Array = _arg("sets", ",".join(SETS)).split(",", false)
 	for name: String in sets:
@@ -117,6 +118,47 @@ func _run() -> void:
 	else:
 		print("sections: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+## Geometry loaded while another reader is out waits aside, and a worker
+## that begins meanwhile reads it: 10179-1 opened while Grab still read the
+## model before it, and Suggest sections' worker saw 1,665 of its 5,266
+## parts, no pin, axle or clip: 12 sections, one of 3,517 (2026-10-20).
+func _read_aside() -> void:
+	_library.release_geometry()
+	_library.begin_reading()
+	var on_main: bool = _library.mesh_for("3001") != null
+	var seen: Array = [false]
+	var task: int = WorkerTasks.add(func() -> void:
+		seen[0] = _library.mesh_for("3001") != null, false, "read aside")
+	WorkerTasks.collect(task)
+	_library.end_reading()
+	_check("a worker reads a part loaded while another reader was out (loaded %s, read %s)"
+		% [on_main, seen[0]], on_main and bool(seen[0]))
+
+
+## Whether [param ids], in pieces to the build check on them alone, are so
+## only for parts nothing in the whole model holds by the joint graph
+## ([param held]): every piece but the biggest is made of those.
+func _apart_only_unheld(ids: PackedInt64Array, held: Dictionary) -> bool:
+	var assistant: Assistant = _main.get("_assistant")
+	var model: Assistant.Model = assistant._model_from_world()
+	var own: Dictionary = {}
+	for brick_id: int in ids:
+		own[brick_id] = true
+	var kept: Array[Assistant.Placement] = []
+	for placement: Assistant.Placement in model.placements:
+		if own.has(placement.id):
+			kept.append(placement)
+	model.placements = kept
+	var report: Dictionary = await assistant._checked(model, true)
+	var pieces: Array = report.get("each_piece", [])
+	pieces.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
+	for piece: Array in pieces.slice(1):
+		for index: int in piece:
+			if held.has(kept[index].id):
+				return false
+	return true
 
 
 ## The cells Stability.contacts shares across one stud: a 2 x 4 brick on
@@ -224,6 +266,15 @@ func _one_set(name: String) -> void:
 	var sum_grams: float = 0.0
 	var assistant: Assistant = _main.get("_assistant")
 	var checked: int = 0
+	# The parts the whole model's joint graph holds to anything.
+	var held: Dictionary = {}
+	if _arg("weigh", "yes") != "no":
+		var whole_graph: Dictionary = _sections.joint_graph(level_parts)
+		for kind: String in ["studs", "links"]:
+			for key: int in whole_graph[kind]:
+				held[key >> 32] = true
+				held[key & 0xFFFFFFFF] = true
+	var unexplained := PackedStringArray()
 	for one: Sections.Suggestion in made:
 		sizes.append(one.ids.size())
 		var bricks: Array = []
@@ -242,6 +293,8 @@ func _one_set(name: String) -> void:
 			if int(weighed.get("check_pieces", 1)) != 1:
 				not_one.append("%s (%d, %s)" % [one.name, int(weighed["check_pieces"]),
 					str(weighed.get("check", ""))])
+				if not await _apart_only_unheld(one.ids, held):
+					unexplained.append(one.name)
 			if int(weighed.get("steps", 0)) <= 0:
 				steps_none.append(one.name)
 	sizes.sort()
@@ -269,14 +322,18 @@ func _one_set(name: String) -> void:
 	# is the one that counts, and this is for reading.
 	print("    by the joint graph alone, %s" % ("each one piece" if unjoined.is_empty()
 		else "not one piece: " + ", ".join(unjoined)))
-	# Every one on a model of a few hundred parts; on the big one, all but
-	# a few in a hundred: 10179-1's "Back 14" holds 4 parts its file has
-	# off their studs, and the joint graph reads no clip on a bar or tile
-	# held from the side as the build check does.
-	var allowed: int = 0 if checked < 20 else floori(checked * 0.05)
+	# Every one, but for parts nothing in the whole model holds by the joint
+	# graph, which the cut puts with what they rest on: 10179-1's file has
+	# two 2780 pins at x -500 and a 2877 standing on nothing it reads, and
+	# plates off their studs. Until 2026-10-20 a few in a hundred sections
+	# were let off instead, and the same parts came to fail 3 of 47 when
+	# the planner's order moved the cuts, its joint graph pair for pair
+	# what it was on 2026-10-17 (10,924 studs, 1,563 links).
 	_check("%s: each of %d one piece by the build check on it alone%s" % [name, checked,
-		"" if not_one.is_empty() else " but %d (at most %d): %s" % [not_one.size(), allowed,
-			", ".join(not_one)]], not_one.size() <= allowed)
+		"" if not_one.is_empty() else " but %d, %s: %s" % [not_one.size(),
+			"each only for parts nothing in the model holds" if unexplained.is_empty()
+			else "%d for parts the model holds (%s)" % [unexplained.size(),
+				", ".join(unexplained)], ", ".join(not_one)]], unexplained.is_empty())
 	row["not_one_piece"] = not_one.size()
 	_check("%s: each has its own steps%s" % [name, "" if steps_none.is_empty()
 		else ": not " + ", ".join(steps_none)], steps_none.is_empty())
@@ -312,6 +369,14 @@ func _one_set(name: String) -> void:
 		split_said, merge_said], after_split == before_split + 1
 		and _sections.suggested.size() == before_split)
 	await _ui.suggest()
+	# Asked again, the same: what the model before it left being read
+	# changes nothing (12 sections the first time and 49 after, 2026-10-20).
+	var again: Array = []
+	for one: Sections.Suggestion in _sections.suggested:
+		again.append(one.ids.size())
+	again.sort()
+	_check("%s: suggested again, the same %d sections (%d the first time)" % [name,
+		again.size(), sizes.size()], again == sizes)
 
 	await _over_mcp(name, row)
 	await _cancelled(name)
