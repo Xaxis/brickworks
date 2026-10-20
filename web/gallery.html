@@ -50,9 +50,7 @@
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <link rel="stylesheet" href="/site.css">
 <style>
-.page-head { padding: clamp(40px, 7vw, 76px) 0 6px; }
-.page-head .lede { margin-bottom: 10px; }
-.listing { padding: 12px 0 72px; }
+.listing { padding: 0 0 72px; }
 
 /* The question: a search box, the filters and the order. On a phone the
    filters fold into one line, opened with a tap. */
@@ -83,32 +81,6 @@
 }
 .chips button:hover { border-color: var(--ink-faint); }
 
-/* Each card is the shape of the picture a share is published with,
-   1200 x 630, so the rows line up and the space is held before it comes. */
-.models { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
-.model {
-	display: flex; flex-direction: column; text-decoration: none; color: inherit; min-width: 0;
-	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
-	background: var(--panel); box-shadow: var(--shadow);
-}
-.model:hover { border-color: var(--ink-faint); }
-.model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
-.model .frame { aspect-ratio: 1200 / 630; background: var(--bg-soft); overflow: hidden; }
-.model .frame img { width: 100%; height: 100%; object-fit: cover; }
-.model .frame.none {
-	display: grid; place-items: center; color: var(--ink-faint); font-size: 14px;
-	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
-}
-.model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
-/* A name is at most 80 characters (api/share.js); two lines of it here. */
-.model b {
-	color: var(--ink); font-size: 16px; font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
-	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
-.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
-.state { margin: 0; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); }
-.state .link { color: var(--ink); }
 .more { margin-top: 26px; }
 .yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
 
@@ -129,11 +101,6 @@
 .shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
 .shelf-head a { font-size: 14.5px; color: var(--ink-soft); }
 .shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: 14.5px; }
-.models.row {
-	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(230px, 280px);
-	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px;
-}
-.models.row .model { scroll-snap-align: start; }
 .score-said { margin: -6px 0 16px; color: var(--ink-soft); font-size: 14px; }
 /* How much of a model the signed-in person's collection holds. */
 .model small.moves { color: var(--ink); font-weight: 600; }
@@ -151,22 +118,16 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery" aria-current="page">Gallery</a>
-			<a href="/#features">Features</a>
-			<a href="/#assistant">Assistant</a>
-			<a href="/faq">FAQ</a>
 			<a href="/download">Download</a>
-			<a href="/profile" data-account>Account</a>
+			<a href="/profile" data-account>Sign in</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<nav class="menu-list" aria-label="Menu">
 				<a href="/gallery" aria-current="page">Gallery</a>
-				<a href="/#features">Features</a>
-				<a href="/#assistant">Assistant</a>
-				<a href="/faq">FAQ</a>
 				<a href="/download">Download</a>
-				<a href="/profile" data-account>Account</a>
+				<a href="/profile" data-account>Sign in</a>
 			</nav>
 		</details>
 	</div>
@@ -277,44 +238,25 @@
 
 <footer class="site-foot">
 	<div class="wrap">
-		<div class="foot-cols">
-			<div>
-				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
-			</div>
-			<nav aria-label="Product">
-				<h2>Product</h2>
-				<ul>
-					<li><a href="/app">Open the app</a></li>
-					<li><a href="/gallery">Gallery</a></li>
-					<li><a href="/download">Download</a></li>
-					<li><a href="/changelog">Changelog</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Learn">
-				<h2>Learn</h2>
-				<ul>
-					<li><a href="/faq">FAQ</a></li>
-					<li><a href="/privacy">Privacy</a></li>
-					<li><a href="/terms">Terms of use</a></li>
-					<li><a href="/guidelines">Community guidelines</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Project">
-				<h2>Project</h2>
-				<ul>
-					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
-				</ul>
+		<div class="foot-top">
+			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+			<nav class="foot-links" aria-label="More">
+				<a href="/compare">Compare</a>
+				<a href="/faq">FAQ</a>
+				<a href="/changelog">Changelog</a>
+				<a href="https://github.com/Xaxis/brickworks">Source</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/terms">Terms</a>
+				<a href="/guidelines">Guidelines</a>
+				<a href="/takedown">Takedown</a>
 			</nav>
 		</div>
 		<div class="legal">
 			<p>
-				Every model here was made and shared by the person credited, or by
-				someone who chose not to be; Brickworks does not check them before
-				they are listed. Something here that should not be? Press Report on
-				its page, or see <a href="/takedown">takedown requests</a>.
+				Models in the gallery are made and shared by the people credited, or by
+				someone who chose not to be; Brickworks does not check them before they
+				are listed. Something that should not be there? Press Report on its
+				page, or see <a href="/takedown">takedown requests</a>.
 			</p>
 			<p>
 				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
@@ -329,12 +271,12 @@
 				LEGO® is a trademark of the LEGO Group of companies which does not
 				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
 				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group.
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
 			</p>
 		</div>
 	</div>
 </footer>
 
-<script src="/gallery.js" defer></script>
+<script src="/gallery.js" type="module"></script>
 </body>
 </html>

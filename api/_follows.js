@@ -168,9 +168,36 @@ export async function follow(request, response) {
   return response.status(200).json({ handle, ...stateSaid(said), signed_in: true });
 }
 
+/// Whom [account] follows, for them alone and whatever they chose to show:
+/// [{handle, name}], the newest first; null before the file is applied.
+async function followingMine(account) {
+  let rows;
+  try {
+    rows = await db(`follows?follower=eq.${account}&select=followed,at&order=at.desc&limit=500`);
+  } catch (trouble) {
+    if (NOT_THERE.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
+  if (!rows.length) return [];
+  const people = await db(`people?account=in.(${rows.map((row) => row.followed).join(",")})&select=account,handle,name`);
+  const named = new Map(people.map((one) => [one.account, { handle: one.handle, name: one.name }]));
+  return rows.map((row) => named.get(row.followed)).filter(Boolean);
+}
+
+/// ?op=following&handle=X: whom X follows, when they show it. With no
+/// handle and a sign-in: whom you follow, for you alone (your account
+/// page), never kept by the CDN.
 export async function getFollowing(request, response) {
-  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   const handle = handleOf(request.query?.handle);
+  if (!handle && !request.query?.handle) {
+    response.setHeader("Cache-Control", "private, no-store");
+    const asker = await who(request);
+    if (!asker) throw refused("sign_in");
+    const mine = await followingMine(asker);
+    if (mine === null) throw new Unacceptable(NOT_YET, 503);
+    return response.status(200).json({ mine: true, following: mine });
+  }
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   if (!handle) throw refused("nobody");
   return response.status(200).json({ handle, following: await followingOf(handle) });
 }

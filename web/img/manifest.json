@@ -197,5 +197,31 @@
   "subject": "the kart's booklet in its own tab",
   "alt": "The go-kart's building instructions in a browser tab of their own beside the app's tabs: step 17, a box of the one part it adds above a drawing of the nearly finished kart, a progress bar along the foot, and Print at the top.",
   "caption": "Instructions in one press"
+ },
+ {
+  "slug": "simulate",
+  "files": {
+   "640": "simulate-640.webp",
+   "1200": "compare-simulate.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "compare-simulate.webp (the poster of /compare's gear train video), scaled to 640 x 400 for the landing page, 2026-10-20",
+  "subject": "Simulate mechanism on the orrery",
+  "alt": "Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.",
+  "caption": "Gear trains at their real ratios."
+ },
+ {
+  "slug": "grab",
+  "files": {
+   "640": "grab-640.webp",
+   "960": "grab-960.webp"
+  },
+  "width": 960,
+  "height": 600,
+  "source": "bench/results/grab13-2026-10-19/actuator_42024-1_3_after.png (tools/web/grab_flow.mjs on 42024-1 Container Truck, 1400 x 900), cropped to 334,166 966 x 604, 2026-10-20",
+  "subject": "a Technic boom moved by hand",
+  "alt": "The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.",
+  "caption": "Grab it and it moves like the real one."
  }
 ]

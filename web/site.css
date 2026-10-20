@@ -39,6 +39,21 @@
 	--control-radius: 10px;
 	--radius: 14px;
 	--page: 1140px;
+	/* One type scale for every page (docs/DESIGN_SYSTEM.md): the landing
+	   page's one line, a page's title, a section's, a card's; then the
+	   words. Each page used to size its own titles, from 26 to 74 px. */
+	--t-display: clamp(40px, 6.6vw, 68px);
+	--t-h1: clamp(32px, 4.6vw, 46px);
+	--t-h2: clamp(23px, 2.8vw, 30px);
+	--t-h3: 18px;
+	--t-lede: clamp(17px, 1.9vw, 19px);
+	--t-small: 14.5px;
+	--t-tiny: 13px;
+	/* And one rhythm: the space above a page's title, between its sections,
+	   and the steps between. */
+	--s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+	--page-top: clamp(40px, 6vw, 72px);
+	--section: clamp(56px, 8vw, 96px);
 	--shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
 	color-scheme: dark;
 }
@@ -253,35 +268,128 @@ dialog .when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
 
 h1, h2, h3 { text-wrap: balance; }
 h1 {
-	margin: 0 0 16px; font-size: clamp(38px, 7.2vw, 74px); line-height: 1.02;
-	letter-spacing: -0.04em; font-weight: 720;
+	margin: 0 0 var(--s-3); font-size: var(--t-h1); line-height: 1.08;
+	letter-spacing: -0.035em; font-weight: 720;
 }
+/* The landing page's one line, and nowhere else. */
+.display { font-size: var(--t-display); line-height: 1.02; letter-spacing: -0.04em; }
 h2 {
-	margin: 0 0 10px; font-size: clamp(27px, 4.2vw, 42px); line-height: 1.1;
-	letter-spacing: -0.03em; font-weight: 690;
+	margin: 0 0 var(--s-2); font-size: var(--t-h2); line-height: 1.15;
+	letter-spacing: -0.025em; font-weight: 690;
 }
-h3 { margin: 0 0 6px; font-size: 18px; line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
+h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
 .eyebrow {
 	display: inline-block; margin: 0 0 14px; font-size: 13px; font-weight: 650;
 	letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
 }
-.lede { margin: 0 0 28px; font-size: clamp(17px, 2.2vw, 20px); color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
-.sub { margin: 0 0 30px; color: var(--ink-soft); max-width: 66ch; font-size: 17px; text-wrap: pretty; }
+.lede { margin: 0 0 var(--s-5); font-size: var(--t-lede); color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
+.sub { margin: 0 0 var(--s-5); color: var(--ink-soft); max-width: 66ch; font-size: 17px; text-wrap: pretty; }
 .note { margin: 14px 0 0; font-size: 14px; color: var(--ink-faint); }
 .center { text-align: center; }
 .center .lede, .center .sub { margin-inline: auto; }
 
 /* -- blocks -------------------------------------------------------- */
 
-main > section, .band { padding: clamp(56px, 9vw, 104px) 0; }
+main > section, .band { padding: var(--section) 0; }
 main > section + section { border-top: 1px solid var(--line); }
+
+/* A page: every page but the landing one is this. Its head (an eyebrow,
+   the title, a lede), then what it has; .prose for the pages that are
+   words (questions, the legal pages), narrower and quieter. */
+.page { padding: var(--page-top) 0 var(--section); }
+.page-head { margin: 0 0 var(--s-6); }
+/* A page made of wraps side by side under <main>, its head the first. */
+main > .wrap.page-head:first-child { padding-top: var(--page-top); }
+.page-head .lede { margin-bottom: 0; }
+.page-head .eyebrow { margin-bottom: var(--s-3); }
+.page section { margin-top: var(--s-7); }
+.page section > h2:first-child { margin-top: 0; }
+.prose { max-width: 760px; }
+.prose h2 { font-size: 19px; margin: var(--s-6) 0 6px; letter-spacing: -0.01em; }
+.prose p { color: var(--ink-soft); margin: 0 0 var(--s-3); }
+.prose p b { color: var(--ink); font-weight: 620; }
+
+/* Something that has nothing to show yet, or is on its way. */
+.state { margin: 0; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); }
+.state .link { color: var(--ink); }
 
 .card {
 	background: var(--panel); border: 1px solid var(--line);
 	border-radius: var(--radius); padding: 22px;
 }
 .card p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+
+/* A model: the one card for a shared model, wherever one is listed (the
+   gallery, the landing page, a profile, a collection, your account). The
+   shape of the picture a share is published with, 1200 x 630, so rows
+   line up and the space is held before it comes. .models lays them out;
+   .models.row is one row that scrolls inside itself, never the page. */
+.models { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.models.row {
+	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(230px, 280px);
+	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px;
+}
+.models.row .model { scroll-snap-align: start; }
+/* Beside a rail or in a narrower column: more to a row. */
+.models.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+.model {
+	display: flex; flex-direction: column; text-decoration: none; color: inherit; min-width: 0;
+	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
+	background: var(--panel); box-shadow: var(--shadow);
+}
+.model:hover { border-color: var(--ink-faint); }
+.model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
+.model .frame { aspect-ratio: 1200 / 630; background: var(--bg-soft); overflow: hidden; }
+.model .frame img { width: 100%; height: 100%; object-fit: cover; }
+.model .frame.none {
+	display: grid; place-items: center; color: var(--ink-faint); font-size: 14px;
+	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
+}
+.model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
+/* A name is at most 80 characters (api/share.js); two lines of it here. */
+.model b {
+	color: var(--ink); font-size: 16px; font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
+	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
+.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* Marked Tested (api/_tested.js): small and green, on every card. */
+.model .tested { justify-self: start; font-size: 12px; font-weight: 600; color: var(--green);
+	border: 1px solid var(--green); border-radius: 999px; padding: 0 8px; margin-top: 4px; }
 .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+/* A page's own index (your account): its sections, in a rail beside them
+   on a laptop and in a row across the top on a phone that scrolls inside
+   itself, never the page. */
+.subnav { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 2px; }
+.subnav a {
+	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
+	padding: 8px 12px; border-radius: 9px; white-space: nowrap;
+}
+.subnav a:hover, .subnav a[aria-current="true"] { color: var(--ink); background: var(--panel); }
+@media (max-width: 860px) {
+	.subnav {
+		position: static; flex-direction: row; overflow-x: auto; overscroll-behavior-x: contain;
+		margin: 0 0 var(--s-5); padding: 0 0 var(--s-2); border-bottom: 1px solid var(--line);
+	}
+}
+
+/* Settings: a panel of rows, each what a setting is and its control
+   beside it (under it on a phone). .wide takes the whole row. A row that
+   cannot be undone is .danger, and so is its button. */
+.settings { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.setting {
+	display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3) var(--s-5);
+	align-items: start; padding: 18px 20px; margin: 0;
+}
+.setting + .setting { border-top: 1px solid var(--line); }
+.setting .wide { grid-column: 1 / -1; }
+.setting h3 { font-size: 16px; margin: 0 0 2px; }
+.setting p { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-small); max-width: 70ch; }
+.setting .actions .said { margin: 0; }
+@media (max-width: 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }
+.setting.danger summary { color: var(--bad); }
+.cta.danger, .cta.danger:hover { color: var(--bad); border-color: var(--bad); }
 .dot {
 	display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none;
 	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3); margin-right: 9px; vertical-align: -1px;
@@ -295,7 +403,7 @@ main > section + section { border-top: 1px solid var(--line); }
 figcaption { padding: 12px 16px 14px; font-size: 14px; color: var(--ink-soft); }
 figcaption b { display: block; color: var(--ink); font-size: 15px; font-weight: 640; }
 
-.stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); list-style: none; margin: 0; padding: 0; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; }
 .stat b { display: block; font-size: 28px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .stat span { font-size: 14px; color: var(--ink-soft); }
@@ -315,17 +423,18 @@ details.qa[open] summary::after { content: "–"; }
 details.qa > div { padding: 0 0 18px; color: var(--ink-soft); }
 details.qa > div p { margin: 0 0 10px; }
 
-/* -- the foot ------------------------------------------------------ */
+/* -- the foot ------------------------------------------------------
+   One footer on every page (web/_shell.html): the mark and a row of
+   links, then the notices, quiet but whole (docs/TRADEMARKS.md). */
 
-.site-foot { border-top: 1px solid var(--line); padding: 48px 0 56px; font-size: 14px; color: var(--ink-faint); background: var(--bg-soft); }
-.foot-cols { display: grid; gap: 28px; grid-template-columns: 1.4fr repeat(3, 1fr); margin-bottom: 36px; }
-@media (max-width: 760px) { .foot-cols { grid-template-columns: 1fr 1fr; } .foot-cols > :first-child { grid-column: 1 / -1; } }
-.foot-cols h2 { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin: 4px 0 10px; font-weight: 650; }
-.foot-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.foot-cols a { color: var(--ink-soft); text-decoration: none; }
-.foot-cols a:hover { color: var(--ink); text-decoration: underline; }
-.foot-cols p { margin: 10px 0 0; max-width: 36ch; }
-.legal p { margin: 0 0 8px; max-width: 90ch; line-height: 1.7; }
+.site-foot { border-top: 1px solid var(--line); padding: var(--s-6) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
+.foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
+.foot-top .mark { font-size: 16px; }
+.foot-top .chip { width: 22px; height: 22px; }
+.foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); }
+.foot-links a { color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); padding: 6px 0; }
+.foot-links a:hover { color: var(--ink); text-decoration: underline; }
+.legal p { margin: 0 0 6px; max-width: 110ch; font-size: 12.5px; line-height: 1.6; }
 .legal a { color: var(--ink-soft); }
 
 /* Read aloud, not shown. */

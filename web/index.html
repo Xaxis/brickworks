@@ -3,24 +3,24 @@
   The page brickworks.diy serves at its root.
 
   Short on purpose (the owner, 2026-10-13: "overly wordy and verbose and
-  none elegant"). It says what Brickworks is, a full CAD for LEGO® models,
-  and shows what a Studio or LDD user cannot do there: it runs in a browser
-  with nothing to install, checks that a model stands and which joints
-  would fail, turns gear trains at their real ratios, and opens and saves
-  Studio .io; /compare shows each of those on a real model, with what
-  Studio and LDD do, sourced. The assistant comes after,
-  as an option (a builder on Reddit: "a LOT of us ... building freely and
-  building things that are not AI designed"). Every claim is something the
-  app does today (.claude/skills/verify/features/web.md); the questions,
-  the ways to bring Claude and what it costs are on /faq, and what
-  Brickworks keeps is on /privacy.
+  none elegant"; 2026-10-20: "complete garbage"). It shows rather than
+  says: one line, one way in, the app itself with a real model open; then
+  six pictures from the app of what a Studio or LDD user cannot do there
+  (a builder on Reddit: "Studio exists, LDD exists… why?"), each in a
+  line; a strip from the live gallery; and the assistant last, as what it
+  is, an option that is off until you turn it on ("that Assistant looks
+  worryingly AI"). /compare has each point beside Studio and LDD, sourced.
+  Every claim is something the app does today
+  (.claude/skills/verify/features/web.md).
 
-  Static, with no build step and nothing fetched but its own pictures and
-  /site.css. The pictures are in web/img/ (img/manifest.json says where
-  each came from), WebP at two widths taken at twice the size they are
-  shown, every one with its size given so nothing moves as they arrive.
-  The JSON-LD at the foot is data, not script: the site's content security
-  policy runs no inline script.
+  Static apart from the gallery strip, which web/landing.js fills from
+  /api/share as it nears the screen, showing a card only once its picture
+  has arrived, and the strip only once three have: it can never show a
+  dead card. The pictures are in web/img/ (img/manifest.json says where
+  each came from), WebP at two widths, every one with its size given so
+  nothing moves as they arrive. The header and footer are web/_shell.html
+  (tools/site_shell.py). The JSON-LD at the foot is data, not script: the
+  site's content security policy runs no inline script.
 -->
 <html lang="en">
 <head>
@@ -55,16 +55,13 @@
 <meta name="twitter:image:alt" content="The Brickworks mark, a cube with a corner cut away, and the words: a complete CAD for LEGO® models, beside a render of a grey stone castle in bricks.">
 <link rel="stylesheet" href="/site.css">
 <style>
-main > section { padding: clamp(56px, 8vw, 96px) 0; }
-main > section + section { border-top: 0; }
-.kicker { margin: 0 0 12px; font-size: 13px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
-
-/* -- hero ------------------------------------------------------------ */
-.hero { padding-top: clamp(56px, 8vw, 104px); padding-bottom: 0; text-align: center; }
-.hero h1 { font-size: clamp(36px, 6.2vw, 64px); max-width: 15ch; margin-inline: auto; }
-.hero .lede { margin: 0 auto 32px; max-width: 56ch; }
-.hero .note { margin-top: 16px; }
-.hero-shot { margin-top: clamp(40px, 6vw, 60px); }
+/* -- the opening: one line, one way in, and the app itself --------- */
+.hero { padding: clamp(48px, 7vw, 88px) 0 0; text-align: center; }
+.hero h1 { max-width: 15ch; margin-inline: auto; }
+.hero .lede { margin: 0 auto var(--s-5); }
+.hero .note { margin-top: var(--s-3); }
+.hero .note a { color: var(--ink-soft); }
+.hero-shot { margin-top: clamp(36px, 5vw, 56px); }
 /* Wider than the words on a big screen: it is the thing to look at. */
 @media (min-width: 1400px) { .hero-shot { margin-inline: -110px; } }
 .hero-shot img { aspect-ratio: 16 / 9; }
@@ -76,44 +73,30 @@ main > section + section { border-top: 0; }
 .window span { flex: 0 1 340px; margin-inline: auto; padding: 3px 12px; border-radius: 7px;
 	background: var(--bg-soft); font-size: 12.5px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* -- what it does ---------------------------------------------------- */
-.views { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.views .shot img { aspect-ratio: 4 / 3; object-fit: cover; }
-.views figcaption { padding: 16px 18px 20px; }
-.views figcaption b { font-size: 16px; margin-bottom: 4px; }
-@media (max-width: 760px) { .views { grid-template-columns: 1fr; } }
-.does { display: grid; gap: 1px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 16px;
-	background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.does div { background: var(--bg); padding: 20px 22px 22px; }
-.does h3 { font-size: 16px; margin-bottom: 4px; }
-.does p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ink-soft); }
-@media (max-width: 860px) { .does { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .does { grid-template-columns: 1fr; } }
+/* A section's title, and a way to more of it beside it. */
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+	gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-5); }
+.section-head h2 { margin: 0; }
+.section-head a { color: var(--ink-soft); font-size: var(--t-small); }
 
-/* -- the assistant --------------------------------------------------- */
-.pillar { display: grid; gap: clamp(24px, 5vw, 72px); grid-template-columns: 1fr 1fr; align-items: start; }
-.pillar .sub { margin-bottom: 0; }
-.pillar ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
-.pillar li { padding-left: 18px; position: relative; color: var(--ink-soft); }
-.pillar li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.pillar li b { color: var(--ink); font-weight: 620; }
-@media (max-width: 860px) { .pillar { grid-template-columns: 1fr; } }
+/* -- what it does that the others do not, from the app -------------- */
+.proofs { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.proofs .shot { height: 100%; }
+.proofs .shot img { aspect-ratio: 16 / 10; object-fit: cover; }
+.proofs figcaption { padding: 14px 18px 18px; }
+.proofs figcaption b { margin-bottom: 2px; }
+@media (max-width: 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .proofs { grid-template-columns: minmax(0, 1fr); } }
+.also { margin: var(--s-5) 0 0; color: var(--ink-soft); font-size: var(--t-small); max-width: 92ch; }
 
-/* -- made in it ------------------------------------------------------ */
-.made { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.made .shot { display: flex; flex-direction: column; }
-.made .frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; }
-.made .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.made .tall { grid-row: span 2; }
-.made .tall .frame { aspect-ratio: auto; flex: 1; min-height: 420px; }
-.made figcaption a { color: var(--ink); }
-@media (max-width: 700px) {
-	.made { grid-template-columns: 1fr; }
-	.made .tall { grid-row: auto; }
-	.made .tall .frame { aspect-ratio: 1 / 1; flex: none; min-height: 0; }
-}
+/* -- the assistant, last, as the option it is ------------------------ */
+.assistant { display: grid; gap: var(--s-5) clamp(24px, 5vw, 72px); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+.assistant p { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 56ch; }
+.assistant p:last-child { margin-bottom: 0; }
+@media (max-width: 860px) { .assistant { grid-template-columns: minmax(0, 1fr); } }
 </style>
 <script src="/follow.js" type="module"></script>
+<script src="/landing.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -122,22 +105,16 @@ main > section + section { border-top: 0; }
 		<a class="mark" href="/" aria-current="page"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
-			<a href="#features">Features</a>
-			<a href="#assistant">Assistant</a>
-			<a href="/faq">FAQ</a>
 			<a href="/download">Download</a>
-			<a href="/profile" data-account>Account</a>
+			<a href="/profile" data-account>Sign in</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<nav class="menu-list" aria-label="Menu">
 				<a href="/gallery">Gallery</a>
-				<a href="#features">Features</a>
-				<a href="#assistant">Assistant</a>
-				<a href="/faq">FAQ</a>
 				<a href="/download">Download</a>
-				<a href="/profile" data-account>Account</a>
+				<a href="/profile" data-account>Sign in</a>
 			</nav>
 		</details>
 	</div>
@@ -145,18 +122,12 @@ main > section + section { border-top: 0; }
 
 <main id="main">
 	<section class="wrap hero" aria-labelledby="hero-h">
-		<h1 id="hero-h">A complete CAD for LEGO® models</h1>
-		<p class="lede">
-			In any browser, with nothing to install. It checks that your model
-			stands and which joints would fail, turns gear trains at their real
-			ratios, opens and saves Studio .io, and exports 3D, renders and booklets.
-			<a href="/compare">See it next to Studio and LDD</a>
-		</p>
+		<h1 class="display" id="hero-h">A complete CAD for LEGO® models</h1>
+		<p class="lede">In your browser, with nothing to install. Free.</p>
 		<div class="actions center">
 			<a class="cta big" href="/app">Open Brickworks</a>
-			<a class="cta ghost big" href="/download">Download</a>
 		</div>
-		<p class="note">Free. Also for Windows, macOS and Linux.</p>
+		<p class="note"><a href="/download">Also for Windows, macOS and Linux</a></p>
 		<figure class="shot hero-shot">
 			<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
 			<img src="/img/hero-1200.webp"
@@ -168,151 +139,108 @@ main > section + section { border-top: 0; }
 	</section>
 
 	<section id="features" class="wrap" aria-labelledby="features-h">
-		<p class="kicker">The CAD</p>
-		<h2 id="features-h">Everything a serious build needs</h2>
-		<p class="sub">Exact LDraw geometry, so what you design is what you can build.</p>
-		<div class="views">
-			<figure class="shot">
+		<div class="section-head">
+			<h2 id="features-h">Built for builds that have to work</h2>
+			<a href="/compare">Beside Studio and LDD</a>
+		</div>
+		<ul class="proofs">
+			<li><figure class="shot">
 				<img src="/img/stability-640.webp"
 					srcset="/img/stability-640.webp 640w, /img/stability-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 760px) 31vw, 100vw"
+					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="900" loading="lazy" decoding="async"
 					alt="Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.">
 				<figcaption><b>Will it stand?</b>Where it tips, and every joint carrying more than it can hold.</figcaption>
-			</figure>
-			<figure class="shot">
-				<img src="/img/technic-640.webp"
-					srcset="/img/technic-640.webp 640w, /img/technic-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 760px) 31vw, 100vw"
-					width="1200" height="900" loading="lazy" decoding="async"
-					alt="A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.">
-				<figcaption><b>Technic and mechanisms</b>Pins, axles and gears join where real ones do. Simulate turns a gear train at its real ratios.</figcaption>
-			</figure>
-			<figure class="shot">
+			</figure></li>
+			<li><figure class="shot">
+				<img src="/img/simulate-640.webp"
+					srcset="/img/simulate-640.webp 640w, /img/compare-simulate.webp 1200w"
+					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
+					width="1200" height="750" loading="lazy" decoding="async"
+					alt="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.">
+				<figcaption><b>Gears at their real ratios</b>Turn the crank and every train turns: an orrery’s planets within 0.3% of their real years.</figcaption>
+			</figure></li>
+			<li><figure class="shot">
+				<img src="/img/grab-640.webp"
+					srcset="/img/grab-640.webp 640w, /img/grab-960.webp 960w"
+					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
+					width="960" height="600" loading="lazy" decoding="async"
+					alt="The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.">
+				<figcaption><b>Grab it like the real thing</b>A boom swings on its hinges, steering turns on its rack, an actuator stretches.</figcaption>
+			</figure></li>
+			<li><figure class="shot">
+				<img src="/img/compare-io-640.webp"
+					srcset="/img/compare-io-640.webp 640w, /img/compare-io-1200.webp 1200w"
+					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
+					width="1200" height="750" loading="lazy" decoding="async"
+					alt="The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.">
+				<figcaption><b>Your Studio files, both ways</b>Open and save BrickLink Studio <code>.io</code> and LDraw. LEGO® Digital Designer files open too.</figcaption>
+			</figure></li>
+			<li><figure class="shot">
 				<img src="/img/booklet-640.webp"
 					srcset="/img/booklet-640.webp 640w, /img/booklet-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 760px) 31vw, 100vw"
+					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="900" loading="lazy" decoding="async"
 					alt="A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.">
 				<figcaption><b>Booklets</b>Set the build order, then print it laid out like the one in the box.</figcaption>
-			</figure>
+			</figure></li>
+			<li><figure class="shot">
+				<img src="/img/technic-640.webp"
+					srcset="/img/technic-640.webp 640w, /img/technic-1200.webp 1200w"
+					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
+					width="1200" height="900" loading="lazy" decoding="async"
+					alt="A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.">
+				<figcaption><b>Every part, at true size</b>All of LDraw’s library. Pins, axles and studs join where the real ones do.</figcaption>
+			</figure></li>
+		</ul>
+		<p class="also" id="also">And 3D export (glTF, OBJ, STL) at true size, renders up to 4K, sub-assemblies that
+			mirror and follow each other, what your own sets can build, and a link anyone can turn in 3D.</p>
+	</section>
+
+	<!-- Filled by web/landing.js from the live gallery; shown only once three cards have their pictures. -->
+	<section id="made" class="wrap" aria-labelledby="made-h" hidden>
+		<div class="section-head">
+			<h2 id="made-h">Made in Brickworks</h2>
+			<a href="/gallery">The gallery</a>
 		</div>
-		<div class="does">
-			<div><h3>Studio and LDraw</h3><p>Open and save BrickLink Studio <code>.io</code> and LDraw. LEGO® Digital Designer files open too.</p></div>
-			<div><h3>3D export</h3><p>glTF, OBJ and STL at true size, for Blender, the web or a 3D printer.</p></div>
-			<div><h3>Renders</h3><p>Soft-shadowed stills and turntables, up to 4K.</p></div>
-			<div><h3>Sub-assemblies</h3><p>Group, name and reuse. Mirror a wing, change one copy, and the other follows.</p></div>
-			<div><h3>Your collection</h3><p>See what your sets can build, and send the rest to BrickLink as a wanted list.</p></div>
-			<div><h3>Share and build</h3><p>A link anyone can turn in 3D, and a step player for building at the table.</p></div>
-		</div>
+		<div class="models row" id="made-models"></div>
 	</section>
 
 	<section id="assistant" class="wrap" aria-labelledby="assistant-h">
-		<div class="pillar">
+		<div class="assistant">
+			<h2 id="assistant-h">An engineer’s assistant, off until you want one</h2>
 			<div>
-				<p class="kicker">The assistant</p>
-				<h2 id="assistant-h">An engineer’s assistant, when you want one</h2>
-				<p class="sub">
-					Off until you turn it on in Settings, Assistant, or
-					<a href="/app?assistant=on">open it with the assistant on</a>:
-					build by hand and there is no AI anywhere in the window. On, it
-					is Claude, on your own plan or API key.
-				</p>
+				<p>Turn it on and Claude checks the physics of what you built, finds the joints that
+					will fail and suggests a stronger build. It can design from a sentence too. It runs
+					on your own Claude plan or key; off, there is no AI anywhere in the window.</p>
+				<p><a href="/faq#claude">How to bring your Claude</a></p>
 			</div>
-			<ul>
-				<li><b>Checks the physics</b> of what you built and finds the failure points</li>
-				<li><b>Suggests a stronger build</b> where a joint will not hold</li>
-				<li><b>Designs on request</b>, from a sentence or a picture, sketch first</li>
-				<li><b>Edits a selection</b> when you say what to change</li>
-				<li><b>Works from your own Claude</b> over MCP. <a href="/faq#claude">How to connect</a></li>
-			</ul>
-		</div>
-	</section>
-
-	<section id="gallery" class="wrap" aria-labelledby="gallery-h">
-		<p class="kicker">Gallery</p>
-		<h2 id="gallery-h">Made in Brickworks</h2>
-		<p class="sub">More in <a href="/gallery">the gallery</a>, where anyone can list what they share.</p>
-		<div class="made">
-			<figure class="shot tall">
-				<div class="frame"><img src="/img/tower-640.webp"
-					srcset="/img/tower-640.webp 640w, /img/tower-1024.webp 1024w"
-					sizes="(min-width: 1180px) 562px, (min-width: 700px) 48vw, 100vw"
-					width="1024" height="1024" loading="lazy" decoding="async"
-					alt="A wizard's tower in black LEGO® bricks: a tall faceted tower of four clustered piers, every face a panel of grille between grey string courses, rising to four curved horns around a summit where two wizards stand, on a terraced plinth with grey crags and two guards at the stair."></div>
-				<figcaption><b>Wizard's Tower</b>9,541 parts. Turn it round for the furnished floors behind its open back. <a href="/app?model=res://models/orthanc.ldr">Open it</a></figcaption>
-			</figure>
-			<figure class="shot">
-				<div class="frame"><img src="/img/castle-640.webp"
-					srcset="/img/castle-640.webp 640w, /img/castle-1200.webp 1024w"
-					sizes="(min-width: 1180px) 562px, (min-width: 700px) 48vw, 100vw"
-					width="1024" height="768" loading="lazy" decoding="async"
-					alt="A stone castle laid in two greys of masonry brick, ringed by a moat on a green baseplate: square corner towers with crenellations and red pennants, one under a timber hoarding, an arched gatehouse and a paved courtyard with a stair up to the wall walk."></div>
-				<figcaption><b>Castle</b>2,438 parts in ten sub-assemblies. <a href="/app?model=res://models/castle.ldr">Open it</a></figcaption>
-			</figure>
-			<figure class="shot">
-				<div class="frame"><img src="/img/owl-640.webp"
-					srcset="/img/owl-640.webp 640w, /img/owl-1200.webp 1200w"
-					sizes="(min-width: 1180px) 562px, (min-width: 700px) 48vw, 100vw"
-					width="1200" height="900" loading="lazy" decoding="async"
-					alt="A studio render of a barn owl built from LEGO® bricks: a white face with large black eyes, a tan head, dark tan folded wings and a white chest, perched on a brown log on a small black base scattered with leaves, flowers and a grey mouse."></div>
-				<figcaption><b>Barn owl</b>A sculpted face and folded wings, on a log.</figcaption>
-			</figure>
-			<figure class="shot">
-				<div class="frame"><img src="/img/car-640.webp"
-					srcset="/img/car-640.webp 640w, /img/car-1200.webp 1200w"
-					sizes="(min-width: 1180px) 562px, (min-width: 700px) 48vw, 100vw"
-					width="1200" height="900" loading="lazy" decoding="async"
-					alt="A studio render of a red LEGO® sports car with white racing stripes, a black rear wing and grey wheels, its driver in a red helmet beside it holding a gold trophy, and a black and red Formula sign on the ground in front."></div>
-				<figcaption><b>Sports car</b>And its driver, rendered in the app.</figcaption>
-			</figure>
-			<figure class="shot">
-				<div class="frame"><img src="/img/galaxy-640.webp"
-					srcset="/img/galaxy-640.webp 640w, /img/galaxy-1200.webp 912w"
-					sizes="(min-width: 1180px) 562px, (min-width: 700px) 48vw, 100vw"
-					width="912" height="912" loading="lazy" decoding="async"
-					alt="A square LEGO® mosaic seen straight from above: a spiral galaxy in light and dark blue round tiles curling around a glowing yellow and white core, on a black background of tiles scattered with white round-tile stars."></div>
-				<figcaption><b>Spiral galaxy</b>Brick Art, laid from a picture.</figcaption>
-			</figure>
 		</div>
 	</section>
 </main>
 
 <footer class="site-foot">
 	<div class="wrap">
-		<div class="foot-cols">
-			<div>
-				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
-			</div>
-			<nav aria-label="Product">
-				<h2>Product</h2>
-				<ul>
-					<li><a href="/app">Open the app</a></li>
-					<li><a href="/gallery">Gallery</a></li>
-					<li><a href="/download">Download</a></li>
-					<li><a href="/changelog">Changelog</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Learn">
-				<h2>Learn</h2>
-				<ul>
-					<li><a href="/faq">FAQ</a></li>
-					<li><a href="/privacy">Privacy</a></li>
-					<li><a href="/terms">Terms of use</a></li>
-					<li><a href="/guidelines">Community guidelines</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Project">
-				<h2>Project</h2>
-				<ul>
-					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
-				</ul>
+		<div class="foot-top">
+			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+			<nav class="foot-links" aria-label="More">
+				<a href="/compare">Compare</a>
+				<a href="/faq">FAQ</a>
+				<a href="/changelog">Changelog</a>
+				<a href="https://github.com/Xaxis/brickworks">Source</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/terms">Terms</a>
+				<a href="/guidelines">Guidelines</a>
+				<a href="/takedown">Takedown</a>
 			</nav>
 		</div>
 		<div class="legal">
+			<p>
+				Models in the gallery are made and shared by the people credited, or by
+				someone who chose not to be; Brickworks does not check them before they
+				are listed. Something that should not be there? Press Report on its
+				page, or see <a href="/takedown">takedown requests</a>.
+			</p>
 			<p>
 				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
 				community, licensed
@@ -326,7 +254,7 @@ main > section + section { border-top: 0; }
 				LEGO® is a trademark of the LEGO Group of companies which does not
 				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
 				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group.
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
 			</p>
 		</div>
 	</div>

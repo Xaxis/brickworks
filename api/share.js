@@ -1032,6 +1032,7 @@ ${pageHead(origin, model, id, title)}
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -1092,6 +1093,7 @@ ${pageHead(origin, null, id, title)}
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>

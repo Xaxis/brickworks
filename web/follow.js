@@ -9,10 +9,12 @@
 // why, in the server's words, beside it. Following tells the person
 // followed nothing, and there is no way to write to them from here.
 //
-// Account (a[data-account] in the header) gets a small count of what came
-// into the feed since it was last opened, and leads to /feed while there
-// is something. Nothing is asked of the server for a visitor who is not
-// signed in.
+// Account (a[data-account] in the header) says Sign in until you are, and
+// then Account, with a small count of what came into the feed since it was
+// last opened; it leads to /feed while there is something. Which of the two
+// it says is known in this browser at once (account.js keeps the session),
+// so it is said before anything is asked. Nothing is asked of the server
+// for a visitor who is not signed in.
 //
 // Everything is put on the page as text.
 import { askToSignIn, call, signedIn } from "/account.js";
@@ -81,6 +83,7 @@ async function followButton(button) {
 export async function showFeedCount() {
   const places = [...document.querySelectorAll("a[data-account]")];
   if (places.length === 0) return 0;
+  for (const link of places) link.textContent = signedIn() ? "Account" : "Sign in";
   let count = 0;
   if (signedIn() && location.pathname !== "/feed") {
     const answer = await call("/api/people?op=feed_count").catch(() => null);

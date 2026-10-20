@@ -235,6 +235,12 @@ const FAVOURITES = [[SAM, MODEL_ID], [SAM, "DesignGea1"], [SAM, "PriyaSpc01"]];
 const OWNED = { [MODEL_ID]: 301, DesignGea1: 70, DesignFox1: 64, DesignBrg1: 120, DesignPar1: 0, MikaRobot1: 120,
   MikaTram01: 330, DesignRmx1: 290, PriyaSpc01: 410, SamModel01: 340 };
 const POOL = { lots: 214, pieces: 3120, unknown: 1 };
+// What the stand-in's account owns (api/collection.js GET), which POOL counts.
+const OWNED_SETS = { sets: [{ set: "10305-1", qty: 1, spares: 0 }, { set: "42115-1", qty: 1, spares: 0 }, { set: "60337-1", qty: 2, spares: 0 }],
+  parts: [{ part: "3001", colour: 4, qty: 24 }], updated_at: "2026-10-17T09:30:00Z" };
+// Its Claude connections (api/oauth.js ?op=connections).
+const CONNECTIONS = [{ id: "5f0c7a52-8d0e-4f53-9b7e-2d1f3c4b5a69", client: "Claude", since: "2026-10-12T18:04:00Z",
+  last_used: "2026-10-19T21:40:00Z" }];
 
 // This week's pick, worked out (not chosen) from the past seven days.
 const PICK = { model: MODEL_ID, week: { builds: 9, remixes: 1, tested: true, score: 34 } };
@@ -1012,6 +1018,12 @@ function people(method, params, body, who, state) {
         mine, left: who ? Math.max(0, 3 - mine.length) : null });
     }
     if (op === "follows") return follows(params.get("handle"), who, state);
+    if (op === "following" && !params.get("handle")) {
+      // Your own, for you alone (your account page), whatever you show.
+      if (!who) return answer(401, { error: FOLLOW_WORDS.sign_in });
+      return answer(200, { mine: true, following: FOLLOWS.filter((one) => one.follower === who).sort(byTime("at"))
+        .map((one) => named(one.followed)).filter(Boolean) });
+    }
     if (op === "following") {
       const said = followList(params.get("handle"));
       return said ? answer(200, { handle: params.get("handle"), following: said.people }) : answer(404, { error: "Nobody here has that handle." });
@@ -1171,6 +1183,11 @@ function admin(method, params, who, state) {
 /// /api/oauth: what the connector's sign-in page asks (web/authorize.js).
 function oauth(method, params, body, who) {
   const op = params.get("op") || "";
+  // Your Claude connections, on your account page, and ending one.
+  if (op === "connections") {
+    return who ? answer(200, { connections: CONNECTIONS, before: true }) : answer(401, { error: SIGN_IN });
+  }
+  if (op === "disconnect") return who ? answer(200, { disconnected: 1 }) : answer(401, { error: SIGN_IN });
   const given = method === "GET" ? Object.fromEntries(params) : { ...(body && typeof body === "object" ? body : {}) };
   delete given.op;
   if (!given.client_id) return answer(400, { refuse: "Brickworks does not know the app that sent you here. Go back to it and add Brickworks again." });
@@ -1203,6 +1220,12 @@ function oauth(method, params, body, who) {
 
 /// /api/account: where to sign in, and who is signed in.
 function account(method, params, body, who, state) {
+  // The account deleted, with its address typed again.
+  if (method === "POST" && params.get("op") === "delete") {
+    if (!who) return answer(401, { error: SIGN_IN });
+    return String(body?.confirm || "").toLowerCase() === EMAIL ? answer(200, { deleted: true, photos: 0 })
+      : answer(422, { error: "Type your email address exactly as you sign in with it to delete this account." });
+  }
   // The age question answered: it went, 13 or over.
   if (method === "POST" && params.get("op") === "age") return who ? answer(200, { age: { ask: false, over_13: true } }) : answer(401, { error: SIGN_IN });
   if (method !== "GET") return answer(405, { error: "GET, or POST ?op=age" });
@@ -1243,6 +1266,8 @@ export function apiAnswer({ url, method = "GET", body, state = {} }) {
     case "share": return share(verb, params, who);
     case "admin": return admin(verb, params, who, state);
     case "oauth": return oauth(verb, params, body, who);
+    // What you own (api/collection.js): the sets and loose parts.
+    case "collection": return who ? answer(200, OWNED_SETS) : answer(401, { error: SIGN_IN });
     default: return null;
   }
 }

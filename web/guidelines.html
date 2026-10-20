@@ -29,11 +29,6 @@
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <link rel="stylesheet" href="/site.css">
 <style>
-.page { padding: clamp(48px, 8vw, 96px) 0; max-width: 760px; }
-.page h1 { font-size: clamp(34px, 5vw, 50px); }
-.page h2 { font-size: 19px; margin: 34px 0 6px; letter-spacing: -0.01em; }
-.page p { color: var(--ink-soft); margin: 0 0 12px; }
-.page p b { color: var(--ink); font-weight: 620; }
 .page .fill { border: 1px dashed #c9a227; border-radius: 8px; padding: 12px 14px; background: rgba(242, 197, 54, 0.08); }
 .page .fill .blank { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #c9a227; }
 </style>
@@ -46,28 +41,22 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
-			<a href="/#features">Features</a>
-			<a href="/#assistant">Assistant</a>
-			<a href="/faq">FAQ</a>
 			<a href="/download">Download</a>
-			<a href="/profile" data-account>Account</a>
+			<a href="/profile" data-account>Sign in</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<nav class="menu-list" aria-label="Menu">
 				<a href="/gallery">Gallery</a>
-				<a href="/#features">Features</a>
-				<a href="/#assistant">Assistant</a>
-				<a href="/faq">FAQ</a>
 				<a href="/download">Download</a>
-				<a href="/profile" data-account>Account</a>
+				<a href="/profile" data-account>Sign in</a>
 			</nav>
 		</details>
 	</div>
 </header>
 
-<main id="main" class="wrap page">
+<main id="main" class="wrap page prose">
 	<h1>Community guidelines</h1>
 	<p class="lede">
 		The gallery is for models people build here and want others to build
@@ -115,39 +104,26 @@
 
 <footer class="site-foot">
 	<div class="wrap">
-		<div class="foot-cols">
-			<div>
-				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
-			</div>
-			<nav aria-label="Product">
-				<h2>Product</h2>
-				<ul>
-					<li><a href="/app">Open the app</a></li>
-					<li><a href="/gallery">Gallery</a></li>
-					<li><a href="/download">Download</a></li>
-					<li><a href="/changelog">Changelog</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Learn">
-				<h2>Learn</h2>
-				<ul>
-					<li><a href="/faq">FAQ</a></li>
-					<li><a href="/privacy">Privacy</a></li>
-					<li><a href="/terms">Terms of use</a></li>
-					<li><a href="/guidelines" aria-current="page">Community guidelines</a></li>
-				</ul>
-			</nav>
-			<nav aria-label="Project">
-				<h2>Project</h2>
-				<ul>
-					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
-					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
-				</ul>
+		<div class="foot-top">
+			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+			<nav class="foot-links" aria-label="More">
+				<a href="/compare">Compare</a>
+				<a href="/faq">FAQ</a>
+				<a href="/changelog">Changelog</a>
+				<a href="https://github.com/Xaxis/brickworks">Source</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/terms">Terms</a>
+				<a href="/guidelines">Guidelines</a>
+				<a href="/takedown">Takedown</a>
 			</nav>
 		</div>
 		<div class="legal">
+			<p>
+				Models in the gallery are made and shared by the people credited, or by
+				someone who chose not to be; Brickworks does not check them before they
+				are listed. Something that should not be there? Press Report on its
+				page, or see <a href="/takedown">takedown requests</a>.
+			</p>
 			<p>
 				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
 				community, licensed
@@ -161,7 +137,7 @@
 				LEGO® is a trademark of the LEGO Group of companies which does not
 				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
 				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group.
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
 			</p>
 		</div>
 	</div>
