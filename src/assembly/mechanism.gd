@@ -76,8 +76,9 @@ const Y := Vector3(0, 1, 0)
 ## file, and the second to put its table freed the first's while the other
 ## thread was copying it: the copy held nothing, and its is_empty() read
 ## address 0x34, signal 11 on the main thread at this function (Dubai, 750
-## parts; 35 of 80 runs of table_race_probe; racefix, 2026-10-20). A worker
-## reaches this only through code that has loaded the class already.
+## parts; racefix, 2026-10-20). table_race_probe, which lets the two go at
+## once, died so in 14 of 30 runs. A worker reaches this only through code
+## that has loaded the class already.
 static var _table: Dictionary = _read_table()
 
 

@@ -41,8 +41,9 @@ static var _loaded: bool = false
 ## Read at first use, under a lock: a build's check and Brickify read the
 ## norms on a worker, and a table put on one thread while another copies
 ## it leaves the copy holding nothing, as Mechanism's gear table did
-## (racefix, 2026-10-20). Their callers read them here first, but a lock
-## does not depend on every caller remembering to.
+## (racefix, 2026-10-20): 12 of 30 runs of table_race_probe died here.
+## Both read them on the main thread first, but a lock does not depend on
+## every caller remembering to.
 static var _norms_lock := Mutex.new()
 
 

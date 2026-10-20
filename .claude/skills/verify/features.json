@@ -1057,6 +1057,14 @@
       "tests": []
     },
     {
+      "id": "cli:table race",
+      "kind": "cli",
+      "entry": "src/dev/table_race_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/table_race_probe.gd [-- --tries=N] [-- --only=mechanism,flex,style]   (a static table read for the first time on a worker and the main thread let go at once, each try a run of its own: Mechanism's gear table, Flex's pieces, Style's norms; every run stays up. Main before racefix died 35 of 80 on the gear table, signal 11 at mechanism.gd:78)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:tabs browser flow",
       "kind": "cli",
       "entry": "tools/web/tabs_flow.mjs",

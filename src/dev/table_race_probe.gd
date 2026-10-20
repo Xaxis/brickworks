@@ -16,7 +16,7 @@
 ##
 ## Each try is a run of the engine of its own, as a static is read for the
 ## first time once a run: a worker and the main thread let go at the same
-## instant, each asking as the app does, 2,000 times. Pass: every try's run
+## instant, each asking as the app does for 30 ms. Pass: every try's run
 ## exits 0 and says it was still up. Then the same for the tables like it a
 ## worker reaches: Flex's pieces (Grab's reading and Balance's weigh on a
 ## worker, the counts line here) and Style's norms (a build's check).
@@ -42,7 +42,7 @@ var _askers: Dictionary = {
 const GEARS := ["3647", "10928", "3001", "99010", "18938", "4019"]
 ## Pieces of flexible things, and a part that is none.
 const PIECES := ["71944k02", "71533k03", "3711", "3873", "3001"]
-const ASKS := 2000
+const ASK_USEC := 30000
 
 var _failures: int = 0
 
@@ -107,25 +107,35 @@ func _tries(table: String, tries: int) -> void:
 
 
 ## One try, in this run of its own: the worker and this thread let go at
-## once.
+## once, the worker waited for, and each asking for [constant ASK_USEC], so
+## one asks all the while the other reads its table.
 func _try(table: String) -> void:
 	var askers: Array = _askers[table]
 	var on_worker: Callable = askers[0]
 	var here: Callable = askers[1]
+	var ready: Array = [0]
 	var go: Array = [0]
 	var got: Array = [0]
 	var task: int = WorkerTasks.add(func() -> void:
+		ready[0] = 1
 		while go[0] == 0:
 			pass
 		var n: int = 0
-		for i: int in ASKS:
+		var i: int = 0
+		var until: int = Time.get_ticks_usec() + ASK_USEC
+		while Time.get_ticks_usec() < until:
 			n += int(on_worker.call(i))
+			i += 1
 		got[0] = n, true, "probe: the worker's asks")
-	OS.delay_usec(2000)
+	while ready[0] == 0:
+		pass
 	go[0] = 1
 	var n: int = 0
-	for i: int in ASKS:
+	var i: int = 0
+	var until: int = Time.get_ticks_usec() + ASK_USEC
+	while Time.get_ticks_usec() < until:
 		n += int(here.call(i))
+		i += 1
 	WorkerTasks.collect(task)
 	print("STILL UP %d %d" % [n, got[0]])
 	quit(0)
