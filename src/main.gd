@@ -744,6 +744,8 @@ func _tell_page() -> void:
 		"view": _share_view.page_state() if _share_view != null else {},
 		# What the last finger on the model was taken as (_play_touch).
 		"finger": _finger_said,
+		# What the last motion's button played (_play_motion).
+		"motion": _motion_last,
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
 		"carried": _steps_carried,
@@ -2898,6 +2900,10 @@ var _motion_frames: Array = []
 var _motion_began: int = 0
 var _motion_shown: int = -1
 var _motion_said: String = ""
+## What the last press played, for a page that checks it (play_flow.mjs):
+## its name, which way, each joint from where to where, whether one
+## stopped, its frames and what working them out cost, ms.
+var _motion_last: Dictionary = {}
 ## The finger on a part that may move (_play_touch): its index, the part,
 ## where it came down, and whether it has taken hold.
 var _finger: int = -1
@@ -3223,8 +3229,13 @@ func _play_motion(name: String) -> void:
 		_grab_drag.cancel()
 	_motion_stop()
 	var back: bool = _share_view.motions_out.has(name.to_lower())
+	var began: int = Time.get_ticks_usec()
 	var played: MotionPlayer.Played = _motions.play(motion, back, MotionPlayer.PLAY_FPS, true,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
+	_motion_last = {"name": motion.name, "backwards": back, "frames": played.frames.size(),
+		"ms": snappedf((Time.get_ticks_usec() - began) / 1000.0, 0.1), "stopped": played.stopped(),
+		"joints": played.items.map(func(item: MotionPlayer.Item) -> Array:
+			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}
 	if played.items.is_empty():
 		_share_view.play_said(_visitor_words("“%s” does not play: %s." % [motion.name,
 			"; ".join(played.refused)]))

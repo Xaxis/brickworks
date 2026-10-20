@@ -143,7 +143,7 @@ import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
-  listQuery, looksLikePerson, modelHash, partFacts, siteChrome, testsAsked, visitorKey,
+  listQuery, looksLikePerson, modelHash, motionsIn, movesWords, partFacts, siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
@@ -823,6 +823,8 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const facts = [
     model.steps ? `${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}` : "",
     model.technic ? "Technic or a mechanism" : "",
+    // What it does: its own motions' names, else what its app found moves.
+    movesWords(model) ? escapeHtml(`Moves: ${movesWords(model)}`) : "",
     model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link",
   ].filter(Boolean);
   const tags = (model.tags || []).map((tag) =>
@@ -1377,15 +1379,24 @@ export function checkMoves(given) {
   return MOVES.filter((word) => given.includes(word));
 }
 
-/// What moves, kept with the model's row: the list kept, or null. Never
-/// stops the publish; before supabase/play.sql there is nowhere to keep it.
-async function keepMoves(id, owner, moves) {
-  if (moves === undefined) return null;
+/// What moves, kept with the model's row: the app's words (supabase/play.sql)
+/// and its motions' names, read from the text published (supabase/motions.sql).
+/// {moves, motions}, each as kept or null. Never stops the publish: before
+/// motions.sql there is nowhere to keep the names, and the words are kept
+/// alone; before play.sql, neither.
+async function keepMoves(id, owner, moves, motions) {
+  const row = `shared_models?id=eq.${id}&owner=eq.${owner}`;
   try {
-    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { moves } });
-    return moves;
+    await db(row, { method: "PATCH", body: moves === undefined ? { motions } : { moves, motions } });
+    return { moves: moves ?? null, motions };
   } catch {
-    return null;
+    if (moves === undefined) return { moves: null, motions: null };
+  }
+  try {
+    await db(row, { method: "PATCH", body: { moves } });
+    return { moves, motions: null };
+  } catch {
+    return { moves: null, motions: null };
   }
 }
 
@@ -1547,8 +1558,10 @@ async function publish(request, response) {
   const thumb = checkThumb(body.thumb);
   // What the app found, checked against this very file (api/_tested.js).
   const finding = checkTested(body.tested, body.model);
-  // And what moves in it, from its joints (supabase/play.sql).
+  // And what moves in it, from its joints (supabase/play.sql), and its own
+  // motions' names, from the text itself (supabase/motions.sql).
   const moves = checkMoves(body.moves);
+  const motions = motionsIn(body.model);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   const author = cleanText(body.author, MAX_AUTHOR) || null;
@@ -1714,7 +1727,7 @@ async function publish(request, response) {
   // gallery's Build with what I own. Never stops the publish; before
   // supabase/discovery.sql there is nowhere to keep it.
   await keepNeeds(id, needs);
-  const movesKept = await keepMoves(id, owner, moves);
+  const movesKept = await keepMoves(id, owner, moves, motions);
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
@@ -1722,7 +1735,7 @@ async function publish(request, response) {
     listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
-    version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept,
+    version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
     ...links(origin, id),
   });
 }

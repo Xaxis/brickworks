@@ -46,8 +46,31 @@
 // moves ("Moves: steering"; "Moves: doors"), one with nothing says nothing,
 // and ticking Technic or mechanism asks the list with technic=1.
 //
+// Then a model with motions of its own (docs/MOTIONS.md): 1484-1 with
+// tests/fixtures/motions/1484-1.motions written into it, "Open the gates"
+// and "Open the mailbox". With --publish it is published too, from the same
+// account (to a deployment, or to tools/web/relay_server.mjs's local relay);
+// locally, serve.py --share M0ti0nsFl1=FILE serves the file that
+// --write-house=FILE writes, and --house=M0ti0nsFl1 names it. At each size:
+//
+//   5. Its link's pill says "Play its motions" with a button each, inside
+//      the page and clear of the view cube; on the phone a fingertip tall.
+//   6. Each button pressed (clicked, or tapped on the phone with the CPU
+//      slowed --slow times): it plays, each of its joints turns 80° or more
+//      (window.brickworksShare.motion, what the app played), and it stays
+//      lit; what the press cost the app is said.
+//   7. The gates' button pressed again: they play backwards, back to 0°.
+//   8. Reset: nothing lit, Reset gone; the link's text unchanged.
+//
+// And its page, /m/<id>: what it does in its facts, "Moves: open the
+// gates, open the mailbox" once supabase/motions.sql is applied there, or
+// today's words ("Moves: doors") before, at 390 and 1280, light and dark.
+// A card with motions says them ("Moves: open the dome, extend the
+// telescope, open the back wall panels and 1 more").
+//
 // Pictures in --out: <size>_1_ready.png, _2_turned.png, _3_let_go.png,
-// _4_reset.png, <size>_5_gallery.png.
+// _4_reset.png, <size>_5_gallery.png; <size>_6_motions.png,
+// _7_played.png, _8_motions_reset.png, <size>_<light|dark>_9_page.png.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
@@ -163,7 +186,9 @@ async function galleryCards(size, shape) {
   const card = (id, name, moves, technic = false) => ({ id, name, author: "Play Flow", parts: 93, views: 3,
     likes: 1, remixes: 0, builds: 2, technic, tested: false, moves, url: `/m/${id}`, image: null, thumb: null });
   const models = [card("Pl4yCard01", "Play racer", ["steering"]), card("Pl4yCard02", "Play house", ["doors"]),
-    card("Pl4yCard03", "Play hut", [])];
+    card("Pl4yCard03", "Play hut", []),
+    { ...card("Pl4yCard04", "Play observatory", ["turntable"]),
+      motions: ["Open the dome", "Extend the telescope", "Open the back wall panels", "Turn the dome"] }];
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== new URL(site).origin) return route.abort();
@@ -195,6 +220,8 @@ async function galleryCards(size, shape) {
     [a.dataset.id, (a.querySelector("small.moves") || {}).textContent || ""])));
   check(`${size}: the racer's card says "${said.Pl4yCard01}", the house's "${said.Pl4yCard02}", the hut's nothing`,
     said.Pl4yCard01 === "Moves: steering" && said.Pl4yCard02 === "Moves: doors" && said.Pl4yCard03 === "");
+  check(`${size}: a card with motions of its own says them: "${said.Pl4yCard04}"`,
+    said.Pl4yCard04 === "Moves: open the dome, extend the telescope, open the back wall panels and 1 more");
   const box = await page.evaluate(() => {
     const line = document.querySelector('a.model[data-id="Pl4yCard01"] small.moves');
     const r = line ? line.getBoundingClientRect() : null;
@@ -216,9 +243,139 @@ async function galleryCards(size, shape) {
   await context.close();
 }
 
+// --- the house's motions ------------------------------------------------------
+
+// The house's link at [size]: a button for each of its motions, each played
+// and one taken back, and Reset.
+async function houseLink(size, shape) {
+  const finger = Boolean(shape.hasTouch);
+  const { width, height } = shape.viewport;
+  console.log(`\nthe house's motions, ${size}, ${finger ? "a finger" : "the mouse"}`);
+  const context = await browser.newContext({ ...shape, extraHTTPHeaders: headers });
+  const page = await context.newPage();
+  page.on("pageerror", (e) => errors.push(`${size} house: ${String(e).slice(0, 200)}`));
+  page.on("console", (m) => {
+    if (/SCRIPT ERROR|Parse Error|USER ERROR/.test(m.text())) errors.push(`${size} house: ${m.text().slice(0, 300)}`);
+  });
+  const cdp = finger ? await context.newCDPSession(page) : null;
+  const served = sha(await fetch(`${site}/api/share?id=${houseId}`, { headers }).then((r) => r.json())
+    .then((body) => body.model || "").catch(() => ""));
+  await page.goto(`${site}/m/${houseId}`, { waitUntil: "domcontentloaded", timeout: 180000 });
+  const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
+  if (cta) {
+    await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
+  }
+  await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the house opened", 600);
+  const ready = await until(page, () => {
+    const p = ((window.brickworksShare || {}).view || {}).play || {};
+    return p.ready && p.shown && (p.motions || []).length ? p : null;
+  }, "its motions said", Number(args.ready || 300));
+  check(`its motions, a button each: ${JSON.stringify(ready.motions)}`,
+    JSON.stringify(ready.motions) === JSON.stringify(["Open the gates", "Open the mailbox"]));
+  check(`the pill says "${ready.title}" / "${ready.says}"`, ready.title === "Play its motions"
+    && (finger ? /^Tap one to play it/ : /^Press one to play it/).test(ready.says));
+  const placed = await until(page, () => {
+    const c = window.brickworksControls || {};
+    return c.view_motion_1 && c.view_motion_2 && c.view_play ? c : null;
+  }, "the buttons on the page", 30);
+  const inside = (at) => at && at.x >= 0 && at.x <= width && at.y >= 0 && at.y <= height;
+  const buttons = [placed.view_motion_1, placed.view_motion_2];
+  check(`the buttons are inside the page (${buttons.map((b) => `${Math.round(b.x)}, ${Math.round(b.y)}, ${Math.round(b.h)} tall`).join("; ")})`,
+    buttons.every(inside) && (!finger || buttons.every((b) => b.h >= 30)));
+  const cube = Object.entries(placed).filter(([name]) => name.startsWith("cube_")).map(([, at]) => at.x);
+  const right = placed.view_play.x + placed.view_play.w / 2;
+  check(`the pill (to ${Math.round(right)}) is clear of the view cube (from ${cube.length ? Math.min(...cube) : "?"})`,
+    cube.length > 0 && right < Math.min(...cube) - 20);
+  await page.waitForTimeout(1200);
+  await shot(page, `${size}_6_motions.png`);
+  const press = async (at) => (finger ? page.touchscreen.tap(at.x, at.y) : page.mouse.click(at.x, at.y));
+  const played = (name, out) => until(page, ([n, o]) => {
+    const s = window.brickworksShare || {};
+    const p = (s.view || {}).play || {};
+    const lit = (p.motions_out || []).includes(n);
+    return lit === o && (s.motion || {}).name === n && !/^Playing|^Putting/.test(p.says) ? { p, m: s.motion } : null;
+  }, `${name} played`, 60, [name, out]).catch(() => null);
+  for (const [n, name] of [[1, "Open the gates"], [2, "Open the mailbox"]]) {
+    if (finger && slow > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: slow });
+    await press((await controls(page))[`view_motion_${n}`]);
+    const done = await played(name, true);
+    if (finger && slow > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    const joints = done ? done.m.joints || [] : [];
+    check(`"${name}" played: ${joints.map((j) => `${j[0]} ${j[1]}° to ${j[2]}°`).join(", ") || "nothing"}; lit; "${done ? done.p.says : ""}"`,
+      Boolean(done) && joints.length > 0 && joints.every((j) => Math.abs(j[2] - j[1]) >= 80) && !done.m.stopped
+      && /Press it again to put it back/.test(done.p.says));
+    if (done) say(`the press worked out ${done.m.frames} frames in ${done.m.ms} ms of the app's own time${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""} (said, not judged)`);
+  }
+  await page.waitForTimeout(600);
+  await shot(page, `${size}_7_played.png`);
+  await press((await controls(page)).view_motion_1);
+  const back = await played("Open the gates", false);
+  const joints = back ? back.m.joints || [] : [];
+  check(`pressed again, the gates play backwards: ${joints.map((j) => `${j[1]}° to ${j[2]}°`).join(", ")}; "${back ? back.p.says : ""}"`,
+    Boolean(back) && back.m.backwards && joints.length === 2 && joints.every((j) => Math.abs(j[2]) < 1)
+    && JSON.stringify(back.p.motions_out) === JSON.stringify(["Open the mailbox"]));
+  const reset = (await controls(page)).view_reset;
+  check(`Reset is offered, inside the page (${reset ? `${Math.round(reset.x)}, ${Math.round(reset.y)}` : "not found"})`, inside(reset));
+  if (reset) await press(reset);
+  const home = await until(page, () => {
+    const p = ((window.brickworksShare || {}).view || {}).play || {};
+    return !p.played && !p.reset && !(p.motions_out || []).length ? p : null;
+  }, "put back", 60).catch(() => null);
+  check(`Reset: nothing lit, Reset gone: "${home ? home.says : "not put back"}"`, Boolean(home));
+  check("the store writes nothing", (await share(page)).read_only === true);
+  const now = sha(await fetch(`${site}/api/share?id=${houseId}`, { headers }).then((r) => r.json())
+    .then((body) => body.model || "").catch(() => ""));
+  check("the link's model is as it was (asked for again: the same text)", now === served && served !== sha(""));
+  await page.waitForTimeout(600);
+  await shot(page, `${size}_8_motions_reset.png`);
+  await context.close();
+}
+
+// The house's own page, /m/<id>: what it does, in its facts, at both sizes,
+// light and dark.
+async function housePage() {
+  const kept = Array.isArray(housePublished.motions) && housePublished.motions.length > 0;
+  const wantedWords = kept ? "Moves: open the gates, open the mailbox" : "Moves: doors";
+  if (!kept) say("its motions were not kept: supabase/motions.sql is not applied here, so its page says today's words");
+  for (const size of wanted) {
+    for (const scheme of ["light", "dark"]) {
+      const context = await browser.newContext({ ...SIZES[size], colorScheme: scheme, extraHTTPHeaders: headers });
+      const page = await context.newPage();
+      await page.goto(`${site}/m/${houseId}`, { waitUntil: "load", timeout: 120000 });
+      const facts = await page.$$eval(".facts li", (items) => items.map((li) => li.textContent.trim())).catch(() => []);
+      const box = await page.evaluate(() => {
+        const li = [...document.querySelectorAll(".facts li")].find((one) => one.textContent.startsWith("Moves: "));
+        const r = li ? li.getBoundingClientRect() : null;
+        return r ? { x: r.x, w: r.width, page: document.documentElement.clientWidth } : null;
+      });
+      check(`${size}, ${scheme}: its page says what it does: ${JSON.stringify(facts)}`, facts.includes(wantedWords)
+        && Boolean(box) && box.x >= 0 && box.x + box.w <= box.page + 1);
+      await page.evaluate(() => document.querySelector(".facts")?.scrollIntoView({ block: "center" }));
+      await shot(page, `${size}_${scheme}_9_page.png`);
+      await context.close();
+    }
+  }
+}
+
 // --- the link ----------------------------------------------------------------
 
 const MODEL = path.join(root, "vendor/omr/files/8808-1.mpd");
+// The house, its motions written into the head of its main model as the app
+// writes them (Motions.written_into): before its first part.
+const HOUSE = path.join(root, "vendor/omr/files/1484-1.mpd");
+const HOUSE_MOTIONS = readFileSync(path.join(root, "tests/fixtures/motions/1484-1.motions"), "utf8").trim().split("\n");
+function houseText() {
+  const lines = readFileSync(HOUSE, "utf8").split("\n");
+  const at = lines.findIndex((line, n) => n > 0 && /^(1 |0 FILE|0 STEP|0 ROTSTEP|\s*$)/i.test(line.trim() || " "));
+  return [...lines.slice(0, at), ...HOUSE_MOTIONS, ...lines.slice(at)].join("\n");
+}
+if (args["write-house"]) {
+  writeFileSync(String(args["write-house"]), houseText());
+  console.log(`wrote 1484-1 with its ${HOUSE_MOTIONS.length} motion lines to ${args["write-house"]}`);
+  process.exit(0);
+}
+let houseId = args.house ? String(args.house) : "";
+let housePublished = null;
 let id = String(args.id || "Pl4yFl0w01");
 let probe = "";
 let token = "";
@@ -237,6 +394,17 @@ if (args.publish) {
   if (!published.id) throw new Error(`publishing 8808-1: ${reply.status} ${published.error || ""}`);
   id = published.id;
   console.log(`published 8808-1 as ${id} (${published.parts} parts), moves kept: ${JSON.stringify(published.moves)}`);
+  // The house, its motions in its text; what moves as the app finds it.
+  const again = await fetch(`${site}/api/share`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ name: `Play flow house ${randomBytes(3).toString("hex")}`, model: houseText(),
+      listed: true, moves: ["doors"] }),
+  });
+  housePublished = await again.json().catch(() => ({}));
+  if (!housePublished.id) throw new Error(`publishing the house: ${again.status} ${housePublished.error || ""}`);
+  houseId = housePublished.id;
+  console.log(`published the house as ${houseId}, motions kept: ${JSON.stringify(housePublished.motions)}`);
 }
 const fetched = async () => {
   const reply = await fetch(`${site}/api/share?id=${id}`, { headers });
@@ -388,6 +556,13 @@ try {
     await context.close();
   }
 
+  // The house, with motions of its own.
+  if (houseId) {
+    for (const size of wanted) await houseLink(size, SIZES[size]);
+    if (housePublished) await housePage();
+  } else {
+    say("no house with motions served (--publish, or --house with serve.py), so its buttons are not tried");
+  }
   // The gallery's page, its list played.
   for (const size of wanted) await galleryCards(size, SIZES[size]);
   // The gallery, on a deployment: its card says what moves, and Technic or
@@ -412,12 +587,15 @@ try {
 } finally {
   await browser.close();
   if (probe) {
-    await fetch(`${site}/api/share?op=unpublish&id=${id}`, { method: "POST",
-      headers: { ...headers, authorization: `Bearer ${token}` } }).catch(() => {});
+    for (const one of [id, houseId].filter(Boolean)) {
+      await fetch(`${site}/api/share?op=unpublish&id=${one}`, { method: "POST",
+        headers: { ...headers, authorization: `Bearer ${token}` } }).catch(() => {});
+    }
     check(`the probe account deleted, and its link with it (${probe})`, await deleteAccount(probe));
   }
 }
 writeFileSync(path.join(out, "play.json"), JSON.stringify({ failed }, null, 1));
 console.log(failed ? `\n${failed} FAILED`
-  : "\na shared model's steering turns by its wheel, by mouse and by finger, and Reset puts it back");
+  : "\na shared model's steering turns by its wheel, by mouse and by finger, its motions play by their buttons, "
+    + "and Reset puts it back");
 process.exit(failed ? 1 : 0);

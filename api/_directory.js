@@ -322,6 +322,57 @@ export function movesOf(given) {
   return MOVES.filter((word) => said.has(word));
 }
 
+/// A model's own motions (docs/MOTIONS.md), by name, as its file carries
+/// them: `0 !BRICKWORKS MOTION "Open the dome" AFTER "" SECONDS 3` and its
+/// track or driver lines (src/assembly/motions.gd). Each name once, in the
+/// order the file first names it, only a motion that moves something (a
+/// track or a driver), at most MOST_MOTIONS of MOTION_NAME characters: read
+/// from the text published, for its card ("Moves: open the dome, extend the
+/// telescope") and for a session to play (supabase/motions.sql).
+export const MOST_MOTIONS = 12;
+export const MOTION_NAME = 60;
+const MOTION_LINE = /^0\s+!BRICKWORKS\s+(MOTION|MOTION_TRACK|MOTION_DRIVER|MOTION_KEY)\s+"([^"]*)"/;
+
+export function motionsIn(text) {
+  const named = new Map();
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const found = MOTION_LINE.exec(raw.trim());
+    if (!found) continue;
+    const name = motionName(found[2]);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (!named.has(key)) named.set(key, { name, moves: false });
+    if (found[1] === "MOTION_TRACK" || found[1] === "MOTION_DRIVER") named.get(key).moves = true;
+  }
+  return [...named.values()].filter((one) => one.moves).map((one) => one.name).slice(0, MOST_MOTIONS);
+}
+
+/// A motion's name as it is kept: its spaces made single, nothing that is
+/// not a printing character, at most MOTION_NAME long; "" for none.
+function motionName(given) {
+  return String(given ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim()
+    .slice(0, MOTION_NAME).trim();
+}
+
+/// The motions' names a client is given: a list of names, each as kept.
+export function motionsOf(given) {
+  if (!Array.isArray(given)) return [];
+  return given.map(motionName).filter(Boolean).slice(0, MOST_MOTIONS);
+}
+
+/// What a card or a page says moves in a model: its motions' names, each
+/// begun in lower case when it begins with a plain word ("open the dome,
+/// extend the telescope"), else Playable's words ("steering, boom"); "" for
+/// neither. [most] names at most, and how many more.
+export function movesWords(card, most = MOST_MOTIONS) {
+  const motions = motionsOf(card?.motions);
+  if (motions.length) {
+    const shown = motions.slice(0, most).map((name) => (/^[A-Z][a-z]*\b/.test(name) ? name[0].toLowerCase() + name.slice(1) : name));
+    return shown.join(", ") + (motions.length > most ? ` and ${motions.length - most} more` : "");
+  }
+  return movesOf(card?.moves).join(", ");
+}
+
 /// A card as a client is given it: what directory_card read, and where its
 /// page and pictures are.
 export function cardOf(origin, row) {
@@ -338,6 +389,9 @@ export function cardOf(origin, row) {
     builds: Number(row.builds) || 0,
     // What moves in it, as its app found (supabase/play.sql); none before.
     moves: movesOf(row.moves),
+    // Its own motions, by name, read from the text published
+    // (supabase/motions.sql); none before.
+    motions: motionsOf(row.motions),
     by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,

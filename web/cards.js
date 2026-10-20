@@ -24,6 +24,15 @@ export function ownedLine(owned) {
   return `You have ${have.toLocaleString("en-US")} of its ${pieces.toLocaleString("en-US")} parts · ${Math.floor((100 * have) / pieces)}%`;
 }
 
+/// A model's motions as a card says them: "open the dome, extend the
+/// telescope", each begun in lower case when it begins with a plain word
+/// (not "R2" or "LED"), [most] at most and how many more (api/_directory.js
+/// movesWords says them so on its page).
+export function motionWords(names, most = 3) {
+  const shown = names.slice(0, most).map((name) => (/^[A-Z][a-z]*\b/.test(name) ? name[0].toLowerCase() + name.slice(1) : name));
+  return shown.join(", ") + (names.length > most ? ` and ${names.length - most} more` : "");
+}
+
 /// The small picture when there is one, a few KB, and the big one when
 /// not: a page of cards is quick on a phone. "" when it has neither.
 export function pictureOf(model) {
@@ -91,17 +100,21 @@ export function modelCard(model) {
     words.append(line);
     link.dataset.won = "yes";
   }
-  // Something to play with: what moves in it, as its app found from its
-  // joints when it was published (supabase/play.sql), to be taken hold
-  // of and moved on its link.
+  // Something to play with: its own motions by name, read from its file
+  // as it was published (supabase/motions.sql), played by a button each on
+  // its link; else what moves in it, as its app found from its joints
+  // (supabase/play.sql), to be taken hold of and moved there.
   const moves = Array.isArray(model.moves) ? model.moves.filter((word) => typeof word === "string") : [];
-  if (moves.length) {
+  const motions = Array.isArray(model.motions) ? model.motions.filter((name) => typeof name === "string" && name) : [];
+  if (motions.length || moves.length) {
     const line = document.createElement("small");
     line.className = "moves";
-    line.textContent = `Moves: ${moves.join(", ")}`;
-    line.title = "Open it and drag what moves, as it was built";
+    line.textContent = `Moves: ${motions.length ? motionWords(motions, 3) : moves.join(", ")}`;
+    line.title = motions.length ? `Open it and play ${motions.length === 1 ? "it" : "them"}: ${motions.join(" · ")}`
+      : "Open it and drag what moves, as it was built";
     words.append(line);
     link.dataset.moves = moves.join(",");
+    if (motions.length) link.dataset.motions = motions.join("|");
   }
   // Marked Tested: its newest version passed the four tests the app ran
   // as it was published (api/_tested.js), said on hover.
