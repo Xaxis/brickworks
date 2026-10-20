@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1393,37 +1393,37 @@ picture the assistant is shown.
   makes the set ahead of the first render, on both renderers: the viewports,
   and the sweep and the contact shadow drawn once, each alone (`_warm`); a
   render asked for meanwhile waits the few frames left (`_prepare`).
-- `pose and animate` (Build, Pose and animate…; `src/ui/pose_panel.gd`, a
-  panel over the model's left edge so the pose is seen as it is set): a
-  slider per joint — every sub-assembly with a shaft of one of its parts in a
-  bore of a part outside it (`Builder._joint_of`, as J finds one), a hinge or a
-  turntable — from -180° to 180° about where it stood when posing began. A
-  laid hose, tube, string or chain is never one (`Flex.kind_of`): its end pin
-  in a hole read as a hinge, and swung, the tube tore off its other hole.
-  Dragging moves it live (`Poser.stand`, nothing to undo); letting go, or a
-  click on the track, keeps it as one step ("posed Arm at 45°"), as far as it
-  has room, pressing only on what it is joined to or overlapped at rest
-  (`Poser.settle`, a bisection between where it was and where it was asked;
-  the panel says where it stopped; `Poser.rest_cells`: 31070-1's back window
-  came back 6 LDU short without it). A joint inside another turns about its
-  rest axis first and the outer carries it (`Poser.transforms_for`, from rest,
-  never squared up: Play rewrote 73 parts of 31070-1 that way). After an undo the angles are read
-  back off the parts (`Poser.read_back`), or found afresh if the model changed.
-  At rest sets every joint to 0. Key at / Add key keeps every angle at a time;
-  `PoseAnimation` runs each joint through its keys as a monotone cubic
-  (Fritsch–Carlson): exact at each key, eased at the ends, never past a key.
-  A key may also name a part on its joint as move_part does ("#80", a
-  session's animate_model): Play and Render animation turn it as a drag does
-  (`GrabDrag.Turning`, taken afresh each time from `turning_for`).
-  Play runs it in the window; Turn the model round once adds a turntable;
-  Render animation draws it Quick at 480 × 300 or 720p, 12 or 24 a second
-  (a session's framed on the model and what it sweeps, `view` "hero"; the
-  person's through their own camera),
-  without a contact shadow (drawn once, it would be the rest pose's), with the
-  frame drawn last shown in the panel. A browser downloads
-  `<model>_animation.webp`; the desktop writes the frames, the WebP and, with
-  ffmpeg, an MP4 to Downloads. `window.brickworksPose` says the joints with
-  each slider's ends on the page, the keys, and the render's progress and file.
+- `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
+  class `PosePanel`, over the model's left edge so what moves is seen; the
+  owner's ask, 2026-10-20, docs/MOTIONS.md "What unit 2 built"). The list:
+  the model's motions, a row each (chosen for Render animation by its radio,
+  Play, Play backwards, Edit); Play all (`Motions.in_order`, each after the
+  one it follows) and Loop; "Suggested from what moves" (`MotionPlayer.suggest`)
+  with Keep; New motion. Play is `MotionPlayer.play` kept (one step), its
+  frames drawn over the model (`BrickWorld.set_drawn`, 12 a second) and its
+  words (`MotionPlayer.said`) in the status line. The editor: Name (rename is
+  one step, AFTER follows it), Remove, Record (every Grab drag in the view
+  sampled 30 a second, thinned to keys within 2° or 0.1 stud, from where the
+  joint stood to where the drag kept it; at Stop the drags are undone and
+  the motion is one step), Play, Play backwards, At (the time; the model
+  drawn as the motion has it then, played to look), a slider for each of
+  Grab's joints that moves (`MotionPlayer.movable`: Playable's first, a
+  joint with no room for 10° either way left out; five besides its own until
+  Show all), each moved through Grab live (`MotionPlayer.hold`, `step_to`) and
+  let go a key at that time, and its keys on a strip (`PosePanel.KeyStrip`:
+  pressed chosen, dragged moved in time, between them the time set), the key
+  chosen Eased, Linear or Held, or removed. Every change is a "motions" step,
+  and the panel reads the history each frame it is open (an int and a
+  reference), so an undo or a session's define_motion shows at once. Closed,
+  it does not process. Render animation draws the chosen (or edited) motion
+  through `render_poses`, as render_motion does: Quick, 480 × 300 or 720p,
+  12 or 24 a second; a browser downloads `<model>_<motion>.webp`; the desktop
+  writes the frames, the WebP and, with ffmpeg, an MP4. pose_model's joints
+  (`Poser`, `set_angle`, `joints_now`) and animate_model's keys
+  (`animation`) stay on the class for MCP. `window.brickworksMotions` says
+  the view, the motions, the suggestions, each joint slider's ends on the
+  page, the time slider's, recording, playing, and the render's progress and
+  file; `controls_by_name` names `motions_*` and `motion_*_N`.
   (`RenderOutput.add_frame`, at most three waiting). Under Compatibility
   every 3D draw of the set first draws, alone and one a frame, each thing in
   it that view has not drawn in that set-up (`_warm`: a batch per shader and
@@ -1443,9 +1443,10 @@ picture the assistant is shown.
   door saved open opens no further). Played through Grab (`GrabDrag.held_of`,
   a frame at a time, loops 3° at a time), it stops where it meets the model
   and says so by name and degree; kept, one undo step. Suggested from what
-  moves (Playable). Over MCP only in unit 1: list_motions, define_motion,
-  play_motion, render_motion (Render animation's path,
-  `PosePanel.render_poses`); animate_model is a motion played once.
+  moves (Playable). Over MCP: list_motions, define_motion, play_motion,
+  render_motion (Render animation's path, `PosePanel.render_poses`);
+  animate_model keeps its keys as the motion "Animation" and plays it once
+  to render. In the window: `motions panel`.
 - `render open check` (`tools/web/render_open_check.mjs`): the Render
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
@@ -1607,17 +1608,30 @@ MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --
 # turntable downloaded and decoded, Best cancelled, and the page never waiting
 # more than --stall seconds
 node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=shots/render_web
-# Build, Pose and animate…: a crane's turret and arm on their sliders, a
-# click on the track, refused past what it has room for, undone and read
-# back; three keys whose frames, read off the renderer's own copy, turn each
-# joint through its keys; Render animation's frames, WebP and MP4
-MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd
+# Build, Motions…, a new motion on a crane: the turret's and the arm's
+# sliders (Grab's joints), a click on the track a key, stopped short where
+# the arm meets the turret and said; keys at 0, 1 and 2 s whose frames, read
+# off the renderer's own copy, turn each joint through them; Render
+# animation's frames, WebP and MP4
+tools/probe.sh pose_probe
+# Build, Motions… driven as a person drives it (src/dev/motions_panel_probe.gd):
+# 1484-1's doors kept from the suggestion, played and played backwards; a
+# gate recorded from a drag in the view, the model put back, one step, and
+# played to where the drag left it; a key made linear and one put by a slider,
+# undone; Play all and its undo; saved and opened again with the lines back;
+# a motion a session defines shown in the open panel. 8808-1's steering kept
+# and played both ways through its rack; the steering wheel recorded turns
+# the arms when played; only joints that move offered; Render animation.
+# Pictures of each state; and again in a 1280 x 720 window.
+tools/probe.sh motions_panel_probe -- bench/results/motions2-2026-10-20
+PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions2-2026-10-20
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
 # 31070-1's back window posed out and back stands where it was built, Play
-# of keys on its 8 joints moves nothing, animate_model on 8808-1's steering
-# with the window zoomed far out spans over half its frame and its answer
-# carries its frames, the panel then plays and renders the session's keys,
+# of a motion on it out and back moves nothing, animate_model on 8808-1's
+# steering with the window zoomed far out spans over half its frame and its
+# answer carries its frames, the panel then plays and renders the session's
+# keys as the motion "Animation",
 # Cancel stops a render, a part that meets the model at once is said, and an
 # MP4 of 6 frames after one of 12 of the same name is 6 at 12 a second; and
 # pose_model marks 8808-1's steering arms as having no room to turn. 15 of

@@ -1,10 +1,11 @@
-## Posing and animating a crane, the way a person does, in the real scene:
-## a turret on a turntable, an arm on a hinge on the turret. Build, Pose
-## and animate… gives each its slider; a click on the arm's slider swings
-## it about its pin, and the turret's carries the arm round with it. Three
-## keys make an animation whose frames turn each joint through the keyed
-## angles — read off the copy the renderer draws, frame by frame — and it is
-## kept as frames, an animated WebP and an MP4.
+## Animating a crane the way a person does, in the real scene, in Build,
+## Motions…: a turret on a turntable, an arm on a hinge on the turret. A new
+## motion offers a slider for each of Grab's joints (what Pose's sliders
+## were); a click on the arm's slider at a time puts a key there, the arm
+## drawn swung about its pin, and the turret's carries the arm round with
+## it. Keys at 0, 1 and 2 s make frames that turn each joint through them —
+## read off the copy the renderer draws, frame by frame — and Render
+## animation keeps them as frames, an animated WebP and an MP4.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd
 ##
@@ -19,7 +20,13 @@ var _camera: CadCamera
 var _library: PartLibrary
 var _shell: Shell
 var _pose: PosePanel
+var _player: MotionPlayer
 var _ids: Dictionary = {}
+## The two joints the editor offers, and their rows.
+var _arm: Motions.Joint
+var _turret: Motions.Joint
+var _arm_row: Dictionary = {}
+var _turret_row: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -49,6 +56,7 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_shell = _main.get("_shell")
 	_pose = _main.get("_pose")
+	_player = _main.get("_motions")
 	_main.call("clear_model")
 
 	print("  a crane: a turret on a turntable, an arm on a hinge on it")
@@ -61,15 +69,27 @@ func _run() -> void:
 	_camera.frame(AABB(Vector3(-120, 0, -120), Vector3(240, 160, 240)), 1.2)
 	await _frames(60)
 
-	_check("Build has Pose and animate…", _shell.menu_id("pose") >= 0 and _shell.can("pose"))
+	_check("Build has Motions…", _shell.menu_id("pose") >= 0 and _shell.can("pose"))
 	_shell.run("pose")
 	await _frames(5)
-	var joints: Array = _pose.poser.joints
-	var said: Array = joints.map(func(j: Poser.Joint) -> String: return "%s %s" % [j.path, j.kind()])
-	_check("it opens with a slider for each joint (%s)" % str(said), _pose.visible
-		and joints.size() == 2 and _pose._sliders.size() == 2
-		and said.has("Turret#1 turntable") and said.has("Turret#1/Arm#1 hinge"))
+	await _click(_pose._new.get_global_rect().get_center())
+	await _frames(5)
+	# The arm's joint moves the arm alone; the turret's carries the arm.
+	for row: Dictionary in _pose._joint_parts:
+		var ids: Array = _player.parts_of(row["joint"])
+		if ids.has(_ids["turntable"]) or ids.has(_ids["hinge"]):
+			_turret = row["joint"]
+			_turret_row = row
+		elif ids.has(_ids["arm"]) or ids.has(_ids["top"]):
+			_arm = row["joint"]
+			_arm_row = row
+	var said: Array = _pose._joint_parts.map(func(row: Dictionary) -> String: return _player.joint_words(row["joint"]))
+	_check("New motion offers a slider for each joint, Grab's (%s)" % ", ".join(said), _pose.visible
+		and _pose._joint_parts.size() == 2 and _arm != null and _turret != null)
 	await _shot("1_panel")
+	if _arm == null or _turret == null:
+		quit(1)
+		return
 
 	await _a_slider()
 	await _keys_and_frames()
@@ -77,8 +97,8 @@ func _run() -> void:
 
 	print("")
 	if _failures == 0:
-		print("pose: each joint on a slider, the arm swung and carried round, and the "
-			+ "animation's frames turn each joint through its keys")
+		print("pose: each of Grab's joints on a slider, the arm swung and carried round, and the "
+			+ "motion's frames turn each joint through its keys")
 	else:
 		print("pose: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -89,101 +109,82 @@ var _up: float = 1.0
 
 
 func _a_slider() -> void:
-	print("  the arm's slider")
-	var arm: Poser.Joint = _pose.poser.joint("Turret#1/Arm#1")
-	var slider: HSlider = _pose._sliders[_pose.poser.joints.find(arm)]
+	print("  the arm's slider, at 2 s")
 	var rest: Transform3D = _brick("arm").transform
-	# Down into the turret first: refused short of it, and said.
 	var steps: int = _builder.history_depth()
-	var reached: float = _pose.set_angle(arm.path, 80.0)
-	var other: float = 0.0
-	if reached < 79.0:
-		_up = -1.0
-		other = reached
-		_builder.undo()
-		await _frames(3)
+	_check("the time is 2 s, a new motion's first key's (%s s)" % Motions.num(_pose._at, 2),
+		is_equal_approx(_pose._at, 2.0))
+	# Down into the turret first: stopped short of it, and said.
+	var reached: float = await _slide(_arm_row, 80.0)
+	var other: float = reached
+	var said: String = _pose.status_words()
+	if reached >= 79.0:
+		other = await _slide(_arm_row, -80.0)
+		said = _pose.status_words()
 	else:
-		_builder.undo()
-		await _frames(3)
-		other = _pose.set_angle(arm.path, -80.0)
-		_builder.undo()
-		await _frames(3)
-	_check("swung down into the turret it stops short and says so (%.0f°; \"%s\")" % [other,
-		_pose._status.text], absf(other) < 79.0 and absf(other) > 1.0)
-	_check("...and an undo of each leaves it as it was", _builder.history_depth() == steps
+		_up = -1.0
+	_check("swung down into the turret it stops short, and says where (%.0f°; \"%s\")" % [other, said.left(90)],
+		absf(other) < 79.0 and absf(other) > 1.0 and said.contains("stops at"))
+	_check("...kept as a key where it stopped, the motion made (%s), the model itself unmoved" % (
+		_builder.history_words(1)[0]), _builder.history_depth() > steps
 		and _near(_brick("arm").transform, rest))
-	await _frames(5)
-	_check("the slider reads back 0 after the undo (%d)" % roundi(slider.value),
-		absf(slider.value) < 0.5)
 	# A click on the track at 45 degrees up, as a person would.
 	var want: float = 45.0 * _up
-	var rect: Rect2 = slider.get_global_rect()
-	var at := Vector2(rect.position.x + rect.size.x * (want + 180.0) / 360.0, rect.get_center().y)
-	# The grabber is drawn inside the ends: aim as the slider measures.
-	var grab: float = slider.get_theme_icon("grabber").get_width()
-	at.x = rect.position.x + grab * 0.5 + (rect.size.x - grab) * (want + 180.0) / 360.0
-	await _click(at)
-	await _frames(5)
-	_check("a click on the arm's slider at %d° swings it there (%.1f)" % [roundi(want), arm.angle],
-		absf(arm.angle - want) <= 1.0)
-	var expected: Transform3D = _turned(arm, arm.angle) * rest
-	_check("...about its pin: the arm stands where turning it %d° about the hinge puts it"
-		% roundi(arm.angle), _near(_brick("arm").transform, expected))
-	_check("...as one step (%s)" % _builder.history_words(1)[0],
-		_builder.history_words(1)[0].begins_with("posed"))
-	var turret: Poser.Joint = _pose.poser.joint("Turret#1")
-	_pose.set_angle(turret.path, 90.0)
+	reached = await _slide(_arm_row, want)
+	_check("a click on the arm's slider at %d° puts the key there (%.1f)" % [roundi(want), reached],
+		absf(reached - want) <= 1.0)
+	var pin: Grab = _player.hold(_arm).grab
+	var expected: Transform3D = _turned(pin, reached) * rest
+	_check("...and the arm is drawn about its pin: where turning it %d° about the hinge puts it"
+		% roundi(reached), _near(_world.drawn_at(_brick("arm")), expected))
+	_check("...one step (%s), the model itself unmoved" % _builder.history_words(1)[0],
+		_builder.history_words(1)[0].begins_with("set ") and _near(_brick("arm").transform, rest))
+	var turret: Grab = _player.hold(_turret).grab
+	var round_to: float = await _slide(_turret_row, 90.0)
 	await _frames(3)
-	var carried: Transform3D = _turned(turret, 90.0) * _turned(arm, arm.angle) * rest
-	_check("the turret's slider carries the arm round with it (turret %.0f°)" % turret.angle,
-		absf(turret.angle - 90.0) < 0.5 and _near(_brick("arm").transform, carried))
+	var carried: Transform3D = _turned(turret, round_to) * _turned(pin, reached) * rest
+	_check("the turret's slider (%.0f°) carries the arm round with it, drawn there" % round_to,
+		absf(round_to - 90.0) <= 1.5 and _near(_world.drawn_at(_brick("arm")), carried))
 	_camera.frame(AABB(Vector3(-140, 0, -140), Vector3(280, 180, 280)), 1.2)
 	await _frames(40)
 	await _shot("2_posed")
-	_pose.at_rest()
-	await _frames(3)
-	_check("At rest puts both back", _near(_brick("arm").transform, rest)
-		and is_zero_approx(arm.angle) and is_zero_approx(turret.angle))
 
 
 func _keys_and_frames() -> void:
-	print("  three keys, and the frames between them")
-	var arm: Poser.Joint = _pose.poser.joint("Turret#1/Arm#1")
-	var turret: Poser.Joint = _pose.poser.joint("Turret#1")
-	_pose._key_time.value = 0.0
-	_pose.add_key()
-	_pose.set_angle(arm.path, 50.0 * _up)
-	_pose.set_angle(turret.path, 90.0)
-	_pose.add_key()
-	_pose.set_angle(arm.path, 20.0 * _up)
-	_pose.set_angle(turret.path, 180.0)
-	_pose.add_key()
-	var animation: PoseAnimation = _pose.animation
-	_check("three keys, at 0, 1 and 2 s (%s)" % str(animation.keys.map(
-		func(k: Dictionary) -> float: return float(k["t"]))), animation.keys.size() == 3
-		and is_equal_approx(float(animation.keys[2]["t"]), 2.0))
-	animation.fps = 12
-	var frames: int = animation.frame_count()
+	print("  keys at 0, 1 and 2 s, and the frames between them")
+	await _time_to(1.0)
+	await _slide(_arm_row, 50.0 * _up)
+	await _slide(_turret_row, 90.0)
+	await _time_to(2.0)
+	await _slide(_arm_row, 20.0 * _up)
+	await _slide(_turret_row, 180.0)
+	var motion: Motions.Motion = _pose._edited()
+	var arm: Motions.Track = _pose._track_of(motion, _arm)
+	var turret: Motions.Track = _pose._track_of(motion, _turret)
+	_check("each joint keyed at 0, 1 and 2 s (%s; %s)" % [str(arm.keys), str(turret.keys)],
+		arm.keys.size() == 3 and turret.keys.size() == 3 and is_equal_approx(float(arm.keys[2][0]), 2.0))
+	var played: MotionPlayer.Played = _player.play(motion, false, 12, false)
+	var frames: int = played.frames.size()
 	_check("2 s at 12 a second is 25 frames, the last key's included (%d)" % frames, frames == 25)
 	# Through the keys exactly, eased, never past them.
-	var at_keys: Array = [animation.angle_at(arm.path, 0.0), animation.angle_at(arm.path, 1.0),
-		animation.angle_at(arm.path, 2.0)]
-	_check("the arm's angle at each key is the key's (%s)" % str(at_keys),
-		is_equal_approx(at_keys[0], 0.0) and is_equal_approx(at_keys[1], 50.0 * _up)
-		and is_equal_approx(at_keys[2], 20.0 * _up))
+	# A click on a slider is good to its step and a pixel: within 1.5°.
+	var at_keys: Array = [arm.place_at(0.0), arm.place_at(1.0), arm.place_at(2.0)]
+	_check("the arm's place at each key is the key's, as clicked (%s)" % str(at_keys),
+		absf(at_keys[0]) < 0.01 and absf(at_keys[1] - float(arm.keys[1][1])) < 0.01
+		and absf(at_keys[2] - float(arm.keys[2][1])) < 0.01 and absf(at_keys[1] - 50.0 * _up) <= 1.5
+		and absf(at_keys[2] - 20.0 * _up) <= 1.5)
 	var overshoot: bool = false
 	var jumps: float = 0.0
 	var last: float = 0.0
 	for n: int in frames:
-		var value: float = animation.angle_at(arm.path, animation.time_of(n)) * _up
+		var value: float = arm.place_at(float(n) / 12.0) * _up
 		if value < -0.001 or value > 50.001:
 			overshoot = true
 		if n > 0:
 			jumps = maxf(jumps, absf(value - last))
 		last = value
-	_check("it never swings past a key, and moves at most %.1f° a frame" % jumps,
-		not overshoot and jumps < 8.0)
-	var start: float = animation.angle_at(arm.path, animation.time_of(1)) * _up
+	_check("it never swings past a key, and moves at most %.1f° a frame" % jumps, not overshoot and jumps < 8.0)
+	var start: float = arm.place_at(1.0 / 12.0) * _up
 	_check("it eases out of the first key (%.2f° in the first frame of 50)" % start, start < 3.0)
 
 	# The frames themselves: the renderer's copy of the model, read as each
@@ -198,44 +199,46 @@ func _keys_and_frames() -> void:
 	settings.size = Vector2i(320, 200)
 	settings.contact_shadow = false
 	settings.view = "hero"
-	var poses: Array = []
-	for n: int in frames:
-		poses.append(_pose.poser.transforms_for(animation.angles_at(animation.time_of(n))))
+	var poses: Array = played.frames
+	# What the frames sweep, read off the model as Render animation reads it.
+	var sweep := Poser.new()
+	sweep.world = _world
+	sweep.library = _library
 	var model_before: Array = _snapshot()
+	var pin: Grab = _player.hold(_arm).grab
+	var turning: Grab = _player.hold(_turret).grab
 	var seen_arm: Array = []
 	var seen_turret: Array = []
 	var pictures: Array = []
 	var done: int = await renderer.animate(_world, settings, frames,
 		func(n: int) -> Dictionary: return poses[n],
 		func(_n: int) -> float: return 0.0,
-		_pose.poser.reach(poses),
+		sweep.reach(poses),
 		func(_n: int, image: Image) -> void:
-			var hinge: Basis = renderer.staged_transform(_ids["hinge"]).basis
-			var top: Basis = renderer.staged_transform(_ids["top"]).basis
-			var turning: Basis = renderer.staged_transform(_ids["turntable"]).basis
-			seen_arm.append(_about(hinge.inverse() * top, arm.axis))
-			seen_turret.append(_about(turning, turret.axis))
+			var hinge: Transform3D = renderer.staged_transform(_ids["hinge"])
+			var top: Transform3D = renderer.staged_transform(_ids["top"])
+			var table: Transform3D = renderer.staged_transform(_ids["turntable"])
+			seen_arm.append(_about(hinge.basis.inverse() * top.basis, pin.axis.normalized()))
+			seen_turret.append(_about(table.basis, turning.axis.normalized()))
 			pictures.append(image))
 	_check("every frame is drawn (%d of %d)" % [done, frames], done == frames)
 	var worst: float = 0.0
 	for n: int in seen_arm.size():
-		var t: float = animation.time_of(n)
+		var t: float = float(n) / 12.0
 		# A whole turn either way is the same angle: 180 is read back as -180.
-		worst = maxf(worst, absf(wrapf(float(seen_arm[n]) - animation.angle_at(arm.path, t),
-			-180.0, 180.0)))
-		worst = maxf(worst, absf(wrapf(float(seen_turret[n])
-			- animation.angle_at(turret.path, t), -180.0, 180.0)))
-	_check("in every frame drawn, each joint stands at the angle the keys give it, to %.3f°"
+		worst = maxf(worst, absf(wrapf(float(seen_arm[n]) - arm.place_at(t), -180.0, 180.0)))
+		worst = maxf(worst, absf(wrapf(float(seen_turret[n]) - turret.place_at(t), -180.0, 180.0)))
+	_check("in every frame drawn, each joint stands at the place its keys give it, to %.3f°"
 		% worst, seen_arm.size() == frames and worst < 0.05)
 	if seen_arm.size() == frames:
-		_check("the arm drawn at 0°, %d° and %d° in the key frames (%.1f, %.1f, %.1f)" % [
+		_check("the arm drawn at its keys, 0°, about %d° and %d°, in the key frames (%.1f, %.1f, %.1f)" % [
 			roundi(50.0 * _up), roundi(20.0 * _up), seen_arm[0], seen_arm[12], seen_arm[24]],
-			absf(seen_arm[0]) < 0.01 and absf(float(seen_arm[12]) - 50.0 * _up) < 0.01
-			and absf(float(seen_arm[24]) - 20.0 * _up) < 0.01)
-		_check("and the turret at 0°, 90° and 180° (%.1f, %.1f, %.1f)" % [seen_turret[0],
-			seen_turret[12], seen_turret[24]], absf(seen_turret[0]) < 0.01
-			and absf(float(seen_turret[12]) - 90.0) < 0.01
-			and absf(absf(float(seen_turret[24])) - 180.0) < 0.01)
+			absf(seen_arm[0]) < 0.05 and absf(float(seen_arm[12]) - float(arm.keys[1][1])) < 0.05
+			and absf(float(seen_arm[24]) - float(arm.keys[2][1])) < 0.05)
+		_check("and the turret at its keys, 0°, about 90° and 180° (%.1f, %.1f, %.1f)" % [seen_turret[0],
+			seen_turret[12], seen_turret[24]], absf(seen_turret[0]) < 0.05
+			and absf(float(seen_turret[12]) - float(turret.keys[1][1])) < 0.05
+			and absf(wrapf(float(seen_turret[24]) - float(turret.keys[2][1]), -180.0, 180.0)) < 0.05)
 		_check("the pictures change with the pose (frame 1 against 13: %.3f)"
 			% _difference(pictures[0], pictures[12]), _difference(pictures[0], pictures[12]) > 0.002)
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots/pose"))
@@ -251,11 +254,10 @@ func _kept() -> void:
 	var out: String = ProjectSettings.globalize_path("res://shots/pose/out")
 	DirAccess.make_dir_recursive_absolute(out)
 	_pose.folder = out
-	_pose.animation.turntable = true
 	var before: Array = _snapshot()
+	var frames: int = roundi(_pose._edited().length() * 12.0) + 1
 	var done: int = await _pose.render_animation()
-	var frames: int = _pose.animation.frame_count()
-	_check("Render animation draws every frame (%d of %d): %s" % [done, frames, _pose._status.text],
+	_check("Render animation draws every frame (%d of %d): %s" % [done, frames, _pose.status_words()],
 		done == frames)
 	var paths: Array = _pose._last.get("paths", [])
 	var webp: String = ""
@@ -281,6 +283,35 @@ func _kept() -> void:
 	await _shot("3_rendered")
 
 
+## A click on [param row]'s slider at [param value], as a person clicks
+## the track: the key's place there, where its joint got to.
+func _slide(row: Dictionary, value: float) -> float:
+	var slider: HSlider = row["slider"] if is_instance_valid(row["slider"]) else null
+	for part: Dictionary in _pose._joint_parts:
+		if part["joint"] == row["joint"]:
+			slider = part["slider"]
+	var rect: Rect2 = slider.get_global_rect()
+	var grab: float = slider.get_theme_icon("grabber").get_width()
+	var ratio: float = (value - slider.min_value) / (slider.max_value - slider.min_value)
+	await _click(Vector2(rect.position.x + grab * 0.5 + (rect.size.x - grab) * ratio, rect.get_center().y))
+	await _frames(5)
+	print("    %s set to %s: %s" % [_player.joint_name(row["joint"]), Motions.num(value, 1), _pose.status_words()])
+	var track: Motions.Track = _pose._track_of(_pose._edited(), row["joint"]) if _pose._edited() != null else null
+	return track.place_at(_pose._at) if track != null else NAN
+
+
+## The editor's time set by a click on its slider.
+func _time_to(t: float) -> void:
+	var slider: HSlider = _pose._time
+	var rect: Rect2 = slider.get_global_rect()
+	var grab: float = slider.get_theme_icon("grabber").get_width()
+	var ratio: float = (t - slider.min_value) / (slider.max_value - slider.min_value)
+	await _click(Vector2(rect.position.x + grab * 0.5 + (rect.size.x - grab) * ratio, rect.get_center().y))
+	await _frames(3)
+	if absf(_pose._at - t) > 0.051:
+		_pose.set_time(t)
+
+
 # -- helpers ---------------------------------------------------------------------
 
 
@@ -299,10 +330,10 @@ func _brick(key: String) -> BrickWorld.Brick:
 	return _world.get_brick(int(_ids[key]))
 
 
-func _turned(joint: Poser.Joint, degrees: float) -> Transform3D:
-	return Transform3D(Basis.IDENTITY, joint.point) \
-		* Transform3D(Basis(joint.axis, deg_to_rad(degrees)), Vector3.ZERO) \
-		* Transform3D(Basis.IDENTITY, -joint.point)
+func _turned(held: Grab, degrees: float) -> Transform3D:
+	return Transform3D(Basis.IDENTITY, held.pivot) \
+		* Transform3D(Basis(held.axis.normalized(), deg_to_rad(degrees)), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -held.pivot)
 
 
 ## How far a rotation turns about [param axis], degrees.

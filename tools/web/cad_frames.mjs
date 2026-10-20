@@ -49,6 +49,8 @@ const first = bypass
   : url;
 const out = args.out || "shots/cad_frames";
 mkdirSync(out, { recursive: true });
+// --motions: Build, Motions… opened once each model is open, and left open
+// through every act.
 // --only=step,undo: those acts alone, each model opened first, written over
 // the same acts of an earlier run's web_frames.json and the rest kept.
 const only = args.only ? String(args.only).split(",") : null;
@@ -260,6 +262,25 @@ for (const model of models) {
   await page.mouse.move(view.x, view.y);
   await page.waitForTimeout(1000);
   await quiet(2000, 60000);
+  // --motions: Build, Motions… open over the model through every act, as
+  // a person leaves it open while turning the view: its cost while open.
+  if (args.motions) {
+    const menu = await where("menu_build");
+    await page.mouse.click(menu.x, menu.y);
+    await page.waitForTimeout(800);
+    await page.keyboard.type("Motions", { delay: 120 });
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Enter");
+    let shown = false;
+    for (let n = 0; n < 120 && !shown; n++) {
+      shown = await page.evaluate(() => (window.brickworksMotions || {}).open === true);
+      if (!shown) await page.waitForTimeout(500);
+    }
+    if (!shown) throw new Error("Build, Motions… never opened");
+    row.motions_open = true;
+    await page.mouse.move(view.x, view.y);
+    await quiet(2000, 60000);
+  }
   if (wanted("idle")) row.idle = await act("idle", async () => {}, 3000);
   // Turn the view: a right drag across the middle, as a person turns it.
   if (wanted("orbit")) {

@@ -11,10 +11,10 @@
 // each a sub-model), then: Build, Hose, tube or chain… by the menu and the
 // keys a person uses there; a click on one pin hole and another, which lays
 // a pneumatic tube; Technic chain and a click on each gear, which lays a
-// chain round them; Done. Build, Pose and animate…: a key at rest, a click
-// on the arm's slider and the turret's, a second key, Render animation —
-// downloaded as an animated WebP the browser decodes, with as many frames
-// as the keys make. Fails if a control never appears, nothing is laid, a
+// chain round them; Done. Build, Motions…, New motion: a click on the
+// arm's slider and the turret's (Grab's joints), each a key at 2 s, Render
+// animation — downloaded as an animated WebP the browser decodes, with as
+// many frames as the motion's 2 s make. Fails if a control never appears, nothing is laid, a
 // slider does not move its joint, the download is not an animation of the
 // right number of frames, the page stops answering for longer than --stall
 // seconds (default 3) during the render, or a script error reaches the
@@ -87,7 +87,7 @@ const check = (ok, what) => {
 const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};
 const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
 const flex = async () => (await page.evaluate(() => window.brickworksFlex || {})) || {};
-const pose = async () => (await page.evaluate(() => window.brickworksPose || {})) || {};
+const motions = async () => (await page.evaluate(() => window.brickworksMotions || {})) || {};
 async function shot(name) {
   try {
     await page.screenshot({ path: path.join(out, name), timeout: 180000 });
@@ -235,46 +235,51 @@ try {
   await page.waitForTimeout(2000);
   check(!(await flex()).active, "Done puts the tool away");
 
-  // Pose the crane.
-  await menu("build", "Pose");
-  const posing = await until(pose, (p) => p.open && (p.joints || []).length === 2 && p.joints[0].x0, 30);
-  check(Boolean(posing), `Build, Pose and animate… has a slider for each joint: `
-    + `${posing && posing.joints.map((j) => `${j.path} (${j.kind})`).join(", ")}`);
-  await shot("4_pose_panel.png");
-  await press("pose_add_key");
-  const sliderAt = (joint, degrees) => ({
-    x: Math.round(joint.x0 + 8 + (joint.x1 - joint.x0 - 16) * (degrees + 180) / 360), y: joint.y,
+  // A motion for the crane, in Build, Motions….
+  await menu("build", "Motions");
+  const shown = await until(motions, (p) => p.open, 30);
+  check(Boolean(shown), `Build, Motions… opens (${shown && shown.status})`);
+  await shot("4_motions_panel.png");
+  await press("motions_new");
+  const editing = await until(motions, (p) => p.view === "edit" && (p.joints || []).length >= 2 && p.joints[0].x0, 30);
+  check(Boolean(editing), `New motion offers a slider for each of Grab's joints: `
+    + `${editing && editing.joints.map((j) => `${j.name} (${j.mode})`).join(", ")}`);
+  const sliderAt = (joint, value) => ({
+    x: Math.round(joint.x0 + 8 + (joint.x1 - joint.x0 - 16) * (value - joint.min) / (joint.max - joint.min)), y: joint.y,
   });
-  const joints = (await pose()).joints;
-  const arm = joints.find((j) => /Arm/.test(j.path));
-  const turret = joints.find((j) => j.kind === "turntable");
+  const joints = (await motions()).joints;
+  const arm = joints.find((j) => /Arm/.test(j.name)) || joints[1];
+  const turret = joints.find((j) => /Turret/.test(j.name) && j !== arm) || joints.find((j) => j !== arm);
+  const now = (p, joint) => p.joints.find((j) => j.name === joint.name) || {};
   // Up is whichever way the arm has room for: try one, and the other if it stopped short.
   let at = sliderAt(arm, -45);
   await click(at.x, at.y);
-  let raised = await until(pose, (p) => Math.abs(p.joints.find((j) => j.path === arm.path).angle) > 30, 20);
+  let raised = await until(motions, (p) => Math.abs(now(p, arm).place) > 30, 20);
   if (!raised) {
-    at = sliderAt(arm, 45);
+    at = sliderAt(now(await motions(), arm).x0 ? now(await motions(), arm) : arm, 45);
     await click(at.x, at.y);
-    raised = await until(pose, (p) => Math.abs(p.joints.find((j) => j.path === arm.path).angle) > 30, 20);
+    raised = await until(motions, (p) => Math.abs(now(p, arm).place) > 30, 20);
   }
-  check(Boolean(raised), `a click on the arm's slider swings it on its hinge: `
-    + `${raised && raised.joints.find((j) => j.path === arm.path).angle}° (${raised && raised.status})`);
-  at = sliderAt(turret, 90);
+  check(Boolean(raised), `a click on the arm's slider puts a key, the arm swung on its hinge: `
+    + `${raised && now(raised, arm).place}° at ${raised && raised.at} s (${raised && raised.status})`);
+  const turretNow = now(await motions(), turret);
+  at = sliderAt(turretNow.x0 ? turretNow : turret, 90);
   await click(at.x, at.y);
-  const turned = await until(pose, (p) => Math.abs(p.joints.find((j) => j.path === turret.path).angle - 90) <= 6, 20);
-  check(Boolean(turned), `and the turret's turns it round: ${turned && turned.joints.find((j) => j.path === turret.path).angle}°`);
+  const turned = await until(motions, (p) => Math.abs(now(p, turret).place - 90) <= 6, 20);
+  check(Boolean(turned), `and the turret's turns it round: ${turned && now(turned, turret).place}°`);
   await shot("5_posed.png");
-  await press("pose_add_key");
-  const keyed = await until(pose, (p) => p.keys === 2, 10);
-  check(Boolean(keyed), `two keys, at rest and posed; ${keyed && keyed.frames_planned} frames to draw`);
+  const keyed = await until(motions, (p) => (p.motions || []).length === 1 && p.motions[0].tracks === 2, 10);
+  check(Boolean(keyed), `one motion of two joints, kept with the model: `
+    + `${keyed && keyed.motions.map((m) => `${m.name}, ${m.seconds} s`).join("; ")}; `
+    + `${keyed && keyed.frames_planned} frames to draw`);
 
   // Render it.
   await heartbeat();
   const download = page.waitForEvent("download", { timeout: 15 * 60000 }).catch(() => null);
-  await press("pose_render");
+  await press("motions_render");
   let seen = null;
   for (let n = 0; n < 15 * 120; n++) {
-    seen = await pose();
+    seen = await motions();
     if (n > 20 && !seen.working) break;
     if (n % 20 === 0) console.log(`      rendering: ${seen.status || ""}`);
     await page.waitForTimeout(500);

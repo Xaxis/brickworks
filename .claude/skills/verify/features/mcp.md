@@ -44,8 +44,8 @@ asking for an API key.
   and the design loop does not: `set_floor` (View, Floor), `edit_steps`
   (Edit, Build steps; the timeline), `lay_flex` (Build, Hose, tube or
   chain; Reshape), `pose_model` (Build, Pose; the hinge tool),
-  `animate_model` (Pose and animate's keys and Render; a motion played
-  once), `list_motions`, `define_motion`, `play_motion` and `render_motion`
+  `animate_model` (its keys kept as the motion "Animation", played once to
+  render), `list_motions`, `define_motion`, `play_motion` and `render_motion`
   (the model's own motions, docs/MOTIONS.md; see [view](view.md)'s
   `motions`; `src/dev/motions_probe.gd` calls each over `tools/call`),
   `simulate_mechanism` (Tools, Simulate mechanism; `SimulatePanel.for_session`,

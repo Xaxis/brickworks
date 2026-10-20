@@ -173,15 +173,23 @@ func _a_hose() -> void:
 	_check("and Edit can reshape it", _shell.can("reshape_flex"))
 	_builder.clear_selection()
 	# Its end pin sits in a hole, which reads as a hinge: Pose once offered
-	# the tube a slider, and swung it off its other hole.
-	var pose: Control = _main.get("_pose")
+	# the tube a slider, and swung it off its other hole. A new motion in
+	# Build, Motions… offers a slider for each of Grab's joints that moves.
+	var pose: PosePanel = _main.get("_pose")
 	if pose != null:
 		_shell.run("pose")
 		await _frames(5)
-		var offered: Array = (pose.get("poser") as Poser).joints.map(
-			func(j: Poser.Joint) -> String: return j.path)
-		_check("Pose offers the laid tube no slider (%s)" % str(offered), not offered.has(item))
-		pose.call("close")
+		pose.new_motion()
+		await _frames(5)
+		var tube: PackedInt64Array = _tree.ids_under(item)
+		var player: MotionPlayer = _main.get("_motions")
+		var offered: Array = pose._joint_parts.map(func(row: Dictionary) -> String:
+			return player.joint_words(row["joint"]))
+		var on_tube: Array = pose._joint_parts.filter(func(row: Dictionary) -> bool:
+			return player.parts_of(row["joint"]).any(func(id: int) -> bool: return tube.has(id)))
+		_check("a new motion offers the laid tube no slider (%s)" % str(offered),
+			pose._view == "edit" and on_tube.is_empty())
+		pose.close()
 		await _frames(3)
 
 

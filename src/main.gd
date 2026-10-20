@@ -235,7 +235,8 @@ var _controls: ControlsDialog
 var _figures: MinifigDialog
 ## File, Render… (src/ui/render_dialog.gd).
 var _render: RenderDialog
-## Build, Pose and animate… (src/ui/pose_panel.gd).
+## Build, Motions…: the model's own motions, played, recorded and
+## rendered (src/ui/pose_panel.gd).
 var _pose: PosePanel
 ## The model's own motions, played through Grab (MotionPlayer, Motions).
 var _motions: MotionPlayer
@@ -4126,9 +4127,9 @@ func _build_ui() -> void:
 	_inset(_render, RenderDialog.WIDE, RenderDialog.TALL)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_render, RenderDialog.WIDE, RenderDialog.TALL))
-	# Build, Pose and animate…: sliders for the joints, keys, and the
-	# animation rendered the same way (src/ui/pose_panel.gd), over the
-	# model's left edge so the pose is seen as it is set.
+	# Build, Motions…: the model's own motions, played, recorded by a drag,
+	# set joint by joint and rendered (src/ui/pose_panel.gd), over the
+	# model's left edge so what moves is seen as it moves.
 	_pose = PosePanel.new()
 	_pose.world = _world
 	_pose.builder = _builder
@@ -4139,13 +4140,18 @@ func _build_ui() -> void:
 	_pose.look = _render.look
 	_pose.rig_lights = _render.rig_lights
 	_pose.named = _bar.model_name
-	_pose.turning_for = _grab_drag.turning_for_session
 	_motions = MotionPlayer.new()
 	_motions.world = _world
 	_motions.builder = _builder
 	_motions.library = _library
 	_motions.store = _store
 	_motions.grabbing = _grab_drag
+	_pose.player = _motions
+	_pose.grabbing = _grab_drag
+	_pose.select_tool = func() -> void:
+		if _builder.is_carrying():
+			_verbs.put_away()
+		_verbs.set_mode("select")
 	# Each motion's joint written where it stands (Motions.Joint.at).
 	_store.motion_rebase = _motions.rebase
 	_over_model.add_child(_pose)
@@ -5031,7 +5037,7 @@ func can_reshape_flex() -> bool:
 	return _flex != null and not _flex.selected_item().is_empty()
 
 
-## Build, Pose and animate….
+## Build, Motions….
 func open_pose() -> void:
 	_builder.hide_preview()
 	if _simulate.visible:
