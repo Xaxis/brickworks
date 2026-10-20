@@ -6,9 +6,9 @@
 ##  1. 31070-1's back window, pose_model's joint swung to 70° and back to
 ##     0°, stands where it was built: it stopped 6 LDU and 4° short, the
 ##     room test meeting what it was built against.
-##  2. Play of a motion on it, out and back, in Build, Motions…, leaves
-##     every part where it was built: Pose's Play once squared up 73 parts'
-##     LDraw matrices, with no step to undo.
+##  2. Play of a motion out and back, in Build, Motions…, leaves every part
+##     where it was built: Pose's Play once squared up 73 parts' LDraw
+##     matrices, with no step to undo.
 ##  3. "Show me the steering turning" on 8808-1, by its part, with the
 ##     window zoomed far out: the session's animation frames the car. It was
 ##     drawn through the window's camera, a dot. The answer carries its
@@ -108,12 +108,18 @@ func _doors() -> void:
 	var off: Array = _off(built)
 	_check("...and back to 0° it stands where it was built (%d parts off, by %.2f LDU at most)"
 		% [off[0], off[1]], int(off[0]) == 0)
-	var kept: String = await _say("define_motion", {"name": "Swing the back window", "tracks": [
-		{"joint": "Back Window", "keys": [{"t": 0, "place": 0}, {"t": 1, "place": 40}, {"t": 2, "place": 0}]}]})
-	_check("a motion on it, out and back: %s" % kept.get_slice("\n", 0).left(70), kept.begins_with("Kept"))
+	# Grab reads the back window in a loop it locks, so the motion is on
+	# the first joint Grab moves: Play goes through Grab now, not Pose.
+	var player: MotionPlayer = _main.get("_motions")
+	var joints: Array = player.movable()
+	var lead: int = player.parts_of(joints[0])[0] if not joints.is_empty() else 0
+	var kept: String = await _say("define_motion", {"name": "Out and back", "tracks": [
+		{"joint": "#%d" % lead, "keys": [{"t": 0, "place": 0}, {"t": 1, "place": 20}, {"t": 2, "place": 0}]}]})
+	_check("a motion on the first joint a drag moves (#%d), out and back: %s" % [lead,
+		kept.get_slice("\n", 0).left(70)], kept.begins_with("Kept"))
 	_main.call("open_pose")
 	await _frames(5)
-	_pose.play("Swing the back window")
+	_pose.play("Out and back")
 	var swung: bool = false
 	for _n: int in 300:
 		await process_frame

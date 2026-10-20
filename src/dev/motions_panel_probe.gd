@@ -367,6 +367,23 @@ func _racer() -> void:
 	recorded = _player.motions().named("Steer left")
 	_check("...and undo takes it out (%d keys)" % (recorded.tracks[0] as Motions.Track).keys.size(),
 		(recorded.tracks[0] as Motions.Track).keys.size() == keys_before)
+	# The last joint offered, scrolled to as a person scrolls: its slider
+	# shows whole, and a click on it adds that joint to the motion.
+	var last: Dictionary = _panel._joint_parts.back()
+	var far: HSlider = last["slider"]
+	_panel._body.ensure_control_visible(far)
+	await _frames(4)
+	var seen: bool = _panel._body.get_global_rect().grow(1.0).encloses(far.get_global_rect())
+	var tracks_before: int = recorded.tracks.size()
+	depth_now = _builder.history_depth()
+	await _click_at(_slider_point(far, _ratio_of(far, _player.at_now(last["joint"]) + (0.5 if
+		(last["joint"] as Motions.Joint).mode == "slide" else 15.0))))
+	recorded = _player.motions().named("Steer left")
+	_check("the last joint offered (%s) shows whole once scrolled to, and its slider adds it (%d tracks, were %d)" % [
+		_player.joint_name(last["joint"]), recorded.tracks.size(), tracks_before], seen
+		and recorded.tracks.size() == tracks_before + 1 and _builder.history_depth() == depth_now + 1)
+	await _undo()
+	await _frames(4)
 	# Render animation: the motion chosen, drawn and kept.
 	var frames: int = await _panel.render_animation()
 	_check("Render animation draws the motion being edited (%d frames): %s" % [frames, _panel.status_words().left(90)],

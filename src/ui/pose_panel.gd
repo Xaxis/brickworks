@@ -204,7 +204,8 @@ func open() -> void:
 			else "Press New motion, then Record and drag the parts that move, or set them joint by joint.")
 	else:
 		_say("Press Play to watch a motion. Edit changes it, or renames or removes it.")
-	get_viewport().size_changed.connect(_fit_later)
+	if not get_viewport().size_changed.is_connected(_fit_later):
+		get_viewport().size_changed.connect(_fit_later)
 
 
 func close() -> void:
@@ -333,6 +334,7 @@ func _fill_list() -> void:
 		var name: String = motion.name
 		_keep_buttons.append(_button(row, "Keep", func() -> void: keep_suggestion(name),
 			"Keep it as one of the model's motions: saved with the model"))
+	_fit_later()
 
 
 ## A suggestion said: each joint and how far it goes, tried for room.
@@ -612,6 +614,8 @@ func _fill_editor() -> void:
 			player.joint_words(motion.driver), Motions.num(motion.turns, 2),
 			"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 1)]
 	_show_key()
+	# Its rows changed: the lists as tall as they now need.
+	_fit_later()
 
 
 func _track_of(motion: Motions.Motion, joint: Motions.Joint) -> Motions.Track:
@@ -886,6 +890,7 @@ func _show_key() -> void:
 	_quiet = true
 	_how.select(maxi(Motions.HOWS.find(str(key[2])), 0))
 	_quiet = false
+	_fit_later()
 
 
 ## The chosen key's way there: one of Motions.HOWS.
