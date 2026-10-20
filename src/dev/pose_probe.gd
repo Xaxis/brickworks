@@ -200,6 +200,10 @@ func _keys_and_frames() -> void:
 	settings.contact_shadow = false
 	settings.view = "hero"
 	var poses: Array = played.frames
+	# What the frames sweep, read off the model as Render animation reads it.
+	var sweep := Poser.new()
+	sweep.world = _world
+	sweep.library = _library
 	var model_before: Array = _snapshot()
 	var pin: Grab = _player.hold(_arm).grab
 	var turning: Grab = _player.hold(_turret).grab
@@ -209,7 +213,7 @@ func _keys_and_frames() -> void:
 	var done: int = await renderer.animate(_world, settings, frames,
 		func(n: int) -> Dictionary: return poses[n],
 		func(_n: int) -> float: return 0.0,
-		_pose.poser.reach(poses),
+		sweep.reach(poses),
 		func(_n: int, image: Image) -> void:
 			var hinge: Transform3D = renderer.staged_transform(_ids["hinge"])
 			var top: Transform3D = renderer.staged_transform(_ids["top"])
