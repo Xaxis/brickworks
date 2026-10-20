@@ -650,6 +650,14 @@
       "tests": []
     },
     {
+      "id": "cli:mcp walk 3 probe",
+      "kind": "cli",
+      "entry": "src/dev/mcp_walk3_probe.gd",
+      "reach": "tools/probe.sh mcp_walk3_probe   (what the third MCP walk-through's session met on its observatory, tests/fixtures/mcpwalk3/observatory.ldr: define_motion checked after the motions it follows, the rack a wheel slides said, two tracks that meet told to use after=, a held loop and a held door said with what holds them, a joint's height in plates, a sequence's frames whole, saved under another name and opened with no unsaved warning, check_design saying a gear in or beside a rack)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:mcp walk probe",
       "kind": "cli",
       "entry": "src/dev/mcp_walk_probe.gd",

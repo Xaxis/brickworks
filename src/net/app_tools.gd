@@ -2041,9 +2041,13 @@ func _hidden_from(view: String, asked: Variant, each: Array) -> String:
 		return ""
 	var centre := Vector3.ZERO
 	var count: int = 0
+	var top: float = -INF
+	var bottom: float = INF
 	for brick: BrickWorld.Brick in world.bricks():
 		centre += brick.transform.origin
 		count += 1
+		top = maxf(top, brick.transform.origin.y)
+		bottom = minf(bottom, brick.transform.origin.y)
 	if count == 0:
 		return ""
 	centre /= float(count)
@@ -2057,8 +2061,11 @@ func _hidden_from(view: String, asked: Variant, each: Array) -> String:
 		for key: Variant in frames[0]:
 			at += (frames[0][key] as Transform3D).origin
 		at = at / float((frames[0] as Dictionary).size()) - centre
+		# Behind the model and low down: a dome's panel high at the back
+		# swings up in sight, the back wall's doors under it do not.
+		var low: bool = at.y + centre.y < lerpf(bottom, top, 0.6)
 		at.y = 0.0
-		if at.length() < BrickLattice.STUD * 2.0 or at.normalized().dot(toward.normalized()) > -0.7:
+		if at.length() < BrickLattice.STUD * 2.0 or not low or at.normalized().dot(toward.normalized()) > -0.3:
 			continue
 		far.append(Motions.quoted((asked[k] as Motions.Motion).name))
 		var best: float = -INF

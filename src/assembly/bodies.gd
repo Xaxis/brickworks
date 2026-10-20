@@ -1161,6 +1161,11 @@ func overruled_words(part: int) -> String:
 	# hub read as on a hinge in the axle it grips is no joint at all.
 	var best: Array = []
 	for near: Array in near_first:
+		# Near it, or it is not what holds this part: a door left held at 90°
+		# in a big body was said to be held by a carriage's bearing across
+		# the model.
+		if int(near[0]) > 3:
+			break
 		if _path(int(near[1][0]), int(near[1][1])).size() >= 2:
 			best = near[1]
 			break
