@@ -445,6 +445,15 @@ whole cycle.
 
 ### Fixed
 
+- A part slid along an axle stops at the bearing the axle turns in. The
+  bearing was let through by everything that moved with the axle, so the
+  telescope's carriage in Claude's observatory slid into it, and the two
+  were stuck as one after. A part that turns and slides on its axle is
+  now tested as it slides too.
+- A part stopped against another no longer goes through it on its next
+  move. An arm turned until it met a plate, and turned on, went 6° into
+  the plate and was stuck to it; where the plate's exact shape had not
+  loaded (in a browser, at first), it went straight through.
 - Claude gets your model's motions right when it plays them. A motion
   that follows another ("Extend the telescope" after "Open the dome
   panel") is checked after it, where it used to be checked alone and said
