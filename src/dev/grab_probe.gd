@@ -279,9 +279,6 @@ func _run() -> void:
 			await _grooved_check(str(one[0]), float(one[1]))
 	if only.is_empty() or only == "kingpin":
 		await _kingpin_check("res://vendor/omr/files/9392-1.mpd", "6571")
-		# G14b: 15460's balls in 15459's sockets drawn as rounds, each read at
-		# its own middle (Bodies._ball_middle), so two of them are a kingpin.
-		await _kingpin_check("res://vendor/omr/files/10295-1.mpd", "15460")
 	if only.is_empty() or only == "swept":
 		for one: Array in SWEPT_STEERING:
 			await _swept_steering_check(str(one[0]), str(one[1]))
@@ -6530,10 +6527,9 @@ func _steer_debug(path: String) -> void:
 						nearest = "%s (kind %d sub %d) at %s way %s, %.1f LDU off" % [shape.named(k), shape.kind[k],
 							shape.sub[k], frame.origin.snapped(Vector3.ONE * 0.1),
 							(-frame.basis.y).normalized().snapped(Vector3.ONE * 0.01), off]
-			print("      nearest exact connector: %s; in a hole exactly: %s; no sockets %s, faces %s, takes %s, up %s" % [
+			print("      nearest exact connector: %s; in a hole exactly: %s; no sockets %s, takes %s" % [
 				nearest, bodies._in_a_hole_exactly(into, stud[2], stud[3]), bodies._no_sockets(into.id),
-				bodies._faces(into.id, stud[3]), bodies._takes_stud(into.id, stud[2], stud[3]),
-				into.transform.basis.y.snapped(Vector3.ONE * 0.01)])
+				bodies._takes_stud(into.id, stud[2], stud[3])])
 		for one: String in ids:
 			for edge: Array in bodies.joined_by.get(int(one), []):
 				print("    #%s joined to %s by %s" % [one, named.call(int(edge[0])), edge[1]])
@@ -6548,27 +6544,6 @@ func _steer_debug(path: String) -> void:
 		if arg.begins_with("--held="):
 			print("  held %s: %s" % [named.call(int(arg.trim_prefix("--held="))),
 				bodies.held_words(int(arg.trim_prefix("--held=")))])
-	# Where each part's balls and sockets are (--balls=A,B), and which of
-	# them Joints.balls finds in the other: a ball lost from its socket.
-	for arg: String in OS.get_cmdline_user_args():
-		if not arg.begins_with("--balls="):
-			continue
-		var ball_entries: Array = []
-		for one: String in arg.trim_prefix("--balls=").split(","):
-			var brick: BrickWorld.Brick = _world.get_brick(int(one))
-			if brick == null:
-				continue
-			var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-			ball_entries.append([brick.id, brick.transform, mesh])
-			var balls := PackedStringArray()
-			for connector: Lbm.Connector in mesh.connectors:
-				if connector.kind == "ball":
-					balls.append(str((brick.transform * connector.position).snapped(Vector3.ONE * 0.01)))
-			var sockets := PackedStringArray()
-			for middle: Vector3 in Joints.sockets_of(mesh, brick.transform):
-				sockets.append(str(middle.snapped(Vector3.ONE * 0.01)))
-			print("  %s: balls %s; sockets %s" % [named.call(brick.id), ", ".join(balls), ", ".join(sockets)])
-		print("    Joints.balls: %s" % Joints.balls(ball_entries))
 	# Every joint of a part's body (--links=ID): its kind, the body on the
 	# other side, where and along what, and which is its parent's.
 	for arg: String in OS.get_cmdline_user_args():

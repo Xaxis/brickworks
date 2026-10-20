@@ -117,8 +117,6 @@ class Link extends RefCounted:
 				return "on its stud"
 			"ball":
 				return "on its ball joint"
-			"balls":
-				return "on its two ball joints"
 		return "on its hinge"
 
 
@@ -574,15 +572,9 @@ func _read() -> void:
 	for pin: int in lone:
 		_join(pin, int((pin_rows[pin] as Array)[0]), "pin")
 	# Two joints between the same two bodies on different lines hold them.
-	# Two balls are one line, the line through their middles: a steering arm
-	# on an upper and a lower ball of one frame turns on its kingpin, as a
-	# real one does (10265-1's arms, held fast by them once each ball was read
-	# at its own middle).
 	var changed: bool = true
-	var on_balls: Dictionary = {}   ## pair of bodies -> [a ball's middle, the line through both]
 	while changed:
 		changed = false
-		on_balls.clear()
 		var by_pair: Dictionary = {}
 		for c: Array in candidates:
 			var x: int = _find(int(c[0]))
@@ -599,25 +591,11 @@ func _read() -> void:
 		for pair: Vector2i in by_pair:
 			var found: Array = by_pair[pair]
 			var first: Array = found[0]
-			var hinge: Array = Bodies._two_balls(found)
-			if not hinge.is_empty():
-				on_balls[pair] = hinge
-				first = [first[0], first[1], "balls", hinge[0], hinge[1]]
 			for c: Array in found:
-				if not _one_line(first, c) and not (not hinge.is_empty() and str(c[2]) == "ball"
-						and Bodies._same_line(hinge[0], hinge[1], c[3], hinge[1])):
+				if not _one_line(first, c):
 					changed = _join(int(first[0]), int(first[1]),
 						"lines:%d:%d" % [int(c[0]), int(c[1])]) or changed
 					break
-	for c: Array in candidates:
-		if str(c[2]) != "ball":
-			continue
-		var x: int = _find(int(c[0]))
-		var y: int = _find(int(c[1]))
-		var pair := Vector2i(mini(x, y), maxi(x, y))
-		if x != y and on_balls.has(pair):
-			c[2] = "balls"
-			c[4] = (on_balls[pair] as Array)[1]
 
 	overruled.clear()
 	for c: Array in candidates:
@@ -1980,49 +1958,24 @@ func _door(key: int) -> bool:
 
 ## The middle of the ball that is in the other's socket: a plate with two
 ## balls turned about the wrong one ran its wing into the fuselage at once.
-## A ball of one part in a socket of the other, the sockets as Joints.balls
-## finds them: with only the socket connectors, a steering arm's three balls
-## in 15459's and 32005's sockets drawn as rounds were each read at the
-## arm's first ball, and no kingpin was found through two of them
-## (10295-1, 42021-1).
 func _ball_middle(a: int, b: int) -> Vector3:
-	var balls: Array = [[], []]
-	var sockets: Array = [[], []]
-	for side: int in 2:
-		var brick: BrickWorld.Brick = world.get_brick(a if side == 0 else b)
+	var balls: Array = []
+	var sockets: Array = []
+	for key: int in [a, b]:
+		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		for connector: Lbm.Connector in mesh.connectors:
 			if connector.kind == "ball":
-				(balls[side] as Array).append(brick.transform * connector.position)
-		sockets[side] = Joints.sockets_of(mesh, brick.transform)
-	var best: Vector3 = (balls[0] as Array)[0] if not (balls[0] as Array).is_empty() \
-		else (balls[1] as Array)[0] if not (balls[1] as Array).is_empty() else world.get_brick(a).transform.origin
+				balls.append(brick.transform * connector.position)
+			elif connector.kind == "socket":
+				sockets.append(brick.transform * connector.position)
+	var best: Vector3 = balls[0] if not balls.is_empty() else world.get_brick(a).transform.origin
 	var nearest: float = INF
-	for side: int in 2:
-		for ball: Vector3 in balls[side]:
-			for socket: Vector3 in sockets[1 - side]:
-				if ball.distance_to(socket) < nearest:
-					nearest = ball.distance_to(socket)
-					best = ball
-	return best
-
-
-## Among the joints between two bodies, two balls at different middles:
-## [the one's middle, the way to the other's], the line the two turn on;
-## else empty.
-static func _two_balls(found: Array) -> Array:
-	var middles: Array[Vector3] = []
-	for c: Array in found:
-		if str(c[2]) == "ball" and (c[4] as Vector3) == Vector3.ZERO:
-			middles.append(c[3])
-	var best: Array = []
-	var far: float = SAME_LINE * 2.0
-	for i: int in middles.size():
-		for j: int in range(i + 1, middles.size()):
-			var gap: float = middles[i].distance_to(middles[j])
-			if gap > far:
-				far = gap
-				best = [middles[i], (middles[j] - middles[i]).normalized()]
+	for ball: Vector3 in balls:
+		for socket: Vector3 in sockets:
+			if ball.distance_to(socket) < nearest:
+				nearest = ball.distance_to(socket)
+				best = ball
 	return best
 
 

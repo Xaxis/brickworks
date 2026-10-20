@@ -676,8 +676,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   standing in its groove and comes back on the next turn
   (`Bodies._grooves_by_shape`). `-- --only=kingpin` (in the full run):
   9392-1's steering arm on two balls turns on the line through them
-  (`Grab._kingpin`), and 10295-1's (G14b: 15460's balls in sockets drawn as
-  rounds, each read at its own middle, `Bodies._ball_middle`).
+  (`Grab._kingpin`).
   `-- --only=swept` (in the full run): 41999-1 (a pinion lodged where no hole
   names its axle turns on its axis, `Bodies._driving_pinion`) steers as the
   sweep turns it (`_sweep_one`), both ways and back. `-- --only=meets` (in the full run): a move
@@ -773,14 +772,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   has slid to (`Bodies._grooves_by_shape`); a piece with a rack its
   pinion holds slides where it rests instead of being lodged ("rests"); the
   round rack 2790a is loose in its holder; a socket drawn as plain rounds a
-  ball's size holds a ball anywhere on its line along it (`Joints.balls`,
-  `Joints._in_socket`). G14b (MECHANISMS §24): a ball joint is read at the
-  middle of the ball in the other part's socket (`Bodies._ball_middle`); two
-  balls between the same two bodies turn them on the line through both (kind
-  `balls`, a kingpin); a pinion lodged in a piece whose rack it stands in
-  turns on its own axis (`Bodies._driving_pinion`); a door, a hatch or a lid
-  held by nothing hangs on the part it is lodged in where BrickNet's labels
-  name a hinge between the two (`Bodies._labelled_hinge`).
+  ball's size holds a ball (`Joints.balls`). G14b (MECHANISMS §24): a
+  pinion lodged in a piece whose rack it stands in turns on its own axis
+  (`Bodies._driving_pinion`); a door, a hatch or a lid held by nothing hangs
+  on the part it is lodged in where BrickNet's labels name a hinge between
+  the two (`Bodies._labelled_hinge`).
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket; never a tyre), else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's
