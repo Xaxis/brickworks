@@ -172,7 +172,7 @@ Best, up to 4K, saved where Render saves.
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
 Export writes; all_models is every saved model in one .zip.
- - brickify: a 3D model (OBJ, STL, glTF) laid in LEGO® bricks at the size asked, \
+ - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
 as one sub-assembly: file= its path on this computer, url= a link the app \
 fetches, or pick=true opens the window's file dialog for the person, after \
 which brickify with neither lays what they chose.
@@ -536,7 +536,8 @@ func definitions() -> Array:
 		{
 			"name": "brickify",
 			"description": ("Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an "
-				+ "OBJ, STL or glTF/GLB laid at the size asked (studs along its longest side) "
+				+ "OBJ, STL, glTF/GLB, PLY, 3MF, VOX or FBX laid at the size asked (studs along "
+				+ "its longest side) "
 				+ "in slopes, curves and tiles, or plain bricks and plates, as one "
 				+ "sub-assembly named after the file, beside what is built. file= its path on "
 				+ "this computer (the desktop app), or url= an http(s) "
@@ -551,8 +552,8 @@ func definitions() -> Array:
 				+ "collection=true lays it from the person's collection: their parts and "
 				+ "colours first, then stand-ins, the shortfall said."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
-				"file": {"type": "string", "description": "the path of an .obj, .stl, .gltf or .glb on this computer"},
-				"url": {"type": "string", "description": "http(s) link to an .obj, .stl, .gltf or .glb"},
+				"file": {"type": "string", "description": "the path of an .obj, .stl, .gltf, .glb, .ply, .3mf, .vox or .fbx on this computer"},
+				"url": {"type": "string", "description": "http(s) link to an .obj, .stl, .gltf, .glb, .ply, .3mf, .vox or .fbx"},
 				"pick": {"type": "boolean", "description": "open the file dialog for the person"},
 				"studs": {"type": "integer", "description": "studs along its longest side, %d to %d; 24 when omitted"
 					% [Brickify.LEAST_STUDS, Brickify.MOST_STUDS]},
@@ -1886,18 +1887,18 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 		if DisplayServer.get_name() == "headless":
 			return "This app is running without a window, so there is no file dialog to open."
 		dialog.ask()
-		return ("Opened the window's file dialog for the person to choose an OBJ, STL or glTF "
-			+ "on their computer. Once they have, the Brickify panel shows it, and they press "
+		return ("Opened the window's file dialog for the person to choose an %s on their "
+			+ "computer. Once they have, the Brickify panel shows it, and they press "
 			+ "Brickify — or call brickify again with neither url nor pick (and studs= for the "
-			+ "size) to lay it.")
+			+ "size) to lay it.") % MeshFile.NAMED
 	if not url.is_empty():
 		if not url.to_lower().begins_with("https://") and not url.to_lower().begins_with("http://"):
 			return ("Only an http or https link can be fetched, and %s is not one; a file on this "
 				+ "computer goes in file=, by its path.") % url.left(100)
 		var name: String = url.get_slice("?", 0).get_slice("#", 0).get_file().uri_decode()
 		if not name.get_extension().to_lower() in MeshFile.KINDS:
-			return ("%s does not name an OBJ, STL, glTF or GLB file; give a link that ends in "
-				% url.left(100) + ".obj, .stl, .gltf or .glb.")
+			return ("%s does not name an %s file; give a link that ends in .%s."
+				% [url.left(100), MeshFile.NAMED, ", .".join(MeshFile.KINDS)])
 		var fetched: Dictionary = await _fetch(url, MeshFile.MAX_BYTES)
 		if fetched.has("error"):
 			# Not "serve it on localhost": that is refused too.
@@ -1921,8 +1922,8 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 		if not why.is_empty():
 			return why.left(1).to_upper() + why.substr(1) + "."
 	elif file.is_empty() and (dialog.model() == null or not dialog.visible):
-		return ("Give file= the path of an OBJ, STL or glTF on this computer, url= an http(s) "
-			+ "link to one, or pick=true for the person to choose one.")
+		return ("Give file= the path of an %s on this computer, url= an http(s) link to one, "
+			+ "or pick=true for the person to choose one.") % MeshFile.NAMED
 	var refused: String = dialog.choose(input)
 	if not refused.is_empty():
 		return refused.left(1).to_upper() + refused.substr(1) + "."
@@ -1973,7 +1974,8 @@ func _brickify_file(dialog: BrickifyDialog, path: String) -> String:
 		at = OS.get_environment("HOME") + at.substr(1)
 	at = at.simplify_path()
 	if not at.get_extension().to_lower() in MeshFile.KINDS:
-		return "%s is not an OBJ, STL, glTF or GLB file; file= takes one of those." % at.left(160)
+		return "%s is not an %s file; file= takes one of those." % [at.left(160),
+			MeshFile.NAMED]
 	if not at.is_absolute_path() or not FileAccess.file_exists(at):
 		return "There is no file %s on this computer." % at.left(160)
 	var size: int = 0

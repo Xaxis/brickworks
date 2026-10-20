@@ -14,7 +14,7 @@
 ##                      colour group a corner at a time, a picture, objects
 ##                      placed by components (one mirrored), an object in a
 ##                      second model file, and a support left out
-##   scene.vox          MagicaVoxel: two models with their own palette, one
+##   scene.vox          MagicaVoxel: two models in their own palette, one
 ##                      moved and one turned by the scene, and a third
 ##                      hidden
 ##   plain.vox          one model and no palette, in MagicaVoxel's own
@@ -273,8 +273,9 @@ static func _model(size: Vector3i, voxels: Array) -> Array[PackedByteArray]:
 
 
 ## A cube four voxels a side, its bottom layer green and the rest red,
-## moved ten along x; a tower two by two by six in blue, turned a quarter
-## about z and lifted three; and a third, the cube again, hidden.
+## moved ten along x; a wall three by one by six in blue, turned a quarter
+## about z (so it runs along y) and lifted three; and a third, the cube
+## again, hidden.
 static func scene_vox() -> PackedByteArray:
 	var cube: Array = []
 	for z: int in 4:
@@ -283,9 +284,8 @@ static func scene_vox() -> PackedByteArray:
 				cube.append([x, y, z, 2 if z == 0 else 1])
 	var tower: Array = []
 	for z: int in 6:
-		for y: int in 2:
-			for x: int in 2:
-				tower.append([x, y, z, 3])
+		for x: int in 3:
+			tower.append([x, 0, z, 3])
 	var palette := PackedByteArray()
 	palette.resize(1024)
 	for n: int in 3:
@@ -294,7 +294,7 @@ static func scene_vox() -> PackedByteArray:
 	var chunks: Array = []
 	chunks.append(_chunk("PACK", _words([2])))
 	chunks.append_array(_model(Vector3i(4, 4, 4), cube))
-	chunks.append_array(_model(Vector3i(2, 2, 6), tower))
+	chunks.append_array(_model(Vector3i(3, 1, 6), tower))
 	# 0 the root, 1 its group; 2 moves the cube (3); 4 turns the tower (5);
 	# 6 hides another cube (7).
 	var node := func(id: int, attributes: Dictionary, rest: Array,
@@ -472,7 +472,9 @@ static func fbx(bunny: MeshFile) -> PackedByteArray:
 					[-20.0, 0.0, 0.0])]]]],
 			["Material", [{"L": 500}, {"S": ["red", "Material"]}, ""], [["Version", [102], []],
 				["ShadingModel", ["phong"], []], ["Properties70", [], [
-					_fbx_property("DiffuseColor", "Color", [RED.r, RED.g, RED.b])]]]]]],
+					# Linear, as Blender and Maya write a colour, and as Godot reads it.
+					_fbx_property("DiffuseColor", "Color", [RED.srgb_to_linear().r,
+						RED.srgb_to_linear().g, RED.srgb_to_linear().b])]]]]]],
 		["Connections", [], [["C", ["OO", {"L": 200}, {"L": 0}], []],
 			["C", ["OO", {"L": 100}, {"L": 200}], []], ["C", ["OO", {"L": 400}, {"L": 0}], []],
 			["C", ["OO", {"L": 300}, {"L": 400}], []],

@@ -558,12 +558,6 @@ static func _ply(bytes: PackedByteArray, out: MeshFile) -> void:
 				1.0, 1.0][int(property[1])] if role >= 6 else 1.0)
 			if list and (indices < 0 or property[0] in ["vertex_indices", "vertex_index"]):
 				indices = k
-		if not reader.has(count * least, count * properties.size()):
-			out.error = "that PLY says it has %d %s, and is cut short before them" % [count, plural]
-			return
-		var slot := PackedFloat32Array([0, 0, 0, 0, 0, 0, 1, 1, 1])
-		var normal: bool = roles.has(3) and roles.has(4) and roles.has(5)
-		var tint: bool = roles.has(6) and roles.has(7) and roles.has(8)
 		if what == "vertex" and count > 3 * MOST_TRIANGLES:
 			out.error = "that PLY has %d vertices; at most %d can be brought in" % [count,
 				3 * MOST_TRIANGLES]
@@ -572,6 +566,12 @@ static func _ply(bytes: PackedByteArray, out: MeshFile) -> void:
 			out.error = "that PLY has %d faces; at most %d triangles can be brought in" % [count,
 				MOST_TRIANGLES]
 			return
+		if not reader.has(count * least, count * properties.size()):
+			out.error = "that PLY says it has %d %s, and is cut short before them" % [count, plural]
+			return
+		var slot := PackedFloat32Array([0, 0, 0, 0, 0, 0, 1, 1, 1])
+		var normal: bool = roles.has(3) and roles.has(4) and roles.has(5)
+		var tint: bool = roles.has(6) and roles.has(7) and roles.has(8)
 		for _n: int in count:
 			if not reader.has(least, properties.size()):
 				out.error = "that PLY is cut short in its %s" % plural
@@ -971,7 +971,7 @@ class ThreeMFSwatches extends RefCounted:
 ## the palette, or MagicaVoxel's own when there is none; and since 0.99 a
 ## scene of transforms (nTRN), groups (nGRP) and shapes (nSHP) places the
 ## models, each turned and moved about its own middle, as MagicaVoxel shows
-## them. A hidden node or layer is left out. What comes in is the outside
+## them, at their first frame. A hidden node or layer is left out. What comes in is the outside
 ## of the voxels, each face nothing covers two triangles in its voxel's
 ## colour, a voxel a unit cube, Z up: so Brickify reads it as any mesh, and
 ## a voxel is a stud when its size is the model's longest side in voxels.
@@ -1031,8 +1031,10 @@ static func _vox(bytes: PackedByteArray, out: MeshFile) -> void:
 	if sizes.size() != voxels.size() or sizes.is_empty():
 		out.error = "that .vox has no models in it"
 		return
-	# Each model once at its own place, or as the scene places it.
-	var placed: Array = []    ## [model, Transform3D]
+	# Each model as the scene places it, turned about its middle. A file
+	# with no scene is from before MagicaVoxel had one, when more models
+	# than one were an animation's frames: the first is the model.
+	var placed: Array = []    ## [model, Transform3D, whether about its middle]
 	if nodes.has(0) and str(nodes[0][0]) == "nTRN":
 		var why: String = _vox_scene(nodes, hidden_layers, 0, Transform3D.IDENTITY, placed, 0,
 			sizes.size())
@@ -1040,8 +1042,7 @@ static func _vox(bytes: PackedByteArray, out: MeshFile) -> void:
 			out.error = "that .vox %s" % why
 			return
 	else:
-		for model: int in sizes.size():
-			placed.append([model, Transform3D.IDENTITY, false])
+		placed.append([0, Transform3D.IDENTITY, false])
 	# The box every voxel is in, to lay them out in.
 	var low := Vector3i.MAX
 	var high := Vector3i.MIN
@@ -1314,7 +1315,7 @@ static func _scene(doc: GLTFDocument, state: GLTFState, bytes: PackedByteArray,
 		out.error = "%s has nothing in it to bring in" % file_name.get_file()
 		return
 	var pictures: Dictionary = {}    ## Texture2D -> index in out.textures
-	_gather(scene, Transform3D.IDENTITY, out, pictures)
+	_gather(scene, Transform3D.IDENTITY, out, pictures, kind != "fbx")
 	scene.free()
 	# A surface without normals of its own leaves holes in the rest: all of
 	# them worked out again, smooth and creased, rather than half.
@@ -1331,8 +1332,11 @@ static func _write(path: String, bytes: PackedByteArray) -> void:
 		file.close()
 
 
+## [param linear]: whether the file's vertex colours are linear, as a
+## glTF's are; an FBX's are sRGB, as Blender writes them by default and
+## Godot leaves them.
 static func _gather(node: Node, parent: Transform3D, out: MeshFile,
-		pictures: Dictionary) -> void:
+		pictures: Dictionary, linear: bool = true) -> void:
 	var here: Transform3D = parent
 	if node is Node3D:
 		here = parent * (node as Node3D).transform
@@ -1389,13 +1393,16 @@ static func _gather(node: Node, parent: Transform3D, out: MeshFile,
 					out.normals.append((turn * (normals as PackedVector3Array)[i]).normalized()
 						if has_normals else Vector3.ZERO)
 					# Vertex colours in a glTF are linear; everything here is sRGB.
-					var tint: Color = (tints as PackedColorArray)[i].linear_to_srgb() \
-						if has_tints else Color.WHITE
+					var tint: Color = Color.WHITE
+					if has_tints:
+						tint = (tints as PackedColorArray)[i]
+						if linear:
+							tint = tint.linear_to_srgb()
 					out.colours.append(tint * base)
 					out.uvs.append((uv as PackedVector2Array)[i] if has_uv else Vector2.ZERO)
 				out.texture_of.append(picture)
 	for child: Node in node.get_children():
-		_gather(child, here, out, pictures)
+		_gather(child, here, out, pictures, linear)
 
 
 # -- normals ------------------------------------------------------------------

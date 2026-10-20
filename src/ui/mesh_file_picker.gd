@@ -1,15 +1,17 @@
-## Choosing a 3D model to brickify: OBJ, STL, glTF or GLB.
+## Choosing a 3D model to brickify: OBJ, STL, glTF, GLB, PLY, 3MF, VOX or
+## FBX.
 ##
 ## The same two ways in as a model file (ModelFilePicker): the desktop's
 ## own file dialog, and in a browser the page's file chooser, which has to
 ## be asked for while the click or key that wanted it is still being
 ## handled. A model can come with files of its own — an OBJ's .mtl and its
 ## pictures, a .gltf's .bin — so in a browser several can be chosen at once,
-## and on the desktop the ones it names are read from beside it.
+## and on the desktop the ones it names are read from beside it, and the one
+## picture beside an OBJ that names none.
 class_name MeshFilePicker
 extends Node
 
-const ACCEPT := ".obj,.stl,.gltf,.glb,.mtl,.bin,.png,.jpg,.jpeg,.webp,.tga,.bmp"
+const ACCEPT := ".obj,.stl,.gltf,.glb,.ply,.3mf,.vox,.fbx,.mtl,.bin,.png,.jpg,.jpeg,.webp,.tga,.bmp"
 
 ## The model's bytes and name, and the files beside it by name.
 signal picked(bytes: PackedByteArray, name: String, extras: Dictionary)
@@ -28,7 +30,8 @@ func ask() -> void:
 		_dialog = FileDialog.new()
 		_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 		_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		_dialog.add_filter("*.obj, *.stl, *.gltf, *.glb", "3D models (OBJ, STL, glTF)")
+		_dialog.add_filter("*.obj, *.stl, *.gltf, *.glb, *.ply, *.3mf, *.vox, *.fbx",
+			"3D models (OBJ, STL, glTF, PLY, 3MF, VOX, FBX)")
 		_dialog.title = "Brickify a 3D model"
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(open_path)
@@ -47,9 +50,11 @@ func open_path(path: String) -> void:
 static func read_path(path: String) -> Dictionary:
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
 	var extras: Dictionary = {}
+	var folder: PackedStringArray = DirAccess.get_files_at(path.get_base_dir()) \
+		if path.get_extension().to_lower() == "obj" else PackedStringArray()
 	# Twice: an OBJ names its .mtl, and only then the .mtl its pictures.
 	for _round: int in 2:
-		for wanted: String in MeshFile.companions(bytes, path.get_file(), extras):
+		for wanted: String in MeshFile.companions(bytes, path.get_file(), extras, folder):
 			# Beside it or under it, never anywhere a "../" in a file reaches.
 			var beside: String = path.get_base_dir().path_join(
 				wanted.replace("\\", "/")).simplify_path()
@@ -65,8 +70,8 @@ func take(bytes: PackedByteArray, file_name: String, extras: Dictionary = {}) ->
 		failed.emit("could not read that file")
 		return
 	if not file_name.get_extension().to_lower() in MeshFile.KINDS:
-		failed.emit("%s is not a 3D model this can brickify — OBJ, STL, glTF or GLB"
-			% file_name)
+		failed.emit("%s is not a 3D model this can brickify — %s" % [file_name,
+			MeshFile.NAMED])
 		return
 	picked.emit(bytes, file_name, extras)
 
@@ -130,6 +135,6 @@ func _from_browser(arguments: Array) -> void:
 		else:
 			extras[name] = data
 	if main.is_empty():
-		failed.emit("none of those is a 3D model — choose an OBJ, STL, glTF or GLB")
+		failed.emit("none of those is a 3D model — choose an %s" % MeshFile.NAMED)
 		return
 	take(bytes, main, extras)
