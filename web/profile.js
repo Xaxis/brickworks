@@ -277,8 +277,10 @@ async function claude() {
     const end = make("button", "link", "Disconnect");
     end.type = "button";
     end.addEventListener("click", async () => {
-      if (!confirm(`Disconnect ${String(one.client || "this app")}? It can no longer work in your tabs, and connecting `
-        + "again asks you to allow it again.")) return;
+      // Claude forgets the tool permissions given to a connection when it is
+      // disconnected, which is why nothing here suggests doing it (2026-10-20).
+      if (!confirm(`Disconnect ${String(one.client || "this app")}? It can no longer work in your tabs. Claude also `
+        + "forgets the tool permissions you gave it, so connecting again asks for them all again.")) return;
       end.disabled = true;
       const gone = await call(`/api/oauth?op=disconnect&id=${encodeURIComponent(String(one.id))}`, { method: "POST" });
       if (gone.status === 200) claude();
