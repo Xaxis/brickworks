@@ -2,6 +2,7 @@
 """Prove a headless app's leased drawer draws the pictures a window draws.
 
     python3 tools/bench/leased_shots_check.py --model X.ldr --out DIR [--port 9040]
+                                              [--history | --windows-only]
 
 The design bench runs the app headless and has each picture drawn by a short
 process on the GPU's lease (src/ai/leased_shots.gd, src/dev/draw_shots.gd),
@@ -9,12 +10,17 @@ where it used to run the app in a window on the lease for the whole session.
 This opens one model both ways, the window on the lease and the headless app
 with its drawer, asks each for the same pictures over MCP (view_model from
 several sides and close, a change's picture with what it changed picked
-out), and compares them pixel
-for pixel: the PNGs are kept in DIR/window and DIR/leased. Exit 0 when every
-picture came both ways and every pair is the same picture.
+out), and compares them pixel for pixel: the PNGs are kept in DIR/window and
+DIR/leased. Exit 0 when every picture came both ways and every pair is the
+same picture or differs in at most --most pixels (16 of a million): a window's
+own pictures differ by that much from run to run, 1 to 9 pixels of a change's
+picture on 2026-10-20, scattered single pixels, most likely where faces tie
+and the card breaks the tie by the order things were made in. With --history a second window is asked the views
+the other way round first, and the bar is the larger of --most and what the
+two windows differ by; --windows-only runs the two windows alone.
 
-The two apps run one after the other, each with a user folder of its own
-under DIR, on --port and the port after it.
+The apps run one after the other, each with a user folder of its own under
+DIR, on --port and the ports after it.
 """
 
 from __future__ import annotations
@@ -165,6 +171,8 @@ def main(argv: list[str]) -> int:
                         help="also a second window asked in another order, for how much a "
                         "window's own pictures vary with what it drew before; the drawer's are "
                         "then held to that")
+    parser.add_argument("--most", type=int, default=16,
+                        help="pixels a picture may differ by, as two windows' do")
     parser.add_argument("--windows-only", action="store_true",
                         help="only the two windows of --history")
     args = parser.parse_args(argv)
@@ -172,16 +180,18 @@ def main(argv: list[str]) -> int:
     model = args.model.resolve()
     window = drive("window", model, args.out, args.port)
     leased = {} if args.windows_only else drive("leased", model, args.out, args.port + 1)
-    most = 0
+    most = args.most
     if args.history or args.windows_only:
         # The unchanged model's views the other way round, then the change.
         turned = [*reversed(ASKED[:4]), *ASKED[4:]]
         again = drive("window2", model, args.out, args.port + 2, turned)
-        _, most = compare("a window against a window asked in another order:", window, again,
-                          1 << 30)
+        _, apart = compare("a window against a window asked in another order:", window, again,
+                           1 << 30)
+        most = max(most, apart)
         if args.windows_only:
             return 0
-    same, _ = compare("the window against the leased drawer:", window, leased, most)
+    same, _ = compare(f"the window against the leased drawer, {most} pixels at most:", window,
+                      leased, most)
     return 0 if same else 1
 
 

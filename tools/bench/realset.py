@@ -14,8 +14,10 @@
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
 two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
 hours, when each design held a GPU slot for its whole session. A design's app
-now runs headless and takes the lease only for a drawer while it draws, so
-`--jobs 4` runs four at once (DESIGN_SCORES.md, "What a round costs now"). Set
+now runs headless and takes the lease only for a drawer while it draws (37% of
+a session, 2026-10-20), so three or four workers fit where the GPU is shared
+with short jobs; beside a run that holds a slot a session (an older
+`--checkout`), pictures wait (DESIGN_SCORES.md, "What a round costs now"). Set
 BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
 
 Every round so far was steered by subjects we tuned on, and our own judge

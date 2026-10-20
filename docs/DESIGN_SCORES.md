@@ -325,12 +325,32 @@ first ten against t2base's (84 to 104 minutes for technique2's and
 technique3's arms), proof's 44 (about 9 hours at t3lay's pace, 6.5 at
 main's), and the two compares. Taking the lever to tune's 44 as well adds 34
 designs and about 7 hours, and main's own tune 44 once, 34 designs and about
-5 hours. **A third worker buys nothing on this box:** the GPU has two slots
-and a design holds one for its whole session, so a third waits, and while it
-waits every other agent's probe does too. With a third slot the round would be
-about 7.5 hours. The slot is mostly idle (a design's app used under a second of
-the GPU in ten minutes, run.py), so a lease taken only to draw would let three
-or four workers run; that is the box's rule to change, not this test's.
+5 hours. Those hours are two workers' with each design holding one of the
+GPU's two slots for its whole session, so a third waited, and every other
+agent's probe with it.
+
+**A design now holds the GPU only while it draws** (2026-10-20). Its app runs
+headless, and each picture the session is shown is drawn by a drawer on the
+lease (`src/ai/leased_shots.gd`) that starts in 5-10 s and stays up to 20 s
+after its last picture, 2 s when another job waits. The pictures are the
+window's: on Dubai (21052-1) five views byte for byte, and a change's picture
+9 pixels of a million off, where two windows differ by 1 to 9 on it from run
+to run (`tools/bench/leased_shots_check.py`). Four tune designs (3932-1,
+7410-1, 40148-1, 9470-1) at two workers took 24.6 minutes; their 25 drawers
+held the lease 15.6 of their 42 minutes of sessions (37%, against all of it in
+a window), and every picture with something in it was drawn (61; the 9 with
+nothing to stage are the letters at once, as in a window). At four workers
+the same four ran beside another agent's realset run on a checkout from
+before this, whose two windowed designs held both slots for all but minutes of
+the half hour: the four drawers held 4.8 minutes of it, other jobs' probes
+waited up to 4 minutes (behind those two, not the drawers), 24 of 89 pictures
+waited out the 2 minutes a picture may wait and were the letters, and the
+sessions ran 19 to 30 minutes against 6 to 15. So a third and fourth worker
+pay where the GPU is shared with short jobs, and not beside a run that holds a
+slot a session (an arm on a `--checkout` from before 2026-10-20 still does):
+run such an arm alone. A clean four-worker round is still to be timed. Not
+drawn headless: render_model, which 5 of main's 44 proof designs called, all
+but one after their last save.
 
 ```sh
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later

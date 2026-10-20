@@ -24,7 +24,7 @@ A run is, per subject and one at a time:
            each picture the session is shown is drawn by a drawer on the
            lease (src/ai/leased_shots.gd, off-screen under `gpu`), the
            same ModelShot given the same bricks, held while it draws and
-           20 s after. An app from before the drawer (--checkout of an older
+           up to 20 s after. An app from before the drawer (--checkout of an older
            commit) runs in a window on the lease for its whole session, as
            every design did until 2026-10-20. ANTHROPIC_API_KEY is taken out
            of its environment, so nothing is billed. Its saves are moved out
@@ -271,7 +271,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         # and one design's app used under a second of the GPU in ten minutes.
         # Each picture is drawn by a drawer on the lease (src/ai/leased_shots.gd),
         # the same ModelShot given the same bricks, which holds it while it
-        # draws and LINGER_S after. In a window on the lease, a design held a
+        # draws and up to LINGER_S after. In a window on the lease, a design held a
         # slot for its whole session, so two ran at once and other jobs'
         # draws queued behind them. The timeout is the app's own: a drawer's
         # wait in the lease's queue is inside a call the session waits on.

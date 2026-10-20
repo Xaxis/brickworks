@@ -99,9 +99,9 @@ func take(shot: ModelShot, world: BrickWorld, from: String, skip: Dictionary,
 		return null
 	var request: Dictionary = {
 		# Which picture-taker, and what it has staged: the drawer stages
-		# again exactly when this one would. Two stagings of one model can
-		# differ in a few dozen pixels, where faces meet in a tie the card
-		# breaks by the order things were made in.
+		# again exactly when this one would. A model staged twice came out
+		# 58 pixels of a million apart from one staged once, scattered
+		# single pixels, most likely faces that tie.
 		"shot": shot.get_instance_id(), "staged": shot.stage_key(world, skip),
 		"bricks": bricks, "made": made, "from": from, "only": only,
 		"rulers": shot.rulers, "marks": shot.marks, "give_up_after": shot.give_up_after,
@@ -127,6 +127,8 @@ func take(shot: ModelShot, world: BrickWorld, from: String, skip: Dictionary,
 	var tree: SceneTree = shot.get_tree()
 	while not FileAccess.file_exists(answer):
 		if Time.get_unix_time_from_system() > until:
+			# Taken back, so a drawer that comes later does not draw it for nobody.
+			DirAccess.remove_absolute(_dir.path_join(name + ".asked"))
 			push_warning("leased shots: no picture within %d s" % int(MOST_WAIT_S))
 			return null
 		# Twice a second, not every frame: a process looked up in /proc.
@@ -135,6 +137,7 @@ func take(shot: ModelShot, world: BrickWorld, from: String, skip: Dictionary,
 			checked = now
 			if _pid < 0 or not OS.is_process_running(_pid):
 				if starts >= MOST_STARTS:
+					DirAccess.remove_absolute(_dir.path_join(name + ".asked"))
 					push_warning("leased shots: %d drawers ended without the picture" % starts)
 					return null
 				starts += 1
