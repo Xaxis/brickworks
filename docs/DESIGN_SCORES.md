@@ -1130,6 +1130,160 @@ Results: `bench/results/realset-2026-10-19-t2base/` (main, both halves),
 arms `realset-2026-10-19-t2plan/` and `-t2plan2/`, and the sessions' digests in
 `technique2-2026-10-19/digests/`.
 
+### Technique: the planned way laid, not described (2026-10-19, tried, not shipped)
+
+The plan reached the body and its ways were the session's own: faces on side
+studs on a stacked body, where the sets' legs are joints. This round changed
+what the plan is answered with and what a planned joint is built from. It is
+on the branch `technique3`.
+
+**The lever** (`aad64d3`, src/ai/build_plan.gd, real_snippets.gd).
+- *Evidence of the kind and size.* For each planned sub-assembly, with its
+  studs, a real one whose own sub-model is named for that kind
+  (`RealSnippets.kind_like`: "leg" is a sub-model called leg; a cluster is the
+  kind it is in; a name's part, colour, size and step words are no kind),
+  its longest side within half to twice the plan's, the brief's line first,
+  the set under test held out. Pictured (one sheet, the plan's order), with its
+  joint parts and sideways parts by name, and how the eight nearest of the kind
+  are built: shaped on joints or at an angle, only finished, or stacked.
+- *Answered with the shape, not the finish.* Where 40% or more of the kind are
+  on joints or at an angle, the picture is one of those, and a plan that leads
+  with another way is not kept without a why.
+- *Laid, not described.* A sub-assembly planned hinged or angled whose name or
+  what says leg, limb, boom or jib is given the app's entry that lays it (the
+  legs and boom patterns of `exp/builtbodies-2026-10-17`, brought over with
+  their probes), named as planned, a spider's or a scorpion's four pairs; a
+  submission whose patterns laid it counts as built as planned, and a send-back
+  for it carries the entry.
+- `build_plan_probe` 30 checks, `legs_probe` 112, `boom_probe` 135.
+
+**A first version** (`ac6816f`) matched a kind by any word of a sub-model's
+name, and the tune half's first session, the sheep, was shown a train's tank
+("brick work in tank" for "brick-built sheep"). It was stopped after two
+plans and the kind made the sub-model's own (`aad64d3`), the version run.
+
+**The tune half,** in the same harness as technique2's (realset.py of
+`7299b56` with its port range, drawn on the GPU, one design a subject):
+v3's designs (`t2plan3`) as the start arm, this lever as `t3lay`.
+
+| dimension | v3 preferred to the set | t3lay preferred to the set | v3 minus t3lay, paired (95%) | v3 preferred to t3lay, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 15% (4-46) | 10% (2-40) | +5 (0, +15) | 70% (40-89) |
+| surface | 30% (11-60) | 15% (4-46) | +15 (-10, +40) | 70% (40-89) |
+| colour | 35% (14-65) | 30% (11-60) | +5 (0, +15) | 75% (44-92) |
+| technique | 20% (6-51) | 15% (4-46) | +5 (0, +15) | 65% (35-86) |
+| creativity | 30% (11-60) | 25% (8-56) | +5 (-15, +30) | 65% (35-86) |
+| overall | 20% (6-51) | 10% (2-40) | +10 (0, +25) | 70% (40-89) |
+
+- **It lost the tune half,** every dimension both ways of judging it, no
+  interval leaving out a tie. Technique against the sets was won where v3 won
+  it, the river (2 of 2, "an arch bridge over stepped trans water, a palm built
+  from layered parts") and The End (1 of 2, v3's 2), and nowhere else.
+- **The evidence reached every session.** Every one was shown a picture of
+  its plan's real ones, 1 to 3 sheets. The shape rule sent one plan back (the
+  sheep, twice: its "head and legs" were of a kind 5 of 8 real ones shape on
+  joints), and the sheep then led with hinged. Ten sessions were sent back 21
+  times for a sub-assembly not built as planned (v3's 20).
+- **Laid, and taken back off.** The legs or boom entry was given to four plans
+  (the sheep, the wolf, the Telehandler, Shelob); four sessions submitted a
+  pattern (the wolf, the Telehandler, Shelob, and the scorpion from
+  submit_design's own list). Two kept it to the end. The wolf laid upright legs,
+  looked, and rebuilt: "The legs pattern gave a spidery sprawl — not a wolf",
+  ending on stacked posts ("a boxy table-like body on straight posts"). The
+  Telehandler built on a 22-stud boom raised 5 degrees, then made its own
+  "boom and fork carriage as one hinged section". The sheep checked its legs
+  alone, laid a plate up with nothing under them, read "floating (47)" and
+  built by hand.
+- **Kept, not counted.** Shelob kept 40 ball-joint parts (16% of its parts
+  on joints, v3's 12%, the set's 40%) and lost technique both ways: "simple hinged
+  plate chains", "clip-hinge legs are repetitive". The scorpion kept 29: "its
+  scorpion is a basic flat build", beside a stacked pyramid. As in the
+  builtbodies round: a pattern's plain plates on balls are joints the judge
+  does not read as technique.
+
+**The proof half,** run once on the same code, the tune half's loss
+notwithstanding (the time box held no second tune round and a proof), against
+main's designs (`t2base`, `7299b56`) in the same harness.
+
+| dimension | main preferred to the set | t3lay preferred to the set | main minus t3lay, paired (95%) | t3lay preferred to main, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 25% (8-56) | 40% (17-69) | -15 (-45, +10) | 40% (17-69) |
+| surface | 25% (8-56) | 30% (11-60) | -5 (-35, +20) | 35% (14-65) |
+| colour | 20% (6-51) | 25% (8-56) | -5 (-20, +10) | 70% (40-89) |
+| technique | 0% (0-28) | 20% (6-51) | -20 (-40, 0) | 65% (35-86) |
+| creativity | 25% (8-56) | 35% (14-65) | -10 (-35, +10) | 70% (40-89) |
+| overall | 20% (6-51) | 30% (11-60) | -10 (-30, 0) | 60% (31-83) |
+
+And against v3's proof designs, judged the same way: technique 10% to 20%,
+paired -10 (-35, +10), head to head 50% (24-76); overall 20% to 30%, head to
+head 60% (31-83); surface 40% to 30%.
+
+- **Technique against the sets did not move beyond noise:** 4 verdicts of 20
+  against main's none, the paired interval reaching zero, as v3's did (2 of 20).
+  Head to head with main the judge leaned to it on technique, 65%, and on
+  likeness and surface leaned to main. Against the sets nothing fell. Not
+  shipped.
+- **Where it won technique:** Emma's studio both ways, where the shape rule
+  sent the clothes rack back ("71% of the real ones of its kind are shaped on
+  joints or at an angle") and the session hung "clothes on a bar-and-clip rail
+  between column posts"; the bee one way, its antennae sent back to lead with
+  hinged, winning on "wings at an angle on clips and hinges"; the Container Stacker one way, on
+  the boom pattern it kept, "a Technic liftarm boom braced by an angled strut".
+  Main won technique on none of the three; v3 on the bee.
+- **The why let the stack through.** The Container Yard's plan was sent back
+  once and came again stacked throughout, each with a why: "beams pinned on the
+  side come in the detail pass". They did not; the set's "rack-driven telescopic
+  boom" won. No proof plan named legs on joints: the sphinx planned its paws
+  curved, the dinosaur hinged and curved, and neither was given the legs entry.
+
+**What they are made of** (medians, ours against the sets; floating 0% median
+on both halves, every t3lay design audited):
+
+| | shapes per 100 parts | SNOT | joints | 1 x 1 | tiles |
+|---|---|---|---|---|---|
+| tune, v3 | 23.4 | 12% | 1% | 29% | 22% |
+| tune, t3lay | 19 | 14% | 2% | 35% | 21% |
+| tune, the sets | 29.2 | 35% | 7% | 19% | 7% |
+| proof, main | 15.4 | 2% | 0% | 29% | 16% |
+| proof, v3 | 17.6 | 12% | 0% | 25% | 20% |
+| proof, t3lay | 17.2 | 12% | 1% | 30% | 21% |
+| proof, the sets | 28.4 | 25% | 3% | 13% | 11% |
+
+Joints rose a point on both halves and SNOT held v3's gain; shapes per 100 fell
+on the tune half, and 1 x 1 rose on both.
+
+**What it says.**
+- *A picture of the right kind moves a plan; it does not move the build much.*
+  Every session saw its plan's real ones drawn, and where the kind is shaped on
+  joints the plan was answered so (the clothes rack, the antennae, the sheep).
+  Where the way was one small joint in a sub-assembly (a rail of clips, an
+  antenna on a hinge) it was built and the judge counted it. Where it was a
+  body (legs, a boom) the session laid the app's pattern and either took it back
+  off on sight, or kept it and the judge read plain plates on balls.
+- *The patterns are the weak part, as builtbodies found.* Two rounds now: a
+  pattern's joints are the right joints and the wrong silhouette. A wolf's legs
+  on a 2-segment upright chain read "spidery"; a spider's 4-segment chains read
+  "repetitive". The sets' legs are shaped parts (claws, tooth plates, curved
+  slopes) on two or three joints at different angles.
+- *Finish ways held to shares buy nothing the judge sees.* The plan check sent
+  the wolf back three times for its body's slope and side-stud shares, the
+  Telehandler for its chassis's side studs and its bonnet's slopes; neither
+  verdict named them. Holding a plan to its shape ways (hinged, angled) and
+  leaving the finish to the session would keep what the plan is for.
+- *Next.* Lay the real one pictured, not a generic pattern: place_technique of
+  the nearest real sub-assembly of the kind, at its size, where the plan is
+  answered on joints, so the joints come dressed as a set's are; check a plan
+  only on its shape ways; and a why for stacked where the kind is shaped needs
+  the part that says it ("a flat base"), not a promise of a later pass.
+
+Results: `bench/results/realset-2026-10-19-t3lay/` (both halves),
+`realset-2026-10-19-t2plan3-vs-t3lay/` (head to head with v3, both halves),
+`realset-2026-10-19-t2base-vs-t3lay/` (with main, proof), and the sessions'
+digests, the stopped first version and an example picture in
+`technique3-2026-10-19/`.
+
+
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
