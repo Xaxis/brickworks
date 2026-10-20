@@ -4379,7 +4379,7 @@ is forgiven. Read so:
 | 5533-1's steering arm (32069), its pin in a brick (2743) | 50 in, 10 out | none in (the pin's collar), 10 out |
 
 **Held there as the loop is solved** (`Linkage._bounded`, `_close_with`). A
-clip's or a piston's slide is kept inside its range: a step that would take
+clip's slide is kept inside its range: a step that would take
 it past an end stops at the end, and one standing at an end that the step
 would take further out is held there for that step while the rest is
 solved again without it. Where the two parts' exact shapes are at hand the
@@ -4418,7 +4418,7 @@ holds that it is locked and that the clip never ends into the handle's
 plate.
 
 **An axle's slide is read so too, and not held in a loop.** Held to its
-flanges (`exp/sweep_t3bound`, 21 files: Grab 15's sixteen and others),
+flanges (`exp/sweep_t3bound`, 21 files: the sets Grab 15 named and others),
 8448-1 and its four other models turned 0.1° each way where Grab 15 turned
 7.2°, the loop closing no further without its towballs sliding up through
 the rack; 8256-1 and its lawn mower turned as before and came back 0.057
@@ -4457,7 +4457,7 @@ there (Grab 15); the part or pair begun last could take as long again.
 
 | | Grab 15 | Grab 16 |
 |---|---|---|
-| a pause's check of the way | 5.3 to 10.4 ms | 0.25 to 0.47 ms; the first of a grab 3 frames, at worst 5.3 ms (3.5 of it reading the two shapes from disk) |
+| a pause's check of the way | 5.3 to 10.4 ms | 0.25 to 0.94 ms; the first of a grab 3 frames, at worst 5.3 ms (3.5 of it reading the two shapes from disk) |
 | where it stops | ±108° | ±108° |
 
 play_flow, the two builds served side by side and run in turn, 8808-1's
@@ -4504,3 +4504,52 @@ on 6a79564f).
 Every one of the 181 turns its arms and its rack as in Grab 15's row, to the
 hundredth. In the first run, with a piston's slide held, 8868-1 (which steers
 in neither) moved its rack 0.03 LDU where it had not; let go, as before.
+
+**Proved** (bench/results/grab16-2026-10-19). `grab_probe` windowed through
+`tools/probe.sh`, in full, on the final code (`probes/grab_probe_final.log`):
+470 checks, all passed. New, `-- --only=clipped`: 4002020-1's turntable
+turns +13°, -44° and is back to 0.0001 LDU, and 21019-1's is locked; in
+neither does the clip end into its bar's part by their exact shapes. On
+Grab 15's code the first would fail (+5° and 0°, its sweep row) and so would
+the second (+0° and -1°, neither locked nor turning a degree each way). The
+run before a piston's slide was let go (`probes/grab_probe_g16.log`) passed
+468 of 470: the crank and piston's two (above); `-- --only=loops` then
+passed all 13 (`probes/grab_probe_loops.log`). The keeps are as Grab 15
+left them: the coasted flywheel's 16.0, 18.0 and 16.5 ms, 7191-1's big
+section's keeping frame 20 ms (6 the commit). play_flow,
+two runs a side on the final builds served side by side (above): 34 checks
+passed in every run. The frames gate (`tools/web/cad_frames.mjs --gate`,
+75969-1, the local server, load 11): an orbit's frames at the 95th
+percentile 17.9 ms against 200, select all 32.2 against 400, the timeline's
+Next 9.4 to 18.3 against 200; passed (`web/frames_g16.log`). Neither an
+orbit nor select all runs a room test. The experiments are kept in `exp/`
+with the scratch probes that read the joints (`native/inspect_links.gd`),
+time the pieces' reading (`native/foot_cost.gd`) and a clip's room
+(`exp/exact_room.gd`).
+
+**What got worse.**
+- 21019-1's turntable moved +0.3° and -1° to where its clip's plate met
+  the handle's; it is locked now. Its clip fills its handle's bar, so its
+  loop has nothing to close by; the turn it had came from the clip sliding.
+- The first grab of a loop with a clip reads both parts' exact shapes at the
+  press (31 ms natively for 4002020-1's, most of it reading them from disk);
+  a later grab finds them kept.
+- A pause's check of a loop takes more frames: 4 ms of each, where it had
+  24.
+
+**Left for later.**
+- An axle's slide in a loop: held to its flanges, 8448-1's steering closes
+  0.1° and 8256-1's comes back 0.05 LDU off. 8448-1's loop closes only by
+  sliding a towball up through its rack; how its ball joints are read
+  (G14b's left for later) is where to look. Until then the axle and pin
+  pairs stay out of the joint-pair test.
+- A clip slides no further than what is drawn on its own bar; another part
+  on the same bar (a second clip) is left to the room test.
+- A loop with freedom left over goes out by one path and back by another
+  (4002020-1 with its clip held at 2 LDU); held where the parts truly meet,
+  it came back.
+- In a browser, a loop grabbed before its clip's and bar's shapes have come
+  holds the clip by its rounds (4002020-1's: 2 LDU, not 6.37).
+- A part or a pair begun last in a pause's frame still runs to its end: on
+  the slowed phone the pause's frame was 18.8 and 22.9 ms against its 4.
+- G15's other leftovers stand.
