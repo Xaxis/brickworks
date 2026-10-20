@@ -774,8 +774,17 @@ func _watch_the_page() -> void:
 				pending = wrapped;
 				return paint(wrapped);
 			};
+			// Going away: the page's every word to the relay from pagehide on
+			// says so. Two beacons sent in the same moment as a tab closed, one
+			// was sometimes lost on the way, and when it was the goodbye, the
+			// relay took the closed tab for one paused out of view and a
+			// chat's next call waited on it (tabs_flow on m99, 2026-10-19:
+			// close sent, never received, the visibility beacon after it
+			// received). So the visibility change that follows pagehide says
+			// goodbye too. A page kept to go back to (pageshow) is here again.
+			var leaving = false;
 			document.addEventListener("visibilitychange", function () {
-				tell(alive());
+				tell(leaving ? "&op=close" : alive());
 				steer();
 			});
 			// Used now: said at once, so a call made the moment the person
@@ -786,7 +795,11 @@ func _watch_the_page() -> void:
 				tell(alive());
 			});
 			window.addEventListener("pagehide", function () {
+				leaving = true;
 				tell("&op=close");
+			});
+			window.addEventListener("pageshow", function () {
+				leaving = false;
 			});
 		}
 		window.brickworksSteer();
