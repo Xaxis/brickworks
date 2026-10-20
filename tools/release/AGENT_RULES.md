@@ -59,6 +59,11 @@ date says when.
   GPU's queue.
 - Never `pgrep -f`/`pkill -f` a pattern that appears in your own command line.
   Kill only processes you started, by PID. Stop every server you start.
+- A worktree you make for yourself (a base build to compare against) is
+  locked at once: `git worktree lock --reason "<you>: base" <path>`, and
+  removed by you when you finish. Unlocked at main with nothing running in it,
+  tools/release/clean_worktrees.sh takes it for finished work and removes it
+  (animaudit's base, 2026-10-20).
 - Scratch files only in the scratch folder the brief names; ports only in the
   range it names (two agents once measured each other's build on one port).
 - Never run the full suite (tools/check.sh); run what
