@@ -57,6 +57,15 @@ can occupy the same millimetre.
   thousand angled bricks took 185 s to place on the app's only thread (its
   looks timed out); 9.5 s now. `turned_probe` checks the cells are identical to
   the old way's over 300 random turned boxes, and quicker (14.3 s to 0.84 s).
+  A turned cover as boxes (`BrickLattice.boxes_for_turned`, what the lattice
+  keeps) is worked out a line of cells along x at a time (`_runs_of_box`,
+  each slab axis once a turn, `_slabs_of`), and a cell within 0.01 of
+  touching asked exactly, not cell by cell and then merged (Grab 15,
+  MECHANISMS §25: a gear 40's cover was 57 of a coasted flywheel's 60 ms
+  keep). `turned_probe` holds it to `compress(cells_for_turned(...))` over
+  428 real parts' turns: the same boxes in the same order, 24.1 s against
+  7.2. A cover worked out ahead with its bound and rows
+  (`BrickLattice.cover_for`, on a worker) goes in by `occupy_moved`.
   A cover asked only where another part's boxes are (`BrickLattice.TurnedCover`,
   `Builder.turned_cover`; the grab's room test, MECHANISMS §15): each cover box
   against each box by the separating axis test, the cells asked as

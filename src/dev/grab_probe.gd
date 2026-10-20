@@ -5458,6 +5458,10 @@ const MOVING: Array = [
 	# BrickNet's labels name (Bodies._labelled_hinge); held by nothing, it
 	# was no door on a joint.
 	["res://vendor/omr/files/6765-1.mpd", "door"],
+	# Grab 15 (MECHANISMS §25): its turntable turns a loop of 11 joints, one
+	# a plate with a clip on a plate with a handle; untested against each
+	# other, the turn left them into each other and the next went through.
+	["res://vendor/omr/files/21019-1.mpd", "turntable"],
 ]
 ## Steering the sweep's way (tools/steer_sweep.py), each [set, why]: it
 ## steers both ways and back over MCP (G14b, MECHANISMS §24).

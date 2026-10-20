@@ -78,7 +78,9 @@ func _initialize() -> void:
 ## the same order, quicker. A gear 40 coasted to a stop and kept spent 57 of
 ## its keep's 60 ms on its cover (MECHANISMS §25). The parts at random from
 ## the catalogue, with the flywheel's and a few joints'; turned about an
-## axis at random, about the vertical, about x, and moved off the origin.
+## axis at random, about the vertical, about x, by a hair (a hundredth of a
+## degree to a third, so an axis of the turn is a twin of one of the grid's
+## and one slab is read for both), and moved off the origin.
 func _real_covers() -> void:
 	var library := PartLibrary.new()
 	if not library.load_catalogue():
@@ -88,7 +90,7 @@ func _real_covers() -> void:
 	rng.seed = 15
 	var ids: Array = ["3649", "3705", "3894", "32524", "3001", "3647", "61252", "4532", "4261"]
 	var all: Array = library.parts.keys()
-	while ids.size() < 120:
+	while ids.size() < 90:
 		ids.append(all[rng.randi_range(0, all.size() - 1)])
 	var same: int = 0
 	var tried: int = 0
@@ -99,14 +101,22 @@ func _real_covers() -> void:
 		var mesh: Lbm.PartMesh = library.mesh_for(id)
 		if mesh == null or mesh.boxes.is_empty():
 			continue
-		for trial: int in 4:
+		for trial: int in 6:
 			var basis := Basis(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1),
 				rng.randf_range(-1, 1)).normalized(), rng.randf_range(-PI, PI))
 			if trial == 0:
 				basis = Basis(Vector3.UP, deg_to_rad(float(rng.randi_range(1, 89))))
 			elif trial == 1:
 				basis = Basis(Vector3.RIGHT, deg_to_rad(float(rng.randi_range(1, 359)) * 0.5))
-			var origin := Vector3i.ZERO if trial < 3 else Vector3i(rng.randi_range(-90, 90),
+			elif trial == 4:
+				basis = Basis([Vector3.UP, Vector3.RIGHT, Vector3.BACK][rng.randi_range(0, 2)],
+					deg_to_rad(rng.randf_range(0.01, 0.3)))
+			elif trial == 5:
+				basis = Basis(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1),
+					rng.randf_range(-1, 1)).normalized(), deg_to_rad(rng.randf_range(0.01, 0.3)))
+			if BrickLattice.is_square_to_grid(basis):
+				continue
+			var origin := Vector3i.ZERO if trial != 3 else Vector3i(rng.randi_range(-90, 90),
 				rng.randi_range(-5, 60), rng.randi_range(-90, 90))
 			var t0: int = Time.get_ticks_usec()
 			var was: PackedInt32Array = BrickLattice.compress(BrickLattice.cells_for_turned(mesh.boxes,

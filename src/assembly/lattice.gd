@@ -202,6 +202,7 @@ static func boxes_for_turned(
 	# compress meets the lines in is kept as one number a line.
 	var reach: Array = []
 	var least := Vector3i(1 << 30, 1 << 30, 1 << 30)
+	var most := Vector3i(-(1 << 30), -(1 << 30), -(1 << 30))
 	for box: AABB in boxes:
 		var lo := Vector3(box.position)
 		var hi := lo + Vector3(box.size)
@@ -216,30 +217,41 @@ static func boxes_for_turned(
 			high = high.max(corner)
 		reach.append([lo, hi, low, high])
 		least = least.min(Vector3i(floori(low.x), floori(low.y), floori(low.z)))
-	# Vector2i(y, z) -> its runs along x as [first, last] pairs, and each
-	# line once, as compress first meets it: cells_for_turned goes box by
-	# box, then x, y and z, so a line is first met in the first box that
-	# touches it, at that box's first x on it.
-	var lines: Dictionary = {}
+		most = most.max(Vector3i(ceili(high.x), ceili(high.y), ceili(high.z)))
+	if reach.is_empty():
+		return PackedInt32Array()
+	# Each line (y, z) of the part's reach -> its first run (-1: none), and
+	# each run's first and last x and the next on its line; and each line
+	# once, as compress first meets it: cells_for_turned goes box by box,
+	# then x, y and z, so a line is first met in the first box that touches
+	# it, at that box's first x on it.
+	var deep: int = most.z - least.z
+	var heads := PackedInt32Array()
+	heads.resize((most.y - least.y) * deep)
+	heads.fill(-1)
+	var firsts := PackedInt32Array()
+	var lasts := PackedInt32Array()
+	var nexts := PackedInt32Array()
 	var order := PackedInt64Array()
 	var slabs: Array = _slabs_of(basis)
 	for b: int in reach.size():
-		_runs_of_box(reach[b], basis, slabs, b, least, lines, order)
+		_runs_of_box(reach[b], basis, slabs, b, least, deep, heads, firsts, lasts, nexts, order)
 	order.sort()
 	var merged: Dictionary = {}
 	for rank: int in order:
 		var y: int = ((rank >> 13) & 8191) + least.y
 		var z: int = (rank & 8191) + least.z
-		var runs: PackedInt32Array = lines[Vector2i(y, z)]
-		if runs.size() == 2:
-			_note_run(merged, runs[0] + origin_cell.x, runs[1] + 1 + origin_cell.x,
+		var run: int = heads[(y - least.y) * deep + z - least.z]
+		if nexts[run] < 0:
+			_note_run(merged, firsts[run] + origin_cell.x, lasts[run] + 1 + origin_cell.x,
 				z + origin_cell.z, y + origin_cell.y)
 			continue
 		# Several boxes' runs on one line: in order, joined where they
 		# overlap or meet, as compress joins cells one apart.
 		var keyed := PackedInt32Array()
-		for n: int in range(0, runs.size(), 2):
-			keyed.append(((runs[n] - least.x) << 13) | (runs[n + 1] - least.x))
+		while run >= 0:
+			keyed.append(((firsts[run] - least.x) << 13) | (lasts[run] - least.x))
+			run = nexts[run]
 		keyed.sort()
 		var from: int = (keyed[0] >> 13) + least.x
 		var last: int = (keyed[0] & 8191) + least.x
@@ -267,8 +279,8 @@ const RUN_UNSURE := 0.01
 ## The fifteen axes [method _separating] tests a turned box by, each once
 ## (a turn about one line gives some several times), for [method
 ## _runs_of_box]: [along x: [axis, its reach for a cell, its share of each
-## of the box's half widths] each, the same across x (the axis has no x)].
-## They depend on the turn alone.
+## of the box's half widths, how far the axes taken as it lean from it] each,
+## the same across x (the axis has no x)]. They depend on the turn alone.
 static func _slabs_of(basis: Basis) -> Array:
 	var axes: Array[Vector3] = [
 		Vector3.RIGHT, Vector3.UP, Vector3.BACK,
@@ -281,18 +293,28 @@ static func _slabs_of(basis: Basis) -> Array:
 				axes.append(cross.normalized())
 	var along: Array = []
 	var across: Array = []
-	var kept: Array[Vector3] = []
+	var kept: Array = []
 	for axis: Vector3 in axes:
-		var twin: bool = false
-		for other: Vector3 in kept:
-			if absf(axis.dot(other)) > 0.999999:
-				twin = true
+		# Its lean from one kept, by the cross of the two in double precision:
+		# a twin worked out another way is a rounding off it, and a turn of a
+		# few hundredths of a degree is not; how far a twin leans is allowed
+		# for where its slab is read ([method _runs_of_box]).
+		var twin: Array = []
+		for slab: Array in kept:
+			var other: Vector3 = slab[0]
+			var cx: float = float(axis.y) * float(other.z) - float(axis.z) * float(other.y)
+			var cy: float = float(axis.z) * float(other.x) - float(axis.x) * float(other.z)
+			var cz: float = float(axis.x) * float(other.y) - float(axis.y) * float(other.x)
+			var lean: float = sqrt(cx * cx + cy * cy + cz * cz)
+			if lean < 0.0015:
+				twin = slab
+				twin[3] = maxf(float(twin[3]), lean)
 				break
-		if twin:
+		if not twin.is_empty():
 			continue
-		kept.append(axis)
 		var slab: Array = [axis, 0.5 * (absf(axis.x) + absf(axis.y) + absf(axis.z)),
-			Vector3(absf(axis.dot(axes[3])), absf(axis.dot(axes[4])), absf(axis.dot(axes[5])))]
+			Vector3(absf(axis.dot(axes[3])), absf(axis.dot(axes[4])), absf(axis.dot(axes[5]))), 0.0]
+		kept.append(slab)
 		if absf(axis.x) < 0.000001:
 			across.append(slab)
 		else:
@@ -304,14 +326,18 @@ static func _slabs_of(basis: Basis) -> Array:
 ## cells_for_turned] keeps them: [param box] is [the box's low and high
 ## corners, the turned box's low and high], [param b] its place among the
 ## part's boxes, [param slabs] the turn's ([method _slabs_of]). Each line
-## (y, z) touched gets its [first, last] in [param lines], and, the first
-## time, its place in compress's order in [param order]. On a line the
-## cells a box grown by a cell touches are one run (it is convex), read
-## off the slabs; a cell within [constant RUN_UNSURE] of touching is asked
-## exactly, as cells_for_turned asks it ([method _touches_with]). A slab
-## across x says which lines of a row it lets through.
-static func _runs_of_box(box: Array, basis: Basis, slabs: Array, b: int, least: Vector3i,
-		lines: Dictionary, order: PackedInt64Array) -> void:
+## (y, z) touched gets a run, its first and last x in [param firsts] and
+## [param lasts], put at the head of the line's in [param heads] ([param
+## deep] lines a row from [param least]), the one it was in front of in
+## [param nexts]; and, the first time, the line's place in compress's order
+## in [param order]. On a line the cells a box grown by a cell touches are
+## one run (it is convex), read off the slabs; a cell within [constant
+## RUN_UNSURE] of touching is asked exactly, as cells_for_turned asks it
+## ([method _touches_with]). A slab across x says which lines of a row it
+## lets through, and one square to x, which cells of every line.
+static func _runs_of_box(box: Array, basis: Basis, slabs: Array, b: int, least: Vector3i, deep: int,
+		heads: PackedInt32Array, firsts: PackedInt32Array, lasts: PackedInt32Array,
+		nexts: PackedInt32Array, order: PackedInt64Array) -> void:
 	var lo: Vector3 = box[0]
 	var hi: Vector3 = box[1]
 	var low: Vector3 = box[2]
@@ -320,32 +346,52 @@ static func _runs_of_box(box: Array, basis: Basis, slabs: Array, b: int, least: 
 	var middle: Vector3 = basis * ((lo + hi) * 0.5)
 	# Along x: a cell's middle x is within reach of q = where the slab's
 	# middle is, read along x, q = base - py * per_y - pz * per_z; the reach
-	# less (sure) and more (may) RUN_UNSURE.
+	# less (sure) and more (may) RUN_UNSURE. A slab square to x is the same
+	# on every line: where every line begins.
 	var base := PackedFloat64Array()
 	var per_y := PackedFloat64Array()
 	var per_z := PackedFloat64Array()
 	var sure := PackedFloat64Array()
 	var may := PackedFloat64Array()
+	var may_x0: float = -INF
+	var may_x1: float = INF
+	var sure_x0: float = -INF
+	var sure_x1: float = INF
+	# A twin taken as a slab's axis ([method _slabs_of]) leaning from it
+	# moves where it is read, at a cell of the box's reach, by at most this
+	# for each unit of lean: by the cell's way from the middle, and by the
+	# reaches, each a sum over the axis's parts.
+	var leaning: float = 3.0 * (absf(half.x) + absf(half.y) + absf(half.z)) + 2.0
 	for slab: Array in slabs[0]:
 		var axis: Vector3 = slab[0]
 		var r: float = float(slab[1]) + half.dot(slab[2])
+		var unsure: float = RUN_UNSURE + float(slab[3]) * leaning * 1.1
 		var inv: float = 1.0 / axis.x
-		base.append(middle.dot(axis) * inv)
+		var q: float = middle.dot(axis) * inv
+		if axis.y == 0.0 and axis.z == 0.0:
+			may_x0 = maxf(may_x0, q - (r + unsure) * absf(inv))
+			may_x1 = minf(may_x1, q + (r + unsure) * absf(inv))
+			sure_x0 = maxf(sure_x0, q - (r - unsure) * absf(inv))
+			sure_x1 = minf(sure_x1, q + (r - unsure) * absf(inv))
+			continue
+		base.append(q)
 		per_y.append(axis.y * inv)
 		per_z.append(axis.z * inv)
-		sure.append((r - RUN_UNSURE) * absf(inv))
-		may.append((r + RUN_UNSURE) * absf(inv))
+		sure.append((r - unsure) * absf(inv))
+		may.append((r + unsure) * absf(inv))
 	# Across x: |middle . axis - py * y - pz * z| within reach.
 	var across := PackedFloat64Array()
 	var across_y := PackedFloat64Array()
 	var across_z := PackedFloat64Array()
 	var across_r := PackedFloat64Array()
+	var across_u := PackedFloat64Array()
 	for slab: Array in slabs[1]:
 		var axis: Vector3 = slab[0]
 		across.append(middle.dot(axis))
 		across_y.append(axis.y)
 		across_z.append(axis.z)
 		across_r.append(float(slab[1]) + half.dot(slab[2]))
+		across_u.append(RUN_UNSURE + float(slab[3]) * leaning * 1.1)
 	# The box's own axes and reaches, as cells_for_turned has them, for the
 	# cells asked exactly: worked out when the first is.
 	var axes: Array[Vector3] = []
@@ -369,32 +415,34 @@ static func _runs_of_box(box: Array, basis: Basis, slabs: Array, b: int, least: 
 		for n: int in across.size():
 			var k: float = across[n] - py * across_y[n]
 			var r: float = across_r[n]
+			var u: float = across_u[n]
 			var dz: float = across_z[n]
 			if absf(dz) < 0.000001:
-				if absf(k) > r + RUN_UNSURE:
+				if absf(k) > r + u:
 					none = true
 					break
-				if absf(k) > r - RUN_UNSURE:
+				if absf(k) > r - u:
 					sure_z0 = INF
 				continue
-			var a: float = (k - r - RUN_UNSURE) / dz
-			var c: float = (k + r + RUN_UNSURE) / dz
+			var a: float = (k - r - u) / dz
+			var c: float = (k + r + u) / dz
 			may_z0 = maxf(may_z0, minf(a, c))
 			may_z1 = minf(may_z1, maxf(a, c))
-			a = (k - r + RUN_UNSURE) / dz
-			c = (k + r - RUN_UNSURE) / dz
+			a = (k - r + u) / dz
+			c = (k + r - u) / dz
 			sure_z0 = maxf(sure_z0, minf(a, c))
 			sure_z1 = minf(sure_z1, maxf(a, c))
 		if none or may_z0 > may_z1:
 			continue
 		for n: int in along:
 			row[n] = base[n] - py * per_y[n]
+		var line: int = (y - least.y) * deep - least.z
 		for z: int in range(maxi(z_low, ceili(may_z0 - 0.5)), mini(z_high, floori(may_z1 - 0.5)) + 1):
 			var pz: float = float(z) + 0.5
-			var may0: float = -INF
-			var may1: float = INF
-			var sure0: float = -INF
-			var sure1: float = INF
+			var may0: float = may_x0
+			var may1: float = may_x1
+			var sure0: float = sure_x0
+			var sure1: float = sure_x1
 			for n: int in along:
 				var q: float = row[n] - pz * per_z[n]
 				may0 = maxf(may0, q - may[n])
@@ -425,20 +473,14 @@ static func _runs_of_box(box: Array, basis: Basis, slabs: Array, b: int, least: 
 				last -= 1
 			if last < first:
 				continue
-			var key := Vector2i(y, z)
-			var have: Variant = lines.get(key)
-			if have == null:
-				lines[key] = PackedInt32Array([first, last])
+			var head: int = heads[line + z]
+			if head < 0:
 				order.append((b << 39) | ((first - least.x) << 26) | ((y - least.y) << 13)
 					| (z - least.z))
-				continue
-			var runs: PackedInt32Array = have
-			have = null
-			# Out of the dictionary while it grows, so it grows in place.
-			lines.erase(key)
-			runs.append(first)
-			runs.append(last)
-			lines[key] = runs
+			heads[line + z] = firsts.size()
+			firsts.append(first)
+			lasts.append(last)
+			nexts.append(head)
 
 
 ## A turned part's cover asked only where something is ([class TurnedCover]):

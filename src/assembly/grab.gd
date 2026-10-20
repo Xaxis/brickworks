@@ -1219,9 +1219,17 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 ## shapes, but not one that cannot meet as the joint turns: a pin, an axle
 ## or a round part on the joint's line, which turns in place, or two parts a
 ## plane square to the line keeps apart (a beam on a beam), further than the
-## joint slides. Asked every frame, 8808-1's steering's pairs took its drag's
-## room test from 0.9 ms to 3. Not a ball's (it turns any way) nor a joint
-## that only slides (an actuator's rod).
+## joint slides. Only a hinge's, a click hinge's or a turntable's ([constant
+## PAIR_KINDS]): two parts built side by side to turn against each other, as
+## 21019-1's clip on its handle, which the loop slid along the handle's bar
+## 4.3 LDU into the handle's plate. An axle or a pin may slide in its hole as
+## far as its reading lets it, and a loop whose other joints are read loosely
+## closes by those slides: tested, 8448-1's racer and 5533-1 steered 1° and
+## 2° before a towball and a steering arm met the rack and the brick they are
+## in, 1 to 2 LDU along the axle (they steered 11° and 10°). Not a ball's
+## either. Asked every frame, the six pairs of 8808-1's steering (its arms in
+## two plates each) took its drag's room test from 0.5 ms a frame to 5 to 10,
+## so a loop's drag asks them on the pause, with its way ([method turn_to]).
 func _meeting_pairs() -> void:
 	_joint_pairs.clear()
 	_pair_clear.clear()
@@ -1231,7 +1239,7 @@ func _meeting_pairs() -> void:
 	joints.append_array(linkage.links)
 	joints.append_array(linkage.closing)
 	for joined: Bodies.Link in joints:
-		if joined.axis == Vector3.ZERO or not joined.turns:
+		if not joined.kind in PAIR_KINDS:
 			continue
 		var line: Vector3 = joined.axis.normalized()
 		var apart: float = PAIR_APART - joined.slide.x - joined.slide.y
@@ -1264,6 +1272,9 @@ func _meeting_pairs() -> void:
 			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN]))
 
 
+## The joints whose own two parts are tested against each other in a loop
+## ([method _meeting_pairs]).
+const PAIR_KINDS: Array[String] = ["hinge", "click", "turntable"]
 ## Two parts' boxes this far into each other along a joint's line, LDU, are
 ## kept apart by a plane square to it ([method _meeting_pairs]): faces
 ## built flush.
@@ -2396,7 +2407,7 @@ func slide_to(along: float) -> float:
 		room = 1
 	if room == 1:
 		at = transforms_at(angle, wanted)
-		room = _test(at, 0, _budget_left(began)).x
+		room = _test(at, 0, _budget_left(began), true, {}, not way_left).x
 		if room == 0:
 			walked = [0, walked[1], wanted]
 	elif room == -1:

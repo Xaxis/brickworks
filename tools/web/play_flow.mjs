@@ -346,7 +346,8 @@ try {
     say(`drag frames${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""}: the app's own work ${after.mean_ms} ms a frame on average, ${after.worst_ms} ms at worst, `
       + `over ${after.frames}; the page's frames ${gaps.median} ms median, ${gaps.mean} mean, ${gaps.worst} worst `
       + `(${gaps.frames} frames); its worst following ${after.worst_follow_ms} ms (${after.worst_follow_said}), `
-      + `weighing ${after.worst_weigh_ms} ms`);
+      + `weighing ${after.worst_weigh_ms} ms; checking its way while the finger rested ${after.worst_pause_ms} ms `
+      + `at worst, and let go ${after.worst_settle_ms} ms (said, not judged)`);
     check(`the app's own work in a drag frame stays under ${workLimit} ms (${after.worst_ms} ms worst)`,
       Number(after.frames) > 0 && Number(after.worst_ms) < workLimit);
 
