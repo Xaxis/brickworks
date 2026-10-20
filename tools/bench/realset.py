@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """A blind test against real LEGO® sets: our designer and the set's, given the same brief.
 
-    python3 tools/bench/realset.py sample [--which tune|proof] [--show]
+    python3 tools/bench/realset.py sample [--which tune|proof] [--first N] [--show]
     python3 tools/bench/realset.py run --which tune --arm m32 [--checkout DIR]
-                                   [--subjects N,N] [--jobs 2] [--date D] [--timeout S]
-                                   [--software] [--audit-later]
+                                   [--first N | --subjects N,N] [--jobs 2] [--date D]
+                                   [--timeout S] [--software] [--audit-later]
     heavy python3 tools/bench/realset.py audit --which tune --arm m32 [--date D]
     python3 tools/bench/realset.py calibrate [--which tune] [--jobs 2] [--software]
-    python3 tools/bench/realset.py report --which proof --arm m32 [--date D]
-    python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2] [--jobs 2]
+    python3 tools/bench/realset.py report --which proof --arm m32 [--date D] [--first N]
+    python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
+                                       [--first N] [--jobs 2]
+
+A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
+two workers a subject took nine minutes (main, 2026-10-19), so a half is about
+6.5 hours of GPU leases taken design by design: give a run eight hours or
+more. Set BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
 
 Every round so far was steered by subjects we tuned on, and our own judge
 once preferred an outside designer 40 of 40 after calling our rounds gains.
@@ -26,7 +32,13 @@ tuned on, judged blind.
   animal, one person and one creature first in each half, then the rest
   across four sizes, the theme least used so far first. Two halves of
   `PER_HALF`: `tune`, which the tool was built looking at, and `proof`, run
-  only at the end.
+  only at the end. 44 a half takes every set but the characters past one of
+  each kind a half (BrickHeadz, all but three): the fewest that give a paired
+  95% interval of about 10 points either way on overall and technique
+  (docs/DESIGN_SCORES.md, "Enough subjects"). A half's first `FIRST` are the
+  ten it had before 2026-10-19, so results of then read on (`--first 10`).
+  Tune's first ten have been looked at and tuned on; tune's other 34 may be.
+  Proof is never tuned on: no `--show`, no reading its designs to steer.
 - **The brief** is what a person would ask for, from the set's name and
   theme, with the set's footprint in studs and a band round its piece
   count, so the two are like for like. The designer never gets the set's
@@ -105,7 +117,8 @@ BLIND = RESULTS / "blind"
 SALT = "brickworks realset 1"
 FEWEST, MOST = 80, 1500
 SINCE = 2000
-PER_HALF = 10
+PER_HALF = 44
+FIRST = 10          # a half's size before 2026-10-19, and the start of each half since
 CHARACTERS = ("animal", "person", "creature")
 SIZES = ((80, 200), (200, 400), (400, 800), (800, MOST + 1))
 HALVES = ("tune", "proof")
@@ -455,8 +468,11 @@ def choose(pool: list[Candidate], per_half: int = PER_HALF) -> dict[str, list[Ca
     return halves
 
 
-def sample(which: str) -> list[Candidate]:
-    return choose(eligible(candidates()))[which]
+def sample(which: str, first: int = 0) -> list[Candidate]:
+    """A half, or its first `first` subjects (`FIRST`: the half as it was before
+    2026-10-19)."""
+    half = choose(eligible(candidates()))[which]
+    return half[:first] if first else half
 
 
 # -- the brief ------------------------------------------------------------------
@@ -822,7 +838,7 @@ def run(args: argparse.Namespace) -> int:
     if not args.dry_run and not os.environ.get("XDG_DATA_HOME"):
         raise SystemExit("set XDG_DATA_HOME to a folder of this run's: a design must never "
                          "write into the owner's app folder")
-    wanted = _wanted(args.which, args.subjects)
+    wanted = _wanted(args.which, args.subjects, args.first)
     if args.share:          # "K/N": every Nth subject from the Kth, so a half splits unseen
         k, n = (int(x) for x in args.share.split("/"))
         wanted = wanted[k::n]
@@ -852,8 +868,8 @@ def run(args: argparse.Namespace) -> int:
                          [wanted[k::jobs] for k in range(jobs)]))
     done = sum(1 for c in wanted if (out / c.number / "record.json").exists())
     bench.say(f"realset {args.which}: {done} of {len(wanted)} recorded")
-    text = report_arm(args.which, args.date, args.arm)
-    (out / f"report-{args.which}.md").write_text(text)
+    text = report_arm(args.which, args.date, args.arm, args.first)
+    (out / _report_name(args)).write_text(text)
     print(text)
     return 0
 
@@ -888,8 +904,12 @@ def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
     return status
 
 
-def _wanted(which: str, subjects: str) -> list[Candidate]:
-    half = sample(which)
+def _report_name(args: argparse.Namespace) -> str:
+    return f"report-{args.which}" + (f"-first{args.first}" if args.first else "") + ".md"
+
+
+def _wanted(which: str, subjects: str, first: int = 0) -> list[Candidate]:
+    half = sample(which, first)
     if not subjects:
         return half
     named = [s.strip() for s in subjects.split(",") if s.strip()]
@@ -906,7 +926,7 @@ def audit_later(args: argparse.Namespace) -> int:
     check takes the slot it holds. The records' measures gain their floating parts."""
     parts = style.Parts()
     done = 0
-    for c in _wanted(args.which, args.subjects):
+    for c in _wanted(args.which, args.subjects, args.first):
         where = SETS_DIR / c.number / "set.json"
         if where.exists():
             record = json.loads(where.read_text())
@@ -932,8 +952,8 @@ def audit_later(args: argparse.Namespace) -> int:
         bench._write_json(path, record)
         done += 1
     bench.say(f"audit: {done} records read again")
-    text = report_arm(args.which, args.date, args.arm)
-    (arm_dir(args.date, args.arm) / f"report-{args.which}.md").write_text(text)
+    text = report_arm(args.which, args.date, args.arm, args.first)
+    (arm_dir(args.date, args.arm) / _report_name(args)).write_text(text)
     print(text)
     return 0
 
@@ -944,7 +964,7 @@ def audit_later(args: argparse.Namespace) -> int:
 def calibrate_half(args: argparse.Namespace) -> int:
     """Each set of the half against a naive stack of itself, both orders: the judge must
     name the set on every dimension, or a win rate against sets means nothing."""
-    wanted = _wanted(args.which, args.subjects)
+    wanted = _wanted(args.which, args.subjects, args.first)
     parts = style.Parts()
     colours = calibrate.palette()
 
@@ -997,9 +1017,9 @@ def calibration_report(wanted: list[Candidate], found: list[pairwise.Verdict]) -
 # -- reading an arm -------------------------------------------------------------
 
 
-def records(which: str, date: str, arm: str) -> list[dict]:
+def records(which: str, date: str, arm: str, first: int = 0) -> list[dict]:
     out = []
-    for c in sample(which):
+    for c in sample(which, first):
         path = arm_dir(date, arm) / c.number / "record.json"
         if path.exists():
             out.append(json.loads(path.read_text()))
@@ -1045,12 +1065,13 @@ def _cell(value: float | None, share: bool) -> str:
 SHARE_MEASURES = {"shaped", "one_by_one", "tile", "snot", "angle_parts", "floating_share"}
 
 
-def report_arm(which: str, date: str, arm: str) -> str:
-    found = records(which, date, arm)
+def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
+    found = records(which, date, arm, first)
     meta = arm_dir(date, arm) / "arm.json"
     commit = json.loads(meta.read_text()).get("commit", "?") if meta.exists() else "?"
-    out = [f"# Real sets, {which} half: {arm} ({commit}), {date}", "",
-           f"{len(found)} of {len(sample(which))} subjects recorded; the judge saw each design "
+    said = f"{which} half" + (f", its first {first}" if first else "")
+    out = [f"# Real sets, {said}: {arm} ({commit}), {date}", "",
+           f"{len(found)} of {len(sample(which, first))} subjects recorded; the judge saw each design "
            "and the set both ways round, not told which was which.", "",
            "| dimension | our design preferred | 95% |", "|---|---|---|"]
     for dim in DIMS:
@@ -1110,7 +1131,7 @@ def compare(args: argparse.Namespace) -> int:
     a_dir, b_dir = arm_dir(dates[0], arms[0]), arm_dir(dates[1], arms[1])
     out = RESULTS / f"realset-{dates[1]}-{arms[0]}-vs-{arms[1]}"
     tasks = []
-    for c in sample(args.which):
+    for c in sample(args.which, args.first):
         ra, rb = a_dir / c.number / "record.json", b_dir / c.number / "record.json"
         if not (ra.exists() and rb.exists()):
             continue
@@ -1134,7 +1155,7 @@ def compare(args: argparse.Namespace) -> int:
         results = list(workers.map(judged, tasks))
     text = compare_report(arms, dates, results, args.which)
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"report-{args.which}.md").write_text(text)
+    (out / _report_name(args)).write_text(text)
     print(text)
     return 0
 
@@ -1182,8 +1203,8 @@ def compare_report(arms: list[str], dates: list[str], results: list[tuple], whic
 # -- the command line -----------------------------------------------------------
 
 
-def _show(which: str, show: bool) -> int:
-    chosen = sample(which)
+def _show(which: str, show: bool, first: int = 0) -> int:
+    chosen = sample(which, first)
     parts = style.Parts() if show else None
     for c in chosen:
         line = f"{c.number:10} {c.parts:5} {c.kind or '':9} {top_theme(c.theme)}"
@@ -1200,6 +1221,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="what", required=True)
     one_ = sub.add_parser("sample", help="the half's sets; --show adds names and briefs")
     one_.add_argument("--which", choices=HALVES, default="tune")
+    one_.add_argument("--first", type=int, default=0)
     one_.add_argument("--show", action="store_true",
                       help="names and briefs (never for proof while building the tool)")
     for name in ("run", "one", "calibrate", "report", "compare", "audit"):
@@ -1209,6 +1231,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--judge-model", default="opus")
         p.add_argument("--jobs", type=int, default=2)
         p.add_argument("--subjects", default="", help="set numbers of the half, comma-separated")
+        p.add_argument("--first", type=int, default=0,
+                       help=f"only the half's first N ({FIRST}: the half before 2026-10-19)")
         p.add_argument("--software", action="store_true",
                        help="draw on lavapipe under heavy, not on the GPU (both sides alike)")
         p.add_argument("--dry-run", action="store_true",
@@ -1232,7 +1256,7 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--dates", default="", help="each arm's date, when they differ")
     args = parser.parse_args(argv)
     if args.what == "sample":
-        return _show(args.which, args.show)
+        return _show(args.which, args.show, args.first)
     if args.what in ("run", "one"):      # one: a single subject, as run starts it under heavy
         args.checkout = args.checkout.resolve()
         return run(args)
@@ -1241,8 +1265,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.what == "audit":
         return audit_later(args)
     if args.what == "report":
-        text = report_arm(args.which, args.date, args.arm)
-        (arm_dir(args.date, args.arm) / f"report-{args.which}.md").write_text(text)
+        text = report_arm(args.which, args.date, args.arm, args.first)
+        (arm_dir(args.date, args.arm) / _report_name(args)).write_text(text)
         print(text)
         return 0
     return compare(args)

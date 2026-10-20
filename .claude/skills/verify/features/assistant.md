@@ -2280,23 +2280,29 @@ subject of 12 designs (132 calls) in about 13 minutes.
 1,500 parts from 2000 on, one model to a box, none of a kind any round touched
 (`TOUCHED`, `TOUCHED_THEMES`, and a quarter of the sub-models' names; the suite's
 reference sets by number too). `sample` is fixed (a hash of the set number):
-tune, which the tool was built on, and proof, run only at the end.
+tune, which the tool was built on, and proof, run only at the end. 44 a half
+since 2026-10-19 (every set that is no character, and one character of each
+kind), the ten a half of every earlier result first: `--first 10` runs or
+reports those alone. Never tune on proof's 34 new subjects.
 
 ```sh
-python3 tools/minitest.py tests/test_realset.py              # exclusion, halves, brief, reading
-python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half while tuning
+python3 tools/minitest.py tests/test_realset.py              # exclusion, halves (the old ten first), brief, reading
+python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half
+python3 tools/bench/realset.py sample --which proof --first 10   # the ten every result before 2026-10-19 ran on
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py calibrate --which tune --jobs 2
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1 --audit-later
-env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
 heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
-env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms m32,mine --jobs 2
+env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms main,mine --dates 2026-10-19,D --jobs 2
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
 ```
 
 Each of `--jobs` workers runs its share of the subjects, one after another
-(worker-<set>.log). Run under one `gpu`, every worker's designs (run.py's design
-stage takes the lease itself when it is run bare) and pictures share that lease,
-and no worker waits for a CPU slot; `--audit-later` leaves the build check's
+(worker-<set>.log). Run it bare: each design and each drawing takes the GPU's
+lease for itself, so other jobs get the GPU between them, and no worker waits
+for a CPU slot. BENCH_PORTS keeps each design's app to the agent's ports.
+`--audit-later` leaves the build check's
 reading (floating parts, the only CPU work) to `audit`, one `heavy` job after the
 run. `--software` draws on lavapipe and makes each worker one `heavy` job, as every
 run was before 2026-10-16's technique round: the set drawn
@@ -2318,7 +2324,10 @@ orders agree on most dimensions with the model shown first winning near half
 shown winning 42%; a design 5-24 minutes, a half about 80 minutes on two
 workers after the `heavy` queue; on the GPU with audits later, 2026-10-16's
 technique round started each half at once at load 45-75, its workers in one lease,
-and a half of ten took 45-55 minutes on two or three workers).
+and a half of ten took 45-55 minutes on two or three workers; 2026-10-19, the
+grown proof half on main: 88 of 88 verdicts with all six pictures, orders
+agreeing on 88%, the first shown winning 45%, 34 new subjects in five hours on
+two workers with the GPU shared, nine minutes a subject).
 
 ### The check by real shapes
 

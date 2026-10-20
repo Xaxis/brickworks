@@ -172,6 +172,35 @@ def test_the_real_halves_are_fixed_eligible_and_apart():
     assert not {c.number for c in halves["tune"]} & {c.number for c in halves["proof"]}
 
 
+# The halves every result before 2026-10-19 was run on, ten a half.
+FIRST_TEN = {
+    "tune": ["40148-1", "41587-1", "70127-1", "3932-1", "42061-1", "21051-1", "7327-1",
+             "7410-1", "9470-1", "21107-1"],
+    "proof": ["40270-1", "41630-1", "41612-1", "3936-1", "7992-1", "42062-1", "21017-1",
+              "5934-1", "41072-1", "7326-1"],
+}
+
+
+def test_a_grown_half_starts_with_the_half_it_was():
+    pool = _pool()
+    small, grown = realset.choose(pool, realset.FIRST), realset.choose(pool)
+    for which in realset.HALVES:
+        assert len(grown[which]) > len(small[which]) == realset.FIRST
+        assert [c.number for c in grown[which][:realset.FIRST]] == \
+            [c.number for c in small[which]], which
+
+
+@needs_sets
+def test_the_real_halves_start_with_the_ten_old_results_were_run_on():
+    pool = realset.eligible(realset.candidates())
+    halves = realset.choose(pool)
+    for which, numbers in FIRST_TEN.items():
+        assert [c.number for c in halves[which][:realset.FIRST]] == numbers, which
+    # Every set but the characters past one of each kind a half is in a half.
+    taken = {c.number for half in halves.values() for c in half}
+    assert {c.number for c in pool if c.kind is None} <= taken
+
+
 # -- the brief ------------------------------------------------------------------
 
 

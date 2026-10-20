@@ -119,7 +119,8 @@ not tune for it.
 - **Halves.** Fixed by a hash of the set number. Each half has an animal, a
   person and a creature, then seven more across four sizes, the least used
   theme first. Ten a half. Tune was looked at while the tool was built; proof
-  was run once, at the end.
+  was run once, at the end. Since 2026-10-19, 44 a half, the ten first
+  ("Enough subjects", below).
 - **The brief** is the set's name, its theme, the footprint it fits in and a
   quarter either side of its piece count: "Andrea’s Stage, in the style of
   LEGO® Friends sets: fitting in about 18 x 18 studs, 70 to 110 pieces." The
@@ -204,6 +205,133 @@ The arm's checkout must hold a set out too (src/ai/real_snippets.gd, from this
 round on), or it can lay the answer. The report names any design whose log
 lacks the hold-out line. Results are in `bench/results/realset-2026-10-16-m32/`
 (report-proof.md, report-tune.md) and `realset-sets/calibration-tune.md`.
+
+### Enough subjects: the halves grown to 44 (2026-10-19)
+
+Ten subjects a half could not tell a lever from noise. The day's two
+technique rounds moved technique against the sets from none to 10% and 20%
+on the proof half, and every paired interval reached zero. This sizes the
+halves from the verdicts already on disk.
+
+**The noise, measured** on 18 arms of ten subjects (nine a half; 191 designs
+in all, each judged both orders), the 72 pairs of arms that share their
+subjects, and 15 head-to-head comparisons (`bench/results/realset-2026-10-1*`).
+- A subject's paired gap, one arm's share of its two verdicts against the set
+  less the other arm's, has an SD of 0.36 on overall over the 72 pairs. On
+  technique it is 0.25, but most arms win technique on no subject, so most
+  gaps are 0; over the 36 pairs with an arm that moved it (armature, t2plan3,
+  t3lay) it is 0.31.
+- A 95% interval is about 1.96 SD / √n either way. For 10 points, n =
+  (1.96 × SD / 0.10)²: 49 on overall, 36 on technique where a lever moves it.
+- Drawn as realset.py draws it, subjects resampled, from the pooled gaps: 18
+  points either way on overall and 10 on technique at 10 subjects, 12 and 8
+  at 30, 10 and 7 at 44.
+- The judge's own noise is 43% of a gap's variance on overall and 67% on
+  technique: a verdict's variance between the two orders of one design,
+  (v1 − v2)² / 2, is 0.055 on overall and 0.042 on technique, halved for a
+  share of two verdicts and doubled for two arms. The rest is which design
+  was drawn and how a lever suits a subject.
+
+**Subjects, not designs a subject.** k designs of each subject cut the
+judge's and the design's part of the noise k times, but not how a lever suits
+one subject more than another. At the same number of designs they do no
+better than k times the subjects, and worse where levers suit subjects
+differently, as the technique levers did (a river's palms, a clothes rack).
+More subjects also widen what a result is about. Asking the judge each order
+twice would not help: t2base's 20 pairs asked again in the same order named
+the same model on 115 of 120 dimensions (96%; colour and technique on all
+20). Its noise is which model it is shown first when the two are close, not
+chance, so a third or fourth ask of the same pictures says the same.
+
+**The halves.** The same rule run further: an animal, a person and a creature
+first, then across four sizes, the least used theme first, in hash order. It
+stops at 44 a half, where the 82 sets that are no character run out. Past
+that are only BrickHeadz (53 of the 54 left), one line's formula. 44 gives
+about 10.5 points either way on overall and 9 on technique, paired; one arm
+against the sets about 11 on overall. Head to head (SD 0.41) would need 65
+for 10 points, and gets 12.
+- **Each half's first ten are its ten before** (tests/test_realset.py pins
+  them), so every result before reads on: `compare` pairs the subjects both
+  arms have, and `--first 10` runs or reports the old ten alone.
+- Sizes, smallest first: tune 14, 12, 14 and 4; proof 14, 11, 15 and 4.
+  Architecture is 13 of tune and 15 of proof, Technic 8 and 9: 28 and 17 of
+  the 82 sets in the pool. A report's subject table gives each theme's
+  share.
+- **Tune has been looked at:** its first ten built the tool and steered four
+  technique rounds. Its 34 new subjects may be tuned on too. **Proof's 34 new
+  subjects never are:** never `sample --show`n, their designs and transcripts
+  never read to steer a lever. A lever runs on proof once, when it is settled.
+
+**Main on the 44 of proof** (`64fdf18`, main's `f6db180` with this test's
+change; one design a subject on the subscription, drawn on the GPU, two at a
+time). The 34 new subjects are this run's designs. The first ten are
+t2base's (main at `7299b56`), copied in: src/ai, the design code, is the same.
+
+| dimension | main preferred to the set, all 44 (95%) | the first ten, as before | the 34 new |
+|---|---|---|---|
+| likeness | 22% (12-36) | 25% (8-56) | 21% (10-37) |
+| surface | 26% (15-41) | 25% (8-56) | 26% (15-43) |
+| colour | 26% (15-41) | 20% (6-51) | 28% (16-45) |
+| technique | 12% (6-25) | 0% (0-28) | 16% (7-32) |
+| creativity | 35% (23-50) | 25% (8-56) | 38% (24-55) |
+| overall | 20% (11-35) | 20% (6-51) | 21% (10-37) |
+
+- **The set is preferred four times in five overall,** 18 verdicts of 88
+  ours, as the first ten said, now within 12 points either way where ten
+  gave 22.
+- **Technique is not zero:** 11 verdicts of 88, where the first ten gave
+  main none. By theme over the 44: Architecture (15 subjects) gave main 3
+  subjects' worth of overall and 2.5 of technique; the two Promotional sets
+  went to main on both, both orders; Technic (9 subjects) gave main no
+  verdict on either. A lever judged against these designs should get a
+  paired interval of about 10 points either way on overall and 9 on
+  technique.
+- The two orders named the same model on 88% of dimensions; the model shown
+  first won 45%. All 88 verdicts opened all six pictures. Six design logs have
+  no hold-out line: those sessions never searched the real-set index.
+
+What they are made of (medians over the 44, tools/style.py; floating by the
+build check, every design and set audited):
+
+| measure | main | the sets | main less the set's, median |
+|---|---|---|---|
+| parts | 288 | 344 | -5 |
+| shapes per 100 parts | 14 | 17 | -2 |
+| shaped (curve, slope, angled) | 27% | 25% | -4 points |
+| 1 x 1 parts | 27% | 17% | +8 points |
+| colours | 10 | 13 | -2 |
+| tiles | 16% | 11% | +7 points |
+| studs not up (SNOT) | 4% | 27% | -19 points |
+| hinges, clips, bars, turntables | 0% | 4% | -3 points |
+| floating | 0% | 0% | 0 |
+
+The gaps the first ten showed hold on the 44: a sixth of the sets' SNOT, no
+joints, more 1 x 1s and tiles. Shapes per 100 parts is nearer (14 against 17,
+where the first ten's sets had 28): the grown half's sets are bigger (344
+parts at the median against 201) and repeat their shapes more.
+
+**What a round costs now.** The 34 new designs' sessions took 11 minutes at
+the median and 14 on average, up to 36; the subjects are bigger than the
+first ten. Two at a time, with the GPU shared, the 34 took five hours: nine minutes
+a subject. A half of 44 is about 6.5 hours on main's code, and nearer 9 for a
+lever whose sessions run as long as t3lay's (13 minutes a design against
+t2base's 9.5). So: tune on tune's first ten (about 1.5 hours an arm), take a
+settled lever to tune's 44 if it is close, and run proof's 44 once. Main's
+proof designs stand while src/ai is unchanged, so a proof round is the lever's
+44 designs and a `compare` (88 verdicts head to head, about 15 minutes).
+
+```sh
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
+heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
+env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms main,mine --dates 2026-10-19,D --jobs 2
+```
+
+Give the run a timeout of eight hours or more: this one's five-hour timeout
+stopped its last design, run again alone. Results:
+`bench/results/realset-2026-10-19-main/` (report-proof.md, and
+report-proof-first10.md for the first ten alone; arm.json says which designs
+are t2base's).
 
 ### The first arm judged by it: figures on an armature (2026-10-16, `2ad2323`)
 
