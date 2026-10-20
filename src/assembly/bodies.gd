@@ -81,6 +81,8 @@ class Link extends RefCounted:
 	## A clip's slide as far as its bore's middle stays on its bar, before
 	## its rounds are read ([method Bodies._rounds_room]): as far as the
 	## two parts' exact shapes may be asked ([method Bodies.exact_room]).
+	## Zero for any other slide, which a loop does not hold to its range: an
+	## axle's in its hole, an engine's piston's (its crank holds it).
 	var reach := Vector2.ZERO
 	## The parts it joins, as [one in a, one in b] pairs.
 	var pairs: Array = []
@@ -369,7 +371,7 @@ func _read() -> void:
 				holds = false
 			candidates.append([a, b, kind, zone[0], (zone[1] as Vector3).normalized(), holds,
 				detent, slide_and_shaft[0], slide_and_shaft[1], float(zone[4]) if zone.size() > 4 else 0.0,
-				slide_and_shaft[2] if slide_and_shaft.size() > 2 else slide_and_shaft[0]])
+				slide_and_shaft[2] if slide_and_shaft.size() > 2 else Vector2.ZERO])
 
 	# Balls.
 	var balls: Dictionary = Joints.balls(entries)
@@ -647,7 +649,7 @@ func _read() -> void:
 			link.shaft_part = c[8]
 			link.turns = not (str(c[2]) in ["actuator", "cylinder"] or str(c[2]) in GUIDES)
 			link.radius = float(c[9]) if c.size() > 9 else 0.0
-			link.reach = c[10] if c.size() > 10 else link.slide
+			link.reach = c[10] if c.size() > 10 else Vector2.ZERO
 			made[pair] = link
 			links.append(link)
 			for end: int in [x, y]:

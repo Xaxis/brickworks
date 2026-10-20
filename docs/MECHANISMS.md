@@ -4335,3 +4335,53 @@ pass.
   fill it.
 - The ball joint's drag, and G14b's and G13b's other leftovers, stand.
 
+
+## 26. Slides in loops, and the pause (Grab 16)
+
+Grab 15 left a loop sliding a clip along its bar where the real part cannot:
+21019-1's slid its clip 4.3 LDU into the plate its handle is on, and
+4002020-1's slid its clip into its bar's ball end, so since Grab 15 that
+turntable stopped at once on its way back (G14a had it moving both ways).
+It left the axle and pin pairs out of the joint-pair test, since a loop
+closed by sliding axles into flanges, and a pause in a loop's drag took a
+phone 37 to 46 ms, its joints' pairs asked there.
+
+**The base.** 2189419d (live main, m101: Grab 15 in), against Grab 15's own
+sweeps: `movesweep_g15` (186 of 405 things move both ways and back) and
+`sweep_g15final` (60 of 168 sets steer), in bench/results/grab15-2026-10-19.
+Each sweep ran from a copy of the worktree, two shards under heavy. Every
+experiment is kept in bench/results/grab16-2026-10-19/`exp/`.
+
+### A slide as far as its parts let it
+
+A loop's solve had no end to a slide on a joint that turns as well: a clip
+on its bar, an axle in a round hole. Only an actuator's stroke was checked.
+And the reading the slide came from let a clip's bore go until its middle
+reached the end of every round on the bar's line, and a hole until its
+middle reached the end of the axle's part, a towball's ball and all.
+
+**By the parts' rounds** (`Bodies._rounds_room`). Each of the two parts is
+read along the joint's line from its connectors: its rounds (shafts, with
+their radius) and its bores. At each place along the line a part is solid
+from its widest bore out to its widest round (all the way out round a bore
+with no round over it); past the shaft part's last round, where the part
+goes on further than an axle's chamfer (2.5 LDU), it is solid all through:
+a towball's ball, a bar's ball end, the plate a handle is on. Two parts may
+not slide into a place where both are solid at one radius, a pin's end
+ridge (6.5 across) in its hole (6) spared, and what is so where they stand
+is forgiven. Read so:
+
+| joint | the reading before | by its rounds |
+|---|---|---|
+| 4002020-1's clip (4081b, a bore 16 long) on its bar with a ball end (22484) | 10 LDU each way | 2 towards the ball, 10 towards the free end |
+| 21019-1's clip (61252, a bore 8 long) on its handle (60478: 8 LDU of bar between two supports 6 across) | 10 each way | none: the clip fills the bar, so it does not slide |
+| 8448-1's rack (32185) on its towball (2736) | 14 down, 23 up through the flange and the ball | 14 down, none up: the flange sits in the rack's counterbore |
+| 5533-1's steering arm (32069), its pin in a brick (2743) | 50 in, 10 out | none in (the pin's collar), 10 out |
+
+**Held there as the loop is solved** (`Linkage._bounded`, `_close_with`). A
+clip's or a piston's slide is kept inside its range: a step that would take
+it past an end stops at the end, and one standing at an end that the step
+would take further out is held there for that step while the rest is
+solved again without it. Where the two parts' exact shapes are at hand the
+range is theirs (`Bodies.exact_room`: bisected to where they first meet,
+within the bore's middle on its bar); else the rounds'.

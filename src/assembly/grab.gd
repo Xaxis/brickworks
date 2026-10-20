@@ -1364,8 +1364,8 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 ## and most from it]. A turn about the line keeps each point's place along
 ## it and its distance from it, so two parts whose pieces share no place
 ## there cannot meet as their joint turns: 8808-1's steering arms, whose
-## kingpins go through two plates each, a plate above the arm and one below,
-## the kingpin narrower than the holes. Kept by shape and line.
+## kingpins go through two plates each; where the plates are along the line
+## only the kingpin is, narrower than their holes. Kept by shape and line.
 static func _about_line(shape: Exact.Shape, point: Vector3, way: Vector3) -> Array:
 	var key: String = "%d|%s|%s" % [shape.id, point.snapped(Vector3.ONE * 0.01), way.snapped(Vector3.ONE * 0.0001)]
 	var known: Variant = _footprints.get(key)

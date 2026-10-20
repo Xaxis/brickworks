@@ -270,15 +270,17 @@ func _read(driver: Bodies.Link, child: int) -> void:
 			slide_col.append(-1)
 		elif link.slide.x + link.slide.y > 0.0:
 			# An actuator's stroke, its rod or its body the one that moves;
-			# and a clip on its bar, or a piston in its cylinder, as far as
-			# their rounds let it (Bodies._rounds_room), the solve kept
+			# and a clip on its bar, as far as the two parts let it
+			# (Bodies.exact_room, else Bodies._rounds_room), the solve kept
 			# inside it. Unbounded, a loop closed by sliding 21019-1's clip
 			# 4.3 LDU into the plate its handle is on, and 4002020-1's into
 			# its bar's ball. Not an axle in its hole: kept to its flanges,
 			# 8448-1's steering turned 1° where it turns 11°, its loop read
 			# too stiff without its towballs sliding up through the rack.
+			# Nor an engine's piston: kept to its cylinder's rounds, 8218-1's
+			# stroke was 19.35 LDU where its crank's throw makes it 20.
 			var shaft_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
-			if not link.turns or not link.kind in ["axle", "pin"]:
+			if not link.turns or link.reach != Vector2.ZERO:
 				var room: Vector2 = link.slide
 				if link.turns:
 					var exact: Vector2 = bodies.exact_room(link)
