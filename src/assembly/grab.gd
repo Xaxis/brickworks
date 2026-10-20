@@ -337,10 +337,15 @@ func _chosen() -> String:
 		geared.assign(offer[1])
 	var from_rack: bool = false
 	if couplings.is_empty() and not geared.is_empty():
-		# The rack turns its pinion, and the pinion the train it is in: a tube
-		# drawn along its rod turns the wheel that drives it. Their meshes
-		# hold the loop too.
-		couplings = _train_of_pinions(geared)
+		# The rack drawn turns its pinion, and the pinion the train it is in:
+		# a tube drawn along its rod turns the wheel that drives it. Their
+		# meshes hold the loop too. Not a pinion taken by hand: 8062-1's
+		# column, in a cab of hinges, then shared its turn with the cab.
+		var outside: Array[Racks.Pinion] = []
+		for mesh: Racks.Pinion in geared:
+			if not ours.has(int(bodies.body_of.get(mesh.gear, -1))):
+				outside.append(mesh)
+		couplings = _train_of_pinions(outside)
 		from_rack = not couplings.is_empty()
 	linkage = null
 	_kingpin = Vector3.ZERO
@@ -362,8 +367,10 @@ func _chosen() -> String:
 			loop = Linkage.read(bodies, link, body, couplings, _kingpin)
 		# A gear the loop moves turns the gears it meshes, and they theirs: a
 		# telescope's cradle, tilted by its extension wheel's rack, is held by
-		# the tilt wheel's chain it meshes. Their meshes hold the loop too,
-		# unless that makes it too big to solve as it moves.
+		# the tilt wheel's chain it meshes. Their meshes hold the loop too, by
+		# the bearings of the gears alone: 8062-1's steering pulled in its cab
+		# of hinges with them (13 joints of 5), and the cab took a sixth of
+		# the rack's travel.
 		for _round: int in 6:
 			if not loop.why.is_empty():
 				break
@@ -371,7 +378,8 @@ func _chosen() -> String:
 			if more.is_empty():
 				break
 			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin)
-			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size():
+			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size() \
+					or not _only_bearings(loop, wider):
 				break
 			couplings.append_array(more)
 			loop = wider
@@ -885,8 +893,24 @@ func _carried_by(body: int, carrying: Dictionary) -> bool:
 	return false
 
 
-## The gear reading's meshes of a gear on a body [param loop] moves, not
-## among [param offered]: what it turns as it moves them.
+## Whether every joint [param wider] has that [param loop] has not turns a
+## gear: the bearings of a gear chain, not what carries them.
+func _only_bearings(loop: Linkage, wider: Linkage) -> bool:
+	var geared: Dictionary = {}
+	for gear: Mechanism.Gear in shared_mechanism.gears:
+		geared[int(bodies.body_of.get(gear.key, -1))] = true
+	for n: int in wider.links.size():
+		if not loop.links.has(wider.links[n]) and not geared.has(int(wider.child_of[n])):
+			return false
+	return true
+
+
+## The gear reading's meshes, not among [param offered], of a gear [param
+## loop] turns on its own axle against one it leaves standing: what it turns
+## as it moves. A gear the loop swings about another line (a hub's on a
+## steered wheel) is left out: its mesh would part, and a steering pulled in
+## a drivetrain's meshes with it (8062-1: 40 joints, the rack 4.45 LDU of
+## 5.34 for 30°).
 func _meshes_moved(loop: Linkage, offered: Array) -> Array:
 	var out: Array = []
 	if shared_mechanism == null:
@@ -894,14 +918,29 @@ func _meshes_moved(loop: Linkage, offered: Array) -> Array:
 	var moved: Dictionary = {}
 	for one: int in loop.moved:
 		moved[one] = true
+	var line_of: Dictionary = {}   ## a loop joint's child body -> its link
+	for n: int in loop.links.size():
+		line_of[int(loop.child_of[n])] = loop.links[n]
 	for coupling: Mechanism.Coupling in shared_mechanism.couplings:
 		if coupling.how == "chain" or offered.has(coupling):
 			continue
 		var one: int = int(bodies.body_of.get(coupling.one.key, -1))
 		var other: int = int(bodies.body_of.get(coupling.other.key, -1))
-		if one < 0 or other < 0 or one == other:
+		if one < 0 or other < 0 or one == other or moved.has(one) == moved.has(other):
 			continue
-		if moved.has(one) or moved.has(other):
+		var gear: Mechanism.Gear = coupling.one if moved.has(one) else coupling.other
+		# The loop joint that carries it: its own, or the nearest one in.
+		var at: int = one if moved.has(one) else other
+		var carried: Bodies.Link = null
+		for _n: int in 64:
+			if line_of.has(at):
+				carried = line_of[at]
+				break
+			if not bodies.parent_of.has(at):
+				break
+			at = int(bodies.parent_of[at])
+		if carried != null and carried.axis != Vector3.ZERO and carried.turns \
+				and Bodies._same_line(carried.point, carried.axis.normalized(), gear.centre, gear.axis.normalized()):
 			out.append(coupling)
 	return out
 
