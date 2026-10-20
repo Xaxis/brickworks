@@ -3531,12 +3531,7 @@ func _build_ui() -> void:
 	# park its HTTP requests on.
 	_library.set_fetch_host(self)
 	_library.fetched.connect(_on_part_fetched)
-	_library.fetch_failed.connect(func(part_id: String, why: String) -> void:
-		push_warning("could not fetch %s: %s" % [part_id, why])
-		# Said out loud when it is the part someone is holding, because
-		# otherwise clicking does nothing and nothing explains why.
-		if _bar != null and _builder != null and _builder.held_part == part_id:
-			_bar.say("could not load %s — %s" % [part_id, why]))
+	_library.fetch_failed.connect(_on_part_failed)
 
 	_store = ModelStore.new()
 	# A run driven from the command line is not somebody's session, so it
@@ -5342,10 +5337,30 @@ func _on_part_fetched(part_id: String) -> void:
 	if _store.place_awaited(part_id) > 0:
 		_on_model_changed()
 		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % _world.brick_count())
+			_bar.say("%d bricks" % (_world.brick_count() - _store.scenery.size()))
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)
+
+
+## A part that could not be fetched, asked again too (PartLibrary.RETRY_AFTER).
+func _on_part_failed(part_id: String, why: String) -> void:
+	push_warning("could not fetch %s: %s" % [part_id, why])
+	if _bar == null:
+		return
+	# Said out loud when it is the part someone is holding, because
+	# otherwise clicking does nothing and nothing explains why.
+	if _builder != null and _builder.held_part == part_id:
+		_bar.say("could not load %s — %s" % [part_id, why])
+	# And a model's parts that did not come, once, when nothing else of it is
+	# on its way: the model looked whole and was not.
+	var lost: int = _store.not_coming(part_id) if _store != null else 0
+	if lost > 0:
+		# The model's, not the baseplate it stands on.
+		var down: int = _world.brick_count() - _store.scenery.size()
+		_bar.say("%d %s — %d %s could not be loaded, and %s kept in the file"
+			% [down, "brick" if down == 1 else "bricks", lost, "part" if lost == 1 else "parts",
+				"is" if lost == 1 else "are"])
 
 
 func _on_color_chosen(color_code: int) -> void:

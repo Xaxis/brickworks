@@ -108,7 +108,7 @@
       "kind": "lib",
       "label": "mesh fetch",
       "entry": "src/parts/part_library.gd",
-      "reach": "godot --headless --path . --script src/dev/fetch_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/fetch_probe.gd; godot --headless --path . --script src/dev/fetch_retry_probe.gd   (a host on 9191 that fails on purpose: each fault that may pass asked again after 2, 6 and 12 s, a 404 once, nothing asked twice; a model's parts that never came said once in the status bar and saved whole)",
       "area": "parts"
     },
     {

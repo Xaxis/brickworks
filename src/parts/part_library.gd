@@ -559,7 +559,9 @@ var _elements: Dictionary = {}
 var _looked_for_elements: bool = false
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
-var _fetching: Dictionary = {}      ## hash -> true, so nothing fetches twice
+## hash -> the part ids that asked for it, while it is fetched or waits to be
+## asked again ([constant RETRY_AFTER]), so nothing fetches twice.
+var _fetching: Dictionary = {}
 ## Waiting their turn. The parts bin asks for a thumbnail per visible
 ## cell, so without a ceiling a single scroll opens a hundred connections
 ## at once and every one of them finishes later than it would have.
@@ -568,7 +570,7 @@ var _fetch_host: Node = null
 
 ## Emitted when a part fetched from the network is ready to place.
 signal fetched(part_id: String)
-## Emitted when one cannot be had at all.
+## Emitted when one cannot be had at all, asked again where that may help.
 signal fetch_failed(part_id: String, reason: String)
 
 ## Emitted once the catalogue is parsed and the library is usable.
@@ -914,7 +916,7 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 		if not waiting.has(part_id):
 			waiting.append(part_id)
 		return true
-	if _fetching.size() >= MAX_IN_FLIGHT:
+	if int(_open.get("lbm", 0)) >= MAX_IN_FLIGHT:
 		if urgent:
 			_urgent[part_id] = true
 		if _queued_fetches.has(part_id):
@@ -942,15 +944,9 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 		return true
 
 	_fetching[info.mesh_hash] = [part_id]
-	var request := HTTPRequest.new()
-	_fetch_host.add_child(request)
-	request.request_completed.connect(
-		_on_fetched.bind(request, info.mesh_hash, part_id))
-
-	var url: String = _remote_root() + info.mesh_hash + ".lbm"
-	if request.request(url) != OK:
+	if not _ask(_remote_root() + info.mesh_hash + ".lbm",
+			_on_fetched.bind(info.mesh_hash, part_id)):
 		_fetching.erase(info.mesh_hash)
-		request.queue_free()
 		fetch_failed.emit(part_id, "could not start the request")
 		return false
 	return true
@@ -961,10 +957,70 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 ## each other in the browser's own connection limit.
 const MAX_IN_FLIGHT := 6
 
+## Seconds to wait before asking again for what failed in a way that may
+## pass ([method may_pass]): three more tries, 20 s in all. Nothing asked
+## again until 2026-10-20: on a loaded box the release's browser check
+## opened a 29-part crane whose 3709b timed out once, and it was never put
+## down and nothing said so (m115's preview). A phone's connection drops
+## the same way.
+const RETRY_AFTER: Array[float] = [2.0, 6.0, 12.0]
+
+## Requests open now, by what they fetch ("lbm", "bwx"): what
+## [constant MAX_IN_FLIGHT] counts. One waiting to be asked again holds no
+## connection, so it holds no place either.
+var _open: Dictionary = {}
+
+## Fetches asked again after a fault, since start-up. Probes read it.
+var retries: int = 0
+
+
+## Whether a fetch that ended so may succeed asked again: no answer at all
+## (code 0: a timeout, a cut connection, a host not reached), a timeout
+## (408), too many requests (429), or the server's own fault (5xx). A 404,
+## or the bucket's 400 for an object it has not got, is an answer.
+static func may_pass(result: int, code: int) -> bool:
+	return result != HTTPRequest.RESULT_SUCCESS or code == 0 or code == 408 \
+		or code == 429 or code >= 500
+
+
+## Fetch [param url], and call [param done] with (code, body) once, with an
+## answer that asking again would not change or the last of
+## [constant RETRY_AFTER]'s tries. The one way geometry and exact shapes are
+## fetched, and so the parts bin's pictures. False when no request could be
+## sent.
+func _ask(url: String, done: Callable, tries: int = 0) -> bool:
+	if _fetch_host == null or not _fetch_host.is_inside_tree():
+		return false
+	var request := HTTPRequest.new()
+	_fetch_host.add_child(request)
+	var kind: String = url.get_extension()
+	request.request_completed.connect(func(result: int, code: int,
+			_headers: PackedStringArray, body: PackedByteArray) -> void:
+		request.queue_free()
+		_open[kind] = int(_open.get(kind, 1)) - 1
+		if may_pass(result, code) and tries < RETRY_AFTER.size() \
+				and _fetch_host != null and _fetch_host.is_inside_tree():
+			retries += 1
+			_fetch_host.get_tree().create_timer(RETRY_AFTER[tries], true, false, true) \
+				.timeout.connect(func() -> void:
+					if not _ask(url, done, tries + 1):
+						done.call(0, PackedByteArray()))
+			# Its place is free while it waits. When the wait is over it goes
+			# out whether or not there is room: it was asked for first.
+			_next_fetch()
+			_next_exact()
+			return
+		done.call(code, body))
+	if request.request(url) != OK:
+		request.queue_free()
+		return false
+	_open[kind] = int(_open.get(kind, 0)) + 1
+	return true
+
 
 ## Start the next waiting fetch, if there is room.
 func _next_fetch() -> void:
-	while not _queued_fetches.is_empty() and _fetching.size() < MAX_IN_FLIGHT:
+	while not _queued_fetches.is_empty() and int(_open.get("lbm", 0)) < MAX_IN_FLIGHT:
 		var part_id: String = _queued_fetches[0]
 		_queued_fetches.remove_at(0)
 		_urgent.erase(part_id)
@@ -1026,12 +1082,8 @@ func _remote_root() -> String:
 	return Origin.here() + "/parts/"
 
 
-func _on_fetched(
-	_result: int, code: int, _headers: PackedStringArray,
-	body: PackedByteArray, request: HTTPRequest, hash_name: String,
-	part_id: String
-) -> void:
-	request.queue_free()
+func _on_fetched(code: int, body: PackedByteArray, hash_name: String,
+		part_id: String) -> void:
 	# Taken before the entry goes, not looked up after it.
 	var asked_for: Array = _fetching.get(hash_name, [part_id])
 	_fetching.erase(hash_name)
@@ -1056,7 +1108,8 @@ func _on_fetched(
 ## Ask for a part's exact shape (Exact, tools/build_exact.py) where this build
 ## did not ship it: the web build's, fetched from beside the geometry as
 ## <hash>.bwx. A part BrickNet does not have answers 404, which is kept as
-## "none" so it is not asked again. Listen for [signal exact_fetched].
+## "none" so it is not asked again; a fault that may pass is asked again
+## first, as geometry is ([method _ask]). Listen for [signal exact_fetched].
 func request_exact(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
 	if info == null or info.mesh_hash.is_empty():
@@ -1069,22 +1122,20 @@ func request_exact(part_id: String) -> bool:
 		return false
 	# A check of a big design asks for a shape a part: a few at a time, as
 	# the geometry is fetched, the rest in turn.
-	if _fetching_exact.size() >= MAX_IN_FLIGHT:
+	if int(_open.get("bwx", 0)) >= MAX_IN_FLIGHT:
 		_exact_waiting.append(part_id)
 		return true
 	_fetching_exact[info.mesh_hash] = true
-	var request := HTTPRequest.new()
-	_fetch_host.add_child(request)
-	request.request_completed.connect(_on_fetched_exact.bind(request, info.mesh_hash, part_id))
-	if request.request(_remote_root() + info.mesh_hash + ".bwx") != OK:
+	if not _ask(_remote_root() + info.mesh_hash + ".bwx",
+			_on_fetched_exact.bind(info.mesh_hash, part_id)):
 		_fetching_exact.erase(info.mesh_hash)
-		request.queue_free()
 		Exact.keep(info.mesh_hash, PackedByteArray())
 		return false
 	return true
 
 
-## Exact shapes being fetched: hash -> true; and parts waiting their turn.
+## Exact shapes being fetched, or waiting to be asked again: hash -> true;
+## and parts waiting their turn.
 var _fetching_exact: Dictionary = {}
 var _exact_waiting: PackedStringArray = PackedStringArray()
 
@@ -1098,13 +1149,17 @@ func is_exact_on_its_way(part_id: String) -> bool:
 	return info != null and (_fetching_exact.has(info.mesh_hash) or _exact_waiting.has(part_id))
 
 
-func _on_fetched_exact(_result: int, code: int, _headers: PackedStringArray,
-		body: PackedByteArray, request: HTTPRequest, hash_name: String, part_id: String) -> void:
-	request.queue_free()
+func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
+		part_id: String) -> void:
 	_fetching_exact.erase(hash_name)
 	Exact.keep(hash_name, body if code == 200 else PackedByteArray())
 	exact_fetched.emit(part_id)
-	while not _exact_waiting.is_empty() and _fetching_exact.size() < MAX_IN_FLIGHT:
+	_next_exact()
+
+
+## Start the next exact shape waiting, if there is room.
+func _next_exact() -> void:
+	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < MAX_IN_FLIGHT:
 		var next: String = _exact_waiting[0]
 		_exact_waiting.remove_at(0)
 		request_exact(next)

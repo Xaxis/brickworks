@@ -116,7 +116,16 @@ geometry in front of them.
   whole rows and a scroll bar, not the top of a third.
 - `mesh fetch`: a part whose mesh is not in the shipped pack is fetched from the
   storage bucket at run time. Several callers can ask for the same part at once,
-  and every one of them has to hear that it arrived.
+  and every one of them has to hear that it arrived. Geometry and exact shapes
+  (and so the bin's previews) go through one fetch, `PartLibrary._ask`: a fault
+  that may pass (no answer, 408, 429, 5xx: `may_pass`) is asked again after
+  `RETRY_AFTER` (2, 6, 12 s), a 404 or the bucket's 400 is final; a part asked
+  for while it waits joins the wait, and a wait holds no place of the six open
+  at once. A model's parts still not come once nothing of it is on its way are
+  said once in the status bar ("27 bricks — 2 parts could not be loaded, and
+  are kept in the file", `ModelStore.not_coming`); they stay awaited, so Save
+  writes them where the file had them, the app's own files too, and one that
+  arrives later is put down.
 - `availability`: which colours each part was really moulded in, and the years it
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /
@@ -212,6 +221,8 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only
 godot --headless --path . --script src/dev/search_quality_probe.gd  # how much is worth reading
 godot --headless --path . --script src/dev/inventory_probe.gd       # parts lists of known models
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
+godot --headless --path . --script src/dev/fetch_retry_probe.gd     # a failing host on 9191: asked again, said once, saved whole
+node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # the crane in a browser, its fetches cut then 503 (needs serve.py on 9195)
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
@@ -267,7 +278,9 @@ node tools/web/placeholder_flow.mjs --build=build/web --port=8761 \
 ```
 
 Throttling with Playwright's `page.route` instead saw none of the app's
-fetches: a run scrolled 4,680 parts deep and counted nothing.
+fetches: a run scrolled 4,680 parts deep and counted nothing. A `context.route`
+on `.lbm` does see them today (`fetch_retry_flow.mjs`, 2026-10-20), on a local
+export and on the deployment's bucket alike.
 
 It scrolls the bin and the builder's heads and photographs each mid-load and
 after (`shots/placeholders/web_*.png`); it fails only on a script error or if
@@ -576,6 +589,11 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
 - **The catalogue load is the 15–20s start-up.** Every probe pays it.
 - `fetch` covers the case that broke: two callers asking for the same part, one of
   them never being told it arrived.
+- `fetch_retry` takes about 60 s, 20 of them the last part's three waits. Its
+  host is in the probe (a TCPServer polled each frame), so it needs no network;
+  it waits for the deployment's answer first, which would otherwise point the
+  library back at the real bucket. `fetch_retry_flow` reads the status bar
+  every quarter second: what it says clears itself after four.
 - The web build cannot read `assets/generated/parts` — it carries a smaller pack
   chosen by `tools/web_pack.py` and fetches the rest. A part that works on the
   desktop can still be missing on the web; `remote_probe` is what checks the path

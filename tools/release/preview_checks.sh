@@ -61,6 +61,10 @@ declare -A CMD=(
   [booklet_edit]="tools/web/booklet_edit_flow.mjs --url=$P/app $B --model=$R/vendor/omr/files/106-1.mpd --out=$S/${TAG}_booklet_edit_web"
   [flex_pose]="tools/web/flex_pose_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_pose_web"
   [grab]="tools/web/grab_flow.mjs --url=$P/app $B --out=$S/${TAG}_grab_web"
+  # The grab crane opened while every part fetched fails twice first (cut,
+  # 503: Playwright's route), all 29 down; a part no pack carries answered
+  # 404, asked once and said once in the status bar (PartLibrary.RETRY_AFTER).
+  [fetch_retry]="tools/web/fetch_retry_flow.mjs --url=$P/app $B --out=$S/${TAG}_fetch_retry_web"
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"
