@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import fcntl
 import hashlib
 import json
 import os
@@ -69,6 +70,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -133,10 +135,35 @@ def commit(app: Path = ROOT) -> str:
     return sha + ("-dirty" if dirty else "")
 
 
+_PORT_LOCKS: dict[int, object] = {}     # ports this process claimed, held till it exits
+
+
 def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+    """A port nothing listens on. BENCH_PORTS=LO-HI keeps it to the range an agent
+    was given; a worker claims its port with a lock held till it exits, so two
+    workers started together never take the same one."""
+    span = os.environ.get("BENCH_PORTS", "")
+    if not span:
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+    lo, hi = (int(x) for x in span.split("-"))
+    for port in [*_PORT_LOCKS, *range(lo, hi + 1)]:
+        if port not in _PORT_LOCKS:
+            lock = open(Path(tempfile.gettempdir()) / f"bench-port-{port}.lock", "w")
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                lock.close()
+                continue
+            _PORT_LOCKS[port] = lock
+        with socket.socket() as s:
+            try:
+                s.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+        return port
+    raise SystemExit(f"no free port in BENCH_PORTS={span}")
 
 
 def _write_json(path: Path, value: object) -> None:
