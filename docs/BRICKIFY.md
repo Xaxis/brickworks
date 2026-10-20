@@ -3061,10 +3061,9 @@ each changed script through `godot --check-only` first:
   outside tools' copy still needs trimesh's conversion, and trimesh is not
   on this machine, so the step was left as it is rather than changed
   unrun.
-- **The menu still says** "3D model to brickify (.obj, .stl, .gltf,
-  .glb)…", and the panel's tooltip "an OBJ, STL or glTF model". Both are
-  words on the app's screen, which this unit was not to change; the file
-  chooser itself lists every kind. One word for the owner.
+- **The menu and the panel's tooltip** name every kind it reads: they
+  listed the four it read before, which would tell a person with a scan
+  that it is not taken. Only their lists of kinds changed.
 - **Colours a slicer paints** (Bambu Studio, PrusaSlicer) are its own
   attributes, not 3MF's materials, and come in white; a PLY's texture is
   not read. Each is a reader of its own once a file that needs it turns up.

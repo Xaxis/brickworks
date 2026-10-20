@@ -626,7 +626,7 @@ func _define() -> void:
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
 	_add("import_lxf", "LEGO® Digital Designer model (.lxf)…", 0, bar._import)
-	_add("import_mesh", "3D model to brickify (.obj, .stl, .gltf, .glb)…", 0,
+	_add("import_mesh", "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
@@ -929,7 +929,7 @@ func _define() -> void:
 		"Turn a picture into a wall of plates")
 	_add("brickify", "Brickify a 3D model…", CTRL | KEY_I,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
-		"Bring in an OBJ, STL or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
+		"Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
 	_add("part_maker", "Part maker…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
