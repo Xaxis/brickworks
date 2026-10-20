@@ -40,6 +40,8 @@
 // the end of its acts, which a build without FrameBudget never does.
 // --from=SECONDS: the acts begin no sooner than that after the engine
 // started, so builds paired are turned at the same moment after loading.
+// --throttle=N: the phone's CPU slowed N times (Chromium's
+// Emulation.setCPUThrottlingRate), as a phone's is; the laptop's is not.
 //
 // Writes DIR/look_<mode>.json. Says the box's load beside every number:
 // a frame drawn in software on a shared box costs what the box lets it.
@@ -162,6 +164,10 @@ async function open(browser, size, scene) {
   await context.addInitScript(instrument);
   await context.addInitScript(() => { window.brickworksGrabAsk = true; });
   const page = await context.newPage();
+  if (size === "phone" && Number(args.throttle || 1) > 1) {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(args.throttle) });
+  }
   page.on("pageerror", (e) => console.log(`  page error: ${String(e).slice(0, 200)}`));
   const address = scene === "share" ? `${site}/m/${shareId}`
     : scene === "model" ? `${site}/?copy=${modelId}` : `${site}/`;
@@ -363,15 +369,17 @@ async function act(page, name, doing, settle = 1500) {
   // The look the act began with: whether its frames were drawn with the
   // cuts already made, or the cuts came during it.
   const before = await look(page);
+  const at = (await state(page)).now || 0;
   await doing();
   const done = await fenced(page);
   await page.waitForTimeout(settle);
   const seen = await framesSince(page, from, done.put);
   const after = await look(page);
-  const row = { act: name, ms: Date.now() - began, ...seen, done_ms: Math.round(done.passed - from),
+  const row = { act: name, at_s: Math.round(at / 100) / 10, ms: Date.now() - began, ...seen,
+    done_ms: Math.round(done.passed - from),
     ms_a_frame: Math.round(((done.passed - from) / Math.max(1, seen.drawn)) * 10) / 10, load: load(),
     cuts_before: before ? before.cuts : null, cuts_after: after ? after.cuts : null };
-  log(`    ${name}: ${row.drawn} drawn, done ${row.done_ms} ms after it began, ${row.ms_a_frame} ms a frame`
+  log(`    ${name} at ${row.at_s} s: ${row.drawn} drawn, done ${row.done_ms} ms after it began, ${row.ms_a_frame} ms a frame`
     + ` (page gap ${row.gap_median_ms} ms)${before ? `, cut when it began ${JSON.stringify(before.cuts)}`
       + `${JSON.stringify(after.cuts) !== JSON.stringify(before.cuts) ? `, by its end ${JSON.stringify(after.cuts)}` : ""}` : ""}`);
   return row;

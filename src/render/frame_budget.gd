@@ -23,12 +23,11 @@
 ## In a browser a frame's timing is when it was handed to the browser's GPU
 ## process, which draws it later: in software a dozen frames can be handed
 ## over at the display's 17 ms each while each takes 0.4 to 2 s to draw. So
-## on the web a look ends with a fence (GpuFence) after its frames, and is
-## judged again by when the drawing was done. A look whose frames were held
-## apart (GpuFence, while the parts bin's pictures are read back) is judged
-## by its frames after the last hold, the card having finished everything
-## before them; with too few of those, it is taken again once nothing holds
-## the drawing.
+## on the web each frame of a look has a fence after it (GpuFence) and is
+## timed by when the card passed it, and the look draws its next frame only
+## while fewer than IN_FLIGHT of its frames are still to be drawn there: a
+## slow device is judged after a few frames, and nothing at full cost is
+## left queued ahead of the frames after a cut.
 ##
 ## Only lowered, never raised again in a session: a device slow once is
 ## slow, and raising it to find out costs the slow frames again.
@@ -51,14 +50,26 @@ const JUDGED_BY := 1
 const FIRST_LOOK_MS := 2000
 const LOOK_FRAMES := 10
 ## The first frames of a look, before any is timed: shaders compiled for
-## the first time cost more than a frame does.
+## the first time cost more than a frame does. Not on the web, where each
+## frame is timed by its fence and judged by the second fastest: there the
+## first after a cut, building its programs, took 1.9 times the next in
+## Chromium on SwiftShader, and the first of the first look waited for what
+## the page had queued before it, one slow frame a look either way.
 const WARM_FRAMES := 2
-## A look held apart with too few frames after the hold to judge is taken
-## again once nothing has held the drawing for UNHELD_MS, and at most AGAIN
-## times in a row: the parts bin's read-backs in the empty editor, in
-## Chromium on SwiftShader, followed each other 26 to 128 ms apart.
-const UNHELD_MS := 1000
-const AGAIN := 3
+## On the web, how many of a look's frames may be drawn by the page and not
+## yet by the card. Two, not one: a frame is timed from when the card had
+## done the one before it, so the page frame or two a fence takes to be
+## seen passed is counted once, not in every frame, and a capable device's
+## frames read as the page's pace, as they did timed by the page.
+const IN_FLIGHT := 2
+## Far over the budget a few frames say so as surely as six: SOON frames
+## timed by their fences, each over FAR_MS, are judged at once, by the
+## second fastest of them as six are. A 3x phone drawn in software was
+## judged by its look's twelfth frame, 15 to 19 s in at 1.3 s each
+## (docs/SLOW_DEVICES.md). FAR_MS is many page frames, so no page's pace
+## reads as it.
+const SOON := 3
+const FAR_MS := SLOW_MS * 4.0
 
 ## What is cut, in order. Each is a thing the frame stops drawing:
 ## "dense": on a screen of more than one device pixel to the point (a
@@ -98,8 +109,10 @@ var timed: Array[float] = []
 var judged: Array = []
 ## How many looks have been taken.
 var looks: int = 0
-## What a frame of the last look cost by its fence, in ms, or -1.
+## What the last frame timed by its fence cost, in ms, or -1.
 var fenced: float = -1.0
+## Whether a look's frames are timed by fences: on the web.
+var fences: bool = false
 
 var _viewport: Viewport = null
 var _environment: Environment = null
@@ -120,19 +133,15 @@ var _looking: int = 0
 var _warm: int = 0
 var _look_drawn: int = 0
 var _look_most: int = 0
-## The look's fence (GpuFence, on the web): when the frames it times began
-## (the look, or its last frame held apart from the one before), how many
-## they are and their own work, and the fence once it is put in after the
-## last.
-var _look_began_us: int = 0
-var _look_run: int = 0
-var _look_own_us: int = 0
-var _look_open: bool = false
-var _fence: int = 0
-## Whether a look held apart is to be taken again, and how many looks in a
-## row were held apart with too few frames after it to judge.
-var _again: bool = false
-var _held_looks: int = 0
+## A look's frames drawn by the page and not yet seen done by the card,
+## oldest first: [its fence, when its process frame began and its own work
+## (us), the look it was drawn for]; and when the card was last seen to
+## have done one.
+var _queued: Array = []
+var _done_us: int = 0
+## How a fence is put in and asked after: GpuFence, or a probe's own card.
+var _put: Callable = func() -> int: return GpuFence.put()
+var _passed: Callable = func(n: int) -> bool: return GpuFence.passed(n)
 var _first_look_at: int = 0
 var _since_cut: int = 0
 
@@ -164,11 +173,21 @@ func watch() -> void:
 	if watching:
 		return
 	watching = true
+	fences = fences or OS.has_feature("web")
 	process_priority = -1000000
 	get_tree().process_frame.connect(_frame_begins)
 	RenderingServer.frame_pre_draw.connect(_drawing)
 	RenderingServer.frame_post_draw.connect(_drawn)
 	_first_look_at = Time.get_ticks_msec() + FIRST_LOOK_MS
+
+
+## A look's frames timed by fences put in by [put] () -> int and asked
+## after by [passed] (int) -> bool, as on the web: a probe's card of a
+## speed it chooses.
+func fence_by(put: Callable, passed: Callable) -> void:
+	fences = true
+	_put = put
+	_passed = passed
 
 
 ## The cuts this renderer and screen have: the web's Compatibility draws
@@ -211,79 +230,77 @@ static func judge(samples: Array[float]) -> float:
 func _frame_begins() -> void:
 	_began_us = Time.get_ticks_usec()
 	_own_us = 0
-	if _look_open and _looking == 0:
-		_look_open = false
-		# Judged by a fence after its frames, timed from the look's start or
-		# from its last frame held apart (GpuFence), when the card had done
-		# everything asked of it. With too few after that to judge, as many
-		# as a look not held draws, it is taken again once nothing holds the
-		# drawing. The editor's first look is drawn while the parts bin reads
-		# its pictures back, and on a slow device the cuts it did not judge
-		# came during the first turn of the view, at 512 ms a frame against
-		# 274 once cut (2026-10-19).
-		var enough: bool = _look_run == _look_drawn or _look_run >= WARM_FRAMES + JUDGED
-		_held_looks = 0 if enough else _held_looks + 1
-		_again = not enough and _held_looks <= AGAIN
-		_fence = GpuFence.put() if enough else 0
-	if _fence > 0 and GpuFence.passed(_fence):
-		_fence = 0
-		_fenced_look()
+	# The look's frames the card has done, in order, timed by their fences.
+	var done: Array = []
+	while not _queued.is_empty() and bool(_passed.call(int(_queued[0][0]))):
+		done.append(_queued.pop_front())
+	if not done.is_empty():
+		_fenced(done)
 	if _looking > 0:
 		# Drawing on purpose: a write to the renderer, of what it already
-		# has, is a frame drawn (IdleDraw).
-		RenderingServer.viewport_set_clear_mode(_viewport.get_viewport_rid(),
-			RenderingServer.VIEWPORT_CLEAR_ALWAYS)
+		# has, is a frame drawn (IdleDraw). On the web only while the card is
+		# at most a frame behind: a dozen handed over at the page's pace
+		# queued a dozen frames at full cost, the look was judged when the
+		# last was drawn, 15 to 19 s in on a 3x phone in software, and the
+		# frames after its cut waited behind them (2026-10-19).
+		if _queued.size() < IN_FLIGHT:
+			RenderingServer.viewport_set_clear_mode(_viewport.get_viewport_rid(),
+				RenderingServer.VIEWPORT_CLEAR_ALWAYS)
 		return
 	if pinned:
 		return
 	if _first_look_at > 0 and Time.get_ticks_msec() >= _first_look_at:
 		_first_look_at = 0
 		look()
-	elif _again and GpuFence.unheld_ms() >= UNHELD_MS and cuts.size() < _ladder.size():
-		look()
 
 
 ## Draw frames on purpose until [frames] of them are timed.
 ##
-## Only a frame drawn right after a drawn frame is timed, and the drawing
-## can be held between two (GpuFence, while the parts bin's pictures are
-## read back), so a look counts the frames it timed, not the frames it
-## drew. Held apart every time, it ends after three times as many drawn,
-## with what it has: a look that ended at ten drawn with two of them timed
-## left a check waiting for a third forever (2026-10-19).
-##
-## And on the web a look ends with a fence after its frames, and is judged
-## again by when the fence passes. A browser hands each frame to its GPU
-## process and goes on: in software the frames it timed were a dozen at the
-## display's 17 ms, and SwiftShader then took 0.4 to 2 s to draw each one
-## (docs/SLOW_DEVICES.md). On the desktop there is no fence, and the
-## timing is the drawing's. A look held apart is judged by its frames after
-## the last hold, or taken again when they are too few (_frame_begins).
+## On the desktop only a frame drawn right after a drawn frame is timed, so
+## a look counts the frames it timed, not the frames it drew, and ends after
+## three times as many drawn with what it has: a look that ended at ten
+## drawn with two of them timed left a check waiting for a third forever
+## (2026-10-19). On the web every frame is timed, by its fence.
 func look(frames: int = LOOK_FRAMES) -> void:
 	looks += 1
-	_again = false
 	_looking = frames
-	_warm = WARM_FRAMES
+	_warm = 0 if fences else WARM_FRAMES
 	_look_drawn = 0
 	_look_most = (frames + WARM_FRAMES) * 3
-	_look_began_us = Time.get_ticks_usec()
-	_look_run = 0
-	_look_own_us = 0
-	_look_open = true
-	_fence = 0
 	timed.clear()
 
 
-## The look's fence passed: what each of its frames cost, less their own
-## work, and cut by that where the frames timed said quick.
-func _fenced_look() -> void:
-	if _look_run < 2:
+## Frames of a look the card has done, [done], their fences seen passed as
+## this process frame began: timed from when the first began, or from when
+## the card had done the frame before it if that was later, less their own
+## work, shared between them. Seen one at a time the second of two was
+## timed at nothing: a 3x phone in software turned, its frames queued at
+## the page's pace, was judged at 82 ms a frame and drew each in 200
+## (2026-10-20). Held apart (GpuFence holds the drawing while the parts
+## bin's pictures are read back) or not, that is their own drawing. A frame
+## of a look before a cut is no part of the look after it.
+func _fenced(done: Array) -> void:
+	var spent_us: int = _began_us - maxi(int(done[0][1]), _done_us)
+	for frame: Array in done:
+		spent_us -= int(frame[2])
+	var ms: float = maxf(0.0, spent_us / 1000.0 / done.size())
+	_done_us = _began_us
+	if FramePace.unwatched:
 		return
-	var spent_us: int = Time.get_ticks_usec() - _look_began_us - _look_own_us
-	fenced = snappedf(spent_us / 1000.0 / _look_run, 0.1)
-	if pinned or cuts_for(fenced) == 0:
-		return
-	_decide(fenced)
+	for frame: Array in done:
+		if int(frame[3]) != looks:
+			continue
+		fenced = snappedf(ms, 0.1)
+		_count(ms)
+		# Far over the budget: judged at once, by the second fastest of
+		# the last few, as six are.
+		if pinned or timed.size() < SOON:
+			continue
+		var last: Array[float] = []
+		last.assign(timed.slice(-SOON))
+		last.sort()
+		if last[0] > FAR_MS:
+			_decide(last[JUDGED_BY])
 
 
 func _drawing() -> void:
@@ -300,26 +317,28 @@ func _drawn() -> void:
 	_last_drawn_frame = frame
 	if _looking > 0:
 		_look_drawn += 1
-		if _look_drawn > 1 and not follows:
-			# Held apart (GpuFence): the drawing waited for the card to
-			# finish everything asked of it, so the fence times from here.
-			_look_began_us = _began_us
-			_look_run = 0
-			_look_own_us = 0
-		_look_run += 1
-		_look_own_us += _own_us
 		if _look_drawn >= _look_most:
 			_looking = 0
+		if fences:
+			# Timed when the card has drawn it (_fenced).
+			_queued.append([int(_put.call()), _began_us, _own_us, looks])
+			return
 	# A frame out of view is paced by the connector's clock, not drawn for
 	# anyone (Main._watch_view): not this device's speed.
 	if not follows or FramePace.unwatched:
 		return
+	_count(spent_us / 1000.0)
+
+
+## A frame's cost, [ms], past a look's warm frames: one fewer for the look
+## to time, and taken.
+func _count(ms: float) -> void:
 	if _warm > 0:
 		_warm -= 1
 		return
 	if _looking > 0:
 		_looking -= 1
-	take(spent_us / 1000.0)
+	take(ms)
 
 
 ## A drawn frame's cost, [ms]: kept, and the last few judged once there
@@ -387,7 +406,7 @@ func page_state() -> Dictionary:
 		"timed": timed.map(func(ms: float) -> float: return snappedf(ms, 0.1)),
 		"cost": snappedf(judge(timed), 0.1), "judged": judged,
 		"ladder": _ladder, "looking": _looking, "looks": looks, "fenced": fenced,
-		"drawn": Engine.get_frames_drawn()}
+		"queued": _queued.size(), "drawn": Engine.get_frames_drawn()}
 
 
 func _apply(wanted: Array[String]) -> void:
