@@ -221,6 +221,114 @@ def test_tidying_moves_the_runs_saves_and_leaves_everyone_elses():
     assert left == ["orthanc.ldr", "someone_elses.ldr"]
 
 
+def _design_command(with_drawer: bool) -> list[str]:
+    """The command run.design starts for an app with or without the leased drawer."""
+    from bench import run, suite
+    started: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        started.append(list(command))
+        log = _kwargs["stdout"]
+        log.write("claude code ok=true bricks=1  (1s)\n")
+        return type("Done", (), {"returncode": 0})()
+
+    with tempfile.TemporaryDirectory() as where:
+        app, out = Path(where) / "app", Path(where) / "out"
+        (app / "src" / "ai").mkdir(parents=True)
+        out.mkdir()
+        if with_drawer:
+            (app / "src" / "ai" / "leased_shots.gd").write_text("")
+        saved = (run.subprocess.run, run._tidy_user_dir, run._stop_leftovers, run.commit)
+        run.subprocess.run = fake_run
+        run._tidy_user_dir = lambda *_a: []
+        run._stop_leftovers = lambda _port: []
+        run.commit = lambda _app=None: "abc1234"
+        try:
+            subject = suite.Subject(id="owl", title="Owl", brief="an owl", scale="", against="")
+            run.design(subject, out, 60, None, app=app)
+        finally:
+            run.subprocess.run, run._tidy_user_dir, run._stop_leftovers, run.commit = saved
+    assert len(started) == 1
+    return started[0]
+
+
+def test_a_design_runs_headless_and_leases_the_gpu_only_to_draw():
+    from bench import run
+    command = _design_command(with_drawer=True)
+    assert run.GPU not in command[:1], "the app itself holds no lease"
+    assert "--headless" in command and "xvfb-run" not in command
+    drawer = [a for a in command if a.startswith("--draw-by=")]
+    assert len(drawer) == 1
+    assert json.loads(drawer[0][len("--draw-by="):]) == run.DRAWER
+    assert run.DRAWER[0] == run.GPU and "xvfb-run" in run.DRAWER
+
+
+def test_an_app_from_before_the_drawer_runs_in_a_window_on_the_lease():
+    from bench import run
+    command = _design_command(with_drawer=False)
+    assert command[:2] == [run.GPU, "xvfb-run"]
+    assert "--headless" not in command
+    assert not any(a.startswith("--draw-by=") for a in command)
+
+
+def test_pictures_given_up_are_counted_from_the_godot_log():
+    from bench import run, realset
+    # As a contended design's godot_design.log has them (gl-w4b 7410-1, 2026-10-20).
+    log = ("  [ 85.3s]   app: no picture in time, so it is shown the letters\n"
+           "WARNING: leased shots: no picture within 120 s\n"
+           "     at: push_warning (core/variant/variant_utility.cpp:1034)\n"
+           "draw_shots: 000004 drawn in 46 ms, 234 bricks\n"
+           "WARNING: leased shots: no picture within 120 s\n"
+           "WARNING: leased shots: 3 drawers ended without the picture\n")
+    with tempfile.TemporaryDirectory() as where:
+        path = Path(where) / "godot_design.log"
+        assert run.pictures_given_up(path) == 0, "no log, nothing given up"
+        path.write_text(log)
+        assert run.pictures_given_up(path) == 3
+        # An empty picture is the letters at once and is not one given up.
+        path.write_text("  [ 85.3s]   app: no picture in time, so it is shown the letters\n")
+        assert run.pictures_given_up(path) == 0
+    found = [{"number": "7410-1", "design": {"pictures_given_up": 6}},
+             {"number": "3932-1", "design": {"pictures_given_up": 0}},
+             {"number": "9470-1", "design": {}}]
+    said = realset.gave_up_said(found)
+    assert "6 over 2 designs counted" in said and "7410-1 (6)" in said
+    assert "3932-1" not in said and "1 recorded before the count was kept" in said
+    assert "none" in realset.gave_up_said(found[1:2])
+
+
+def test_a_design_records_the_pictures_it_gave_up():
+    command_log = "WARNING: leased shots: no picture within 120 s\n"
+    from bench import run, suite
+    saved = (run.subprocess.run, run._tidy_user_dir, run._stop_leftovers, run.commit)
+
+    def fake_run(command, **kwargs):
+        kwargs["stdout"].write("claude code ok=true bricks=1  (1s)\n")
+        godot = command[command.index("--log-file") + 1]
+        Path(godot).write_text(command_log * 2)
+        return type("Done", (), {"returncode": 0})()
+
+    with tempfile.TemporaryDirectory() as where:
+        app, out = Path(where) / "app", Path(where) / "out"
+        (app / "src" / "ai").mkdir(parents=True)
+        (app / "src" / "ai" / "leased_shots.gd").write_text("")
+        out.mkdir()
+        run.subprocess.run, run._tidy_user_dir = fake_run, (lambda *_a: [])
+        run._stop_leftovers, run.commit = (lambda _port: []), (lambda _app=None: "abc1234")
+        try:
+            subject = suite.Subject(id="owl", title="Owl", brief="an owl", scale="", against="")
+            made = run.design(subject, out, 60, None, app=app)
+            recorded = json.loads((out / "design.json").read_text())
+            # A design recorded before the count was kept is counted when read again.
+            del recorded["pictures_given_up"]
+            (out / "design.json").write_text(json.dumps(recorded))
+            again = run.design(subject, out, 60, None, app=app)
+        finally:
+            run.subprocess.run, run._tidy_user_dir, run._stop_leftovers, run.commit = saved
+    assert made["pictures_given_up"] == 2
+    assert again["pictures_given_up"] == 2
+
+
 # -- the summary ----------------------------------------------------------
 
 

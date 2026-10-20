@@ -12,9 +12,13 @@
                                        [--first N] [--jobs 2]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
-two workers a subject took nine minutes (main, 2026-10-19), so a half is about
-6.5 hours of GPU leases taken design by design: give a run eight hours or
-more. Set BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
+two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
+hours, when each design held a GPU slot for its whole session. A design's app
+now runs headless and takes the lease only for a drawer while it draws (37% of
+a session, 2026-10-20), so three or four workers fit where the GPU is shared
+with short jobs; beside a run that holds a slot a session (an older
+`--checkout`), pictures wait (DESIGN_SCORES.md, "What a round costs now"). Set
+BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
 
 Every round so far was steered by subjects we tuned on, and our own judge
 once preferred an outside designer 40 of 40 after calling our rounds gains.
@@ -46,9 +50,10 @@ tuned on, judged blind.
   own pieces out of the real-set index (src/ai/real_snippets.gd) as well as
   out of design memory, and a design's record says whether the log showed it.
 - **The designer** is run.py's design stage, the real loop on the
-  subscription, the app on the GPU's lease as every windowed run is. Each
-  of `--jobs` workers takes its share of the subjects. Run it bare: each
-  design and each drawing takes the lease for itself (run.py's `gpu`), so
+  subscription, the app headless with its pictures drawn on the GPU's lease
+  by a drawer that holds it only while it draws (src/ai/leased_shots.gd).
+  Each of `--jobs` workers takes its share of the subjects. Run it bare: each
+  drawer and each drawing takes the lease for itself (run.py's `gpu`), so
   other jobs get the GPU between them. Under one `gpu` the whole run held
   it, and two such runs kept a probe off the GPU for 40 minutes while the
   CPU stood idle (2026-10-19). The workers
@@ -1111,6 +1116,7 @@ def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
         out.append(f"| {key} | {_cell(_median(ours), share)} | {_cell(_median(theirs), share)} | "
                    + (f"{'+' if gap >= 0 else ''}{_cell(gap, share)}" if gap is not None else "")
                    + " |")
+    out += ["", gave_up_said(found)]
     held = [r["number"] for r in found if r.get("design", {}).get("model")
             and not r.get("held_out_said")]
     if held:
@@ -1118,6 +1124,21 @@ def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
                 "session never searched the real-set index, or its checkout cannot hold a set "
                 "out (src/ai/real_snippets.gd)."]
     return "\n".join(out) + "\n"
+
+
+def gave_up_said(found: list[dict]) -> str:
+    """How many pictures the arm's designs were shown as letters because none came in
+    time (run.py's pictures_given_up): a design shown letters judges worse, so a lever
+    compared on an arm that had them is compared with that against it."""
+    counted = [r for r in found if "pictures_given_up" in r.get("design", {})]
+    had = [(r["number"], int(r["design"]["pictures_given_up"])) for r in counted
+           if r["design"]["pictures_given_up"]]
+    said = (f"Pictures given up for the letters (no drawer in time): "
+            f"{sum(n for _, n in had)} over {len(counted)} designs counted")
+    said += (", in " + ", ".join(f"{number} ({n})" for number, n in had) if had else ", none")
+    if len(counted) < len(found):
+        said += f"; {len(found) - len(counted)} recorded before the count was kept"
+    return said + "."
 
 
 # -- two arms -------------------------------------------------------------------

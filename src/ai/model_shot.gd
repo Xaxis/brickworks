@@ -104,8 +104,11 @@ var library: PartLibrary
 ## draws perfectly well, and Compatibility is what the web build runs
 ## on. That check would have turned pictures off for everybody actually
 ## using this, and left them on here.
+##
+## A headless app given a drawer to start (LeasedShots, the bench's
+## design runs) has its pictures drawn there.
 static func possible() -> bool:
-	return DisplayServer.get_name() != "headless"
+	return DisplayServer.get_name() != "headless" or LeasedShots.in_use()
 
 
 func _build() -> void:
@@ -212,12 +215,19 @@ var _staged_bounds := AABB()
 var _staged_corners := PackedVector3Array()
 
 
+## What a staging is kept by: the world, its revision, what was left out
+## and what was picked out. A drawer elsewhere (LeasedShots) stages again
+## when this changes and only then, as this does.
+func stage_key(world: BrickWorld, skip: Dictionary) -> Array:
+	return [world.get_instance_id(), world.generation(),
+		world.revision, skip.size(), skip.hash(), highlight.hash()]
+
+
 ##
 ## And a slice a frame (FramePace), drawn when whole: copying four thousand
 ## bricks was most of a second of a browser's one thread in one go.
 func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
-	var wanted: Array = [world.get_instance_id(), world.generation(),
-		world.revision, skip.size(), skip.hash(), highlight.hash()]
+	var wanted: Array = stage_key(world, skip)
 	if wanted == _staged:
 		return _staged_bounds
 	_staged = wanted
@@ -271,6 +281,8 @@ func take(world: BrickWorld, from: String,
 		skip: Dictionary = {}, only: AABB = AABB()) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
 		return null
+	if LeasedShots.in_use():
+		return await LeasedShots.shared().take(self, world, from, skip, only)
 	# A picture is a handful of frames of waiting, and how long a frame
 	# takes is not this program's business until it is. Measured on this
 	# machine: 989 ms a frame with vsync as shipped, 20 ms with it off.

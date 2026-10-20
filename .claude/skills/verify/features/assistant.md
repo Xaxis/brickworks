@@ -2299,9 +2299,11 @@ godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=
 ```
 
 Each of `--jobs` workers runs its share of the subjects, one after another
-(worker-<set>.log). Run it bare: each design and each drawing takes the GPU's
-lease for itself, so other jobs get the GPU between them, and no worker waits
-for a CPU slot. BENCH_PORTS keeps each design's app to the agent's ports.
+(worker-<set>.log). Run it bare: a design's app is headless and holds no lease,
+each of its pictures and each drawing of the views takes the GPU's lease for
+itself (below, "A design's pictures on a lease of their own"), so other jobs get
+the GPU between them, and no worker waits for a CPU slot. BENCH_PORTS keeps each
+design's app to the agent's ports.
 `--audit-later` leaves the build check's
 reading (floating parts, the only CPU work) to `audit`, one `heavy` job after the
 run. `--software` draws on lavapipe and makes each worker one `heavy` job, as every
@@ -2328,6 +2330,60 @@ and a half of ten took 45-55 minutes on two or three workers; 2026-10-19, the
 grown proof half on main: 88 of 88 verdicts with all six pictures, orders
 agreeing on 88%, the first shown winning 45%, 34 new subjects in five hours on
 two workers with the GPU shared, nine minutes a subject).
+
+### A design's pictures on a lease of their own
+
+A bench design (run.py's design stage, so realset.py and brickbench.py too) runs
+the app `--headless` holding no GPU lease, with `--draw-by=` naming how to start a
+drawer: run.py's `DRAWER`, `gpu xvfb-run … godot`. Each picture the session is
+shown (ModelShot: view_model, check_design, edit_model, the reviews, the surface
+pass, techniques) is a request file in the app's user folder,
+`leased_shots_<pid>/`, answered by `src/dev/draw_shots.gd` on the lease: the same
+ModelShot given the bricks, colours and placings the app would stage, its parts
+made in the session sent as their LDraw, staged again exactly when the app's
+would be (`ModelShot.stage_key`). A drawer starts in 5-10 s (mostly compiling
+the scripts), stays 20 s after its last picture (`LeasedShots.LINGER_S`), 2 s
+when another job waits for the GPU (`YIELD_S`), and ends with the app. A picture
+with nothing to stage is no picture at once; one not drawn within 120 s
+(`MOST_WAIT_S`, the lease's queue included) is the letters, logged "no picture in
+time". An app without `src/ai/leased_shots.gd` (an older `--checkout` or
+`--app`) runs in a window on the lease for its whole session, as before. Not
+drawn headless: render_model, a rendered animation, export_model's picture and
+booklet, which answer "running without a window"; sessions call render_model at
+their very end, if at all (5 of main's 44 proof designs, 2026-10-19).
+
+```sh
+python3 tools/minitest.py tests/test_bench.py      # the design stage starts the app headless with --draw-by, an old app in a window
+python3 tools/bench/leased_shots_check.py --history --model bench/results/realset-2026-10-20-t3lay44/21052-1/design.ldr --out /tmp/x --port 9040
+python3 tools/bench/leased_shots_check.py --windows-only --model … --out /tmp/y   # how much two windows differ, on their own
+tools/probe.sh shot_probe                          # ModelShot in a window, unchanged
+grep -c "draw_shots: [0-9]* drawn" bench/results/realset-<date>-<arm>/<set>/design.log   # pictures a design was drawn
+```
+
+`leased_shots_check.py` opens one model in a window on the lease and headless with
+its drawer (and with `--history` a second window asked in another order), asks
+each for the same pictures over MCP (view_model corner, front, top and close, an
+edit_model recolour with what it changed picked out, then the back) and compares
+them pixel for pixel. Its window holds a GPU slot while Dubai opens, 4 to 8
+minutes on a busy box: run it when the GPU is quiet. A design's log carries its drawers' lines: `gpu: … waited
+N s`, `draw_shots: ready in N ms`, `NNNNNN drawn in N ms, N bricks`.
+
+Proves it when: every picture comes both ways; the views are the same PNG byte
+for byte and any picture that differs does so by no more than `--most` (16
+pixels), what windows differ by from run to run; and a design's log shows its pictures drawn, the drawers on the
+RADV device. 2026-10-20, Dubai 21052-1 (750 parts, a printed nameplate made in
+its session): corner, front, top, close and back byte for byte; the recolour
+picture 4 to 9 of 1,048,576 pixels off in two runs, where windows asked the same differed from
+each other by 1 to 9 on it from run to run. Over four windows and two drawers
+the same ten pixels, on grey edges, each take one of two values, and each
+drawer's picture is byte for byte one a window drew: a tie on one MSAA sample,
+most likely, broken by the order a restaged stage's batches are drawn in. Before the drawer staged when the app would, the
+close view was 58 pixels off. A picture that waited out `MOST_WAIT_S` (124 s
+in the queue) is the letters, and its request is taken back: the drawer that
+came later drew from the next one on.
+Four tune designs at two workers: 61 pictures drawn, the drawers holding the
+lease 15.6 of the sessions' 42 minutes; `~/.claude/claude-core/bin/gpu --status`
+names a drawer `godot --script res://src/dev/draw_shots.gd`.
 
 ### The check by real shapes
 

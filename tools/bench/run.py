@@ -18,12 +18,18 @@ them queues for its own.)
 
 A run is, per subject and one at a time:
 
-  design   the real loop on the subscription: the app off-screen (Xvfb, on
-           the GPU, under `gpu`) with --ask-claude-code, the brief as
-           the person would type it, Claude Code driving it over MCP on its
-           own port. ANTHROPIC_API_KEY is taken out of its environment, so
-           nothing is billed. Its saves are moved out of the app's user
-           folder into the run's, and its connection file with them.
+  design   the real loop on the subscription: the app headless with
+           --ask-claude-code, the brief as the person would type it, Claude
+           Code driving it over MCP on its own port. It holds no GPU lease:
+           each picture the session is shown is drawn by a drawer on the
+           lease (src/ai/leased_shots.gd, off-screen under `gpu`), the
+           same ModelShot given the same bricks, held while it draws and
+           up to 20 s after. An app from before the drawer (--checkout of an older
+           commit) runs in a window on the lease for its whole session, as
+           every design did until 2026-10-20. ANTHROPIC_API_KEY is taken out
+           of its environment, so nothing is billed. Its saves are moved out
+           of the app's user folder into the run's, and its connection file
+           with them.
   views    corner, front and close, by src/dev/bench_views.gd on the GPU
            (`gpu`), the assistant's own camera.
   probe    src/dev/candidate_probe.gd: opens whole, one piece, stands, faults.
@@ -113,6 +119,9 @@ AGENT = {"User-Agent": "brickworks-bench/1.0 (https://brickworks.diy)"}
 CANNED = ROOT / "tests" / "fixtures" / "bench"
 VIEWS = ("corner", "front", "close")
 SCREEN = "-screen 0 1600x900x24"
+# How a headless design's app starts a drawer for its pictures, on the GPU's
+# lease and off-screen (src/ai/leased_shots.gd's --draw-by=).
+DRAWER = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
 
 
 def say(text: str) -> None:
@@ -222,6 +231,20 @@ def _stop_leftovers(port: int) -> list[int]:
     return [pid for pid, _args in ended]
 
 
+# What LeasedShots says when a picture never came: the session was shown the
+# model as letters instead, and a design shown letters judges worse, so a
+# lever's numbers carry how many each design had (realset's report).
+GAVE_UP = ("leased shots: no picture within", "drawers ended without the picture")
+
+
+def pictures_given_up(log: Path) -> int:
+    """Pictures a headless design's app gave up on, read from its Godot log."""
+    if not log.exists():
+        return 0
+    return sum(1 for line in log.read_text(errors="replace").splitlines()
+               if any(said in line for said in GAVE_UP))
+
+
 def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | None,
            extra: tuple[str, ...] = (), app: Path = ROOT) -> dict:
     """The real loop on one brief; `extra` goes to the app after the bench's own
@@ -239,6 +262,9 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
             if late:
                 result["moved"] = result.get("moved", []) + late
                 _write_json(done, result)
+        if "pictures_given_up" not in result and (run_dir / "godot_design.log").exists():
+            result["pictures_given_up"] = pictures_given_up(run_dir / "godot_design.log")
+            _write_json(done, result)
         return result
     ldr = run_dir / "design.ldr"
     if canned is not None:
@@ -252,19 +278,31 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
     log = run_dir / "design.log"
     since = time.time() - 1.0
     say(f"design {subject.id}: port {port}, up to {timeout // 60} min")
-    # On the GPU's lease, as every windowed run is, not drawn in software
-    # under `heavy`, whose queue held a design half an hour at load 50. The
-    # app idles while the session thinks: one design's app used under a
-    # second of the GPU in ten minutes. Inside a lease (a batch run
-    # under one `gpu`) it runs at once. The timeout is inside the lease: a
-    # queue on a busy machine is not the design's time.
-    command = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}",
-               "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
-               "--log-file", str(run_dir / "godot_design.log"),
-               "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
-               # The subject's own scored designs are the answer under test:
-               # the designer's memory leaves them out (src/ai/design_memory.gd).
-               f"--held-out={subject.id}", *extra]
+    tail = ["--log-file", str(run_dir / "godot_design.log"),
+            "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
+            # The subject's own scored designs are the answer under test:
+            # the designer's memory leaves them out (src/ai/design_memory.gd).
+            f"--held-out={subject.id}"]
+    if (app / "src" / "ai" / "leased_shots.gd").exists():
+        # Headless, holding no lease: the app idles while the session thinks,
+        # and one design's app used under a second of the GPU in ten minutes.
+        # Each picture is drawn by a drawer on the lease (src/ai/leased_shots.gd),
+        # the same ModelShot given the same bricks, which holds it while it
+        # draws and up to LINGER_S after. In a window on the lease, a design held a
+        # slot for its whole session, so two ran at once and other jobs'
+        # draws queued behind them. The timeout is the app's own: a drawer's
+        # wait in the lease's queue is inside a call the session waits on.
+        command = ["timeout", "--kill-after=30", str(timeout), "godot", "--headless",
+                   "--path", str(app), *tail, "--draw-by=" + json.dumps(DRAWER), *extra]
+    else:
+        # An app from before the drawer, as every windowed run is: in a window
+        # on the GPU's lease for the whole session, not drawn in software
+        # under `heavy`, whose queue held a design half an hour at load 50.
+        # The timeout is inside the lease: a queue on a busy machine is not
+        # the design's time.
+        command = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}",
+                   "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
+                   *tail, *extra]
     started = time.time()
     with log.open("w") as out:
         status = subprocess.run(command, cwd=app, env=_billing_free_env(MESA_VK_WSI_DEBUG="sw"),
@@ -280,6 +318,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         "commit": sha, "port": port, "model": ldr.exists() and ldr.stat().st_size > 0,
         **({} if app == ROOT else {"app": str(app)}),
         "finished": finished[-1][:300] if finished else "",
+        "pictures_given_up": pictures_given_up(run_dir / "godot_design.log"),
         "moved": _tidy_user_dir(since, text, port, run_dir / "saves"),
         "stopped": _stop_leftovers(port),
     }
