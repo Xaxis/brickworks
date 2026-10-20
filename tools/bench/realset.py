@@ -2,9 +2,9 @@
 """A blind test against real LEGO® sets: our designer and the set's, given the same brief.
 
     python3 tools/bench/realset.py sample [--which tune|proof] [--show]
-    gpu python3 tools/bench/realset.py run --which tune --arm m32 [--checkout DIR]
-                                       [--subjects N,N] [--jobs 2] [--date D] [--timeout S]
-                                       [--software] [--audit-later]
+    python3 tools/bench/realset.py run --which tune --arm m32 [--checkout DIR]
+                                   [--subjects N,N] [--jobs 2] [--date D] [--timeout S]
+                                   [--software] [--audit-later]
     heavy python3 tools/bench/realset.py audit --which tune --arm m32 [--date D]
     python3 tools/bench/realset.py calibrate [--which tune] [--jobs 2] [--software]
     python3 tools/bench/realset.py report --which proof --arm m32 [--date D]
@@ -35,8 +35,11 @@ tuned on, judged blind.
   out of design memory, and a design's record says whether the log showed it.
 - **The designer** is run.py's design stage, the real loop on the
   subscription, the app on the GPU's lease as every windowed run is. Each
-  of `--jobs` workers takes its share of the subjects; run under one `gpu`,
-  every worker's designs and pictures share that one lease. The workers
+  of `--jobs` workers takes its share of the subjects. Run it bare: each
+  design and each drawing takes the lease for itself (run.py's `gpu`), so
+  other jobs get the GPU between them. Under one `gpu` the whole run held
+  it, and two such runs kept a probe off the GPU for 40 minutes while the
+  CPU stood idle (2026-10-19). The workers
   wait for no CPU slot: in software under `heavy` at load 50 a worker
   waited 30 minutes for one. Only
   the build check's reading of a model is CPU work, under `heavy`, and
@@ -813,6 +816,9 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
 
 
 def run(args: argparse.Namespace) -> int:
+    if not args.software and subprocess.run([bench.GPU, "--held"]).returncode == 0:
+        bench.say("realset: this run is inside a GPU lease and holds it to the end; run it bare "
+                  "and each design and drawing takes the lease for itself")
     if not args.dry_run and not os.environ.get("XDG_DATA_HOME"):
         raise SystemExit("set XDG_DATA_HOME to a folder of this run's: a design must never "
                          "write into the owner's app folder")
@@ -853,8 +859,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
-    """A worker's subjects end to end, one after another. On the GPU its designs and
-    pictures take the lease (the run's own, under one `gpu`) and it holds no CPU slot;
+    """A worker's subjects end to end, one after another. On the GPU each design and
+    each drawing takes the lease for itself and it holds no CPU slot;
     in software it is one `heavy` job, each design, check and drawing taking the slot it
     holds, so it queues for the machine once and --jobs is the slots held."""
     out = arm_dir(args.date, args.arm)
