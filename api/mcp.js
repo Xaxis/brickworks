@@ -89,6 +89,14 @@
 //     chat on every call's _meta) and shows them; with two, the person
 //     keeps one (op=keep), and the other's next call is told it was moved
 //     off and does nothing until it chooses a tab again.
+//   - A resumed chat is a new chat here (2026-10-19). Claude Code starts a
+//     new session when a chat resumes and sends nothing that says it is the
+//     same chat: a new Mcp-Session-Id, no conversation id, no close of the
+//     old one (measured with Claude Code 2.1.303, claude -p --resume). So
+//     it chooses its tab again, and the tab's undo (AppTools._undo) takes
+//     what it did before as another chat's. A chat's first choice says so
+//     (RESUMED) where the account has another chat's pick, as a resumed
+//     chat's old self always leaves one.
 //
 // A browser stops drawing a tab it is not showing, and the app runs on
 // drawing. While the connector is on the page now keeps the app running
@@ -719,9 +727,10 @@ async function relayTool(where, message, response) {
       + `${idOf(chosen)} (${modelOf(chosen)}), and its calls go there already.`));
   }
   await pick(where.key, where.owner, chosen.channel, picked ? picked.channel : null);
+  const resumed = picked ? "" : resumedWords(picks, where.key);
   return response.status(200).json(text(id, `${header(chosen, null, tabs, picks, where.key)} This chat's calls `
     + `go to tab ${idOf(chosen)} now, on ${modelOf(chosen)}.`
-    + (live.length > 1 ? ` ${SAY_TARGET(chosen)}` : "")));
+    + (live.length > 1 ? ` ${SAY_TARGET(chosen)}` : "") + (resumed ? ` ${resumed}` : "")));
 }
 
 // Claude's apps can share one connection between chats (one Mcp-Session-Id
@@ -748,15 +757,27 @@ async function closedSaying(where, tab, tabs, taken = false) {
         : where.notOpen);
 }
 
+// A resumed chat is a new one to the relay ("Two chats, two tabs"), told so
+// on its first choice: said where the account has another chat's pick,
+// since a resumed chat's earlier self always leaves one.
+const RESUMED = "If this chat was resumed from an earlier one, Brickworks counts it as a new chat: "
+  + "it chooses its tab again, and it cannot undo what it did before the resume (the person can, "
+  + "with Undo in the tab).";
+
+function resumedWords(picks, key) {
+  return key && (picks || []).some((one) => one.key !== key) ? RESUMED : "";
+}
+
 // A new chat with several tabs open and none chosen: nothing done, and how
 // to choose. The person may have said; else Claude asks.
 function chooseFirst(tabs, picks, key) {
   const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+  const resumed = resumedWords(picks, key);
   return `Nothing was done: ${live.length} Brickworks tabs are open and this chat has not chosen one. `
     + `Open now:\n${listing(tabs, null, picks, key)}\n`
     + "If the person named a tab or a model, call select_tab with its id or its model's name "
     + "(such as select_tab \"castle\"), or pass target on this call; otherwise ask them which tab "
-    + "this chat is for. Then make this call again.";
+    + "this chat is for. Then make this call again." + (resumed ? ` ${resumed}` : "");
 }
 
 // The person kept another chat in the tab this one worked in.
@@ -788,6 +809,15 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     return response.status(202).end();
   }
   const id = message.id;
+  // Claude Code's first request, before initialize: server/discover, of a
+  // newer protocol (2026-07-28) whose sessions have no initialize, and so no
+  // session id to keep a chat in its tab by. This speaks the older one, so
+  // the method is not found, said here without waking the tab, and Claude
+  // goes on to initialize (measured with Claude Code 2.1.303). It was put to
+  // the tab like a call, a round trip for every chat that connected.
+  if (message.method === "server/discover") {
+    return response.status(200).json(rpcError(id, -32601, "Method not found"));
+  }
   // A host reading what the viewer would otherwise call for: that call,
   // made in the session's tab and answered as a read.
   let readFor = "";
@@ -869,6 +899,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       if (where.key && !viewerCall && !home) {
         await pick(where.key, where.owner, tab.channel, picked ? picked.channel : null);
         home = { key: where.key, channel: tab.channel, picked_at: new Date().toISOString() };
+        if (!picked) note = resumedWords(picks, where.key);
       }
     } else if (home) {
       tab = tabs.find((one) => one.channel === home.channel) || await tabOf(home.channel);
@@ -883,6 +914,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       if (tab && where.key && !viewerCall) {
         await pick(where.key, where.owner, tab.channel, picked ? picked.channel : null);
         home = { key: where.key, channel: tab.channel, picked_at: new Date().toISOString() };
+        if (!picked) note = resumedWords(picks, where.key);
       }
     } else if (viewerCall || looksOnly(await where.hello(lastUsed(tabs)), name)) {
       const free = live.filter((one) => !heldBy(one, picks, where.key).length);

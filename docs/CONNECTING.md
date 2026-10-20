@@ -75,7 +75,8 @@ Since 2026-10-17:
    targeted.
 5. **The tab says who is working in it.** The toolbar shows "Claude
    working · tab k7qd" while a chat works there (any call in the last 30
-   minutes). Account names the chat by when it started and what it did
+   minutes). The connector's line, "Claude is building — N calls", counts
+   the calls of the chat that called last, from its own first call. Account names the chat by when it started and what it did
    last. If two chats work in one tab, both say so: the toolbar reads
    "2 Claude chats", and Account has **Keep this one** beside each. The
    other chat is moved off. Its next call does nothing and tells Claude to
@@ -88,6 +89,24 @@ Since 2026-10-17:
 What is not possible: two chats that share one connection look like one
 chat to the relay, so the tab cannot show them as two or keep one. Naming
 the tab on every call (4) is what keeps them apart.
+
+Nor can a resumed chat be told from a new one. Claude Code starts a new
+MCP session when a chat is resumed (`claude --resume`, `/resume`), and
+sends nothing that says it is the same chat: a new `Mcp-Session-Id`, no
+conversation id, and no close of the old session (measured with Claude
+Code 2.1.303 on 2026-10-19, `claude -p` and then `claude -p --resume`
+against a server that logged every request). So a resumed chat chooses
+its tab again, as any new chat does, and Claude's `undo` takes what it did
+before the resume for another chat's. The person's Undo still takes it
+back. The chat is told both plainly in the answer to its first choice of
+a tab, or in the answer that asks it to choose. It is told only where the
+account has had another chat, since a resumed chat's earlier self always
+leaves one. An `undo` stopped at such a step says so too.
+
+Claude Code's first request is `server/discover`, from a newer protocol
+whose sessions have no `initialize`, and so no session id to keep a chat
+in its tab by. The relay answers it itself, "method not found", without
+waking the tab, and Claude Code goes on to `initialize` as before.
 
 The desktop app's windows are tabs here too: each window registers with
 the relay under its own id (`src/parts/tab_session.gd`), so two windows,

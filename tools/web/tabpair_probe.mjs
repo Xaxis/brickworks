@@ -21,6 +21,12 @@
 //      (brickworks/chats); the tab keeps one, and the other's next call is
 //      told it was moved off and does nothing.
 //   4. A name two tabs share is not guessed: both are listed.
+//   5. Two chats on one connection, each naming its tab on every call.
+//   6. A resumed chat, which Claude Code makes a new session (2026-10-19):
+//      it chooses again, told plainly that it is a new chat here and cannot
+//      undo what it did before; the account's first chat is not told that.
+//      And Claude Code's first request, server/discover, is answered by the
+//      relay ("method not found"), no tab asked.
 import { createHash, randomBytes } from "node:crypto";
 import { mintSession } from "./session.mjs";
 
@@ -164,6 +170,8 @@ async function chat(token) {
   };
 }
 const first = (words) => words.split("\n")[0].slice(0, 160);
+// What a chat's first choice says when the account has other chats (api/mcp.js RESUMED).
+const RESUMED = "If this chat was resumed from an earlier one, Brickworks counts it as a new chat";
 
 // An id as a tab makes one (TabSession.LETTERS): no i, l, o, 0 or 1.
 const LETTERS = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -183,6 +191,7 @@ const before = tabs.map((t) => t.did.length);
 const stopped = await a.call("edit_model", { add: [] });
 console.log(`        ${stopped.words.split("\n").join("\n        ")}`);
 check("its first change does nothing and says so", stopped.error && stopped.words.startsWith("Nothing was done"));
+check("...and, the account's first chat, is not told about resumed chats", !stopped.words.includes("resumed"));
 check("...lists both tabs by id and model", stopped.words.includes(`${castle.id}: “Castle”`)
   && stopped.words.includes(`${truck.id}: “Fire Truck”`));
 check("...and says how to choose", stopped.words.includes("select_tab"));
@@ -197,7 +206,7 @@ check("...and binds nothing: the next change is still stopped", again.error && a
 console.log("\n2. chosen by name, and by target");
 const chose = await a.call("select_tab", { tab: "the castle tab" });
 check(`select_tab "the castle tab": "${first(chose.words)}"`, !chose.error
-  && chose.words.includes(`go to tab ${castle.id} now`));
+  && chose.words.includes(`go to tab ${castle.id} now`) && !chose.words.includes("resumed"));
 const built = await a.call("edit_model", { add: [] });
 check(`chat A's change lands in the castle: "${first(built.words)}"`,
   !built.error && built.words.startsWith(`Tab ${castle.id}, “Castle”.`) && built.words.includes(`${castle.id} did edit_model`));
@@ -209,9 +218,12 @@ check("chat B's tabs says another chat works in the castle",
 const byId = await b.call("edit_model", { add: [], target: truck.id });
 check(`chat B's change targeted at ${truck.id} lands in the truck: "${first(byId.words)}"`,
   !byId.error && byId.words.startsWith(`Tab ${truck.id}, “Fire Truck”.`));
+check("...told, as its first choice with another chat's about, what a resumed chat is here",
+  byId.words.includes(RESUMED));
 const bAgain = await b.call("edit_model", { add: [] });
 check("...and binds it: its next change, untargeted, goes there too",
   !bAgain.error && bAgain.words.startsWith(`Tab ${truck.id}`));
+check("...and is not told again", !bAgain.words.includes("resumed"));
 const aAgain = await a.call("edit_model", { add: [] });
 check("chat A, untargeted, still builds in the castle", aAgain.words.startsWith(`Tab ${castle.id}`));
 const meta = castle.metas[castle.metas.length - 1]["brickworks/chat"] || {};
@@ -264,7 +276,7 @@ console.log("\n5. two chats on one connection, as claude.ai is reported to share
 // each names its tab on every call, as select_tab's answer asks.
 const shared = await chat(token);
 const told = await shared.call("select_tab", { tab: castle.id });
-check(`select_tab asks for target on every call while tabs are open: "${told.words.split(". ").pop().slice(0, 110)}"`,
+check(`select_tab asks for target on every call while tabs are open: "${(told.words.match(/[^.]*pass target[^.]*/) || [""])[0].trim().slice(0, 110)}"`,
   told.words.includes(`pass target: "${castle.id}" on every call`));
 await shared.call("select_tab", { tab: truck.id });
 const castleNow = castle.did.length;
@@ -274,6 +286,26 @@ const y = await shared.call("edit_model", { add: [], target: truck.id });
 check("each conversation's targeted change lands in its own tab, the shared pick notwithstanding",
   x.words.startsWith(`Tab ${castle.id}`) && y.words.startsWith(`Tab ${truck.id}`)
   && castle.did.length === castleNow + 1 && truck.did.length === truckNow + 1);
+
+console.log("\n6. a resumed chat, and Claude Code's first request");
+// Claude Code, resuming a chat, discovers and initializes again: a new
+// session, and nothing that says it is chat A (measured, 2.1.303).
+const asked = [...tabs, fort].map((t) => t.did.length);
+const [discovered, discovery] = await mcp(token, "", "server/discover", { _meta: {
+  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+  "io.modelcontextprotocol/clientInfo": { name: "claude-code", version: "2.1.303" } } });
+check(`server/discover is answered by the relay: ${discovered} ${JSON.stringify(discovery.error || discovery.result || {})}`,
+  discovered === 200 && discovery.error && discovery.error.code === -32601);
+const resumed = await chat(token);
+const resumedStopped = await resumed.call("edit_model", { add: [] });
+check(`a resumed chat is a new one: its first change waits for a tab, told why: "${resumedStopped.words.split(". ").pop()}"`,
+  resumedStopped.error && resumedStopped.words.startsWith("Nothing was done") && resumedStopped.words.includes(RESUMED));
+const resumedChose = await resumed.call("select_tab", { tab: truck.id });
+check("...and its choice says it cannot undo what it did before the resume",
+  !resumedChose.error && resumedChose.words.includes(`go to tab ${truck.id} now`) && resumedChose.words.includes(RESUMED));
+await wait(500);
+check(`...no tab asked server/discover (${[...tabs, fort].map((t) => t.did.filter((n) => n === "server/discover").length).join(", ")})`,
+  [...tabs, fort].every((t, n) => !t.did.slice(asked[n]).includes("server/discover")));
 
 for (const tab of [...tabs, fort]) await tab.close();
 await Promise.race([Promise.all([...loops, fortLoop]), wait(30000)]);
