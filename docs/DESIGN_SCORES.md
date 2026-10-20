@@ -262,12 +262,63 @@ for 10 points, and gets 12.
   subjects never are:** never `sample --show`n, their designs and transcripts
   never read to steer a lever. A lever runs on proof once, when it is settled.
 
-**What a round costs now.** Main's design took 8.4 minutes at the median
-(t2base), a lever's 11 to 12; with its drawing and two verdicts about 11 and
-14. Two at a time, one arm on one half is about four hours, a lever's five.
-Tune on tune's first ten as before (two hours an arm for both), take a
+**Main on the 44 of proof** (`64fdf18`, main's `f6db180` with this test's
+change; one design a subject on the subscription, drawn on the GPU, two at a
+time). The 34 new subjects are this run's designs. The first ten are
+t2base's (main at `7299b56`), copied in: src/ai, the design code, is the same.
+
+| dimension | main preferred to the set, all 44 (95%) | the first ten, as before | the 34 new |
+|---|---|---|---|
+| likeness | 22% (12-36) | 25% (8-56) | 21% (10-37) |
+| surface | 26% (15-41) | 25% (8-56) | 26% (15-43) |
+| colour | 26% (15-41) | 20% (6-51) | 28% (16-45) |
+| technique | 12% (6-25) | 0% (0-28) | 16% (7-32) |
+| creativity | 35% (23-50) | 25% (8-56) | 38% (24-55) |
+| overall | 20% (11-35) | 20% (6-51) | 21% (10-37) |
+
+- **The set is preferred four times in five overall,** 18 verdicts of 88
+  ours, as the first ten said, now within 12 points either way where ten
+  gave 22.
+- **Technique is not zero:** 11 verdicts of 88, where the first ten gave
+  main none. By theme over the 44: Architecture (15 subjects) gave main 3
+  subjects' worth of overall and 2.5 of technique; the two Promotional sets
+  went to main on both, both orders; Technic (9 subjects) gave main no
+  verdict on either. A lever judged against these designs should get a
+  paired interval of about 10 points either way on overall and 9 on
+  technique.
+- The two orders named the same model on 88% of dimensions; the model shown
+  first won 45%. All 88 verdicts opened all six pictures. Six design logs have
+  no hold-out line: those sessions never searched the real-set index.
+
+What they are made of (medians over the 44, tools/style.py; floating by the
+build check, every design and set audited):
+
+| measure | main | the sets | main less the set's, median |
+|---|---|---|---|
+| parts | 288 | 344 | -5 |
+| shapes per 100 parts | 14 | 17 | -2 |
+| shaped (curve, slope, angled) | 27% | 25% | -4 points |
+| 1 x 1 parts | 27% | 17% | +8 points |
+| colours | 10 | 13 | -2 |
+| tiles | 16% | 11% | +7 points |
+| studs not up (SNOT) | 4% | 27% | -19 points |
+| hinges, clips, bars, turntables | 0% | 4% | -3 points |
+| floating | 0% | 0% | 0 |
+
+The gaps the first ten showed hold on the 44: a sixth of the sets' SNOT, no
+joints, more 1 x 1s and tiles. Shapes per 100 parts is nearer (14 against 17,
+where the first ten's sets had 28): the grown half's sets are bigger (344
+parts at the median against 201) and repeat their shapes more.
+
+**What a round costs now.** The 34 new designs' sessions took 11 minutes at
+the median and 14 on average, up to 36; the subjects are bigger than the
+first ten. Two at a time, with the GPU shared, the 34 took five hours: nine minutes
+a subject. A half of 44 is about 6.5 hours on main's code, and nearer 9 for a
+lever whose sessions run as long as t3lay's (13 minutes a design against
+t2base's 9.5). So: tune on tune's first ten (about 1.5 hours an arm), take a
 settled lever to tune's 44 if it is close, and run proof's 44 once. Main's
-designs on a half stand while its design code (src/ai) is unchanged.
+proof designs stand while src/ai is unchanged, so a proof round is the lever's
+44 designs and a `compare` (88 verdicts head to head, about 15 minutes).
 
 ```sh
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later
@@ -275,6 +326,12 @@ env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 
 heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms main,mine --dates 2026-10-19,D --jobs 2
 ```
+
+Give the run a timeout of eight hours or more: this one's five-hour timeout
+stopped its last design, run again alone. Results:
+`bench/results/realset-2026-10-19-main/` (report-proof.md, and
+report-proof-first10.md for the first ten alone; arm.json says which designs
+are t2base's).
 
 ### The first arm judged by it: figures on an armature (2026-10-16, `2ad2323`)
 

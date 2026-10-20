@@ -2324,7 +2324,10 @@ orders agree on most dimensions with the model shown first winning near half
 shown winning 42%; a design 5-24 minutes, a half about 80 minutes on two
 workers after the `heavy` queue; on the GPU with audits later, 2026-10-16's
 technique round started each half at once at load 45-75, its workers in one lease,
-and a half of ten took 45-55 minutes on two or three workers).
+and a half of ten took 45-55 minutes on two or three workers; 2026-10-19, the
+grown proof half on main: 88 of 88 verdicts with all six pictures, orders
+agreeing on 88%, the first shown winning 45%, 34 new subjects in five hours on
+two workers with the GPU shared, nine minutes a subject).
 
 ### The check by real shapes
 

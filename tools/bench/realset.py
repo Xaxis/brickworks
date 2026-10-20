@@ -11,10 +11,10 @@
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
                                        [--first N] [--jobs 2]
 
-A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. A
-design takes about 11 minutes with its pictures and verdicts, so a half on two
-workers is about four hours of GPU leases taken design by design. Set
-BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
+A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
+two workers a subject took nine minutes (main, 2026-10-19), so a half is about
+6.5 hours of GPU leases taken design by design: give a run eight hours or
+more. Set BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
 
 Every round so far was steered by subjects we tuned on, and our own judge
 once preferred an outside designer 40 of 40 after calling our rounds gains.
