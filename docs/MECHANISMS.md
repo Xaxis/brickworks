@@ -4156,8 +4156,8 @@ working one out.
 |---|---|---|
 | grab_flow's flywheel, in a browser (SwiftShader, local server, the two builds in turn) | 151.8, 94.5, 91.1 ms (load 18, 11, 15) | 29.6, 31.3, 34.2 ms (load 19, 14, 15) |
 | grab_flow's pendulum | 26.7, 14.8, 21.6 ms | 11.9, 16.0, 18.3 ms |
-| the coasted flywheel, natively | 59.9 ms (57.4 its cover) | 27 to 35 ms |
-| 7191-1's big section's keeping frame, natively | 100 to 107 ms (commit 81 to 87) | 18 ms (commit 5 to 7) |
+| the coasted flywheel, natively (`grab_probe -- --only=coast`, the flywheel, the train, the flywheel across a slow frame) | 59.9 and 53.5 ms (57.4 and 51.4 their covers) | 14.8, 17.7, 14.8 ms |
+| 7191-1's big section's keeping frame, natively | 100 to 107 ms (commit 81 to 87) | 18, 18, 19 ms (commit 5 to 7) |
 
 ### A loop's joints test their own parts
 
@@ -4250,9 +4250,12 @@ were run before main's G14a was merged). Of the 23 run again, 20 turn as in
 G14b's row to the degree and the hundredth of an LDU of rack; 42000-1's
 last turn, back, stops where it did not, and it did not steer either way.
 
-**The other moving things, swept** (`movesweep_g15`: G14b's 260 sets on
-the final code, one shard for the 89 biggest, `movesweep_g15_0`, and two
-for the rest, `movesweep_g15rest`; 42043-1's flatbed trailer timed out
+**The other moving things, swept** (`movesweep_g15`: G14b's 260 sets, one
+shard for the 89 biggest, `movesweep_g15_0`, on 8aebef66, before a pair's
+test waited for a frame's budget, which a session's turn does not have, and
+two shards for the rest on the final code, `movesweep_g15rest`; the first
+run, every joint's pairs tested, was stopped a third of the way, kept as
+`old_code/movesweep_g15allkinds_0`; 42043-1's flatbed trailer timed out
 there, at 300 s, and its row is its run alone, `movesweep_g15flatbed`, 244
 s at load 10, where G14b's took 264).
 
@@ -4285,11 +4288,13 @@ turns the moving side a degree on, and a turn does not slide the clip.
 
 **Proved** (bench/results/grab15-2026-10-19/`probes/`). `grab_probe`
 windowed through `tools/probe.sh`, in full, on the final code
-(`grab_probe_full.log`): 468 checks, all passed; new, `-- --only=moving`
+(`grab_probe_final.log`, and before a pair's test waited for a frame's
+budget, `grab_probe_full.log`): 468 checks, all passed both times; it now
+says the coast's keep (14.8 ms natively); new, `-- --only=moving`
 moves 21019-1's turntable +0°, -1° and back to 0.000 LDU, no turn stopped
 on covers only (on f6db180c it is back 15.7 LDU off, its sweep row). Its
-big case kept 7191-1's section in an 18 ms frame (5 the commit, 10 what an
-edit sets going). `turned_probe` (486 real turns the same boxes in the same
+big case kept 7191-1's section in an 18 and a 19 ms frame (5 the commit,
+10 and 11 what an edit sets going). `turned_probe` (486 real turns the same boxes in the same
 order). grab_flow, both builds three times each in turn (above): every check
 passed on Grab 15, and m98's first run failed the keep (151.8 ms against
 100). play_flow, four runs a side, all passed. The frames gate
