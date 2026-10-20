@@ -156,6 +156,26 @@ func _rack_wheel() -> void:
 	else:
 		print("  Grab: the tube does not slide: %s" % held.why)
 	await _shot("rack_wheel")
+	# As a session builds it: every part laid again by edit_model, from what
+	# look_at_model says of it.
+	var listing: String = await _say("look_at_model", {})
+	var edit: Dictionary = _relaid(listing)
+	var laid: String = await _say("edit_model", edit)
+	print("  edit_model, the rig laid again part by part (%d parts): %s" % [(edit["add"] as Array).size(),
+		laid.get_slice("\n", 0).left(160)])
+	_check("edit_model lays a pinion in its rack (%s)" % laid.get_slice("\n", 0).left(80),
+		not laid.begins_with("Not applied"))
+	_built.clear()
+	for brick: BrickWorld.Brick in _world.bricks():
+		_built[brick.id] = brick.transform
+	var laid_wheel: int = _find("4185a")
+	var laid_tube: int = _find("3700")
+	var laid_turn: float = _along_z(laid_tube, await _grab_turned(laid_wheel, 360.0))
+	var laid_sim: float = _along_z(laid_tube, (await _simulated(laid_wheel)).placed(1.0))
+	print("  laid by edit_model: a turn of the wheel slides the tube %.3f LDU in Grab, %.3f in Simulate" % [
+		laid_turn, laid_sim])
+	_check("laid by edit_model, a turn of the wheel slides the tube 21.333 LDU in Grab and Simulate (%.3f, %.3f)"
+		% [laid_turn, laid_sim], absf(absf(laid_turn) - want) < 0.05 and absf(absf(laid_sim) - want) < 0.05)
 
 
 ## A crank of a stud's throw, a rod five studs long and the tube on its rod:
@@ -519,6 +539,31 @@ func _turned_with(key: int, cradle: int, placed: Dictionary) -> bool:
 	var mine: Transform3D = (placed[key] as Transform3D) * (_built[key] as Transform3D).affine_inverse()
 	var theirs: Transform3D = (placed[cradle] as Transform3D) * (_built[cradle] as Transform3D).affine_inverse()
 	return mine.basis.is_equal_approx(theirs.basis)
+
+
+## look_at_model's listing as one edit_model: every brick taken away and
+## laid again where it says, a joint's part by its axis and middle.
+static func _relaid(listing: String) -> Dictionary:
+	var row := RegEx.create_from_string(
+		"^\\s+#(\\d+)\\s+(\\S+)\\s+c(\\d+)\\s+x=(\\S+)\\s+y=(\\S+)\\s+z=(\\S+)\\s+(\\S+) rot=(\\d)"
+		+ "(?:\\s+axis (\\S+) at (\\S+), (\\S+), (\\S+))?")
+	var remove: Array = []
+	var add: Array = []
+	for line: String in listing.split("\n"):
+		var found: RegExMatch = row.search(line)
+		if found == null:
+			continue
+		remove.append(int(found.get_string(1)))
+		var brick: Dictionary = {"part": found.get_string(2), "color": int(found.get_string(3)),
+			"rot": int(found.get_string(8))}
+		if not found.get_string(9).is_empty():
+			brick.merge({"axis": found.get_string(9), "x": float(found.get_string(10)),
+				"y": float(found.get_string(11)), "z": float(found.get_string(12))})
+		else:
+			brick.merge({"x": float(found.get_string(4)), "y": float(found.get_string(5)),
+				"z": float(found.get_string(6)), "face": found.get_string(7)})
+		add.append(brick)
+	return {"remove": remove, "add": add}
 
 
 ## Where [param ids] stand in the model now.

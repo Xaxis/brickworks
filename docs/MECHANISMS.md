@@ -4628,29 +4628,39 @@ fails on cde834b2: 13 fail there, none here.
    same rates: the orrery's eight periods are as section 9 has them, and
    every part of it stands where it did in every frame (to 0.00000 LDU);
    `simulate_probe` passes as before.
-2. **A loop's free joints move before ones that hold by friction**
+2. **A gear chain held by friction stays while a free joint can move**
    (`Linkage._friction`, `FRICTION_WEIGHT`). Where a loop has more freedom
    than its driver takes up, least squares shared the motion between every
    joint alike: the telescope's cradle, tilted 45°, turned its extension
    chain half way (its idler on a friction pin) and slid the tube 3.998 LDU
-   of 8. Each step damps a joint that holds a thousand times as hard, so it
-   moves least: 7.999. A loop with no freedom to spare closes where it did.
+   of 8. Each step now damps a bearing of the loop's gear chains that holds
+   by friction a thousand times as hard, so it moves least: 7.999. Only a
+   gear chain's: with every hinge held so, 8808-1's and 8054-1's steerings
+   slid their columns along their axles off their racks, and came back 12
+   and 13.6 LDU off. A loop with no freedom to spare closes where it did.
 3. **A drawn rack turns its pinion's train** (`Grab._train_of_pinions`).
    A loop held by a pinion in a rack was offered no meshes from the rack's
-   side, so the pinion turned and its train stood. The pinion's train, as
-   the gear reading has it, holds the loop too: the tube drawn 10 LDU turns
-   the wheel 168.69°.
+   side, so the pinion turned and its train stood. Where the rack is drawn
+   and the pinion is not taken, the pinion's train, as the gear reading has
+   it, holds the loop too: the tube drawn 10 LDU turns the wheel 168.69°.
+   Not a pinion taken by hand: 8062-1's, in a cab of hinges, then shared
+   its turn with the cab (the rack 4.45 LDU of 5.34 for 30°). Too big to
+   solve with the train, the loop is as it was.
 4. **A rack carried past a still pinion rolls along it, and a gear the loop
-   moves turns what it meshes** (`Grab._train_to_racks`, `_meshes_moved`).
-   Turned from the tilt wheel, the telescope's cradle carried its tube round
-   as if fixed to it: only a turning pinion's rack made a loop. A rack whose
-   body hangs from what the train turns, against a pinion that does not
-   turn, makes one now. And a loop's meshes were only those of the train it
-   was driven through: the extension wheel's loop tilted the cradle 45°,
-   its tilt chain not in it. Every mesh of a gear on a body the loop moves
-   joins it, out to six meshes on, unless that makes it too big to solve
-   (40 joints); with the friction pins' weight the cradle now stays
-   (0.00°) and the tube slides 15.997 LDU.
+   turns on its own axle turns what it meshes** (`Grab._train_to_racks`,
+   `_meshes_moved`, `_only_bearings`). Turned from the tilt wheel, the
+   telescope's cradle carried its tube round as if fixed to it: only a
+   turning pinion's rack made a loop. A rack whose body hangs from what the
+   train turns, against a pinion that does not turn, makes one now. And a
+   loop's meshes were only those of the train it was driven through: the
+   extension wheel's loop tilted the cradle 45°, its tilt chain not in it.
+   A mesh of a gear the loop turns on the gear's own axle, against one it
+   leaves standing, joins it, out to six meshes on, when what that adds is
+   the gears' own bearings: the cradle now stays (0.00°) and the tube
+   slides 15.997 LDU. A gear swung about another line (a hub's on a steered
+   wheel) is left out, and so is a mesh that would bring in what carries a
+   gear: 8062-1's steering took in its cab of hinges, 13 joints for 5, and
+   the cab took a sixth of the rack's travel.
 5. **A frame named so is held still body by body** (`Simulation._frame_held`).
    Simulate held every part of a sub-assembly named Stand, Frame, Base or
    Chassis. The telescope's Stand lists the friction pin its tilt chain's
@@ -4661,6 +4671,20 @@ fails on cde834b2: 13 fail there, none here.
    of it is the frame's. The tilt wheel now slides the tube 8.003 LDU in
    Simulate, 7.995 in Grab. The orrery's frame and its periods are as they
    were.
+
+6. **A session can lay a pinion in its rack** (`Joints.meshing`). The check
+   every edit_model, submit_design and placed part goes through forgives a
+   gear's teeth in its partner's, but did not know racks: laid again part
+   by part through edit_model, `rack_wheel` came back "Not applied — the
+   model would not hold together. brick 14 (3647 at -1,8.25,0.40) overlaps
+   brick 7, which fills y=7 up to y=8.75 — so the course above it starts at
+   y=8.75". Half a plate up is 4 LDU off the rack's pitch line, past the 3
+   Racks reads as a mesh: a pinion moved where the check says meshes
+   nothing, and its wheel turns only its gears. Whether the owner's Claude
+   met this is not known; it is what a session building a rack meets. A
+   pinion in a rack is now said and forgiven as a mesh ("an 8 in rack
+   3743"), and the rig laid so slides its tube 21.333 LDU a turn in Grab
+   and in Simulate.
 
 ### What is left
 

@@ -236,13 +236,29 @@ static func _lines_of(part: Lbm.PartMesh) -> Array:
 static func meshing(entries: Array) -> Dictionary:
 	var out: Dictionary = {}
 	var gears: Array = []
+	var standing: Array = []   ## [key, part, Transform3D], for Racks
 	for entry: Array in entries:
 		if entry.size() < 4 or entry[2] == null:
 			continue
+		standing.append([entry[0], str(entry[3]), entry[1]])
 		if Mechanism.spec_of(str(entry[3])).is_empty():
 			continue
 		gears.append({"key": gears.size() + 1, "part": str(entry[3]), "at": entry[1],
 			"mesh": entry[2], "was": entry[0]})
+	# A pinion's teeth are in its rack's as much (Racks): a session's 8 on a
+	# 1 x 4 rack was refused as overlapping it, its course said to start half
+	# a plate up, where it meshes nothing (docs/MECHANISMS.md, section 27).
+	if not gears.is_empty():
+		var part_of: Dictionary = {}
+		for one: Array in standing:
+			part_of[one[0]] = one[1]
+		for mesh: Racks.Pinion in Racks.find(standing):
+			var said_rack: String = ("an %d in rack %s" if mesh.teeth in [8, 11, 18, 80]
+				else "a %d in rack %s") % [mesh.teeth, part_of.get(mesh.rack, "?")]
+			for pair: Array in [[mesh.gear, mesh.rack], [mesh.rack, mesh.gear]]:
+				if not out.has(pair[0]):
+					out[pair[0]] = {}
+				(out[pair[0]] as Dictionary)[pair[1]] = said_rack
 	if gears.size() < 2:
 		return out
 	var model: Mechanism = Mechanism.build(gears)
