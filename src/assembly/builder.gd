@@ -1215,8 +1215,14 @@ func mirror_selection(axis: int) -> int:
 	var bricks: Array = []
 	for brick_id: int in alive:
 		bricks.append(world.get_brick(brick_id))
-	var pivot: Vector3 = Carry.pivot_of(bricks, library)
-	var across: float = pivot[axis]
+	# The plane through the selection's middle on that axis, on a half stud:
+	# any such plane takes the studs onto studs. Not the point a turn goes
+	# round (Carry.pivot_of), a stud centre or corner both ways, which the
+	# other axis can decide: Orthanc's first step, x 380 to 440, was
+	# reflected across x = 420 for its z, a stud over from where it stood
+	# and onto the bricks beside it (2026-10-19).
+	var middle: float = _bounds_of(alive, Transform3D.IDENTITY).get_center()[axis]
+	var across: float = snappedf(middle, BrickLattice.STUD * 0.5)
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var part: String = brick.part_id

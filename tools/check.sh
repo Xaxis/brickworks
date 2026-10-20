@@ -157,7 +157,7 @@ echo "── godot probes ──"
 # with nothing failing — a tool list four tools stale, a menu command no
 # session can reach (mcp_sync); and the window's commands as tools, each
 # read back off the model (app_tools).
-for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints exact by_connector joint_check flex clutch mechanism axle variety repeat usage kinds rules angled section scale bigmodel quit edit selection scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style figure_joints armature turned detail chat sketch project example_name minifig print sticker mould brickify; do
+for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints exact by_connector joint_check flex clutch mechanism axle variety repeat usage kinds rules angled section scale bigmodel quit edit selection mirror scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style figure_joints armature turned detail chat sketch project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
