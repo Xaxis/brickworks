@@ -1520,6 +1520,401 @@ arm.json says which designs are t3lay's), `realset-2026-10-20-main-vs-t3lay44/`
 (head to head), and the split, the reach count and their scripts in
 `t3proof-2026-10-20/`.
 
+### Why the sets win, from the verdicts (2026-10-20)
+
+Three technique levers in a row (technique2, technique3, and technique3 on
+the 44, t3lay44) did not move the judge; the last tripled SNOT and won no extra verdicts. They were
+chosen from what the designs are made of. This reads what the judge says the
+sets win on, before anyone builds another.
+
+**What was read.** Every design-against-its-set verdict on disk: 260 designs
+(a copy counted once: main's first ten are t2base's, t3lay44's are t3lay's),
+520 verdicts, 3,120 dimension verdicts, 2,408 of them the set's. Main's 44 on
+proof are 528, 403 the set's. Each reason was coded against a fixed codebook
+of 20 classes, not told which side was the set: every class the reason names
+as deciding, and the one that carries it (its primary). The coding was done by
+eight subagents, before AGENT_RULES said never to spawn them; I coded 50 drawn
+at random myself. Of the classes they named, 94% were mine; of mine they found
+90%; the primary matched on 39 of 50, the misses mostly between "reads as this
+subject" and "a signature feature", which are counted together below.
+
+**1. What decides the overall verdict: whether it reads as the subject.**
+The classes grouped, and the primary of each verdict the set won:
+
+| family of the set's win | overall, main's 44 | overall, every round | overall, tune half | likeness, main's 44 | likeness, every round |
+|---|---|---|---|---|---|
+| reads as the subject: this subject not a generic one, its signature features, its silhouette and proportion | 41 of 70 (59%) | 251 of 415 (60%) | 119 of 160 (74%) | 57 of 69 (83%) | 330 of 402 (82%) |
+| the line's own way: Technic built studless, BrickHeadz's formula, Friends' mini-dolls and print | 21 (30%) | 146 (35%) | 39 (24%) | 12 (17%) | 70 (17%) |
+| play and story | 4 (6%) | 6 (1%) | 0 | 0 | 0 |
+| surface, colour and detail, technique | 2 (3%) | 6 (1%) | 0 | 0 | 0 |
+| it hangs together | 2 (3%) | 6 (1%) | 2 (1%) | 0 | 2 (0%) |
+
+- **Overall follows likeness.** It names the same model as likeness in 93% of
+  the 520 verdicts (97% of main's 88), technique in 87%, colour 85%, surface
+  76%, creativity 73%. Where likeness and technique disagree (89 verdicts),
+  overall goes with likeness 62 times; where likeness and surface disagree
+  (117), 104 times.
+- **Surface, colour and technique never carry overall:** 6 of the set's 415
+  overall wins between them. They are named in its reasons as support ("with
+  better shaping"), and decide only their own column. A technique lever can win
+  the technique column and leave overall where it was, which is what the last
+  three did.
+- **What we win on is the same thing.** Of our 18 overall wins on main's 44,
+  11 are ours reading truer (Big Ben's slender shaft and belfry, Sungnyemun's
+  hipped roofs, the Flatiron's window grid) and 7 are the set's own faults (the
+  Bricktober sets' floating plane and car, the Level Crossing's excavator
+  swamping the crossing).
+- The tune half, which may be tuned on, says the same and more so: 74% of the
+  set's overall wins and 96% of its likeness wins are this family.
+
+**2. What the reasons name**, per dimension: the set's 403 wins on main's 44,
+how often the same class appears in our 125 wins, and over every round how
+often the set won when the class was named (it won 77% of all).
+
+| what the reason names | likeness | surface | colour | technique | creativity | overall | of the set's 403 | of our 125 | every round: set won when named |
+|---|---|---|---|---|---|---|---|---|---|
+| reads as this subject, not a generic one | 54 |  |  |  |  | 45 | 99 (25%) | 22 (18%) | 79% of 793 |
+| a signature feature of the subject | 60 |  |  |  | 3 | 21 | 84 (21%) | 22 (18%) | 78% of 628 |
+| silhouette and proportion | 37 |  |  |  |  | 9 | 46 (11%) | 12 (10%) | 85% of 372 |
+| the line's own way | 17 |  | 5 | 18 | 1 | 33 | 74 (18%) | 3 (2%) | 90% of 574 |
+| the right figures (mini-dolls, characters) | 9 |  |  |  | 12 | 9 | 30 (7%) | 11 (9%) | 81% of 279 |
+| exposed studs, bare baseplate |  | 54 |  |  |  | 10 | 64 (16%) | 25 (20%) | 72% of 528 |
+| a staircase where a curve should be | 1 | 51 |  |  |  | 9 | 61 (15%) | 10 (8%) | 88% of 336 |
+| curves, slopes and panels shaping the form |  | 56 |  | 16 |  | 7 | 79 (20%) | 21 (17%) | 76% of 633 |
+| a flat expanse of one colour |  |  | 59 |  |  | 3 | 62 (15%) | 18 (14%) | 78% of 516 |
+| the subject's colours and accents |  |  | 65 |  |  | 18 | 83 (21%) | 34 (27%) | 75% of 704 |
+| printed parts, nameplates |  | 1 | 23 | 1 | 15 | 6 | 46 (11%) | 23 (18%) | 81% of 502 |
+| fine detail, texture |  | 4 | 15 | 2 |  | 12 | 33 (8%) | 16 (13%) | 81% of 194 |
+| "mostly stacked bricks" |  | 11 |  | 71 |  | 5 | 87 (22%) | 7 (6%) | 94% of 526 |
+| SNOT |  |  |  | 19 |  |  | 19 (5%) | 5 (4%) | 85% of 237 |
+| angled sub-assemblies, hinges, clips |  |  |  | 57 | 1 | 3 | 61 (15%) | 4 (3%) | 94% of 409 |
+| Technic construction and mechanisms |  |  |  | 26 | 5 | 12 | 43 (11%) | 0 | 98% of 177 |
+| play features that work |  |  |  | 1 | 21 | 12 | 34 (8%) | 7 (6%) | 94% of 250 |
+| story props and accessories |  |  |  |  | 50 | 13 | 63 (16%) | 32 (26%) | 69% of 587 |
+| a setting around it | 4 |  |  |  | 10 | 3 | 17 (4%) | 14 (11%) | 44% of 184 |
+| it hangs together: nothing floats, collides or muddles | 7 | 3 |  | 8 | 3 | 6 | 27 (7%) | 41 (33%) | 32% of 290 |
+
+- **Named almost only against us:** Technic construction (98%), angled
+  sub-assemblies and "mostly stacked bricks" (94% each), working play features
+  (94%), the line's own way (90%), a staircase where a curve should be (88%).
+- **Named about as often for us:** exposed studs, the subject's colours, story
+  props, a signature feature. The judge weighs them both ways: we lose them as
+  often as we win them, so they are not where the gap is.
+- **Named for us:** coherence and a setting. Our designs hang together; the
+  sets that lose to them are the messy ones.
+
+**By theme**, main's 44: what our designs won overall, and the primary of the
+set's overall wins.
+
+| theme | subjects | the set's wins, all dimensions | ours overall | the set's overall wins, by primary |
+|---|---|---|---|---|
+| Architecture | 15 | 130 of 180 | 6 of 30 | reads as the subject 23 of 24, story 1 |
+| Technic | 9 | 102 of 108 | 0 of 18 | the line's own way 13, reads as the subject 5 |
+| City | 5 | 45 of 60 | 3 of 10 | reads as the subject 5, it hangs together 2 |
+| Friends | 3 | 32 of 36 | 1 of 6 | the line's own way 2, story 2, reads as the subject 1 |
+| BrickHeadz | 3 | 23 of 36 | 2 of 6 | the line's own way 2, curves shaping the form 2 |
+| Promotional, Minecraft | 3 | 4 of 36 | 6 of 6 | none |
+| LOTR | 2 | 22 of 24 | 0 of 4 | reads as the subject 3, story 1 |
+| Elves, Adventurers | 2 | 23 of 24 | 0 of 4 | the line's own way 4 |
+| Creator, Pharaoh's Quest | 2 | 22 of 24 | 0 of 4 | reads as the subject 4 |
+
+**Three reasons a class**, quoted from main's 44 (the set's side named; every
+one a verdict the set won but the last two).
+
+- *Reads as this subject.* Great Wall of China, overall (set B): "B looks like
+  a LEGO Architecture Great Wall, with a tan wall winding up a mountain, while A
+  looks like a grey castle wall." Imperial Hotel, overall (B): "B reads clearly
+  as Wright's Imperial Hotel in true Architecture-line style, while A is a tidy
+  but generic green-roofed building." Dune Hopper, overall (B): "B looks like a
+  Creator dune buggy, with curved bodywork and a Technic rear end, while A
+  reads as a generic blocky off-road truck."
+- *A signature feature.* Trevi Fountain, overall (A): "A captures the Trevi's
+  signature curved basin, rock base and triumphal-arch centre with better
+  shaping, which matters more for this subject than B's nicer surface
+  details." Sydney, likeness (B): "an Opera House with clustered pointed white
+  sails, and a through-arch bridge with hangers. A's solid grey arch, flat
+  white blocks for the Opera House and squat towers read only loosely as
+  Sydney." Single-Drum Roller, likeness (A): "A's large exposed grey drum, held
+  in a yellow yoke ... reads at once as a single-drum roller, while B hides its
+  drum under a boxy body ... and looks more like a forklift or tractor."
+- *Silhouette and proportion.* Burj Khalifa, overall (B): "For an Architecture
+  set the tower's silhouette matters most, and B's tapering, spiralling form is
+  unmistakably the Burj Khalifa." Guggenheim, overall (B): "it has the right
+  inverted-spiral silhouette ... while A's dome looks more like a generic white
+  building." Corvette ZR1, likeness (A): "A has the ZR1's low wedge nose,
+  bulging fenders, big wheels ... while B is a long, flat, slab-sided bar with
+  tiny wheels that looks more like a limo than a Corvette."
+- *The line's own way.* Record Breaker, overall (A): "A looks like a finished,
+  shippable Technic Record Breaker, while B looks like a blocky System-style
+  mock-up of one." Steve & Creeper, overall (B): "B delivers the BrickHeadz
+  format the brief asks for ... A is a tidier Minecraft model but does not read
+  as a BrickHeadz pair." Naida's Spa Secret, overall (B): "B looks like a real
+  LEGO Elves spa set with colour, play features and story details, while A is a
+  plain garden gazebo."
+- *The right figures.* Mia's Bedroom, likeness (A): "a mini-doll Mia ... B's
+  classic minifig and its generic furniture make it look less like a Friends
+  set." Heartlake Stables, overall (B): "an on-brand Friends stable with
+  mini-dolls ... while A is a generic white house and paddock with off-theme
+  minifigures." Uruk-hai Army, likeness (A): "Uruk-hai in the right helmets
+  facing a mounted Rohan rider, while B is a generic grey castle wall with ...
+  classic yellow-faced defenders."
+- *Exposed studs.* Emma's Fashion Design Studio, surface (B): "A shows a large
+  field of bare baseplate studs and blocky stacked-brick furniture." Trafalgar
+  Square, surface (A): "B shows exposed studs on its roofs and plaza and builds
+  its portico from stacked boxy bricks." WHACK!, surface (A): "A's body is
+  studless Technic panels and beams ... while most of B's top is an open field
+  of studded green plate."
+- *A staircase where a curve should be.* Dubai, surface (A): "B's sail is a
+  stepped stack of white bricks, a staircase where a curve should be."
+  Heartlake Stables, surface (A): "B's magenta roof and white gables are stepped
+  staircases of bricks with studs showing." Volvo ZEUX, surface (B): "B's bucket
+  is one smooth, curved shell ... while A's bucket is a stepped staircase of
+  plates and bricks."
+- *Curves shaping the form.* Dune Hopper, surface (B): "B's sides are made of
+  sweeping curved red and white slopes, while A is mostly flat brick walls."
+  Jack Skellington & Sally, surface (B): "curved slopes for Sally's hair and the
+  round sides of Jack's skull ... A is all square bricks with stepped edges and
+  no curves at all." Single-Drum Roller, surface (A): "a smooth round drum
+  shell, curved fenders and a curved cab roof."
+- *A flat expanse of one colour.* Imperial Hotel, colour (B): "A is dominated
+  by flat expanses of sand-green roof." Dom's Dodge Charger, colour (B): "A is
+  almost all flat black with only red tail lights and a tan window strip."
+  Single-Drum Roller, colour (A): "B has large plain yellow areas with only a
+  black-and-yellow hazard stripe for accent."
+- *The subject's colours.* Great Wall, colour (B): "B uses tan with darker tan
+  banding against the dark green hill, which is closer to the real wall's
+  colour, while A is mostly flat light grey." Air Mail, colour (B): "a clear
+  yellow, red and grey courier livery, with a red cheat line." Naida's Spa
+  Secret, colour (B): "the Elves palette of dark purple, magenta, lavender,
+  medium azure, reddish brown and trans-pink."
+- *Printed parts.* Mia's Bedroom, colour (B): "printed parts (the 'Mia' drum
+  head and the sheet music), while A spreads into flat expanses of mint wall
+  and tan floor with almost no printed detail."
+  Jack & Sally, colour (B): "printed detail (pinstripes, the bat bow tie,
+  Sally's stitches, swirl patches)." Heartlake Stables, colour (B): "printed
+  name plates, rosettes, butterflies and horseshoe tiles."
+- *Fine detail.* Las Vegas, colour (A): "fine banding and window greebling."
+  Emma's Fashion Design Studio, colour (A): "lots of small detail (printed
+  sketches, ruler, brush, camera, laptop, flowers)." Volvo ZEUX, colour (A): "a
+  lot of fine mechanical detail."
+- *"Mostly stacked bricks".* Imperial Hotel, technique (A): "B relies mostly on
+  stacked slopes and round-brick columns." Trafalgar Square, technique (B): "A
+  is mostly stacked bricks with simple round-part stacks." Dino Explorer,
+  technique (A): "B's dino is a simple stack of bricks with stuck-on slopes and
+  almost no advanced technique."
+- *SNOT.* Jack & Sally, technique (B): "B builds the faces sideways (SNOT),
+  places curved hair pieces at angles and uses clip hands." Burj Khalifa,
+  technique (B): "sideways-mounted (SNOT) cladding, offset setbacks at several
+  heights and angled wedge wings at the base to get the three-lobed plan." Air
+  Mail, technique (B): "side stripes built sideways (SNOT)."
+- *Angled sub-assemblies.* Sydney, technique (B): "B builds the bridge arch
+  from angled, hinged segments with bar hangers ... and angled sail
+  sub-assemblies." Great Wall, technique (A): "A builds the wall as angled
+  sub-assemblies that follow the ridge and bend around the tower." Gandalf
+  Arrives, technique (B): "B hinges the cart sides out at an angle and uses
+  bar-and-clip shafts to hitch the horse."
+- *Technic construction.* Roadwork Crew, technique (B): "pinned studless beams,
+  a boom on angled liftarms, gears and tracks, while A is plain stacked bricks
+  with Technic bricks used only as decoration." Container Yard, technique (B):
+  "a gear-rack boom, a lift arm and a spreader linkage ... the yellow Technic
+  bricks on its gantry are a cosmetic touch, not a mechanism." Corvette ZR1,
+  technique (B): "a beam frame, panels, a visible engine with pistons ... while
+  A is a plain System brick build with no Technic at all."
+- *Play features.* First Responder, creativity (A): "A's working winch with a
+  hook, its steering knob and its rear equipment rack." Uruk-hai Army,
+  creativity (A): "A's ballista that can fire, its collapsing wall rubble."
+  Street Sweeper, creativity (A): "A's poseable vacuum hose with a disc nozzle,
+  its pressure gauge on the tank and its bristle roller."
+- *Story props.* Trafalgar Square, creativity (B): "B's egg on the Fourth Plinth
+  is a witty easter egg." Gandalf Arrives, creativity (B): "the printed party
+  invitation, the fireworks standing in a barrel, the carrot and Frodo holding a
+  book." Naida's Spa Secret, creativity (A): "a hairbrush, perfume bottles, a
+  bucket, a book, a map tile, a dolphin."
+- *A setting.* Big Ben, creativity (B): "a wing of the Palace of Westminster
+  with pinnacles, a patch of green lawn." Sungnyemun, creativity (B): "sloping
+  city-wall wings and grass beds that give the gate a setting." Great Wall,
+  creativity (B): "B's dramatic ridge line."
+- *It hangs together.* Air Mail, overall (A): "A is a coherent, attractive
+  City-style Air Mail plane ... while B is blocky and muddled." Ours won these
+  two: Bricktober Hotel, overall (set B): "B has structural errors (a floating
+  plane, a car intersecting the base)"; Level Crossing, overall (set A): "A is
+  a vehicle parked on a sparse, poorly assembled crossing."
+
+**3. What the judge rewards against what we measure.**
+- *No measure of tools/style.py tracks likeness.* Within a subject, across the
+  192 designs of the 20 subjects designed four times or more (each measure and
+  each share less the subject's mean, intervals by resampling subjects), no
+  measure's correlation with likeness reaches 0.1. SNOT goes with technique at
+  +0.14 (+0.02, +0.24) and with overall at +0.01 (-0.06, +0.07); joint parts
+  with technique at +0.20 (+0.01, +0.38) and overall at -0.09 (-0.20, +0.03).
+  The one measure that goes with overall is the plain share, -0.17 (-0.32,
+  -0.04). More SNOT than another design of the same subject buys a little
+  technique and nothing else.
+- *Half the SNOT gap is the Technic idiom.* style.py reads a Technic set as 79%
+  SNOT at the median (its beams and pins lie on their side) and 1% plain; our
+  Technic designs read 15% and 44%. Architecture's sets read 22% against our
+  3%, BrickHeadz 44% against 1%. Main's median gap of -19 points was met with
+  SNOT in System building, where the sets' gap is Technic's way of building.
+- *What it leaves out:* minifigures, mini-dolls, animals and stickers, which
+  the Friends, LOTR and Adventurers reasons turn on; whether a part is printed;
+  and the model's shape at the whole model's scale, which is what likeness is.
+- *What the levers aimed at:*
+
+| lever | what it changed | the class it aimed at |
+|---|---|---|
+| armature, jointcheck, builtbodies (2026-10-16, 17) | figures and bodies on working joints | angled sub-assemblies |
+| technique, bodies, the body's build shown (2026-10-16) | a square design sent back, bodies on their side | "mostly stacked", SNOT |
+| technique2 (t2plan) | sub-assemblies planned from how real ones are built | "mostly stacked", SNOT, angled |
+| technique3 (t3lay, t3lay44) | the planned joint laid by the app | angled sub-assemblies |
+| faces, figfaces | faces and a lean in the figure pattern | a signature feature, for characters |
+| the passes every session runs: surface, restyle, creative, feature | studs tiled, plain faces dressed, a creative touch, named features laid from real sets | exposed studs, fine detail, story, signature features (as details) |
+
+  The technique family carries 0 of the set's 70 overall wins on main's 44.
+  The two families that carry 62 of them, the subject's shape and the line's
+  way, no lever aimed at, faces for characters apart; and the feature pass, the
+  one meant for signature features, is spent on details (below).
+
+**4. The pictures** of seven of the largest gaps (all twelve verdicts the
+set's but the Burj's eight): each side's corner view, and its front where the
+corner hid something, looked at as a set designer would.
+
+- *Sydney.* Ours has the three landmarks and a printed "Sydney" tile, but each
+  is the wrong shape. The Opera House is a low drift of white curved slopes on
+  a tan podium: no shell rises above the podium and none points. The set makes
+  each shell from white wedges leaning together at an angle, taller than the
+  podium, three stepping down in a row. Our bridge is one grey 1 x 12 x 3 arch
+  brick, a wall; the set's is black hinged segments with bar hangers and open
+  sky under the arch, which is what a through-arch is. Our Sydney Tower is a
+  thin grey rod; the set's is the tallest thing on the base, a black cone and
+  shaft under a gold turret, and the composition leads with it.
+- *Single-Drum Roller.* Ours is a yellow box under a canopy on four posts, its
+  drum a grey cylinder tucked under the front with a few studs of it showing.
+  The set's drum is its biggest element, a third of its length, out in front in
+  a yoke on a spoked hub. A roller is its drum.
+- *Rise of the Sphinx.* Ours lays its 505 parts over a 32 x 48 tan baseplate:
+  courtyard walls, columns, palms, and in the middle a tan lump a few bricks
+  high for the sphinx. The set is the sphinx: a black jackal head with tall ears,
+  angled jaws, paws forward, a gate between them, and a car and three figures
+  round it. The brief's 26 x 52 is the set's bounding box with its car; ours
+  took it as a plot to fill.
+- *Dom's Dodge Charger.* Ours is a black System-brick slab with a box hanging
+  below the sills between the wheels, a strip of grille tiles and a two-pot
+  blower. The set is a studless shell of Technic panels: the full-width chrome
+  grille, round fender ends, the blower and engine open to see. Shape and idiom
+  fail together.
+- *Heartlake Stables.* Ours is a tidy Friends-coloured scene, of a cottage: a
+  white house under a magenta staircase roof, a paddock and classic minifigures
+  on a green baseplate. A stable is a tan barn under a dark red roof with an
+  arch and stalls with half doors; a Friends set is mini-dolls, printed name
+  plates and modular plates, not a baseplate.
+- *Jack Skellington & Sally.* Ours is pixel art in bricks: square heads, eyes of
+  black bricks, Sally's hair a red box. BrickHeadz is one armature for every
+  character: the face built sideways, 2 x 2 round eye tiles, a printed mouth,
+  curved slopes for the back of the head and the hair, arms on clips. The set's
+  Jack has the curved back of a skull; ours is a cube.
+- *Burj Khalifa*, the closest. Ours rises in three equal square tiers. The real
+  tower's lobes stop at different heights round a spiral, so its taper is
+  continuous, and the set gets that with staggered setbacks and smooth panel
+  cladding. Ours is clad in grille texture, which the judge called busy.
+
+**What our designs lack is the defining shape, made first and made true at the
+whole model's scale:** the sails, the drum, the sphinx, the taper, the wedge,
+the barn. They get the subject right by name and decorate a generic mass.
+
+The logs say how. 42 of the 44 sessions ran the feature pass, and the features
+were the session's own choice: 130 over 42 sessions, 62 of them details by name (a
+nameplate in 10 sessions; headlights, tail lights, beacons, exhausts,
+windscreens, signs, lettering). The Guggenheim's were its lettering, skylight
+and nameplate, where it lost on a rotunda that should widen upward; the Burj's
+its spire and nameplate; the roller's its headlights, rear grille, exhaust,
+steering wheel and drum hub, never the drum; the Corvette's six were lights,
+intakes, arches and a wing, where it lost on a stretched slab. Where we won,
+the features were the defining shapes: Big Ben's clock faces, belfry arcade and
+lantern; Sungnyemun's gate tunnel and upturned eaves; the Flatiron's rounded
+prow and cornice; the Level Crossing's barrier arms. 101 times a feature was
+settled as "built by the design", the session judging its own. Half the
+sessions (23 of 44) never asked for a picture of the real thing
+(`find_reference`), and the sketch step, three cheap massings before the design, was tried by one (the
+Great Wall's, refused at 235 parts of the 150 a sketch may have, and not tried
+again).
+
+**Not recognition.** The three views of each design and of each set, one model
+at a time under a hashed name, were shown to a blind reader (eight subagents, before the rule) and
+asked only what it is. It named 30 of our 44 as the subject and 42 as the right
+kind of thing, every Architecture design among them; it named 42 of the sets,
+14 of them by set number. Our Architecture designs lose 24 of 30 overall
+verdicts while each is named at a glance: the gap is that side by side the
+set's defining shape is truer, not that ours cannot be told. A "what is this?"
+check would pass most of our losers. Six designs did build the brief's words
+rather than its set (WHACK! as a whack-a-mole, Container Yard as a gantry yard,
+Roadwork Crew as a truck carrying a roller, First Responder as a fire van, Dino
+Explorer as an explorer photographing a dinosaur, Rise of the Sphinx as a
+temple courtyard), and the blind reader read them the same way: a product's
+name is a smaller class of its own.
+
+**5. The next lever: the defining shape first.** The one class that would win
+the most verdicts is the subject's shape: primary in 41 of the set's 70 overall
+wins and 57 of its 69 likeness wins on main's 44, over 23 subjects in seven
+themes, and 60% and 82% over every round. The line's way is second (21 overall
+wins, 12 subjects, 7 of them Technic).
+
+- *What a session does.* Before any brick it names the subject's defining
+  shapes: the one to three forms by which a person tells this subject from
+  others of its kind at a glance, each at the whole model's scale, with its
+  geometry (tapers in staggered setbacks, widens upward, pointed shells, an
+  exposed drum a third of the length, a low wide wedge), its share of the model
+  and where it sits. A nameplate, lights, a sign or a print is not one. Where
+  the subject is a product's name, it says first what the product is. Its first
+  build is those shapes alone, as a massing; details come after.
+- *How it is made to.* At the planning stage, in the answer of
+  `how_real_sets_build_this`, which 42 of the 44 sessions called first (the
+  other two asked for a picture first): it asks for the defining shapes before
+  anything else. They are held in `submit_design`'s features, which must lead
+  with them; a list that leads with a detail is sent back with the one line
+  why, in the tool's result, as technique3's shape rule sent plans back (24
+  sub-assemblies in 16 sessions: send-backs reach sessions). The massing is
+  laid with the calls that already lay a form in a set builder's parts
+  (shapes.gd's lofts and revolves, rounds, shells), through the sketch step
+  that exists and is not used: words alone moved nothing six times (shapes.gd's
+  header). Then in `look_at_model`'s result, after the massing: its front, side
+  and top beside the reference picture, which the app fetches itself where the
+  session has not, and for each defining shape the judge's own question: is it
+  there, at its size, from every view? Only then the detail passes.
+- *How to measure it on the 44.* The arm on proof's 44, paired against main's
+  44 designs, which stand (`realset.py compare`; 44 designs, 6.5 to 9 hours at
+  two workers as the halves' section counts, and the compare). Ready if likeness's paired interval leaves
+  zero and overall does not fall; a quarter of the 57 likeness losses and 41
+  overall losses turned would be about +16 points on likeness and +12 on
+  overall, at the edge of what 44 resolves (10.5 either way on overall).
+  Then the codebook again on the arm's verdicts: the share of the set's
+  likeness and overall wins whose primary is the subject's shape should fall
+  from 83% and 59%, and the line's way should not move (the lever does not
+  touch Technic; if it moved, something else did). From the logs: sessions
+  whose first features are defining shapes, the massing taken (now none of
+  44), the reference seen (now 21 of 44).
+- *Proof has been read.* This read the 34 new proof subjects' reasons and
+  pictures, which the halves' rule keeps unread until a lever runs. The lever
+  is chosen at the level of a class over 260 designs and the tune half says it
+  more strongly, and nothing in it may name a proof subject or use one as its
+  example. For a check nobody has seen, tune's 34 new subjects have never been
+  designed or judged: if proof's result is close, run main and the lever there
+  (68 designs, about 12 hours).
+- *Then the line's way, for Technic.* Technic is 9 of proof's 44 (and 8 of
+  tune's), lost 102 of its 108 verdicts, and 13 of its 18 overall verdicts on
+  "System bricks, not Technic". Its means is a call that lays a studless frame
+  of beams, pins and panels with one working function, as shapes.gd lays a
+  solid: a bigger build than the first lever, and the measure for it is
+  Technic's subjects alone. BrickHeadz's armature as a pattern, and mini-dolls
+  for Friends, are the small ones.
+
+Everything is in `bench/results/verdicts-2026-10-20/`: the flattened verdicts
+(rows.jsonl, designs.jsonl, from extract.py), the codebook (CODEBOOK.md) and
+its codes (labels.jsonl; the 50 checked by hand in mine50.txt against
+sample50.txt), the blind reader's answers and key (blind_answers/,
+blind_key.json), the features the sessions worked (features.txt), and the
+scripts that make each table (families.py, doc_tables.py, measures.py,
+persubject.py, quotes.py).
+
 
 
 ## Against an outside ruler: BrickBench (2026-10-14)
