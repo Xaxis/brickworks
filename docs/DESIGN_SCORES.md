@@ -320,6 +320,18 @@ settled lever to tune's 44 if it is close, and run proof's 44 once. Main's
 proof designs stand while src/ai is unchanged, so a proof round is the lever's
 44 designs and a `compare` (88 verdicts head to head, about 15 minutes).
 
+**One lever round is 54 designs and about 11 hours** at two workers: tune's
+first ten against t2base's (84 to 104 minutes for technique2's and
+technique3's arms), proof's 44 (about 9 hours at t3lay's pace, 6.5 at
+main's), and the two compares. Taking the lever to tune's 44 as well adds 34
+designs and about 7 hours, and main's own tune 44 once, 34 designs and about
+5 hours. **A third worker buys nothing on this box:** the GPU has two slots
+and a design holds one for its whole session, so a third waits, and while it
+waits every other agent's probe does too. With a third slot the round would be
+about 7.5 hours. The slot is mostly idle (a design's app used under a second of
+the GPU in ten minutes, run.py), so a lease taken only to draw would let three
+or four workers run; that is the box's rule to change, not this test's.
+
 ```sh
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
