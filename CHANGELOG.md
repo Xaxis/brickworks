@@ -465,6 +465,15 @@ whole cycle.
 
 ### Fixed
 
+- In the browser, a part whose download fails for a moment (a timeout, a
+  dropped connection, the server busy) is asked for again, three more times
+  over 20 seconds, where it used to be given up at once: a model opened on
+  a poor connection came up short of that part, and nothing said so. A part
+  that still has not come is said in the status bar, once, when the rest of
+  the model is in: how many parts could not be loaded, and that they are
+  kept in the file. One that arrives later is put down. Saving one of your
+  own models while a part was still on its way left the part out of the
+  file; it is kept where it was.
 - Part names with an accent, a degree sign or another script read as LDraw
   writes them, and searching finds them: "Théoden", "Curve 90°", "Å", "忍者",
   where the parts panel and Claude read "ThÃ©oden" and "90Â°", and "Å" was
