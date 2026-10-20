@@ -207,10 +207,14 @@ func joint_graph(bricks: Array) -> Dictionary:
 ## [param lattice]), with nothing of the window: what holds each pair of
 ## them, as Balance builds its graph. A pair is [method _pair] of two brick
 ## ids, the lower first. Returns:
-##   "studs": pair -> how many studs join them (Stability.contacts' shared
-##     cells over [constant STUD_CELLS]); rigid, but for a single round stud,
-##     which turns: the caller asks for studs == 1 and the parts' shapes.
-##   "under": pair -> the id of the one under, for a stud pair.
+##   "studs": pair -> how many studs join them: the studs whose tips are in
+##     the other part, whichever way they point, or what rests on it
+##     (Stability.contacts' shared cells, less those the two already share,
+##     over [constant STUD_CELLS]) where that is more; rigid, but for a single
+##     round stud, which turns: the caller asks for studs == 1 and the parts'
+##     shapes.
+##   "under": pair -> the id of the one under, for a stud pair: the one with
+##     the studs.
 ##   "turns": pair -> 1 for a shaft turning in a bore (a hinge's pin in its
 ##     eye, a turntable, a clip on a bar, a bar in a hollow stud: Joints.rounds)
 ##     and a ball in a socket (Joints.balls): joints that move.
@@ -229,9 +233,13 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 	judge.library = library
 	judge.lattice = lattice
 	var contacts: Dictionary = judge.contacts(bricks)
+	var boxes: Dictionary = contacts["boxes"]
 	var studs: Dictionary = {}
 	var under: Dictionary = {}
 	var above: Dictionary = contacts["above"]
+	var bounds: Dictionary = {}
+	var slices: Dictionary = {}
+	var already: Dictionary = {}
 	for low: Variant in above:
 		if not own.has(int(low)):
 			continue
@@ -239,9 +247,41 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 		for high: Variant in row:
 			if int(high) == int(low) or not own.has(int(high)):
 				continue
+			# What the lift reaches that the two did not share already. Turned
+			# parts' covers side by side overlap their whole height, and the
+			# lift read that as each resting on the other: 10179-1's 2 x 3
+			# plates stood on edge side by side, held by nothing between them,
+			# were joined by 6 studs, and Right side 9 kept one of them from
+			# the bricks it is on (2026-10-20). Parts whose bounds only touch
+			# share nothing; the bigger cover is sliced, and a pair counted once.
 			var key: int = _pair(int(low), int(high))
-			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(row[high]) / STUD_CELLS))
+			if not already.has(key):
+				already[key] = _shared(int(low), int(high), boxes, bounds, slices)
+			var resting: int = int(row[high]) - int(already[key])
+			if resting <= 0:
+				continue
+			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(resting) / STUD_CELLS))
 			under[key] = int(low)
+	# And each stud where its tip is, as the build check reads them
+	# (Assistant._pieces_of): a stud on a side holds what is on it, and the
+	# lift sees only what is above.
+	for brick: BrickWorld.Brick in bricks:
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if lattice != null else null
+		if mesh == null:
+			continue
+		var tips: Dictionary = {}
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			var reached: int = lattice.brick_at(BrickLattice.to_cell(brick.transform
+				* (connector.position + connector.axis.normalized() * 5.0)))
+			if reached != brick.id and own.has(reached):
+				tips[reached] = int(tips.get(reached, 0)) + 1
+		for other: int in tips:
+			var key: int = _pair(brick.id, other)
+			if int(tips[other]) > int(studs.get(key, 0)):
+				studs[key] = tips[other]
+				under[key] = brick.id
 	var entries: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
@@ -261,6 +301,33 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 		out[kind] = found
 		(out["links"] as Dictionary).merge(found)
 	return out
+
+
+## The cells the covers of [param a] and [param b] share ([param boxes], from
+## Stability.contacts), for [method graph_of]: none where their bounds only
+## touch, and the bigger sliced. [param bounds] and [param slices] keep what
+## was worked out, by id.
+static func _shared(a: int, b: int, boxes: Dictionary, bounds: Dictionary,
+		slices: Dictionary) -> int:
+	for id: int in [a, b]:
+		if not bounds.has(id):
+			bounds[id] = BrickLattice._bound_of(boxes.get(id, PackedInt32Array()))
+	var one: PackedInt32Array = bounds[a]
+	var other: PackedInt32Array = bounds[b]
+	if one.is_empty() or other.is_empty() or one[0] >= other[3] or other[0] >= one[3] \
+			or one[1] >= other[4] or other[1] >= one[4] or one[2] >= other[5] \
+			or other[2] >= one[5]:
+		return 0
+	var big: int = a
+	var small: int = b
+	if (boxes[b] as PackedInt32Array).size() > (boxes[a] as PackedInt32Array).size():
+		big = b
+		small = a
+	if (boxes[big] as PackedInt32Array).size() < Stability.SLICED_FROM * 6:
+		return BrickLattice.shared_cells(boxes[big], boxes[small])
+	if not slices.has(big):
+		slices[big] = BrickLattice.slices_of(boxes[big])
+	return BrickLattice.shared_cells_sliced(boxes[big], slices[big], boxes[small])
 
 
 ## Pins, axles, balls, clips, hinges, glue and one thing in pieces, as

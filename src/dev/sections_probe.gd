@@ -328,7 +328,11 @@ func _one_set(name: String) -> void:
 	# plates off their studs. Until 2026-10-20 a few in a hundred sections
 	# were let off instead, and the same parts came to fail 3 of 47 when
 	# the planner's order moved the cuts, its joint graph pair for pair
-	# what it was on 2026-10-17 (10,924 studs, 1,563 links).
+	# what it was on 2026-10-17 (10,924 stud pairs, 1,563 links). The
+	# third, Right side 9, was the joint graph's: two 2 x 3 plates stood on
+	# edge side by side, their turned covers overlapping, read as 6 studs
+	# between them, and the studs they are on, pointing sideways, not read
+	# at all. Read from the studs' tips, 10,073 stud pairs (2026-10-20).
 	_check("%s: each of %d one piece by the build check on it alone%s" % [name, checked,
 		"" if not_one.is_empty() else " but %d, %s: %s" % [not_one.size(),
 			"each only for parts nothing in the model holds" if unexplained.is_empty()

@@ -465,6 +465,11 @@ whole cycle.
 
 ### Fixed
 
+- Suggest sections reads a stud that points sideways as holding what is on
+  it, and no longer joins two parts at an angle that only stand side by
+  side. On 10179-1 a 2 x 3 plate on edge went into a section without the
+  bricks it is on, held there by the plate beside it; now every section of
+  that set is one piece but one, whose loose parts nothing holds.
 - Part names with an accent, a degree sign or another script read as LDraw
   writes them, and searching finds them: "Théoden", "Curve 90°", "Å", "忍者",
   where the parts panel and Claude read "ThÃ©oden" and "90Â°", and "Å" was
