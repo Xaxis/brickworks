@@ -291,7 +291,11 @@ func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 	var report: Stability.Report = judge.check(world)
 	var checked: int = Time.get_ticks_usec() - began
 	var times: float = float(checked) / float(built)
-	if times < 2.0 and world.brick_count() > 8000:
+	# Under 3, not 2: building Orthanc got twice as fast in m100 (a turned
+	# cover worked out a line at a time), 803-831 ms to 433-444, while the
+	# check stayed 1054-1152 ms; the ratio rose from 1.3 to 2.4-2.7 on
+	# building's gain alone (2026-10-20).
+	if times < 3.0 and world.brick_count() > 8000:
 		print("  ok    Orthanc, %d bricks: built in %d ms, checked in %d — %.2f times (%s, %d joints)"
 			% [world.brick_count(), built / 1000, checked / 1000, times,
 				report.summary(), report.joints])
@@ -300,7 +304,8 @@ func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 		print("  FAIL  checking the %d-brick Orthanc costs %.1f times building it "
 			% [world.brick_count(), times] + "(%d ms against %d) — it was 4.4 "
 				% [checked / 1000, built / 1000]
-			+ "times when turned covers were compared box against box")
+			+ "times when turned covers were compared box against box, 1.3 before "
+			+ "building's covers were worked out a line at a time (m100), 2.4-2.7 after")
 	world.queue_free()
 	builder.queue_free()
 	await process_frame
