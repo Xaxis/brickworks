@@ -10,6 +10,12 @@ set -uo pipefail
 # whatever directory it was started from, which for a deploy means
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
+# Never the person's own app data (app_userdata/Brickworks under the
+# default XDG_DATA_HOME), as check.sh and doctor.sh (2026-10-20).
+if [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
+  XDG_DATA_HOME="$(mktemp -d "${TMPDIR:-/tmp}/brickworks-shot-data.XXXXXX")"
+  export XDG_DATA_HOME
+fi
 out="${1:-shots/latest.png}"
 shift || true
 mkdir -p "$(dirname "$out")"
