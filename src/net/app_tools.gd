@@ -529,6 +529,8 @@ func definitions() -> Array:
 		{
 			"name": "simulate_mechanism",
 			"description": ("Turn the model's gear train as Tools, Simulate mechanism does, "
+				+ "and what it drives in a loop as a drag moves it (a pinion's rack slides, a "
+				+ "crank's rod rocks and its slider strokes), "
 				+ "without changing the model: from driver= (a part's number or a "
 				+ "sub-assembly's name; else the one named Crank, Motor or Handle, else the one "
 				+ "that turns most). It says each turning part's turns per driver turn and, with "

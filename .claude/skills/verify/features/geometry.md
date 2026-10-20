@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
 
 ## Sub-features
 
@@ -696,6 +696,17 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 3200x1800x24" godot --
 godot --path . --resolution 1400x900 -- --mcp=8795 &   # under xvfb; then
 tools/mcp_check.py --port=8795                 # simulate_mechanism as a session asks it
 ```
+
+Where the driver closes a loop the gear reading cannot turn (a pinion's rack, a
+crank's rod and slider), or the gear reading locks and the loop does not, Simulate
+takes hold of the driver as Grab does (`Simulation._take_hold`, through its own gear
+reading) and draws, weighs and records Grab's poses, every rate read off them; a
+gear train keeps the gear reading's poses (docs/MECHANISMS.md section 27).
+`tools/probe.sh telescope_probe` checks it on five rigs in `src/dev/fixtures/`
+(`rack_wheel`, `crank_slider`, `tilt_cradle`, `telescope.mpd`, `friction_arms`) and
+the orrery, in Simulate, in Grab and over MCP; it ends on "telescope: every check
+passed, 3 gaps left as docs/MECHANISMS.md section 27 says", and fails 15 on
+cde834b2.
 
 The probe ends on "simulate: a driver clicked, played, scrubbed and recorded, …".
 It builds its two models part by part on the baseplate: an 8 driving a 24 in a

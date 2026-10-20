@@ -2700,6 +2700,13 @@
       "entry": "src/dev/motions_panel_probe.gd",
       "reach": "tools/probe.sh motions_panel_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe [-- OUT_DIR]   (windowed, on the GPU: Build, Motions… driven by clicks and drags on 1484-1's doors and 8808-1's steering: a suggestion kept, played both ways, a drag recorded as a motion with the model put back, a key's way and a slider's key, play all, undo, saved and opened again, a motion defined over MCP shown in the open panel, Render animation; pictures of each state)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "telescope probe",
+      "entry": "src/dev/telescope_probe.gd",
+      "reach": "tools/probe.sh telescope_probe   (a session's telescope claims on five rigs of src/dev/fixtures/ in Simulate, Grab and move_part: a rack's tube slides 64/3 LDU a wheel turn, a crank's slider strokes 40 LDU and is not locked, a 45° tilt rolls the tube 8 LDU along a held pinion, a friction pin holds; the orrery's periods and frames as before; GAP lines are section 27's leftovers; headless it measures without pictures)",
+      "area": "geometry"
     }
   ]
 }

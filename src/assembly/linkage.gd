@@ -373,6 +373,18 @@ func _read(driver: Bodies.Link, child: int) -> void:
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0:
 					_carrying[c] = true
+	# The bearings of the gear chains the loop is held by that hold by
+	# friction: a gear's own joint, or its axle's.
+	var geared: Dictionary = {}
+	for coupling: Mechanism.Coupling in gear_meshes:
+		for key: int in [coupling.one.key, coupling.other.key]:
+			geared[int(bodies.body_of.get(key, -1))] = true
+	for n: int in range(1, links.size()):
+		if links[n].holds and links[n].turns and geared.has(int(child_of[n])):
+			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
+					if _axis[n] == Vector3.ZERO else []):
+				if c >= 0 and c != driver_col:
+					_friction[c] = true
 	# What moves: everything beyond each joint of the loops.
 	var seen: Dictionary = {}
 	for n: int in links.size():
@@ -821,6 +833,21 @@ static func _worst(r: PackedFloat64Array) -> float:
 	return out
 
 
+## The joints of a loop's gear chains that hold by friction (a gear on a
+## friction pin), each but the driver's: column -> true. Where the loop has
+## more freedom than its driver takes up, they move least and the free ones
+## take it, as the parts would: a telescope's cradle tilted on the axle of a
+## pinion that a gear chain with a friction pin holds rolls its rack along
+## the pinion, 8 LDU for 45° (docs/MECHANISMS.md, section 27). Least squares
+## over every joint alike turned the chain half way and slid the rack half.
+## Damped [constant FRICTION_WEIGHT] times as hard in each step ([method
+## _close_with]): a loop with no freedom to spare closes where it did. Only a
+## gear chain's: a steering's hinges held so, its column slid along its axle
+## off its rack (8808-1, 8054-1).
+var _friction: Dictionary = {}
+const FRICTION_WEIGHT := 1000.0
+
+
 ## Close the loops with the driver held at q[driver_col], from q as it is.
 ## True when every closing joint meets to CLOSE_TO.
 func _close() -> bool:
@@ -916,7 +943,8 @@ func _close_with(held: Dictionary) -> bool:
 			var m2: PackedFloat64Array = a.duplicate()
 			var g2: PackedFloat64Array = g
 			for i: int in n:
-				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) + 1e-9
+				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * (FRICTION_WEIGHT if _friction.has(free[i])
+					else 1.0) + 1e-9
 			if not pinned.is_empty():
 				g2 = g.duplicate()
 				for i: int in pinned:

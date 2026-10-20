@@ -6101,6 +6101,8 @@ func _make_grab_drag() -> void:
 	_grab_drag.edited = _on_model_edited
 	_grab_drag.assemblies = _shell.assemblies
 	add_child(_grab_drag)
+	if _simulate != null:
+		_simulate.grabbing = _grab_drag
 
 
 func _unhandled_input(event: InputEvent) -> void:

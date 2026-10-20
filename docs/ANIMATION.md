@@ -24,7 +24,7 @@ of its 23 checks fail on 32bccfcc, and all 23 pass after.
 |---|---|---|
 | Build, Pose and animate… (`PosePanel`, `Poser`, `PoseAnimation`) | A slider for each sub-assembly the file names that has a shaft in a bore outside it (`Builder._joint_of`). It turns that sub-assembly's parts alone. | Key at / Add key keeps every slider's angle at a time. Play runs it in the window. Render animation draws it Quick, 480 × 300 or 720p, 12 or 24 a second, through the window's own camera, as a WebP, and on the desktop the frames and an MP4, in Downloads as `<model>_animation`. |
 | Grab: a drag on a part (`GrabDrag`, `Grab`, `Bodies`) | Rigid bodies found from the real connections: hinges, pins, axles, clips, balls, studs; loops, racks, gears driven by their teeth, swinging under weight, coasting, toppling (docs/MECHANISMS.md §14-§26). | Not at all. |
-| Tools, Simulate mechanism… (`SimulatePanel`, `Simulation`) | A gear train turned from its driver. | Record: 24, 48 or 96 frames of one turn, 24 a second, through the window's camera, as `<model>_mechanism`. |
+| Tools, Simulate mechanism… (`SimulatePanel`, `Simulation`) | A gear train turned from its driver, by the gear reading. Where the driver's motion closes a loop the gear reading cannot turn (a pinion's rack, a crank's rod and slider), the loop as Grab moves it, through the same gear reading: racks slide, sliders stroke, rods rock (docs/MECHANISMS.md section 27). No weight: nothing swings or holds. | Record: 24, 48 or 96 frames of one turn, 24 a second, through the window's camera, as `<model>_mechanism`. |
 | Play on a shared link (`ShareView`, `Playable`) | Grab's bodies, and the link card's words for them (steering, boom, doors, gears…). | Not at all. |
 | File, Render… turntable (`RenderDialog`) | The model turning round once. | Quick, Good or Best, up to 4K, every lighting and lens. The only path with the full renderer. |
 | MCP | `pose_model`: Pose's joints. `move_part`: Grab's bodies. `animate_model`: Pose's joints, or a part on its joint by number (`"#80"`), turned as Grab turns it. `simulate_mechanism record=true`: Simulate's. | `animate_model` and `simulate_mechanism` render as jobs, framed on the model ("hero"). |
@@ -144,7 +144,7 @@ and Render animation from the panel drew them still. Fixed.
 |---|---|---|
 | Pose and animate, by a person | 3/10 | Smooth keys and a true render, on a model whose sub-assemblies are its moving parts (pose_probe's crane, 31070-1's back window). On four of five real sets it cannot move what moves. |
 | Grab, by a person | 9/10 moving, 0/10 recording | The best thing here, and nothing it does can be kept. |
-| Simulate mechanism | 7/10 | Gear trains only, recorded well, framed for a session. |
+| Simulate mechanism | 7/10 | Gear trains only, recorded well, framed for a session. Since section 27 of docs/MECHANISMS.md, racks and loops too, as Grab moves them. |
 | Play on a shared link | 8/10 moving, 0/10 recording | |
 | MCP | 4/10 before, 7/10 after | Steering, a boom and gears animate by part; framed now, playable by the person, says where a part stops, shows its frames, and marks `pose_model`'s joints that cannot turn. Still two joint namespaces. |
 | The whole | 4/10 | Well-built parts, not one feature. |

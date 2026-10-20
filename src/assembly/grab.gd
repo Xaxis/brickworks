@@ -347,6 +347,18 @@ func _chosen() -> String:
 		var offer: Array = _train_to_racks(ours)
 		couplings = offer[0]
 		geared.assign(offer[1])
+	var from_rack: bool = false
+	if couplings.is_empty() and not geared.is_empty():
+		# The rack drawn turns its pinion, and the pinion the train it is in:
+		# a tube drawn along its rod turns the wheel that drives it. Their
+		# meshes hold the loop too. Not a pinion taken by hand: 8062-1's
+		# column, in a cab of hinges, then shared its turn with the cab.
+		var outside: Array[Racks.Pinion] = []
+		for mesh: Racks.Pinion in geared:
+			if not ours.has(int(bodies.body_of.get(mesh.gear, -1))):
+				outside.append(mesh)
+		couplings = _train_of_pinions(outside)
+		from_rack = not couplings.is_empty()
 	linkage = null
 	_kingpin = Vector3.ZERO
 	var loop: Linkage = null
@@ -361,6 +373,28 @@ func _chosen() -> String:
 				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 					+ "of a part on one of the loop's turning joints (its crank).") % bodies.named([body]))
 		loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+		if from_rack and not loop.why.is_empty():
+			# Too big with the train: the loop as it was, the train left still.
+			couplings = []
+			loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+		# A gear the loop moves turns the gears it meshes, and they theirs: a
+		# telescope's cradle, tilted by its extension wheel's rack, is held by
+		# the tilt wheel's chain it meshes. Their meshes hold the loop too, by
+		# the bearings of the gears alone: 8062-1's steering pulled in its cab
+		# of hinges with them (13 joints of 5), and the cab took a sixth of
+		# the rack's travel.
+		for _round: int in 6:
+			if not loop.why.is_empty():
+				break
+			var more: Array = _meshes_moved(loop, couplings)
+			if more.is_empty():
+				break
+			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin)
+			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size() \
+					or wider.links.size() <= loop.links.size() or not _only_bearings(loop, wider):
+				break
+			couplings.append_array(more)
+			loop = wider
 	if loop != null and loop.why.is_empty():
 		# A linear actuator's screw holds its loop where it is: only its rod
 		# drawn along it, or its input turned, moves it.
@@ -836,8 +870,18 @@ func _train_to_racks(ours: Dictionary) -> Array:
 				and train.omega(gear.body).length() > 1e-6):
 			turning[gear.key] = true
 	var pinions: Array = []
+	# A rack the train carries round past a pinion standing still rolls along
+	# it as much: a telescope's tilt wheel turns its cradle, whose tube's rack
+	# rolls along the extension wheel's pinion on the tilt line.
+	var carrying: Dictionary = ours.duplicate()
+	for key: Variant in turning:
+		carrying[int(bodies.body_of.get(int(key), -1))] = true
 	for mesh: Racks.Pinion in bodies.racks():
-		if turning.has(mesh.gear) and not ours.has(int(bodies.body_of[mesh.rack])):
+		var rack_body: int = int(bodies.body_of[mesh.rack])
+		if turning.has(mesh.gear) and not ours.has(rack_body):
+			pinions.append(mesh)
+		elif not turning.has(mesh.gear) and not carrying.has(int(bodies.body_of[mesh.gear])) \
+				and _carried_by(rack_body, carrying):
 			pinions.append(mesh)
 	if pinions.is_empty():
 		return none
@@ -846,6 +890,110 @@ func _train_to_racks(ours: Dictionary) -> Array:
 		if coupling.how != "chain" and turning.has(coupling.one.key) and turning.has(coupling.other.key):
 			meshes.append(coupling)
 	return [meshes, pinions]
+
+
+## Whether [param body] or a body it hangs from is among [param carrying]
+## (Bodies body -> true).
+func _carried_by(body: int, carrying: Dictionary) -> bool:
+	var at: int = body
+	for _n: int in 64:
+		if carrying.has(at):
+			return true
+		if not bodies.parent_of.has(at):
+			return false
+		at = int(bodies.parent_of[at])
+	return false
+
+
+## Whether every joint [param wider] has that [param loop] has not turns a
+## gear: the bearings of a gear chain, not what carries them.
+func _only_bearings(loop: Linkage, wider: Linkage) -> bool:
+	var geared: Dictionary = {}
+	for gear: Mechanism.Gear in shared_mechanism.gears:
+		geared[int(bodies.body_of.get(gear.key, -1))] = true
+	for n: int in wider.links.size():
+		if not loop.links.has(wider.links[n]) and not geared.has(int(wider.child_of[n])):
+			return false
+	return true
+
+
+## The gear reading's meshes, not among [param offered], of a gear [param
+## loop] turns on its own axle against one it leaves standing: what it turns
+## as it moves. A gear the loop swings about another line (a hub's on a
+## steered wheel) is left out: its mesh would part, and a steering pulled in
+## a drivetrain's meshes with it (8062-1: 40 joints, the rack 4.45 LDU of
+## 5.34 for 30°).
+func _meshes_moved(loop: Linkage, offered: Array) -> Array:
+	var out: Array = []
+	if shared_mechanism == null:
+		return out
+	var moved: Dictionary = {}
+	for one: int in loop.moved:
+		moved[one] = true
+	var line_of: Dictionary = {}   ## a loop joint's child body -> its link
+	for n: int in loop.links.size():
+		line_of[int(loop.child_of[n])] = loop.links[n]
+	for coupling: Mechanism.Coupling in shared_mechanism.couplings:
+		if coupling.how == "chain" or offered.has(coupling):
+			continue
+		var one: int = int(bodies.body_of.get(coupling.one.key, -1))
+		var other: int = int(bodies.body_of.get(coupling.other.key, -1))
+		if one < 0 or other < 0 or one == other or moved.has(one) == moved.has(other):
+			continue
+		# The gear it would turn must turn on a joint of its own: one held with
+		# what stays locks the loop (8020-1's truck, steered back, did not move).
+		var still: int = other if moved.has(one) else one
+		var bearing: Bodies.Link = bodies.parent_link.get(still)
+		if bodies.anchors.has(still) or bearing == null or not bearing.turns:
+			continue
+		# A worm standing still holds its gear: no mesh to turn it back by
+		# (_worm_holding says so). A tractor's sower, on a 24, turned 720°.
+		if coupling.how == "worm" and moved.has(other):
+			continue
+		var gear: Mechanism.Gear = coupling.one if moved.has(one) else coupling.other
+		# The loop joint that carries it: its own, or the nearest one in.
+		var at: int = one if moved.has(one) else other
+		var carried: Bodies.Link = null
+		for _n: int in 64:
+			if line_of.has(at):
+				carried = line_of[at]
+				break
+			if not bodies.parent_of.has(at):
+				break
+			at = int(bodies.parent_of[at])
+		if carried != null and carried.axis != Vector3.ZERO and carried.turns \
+				and Bodies._same_line(carried.point, carried.axis.normalized(), gear.centre, gear.axis.normalized()):
+			out.append(coupling)
+	return out
+
+
+## The meshes of the gear trains [param pinions] are in (Racks.Pinion), as
+## the gear reading has them, each solved from its pinion: [] where none
+## turns or the train locks. A train turned from its rack's side, as
+## [method _train_to_racks] offers one turned from the train's.
+func _train_of_pinions(pinions: Array[Racks.Pinion]) -> Array:
+	var meshes: Array = []
+	if shared_mechanism == null:
+		return meshes
+	var train: Mechanism = shared_mechanism
+	for mesh: Racks.Pinion in pinions:
+		if mesh.screw or not train.parts.has(mesh.gear):
+			continue
+		var driven: int = train.body_of(mesh.gear)
+		if driven == train.ground or train.joint_of(driven) == null:
+			continue
+		if not bool(train.solve({driven: 1.0})["ok"]):
+			continue
+		var turning: Dictionary = {}
+		for gear: Mechanism.Gear in train.gears:
+			if gear.body == driven or (gear.body != train.ground and not train.floating.has(gear.body)
+					and train.omega(gear.body).length() > 1e-6):
+				turning[gear.key] = true
+		for coupling: Mechanism.Coupling in train.couplings:
+			if coupling.how != "chain" and turning.has(coupling.one.key) and turning.has(coupling.other.key) \
+					and not meshes.has(coupling):
+				meshes.append(coupling)
+	return meshes
 
 
 ## What hangs on a driven body by a joint the gear reading does not read (a

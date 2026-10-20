@@ -905,7 +905,8 @@ against a windowed app and a headless one. A 24-frame Quick recording took
 recording is a job; mcp_check asks for one and polls `job` to its end.
 
 **Left for later.** Turntables of 56 and 60 are read by P1a but not yet in a
-fixture here; linkages (P2); the frames of a recording are tinted only in the
+fixture here; linkages (P2: since section 27, a loop the driver closes is
+turned as Grab turns it); the frames of a recording are tinted only in the
 window, not in the WebP.
 
 ## 9. The ratio search and the orrery (P1c)
@@ -4553,3 +4554,198 @@ time the pieces' reading (`native/foot_cost.gd`) and a clip's room
 - A part or a pair begun last in a pause's frame still runs to its end: on
   the slowed phone the pause's frame was 18.8 and 22.9 ms against its 4.
 - G15's other leftovers stand.
+
+## 27. A session's telescope, and Simulate turned as Grab turns (mechverify)
+
+A Claude session building the owner a telescope that tilts and extends
+told them, over MCP:
+
+> The extension wheel won't move the telescope in Brickworks. The simulator
+> doesn't model gears on racks, so turning that wheel only spins the small
+> gear. To try the extension in the app, drag the telescope tube itself; it
+> slides along its rod. I first built a crank-and-rod version that the app
+> could in theory drive, but it seized up in the simulation, so I switched to
+> the rack... On real bricks, tilting forward also nudges the tube out about
+> 0.4 stud, because the small gear is held still while the tilt rolls the
+> rack along it... Friction pins in the gear chains should stop the
+> telescope drooping when you let go.
+
+Each claim was tried on small rigs of real parts, opened as a session opens
+a saved model, in Simulate (`Simulation`, Tools, Simulate mechanism, and
+`simulate_mechanism`), in Grab (a drag, `GrabDrag.Turning`, as a person's
+drag and `animate_model` turn a part) and over MCP (`move_part`). The probe
+is `src/dev/telescope_probe.gd`; its rigs are in `src/dev/fixtures/`. Its
+runs before (cde834b2) and after, and the pictures, are in
+`bench/results/mechverify-2026-10-20/`.
+
+| rig | what it is |
+|---|---|
+| `rack_wheel.ldr` | a wheel (4185a) on an axle with an 8, meshing a 24 whose axle carries an 8 tooth pinion in a 1 x 4 rack (3743) on a tube (3700 and a 2 x 6 plate) that slides on a 12L axle fixed in two bricks with axle holes |
+| `crank_slider.ldr` | the same tube on its rod, pinned (3673) to a 5L beam whose other end is on a crank (41677, an axle pin 3749) a stud from its axle, turned by a wheel |
+| `tilt_cradle.ldr` | a cradle (a 4 x 12 plate, the rod's two bricks, a hanger with a round hole) hung on the pinion's own axle, carrying the tube; the pinion's chain to the wheel is 16-16-16 through a clutch gear (6542b) on a friction pin (2780) |
+| `telescope.mpd` | the owner's shape as their Claude described it: the same, the cradle also keyed to a tilt axle on the same line, which a tilt wheel turns through its own 16-16-16 chain with a friction pin; sub-assemblies Stand, Extension wheel, Tilt wheel, Cradle, Tube |
+| `friction_arms.ldr` | two 13L beams, one on a friction pin (2780), one on a plain pin (3673), each in a brick 4 bricks up |
+
+An 8 tooth pinion moves its rack 8 teeth a turn, 8 LDU each (section 12):
+64 LDU, 3.2 studs.
+
+### The claims
+
+| the claim | Simulate before | Simulate now | Grab and `move_part` |
+|---|---|---|---|
+| 1. The extension wheel cannot move the tube; turning it only spins the small gear | **True.** `rack_wheel`: a turn of the wheel moves the tube 0.000 LDU, and it is called "Free (nothing decides how fast it turns...). Mesh it with a gear that turns" though it is meshed. The telescope's tube likewise. | False. 21.328 LDU a turn ("slides 1.1 studs along its line for each turn"); the teeth say 64/3 = 21.333. The telescope's 3.2 studs a turn, 16.002 LDU a quarter. | **False.** 21.333 a turn, exactly, on a fixed rod; `move_part degrees=360` the same. On the telescope a quarter turn tilted the cradle 45° and slid the tube 8 LDU of 16 before; now the cradle stays (0.00°) and the tube slides 15.997. |
+| 2. Drag the tube itself; it slides along its rod | (Simulate turns only) | | **True.** It slides; drawn 10 LDU, its rack turned the pinion but not the train beyond it, the wheel 0.00° where the teeth say 168.75°. Now 168.69°. |
+| 3. A crank-and-rod version seized up in the simulation | **True.** At dead centre the rod spins round, 0.25 turns for each turn of the crank, and the slider stays; off dead centre: "LOCKED: it cannot turn — the meshes ask for two different speeds at once. The ones that fight: none alone; several together. Take one of those gears off". There are no gears. | False. "a loop of 4 joints (2 axle, 2 pin), closed by 1": the slider "goes 2 studs back and forth" (40.000 LDU, twice the 20 LDU throw), the rod "rocks 14° either way" (asin 20/80 = 14.48°). | **False.** It strokes 40.000 LDU. Let go, it swings under its weight: no joint in it holds by friction. |
+| 4. Tilting nudges the tube about 0.4 stud: the pinion held still, the tilt rolls the rack along it | **False.** 0.000: the tube goes round with the cradle. | True. 7.999 LDU for a 45° tilt. | **True.** 64 LDU x 45/360 = 8 LDU, 0.4 stud, for a 45° tilt with an 8 (0.2 stud at 22.5°). `tilt_cradle`: 7.992. The telescope was 3.998 from its cradle (the extension chain turned half) and 0.000 from its tilt wheel (the tube carried as if fixed); now 7.999 and 7.995. |
+| 5. Friction pins in the gear chains stop the droop when let go | (no weight in Simulate) | (no weight) | **True, and for the telescope only now.** The beam on a friction pin holds at 30.0°; on a plain pin it swings to -18.5°, where it meets the model. The telescope tilted by its cradle and let go drooped before: "the loop turned 62° under its own weight: no joint in it holds by friction", its chains read out of its loop; now it holds at 45°, as from its tilt wheel. |
+
+![rack_wheel in Simulate before and now, 1.5 turns of the wheel in](mechanisms/rack_wheel_simulate_before_after.webp)
+
+![crank_slider in Simulate before and now, the crank at 120°](mechanisms/crank_slider_simulate_before_after.webp)
+
+On real bricks claim 4 is the geometry above, and claim 5 is likely but
+unmeasured: the cradle and tube (24.1 g, their centre 16.1 mm across the
+tilt line at 45°) pull 0.38 N·cm about it, through a 1:1 chain onto a
+friction pin, whose hold is unpublished (section 4: 0.5 to 1 N·cm, a
+placeholder). A gear reduction in the tilt chain (a worm) would make it
+certain.
+
+### What was fixed
+
+None changes the interface. Each is a check of `telescope_probe` that
+fails on cde834b2: 15 fail there, none here.
+
+1. **Simulate turns a loop as a drag turns it** (`Simulation._take_hold`,
+   `hold_with`; the panel and `simulate_mechanism` through
+   `SimulatePanel._held`). The driver is taken hold of as Grab takes it,
+   through Simulate's own gear reading (`Grab.shared_mechanism`, its ground
+   Simulate's base), on the driver's own line. Where that closes a loop
+   (a pinion's rack, a crank's rod and slider) and the loop moves what the
+   gear reading cannot, or the gear reading is locked, every pose drawn,
+   weighed and recorded is Grab's (`_grab_pose`, the loop followed in
+   steps of half a radian, `_walk_loop`), and every rate is read off them
+   over a turn (`_read_loop`): a gear turns as many times as it goes round
+   in one, a rack slides on, a slider goes back and forth, a rod rocks
+   (`travels`, said in the readout: "slides 1.1 studs along its line for
+   each turn of", "goes 2 studs back and forth", "rocks 14° either way").
+   A gear train keeps the gear reading's poses, which a drag turns by the
+   same rates: the orrery's eight periods are as section 9 has them, and
+   every part of it stands where it did in every frame (to 0.00000 LDU);
+   `simulate_probe` passes as before.
+2. **A gear chain held by friction stays while a free joint can move**
+   (`Linkage._friction`, `FRICTION_WEIGHT`). Where a loop has more freedom
+   than its driver takes up, least squares shared the motion between every
+   joint alike: the telescope's cradle, tilted 45°, turned its extension
+   chain half way (its idler on a friction pin) and slid the tube 3.998 LDU
+   of 8. Each step now damps a bearing of the loop's gear chains that holds
+   by friction a thousand times as hard, so it moves least: 7.999. Only a
+   gear chain's: with every hinge held so, 8808-1's and 8054-1's steerings
+   slid their columns along their axles off their racks, and came back 12
+   and 13.6 LDU off. A loop with no freedom to spare closes where it did.
+3. **A drawn rack turns its pinion's train** (`Grab._train_of_pinions`).
+   A loop held by a pinion in a rack was offered no meshes from the rack's
+   side, so the pinion turned and its train stood. Where the rack is drawn
+   and the pinion is not taken, the pinion's train, as the gear reading has
+   it, holds the loop too: the tube drawn 10 LDU turns the wheel 168.69°.
+   Not a pinion taken by hand: 8062-1's, in a cab of hinges, then shared
+   its turn with the cab (the rack 4.45 LDU of 5.34 for 30°). Too big to
+   solve with the train, the loop is as it was.
+4. **A rack carried past a still pinion rolls along it, and a gear the loop
+   turns on its own axle turns what it meshes** (`Grab._train_to_racks`,
+   `_meshes_moved`, `_only_bearings`). Turned from the tilt wheel, the
+   telescope's cradle carried its tube round as if fixed to it: only a
+   turning pinion's rack made a loop. A rack whose body hangs from what the
+   train turns, against a pinion that does not turn, makes one now. And a
+   loop's meshes were only those of the train it was driven through: the
+   extension wheel's loop tilted the cradle 45°, its tilt chain not in it.
+   A mesh of a gear the loop turns on the gear's own axle, against one it
+   leaves standing, joins it, out to six meshes on, when what that adds is
+   the gears' own bearings: the cradle now stays (0.00°) and the tube
+   slides 15.997 LDU. A gear swung about another line (a hub's on a steered
+   wheel) is left out, and so is a mesh that would bring in what carries a
+   gear: 8062-1's steering took in its cab of hinges, 13 joints for 5, and
+   the cab took a sixth of the rack's travel. So is a worm standing still
+   against the gear the loop turns: it holds the gear (section 13), and a
+   tractor's sower dragged from its gear's side turned 720° with the worm's
+   mesh in its loop. And so is a gear held with what stays, with no joint
+   of its own to turn on: 8020-1's truck, steered and steered back, took
+   such a mesh into its loop and locked ("It did not move").
+5. **A frame named so is held still body by body** (`Simulation._frame_held`).
+   Simulate held every part of a sub-assembly named Stand, Frame, Base or
+   Chassis. The telescope's Stand lists the friction pin its tilt chain's
+   idler is read fixed to, the two turning together in the stand's hole, so
+   the frame held the idler and the chain read locked ("#24 6542b with #26
+   4019"). The parts are read first with only the baseplate held; a body is
+   held when a part of the frame in it is not a pin or an axle, or when all
+   of it is the frame's. The tilt wheel now slides the tube 8.003 LDU in
+   Simulate, 7.995 in Grab. The orrery's frame and its periods are as they
+   were. Where a frame is named the gear reading is built twice.
+6. **A session can lay a pinion in its rack** (`Joints.meshing`). The check
+   every edit_model, submit_design and placed part goes through forgives a
+   gear's teeth in its partner's, but did not know racks: laid again part
+   by part through edit_model, `rack_wheel` came back "Not applied — the
+   model would not hold together. brick 14 (3647 at -1,8.25,0.40) overlaps
+   brick 7, which fills y=7 up to y=8.75 — so the course above it starts at
+   y=8.75". Half a plate up is 4 LDU off the rack's pitch line, past the 3
+   Racks reads as a mesh: a pinion moved where the check says meshes
+   nothing, and its wheel turns only its gears. Whether the owner's Claude
+   met this is not known; it is what a session building a rack meets, and
+   it would make claim 1 true of Grab as well. A pinion in a rack is now
+   said and forgiven as a mesh ("an 8 in rack 3743"), and the rig laid so
+   slides its tube 21.333 LDU a turn in Grab and in Simulate.
+
+Also checked, after: `simulate_probe` (41 ok, windowed), `grab_probe`'s
+racks (43), loops (13), steer (27), steering (36), worms (34), actuators
+(38), follow (5), cardan (3), swing (28), scissor (5), kart2 (3), moving
+(18) and big (5) in a window, all passing, and headless the
+same 164 passed as on cde834b2 (its 35 that fail headless need a pointer,
+there as here); `mechanism_probe` (54), `axle_probe` (48), `joints_probe`
+(57), `app_tools_probe` (103), `mcp_walk_probe` (33), `mcp_sync_probe`,
+`animation_probe` (23) and `placing_probe` (38). The steering sweep
+(`tools/steer_sweep.py`, 181 sets, `sweeps/sweep_mechverify2.md` in the
+results): 60 of 168 steer both ways and back, as Grab 16's `g16final`, and
+not one set's verdict changed (the first run, before the guard of fix 4,
+lost 8020-1's truck). The move sweep against `g16final`, stopped at the
+time box: the first 43 sets (68 things, before fix 4's last guards) and 35
+of the 87 sets whose things turn gears or close a loop (64 things): not
+one thing's verdict changed (`sweeps/movesweep_mechverify_part1.jsonl`,
+`movesweep_mechgear_0.jsonl`); the other 52 are not run. `simulate_mechanism`'s
+description says it turns a rack and a crank's rod and slider
+(`tools/mcp_tools.json` written again).
+
+### What is left
+
+The probe prints these as `GAP`, not failures.
+
+- **A body on a free bearing on the shaft that drives it is carried round
+  with it.** `tilt_cradle`'s wheel at 90° turns its cradle 90° and slides
+  the tube 0.000 (16 by the teeth), in Grab and in Simulate. The cradle's
+  joint is a turn relative to the pinion's axle (Bodies' tree), and the
+  loop keeps the joints it does not need where they were relative to their
+  parents. Weight and friction decide which goes, the cradle or the tube;
+  the parts would leave a heavy cradle where it stands. What it takes:
+  `Linkage` choosing among a loop's spare freedoms by how far each body
+  moves in the world, weighted by its mass (least kinetic energy, Gauss's
+  principle), not by its joints' own turns; then the free bearing's
+  joint joins the loop as a column, as the rack's mesh asks.
+- **Simulate's base and Grab's anchors are two readings of what stays.**
+  Simulate holds the baseplate, what stands on its studs and a frame named
+  so (section 8, fix 5); Grab holds a locked part, what stands on the
+  baseplate's studs, else the biggest body (section 10). Grab's anchors
+  lock the 494-part orrery's crank ("its gears lock (right angle 12-12)")
+  and hold the two-planet orrery's crank rigidly ("joined on two lines at
+  once"), where Simulate's base turns both; which is why a gear train keeps
+  the gear reading's poses (fix 1). What it takes: one rule for what stays,
+  read once and given to both `Mechanism.build` and `Bodies.read`, with the
+  orrery's periods and section 22's sweeps run again on it.
+- **Simulate drives only a turn.** A tube drawn along its rod (claim 2), an
+  actuator's rod, a slide, are Grab's alone.
+- **Nothing in Simulate has weight.** Claims 3 and 5 (a crank-slider let
+  go swings; a friction pin holds) are Grab's; Simulate says where things
+  go, not whether they stay there.
+- **What reads a clutch gear on a friction pin.** The telescope's two
+  idlers, the same parts on the same pins mirrored, are read one turning on
+  its pin, the other fixed to its pin and turning with it in the stand
+  (move_part's list: "#20 ... on its pin", "#16 Technic Pin with Friction
+  and Slots and 1 more part, on its pin"). Either turns the chain, now in
+  Simulate too (fix 5). Not looked into further.
