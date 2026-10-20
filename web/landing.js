@@ -51,7 +51,7 @@ if (strip && row) {
       if (!seen.some((one) => one.isIntersecting)) return;
       watch.disconnect();
       fill();
-    }, { rootMargin: "900px 0px" });
+    }, { rootMargin: "300px 0px" });
     watch.observe(near);
   } else {
     fill();

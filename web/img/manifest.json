@@ -3,11 +3,12 @@
   "slug": "stability",
   "files": {
    "640": "stability-640.webp",
-   "1200": "stability-1200.webp"
+   "1200": "stability-1200.webp",
+   "400": "stability-400.webp"
   },
   "width": 1200,
   "height": 900,
-  "source": "src/dev/balance_view_probe.gd in a 3200 x 1800 window (the 1600 x 900 layout at 2x; MESA_VK_WSI_DEBUG=sw xvfb-run, godot --resolution 3200x1800), shots/balance/1_tips.png, 2026-10-13, cropped to 900,560 1360 x 1020",
+  "source": "src/dev/balance_view_probe.gd in a 3200 x 1800 window (the 1600 x 900 layout at 2x; MESA_VK_WSI_DEBUG=sw xvfb-run, godot --resolution 3200x1800), shots/balance/1_tips.png, 2026-10-13, cropped to 900,560 1360 x 1020; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "Tools, Check stability",
   "alt": "Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.",
   "caption": "Will it stand?"
@@ -16,11 +17,12 @@
   "slug": "technic",
   "files": {
    "640": "technic-640.webp",
-   "1200": "technic-1200.webp"
+   "1200": "technic-1200.webp",
+   "400": "technic-400.webp"
   },
   "width": 1200,
   "height": 900,
-  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 --model=res://models/kart.ldr --click=outliner --fold=assistant --click=cube_zoom_in --click=cube_zoom_in --click=cube_zoom_in --click=view (3200 x 1800, 2026-10-13), cropped to 1184,480 1520 x 1140",
+  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 --model=res://models/kart.ldr --click=outliner --fold=assistant --click=cube_zoom_in --click=cube_zoom_in --click=cube_zoom_in --click=view (3200 x 1800, 2026-10-13), cropped to 1184,480 1520 x 1140; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "Technic go-kart in the builder",
   "alt": "A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.",
   "caption": "Technic."
@@ -55,11 +57,12 @@
   "slug": "booklet",
   "files": {
    "640": "booklet-640.webp",
-   "1200": "booklet-1200.webp"
+   "1200": "booklet-1200.webp",
+   "400": "booklet-400.webp"
   },
   "width": 1200,
   "height": 900,
-  "source": "BW_RATIO=2 node tools/web/booklet_flow.mjs --url=https://brickworks.diy/app, page-3.png (2036 x 1506, 2026-10-13), cropped to 4:3",
+  "source": "BW_RATIO=2 node tools/web/booklet_flow.mjs --url=https://brickworks.diy/app, page-3.png (2036 x 1506, 2026-10-13), cropped to 4:3; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "building instructions booklet",
   "alt": "A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.",
   "caption": "The booklet."
@@ -163,11 +166,12 @@
   "slug": "compare-io",
   "files": {
    "640": "compare-io-640.webp",
-   "1200": "compare-io-1200.webp"
+   "1200": "compare-io-1200.webp",
+   "400": "compare-io-400.webp"
   },
   "width": 1200,
   "height": 750,
-  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene io: the tree's tab, File, Export, the .io line lit",
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene io: the tree's tab, File, Export, the .io line lit; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "File, Export, BrickLink Studio model (.io)",
   "alt": "The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.",
   "caption": "Your Studio files, in and out"
@@ -202,11 +206,12 @@
   "slug": "simulate",
   "files": {
    "640": "simulate-640.webp",
-   "1200": "compare-simulate.webp"
+   "1200": "compare-simulate.webp",
+   "400": "simulate-400.webp"
   },
   "width": 1200,
   "height": 750,
-  "source": "compare-simulate.webp (the poster of /compare's gear train video), scaled to 640 x 400 for the landing page, 2026-10-20",
+  "source": "compare-simulate.webp (the poster of /compare's gear train video), scaled to 640 x 400 for the landing page, 2026-10-20; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "Simulate mechanism on the orrery",
   "alt": "Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.",
   "caption": "Gear trains at their real ratios."
@@ -215,11 +220,12 @@
   "slug": "grab",
   "files": {
    "640": "grab-640.webp",
-   "960": "grab-960.webp"
+   "960": "grab-960.webp",
+   "400": "grab-400.webp"
   },
   "width": 960,
   "height": 600,
-  "source": "bench/results/grab13-2026-10-19/actuator_42024-1_3_after.png (tools/web/grab_flow.mjs on 42024-1 Container Truck, 1400 x 900), cropped to 334,166 966 x 604, 2026-10-20",
+  "source": "bench/results/grab13-2026-10-19/actuator_42024-1_3_after.png (tools/web/grab_flow.mjs on 42024-1 Container Truck, 1400 x 900), cropped to 334,166 966 x 604, 2026-10-20; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
   "subject": "a Technic boom moved by hand",
   "alt": "The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.",
   "caption": "Grab it and it moves like the real one."

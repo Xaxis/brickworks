@@ -15,6 +15,14 @@ whole cycle.
 
 ### Added
 
+- Delete your account, from your account page on brickworks.diy:
+  Settings, Delete this account, with your address typed to confirm. It
+  goes with everything of yours on the server: your shared models and
+  their versions, comments, favourites, collections, follows, the photos
+  of your builds and of your models, the sets you own and your Claude
+  connections. The account page also shows your Claude connections, with
+  a way to end one.
+
 - Follow people, and a feed of what concerns you. Follow is on every
   profile and beside a model's designer on its page; it needs an account
   that said it is 13 or over, and following somebody tells them nothing
@@ -166,6 +174,16 @@ whole cycle.
   it bent as it was left.
 
 ### Changed
+
+- brickworks.diy is one site. Every page has the same header, with four
+  things in it (Gallery, Download, Account, Open the app), and the same
+  short footer; the questions, the changelog and the legal pages are in
+  the footer. The landing page shows the app with a real model, then what
+  it does (whether a model stands, gear trains at their real ratios, moving
+  a part as the real one moves, Studio files both ways, booklets), each in
+  a picture from the app and a line, and models from the gallery. Your account page is one page: your models,
+  favourites, collections, the sets you own and what they build, whom you
+  follow, your build photos, and your settings.
 
 - The browser check of grabbing parts now times what the app does when a
   swinging part is let go and when it comes to rest and is kept, and fails
