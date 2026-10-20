@@ -59,8 +59,13 @@ var _code_link: LinkButton
 var _desktop_link: LinkButton
 var _private_link: LinkButton
 var _tab_view: ClaudeTabView
+## The calls of the chat that called last, and since when (its first call
+## here), as the line says them. Counted for each chat: two chats working in
+## one tab were added up as one (tabwalk, 2026-10-19). chat -> [calls, since
+## in ticks]; "" for calls no chat was named for (the desktop's port).
 var _calls: int = 0
 var _since: int = 0
+var _counts: Dictionary = {}
 var _heard: String = ""
 ## Claude was connected, and has been disconnected since: said until it is
 ## connected again or the tab is switched on.
@@ -246,6 +251,7 @@ func setup(with: ClaudeConnector) -> void:
 			# Disconnected, here or anywhere: what Claude did is over.
 			_parted = true
 			_calls = 0
+			_counts.clear()
 			_heard = ""
 		_linked = connector.connected()
 		_settle())
@@ -297,6 +303,7 @@ func _on_listening(on: bool, address: String) -> void:
 	_address.text = address
 	_copied.visible = false
 	_calls = 0
+	_counts.clear()
 	_heard = ""
 	_settle()
 
@@ -343,7 +350,7 @@ func _settle() -> void:
 
 ## Claude reached the tab: a tool by name, or "" for the handshake and
 ## the tool list, which is Claude connecting.
-func _on_called(tool: String, _arguments: Dictionary) -> void:
+func _on_called(tool: String, _arguments: Dictionary, chat: String = "") -> void:
 	var now: Dictionary = Time.get_time_dict_from_system()
 	_heard = "%02d:%02d" % [now.hour, now.minute]
 	_guide.visible = false
@@ -351,9 +358,11 @@ func _on_called(tool: String, _arguments: Dictionary) -> void:
 		if _calls == 0:
 			_settle()
 		return
-	_calls += 1
-	if _calls == 1:
-		_since = Time.get_ticks_msec()
+	var count: Array = _counts.get(chat, [0, Time.get_ticks_msec()])
+	count[0] = int(count[0]) + 1
+	_counts[chat] = count
+	_calls = count[0]
+	_since = count[1]
 	_tick()
 	_show()
 

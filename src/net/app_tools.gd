@@ -1513,8 +1513,12 @@ func _undo(input: Dictionary) -> String:
 		await verbs.press("redo" if again else "undo")
 		done.append(words)
 	if not others.is_empty():
+		# A resumed chat is a new one to the relay (api/mcp.js, "Two chats, two
+		# tabs"): nothing Claude Code sends says it is the same chat.
 		return ("%sThe next change back, %s, was made by another Claude chat working in this "
-			+ "tab, so it was left. Ask the person before changing that chat's work.") % [
+			+ "tab, so it was left. Ask the person before changing that chat's work. If it was "
+			+ "this chat's own, from before the chat was resumed, Brickworks counts it as another "
+			+ "chat's: the person can take it back with Undo in the tab.") % [
 				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", others]
 	if done.is_empty():
 		return "Nothing to %s." % ("redo" if again else "undo")

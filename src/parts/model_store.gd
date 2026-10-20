@@ -177,8 +177,44 @@ func _is_empty() -> bool:
 	return world.brick_count() - scenery.size() <= 0
 
 
+## From now on, every change to the model is kept, whoever made it: Main
+## calls this once the model the window opens with is down, which is written
+## only where Main says (a restore is not written back as it was read).
+##
+## Every change, and not only the ones somebody remembered to tell the store
+## about (touch). A minifigure stood up by a Claude session, and one stood
+## up by the in-app assistant, went down past the builder's signals
+## (Builder.put_figure), so nothing told the store, and a reload took them
+## away (tabwalk, 2026-10-19). Whatever changes the model moves the world's
+## revision (a part put down, taken off, moved, painted) or the builder's
+## history (a part's sub-model or step, an undo of either), so those are
+## what [method tick] watches.
+func listen() -> void:
+	_heard = _model_now()
+
+
+## [method _model_now] as [method tick] last heard it; empty before
+## [method listen].
+var _heard: Array = []
+
+
+## What says the model changed: the world's revision, the history's depth,
+## and its newest step (the same dictionary until another is kept, undone or
+## redone).
+func _model_now() -> Array:
+	var newest: Variant = null
+	if builder != null and builder.history_depth() > 0:
+		newest = builder.last_step()
+	return [world.revision, builder.history_depth() if builder != null else 0, newest]
+
+
 ## Call once a frame. Writes the working model when it has settled.
 func tick() -> void:
+	if not _heard.is_empty() and world != null:
+		var now: Array = _model_now()
+		if now[0] != _heard[0] or now[1] != _heard[1] or not is_same(now[2], _heard[2]):
+			_heard = now
+			touch()
 	if not _pending or not keeps:
 		return
 	if Time.get_ticks_msec() - _dirty_at < AUTOSAVE_DELAY_MS:

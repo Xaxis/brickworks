@@ -89,9 +89,10 @@ var last_opened: String = ""
 ## Listening for Claude, or not; and the address to give it while it is.
 signal listening(on: bool, address: String)
 ## Claude asked for something: a tool by name, with what it passed, or ""
-## for the protocol's own requests; and it was answered — whether the tool
-## did what was asked, and what it said.
-signal called(tool: String, arguments: Dictionary)
+## for the protocol's own requests, and which chat asked (the relay's short
+## name for it, or "" when it named none); and it was answered — whether
+## the tool did what was asked, and what it said.
+signal called(tool: String, arguments: Dictionary, chat: String)
 signal answered(tool: String, ok: bool, text: String)
 ## The relay could not be reached, in words.
 signal trouble(why: String)
@@ -440,9 +441,7 @@ func _set_chats(given: Array, whole: bool = false) -> void:
 ## A call from a chat working in this tab (the relay names it on the call's
 ## _meta): when, and what it did.
 func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> void:
-	var params: Dictionary = request.get("params", {}) if request.get("params") is Dictionary else {}
-	var meta: Dictionary = params.get("_meta", {}) if params.get("_meta") is Dictionary else {}
-	var said: Dictionary = meta.get("brickworks/chat", {}) if meta.get("brickworks/chat") is Dictionary else {}
+	var said: Dictionary = _chat_said(request)
 	var chat: String = str(said.get("chat", ""))
 	if chat.is_empty():
 		return
@@ -458,6 +457,13 @@ func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> v
 	found["did"] = tool
 	found["words"] = ConnectorForm.said(tool, arguments)
 	chats_changed.emit(chats)
+
+
+## Which chat the relay says made [param request]: {chat, since}, or empty.
+static func _chat_said(request: Dictionary) -> Dictionary:
+	var params: Dictionary = request.get("params", {}) if request.get("params") is Dictionary else {}
+	var meta: Dictionary = params.get("_meta", {}) if params.get("_meta") is Dictionary else {}
+	return meta.get("brickworks/chat", {}) if meta.get("brickworks/chat") is Dictionary else {}
 
 
 ## An ISO time from the relay, in seconds since 1970 (UTC).
@@ -1008,7 +1014,7 @@ func _answer(token: String, work: Dictionary) -> void:
 	if not looking:
 		if not tool.is_empty():
 			_chat_called(request, tool, arguments)
-		called.emit(tool, arguments)
+		called.emit(tool, arguments, str(_chat_said(request).get("chat", "")))
 	# A notification — the relay saying Claude reached it, or one of the
 	# protocol's own — wants no answer, and the relay has already let it go.
 	if request.get("id") == null:

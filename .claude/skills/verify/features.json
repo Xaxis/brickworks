@@ -168,6 +168,14 @@
       "tests": []
     },
     {
+      "id": "cli:autosave paths probe",
+      "kind": "cli",
+      "entry": "src/dev/autosave_paths_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/autosave_paths_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:big models stay fast",
       "kind": "cli",
       "entry": "src/dev/bigmodel_probe.gd",
