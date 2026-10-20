@@ -4570,7 +4570,7 @@
       "readOnlyHint": true,
       "title": "List the model's motions"
     },
-    "description": "The model's own motions, kept in its file (\"Open the doors\", \"Steer left and right\"): each with its joints as move_part names them, their keys (seconds, and places from where the model was built: degrees turned, or studs slid), its driver, the motion it follows, and what it was last found to do: where each joint ended, or where it stopped and on what. A joint whose part is gone is said so. Then motions suggested from what moves (doors, steering, a boom, a turntable, gears, a rack), each tried for room, which define_motion keeps. Changes nothing.",
+    "description": "The model's own motions, kept in its file (\"Open the doors\", \"Steer left and right\"): each with its joints as move_part names them, their keys (seconds, and places from where the model was built: degrees turned, or studs slid), its driver, or the motions it plays in order (a sequence), and what it was last found to do: where each joint ended, or where it stopped and on what. A joint whose part is gone, or a sequence's motion that is gone, is said so. Then motions suggested from what moves (doors, steering, a boom, a turntable, gears, a rack), each tried for room, which define_motion keeps. Changes nothing.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4591,14 +4591,10 @@
       "readOnlyHint": false,
       "title": "Keep a motion in the model"
     },
-    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. after= the motion it follows, for a sequence. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
+    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
-        "after": {
-          "description": "the motion this one follows",
-          "type": "string"
-        },
         "driver": {
           "additionalProperties": false,
           "properties": {
@@ -4627,6 +4623,13 @@
         },
         "remove": {
           "type": "boolean"
+        },
+        "sequence": {
+          "description": "the model's motions it plays, by name, in order",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "suggested": {
           "description": "keep list_motions' suggestion of this name",
@@ -4698,7 +4701,7 @@
       "readOnlyHint": false,
       "title": "Play a motion"
     },
-    "description": "Play one of the model's motions (list_motions) through its real joints, as a drag moves them: a joint stops where it meets the model, and gears, racks and linkages follow. The model is left where the motion ends, one undo step. reverse=true plays it backwards (closes what it opened; a driver turns back), sequence=true plays the whole sequence it is in (after=), in order. The answer says where each joint ended or stopped and on what, how the model then stands, and carries a picture of its frames.",
+    "description": "Play one of the model's motions (list_motions) through its real joints, as a drag moves them: a joint stops where it meets the model, and gears, racks and linkages follow. The model is left where the motion ends, one undo step. reverse=true plays it backwards (closes what it opened; a driver turns back; a sequence plays its motions in reverse order). sequence=true plays the chain an older file's AFTER lines put it in. The answer says where each joint ended or stopped and on what, how the model then stands, and carries a picture of its frames from the view that sees most of what moves (or view=), and says which.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4710,6 +4713,17 @@
         },
         "sequence": {
           "type": "boolean"
+        },
+        "view": {
+          "enum": [
+            "hero",
+            "front",
+            "side",
+            "back",
+            "low",
+            "top"
+          ],
+          "type": "string"
         }
       },
       "required": [

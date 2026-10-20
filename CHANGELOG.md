@@ -59,6 +59,15 @@ whole cycle.
   what moves. Its gallery card and its page say what it does, "Moves:
   open the dome, extend the telescope", and Claude's gallery and
   open_model name each motion, for play_motion to play.
+- A motion made of motions: a sequence. In Build, Motions…, New
+  sequence keeps one of every motion the model has, in order, as "Show it
+  all"; its editor names it and changes its order with Up, Down, Take out
+  and Add. Played, each motion begins where the one before left the model;
+  played backwards, they go back in reverse order. It is a row like any
+  motion, rendered whole, a button on a shared link, and saved in the file
+  as one line naming its motions. A motion it names that is gone is said
+  and passed over, and comes back with an undo. Claude makes one with
+  define_motion sequence=.
 
 - Delete your account, from your account page on brickworks.diy:
   Settings, Delete this account, with your address typed to confirm. It
@@ -219,6 +228,10 @@ whole cycle.
   it bent as it was left.
 
 ### Changed
+
+- Claude's play_motion shows its picture from the side that sees most of
+  what moves, and says which: a back wall's doors opened behind a dome are
+  pictured from the back, not the front corner. view= chooses one.
 
 - brickworks.diy is one site. Every page has the same header, with four
   things in it (Gallery, Download, Account, Open the app), and the same

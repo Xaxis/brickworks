@@ -406,6 +406,8 @@ func _motions_link() -> void:
 	_ok(not house.is_empty() and lines.size() == 11, "1484-1 and its motions' %d lines" % lines.size())
 	if house.is_empty():
 		return
+	# And a sequence of the two (unit 5): a button like any motion.
+	lines.append('0 !BRICKWORKS MOTION "Open it all" SEQUENCE "Open the gates" "Open the mailbox"')
 	var text: String = Motions.written_into(house, lines)
 	var served: String = text.sha256_text()
 	var files_before: PackedStringArray = _files_under("user://")
@@ -436,8 +438,8 @@ func _motions_link() -> void:
 	var world: BrickWorld = _main.get("_world")
 	var store: ModelStore = _main.get("_store")
 	var said: Dictionary = view.page_state()["play"]
-	_ok(said["shown"] and said["motions"] == ["Open the gates", "Open the mailbox"],
-		"the pill has its motions: %s" % [said["motions"]])
+	_ok(said["shown"] and said["motions"] == ["Open the gates", "Open the mailbox", "Open it all"],
+		"the pill has its motions, the sequence among them: %s" % [said["motions"]])
 	_ok(said["title"] == "Play its motions" and str(said["says"]).begins_with("Press one to play it"),
 		"and says how: %s / %s" % [said["title"], said["says"]])
 	var named: Dictionary = view.controls_by_name()
@@ -506,6 +508,34 @@ func _motions_link() -> void:
 	_ok((reset["motions_out"] as Array).is_empty() and not reset["reset"] and not view.played,
 		"no button lit, Reset gone: %s" % reset["says"])
 	await _save("7_motions_reset.png")
+
+	print("\n  Open it all, a sequence, pressed")
+	named = view.controls_by_name()
+	_ok(named.has("view_motion_3") and (named["view_motion_3"] as Button).text == "Open it all",
+		"the sequence is a button like any motion")
+	await _press(named["view_motion_3"])
+	drawn_most = 0
+	since = Time.get_ticks_msec()
+	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+		drawn_most = maxi(drawn_most, world.drawn_ids().size())
+		await process_frame
+	turned = gates.map(func(id: int) -> float: return _turned(world, before, id))
+	var last: Dictionary = _main.get("_motion_last")
+	_ok(turned.all(func(d: float) -> bool: return absf(d - 90.0) < 2.0)
+		and absf(_turned(world, before, mailbox) - 90.0) < 2.0 and drawn_most >= 3,
+		"the gates, then the mailbox, each from where the last left it: %s° and %.1f° (%d frames, %d parts drawn moving)"
+		% [", ".join(turned.map(func(d: float) -> String: return "%.1f" % d)), _turned(world, before, mailbox),
+		int(last.get("frames", 0)), drawn_most])
+	_ok(view.page_state()["play"]["motions_out"] == ["Open it all"] and (named["view_motion_3"] as Button).button_pressed,
+		"its button lit: %s" % view.page_state()["play"]["says"])
+	await _press(named["view_motion_3"])
+	await _played_out()
+	_ok(_differing(world, before) == 0 and (view.page_state()["play"]["motions_out"] as Array).is_empty(),
+		"pressed again, backwards in reverse order, every part as built (%d differ)" % _differing(world, before))
+	named = view.controls_by_name()
+	if named.has("view_reset"):
+		await _press(named["view_reset"])
+	await _settle()
 
 	# What a press costs the app: the motion's frames worked out at once
 	# (MotionPlayer.play), on this machine.

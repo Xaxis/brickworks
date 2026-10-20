@@ -882,7 +882,10 @@ plan with Claude as the client.
   it stands where it ends; pressed again it plays backwards; Reset undoes a
   motion's step as a drag's and puts every button out. What the last press
   played: `brickworksShare.motion` (`name`, `backwards`, `joints` [name,
-  from, to], `stopped`, `frames`, `ms`).
+  from, to], `stopped`, `frames`, `ms`, `motions`). A sequence (unit 5) is a
+  button like any motion: `MotionPlayer.play_in_order` plays its motions
+  each from where the one before left the model, one step; again, backwards
+  in reverse order.
 - `what moves in a model` (`src/assembly/playable.gd`, `Playable.read`,
   `kinds`, `words`, `KINDS`, `MECHANISMS`): steering, turntable, boom,
   doors, gears, pneumatics, actuator, rack, from `Bodies` and the gear

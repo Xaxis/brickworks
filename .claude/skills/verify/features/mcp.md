@@ -45,7 +45,10 @@ asking for an API key.
   (Edit, Build steps; the timeline), `lay_flex` (Build, Hose, tube or
   chain; Reshape), `pose_model` (Build, Pose; the hinge tool),
   `animate_model` (its keys kept as the motion "Animation", played once to
-  render), `list_motions`, `define_motion`, `play_motion` and `render_motion`
+  render), `list_motions`, `define_motion` (tracks=, driver=, or
+  sequence= the model's motions by name: a motion made of motions, unit 5),
+  `play_motion` (its picture from the view that sees most of what moves, or
+  view=, said) and `render_motion`
   (the model's own motions, docs/MOTIONS.md; see [view](view.md)'s
   `motions`; `src/dev/motions_probe.gd` calls each over `tools/call`),
   `simulate_mechanism` (Tools, Simulate mechanism; `SimulatePanel.for_session`,
@@ -424,7 +427,7 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   follows; a turn says the rack it slid, how far and which way
   (`MotionPlayer.slid_words`, in play_motion, define_motion, render_motion
   and move_part); a track stopped on a part another track of its motion
-  moves is told tracks are tested apart, use after=; a loop or a door a
+  moves is told tracks are tested apart, use a sequence; a loop or a door a
   move left held says what holds it (`GrabDrag.held_loop_words`,
   `Bodies.held_words` naming the part's own joins to the biggest body);
   play_motion's picture of a sequence has every moved part where it stood

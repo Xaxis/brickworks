@@ -135,22 +135,24 @@ static func swept(world: BrickWorld, library: PartLibrary, poses: Array) -> Pack
 const VIEWS: Array = ["hero", "front", "side", "back", "low", "top"]
 const BETTER_BY := 0.1
 ## The most moving parts looked for, the furthest moving first.
-const MOST_LOOKED := 24
-## The side of a square a view files what stands in the way in, LDU.
-const CELL := 40.0
+const MOST_LOOKED := 16
 
 
 ## How much of what [param poses] move each view sees, view -> 0 to 1:
 ## each moving part's travel as the view sees it (across the picture, not
-## towards the camera), at the moments nothing stands between it and the
-## camera, over all their travel. A session's observatory opened its back
-## wall's panels behind the dome, and the front corner saw none of it.
-## Pure geometry on the parts' boxes: it draws nothing.
-static func seen_from(world: BrickWorld, library: PartLibrary, poses: Array) -> Dictionary:
+## towards the camera), at the moments nothing that stands still is
+## between it and the camera, over all their travel. A session's
+## observatory opened its back wall's panels behind the dome, and the
+## front corner saw none of it. Looked along the lines from a few points
+## of each part to a camera far off, through [param lattice]'s cells, the
+## parts as they stand; what moves is passed through, and so is what a
+## moving part stands in where it begins (a door's frame, whose opening
+## the lattice fills: through it a door is seen). Draws nothing.
+static func seen_from(world: BrickWorld, library: PartLibrary, lattice: BrickLattice, poses: Array) -> Dictionary:
 	var out: Dictionary = {}
 	for view: String in VIEWS:
 		out[view] = 0.0
-	if poses.is_empty():
+	if poses.is_empty() or lattice == null:
 		return out
 	var last: int = poses.size() - 1
 	var moments: Array = [0]
@@ -184,52 +186,48 @@ static func seen_from(world: BrickWorld, library: PartLibrary, poses: Array) -> 
 			if far > most:
 				most = far
 				travel = each
-		if most < 2.0:
-			continue
-		looked.append([most, id, info.bounds, travel, brick.transform])
+		if most >= 2.0:
+			looked.append([most, id, info.bounds, travel, brick.transform])
 	looked.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
 	looked = looked.slice(0, MOST_LOOKED)
 	for one: Array in looked:
 		total += float(one[0])
 	if total <= 0.0:
 		return out
-	var standing: Array = []   ## what does not move: [transform, bounds]
+	var room := AABB()
+	var first: bool = true
 	for brick: BrickWorld.Brick in world.bricks():
-		if moving.has(brick.id):
-			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-		if info != null:
-			standing.append([brick.transform, info.bounds])
+		if info == null:
+			continue
+		var box: AABB = brick.transform * info.bounds
+		room = box if first else room.merge(box)
+		first = false
+	room = room.grow(BrickLattice.CELL * 2.0)
 	for view: String in VIEWS:
 		var toward: Vector3 = Vector3(StudioRender.VIEWS[view][1]).normalized()
-		var across: Vector3 = (Vector3.UP if absf(toward.y) < 0.9 else Vector3.RIGHT).cross(toward).normalized()
-		var up: Vector3 = toward.cross(across)
-		var still: Dictionary = _filed(standing, toward, across, up)
 		var seen: float = 0.0
-		for n: int in moments:
-			var now: Array = []
-			for id: int in moving:
-				var brick: BrickWorld.Brick = world.get_brick(id)
-				var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
-				if info != null:
-					now.append([(poses[n] as Dictionary).get(id, brick.transform), info.bounds, id])
-			var stirring: Dictionary = _filed(now, toward, across, up)
-			for one: Array in looked:
+		for one: Array in looked:
+			var bounds: AABB = one[2]
+			var flat: float = 0.0
+			for moved: Vector3 in one[3]:
+				flat += (moved - toward * moved.dot(toward)).length() / 8.0
+			if flat <= 0.0:
+				continue
+			var points: Array = [bounds.get_center()]
+			for corner: int in [0, 3, 5, 6]:
+				points.append(bounds.get_center().lerp(bounds.get_endpoint(corner), 0.65))
+			var nest: Dictionary = {}
+			var began: Transform3D = (poses[0] as Dictionary).get(int(one[1]), one[4])
+			for point: Vector3 in points:
+				nest[lattice.brick_at(BrickLattice.to_cell(began * point))] = true
+			var clear: int = 0
+			for n: int in moments:
 				var at: Transform3D = (poses[n] as Dictionary).get(int(one[1]), one[4])
-				var bounds: AABB = one[2]
-				var clear: int = 0
-				var points: Array = [bounds.get_center()]
-				for corner: int in 8:
-					points.append(bounds.get_center().lerp(bounds.get_endpoint(corner), 0.65))
 				for point: Vector3 in points:
-					var from: Vector3 = at * point
-					if not _blocked(still, from, toward, across, up, -1) \
-							and not _blocked(stirring, from, toward, across, up, int(one[1])):
+					if _clear(lattice, at * point, toward, moving, nest, room):
 						clear += 1
-				var flat: float = 0.0
-				for moved: Vector3 in one[3]:
-					flat += (moved - toward * moved.dot(toward)).length() / 8.0
-				seen += flat * float(clear) / float(points.size()) / float(moments.size())
+			seen += flat * float(clear) / float(points.size() * moments.size())
 		out[view] = clampf(seen / total, 0.0, 1.0)
 	return out
 
@@ -244,45 +242,39 @@ static func best_view(seen: Dictionary) -> String:
 	return best
 
 
-## [param parts] ([transform, bounds, id]) filed by the squares of the
-## picture plane their boxes cover, seen along [param toward]: square ->
-## [[inverse transform, bounds, nearest and furthest along toward, the
-## square's rect, id]].
-static func _filed(parts: Array, toward: Vector3, across: Vector3, up: Vector3) -> Dictionary:
-	var out: Dictionary = {}
-	for part: Array in parts:
-		var at: Transform3D = part[0]
-		var bounds: AABB = part[1]
-		var low := Vector3(INF, INF, INF)
-		var high := Vector3(-INF, -INF, -INF)
-		for corner: int in 8:
-			var point: Vector3 = at * bounds.get_endpoint(corner)
-			var p := Vector3(point.dot(across), point.dot(up), point.dot(toward))
-			low = low.min(p)
-			high = high.max(p)
-		var entry: Array = [at.affine_inverse(), bounds, high.z, Rect2(low.x, low.y, high.x - low.x,
-			high.y - low.y), int(part[2]) if part.size() > 2 else -1]
-		for i: int in range(floori(low.x / CELL), floori(high.x / CELL) + 1):
-			for j: int in range(floori(low.y / CELL), floori(high.y / CELL) + 1):
-				var key := Vector2i(i, j)
-				if not out.has(key):
-					out[key] = []
-				(out[key] as Array).append(entry)
-	return out
-
-
-## Whether something filed in [param filed] stands between [param from]
-## and a camera far off along [param toward]; [param own] is not.
-static func _blocked(filed: Dictionary, from: Vector3, toward: Vector3, across: Vector3, up: Vector3,
-		own: int) -> bool:
-	var flat := Vector2(from.dot(across), from.dot(up))
-	var depth: float = from.dot(toward)
-	for entry: Array in filed.get(Vector2i(floori(flat.x / CELL), floori(flat.y / CELL)), []):
-		if int(entry[4]) == own and own >= 0:
+## Whether the line from [param from] along [param toward] leaves [param
+## room] without meeting a cell of a part in neither [param passed] nor
+## [param nest]: the lattice's march (BrickLattice._march).
+static func _clear(lattice: BrickLattice, from: Vector3, toward: Vector3, passed: Dictionary, nest: Dictionary,
+		room: AABB) -> bool:
+	var span: Vector2 = BrickLattice._through(room, from, toward)
+	if span.x > span.y or span.y < 0.0:
+		return true
+	var cell: Vector3i = lattice.to_cell(from)
+	var step := Vector3i(1 if toward.x > 0.0 else -1, 1 if toward.y > 0.0 else -1, 1 if toward.z > 0.0 else -1)
+	var t_max := Vector3(INF, INF, INF)
+	var t_delta := Vector3(INF, INF, INF)
+	for axis: int in 3:
+		if absf(toward[axis]) < 1e-9:
 			continue
-		if float(entry[2]) <= depth + 0.5 or not (entry[3] as Rect2).has_point(flat):
-			continue
-		var inverse: Transform3D = entry[0]
-		if (entry[1] as AABB).intersects_ray(inverse * from, inverse.basis * toward) != null:
-			return true
-	return false
+		var boundary: float = (cell[axis] + (0.5 if step[axis] > 0 else -0.5)) * BrickLattice.CELL
+		t_max[axis] = (boundary - from[axis]) / toward[axis]
+		t_delta[axis] = BrickLattice.CELL / absf(toward[axis])
+	var travelled: float = 0.0
+	while travelled <= span.y:
+		var owner: int = lattice.brick_at(cell)
+		if owner != 0 and not passed.has(owner) and not nest.has(owner):
+			return false
+		if t_max.x < t_max.y and t_max.x < t_max.z:
+			cell.x += step.x
+			travelled = t_max.x
+			t_max.x += t_delta.x
+		elif t_max.y < t_max.z:
+			cell.y += step.y
+			travelled = t_max.y
+			t_max.y += t_delta.y
+		else:
+			cell.z += step.z
+			travelled = t_max.z
+			t_max.z += t_delta.z
+	return true

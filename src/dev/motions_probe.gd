@@ -34,7 +34,7 @@ const RACER := "res://vendor/omr/files/8808-1.mpd"
 const CRANE := "res://vendor/omr/files/4096-1_Crane.mpd"
 const CHASSIS := "res://vendor/omr/files/8841-1_Chassis.mpd"
 const WINDSCREEN := "res://vendor/omr/files/31070-1.mpd"
-const OBSERVATORY := "res://tests/fixtures/mcpwalk3/observatory.ldr"
+const OBSERVATORY := "res://tests/fixtures/mcpwalk3/small-observatory.ldr"
 const SHOW := "Show it all"
 const SHOWS: Array = ["Open the dome panel", "Extend the telescope", "Open the back wall panels"]
 
@@ -451,14 +451,14 @@ func _observatory() -> void:
 	# The back wall's panels, behind the dome: from the front corner they
 	# are hardly seen, so the picture is from where they are.
 	var walls: MotionPlayer.Played = _player.play(_player.motions().named("Open the back wall panels"))
-	var seen: Dictionary = MotionRender.seen_from(_world, _main.get("_library"), walls.frames)
+	var seen: Dictionary = MotionRender.seen_from(_world, _main.get("_library"), _builder.lattice, walls.frames)
 	var view: String = MotionRender.best_view(seen)
 	_print(str(seen))
 	_check("the back wall's panels are seen best from %s (%d%%), not the front corner (%d%%)" % [view,
 		roundi(float(seen.get(view, 0.0)) * 100.0), roundi(float(seen["hero"]) * 100.0)], view != "hero"
 		and float(seen[view]) > float(seen["hero"]) + MotionRender.BETTER_BY)
 	var domed: MotionPlayer.Played = _player.play(_player.motions().named("Open the dome panel"))
-	seen = MotionRender.seen_from(_world, _main.get("_library"), domed.frames)
+	seen = MotionRender.seen_from(_world, _main.get("_library"), _builder.lattice, domed.frames)
 	_print(str(seen))
 	_check("...and the dome panel, high on top, from wherever sees it: %s (%d%%)" % [
 		MotionRender.best_view(seen), roundi(float(seen[MotionRender.best_view(seen)]) * 100.0)],

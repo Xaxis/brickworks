@@ -33,7 +33,7 @@ extends SceneTree
 
 const DOORS := "res://vendor/omr/files/1484-1.mpd"
 const RACER := "res://vendor/omr/files/8808-1.mpd"
-const OBSERVATORY := "res://tests/fixtures/mcpwalk3/observatory.ldr"
+const OBSERVATORY := "res://tests/fixtures/mcpwalk3/small-observatory.ldr"
 const SHOWS: Array = ["Open the dome panel", "Extend the telescope", "Open the back wall panels"]
 
 var _failures: int = 0

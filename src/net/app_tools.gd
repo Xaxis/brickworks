@@ -1843,11 +1843,11 @@ func _sequence_from(motions: Motions, name: String, names: Array) -> Variant:
 	var motion := Motions.Motion.new()
 	motion.name = name
 	for raw: Variant in names:
+		if str(raw).strip_edges().to_lower() == name.to_lower():
+			return "A sequence cannot play itself."
 		var one: Motions.Motion = motions.named(str(raw))
 		if one == null:
 			return "No motion %s to play in it: %s." % [Motions.quoted(str(raw)), _motion_names(motions)]
-		if one.name.to_lower() == name.to_lower():
-			return "A sequence cannot play itself."
 		motion.sequence.append(one.name)
 	if motion.sequence.is_empty():
 		return "Give sequence= the model's motions it plays, in order: %s." % _motion_names(motions)
@@ -2020,7 +2020,8 @@ func _play_motion(input: Dictionary) -> Variant:
 	var view: String = str(input.get("view", ""))
 	var why: String = ""
 	if not view in MOTION_VIEWS:
-		var seen: Dictionary = MotionRender.seen_from(app.get("_world"), app.get("_library"), run.frames)
+		var seen: Dictionary = MotionRender.seen_from(app.get("_world"), app.get("_library"),
+			builder.lattice, run.frames)
 		view = MotionRender.best_view(seen)
 		why = _seen_words(view, seen)
 	var images: Array = await panel.draw_stills(stills, Vector2i(480, 300), view)
@@ -2031,10 +2032,14 @@ func _play_motion(input: Dictionary) -> Variant:
 	return [{"type": "text", "text": text}, _picture_block(PosePanel.sheet_of(images))]
 
 
-## "the back three-quarter (view=\"back\")".
+## Where a picture's camera stood, as play_motion says it: "the back
+## corner (view=\"back\")".
+const VIEW_WORDS: Dictionary = {"hero": "the front corner", "front": "the front", "side": "the side",
+	"back": "the back corner", "low": "low down at the front corner", "top": "above"}
+
+
 static func _view_words(view: String) -> String:
-	return "%s (view=\"%s\")" % [str(StudioRender.VIEWS[view][0]).to_lower() if view != "hero"
-		else "the front corner, three-quarter", view]
+	return "%s (view=\"%s\")" % [VIEW_WORDS.get(view, view), view]
 
 
 ## Why [param view] was chosen, from what each view sees (seen_from):
