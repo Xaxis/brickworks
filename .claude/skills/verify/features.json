@@ -2327,7 +2327,9 @@
       "entry": "web/download.html",
       "reach": "https://brickworks.diy/download  (locally: node tools/web/download_check.mjs)",
       "area": "release",
-      "tests": []
+      "tests": [
+        "tests/test_site_shell.py"
+      ]
     },
     {
       "id": "ui:drawing only what changed",
@@ -2367,7 +2369,9 @@
       "entry": "web/gallery.html",
       "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=views   (gallery.js reads /api/share?op=list with the search, filters and sort; locally relay_server.mjs serves /gallery)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_site_shell.py"
+      ]
     },
     {
       "id": "ui:grab and move on a joint",
@@ -2953,7 +2957,9 @@
       "entry": "web/gallery.js",
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_site_shell.py"
+      ]
     },
     {
       "id": "ui:the model in Claude in 3D",
@@ -3093,9 +3099,11 @@
       "id": "ui:your profile page",
       "kind": "ui",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in, name and handle, favourites, collections)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; your models, favourites, collections, sets, following, builds; settings, the Claude connection, delete the account)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_site_shell.py"
+      ]
     }
   ]
 }
