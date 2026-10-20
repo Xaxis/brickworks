@@ -1254,6 +1254,13 @@
     },
     {
       "kind": "cli",
+      "label": "telescope probe",
+      "entry": "src/dev/telescope_probe.gd",
+      "reach": "tools/probe.sh telescope_probe   (a session's telescope claims on five rigs of src/dev/fixtures/ in Simulate, Grab and move_part: a rack's tube slides 64/3 LDU a wheel turn, a crank's slider strokes 40 LDU and is not locked, a 45° tilt rolls the tube 8 LDU along a held pinion, a friction pin holds; the orrery's periods and frames as before; GAP lines are section 27's leftovers; headless it measures without pictures)",
+      "area": "geometry"
+    },
+    {
+      "kind": "cli",
       "label": "animation walk",
       "entry": "src/dev/anim_walk_probe.gd",
       "reach": "~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/anim_walk_probe.gd -- --into=DIR [--only=steering,crane,door,gears,figure]   (prints and keeps every way of recording what moves on five real sets, as docs/ANIMATION.md measured them; checks nothing)",

@@ -335,11 +335,13 @@ func _chosen() -> String:
 		var offer: Array = _train_to_racks(ours)
 		couplings = offer[0]
 		geared.assign(offer[1])
-	elif not geared.is_empty():
+	var from_rack: bool = false
+	if couplings.is_empty() and not geared.is_empty():
 		# The rack turns its pinion, and the pinion the train it is in: a tube
 		# drawn along its rod turns the wheel that drives it. Their meshes
 		# hold the loop too.
 		couplings = _train_of_pinions(geared)
+		from_rack = not couplings.is_empty()
 	linkage = null
 	_kingpin = Vector3.ZERO
 	var loop: Linkage = null
@@ -354,6 +356,10 @@ func _chosen() -> String:
 				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 					+ "of a part on one of the loop's turning joints (its crank).") % bodies.named([body]))
 		loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+		if from_rack and not loop.why.is_empty():
+			# Too big with the train: the loop as it was, the train left still.
+			couplings = []
+			loop = Linkage.read(bodies, link, body, couplings, _kingpin)
 		# A gear the loop moves turns the gears it meshes, and they theirs: a
 		# telescope's cradle, tilted by its extension wheel's rack, is held by
 		# the tilt wheel's chain it meshes. Their meshes hold the loop too,

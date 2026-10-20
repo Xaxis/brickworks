@@ -61,12 +61,13 @@ var turning: Array = []
 ## Brick ids of the parts that move: every part not on the ground.
 var moving: Array = []
 ## The driver taken hold of as a drag takes it (docs/MECHANISMS.md, section
-## 27): Grab's model of what moves, its gear train turned by this reading
-## (its ground the base), with what this reading has no equation for: a
-## pinion's rack, a loop of pins (a crank, its rod and its slider), what
-## hangs on a gear by a joint of its own. Every pose is Grab's while it is
-## set; null when Grab does not take the driver as a turn on its own line,
-## and the gear reading's poses are drawn.
+## 27), its gears turned by this reading (its ground the base): set where
+## the driver closes a loop that moves what this reading has no equation
+## for, a pinion's rack, a crank's rod and slider, or where this reading
+## locks and the loop does not. Every pose and rate is then Grab's. Null
+## for a gear train, which a drag turns by this reading's rates, and for a
+## driver a drag does not turn on its own line: the gear reading's poses
+## are drawn.
 var grab: Grab = null
 ## Why Grab's model is not drawn, "" when it is or nothing was asked.
 var grab_note: String = ""
@@ -74,6 +75,8 @@ var grab_note: String = ""
 var world: BrickWorld = null
 var builder: Builder = null
 var bodies: Bodies = null
+## The baseplate's ids, as the reading was given them.
+var scenery_ids: Dictionary = {}
 ## Body -> how a loop moves it that is not a steady turn, for one turn of the
 ## driver: {"slide": LDU on along its line, "stroke": LDU back and forth,
 ## "rock": degrees either way}.
@@ -379,10 +382,6 @@ func hold_with(in_world: BrickWorld, by: Builder, joints: Bodies = null) -> void
 		bodies.revision = world.revision
 
 
-## The baseplate's ids, as the reading was given them.
-var scenery_ids: Dictionary = {}
-
-
 ## Take hold of [param body] as a drag would: through this gear reading, on
 ## the driver's own line. Its poses are then Grab's, and where its loop moves
 ## what this reading cannot (a rack, a slider, a rod), every rate is read off
@@ -450,8 +449,8 @@ func _loop_moves_more(body: int) -> bool:
 			if world.get_brick(int(key)) != null else Transform3D.IDENTITY)
 		var one: Transform3D = loop_at.get(key, was)
 		var other: Transform3D = gear_at.get(key, was)
-		if one.origin.distance_to(other.origin) > 0.05 \
-				or (one.basis.orthonormalized() * other.basis.orthonormalized().inverse()).get_rotation_quaternion().get_angle() > 0.002:
+		var turned: Basis = one.basis.orthonormalized() * other.basis.orthonormalized().inverse()
+		if one.origin.distance_to(other.origin) > 0.05 or turned.get_rotation_quaternion().get_angle() > 0.002:
 			return true
 	return false
 
@@ -566,7 +565,6 @@ func _read_loop(body: int) -> void:
 		solved["meshes"] = []
 		solved["culprits"] = []
 	solved["said"] = "moved as a drag moves it: %s" % grab.linkage.said()
-
 
 
 ## A body's line, read one way for every body: pointing up, else right,
