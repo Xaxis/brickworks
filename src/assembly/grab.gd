@@ -105,8 +105,15 @@ var moving_bodies: Array = []
 var moving: Dictionary = {}
 ## Brick id -> Transform3D where each stood when grabbed.
 var rest: Dictionary = {}
-## What the moving side may press against: across its joint.
+## What the moving side may press against: itself, a hose, what a gear
+## train turns with it.
 var skip: Dictionary = {}
+## What stays that the moving side is joined to, each with the moving parts
+## across the joint from it: brick id -> {moving id: true}. Only those may
+## press on it. Skipped for every moving part, a bearing let the carriage on
+## the axle in it slide into it (MCP walk 3's observatory: both ended at
+## the same place, and were read as one body after).
+var _across: Dictionary = {}
 ## turn, slide or ball.
 var mode: String = ""
 var pivot := Vector3.ZERO
@@ -437,13 +444,7 @@ func _chosen() -> String:
 	for one: int in bodies.flexible:
 		for key: int in bodies.members.get(one, PackedInt64Array()):
 			skip[key] = true
-	for one: int in moving_bodies:
-		for joined: Bodies.Link in bodies.touching.get(one, []):
-			if ours.has(joined.other(one)):
-				continue
-			for pair: Array in joined.pairs:
-				for key: int in pair:
-					skip[key] = true
+	_join_across(ours)
 	# What it already overlaps where it stands is not in its way (covers are
 	# 2 LDU cells, and a minifigure's hand sits closer to its leg than that):
 	# asked of each part met, when it is met (has_room), not of all 131 parts
@@ -582,6 +583,28 @@ func _chosen() -> String:
 	if linkage != null:
 		said += ", in %s" % linkage.said()
 	return state
+
+
+## Each joint between the moving bodies [param ours] (body -> true) and what
+## stays, pair by pair, into [member _across]: the part that stays may be
+## pressed on by its partner across the joint, an axle by the bearing it
+## turns in, and by nothing else that moves.
+func _join_across(ours: Dictionary) -> void:
+	_across.clear()
+	for one: int in moving_bodies:
+		for joined: Bodies.Link in bodies.touching.get(one, []):
+			if ours.has(joined.other(one)):
+				continue
+			for pair: Array in joined.pairs:
+				var a: int = int(pair[0])
+				var b: int = int(pair[1])
+				var stays: int = b if moving.has(a) else a
+				var goes: int = a if moving.has(a) else b
+				if moving.has(stays) or not moving.has(goes):
+					continue
+				if not _across.has(stays):
+					_across[stays] = {}
+				(_across[stays] as Dictionary)[goes] = true
 
 
 ## The line a part grabbed on a ball in a loop turns on, or ZERO: where it
@@ -1749,7 +1772,7 @@ func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
 				or not turned.meets(builder.lattice.boxes_of(other)):
 			continue
-		if not _pair_forgiven(key, other) and not _slides_over(key, mesh, to, other) \
+		if not _pair_forgiven(key, other, mesh, to) and not _slides_over(key, mesh, to, other) \
 				and not _touching(mesh, to, other) and not _clear_exactly(key, to, other):
 			return PackedInt64Array([other])
 	return PackedInt64Array()
@@ -1764,7 +1787,7 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 	var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
 	while not hit.is_empty():
 		var other: int = int(hit[0])
-		if _pair_forgiven(key, other) or _scrubs(key, other) or _bends_aside(other) \
+		if _pair_forgiven(key, other, mesh, to) or _scrubs(key, other) or _bends_aside(other) \
 				or _slides_over(key, mesh, to, other) or _touching(mesh, to, other) \
 				or _clear_exactly(key, to, other):
 			skip[other] = true
@@ -1959,14 +1982,55 @@ func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 ## exact shape it is judged by its cover, which reaches past it, and what
 ## overlapped any moving part where it stood is forgiven for all of them, as
 ## before: 42042-1's winch drum, a file's own part, met an axle by their
-## covers 66° round. Asked when first met, as asking every moving part at the
+## covers 66° round. But only so far ([method _no_deeper]): forgiven whole,
+## a section stopped against a part with no exact shape went through it on
+## its next move. Asked when first met, as asking every moving part at the
 ## press would answer, so a turn tested later finds what one tested earlier
-## found.
-func _pair_forgiven(key: int, other: int) -> bool:
+## found. [param mesh] at [param to]: where [param key] is tested.
+func _pair_forgiven(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -> bool:
+	var across: Dictionary = _across.get(other, {})
+	if across.has(key):
+		return true
 	var with: Dictionary = _rest_with(other)
 	if with.has(key) or _touched_as_built(key, other):
+		return _both_exact(key, other) or _no_deeper(key, other, mesh, to)
+	if _both_exact(key, other):
+		return false
+	# Not for the parts joined to it: an axle is in its bearing as built, and
+	# says nothing of how far a cover reaches past its part.
+	for one: int in with:
+		if not across.has(one):
+			return _no_deeper(key, other, mesh, to)
+	return false
+
+
+## Whether [param key]'s box, [param mesh] at [param to], is no further into
+## [param other]'s than where the grab began or where the two were built,
+## and [constant TOUCHING] more: the measure of a pair judged by covers,
+## which cannot tell parts built flush from parts into each other. A move
+## away is forgiven, and back to where it began; a move on into it is not.
+## The covers of a door stopped where they met began its next move into
+## each other, and forgiven whole, the door went on through.
+func _no_deeper(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -> bool:
+	var them: BrickWorld.Brick = world.get_brick(other)
+	var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+	if mesh == null or their_mesh == null:
 		return true
-	return not with.is_empty() and not _both_exact(key, other)
+	var pair := Vector2i(key, other)
+	if not _depth_allowed.has(pair):
+		var from: Transform3D = rest.get(key, world.get_brick(key).transform)
+		var allowed: float = Grab.box_depth(from, mesh.bounds, them.transform, their_mesh.bounds)
+		_built_for_world()
+		if _built_at.has(key) or _built_at.has(other):
+			allowed = maxf(allowed, Grab.box_depth(_built_at.get(key, from), mesh.bounds,
+				_built_at.get(other, them.transform), their_mesh.bounds))
+		_depth_allowed[pair] = allowed + TOUCHING
+	return Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= float(_depth_allowed[pair])
+
+
+## [method _no_deeper]'s measure for each pair asked: Vector2i(moving, other)
+## -> LDU.
+var _depth_allowed: Dictionary = {}
 
 
 ## Whether [param one] and [param other] both have exact shapes.
@@ -2089,7 +2153,7 @@ func _never_meet() -> void:
 				var across: Vector3 = way - axis * way.dot(axis)
 				var spread: float = across.length() * reach
 				sweep = sweep.expand(middle + way * spread).expand(middle - way * spread)
-		if not _near_anything(sweep):
+		if not _near_anything(sweep, key, false):
 			_on_the_line[key] = true
 
 
@@ -2100,7 +2164,7 @@ func _never_meet() -> void:
 ## cover need not be worked out.
 func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bool:
 	for other: int in _near(box, key):
-		if _pair_forgiven(key, other):
+		if _pair_forgiven(key, other, mesh, to):
 			continue
 		var them: BrickWorld.Brick = world.get_brick(other)
 		var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
@@ -2137,9 +2201,14 @@ var _near_part: int = 0
 
 
 ## Whether anything but what the moving side may press on has its bounds
-## within [param box] ([method _near]).
-func _near_anything(box: AABB, key: int = 0) -> bool:
-	return not _near(box, key).is_empty()
+## within [param box] ([method _near]): for the moving part [param key], but
+## what it is joined to ([member _across]). [param kept]: its neighbours
+## asked for its cells are kept for it.
+func _near_anything(box: AABB, key: int = 0, kept: bool = true) -> bool:
+	for other: int in _near(box, key if kept else 0):
+		if not (_across.get(other, {}) as Dictionary).has(key):
+			return true
+	return false
 
 
 ## What but what the moving side may press on has its bounds within [param
@@ -3500,13 +3569,7 @@ func land_begin(spin: Vector3, about: Vector3) -> bool:
 		moving[key] = true
 	skip = moving.duplicate()
 	_near_kept.clear()
-	for one: int in moving_bodies:
-		for joined: Bodies.Link in bodies.touching.get(one, []):
-			if _ours.has(joined.other(one)):
-				continue
-			for pair: Array in joined.pairs:
-				for key: int in pair:
-					skip[key] = true
+	_join_across(_ours)
 	rest.clear()
 	grams = 0.0
 	_floor_y = INF

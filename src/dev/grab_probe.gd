@@ -268,6 +268,12 @@ func _run() -> void:
 		await _says_what_meets()
 	if only.is_empty() or only == "meets" or only == "path":
 		await _path_check()
+	if only.is_empty() or only == "path" or only == "shapeless":
+		await _shapeless_check()
+	if only.is_empty() or only == "bearing":
+		await _bearing_check()
+	if only.is_empty() or only == "loops" or only == "bigstep":
+		await _big_step_check()
 	if only.is_empty() or only == "moving" or only == "beams":
 		for one: Array in BEAMS:
 			await _beam_check(one)
@@ -5850,6 +5856,145 @@ func _path_check() -> void:
 		went.map(func(one: Array) -> String: return "%+.0f° to %+.1f°" % [float(one[0]), float(one[1])])),
 		open.size() == 1)
 	_builder.forget_history()
+
+
+## A section stopped against a part with no exact shape does not go on
+## through it on its next move (Grab 17): the made arm turned towards the
+## plate over its way, the plate's shape taken away as a browser has it
+## before the shape is fetched. The covers judge it, and where they stopped
+## the first move they overlap where the second begins: forgiven whole, the
+## second went on through the plate. Turned away, it goes all 90°.
+func _shapeless_check() -> void:
+	print("\na section stopped against a part with no exact shape, moved on into it")
+	var path: String = OUT.path_join("made_path.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(MADE_PATH)
+	file.close()
+	if not await _open(path):
+		_check("shapeless: the made arm opens", false)
+		return
+	_grab._ready_now()
+	var arm: int = _part_numbered("3004")
+	var plate: int = _part_numbered("3460")
+	var info: PartLibrary.PartInfo = _library.parts.get("3460")
+	Exact._shapes[info.mesh_hash] = null
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var now_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
+	var turned := func(said: String) -> float:
+		var found: RegExMatch = now_re.search(said)
+		return float(found.get_string(1)) if found != null and said.contains("Moved") else 0.0
+	# Which way the plate is: the way that stops short.
+	var toward: float = 0.0
+	for degrees: float in [90.0, -90.0]:
+		if absf(turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": degrees})))) < 80.0:
+			toward = degrees
+		_builder.undo()
+		await _frames(2)
+	var deepest := func() -> float:
+		var most: float = -INF
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.id != plate and _builder.lattice.boxes_of(brick.id).size() > 0 \
+					and absf(brick.transform.origin.z - 10.0) < 30.0 and brick.part_id != "3003":
+				most = maxf(most, Grab.box_depth(brick.transform, _library.mesh_for(brick.part_id).bounds,
+					_world.get_brick(plate).transform, _library.mesh_for("3460").bounds))
+		return most
+	var first: String = str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": toward}))
+	var first_at: float = turned.call(first)
+	var first_in: float = deepest.call()
+	var second: String = str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": toward}))
+	var second_at: float = turned.call(second)
+	var second_in: float = deepest.call()
+	_check("shapeless: turned %+.0f° towards the plate with no exact shape, the arm stops at %+.1f° where its box is "
+		% [toward, first_at] + "%.2f LDU into the plate's" % first_in, toward != 0.0 and absf(first_at) >= 5.0
+		and absf(first_at) < 80.0)
+	_check("shapeless: turned %+.0f° on into it, it goes %+.1f° more, its box %.2f LDU into the plate's: %s"
+		% [toward, second_at, second_in, second.get_slice("\n", 0).left(120)],
+		absf(second_at) <= 1.0 and second_in <= first_in + Grab.TOUCHING + 0.01)
+	var away: float = turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": -toward})))
+	_check("shapeless: turned %+.0f° away from it, it goes all of it (%+.1f°)" % [-toward, away],
+		absf(away) >= 89.0)
+	Exact._shapes.erase(info.mesh_hash)
+	_builder.forget_history()
+
+
+## A part slid along an axle stops at the bearing the axle turns in (Grab 17,
+## MCP walk 3): the observatory's carriage, its Technic brick (#150) on the
+## telescope's axle (#148), drawn 6 studs along it towards the bearing at the
+## back wall (#151). Both halves of every joint across the move were skipped
+## for every moving part, so the carriage slid into the bearing, both at
+## (20.5, 4.8, 15) studs, and Bodies read the two as one body after.
+func _bearing_check() -> void:
+	print("\na part slid along an axle, towards the bearing the axle turns in")
+	if not await _open("res://tests/fixtures/mcpwalk3/observatory.ldr"):
+		return
+	_grab._ready_now()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	str(await tools.run("play_motion", {"name": "Open the dome panel"}))
+	await _frames(3)
+	var was: Vector3 = _world.get_brick(150).transform.origin
+	var said: String = str(await tools.run("move_part", {"part": "#149", "along": 6}))
+	await _frames(3)
+	var went: float = (_world.get_brick(150).transform.origin - was).length() / BrickLattice.STUD
+	var into: Dictionary = Exact.clash(Exact.Item.new(Exact.shape_for(_library, "3700"), _world.get_brick(150).transform),
+		Exact.Item.new(Exact.shape_for(_library, "3700"), _world.get_brick(151).transform))
+	_check("bearing: the carriage drawn 6 studs along its axle goes %.2f studs, and is %s its bearing #151: %s" % [went,
+		"clear of" if into.is_empty() else "%.2f LDU into" % float(into.get("depth", 0.0)),
+		said.get_slice("\n", 1).left(160)], into.is_empty() and went > 0.5 and went < 6.0)
+	var into_bearings := PackedStringArray()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.id in [147, 148, 151]:
+			continue
+		var shape: Exact.Shape = Exact.shape_for(_library, brick.part_id)
+		if shape == null or not shape.has_pieces():
+			continue
+		for bearing: int in [147, 151]:
+			var them: BrickWorld.Brick = _world.get_brick(bearing)
+			var hit: Dictionary = Exact.clash(Exact.Item.new(shape, brick.transform),
+				Exact.Item.new(Exact.shape_for(_library, them.part_id), them.transform))
+			if not hit.is_empty() and float(hit.get("depth", 0.0)) > 1.0:
+				into_bearings.append("#%d into #%d" % [brick.id, bearing])
+	_check("bearing: nothing that moved is into either bearing of the axle (#147, #151)%s" % (
+		"" if into_bearings.is_empty() else ": " + ", ".join(into_bearings)), into_bearings.is_empty())
+	_builder.forget_history()
+
+
+## A loop turned in one big step comes back where it began (Grab 17,
+## motions1): 8808-1's steering wheel turned 90° and back by move_part, a
+## step each, stood 0.14 LDU out, and 90°, -90° and back 0.97, the loop
+## drifting along its column's free slide; played 3° at a time, 0.001.
+func _big_step_check() -> void:
+	print("\na loop turned in one big step, and back")
+	for plan: Array in [[90.0, -90.0], [90.0, -180.0, 90.0]]:
+		if not await _open("res://vendor/omr/files/8808-1.mpd"):
+			return
+		_grab._ready_now()
+		var wheel: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+			if info != null and info.name.contains("Steering Wheel") and _grab._bodies.body_of.has(brick.id):
+				wheel = brick.id
+				break
+		var before: Dictionary = _snapshot()
+		var tools := AppTools.new()
+		tools.app = _main
+		tools.assistant = _main.get("_assistant")
+		var said := PackedStringArray()
+		for degrees: float in plan:
+			said.append(str(await tools.run("move_part", {"part": "#%d" % wheel, "degrees": degrees})))
+			await _frames(2)
+		var most: float = 0.0
+		for key: Variant in before:
+			var now: BrickWorld.Brick = _world.get_brick(int(key))
+			if now != null:
+				most = maxf(most, (before[key] as Transform3D).origin.distance_to(now.transform.origin))
+		_check("bigstep: 8808-1's steering wheel #%d turned %s, a step each, is back to %.4f LDU" % [wheel,
+			", ".join(plan.map(func(d: float) -> String: return "%+.0f°" % d)), most], wheel != 0 and most < 0.01
+			and Array(said).all(func(one: String) -> bool: return one.contains("Moved")))
+		_builder.forget_history()
 
 
 ## Trains whose buffer beam (4022) sits on four studs of a plate that turns

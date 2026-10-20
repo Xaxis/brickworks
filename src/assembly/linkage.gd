@@ -1084,11 +1084,14 @@ var _memo_q := PackedFloat64Array()
 var _memo_gears: Array = []
 
 
+static var exp_mode: int = 0
 func _reach(value: float) -> float:
 	q = kept.duplicate()
 	_gear_kept = _gear_at_keep.duplicate(true)
 	var from: float = q[driver_col]
 	var step: float = STEP_SLIDE if is_slide() else STEP_TURN
+	if exp_mode >= 2 and not is_slide():
+		step = deg_to_rad(3.0)
 	var count: int = maxi(1, ceili(absf(value - from) / step))
 	if _slope_col == driver_col and _slope.size() == cols:
 		# As many steps as keep the fastest turning coordinate within a step.
@@ -1115,7 +1118,7 @@ func _reach(value: float) -> float:
 	var good_q: PackedFloat64Array = q.duplicate()
 	for n: int in range(1, count + 1):
 		var at: float = lerpf(from, value, float(n) / float(count))
-		_tolerance = CLOSE_TO if n == count else ON_THE_WAY
+		_tolerance = CLOSE_TO if n == count or exp_mode == 1 or exp_mode == 2 else ON_THE_WAY
 		var closed: bool = _closes_at(at, good, good_q)
 		_tolerance = CLOSE_TO
 		if closed:
