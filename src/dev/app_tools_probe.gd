@@ -410,7 +410,7 @@ func _brickify() -> void:
 	# drives the app, not the person's files.
 	said = await _say("brickify", {"url": "file:///etc/passwd"})
 	_check("a file that is not a 3D model is not read: %s" % said.left(70),
-		said.contains("is not an OBJ, STL, glTF or GLB file"))
+		said.contains("is not an OBJ, STL, glTF, GLB, PLY, 3MF, VOX or FBX file"))
 	said = await _say("brickify", {"file": "/no/such/place/bunny.obj"})
 	_check("...nor one that is not there: %s" % said.left(70), said.begins_with("There is no file"))
 	said = await _say("brickify", {"url": at + "/bunny.obj"})

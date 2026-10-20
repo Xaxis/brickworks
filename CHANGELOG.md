@@ -15,6 +15,17 @@ whole cycle.
 
 ### Added
 
+- Brickify reads more of the 3D files people have, in the desktop app and
+  in the browser: PLY scans, as text or binary, in their own colours; 3MF
+  from 3D printing sites, its parts placed as the file places them and in
+  its colours and pictures; MagicaVoxel's .vox, every voxel a cube in its
+  colour (set the size to the model's width in voxels and each voxel is a
+  stud); and FBX. An OBJ chosen together with one picture and no .mtl is
+  coloured by the picture, where it came in grey; on the desktop the one
+  picture beside such an OBJ is read with it. A file that cannot be read
+  says what is wrong with it, and one cut short, or claiming more than it
+  holds, is refused at once. USDZ is not read, and says so.
+
 - Delete your account, from your account page on brickworks.diy:
   Settings, Delete this account, with your address typed to confirm. It
   goes with everything of yours on the server: your shared models and

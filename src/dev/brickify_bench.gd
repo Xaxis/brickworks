@@ -487,15 +487,8 @@ func _samples(mesh: MeshFile, path: String) -> void:
 
 ## The file with what it names beside it, as the desktop's picker reads it.
 func _read(path: String) -> MeshFile:
-	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
-	var extras: Dictionary = {}
-	for _round: int in 2:
-		for wanted: String in MeshFile.companions(bytes, path.get_file(), extras):
-			var beside: String = path.get_base_dir().path_join(
-				wanted.replace("\\", "/")).simplify_path()
-			if FileAccess.file_exists(beside):
-				extras[wanted] = FileAccess.get_file_as_bytes(beside)
-	return MeshFile.read(bytes, path.get_file(), extras)
+	var read: Dictionary = MeshFilePicker.read_path(path)
+	return MeshFile.read(read["bytes"], path.get_file(), read["extras"])
 
 
 func _write_json(path: String, data: Variant) -> void:

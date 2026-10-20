@@ -216,10 +216,12 @@ func choose(asked: Dictionary) -> String:
 func _on_picked(bytes: PackedByteArray, file_name: String, extras: Dictionary) -> void:
 	said.emit("reading %s…" % file_name.get_file())
 	var mesh: MeshFile = null
-	# An OBJ or STL is read here a line or a triangle at a time, which for a
-	# scan is seconds: on a worker, so the page keeps drawing. glTF is read
-	# by the engine, which makes nodes and textures, and stays here.
-	if file_name.get_extension().to_lower() in ["gltf", "glb"] or OS.has_feature("nothreads"):
+	# An OBJ, STL, PLY, 3MF or VOX is read here a line or a triangle at a
+	# time, which for a scan is seconds: on a worker, so the page keeps
+	# drawing. glTF and FBX are read by the engine, which makes nodes and
+	# textures, and stay here.
+	if file_name.get_extension().to_lower() in ["gltf", "glb", "fbx"] \
+			or OS.has_feature("nothreads"):
 		await get_tree().process_frame
 		mesh = MeshFile.read(bytes, file_name, extras)
 	else:

@@ -108,6 +108,9 @@ declare -A CMD=(
   [carried]="tools/web/carried_flow.mjs --url=$P/app $B --label=preview --out=$S/${TAG}_carried_web $R/vendor/omr/files/21321-1.mpd"
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=on.a.stand --out=$S/${TAG}_brickify_fox_web"
+  # Every kind of file Brickify reads (PLY, 3MF, VOX, FBX, an OBJ with a
+  # picture and no .mtl) through the page's chooser, read as the desktop reads it.
+  [mesh_formats]="tools/web/mesh_formats_flow.mjs --url=$P/app --out=$S/${TAG}_mesh_formats_web"
   # What a frame costs the app on a big model (75969-1, 925 parts): each press
   # of the timeline's Next and an orbit's frames held to 200 ms of the app's
   # own work, select all to 400 (cad_frames --gate). steps_flow checks what

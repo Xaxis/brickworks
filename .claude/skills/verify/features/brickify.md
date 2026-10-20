@@ -1,6 +1,6 @@
 # Brickify
 
-A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO at the size the person picks, the way a builder would lay it, and placed as a sub-assembly.
+A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FBX — laid in LEGO at the size the person picks, the way a builder would lay it, and placed as a sub-assembly.
 
 <!-- covers: ui:brickify a 3d model, lib:brickify, lib:3d model files, cli:measure brickify against outside models, lib:brickify steps, lib:brickify from a collection -->
 
@@ -15,7 +15,26 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   `user://brickify_import/` for the engine to read and removed at once. A file
   with no normals (STL) gets them worked out, smooth where faces meet under 30
   degrees and creased above, so a sphere reads as round and a chamfered cube
-  keeps its edges.
+  keeps its edges. Since unit 9 (`docs/BRICKIFY.md` section 12): PLY, text and
+  binary of either byte order, read by its header's own list of properties
+  (vertex position, normal and colour as bytes or fractions; faces of any
+  corner count, fanned; anything else stepped over by its size); 3MF, a zip
+  unpacked from bytes by `StudioIo._entries`/`_unpack` (no `ZIPReader`: it
+  wants a path), its build items and components placed (a mirrored one turned
+  round), objects in other model files (`p:path`), colours from base
+  materials, colour groups and texture groups, supports left out, Z up; VOX,
+  MagicaVoxel's chunks with its default palette when the file has none, the
+  scene's transforms (`nTRN`'s packed rotation byte) placing each model about
+  its middle, hidden nodes and layers left out, the outside faces of the
+  voxels as triangles, a voxel a unit cube, Z up (a file with no scene is its
+  first model: the rest were animation frames); FBX through `FBXDocument`,
+  named by `ClassDB` so a build without it still loads, vertex colours kept as
+  sRGB (glTF's are turned from linear); USDZ refused with a reason. An OBJ
+  chosen with exactly one picture and no material naming one takes it as its
+  texture; on the desktop `MeshFilePicker.read_path` reads the one picture
+  beside an OBJ that names no `.mtl`. Every count is checked against the bytes
+  before it is believed: `MAX_BYTES` unpacked in all, `MOST_TRIANGLES` before
+  any triangle is made, `MOST_VOXELS` and `MOST_VOXEL_BOX`.
 - `brickify` (`src/assembly/brickify.gd`): the mesh measured on the stud and plate
   grid — a ray up every third of a stud, inside where more faces have been gone
   in by than come out of (two shells pushed into each other are one solid;
@@ -240,14 +259,18 @@ seller's keys). `app_tools_probe` covers it.
 ## How to reach it
 
 ```sh
-godot --path .                     # then I, and choose a .obj/.stl/.gltf/.glb
+godot --path .                     # then I, and choose a .obj/.stl/.gltf/.glb/.ply/.3mf/.vox/.fbx
 godot --headless --path . --script src/dev/brickify_probe.gd [-- OUTDIR]   # OUTDIR gets brickify_*.ldr
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 node tools/web/brickify_flow.mjs --url=<a preview>/app --out=shots/brickify_web   # with .env sourced and BW_BYPASS
+tools/probe.sh mesh_formats_probe [--fixtures] [--bench=bench/data/brickify] [--real=DIR]
+node tools/web/mesh_formats_flow.mjs --url=<a preview>/app --out=shots/mesh_formats_web
 ```
 
 `tests/fixtures/brickify/bunny.obj` is the bunny the probes make
 (`BrickifySamples`, in code, CC0), written again by `brickify_probe.gd -- --fixtures`.
+`tests/fixtures/brickify/formats/` holds a file of each newer kind
+(`MeshFormatSamples`, in code, CC0), written again by `mesh_formats_probe -- --fixtures`.
 
 ## How to check it
 
@@ -358,7 +381,48 @@ godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   shots/brickify_dialog.png, shots/brickify_landed.png and shots/brickify_placed.png.
 #   With XDG_DATA_HOME of its own: its lists and booklet go to
 #   user://sessions/probe/brickify_ui.
+tools/probe.sh mesh_formats_probe
+#   headless. The fixtures in tests/fixtures/brickify/formats/ are what
+#   MeshFormatSamples writes (the 3MF member for member: a zip carries its
+#   time); each is read back as it was made: text PLY the bunny within
+#   0.00001 and half a byte of colour, binary little-endian exactly, the
+#   big-endian prism's 6- and 4-cornered faces fanned into 20 triangles, 8 red
+#   and 12 blue, facing out; the 3MF's 46 triangles (support left out), a
+#   mirrored cube facing out, a second file's cube, a triangle coloured a
+#   corner at a time, a square on its picture's halves; the VOX scene's 300
+#   triangles, one model moved and one turned, the hidden third left out;
+#   MagicaVoxel's own palette; the FBX's 1,716 bunny triangles found where its
+#   node puts them at 0.01 a unit, colours within 0.01, the cube in its red;
+#   an OBJ with one picture and no .mtl textured, with two not guessed, and
+#   the desktop reading the one picture beside it. Then 26 bad files refused,
+#   each saying why, under a second (cut short, counts past the bytes, a zip
+#   stating 4 GB or unpacking past its size, 64 MB of nothing, components in
+#   a loop or 1.2 billion triangles deep, a scene holding itself, voxels a
+#   million apart, USDZ); six fixtures laid at 24 studs, one piece; at 12
+#   studs a voxel of scene.vox is a stud (12 x 4 studs, 20 plates).
+#   2026-10-20 at a load of 10 to 30: 54 ok in about 90 s (the picker
+#   refusing a USDZ and a .txt as MeshFile does among them).
+#   --bench=bench/data/brickify (a checkout's, git-ignored): the Stanford
+#   bunny and Armadillo PLYs and Spot (OBJ and PNG, no .mtl) as they came,
+#   against bench/data/brickify/prepared's converted copies: the same cells
+#   in the same colours at 24 and 48 studs and the same parts at 24 (bunny
+#   6,943 and 55,137 cells, 1,183 parts; Armadillo 2,409 and 18,991, 692,
+#   read in 2.9 s; Spot 4,829 and 39,166, 998 in 7 colours). About 3 more
+#   minutes. --real=DIR reads and lays every .3mf/.vox/.ply/.fbx in DIR:
+#   docs/BRICKIFY.md section 12 has the ten measured and where they are from.
 ```
+
+In a browser, every kind of file: `tools/web/mesh_formats_flow.mjs` presses
+Control+I eight times, answering the chooser with each fixture in
+`tests/fixtures/brickify/formats/` (the OBJ and its PNG together), and waits
+for the panel to come up holding it (`window.brickworksState.brickify_read`:
+name, triangles, coloured, pictures, up), with the desktop's triangles and in
+colour, then presses Cancel; an FBX refused passes only as "this build cannot
+read". Wired into `tools/release/preview_checks.sh` as `mesh_formats`.
+2026-10-20 on a local export of the branch (`--export-release Web` after
+`tools/web_pack.py`, which a worktree needs for `assets/web/`; `serve.py` on
+a port of its own), Chromium on SwiftShader: 17 of 17, each file in the panel
+a second or two after it is chosen, the FBX read too.
 
 In a browser: `tools/web/brickify_flow.mjs` presses Ctrl-I, answers the page's file
 chooser with the bunny, types 30 into the size, presses Brickify, and reads
