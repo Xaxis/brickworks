@@ -705,6 +705,16 @@ func _lodge(entries: Array, candidates: Array) -> void:
 	for piece: int in parts_of_piece:
 		if biggest < 0 or (parts_of_piece[piece] as Array).size() > (parts_of_piece[biggest] as Array).size():
 			biggest = piece
+	# Each piece's biggest body, what stays as the anchor is chosen: a door
+	# hangs on that, never on a part that moves.
+	var staying: Dictionary = {}   ## piece -> the root of its biggest body
+	for piece: int in parts_of_piece:
+		var count: Dictionary = {}
+		for key: int in parts_of_piece[piece]:
+			var root: int = _find(key)
+			count[root] = int(count.get(root, 0)) + 1
+			if not staying.has(piece) or int(count[root]) > int(count[staying[piece]]):
+				staying[piece] = root
 	var bending: Dictionary = {}   ## part -> true: a hose, a string, a chain
 	var world_box: Dictionary = {}   ## part -> its box where it stands
 	for entry: Array in entries:
@@ -766,7 +776,8 @@ func _lodge(entries: Array, candidates: Array) -> void:
 						best = other
 						from = lone
 			if best != 0 and not _unknown_shape(lone) and not _unknown_shape(best) \
-					and not (_door(lone) and not _labelled_hinge(lone, best).is_empty()):
+					and not (_door(lone) and _stays(best, up, staying)
+						and not _labelled_hinge(lone, best).is_empty()):
 				best = 0
 		if best == 0:
 			continue
@@ -807,8 +818,10 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		# for every pair, 9397-1's universal joint gained its second hinge
 		# and its steering's loop 44 joints, too many to solve; read for a
 		# door on any part, 10264-1's roller door, once its spool had
-		# turned, hung on the spool.
-		if keys.size() == 1 and _door(from):
+		# turned, hung on the spool. And only on the piece's biggest body,
+		# what stays: hung on a clip of 21319-1's camera boom, its door
+		# swung with the boom into the frame.
+		if keys.size() == 1 and _door(from) and _stays(best, up, staying):
 			var hinge: Array = _labelled_hinge(from, best)
 			if not hinge.is_empty():
 				candidates.append([best, from, "hinge", hinge[0], hinge[1], true, 0.0, Vector2.ZERO, 0])
@@ -1948,6 +1961,14 @@ func _labelled_hinge(a: int, b: int) -> Array:
 			if Exact.meets(items, [0, one[0], one[1], one[2], one[3]], [1, other[0], other[1], other[2], other[3]]):
 				return [one[1], one[2]]
 	return []
+
+
+## Whether [param key] is in its piece's biggest body ([param staying]:
+## piece in [param up] -> that body's root), which stays as the anchor is
+## chosen.
+func _stays(key: int, up: Dictionary, staying: Dictionary) -> bool:
+	var root: int = _find(key)
+	return int(staying.get(Bodies._piece_find(up, root), -1)) == root
 
 
 ## Whether [param key] is a door, a hatch, a lid or the like by its name.

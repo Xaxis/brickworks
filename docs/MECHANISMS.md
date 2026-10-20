@@ -3907,10 +3907,12 @@ run does not write over another's pictures.
 G12 left five sets whose ball-jointed steering arms were refused at the
 arm: 10265-1, 10295-1 and its 911 Turbo, 42021-1 and 41999-1. G11 left
 6753-1's tow truck and 8074-1's grader, and G13b left 3180-1's cupboard
-door. G14b traced each to how its joints are read. 41999-1 and the door are
-mended. For the four ball-jointed sets the cause is found and its fix was
-written, but it broke 8448-1's racer, and it is taken out (below), as are
-three stud rules that freed the tow truck and the grader.
+door. G14b traced each to how its joints are read. 41999-1 is mended, and
+seventeen doors held by nothing now swing; 3180-1's is not one of them, as
+its cupboard is on a part that moves. For the four ball-jointed sets the
+cause is found and its fix was written, but it broke 8448-1's racer, and it
+is taken out (below), as are three stud rules that freed the tow truck and
+the grader.
 
 **The base.** rel-m89 (71a32f72: live m88 and G13b), against G13b's own
 sweeps: `sweep_after2` (56 of 168 steer) and `movesweep_g13b` (163 of 381
@@ -3933,15 +3935,18 @@ end. No round reads that as one in a bore, and the door was held by
 nothing: both have exact shapes, so it was not lodged either (G13). Their
 labels in BrickNet name a hinge on each part, at one point and on one line.
 A door, a hatch or a lid (Playable.door_named) held by nothing, where it
-would be lodged in a part that names that hinge with it, now hangs on the
-hinge (`Exact.meets`) instead. It was read wider first, and each widening
-lost something: for every pair, 9397-1's universal joint gained its second
+would be lodged in a part of its piece's biggest body (what stays) that
+names that hinge with it, now hangs on the hinge (`Exact.meets`) instead
+(`Bodies._stays`). 3180-1's cupboard is on the tanker's boom, a part that
+moves, so its door is left as G13b left it. It was read wider first, and
+each widening lost something: for every pair, 9397-1's universal joint gained its second
 hinge and its steering loop grew to 44 joints, too many to solve; for any
 part held by nothing, 6765-1's carriage tongue was hinged to its
 turntable's base, and the turntable's turn moved the carriage; for a door
 on any part, 10264-1's roller door, once its spool had turned, hung on the
 spool; read before the studs, 6285-1's door, on one stud of its boom, also
-hung on the ship and locked the boom.
+hung on the ship and locked the boom; on any part it is lodged in, 21319-1's
+door hung on a clip of the camera boom and swung with it into its frame.
 
 **The part taken, named.** In a loop, move_part named everything the loop
 moves by its biggest part ("the Technic Beam 13, 34 parts"). It now names
@@ -3953,9 +3958,10 @@ and on the main thread. With a stud rule tried below, it asked often enough
 that the two filled JointSnap's cache at once and the app stopped (10265-1),
 as Joints' did in G12. It is filled under a lock.
 
-**Steering, swept** (`sweep_f7`, the final code, over the 79 files that
-steer or whose cause changed in a sweep of all 181 with the rules taken out
-below, `sweep_f2`; merged over G13b's rows as `sweep_g14b`).
+**Steering, swept** (`sweep_f8`, the final code merged with main, over the
+79 files that steer or whose cause changed in a sweep of all 181 with the
+rules taken out below, `sweep_f2`; merged over G13b's rows as
+`sweep_g14b`).
 
 | | sets that steer, of those with a steering |
 |---|---|
@@ -3973,36 +3979,24 @@ still refused on a ball, as G13b left them: 10265-1, 10295-1 and its 911
 Turbo, and 42021-1.
 
 **The other moving things, swept** (`movesweep_f5` over G13b's 260 sets;
-`movesweep_f7`, the final code, over the 40 whose things changed; merged
-as `movesweep_final`). The other 220 sets' rows are `movesweep_f5`'s, run
-while the ball rules (taken out, below) were in, and each is as it was in
-G13b.
+`movesweep_f8`, the final code merged with main, over the 40 whose things
+changed; merged as `movesweep_final`). The other 220 sets' rows are
+`movesweep_f5`'s, run while the ball rules (taken out, below) were in, and
+each is as it was in G13b.
 
 | the same 260 sets | things | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
 |---|---|---|---|---|---|
 | G13b | 381 | 163 | 15 | 300 | 221 / 19 / 170 |
-| G14b | 407 | 181 | 15 | 326 | 225 / 19 / 173 |
+| G14b | 405 | 183 | 15 | 324 | 227 / 19 / 172 |
 
-By kind, both ways and back: turntables 51 (51), doors 58 (39), booms and
-arms 72 (73). Twenty-six doors are on a joint now that were held by nothing
-(407 things, from 381), and nineteen of them move both ways and back:
-3180-1's cupboard door, 6765-1's safe door and 10184-1, 10197-1, 10218-1,
-10267-1, 3942-1, 41015-1, 60216-1, 6355-1, 6388-1, 6479-1, 6597-1, 6861-2,
-6862-1, 6889-1, 6980-1, 6987-1 and 7741-1.
-
-One thing that moved both ways and back in G13b does not: 21319-1's boom.
-Its door (1 x 4 x 6) now hangs on its clip by
-BrickNet's hinge, where G13b left it held by nothing, and the clip is on
-the 10-part boom. In G13b the door stayed where it was, in the air, while
-the boom turned under it, which no real door does; now the boom carries
-its door, as it should, and taken alone (`Grab.begin` on #511) it turns
-3.1° and stops where the door meets its frame (`Slope Brick Curved 2 x 1`
-#515 against the `Door 1 x 4 x 6 Frame` #363): a real stop, nothing passes
-through anything. The sweep now takes the 28-part body of the door frame
-as the boom, the biggest body on a hinge with no door part in it; that body
-was locked in G13b as well, as its door thing. Kept: the door went with
-its boom where it did not before. No picture was taken; the GPU was held
-by other runs for most of the afternoon.
+By kind, both ways and back: turntables 53 (51), doors 56 (39), booms and
+arms 74 (73). None that moved both ways and back in G13b is lost.
+Twenty-four doors are on a joint now that were held by nothing (89, from
+65), and seventeen of them move both ways and back: 6765-1's safe door and
+10184-1, 10197-1, 10218-1, 10267-1, 3942-1, 41015-1, 60216-1, 6355-1,
+6388-1, 6597-1, 6861-2, 6862-1, 6889-1, 6980-1, 6987-1 and 7741-1. Three
+more things move both ways and back with main's Grab 14a merged in:
+42043-1's flatbed trailer's turntable, and 6987-1's turntable and boom.
 
 **The ball joints' reading, found and taken out.** §20 said the arm's ball
 was on a rod hung only on balls. It was not: all three of a steering arm's
@@ -4060,18 +4054,19 @@ friction holds first, freeing them only where the loop cannot close
 without them, left 10295-1 as it was and stopped 10265-1 at once one way.
 
 **Proved** (bench/results/grab14b-2026-10-19). Every sweep ran from a copy
-of the worktree, two shards under heavy. `grab_probe` in full through
-`tools/probe.sh` on the final code (`probes/grab_probe_final.log`, at load
-about 3) ran 466 checks, and all passed. New: `-- --only=swept` steers
-41999-1 the sweep's way, +8.01 LDU, -8.01 and back to 0.0006; `-- --only=
-moving` swings 3180-1's cupboard door +30°, -60° and back to 0.000. Each
-fails on rel-m89's code, as its sweep row there shows (41999-1 refused on a
-ball, 3180-1 with no door on a joint). The path checks and the two beams
-checks looked for "now 30°" in move_part's words, which say "turned 30°"
-since MCP walk 2, and failed on rel-m89 too (`--only=path` run alone on its
-code); they read "turned" now, as Grab 14a also mended them. An earlier full run with the ball rules in
-(`probes/grab_probe_full.log`) passed 462 of 467: those four, and 8448-1's
-racer (above).
+of the worktree, or from the worktree untouched while it ran, two shards
+under heavy. `grab_probe` in full through `tools/probe.sh` on the final
+code merged with main (`probes/grab_probe_merged.log`) ran 466 checks, and
+all passed. New: `-- --only=swept` steers 41999-1 the sweep's way, +8.01
+LDU, -8.01 and back to 0.0006; `-- --only=moving` swings 6765-1's safe door
+both ways and back. Each fails on rel-m89's code, as its sweep row there
+shows (41999-1 refused on a ball, 6765-1 with no door on a joint). The
+path checks and the two beams checks looked for "now 30°" in move_part's
+words, which say "turned 30°" since MCP walk 2, and failed on rel-m89 too
+(`--only=path` run alone on its code); Grab 14a mended them, and G14b the
+same way. Before the merge (`probes/grab_probe_final.log`) all 466 passed
+too; a run with the ball rules in (`probes/grab_probe_full.log`) passed 462
+of 467: those four, and 8448-1's racer (above).
 
 **Left for later.**
 - The ball joints' reading (above): the cause of the five refusals, its
@@ -4085,6 +4080,10 @@ racer (above).
   stud reaching the cover of a part off the grid holds it. 6753-1 itself:
   a brick's studs hold its steering's axle 6, an axle read with sockets
   from below.
+- 3180-1's cupboard door, and any door held by nothing on a part that
+  moves: hung on it, 21319-1's door went with the camera boom into its
+  frame. A door belongs on the part that carries its hinge's other half;
+  which part that is wants more than BrickNet's label where both move.
 - A 2 x 2 turntable under a wheel plate, held by the plate's studs (not
   begun).
 - 42110-1 and the loops too big to solve.
