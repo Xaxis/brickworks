@@ -429,7 +429,14 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 		_known_path = was[0]
 		_known_time = was[1]
 		_known_lines = was[2]
+		if ok:
+			_saved_as = path
 	return ok
+
+
+## The last file [method save_file] wrote that is not the title's own: the
+## model as it stands there is saved work ([method has_unsaved_work]).
+var _saved_as: String = ""
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -593,12 +600,18 @@ func has_unsaved_work() -> bool:
 	# The model written out and compared only when there is a saved one to
 	# compare it with: on Orthanc that is a third of a second, and New asks
 	# this before it can ask anything else.
-	if title == UNTITLED:
-		return true
-	var kept: String = SAVE_DIR + _safe_name(title) + ".ldr"
-	if not FileAccess.file_exists(kept):
-		return true
-	return _brick_lines(FileAccess.get_file_as_string(kept)) != _brick_lines(to_text(UNTITLED))
+	# Saved under another name is saved too: a session's save_model
+	# "small-observatory.ldr" of Small Observatory, and its open_model a
+	# moment later said the model had changes that were not saved.
+	var now := PackedStringArray()
+	for kept: String in [saved_path(title) if title != UNTITLED else "", _saved_as]:
+		if kept.is_empty() or not FileAccess.file_exists(kept):
+			continue
+		if now.is_empty():
+			now = _brick_lines(to_text(UNTITLED))
+		if _brick_lines(FileAccess.get_file_as_string(kept)) == now:
+			return false
+	return true
 
 
 static func _brick_lines(text: String) -> PackedStringArray:

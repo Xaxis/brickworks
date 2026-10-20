@@ -1491,13 +1491,15 @@ func said() -> String:
 	var parts := PackedStringArray()
 	for kind: String in kinds:
 		parts.append("%d %s" % [int(kinds[kind]), kind])
-	var words: String = "a loop of %d joints (%s), closed by %d" % [links.size() + closing.size(),
-		", ".join(parts), closing.size()]
+	# "a loop of 1 joints (1 axle), closed by 0 and a 8 tooth pinion in rack
+	# 3743" was a pinion's axle and its rack, said to a session.
+	var count: int = links.size() + closing.size()
+	var closers := PackedStringArray()
+	if not closing.is_empty():
+		closers.append("%d of them" % closing.size())
 	if not gear_meshes.is_empty():
-		words += ", %d gear mesh%s" % [gear_meshes.size(), "" if gear_meshes.size() == 1 else "es"]
-	if not racks.is_empty():
-		var teeth := PackedStringArray()
-		for mesh: Racks.Pinion in racks:
-			teeth.append(mesh.said(bodies.world))
-		words += " and %s" % ", ".join(teeth)
-	return words
+		closers.append("%d gear mesh%s" % [gear_meshes.size(), "" if gear_meshes.size() == 1 else "es"])
+	for mesh: Racks.Pinion in racks:
+		closers.append(mesh.said(bodies.world))
+	return "a loop of %d joint%s (%s)%s" % [count, "" if count == 1 else "s", ", ".join(parts),
+		(", closed by " + " and ".join(closers)) if not closers.is_empty() else ""]

@@ -514,8 +514,9 @@ func definitions() -> Array:
 			"description": ("Render one of the model's motions as an animation, a WebP and an MP4 "
 				+ "(where ffmpeg is installed) where Render saves, framed on what it moves, without "
 				+ "changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= "
-				+ "480x300 or 720p. Needs the app in a window, and is a job (job gives the result, "
-				+ "with a picture of its frames)."),
+				+ "480x300 or 720p; view= where the camera stands, hero (three-quarter from the front "
+				+ "left, the default) or back for what moves at the back. Needs the app in a window, "
+				+ "and is a job (job gives the result, with a picture of its frames)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
 				"properties": {
 				"name": {"type": "string"},
@@ -523,6 +524,7 @@ func definitions() -> Array:
 				"sequence": {"type": "boolean"},
 				"fps": {"type": "integer", "enum": [12, 24]},
 				"size": {"type": "string", "enum": ["480x300", "720p"]},
+				"view": {"type": "string", "enum": MOTION_VIEWS},
 			}},
 		},
 		{
@@ -840,7 +842,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"list_motions":
 			return _list_motions(input)
 		"define_motion":
-			return _define_motion(input)
+			return await _define_motion(input)
 		"play_motion":
 			return await _play_motion(input)
 		"render_motion":
@@ -1512,11 +1514,9 @@ func _what_moves(grabbing: GrabDrag) -> String:
 			if takes.has(id):
 				by = id
 				break
-		var at: Vector3 = link.point / BrickLattice.STUD
-		lines.append("  %s%s, %s at x=%s y=%s z=%s studs%s" % [named.call(by),
+		lines.append("  %s%s, %s at %s%s" % [named.call(by),
 			" and %d more part%s" % [ids.size() - 1, "" if ids.size() == 2 else "s"] if ids.size() > 1 else "",
-			link.words(), Balance.studs(at.x), Balance.studs(at.y), Balance.studs(at.z),
-			"" if link.holds else ", turning freely"])
+			link.words(), GrabDrag.at_words(link.point), "" if link.holds else ", turning freely"])
 	if moving.size() > MOST_MOVING:
 		lines.append("  and %d more." % (moving.size() - MOST_MOVING))
 	lines.append("Nothing was changed. move_part part=N says what moving it does; degrees= turns it.")
@@ -1765,12 +1765,28 @@ func _define_motion(input: Dictionary) -> String:
 	motions.put(motion)
 	builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 		"changed" if replaced else "made", Motions.quoted(name)])
+	# Checked where it begins in its sequence: after the motions it follows,
+	# each kept, then all of it undone. Played alone, the observatory's
+	# "Extend the telescope" stopped on the shut dome that "Open the dome
+	# panel", which it follows, opens first.
+	var verbs: EditVerbs = app.get("_verbs")
+	var depth: int = builder.history_depth()
+	var first := PackedStringArray()
+	for one: Motions.Motion in motions.sequence(name):
+		if one.name.to_lower() == name.to_lower():
+			break
+		player.play(one, false, MotionPlayer.PLAY_FPS, true)
+		first.append(Motions.quoted(one.name))
 	var played: MotionPlayer.Played = player.play(motion)
+	while builder.history_depth() > depth:
+		await verbs.press("undo")
 	var joints: int = motion.joints().size()
-	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check, and the "
-		+ "model put back: %s. play_motion plays it; one step: undo takes it out.") % [
+	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check%s, and the "
+		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.") % [
 		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
-		"" if joints == 1 else "s", player.said(played)]
+		"" if joints == 1 else "s", (" after %s, which it follows" % ", then ".join(first))
+		if not first.is_empty() else "", player.said(played), (" alone, from where the model stands, and "
+		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else ""]
 
 
 ## A motion from define_motion's tracks= and driver=, or why not.
@@ -1859,8 +1875,8 @@ func _play_motion(input: Dictionary) -> Variant:
 	var reverse: bool = bool(input.get("reverse", false))
 	var depth: int = builder.history_depth()
 	var lines := PackedStringArray()
-	var stills: Array = []
-	var times: Array = []
+	var each: Array = []
+	var picks: Array = []   ## [which motion, its frame, at what time]
 	var standing: String = ""
 	var elapsed: float = 0.0
 	var went: bool = false
@@ -1872,9 +1888,14 @@ func _play_motion(input: Dictionary) -> Variant:
 		if not played.frames.is_empty():
 			standing = played.standing
 			for n: int in _sheet_of(played, (asked as Array).size()):
-				stills.append(played.frames[n])
-				times.append(elapsed + float(n) / float(played.fps))
+				# A motion's first frame is the one before's last.
+				if n > 0 or picks.is_empty():
+					picks.append([each.size(), n, elapsed + float(n) / float(played.fps)])
+		each.append(played.frames)
 		elapsed += played.seconds
+	var whole: Array = _whole_frames(each)
+	var stills: Array = picks.map(func(pick: Array) -> Dictionary: return whole[pick[0]][pick[1]])
+	var times: Array = picks.map(func(pick: Array) -> float: return pick[2])
 	builder.fold_since(depth, "played %s" % ", ".join((asked as Array).map(func(one: Motions.Motion) -> String:
 		return Motions.quoted(one.name))))
 	if builder.history_depth() == depth:
@@ -1892,6 +1913,35 @@ func _play_motion(input: Dictionary) -> Variant:
 		return text
 	text += "\nThe picture: its frames at %s, left to right and down." % _times_words(times)
 	return [{"type": "text", "text": text}, _picture_block(PosePanel.sheet_of(images))]
+
+
+## A sequence's frames, each motion's in [param each], with every part any
+## of them moves in every frame, where it stands at that moment. A frame
+## holds what its own motion moves, and is drawn on the model as it stands
+## when drawn: played and kept, the observatory's telescope stood slid out
+## through its shut dome in the frames that opened the dome; rendered, with
+## the model put back, the dome stood shut again while the telescope slid
+## out. So a frame takes what earlier motions moved from where they ended,
+## and what later ones move from where they began.
+static func _whole_frames(each: Array) -> Array:
+	var out: Array = []
+	var before: Dictionary = {}
+	for frames: Array in each:
+		var whole: Array = []
+		for frame: Dictionary in frames:
+			var one: Dictionary = before.duplicate()
+			one.merge(frame, true)
+			whole.append(one)
+		if not frames.is_empty():
+			before.merge(frames.back(), true)
+		out.append(whole)
+	var after: Dictionary = {}
+	for k: int in range(out.size() - 1, -1, -1):
+		for frame: Dictionary in out[k]:
+			frame.merge(after)
+		if not (each[k] as Array).is_empty():
+			after.merge(each[k][0], true)
+	return out
 
 
 ## Which of [param played]'s frames a picture shows: at its keys when it has
@@ -1930,7 +1980,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: PosePanel = app.get("_pose")
 	var reverse: bool = bool(input.get("reverse", false))
 	var fps: int = 24 if int(input.get("fps", 12)) == 24 else 12
-	var poses: Array = []
+	var each: Array = []
 	var lines := PackedStringArray()
 	var depth: int = builder.history_depth()
 	var many: bool = (asked as Array).size() > 1
@@ -1938,10 +1988,13 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 		# A sequence's next motion begins where the last ended: each kept,
 		# and all of it undone once drawn.
 		var played: MotionPlayer.Played = player.play(motion, reverse, fps, many)
-		poses.append_array(played.frames)
+		each.append(played.frames)
 		lines.append("%s: %s." % [Motions.quoted(motion.name), player.said(played)])
 	while builder.history_depth() > depth:
 		await verbs.press("undo")
+	var poses: Array = []
+	for frames: Array in _whole_frames(each):
+		poses.append_array(frames)
 	if poses.is_empty():
 		return "Nothing to draw: %s" % "; ".join(lines)
 	var settings: RenderSettings = panel.settings
@@ -1951,19 +2004,75 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	for k: int in PosePanel.SHEET_MOST:
 		sheet_at.append(roundi(float(k) * float(poses.size() - 1) / float(PosePanel.SHEET_MOST - 1)))
 	var title: String = "_" + str((asked as Array)[0].name).to_snake_case() + ("_backwards" if reverse else "")
+	var view: String = str(input.get("view", "hero"))
+	if not view in MOTION_VIEWS:
+		view = "hero"
 	var frames: int = await panel.render_poses(poses, fps, func(_n: int) -> float: return 0.0,
-		sheet_at, work, "hero", title)
+		sheet_at, work, view, title)
 	settings.size = size_was
 	if frames <= 0 or not panel._last.has("kept"):
 		return "Nothing rendered: %s" % panel.rendered_words()
 	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s: %s." % [frames, fps,
 		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]), str(panel._last["kept"])])
+	var hidden: String = _hidden_from(view, asked, each)
+	if not hidden.is_empty():
+		lines.append(hidden)
 	var times: Array = []
 	var picture: Image = panel.sheet(times)
 	if picture == null:
 		return "\n".join(lines)
 	lines.append("The picture: its frames at %s, left to right and down." % _times_words(times))
 	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
+
+
+## Where render_motion's camera may stand (StudioRender.VIEWS).
+const MOTION_VIEWS: Array = ["hero", "front", "side", "back", "low", "top"]
+
+
+## Which of the motions [param asked] move parts on the far side of the
+## model from [param view], said with the view that faces them; empty when
+## none does. Rendered from the front corner, a session's observatory hid
+## the back wall's panels it opened behind the dome.
+func _hidden_from(view: String, asked: Variant, each: Array) -> String:
+	var world: BrickWorld = app.get("_world")
+	var toward: Vector3 = Vector3(StudioRender.VIEWS[view][1])
+	toward.y = 0.0
+	if world == null or toward.length() < 0.1:
+		return ""
+	var centre := Vector3.ZERO
+	var count: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		centre += brick.transform.origin
+		count += 1
+	if count == 0:
+		return ""
+	centre /= float(count)
+	var far := PackedStringArray()
+	var faces: String = ""
+	for k: int in (asked as Array).size():
+		var frames: Array = each[k]
+		if frames.is_empty() or (frames[0] as Dictionary).is_empty():
+			continue
+		var at := Vector3.ZERO
+		for key: Variant in frames[0]:
+			at += (frames[0][key] as Transform3D).origin
+		at = at / float((frames[0] as Dictionary).size()) - centre
+		at.y = 0.0
+		if at.length() < BrickLattice.STUD * 2.0 or at.normalized().dot(toward.normalized()) > -0.7:
+			continue
+		far.append(Motions.quoted((asked[k] as Motions.Motion).name))
+		var best: float = -INF
+		for other: String in MOTION_VIEWS:
+			var way: Vector3 = Vector3(StudioRender.VIEWS[other][1])
+			way.y = 0.0
+			if way.length() > 0.1 and way.normalized().dot(at.normalized()) > best:
+				best = way.normalized().dot(at.normalized())
+				faces = other
+	if far.is_empty():
+		return ""
+	return ("%s move%s parts on the far side of the model from this view, hardly seen: "
+		+ "render_motion view=\"%s\" faces them.") % [", ".join(far), "s" if far.size() == 1 else "",
+		faces]
 
 
 # -- simulating -------------------------------------------------------------------

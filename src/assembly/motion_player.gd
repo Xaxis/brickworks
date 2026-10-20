@@ -286,9 +286,11 @@ class Item extends RefCounted:
 	var shift: float = 0.0
 	var from: float = 0.0
 	var to: float = 0.0
-	## The furthest short of where it was asked, and where and why then.
+	## The furthest short of where it was asked, and where and why then:
+	## with the part it met (a brick id, 0 when none).
 	var short_by: float = 0.0
 	var stop_words: String = ""
+	var met: int = 0
 	var driver: bool = false
 	## The least and most it reached on the way.
 	var low: float = INF
@@ -423,6 +425,9 @@ func _item_for(track: Motions.Track, driver: bool) -> Item:
 			item.stop_words = "it does not slide: nothing it is on is longer than the hole it is in"
 			return item
 		held.use_slide()
+	elif held.mode == "slide" and held.linkage != null and not held.linkage.racks.is_empty():
+		item.stop_words = grabbing.held_loop_words(held)
+		return item
 	elif held.mode != "turn":
 		item.stop_words = "it %s; a motion turns this joint" % (
 			"slides" if held.mode == "slide" else "turns on a ball")
@@ -473,6 +478,7 @@ func _step(item: Item, place: float) -> void:
 		item.short_by = short
 		item.stop_words = "%s stops at %s of the %s asked, where %s" % [item.name,
 			_place_words(reached, item), _place_words(asked, item), _why_stopped(held)]
+		item.met = int(held.blocked_by[1]) if held.blocked_by.size() == 2 else 0
 
 
 func _reached(item: Item) -> float:
@@ -524,14 +530,70 @@ func said(played: Played) -> String:
 		var between: String = ""
 		if item.low < minf(item.from, item.to) - least or item.high > maxf(item.from, item.to) + least:
 			between = " by way of %s and %s" % [_place_words(item.low, item), _place_words(item.high, item)]
+		var slid: String = slid_words(item.grab)
+		if not slid.is_empty():
+			slid = ", and " + slid
 		if item.stop_words.is_empty():
-			lines.append("%s went from %s to %s%s, clear all the way" % [item.name,
-				_place_words(item.from, item), _place_words(item.to, item), between])
+			lines.append("%s went from %s to %s%s, clear all the way%s" % [item.name,
+				_place_words(item.from, item), _place_words(item.to, item), between, slid])
 		else:
-			lines.append("%s; it ends at %s" % [item.stop_words, _place_words(item.to, item)])
+			lines.append("%s; it ends at %s%s%s" % [item.stop_words, _place_words(item.to, item), slid,
+				_own_words(played, item)])
 	for line: String in played.refused:
 		lines.append(line)
 	return "; ".join(lines)
+
+
+## What a turn drove along a rack, said: "the Technic Gear Rack 1 x 4
+## (#170) slid 4.4 studs toward +x, and 23 parts with it". A session asked
+## to turn the observatory's wheel was told only that the wheel turned 612°,
+## and had to work out that the telescope slid. Empty when [param held]
+## drives no rack, or its rack stood still.
+static func slid_words(held: Grab) -> String:
+	if held == null or held.linkage == null or held.bodies == null:
+		return ""
+	var out := PackedStringArray()
+	for mesh: Racks.Pinion in held.linkage.racks:
+		if not held.placed.has(mesh.rack) or not held.rest.has(mesh.rack):
+			continue
+		var moved: Vector3 = (held.placed[mesh.rack] as Transform3D).origin \
+			- (held.rest[mesh.rack] as Transform3D).origin
+		if moved.length() < SHORT_STUDS * BrickLattice.STUD:
+			continue
+		var with: int = 0
+		for key: Variant in held.placed:
+			if int(key) != mesh.rack and held.rest.has(key) and ((held.placed[key] as Transform3D).origin
+					- (held.rest[key] as Transform3D).origin).distance_to(moved) < 0.5:
+				with += 1
+		out.append("%s slid %s studs %s%s" % [held.bodies._part_named(mesh.rack),
+			Balance.studs(moved.length() / BrickLattice.STUD), _toward(moved),
+			(", and %d part%s with it" % [with, "" if with == 1 else "s"]) if with > 0 else ""])
+	return ", ".join(out)
+
+
+## "toward +x", "up": the way [param moved] goes most.
+static func _toward(moved: Vector3) -> String:
+	var most: int = moved.abs().max_axis_index()
+	if most == Vector3.AXIS_Y:
+		return "up" if moved.y > 0.0 else "down"
+	return "toward %s%s" % ["+" if moved[most] > 0.0 else "-", "x" if most == Vector3.AXIS_X else "z"]
+
+
+## When [param item] stopped on a part another track of the same motion
+## moves: why, and what to do. Each track is tested as if the others stood
+## still, so a session's "Extend the telescope" that opened the dome and
+## then turned the wheel stopped on the shut dome, and it took the dome to
+## have opened too late.
+func _own_words(played: Played, item: Item) -> String:
+	if item.met == 0:
+		return ""
+	for other: Item in played.items:
+		if other != item and other.grab != null and other.grab.moving.has(item.met):
+			return (" (the part it meets is one %s moves: a motion's joints are each tested as if "
+				+ "the others stood still, so make that a motion of its own and this one after= it; "
+				+ "play_motion sequence=true plays them in order, each from where the last left the "
+				+ "model)") % other.name
+	return ""
 
 
 # -- suggested from what moves -------------------------------------------------------------

@@ -56,7 +56,8 @@ class Pinion extends RefCounted:
 			return "the screw of linear actuator %s" % (world.get_brick(body).part_id
 				if world.get_brick(body) != null else "?")
 		var rack_part: String = world.get_brick(rack).part_id if world.get_brick(rack) != null else "?"
-		return "a %d tooth pinion in rack %s" % [teeth, rack_part]
+		return "%s %d tooth pinion in rack %s" % ["an" if teeth in [8, 11, 18] or (teeth >= 80 and teeth < 90) else "a",
+			teeth, rack_part]
 
 
 ## The rack table: part -> {teeth, from, to, pitch_line, z}.
