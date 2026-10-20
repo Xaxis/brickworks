@@ -122,8 +122,12 @@ var _centre: Dictionary = {}
 ## body): held at nought, never solved for.
 var _still: Dictionary = {}
 ## How far a slide may go, column -> Vector2(least, most) from where it
-## stood: an actuator's or a cylinder's stroke.
+## stood: an actuator's or a cylinder's stroke, a clip's or a hole's slide.
 var _limits: Dictionary = {}
+## The columns of [member _limits] the solve keeps inside them (a joint
+## that turns and slides); an actuator's stroke is only checked once
+## solved ([method _within]).
+var _bounded: Dictionary = {}
 ## How the last solve went: iterations and the residual left, LDU.
 var iterations: int = 0
 var residual: float = 0.0
@@ -265,11 +269,24 @@ func _read(driver: Bodies.Link, child: int) -> void:
 			cols += 2
 			slide_col.append(-1)
 		elif link.slide.x + link.slide.y > 0.0:
-			if not link.turns:
-				# An actuator's stroke, its rod or its body the one that moves.
-				var rod_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
-				_limits[cols] = Vector2(-link.slide.y, link.slide.x) if rod_moves \
-					else Vector2(-link.slide.x, link.slide.y)
+			# An actuator's stroke, its rod or its body the one that moves;
+			# and a clip on its bar, or a piston in its cylinder, as far as
+			# their rounds let it (Bodies._rounds_room), the solve kept
+			# inside it. Unbounded, a loop closed by sliding 21019-1's clip
+			# 4.3 LDU into the plate its handle is on, and 4002020-1's into
+			# its bar's ball. Not an axle in its hole: kept to its flanges,
+			# 8448-1's steering turned 1° where it turns 11°, its loop read
+			# too stiff without its towballs sliding up through the rack.
+			var shaft_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
+			if not link.turns or not link.kind in ["axle", "pin"]:
+				var room: Vector2 = link.slide
+				if link.turns:
+					var exact: Vector2 = bodies.exact_room(link)
+					if exact.x >= 0.0:
+						room = exact
+				_limits[cols] = Vector2(-room.y, room.x) if shaft_moves else Vector2(-room.x, room.y)
+			if link.turns and _limits.has(cols):
+				_bounded[cols] = true
 			slide_col.append(cols)
 			cols += 1
 		elif not link.turns:
@@ -888,18 +905,46 @@ func _close_with(held: Dictionary) -> bool:
 				for w: int in m:
 					a[base + at_row[w]] += vi * of_row[w]
 		var stepped: bool = false
-		for _try: int in 6:
+		# A bounded slide at its end that the step would take further out is
+		# held there for the step, and the rest solved without it; one the
+		# step takes past its end stops at it.
+		var pinned: Dictionary = {}   ## index among the free -> true
+		var tries: int = 0
+		while tries < 6:
 			var m2: PackedFloat64Array = a.duplicate()
+			var g2: PackedFloat64Array = g
 			for i: int in n:
 				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) + 1e-9
+			if not pinned.is_empty():
+				g2 = g.duplicate()
+				for i: int in pinned:
+					for k: int in n:
+						m2[i * n + k] = 0.0
+						m2[k * n + i] = 0.0
+					m2[i * n + i] = 1.0
+					g2[i] = 0.0
 			var factored: bool = Linkage._factor(m2, n)
 			if not factored:
 				lam *= 10.0
+				tries += 1
 				continue
-			var dq: PackedFloat64Array = Linkage._solve_factored(m2, n, g)
+			var dq: PackedFloat64Array = Linkage._solve_factored(m2, n, g2)
 			var trial: PackedFloat64Array = q.duplicate()
+			var held_more: bool = false
 			for i: int in n:
-				trial[free[i]] -= dq[i]
+				var c: int = free[i]
+				trial[c] -= dq[i]
+				if _bounded.has(c):
+					var span: Vector2 = _limits[c]
+					if trial[c] < span.x or trial[c] > span.y:
+						if (trial[c] < span.x and q[c] <= span.x + 1e-9 or trial[c] > span.y and q[c] >= span.y - 1e-9) \
+								and not pinned.has(i):
+							pinned[i] = true
+							held_more = true
+						trial[c] = clampf(trial[c], span.x, span.y)
+			if held_more:
+				continue
+			tries += 1
 			var trial_cache: Dictionary = {}
 			var tr: PackedFloat64Array = _residual(trial, trial_cache)
 			var then: float = _worst(tr)
@@ -1104,6 +1149,8 @@ func _closes_at(at: float, from: float, from_q: PackedFloat64Array, but: Diction
 			if c != driver_col and not _still.has(c) and not (_try_held and _carrying.has(c)) \
 					and not but.has(c) and (only.is_empty() or only.has(c)):
 				q[c] += _slope[c] * by
+				if _bounded.has(c):
+					q[c] = clampf(q[c], (_limits[c] as Vector2).x, (_limits[c] as Vector2).y)
 		q[driver_col] = at
 		if _close() and _within():
 			return true

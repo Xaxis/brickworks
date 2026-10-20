@@ -276,6 +276,9 @@ func _run() -> void:
 	if only.is_empty() or only == "moving":
 		for one: Array in MOVING:
 			await _moving_check(str(one[0]), str(one[1]))
+	if only.is_empty() or only == "moving" or only == "clipped":
+		for one: Array in CLIPPED:
+			await _clipped_check(str(one[0]), int(one[1]), int(one[2]))
 	if only.is_empty() or only == "grooved":
 		for one: Array in GROOVED:
 			await _grooved_check(str(one[0]), float(one[1]))
@@ -5459,10 +5462,17 @@ const MOVING: Array = [
 	# BrickNet's labels name (Bodies._labelled_hinge); held by nothing, it
 	# was no door on a joint.
 	["res://vendor/omr/files/6765-1.mpd", "door"],
-	# Grab 15 (MECHANISMS §25): its turntable turns a loop of 11 joints, one
-	# a plate with a clip on a plate with a handle; untested against each
-	# other, the turn left them into each other and the next went through.
-	["res://vendor/omr/files/21019-1.mpd", "turntable"],
+]
+## Clips on bars in loops (Grab 16, MECHANISMS §26), each [set, the clip's
+## part, the bar's part]: a loop slides a clip no further along its bar than
+## the two parts' shapes let it. 4002020-1's turntable slid its clip into its
+## bar's ball end and stopped at once on its way back; it moves both ways and
+## back. 21019-1's clip fills its handle's bar: its loop has no slide to
+## close by, and the clip never goes into the plate the handle is on (Grab
+## 15 found them 2.42 LDU into each other after a turn of 10°).
+const CLIPPED: Array = [
+	["res://vendor/omr/files/4002020-1.mpd", 849, 863],
+	["res://vendor/omr/files/21019-1.mpd", 124, 86],
 ]
 ## Steering the sweep's way (tools/steer_sweep.py), each [set, why]: it
 ## steers both ways and back over MCP (G14b, MECHANISMS §24).
@@ -5630,6 +5640,43 @@ func _moving_check(path: String, kind: String) -> void:
 			covers.append(str(met.get("pair", "")))
 	_check("%s: no turn of its %s stopped where only the covers of two parts meet%s" % [name, kind,
 		"" if covers.is_empty() else " (" + ", ".join(covers) + ")"], covers.is_empty() and not found.is_empty())
+	_builder.forget_history()
+
+
+## A turntable whose loop holds a clip on its bar ([constant CLIPPED]),
+## moved +30, -60 and back over MCP as the sweep moves it: it turns each way
+## and comes back, or its loop is locked; and where the moves end, the clip
+## and its bar's part are no further into each other, by their exact
+## shapes, than a build allows.
+func _clipped_check(path: String, clip: int, bar: int) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\n%s's turntable, its clip #%d on its bar #%d" % [name, clip, bar])
+	var row: Dictionary = await _move_sweep_one(path)
+	var found: Dictionary = {}
+	for thing: Dictionary in row.get("things", []):
+		if str(thing.get("kind")) == "turntable":
+			found = thing
+	var steps: Array = found.get("steps", [])
+	var turns := PackedStringArray()
+	var each_way: bool = steps.size() >= 2
+	for n: int in steps.size():
+		var step: Dictionary = steps[n]
+		turns.append("%+.0f°" % float(step.get("now", 0.0)) if bool(step.get("moved")) else "no")
+		if n < 2 and (not bool(step.get("moved")) or absf(float(step.get("now", 0.0))) < 1.0):
+			each_way = false
+	var locked: bool = str(found.get("cause", "")).contains("no freedom") \
+		or not steps.is_empty() and str((steps[0] as Dictionary).get("said", "")).contains("no freedom")
+	var back: bool = str(found.get("result")) == "moves"
+	_check("%s: its turntable turns %s and is back to %.4f LDU, or its loop is locked%s" % [name, ", ".join(turns),
+		float(found.get("back_ldu", -1.0)), " (locked)" if locked else ""],
+		not found.is_empty() and (back and each_way or locked))
+	var shape_clip: Exact.Shape = Exact.shape_for(_library, _world.get_brick(clip).part_id)
+	var shape_bar: Exact.Shape = Exact.shape_for(_library, _world.get_brick(bar).part_id)
+	var into: Dictionary = Exact.clash(Exact.Item.new(shape_clip, _world.get_brick(clip).transform),
+		Exact.Item.new(shape_bar, _world.get_brick(bar).transform))
+	_check("%s: the clip #%d and its bar's part #%d are not into each other where it ends%s" % [name, clip, bar,
+		"" if into.is_empty() else " (%.2f LDU)" % float(into.get("depth", 0.0))],
+		shape_clip != null and shape_bar != null and into.is_empty())
 	_builder.forget_history()
 
 

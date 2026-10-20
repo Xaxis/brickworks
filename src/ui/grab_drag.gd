@@ -40,6 +40,11 @@ var topple_on_baseplate: bool = false
 const FRAME_BUDGET_MS := 10.0
 ## A loop's room test may run this long in a frame, ms.
 const LOOP_BUDGET_MS := 24.0
+## A loop's way may be checked this long in a frame of a pause, ms
+## (Grab.pause_budget_ms), the rest in the frames after: a pause asks the
+## loop's own joints' parts too (Grab 15), and at the loop's 24 ms it took
+## 37 to 46 ms of a frame on a phone at a quarter speed.
+const PAUSE_BUDGET_MS := 8.0
 ## A small section's way may be tested this long in a frame, ms (Grab.walk_budget_ms).
 const WALK_BUDGET_MS := 2.0
 ## More parts than this moving is a big section.
@@ -214,6 +219,7 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	# the frame: a turntable's and a ball joint's worst frames were 5.6 and 8.3
 	# ms without one.
 	grab.walk_budget_ms = WALK_BUDGET_MS if grab.budget_ms == INF else INF
+	grab.pause_budget_ms = PAUSE_BUDGET_MS if grab.linkage != null and grab.budget_ms < INF else INF
 	if state == "rigid":
 		# Carried as a part, as before; but a part with a joint its body
 		# holds still (a steering column held to its deck) says what holds
@@ -445,6 +451,7 @@ func _let_go() -> String:
 func _verify_off_thread(held: Grab) -> void:
 	world.set_drawn(held.drawn().duplicate())
 	held.budget_ms = INF
+	held.pause_budget_ms = INF
 	_verify_task = WorkerTasks.add(func() -> void:
 		while not held.verify_step():
 			pass
