@@ -142,6 +142,13 @@ func _init() -> void:
 func touch() -> void:
 	_dirty_at = Time.get_ticks_msec()
 	_pending = true
+	# Told of every change up to now: the watch ([method _hear]) takes up
+	# from here, and does not hear the same change again a frame later. It
+	# did, and each time pushed the write back, so an autosave that was due
+	# was not written then: a restore right after opened the one before,
+	# under its name, not this model's (project_probe on m99, 2026-10-20).
+	if not _heard.is_empty() and world != null:
+		_heard = _model_now()
 	# Parts on the baseplate again: whatever empties it next has to be the
 	# person's doing for an empty model to be written over a file.
 	if world != null and not _is_empty():
@@ -208,13 +215,19 @@ func _model_now() -> Array:
 	return [world.revision, builder.history_depth() if builder != null else 0, newest]
 
 
+## A change nobody told the store of ([method touch]), told now: what
+## moved the world's revision or the history since it last heard.
+func _hear() -> void:
+	if _heard.is_empty() or world == null:
+		return
+	var now: Array = _model_now()
+	if now[0] != _heard[0] or now[1] != _heard[1] or not is_same(now[2], _heard[2]):
+		touch()
+
+
 ## Call once a frame. Writes the working model when it has settled.
 func tick() -> void:
-	if not _heard.is_empty() and world != null:
-		var now: Array = _model_now()
-		if now[0] != _heard[0] or now[1] != _heard[1] or not is_same(now[2], _heard[2]):
-			_heard = now
-			touch()
+	_hear()
 	if not _pending or not keeps:
 		return
 	if Time.get_ticks_msec() - _dirty_at < AUTOSAVE_DELAY_MS:
@@ -278,6 +291,8 @@ var _autosaving: bool = false
 func write_now() -> String:
 	if not keeps or read_only:
 		return ""
+	# A change made this frame, before the watch has had its turn.
+	_hear()
 	# One being made a slice at a time is not written yet: written now, and
 	# the one going let go.
 	if (_pending or _autosaving) and whole:

@@ -25,6 +25,8 @@ extends SceneTree
 
 ## The desktop's MCP port for this probe (tools/release's range for it).
 const PORT := 8943
+## The name the last part saves the model under.
+const NAMED := "Autosave Paths Probe Model"
 
 var _failures: int = 0
 var _main: Node
@@ -129,6 +131,27 @@ func _run() -> void:
 	back = await _reload()
 	_ok(back == now and _figures(back).get("Base", 0) == 1,
 		"a reload brings it back in Base (%d parts, %d came back)" % [_count(now), _count(back)])
+
+	# As a session goes, not forced: a model saved under a name, a figure stood
+	# up past every signal, and the autosave written by the clock once that
+	# settles, with the name. Then reopened, the name and nothing to lose.
+	print("\nsaved as a name, then a figure, and the autosave on its own clock")
+	_ok(_store.save_as(NAMED), "saved as %s" % NAMED)
+	said = await _call(connector, "add_minifig", {"x": x, "z": 6, "facing": "+z", "name": "Late"})
+	now = _standing()
+	var until: int = Time.get_ticks_msec() + ModelStore.AUTOSAVE_DELAY_MS + 1500
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	var kept: String = FileAccess.get_file_as_string(ModelStore.autosave())
+	_ok(ModelStore.title_in(kept, "") == NAMED and ModelStore.count_in(kept) == _count(now),
+		"the autosave, %d s on, has the name and all %d parts: \"%s\", %d" % [
+			(ModelStore.AUTOSAVE_DELAY_MS + 1500) / 1000, _count(now),
+			ModelStore.title_in(kept, ""), ModelStore.count_in(kept)])
+	_ok(_store.save_as(NAMED) and not _store.has_unsaved_work(), "saved again, nothing to lose")
+	back = await _reload()
+	_ok(back == now and _store.title == NAMED and not _store.has_unsaved_work(),
+		"reopened: %s, %d parts, nothing a new model would lose" % [_store.title, _count(back)])
+	DirAccess.remove_absolute(ModelStore.saved_path(NAMED))
 
 	if port != null:
 		port.queue_free()
