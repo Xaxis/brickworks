@@ -667,8 +667,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and 10220-1's door (what touched as built is forgiven in each later grab,
   as a pair: G13) moved +30, -60 and back, and
   10295-1's right door (G12, MECHANISMS §20: two parts block a move only
-  where their exact shapes overlap, `Grab._clear_exactly`), and 3180-1's
-  cupboard door on the hinge only BrickNet's labels name (G14b,
+  where their exact shapes overlap, `Grab._clear_exactly`), and 6765-1's
+  safe door on the hinge only BrickNet's labels name (G14b,
   `Bodies._labelled_hinge`); each also
   checks that no turn stopped where only the two parts' covers met.
   `-- --only=grooved` (in the full run): 8448-1's racer and 5533-1 turned
@@ -775,8 +775,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   ball's size holds a ball (`Joints.balls`). G14b (MECHANISMS §24): a
   pinion lodged in a piece whose rack it stands in turns on its own axis
   (`Bodies._driving_pinion`); a door, a hatch or a lid held by nothing hangs
-  on the part it is lodged in where BrickNet's labels name a hinge between
-  the two (`Bodies._labelled_hinge`).
+  on the part it is lodged in, where that part is in its piece's biggest
+  body and BrickNet's labels name a hinge between the two
+  (`Bodies._labelled_hinge`, `Bodies._stays`).
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket; never a tyre), else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's

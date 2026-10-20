@@ -5454,10 +5454,10 @@ const MOVING: Array = [
 	# G12 (MECHANISMS §20): turned +30, the right door's slope 75 met the one
 	# built beside it by their covers at once; their shapes are clear.
 	["res://vendor/omr/files/10295-1.mpd", "boom"],
-	# G14b (MECHANISMS §24): the cupboard's door (4533) on the hinge only
+	# G14b (MECHANISMS §24): the safe's door (4346) on the hinge only
 	# BrickNet's labels name (Bodies._labelled_hinge); held by nothing, it
-	# did not move.
-	["res://vendor/omr/files/3180-1.mpd", "door"],
+	# was no door on a joint.
+	["res://vendor/omr/files/6765-1.mpd", "door"],
 ]
 ## Steering the sweep's way (tools/steer_sweep.py), each [set, why]: it
 ## steers both ways and back over MCP (G14b, MECHANISMS §24).
