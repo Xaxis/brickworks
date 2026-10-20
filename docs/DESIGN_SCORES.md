@@ -238,8 +238,10 @@ one subject more than another. At the same number of designs they do no
 better than k times the subjects, and worse where levers suit subjects
 differently, as the technique levers did (a river's palms, a clothes rack).
 More subjects also widen what a result is about. Asking the judge each order
-twice would cut its part for a tenth of a design's cost, unless a second ask
-of the same pictures gives the same answer; that is untested.
+twice would not help: t2base's 20 pairs asked again in the same order named
+the same model on 115 of 120 dimensions (96%; colour and technique on all
+20). Its noise is which model it is shown first when the two are close, not
+chance, so a third or fourth ask of the same pictures says the same.
 
 **The halves.** The same rule run further: an animal, a person and a creature
 first, then across four sizes, the least used theme first, in hash order. It
