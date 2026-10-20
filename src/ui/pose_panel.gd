@@ -357,24 +357,6 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 		return 0
 	if _playing:
 		_stop()
-	if renderer == null:
-		renderer = StudioRender.new()
-		add_child(renderer)
-		renderer.progress.connect(func(fraction: float, words: String) -> void:
-			_fraction = fraction
-			_progress.value = fraction
-			if _working:
-				_status.text = "%s… %d%%" % [words.substr(0, 1).to_upper() + words.substr(1),
-					roundi(fraction * 100.0)])
-	renderer.library = library
-	renderer.scenery = scenery
-	renderer.eye = eye
-	renderer.look = look
-	renderer.rig_lights = rig_lights
-	_working = true
-	_set_working(true)
-	_last = {}
-	var started: int = Time.get_ticks_msec()
 	var frames: int = animation.frame_count()
 	var poses: Array = []
 	var carried: Dictionary = _turnings()
@@ -390,24 +372,46 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 		var turning: GrabDrag.Turning = carried[path]
 		if not turning.short_words.is_empty():
 			_short.append("%s %s" % [path, turning.short_words])
+	return await render_poses(poses, animation.fps,
+		func(n: int) -> float: return animation.turn_at(animation.time_of(n)),
+		_sheet_frames(frames), job, view, "_animation")
+
+
+## Draw [param poses] (one a frame: brick id -> Transform3D of the parts
+## that move), [param fps] a second, the model turned [param turn_at] (frame
+## -> turns) round, and keep them as Render animation keeps its frames: a
+## WebP, and on the desktop the frames and an MP4, named after the model
+## and [param suffix]. [param sheet_at]: the frames kept for [method sheet].
+## A motion is rendered this way too (render_motion), as its frames.
+## Returns how many were drawn.
+func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
+		job: Working.Job = null, view: String = "", suffix: String = "_animation") -> int:
+	if _working or world == null or poses.is_empty():
+		return 0
+	_ready_renderer()
+	_working = true
+	_set_working(true)
+	_last = {}
+	var started: int = Time.get_ticks_msec()
+	var frames: int = poses.size()
 	var chosen: RenderSettings = settings.copy()
-	chosen.fps = animation.fps
+	chosen.fps = fps
 	chosen.frames = frames
 	if not view.is_empty():
 		chosen.view = view
 	var output := RenderOutput.new()
 	output.folder = folder
 	var model: String = str(named.call())
-	output.begin_turntable(model, chosen, "_animation")
+	output.begin_turntable(model, chosen, suffix)
 	_sheet = {}
-	var sheet_at: Array = _sheet_frames(frames)
+	_sheet_fps = fps
 	var stop: Callable = renderer.cancel
 	if job != null:
 		job.count(0, frames)
 		job.cancel_wanted.connect(stop)
 	var done: int = await renderer.animate(world, chosen, frames,
 		func(n: int) -> Dictionary: return poses[n],
-		func(n: int) -> float: return animation.turn_at(animation.time_of(n)),
+		turn_at,
 		poser.reach(poses),
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
@@ -436,16 +440,58 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 		return done
 	_progress.value = 1.0
 	_last = {"frames": done, "bytes": output.last_bytes,
-		"name": RenderOutput.file_name(model, "_animation", "webp"),
+		"name": RenderOutput.file_name(model, suffix, "webp"),
 		"paths": Array(output.paths), "kept": "; ".join(lines), "seconds": roundi(seconds)}
 	_status.text = "%d frames — %s — %.0f s." % [done, "; ".join(lines), seconds]
 	return done
+
+
+## [param poses] drawn as stills, framed on what they move (as a session's
+## animation is, "hero"), [param size] each: the pictures, or [] when there
+## is nothing to draw with or a render is under way. Nothing is kept.
+func draw_stills(poses: Array, size: Vector2i = Vector2i(480, 300)) -> Array:
+	if _working or world == null or poses.is_empty() or not StudioRender.possible():
+		return []
+	_ready_renderer()
+	if renderer.is_busy():
+		return []
+	var chosen: RenderSettings = settings.copy()
+	chosen.size = size
+	chosen.view = "hero"
+	chosen.frames = poses.size()
+	var out: Array = []
+	await renderer.animate(world, chosen, poses.size(), func(n: int) -> Dictionary: return poses[n],
+		func(_n: int) -> float: return 0.0, poser.reach(poses),
+		func(_n: int, image: Image) -> void: out.append(image))
+	return out
+
+
+func _ready_renderer() -> void:
+	if renderer == null:
+		renderer = StudioRender.new()
+		add_child(renderer)
+		renderer.progress.connect(func(fraction: float, words: String) -> void:
+			_fraction = fraction
+			_progress.value = fraction
+			if _working:
+				_status.text = "%s… %d%%" % [words.substr(0, 1).to_upper() + words.substr(1),
+					roundi(fraction * 100.0)])
+	renderer.library = library
+	renderer.scenery = scenery
+	renderer.eye = eye
+	renderer.look = look
+	renderer.rig_lights = rig_lights
+	# What the frames sweep is read off the model (Poser.reach).
+	poser.world = world
+	poser.library = library
 
 
 ## A few frames of the last render, frame number -> Image: at its keys, or
 ## spread over it. A session cannot see the window or play a file, and the
 ## first that animated 8808-1's steering said it had not watched it.
 var _sheet: Dictionary = {}
+## The rate the last render's frames were drawn at, a second.
+var _sheet_fps: int = 12
 const SHEET_MOST := 4
 const SHEET_WIDE := 480
 const SHEET_GAP := 4
@@ -473,24 +519,35 @@ func sheet(times: Array = []) -> Image:
 		return null
 	var numbers: Array = _sheet.keys()
 	numbers.sort()
-	var first: Image = _sheet[numbers[0]]
+	var images: Array = []
+	for n: Variant in numbers:
+		images.append(_sheet[n])
+		times.append(float(n) / float(maxi(_sheet_fps, 1)))
+	return sheet_of(images)
+
+
+## [param images] as one picture, two to a row, each at most SHEET_WIDE
+## across, a line between them; null for none.
+static func sheet_of(images: Array) -> Image:
+	if images.is_empty():
+		return null
+	var first: Image = images[0]
 	var scale: float = minf(1.0, float(SHEET_WIDE) / float(maxi(first.get_width(), 1)))
 	var cell := Vector2i(maxi(roundi(first.get_width() * scale), 1),
 		maxi(roundi(first.get_height() * scale), 1))
-	var across: int = mini(numbers.size(), 2)
-	var rows: int = ceili(float(numbers.size()) / 2.0)
+	var across: int = mini(images.size(), 2)
+	var rows: int = ceili(float(images.size()) / 2.0)
 	# A line between the frames: without one, a session read the crane in
 	# four frames as one picture of it moving about the frame.
 	var step: Vector2i = cell + Vector2i(SHEET_GAP, SHEET_GAP)
 	var out := Image.create(step.x * across - SHEET_GAP, step.y * rows - SHEET_GAP, false,
 		Image.FORMAT_RGBA8)
 	out.fill(Color(0.35, 0.35, 0.38))
-	for k: int in numbers.size():
-		var frame: Image = (_sheet[numbers[k]] as Image).duplicate()
+	for k: int in images.size():
+		var frame: Image = (images[k] as Image).duplicate()
 		frame.convert(Image.FORMAT_RGBA8)
 		frame.resize(cell.x, cell.y, Image.INTERPOLATE_BILINEAR)
 		out.blit_rect(frame, Rect2i(Vector2i.ZERO, cell), Vector2i((k % 2) * step.x, (k / 2) * step.y))
-		times.append(animation.time_of(int(numbers[k])))
 	return out
 
 

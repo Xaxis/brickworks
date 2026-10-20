@@ -237,6 +237,8 @@ var _figures: MinifigDialog
 var _render: RenderDialog
 ## Build, Pose and animate… (src/ui/pose_panel.gd).
 var _pose: PosePanel
+## The model's own motions, played through Grab (MotionPlayer, Motions).
+var _motions: MotionPlayer
 ## Tools, Simulate mechanism… (src/ui/simulate_panel.gd).
 var _simulate: SimulatePanel
 ## Tools, Colour the hidden parts… (src/ui/hidden_colours_panel.gd).
@@ -4132,6 +4134,14 @@ func _build_ui() -> void:
 	_pose.rig_lights = _render.rig_lights
 	_pose.named = _bar.model_name
 	_pose.turning_for = _grab_drag.turning_for_session
+	_motions = MotionPlayer.new()
+	_motions.world = _world
+	_motions.builder = _builder
+	_motions.library = _library
+	_motions.store = _store
+	_motions.grabbing = _grab_drag
+	# Each motion's joint written where it stands (Motions.Joint.at).
+	_store.motion_rebase = _motions.rebase
 	_over_model.add_child(_pose)
 	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_pose.position = Vector2(12, 48)
