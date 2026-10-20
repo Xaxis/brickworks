@@ -1996,7 +1996,8 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 		return "Nothing rendered: %s" % panel.rendered_words()
 	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s: %s." % [frames, fps,
 		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]), str(panel._last["kept"])])
-	var hidden: String = _hidden_from(view, asked, each)
+	var hidden: String = _hidden_from(view, asked,
+		drawn.played.map(func(one: MotionPlayer.Played) -> Array: return one.frames))
 	if not hidden.is_empty():
 		lines.append(hidden)
 	var times: Array = []
