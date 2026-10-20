@@ -204,6 +204,12 @@ var _verifying_lo: float = 0.0
 var _verifying_hi: Variant = null
 ## Moving parts all within reach of the joint's line: not tested for room.
 var _on_the_line: Dictionary = {}
+## Those of them left out for a turn of the joint taken alone: its sweeps,
+## and what is on its own line. Slid along the line instead ([method
+## use_slide]), each is tested: the observatory's carriage, found by its
+## turn's sweep to meet nothing, was drawn 6 studs along its axle into the
+## bearing at the axle's end.
+var _turn_only: Dictionary = {}
 ## Moving parts round about a line through their own middle along the
 ## joint's (a cone, a round brick, a wheel lying flat), off the joint's
 ## line: brick id -> that middle, in the part's own frame. Turned about the
@@ -518,6 +524,7 @@ func _chosen() -> String:
 	_round_self.clear()
 	begin_took["reading"] = (Time.get_ticks_usec() - clock) / 1000
 	clock = Time.get_ticks_usec()
+	_turn_only.clear()
 	if mode == "turn":
 		_never_meet()
 	begin_took["sweeps"] = (Time.get_ticks_usec() - clock) / 1000
@@ -530,6 +537,7 @@ func _chosen() -> String:
 				continue
 			if _thin_on(key, pivot, axis) or _round_on(key, pivot, axis):
 				_on_the_line[key] = true
+				_turn_only[key] = true
 				continue
 			var middle: Vector3 = mesh.bounds.get_center()
 			if _round_on(key, brick.transform * middle, axis):
@@ -547,11 +555,15 @@ func _chosen() -> String:
 				# turned in its loop, met the bearing it turns in at once.
 				if not carried and joined.turns and _thin_on(key, joined.point, joined.axis.normalized()):
 					_on_the_line[key] = true
+					if joined == link:
+						_turn_only[key] = true
 				elif _round_on(key, joined.point, joined.axis.normalized()):
 					if carried:
 						_spin_with[key] = int(linkage.parent_of[n])
 					else:
 						_on_the_line[key] = true
+						if joined == link:
+							_turn_only[key] = true
 	_meeting_pairs()
 	var shaft_moves: bool = moving.has(link.shaft_part)
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
@@ -1993,7 +2005,13 @@ func _pair_forgiven(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -
 		return true
 	var with: Dictionary = _rest_with(other)
 	if with.has(key) or _touched_as_built(key, other):
-		return _both_exact(key, other) or _no_deeper(key, other, mesh, to)
+		# Two exact shapes judge each other, unless they were into each other
+		# where it began (a file's parts built so): forgiven whole, the made
+		# arm stopped by its brick against a plate went on 6° through the
+		# plate on its next move, until its next part met it.
+		if _both_exact(key, other):
+			return bool(with.get(key, true))
+		return _no_deeper(key, other, mesh, to)
 	if _both_exact(key, other):
 		return false
 	# Not for the parts joined to it: an axle is in its bearing as built, and
@@ -2044,8 +2062,8 @@ func _both_exact(one: int, other: int) -> bool:
 
 
 ## The moving parts whose covers overlap [param other]'s where they stand, kept
-## for the grab; each pair is kept as touching as built where [method
-## _forgiven_at_rest] says.
+## for the grab, each with whether [method _forgiven_at_rest] forgives it; so
+## forgiven, each pair is kept as touching as built.
 func _rest_with(other: int) -> Dictionary:
 	if _rest_overlap.has(other):
 		return _rest_overlap[other]
@@ -2054,8 +2072,8 @@ func _rest_with(other: int) -> Dictionary:
 	if not boxes.is_empty():
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
 			if moving.has(key) or followers.has(key):
-				with[key] = true
-				if _forgiven_at_rest(key, other):
+				with[key] = _forgiven_at_rest(key, other)
+				if bool(with[key]):
 					_keep_built_touching(key, other)
 	_rest_overlap[other] = with
 	return with
@@ -2155,6 +2173,7 @@ func _never_meet() -> void:
 				sweep = sweep.expand(middle + way * spread).expand(middle - way * spread)
 		if not _near_anything(sweep, key, false):
 			_on_the_line[key] = true
+			_turn_only[key] = true
 
 
 ## Whether the part [param mesh] at [param to] (its world box [param box])
@@ -2909,6 +2928,10 @@ func _keep_loop() -> void:
 func use_slide() -> void:
 	mode = "slide"
 	_step = 0.0
+	for key: int in _turn_only:
+		_on_the_line.erase(key)
+	_turn_only.clear()
+	_round_self.clear()
 	if linkage != null:
 		linkage.drive_slide()
 
