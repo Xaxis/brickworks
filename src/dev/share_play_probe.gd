@@ -406,6 +406,8 @@ func _motions_link() -> void:
 	_ok(not house.is_empty() and lines.size() == 11, "1484-1 and its motions' %d lines" % lines.size())
 	if house.is_empty():
 		return
+	# And a sequence of the two (unit 5): a button like any motion.
+	lines.append('0 !BRICKWORKS MOTION "Open it all" SEQUENCE "Open the gates" "Open the mailbox"')
 	var text: String = Motions.written_into(house, lines)
 	var served: String = text.sha256_text()
 	var files_before: PackedStringArray = _files_under("user://")
@@ -436,8 +438,8 @@ func _motions_link() -> void:
 	var world: BrickWorld = _main.get("_world")
 	var store: ModelStore = _main.get("_store")
 	var said: Dictionary = view.page_state()["play"]
-	_ok(said["shown"] and said["motions"] == ["Open the gates", "Open the mailbox"],
-		"the pill has its motions: %s" % [said["motions"]])
+	_ok(said["shown"] and said["motions"] == ["Open the gates", "Open the mailbox", "Open it all"],
+		"the pill has its motions, the sequence among them: %s" % [said["motions"]])
 	_ok(said["title"] == "Play its motions" and str(said["says"]).begins_with("Press one to play it"),
 		"and says how: %s / %s" % [said["title"], said["says"]])
 	var named: Dictionary = view.controls_by_name()
@@ -462,7 +464,7 @@ func _motions_link() -> void:
 	var playing: Dictionary = view.page_state()["play"]
 	_ok(str(playing["says"]).begins_with("Playing “Open the gates”"), "it says it is playing: %s" % playing["says"])
 	since = Time.get_ticks_msec()
-	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+	while _motion_busy() and Time.get_ticks_msec() - since < 10000:
 		drawn_most = maxi(drawn_most, world.drawn_ids().size())
 		await process_frame
 	var took: int = Time.get_ticks_msec() - since
@@ -507,12 +509,78 @@ func _motions_link() -> void:
 		"no button lit, Reset gone: %s" % reset["says"])
 	await _save("7_motions_reset.png")
 
-	# What a press costs the app: the motion's frames worked out at once
-	# (MotionPlayer.play), on this machine.
+	print("\n  Open it all, a sequence, pressed")
+	named = view.controls_by_name()
+	_ok(named.has("view_motion_3") and (named["view_motion_3"] as Button).text == "Open it all",
+		"the sequence is a button like any motion")
+	await _press(named["view_motion_3"])
+	drawn_most = 0
+	since = Time.get_ticks_msec()
+	while _motion_busy() and Time.get_ticks_msec() - since < 10000:
+		drawn_most = maxi(drawn_most, world.drawn_ids().size())
+		await process_frame
+	turned = gates.map(func(id: int) -> float: return _turned(world, before, id))
+	var last: Dictionary = _main.get("_motion_last")
+	_ok(turned.all(func(d: float) -> bool: return absf(d - 90.0) < 2.0)
+		and absf(_turned(world, before, mailbox) - 90.0) < 2.0 and drawn_most >= 3,
+		"the gates, then the mailbox, each from where the last left it: %s° and %.1f° (%d frames, %d parts drawn moving)"
+		% [", ".join(turned.map(func(d: float) -> String: return "%.1f" % d)), _turned(world, before, mailbox),
+		int(last.get("frames", 0)), drawn_most])
+	_ok(view.page_state()["play"]["motions_out"] == ["Open it all"] and (named["view_motion_3"] as Button).button_pressed,
+		"its button lit: %s" % view.page_state()["play"]["says"])
+	await _press(named["view_motion_3"])
+	await _played_out()
+	_ok(_differing(world, before) == 0 and (view.page_state()["play"]["motions_out"] as Array).is_empty(),
+		"pressed again, backwards in reverse order, every part as built (%d differ)" % _differing(world, before))
+	named = view.controls_by_name()
+	if named.has("view_reset"):
+		await _press(named["view_reset"])
+	await _settle()
+
+	# What a press costs the app: its frames worked out a slice a frame
+	# (MotionPlayer.pace_on, main.MOTION_SLICE_MS), on this machine.
 	var began: int = Time.get_ticks_usec()
 	_main.call("_play_motion", "Open the gates")
 	var cost_ms: float = (Time.get_ticks_usec() - began) / 1000.0
-	print("    a press of Open the gates (2 s, two gates) costs %.1f ms of one frame here" % cost_ms)
+	await _played_out()
+	last = _main.get("_motion_last")
+	print(("    a press of Open the gates (2 s, two gates): %.1f ms of the frame it came in, %s ms in all over %s slices, "
+		+ "the longest %s ms; the most a hold of its joints took %s ms, a frame %s ms, keeping it %s ms")
+		% [cost_ms, str(last.get("ms")), str(last.get("slices")), str(last.get("longest_ms")), str(last.get("hold_ms")),
+		str(last.get("frame_ms")), str(last.get("keep_ms"))])
+	# main.MOTION_SLICE_MS is 40: a slice ends after the frame that passes it.
+	_ok(float(last.get("longest_ms", 999.0)) <= 80.0,
+		"no slice of a press much past its 40 ms (%s ms at most)" % str(last.get("longest_ms")))
+	named = view.controls_by_name()
+	if named.has("view_reset"):
+		await _press(named["view_reset"])
+	await _settle()
+	# Sliced as thin as a slow phone's frame would slice it: the same frames,
+	# over many slices, none much past one frame's work.
+	var player: MotionPlayer = _main.get("_motions")
+	var gates_motion: Motions.Motion = world.motions.named("Open the gates")
+	var whole: MotionPlayer.Run = player.play_in_order([gates_motion], false, "played it whole")
+	_builder_undo()
+	var paced: MotionPlayer.Paced = player.pace([gates_motion], false, "played it sliced")
+	var slices: int = 0
+	while not player.pace_on(paced, 2.0) and slices < 1000:
+		slices += 1
+		await process_frame
+	var same: bool = paced.run.frames.size() == whole.frames.size()
+	for n: int in mini(paced.run.frames.size(), whole.frames.size()):
+		for key: Variant in whole.frames[n]:
+			if not (paced.run.frames[n] as Dictionary).has(key) \
+					or not (paced.run.frames[n][key] as Transform3D).is_equal_approx(whole.frames[n][key]):
+				same = false
+	# A slice is at least one thing that cannot be cut: a hold of the
+	# joints, one frame, or keeping it.
+	var most_unit: float = maxf(paced.hold_ms, maxf(paced.frame_ms, paced.keep_ms))
+	_ok(same and paced.slices > 3 and paced.longest_ms <= most_unit + 2.0 + 5.0,
+		("in 2 ms slices it is the same %d frames over %d slices, the longest %.1f ms of %.1f in all: no more than "
+		+ "the most of one thing (a hold %.1f ms, a frame %.1f ms, keeping it %.1f ms) and the slice")
+		% [paced.run.frames.size(), paced.slices, paced.longest_ms, paced.total_ms, paced.hold_ms, paced.frame_ms,
+		paced.keep_ms])
+	_builder_undo()
 	await _played_out()
 	named = view.controls_by_name()
 	if named.has("view_reset"):
@@ -528,10 +596,20 @@ func _motions_link() -> void:
 	_ok(new_files.is_empty() and store.read_only, "nothing was written to the data folder (%s)" % [new_files])
 
 
+## Whether a press is being worked out, or its frames drawn.
+func _motion_busy() -> bool:
+	return _main.get("_motion_paced") != null or not (_main.get("_motion_frames") as Array).is_empty()
+
+
+func _builder_undo() -> void:
+	var builder: Builder = _main.get("_builder")
+	builder.undo_steps(1)
+
+
 ## Until the playing motion's frames are drawn and put away.
 func _played_out() -> void:
 	var since: int = Time.get_ticks_msec()
-	while not (_main.get("_motion_frames") as Array).is_empty() and Time.get_ticks_msec() - since < 10000:
+	while _motion_busy() and Time.get_ticks_msec() - since < 10000:
 		await process_frame
 	await _settle()
 

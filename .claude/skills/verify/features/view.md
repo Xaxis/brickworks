@@ -1434,7 +1434,15 @@ picture the assistant is shown.
   (`animation`) stay on the class for MCP. `window.brickworksMotions` says
   the view, the motions, the suggestions, each joint slider's ends on the
   page, the time slider's, recording, playing, and the render's progress and
-  file; `controls_by_name` names `motions_*` and `motion_*_N`.
+  file; `controls_by_name` names `motions_*` and `motion_*_N`. A sequence
+  (unit 5) is a row like any motion; New sequence keeps one of every motion
+  in Play all's order (`PosePanel.new_sequence`, one step, named "Show it
+  all") and opens its editor (`_view` "sequence": Name, Remove, Play, Play
+  backwards, its motions in order each with Up, Down and Take out, and Add
+  from the model's motions; each change one step), named `sequence_*` and
+  `sequence_up_N`/`_down_N`/`_out_N`. A sequence and Play all are played by
+  `MotionPlayer.play_in_order`, each frame with every part
+  (`MotionRender.whole_frames`). A rename renames it in every sequence.
   (`RenderOutput.add_frame`, at most three waiting). Under Compatibility
   every 3D draw of the set first draws, alone and one a frame, each thing in
   it that view has not drawn in that set-up (`_warm`: a batch per shader and
@@ -1457,7 +1465,15 @@ picture the assistant is shown.
   moves (Playable). Over MCP: list_motions, define_motion, play_motion,
   render_motion (Render animation's path, `PosePanel.render_poses`);
   animate_model keeps its keys as the motion "Animation" and plays it once
-  to render. In the window: `motions panel`.
+  to render. In the window: `motions panel`. A sequence (unit 5): `0
+  !BRICKWORKS MOTION "Show it all" SEQUENCE "A" "B"`, the motions it plays by
+  name (`Motions.played_by`, `flat`, `seconds_of`), each from where the one
+  before left the model, backwards in reverse order; a name the model lacks
+  is kept and said, "passed over". AFTER lines are read and written as
+  before and Play all follows them, but a sequence is never in a chain and
+  nothing makes AFTER any more. play_motion's picture is from the view that
+  sees most of what moves (`MotionRender.seen_from`, `best_view`: the
+  lattice marched from each moving part toward each of StudioRender.VIEWS).
 - `render open check` (`tools/web/render_open_check.mjs`): the Render
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
@@ -1647,9 +1663,12 @@ tools/probe.sh pose_probe
 # a motion a session defines shown in the open panel. 8808-1's steering kept
 # and played both ways through its rack; the steering wheel recorded turns
 # the arms when played; only joints that move offered; Render animation.
+# The observatory: its copied "Show it all" removed, New sequence (undo, redo),
+# Down, Up, Take out and Add each one step and undone, Play (99 frames, every
+# part in each) and Play backwards to as built, saved and opened byte for byte.
 # Pictures of each state; and again in a 1280 x 720 window.
-tools/probe.sh motions_panel_probe -- bench/results/motions2-2026-10-20
-PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions2-2026-10-20
+tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
+PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
 # 31070-1's back window posed out and back stands where it was built, Play
@@ -1669,6 +1688,10 @@ tools/probe.sh animation_probe
 # and opened again with its lines byte for byte, played, reversed, rendered
 # (a WebP and an MP4 whose frames move); a door saved open opens no further;
 # a part taken off is said; an .ldr, an .io and the autosave carry them.
+# The walk's observatory (tests/fixtures/mcpwalk3/small-observatory.ldr) given
+# a real "Show it all" sequence: its line byte for byte, played in order and
+# backwards to as built, rendered whole, a gone motion passed over and said,
+# the AFTER chain still played, the back wall's panels seen best from the back.
 # Headless it checks all but the renders.
 tools/probe.sh motions_probe
 # Every way of recording what moves, walked on five real sets, every answer

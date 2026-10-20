@@ -313,6 +313,13 @@ class Played extends RefCounted:
 	var kept: int = 0
 	## How the model stands where it ends, when kept: "it stands".
 	var standing: String = ""
+	# Being worked out (begin, advance): what carries another first, how
+	# many frames, and the next to work out.
+	var order: Array = []
+	var count: int = 0
+	var next: int = 0
+	## The longest one frame took to work out, ms.
+	var frame_ms: float = 0.0
 
 	func stopped() -> bool:
 		for item: Item in items:
@@ -335,6 +342,16 @@ class Played extends RefCounted:
 ## [param words]; otherwise nothing changes.
 func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, keep: bool = false,
 		words: String = "") -> Played:
+	var played: Played = begin(motion, reverse, fps)
+	advance(played)
+	finish(played, keep, words)
+	return played
+
+
+## [param motion]'s joints taken hold of to be played, its frames not yet
+## worked out: [method advance] works them out, a few at a time if need
+## be, and [method finish] keeps it or not. Nothing changes until then.
+func begin(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS) -> Played:
 	motions()
 	var played := Played.new()
 	played.name = motion.name
@@ -372,35 +389,178 @@ func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, ke
 	if played.items.is_empty():
 		return played
 	# What carries another first: its parts are turned by both.
-	var order: Array = played.items.duplicate()
-	order.sort_custom(func(a: Item, b: Item) -> bool: return a.grab.moving.size() > b.grab.moving.size())
-	var count: int = maxi(roundi(length * float(fps)), 1) + 1
-	for n: int in count:
-		var t: float = minf(float(n) / float(fps), length)
+	played.order = played.items.duplicate()
+	played.order.sort_custom(func(a: Item, b: Item) -> bool: return a.grab.moving.size() > b.grab.moving.size())
+	played.count = maxi(roundi(length * float(fps)), 1) + 1
+	return played
+
+
+## [param played]'s next frames worked out, until Time.get_ticks_usec()
+## passes [param until] (every one when 0), one at least: whether every
+## frame is worked out.
+func advance(played: Played, until: int = 0) -> bool:
+	var length: float = played.seconds
+	while played.next < played.count:
+		var began: int = Time.get_ticks_usec()
+		var t: float = minf(float(played.next) / float(played.fps), length)
 		for item: Item in played.items:
-			var when: float = t if item.driver or not reverse else length - t
+			var when: float = t if item.driver or not played.reverse else length - t
 			_step(item, item.track.place_at(when))
-		played.frames.append(_composed(order))
+		played.frames.append(_composed(played.order))
+		played.next += 1
+		played.frame_ms = maxf(played.frame_ms, (Time.get_ticks_usec() - began) / 1000.0)
+		if until > 0 and Time.get_ticks_usec() >= until:
+			break
+	return played.next >= played.count
+
+
+## [param played], every frame worked out, said: with [param keep] the
+## model left where it ends, one step called [param words].
+func finish(played: Played, keep: bool = false, words: String = "") -> void:
+	if played.items.is_empty():
+		return
+	var length: float = played.seconds
+	var reverse: bool = played.reverse
 	for item: Item in played.items:
 		item.to = item.track.place_at(length if item.driver or not reverse else 0.0) \
 			if item.stop_words.is_empty() else _reached(item)
 	if keep:
 		var last: Dictionary = played.frames.back()
 		played.standing = grabbing.standing_with(last)
-		for item: Item in order:
+		for item: Item in played.order:
 			for key: Variant in item.grab.placed:
 				if last.has(key):
 					item.grab.placed[key] = last[key]
-		var grabs: Array = order.map(func(item: Item) -> Grab: return item.grab)
+		var grabs: Array = played.order.map(func(item: Item) -> Grab: return item.grab)
 		played.kept = grabbing.keep_held(grabs, words if not words.is_empty()
-			else "played %s" % Motions.quoted(motion.name))
+			else "played %s" % Motions.quoted(played.name))
 		for item: Item in played.items:
 			if item.driver and not reverse:
-				_driven[motion.name.to_lower()] = item.to - item.from
+				_driven[played.name.to_lower()] = item.to - item.from
 			elif item.driver:
-				_driven.erase(motion.name.to_lower())
-	results[motion.name.to_lower()] = said(played)
-	return played
+				_driven.erase(played.name.to_lower())
+	results[played.name.to_lower()] = said(played)
+
+
+## What playing motions one after another did (play_in_order).
+class Run extends RefCounted:
+	## Each motion as it played (Played), in order.
+	var played: Array = []
+	## Every frame of them all, each with every part any of them moves
+	## where it stands at that moment (MotionRender.whole_frames).
+	var frames: Array = []
+	## Each motion's own frames, as played.
+	var each: Array = []
+
+	## How the model stands where the last that moved left it.
+	func standing() -> String:
+		for k: int in range(played.size() - 1, -1, -1):
+			if not (played[k] as Played).standing.is_empty():
+				return (played[k] as Played).standing
+		return ""
+
+	func went() -> bool:
+		return played.any(func(one: Played) -> bool: return one.went())
+
+	func stopped() -> bool:
+		return played.any(func(one: Played) -> bool: return one.stopped())
+
+
+## [param order] (Motions.Motion, each a motion of its own: Motions.flat)
+## played and kept one after another, each [param reverse]d, so each begins
+## where the one before left the model: one step called [param words]. A
+## sequence, Play all, a link's press of a sequence.
+func play_in_order(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Run:
+	var paced: Paced = pace(order, reverse, words, fps)
+	while not pace_on(paced, 0.0):
+		pass
+	return paced.run
+
+
+## How long a paced run waits for the joints to be read on a worker before
+## it reads them itself, ms.
+const READ_WAIT_MS := 1000
+
+
+## play_in_order's work, done a slice at a time ([method pace_on]): a
+## link's press on a phone worked out two gates' 25 frames at once, 713 ms
+## of one frame with the CPU slowed four times.
+class Paced extends RefCounted:
+	var order: Array = []
+	var reverse: bool = false
+	var words: String = ""
+	var fps: int = 12
+	var run := Run.new()
+	## The history's depth when it began: folded to one step at the end.
+	var depth: int = 0
+	## The motion being worked out, and its number in the order.
+	var at: int = 0
+	var playing: Played = null
+	var done: bool = false
+	## How many slices it took, the longest of them and all of them, ms;
+	## and the longest of what cannot be cut: a motion's joints taken hold
+	## of, one frame, a motion kept.
+	var slices: int = 0
+	var longest_ms: float = 0.0
+	var total_ms: float = 0.0
+	var hold_ms: float = 0.0
+	var frame_ms: float = 0.0
+	var keep_ms: float = 0.0
+	## When its last motion was kept, ms.
+	var kept_at: int = 0
+
+
+func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Paced:
+	var paced := Paced.new()
+	paced.order = order
+	paced.reverse = reverse
+	paced.words = words
+	paced.fps = fps
+	paced.depth = builder.history_depth()
+	return paced
+
+
+## [param paced] worked on for about [param budget_ms] (all of it when 0),
+## a motion's joints taken hold of, a frame or a motion kept at least:
+## whether it is all played and kept, one step, as play_in_order keeps it.
+func pace_on(paced: Paced, budget_ms: float) -> bool:
+	if paced.done:
+		return true
+	var began: int = Time.get_ticks_usec()
+	var until: int = began + int(budget_ms * 1000.0) if budget_ms > 0.0 else 0
+	while until == 0 or Time.get_ticks_usec() < until:
+		if paced.playing == null:
+			# The next motion begins where the last left the model, whose
+			# joints are read again: on a worker for a big model, waited
+			# for here (a second at most) rather than read in this frame.
+			if until > 0 and paced.at > 0 and paced.at < paced.order.size() and not grabbing.is_ready() \
+					and grabbing.reads_ahead() and Time.get_ticks_msec() - paced.kept_at < READ_WAIT_MS:
+				break
+			if paced.at >= paced.order.size():
+				for frames: Array in MotionRender.whole_frames(paced.run.each):
+					paced.run.frames.append_array(frames)
+				builder.fold_since(paced.depth, paced.words)
+				paced.done = true
+				break
+			var held_at: int = Time.get_ticks_usec()
+			paced.playing = begin(paced.order[paced.at], paced.reverse, paced.fps)
+			paced.hold_ms = maxf(paced.hold_ms, (Time.get_ticks_usec() - held_at) / 1000.0)
+			continue
+		if advance(paced.playing, until):
+			paced.frame_ms = maxf(paced.frame_ms, paced.playing.frame_ms)
+			var kept_at: int = Time.get_ticks_usec()
+			finish(paced.playing, true, paced.words if paced.order.size() == 1 else "")
+			paced.keep_ms = maxf(paced.keep_ms, (Time.get_ticks_usec() - kept_at) / 1000.0)
+			paced.kept_at = Time.get_ticks_msec()
+			paced.run.played.append(paced.playing)
+			paced.run.each.append(paced.playing.frames)
+			paced.playing = null
+			paced.at += 1
+	var spent: float = (Time.get_ticks_usec() - began) / 1000.0
+	paced.slices += 1
+	paced.longest_ms = maxf(paced.longest_ms, spent)
+	paced.total_ms += spent
+	return paced.done
 
 
 ## [param track]'s joint taken hold of for playing: an Item with its Grab,

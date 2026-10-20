@@ -5,7 +5,9 @@
 ##
 ## The panel lists the model's motions, each with Play and Play backwards;
 ## Play all runs them in order (each after the one it follows), and Loop
-## runs it again until Stop. Playing goes through Grab (MotionPlayer), so a
+## runs it again until Stop. A sequence is a motion made of the model's
+## motions in an order chosen (New sequence: "Show it all"), each played
+## from where the one before left the model, backwards in reverse order. Playing goes through Grab (MotionPlayer), so a
 ## joint stops where it meets the model and the panel says where and on
 ## what; the model is left where it ends, one step to undo, so Play
 ## backwards closes what Play opened. What moves (MotionPlayer.suggest) is
@@ -94,7 +96,19 @@ var _loop: CheckBox
 var _suggest_heading: Label
 var _suggest_rows: VBoxContainer
 var _new: Button
+var _new_sequence: Button
 var _edit_box: VBoxContainer
+var _seq_box: VBoxContainer
+var _seq_back: Button
+var _seq_remove: Button
+var _seq_name: LineEdit
+var _seq_play: Button
+var _seq_reverse: Button
+var _seq_rows: VBoxContainer
+var _seq_pick: OptionButton
+var _seq_add: Button
+## The sequence editor's rows' buttons, by the row's number.
+var _seq_buttons: Array = []
 var _back: Button
 var _remove: Button
 var _name: LineEdit
@@ -125,7 +139,7 @@ var _keep_buttons: Array = []
 ## The joint rows: [{joint, slider, readout, strip}], as listed.
 var _joint_parts: Array = []
 
-## "list" or "edit".
+## "list", "edit" or "sequence".
 var _view: String = "list"
 ## The motion Render animation draws, by name.
 var _chosen: String = ""
@@ -169,6 +183,9 @@ var _rec_tracks: Array = []
 var _rec_refused := PackedStringArray()
 
 var _working: bool = false
+## The model the last render's frame shown is of (BrickWorld.generation):
+## another model's is not shown.
+var _frame_for: int = -1
 var _fraction: float = 0.0
 var _last: Dictionary = {}
 var _quiet: bool = false
@@ -270,10 +287,15 @@ func _refresh() -> void:
 	_seen_history = _history_now()
 	_seen_motions = world.motions
 	_seen_revision = world.revision
+	if _frame_for != world.generation():
+		_frame.visible = false
 	_list_box.visible = _view == "list"
 	_edit_box.visible = _view == "edit"
+	_seq_box.visible = _view == "sequence"
 	if _view == "list":
 		_fill_list()
+	elif _view == "sequence":
+		_fill_sequence()
 	else:
 		_fill_editor()
 	_set_buttons()
@@ -296,8 +318,10 @@ func _fill_list() -> void:
 		pick.button_group = _picks
 		pick.text = name
 		pick.tooltip_text = "%s, %s s%s. Chosen, Render animation draws it" % [name,
-			Motions.num(motion.length(), 1), (", after %s" % Motions.quoted(motion.after))
-			if not motion.after.is_empty() else ""]
+			Motions.num(motions.seconds_of(motion), 1), (", after %s" % Motions.quoted(motion.after))
+			if not motion.after.is_empty() and not motion.is_sequence() else (", a sequence: %s" % ", then ".join(
+			Array(motion.sequence).map(func(one: String) -> String: return Motions.quoted(one))))
+			if motion.is_sequence() else ""]
 		pick.add_theme_font_size_override("font_size", 12)
 		pick.focus_mode = Control.FOCUS_NONE
 		pick.clip_text = true
@@ -313,10 +337,12 @@ func _fill_list() -> void:
 		var backward := _button(row, "Play backwards", func() -> void: play(name, true),
 			"Play it from its end to its start: what Play opened, this closes")
 		var edit := _button(row, "Edit", func() -> void: edit(name),
-			"Change its joints and keys, record it again, rename it or remove it")
+			"Change its order, rename it or remove it" if motion.is_sequence()
+			else "Change its joints and keys, record it again, rename it or remove it")
 		_row_buttons.append({"pick": pick, "play": forward, "back": backward, "edit": edit, "name": name})
-	_play_all.visible = motions.list.size() > 1
+	_play_all.visible = motions.in_order().size() > 1
 	_loop.visible = not motions.is_empty()
+	_new_sequence.visible = not motions.in_order().is_empty()
 	_clear(_suggest_rows)
 	_keep_buttons.clear()
 	var offered: Array = _offered()
@@ -391,6 +417,9 @@ func play(name: String, reverse: bool = false) -> void:
 		return
 	_let_go_slider()
 	_undraw()
+	if motion.is_sequence():
+		_play_sequence(motion, reverse, button)
+		return
 	var played: MotionPlayer.Played = player.play(motion, reverse, MotionPlayer.PLAY_FPS, true,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if reverse else ""])
 	_stop_words = "%s %s%s: %s." % ["Played", Motions.quoted(motion.name), " backwards" if reverse else "",
@@ -399,6 +428,28 @@ func play(name: String, reverse: bool = false) -> void:
 		_stop_words += " Now %s." % played.standing
 	_look = null
 	_begin_playing(played.frames, button)
+
+
+## The sequence [param motion] played, each of its motions from where the
+## one before left the model (in reverse order, each backwards, with
+## [param reverse]): one step to undo.
+func _play_sequence(motion: Motions.Motion, reverse: bool, button: Button) -> void:
+	var missing: Array = []
+	var order: Array = _motions().played_by(motion, reverse, missing)
+	var run: MotionPlayer.Run = player.play_in_order(order, reverse, "played %s%s" % [
+		Motions.quoted(motion.name), " backwards" if reverse else ""])
+	var lines := PackedStringArray()
+	for k: int in order.size():
+		lines.append("%s: %s" % [Motions.quoted((order[k] as Motions.Motion).name), player.said(run.played[k])])
+	for words: String in missing:
+		lines.append("%s: passed over" % words)
+	_stop_words = "Played %s%s, %d in order. %s." % [Motions.quoted(motion.name),
+		" backwards" if reverse else "", order.size(), "; ".join(lines)]
+	if not run.standing().is_empty():
+		_stop_words += " Now %s." % run.standing()
+	player.results[motion.name.to_lower()] = _stop_words
+	_look = null
+	_begin_playing(run.frames, button)
 
 
 ## Every motion in order of play (each after the one it follows), each
@@ -416,17 +467,15 @@ func play_all() -> void:
 		return
 	_let_go_slider()
 	_undraw()
-	var depth: int = builder.history_depth()
-	var frames: Array = []
+	# Each frame with every part: drawn on the model as it ends, a motion's
+	# frames showed a later one's parts where they end.
+	var run: MotionPlayer.Run = player.play_in_order(order, false, "played every motion")
 	var lines := PackedStringArray()
-	for motion: Motions.Motion in order:
-		var played: MotionPlayer.Played = player.play(motion, false, MotionPlayer.PLAY_FPS, true)
-		frames.append_array(played.frames)
-		lines.append("%s: %s" % [Motions.quoted(motion.name), player.said(played)])
-	builder.fold_since(depth, "played every motion")
+	for k: int in order.size():
+		lines.append("%s: %s" % [Motions.quoted((order[k] as Motions.Motion).name), player.said(run.played[k])])
 	_stop_words = "Played all %d in order. %s." % [order.size(), "; ".join(lines)]
 	_look = null
-	_begin_playing(frames, _play_all)
+	_begin_playing(run.frames, _play_all)
 
 
 func _begin_playing(frames: Array, button: Button) -> void:
@@ -457,6 +506,8 @@ func _stop_playing() -> void:
 func _button_for(name: String, reverse: bool) -> Button:
 	if _view == "edit":
 		return _edit_reverse if reverse else _edit_play
+	if _view == "sequence":
+		return _seq_reverse if reverse else _seq_play
 	for row: Dictionary in _row_buttons:
 		if str(row["name"]) == name:
 			return row["back"] if reverse else row["play"]
@@ -484,7 +535,7 @@ func edit(name: String) -> void:
 	var motion: Motions.Motion = _motions().named(name)
 	if motion == null:
 		return
-	_view = "edit"
+	_view = "sequence" if motion.is_sequence() else "edit"
 	_editing_name = motion.name
 	_chosen = motion.name
 	_draft = null
@@ -494,6 +545,9 @@ func edit(name: String) -> void:
 	_key_index = -1
 	_look = null
 	_refresh()
+	if motion.is_sequence():
+		_say("Up and Down change the order; Add puts another of the model's motions at its end.")
+		return
 	_say("Move the time, then a joint's slider: a key there. Record makes it again from drags.")
 
 
@@ -954,6 +1008,7 @@ func rename(words: String) -> void:
 	if other != null and other != motion:
 		_say("The model has a motion called %s already: give this one another name." % Motions.quoted(words))
 		_name.text = motion.name
+		_seq_name.text = motion.name
 		return
 	var was: String = motion.name
 	var motions: Motions = _motions()
@@ -961,6 +1016,9 @@ func rename(words: String) -> void:
 	for one: Motions.Motion in motions.list:
 		if one.after.to_lower() == was.to_lower():
 			one.after = words
+		for n: int in one.sequence.size():
+			if one.sequence[n].to_lower() == was.to_lower():
+				one.sequence[n] = words
 	motion.name = words
 	builder.record([{"undo": "motions", "motions": had}], "renamed the motion %s %s" % [Motions.quoted(was),
 		Motions.quoted(words)])
@@ -982,6 +1040,150 @@ func remove_motion() -> void:
 	builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
 	back_to_list()
 	_say("Took %s out. Undo puts it back." % Motions.quoted(name))
+
+
+# -- sequences ----------------------------------------------------------------------------
+
+
+## A sequence of every motion the model has, in order of play (Play all's),
+## kept at once as one step and opened to name and reorder: "Show it all".
+func new_sequence() -> void:
+	if _recording or _playing or _working:
+		return
+	var motions: Motions = _motions()
+	var order: Array = motions.in_order()
+	if order.is_empty():
+		return
+	var motion := Motions.Motion.new()
+	motion.name = motions.free_name("Show it all")
+	for one: Motions.Motion in order:
+		motion.sequence.append(one.name)
+	var had: Motions = motions.copy()
+	motions.put(motion)
+	builder.record([{"undo": "motions", "motions": had}], "made the sequence %s" % Motions.quoted(motion.name))
+	_view = "sequence"
+	_editing_name = motion.name
+	_chosen = motion.name
+	_draft = null
+	_refresh()
+	_seq_name.grab_focus()
+	_seq_name.select_all()
+	_say("Kept %s: every motion, in order. Name it; Up and Down change the order. Undo takes it out."
+		% Motions.quoted(motion.name))
+
+
+func _fill_sequence() -> void:
+	var motions: Motions = _motions()
+	var motion: Motions.Motion = motions.named(_editing_name)
+	if motion == null or not motion.is_sequence():
+		_view = "list"
+		_list_box.visible = true
+		_seq_box.visible = false
+		_fill_list()
+		return
+	if not _seq_name.has_focus():
+		_seq_name.text = motion.name
+	_clear(_seq_rows)
+	_seq_buttons.clear()
+	for n: int in motion.sequence.size():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		_seq_rows.add_child(row)
+		var name: String = motion.sequence[n]
+		var one: Motions.Motion = motions.named(name)
+		var words := Label.new()
+		words.text = "%d. %s" % [n + 1, name if one != null else "%s (gone)" % name]
+		words.tooltip_text = ("%s, %s s" % [one.name, Motions.num(motions.seconds_of(one), 1)]) if one != null \
+			else "The model has no motion %s now: played, it is passed over" % Motions.quoted(name)
+		words.mouse_filter = Control.MOUSE_FILTER_PASS
+		words.add_theme_font_size_override("font_size", 12)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.clip_text = true
+		words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		if one == null:
+			words.modulate = Color(1, 1, 1, 0.55)
+		row.add_child(words)
+		var at: int = n
+		var up := _button(row, "Up", func() -> void: move_in_sequence(at, -1), "Play it one sooner")
+		var down := _button(row, "Down", func() -> void: move_in_sequence(at, 1), "Play it one later")
+		var out := _button(row, "Take out", func() -> void: take_out_of_sequence(at),
+			"Take it out of this sequence; the motion stays in the model")
+		_seq_buttons.append({"up": up, "down": down, "out": out, "name": name})
+	_seq_pick.clear()
+	for one: Motions.Motion in motions.list:
+		if one == motion:
+			continue
+		_seq_pick.add_item(one.name)
+		_seq_pick.set_item_metadata(_seq_pick.item_count - 1, one.name)
+	_seq_add.disabled = _seq_pick.item_count == 0
+	_fit_later()
+
+
+## A change to the sequence in the editor, one step called [param words]:
+## [param edit_with] changes its names (a PackedStringArray, returned).
+func _change_sequence(words: String, edit_with: Callable) -> void:
+	var motions: Motions = _motions()
+	var motion: Motions.Motion = motions.named(_editing_name)
+	if motion == null or not motion.is_sequence() or _recording or _playing or _working:
+		return
+	var had: Motions = motions.copy()
+	var names: PackedStringArray = edit_with.call(motion.sequence.duplicate())
+	if names.is_empty():
+		_say("A sequence plays one motion at least: Remove takes the sequence out.")
+		return
+	motion.sequence = names
+	builder.record([{"undo": "motions", "motions": had}], words)
+	_seen_history = _history_now()
+	_seen_motions = world.motions
+	_refresh()
+
+
+## The sequence's motion at [param index] played [param by] sooner (less
+## than 0) or later.
+func move_in_sequence(index: int, by: int) -> void:
+	var motion: Motions.Motion = _motions().named(_editing_name)
+	if motion == null or index + by < 0 or index + by >= motion.sequence.size():
+		return
+	var name: String = motion.sequence[index]
+	_change_sequence("played %s %s in %s" % [Motions.quoted(name), "sooner" if by < 0 else "later",
+		Motions.quoted(motion.name)], func(names: PackedStringArray) -> PackedStringArray:
+			names.remove_at(index)
+			names.insert(index + by, name)
+			return names)
+	_say("%s plays %s now. Undo puts it back." % [Motions.quoted(name), "sooner" if by < 0 else "later"])
+
+
+func take_out_of_sequence(index: int) -> void:
+	var motion: Motions.Motion = _motions().named(_editing_name)
+	if motion == null or index < 0 or index >= motion.sequence.size():
+		return
+	var name: String = motion.sequence[index]
+	_change_sequence("took %s out of %s" % [Motions.quoted(name), Motions.quoted(motion.name)],
+		func(names: PackedStringArray) -> PackedStringArray:
+			names.remove_at(index)
+			return names)
+	_say("Took %s out of it; the motion stays in the model. Undo puts it back." % Motions.quoted(name))
+
+
+## The model's motion [param name] played at the end of the sequence.
+func add_to_sequence(name: String) -> void:
+	var motions: Motions = _motions()
+	var motion: Motions.Motion = motions.named(_editing_name)
+	var one: Motions.Motion = motions.named(name)
+	if motion == null or one == null or one == motion:
+		return
+	var tried: Motions = motions.copy()
+	tried.named(motion.name).sequence.append(one.name)
+	var missing: Array = []
+	tried.played_by(tried.named(motion.name), false, missing)
+	if missing.any(func(words: String) -> bool: return words.contains("inside itself")):
+		_say("%s plays %s inside it: it cannot play in it too." % [Motions.quoted(one.name), Motions.quoted(motion.name)])
+		return
+	_change_sequence("added %s to %s" % [Motions.quoted(one.name), Motions.quoted(motion.name)],
+		func(names: PackedStringArray) -> PackedStringArray:
+			names.append(one.name)
+			return names)
+	_say("%s plays last now. Undo takes it out." % Motions.quoted(one.name))
 
 
 # -- recording ----------------------------------------------------------------------------
@@ -1204,7 +1406,7 @@ func is_playing() -> bool:
 func render_animation(job: Working.Job = null, view: String = "") -> int:
 	if _working or world == null:
 		return 0
-	var motion: Motions.Motion = _edited() if _view == "edit" else _motions().named(_chosen)
+	var motion: Motions.Motion = _edited() if _view != "list" else _motions().named(_chosen)
 	if motion == null:
 		_say("Keep or make a motion first: Render animation draws the one chosen.")
 		return 0
@@ -1263,6 +1465,7 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
 			_frame.visible = visible
+			_frame_for = world.generation()
 			if sheet_at.has(n):
 				_sheet[n] = image
 			if job != null:
@@ -1292,9 +1495,9 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 
 
 ## [param poses] drawn as stills, framed on what they move (as a session's
-## animation is, "hero"), [param size] each: the pictures, or [] when there
+## animation is), from [param view] (StudioRender.VIEWS), [param size] each: the pictures, or [] when there
 ## is nothing to draw with or a render is under way. Nothing is kept.
-func draw_stills(poses: Array, size: Vector2i = Vector2i(480, 300)) -> Array:
+func draw_stills(poses: Array, size: Vector2i = Vector2i(480, 300), view: String = "hero") -> Array:
 	if _working or world == null or poses.is_empty() or not StudioRender.possible():
 		return []
 	_ready_renderer()
@@ -1302,7 +1505,7 @@ func draw_stills(poses: Array, size: Vector2i = Vector2i(480, 300)) -> Array:
 		return []
 	var chosen: RenderSettings = settings.copy()
 	chosen.size = size
-	chosen.view = "hero"
+	chosen.view = view if StudioRender.VIEWS.has(view) else "hero"
 	chosen.frames = poses.size()
 	var out: Array = []
 	await renderer.animate(world, chosen, poses.size(), func(n: int) -> Dictionary: return poses[n],
@@ -1424,6 +1627,21 @@ func _set_buttons() -> void:
 			button.disabled = busy or _playing
 	_play_all.disabled = busy or (_playing and _stop_button != _play_all)
 	_new.disabled = busy or _playing
+	_new_sequence.disabled = busy or _playing
+	_seq_play.disabled = busy or (_playing and _stop_button != _seq_play)
+	_seq_reverse.disabled = busy or (_playing and _stop_button != _seq_reverse)
+	_seq_back.disabled = _working
+	_seq_remove.disabled = busy or _playing
+	_seq_name.editable = not busy
+	_seq_add.disabled = busy or _playing or _seq_pick.item_count == 0
+	for n: int in _seq_buttons.size():
+		var row: Dictionary = _seq_buttons[n]
+		var still: bool = busy or _playing
+		for key: String in ["up", "down", "out"]:
+			var button: Button = row[key]
+			if is_instance_valid(button):
+				button.disabled = still or (key == "up" and n == 0) \
+					or (key == "down" and n == _seq_buttons.size() - 1)
 	var motion: Motions.Motion = _edited()
 	var empty: bool = motion == null or (motion.tracks.is_empty() and motion.driver == null)
 	_edit_play.disabled = busy or empty or (_playing and _stop_button != _edit_play)
@@ -1435,7 +1653,7 @@ func _set_buttons() -> void:
 	_time.editable = not (busy or _playing)
 	for part: Dictionary in _joint_parts:
 		(part["slider"] as HSlider).editable = not (busy or _playing)
-	var has: bool = _view == "edit" and not empty or _view == "list" and not _chosen.is_empty()
+	var has: bool = _view == "edit" and not empty or _view != "edit" and not _chosen.is_empty()
 	_render.disabled = _working or _recording or _playing or not has
 	_cancel.visible = _working
 
@@ -1502,7 +1720,7 @@ func _input(event: InputEvent) -> void:
 		stop_recording()
 	elif _playing:
 		_stop_playing()
-	elif _view == "edit":
+	elif _view != "list":
 		back_to_list()
 	else:
 		close()
@@ -1545,6 +1763,7 @@ func _build() -> void:
 	_body.add_child(inner)
 	_build_list(inner)
 	_build_editor(inner)
+	_build_sequence(inner)
 	column.add_child(HSeparator.new())
 	var rendering := HBoxContainer.new()
 	rendering.add_theme_constant_override("separation", 6)
@@ -1632,9 +1851,13 @@ func _build_list(into: Control) -> void:
 	_suggest_rows = VBoxContainer.new()
 	_suggest_rows.add_theme_constant_override("separation", 3)
 	_list_box.add_child(_suggest_rows)
-	_new = _button(_list_box, "New motion", new_motion,
+	var making := HBoxContainer.new()
+	making.add_theme_constant_override("separation", 6)
+	_list_box.add_child(making)
+	_new = _button(making, "New motion", new_motion,
 		"Make a motion: name it, then Record and drag the parts, or set its joints one by one")
-	_new.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_new_sequence = _button(making, "New sequence", new_sequence,
+		"A motion made of the model's motions, in an order you choose: Show it all")
 
 
 func _build_editor(into: Control) -> void:
@@ -1749,6 +1972,71 @@ func _build_editor(into: Control) -> void:
 	_edit_box.add_child(_driver_words)
 
 
+## The sequence editor: its name, Play and Play backwards, its motions in
+## order, each with Up, Down and Take out, and Add for another of the
+## model's motions at its end.
+func _build_sequence(into: Control) -> void:
+	_seq_box = VBoxContainer.new()
+	_seq_box.add_theme_constant_override("separation", 6)
+	_seq_box.visible = false
+	into.add_child(_seq_box)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	_seq_box.add_child(top)
+	_seq_back = _button(top, "All motions", back_to_list, "Back to the list of the model's motions (Escape)")
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(gap)
+	_seq_remove = _button(top, "Remove", remove_motion,
+		"Take this sequence out of the model; its motions stay (undo puts it back)")
+	var naming := HBoxContainer.new()
+	naming.add_theme_constant_override("separation", 6)
+	_seq_box.add_child(naming)
+	var called := Label.new()
+	called.text = "Name"
+	called.add_theme_font_size_override("font_size", 12)
+	naming.add_child(called)
+	_seq_name = LineEdit.new()
+	_seq_name.add_theme_font_size_override("font_size", 12)
+	_seq_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_seq_name.placeholder_text = "Show it all"
+	_seq_name.max_length = 60
+	_seq_name.tooltip_text = "What a builder calls it: Show it all"
+	_seq_name.text_submitted.connect(func(words: String) -> void:
+		rename(words)
+		_seq_name.release_focus())
+	_seq_name.focus_exited.connect(func() -> void:
+		if _view == "sequence":
+			rename(_seq_name.text))
+	naming.add_child(_seq_name)
+	var playing := HBoxContainer.new()
+	playing.add_theme_constant_override("separation", 6)
+	_seq_box.add_child(playing)
+	_seq_play = _button(playing, "Play", func() -> void: play(_editing_name),
+		"Play its motions in order, each from where the one before left the model")
+	_seq_reverse = _button(playing, "Play backwards", func() -> void: play(_editing_name, true),
+		"Play its motions backwards in reverse order: what Play opened, this closes")
+	_seq_reverse.set_meta("backwards", true)
+	_heading(_seq_box, "It plays, in order")
+	_seq_rows = VBoxContainer.new()
+	_seq_rows.add_theme_constant_override("separation", 3)
+	_seq_box.add_child(_seq_rows)
+	var adding := HBoxContainer.new()
+	adding.add_theme_constant_override("separation", 6)
+	_seq_box.add_child(adding)
+	_seq_pick = OptionButton.new()
+	_seq_pick.add_theme_font_size_override("font_size", 12)
+	_seq_pick.focus_mode = Control.FOCUS_NONE
+	_seq_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_seq_pick.clip_text = true
+	_seq_pick.tooltip_text = "Another of the model's motions to play at its end"
+	adding.add_child(_seq_pick)
+	_seq_add = _button(adding, "Add", func() -> void:
+		if _seq_pick.selected >= 0:
+			add_to_sequence(str(_seq_pick.get_item_metadata(_seq_pick.selected))),
+		"Play the motion chosen at the end of this sequence")
+
+
 func _button(into: Control, words: String, action: Callable, tip: String) -> Button:
 	var button := Button.new()
 	button.text = words
@@ -1797,7 +2085,8 @@ func controls_by_name() -> Dictionary:
 	var out: Dictionary = {"motions_close": _close, "motions_render": _render, "motions_cancel": _cancel,
 		"motions_rate": _rate, "motions_size": _size}
 	if _view == "list":
-		out.merge({"motions_play_all": _play_all, "motions_loop": _loop, "motions_new": _new})
+		out.merge({"motions_play_all": _play_all, "motions_loop": _loop, "motions_new": _new,
+			"motions_new_sequence": _new_sequence})
 		for n: int in _row_buttons.size():
 			var row: Dictionary = _row_buttons[n]
 			out["motion_pick_%d" % n] = row["pick"]
@@ -1806,6 +2095,14 @@ func controls_by_name() -> Dictionary:
 			out["motion_edit_%d" % n] = row["edit"]
 		for n: int in _keep_buttons.size():
 			out["motion_keep_%d" % n] = _keep_buttons[n]
+	elif _view == "sequence":
+		out.merge({"sequence_back": _seq_back, "sequence_remove": _seq_remove, "sequence_name": _seq_name,
+			"sequence_play": _seq_play, "sequence_reverse": _seq_reverse, "sequence_pick": _seq_pick,
+			"sequence_add": _seq_add})
+		for n: int in _seq_buttons.size():
+			out["sequence_up_%d" % n] = _seq_buttons[n]["up"]
+			out["sequence_down_%d" % n] = _seq_buttons[n]["down"]
+			out["sequence_out_%d" % n] = _seq_buttons[n]["out"]
 	else:
 		out.merge({"motions_back": _back, "motions_remove": _remove, "motions_name": _name,
 			"motions_record": _record, "motions_play": _edit_play, "motions_reverse": _edit_reverse,
@@ -1841,8 +2138,8 @@ func _tell_page() -> void:
 			"y": roundi(rect.get_center().y / per_css)}
 	var motions: Array = []
 	for motion: Motions.Motion in _motions().list:
-		motions.append({"name": motion.name, "seconds": snappedf(motion.length(), 0.01),
-			"tracks": motion.tracks.size()})
+		motions.append({"name": motion.name, "seconds": snappedf(_motions().seconds_of(motion), 0.01),
+			"tracks": motion.tracks.size(), "sequence": Array(motion.sequence)})
 	var joints: Array = []
 	var edited: Motions.Motion = _edited()
 	for part: Dictionary in _joint_parts:
@@ -1855,14 +2152,14 @@ func _tell_page() -> void:
 		entry.merge(ends.call(part["slider"]))
 		joints.append(entry)
 	var fps: int = int(RATES[maxi(_rate.selected, 0)])
-	var chosen: Motions.Motion = edited if _view == "edit" else _motions().named(_chosen)
+	var chosen: Motions.Motion = edited if _view != "list" else _motions().named(_chosen)
 	var state: Dictionary = {"open": visible, "view": _view, "motions": motions,
 		"suggested": _offered().map(func(one: Motions.Motion) -> String: return one.name),
 		"chosen": chosen.name if chosen != null else "", "editing": edited.name if edited != null else "",
 		"at": _at, "time": ends.call(_time), "time_max": _time.max_value, "joints": joints,
 		"recording": _recording, "playing": _playing, "working": _working,
 		"fraction": snappedf(_fraction, 0.01), "status": _status.text,
-		"frames_planned": roundi(chosen.length() * fps) + 1 if chosen != null else 0}
+		"frames_planned": roundi(_motions().seconds_of(chosen) * fps) + 1 if chosen != null else 0}
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
 		state["worst_step"] = renderer.worst_step

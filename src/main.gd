@@ -2906,8 +2906,15 @@ var _motion_said: String = ""
 ## a few a frame, once the model's motions are offered.
 var _motion_due: String = ""
 var _motion_due_at: int = 0
+## A press being worked out a slice a frame (MotionPlayer.pace_on): on a
+## phone with the CPU slowed four times two gates' 25 frames took 713 ms of
+## one frame. What was pressed, which way, and how long it waited first.
+var _motion_paced: MotionPlayer.Paced = null
+var _motion_pressed: Dictionary = {}
 var _shapes_to_ask: Array = []
 var _shape_parts: Array = []
+## How much of a frame a press works for, ms: the rest of it is the page's.
+const MOTION_SLICE_MS := 40.0
 ## How long a press waits for the parts' shapes: judged by their covers, a
 ## motion's first press on the web stopped a gate at 6° of 90°, where the
 ## shapes, fetched as the check asks for them, let it open (play_flow, on
@@ -3004,6 +3011,7 @@ func _play_frame() -> void:
 		var part_id: String = _shapes_to_ask.pop_back()
 		if not Exact.known(_library, part_id):
 			Exact.shape_for(_library, part_id)
+	_pace_motion()
 	if not _motion_due.is_empty() and not _grab_drag.is_settling() and not _grab_drag.is_grabbing() \
 			and (not _shapes_coming() or Time.get_ticks_msec() > _motion_due_at + SHAPES_WAIT_MS):
 		var name: String = _motion_due
@@ -3282,32 +3290,72 @@ func _play_motion(name: String) -> void:
 	_motion_due_at = 0
 	_motion_stop()
 	var back: bool = _share_view.motions_out.has(name.to_lower())
-	var began: int = Time.get_ticks_usec()
-	var played: MotionPlayer.Played = _motions.play(motion, back, MotionPlayer.PLAY_FPS, true,
+	# A sequence plays each of its motions from where the one before left
+	# the model, and backwards in reverse order: one step, as one motion.
+	# Worked out a slice a frame, so the page never waits long for it.
+	_motion_paced = _motions.pace(_world.motions.played_by(motion, back), back,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
-	_motion_last = {"name": motion.name, "backwards": back, "frames": played.frames.size(),
-		"ms": snappedf((Time.get_ticks_usec() - began) / 1000.0, 0.1), "stopped": played.stopped(),
-		"waited_ms": waited,
-		"joints": played.items.map(func(item: MotionPlayer.Item) -> Array:
+	_motion_pressed = {"motion": motion, "back": back, "waited": waited}
+	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
+	_pace_motion()
+
+
+## The press being worked out, worked on for a slice of this frame; once it
+## is all worked out its frames are drawn. A drag taken up meanwhile drops
+## it, and what it had kept is taken back.
+func _pace_motion() -> void:
+	if _motion_paced == null:
+		return
+	if _grab_drag.is_grabbing():
+		_motion_drop()
+		return
+	if not _motions.pace_on(_motion_paced, MOTION_SLICE_MS):
+		return
+	var paced: MotionPlayer.Paced = _motion_paced
+	_motion_paced = null
+	var run: MotionPlayer.Run = paced.run
+	var motion: Motions.Motion = _motion_pressed["motion"]
+	var back: bool = _motion_pressed["back"]
+	var items: Array = []
+	var refused := PackedStringArray()
+	for played: MotionPlayer.Played in run.played:
+		items.append_array(played.items)
+		refused.append_array(played.refused)
+	_motion_last = {"name": motion.name, "backwards": back, "frames": run.frames.size(),
+		"ms": snappedf(paced.total_ms, 0.1), "longest_ms": snappedf(paced.longest_ms, 0.1),
+		"slices": paced.slices, "hold_ms": snappedf(paced.hold_ms, 0.1), "frame_ms": snappedf(paced.frame_ms, 0.1),
+		"keep_ms": snappedf(paced.keep_ms, 0.1), "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
+		"motions": run.played.size(),
+		"joints": items.map(func(item: MotionPlayer.Item) -> Array:
 			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}
-	if played.items.is_empty():
+	if items.is_empty():
 		_share_view.play_said(_visitor_words("“%s” does not play: %s." % [motion.name,
-			"; ".join(played.refused)]))
+			"; ".join(refused) if not refused.is_empty() else "nothing in it moves here"]))
 		return
 	_share_view.show_motion_out(motion.name, not back)
 	var stops := PackedStringArray()
-	for item: MotionPlayer.Item in played.items:
+	for item: MotionPlayer.Item in items:
 		if not item.stop_words.is_empty():
 			stops.append(item.stop_words)
 	_motion_said = _visitor_words(("“%s” stopped short: %s." % [motion.name, "; ".join(stops)])
 		if not stops.is_empty() else ("“%s” put back." % motion.name) if back
 		else "“%s” played. Press it again to put it back." % motion.name)
-	_motion_frames = played.frames
+	_motion_frames = run.frames
 	_motion_began = Time.get_ticks_msec()
 	_motion_shown = 0
 	# The model stands where it ends already: its first frame drawn at once.
 	_world.set_drawn(_motion_frames[0])
-	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
+
+
+## A press being worked out dropped, and what it had kept taken back.
+func _motion_drop() -> void:
+	if _motion_paced == null:
+		return
+	var depth: int = _motion_paced.depth
+	_motion_paced = null
+	if _builder.history_depth() > depth:
+		_builder.undo_steps(_builder.history_depth() - depth)
+	_share_view.play_said("")
 
 
 ## Whether a part's exact shape is still to be asked for or on its way.
@@ -3336,7 +3384,9 @@ func _motion_frame() -> void:
 
 
 ## The playing motion's frames put away: the model drawn where it stands.
+## A press still being worked out is dropped.
 func _motion_stop() -> void:
+	_motion_drop()
 	if _motion_frames.is_empty():
 		return
 	_motion_frames = []

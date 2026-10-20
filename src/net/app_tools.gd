@@ -447,9 +447,9 @@ func definitions() -> Array:
 			"description": ("The model's own motions, kept in its file (\"Open the doors\", "
 				+ "\"Steer left and right\"): each with its joints as move_part names them, their "
 				+ "keys (seconds, and places from where the model was built: degrees turned, or "
-				+ "studs slid), its driver, the motion it follows, and what it was last found to "
-				+ "do: where each joint ended, or where it stopped and on what. A joint whose part "
-				+ "is gone is said so. Then motions suggested from what moves (doors, steering, a "
+				+ "studs slid), its driver, or the motions it plays in order (a sequence), and what "
+				+ "it was last found to do: where each joint ended, or where it stopped and on what. "
+				+ "A joint whose part is gone, or a sequence's motion that is gone, is said so. Then motions suggested from what moves (doors, steering, a "
 				+ "boom, a turntable, gears, a rack), each tried for room, which define_motion "
 				+ "keeps. Changes nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -464,9 +464,11 @@ func definitions() -> Array:
 				+ "and its keys: t= seconds, place= degrees turned from where the model was built "
 				+ "(studs slid, with slide=true), how= ease (the default), linear or hold. Or "
 				+ "driver= a joint turned turns= times over seconds=, from where it stands: what "
-				+ "it drives through gears, racks and linkages follows. after= the motion it "
-				+ "follows, for a sequence. suggested=true keeps list_motions' suggestion of that "
-				+ "name; remove=true takes a motion out. It is saved with the model (its autosave, "
+				+ "it drives through gears, racks and linkages follows. Or sequence= the model's "
+				+ "motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the "
+				+ "telescope\"]): a motion made of motions, each played from where the one before "
+				+ "left the model, backwards in reverse order. suggested=true keeps list_motions' "
+				+ "suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, "
 				+ "a save, an export, a shared link), one undo step, and answers by playing it "
 				+ "once and putting the model back: where each joint ended, or stopped and on what."),
 			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
@@ -489,7 +491,8 @@ func definitions() -> Array:
 						"turns": {"type": "number", "description": "turns; less than 0 the other way"},
 						"seconds": {"type": "number", "description": "how long; 4 when omitted"},
 					}},
-				"after": {"type": "string", "description": "the motion this one follows"},
+				"sequence": {"type": "array", "items": {"type": "string"},
+					"description": "the model's motions it plays, by name, in order"},
 				"suggested": {"type": "boolean", "description": "keep list_motions' suggestion of this name"},
 				"remove": {"type": "boolean"},
 			}},
@@ -500,14 +503,16 @@ func definitions() -> Array:
 				+ "joints, as a drag moves them: a joint stops where it meets the model, and gears, "
 				+ "racks and linkages follow. The model is left where the motion ends, one undo "
 				+ "step. reverse=true plays it backwards (closes what it opened; a driver turns "
-				+ "back), sequence=true plays the whole sequence it is in (after=), in order. The "
-				+ "answer says where each joint ended or stopped and on what, how the model then "
-				+ "stands, and carries a picture of its frames."),
+				+ "back; a sequence plays its motions in reverse order). sequence=true plays the "
+				+ "chain an older file's AFTER lines put it in. The answer says where each joint "
+				+ "ended or stopped and on what, how the model then stands, and carries a picture "
+				+ "of its frames from the view that sees most of what moves (or view=), and says which."),
 			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
 				"properties": {
 				"name": {"type": "string"},
 				"reverse": {"type": "boolean"},
 				"sequence": {"type": "boolean"},
+				"view": {"type": "string", "enum": MOTION_VIEWS},
 			}},
 		},
 		{
@@ -1707,6 +1712,20 @@ func _list_motions(input: Dictionary) -> String:
 ## stands now, its driver, and with [param kept] what it last did.
 func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> PackedStringArray:
 	var out := PackedStringArray()
+	if motion.is_sequence():
+		var motions: Motions = player.motions()
+		out.append("  \"%s\", %s s, a sequence: %s, each from where the one before left the model." % [
+			motion.name, Motions.num(motions.seconds_of(motion), 2), ", then ".join(Array(motion.sequence).map(
+			func(one: String) -> String: return Motions.quoted(one)))])
+		var missing: Array = []
+		motions.played_by(motion, false, missing)
+		for words: String in missing:
+			out.append("    %s: it is passed over until there is one." % words)
+		if kept:
+			var last: String = str(player.results.get(motion.name.to_lower(), ""))
+			out.append("    Last played: %s." % last if not last.is_empty()
+				else "    Not played since the model was opened.")
+		return out
 	out.append("  \"%s\", %s s%s:" % [motion.name, Motions.num(motion.length(), 2),
 		(", after \"%s\"" % motion.after) if not motion.after.is_empty() else ""])
 	for track: Motions.Track in motion.tracks:
@@ -1768,11 +1787,20 @@ func _define_motion(input: Dictionary) -> String:
 				names.append(Motions.quoted(one.name))
 			return "No suggestion called %s: %s." % [Motions.quoted(name), "list_motions suggests "
 				+ ", ".join(names) if not names.is_empty() else "nothing here is suggested"]
+	elif input.get("sequence") is Array:
+		if input.has("tracks") or input.has("driver"):
+			return ("A motion is its own tracks or driver, or a sequence of the model's motions: not both. "
+				+ "Nothing was kept.")
+		var made: Variant = _sequence_from(motions, name, input["sequence"])
+		if made is String:
+			return "%s Nothing was kept." % made
+		return await _define_sequence(player, made)
 	else:
 		var made: Variant = _motion_from(player, name, input)
 		if made is String:
 			return "%s Nothing was kept." % made
 		motion = made
+	# AFTER is a file's (a sequence names an order now): kept as given.
 	motion.after = str(input.get("after", motion.after)).strip_edges().replace('"', "'")
 	if motion.after.to_lower() == name.to_lower():
 		return "A motion cannot follow itself. Nothing was kept."
@@ -1806,6 +1834,50 @@ func _define_motion(input: Dictionary) -> String:
 		"" if joints == 1 else "s", (" after %s, which it follows" % ", then ".join(first))
 		if not first.is_empty() else "", player.said(played), (" alone, from where the model stands, and "
 		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else ""]
+
+
+## A sequence called [param name] of the model's motions named in [param
+## names], in order, or why not: each must be one of the model's, and none
+## may play it inside itself.
+func _sequence_from(motions: Motions, name: String, names: Array) -> Variant:
+	var motion := Motions.Motion.new()
+	motion.name = name
+	for raw: Variant in names:
+		if str(raw).strip_edges().to_lower() == name.to_lower():
+			return "A sequence cannot play itself."
+		var one: Motions.Motion = motions.named(str(raw))
+		if one == null:
+			return "No motion %s to play in it: %s." % [Motions.quoted(str(raw)), _motion_names(motions)]
+		motion.sequence.append(one.name)
+	if motion.sequence.is_empty():
+		return "Give sequence= the model's motions it plays, in order: %s." % _motion_names(motions)
+	var tried: Motions = motions.copy()
+	tried.put(motion)
+	var missing: Array = []
+	tried.played_by(tried.named(name), false, missing)
+	if not missing.is_empty():
+		return "%s." % "; ".join(missing)
+	return motion
+
+
+## define_motion's sequence kept, one step, and played once to check, each
+## motion from where the one before left the model, then put back.
+func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
+	var builder: Builder = app.get("_builder")
+	var motions: Motions = player.motions()
+	var replaced: bool = motions.named(motion.name) != null
+	var had: Motions = motions.copy()
+	motions.put(motion)
+	builder.record([{"undo": "motions", "motions": had}], "%s the sequence %s" % [
+		"changed" if replaced else "made", Motions.quoted(motion.name)])
+	var drawn: MotionRender = MotionRender.frames_of(player, [motion], false, MotionPlayer.PLAY_FPS)
+	player.results[motion.name.to_lower()] = " ".join(drawn.lines)
+	return ("%s %s in the model, a sequence of %d (%s s): %s, each from where the one before left the "
+		+ "model. It is saved with it. Played once to check, and the model put back: %s play_motion plays "
+		+ "it (reverse=true backwards, in reverse order), render_motion renders it whole; one step: undo "
+		+ "takes it out.") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
+		motion.sequence.size(), Motions.num(motions.seconds_of(motion), 2), ", then ".join(Array(motion.sequence).map(
+		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines)]
 
 
 ## A motion from define_motion's tracks= and driver=, or why not.
@@ -1865,9 +1937,11 @@ static func _motion_names(motions: Motions) -> String:
 	return "the model has " + ", ".join(names)
 
 
-## The motions play_motion and render_motion name: one, or with
-## sequence=true the sequence it is in, in order (reversed, backwards); or
-## a String saying why not.
+## What play_motion and render_motion name: one motion, a sequence's
+## motions, or with sequence=true the chain a file's AFTER lines put it in,
+## in order (reversed, backwards). {"order": each motion of its own, in
+## play order, "title": what it is called, "missing": a sequence's motions
+## that are not the model's, said}; or a String saying why not.
 func _motions_asked(input: Dictionary) -> Variant:
 	var player: MotionPlayer = app.get("_motions")
 	if player == null:
@@ -1876,14 +1950,21 @@ func _motions_asked(input: Dictionary) -> Variant:
 	var name: String = str(input.get("name", "")).strip_edges()
 	if motions.named(name) == null:
 		return "No motion %s: %s." % [Motions.quoted(name), _motion_names(motions)]
-	var order: Array = motions.sequence(name) if bool(input.get("sequence", false)) else [motions.named(name)]
-	if bool(input.get("reverse", false)):
-		order.reverse()
-	return order
+	var reverse: bool = bool(input.get("reverse", false))
+	var chain: Array = motions.sequence(name) if bool(input.get("sequence", false)) else [motions.named(name)]
+	if reverse:
+		chain.reverse()
+	var missing: Array = []
+	var order: Array = motions.flat(chain, reverse, missing)
+	if order.is_empty():
+		return "%s plays nothing: %s." % [Motions.quoted(motions.named(name).name), "; ".join(missing)]
+	return {"order": order, "missing": missing, "sequence": (chain[0] as Motions.Motion)
+		if chain.size() == 1 and (chain[0] as Motions.Motion).is_sequence() else null,
+		"title": ", ".join(chain.map(func(one: Motions.Motion) -> String: return one.name))}
 
 
 ## play_motion: played and kept where it ends, one undo step, said with a
-## picture of its frames.
+## picture of its frames from the view that sees most of what it moves.
 func _play_motion(input: Dictionary) -> Variant:
 	var asked: Variant = _motions_asked(input)
 	if asked is String:
@@ -1892,50 +1973,84 @@ func _play_motion(input: Dictionary) -> Variant:
 	var builder: Builder = app.get("_builder")
 	var panel: PosePanel = app.get("_pose")
 	var reverse: bool = bool(input.get("reverse", false))
+	var order: Array = asked["order"]
 	var depth: int = builder.history_depth()
 	var lines := PackedStringArray()
-	var each: Array = []
+	var sequence: Motions.Motion = asked["sequence"]
+	if sequence != null:
+		lines.append("%s plays %d motion%s%s, each from where the one before left the model:" % [
+			Motions.quoted(sequence.name), order.size(), "" if order.size() == 1 else "s",
+			", in reverse order and each backwards" if reverse else ""])
+	for words: String in asked["missing"]:
+		lines.append("%s: passed over." % words)
+	var run: MotionPlayer.Run = player.play_in_order(order, reverse, "played %s%s" % [
+		Motions.quoted(str(asked["title"])), " backwards" if reverse else ""])
 	var picks: Array = []   ## [which motion, its frame, at what time]
-	var standing: String = ""
 	var elapsed: float = 0.0
-	var went: bool = false
-	for motion: Motions.Motion in asked:
-		var played: MotionPlayer.Played = player.play(motion, reverse, MotionPlayer.PLAY_FPS, true)
-		went = went or played.went()
+	for k: int in run.played.size():
+		var motion: Motions.Motion = order[k]
+		var played: MotionPlayer.Played = run.played[k]
 		lines.append("Played %s%s (%s s): %s." % [Motions.quoted(motion.name), " backwards" if reverse
 			else "", Motions.num(played.seconds, 2), player.said(played)])
 		if not played.frames.is_empty():
-			standing = played.standing
-			var sheet: Array = _sheet_of(played, (asked as Array).size())
+			var sheet: Array = _sheet_of(played, order.size())
 			# Where a sequence begins, then each motion's end: a motion's
 			# first frame is the one before's last.
 			if picks.is_empty() and not sheet.has(0):
 				sheet.push_front(0)
 			for n: int in sheet:
 				if n > 0 or picks.is_empty():
-					picks.append([each.size(), n, elapsed + float(n) / float(played.fps)])
-		each.append(played.frames)
+					picks.append([k, n, elapsed + float(n) / float(played.fps)])
 		elapsed += played.seconds
-	var whole: Array = MotionRender.whole_frames(each)
+	if sequence != null:
+		player.results[sequence.name.to_lower()] = " ".join(lines.slice(1))
+	var whole: Array = MotionRender.whole_frames(run.each)
 	var stills: Array = picks.map(func(pick: Array) -> Dictionary: return whole[pick[0]][pick[1]])
 	var times: Array = picks.map(func(pick: Array) -> float: return pick[2])
-	builder.fold_since(depth, "played %s" % ", ".join((asked as Array).map(func(one: Motions.Motion) -> String:
-		return Motions.quoted(one.name))))
 	if builder.history_depth() == depth:
-		lines.append("It ends where it began: the model stands as it was." if went else "Nothing moved.")
+		lines.append("It ends where it began: the model stands as it was." if run.went() else "Nothing moved.")
 	else:
-		if not standing.is_empty():
-			lines.append("Now: %s." % standing)
+		if not run.standing().is_empty():
+			lines.append("Now: %s." % run.standing())
 		lines.append("One step: undo takes it back%s." % ("" if reverse else
 			"; play_motion reverse=true plays it back"))
 	var text: String = "\n".join(lines)
 	if stills.is_empty() or panel == null or not StudioRender.possible():
 		return text
-	var images: Array = await panel.draw_stills(stills)
+	var view: String = str(input.get("view", ""))
+	var why: String = ""
+	if not view in MOTION_VIEWS:
+		var seen: Dictionary = MotionRender.seen_from(app.get("_world"), app.get("_library"),
+			builder.lattice, run.frames)
+		view = MotionRender.best_view(seen)
+		why = _seen_words(view, seen)
+	var images: Array = await panel.draw_stills(stills, Vector2i(480, 300), view)
 	if images.is_empty():
 		return text
-	text += "\nThe picture: its frames at %s, left to right and down." % _times_words(times)
+	text += "\nThe picture: its frames at %s, left to right and down, from %s%s." % [_times_words(times),
+		_view_words(view), why]
 	return [{"type": "text", "text": text}, _picture_block(PosePanel.sheet_of(images))]
+
+
+## Where a picture's camera stood, as play_motion says it: "the back
+## corner (view=\"back\")".
+const VIEW_WORDS: Dictionary = {"hero": "the front corner", "front": "the front", "side": "the side",
+	"back": "the back corner", "low": "low down at the front corner", "top": "above"}
+
+
+static func _view_words(view: String) -> String:
+	return "%s (view=\"%s\")" % [VIEW_WORDS.get(view, view), view]
+
+
+## Why [param view] was chosen, from what each view sees (seen_from):
+## ", which sees 82% of what it moves (the front corner 31%)".
+static func _seen_words(view: String, seen: Dictionary) -> String:
+	if seen.is_empty() or float(seen.get(view, 0.0)) <= 0.0:
+		return ""
+	var words: String = ", which sees %d%% of what it moves" % roundi(float(seen[view]) * 100.0)
+	if view != "hero":
+		words += " (the front corner %d%%)" % roundi(float(seen.get("hero", 0.0)) * 100.0)
+	return words
 
 
 ## Which of [param played]'s frames a picture shows: at its keys when it has
@@ -1966,6 +2081,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var asked: Variant = _motions_asked(input)
 	if asked is String:
 		return asked
+	var order: Array = asked["order"]
 	if not StudioRender.possible():
 		return ("Rendering needs something to draw with, and this app is running without a window: "
 			+ "play_motion plays it.")
@@ -1973,9 +2089,11 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: PosePanel = app.get("_pose")
 	var reverse: bool = bool(input.get("reverse", false))
 	var fps: int = 24 if int(input.get("fps", 12)) == 24 else 12
-	var drawn: MotionRender = MotionRender.frames_of(player, asked, reverse, fps)
+	var drawn: MotionRender = MotionRender.frames_of(player, order, reverse, fps)
 	var poses: Array = drawn.poses
 	var lines: PackedStringArray = drawn.lines
+	for words: String in asked["missing"]:
+		lines.append("%s: passed over." % words)
 	if poses.is_empty():
 		return "Nothing to draw: %s" % "; ".join(lines)
 	var settings: RenderSettings = panel.settings
@@ -1984,8 +2102,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var sheet_at: Array = []
 	for k: int in PosePanel.SHEET_MOST:
 		sheet_at.append(roundi(float(k) * float(poses.size() - 1) / float(PosePanel.SHEET_MOST - 1)))
-	var title: String = ", ".join((asked as Array).map(func(one: Motions.Motion) -> String: return one.name)) \
-		+ (" backwards" if reverse else "")
+	var title: String = str(asked["title"]) + (" backwards" if reverse else "")
 	var view: String = str(input.get("view", "hero"))
 	if not view in MOTION_VIEWS:
 		view = "hero"
@@ -1996,7 +2113,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 		return "Nothing rendered: %s" % panel.rendered_words()
 	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s: %s." % [frames, fps,
 		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]), str(panel._last["kept"])])
-	var hidden: String = _hidden_from(view, asked,
+	var hidden: String = _hidden_from(view, order,
 		drawn.played.map(func(one: MotionPlayer.Played) -> Array: return one.frames))
 	if not hidden.is_empty():
 		lines.append(hidden)

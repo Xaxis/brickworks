@@ -1625,6 +1625,13 @@ func _ready_ahead() -> void:
 	ready_off_thread = true
 
 
+## Whether the joints, once the model has changed, are read on a worker
+## (a big model, where threads are): a press can wait for them.
+func reads_ahead() -> bool:
+	return world != null and world.brick_count() >= read_off_thread_from and not OS.has_feature("nothreads") \
+		and is_processing()
+
+
 ## Read now, on this thread: a small model, a browser without threads, or a
 ## press that came before the reading was done.
 func _ready_now() -> void:

@@ -115,14 +115,16 @@ section_probe, rules_probe, reference_probe and grab_probe's survey of
   shows it all in order" can only be a chain's head that is itself a
   motion: the session copied the doors' tracks into "Show it all", and
   "Open the dome panel" played with sequence=true now opens the doors too.
-  A motion that names others to play in order would need a file line.
+  A motion that names others to play in order would need a file line
+  (motions unit 5: a SEQUENCE line, docs/MOTIONS.md).
 - **Tracks tested apart (motions unit).** Said now, and pointed at after=;
   a dome and a telescope in one motion still cannot be tested together.
 - **Simulate and racks (mechverify).** As in step 4: the driver chosen by
   the word "drive" in a sub-assembly's name, the wheel's axle called free,
   the rack not moved.
 - **play_motion's picture is always from the front corner** (PosePanel's
-  draw_stills, motions2's file): the back panels never show in it.
+  draw_stills, motions2's file): the back panels never show in it (motions
+  unit 5: from the view that sees most of what moves).
 - **The shell dome pattern** at 20 and 24 across lays its 50990b crown on
   plates whose studs it overlaps by 1.1 LDU, not held (`check_design`,
   step 1 calls 8 and 9).

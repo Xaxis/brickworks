@@ -275,7 +275,7 @@ browser.
 
 Left for later units:
 - AFTER is set over MCP only; the panel plays it, and lists motions in the
-  order they were made.
+  order they were made. (Unit 5 retired AFTER for sequences.)
 - A joint carried by another is moved alone while its slider is dragged
   (from where the model stands); its key, and the frames, carry it.
 - Recording keeps one joint a drag; a chain drag and a ball are not recorded.
@@ -457,6 +457,135 @@ Left for later:
   motions only once published again.
 - A press works a motion's frames out at once (`MotionPlayer.play`): 713
   ms of a phone slowed four times for two gates over 2 s, one long frame.
-  Worked out a few frames at a time it would not stall.
+  Worked out a few frames at a time it would not stall. (Unit 5: a slice a frame.)
 - The gallery's search does not find a model by its motions' names.
 - A link plays one motion at a time: no Play all, no sequence (AFTER).
+  (Unit 5: a sequence is a button.)
+
+## What unit 5 built (motions5, 2026-10-20)
+
+The owner asked for "open dome panel", "extend telescope" and "open back
+wall panels" on their observatory, and a real session (docs/MCP_WALK3.md)
+for "one that shows it all in order". It could not: it copied the back
+wall's tracks into a motion called "Show it all" and set "Open the dome
+panel" AFTER it.
+
+- **A sequence** is a motion made of motions, by name, in order, saved as
+  one line:
+
+      0 !BRICKWORKS MOTION "Show it all" SEQUENCE "Open the dome panel" "Extend the telescope" "Open the back wall panels"
+
+  read at the edge like the rest (`Motions._read_motion`; a sequence with
+  no names is left out). Played, each motion begins where the one before
+  left the model; backwards, they go in reverse order, each backwards
+  (`Motions.played_by`, `flat`; `MotionPlayer.play_in_order`, one step).
+  A sequence may name another; one that would play itself inside itself
+  is refused. A name the model has no motion of is kept in the line and
+  said ("the model has no motion "Extend the telescope": passed over"),
+  so an undo that brings the motion back brings it back into the play; a
+  rename in the panel renames it in every sequence. Rendered whole
+  (`MotionRender.frames_of` plays a sequence through, `whole_frames`), as
+  "<model> Show it all.webp". An older app reads the line as one of the
+  wrong shape and leaves it out. The card (`api/_directory.js`
+  `motionsIn`) lists the motions that move something, so a sequence is
+  not on it: its motions are.
+- **AFTER is retired in favour of sequences.** A chain names its order
+  only through its members, so a motion could follow one other and be in
+  one chain; the chain had no name to play, render or press on a link; and
+  it changed what its members did (played with sequence=true, the walk's
+  "Open the dome panel" opened the doors first). A sequence is a name for
+  an order: each of its motions still plays alone, and may be in many.
+  Files with AFTER lines read and write them as before, byte for byte;
+  Play all, Render's All, in order and play_motion sequence=true still
+  follow them, but a sequence is never in a chain, and nothing makes AFTER
+  any more: the panel has no control for it, and define_motion's schema
+  has sequence= in place of after= (a call with after= still keeps it).
+- **The panel** (`PosePanel`): a sequence is a row like any motion (its
+  tooltip says what it plays). New sequence, beside New motion, keeps one
+  of every motion in Play all's order, named "Show it all", one step, and
+  opens its editor: Name, Remove, Play, Play backwards, then "It plays, in
+  order", a row for each motion with Up, Down and Take out, and Add with
+  the model's motions to choose from. Each change is one step. Play all and
+  a sequence's Play draw every frame with every part (`whole_frames`):
+  drawn on the model as it ends, a motion's frames had shown a later one's
+  parts where they end. The last render's frame of another model is no
+  longer shown when the panel opens on this one.
+- **MCP**: `define_motion {"name": "Show it all", "sequence": [...]}` keeps
+  it and plays it once to check, each from where the one before left the
+  model, then puts the model back; list_motions shows `"Show it all", 8 s,
+  a sequence: "Open the dome panel", then "Extend the telescope", then
+  "Open the back wall panels"`; play_motion and render_motion take it like
+  any motion. A track stopped on a part another track of its motion moves
+  is now pointed at a sequence, not after=.
+- **A link**: a sequence is a button like any motion; pressed, its motions
+  play in order, lit; again, backwards in reverse order.
+- **play_motion's picture from where what moves is seen.** Without view=,
+  the picture is from the view (StudioRender.VIEWS) that sees most of what
+  the motion moves, and the answer says which: "from the back corner
+  (view="back"), which sees 32% of what it moves (the front corner 2%)".
+  `MotionRender.seen_from` takes each moving part's travel as each view
+  sees it (across the picture, not towards it), at the first, middle and
+  last frames, and marches the lattice from five points of the part toward
+  the camera (`_clear`, the march `BrickLattice._march` makes), passing
+  through what moves and through what the part stands in where it begins
+  (a door's frame, whose opening the lattice fills); `best_view` keeps the
+  front corner unless another sees 10 points more. Boxes would not do: a
+  door frame's box hides its door from every side. It costs 8 to 28 ms on
+  the observatory, and draws nothing.
+- **A link's press is worked out a slice a frame** (`MotionPlayer.pace`,
+  `pace_on`; `play` is `begin`, `advance`, `finish`): main gives it 40 ms of
+  each frame (`MOTION_SLICE_MS`), a slice ending after the frame that passes
+  it, and draws its frames once all are worked out. A drag taken up
+  meanwhile drops it, and what it had kept is taken back.
+  `brickworksShare.motion` has `ms` (all its work), `longest_ms` and
+  `slices`.
+
+Proof, on the walk's own observatory
+(`tests/fixtures/mcpwalk3/small-observatory.ldr`, the session's last save,
+doors to 85° and 1.875 turns):
+- `tools/probe.sh motions_probe` (92 checks): define_motion turned the
+  session's copied "Show it all" into the sequence of the three, checked
+  clear (the dome 0° to 110°, the rack slid 6 studs with 25 parts, the
+  doors to ±85°) and the model put back, one step; a sequence of itself
+  and one naming a motion the model lacks refused; its line in place of
+  the 7 copied ones, every other line as it was, AFTER and all; saved and
+  opened, 14 lines byte for byte; played in order (33 parts moved, the
+  dome 110°), backwards in reverse order to as built (0 parts off);
+  rendered whole, 99 frames, "Observatory Show it all.webp"; "Extend the
+  telescope" removed, the sequence said it and played the other two, its
+  line kept, undone; the AFTER chain played as before. The back wall's
+  panels are seen 32% from the back corner and 2% from the front corner,
+  and play_motion's picture of them is from the back; the dome panel's
+  best view is the front (80%, the front corner 51%); "Show it all" is
+  pictured from above (65%, the front corner 29%).
+- `tools/probe.sh motions_panel_probe` at 1400 × 900 and `PROBE_SIZE=1280x720`
+  (71 checks each): the copied "Show it all" removed, New sequence (one
+  step, undone, redone), Down, Up, Take out and Add each one step and
+  undone, Play (99 frames, each holding all 33 moving parts) and Play
+  backwards to as built, the list with it as a row, saved and opened byte
+  for byte; the panel fits both windows. Pictures in
+  `bench/results/motions5-2026-10-20/` (`observatory_*`).
+- `tools/probe.sh share_play_probe` (72): 1484-1 with "Open it all", a
+  sequence of the gates and the mailbox, a button that played both to 90°
+  and, pressed again, put every part as built. A press of "Open the gates"
+  was 67 ms of work over 2 frames, the longest 43.6 ms (taking hold of the
+  joints 2.7 ms, a frame 5.4 ms, keeping it 4.9 ms); cut into 2 ms slices
+  it gave the same 25 frames over 20 slices, the longest no more than the
+  longest thing it cannot cut.
+- mcp_walk3_probe (20), app_tools_probe (103), mcp_sync_probe (12, the
+  tool list written again), motions_render_probe (33), animation_probe
+  (24), pose_probe (25), share_view_probe (173) pass.
+
+Left for later:
+- The press's spread is proven on the desktop, not on a phone slowed four
+  times in a browser (play_flow says the slices now). What it cannot cut
+  stays whole: taking hold of the joints, which reads them again on the
+  page's thread after a change to a model under 300 parts (151 ms here
+  after an undo), and keeping it.
+- render_motion still renders from the front corner unless view= is
+  given; it says when what moves is hidden from there.
+- A motion's joints are still tested apart, and a sequence's motions each
+  as the model stands when it begins: a sequence is how to test them in
+  order.
+- The suggestion list could offer "Show it all" once a model has two or
+  more motions.
