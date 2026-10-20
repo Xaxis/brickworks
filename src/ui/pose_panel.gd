@@ -269,8 +269,15 @@ func _motions() -> Motions:
 	return player.motions() if player != null else Motions.new()
 
 
+## [param words] in the status line, whole: the panel grows to them, and
+## where the window has no room for all of them they are all in its tooltip
+## (_fit). A sequence's words ran past six lines and were cut off.
 func _say(words: String) -> void:
+	if words == _status.text:
+		return
 	_status.text = words
+	_status.tooltip_text = words
+	_fit_later()
 
 
 # -- the list ----------------------------------------------------------------------------
@@ -1807,7 +1814,7 @@ func _build() -> void:
 	_status.add_theme_font_size_override("font_size", 11)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(WIDE, 0)
-	_status.max_lines_visible = 6
+	_status.mouse_filter = Control.MOUSE_FILTER_PASS
 	_status.modulate = Color(1, 1, 1, 0.8)
 	column.add_child(_status)
 
@@ -2061,7 +2068,9 @@ func _fit_later() -> void:
 
 
 ## The lists as tall as they need, or as the window leaves room for above
-## its foot, scrolling past that; the panel no bigger than what it shows.
+## its foot, scrolling past that; the panel no bigger than what it shows;
+## the status line whole, unless even with the lists at their least the
+## window has no room for it.
 func _fit() -> void:
 	if not visible:
 		return
@@ -2070,9 +2079,23 @@ func _fit() -> void:
 	var inner: Control = _body.get_child(0) as Control
 	var wanted: float = inner.get_combined_minimum_size().y
 	_body.custom_minimum_size.y = 0.0
+	# Whole: a label that trims its words is as short as it likes.
+	_status.max_lines_visible = -1
+	_status.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	_status.custom_minimum_size.y = 0.0
 	var others: float = get_combined_minimum_size().y
 	var room: float = tall - position.y - FOOT - others
-	_body.custom_minimum_size.y = clampf(wanted, minf(wanted, 80.0), maxf(room, 80.0))
+	var least: float = minf(wanted, 80.0)
+	if room < least:
+		# Words too long for the window: as many lines as it has room for,
+		# the last ending "…", and every word in the tooltip.
+		var line: float = _status.get_line_height() + _status.get_theme_constant("line_spacing")
+		var lines: int = maxi(_status.get_line_count() - ceili((least - room) / maxf(line, 1.0)), 2)
+		_status.max_lines_visible = lines
+		_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_status.custom_minimum_size.y = line * float(lines)
+		room = least
+	_body.custom_minimum_size.y = clampf(wanted, least, maxf(room, 80.0))
 	reset_size()
 
 
