@@ -18,8 +18,8 @@
 ## And each of those changes reaches the autosave. A minifigure stood up
 ## over the connector raised nothing the store heard, so the autosave kept
 ## the model without it and a reload took it away (tabwalk, 2026-10-19).
-## So the calls go through the app's own socket for the connector, wired as
-## the app wires it (CommandSocket.model_changed).
+## So the calls go through the app's own socket for the connector, and the
+## store hears every change at the end of its frame (ModelStore.listen).
 extends SceneTree
 
 var _failures: int = 0
@@ -107,6 +107,8 @@ func _run() -> void:
 		store.set("_pending", false)
 		said = await _call(str(call[0]), input)
 		var changed: bool = _standing() != was
+		# Heard once a frame (ModelStore.tick).
+		await process_frame
 		_ok(not changed or bool(store.get("_pending")),
 			"%s's change is told to the autosave" % call[0])
 		# A feature's review lays a piece only where one fits: nothing laid is

@@ -1353,6 +1353,8 @@ func _ready() -> void:
 		if placed == 0 and not empty:
 			placed = _build_demo()
 	_lay_baseplate()
+	# Whatever changes the model from here on is kept, by whatever path.
+	_store.listen()
 
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
@@ -1929,7 +1931,6 @@ func _open_commands(port: int) -> void:
 	_commands = CommandSocket.new()
 	_commands.assistant = _assistant
 	_commands.app = self
-	_commands.model_changed.connect(_on_model_changed)
 	add_child(_commands)
 	if not _commands.listen(port):
 		_commands.queue_free()
@@ -3695,7 +3696,6 @@ func _build_ui() -> void:
 	var answering := CommandSocket.new()
 	answering.assistant = _assistant
 	answering.app = self
-	answering.model_changed.connect(_on_model_changed)
 	add_child(answering)
 	_connector = ClaudeConnector.new()
 	_connector.rpc = answering

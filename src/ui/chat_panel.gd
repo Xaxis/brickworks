@@ -1262,7 +1262,7 @@ func _claude_card() -> bool:
 	return _claude_on and _run != null and is_instance_valid(_run)
 
 
-func _on_claude_called(tool: String, arguments: Dictionary) -> void:
+func _on_claude_called(tool: String, arguments: Dictionary, _chat: String = "") -> void:
 	if tool.is_empty():
 		return
 	_claude_last = Time.get_ticks_msec()

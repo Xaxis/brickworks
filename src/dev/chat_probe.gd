@@ -482,6 +482,20 @@ func _run() -> void:
 	for line: Node in panel._run_past.get_children():
 		refused = refused or (line as Label).text.contains("refused: brick 2 floats")
 	_check(refused, "...a refused call says so, and why")
+	# Two chats in one tab: the count is the calling chat's own. They were
+	# added up as one (tabwalk, 2026-10-19). The calls above named no chat.
+	var counted_before: String = offer._status.text
+	connector.called.emit("search_parts", {"query": "door"}, "chat a")
+	connector.called.emit("search_parts", {"query": "door"}, "chat a")
+	connector.called.emit("search_parts", {"query": "wheel"}, "chat b")
+	var b_said: String = offer._status.text
+	connector.called.emit("check_design", {"bricks": [1, 2]}, "chat a")
+	var a_said: String = offer._status.text
+	_check(counted_before.begins_with("Claude is building — 10 calls in ")
+			and b_said.begins_with("Claude is building — 1 call in ")
+			and a_said.begins_with("Claude is building — 3 calls in "),
+		"each chat's calls are counted apart: \"%s\", then chat b's \"%s\", then chat a's \"%s\""
+			% [counted_before, b_said, a_said])
 	connector.called.emit("plan_scale", {"subject": "a lighthouse", "longest_metres": 30.0})
 	_check(panel._run_now.text.contains("30 m"), "numbers read as numbers: %s" % panel._run_now.text)
 	# Between Claude's calls nothing on the panel moves: a label changed is
