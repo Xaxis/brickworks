@@ -294,9 +294,6 @@ class Item extends RefCounted:
 	var low: float = INF
 	var high: float = -INF
 
-	func unit() -> String:
-		return "°" if joint.mode == "turn" else " studs"
-
 
 ## What playing a motion did.
 class Played extends RefCounted:
@@ -331,7 +328,7 @@ class Played extends RefCounted:
 
 
 ## Play [param motion] a frame at a time, [param reverse] from its end to
-## its start (a driver turned back as many times), at [param fps]. With
+## its start (a driver turned back as far as it last went), at [param fps]. With
 ## [param keep] the model is left where it ends, one step to undo, called
 ## [param words]; otherwise nothing changes.
 func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, keep: bool = false,
@@ -344,9 +341,10 @@ func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, ke
 	var length: float = motion.length()
 	played.seconds = length
 	var tracks: Array = motion.tracks.duplicate()
+	var driven: Motions.Track = null
 	if motion.driver != null:
 		# Turned from wherever it stands, so many times; back as many, reversed.
-		var driven := Motions.Track.new()
+		driven = Motions.Track.new()
 		driven.joint = motion.driver
 		var start: float = at_now(motion.driver)
 		var turn: float = 360.0 * motion.turns
@@ -356,7 +354,7 @@ func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, ke
 		driven.add_key(motion.driver_seconds, start + turn, "LINEAR")
 		tracks.append(driven)
 	for track: Motions.Track in tracks:
-		var item: Item = _item_for(track, track.joint == motion.driver and motion.driver != null)
+		var item: Item = _item_for(track, track == driven)
 		if item.grab == null:
 			played.refused.append("%s: %s" % [item.name, item.stop_words])
 			continue
