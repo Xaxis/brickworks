@@ -12,9 +12,11 @@
                                        [--first N] [--jobs 2]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
-two workers a subject took nine minutes (main, 2026-10-19), so a half is about
-6.5 hours of GPU leases taken design by design: give a run eight hours or
-more. Set BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
+two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
+hours, when each design held a GPU slot for its whole session. A design's app
+now runs headless and takes the lease only for a drawer while it draws, so
+`--jobs 4` runs four at once (DESIGN_SCORES.md, "What a round costs now"). Set
+BENCH_PORTS=LO-HI to keep each design's app to an agent's ports.
 
 Every round so far was steered by subjects we tuned on, and our own judge
 once preferred an outside designer 40 of 40 after calling our rounds gains.
@@ -46,9 +48,10 @@ tuned on, judged blind.
   own pieces out of the real-set index (src/ai/real_snippets.gd) as well as
   out of design memory, and a design's record says whether the log showed it.
 - **The designer** is run.py's design stage, the real loop on the
-  subscription, the app on the GPU's lease as every windowed run is. Each
-  of `--jobs` workers takes its share of the subjects. Run it bare: each
-  design and each drawing takes the lease for itself (run.py's `gpu`), so
+  subscription, the app headless with its pictures drawn on the GPU's lease
+  by a drawer that holds it only while it draws (src/ai/leased_shots.gd).
+  Each of `--jobs` workers takes its share of the subjects. Run it bare: each
+  drawer and each drawing takes the lease for itself (run.py's `gpu`), so
   other jobs get the GPU between them. Under one `gpu` the whole run held
   it, and two such runs kept a probe off the GPU for 40 minutes while the
   CPU stood idle (2026-10-19). The workers

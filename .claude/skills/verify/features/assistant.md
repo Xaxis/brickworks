@@ -2299,9 +2299,11 @@ godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=
 ```
 
 Each of `--jobs` workers runs its share of the subjects, one after another
-(worker-<set>.log). Run it bare: each design and each drawing takes the GPU's
-lease for itself, so other jobs get the GPU between them, and no worker waits
-for a CPU slot. BENCH_PORTS keeps each design's app to the agent's ports.
+(worker-<set>.log). Run it bare: a design's app is headless and holds no lease,
+each of its pictures and each drawing of the views takes the GPU's lease for
+itself (below, "A design's pictures on a lease of their own"), so other jobs get
+the GPU between them, and no worker waits for a CPU slot. BENCH_PORTS keeps each
+design's app to the agent's ports.
 `--audit-later` leaves the build check's
 reading (floating parts, the only CPU work) to `audit`, one `heavy` job after the
 run. `--software` draws on lavapipe and makes each worker one `heavy` job, as every

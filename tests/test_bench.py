@@ -221,6 +221,56 @@ def test_tidying_moves_the_runs_saves_and_leaves_everyone_elses():
     assert left == ["orthanc.ldr", "someone_elses.ldr"]
 
 
+def _design_command(with_drawer: bool) -> list[str]:
+    """The command run.design starts for an app with or without the leased drawer."""
+    from bench import run, suite
+    started: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        started.append(list(command))
+        log = _kwargs["stdout"]
+        log.write("claude code ok=true bricks=1  (1s)\n")
+        return type("Done", (), {"returncode": 0})()
+
+    with tempfile.TemporaryDirectory() as where:
+        app, out = Path(where) / "app", Path(where) / "out"
+        (app / "src" / "ai").mkdir(parents=True)
+        out.mkdir()
+        if with_drawer:
+            (app / "src" / "ai" / "leased_shots.gd").write_text("")
+        saved = (run.subprocess.run, run._tidy_user_dir, run._stop_leftovers, run.commit)
+        run.subprocess.run = fake_run
+        run._tidy_user_dir = lambda *_a: []
+        run._stop_leftovers = lambda _port: []
+        run.commit = lambda _app=None: "abc1234"
+        try:
+            subject = suite.Subject(id="owl", title="Owl", brief="an owl", scale="", against="")
+            run.design(subject, out, 60, None, app=app)
+        finally:
+            run.subprocess.run, run._tidy_user_dir, run._stop_leftovers, run.commit = saved
+    assert len(started) == 1
+    return started[0]
+
+
+def test_a_design_runs_headless_and_leases_the_gpu_only_to_draw():
+    from bench import run
+    command = _design_command(with_drawer=True)
+    assert run.GPU not in command[:1], "the app itself holds no lease"
+    assert "--headless" in command and "xvfb-run" not in command
+    drawer = [a for a in command if a.startswith("--draw-by=")]
+    assert len(drawer) == 1
+    assert json.loads(drawer[0][len("--draw-by="):]) == run.DRAWER
+    assert run.DRAWER[0] == run.GPU and "xvfb-run" in run.DRAWER
+
+
+def test_an_app_from_before_the_drawer_runs_in_a_window_on_the_lease():
+    from bench import run
+    command = _design_command(with_drawer=False)
+    assert command[:2] == [run.GPU, "xvfb-run"]
+    assert "--headless" not in command
+    assert not any(a.startswith("--draw-by=") for a in command)
+
+
 # -- the summary ----------------------------------------------------------
 
 

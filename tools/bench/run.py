@@ -18,12 +18,18 @@ them queues for its own.)
 
 A run is, per subject and one at a time:
 
-  design   the real loop on the subscription: the app off-screen (Xvfb, on
-           the GPU, under `gpu`) with --ask-claude-code, the brief as
-           the person would type it, Claude Code driving it over MCP on its
-           own port. ANTHROPIC_API_KEY is taken out of its environment, so
-           nothing is billed. Its saves are moved out of the app's user
-           folder into the run's, and its connection file with them.
+  design   the real loop on the subscription: the app headless with
+           --ask-claude-code, the brief as the person would type it, Claude
+           Code driving it over MCP on its own port. It holds no GPU lease:
+           each picture the session is shown is drawn by a drawer on the
+           lease (src/ai/leased_shots.gd, off-screen under `gpu`), the
+           same ModelShot given the same bricks, held while it draws and
+           20 s after. An app from before the drawer (--checkout of an older
+           commit) runs in a window on the lease for its whole session, as
+           every design did until 2026-10-20. ANTHROPIC_API_KEY is taken out
+           of its environment, so nothing is billed. Its saves are moved out
+           of the app's user folder into the run's, and its connection file
+           with them.
   views    corner, front and close, by src/dev/bench_views.gd on the GPU
            (`gpu`), the assistant's own camera.
   probe    src/dev/candidate_probe.gd: opens whole, one piece, stands, faults.

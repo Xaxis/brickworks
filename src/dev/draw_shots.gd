@@ -8,9 +8,9 @@
 ## the session made, and the camera's angle, close look, rulers and marks),
 ## draws each with ModelShot as the app would in a window, and answers with
 ## NNNNNN.drawn, the picture's pixels as they came off the card (an empty
-## dictionary for no picture). It ends S seconds after its last picture, or
-## when the app has gone, so the GPU lease it runs on is held only while it
-## draws.
+## dictionary for no picture). It ends S seconds after its last picture,
+## YIELD_S after it when another job waits for the GPU, or when the app has
+## gone, so the GPU lease it runs on is held only while it draws.
 extends SceneTree
 
 var _library: PartLibrary
@@ -57,7 +57,10 @@ func _run() -> void:
 	while true:
 		var asked: String = _next(dir)
 		if asked.is_empty():
-			if Time.get_unix_time_from_system() - idle_since > linger:
+			# The whole linger while nobody else wants the GPU; a moment
+			# when somebody waits for it, who has it as soon as this ends.
+			var idle: float = Time.get_unix_time_from_system() - idle_since
+			if idle > linger or (idle > YIELD_S and _others_wait()):
 				break
 			if not _alive(app):
 				print("draw_shots: the app has gone")
@@ -83,10 +86,23 @@ func _run() -> void:
 		out.store_var(answer)
 		out.close()
 		DirAccess.rename_absolute(writing, dir.path_join(name + ".drawn"))
-		print("draw_shots: %s %s in %d ms" % [name, "drawn" if not answer.is_empty() else "NO PICTURE",
-			Time.get_ticks_msec() - started])
+		print("draw_shots: %s %s in %d ms, %d bricks" % [name,
+			"drawn" if not answer.is_empty() else "NO PICTURE", Time.get_ticks_msec() - started,
+			(request as Dictionary).get("bricks", []).size() if request is Dictionary else 0])
 		idle_since = Time.get_unix_time_from_system()
 	quit(0)
+
+
+## How long a drawer stays after a picture when another job waits for the GPU.
+const YIELD_S := 2.0
+
+
+## Whether another job waits for the GPU's lease: a ticket in its queue
+## (~/.claude/claude-core/bin/gpu keeps one a waiter, under BOX_GPU_DIR).
+static func _others_wait() -> bool:
+	var dir: String = OS.get_environment("BOX_GPU_DIR")
+	var queue: String = (dir if not dir.is_empty() else "/tmp/box-gpu").path_join("queue")
+	return DirAccess.dir_exists_absolute(queue) and not DirAccess.get_files_at(queue).is_empty()
 
 
 ## Whether the app that started this still runs. Not OS.is_process_running,

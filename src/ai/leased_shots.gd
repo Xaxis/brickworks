@@ -23,11 +23,14 @@ const ARGUMENT := "--draw-by="
 ## Starting one is a few seconds: the catalogue and the first shaders.
 const LINGER_S := 20.0
 
-## The most a picture waits, the lease's queue included: inside the ten
-## minutes a session gives a call (ClaudeCode.TOOL_TIMEOUT_MS). A picture
-## waited for is the picture the design would have had in a window; letters
-## in its place would make how busy the box was part of the design.
-const MOST_WAIT_S := 480.0
+## The most a picture waits, the lease's queue included, before the caller
+## is given null and draws the letters, as a window gives up on a picture
+## after ModelShot.give_up_after. Eight minutes was the first cap: behind
+## two windowed designs and a queue of seven, three of four designs' checks
+## waited 460 to 534 s, and each session took the app for stuck and stopped
+## with nothing built (2026-10-20). Letters now and then are a design that
+## goes on.
+const MOST_WAIT_S := 120.0
 
 ## Drawers started for one picture before it is given up: one that exits
 ## without answering (it lingered out just as the request was written) is
@@ -77,15 +80,23 @@ func take(shot: ModelShot, world: BrickWorld, from: String, skip: Dictionary,
 	# the picked out in its colour, so the drawer stages these and no more.
 	var bricks: Array = []
 	var made: Dictionary = {}
+	var shaped: bool = false
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id):
 			continue
 		var colour: int = ModelShot.PICKED_OUT if shot.highlight.has(brick.id) \
 			else brick.color_code
 		bricks.append([brick.part_id, colour, brick.transform])
+		shaped = shaped or library.mesh_for(brick.part_id) != null
 		# A part made in this session, which the drawer's catalogue has not.
 		if not made.has(brick.part_id) and library.custom.has(brick.part_id):
 			made[brick.part_id] = library.custom[brick.part_id]
+	# Nothing to stage, or nothing staged with a shape: ModelShot finds no
+	# bounds and gives no picture at once, and so does this, without a wait
+	# for the GPU for it: a check's picture with nothing left to stage is
+	# what three designs of a four-worker run waited eight minutes for.
+	if not shaped:
+		return null
 	var request: Dictionary = {
 		# Which picture-taker, and what it has staged: the drawer stages
 		# again exactly when this one would. Two stagings of one model can
@@ -146,9 +157,11 @@ func _start() -> void:
 	var arguments := PackedStringArray()
 	for word: Variant in words.slice(1):
 		arguments.append(str(word))
-	arguments.append_array(["--path",
+	# The script first, so the lease's log and `gpu --status`, which keep a
+	# command's first 200 characters, say what holds the GPU.
+	arguments.append_array(["--script", "res://src/dev/draw_shots.gd", "--path",
 		ProjectSettings.globalize_path("res://"), "--log-file", _dir.path_join("drawer.log"),
-		"--script", "res://src/dev/draw_shots.gd", "--", "--dir=" + _dir,
+		"--", "--dir=" + _dir,
 		"--app-pid=%d" % OS.get_process_id(), "--linger=%.1f" % LINGER_S])
 	_pid = OS.create_process(str(words[0]), arguments)
 	if _pid < 0:

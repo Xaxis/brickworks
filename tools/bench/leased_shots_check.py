@@ -87,6 +87,9 @@ def drive(mode: str, model: Path, out: Path, port: int,
         relay.notify("notifications/initialized")
         # The model is opened from the command line: wait until it is all down.
         last, steady = "", 0
+        # Asked while a big model still opens, look_at_model has crashed the
+        # app (mechanism.gd's table, 2026-10-20): give it a moment first.
+        time.sleep(10.0)
         for _ in range(240):
             said = "".join(b.get("text", "") for b in relay.call("tools/call", {
                 "name": "look_at_model", "arguments": {}}).get("result", {}).get("content", []))
@@ -95,7 +98,7 @@ def drive(mode: str, model: Path, out: Path, port: int,
             last = head
             if steady >= 3:
                 break
-            time.sleep(1.0)
+            time.sleep(2.0)
         print(f"{mode}: {last[:100]!r}", flush=True)
         (out / mode).mkdir(exist_ok=True)
         for name, tool, arguments in order:
@@ -154,7 +157,7 @@ def compare(what: str, one_side: dict[str, list[bytes]], other_side: dict[str, l
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--port", type=int, default=9040)
@@ -162,18 +165,22 @@ def main(argv: list[str]) -> int:
                         help="also a second window asked in another order, for how much a "
                         "window's own pictures vary with what it drew before; the drawer's are "
                         "then held to that")
+    parser.add_argument("--windows-only", action="store_true",
+                        help="only the two windows of --history")
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     model = args.model.resolve()
     window = drive("window", model, args.out, args.port)
-    leased = drive("leased", model, args.out, args.port + 1)
+    leased = {} if args.windows_only else drive("leased", model, args.out, args.port + 1)
     most = 0
-    if args.history:
+    if args.history or args.windows_only:
         # The unchanged model's views the other way round, then the change.
         turned = [*reversed(ASKED[:4]), *ASKED[4:]]
         again = drive("window2", model, args.out, args.port + 2, turned)
         _, most = compare("a window against a window asked in another order:", window, again,
                           1 << 30)
+        if args.windows_only:
+            return 0
     same, _ = compare("the window against the leased drawer:", window, leased, most)
     return 0 if same else 1
 
