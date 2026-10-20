@@ -740,9 +740,18 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 	if _readers > 0:
 		# A reader on another thread only reads: what it needs was loaded
 		# before it began (Assistant._checked), and loading here would
-		# write the cache it is reading.
+		# write the cache it is reading. Loaded while another reader was
+		# out, it is in _arrived, read under the lock the main thread
+		# writes it under: until 2026-10-20 a worker saw none of it, and
+		# readers overlap. 10179-1 opened while Grab read the model before
+		# it, so its 214 new parts waited there through the weighing and
+		# the next Grab read, and Suggest sections' worker read 1,665 of
+		# its 5,266 parts: no pin, axle or clip, a 3,517-part section.
 		if not _on_main_thread():
-			return null
+			_arrived_lock.lock()
+			var waiting: Lbm.PartMesh = _arrived.get(info.mesh_hash)
+			_arrived_lock.unlock()
+			return waiting
 		if _arrived.has(info.mesh_hash):
 			return _arrived[info.mesh_hash]
 
@@ -781,9 +790,11 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 
 ## Readers on other threads now. Changed only on the main thread.
 var _readers: int = 0
-## Geometry that arrived while a reader was out: hash -> Lbm.PartMesh. Main
-## thread only.
+## Geometry that arrived while a reader was out: hash -> Lbm.PartMesh.
+## Written on the main thread under [member _arrived_lock], which a reader
+## on a worker takes to read it.
 var _arrived: Dictionary = {}
+var _arrived_lock := Mutex.new()
 ## The WorkerThreadPool tasks reading, for _wait_for_readers.
 var _reading_tasks: Array[int] = []
 ## task -> what ends it early, for the readers that can be.
@@ -812,7 +823,9 @@ func end_reading(task: int = -1) -> void:
 	if _readers > 0:
 		return
 	_mesh_cache.merge(_arrived)
+	_arrived_lock.lock()
 	_arrived.clear()
+	_arrived_lock.unlock()
 
 
 ## Until every reader's task has finished, so what they read can be written.
@@ -831,7 +844,9 @@ static func _on_main_thread() -> bool:
 
 func _keep(hash_name: String, part: Lbm.PartMesh) -> void:
 	if _readers > 0:
+		_arrived_lock.lock()
 		_arrived[hash_name] = part
+		_arrived_lock.unlock()
 	else:
 		_mesh_cache[hash_name] = part
 
