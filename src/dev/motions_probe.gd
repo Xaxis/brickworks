@@ -76,6 +76,7 @@ func _run() -> void:
 	await _chassis()
 	await _windscreen()
 	await _ldr()
+	await _assembly()
 	print("")
 	if _failures == 0:
 		print("motions: defined over MCP, saved and opened again, played, reversed and rendered on "
@@ -321,6 +322,39 @@ func _ldr() -> void:
 	_print(said)
 	_check("a sequence plays in order: %s" % said.get_slice("\n", 0).left(80),
 		said.find("Swing the flap") < said.find("Swing back") and said.find("Swing back") > 0)
+
+
+## A flap that is a sub-assembly of its own in an .mpd: a motion on a part
+## of it is kept by the sub-assembly's name, which comes back with the file.
+func _assembly() -> void:
+	print("── a sub-assembly's name as the joint's ref ──")
+	var file: String = _out.path_join("flap.mpd")
+	_write(file, "0 FILE main.ldr\n0 Main\n0 Name: main.ldr\n0 Author: Brickworks\n\n"
+		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+		+ "1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3937.dat\n"
+		+ "1 1 0 0 0 1 0 0 0 1 0 0 0 1 flap.ldr\n0 NOFILE\n"
+		+ "0 FILE flap.ldr\n0 Flap\n0 Name: flap.ldr\n0 Author: Brickworks\n\n"
+		+ "1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3938.dat\n"
+		+ "1 1 0 -32 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 NOFILE\n")
+	if not await _open(file):
+		return
+	var said: String = await _say("define_motion", {"name": "Lift the flap", "tracks": [
+		{"joint": "#%d" % _lead("3938"), "keys": [{"t": 0, "place": 0}, {"t": 1, "place": 20}]}]})
+	_print(said)
+	var lines: PackedStringArray = _motion_lines(_store.to_text("Flap"))
+	_print("\n".join(lines))
+	_check("a part of a sub-assembly that moves whole is kept by the sub-assembly's name",
+		lines.size() == 4 and lines[1].contains("JOINT ASSEMBLY \""))
+	# Saved and opened again.
+	var text: String = _store.to_text("Flap")
+	_write(file, text)
+	if not await _open(file):
+		return
+	_check("...opened again, its lines come back byte for byte", _motion_lines(_store.to_text("Flap")) == lines)
+	said = await _say("play_motion", {"name": "Lift the flap"})
+	_print(said)
+	_check("...and the name finds the flap again, which plays", said.contains("went from 0° to 20°")
+		and said.contains("One step"))
 
 
 # -- a motion saved, opened, played, reversed and rendered -----------------------

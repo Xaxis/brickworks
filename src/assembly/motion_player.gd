@@ -49,11 +49,20 @@ var _suggested: Array = []
 var _suggested_at: int = -1
 
 
-## The model's motions, made when it has none yet.
+## The model's motions, made when it has none yet. What was said of the
+## last model's (results, a driver's turn, suggestions) goes with it.
 func motions() -> Motions:
+	if _generation != world.generation():
+		_generation = world.generation()
+		results.clear()
+		_driven.clear()
+		_suggested_at = -1
 	if world.motions == null:
 		world.motions = Motions.new()
 	return world.motions
+
+
+var _generation: int = -1
 
 
 # -- finding a joint --------------------------------------------------------------
@@ -327,6 +336,7 @@ class Played extends RefCounted:
 ## [param words]; otherwise nothing changes.
 func play(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS, keep: bool = false,
 		words: String = "") -> Played:
+	motions()
 	var played := Played.new()
 	played.name = motion.name
 	played.reverse = reverse
@@ -535,6 +545,7 @@ func said(played: Played) -> String:
 ## far as it has room, found by trying it (nothing changes). Kept per
 ## revision of the model.
 func suggest() -> Array:
+	motions()
 	if _suggested_at == world.revision:
 		return _suggested
 	_suggested = []
