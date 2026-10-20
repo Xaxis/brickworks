@@ -515,12 +515,24 @@ static func plan(needs: Dictionary, on_hand: Dictionary, library: PartLibrary = 
 static var _sized: Dictionary = {}
 static var _sized_for: PartLibrary = null
 static var _size_of: Dictionary = {}
+## Read and made under a lock: Brickify's stock asks on a worker while the
+## collection asks here, and a table put on one thread while another copies
+## it leaves the copy holding nothing, as Mechanism's gear table did
+## (racefix, 2026-10-20).
+static var _sizes_lock := Mutex.new()
 
 static func _sizes(library: PartLibrary) -> Dictionary:
 	if library == null:
 		return {}
-	if _sized_for == library:
-		return _sized
+	_sizes_lock.lock()
+	if _sized_for != library:
+		_size_tables(library)
+	var sized: Dictionary = _sized
+	_sizes_lock.unlock()
+	return sized
+
+
+static func _size_tables(library: PartLibrary) -> void:
 	_sized = {}
 	_size_of = {}
 	_sized_for = library
@@ -541,14 +553,15 @@ static func _sizes(library: PartLibrary) -> Dictionary:
 			_sized[size] = id
 	for size: String in _sized:
 		_size_of[_sized[size]] = size
-	return _sized
 
 
 ## Two smaller pieces of the same kind that cover a part's footprint:
 ## along its length first (a 1 x 6 from a 1 x 4 and a 1 x 2), then across
 ## it (a 2 x 4 from two 1 x 4s). The even split first, then the rest.
 static func _splits(part: String, sizes: Dictionary) -> Array:
+	_sizes_lock.lock()
 	var size: String = str(_size_of.get(part, ""))
+	_sizes_lock.unlock()
 	if size.is_empty():
 		return []
 	var kind: String = size.get_slice("/", 0)

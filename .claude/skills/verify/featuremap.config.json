@@ -2686,6 +2686,13 @@
       "entry": "src/dev/motions_probe.gd",
       "reach": "tools/probe.sh motions_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1's doors, 8808-1's steering, 4096-1's boom, 8841-1's chassis driven from its wheel, 31070-1's windscreen stopped; each defined over MCP, saved as .mpd and opened again, played, reversed, rendered; an .ldr, an .io, the autosave)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "table race",
+      "entry": "src/dev/table_race_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/table_race_probe.gd [-- --tries=N] [-- --only=mechanism,flex,style]   (a static table read for the first time on a worker and the main thread let go at once, each try a run of its own: Mechanism's gear table, Flex's pieces, Style's norms; every run stays up. Main before racefix died 35 of 80 on the gear table, signal 11 at mechanism.gd:78)",
+      "area": "model-io"
     }
   ]
 }

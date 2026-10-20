@@ -431,6 +431,12 @@ whole cycle.
 
 ### Fixed
 
+- The app no longer crashes when Claude looks at your model while a big
+  one is still opening. A model of 600 parts or more has its joints read
+  in the background as it opens, and Claude's look at it read the same
+  table of gears at the same moment; the two readings could leave the app
+  holding none, and it closed. That table and five like it are now read
+  either as the app starts or one reader at a time.
 - A BrickLink Studio file opens whole when it uses a part newer than the
   library. Studio carries every part's shape in the file, and now any part
   the library has not got is taken from there, where it used to be left

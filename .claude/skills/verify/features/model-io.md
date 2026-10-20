@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:carried parts in a browser, cli:LDraw files in storage -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage -->
 
 ## Sub-features
 
@@ -119,6 +119,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   at the same instant through first_here (and, with `-- cold`, without: the
   engine's crash, which it shows within ~4,000 rounds), and checks the warm-up
   goes all the way and that the carried parts ask for it.
+- `table race` (`Mechanism.table`, `Flex.kind_of_piece`, `Exact._sphere`,
+  `Exact.shape_for`, `Style.norms`, `Collection._sizes`): a static table
+  read at first use, and reached by a worker, is either made as its class
+  loads or read and filled under a lock. Put on one thread while another
+  copies it, the copy holds nothing: a session's look_at_model while a
+  750-part model opened (Grab reading its joints on a worker) stopped the
+  app at `mechanism.gd:78`, `Dictionary::is_empty` reading address 0x34
+  (racefix, 2026-10-20). Warming a table on the main thread before a
+  worker starts (`Assistant._checked`, `Sections`) covers only that
+  caller's worker. `table_race_probe` lets a worker and the main thread go
+  at once on each table, a run of the engine per try, and every run must
+  stay up; on main before the fix 35 of 80 died on the gear table.
 - `carried parts fetched` (`CustomParts.fetch_sources`, `unreached_by`,
   `PartForge.keep_fetched`): a part a file carries, or a skin, may be drawn
   from LDraw's own subparts and parts, which the desktop reads from
@@ -643,6 +655,7 @@ godot --headless --path . --script src/dev/carried_at_once_probe.gd -- rounds=12
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- dir=$PWD/.scratch-data/godot/app_userdata/Brickworks/custom_parts   # ...the parts kept from files, as start-up builds them
 godot --headless --path . --script src/dev/worker_first_run_probe.gd   # cold operators on every worker at once, through first_here: none wrong, no crash (~70 s)
 godot --headless --path . --script src/dev/worker_first_run_probe.gd -- cold rounds=8000   # the engine as it is: ends on SIGSEGV, rip 0x0 (expected; under gdb to see it)
+godot --headless --path . --script src/dev/table_race_probe.gd -- --tries=80   # each table read first on a worker and here at once, a run per try: every run stays up (~25 min; -- --only=mechanism for the crash alone)
 python3 tools/web/serve.py build/web 8840 --parts-url "$PARTS_URL" &   # a local export reading the real parts bucket
 node tools/web/carried_flow.mjs --url=http://127.0.0.1:8840/ --out=shots/carried vendor/omr/files/42082-1.mpd vendor/omr/files/21321-1.mpd
 godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: the car as GLB, glTF, OBJ, STL, read back
