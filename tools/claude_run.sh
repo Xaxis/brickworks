@@ -30,6 +30,12 @@ while [ $# -gt 0 ]; do
   esac
 done
 mkdir -p "$out"
+# Never the person's own app data (app_userdata/Brickworks under the
+# default XDG_DATA_HOME), as check.sh and doctor.sh (2026-10-20).
+if [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
+  XDG_DATA_HOME="$(mktemp -d "${TMPDIR:-/tmp}/brickworks-run-data.XXXXXX")"
+  export XDG_DATA_HOME
+fi
 
 # A port nobody is listening on.
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
