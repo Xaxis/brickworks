@@ -250,12 +250,29 @@ func _telescope() -> void:
 	var sim_slid: float = _slide_in(cradle, tube, sim_at)
 	print("  Simulate from the tilt wheel: the cradle %.2f°, the tube %.3f LDU in it; %s" % [
 		_turn_of(cradle, sim_at), sim_slid, _lines(sim)])
-	# Simulate's base holds the sub-assembly named Stand still whole, with the
-	# friction pin the tilt chain's idler is read fixed to: its chain locks
-	# there, where Grab's anchors turn it (a gap).
-	_gap("Simulate: the tilt wheel slides the tube in the cradle as Grab does (%.3f, Grab %.3f)" % [
+	# Simulate's base held the sub-assembly named Stand still whole, with the
+	# friction pin the tilt chain's idler is read fixed to: its chain locked.
+	_check("Simulate: the tilt wheel slides the tube in the cradle as Grab does (%.3f, Grab %.3f)" % [
 		sim_slid, slid], absf(sim_slid - slid) < 0.2)
 	await _picture("telescope_grab_tilt_wheel_45", placed)
+	# What a friction pin must hold on real bricks: the cradle and the tube's
+	# weight about the tilt line, tilted 45°.
+	var library: PartLibrary = _main.get("_library")
+	var grams: float = 0.0
+	var weighted := Vector3.ZERO
+	for key: int in placed:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+		if info == null or not _turned_with(key, cradle, placed):
+			continue
+		var g: float = Stability.grams(info)
+		grams += g
+		weighted += ((placed[key] as Transform3D) * info.bounds.get_center()) * g
+	var centre: Vector3 = weighted / maxf(grams, 0.001)
+	var line: Vector3 = Vector3(0.0, 158.0, 20.0)
+	var lever_mm: float = absf(centre.z - line.z) * 0.4
+	print("  real bricks: the cradle and tube, %.1f g, their centre %.1f mm across the tilt line at 45°: %.2f N·cm to hold" % [
+		grams, lever_mm, grams / 1000.0 * 9.81 * lever_mm / 10.0])
 	for part: int in [tilt, cradle]:
 		var said: String = await _say("move_part", {"part": "#%d" % part, "degrees": 45})
 		print("  move_part #%d degrees=45, let go: %s" % [part, said.get_slice("\n", 1)])
@@ -492,6 +509,16 @@ func _slide_in(cradle: int, tube: int, placed: Dictionary) -> float:
 	# The rod runs along z where the cradle was built, read in its own frame.
 	var rod: Vector3 = ((_built[cradle] as Transform3D).basis.inverse() * Vector3.BACK).normalized()
 	return (now - was).dot(rod)
+
+
+## Whether [param key] turned with [param cradle] in [param placed]: the
+## same move from where each was built.
+func _turned_with(key: int, cradle: int, placed: Dictionary) -> bool:
+	if not placed.has(key) or not placed.has(cradle):
+		return false
+	var mine: Transform3D = (placed[key] as Transform3D) * (_built[key] as Transform3D).affine_inverse()
+	var theirs: Transform3D = (placed[cradle] as Transform3D) * (_built[cradle] as Transform3D).affine_inverse()
+	return mine.basis.is_equal_approx(theirs.basis)
 
 
 ## Where [param ids] stand in the model now.

@@ -93,6 +93,7 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 	var held: Array = []
 	var named_base: bool = false
 	var labels: Dictionary = {}   ## brick id -> its sub-assembly's name
+	var framed: Dictionary = {}   ## brick id -> true: in a sub-assembly named as the frame
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var mesh: Lbm.PartMesh = from.mesh_for(brick.part_id)
@@ -106,8 +107,11 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 			held.append(brick.id)
 		elif Simulation.names_a_base(label):
 			named_base = true
-			held.append(brick.id)
-	out.model = Mechanism.build(list, held)
+			framed[brick.id] = true
+	if framed.is_empty():
+		out.model = Mechanism.build(list, held)
+	else:
+		out.model = Mechanism.build(list, Simulation._frame_held(list, held, framed, from))
 	if held.is_empty():
 		out.base_said = "the largest rigid part"
 	else:
@@ -116,6 +120,33 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 		if named_base:
 			out.base_said += ", with the sub-assemblies named as its frame"
 	out._name_bodies(labels)
+	return out
+
+
+## What a frame named so holds still, with [param held] (the baseplate's):
+## each body of [param framed] parts as the parts join them, but a body held
+## to the frame only by a pin or an axle the frame lists, which turns in it
+## with what is on it. The telescope's Stand lists the friction pin its
+## tilt chain's idler is read fixed to (docs/MECHANISMS.md, section 27):
+## held whole, the frame held the idler, and the chain read locked.
+static func _frame_held(list: Array, held: Array, framed: Dictionary, from: PartLibrary) -> Array:
+	var loose: Mechanism = Mechanism.build(list, held)
+	var out: Array = held.duplicate()
+	for body: int in loose.bodies:
+		var keys: Array = loose.bodies[body]
+		var holds: bool = false
+		var all_framed: bool = true
+		for key: int in keys:
+			if not framed.has(key):
+				if not held.has(key):
+					all_framed = false
+				continue
+			var info: PartLibrary.PartInfo = from.parts.get((loose.parts[key] as Mechanism.Piece).part)
+			var name: String = info.name if info != null else ""
+			if not (name.begins_with("Technic Pin") or name.begins_with("Technic Axle")):
+				holds = true
+		if holds or all_framed:
+			out.append_array(keys)
 	return out
 
 
@@ -534,7 +565,7 @@ func _read_loop(body: int) -> void:
 		solved["locked"] = false
 		solved["meshes"] = []
 		solved["culprits"] = []
-	solved["said"] = "turned as a drag turns it, %s" % grab.linkage.said()
+	solved["said"] = "moved as a drag moves it: %s" % grab.linkage.said()
 
 
 
