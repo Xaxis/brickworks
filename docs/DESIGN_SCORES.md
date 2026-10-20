@@ -1422,6 +1422,104 @@ Results: `bench/results/realset-2026-10-19-t3lay/` (both halves),
 digests, the stopped first version and an example picture in
 `technique3-2026-10-19/`.
 
+### The planned way laid, on the 44 of proof (2026-10-20, not ready)
+
+Ten proof subjects leaned every way toward the planned way laid (technique
+none to 4 of 20, overall 20% to 30%) and could not resolve it. The 34 subjects
+the halves grew by had never been seen by any lever, so this is its proof,
+run once.
+
+**The arm** (`t3lay44`): the lever unchanged (`aad64d3`'s src/ai, its three
+probes passing on the merge: build_plan 30, legs 112, boom 135), merged with
+realset2 (`ea06f75`) so main's code and the test's are what main's 44 ran on.
+The 34 new subjects are this run's designs; the first ten are t3lay's, copied
+in as realset2 copied t2base's into main's. One design a subject on the
+subscription, drawn on the GPU, two at a time, started bare.
+
+**Ready means** technique against the sets moves beyond noise on the 44 (the
+paired interval against main's leaves zero), and likeness, surface and
+overall do not fall beyond noise.
+
+**It did not move technique.** All 44, against main's 44 (`realset-2026-10-19-main`):
+
+| dimension | main preferred to the set | t3lay44 preferred to the set | t3lay44 minus main, paired (95%) | t3lay44 preferred to main, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 22% (12-36) | 25% (15-39) | +3 (-7, +15) | 47% (33-61) |
+| surface | 26% (15-41) | 26% (15-41) | +0 (-9, +9) | 48% (34-62) |
+| colour | 26% (15-41) | 23% (13-37) | -3 (-14, +7) | 48% (34-62) |
+| technique | 12% (6-25) | 15% (7-28) | +2 (-3, +9) | 58% (43-71) |
+| creativity | 35% (23-50) | 35% (23-50) | +0 (-14, +12) | 55% (40-68) |
+| overall | 20% (11-35) | 22% (12-36) | +1 (-7, +10) | 55% (40-68) |
+
+The first ten were the whole of the lean. Split:
+
+| dimension | the first ten, t3lay minus main | the 34 new, t3lay44 minus main | the 34 new against the set: main, t3lay44 |
+|---|---|---|---|
+| likeness | +15 (-10, +45) | +0 (-12, +12) | 21%, 21% |
+| surface | +5 (-20, +35) | -1 (-9, +6) | 26%, 25% |
+| colour | +5 (-10, +20) | -6 (-18, +6) | 28%, 22% |
+| technique | +20 (0, +40) | -3 (-7, 0) | 16%, 13% |
+| creativity | +10 (-10, +35) | -3 (-18, +12) | 38%, 35% |
+| overall | +10 (0, +30) | -1 (-12, +9) | 21%, 19% |
+
+- **Technique's interval holds zero** on the 44, (-3, +9): not ready. Nothing
+  fell beyond noise either: likeness, surface and overall are within 3 points
+  of main's. Head to head the judge leaned to the lever on technique (58%) and
+  overall (55%), every interval holding a tie; on the 34 new alone 56% and 53%.
+- **On the 34 new it won technique against the set on no subject main did
+  not.** Both arms' technique verdicts there came from the same five subjects:
+  the two Promotional sets, two Architecture, one Minecraft, won alike by
+  both. Main also took half of a City set and of another Architecture set that
+  the lever did not. The subject decides technique against the set, not the
+  arm.
+- **The first ten's three wins were three subjects** where a planned part is a
+  kind the sets shape on joints (a clothes rack, a bee's wings, a container
+  stacker's boom), each sent back to its joints or laid by the pattern. The new 34 are mostly
+  buildings (14 Architecture) and vehicles (8 Technic): little of either is
+  legs or a boom.
+
+**The lever reached every session; its laying part almost none.** Over the 34
+new sessions (their transcripts, counted, not read for lessons): every one was
+shown its plan's real ones, 43 sheets; the shape rule sent 24 sub-assemblies
+back, in 16 sessions, to lead with hinged or angled. The boom entry went to one
+plan, a Technic one, the legs entry to none, and no session submitted a
+pattern.
+
+**What they are made of** (medians over the 44, tools/style.py; SNOT and joints
+also as means; floating by the build check, every design and set audited, a
+median 0%):
+
+| | parts | shapes per 100 | shaped | 1 x 1 | colours | tiles | SNOT (mean) | joints (mean) |
+|---|---|---|---|---|---|---|---|---|
+| main | 288 | 14 | 27% | 27% | 10 | 16% | 4% (7%) | 0% (0.6%) |
+| t3lay44 | 311 | 12.9 | 23% | 29% | 11 | 20% | 12% (12%) | 0% (0.8%) |
+| the sets | 344 | 16.6 | 25% | 17% | 13 | 11% | 27% (34%) | 4% (6.4%) |
+
+SNOT held v3's gain (three times main's median), tiles rose 4 points, shaped
+parts fell 4 and joints stayed where main's are (a joint part in 20 designs
+of 44, main's 21). The judge did not count the SNOT as technique.
+
+**What it says.**
+- *Ten subjects gave a lean the next 34 did not repeat.* The proof's first ten
+  had three subjects of the one kind this lever is for; 34 more had almost none.
+  At 44 the lever is worth at most about 9 points of technique against the
+  sets, and probably none.
+- *The lever acts only where a sub-assembly is of a kind shaped on joints,*
+  and that is a few subjects in ten. The plan sheets and the shape rule reached
+  all 34, and the designs' joints came out as main's did.
+- *It costs time.* Sessions on the 34 took 13 minutes at the median (main's
+  11), up to 25 (main's 36).
+
+Two at a time on the subscription, each design taking the GPU for itself, the
+34 designs took 4 h 55 min (01:38 to 06:33), nine minutes a subject; the build
+check and the 68 new head-to-head verdicts (the first ten's are t2base-vs-t3lay's,
+copied) another 11 minutes.
+
+Results: `bench/results/realset-2026-10-20-t3lay44/` (report-proof.md;
+arm.json says which designs are t3lay's), `realset-2026-10-20-main-vs-t3lay44/`
+(head to head), and the split, the reach count and their scripts in
+`t3proof-2026-10-20/`.
+
 
 
 ## Against an outside ruler: BrickBench (2026-10-14)

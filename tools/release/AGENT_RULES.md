@@ -6,7 +6,9 @@ the problem, the proof. Each rule here was learned from a real incident; the
 date says when.
 
 ## The unit
-- One bounded unit, then stop. Commit, then end the final message with exactly
+- One bounded unit, then stop. **Do it yourself: never spawn subagents.**
+  The owner watches the agent count, and eight subagents appeared under one
+  unit on 2026-10-20. Read in sequence, or ask the lead for help. Commit, then end the final message with exactly
   one line `ready: <sha>` or `not ready: <sha>`.
 - The final report: the ready line's sha first, then at most 20 lines (what
   changed, each check with its numbers, what is left). Longer reports were cut
