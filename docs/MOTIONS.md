@@ -363,7 +363,12 @@ the gates" by that name (both gates 90°). The SQL: `tools/apply_sql.mjs
 supabase/motions.sql --dry --try=tools/motions_try.sql` and
 `tools/sql_compare.mjs supabase/motions.sql motions` (17 of 17 the same),
 `tests/test_motions.py`. share_view_probe (173), share_flow (49) and
-discovery_flow (48) through the same relay, as before.
+discovery_flow (48) through the same relay, as before. The viewer's frame
+gate, play_flow's racer drag on the phone slowed four times, is the box's
+at a load of 26 to 47 on 24 cores: the build before this (rel-m115's) 64.3
+and 20.9 ms at worst, this one 15.1 and 44.2, in turn (held to 33 ms; 7.5
+on the laptop). What runs a frame here is three checks of empty lists
+until a motion plays.
 
 Left for later:
 - supabase/motions.sql is written and dry-run, not applied: until it is,
