@@ -278,6 +278,26 @@ plan with Claude as the client.
   targeted every call after, and built in its own model alone (71→72,
   44→45), each toolbar reading `Claude working · tab <its id>`
   (`bench/results/tabpair-2026-10-17/claude_tabs`).
+- `two real chats walk` (`tools/web/tabwalk_flow.mjs`, local only: it spends
+  the Claude plan for about 15 minutes, marked so in `preview_checks.sh`).
+  Start a local relay with the web export (`node --env-file=.env
+  tools/web/relay_server.mjs 8920 --static=build/web`), then `node
+  --env-file=.env tools/web/tabwalk_flow.mjs --url=http://127.0.0.1:8920/app
+  --out=DIR`. One Chromium, one throwaway account with Claude Code signed in
+  by OAuth; tab A emptied by File > New, tab B by File > New tab; each tab's
+  New chat for this tab gives the first message. Two `claude -p` sessions on
+  the subscription (stream-json in and out, Brickworks their only tools) are
+  sent "<first message> Build a small house" and "... a small car" at once,
+  then "change one small thing", then "Undo that change"; a third, told no
+  tab, "Add a tree to my Brickworks model", then "The house tab." Checks:
+  every answer each chat got names its own tab and never the other's; each
+  tab's toolbar says one chat, different chats; both undos leave the stored
+  model's parts as built; the third chat changes nothing and asks; the tree
+  lands in A only, whose toolbar then says `2 Claude chats`; both tabs
+  reloaded keep every part shown. Transcripts `chat1_house.jsonl`,
+  `chat2_car.jsonl`, `chat3_tree.jsonl`, pictures `<stage>_<tab>.png` (and
+  `_account.png`), `stages.json`. The first walk (2026-10-19) found a
+  minifigure Claude stood up lost on reload (`CommandSocket.model_changed`).
 - `progress check` (`tools/web/progress_check.mjs`, 2026-10-12): presses each
   slow thing in Chromium on SwiftShader and times it against the press's own
   time in the page — how long before the status bar's bar (`Working`) was

@@ -700,7 +700,13 @@ All of these are in `tools/check.sh`.
   the edit and keeps the brick, a second Undo takes the brick; then
   submit_design, review_model of a feature, edit_model (recolour, move,
   remove), restyle_model, add_minifig and clear_model, each one step that
-  Undo puts back exactly.
+  Undo puts back exactly, and each told to the autosave: a call that moved
+  the world's revision raises `CommandSocket.model_changed`, which Main
+  wires to `_on_model_changed` for the connector's socket and the port's.
+  A figure goes down past the builder's signals (`Builder.put_figure`), so
+  before 2026-10-19 a minifigure Claude stood up was lost on reload, and a
+  clear_model went unsaved (the probe calls through the app's own connector
+  socket, and fails both without it).
 - **A tool waits for geometry; it never says "not arrived".** On the web a
   part's geometry comes from the parts bucket the first time it is asked for.
   attachment_points answered "has not arrived yet" for 32523 and 87559, both
