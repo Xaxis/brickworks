@@ -22,21 +22,21 @@ and writes nothing to the renderer. There are no new controls.
   count. Over SLOW_MS (50 ms), it cuts the next rung. At 4x over it cuts
   two, at 16x three. Then, while a rung is left, it looks again: after
   the last a look could cut nothing.
-- **In a browser it also waits for the drawing.** A browser hands each
+- **In a browser each frame waits for the drawing.** A browser hands each
   frame to its GPU process and goes on; the frame is drawn there later. In
   software, a dozen frames were handed over at the display's 17 ms each
-  while SwiftShader took 0.3 to 3 s to draw each one. So on the web a look
-  ends with a fence after its frames (`GpuFence`), and when it passes, the
-  look is judged again by the time from its start, less its frames' own
-  work, a frame. On the desktop there is no fence.
-- **A look held apart is timed from its last hold.** The parts bin reads
-  its pictures back while the editor's first look is drawn, and `GpuFence`
-  holds the drawing until each is read, so the look's frames come apart.
-  Right after a hold the card has done everything asked of it, so the
-  fence times the look from its last frame after a hold. With fewer than
-  eight frames after it (as many as a look not held draws) it is taken
-  again once nothing has held the drawing for a second
-  (`GpuFence.unheld_ms`), at most three times in a row.
+  while SwiftShader took 0.3 to 3 s to draw each one. So on the web each
+  frame of a look has a fence after it (`GpuFence`), and is timed from when
+  the card had done the frame before it (or from its own start, if later)
+  to when its fence is seen passed, less its own work; frames seen done
+  together share the time. The look draws its next frame only while fewer
+  than two of its frames are still to be drawn (`IN_FLIGHT`), skips no
+  warm frames, and when three in a row are each over 200 ms (`SOON`,
+  `FAR_MS`) judges at once by the second fastest of them; under that it
+  judges by six, as on the desktop (Judged a frame at a time, below). A
+  hold (`GpuFence`, while the parts bin reads its pictures back) cannot
+  make a frame timed by its own fence read slow or quick. On the desktop
+  there is no fence.
 - It only lowers the look, never raises it within a session. Probes leave it
   off unless they call `watch()`, as IdleDraw does. It is also off when
   headless.
@@ -244,8 +244,9 @@ the look's frames came at 6.0, 7.6 and 8.4 s with the drawing held 1.6 and
 0.6 s between them; its six timed frames, handed over at 17 to 24 ms, said
 quick; and nothing was cut in the 100 s the page was then left alone.
 
-Now the look is timed to its fence from its last frame after a hold (the
-nine frames after 8.4 s there), and cut by that. Measured with
+Then, until 2026-10-20, the look was timed to its fence from its last
+frame after a hold (the nine frames after 8.4 s there), and cut by that.
+Measured with
 `look_cost.mjs --mode=acts --scenes=empty`, main and this branch in turn,
 A B A B, in Chromium on SwiftShader. `--from=30` begins both builds' acts
 30 s after the engine started, so both are turned at the same moment. A
@@ -285,8 +286,67 @@ more frames at full cost, and its fence waited behind the first look's
 frames too. Its first turns read better by default (505, 181 and 193 ms,
 against 486, 265 and 457 here and 652, 649 and 485 on main) only because
 those twelve frames kept the page from going quiet, so its acts began
-later, after its cuts. It stays for a look with too few frames after its
-last hold to judge.
+later, after its cuts. It stayed for a look with too few frames after its
+last hold to judge, until each frame was timed by its own fence (below).
+
+## Judged a frame at a time
+
+A look handed its frames over at the page's pace, a dozen queued in the
+GPU process, and its one fence waited for all of them. Recorded every
+quarter second on main (3b813832, m105), the phone at 390 x 844 at 3x with
+its CPU slowed four times, in Chromium on SwiftShader: the first look began
+at 20.4 s (the engine took 20 s to start on the slowed CPU), its frames
+went over within half a second at 11 to 21 ms each and said quick, and its
+fence passed at 28.6 s, 8.1 s later: 972 ms a frame, three rungs cut.
+The bin's first read-back waited behind them, holding the drawing 4.7 s.
+
+Now each frame of a look has its own fence, the next is drawn only while
+at most one is still to be drawn, and three over 200 ms are judged at once
+(How the app decides, above). The same recording on this branch: the look
+began at 21.1 s, its frames were timed at 2,436 ms (it waited for what the
+page had queued while loading), 739 and 847, and three rungs were cut at
+24.5 s, 3.4 s after the look began; one more at 27.5 and the last at 28.6
+s, against 28.6 and 30.4 on main.
+
+`look_cost.mjs --mode=acts --gate --scenes=empty --throttle=4` (the
+phone's CPU slowed four times, the laptop's not), local exports of main
+(3b813832) and this branch, interleaved main, branch, branch, main, one
+heavy slot each. When the cuts landed, by the engine's clock, and the
+first turn of the view, begun as soon as the page was quiet: a frame by
+the fence, and the cuts in force when it began.
+
+| | main r1 | branch r1 | branch r2 | main r2 |
+|---|---|---|---|---|
+| phone, first cut | 28.5 s, three | 24.3 s, three | 24.0 s, three | 28.8 s, three |
+| phone, every rung | 33.0 s | 31.5 s | 30.1 s | 34.0 s |
+| phone, first turn | 187 ms at 28.9 s, three cut | 178 ms at 25.9 s, three | 169 ms at 25.7 s, three | 187 ms at 28.4 s, none |
+| laptop, first cut | 10.7 s, two | 7.8 s, two | 7.8 s, two | 10.4 s, two |
+| laptop, every rung | 13.2 s | 12.1 s | 12.1 s | 13.1 s |
+| laptop, first turn | 167 ms at 10.5 s, none | 170 ms at 7.4 s, none | 160 ms at 8.0 s, two | 161 ms at 10.4 s, none |
+| load (uptime, before / after) | 2.8 / 10.5 | 10.5 / 10.4 | 10.4 / 10.4 | 10.4 / 11.6 |
+
+The first cut lands 4.2 to 4.8 s sooner on the phone and 2.6 to 2.9 s on
+the laptop; every rung 1.5 to 3.9 s and 1.0 to 1.1 s sooner. The page is
+quiet about 3 s sooner, so the first turn comes 3 s sooner and costs no
+more: 169 and 178 ms against 187 on the phone, 160 and 170 against 161 and
+167 on the laptop. Turned with `--from` (26 s on the phone, 9 on the
+laptop, once each): the phone's first turn 124 ms at 26.8 s with four rungs
+cut, against main's 158 at 29.0 s with three; the laptop's 136 ms at 9.2
+s with two, against 168 at 10.8 s with none. Main's turns there came later
+than asked: its page was quiet only then. The acts after, with every rung
+cut on both, cost the same: drags 101 to 109 ms a frame, the brick swept
+142 to 144 on the phone and 105 to 113 on the laptop.
+
+Two things this build got wrong first, each found in these runs:
+
+- Fences seen passed in the same page frame were timed one by one, the
+  second at nothing. A phone turned while a look was open, its frames
+  queued at the page's pace, was judged at 82 ms a frame while each took
+  200, and cut one rung where it wanted two. They share their time now.
+- Judged at once by the fastest of the three, the phone's first look read
+  585 to 606 ms and cut two rungs; by the second fastest, as six are,
+  862 to 878 and three, and every rung was cut by 30.1 to 31.5 s instead
+  of 33.1 (main 31.5 to 34.0 in four runs).
 
 ## Standing still: Render's set made ready
 
@@ -384,17 +444,24 @@ on Forward+ and Compatibility (above), and look_cost is what measured it.
   a thirty-sixth) and stretched. The interface stays sharp. SwiftShader is
   still over the budget with all of it cut (167 to 513 ms a frame), so
   that is where it ends there.
-- **A turn in the first 15 to 20 s still waits for the cuts.** The
-  editor's first look is now judged while the page loads (above), every
-  rung cut by 15 s on the laptop and 22 s on the phone with nobody
-  touching it, where main cut nothing until the view was turned. A turn
-  sooner than that still runs before the cuts or with the look's frames
-  queued ahead of it: 265 and 270 ms a frame on the laptop turned as soon
-  as the page was quiet, against 505 and 526 on main.
+- **A turn before the first cut still runs at full cost.** The editor's
+  first look is judged while the page loads (above), and since 2026-10-20
+  a frame at a time: the first cut at 24 s on the phone with its CPU
+  slowed (its engine takes 20 s to start) and 8 s on the laptop, against
+  28.5 to 28.8 and 10.4 to 10.7 on main. The page is quiet sooner too, so
+  a turn begun as soon as it was quiet came before the laptop's first cut
+  in one run of two (170 ms a frame, against main's 167 turned 3 s later).
+  The frames the page draws by itself while it loads still queue ahead of
+  the look (Next 5).
+- **A capable device in a browser is not seen.** Each frame of a look is
+  timed to the page frame its fence is seen in. Reasoned to read the
+  page's pace, as before, and proved only with the probe's own fences on
+  the desktop (Next 6).
 - **Frames drawn on purpose.** A look draws frames nobody asked for: in
   software up to 10 to 20 of them, 0.3 to 3 s each, over the first half
-  minute. A look held apart with fewer than eight frames after its last
-  hold draws its ten again, at most three times in a row. None is drawn
+  minute; since 2026-10-20 one at a time as the card finishes them, 5 to
+  7 a look on the slowed phone against main's twelve, about as many in
+  all (20 by 28.6 s, main 19 by 30.4). None is drawn
   after the last rung is cut. One was, until m93 moved the cuts into the
   page's loading: over Orthanc (9,541 parts) in software the last cut was
   judged 80 s in, between the parts bin's read-backs, and the look after it
@@ -431,6 +498,10 @@ node tools/web/look_cost.mjs --url=http://127.0.0.1:PORT --out=DIR --mode=acts -
     --scenes=empty --from=30
 ```
 
+`--throttle=4` slows the phone's CPU four times (Chromium's
+`Emulation.setCPUThrottlingRate`), as a phone's is; the laptop's is not.
+Each act's row says when it began by the engine's clock (`at_s`).
+
 Each act says the cuts in force when it began. Without `--from` the acts
 begin once the page is quiet, which comes when a build stops drawing, so
 a build that draws more while it loads is turned later.
@@ -439,20 +510,27 @@ a build that draws more while it loads is turned later.
 
 1. Done (2026-10-19): a look held apart is timed from its last hold, and
    taken again when too few frames follow it (The editor's first look,
+   above). Replaced by 2.
+2. Done (2026-10-20): each frame of a look timed by its own fence, at most
+   two queued, three far over judged at once (Judged a frame at a time,
    above).
-2. Judge a look sooner on a slow device. Its frames are handed over at
-   17 ms each and a dozen queue in the GPU process, so its fence waits for
-   all of them: on a 3x phone in software eight frames at 1.3 s, 15 to 19 s
-   in, and the frames after a cut wait behind them. A look that draws its
-   next frame only once the last one's fence has passed would judge after
-   a few and leave nothing at full cost queued. Its time a frame would then
-   be read to the nearest page frame, though, which a capable device must
-   never be cut by.
 3. Measure on a real weak device, a phone and a laptop's integrated card.
    SwiftShader stands in for one: there a frame costs its pixels, and on a
    real card multisampling, glow and the shadow atlas may weigh more.
 4. ssao (Forward+, the desktop) is first on the ladder and not measured:
    the web has none to measure.
+5. The frames the page draws by itself while it loads still queue ahead
+   of a look: on the slowed phone the first look's first frame waited
+   2.4 s behind them, and after the first cut the next look's first frame
+   waited about 2 s behind three more. Only the look's own frames are
+   paced.
+6. A capable device in a browser is not measured: every browser here
+   draws in software. A frame timed by its fence is read to the page frame
+   the fence is seen in; with two in flight the page frame or two that
+   takes is counted once, so a capable device's frames read as the page's
+   pace, as they did when the page timed them. `look_probe`'s quick card
+   (the desktop, fences of its own) read 2.6 to 7.9 ms and cut nothing,
+   but a real browser on a real card has not been seen to.
 
 ## Proposal: a switch for the look
 
