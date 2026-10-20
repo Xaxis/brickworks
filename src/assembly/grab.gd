@@ -1332,11 +1332,32 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
 	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
 	if clear[4] == PAIR_UNKNOWN and shape_a != null and shape_b != null and shape_a.has_pieces() \
-			and shape_b.has_pieces() and Grab._pieces_apart(Grab._about_line(shape_a, pair[5], pair[7]),
-				Grab._about_line(shape_b, pair[6], line), float(pair[8])):
-		clear[4] = PAIR_NEVER
-		_pair_clear[n] = clear
-		return true
+			and shape_b.has_pieces():
+		# Each part's pieces only where the other reaches along the line, and
+		# as far again as the joint slides: none further can meet it.
+		var way: Vector3 = (b.transform.basis * line).normalized()
+		var middle: float = (b.transform * (pair[6] as Vector3)).dot(way)
+		var reach_a: Vector2 = Grab._reach_along(a.transform, library.mesh_for(a.part_id).bounds, way) \
+			- Vector2(middle, middle)
+		var reach_b: Vector2 = Grab._reach_along(b.transform, library.mesh_for(b.part_id).bounds, way) \
+			- Vector2(middle, middle)
+		var spare: float = float(pair[8]) + PAIR_ALONG_SLACK
+		# Kept by the two shapes and where the joint is in each: the same pair
+		# in the next grab is not read again.
+		var key: String = "%d|%d|%s|%s|%s|%s|%.2f" % [shape_a.id, shape_b.id,
+			(pair[5] as Vector3).snapped(Vector3.ONE * 0.01), (pair[7] as Vector3).snapped(Vector3.ONE * 0.0001),
+			(pair[6] as Vector3).snapped(Vector3.ONE * 0.01), line.snapped(Vector3.ONE * 0.0001), float(pair[8])]
+		var apart: Variant = _apart_known.get(key)
+		if apart == null:
+			apart = Grab._pieces_apart(Grab._about_line(shape_a, pair[5], pair[7], reach_b.x - spare, reach_b.y + spare),
+				Grab._about_line(shape_b, pair[6], line, reach_a.x - spare, reach_a.y + spare), float(pair[8]))
+			if _apart_known.size() > 2000:
+				_apart_known.clear()
+			_apart_known[key] = apart
+		if bool(apart):
+			clear[4] = PAIR_NEVER
+			_pair_clear[n] = clear
+			return true
 	if clear[4] == PAIR_UNKNOWN:
 		# Into each other where the grab began, or one with no exact shape
 		# (covers cannot judge a joint's own pieces): forgiven, as the rest of
@@ -1360,14 +1381,17 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 
 
 ## Each piece of [param shape] about the line through [param point] along
-## [param way] (the part's own frame): [least and most along the line, least
-## and most from it]. A turn about the line keeps each point's place along
+## [param way] (the part's own frame) that reaches between [param from] and
+## [param to] along it: [least and most along the line, least and most from
+## it]. A turn about the line keeps each point's place along
 ## it and its distance from it, so two parts whose pieces share no place
 ## there cannot meet as their joint turns: 8808-1's steering arms, whose
 ## kingpins go through two plates each; where the plates are along the line
 ## only the kingpin is, narrower than their holes. Kept by shape and line.
-static func _about_line(shape: Exact.Shape, point: Vector3, way: Vector3) -> Array:
-	var key: String = "%d|%s|%s" % [shape.id, point.snapped(Vector3.ONE * 0.01), way.snapped(Vector3.ONE * 0.0001)]
+static func _about_line(shape: Exact.Shape, point: Vector3, way: Vector3, from: float = -INF,
+		to: float = INF) -> Array:
+	var key: String = "%d|%s|%s|%.1f|%.1f" % [shape.id, point.snapped(Vector3.ONE * 0.01),
+		way.snapped(Vector3.ONE * 0.0001), from, to]
 	var known: Variant = _footprints.get(key)
 	if known != null:
 		return known
@@ -1375,7 +1399,14 @@ static func _about_line(shape: Exact.Shape, point: Vector3, way: Vector3) -> Arr
 	var v: Vector3 = way.cross(u)
 	var out: Array = []
 	var flat := PackedVector2Array()
+	var spread := Vector3(absf(way.x), absf(way.y), absf(way.z))
 	for piece: Exact.Piece in shape.pieces:
+		# Its box first: a piece wholly outside [from, to] along the line is
+		# left out ([param from] and [param to] from [param point]).
+		var middle: float = ((piece.lo + piece.hi) * 0.5 - point).dot(way)
+		var half: float = ((piece.hi - piece.lo) * 0.5).dot(spread)
+		if middle + half < from or middle - half > to:
+			continue
 		var lo: float = INF
 		var hi: float = -INF
 		var far: float = 0.0
@@ -1404,6 +1435,7 @@ static func _about_line(shape: Exact.Shape, point: Vector3, way: Vector3) -> Arr
 
 
 static var _footprints: Dictionary = {}
+static var _apart_known: Dictionary = {}
 ## Two pieces this far into each other along a joint's line, or across it,
 ## LDU, as [method _about_line] reads them, can still not be said to meet:
 ## a face flush on a face, a kingpin's facets in its hole's (a quarter of
@@ -1416,19 +1448,25 @@ const PAIR_ACROSS_SLACK := 0.25
 ## it) shares a place along the line and a distance from it with a piece of
 ## the other ([param b]), the other slid as far as [param slide] either way.
 static func _pieces_apart(a: Array, b: Array, slide: float) -> bool:
-	# The other's pieces by where they lie along the line, a cell every 4 LDU.
-	var cells: Dictionary = {}
+	# The other's pieces by where they lie along the line, a cell every 4 LDU,
+	# and how near the line any of them comes: a piece of this one no further
+	# out than that meets none (a kingpin in its holes).
+	var cells: Dictionary = {}   ## cell -> Array of indices into b
+	var nearest: float = INF
 	for k: int in b.size():
 		var one: PackedFloat32Array = b[k]
+		nearest = minf(nearest, one[2])
 		for cell: int in range(floori((one[0] - slide) / 4.0), floori((one[1] + slide) / 4.0) + 1):
-			if not cells.has(cell):
-				cells[cell] = PackedInt32Array()
-			var list: PackedInt32Array = cells[cell]
-			list.append(k)
-			cells[cell] = list
+			var list: Variant = cells.get(cell)
+			if list == null:
+				cells[cell] = [k]
+			else:
+				(list as Array).append(k)
 	for mine: PackedFloat32Array in a:
+		if mine[3] - nearest <= PAIR_ACROSS_SLACK:
+			continue
 		for cell: int in range(floori(mine[0] / 4.0), floori(mine[1] / 4.0) + 1):
-			for k: int in cells.get(cell, PackedInt32Array()):
+			for k: int in cells.get(cell, []):
 				var theirs: PackedFloat32Array = b[k]
 				if minf(mine[1], theirs[1] + slide) - maxf(mine[0], theirs[0] - slide) > PAIR_ALONG_SLACK \
 						and minf(mine[3], theirs[3]) - maxf(mine[2], theirs[2]) > PAIR_ACROSS_SLACK:

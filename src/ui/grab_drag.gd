@@ -43,8 +43,9 @@ const LOOP_BUDGET_MS := 24.0
 ## A loop's way may be checked this long in a frame of a pause, ms
 ## (Grab.pause_budget_ms), the rest in the frames after: a pause asks the
 ## loop's own joints' parts too (Grab 15), and at the loop's 24 ms it took
-## 37 to 46 ms of a frame on a phone at a quarter speed.
-const PAUSE_BUDGET_MS := 8.0
+## 35 to 42 ms of a frame on a phone at a quarter speed (8808-1's steering,
+## play_flow); the part or pair begun last may take as long again.
+const PAUSE_BUDGET_MS := 4.0
 ## A small section's way may be tested this long in a frame, ms (Grab.walk_budget_ms).
 const WALK_BUDGET_MS := 2.0
 ## More parts than this moving is a big section.
