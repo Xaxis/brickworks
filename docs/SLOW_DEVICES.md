@@ -20,7 +20,8 @@ and writes nothing to the renderer. There are no new controls.
 - It judges by the second fastest of the last six frames, so a quick
   device's rare long frames (a shader compiled, a model read in) never
   count. Over SLOW_MS (50 ms), it cuts the next rung. At 4x over it cuts
-  two, at 16x three. Then it looks again.
+  two, at 16x three. Then, while a rung is left, it looks again: after
+  the last a look could cut nothing.
 - **In a browser it also waits for the drawing.** A browser hands each
   frame to its GPU process and goes on; the frame is drawn there later. In
   software, a dozen frames were handed over at the display's 17 ms each
@@ -347,7 +348,12 @@ on Forward+ and Compatibility (above), and look_cost is what measured it.
 - **Frames drawn on purpose.** A look draws frames nobody asked for: in
   software up to 10 to 20 of them, 0.3 to 3 s each, over the first half
   minute. A look held apart with fewer than eight frames after its last
-  hold draws its ten again, at most three times in a row.
+  hold draws its ten again, at most three times in a row. None is drawn
+  after the last rung is cut. One was, until m93 moved the cuts into the
+  page's loading: over Orthanc (9,541 parts) in software the last cut was
+  judged 80 s in, between the parts bin's read-backs, and the look after it
+  drew 12 frames in the 5 s `tools/web/outline_check.mjs` stands still
+  with a figure outlined (bar: one a second). On m87 and m91 it drew 1.
 - Nothing measurable in the app's own work (the frames gate above), and
   nothing on a capable device (the pictures above).
 

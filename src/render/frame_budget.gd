@@ -352,8 +352,15 @@ func _decide(cost: float) -> void:
 			next.append(cut)
 	judged.append([Time.get_ticks_msec(), snappedf(cost, 0.1), next])
 	_apply(next)
-	# And look again at once, at what is drawn now.
-	look()
+	# And look again at once, at what is drawn now, while there is more to
+	# cut. After the last a look can change nothing, and its dozen frames
+	# drawn on purpose came while a person stood still: Orthanc's last cut
+	# in Chromium on SwiftShader was judged 80 s in, between the parts bin's
+	# read-backs, and outline_check counted 12 frames in 5 s (2026-10-19).
+	if cuts.size() < _ladder.size():
+		look()
+	else:
+		_looking = 0
 
 
 ## A check's own cuts, held until let go: [wanted] are cut, in that order,
