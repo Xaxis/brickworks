@@ -396,10 +396,15 @@ func _same_frames(who: String, motion: String, compared: Array, again: Array) ->
 		compared[0] == drawn.poses.size() and camera and placed == moving)
 	# StudioRender does not draw a frame twice bit for bit: the dialog drawing
 	# the same frames again, back to back, differs in thousands of pixels by
-	# a few levels. Across the paths they differ no more than that.
+	# a few levels. Across the paths they differ no more than that. How much
+	# the dialog differs from itself moves from run to run (by 1, then by 11,
+	# 384 pixels, then 7,927), so it is a floor, not the bar: the paths
+	# differed by 8 where the dialog twice differed by 1 (m119, 2026-10-20),
+	# and a part out of place differs by a hundred levels or more.
 	_check("...and the pixels as alike as the dialog's own drawn twice: %d differ, by %d of 255 at most (the dialog twice: %d, by %d)"
 		% [compared[1], compared[2], again[1], again[2]],
-		int(compared[2]) <= int(again[2]) + 4 and int(compared[1]) <= maxi(int(again[1]) * 2, compared[0] * 480))
+		int(compared[2]) <= maxi(int(again[2]) + 4, 16)
+			and int(compared[1]) <= maxi(int(again[1]) * 2, compared[0] * 480))
 
 
 ## [frames compared, pixels that differ, the most a channel differs (of 255)].
