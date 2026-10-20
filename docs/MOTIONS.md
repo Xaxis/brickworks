@@ -509,7 +509,11 @@ panel" AFTER it.
   a sequence's Play draw every frame with every part (`whole_frames`):
   drawn on the model as it ends, a motion's frames had shown a later one's
   parts where they end. The last render's frame of another model is no
-  longer shown when the panel opens on this one.
+  longer shown when the panel opens on this one. The status line shows
+  its words whole (it stopped at six lines, and a sequence's ran past
+  them): the panel grows to them, and only where the window has no room
+  even with the lists at their least does it show as many lines as fit,
+  ending "…", with every word in its tooltip (`PosePanel._fit`).
 - **MCP**: `define_motion {"name": "Show it all", "sequence": [...]}` keeps
   it and plays it once to check, each from where the one before left the
   model, then puts the model back; list_motions shows `"Show it all", 8 s,
@@ -559,11 +563,13 @@ doors to 85° and 1.875 turns):
   best view is the front (80%, the front corner 51%); "Show it all" is
   pictured from above (65%, the front corner 29%).
 - `tools/probe.sh motions_panel_probe` at 1400 × 900 and `PROBE_SIZE=1280x720`
-  (71 checks each): the copied "Show it all" removed, New sequence (one
+  (84 checks each): the copied "Show it all" removed, New sequence (one
   step, undone, redone), Down, Up, Take out and Add each one step and
   undone, Play (99 frames, each holding all 33 moving parts) and Play
   backwards to as built, the list with it as a row, saved and opened byte
-  for byte; the panel fits both windows. Pictures in
+  for byte; the panel fits both windows, and in every state its status
+  line shows whole inside it (7 of 7 lines after the sequence played
+  backwards). Pictures in
   `bench/results/motions5-2026-10-20/` (`observatory_*`).
 - `tools/probe.sh share_play_probe` (72): 1484-1 with "Open it all", a
   sequence of the gates and the mailbox, a button that played both to 90°

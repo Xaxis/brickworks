@@ -1443,6 +1443,8 @@ picture the assistant is shown.
   `sequence_up_N`/`_down_N`/`_out_N`. A sequence and Play all are played by
   `MotionPlayer.play_in_order`, each frame with every part
   (`MotionRender.whole_frames`). A rename renames it in every sequence.
+  The status line is shown whole, the panel grown to it (`_fit`; trimmed
+  with its words in the tooltip only when the window has no room).
   (`RenderOutput.add_frame`, at most three waiting). Under Compatibility
   every 3D draw of the set first draws, alone and one a frame, each thing in
   it that view has not drawn in that set-up (`_warm`: a batch per shader and

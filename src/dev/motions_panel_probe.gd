@@ -506,6 +506,8 @@ func _observatory() -> void:
 	_check("Play backwards, in reverse order, puts it as built: %d parts off (%s)" % [back[0],
 		_panel.status_words().left(90)], int(back[0]) == 0
 		and _panel.status_words().begins_with("Played \"Show it all\" backwards"))
+	_fits("a sequence played backwards")
+	await _shots("observatory_sequence_back")
 	await _click(_panel._seq_back)
 	_check("the list shows it as a row, with Play, Play backwards and Edit", _row_names().has("Show it all")
 		and not _panel._row_buttons[_row_names().find("Show it all")]["play"].disabled)
@@ -550,6 +552,15 @@ func _fits(state: String) -> void:
 	var clear: bool = cube == null or not cube.visible or not rect.intersects(cube.get_global_rect())
 	_check("%s: the panel fits the window (%s in %s) clear of the view cube" % [state, str(rect.size.round()),
 		str(view.size)], view.encloses(rect) and clear)
+	# Its status line whole, inside the panel: a sequence's words ran past
+	# six lines and were cut off.
+	var status: Label = _panel._status
+	var lines: int = status.get_line_count()
+	var line: float = status.get_line_height() + status.get_theme_constant("line_spacing")
+	var shown: int = lines if status.max_lines_visible < 0 else mini(lines, status.max_lines_visible)
+	shown = mini(shown, floori((status.size.y + status.get_theme_constant("line_spacing") + 0.5) / maxf(line, 1.0)))
+	_check("%s: the status shows whole, %d of %d lines, inside the panel" % [state, shown, lines],
+		(status.text.is_empty() or lines > 0) and shown >= lines and rect.grow(0.5).encloses(status.get_global_rect()))
 
 
 ## The window as it is in [param state], named by its size: run at
