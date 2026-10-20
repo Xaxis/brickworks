@@ -68,7 +68,7 @@ func _run() -> void:
 	connector.base_url = _base
 	connector.rpc = socket
 	var calls: Array = []
-	connector.called.connect(func(tool: String, _args: Dictionary) -> void:
+	connector.called.connect(func(tool: String, _args: Dictionary, _chat: String) -> void:
 		calls.append(tool))
 
 	print("\nsigned out")

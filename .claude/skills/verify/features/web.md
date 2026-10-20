@@ -246,7 +246,11 @@ plan with Claude as the client.
   `brickworks/chats`), `op=keep` moving C off and C told so twice with the
   castle asked nothing, `select_tab "cast"` matching two and choosing
   neither, and two chats on one session each landing in its own tab by
-  `target`. 29 checks, seconds; deletes its throwaway account.
+  `target`; then a resumed chat (a new session, as Claude Code makes one on
+  `--resume`) stopped and told it is a new chat here that cannot undo what it
+  did before, as chat B's first choice is and chat A's, the account's first,
+  is not, and `server/discover` answered "method not found" by the relay
+  with no tab asked. CHECKS checks, seconds; deletes its throwaway account.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
   — two windows as two of the app's connectors in one process, each with its
   own world and socket and a fresh `TabSession` id: the three links and the
