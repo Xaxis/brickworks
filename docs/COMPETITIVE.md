@@ -369,6 +369,32 @@ timeline also reorders, merges and deletes steps.
 
 *Trails Studio, whose format most people's models are in.*
 
+**Done, 2026-10-19** (`StudioDecor.carried` in `src/parts/studio_decor.gd`;
+the recipe is "open a studio model" in
+`.claude/skills/verify/features/model-io.md`). In two parts. On 2026-10-14
+the `bl_` prints, stickers and Part Designer parts came from the file with
+their pictures, and set 31213's file placed 1,501 of 1,501, its three
+prints drawn (that file is not ours and is not kept here). Now so does any
+other part the library has not got: a part newer than it, which
+`model.ldr` names by LDraw's number and `model2.ldr` carries by that
+number or by BrickLink's. The picker hands `StudioIo.read` the library to
+ask. What building it showed:
+- The BrickLink number is not known for a part the library has not got,
+  so it is found by place. Each section of `model2.ldr` is the same model
+  as `model.ldr`'s, so the line that puts a part in the same place is the
+  same part (`StudioDecor.bricklink_names`). A line nothing matches maps
+  nothing.
+- They go in the parts bin's existing "From Studio" category (made on
+  2026-10-14), not a new "Studio part" one.
+- `whole_2025.io` placed 4 of 6 before and 6 of 6 after, on the desktop
+  (`io_probe`) and in a browser (`io_flow.mjs`). BrickLink's black (11) in
+  a part's own faces comes out LDraw's 0, not light turquoise. Saved as
+  `.mpd` and opened into a library that had never seen them, the six are
+  the same: triangles, colours and pictures.
+- The last step, Studio under Wine, was not tried: nothing third-party is
+  installed on this machine. So `CHANGELOG.md` still says the `.io` export
+  is not yet seen opening in Studio.
+
 Today Brickworks leaves out a part only Studio has (a `bl_…` part or a
 PartDesigner part) and names it in the status bar. The 2025 test set placed
 1,498 of 1,501 parts ([model-io]). Yet the `.io` already carries what is

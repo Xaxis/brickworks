@@ -31,10 +31,11 @@
 ## BrickLink's number with bl_ before it (bl_3068pb2483).
 ##
 ## Read ([method carried]): every part model.ldr names that is Studio's — a
-## bl_ part, or one from CustomParts — is flattened from its source with its
-## pictures, and written as an LDraw part with each picture's faces in a
-## PLANAR !TEXMAP block and the picture as a !DATA section, appended to the
-## model text. An affine map of a triangle's coordinates is exactly a PLANAR
+## bl_ part, one from CustomParts, or any other the library has not got (a
+## part newer than it) — is flattened from its source with its pictures,
+## and written as an LDraw part with each picture's faces in a PLANAR
+## !TEXMAP block and the picture as a !DATA section, appended to the model
+## text. An affine map of a triangle's coordinates is exactly a PLANAR
 ## projection (its gradients across the face are the projection's axes), so
 ## faces sharing one map share one block, and a decal's box is one block
 ## for all its faces. The model then opens as one that carries its parts
@@ -122,7 +123,14 @@ static func sections(text: String) -> Dictionary:
 ## LDraw part with its pictures: from [param custom] (CustomParts/, name ->
 ## text) and [param model2] (model2.ldr, BrickLink's numbers). {"text", "read":
 ## the names carried, "notes": what was left out and why}.
-static func carried(model: String, model2: String, custom: Dictionary) -> Dictionary:
+##
+## Studio's own parts are a bl_ one and the file's custom parts. Given [param
+## library], so is any part it has not got as one of its own: a part newer
+## than it, which model.ldr names by LDraw's number and model2.ldr carries by
+## that number or by BrickLink's (3070bpr9104 as 3070bpb9104, found by the
+## line of model2.ldr that places it where model.ldr's does).
+static func carried(model: String, model2: String, custom: Dictionary,
+		library: PartLibrary = null) -> Dictionary:
 	var own: Dictionary = sections(model)
 	var wanted: Array = []
 	for raw: String in model.split("\n"):
@@ -132,13 +140,18 @@ static func carried(model: String, model2: String, custom: Dictionary) -> Dictio
 		var name: String = " ".join(tokens.slice(14)).strip_edges().to_lower().replace("\\", "/")
 		if own.has(name) or wanted.has(name):
 			continue
-		# Studio's own: a bl_ part, or one of the file's custom parts. Any
-		# other is LDraw's, and the library has it or has not.
-		if name.get_file().begins_with("bl_") or _custom_has(custom, name.get_file()):
+		var bare: String = name.get_file()
+		if library != null:
+			if not _has_own(library, bare.get_basename()):
+				wanted.append(name)
+		# Without the library: a bl_ part, or one of the file's custom parts.
+		# Any other is LDraw's, and the library has it or has not.
+		elif bare.begins_with("bl_") or _custom_has(custom, bare):
 			wanted.append(name)
 	if wanted.is_empty():
 		return {"text": model, "read": PackedStringArray(), "notes": PackedStringArray()}
 	var studio: Dictionary = sections(model2) if not model2.is_empty() else {}
+	var as_bricklink: Dictionary = bricklink_names(own, studio)
 	# Part Designer's files are MPDs of their own (0 FILE first), or plain.
 	var designed: Dictionary = {}
 	for file_name: String in custom:
@@ -158,9 +171,8 @@ static func carried(model: String, model2: String, custom: Dictionary) -> Dictio
 		var found: String = ""
 		# model2.ldr's copy first: flattened by Studio itself, with the
 		# coordinates its projection gave every face.
-		for candidate: String in [bare, bare.trim_prefix("bl_")]:
-			if found.is_empty() and studio.has(candidate) \
-					and (bare.begins_with("bl_") or designed.has(bare)):
+		for candidate: String in [bare, bare.trim_prefix("bl_"), str(as_bricklink.get(name, ""))]:
+			if found.is_empty() and studio.has(candidate):
 				found = candidate
 				source = studio
 				bricklink = true
@@ -214,6 +226,65 @@ static func _custom_has(custom: Dictionary, file_name: String) -> bool:
 		if path.get_file().to_lower() == file_name:
 			return true
 	return false
+
+
+## Whether [param library] has [param id] as one of LEGO's parts, not one made
+## or carried: as a Studio model means it (bl_5095 is 5095, as
+## ModelStore.studio_part reads it), a retired number as the part it became.
+static func _has_own(library: PartLibrary, id: String) -> bool:
+	for candidate: String in [id, id.trim_prefix("bl_")]:
+		var info: PartLibrary.PartInfo = library.parts.get(library.resolve(candidate))
+		if info != null and not info.custom:
+			return true
+	return false
+
+
+## The part names of model.ldr ([param own], its sections) as model2.ldr
+## ([param studio]) names the same lines: lowercase file name -> model2.ldr's.
+## A section is the same model in both, so a line of one is the line of the
+## other that puts a part in the same place (the n-th of them, where several
+## do); a line nothing in the other matches maps nothing. A model.ldr section
+## is paired with model2.ldr's of its name, its first (the model itself) with
+## model2.ldr's first.
+static func bricklink_names(own: Dictionary, studio: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if own.is_empty() or studio.is_empty():
+		return out
+	for section: String in own:
+		var other: String = section if studio.has(section) else ""
+		if other.is_empty() and section == own.keys()[0]:
+			other = studio.keys()[0]
+		if other.is_empty():
+			continue
+		var theirs: Dictionary = {}            ## place -> names, in order
+		for placed: Array in _placements(studio[other]):
+			if not theirs.has(placed[1]):
+				theirs[placed[1]] = []
+			(theirs[placed[1]] as Array).append(placed[0])
+		var taken: Dictionary = {}             ## place -> how many matched
+		for placed: Array in _placements(own[section]):
+			var there: Array = theirs.get(placed[1], [])
+			var n: int = int(taken.get(placed[1], 0))
+			taken[placed[1]] = n + 1
+			if n < there.size() and placed[0] != there[n] and not out.has(placed[0]):
+				out[placed[0]] = there[n]
+	return out
+
+
+## A section's type-1 lines, in order: [lowercase file name, where it puts the
+## part], the place its twelve numbers to a hundredth of an LDU.
+static func _placements(lines: PackedStringArray) -> Array:
+	var out: Array = []
+	for raw: String in lines:
+		var tokens: PackedStringArray = raw.replace("\t", " ").split(" ", false)
+		if tokens.size() < 15 or tokens[0] != "1":
+			continue
+		var place := PackedStringArray()
+		for word: String in tokens.slice(2, 14):
+			place.append("%.2f" % (snappedf(word.to_float(), 0.01) + 0.0))
+		out.append([" ".join(tokens.slice(14)).strip_edges().to_lower().replace("\\", "/"),
+			" ".join(place)])
+	return out
 
 
 ## One of Studio's parts, [param name] in [param source] (lowercase name ->

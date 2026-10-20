@@ -366,16 +366,179 @@ def make_decor() -> None:
             out.writestr(zipfile.ZipInfo(name, WHEN), data, zipfile.ZIP_DEFLATED)
 
 
+def _drawing(width: int, height: int, colour_at) -> bytes:
+    """An RGBA PNG whose pixel at x, y is ``colour_at(x, y)`` (r, g, b, a)."""
+    rows = b"".join(b"\x00" + b"".join(bytes(colour_at(x, y)) for x in range(width))
+                    for y in range(height))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(
+            ">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6,
+                                                            0, 0, 0)) \
+        + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
+
+
+def _target(x: int, y: int) -> tuple[int, int, int, int]:
+    """A blue disc on white with a red bar across its top: which way up it is
+    drawn shows at a glance."""
+    if x in (0, 63) or y in (0, 63):
+        return (0, 0, 0, 0)
+    if 8 <= y < 16 and 8 <= x < 56:
+        return (201, 26, 9, 255)
+    if (x - 32) ** 2 + (y - 38) ** 2 <= 18 ** 2:
+        return (13, 105, 171, 255)
+    return (255, 255, 255, 255)
+
+
+def _corner(x: int, y: int) -> tuple[int, int, int, int]:
+    """A green square with a yellow corner at its top left."""
+    if x in (0, 31) or y in (0, 31):
+        return (0, 0, 0, 0)
+    if x < 14 and y < 14:
+        return (242, 205, 55, 255)
+    return (75, 159, 74, 255)
+
+
+def _stripes(x: int, y: int) -> tuple[int, int, int, int]:
+    """Black and orange stripes across, a sign's hazard band."""
+    return (27, 42, 52, 255) if (x // 8) % 2 == 0 else (254, 138, 24, 255)
+
+
+# The parts whole_2025.io's model uses that only the file has.
+NEW_PRINT = "3068pb9101"        # a print BrickLink has and LDraw has not: bl_ in model.ldr
+NEWER_LDRAW = "3070bpr9104"     # a part newer than the app's library, LDraw's number...
+NEWER_BRICKLINK = "3070bpb9104"  # ...and BrickLink's, which model2.ldr carries it by
+NEWER_SAME = "65999"            # one whose number is the same in both
+WHOLE_DESIGNED = "m5e6f7a8_2025410_120000"   # Part Designer's: a 1 x 2 tile with a decal
+TARGET_PICTURE = _drawing(64, 64, _target)
+CORNER_PICTURE = _drawing(32, 32, _corner)
+STRIPES_PICTURE = _drawing(64, 32, _stripes)
+
+
+def _brick(half: float, height: float, top: int, rest: int) -> list[str]:
+    """A brick flattened, its top (at y 0) in ``top`` and the rest in ``rest``."""
+    x = z = half
+
+    def q(colour: int, *corners: tuple[float, float, float]) -> str:
+        return "4 %d %s" % (colour, " ".join("%.3f %.3f %.3f" % c for c in corners))
+
+    return [q(top, (-x, 0, z), (-x, 0, -z), (x, 0, -z), (x, 0, z)),
+            q(rest, (-x, 0, -z), (-x, height, -z), (x, height, -z), (x, 0, -z)),
+            q(rest, (x, 0, z), (x, height, z), (-x, height, z), (-x, 0, z)),
+            q(rest, (-x, 0, z), (-x, height, z), (-x, height, -z), (-x, 0, -z)),
+            q(rest, (x, 0, -z), (x, height, -z), (x, height, z), (x, 0, z)),
+            q(rest, (-x, height, -z), (-x, height, z), (x, height, z), (x, height, -z))]
+
+
+def make_whole() -> None:
+    """whole_2025.io: a Studio 2.25 file whose every part the file itself
+    carries where the library has not got it. Six parts: 3001 and, in a
+    sub-model, 3068b, which the library has; bl_3068pb9101, a print only
+    BrickLink has; a Part Designer tile with a decal (CustomParts/); and, in
+    the sub-model, two parts newer than the library, which model.ldr names by
+    LDraw's numbers: 3070bpr9104, which model2.ldr carries as BrickLink's
+    3070bpb9104, and 65999, the same in both. model2.ldr's own colours are
+    BrickLink's, and they differ from LDraw's: 3070bpb9104's underside is
+    BrickLink's black (11, LDraw's light turquoise) and 65999's top
+    BrickLink's red (5, LDraw's dark pink)."""
+    import base64
+    turn = " ".join("%f" % v for v in (1, 0, 0, 0, 1, 0, 0, 0, 1))
+
+    def line(colour: int, x: float, y: float, name: str) -> str:
+        return "1 %d %f %f 0.000000 %s %s" % (colour, x, y, turn, name)
+
+    model = ["0 FILE whole_2025.io"] + _header("Untitled Model", "whole_2025", 6) + [
+        line(4, -80, -24, "3001.dat"),
+        line(15, -20, -8, "bl_%s.dat" % NEW_PRINT),
+        "0 STEP",
+        line(14, 20, -8, "%s.dat" % WHOLE_DESIGNED),
+        line(16, 0, 0, "submodel group 1"),
+        "0 STEP", "0 NOFILE",
+        "0 FILE SubModel Group 1"] + _header("SubModel Group 1", "SubModel Group 1", 3) + [
+        line(71, 60, -8, "%s.dat" % NEWER_LDRAW),
+        line(0, 100, -8, "3068b.dat"),
+        "0 STEP",
+        line(1, 140, -24, "%s.dat" % NEWER_SAME),
+        "0 STEP", "0 NOFILE"]
+    newer = _tile(10, 10, -1, True)
+    # Its underside, the last two faces, in BrickLink's black.
+    newer[-2:] = [face.replace("3 -1 ", "3 11 ", 1) for face in newer[-2:]]
+    model2 = ["0 FILE whole_2025.io"] + _header("Untitled Model", "whole_2025", 6) + [
+        line(5, -80, -24, "3001.dat"),
+        line(1, -20, -8, "%s.dat" % NEW_PRINT),
+        line(3, 20, -8, "%s.dat" % WHOLE_DESIGNED),
+        line(-1, 0, 0, "submodel group 1"),
+        "0 NOFILE",
+        # The sub-model's lines in another order than model.ldr's: a part is
+        # matched by where it is, not by which line it is.
+        "0 FILE SubModel Group 1"] + _header("SubModel Group 1", "SubModel Group 1", 3) + [
+        line(11, 100, -8, "3068.dat"),
+        line(7, 140, -24, "%s.dat" % NEWER_SAME),
+        line(86, 60, -8, "%s.dat" % NEWER_BRICKLINK),
+        "0 NOFILE",
+        "0 FILE %s.dat" % NEW_PRINT,
+        "0 Tile 2 x 2 with Blue Target and Red Bar Pattern",
+        "0 Name:  %s" % NEW_PRINT, "0 Author:  ", "0 BL_Item_No %s" % NEW_PRINT,
+        "0 PE_TEX_INFO " + base64.b64encode(TARGET_PICTURE).decode()] + _tile(20, 20, -1, True) + [
+        "0 NOFILE",
+        "0 FILE %s.dat" % NEWER_BRICKLINK,
+        "0 Tile 1 x 1 with Green Square Pattern",
+        "0 Name:  %s" % NEWER_BRICKLINK, "0 Author:  ", "0 BL_Item_No %s" % NEWER_BRICKLINK,
+        "0 PE_TEX_INFO " + base64.b64encode(CORNER_PICTURE).decode()] + newer + [
+        "0 NOFILE",
+        "0 FILE %s.dat" % NEWER_SAME,
+        "0 Brick 1 x 1 with Red Top",
+        "0 Name:  %s" % NEWER_SAME, "0 Author:  "] + _brick(10, 24, 5, -1) + [
+        "0 NOFILE",
+        "0 FILE 3001.dat", "0 Brick  2 x  4", "0 Name: 3001.dat"] + _tile(40, 20, -1, False) + [
+        "0 NOFILE",
+        "0 FILE 3068.dat", "0 Tile 2 x 2", "0 Name: 3068.dat"] + _tile(20, 20, -1, False) + [
+        "0 NOFILE"]
+    # Part Designer's file: its decal cast by a box at the tile's top, x and z
+    # mirrored as Part Designer's are (see make_decor).
+    box = "0.0 -0.5 0.0 -40.0 0.0 0.0 0.0 -2.0 0.0 0.0 0.0 -20.0 20.0 -10.0 -20.0 10.0"
+    designed = [
+        "0 FILE %s.dat" % WHOLE_DESIGNED,
+        "0 Tile 1 x 2 with Hazard Stripes Decal",
+        "0 Name:  %s.dat" % WHOLE_DESIGNED, "0 Author:  ",
+        "0 BFC CERTIFY CCW",
+        "0 PE_TEX_PATH 0",
+        "0 PE_TEX_INFO %s %s" % (box, base64.b64encode(STRIPES_PICTURE).decode()),
+        "1 16 0 0 0 1 0 0 0 1 0 0 0 1 %s-tile.dat" % WHOLE_DESIGNED,
+        "0 NOFILE",
+        "0 FILE %s-tile.dat" % WHOLE_DESIGNED,
+        "0 BFC CERTIFY CCW"] + _tile(20, 10, 16, False) + ["0 NOFILE"]
+    members = [
+        ("model.ldr", _studio_text(model)),
+        ("model2.ldr", _studio_text(model2)),
+        ("thumbnail.png", _png()),
+        ("errorPartList.err", b"[]"),
+        (".info", json.dumps({"version": "2.25.2_1", "total_parts": 6, "parts_db_version": 151},
+                             separators=(",", ":")).encode()),
+        ("CustomParts/%s.dat" % WHOLE_DESIGNED, _studio_text(designed)),
+    ]
+    with zipfile.ZipFile(os.path.join(HERE, "whole_2025.io"), "w", zipfile.ZIP_DEFLATED) as out:
+        for name, data in members:
+            out.writestr(zipfile.ZipInfo(name, WHEN), data, zipfile.ZIP_DEFLATED)
+
+
 if __name__ == "__main__":
     import sys
     if sys.argv[1:] == ["decor"]:
         make_decor()
         print("wrote decor_2025.io in", HERE)
         sys.exit(0)
+    if sys.argv[1:] == ["whole"]:
+        make_whole()
+        print("wrote whole_2025.io in", HERE)
+        sys.exit(0)
     make_2025()
     make_2021()
     make_aes()
     make_gatehouse()
     make_decor()
-    print("wrote bay_2025.io, bay_2021.io, bay_aes.io, gatehouse_2025.io and decor_2025.io in",
-          HERE)
+    make_whole()
+    print("wrote bay_2025.io, bay_2021.io, bay_aes.io, gatehouse_2025.io, decor_2025.io and "
+          "whole_2025.io in", HERE)
