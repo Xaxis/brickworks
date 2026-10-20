@@ -261,6 +261,10 @@ func _doors() -> void:
 	var names: Array = _panel._row_buttons.map(func(r: Dictionary) -> String: return str(r["name"]))
 	_check("a motion a session defines over MCP shows in the open panel (%s)" % str(names),
 		said.begins_with("Kept") and names.has("Open the mailbox"))
+	_check("three motions listed, with Play all and Loop", names.size() == 3 and _panel._play_all.is_visible_in_tree()
+		and _panel._loop.is_visible_in_tree())
+	_fits("three motions")
+	await _shots("doors_three_motions")
 	await _undo()
 	await _frames(4)
 	names = _panel._row_buttons.map(func(r: Dictionary) -> String: return str(r["name"]))
@@ -397,9 +401,19 @@ func _racer() -> void:
 
 
 ## Whether the panel fits the window: inside the model's part of it, clear
-## of the view cube.
+## of the view cube; and each joint's value shows whole beside its name.
 func _fits(state: String) -> void:
 	await _frames(2)
+	for part: Dictionary in _panel._joint_parts:
+		var readout: Label = part["readout"]
+		if is_instance_valid(readout) and readout.is_visible_in_tree():
+			var called: Label = readout.get_parent().get_child(0)
+			var wide: float = readout.get_theme_font("font").get_string_size(readout.text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, readout.get_theme_font_size("font_size")).x
+			var whole: bool = wide <= readout.size.x + 0.5 \
+				and called.get_global_rect().end.x <= readout.get_global_rect().position.x
+			if not whole:
+				_check("%s: %s's value shows whole beside its name (%s)" % [state, called.text, readout.text], false)
 	var rect: Rect2 = _panel.get_global_rect()
 	var view: Rect2 = root.get_visible_rect()
 	var cube: Control = _main.get("_gizmo")

@@ -74,6 +74,8 @@ const KEPT_STUDS := 0.1
 const FIRST_SECONDS := 2.0
 ## Beside Record, until it is pressed.
 const RECORD_WORDS := "then drag parts in the view"
+## The width a joint's place is shown in, px: "-180°", "12.35 studs".
+const READOUT_WIDE := 72
 ## A motion's editor offers this many joints besides its own, until More.
 const FEW_JOINTS := 5
 ## The panel's lists stop this far above the window's foot, px.
@@ -299,6 +301,7 @@ func _fill_list() -> void:
 		pick.add_theme_font_size_override("font_size", 12)
 		pick.focus_mode = Control.FOCUS_NONE
 		pick.clip_text = true
+		pick.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pick.custom_minimum_size = Vector2(96, 0)
 		pick.set_pressed_no_signal(name == _chosen)
@@ -330,6 +333,7 @@ func _fill_list() -> void:
 		words.add_theme_font_size_override("font_size", 12)
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		words.clip_text = true
+		words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		row.add_child(words)
 		var name: String = motion.name
 		_keep_buttons.append(_button(row, "Keep", func() -> void: keep_suggestion(name),
@@ -637,18 +641,24 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	row.add_theme_constant_override("separation", 1)
 	_joint_rows.add_child(row)
 	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
 	row.add_child(top)
 	var called := Label.new()
 	var gone: bool = player.parts_of(joint).is_empty()
 	called.text = "%s, %s" % [player.joint_words(joint), "turning" if joint.mode == "turn" else "sliding"]
+	# A long part name ends in an ellipsis, whole in its tooltip: the value
+	# beside it always shows whole.
 	called.tooltip_text = called.text
 	called.mouse_filter = Control.MOUSE_FILTER_PASS
 	called.add_theme_font_size_override("font_size", 12)
 	called.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	called.clip_text = true
+	called.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	top.add_child(called)
 	var readout := Label.new()
 	readout.add_theme_font_size_override("font_size", 12)
+	readout.custom_minimum_size = Vector2(READOUT_WIDE, 0)
+	readout.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	top.add_child(readout)
 	var track: Motions.Track = _track_of(motion, joint)
 	if gone:
@@ -1721,6 +1731,7 @@ func _build_editor(into: Control) -> void:
 	_key_words.add_theme_font_size_override("font_size", 12)
 	_key_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_key_words.clip_text = true
+	_key_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_key_row.add_child(_key_words)
 	_how = OptionButton.new()
 	_how.add_theme_font_size_override("font_size", 12)
