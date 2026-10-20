@@ -14,6 +14,12 @@
 ## step more to undo, and undoing it puts back the model exactly as it was.
 ## Last, a session's design is on show whole as its call answers, where the
 ## app's own goes up a step at a time (BuildPlayback).
+##
+## And each of those changes reaches the autosave. A minifigure stood up
+## over the connector raised nothing the store heard, so the autosave kept
+## the model without it and a reload took it away (tabwalk, 2026-10-19).
+## So the calls go through the app's own socket for the connector, wired as
+## the app wires it (CommandSocket.model_changed).
 extends SceneTree
 
 var _failures: int = 0
@@ -45,10 +51,7 @@ func _run() -> void:
 	_builder.forget_history()
 	store.scenery.clear()
 	assistant.forget_built()
-	_socket = CommandSocket.new()
-	_socket.assistant = assistant
-	_socket.app = main
-	main.add_child(_socket)
+	_socket = (main.get("_connector") as ClaudeConnector).rpc
 	await process_frame
 
 	print("\nthe person places a part, then a session edits")
@@ -97,8 +100,15 @@ func _run() -> void:
 		input = JSON.parse_string(asked)
 		var was: Dictionary = _standing()
 		var depth: int = _builder.history_depth()
+		# The last call's redo is told to the store at the end of a frame
+		# (Main._edited_soon): heard before this call, not during it.
+		await process_frame
+		await process_frame
+		store.set("_pending", false)
 		said = await _call(str(call[0]), input)
 		var changed: bool = _standing() != was
+		_ok(not changed or bool(store.get("_pending")),
+			"%s's change is told to the autosave" % call[0])
 		# A feature's review lays a piece only where one fits: nothing laid is
 		# nothing to undo.
 		if str(call[0]) == "review_model" and not changed:

@@ -1929,6 +1929,7 @@ func _open_commands(port: int) -> void:
 	_commands = CommandSocket.new()
 	_commands.assistant = _assistant
 	_commands.app = self
+	_commands.model_changed.connect(_on_model_changed)
 	add_child(_commands)
 	if not _commands.listen(port):
 		_commands.queue_free()
@@ -3694,6 +3695,7 @@ func _build_ui() -> void:
 	var answering := CommandSocket.new()
 	answering.assistant = _assistant
 	answering.app = self
+	answering.model_changed.connect(_on_model_changed)
 	add_child(answering)
 	_connector = ClaudeConnector.new()
 	_connector.rpc = answering

@@ -408,17 +408,21 @@ function heldWords(others) {
 }
 
 // The open tabs, one line each, newest use first, with which chat holds each.
+// Two tabs each saying "another chat" read as one chat in both, and a new
+// chat told the person so (tabwalk, 2026-10-19): a chat works in one tab at
+// a time, which is said when more than one tab has a chat in it.
 function listing(tabs, current, picks = [], key = null) {
   const live = tabs.filter((tab) => stateOf(tab) !== "closed")
     .sort((a, b) => usedAt(b) - usedAt(a));
+  const held = live.filter((tab) => heldBy(tab, picks, key).length).length;
   return live.map((tab) => {
     const where = stateOf(tab) === "hidden"
       ? "paused out of view by the browser"
       : tab.visible ? "in view" : "out of view";
     const mine = current && tab.channel === current.channel ? " — this chat's" : "";
-    const held = heldWords(heldBy(tab, picks, key));
-    return `- ${idOf(tab)}: ${modelOf(tab)}, ${where}, used ${ago(usedAt(tab))}${mine}${held ? ` — ${held}` : ""}`;
-  }).join("\n");
+    const others = heldWords(heldBy(tab, picks, key));
+    return `- ${idOf(tab)}: ${modelOf(tab)}, ${where}, used ${ago(usedAt(tab))}${mine}${others ? ` — ${others}` : ""}`;
+  }).join("\n") + (held > 1 ? "\nA chat works in one tab at a time, so the chats in these tabs are different chats." : "");
 }
 
 // The line every answer starts with: which tab and model it acted on, that

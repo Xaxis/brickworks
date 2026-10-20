@@ -45,6 +45,14 @@ signal attached(how_many: int)
 ## answer can be a megabyte of PNG.
 signal asked(tool: String)
 
+## A call from outside changed the model, whichever tool did it, so the
+## window's autosave keeps it (Main._on_model_changed). A minifigure stood
+## up over the connector is put down past the builder's signals
+## (Builder.put_figure), so the store never heard of it, and reloading the
+## tab took it away (tabwalk, 2026-10-19); clear_model's empty baseplate
+## went unsaved the same way.
+signal model_changed
+
 var assistant: Assistant
 ## The app itself, for the two things only it can do.
 var app: Node = null
@@ -852,7 +860,8 @@ func _before_change(name: String) -> Dictionary:
 	var last: Dictionary = builder.last_step()
 	return {"depth": builder.history_depth(), "last": last,
 		"size": (last.get("steps", []) as Array).size(),
-		"was": SelectionScope.snapshot(assistant.world, assistant.scenery)}
+		"was": SelectionScope.snapshot(assistant.world, assistant.scenery),
+		"revision": assistant.world.revision}
 
 
 ## Whatever a call from outside changed, as one step of the history, named
@@ -864,6 +873,8 @@ func _before_change(name: String) -> Dictionary:
 func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 	if before.is_empty():
 		return
+	if assistant.world.revision != int(before["revision"]):
+		model_changed.emit()
 	var builder: Builder = assistant.builder
 	if builder.history_depth() > int(before["depth"]):
 		builder.fold_since(int(before["depth"]))

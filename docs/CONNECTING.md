@@ -97,7 +97,11 @@ The rules are in `api/mcp.js` ("Two chats, two tabs"). What each chat
 holds is a row of `relay_picks` (`supabase/relay.sql`: `called_at`, `did`,
 `moved_at`). `tools/web/tabpair_probe.mjs` proves the relay's half in
 seconds; `tools/web/tabpair_flow.mjs` proves it with the app in two
-browser tabs and three chats.
+browser tabs and three chats. `tools/web/tabwalk_flow.mjs` walks it with
+real Claude Code sessions, by hand (it spends the plan): two chats, each
+sent its tab's first message, build a house and a car at once, change
+one thing and undo it; a third, told no tab, asks which before it
+changes anything (2026-10-19, `bench/results/tabwalk-2026-10-19`).
 
 ## What Claude supports, with sources
 
