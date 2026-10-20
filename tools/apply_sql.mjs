@@ -13,6 +13,14 @@
 // tools/sql_compare.mjs FILE NEWKEYS, which checks the gallery answers as
 // it did before (the last file applied wins, and can drop another's work).
 //
+// A function a later file replaced is guarded (LATER, below): applying the
+// earlier file again would take the later one's part out of it, so it is
+// refused, dry or not, unless the later file goes with it:
+//
+//   ... supabase/follows.sql --again=supabase/challenges.sql
+//
+// applies both in the one transaction, the later one second.
+//
 // The file runs in one transaction, so a statement that fails leaves the
 // database as it was. When the project has Supabase's migration table
 // (supabase_migrations.schema_migrations, which the Supabase CLI keeps) the
@@ -36,6 +44,13 @@ const lookOnly = process.argv.includes("--look");
 const dry = process.argv.includes("--dry");
 const trial = (process.argv.find((a) => a.startsWith("--try=")) || "").slice(6);
 const table = (process.argv.find((a) => a.startsWith("--table=")) || "--table=collections").slice(8);
+const again = (process.argv.find((a) => a.startsWith("--again=")) || "").slice(8);
+
+// Functions a later file replaced: [the earlier file, the function, the
+// later file, words only the later one's body has].
+const LATER = [
+  ["follows.sql", "feed_rows", "challenges.sql", "'challenge'::text"],
+];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");
   process.exit(2);
@@ -96,13 +111,47 @@ async function look() {
   }
 }
 
+/// Why [file] may not be applied as asked: a function of it a later file
+/// replaced, live, and that file not applied again after it. Null if none.
+async function replacedLater() {
+  for (const [earlier, name, later, mark] of LATER) {
+    if (!file || basename(file) !== earlier || basename(again) === later) continue;
+    const live = await rows(
+      `select p.prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = $1`, [name]);
+    if (live.some((one) => one.prosrc.includes(mark))) {
+      return `the live ${name} is ${later}'s, which replaced ${earlier}'s; applying ${earlier} alone would take `
+        + `${later}'s part out of it. Apply it with --again=supabase/${later}, which applies that again after it, `
+        + "in the same transaction.";
+    }
+  }
+  return null;
+}
+
+/// The file, and the one asked to go again after it.
+async function run() {
+  await client.query(readFileSync(file, "utf8"));
+  if (again) {
+    await client.query(readFileSync(again, "utf8"));
+    console.log(`and ${again} again after it`);
+  }
+}
+
+const refused = lookOnly ? null : await replacedLater();
+if (refused) {
+  console.error(`apply_sql: refused: ${refused}`);
+  process.exitCode = 3;
+}
+
 try {
-  if (dry) {
+  if (refused) {
+    // Nothing run.
+  } else if (dry) {
     // Everything in one transaction, and none of it kept: the file, the
     // trial queries after it, and the look at what the table would be.
     await client.query("begin");
     try {
-      await client.query(readFileSync(file, "utf8"));
+      await run();
       console.log(`dry run: ${file} ran`);
       if (trial) {
         for (const statement of readFileSync(trial, "utf8").split(/;\s*\n/).map((s) => s.trim()).filter(Boolean)) {
@@ -122,7 +171,7 @@ try {
     const tracked = (await rows("select to_regclass('supabase_migrations.schema_migrations') as t"))[0].t;
     await client.query("begin");
     try {
-      await client.query(text);
+      await run();
       if (tracked) {
         const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
         await client.query(
@@ -141,7 +190,7 @@ try {
     }
   }
 
-  if (!dry) await look();
+  if (!dry && !refused) await look();
 } finally {
   await client.end();
 }

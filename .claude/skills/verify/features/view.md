@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -350,6 +350,31 @@ picture the assistant is shown.
   `BrickLattice.revision` changed, and not out of view. `idle_probe` counts
   the looks (`EditVerbs.looked`): at most one in 2 s standing still, one when
   the pointer moves, none out of view while the model changes.
+- `a lighter look where frames are slow` (`src/render/frame_budget.gd`,
+  `FrameBudget`, made by `Main._watch_frame_cost`; docs/SLOW_DEVICES.md).
+  It times each drawn frame that follows a drawn frame: the time from one
+  drawing's end to the next, less the frame's own work. Two seconds in, it
+  draws frames on purpose until ten are timed. Where the second fastest of
+  the last six is over 50 ms, it cuts the next rung (dense, msaa, scale,
+  shadow, glow; ssao first on Forward+), several at once when frames are
+  4x or 16x over. On the web a look also ends with a fence (`GpuFence`)
+  and is judged again by when the drawing was done: the page hands frames
+  over at 17 ms while SwiftShader draws each in 0.3 to 2 s. A look whose
+  frames were held apart (the parts bin's read-backs, `GpuFence`) is
+  timed to its fence from its last frame after a hold, when the card had
+  finished everything; with fewer than eight frames after it, the look is
+  taken again once the drawing has gone unheld a second
+  (`GpuFence.unheld_ms`), up to three times in a row. So the empty editor
+  is cut on its own while it loads, not at the first turn of the view. It never raises
+  the look again. A probe leaves it off unless it calls `watch()`. The page
+  reads `brickworksState.look`, and a check pins cuts with
+  `window.brickworksLookAsk = {cuts: [...] | null, look: N}`.
+  `tools/probe.sh look_probe` checks the judgment on a budget of its own,
+  and on the GPU that nothing is cut, and that a look held apart (the
+  drawing stopped between its frames) is taken again and cuts nothing. `-- --shots=DIR` writes three views
+  to `cmp` against a checkout before: identical to rel-m87 on Forward+, and
+  on Compatibility through zink (the env is in the probe's header; under
+  Xvfb without it, Compatibility draws on llvmpipe, in software).
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit

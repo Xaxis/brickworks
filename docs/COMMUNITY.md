@@ -1,8 +1,8 @@
 # Community rules, and where each is enforced
 
 brickworks.diy has share links, a gallery, profiles, likes, remixes,
-collections, comments, photos of real builds, follows and a feed, and
-designers' pages. These
+collections, comments, photos of real builds, follows and a feed,
+designers' pages, and a monthly challenge. These
 are the ground rules it stands on (2026-10-18), and the code that keeps each.
 The pages people read are `web/terms.html` (/terms) and
 `web/guidelines.html` (/guidelines); every site page's footer links both,
@@ -27,7 +27,10 @@ the pages say what the site does.
 - `supabase/follows.sql` after the rest (it reads trust, comments, builds
   and versions); until then a profile shows no Follow and no counts, /feed
   says it is not open yet, Account has no count, and the day's email is
-  of comments only.
+  of comments only. Applied again later, challenges.sql goes again right
+  after it (it replaces follows.sql's `feed_rows`): `tools/apply_sql.mjs
+  supabase/follows.sql --again=supabase/challenges.sql`. Alone it is
+  refused while the live `feed_rows` is challenges.sql's.
 - `supabase/discovery.sql` after builds.sql and tested.sql (it reads
   `model_builds` and the Tested mark); until then Sort › Top builds lists
   newest first, the gallery's front has no pick (Small builds is there, the
@@ -41,6 +44,14 @@ the pages say what the site does.
   before (no tiles, its models newest first), and the designer's own
   numbers say "not open on Brickworks yet". Opens are counted by the day
   from the moment it is applied.
+- `supabase/challenges.sql` after designers.sql (it reads `model_needs`,
+  the Tested mark, `gallery_shows`, `directory_card` and trust's and
+  moderation's rules), and after follows.sql, whose `feed_rows` it
+  replaces with one kind more, an entry in a challenge; so again after any
+  later follows.sql. Until then /challenge says there is no challenge, the
+  admin page says Challenges are not open yet, a model's page offers no
+  entry, no card says it won, and the feed tells of no entry. Applied to
+  the live project 2026-10-19.
 
 ## The rules
 
@@ -82,6 +93,7 @@ database refuses too:
 | A comment | `api/_comments.js` (`comment_trouble`) | trigger `comments_guard` on `model_comments` |
 | A photo of a real build | `api/people.js` `?op=photo_start` and `?op=photo` | trigger `build_photos_guard` on `build_photos` (`supabase/builds.sql`) |
 | Following somebody (a follow is counted in public) | `api/people.js` `?op=follow` (`api/_follows.js`) | trigger `follows_guard` on `follows` (`supabase/follows.sql`) |
+| Entering a challenge, or voting in one | `api/people.js` `?op=enter`, `?op=vote` (`api/_challenges.js`) | `challenge_enter`, `challenge_vote` (`supabase/challenges.sql`), the only way into their tables |
 
 Something new in public needs the question answered 13 or over: an account
 not asked yet is told to answer it first. What an account had in public
@@ -185,6 +197,7 @@ a link to the thing:
 | A photo of a real build | on your model, or by somebody you follow of a model in the gallery | hidden by the model's owner, taken out, on a model taken out |
 | A comment | on your model, in this life of its link | hidden by you, removed |
 | A remix | of your model, listed in the gallery; whose, only when credited | |
+| An entry in a challenge | a model in the gallery, credited to somebody you follow, entered in a challenge ("… entered “…” in the challenge “…”, built by hand"; `supabase/challenges.sql`) | one in a test challenge, but in a test account's feed |
 
 Nothing by an account taken out or under 13, and a test account's models
 only in a test account's feed. Built from the tables that hold each thing
@@ -410,6 +423,90 @@ racer by its steering and the crane by its parts but not the house by
 its doors, a visitor's list of test models empty, the functions the
 service role's alone; Technic or mechanism's first page 4.2 ms.
 
+## Challenges: one a month, with rules the site checks
+
+`supabase/challenges.sql` (2026-10-19), the words in `api/_challenges.js`,
+the owner's form in `api/admin.js` and `web/admin.js`, the page in
+`web/challenge.html` and `web/challenge.js`, the entry on a model's page in
+`web/model-page.js`.
+
+**Setting one.** The site's owner, on `/admin` (This month's challenge): a
+title (80 characters), a brief (600), the first and the last day (date
+inputs; whole days in UTC, the last included, at most 63), and up to three
+rules, each a tick: at most N parts; only the parts of one official set,
+by its number (6075 is 6075-1), its inventory read as a collection's sets
+are (`api/_owned.js`, its spares too, since they come in the box) and kept
+with the challenge, spelled as a model's needs are; and marked Tested. One
+at a time: another with a day of these is refused, naming it ("One at a
+time: … has a day of these"), and End it now closes one today.
+
+**Entering.** On a model's page its designer, signed in, has "Enter this
+month's challenge" under Like and Favourite, and nobody else is told
+anything (`?op=challenge_entry` answers `{"mine": false}`). It opens a
+dialog with the rules and a choice, By hand or With the assistant: the two
+are shown and judged apart. The database checks every rule on the model as
+it is stored (`challenge_check`): its parts as its card counts them, what it
+needs (`model_needs`, counted when it was shared) part by part and colour by
+colour against the set's, and its newest version's Tested mark. A refusal
+names each rule it breaks, in words: "It has 40 parts: this challenge
+allows at most 30", "1 of its parts is not in set 6075-2 (Castle), or not
+as many: 3004 in Red (it needs 12, the set has 0)", "Its newest version is
+not marked Tested". Only a model in the gallery with its designer's name on
+it (one shared without a name is tied to nobody), at most three of a
+designer's, each once. Take it out, on its page, takes the entry and its
+votes back while the challenge runs.
+
+**Voting.** On `/challenge`, each entry is the gallery's card with Vote for
+it (signed out, it asks to sign in). One vote in each group, never for your
+own, and a vote stands. The votes are not shown while it runs, so nobody
+votes for what is winning; they are counted when it ends. An entry whose
+newer version breaks a rule says "No longer keeps the rules" and is not
+voted for, nor counted.
+
+**Winning.** When it ends (its last day passes, or the owner ends it), the
+first time anything asks for it its winners are kept (`challenge_settle`,
+`challenge_winners`), so a winner stays one whatever comes after: in each
+group the entry with the most votes still counted (its model in the
+gallery, its designer shown in public, keeping the rules; a vote by an
+account taken out or under 13 not counted), a tie to the one entered
+first, and none with no vote at all. `/challenge` then shows the winners
+first and every entry's votes; the winner's designer page has Challenges
+won (`api/people.js`, each with its model, the challenge and its votes),
+and the model's card there and in the gallery says "Won “…”, by hand"
+(`challenge_wins`, asked for a page of cards at once).
+
+**Who.** Entering and voting are for accounts that said they are 13 or over
+and were not taken out (`trust_may_go_public`, `is_barred`), refused in
+words beside the button or in the dialog ("Challenges are for people 13 and
+over…", "Voting is for people 13 and over…"). Nothing about a person is
+shown but what their card already shows; whom somebody voted for is told
+only to them (`challenge_mine`, with their own sign-in, `private,
+no-store`). The tables are read and written only through the functions,
+each granted to the service role alone.
+
+**The gallery's front** says it in one line under its heading ("This
+month's challenge: …, open until 31 October. Enter a model of yours, or
+vote."), or the next one, from `?op=shelves`. **The feed** tells whoever
+follows a designer when they enter ("Ada entered “The house” in the
+challenge “…”, built by hand"), a link to the model: `challenges.sql`
+replaces follows.sql's `feed_rows` with one kind more and every other row
+as it was (`tools/sql_compare.mjs` reads every feed before and after). The
+Account count counts it; the daily email does not tell of it.
+
+**Tests.** A test account's models enter only a test challenge, and it
+votes only in one: the flows' own, set on `/admin?tests=1` and shown only
+to a page asked with `tests=1`, one at a time among themselves.
+
+**What it costs.** In the dry run (`tools/challenges_try.sql`), on a month
+of 600 entries by 300 designers, each model needing 40 lots against a set
+of 400, and 600 votes, best of three in each of two runs on the shared
+database: the page 330 to 540 ms (each entry's card made and its rules
+checked again), one entry's check 1.8 ms, a vote 1.5 to 3.9 ms, whom one
+voted for 0.5 ms, an entry 1.5 ms, settling the month 130 to 355 ms, once.
+The CDN keeps a visitor's page 30 seconds; a signed-in one asks each time,
+so a month of hundreds of entries is where keeping each entry's check, as
+it is entered, is the next step.
+
 ## Reports reaching the owner
 
 A report (`api/people.js` `?op=report`, from the Report button or
@@ -594,6 +691,28 @@ counter-notice is by hand for now (`shared_models.barred`).
   numbers on their page and on Account and nobody else's; and every answer
   of them `private, no-store`, never from the CDN, the same address
   answering each their own.
+- `tools/challenges_try.sql`, run inside `tools/apply_sql.mjs --dry` with
+  `supabase/challenges.sql` after the live files: setting one (refused when
+  past, a set with no parts, a day shared, too long), the rules checked
+  (parts, a set lot short and by how many, Tested, a model never counted),
+  every refusal to enter and to vote (somebody else's, by link, without a
+  name, under 13, not asked, taken out, a test model in a challenge that
+  is not one, three, twice, one's own, a breaking newer version), the page
+  with no votes while it runs, taking back, the winners and a tie, the
+  wins for a page and the cards, the grants, the timings above, and the
+  gallery's own answers (`directory_models`, `designer_page`,
+  `gallery_pick`) the same before and after, all rolled back.
+  `tests/test_challenges.py` holds the file to additions alone, the rules to
+  the database, the account to the sign-in, and the flow to the API.
+- `tools/web/challenges_flow.mjs` against `relay_server.mjs
+  --hold=challenges` (`tools/web/challenges_stand_in.mjs` holds the tables
+  in memory and answers the functions over the live project's models) or a
+  deployment through its API alone: the owner setting one on `/admin` with
+  three rules, a second refused; entering from a model's page at 390 px,
+  each broken rule named; `/challenge` signed out, signed in, under 13 and
+  for a designer at 1280 and 390 px in light and dark; votes, their
+  refusals, ending it on `/admin`, the winners, the designer page and the
+  cards.
 - `tools/web/follows_flow.mjs` against `relay_server.mjs
   --hold=follows,model_comments,build_photos,report_photos --trust-stand-in`
   (`tools/web/follows_stand_in.mjs` answers follows.sql's functions in

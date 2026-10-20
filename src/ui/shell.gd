@@ -73,8 +73,9 @@ const ALT := KEY_MASK_ALT
 
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
 const MENUS: Array = [
-	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "versions", "-",
-		"share", ">export", "render", "instructions", "-", "clear", "account", "quit"]],
+	["File", ["new", "new_window", "open", ">recent", ">import", "-", "save", "save_as",
+		"versions", "-", "share", ">export", "render", "instructions", "-", "clear", "account",
+		"quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "printed_versions", "mirror",
@@ -409,7 +410,7 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit", "new_window"]
 
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
@@ -615,6 +616,11 @@ func _define() -> void:
 	# File
 	_add("new", "New", CTRL | KEY_N, bar.ask_for_new, Callable(),
 		"Start a new model on an empty baseplate")
+	# src/parts/tab_session.gd. Ctrl+Shift+N is the browser's own there.
+	var web: bool = OS.has_feature("web")
+	_add("new_window", "New tab" if web else "New window", 0 if web else CTRL | SHIFT | KEY_N,
+		TabSession.open_another, Callable(),
+		"Start a new model in a %s of its own" % ("tab" if web else "window"))
 	_add("open", "Open…", CTRL | KEY_O, bar._on_open, Callable(),
 		"Reopen a saved model, an example, or a file from this computer")
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
@@ -1503,6 +1509,9 @@ func handle_key(key: InputEventKey) -> bool:
 		return true
 	if held and key.shift_pressed and key.keycode == KEY_S:
 		run("save_as")
+		return true
+	if held and key.shift_pressed and key.keycode == KEY_N and not OS.has_feature("web"):
+		run("new_window")
 		return true
 	match key.keycode:
 		KEY_F11:

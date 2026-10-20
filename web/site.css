@@ -224,6 +224,14 @@ button.link:hover { color: var(--ink); background: none; }
 /* In a form, a field's words above it. */
 :where(form) label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); }
 :where(form) label small { font-size: 13px; font-weight: 400; color: var(--ink-faint); }
+/* A date: day, month and year, three dropdowns side by side under its
+   words (fieldset.date, its legend the words). Never the browser's own date
+   box, which draws itself, and differently in every browser. */
+fieldset.date { min-width: 0; margin: 0; padding: 0; border: 0; }
+fieldset.date legend { padding: 0; margin: 0 0 6px; font-size: 14.5px; color: var(--ink-soft); }
+fieldset.date .dropdowns {
+	display: grid; gap: 8px; grid-template-columns: minmax(76px, 2fr) minmax(0, 4fr) minmax(88px, 3fr);
+}
 
 /* -- dialogs --------------------------------------------------------
    What a page opens over itself: sign in and the age question

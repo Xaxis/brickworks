@@ -42,6 +42,10 @@ func _initialize() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
+## The Magic Shop's pieces, as its inventory is written.
+const SHOP_PIECES := 49
+
+
 func _ok(good: bool, what: String) -> void:
 	print(("  ok   " if good else "  FAIL ") + what)
 	if not good:
@@ -67,8 +71,11 @@ func _expansion(library: PartLibrary) -> void:
 	var shop_pieces: int = 0
 	for row: Variant in shop["p"]:
 		shop_pieces += int((row as Array)[2])
-	_ok(str(shop["n"]) == "Magic Shop" and shop_pieces == 47 and (shop["p"] as Array).size() == 33,
-		"6020-1 Magic Shop is 47 pieces in 33 lots (got %d in %d)" % [shop_pieces, (shop["p"] as Array).size()])
+	# Rebrickable lists 47 pieces in 33 lots; its figure's legs are the hips
+	# and two legs LDraw draws them as (tools/collection_data.py).
+	_ok(str(shop["n"]) == "Magic Shop" and shop_pieces == SHOP_PIECES and (shop["p"] as Array).size() == 35,
+		"6020-1 Magic Shop is %d pieces in 35 lots (got %d in %d)"
+		% [SHOP_PIECES, shop_pieces, (shop["p"] as Array).size()])
 	# Two Magic Shops, one Orthanc with its spares counted, and a few loose
 	# bricks, two of them a colour the shop also has.
 	# The shop's first lot is owned loose as well, five more of it.
@@ -85,9 +92,9 @@ func _expansion(library: PartLibrary) -> void:
 	var total: int = 0
 	for key: String in on_hand:
 		total += int(on_hand[key])
-	_ok(total == 2 * 47 + orthanc_pieces + 5,
+	_ok(total == 2 * SHOP_PIECES + orthanc_pieces + 5,
 		"the pool is two shops, Orthanc with spares and five loose bricks: %d (got %d)"
-		% [2 * 47 + orthanc_pieces + 5, total])
+		% [2 * SHOP_PIECES + orthanc_pieces + 5, total])
 	_ok(mine.unknown_sets == PackedStringArray(["0-0"]),
 		"a set with no inventory is named, not guessed (%s)" % ", ".join(mine.unknown_sets))
 	# The loose ones and the sets' own are one lot, not three.
@@ -295,7 +302,8 @@ func _example_car(library: PartLibrary) -> void:
 
 
 func _official_models(library: PartLibrary) -> void:
-	print("\nofficial models, counted as the app counts them")
+	print("\nofficial models, as their own sets hold them")
+	_as_its_set(library)
 	var inventories := SetInventories.new()
 	root.add_child(inventories)
 	var models: Array = await inventories.official_models()
@@ -304,22 +312,23 @@ func _official_models(library: PartLibrary) -> void:
 	for model: Dictionary in models:
 		if checked >= 3:
 			break
-		var path: String = "res://vendor/omr/files/" + str(model["file"])
-		if not FileAccess.file_exists(path):
+		if not FileAccess.file_exists("res://vendor/omr/files/" + str(model["file"])):
 			continue
-		var counted: Dictionary = Collection.needs_of_ldraw(FileAccess.get_file_as_string(path), library)
-		_ok(counted == model["needs"], "%s counts the same opened as listed (%d lots)"
+		var counted: Dictionary = OfficialModels.listed(str(model["file"]), str(model["set"]), library)
+		_ok(counted == model["needs"], "%s counts the same opened and matched to its set as listed (%d lots)"
 			% [str(model["name"]), counted.size()])
 		checked += 1
 	if checked == 0:
 		print("  --   vendor/omr is not here to recount from")
-	# Owning a set should cover most of that set's own LDraw model: the two
-	# are counted from different sources (Rebrickable's inventory, the
-	# model's own file) and this is where they meet.
+	# Owning a set builds its own model. The model is drawn by hand and the
+	# inventory counted from the box; listed as its set holds it, a piece
+	# still short is one the model draws and the box does not hold.
+	var whole: int = 0
 	var compared: int = 0
-	var exact: float = 0.0
+	var short := PackedStringArray()
+	var named: Dictionary = {}
 	for model: Dictionary in models:
-		if compared >= 20 or str(model["file"]).contains("_"):
+		if str(model["file"]).contains("_"):
 			continue
 		var found: Dictionary = await inventories.lookup(PackedStringArray([str(model["set"])]))
 		if not found.has(str(model["set"])):
@@ -327,17 +336,62 @@ func _official_models(library: PartLibrary) -> void:
 		var mine := Collection.new()
 		mine.sets = [{"set": str(model["set"]), "qty": 1, "spares": true}]
 		var cover: Dictionary = Collection.coverage(model["needs"], mine.pool(found, library))
-		exact += float(cover["exact"])
 		compared += 1
-	# Measured 2026-10-12 at 83% over the first twenty: the rest is where
-	# the model's author and Rebrickable disagree, not the join — a colour
-	# read differently (Light Grey for Light Bluish Grey), a hinge drawn as
-	# its two halves where Rebrickable lists the pair, a hose or a chain
-	# drawn link by link, hands drawn apart from the torso they come on.
-	_ok(compared > 0 and exact / compared > 0.8,
-		"owning a set covers most of its own official model: %.0f%% on average over %d"
-		% [100.0 * exact / maxi(1, compared), compared])
+		whole += int(int(cover["missing"]) == 0)
+		if int(cover["missing"]) > 0 and short.size() < 6:
+			short.append("%s %d" % [str(model["set"]), int(cover["missing"])])
+		if str(model["set"]) in ["31070-1", "6061-1"]:
+			named[str(model["set"])] = cover
+	print("  ..   %d of %d sets' own models are whole from the set; short, e.g.: %s"
+		% [whole, compared, ", ".join(short)])
+	# Measured 2026-10-19: as drawn, 2 of the 246 then listed were whole
+	# from their own sets; as their sets hold them, 624 of 1,234, and 880
+	# within 1%. The rest draw what the box does not hold, most of them a
+	# few pieces more than it holds (bench/results/ownedsets-2026-10-19).
+	_ok(compared > 0 and float(whole) / compared > WHOLE_FROM_OWN_SET,
+		"owning a set builds its own official model, for %d of %d sets (over %.0f%%)"
+		% [whole, compared, 100.0 * WHOLE_FROM_OWN_SET])
+	for number: String in ["6061-1", "31070-1"]:
+		var cover: Dictionary = named.get(number, {})
+		_ok(not cover.is_empty() and int(cover["missing"]) <= (0 if number == "6061-1" else 2),
+			"%s: %s of its %s pieces from the set itself%s" % [number, str(cover.get("owned", "?")),
+			str(cover.get("pieces", "?")), "" if number == "6061-1"
+			else "; the model draws two more light grey axle joiners than the box holds"])
 	inventories.queue_free()
+
+
+const WHOLE_FROM_OWN_SET := 0.45
+const OfficialModels := preload("res://src/dev/collection_models.gd")
+
+
+## The matching, with pieces chosen to need each rule once.
+func _as_its_set(library: PartLibrary) -> void:
+	var drawn := func(part: String) -> Array:
+		return {"73587p01": [["4592", 16], ["4593", 0]], "73983": [["2429", 16], ["2430", 16]],
+			"11153": [["61678", 16]]}.get(part, [])
+	var cases: Array = [
+		[{"3001/4": 3}, {"3001/4": 2}, {"3001/4": 3}, "a piece the box does not hold stays as drawn"],
+		[{"3794a/15": 2}, {"3794b/15": 2}, {"3794b/15": 2}, "another mould of it"],
+		[{"4592/1": 1, "4593/0": 1}, {"73587p01/1": 1}, {"73587p01/1": 1},
+			"a lever and its base drawn apart, the box holding them together"],
+		[{"73983/4": 1}, {"2429/4": 1, "2430/4": 1}, {"2429/4": 1, "2430/4": 1},
+			"a hinge drawn whole, the box holding its halves"],
+		[{"61678/1": 2}, {"11153/1": 2}, {"11153/1": 2}, "an alias"],
+		[{"3001/7": 2}, {"3001/71": 1, "3001/72": 3}, {"3001/72": 2},
+			"another colour the box has left, the most plentiful first"],
+		[{"6143/4": 1}, {"3941/4": 1}, {"3941/4": 1}, "another part of the same shape in its colour"],
+		[{"3001/4": 1, "3001/7": 1}, {"3001/71": 1, "3001/4": 1}, {"3001/4": 1, "3001/71": 1},
+			"its own colour first, then another for what is left"],
+	]
+	for case: Array in cases:
+		var got: Dictionary = Collection.as_its_set(case[0], case[1], drawn, library)
+		_ok(got == case[2], "%s: %s from %s is %s" % [case[3], str(case[0]), str(case[1]), str(got)])
+	_ok(not Collection.ownable("756", library) and not Collection.ownable("30104k02", library)
+		and not Collection.ownable("821410b", library) and not Collection.ownable("166", library)
+		and Collection.ownable("3815", library) and Collection.ownable("4073", library)
+		and Collection.ownable("3001", library),
+		"a hose segment, a chain link, a sticker and a tube segment's old number are not owned on "
+		+ "their own; old numbers of parts are, as api/_owned.js says (owned_probe)")
 
 
 func _local_copy(library: PartLibrary) -> void:
@@ -357,7 +411,7 @@ func _local_copy(library: PartLibrary) -> void:
 	var said: String = await store.load_collection()
 	_ok(store.offline and said.contains("copy on this device"),
 		"signed out, it works from the copy and says so (%s)" % said)
-	_ok(store.pieces_on_hand() == 47 + 3, "...with the set expanded (%d)" % store.pieces_on_hand())
+	_ok(store.pieces_on_hand() == SHOP_PIECES + 3, "...with the set expanded (%d)" % store.pieces_on_hand())
 	store.queue_free()
 	DirAccess.remove_absolute(kept)
 	_ok(not FileAccess.file_exists(kept), "and the probe's copy is gone")

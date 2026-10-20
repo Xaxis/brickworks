@@ -544,6 +544,7 @@ func _tell_page() -> void:
 		return
 	_told_page_at = now
 	_told_moment = moment
+	_hear_look_ask()
 	var telling: int = Time.get_ticks_usec()
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
@@ -633,6 +634,9 @@ func _tell_page() -> void:
 		"triangles": _drawn[1],
 		"now": Time.get_ticks_msec(),
 		"slow": _slow_frames,
+		# What a frame draws and costs (FrameBudget): the cuts made on a
+		# slow device, the frames timed and each judgment.
+		"look": _budget.page_state() if _budget != null else {},
 		"busy": _busy_frames,
 		"told_ms": roundi(_told_page_us / 1000.0),
 		"told_most_ms": roundi(_told_page_most_us / 1000.0),
@@ -1261,6 +1265,7 @@ func _ready() -> void:
 	_light_for_this_renderer()
 	_enable_antialiasing()
 	_match_screen_density()
+	_watch_frame_cost()
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
@@ -1334,10 +1339,18 @@ func _ready() -> void:
 		# to be, before the sample's autosave can go over it (ModelStore.restore).
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
-		if placed == 0:
+		# A tab or window opened by New tab begins on an empty baseplate,
+		# written at once, so a reload brings it back empty; as does one
+		# the person left empty (ModelStore.left_empty).
+		var empty: bool = placed == 0 and (_store.left_empty or TabSession.opened_new())
+		if empty and not _store.left_empty:
+			_store.begin(ModelStore.UNTITLED)
+			_store.touch()
+			_store.write_now()
+		if placed == 0 and not empty:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
-		if placed == 0:
+		if placed == 0 and not empty:
 			placed = _build_demo()
 	_lay_baseplate()
 
@@ -1724,6 +1737,8 @@ func _capture(path: String) -> void:
 ## The scene's lights are set for Forward+; the web build's renderer
 ## needs them weaker to show the same colours (BrickWorld.light_energy).
 func _light_for_this_renderer() -> void:
+	var sun: DirectionalLight3D = $Sun
+	_sun_unshadowed = BrickWorld.light_energy(sun.light_energy, false)
 	for light_name: String in ["Sun", "Fill", "Rim"]:
 		var light: DirectionalLight3D = get_node(light_name)
 		light.light_energy = BrickWorld.light_energy(light.light_energy,
@@ -1732,6 +1747,51 @@ func _light_for_this_renderer() -> void:
 	var environment: Environment = ($WorldEnvironment as WorldEnvironment).environment
 	environment.ambient_light_energy = BrickWorld.light_energy(
 		environment.ambient_light_energy)
+
+
+## The sun's energy for this renderer were it to cast no shadow, which on
+## the web is not its energy when it does (BrickWorld.light_energy).
+var _sun_unshadowed: float = 0.0
+## What a frame draws, lowered where frames are slow (FrameBudget).
+var _budget: FrameBudget = null
+
+
+func _watch_frame_cost() -> void:
+	_budget = FrameBudget.new()
+	_budget.name = "FrameBudget"
+	add_child(_budget)
+	_budget.setup(get_viewport(), ($WorldEnvironment as WorldEnvironment).environment,
+		$Sun as DirectionalLight3D, _sun_unshadowed)
+	_budget.for_the_app()
+
+
+## A check's word to the frame budget (tools/web/look_cost.mjs):
+## window.brickworksLookAsk = {cuts: [...] or null, look: frames}. Cuts
+## pinned until asked with null, which lets them go; look draws that many
+## frames on purpose and times them.
+func _hear_look_ask() -> void:
+	if _budget == null:
+		return
+	var said: Variant = JavaScriptBridge.eval("(function () { var a = window.brickworksLookAsk;"
+		+ " window.brickworksLookAsk = undefined;"
+		+ " return a === undefined ? '' : JSON.stringify(a); })()", true)
+	if said == null or str(said).is_empty():
+		return
+	var ask: Variant = JSON.parse_string(str(said))
+	if not ask is Dictionary:
+		return
+	var asked: Dictionary = ask
+	if asked.has("cuts"):
+		if asked["cuts"] is Array:
+			var wanted: Array[String] = []
+			for cut: Variant in asked["cuts"]:
+				if FrameBudget.CUTS.has(str(cut)) or FrameBudget.MEASURE_ONLY.has(str(cut)):
+					wanted.append(str(cut))
+			_budget.pin(wanted)
+		else:
+			_budget.unpin()
+	if int(asked.get("look", 0)) > 0:
+		_budget.look(clampi(int(asked["look"]), 1, 60))
 
 
 static func _argument(prefix: String) -> String:

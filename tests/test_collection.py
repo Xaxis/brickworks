@@ -71,12 +71,24 @@ def _written(set_num: str) -> dict:
     return shard["sets"][set_num]
 
 
+def _figures():
+    """collection_data's reading of a figure assembly's name, over the raw tables."""
+    colours = json.loads((GENERATED / "colors.json").read_text())
+    return collection_data._figure_parts(
+        {r["part_num"].lower(): r["name"] for r in _table("parts")},
+        {r["name"].strip().lower().replace("gray", "grey"): int(r["id"]) for r in _table("colors")},
+        collection_data.rb.colour_codes(colours))
+
+
 def _in_ldraw(counted: Counter, index: dict) -> Counter:
     colours = {int(k): v for k, v in index["colours"].items()}
+    figure = _figures()
     out: Counter = Counter()
     for (part, colour), quantity in counted.items():
         if colour in colours:
-            out[(index["parts"].get(part, part), colours[colour])] += quantity
+            drawn = None if part in index["parts"] else figure(part, colours[colour])
+            for one, code in drawn or [(index["parts"].get(part, part), colours[colour])]:
+                out[(one, code)] += quantity
     return out
 
 
@@ -94,6 +106,31 @@ def test_a_set_expands_to_its_inventory_and_its_minifigures(set_num: str) -> Non
     record = _written(set_num)
     assert Counter({(p, c): q for p, c, q in record["p"]}) == _in_ldraw(kept, index)
     assert Counter({(p, c): q for p, c, q in record.get("s", [])}) == _in_ldraw(spare, index)
+
+
+def test_a_rebrickable_number_ldraw_names_is_ldraws() -> None:
+    # Each LDraw file below says "Rebrickable <number>" in its header: a
+    # print Rebrickable numbers pr0001 and LDraw p01, a torso Rebrickable
+    # lists with its arms and hands (LDraw's shortcut places all five), and
+    # a mould the two number apart. Before, all three kept Rebrickable's
+    # number, and a set holding them held parts no model is drawn with.
+    parts = json.loads((SETS / "index.json").read_text())["parts"]
+    assert parts["3626apr0001"] == "3626ap01"
+    assert parts["973c28h01pr0040"] == "76382p0003"
+    assert parts["32005a"] == "2739a"
+
+
+def test_a_figure_rebrickable_lists_whole_is_written_as_its_parts() -> None:
+    # The Siege Tower's soldiers: "Hips and Blue Legs" in Black, and plain
+    # torsos with their arms and hands, as LDraw draws a figure.
+    figure = _figures()
+    assert figure("970c28", 0) == [("3815b", 0), ("3816c", 1), ("3817c", 1)]
+    assert figure("973c03h01", 4) == [("973", 4), ("3818", 0), ("3819", 0), ("3820", 14), ("3820", 14)]
+    printed = figure("973c01h01pr0090", 15)
+    assert printed is not None and printed[0] == ("973c01h01pr0090", 15) and printed[3] == ("3820", 14)
+    assert figure("3001", 4) is None
+    record = _written("6061-1")
+    assert ["970c28", 0, 4] not in record["p"] and ["3816c", 1, 4] in record["p"]
 
 
 def test_a_bricklink_colour_reads_back_as_the_ldraw_one_exported() -> None:

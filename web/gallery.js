@@ -140,6 +140,14 @@
       words.append(line);
       link.dataset.owned = `${Number(model.owned.have) || 0}/${Number(model.owned.pieces)}`;
     }
+    // What it won in the monthly challenges (supabase/challenges.sql).
+    for (const win of Array.isArray(model.won) ? model.won : []) {
+      const line = document.createElement("small");
+      line.className = "won";
+      line.textContent = `Won “${String(win.title)}”${win.way === "assistant" ? ", with the assistant" : ", by hand"}`;
+      words.append(line);
+      link.dataset.won = "yes";
+    }
     // Something to play with: what moves in it, as its app found from its
     // joints when it was published (supabase/play.sql), to be taken hold
     // of and moved on its link.
@@ -240,6 +248,26 @@
     }
   }
 
+  /// This month's challenge, in one line under the page's heading: the one
+  /// open now, or the next to open (supabase/challenges.sql).
+  function sayChallenge() {
+    const line = $("challenge-line");
+    const challenge = front && front.challenge;
+    line.hidden = !challenge;
+    line.replaceChildren();
+    if (!challenge) return;
+    const day = (iso) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })
+      .format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
+    const link = document.createElement("a");
+    link.href = tests ? "/challenge?tests=1" : "/challenge";
+    link.textContent = String(challenge.title);
+    if (challenge.state === "open") {
+      line.append("This month’s challenge: ", link, `, open until ${day(challenge.ends_on)}. Enter a model of yours, or vote.`);
+    } else {
+      line.append("The next challenge: ", link, `, opens on ${day(challenge.starts_on)}.`);
+    }
+  }
+
   /// The front's shelves, asked once; drawn whenever the question changes.
   async function askShelves() {
     try {
@@ -252,6 +280,7 @@
     }
     drawShelves();
     sayScore();
+    sayChallenge();
     document.documentElement.dataset.shelves = front ? "ready" : "broken";
   }
 

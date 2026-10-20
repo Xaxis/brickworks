@@ -64,6 +64,19 @@
 //                                 comments, and who built them; &handle=X
 //                                 only when X is theirs (api/_designers.js).
 //                                 Never kept by the CDN
+//   GET  ?op=challenge            /challenge: this month's challenge, its
+//                                 rules, its entries in their two groups and
+//                                 once it ended its winners; with the
+//                                 session, whom the caller voted for
+//   GET  ?op=challenge_entry&id=X (session) the challenge open now, for X's
+//                                 own designer: whether X is in, and what its
+//                                 rules say of X
+//   POST ?op=enter, withdraw, vote  (session) a model entered or taken back,
+//                                 a vote cast (api/_challenges.js)
+//
+// Challenges (2026-10-19, supabase/challenges.sql): one at a time, set by the
+// site's owner on /admin, with rules the database checks on the stored
+// model; a designer's page and a winning model's card say what it won.
 //
 // Designers (2026-10-19, supabase/designers.sql): a profile with models in
 // the gallery is a designer's page, and leads with what those models
@@ -130,6 +143,7 @@ import {
   feed, feedCount, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
 } from "./_follows.js";
 import { designerOf, designs } from "./_designers.js";
+import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -731,6 +745,8 @@ export function cardHtml(card, { earned = false } = {}) {
     if (card.builds) said.push(count(card.builds, "built", "built"));
   }
   const tested = earned && card.tested ? `<small class="tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</small>` : "";
+  // What it won (supabase/challenges.sql), the newest first.
+  const won = (card.won || []).map((win) => `<small class="won">${escapeHtml(wonSaid(win))}</small>`).join("");
   return `<a class="model" href="/m/${card.id}" data-id="${card.id}"${earned
     ? ` data-builds="${Number(card.builds) || 0}" data-remixes="${Number(card.remixes) || 0}" data-comments="${Number(card.comments) || 0}"`
     : ""}>`
@@ -739,7 +755,7 @@ export function cardHtml(card, { earned = false } = {}) {
       : "No picture"}</div>`
     + `<div class="words"><b title="${escapeHtml(card.name)}">${escapeHtml(card.name)}</b>`
     + `<span>${escapeHtml(card.author ? `${parts}, by ${card.author}` : parts)}</span>`
-    + `<small>${escapeHtml(said.join(" · "))}</small>${tested}</div></a>`;
+    + `<small>${escapeHtml(said.join(" · "))}</small>${tested}${won}</div></a>`;
 }
 
 // What the Tested mark means, said on hover, as the gallery's card says it.
@@ -815,17 +831,22 @@ async function profilePage(request, response) {
   const tests = testsAsked(request.query);
   const person = await personOf(handle);
   if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
-  const [shown, about, built, follows, following, designer] = await Promise.all([
+  const [shown, about, built, follows, following, designer, wins] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
     followsOf(handle),
     followingOf(handle),
     designerOf(origin, handle, tests),
+    winsBy(person.account, tests).catch(() => []),
   ]);
   const url = `${origin}/u/${person.handle}`;
   const earned = designer && designer.ready && designer.models > 0 ? designer : null;
-  const cards = shown.models.map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
+  const cards = (await withWins(shown.models, tests)).map((card) => ({ ...card,
+    comments: earned?.cards[card.id]?.comments ?? 0 }));
+  // What their models won in the monthly challenges (supabase/challenges.sql).
+  const won = wins.map((win) => `<li data-won="${escapeHtml(win.model)}"><a href="/m/${escapeHtml(win.model)}">${escapeHtml(win.name)}</a> `
+    + `<span>${escapeHtml(`${wonSaid(win)} · ${count(win.votes, "vote")}`)}</span></li>`).join("");
   // What they built of other people's models (and their own), from photos.
   const builds = stripHtml(built);
   // What other people built of theirs.
@@ -856,6 +877,9 @@ async function profilePage(request, response) {
     <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
     <a class="cta small" href="/app?view=${start.id}">Build it</a></p>` : ""}
   <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
+  ${won ? `<section class="wins" aria-labelledby="wins-h"><h2 id="wins-h">Challenges won</h2>
+    <p class="note">Voted the best of a <a href="/challenge">monthly challenge</a>.</p>
+    <ul class="lists">${won}</ul></section>` : ""}
   ${theirs ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">Built by others</h2>
     <p class="note">${escapeHtml(earned.builders === 1 ? "One person" : `${earned.builders.toLocaleString("en-US")} people`)} posted photos of their real builds of ${escapeHtml(person.name)}’s models.</p>
     <div class="build-strip">${theirs}</div></section>` : ""}
@@ -944,6 +968,8 @@ export default async function handler(request, response) {
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
+      if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
+      if (op === "challenge_entry") return await challengeEntry(request, response);
     } else if (request.method === "POST") {
       if (op === "photo_start") return await photoStart(request, response);
       if (op === "photo") return await photoKeep(request, response);
@@ -962,6 +988,9 @@ export default async function handler(request, response) {
       if (op === "mail") return await chooseMail(request, response);
       if (op === "follow") return await follow(request, response);
       if (op === "follow_choice") return await followChoice(request, response);
+      if (op === "enter") return await enter(request, response);
+      if (op === "withdraw") return await withdraw(request, response);
+      if (op === "vote") return await vote(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });
     }

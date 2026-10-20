@@ -19,6 +19,9 @@ import { openReport } from "/report.js";
 const marks = document.getElementById("marks");
 const id = marks && marks.dataset.id;
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
+// This month's challenge (supabase/challenges.sql), for the model's own
+// designer: Enter this month's challenge, or that it is in.
+if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
@@ -502,4 +505,156 @@ function start() {
   });
 
   load();
+}
+
+// ---------------------------------------------------------------------------
+// This month's challenge (api/_challenges.js): asked only with the sign-in,
+// and answered only to the model's own designer, so nobody else is shown
+// anything here. A line under Like and Favourite: Enter this month's
+// challenge, which opens a dialog with its rules and a choice of how it was
+// built; or that it is in, with Take it out.
+async function challengeEntry() {
+  const answer = await call(`/api/people?op=challenge_entry&id=${id}`);
+  if (answer.status !== 200 || !answer.body.mine || !answer.body.challenge) return;
+  const said = answer.body;
+  let box = document.getElementById("challenge-entry");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "challenge-entry";
+    box.className = "challenge-entry";
+    marks.after(box);
+  }
+  box.replaceChildren();
+  const line = document.createElement("p");
+  line.className = "note";
+  const named = document.createElement("a");
+  named.href = "/challenge";
+  named.textContent = said.challenge.title;
+  if (said.entry) {
+    line.append("In this month’s challenge, ", named, `, ${said.entry.label.toLowerCase()}. `);
+    const out = document.createElement("button");
+    out.type = "button";
+    out.className = "link";
+    out.textContent = "Take it out";
+    out.addEventListener("click", async () => {
+      if (!confirm("Take it out of the challenge? Its votes go with it.")) return;
+      out.disabled = true;
+      const gone = await call("/api/people?op=withdraw", { method: "POST", body: { model: id } });
+      if (gone.status !== 200) {
+        out.disabled = false;
+        line.append(` ${gone.body.error || "That did not work just now."}`);
+        return;
+      }
+      await challengeEntry();
+    });
+    line.append(out);
+    box.append(line);
+  } else {
+    line.append("This month’s challenge is ", named, `, open until ${said.challenge.days_said.split(" to ")[1]}. `);
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "cta ghost small";
+    go.dataset.enter = String(said.challenge.id);
+    go.textContent = "Enter this month’s challenge";
+    go.addEventListener("click", () => enterDialog(said));
+    box.append(line, go);
+  }
+  document.documentElement.dataset.challengeEntry = said.entry ? "entered" : "open";
+}
+
+/// The dialog: the rules, how it was built, and Enter it. The server checks
+/// the rules on the model as it is stored and says which it breaks.
+function enterDialog(said) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "sign-in report enter";
+  const title = document.createElement("h2");
+  title.textContent = `Enter “${said.challenge.title}”`;
+  const lede = document.createElement("p");
+  lede.textContent = (said.challenge.rules_said || []).length
+    ? "Brickworks checks its rules on this model as you shared it:" : "It has no rules but its brief.";
+  const rules = document.createElement("ul");
+  for (const text of said.challenge.rules_said || []) {
+    const item = document.createElement("li");
+    item.textContent = text;
+    rules.append(item);
+  }
+  const form = document.createElement("form");
+  const choices = document.createElement("fieldset");
+  const legend = document.createElement("legend");
+  legend.textContent = "How did you build it? The two are judged apart.";
+  choices.append(legend);
+  for (const [value, words] of [["hand", "By hand"], ["assistant", "With the assistant"]]) {
+    const row = document.createElement("label");
+    row.className = "choice";
+    const pick = document.createElement("input");
+    pick.type = "radio";
+    pick.name = "way";
+    pick.value = value;
+    pick.required = true;
+    row.append(pick, document.createTextNode(` ${words}`));
+    choices.append(row);
+  }
+  const status = document.createElement("div");
+  status.className = "said";
+  status.setAttribute("role", "status");
+  const send = document.createElement("button");
+  send.className = "cta";
+  send.type = "submit";
+  send.textContent = "Enter it";
+  const close = document.createElement("button");
+  close.className = "cta ghost";
+  close.type = "button";
+  close.textContent = "Cancel";
+  const row = document.createElement("div");
+  row.className = "actions";
+  row.append(send, close);
+  form.append(choices, row, status);
+  dialog.append(title, lede, rules, form);
+  document.body.append(dialog);
+  const end = () => {
+    dialog.close();
+    dialog.remove();
+  };
+  close.addEventListener("click", end);
+  dialog.addEventListener("cancel", end);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const way = (form.querySelector('input[name="way"]:checked') || {}).value;
+    if (!way) return;
+    send.disabled = true;
+    status.textContent = "Checking it against the rules…";
+    const answer = await call("/api/people?op=enter", { method: "POST", body: { model: id, way } });
+    send.disabled = false;
+    if (answer.status !== 201) {
+      status.replaceChildren();
+      const broken = answer.body.broken || [];
+      if (broken.length) {
+        status.append("It does not keep the rules yet:");
+        const list = document.createElement("ul");
+        for (const one of broken) {
+          const item = document.createElement("li");
+          item.dataset.rule = one.rule;
+          item.textContent = one.said;
+          list.append(item);
+        }
+        status.append(list);
+      } else {
+        status.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+      }
+      document.documentElement.dataset.challengeRefused = answer.body.refused || "error";
+      return;
+    }
+    form.replaceChildren();
+    rules.remove();
+    lede.textContent = `It is in, ${answer.body.label.toLowerCase()}. People signed in vote until the challenge ends.`;
+    const done = document.createElement("button");
+    done.className = "cta";
+    done.type = "button";
+    done.textContent = "Close";
+    done.addEventListener("click", end);
+    dialog.append(done);
+    done.focus();
+    await challengeEntry();
+  });
+  dialog.showModal();
 }

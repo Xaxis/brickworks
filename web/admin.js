@@ -46,6 +46,10 @@ async function accessToken() {
   return body.access_token;
 }
 
+// /admin?tests=1: the flows' test challenges too (supabase/challenges.sql),
+// and one set here is a test one, which only a page asked with tests=1 shows.
+const TESTS = new URLSearchParams(location.search).get("tests") === "1" ? "tests=1" : "";
+
 // The token the page was last drawn with, for the photos it shows: renewing
 // replaces the refresh token, so it is not renewed once per photo.
 let drawnWith = "";
@@ -53,7 +57,7 @@ let drawnWith = "";
 async function load() {
   const token = await accessToken();
   drawnWith = token;
-  const reply = await fetch("/api/admin", { headers: { authorization: `Bearer ${token}` } });
+  const reply = await fetch(`/api/admin${TESTS ? `?${TESTS}` : ""}`, { headers: { authorization: `Bearer ${token}` } });
   if (reply.status === 404) {
     // What every account but the owner's sees. Said plainly here, because
     // the person reading it is the one signed in.
@@ -132,6 +136,7 @@ function draw(data) {
   say("gallery-note", data.gallery?.length ? "" : "Nothing is listed.");
 
   drawPicks(data.picks);
+  drawChallenges(data.challenges);
 
   // Marked Tested: the app's finding, to clear when it should not be there.
   const tested = $("tested");
@@ -388,6 +393,163 @@ function drawPicks(picks) {
   }
 }
 
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
+
+/// The challenges, newest first, each with its entries, votes and winners,
+/// and End it now on one not ended. Titles the owner typed, names strangers
+/// chose: text, never markup.
+function drawChallenges(list) {
+  const rows = $("challenges");
+  rows.replaceChildren();
+  const form = $("challenge-form");
+  form.hidden = list === null;
+  if (list === null || list === undefined) {
+    say("challenge-note", "");
+    const row = document.createElement("tr");
+    cell(row, "Not open yet: supabase/challenges.sql is not applied.", "faint");
+    rows.append(row);
+    return;
+  }
+  for (const one of list) {
+    const row = document.createElement("tr");
+    row.dataset.challenge = String(one.id);
+    row.dataset.state = one.state;
+    cell(row, `${one.title}${one.test ? " (a test's)" : ""}`, "model");
+    cell(row, `${dayOf(one.starts_on)} to ${dayOf(one.ends_on)}`);
+    const rules = [];
+    if (one.rules?.most_parts) rules.push(`at most ${Number(one.rules.most_parts).toLocaleString()} parts`);
+    if (one.rules?.set_number) rules.push(`set ${one.rules.set_number}${one.rules.set_name ? `, ${one.rules.set_name}` : ""}`);
+    if (one.rules?.tested) rules.push("Tested");
+    cell(row, rules.join("; ") || "none", rules.length ? "said" : "faint");
+    cell(row, one.state === "open" ? "open" : one.state === "upcoming" ? "to come" : "ended");
+    cell(row, `${one.entries?.hand ?? 0} in, ${one.votes?.hand ?? 0} votes`, "n");
+    cell(row, `${one.entries?.assistant ?? 0} in, ${one.votes?.assistant ?? 0} votes`, "n");
+    const won = document.createElement("td");
+    won.className = "model";
+    for (const w of one.winners || []) {
+      const link = document.createElement("a");
+      link.href = `/m/${encodeURIComponent(w.model)}`;
+      link.textContent = w.name || w.model;
+      if (won.childElementCount) won.append(document.createElement("br"));
+      won.append(link, document.createTextNode(` (${w.way === "hand" ? "by hand" : "assistant"}, ${w.votes})`));
+    }
+    if (!won.childElementCount) {
+      won.textContent = one.state === "ended" ? (one.settled ? "none" : "counted when shown") : "—";
+      won.classList.add("faint");
+    }
+    row.append(won);
+    const acts = document.createElement("td");
+    acts.className = "acts";
+    if (one.state !== "ended") {
+      acts.append(act("End it now", () => confirm(`End "${one.title}" now? No more entries or votes.`)
+        && post(`op=end_challenge&challenge=${encodeURIComponent(one.id)}${TESTS ? `&${TESTS}` : ""}`, "challenge-note",
+          `"${one.title}" has ended.`)));
+    }
+    row.append(acts);
+    rows.append(row);
+  }
+  if (!list.length) {
+    const row = document.createElement("tr");
+    cell(row, "None set yet.", "faint");
+    rows.append(row);
+  }
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+  "November", "December"];
+
+/// Each of the form's days as three dropdowns, day, month and year (this
+/// one and the next), the way the site asks every date (site.css
+/// fieldset.date): each named [date]_day, [date]_month, [date]_year.
+function dateDropdowns() {
+  const year = new Date().getUTCFullYear();
+  for (const set of document.querySelectorAll("#challenge-form fieldset.date")) {
+    const date = set.dataset.date;
+    const words = set.querySelector("legend").textContent;
+    const choose = (part, said, choices) => {
+      const label = document.createElement("label");
+      const hidden = document.createElement("span");
+      hidden.className = "visually-hidden";
+      hidden.textContent = `${words}: ${said.toLowerCase()}`;
+      const select = document.createElement("select");
+      select.name = `${date}_${part}`;
+      select.required = true;
+      // Chosen until a choice is made: else the browser chooses the first.
+      const none = new Option(said, "", true, true);
+      none.disabled = true;
+      none.hidden = true;
+      select.append(none, ...choices.map(([value, text]) => new Option(text, String(value))));
+      label.append(hidden, select);
+      return label;
+    };
+    set.querySelector(".dropdowns").replaceChildren(
+      choose("day", "Day", Array.from({ length: 31 }, (_, at) => [at + 1, String(at + 1)])),
+      choose("month", "Month", MONTHS.map((name, at) => [at + 1, name])),
+      choose("year", "Year", [[year, String(year)], [year + 1, String(year + 1)]]));
+  }
+}
+
+/// [date]'s dropdowns as YYYY-MM-DD, or "" while one is not chosen; a day
+/// the month does not have (31 April) is null.
+function dateOf(form, date) {
+  const [day, month, year] = ["day", "month", "year"].map((part) => Number(form.elements[`${date}_${part}`].value));
+  if (!day || !month || !year) return "";
+  const made = new Date(Date.UTC(year, month - 1, day));
+  if (made.getUTCDate() !== day) return null;
+  return made.toISOString().slice(0, 10);
+}
+
+function setDate(form, date, when) {
+  form.elements[`${date}_day`].value = String(when.getUTCDate());
+  form.elements[`${date}_month`].value = String(when.getUTCMonth() + 1);
+  form.elements[`${date}_year`].value = String(when.getUTCFullYear());
+}
+
+/// The form's first day today and its last the month's last, until changed.
+function datesFirst() {
+  const form = $("challenge-form");
+  const now = new Date();
+  if (!dateOf(form, "starts_on")) setDate(form, "starts_on", now);
+  if (!dateOf(form, "ends_on")) setDate(form, "ends_on", new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)));
+}
+
+$("challenge-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const send = form.querySelector('button[type="submit"]');
+  const days = { starts_on: dateOf(form, "starts_on"), ends_on: dateOf(form, "ends_on") };
+  const missing = Object.keys(days).find((date) => !days[date]);
+  if (missing) {
+    const words = form.querySelector(`fieldset[data-date="${missing}"] legend`).textContent.toLowerCase();
+    const month = Number(form.elements[`${missing}_month`].value);
+    const most = new Date(Date.UTC(Number(form.elements[`${missing}_year`].value), month, 0)).getUTCDate();
+    return say("challenge-note", `The ${words} is not on the calendar: ${MONTHS[month - 1]} has ${most} days.`, true);
+  }
+  const body = { title: form.elements.title.value, brief: form.elements.brief.value, ...days, tested: form.tested.checked };
+  if (form.has_most.checked) body.most_parts = Number(form.most_parts.value);
+  if (form.has_set.checked) body.set_number = form.set_number.value;
+  send.disabled = true;
+  try {
+    const token = await accessToken();
+    const reply = await fetch(`/api/admin?op=challenge${TESTS ? `&${TESTS}` : ""}`, { method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const said = await reply.json().catch(() => ({}));
+    if (!reply.ok) throw new Error(said.error || `The server said ${reply.status}.`);
+    form.reset();
+    datesFirst();
+    await refresh();
+    say("challenge-note", `Set, from ${dayOf(said.starts_on)} to ${dayOf(said.ends_on)}${said.set
+      ? `, with set ${said.set.number} (${said.set.name}, ${said.set.lots} lots)` : ""}.`);
+  } catch (problem) {
+    say("challenge-note", problem.message, true);
+  } finally {
+    send.disabled = false;
+  }
+});
+dateDropdowns();
+datesFirst();
+
 function act(words, run) {
   const button = document.createElement("button");
   button.textContent = words;
@@ -432,6 +594,21 @@ async function takeOut(model, button) {
   }
 }
 
+// The report an email named, kept in view while the page above it settles:
+// pictures and sections that came in after it was centred pushed it out of
+// view (digest_flow, 2026-10-19). Only until the person scrolls themselves.
+function keepInView(row) {
+  row.scrollIntoView({ block: "center" });
+  let mine = true;
+  const observer = new ResizeObserver(() => { if (mine) row.scrollIntoView({ block: "center" }); });
+  const stop = () => { mine = false; observer.disconnect(); };
+  observer.observe(document.body);
+  for (const kind of ["wheel", "touchstart", "keydown", "mousedown"]) {
+    addEventListener(kind, stop, { once: true, passive: true });
+  }
+  setTimeout(stop, 10000);
+}
+
 async function refresh() {
   try {
     draw(await load());
@@ -440,7 +617,7 @@ async function refresh() {
     const asked = document.querySelector("#reports tr.asked");
     if (asked && !refresh.shown) {
       refresh.shown = true;
-      asked.scrollIntoView({ block: "center" });
+      keepInView(asked);
     }
     say("note", `Updated ${new Date().toLocaleTimeString()}`);
   } catch (problem) {

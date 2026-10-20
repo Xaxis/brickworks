@@ -27,7 +27,10 @@ fixing what it got wrong.
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
   (`assets/generated/exact/<hash>.bwx`, `tools/build_exact.py`). More than 1 LDU of
-  overlap through any two pieces is a collision, named with its fix; a piece of the
+  overlap through any two pieces is a collision, named with its fix (the pairs of
+  pieces near each other found through each shape's tree of its pieces' boxes,
+  built as it is read, `Exact._tree_of`, and asked in the order every pair was
+  before: MECHANISMS §23); a piece of the
   design no connection holds is a fault unless it stands square (`rests`); a piece
   only the floor holds, on a bare floor (floor "none" or "grid", or no baseplate
   laid: `Assistant._on_bare_floor`), is "tips over" unless its centre of mass is

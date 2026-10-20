@@ -14,6 +14,8 @@ With --parts it also stands in for the deployment, on a slow network:
 each /parts/<hash>.lbm is read from that directory after --delay
 milliseconds and up to as much again. A line "part <name>" is printed
 for each one served, so a browser check can tell the network was used.
+A part's exact shape, /parts/<hash>.bwx, is read from exact/ beside that
+directory, as the bucket has it beside the geometry ("exact <name>").
 
 With --parts-url it stands in for the deployment as it is: /api/account
 names that URL, as the deployment names PARTS_URL, so a local export reads
@@ -85,14 +87,16 @@ class Handler(SimpleHTTPRequestHandler):
             self._send(200, "application/json",
                        json.dumps({"parts_url": f"http://{host}/parts/"}).encode())
             return
-        if self.parts is not None and path.startswith("/parts/") and path.endswith(".lbm"):
+        if self.parts is not None and path.startswith("/parts/") and path.endswith((".lbm", ".bwx")):
             time.sleep(self.delay * (1.0 + random.random()))
             name = Path(path).name
-            source = self.parts / name
+            # A part's exact shape lies beside its geometry in the bucket
+            # (tools/web_pack.py), and in exact/ beside parts/ here.
+            source = (self.parts.parent / "exact" if name.endswith(".bwx") else self.parts) / name
             if not source.is_file():
                 self._send(404, "text/plain", b"")
                 return
-            print(f"part {name}", flush=True)
+            print(f"{'exact' if name.endswith('.bwx') else 'part'} {name}", flush=True)
             self._send(200, "application/octet-stream", source.read_bytes())
             return
         super().do_GET()

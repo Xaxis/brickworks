@@ -51,6 +51,18 @@
 //                                        (supabase/discovery.sql)
 //   POST /api/admin?op=unpick&pick=N     end choice N: back to the pick
 //                                        worked out from the past seven days
+//   POST /api/admin?op=challenge         {title, brief, starts_on, ends_on,
+//                                        most_parts?, set_number?, tested?}:
+//                                        a challenge set, one at a time
+//                                        (supabase/challenges.sql); &tests=1
+//                                        makes it a test one, which only a
+//                                        page asked with tests=1 shows
+//   POST /api/admin?op=end_challenge&challenge=N  challenge N ended now
+//
+// Challenges (2026-10-19, supabase/challenges.sql): GET lists them, newest
+// first, with their entries, votes and winners (&tests=1: the flows' test
+// ones too). A set's rule keeps the set's parts with the challenge, read
+// from its inventory (api/_owned.js) as the gallery reads a collection's.
 //
 // This week's pick (2026-10-19, supabase/discovery.sql): GET says what a
 // visitor's gallery shows as the pick now, chosen or worked out, the
@@ -64,6 +76,8 @@ import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js"
 import { db } from "./_db.js";
 import { modelHash } from "./_directory.js";
 import { BuildRefusal, photoFileForAdmin, photosReported, removePhoto } from "./_builds.js";
+import { keyed, readShard, shardOf } from "./_owned.js";
+import { originOf } from "./_oauth.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -115,7 +129,8 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut, pick, unpick };
+  const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut, pick, unpick,
+    challenge: setChallenge, end_challenge: endChallenge };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
@@ -126,7 +141,7 @@ export default async function handler(request, response) {
   }
   if (request.method !== "GET") {
     return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "pick or unpick" });
+      + "pick, unpick, challenge or end_challenge" });
   }
   if (op === "photo") {
     const file = await photoFileForAdmin(String(request.query?.photo || "")).catch(() => null);
@@ -137,7 +152,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    return response.status(200).json(await report());
+    return response.status(200).json(await report(String(request.query?.tests || "") === "1"));
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 500;
     return response.status(status).json({ error: error.message });
@@ -318,6 +333,103 @@ async function unpick(request, response) {
   return response.status(200).json({ pick: choice, ended: true });
 }
 
+// ---------------------------------------------------------------------------
+// The monthly challenge (supabase/challenges.sql).
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const line = (given, limit) => String(given ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim()
+  .slice(0, limit).trim();
+
+/// Every challenge, newest first; null before challenges.sql.
+async function challengesListed(tests) {
+  try {
+    return (await db("rpc/challenge_list", { method: "POST", body: { tests } })) || [];
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
+}
+
+/// What the owner's form says, checked, before the database checks it again.
+function challengeAsked(given) {
+  const title = line(given.title, 80);
+  const brief = String(given.brief ?? "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n").trim().slice(0, 600).trim();
+  if (!title) return { error: "Give it a title." };
+  if (!brief) return { error: "Give it a brief: a line or two of what to build." };
+  const starts = String(given.starts_on || "");
+  const ends = String(given.ends_on || "");
+  if (!DATE.test(starts) || !DATE.test(ends) || Number.isNaN(Date.parse(starts)) || Number.isNaN(Date.parse(ends))) {
+    return { error: "Give the first and the last day." };
+  }
+  const days = (Date.parse(ends) - Date.parse(starts)) / 864e5;
+  if (days < 0) return { error: "The last day comes after the first." };
+  if (days > 62) return { error: "A challenge runs at most 63 days." };
+  let most = null;
+  if (given.most_parts !== undefined && given.most_parts !== null && given.most_parts !== "") {
+    most = Number(given.most_parts);
+    if (!Number.isInteger(most) || most < 1 || most > 200000) return { error: "At most how many parts: a whole number from 1." };
+  }
+  let set = null;
+  if (given.set_number !== undefined && given.set_number !== null && String(given.set_number).trim() !== "") {
+    set = String(given.set_number).trim().toLowerCase();
+    if (!/-\d+$/.test(set)) set = `${set}-1`;
+    if (!/^[0-9a-z][0-9a-z.-]{0,30}$/.test(set)) return { error: "A set is its number, as 6080 or 6080-1." };
+  }
+  return { title, brief, starts_on: starts, ends_on: ends, most_parts: most, set_number: set, tested: given.tested === true };
+}
+
+const CHALLENGE_REFUSED = {
+  past: "It would end before today.",
+  set_empty: "That set's inventory has no parts in it.",
+};
+
+/// A challenge set: refused, in words, for one sharing a day with another.
+async function setChallenge(request, response) {
+  const asked = challengeAsked(request.body && typeof request.body === "object" ? request.body : {});
+  if (asked.error) return response.status(400).json({ error: asked.error });
+  let setName = null;
+  let setParts = null;
+  if (asked.set_number) {
+    const shard = await readShard(shardOf(asked.set_number), originOf(request));
+    const record = shard?.sets?.[asked.set_number];
+    if (!record) {
+      return response.status(422).json({ error: `No inventory here knows set ${asked.set_number}: check its number.` });
+    }
+    setName = String(record.n || asked.set_number).slice(0, 200);
+    // Its spares too: they come in the box.
+    setParts = keyed([...(record.p || []), ...(record.s || [])]);
+  }
+  const tests = String(request.query?.tests || "") === "1";
+  let made;
+  try {
+    made = await db("rpc/challenge_set", { method: "POST", body: { title: asked.title, brief: asked.brief,
+      starts_on: asked.starts_on, ends_on: asked.ends_on, most_parts: asked.most_parts, set_number: asked.set_number,
+      set_name: setName, set_parts: setParts, tested: asked.tested, test: tests } });
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) {
+      return response.status(503).json({ error: "Challenges are not open yet: supabase/challenges.sql is not applied." });
+    }
+    throw trouble;
+  }
+  if (made?.refused === "overlap") {
+    return response.status(409).json({ error: `One at a time: “${made.with?.title}” has a day of these. End it first, or `
+      + "choose other days." });
+  }
+  if (made?.refused) return response.status(422).json({ error: CHALLENGE_REFUSED[made.refused] || "That was refused." });
+  return response.status(200).json({ challenge: made.challenge, starts_on: made.starts_on, ends_on: made.ends_on,
+    set: setName ? { number: asked.set_number, name: setName, lots: setParts.length } : null, test: tests });
+}
+
+/// Challenge N ended now: its winners are counted the next time it is shown.
+async function endChallenge(request, response) {
+  const id = Number(request.query?.challenge);
+  if (!Number.isInteger(id) || id < 1) return response.status(400).json({ error: "name a challenge: ?challenge=<number>" });
+  const ended = await db("rpc/challenge_end", { method: "POST", body: { challenge_id: id } });
+  if (ended !== true) return response.status(404).json({ error: "no challenge by that number that has not ended" });
+  return response.status(200).json({ challenge: id, ended: true });
+}
+
 /// This week's pick as a visitor's gallery shows it, the owner's choices
 /// still open, and the week's best five; none of it before
 /// supabase/discovery.sql.
@@ -378,8 +490,8 @@ async function commentsShown(reported) {
 const REPORTS = "/rest/v1/reports?resolved_at=is.null&select=id,model,handle,collection,reason,note,contact,at,"
   + "shared_models(name,owner,listed,published)&order=at.desc&limit=300";
 
-async function report() {
-  const [listed, tabs, gallery, reports, barred, tested, pickNow] = await Promise.all([
+async function report(tests = false) {
+  const [listed, tabs, gallery, reports, barred, tested, pickNow, challenges] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
     asServer("/rest/v1/relay_tabs?select=owner,seen_at,open&owner=not.is.null"),
     // What strangers can see in /gallery right now, and whose it is.
@@ -391,6 +503,7 @@ async function report() {
     asServer("/rest/v1/barred_accounts?select=account,at,reason&order=at.desc&limit=200"),
     marks(),
     picks(),
+    challengesListed(tests),
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
@@ -457,6 +570,8 @@ async function report() {
     tested,
     // This week's pick (supabase/discovery.sql); null before it.
     picks: pickNow,
+    // The monthly challenges (supabase/challenges.sql); null before it.
+    challenges,
   };
 }
 

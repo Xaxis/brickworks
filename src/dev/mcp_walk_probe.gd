@@ -34,6 +34,12 @@
 ##    the official models of real sets with the saved models: a collection
 ##    of the Bench example's pieces builds the Bench whole, first. The
 ##    session, given only the saved models, said nothing could be built.
+##    Then the person that session spoke for, who owns sets 31070-1 and
+##    6061-1: each set's own official model is listed as the set holds it
+##    (Collection.as_its_set), so the Siege Tower is whole and first, and
+##    the Turbo Track Racer short only of the two axle joiners its model
+##    draws and its box does not hold. Measured as drawn they were 84% and
+##    96%, and the session said nothing could be built completely.
 extends SceneTree
 
 var _failures: int = 0
@@ -225,6 +231,22 @@ func _buildable() -> void:
 	_check("...and the official models of real sets, as What can I build? ranks them",
 		said.contains("(the official model of set "))
 	_check("...and how to open one", said.contains("open_model name="))
+	mine.collection = Collection.from_json({"sets": [{"set": "31070-1", "qty": 1},
+		{"set": "6061-1", "qty": 1}], "parts": []})
+	await mine.refresh_pool()
+	said = await _say("parts_list", {"which": "buildable"})
+	for line: String in said.split("\n").slice(0, 3):
+		print("    " + line)
+	var first: String = said.get_slice("\n", 1).strip_edges()
+	var racer: String = ""
+	for line: String in said.split("\n"):
+		if line.contains("(the official model of set 31070-1"):
+			racer = line.strip_edges()
+			break
+	_check("owning 31070-1 and 6061-1, the Siege Tower is built whole from its own set: %s" % first,
+		first.begins_with("100% Siege Tower") and first.contains(", 0 missing"))
+	_check("...and the Turbo Track Racer is short only of what its box does not hold: %s" % racer,
+		racer.contains("owns 663 of its 665 pieces in their colours, 2 missing"))
 
 
 ## Every part's place, by id.

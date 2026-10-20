@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!--
+  This month's building challenge, at /challenge (supabase/challenges.sql,
+  2026-10-19): one at a time, set by the site's owner on /admin, with rules
+  Brickworks checks on each model as it is entered: at most so many parts,
+  only the parts of one official set, marked Tested. Designers enter a model
+  of theirs from its page, saying whether they built it by hand or with the
+  assistant, and the two are shown and judged apart. People signed in and 13
+  or over vote, once in each group; when it ends the most voted in each
+  wins, and the winner's card and designer's page say so.
+
+  challenge.js draws it from /api/people?op=challenge, every name as text
+  and never as markup, with the gallery's own cards (directory.css). No
+  inline script: the site's content security policy allows none it has not
+  hashed. No style of its own: the look is /site.css and /directory.css.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>This month’s challenge · Brickworks</title>
+<meta name="description" content="A monthly building challenge on Brickworks, with rules the site checks: build to the brief, enter a model of yours, and vote for the best built by hand and the best built with the assistant.">
+<link rel="canonical" href="https://brickworks.diy/challenge">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="This month’s Brickworks challenge">
+<meta property="og:description" content="Build to the brief, keep the rules Brickworks checks, and vote for the best built by hand and with the assistant.">
+<meta property="og:url" content="https://brickworks.diy/challenge">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="This month’s Brickworks challenge">
+<meta name="twitter:description" content="Build to the brief, keep the rules Brickworks checks, and vote for the best built by hand and with the assistant.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
+<script src="/challenge.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/#assistant">Assistant</a>
+			<a href="/faq">FAQ</a>
+			<a href="/download">Download</a>
+			<a href="/profile" data-account>Account</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/#assistant">Assistant</a>
+				<a href="/faq">FAQ</a>
+				<a href="/download">Download</a>
+				<a href="/profile" data-account>Account</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap person challenge" id="challenge">
+		<p class="eyebrow" id="eyebrow">Monthly challenge</p>
+		<h1 id="title">This month’s challenge</h1>
+		<p class="handle" id="days"></p>
+		<p class="bio" id="brief"></p>
+		<p class="note" id="loading">Fetching the challenge…</p>
+		<p class="note" id="none" hidden>There is no challenge just now. The next one is set here: look again soon.</p>
+		<p class="note" id="broken" hidden>The challenge did not load just now. Try again in a minute.</p>
+		<noscript><p class="note">The challenge is drawn with a little JavaScript, which is off in this browser.</p></noscript>
+
+		<section id="rules-part" aria-labelledby="rules-h" hidden>
+			<h2 id="rules-h">The rules</h2>
+			<ul class="lists" id="rules"></ul>
+			<p class="note" id="no-rules" hidden>No rules but the brief.</p>
+			<p class="note">Brickworks checks every rule on the model as it was shared, when it is entered, and
+				again while the challenge runs: an entry whose newer version breaks one says so, and is not
+				counted.</p>
+		</section>
+
+		<section id="how" aria-labelledby="how-h" hidden>
+			<h2 id="how-h">How to enter</h2>
+			<p class="note">Share a model in the gallery with your name on it, then on its page press
+				<b>Enter this month’s challenge</b> and say whether you built it by hand or with the assistant:
+				the two are judged apart. Up to three of yours. People signed in and 13 or over vote, once in each
+				group; the votes are counted when it ends, and the most voted in each group wins.</p>
+		</section>
+
+		<section id="winners" aria-labelledby="winners-h" hidden>
+			<h2 id="winners-h">The winners</h2>
+			<div class="models" id="winner-cards"></div>
+		</section>
+
+		<div id="groups"></div>
+		<p class="said" id="said" role="status"></p>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Learn">
+				<h2>Learn</h2>
+				<ul>
+					<li><a href="/faq">FAQ</a></li>
+					<li><a href="/privacy">Privacy</a></li>
+					<li><a href="/terms">Terms of use</a></li>
+					<li><a href="/guidelines">Community guidelines</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Every model here was made and shared by the person credited, or by
+				someone who chose not to be; Brickworks does not check them before
+				they are listed. Something here that should not be? Press Report on
+				its page, or see <a href="/takedown">takedown requests</a>.
+			</p>
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group.
+			</p>
+		</div>
+	</div>
+</footer>
+</body>
+</html>

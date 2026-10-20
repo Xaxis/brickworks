@@ -872,7 +872,13 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	// here, this page starts nothing and says so, and that tab is asked to
 	// come forward; kept on another computer, the link opens Brickworks as
 	// any other does.
+	//
+	// ?new is File, New tab (TabSession.open_another): a session of its own
+	// at once, never one another tab left, so it begins on an empty
+	// baseplate. Taken out of the address once chosen, so a reload keeps
+	// this tab's own session, as any tab's does.
 	function claimTab() {
+		const asNew = query.has("new");
 		async function choose() {
 			let id = null;
 			const wanted = query.get("tab");
@@ -890,13 +896,15 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 					return { id: null, elsewhere: wanted };
 				}
 			}
-			try { id = sessionStorage.getItem(TAB_KEY); } catch (e) {}
+			if (!asNew) {
+				try { id = sessionStorage.getItem(TAB_KEY); } catch (e) {}
+			}
 			if (id && !TAB_SHAPE.test(id)) id = null;
 			if (id && !(await hold(id, 3000))) id = null;
 			if (!id) {
 				stored = await storedSessions();
 				const newest = Array.from(stored.entries()).sort(function (a, b) { return b[1] - a[1]; });
-				for (const pair of newest) {
+				for (const pair of asNew ? [] : newest) {
 					if (await hold(pair[0], 0)) { id = pair[0]; break; }
 				}
 			}
@@ -905,6 +913,14 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 				if (!stored.has(fresh) && await hold(fresh, 0)) id = fresh;
 			}
 			try { sessionStorage.setItem(TAB_KEY, id); } catch (e) {}
+			if (asNew) {
+				const kept = new URLSearchParams(location.search);
+				kept.delete("new");
+				const rest = kept.toString();
+				try {
+					history.replaceState(history.state, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
+				} catch (e) {}
+			}
 			// The working model and connector from before tabs had their
 			// own go to the first tab to open, and only to that one.
 			let legacy = false;
@@ -914,7 +930,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 					legacy = true;
 				}
 			} catch (e) {}
-			return { id: id, legacy: legacy };
+			return { id: id, legacy: legacy, asNew: asNew };
 		}
 		// Somebody's shared model, opened to look at, keeps and writes
 		// nothing (ModelStore.read_only): it takes no tab's session either,
@@ -962,6 +978,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		}
 		window.brickworksTab = tab.id;
 		window.brickworksTabLegacy = tab.legacy;
+		window.brickworksTabNew = tab.asNew === true;
 		hereWhenAsked(tab.id);
 		return engine.startGame({
 			onProgress: function (current, total) {

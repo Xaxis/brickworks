@@ -77,6 +77,7 @@ const WINDOW_ONLY: Dictionary = {
 	"share": "publishes the model on the web as the person, for anyone with the link and, ticked, in the public gallery: theirs to decide",
 	"account": "signing in is the person's",
 	"quit": "closes the app the session is driving",
+	"new_window": "opens another tab or window for the person, on a model of its own; a session works in the tab it is connected to, and clear_model begins a new model there",
 	"connector": "connects Claude to this tab; a session is already connected",
 	"select_*": "picks parts for the person's next command; a session names parts by number (look_at_model) and reads the person's pick with selection",
 	"hide": "what the person sees; view_model where= looks at one box of the model",

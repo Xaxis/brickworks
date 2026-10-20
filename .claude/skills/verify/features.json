@@ -306,6 +306,14 @@
       "tests": []
     },
     {
+      "id": "cli:challenges browser flow",
+      "kind": "cli",
+      "entry": "tools/web/challenges_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challenges_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL; or a local relay_server.mjs --hold=challenges until challenges.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:check a release on three systems",
       "kind": "cli",
       "entry": ".github/workflows/release.yml",
@@ -684,6 +692,22 @@
       "tests": []
     },
     {
+      "id": "cli:new tab browser flow",
+      "kind": "cli",
+      "entry": "tools/web/newtab_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8890 --static=build/web, then node tools/web/newtab_flow.mjs --url=http://127.0.0.1:8890/app --out=shots/newtab   (with .env sourced)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:new window probe",
+      "kind": "cli",
+      "entry": "src/dev/new_window_probe.gd",
+      "reach": "tools/probe.sh new_window_probe   (starts two more headless copies of the app, and stops them)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:no AI in a browser",
       "kind": "cli",
       "entry": "tools/web/noai_flow.mjs",
@@ -932,7 +956,9 @@
       "entry": "tools/collection_data.py",
       "reach": "python3 tools/collection_data.py   (--check writes nothing; needs vendor/rebrickable)",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_collection.py"
+      ]
     },
     {
       "id": "cli:share browser flow",
@@ -1179,6 +1205,14 @@
       "kind": "cli",
       "entry": "tools/deploy.sh",
       "reach": "tools/deploy.sh --prod",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:what a frame costs in a browser",
+      "kind": "cli",
+      "entry": "tools/web/look_cost.mjs",
+      "reach": "node tools/web/look_cost.mjs --url=http://127.0.0.1:<port> --out=DIR --mode=cuts|acts [--gate]   (serve.py build/web --share L00kM0del1=vendor/omr/files/6392-1.mpd --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd, .env sourced)",
       "area": "web",
       "tests": []
     },
@@ -1942,6 +1976,16 @@
       "tests": []
     },
     {
+      "id": "lib:the monthly challenge's rules",
+      "kind": "lib",
+      "entry": "supabase/challenges.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql --dry --try=tools/challenges_try.sql --table=challenge_entries   (after the live files; the promises around it in tests/test_challenges.py; then the challenges browser flow)",
+      "area": "web",
+      "tests": [
+        "tests/test_challenges.py"
+      ]
+    },
+    {
       "id": "lib:the surface pass",
       "kind": "lib",
       "entry": "src/ai/surface_pass.gd",
@@ -2067,6 +2111,14 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a lighter look where frames are slow",
+      "kind": "ui",
+      "entry": "src/render/frame_budget.gd",
+      "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2278,6 +2330,14 @@
       "tests": []
     },
     {
+      "id": "ui:enter this month's challenge",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "signed in, on your own model's page /m/<id>: Enter this month's challenge under Like (GET /api/people?op=challenge_entry&id=X; POST ?op=enter, ?op=withdraw)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:floor",
       "kind": "ui",
       "entry": "src/render/floor_layer.gd",
@@ -2453,6 +2513,14 @@
       "entry": "src/camera/view_prefs.gd",
       "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:new tab or window",
+      "kind": "ui",
+      "entry": "src/parts/tab_session.gd",
+      "reach": "godot --path .  (File, New window, or Ctrl+Shift+N; in a browser File, New tab)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -2710,6 +2778,14 @@
       "tests": []
     },
     {
+      "id": "ui:setting the monthly challenge",
+      "kind": "ui",
+      "entry": "web/admin.js",
+      "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:share panel",
       "kind": "ui",
       "entry": "src/ui/share_panel.gd",
@@ -2878,6 +2954,16 @@
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
       "tests": []
+    },
+    {
+      "id": "ui:this month's challenge page",
+      "kind": "ui",
+      "entry": "web/challenge.js",
+      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
+      "area": "web",
+      "tests": [
+        "tests/test_challenges.py"
+      ]
     },
     {
       "id": "ui:this tab and its claude chats",

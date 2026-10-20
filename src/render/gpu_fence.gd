@@ -119,11 +119,20 @@ static func finished() -> void:
 	_holding -= 1
 	if _holding == 0:
 		RenderingServer.render_loop_enabled = true
-		_tell_page(Time.get_ticks_msec() - _held_from)
+		_let_go_at = Time.get_ticks_msec()
+		_tell_page(_let_go_at - _held_from)
 
 
-## When the drawing was last held, by the first of the waits holding it.
+## When the drawing was last held, by the first of the waits holding it,
+## and when it was let go.
 static var _held_from: int = 0
+static var _let_go_at: int = 0
+
+
+## How long nothing has held the drawing, in ms: 0 while a wait does.
+## FrameBudget takes a look held apart again once this has gone a while.
+static func unheld_ms() -> int:
+	return 0 if _holding > 0 else Time.get_ticks_msec() - _let_go_at
 
 
 ## Each time the drawing was held, on the page, as [when it began, how long]
