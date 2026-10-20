@@ -5287,7 +5287,7 @@ func _on_part_fetched(part_id: String) -> void:
 	if _store.place_awaited(part_id) > 0:
 		_on_model_changed()
 		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % _world.brick_count())
+			_bar.say("%d bricks" % (_world.brick_count() - _store.scenery.size()))
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)
@@ -5306,8 +5306,10 @@ func _on_part_failed(part_id: String, why: String) -> void:
 	# on its way: the model looked whole and was not.
 	var lost: int = _store.not_coming(part_id) if _store != null else 0
 	if lost > 0:
-		_bar.say("%d bricks — %d %s could not be loaded, and %s kept in the file"
-			% [_world.brick_count(), lost, "part" if lost == 1 else "parts",
+		# The model's, not the baseplate it stands on.
+		var down: int = _world.brick_count() - _store.scenery.size()
+		_bar.say("%d %s — %d %s could not be loaded, and %s kept in the file"
+			% [down, "brick" if down == 1 else "bricks", lost, "part" if lost == 1 else "parts",
 				"is" if lost == 1 else "are"])
 
 
