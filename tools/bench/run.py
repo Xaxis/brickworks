@@ -113,6 +113,9 @@ AGENT = {"User-Agent": "brickworks-bench/1.0 (https://brickworks.diy)"}
 CANNED = ROOT / "tests" / "fixtures" / "bench"
 VIEWS = ("corner", "front", "close")
 SCREEN = "-screen 0 1600x900x24"
+# How a headless design's app starts a drawer for its pictures, on the GPU's
+# lease and off-screen (src/ai/leased_shots.gd's --draw-by=).
+DRAWER = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
 
 
 def say(text: str) -> None:
@@ -252,19 +255,31 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
     log = run_dir / "design.log"
     since = time.time() - 1.0
     say(f"design {subject.id}: port {port}, up to {timeout // 60} min")
-    # On the GPU's lease, as every windowed run is, not drawn in software
-    # under `heavy`, whose queue held a design half an hour at load 50. The
-    # app idles while the session thinks: one design's app used under a
-    # second of the GPU in ten minutes. Inside a lease (a batch run
-    # under one `gpu`) it runs at once. The timeout is inside the lease: a
-    # queue on a busy machine is not the design's time.
-    command = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}",
-               "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
-               "--log-file", str(run_dir / "godot_design.log"),
-               "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
-               # The subject's own scored designs are the answer under test:
-               # the designer's memory leaves them out (src/ai/design_memory.gd).
-               f"--held-out={subject.id}", *extra]
+    tail = ["--log-file", str(run_dir / "godot_design.log"),
+            "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
+            # The subject's own scored designs are the answer under test:
+            # the designer's memory leaves them out (src/ai/design_memory.gd).
+            f"--held-out={subject.id}"]
+    if (app / "src" / "ai" / "leased_shots.gd").exists():
+        # Headless, holding no lease: the app idles while the session thinks,
+        # and one design's app used under a second of the GPU in ten minutes.
+        # Each picture is drawn by a drawer on the lease (src/ai/leased_shots.gd),
+        # the same ModelShot given the same bricks, which holds it while it
+        # draws and LINGER_S after. In a window on the lease, a design held a
+        # slot for its whole session, so two ran at once and other jobs'
+        # draws queued behind them. The timeout is the app's own: a drawer's
+        # wait in the lease's queue is inside a call the session waits on.
+        command = ["timeout", "--kill-after=30", str(timeout), "godot", "--headless",
+                   "--path", str(app), *tail, "--draw-by=" + json.dumps(DRAWER), *extra]
+    else:
+        # An app from before the drawer, as every windowed run is: in a window
+        # on the GPU's lease for the whole session, not drawn in software
+        # under `heavy`, whose queue held a design half an hour at load 50.
+        # The timeout is inside the lease: a queue on a busy machine is not
+        # the design's time.
+        command = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}",
+                   "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
+                   *tail, *extra]
     started = time.time()
     with log.open("w") as out:
         status = subprocess.run(command, cwd=app, env=_billing_free_env(MESA_VK_WSI_DEBUG="sw"),
