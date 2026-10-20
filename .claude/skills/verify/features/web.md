@@ -1498,10 +1498,15 @@ plan with Claude as the client.
   px (no script: the CSP runs none inline), and one footer: the header and
   footer are `web/_shell.html`, written into every page by `tools/site_shell.py`
   (`tests/test_site_shell.py` fails on a page that differs). Pictures are WebP at
-  two widths, taken from the live app at a device ratio of two
-  (`tools/web/app_shot.mjs --ratio=2`, or `BW_RATIO=2` before any flow that
-  launches through `browser.mjs`), with `srcset`, `width` and `height`; all but
-  the hero load lazily. `img/manifest.json` says where each came from and holds
+  the widths a laptop and a phone need (the landing page's six at 400, 720 and
+  full, `sizes` the tile's own width, not the screen's: a phone at twice its
+  density took 310 KB of 1200s when it said 100vw), taken from the live app at
+  a device ratio of two (`tools/web/app_shot.mjs --ratio=2`, or `BW_RATIO=2`
+  before any flow that launches through `browser.mjs`), with `srcset`, `width`
+  and `height`; all but the hero load lazily. Weigh a change to it by what the
+  page fetched (`encodedBodySize`), scrolled to its foot, at 390 and 1280 px
+  against the live one (2026-10-20: 206/264 KB at load/scrolled on a phone and
+  146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
   its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
   as numbered steps with what it costs (`#claude`), the questions (FAQPage
   JSON-LD), the dimensions. `privacy page` (`web/privacy.html`): what an account
