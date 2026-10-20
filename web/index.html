@@ -17,8 +17,10 @@
   /api/share as it nears the screen, showing a card only once its picture
   has arrived, and the strip only once three have: it can never show a
   dead card. The pictures are in web/img/ (img/manifest.json says where
-  each came from), WebP at two widths, every one with its size given so
-  nothing moves as they arrive. The header and footer are web/_shell.html
+  each came from), WebP at the widths a laptop and a phone each need (the
+  six at 400, 720 and full: a phone at twice its density took 310 KB of
+  them at 1200), every one with its size given so nothing moves as they
+  arrive. The header and footer are web/_shell.html
   (tools/site_shell.py). The JSON-LD at the foot is data, not script: the
   site's content security policy runs no inline script.
 -->
@@ -146,7 +148,7 @@
 		<ul class="proofs">
 			<li><figure class="shot">
 				<img src="/img/stability-400.webp"
-					srcset="/img/stability-400.webp 400w, /img/stability-640.webp 640w, /img/stability-1200.webp 1200w"
+					srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="900" loading="lazy" decoding="async"
 					alt="Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.">
@@ -154,7 +156,7 @@
 			</figure></li>
 			<li><figure class="shot">
 				<img src="/img/simulate-400.webp"
-					srcset="/img/simulate-400.webp 400w, /img/simulate-640.webp 640w, /img/compare-simulate.webp 1200w"
+					srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="750" loading="lazy" decoding="async"
 					alt="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.">
@@ -162,7 +164,7 @@
 			</figure></li>
 			<li><figure class="shot">
 				<img src="/img/grab-400.webp"
-					srcset="/img/grab-400.webp 400w, /img/grab-640.webp 640w, /img/grab-960.webp 960w"
+					srcset="/img/grab-400.webp 400w, /img/grab-720.webp 720w, /img/grab-960.webp 960w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="960" height="600" loading="lazy" decoding="async"
 					alt="The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.">
@@ -170,7 +172,7 @@
 			</figure></li>
 			<li><figure class="shot">
 				<img src="/img/compare-io-400.webp"
-					srcset="/img/compare-io-400.webp 400w, /img/compare-io-640.webp 640w, /img/compare-io-1200.webp 1200w"
+					srcset="/img/compare-io-400.webp 400w, /img/compare-io-720.webp 720w, /img/compare-io-1200.webp 1200w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="750" loading="lazy" decoding="async"
 					alt="The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.">
@@ -178,7 +180,7 @@
 			</figure></li>
 			<li><figure class="shot">
 				<img src="/img/booklet-400.webp"
-					srcset="/img/booklet-400.webp 400w, /img/booklet-640.webp 640w, /img/booklet-1200.webp 1200w"
+					srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="900" loading="lazy" decoding="async"
 					alt="A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.">
@@ -186,7 +188,7 @@
 			</figure></li>
 			<li><figure class="shot">
 				<img src="/img/technic-400.webp"
-					srcset="/img/technic-400.webp 400w, /img/technic-640.webp 640w, /img/technic-1200.webp 1200w"
+					srcset="/img/technic-400.webp 400w, /img/technic-720.webp 720w, /img/technic-1200.webp 1200w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, 100vw"
 					width="1200" height="900" loading="lazy" decoding="async"
 					alt="A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.">
