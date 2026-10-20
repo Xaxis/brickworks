@@ -55,6 +55,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 from ldraw.library import Library  # noqa: E402
+from ldraw.parser import read_text  # noqa: E402
 
 LDRAW = ROOT / "vendor" / "ldraw"
 
@@ -67,9 +68,9 @@ def parts_in(paths: list[Path], into: Path) -> list[Path]:
         if path.suffix.lower() == ".dat":
             found.append(path)
             continue
-        for name, text in embedded_parts(path.read_text(encoding="latin-1")).items():
+        for name, text in embedded_parts(read_text(path)).items():
             target = into / name
-            target.write_text(text, encoding="latin-1")
+            target.write_text(text, encoding="utf-8")
             found.append(target)
     return found
 
@@ -137,7 +138,7 @@ def build(files: list[Path]) -> list[tuple[str, bytes, dict, str]]:
         part_id, blob, record = build_meshes._convert(path.name.lower())
         if blob is None:
             raise SystemExit(f"{path}: {record.get('error')}")
-        out.append((part_id, blob, record, path.read_text(encoding="latin-1")))
+        out.append((part_id, blob, record, read_text(path)))
     return out
 
 
@@ -152,7 +153,7 @@ def check(paths: list[Path]) -> int:
 
     failed = 0
     for path in paths:
-        text = path.read_text(encoding="latin-1")
+        text = read_text(path)
         lines = len(list(parse_text(text, strict=True)))
         with tempfile.TemporaryDirectory() as scratch:
             files = parts_in([path], Path(scratch))
@@ -162,7 +163,7 @@ def check(paths: list[Path]) -> int:
                 mesh = flatten(library, part.name)
                 missing = sorted(mesh.missing)
                 # A print's pictures are carried as !DATA sections.
-                pictures = texmap_pictures(part.read_text(encoding="latin-1"))
+                pictures = texmap_pictures(read_text(part))
                 missing += [p for p in pictures if p.lower() not in carried]
                 state = "complete" if not missing else "MISSING " + ", ".join(missing)
                 if pictures and not missing:
@@ -286,7 +287,7 @@ def main() -> int:
             (args.out / "custom").mkdir(exist_ok=True)
             for part_id, _blob, _record, source in built:
                 (args.out / "custom" / f"{part_id}.dat").write_text(
-                    source, encoding="latin-1")
+                    source, encoding="utf-8")
             (args.out / "custom.json").write_text(
                 json.dumps({"format": 1, "parts": entries}, separators=(",", ":")))
             print(f"wrote {len(entries)} parts to {args.out}")
@@ -307,7 +308,7 @@ def main() -> int:
             (args.into / "custom").mkdir(exist_ok=True)
             for part_id, _blob, _record, source in built:
                 (args.into / "custom" / f"{part_id}.dat").write_text(
-                    source, encoding="latin-1")
+                    source, encoding="utf-8")
             catalogue.write_text(json.dumps(document, separators=(",", ":")))
             print(f"merged {len(fresh)} parts into {catalogue} "
                   f"({replaced} replaced, {len(document['parts']):,} in all)")

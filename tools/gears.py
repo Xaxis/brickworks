@@ -39,6 +39,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+from ldraw.parser import read_text  # noqa: E402
+
 TABLE = ROOT / "assets" / "ldraw" / "gears.json"
 CATALOGUE = ROOT / "assets" / "generated" / "catalogue.json"
 LDRAW = ROOT / "vendor" / "ldraw"
@@ -140,7 +142,7 @@ def _moved_to(part: str) -> str:
     """The part a "~Moved to X" file stands for, else the part itself."""
     path = LDRAW / "parts" / f"{part}.dat"
     if path.exists():
-        first = path.read_text(errors="replace").splitlines()[0]
+        first = read_text(path).splitlines()[0]
         if "~Moved to " in first:
             return first.split("~Moved to ", 1)[1].strip()
     return part
@@ -160,7 +162,7 @@ def check_actuators(table: dict) -> list[str]:
                 problems.append(f"{body}: no {drawn}.dat to read its stroke from")
                 continue
             placed: dict[str, tuple[list[float], list[float]]] = {}
-            for line in path.read_text(errors="replace").splitlines():
+            for line in read_text(path).splitlines():
                 bits = line.split()
                 if len(bits) >= 15 and bits[0] == "1":
                     part = _moved_to(bits[14].lower().removesuffix(".dat"))
@@ -226,7 +228,7 @@ def spacing(files: list[Path], table: dict) -> Counter:
     tally: Counter = Counter()
     for path in files:
         placed = []
-        for ref, _colour, m, _sub in omr._flatten(path.read_text(errors="replace")):
+        for ref, _colour, m, _sub in omr._flatten(read_text(path)):
             part = _part_id(ref)
             if part in gears:
                 axis = (m[5], m[8], m[11])

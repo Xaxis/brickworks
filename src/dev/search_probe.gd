@@ -5,12 +5,19 @@
 ## directly rather than by inference from a design transcript.
 ##
 ##   godot --headless --path . --script src/dev/search_probe.gd
+##
+## After `--`, `--catalogue=PATH` reads that catalogue instead of the one
+## in assets/generated: a corrected copy is checked before it is swapped in.
 extends SceneTree
 
 
 func _initialize() -> void:
 	var library := PartLibrary.new()
-	if not library.load_catalogue():
+	var path: String = ""
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--catalogue="):
+			path = arg.trim_prefix("--catalogue=")
+	if not library.load_catalogue(path):
 		print("no catalogue")
 		quit(1)
 		return
@@ -30,7 +37,44 @@ func _initialize() -> void:
 	print("")
 	var failed: int = _rankings(library)
 	failed += _numbers(library)
+	failed += _names(library)
 	quit(1 if failed > 0 else 0)
+
+
+## Names and keywords as LDraw writes them, and found as typed. The
+## library read as Latin-1 put "ThÃ©oden" and "90Â°" in 54 names and
+## 299 keywords (2026-10-20): typing "Théoden" or "90°" found nothing.
+## UTF-8 read as Latin-1 leaves a lead byte, Ã or Â, before a byte the
+## spec reserves for what follows one.
+static var MISREAD := RegEx.create_from_string("[\\x{c2}-\\x{f4}][\\x{80}-\\x{bf}]")
+
+
+static func _names(library: PartLibrary) -> int:
+	var misread := PackedStringArray()
+	for id: String in library.parts:
+		var info: PartLibrary.PartInfo = library.parts[id]
+		for said: String in [info.name] + Array(info.keywords):
+			if MISREAD.search(said) != null:
+				misread.append("%s %s" % [id, said])
+	var failures: int = 0
+	if not misread.is_empty():
+		failures += 1
+		print("  FAIL %d names and keywords misread, e.g. %s" % [misread.size(),
+			", ".join(misread.slice(0, 3))])
+	# What each query must find, and a word of the name it is found by.
+	var wanted: Dictionary = {"Théoden": "10054p02", "90°": "7334", "Å": "3005pwc",
+		"Éomer": "10054p01", "忍者": "57895p01"}
+	for query: String in wanted:
+		var ids := PackedStringArray()
+		for info: PartLibrary.PartInfo in library.search(query, 200):
+			ids.append(info.id)
+		var ok: bool = ids.has(wanted[query])
+		failures += 0 if ok else 1
+		print("  %s %-8s finds %s%s" % ["ok  " if ok else "FAIL", query, wanted[query],
+			"" if ok else " (%d found: %s)" % [ids.size(), ", ".join(ids.slice(0, 4))]])
+	if misread.is_empty():
+		print("  ok   no name or keyword of %d parts misread" % library.parts.size())
+	return failures
 
 
 ## What a bare family name should lead with.

@@ -457,6 +457,13 @@ whole cycle.
 
 ### Fixed
 
+- Part names with an accent, a degree sign or another script read as LDraw
+  writes them, and searching finds them: "Théoden", "Curve 90°", "Å", "忍者",
+  where the parts panel and Claude read "ThÃ©oden" and "90Â°", and "Å" was
+  cut short. The library was read as Latin-1 when its files are UTF-8; an
+  older file that is not UTF-8 is still read as Latin-1. Keywords the
+  library's own files carry misread, "ThÃ©oden" among them, are read as
+  meant too.
 - Claude gets your model's motions right when it plays them. A motion
   that follows another ("Extend the telescope" after "Open the dome
   panel") is checked after it, where it used to be checked alone and said

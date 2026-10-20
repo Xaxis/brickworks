@@ -203,7 +203,8 @@ Static: the catalogue itself is built by `tools/refresh_catalogue.py` (see
 Runtime:
 
 ```sh
-godot --headless --path . --script src/dev/search_probe.gd          # what it returns
+godot --headless --path . --script src/dev/search_probe.gd          # what it returns; names as LDraw writes them (Théoden, 90°)
+godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved

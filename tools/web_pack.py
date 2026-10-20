@@ -32,6 +32,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from ldraw.parser import read_text
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -130,7 +132,7 @@ def parts_used_by_models() -> set[str]:
         for path in root.iterdir():
             if path.suffix.lower() not in (".ldr", ".mpd", ".dat"):
                 continue
-            for line in path.read_text(errors="ignore").splitlines():
+            for line in read_text(path).splitlines():
                 tokens = line.split()
                 if len(tokens) >= 15 and tokens[0] == "1":
                     name = " ".join(tokens[14:]).replace("\\", "/").lower()

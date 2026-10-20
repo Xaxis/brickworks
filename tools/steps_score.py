@@ -66,6 +66,8 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from ldraw.parser import read_text
+
 ROOT = Path(__file__).resolve().parent.parent
 SETS = ROOT / "vendor" / "omr" / "files"
 INDEX = ROOT / "vendor" / "omr" / "index.json"
@@ -207,7 +209,7 @@ def sample(which: str) -> list[str]:
     for path in sorted(SETS.glob("*")):
         if path.suffix.lower() not in (".mpd", ".ldr"):
             continue
-        info[path.name] = survey(path.read_text(errors="replace"))
+        info[path.name] = survey(read_text(path))
     return choose(info, themes())[which]
 
 
@@ -707,7 +709,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     if args.command == "sample":
         files = sample(args.which)
-        info = {f: survey((SETS / f).read_text(errors="replace")) for f in files}
+        info = {f: survey(read_text(SETS / f)) for f in files}
         theme_of = themes()
         for f in files:
             print(f"{f}\t{info[f][0]} parts\t{info[f][1]} steps\t{theme_of.get(set_of(f), 'Other')}")

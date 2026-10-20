@@ -41,6 +41,8 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from ldraw.parser import read_text
+
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = ROOT / "assets" / "generated" / "catalogue.json"
 
@@ -77,7 +79,7 @@ def _read(path: Path) -> tuple[dict[str, list], str]:
     files: dict[str, list] = {}
     current = None
     first = None
-    for line in path.read_text(errors="replace").splitlines():
+    for line in read_text(path).splitlines():
         bits = line.split()
         if bits[:2] == ["0", "FILE"]:
             current = " ".join(bits[2:]).lower()

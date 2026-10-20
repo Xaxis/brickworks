@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
+from pathlib import Path
 from typing import Iterator
 
 # Colour codes that inherit from the referencing file rather than the palette.
@@ -296,6 +297,42 @@ def parse_line(raw: str) -> Command | None:
         return OptionalLine(int(tokens[1]), (pts[0], pts[1]), (pts[2], pts[3]))
 
     raise ValueError(f"unknown line type {line_type}: {raw!r}")
+
+
+def decode(raw: bytes) -> str:
+    """The text of an LDraw file from its bytes.
+
+    The spec says UTF-8; an older file that is not valid UTF-8 is read
+    as Latin-1, the whole file one way. Every file read as Latin-1 put
+    "ThÃ©oden" and "90Â°" in the catalogue for 54 names (2026-10-20),
+    and cut "Å" short, its second byte being Latin-1's line break NEL.
+    """
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
+def read_text(path: str | Path) -> str:
+    """An LDraw file's text, decoded as :func:`decode` says."""
+    return decode(Path(path).read_bytes())
+
+
+def mended(value: str) -> str:
+    """A header value with text once read wrongly and saved undone.
+
+    40 library files carry the mistake in their own bytes, valid UTF-8
+    spelling "Ã\\x89omer" for Éomer and "ThÃ©oden". A value changes only
+    when all of it reads back as UTF-8, so a real "é" or "忍" stays.
+    """
+    while True:
+        try:
+            fixed = value.encode("latin-1").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return value
+        if fixed == value:
+            return value
+        value = fixed
 
 
 def parse_text(text: str, *, strict: bool = False) -> Iterator[tuple[int, Command]]:

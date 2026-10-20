@@ -44,23 +44,7 @@ def main() -> int:
         return 1
 
     document = json.loads(path.read_text())
-    library = Library(LDRAW)
-
-    changed = 0
-    redirects = 0
-    for entry in document["parts"]:
-        ldfile = library.get(entry["id"] + ".dat")
-        if ldfile is None:
-            continue
-        before = dict(entry)
-        entry["name"] = ldfile.description
-        entry["category"] = ldfile.category
-        entry["kind"] = ldfile.part_type or "Part"
-        entry["moved_to"] = ldfile.moved_to
-        if ldfile.moved_to:
-            redirects += 1
-        if entry != before:
-            changed += 1
+    changed, redirects = refresh_headers(document, Library(LDRAW))
 
     colors, joined = write_colors(GENERATED, Palette.from_file(LDRAW / "LDConfig.ldr"))
 
@@ -86,6 +70,35 @@ def main() -> int:
     print(used)
     print(builds)
     return 0
+
+
+def refresh_headers(document: dict, library: Library) -> tuple[int, int]:
+    """Re-read what each part's header says: its name, keywords,
+    category, kind and redirect.
+
+    Keywords too, which build_meshes.py alone used to write: a fix to
+    how headers are read reached the names and left "ThÃ©oden" in the
+    keywords search reads.
+
+    Returns how many entries changed and how many are redirects.
+    """
+    changed = 0
+    redirects = 0
+    for entry in document["parts"]:
+        ldfile = library.get(entry["id"] + ".dat")
+        if ldfile is None:
+            continue
+        before = dict(entry)
+        entry["name"] = ldfile.description
+        entry["category"] = ldfile.category
+        entry["kind"] = ldfile.part_type or "Part"
+        entry["keywords"] = ldfile.keywords[:12]   # as build_meshes.py keeps them
+        entry["moved_to"] = ldfile.moved_to
+        if ldfile.moved_to:
+            redirects += 1
+        if entry != before:
+            changed += 1
+    return changed, redirects
 
 
 def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:

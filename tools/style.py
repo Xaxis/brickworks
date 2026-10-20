@@ -90,7 +90,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from ldraw.parser import Matrix, SubfileRef, normalise_filename, parse_line  # noqa: E402
+from ldraw.parser import Matrix, SubfileRef, normalise_filename, parse_line, read_text  # noqa: E402
 
 CATALOGUE = ROOT / "assets" / "generated" / "catalogue.json"
 LDRAW = ROOT / "vendor" / "ldraw"
@@ -841,7 +841,7 @@ def real_sets(parts: Parts) -> list[dict]:
     for path in sorted((OMR / "files").glob("*")):
         row = rows.get(_number(path), {"number": _number(path), "name": path.stem,
                                        "theme": "?", "year": "0"})
-        found = measure(read(path.read_text(encoding="latin-1")), parts)
+        found = measure(read(read_text(path)), parts)
         found.update(file=path.name, number=row["number"], name=row["name"],
                      theme=row["theme"], year=int(row["year"] or 0), group=group_of(row))
         out.append(found)
@@ -967,7 +967,7 @@ def main() -> int:
     else:
         paths = [Path(p) for p in args.what]
     for path in paths:
-        found = measure(read(path.read_text(encoding="latin-1")), parts)
+        found = measure(read(read_text(path)), parts)
         if args.json:
             print(json.dumps({"file": path.name, **found}))
         else:

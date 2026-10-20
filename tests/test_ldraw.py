@@ -9,6 +9,7 @@ part under us, these fail loudly instead of the model quietly drifting.
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,8 +20,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from ldraw.colors import Finish, Palette  # noqa: E402
 from ldraw.geometry import compute_normals, flatten  # noqa: E402
-from ldraw.library import Library  # noqa: E402
-from ldraw.parser import Matrix, Vec3, parse_line  # noqa: E402
+from ldraw.library import Library, LDrawFile  # noqa: E402
+from ldraw.parser import Matrix, Vec3, decode, mended, parse_line  # noqa: E402
 from ldraw.parser import EdgeLine, Polygon, SubfileRef  # noqa: E402
 
 LDRAW_ROOT = ROOT / "vendor" / "ldraw"
@@ -118,6 +119,47 @@ def test_filenames_may_contain_spaces() -> None:
     ref = parse_line("1 16 0 0 0 1 0 0 0 1 0 0 0 1 some part.dat")
     assert isinstance(ref, SubfileRef)
     assert ref.filename == "some part.dat"
+
+
+def test_text_is_utf8_and_an_older_file_latin1() -> None:
+    """UTF-8 as the spec says, Latin-1 for a file that is not UTF-8,
+    and a byte-order mark is not part of the first line."""
+    assert decode("0 Curve 90° Théoden 忍者\n".encode("utf-8")) == "0 Curve 90° Théoden 忍者\n"
+    assert decode("0 Café 90°\n".encode("latin-1")) == "0 Café 90°\n"
+    assert decode(b"\xef\xbb\xbf0 FILE main.ldr\r\n").splitlines() == ["0 FILE main.ldr"]
+
+
+def test_text_read_wrongly_and_saved_is_mended() -> None:
+    """The library's own "Ã\x89omer" reads as Éomer; real text stays."""
+    assert mended("Ã\x89omer, ThÃ©oden") == "Éomer, Théoden"
+    assert mended("Ulrich RÃ\x83Â¶der") == "Ulrich Röder"        # twice over
+    for real in ("Théoden", "Curve 90°", "忍者", "Brick  2 x  4", "Ã"):
+        assert mended(real) == real
+
+
+def test_header_names_read_as_written(library: Library) -> None:
+    """The names and keywords people search, from real library files:
+    "ThÃ©oden" and "90Â°" while the library was read as Latin-1, and
+    "Å" cut to "Ã" where its second byte is Latin-1's line break."""
+    def got(name: str) -> LDrawFile:
+        found = library.get(name)
+        assert found is not None, name
+        return found
+
+    assert got("10054p02.dat").description.endswith("with Théoden Pattern")
+    assert got("3005pwc.dat").description == 'Brick  1 x  1 with Lightblue "Å" (A Ring) Pattern'
+    assert "忍者" in got("57895p01.dat").keywords
+    assert "Éomer" in got("10054p01.dat").keywords          # mended
+    assert got("7334.dat").description == "Track with Gear Rack Curve 90° 17.5 x 17.5"
+
+
+def test_a_latin1_part_reads_as_latin1() -> None:
+    with tempfile.TemporaryDirectory() as folder:
+        (Path(folder) / "x1.dat").write_bytes(
+            "0 Tile  1 x  2 with \"Café\" Pattern\r\n0 !KEYWORDS Jürgen\r\n".encode("latin-1"))
+        found = Library(LDRAW_ROOT, extra=[folder]).get("x1.dat")
+        assert found is not None
+        assert (found.description, found.keywords) == ('Tile  1 x  2 with "Café" Pattern', ["Jürgen"])
 
 
 def test_quad_and_triangle_arity() -> None:

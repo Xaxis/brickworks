@@ -50,6 +50,8 @@ import urllib.request
 from collections import Counter
 from pathlib import Path
 
+from ldraw.parser import read_text
+
 ROOT = Path(__file__).resolve().parent.parent
 HERE = ROOT / "vendor" / "omr"
 SITE = "https://library.ldraw.org"
@@ -167,7 +169,7 @@ def names() -> int:
     sets = sorted((HERE / "files").glob("*"))
     for path in sets:
         seen: set[str] = set()
-        for name in list(_submodels(path.read_text(errors="replace")))[1:]:
+        for name in list(_submodels(read_text(path)))[1:]:
             name = re.sub(r"\.(ldr|dat|mpd)$", "", name.lower())
             for word in re.findall(r"[a-z]{3,}", name):
                 if word not in IGNORED:
@@ -186,7 +188,7 @@ def harvest(wanted: list[str], out: Path, most: int = 20) -> int:
     written = 0
     taken: dict[str, int] = {}
     for path in sorted((HERE / "files").glob("*")):
-        text = path.read_text(errors="replace")
+        text = read_text(path)
         if "non-commercial" in text.lower():
             continue
         lines = text.splitlines()
@@ -331,7 +333,7 @@ def clusters(out: Path, groups: list[str], most: int, seeds: str = "") -> int:
     written = 0
     rows = []
     for path in sorted((HERE / "files").glob("*")):
-        text = path.read_text(errors="replace")
+        text = read_text(path)
         if "non-commercial" in text.lower():
             continue
         number = path.name.split("_")[0].removesuffix(".mpd").removesuffix(".ldr")
