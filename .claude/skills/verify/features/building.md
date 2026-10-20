@@ -759,9 +759,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `_pair_clear_at`; not a pin, an axle or a round part on the joint's line,
   nor two parts a plane square to it keeps apart), asked only past the turns
   and slides already found clear, and in a loop's drag on the pause, not each
-  frame (Grab 15, MECHANISMS §25: 21019-1's turntable stops where its plate
-  with a handle meets the clip's plate, and comes back; the moving sweep's
-  row).
+  frame (Grab 15, MECHANISMS §25), and not at all where no piece of one shares
+  a place along the line and a distance from it with a piece of the other
+  (`Grab._about_line`, `_pieces_apart`, Grab 16: 8808-1's six pairs). A pause
+  checks a loop's way 4 ms a frame (`GrabDrag.PAUSE_BUDGET_MS`,
+  `Grab.pause_budget_ms`). `-- --only=clipped` (MECHANISMS §26): 4002020-1's
+  turntable, whose loop holds a clip on a bar with a ball end, turns +13°,
+  -44° and back to 0.0001 LDU; 21019-1's, whose clip fills its handle's bar,
+  is locked; neither clip ends into its bar's part by their exact shapes.
 - `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
   bodies (two studs or more, an axle in an axle hole, glue: one body; two
   joints on different lines between two bodies: one body) and the joints
@@ -844,7 +849,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   further that way"); "Locked: this loop has no freedom" when it closes
   neither a degree one way nor the other. An engine's piston slides in its
   cylinder and its rod's ball end sits in it (`Bodies._slide_within`,
-  `Bodies._bores_across`). `grab_probe -- --only=loops`: 8020-1_Jeep's
+  `Bodies._bores_across`). A clip slides along its bar, and a hole along its
+  axle, only as far as the two parts' rounds let it (`Bodies._rounds_room`: a
+  flange, a ball end, the plate a handle is on); a loop's clip is held inside
+  that by the solve (`Linkage._bounded`), by the two parts' exact shapes where
+  they are at hand (`Bodies.exact_room`); an axle's slide and a piston's are
+  not (MECHANISMS §26). `grab_probe -- --only=loops`: 8020-1_Jeep's
   steering (a four-bar: the rocker against two circles meeting) and 8218-1's
   engine (a crank-slider: the piston against the quadratic, the stroke twice
   the throw); `-- --debug` prints the joints, residuals and the derivatives

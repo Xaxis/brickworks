@@ -78,6 +78,12 @@ class Link extends RefCounted:
 	## How far the part on the far side may slide along the line, LDU,
 	## either way from where it stands: [back, on]; zero for none.
 	var slide := Vector2.ZERO
+	## A clip's slide as far as its bore's middle stays on its bar, before
+	## its rounds are read ([method Bodies._rounds_room]): as far as the
+	## two parts' exact shapes may be asked ([method Bodies.exact_room]).
+	## Zero for any other slide, which a loop does not hold to its range: an
+	## axle's in its hole, an engine's piston's (its crank holds it).
+	var reach := Vector2.ZERO
 	## The parts it joins, as [one in a, one in b] pairs.
 	var pairs: Array = []
 	## Which part of the pair is the shaft (its id) when it slides.
@@ -296,6 +302,9 @@ func _read() -> void:
 		var along: float = float(one[7])
 		var slide := Vector2.ZERO if is_pin \
 			else Vector2(maxf(along - float(one[5]), 0.0), maxf(float(one[6]) - along, 0.0))
+		if slide != Vector2.ZERO:
+			var room: Vector2 = _rounds_room(a, b, one[3], one[4])
+			slide = Vector2(minf(slide.x, room.x), minf(slide.y, room.y))
 		if str(inputs.get(part_of.get(a, ""), "-")) == str(part_of.get(b, "")) \
 				or str(inputs.get(part_of.get(b, ""), "-")) == str(part_of.get(a, "")):
 			# An actuator's input: held in its body, its screw holding it.
@@ -361,7 +370,8 @@ func _read() -> void:
 				slide_and_shaft = _slide_within(a, b, zone)
 				holds = false
 			candidates.append([a, b, kind, zone[0], (zone[1] as Vector3).normalized(), holds,
-				detent, slide_and_shaft[0], slide_and_shaft[1], float(zone[4]) if zone.size() > 4 else 0.0])
+				detent, slide_and_shaft[0], slide_and_shaft[1], float(zone[4]) if zone.size() > 4 else 0.0,
+				slide_and_shaft[2] if slide_and_shaft.size() > 2 else Vector2.ZERO])
 
 	# Balls.
 	var balls: Dictionary = Joints.balls(entries)
@@ -639,6 +649,7 @@ func _read() -> void:
 			link.shaft_part = c[8]
 			link.turns = not (str(c[2]) in ["actuator", "cylinder"] or str(c[2]) in GUIDES)
 			link.radius = float(c[9]) if c.size() > 9 else 0.0
+			link.reach = c[10] if c.size() > 10 else Vector2.ZERO
 			made[pair] = link
 			links.append(link)
 			for end: int in [x, y]:
@@ -1706,13 +1717,179 @@ func _slide_on(a: int, b: int, zone: Array) -> Array:
 			continue
 		var s: Vector2 = shaft
 		var o: Vector2 = bore
-		# The bore's middle stays on the shaft.
+		# The bore's middle stays on the shaft, and the bore goes no further
+		# than the two parts' rounds let it ([method _rounds_room]).
 		var middle: float = (o.x + o.y) * 0.5
-		var back: float = maxf(middle - s.x, 0.0)
-		var on: float = maxf(s.y - middle, 0.0)
+		var room: Vector2 = _rounds_room(pair[0], pair[1], point, way)
+		var reach := Vector2(maxf(middle - s.x, 0.0), maxf(s.y - middle, 0.0))
+		var back: float = minf(reach.x, room.x)
+		var on: float = minf(reach.y, room.y)
 		if back + on > 4.0:
-			return [Vector2(back, on), pair[0]]
+			return [Vector2(back, on), pair[0], reach]
 	return [Vector2.ZERO, 0]
+
+
+## How far [param hole] may slide along [param shaft] on the line through
+## [param point] along [param way] before their rounds meet, LDU:
+## Vector2(back, on), the hole's part going against [param way] and with
+## it; INF where nothing drawn stops it. Read by how far a slide had let them:
+## a towball's flange into the rack it is in (8448-1), a steering arm's pin
+## collar into the brick (5533-1), a clip into a bar's ball end
+## (4002020-1) and into the plate a handle is on (21019-1), each a loop's
+## slide, 1 to 6 LDU, where the real part cannot go.
+##
+## Each part is a round along the line: its rounds (shafts) and bores, at
+## each place along it, say how far from the line it is solid, from the
+## widest bore out to the widest round; past the last round of the shaft's
+## part, where the part goes on (a towball's ball), solid all through. Two
+## parts meet where both are solid at one radius ([constant ROUND_SLACK]
+## spared); a pair already so where they stand is forgiven.
+func _rounds_room(shaft: int, hole: int, point: Vector3, way: Vector3) -> Vector2:
+	var none := Vector2(INF, INF)
+	var at: float = point.dot(way)
+	var rounds: Array = []   ## per part: Array of [lo, hi, inner, outer]
+	for key: int in [shaft, hole]:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			return none
+		var spans: Array = []   ## [lo, hi, radius, is a bore]
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != "shaft" and connector.kind != "bore":
+				continue
+			var start: Vector3 = brick.transform * connector.position
+			var end: Vector3 = brick.transform * (connector.position + connector.axis * connector.length)
+			if connector.length <= 0.0 or not _same_line(start, (end - start).normalized(), point, way):
+				continue
+			var s: float = start.dot(way) - at
+			var e: float = end.dot(way) - at
+			spans.append([minf(s, e), maxf(s, e), connector.radius, connector.kind == "bore"])
+		if key == shaft:
+			var widths: Array = spans.filter(func(one: Array) -> bool: return not one[3])
+			if widths.is_empty():
+				return none
+			var lowest: float = INF
+			var highest: float = -INF
+			for one: Array in widths:
+				lowest = minf(lowest, float(one[0]))
+				highest = maxf(highest, float(one[1]))
+			var reach: Vector2 = Grab._reach_along(brick.transform, mesh.bounds, way) - Vector2(at, at)
+			if reach.x < lowest - END_SLACK:
+				spans.append([reach.x, lowest, INF, false])
+			if reach.y > highest + END_SLACK:
+				spans.append([highest, reach.y, INF, false])
+		elif not spans.any(func(one: Array) -> bool: return one[3]):
+			return none
+		rounds.append(_solid_along(spans))
+	var back: float = INF
+	var on: float = INF
+	for one: Array in rounds[0]:
+		for other: Array in rounds[1]:
+			# Solid at one radius: the shaft's part from its inner to its outer,
+			# the hole's from its.
+			if float(one[3]) <= float(other[2]) + ROUND_SLACK or float(other[3]) <= float(one[2]) + ROUND_SLACK:
+				continue
+			if float(other[1]) <= float(one[0]) + ALONG_SLACK:
+				on = minf(on, maxf(float(one[0]) - float(other[1]), 0.0))
+			elif float(other[0]) >= float(one[1]) - ALONG_SLACK:
+				back = minf(back, maxf(float(other[0]) - float(one[1]), 0.0))
+	return Vector2(back, on)
+
+
+## How far a clip's [param link] slides along its bar before the two
+## parts' exact shapes meet, LDU: Vector2(back, on) as [member Link.slide]
+## has it, within [member Link.reach]; Vector2(-1, -1) where either shape is
+## not at hand (a browser fetches them) or the two meet as they stand. The
+## rounds' reading takes a bar's end as solid where its part goes on, and
+## 4002020-1's bar goes on in a neck before its ball: a clip slides 2 LDU
+## by its rounds and as far as the neck by its shapes.
+func exact_room(link: Link) -> Vector2:
+	var unknown := Vector2(-1.0, -1.0)
+	var shaft: int = link.shaft_part
+	var hole: int = -1
+	for pair: Array in link.pairs:
+		if int(pair[0]) == shaft:
+			hole = int(pair[1])
+		elif int(pair[1]) == shaft:
+			hole = int(pair[0])
+	var at_shaft: BrickWorld.Brick = world.get_brick(shaft)
+	var at_hole: BrickWorld.Brick = world.get_brick(hole) if hole >= 0 else null
+	if at_shaft == null or at_hole == null:
+		return unknown
+	var one: Exact.Shape = Exact.shape_for(library, at_shaft.part_id)
+	var other: Exact.Shape = Exact.shape_for(library, at_hole.part_id)
+	if one == null or other == null or not one.has_pieces() or not other.has_pieces():
+		return unknown
+	var fixed := Exact.Item.new(one, at_shaft.transform)
+	if not Exact.clash(fixed, Exact.Item.new(other, at_hole.transform)).is_empty():
+		return unknown
+	var way: Vector3 = link.axis.normalized()
+	var out := Vector2.ZERO
+	for side: int in 2:
+		var far: float = link.reach.x if side == 0 else link.reach.y
+		var sign: float = -1.0 if side == 0 else 1.0
+		var clear: float = 0.0
+		var met: float = far
+		if far > 0.0 and Exact.clash(fixed, Exact.Item.new(other, Transform3D(at_hole.transform.basis,
+				at_hole.transform.origin + way * sign * far))).is_empty():
+			clear = far
+		else:
+			for _round: int in 8:
+				var middle: float = (clear + met) * 0.5
+				if Exact.clash(fixed, Exact.Item.new(other, Transform3D(at_hole.transform.basis,
+						at_hole.transform.origin + way * sign * middle))).is_empty():
+					clear = middle
+				else:
+					met = middle
+		out[side] = clear
+	return out
+
+
+## A part's rounds and bores along a line ([lo, hi, radius, is a bore]) as
+## the stretches between where any begins or ends, each [lo, hi, inner,
+## outer]: solid from its widest bore (0 for none) to its widest round (INF
+## for none, round a bore). A stretch with neither is left out.
+static func _solid_along(spans: Array) -> Array:
+	var cuts: Array = []
+	for one: Array in spans:
+		cuts.append(float(one[0]))
+		cuts.append(float(one[1]))
+	cuts.sort()
+	var out: Array = []
+	for n: int in cuts.size() - 1:
+		var lo: float = cuts[n]
+		var hi: float = cuts[n + 1]
+		if hi - lo < 0.01:
+			continue
+		var mid: float = (lo + hi) * 0.5
+		var inner: float = 0.0
+		var outer: float = -1.0
+		var bored: bool = false
+		for one: Array in spans:
+			if mid < float(one[0]) or mid > float(one[1]):
+				continue
+			if bool(one[3]):
+				inner = maxf(inner, float(one[2]))
+				bored = true
+			else:
+				outer = maxf(outer, float(one[2]))
+		if outer < 0.0:
+			if not bored:
+				continue
+			outer = INF
+		out.append([lo, hi, inner, outer])
+	return out
+
+
+## Past the last round of a shaft's part, a part going on further than this
+## along the line, LDU, is solid there: an axle's chamfered end is not.
+const END_SLACK := 2.5
+## Two rounds this far into each other across the line, LDU, still pass: a
+## pin's end ridge (6.5 across) in its hole (6).
+const ROUND_SLACK := 0.75
+## Two rounds this far into each other along the line, LDU, as they stand,
+## are side by side: a flange in its counterbore.
+const ALONG_SLACK := 0.05
 
 
 ## How far a short shaft may slide inside a longer bore of the same round on

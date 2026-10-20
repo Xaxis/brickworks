@@ -2281,7 +2281,9 @@ finger taken as the steering's (`brickworksShare.finger` "part"), the pill
 saying what turns, the app's own work in a drag frame under 33 ms (3.5 ms
 mean and 9.2 worst; slowed, 6.9 and 23; the page's frame gaps said beside
 it; and, said, its worst frame checking the way while the finger rested,
-`worst_pause_ms`, where a loop's joints' own parts are asked, Grab 15), Reset offered and inside the page, the pill clear of the view cube,
+`worst_pause_ms`, where a loop's joints' own parts are asked, Grab 15:
+by a finger slowed four times 18.8 and 22.9 ms on Grab 16, 34.7 to 42.3 on
+m101), Reset offered and inside the page, the pill clear of the view cube,
 the link's text unchanged, Reset putting it back; then the
 gallery's page from the checkout with its list played: the racer's card
 "Moves: steering", the house's "Moves: doors", the hut's nothing, Technic or

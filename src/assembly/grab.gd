@@ -177,6 +177,10 @@ var budget_ms: float = INF
 ## on a pause or at the release (G13b). A small section is still bisected at
 ## once where its way meets something.
 var walk_budget_ms: float = INF
+## A pause's check of a loop's way may run this long a frame, ms (GrabDrag
+## sets it): what is left goes on the next frame, from the part and the pair
+## it reached.
+var pause_budget_ms: float = INF
 ## Let go and settled under its weight (once), and what that said.
 var settled: bool = false
 var swung: String = ""
@@ -229,6 +233,8 @@ var _pair_clear: Array = []
 const PAIR_UNKNOWN := 0.0
 const PAIR_APART_AT_REST := 1.0
 const PAIR_FORGIVEN := 2.0
+## Cannot meet however the joint turns and slides ([method _pieces_apart]).
+const PAIR_NEVER := 3.0
 ## The last part that met something, and what it met: [moving, met].
 var blocked_by: Array = []
 ## The last moving part that met something or went through the floor.
@@ -1129,7 +1135,9 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 	var carried_at: Dictionary = linkage.places() if linkage != null and not _spin_with.is_empty() else {}
 	var meets: Dictionary = _covers_ahead(at, keys, carried_at) if budget == INF and ahead else {}
 	while n < keys.size():
-		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
+		# The first part a call asks is tested whatever is left of the
+		# budget, so a pause whose solve took its budget still goes on.
+		if budget < INF and n > from and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
 			result = -1
 			break
 		var key: int = keys[n]
@@ -1280,7 +1288,8 @@ func _meeting_pairs() -> void:
 			var square: Vector3 = (Vector3.UP if absf(local.y) < 0.9 else Vector3.RIGHT).cross(local).normalized()
 			_joint_pairs.append([one, other, local, square,
 				(b.transform.basis.inverse() * a.transform.basis).inverse(),
-				a.transform.affine_inverse() * joined.point, b.transform.affine_inverse() * joined.point])
+				a.transform.affine_inverse() * joined.point, b.transform.affine_inverse() * joined.point,
+				(a.transform.basis.inverse() * line).normalized(), joined.slide.x + joined.slide.y])
 			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN, 0.0]))
 
 
@@ -1314,13 +1323,41 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 	var turn: float = atan2(line.dot(square.cross(to)), square.dot(to))
 	var slide: float = (at_other.affine_inverse() * (at_one * (pair[5] as Vector3)) - (pair[6] as Vector3)).dot(line)
 	var clear: PackedFloat64Array = _pair_clear[n]
-	if clear[4] == PAIR_FORGIVEN or turn >= clear[0] - PAIR_SAME and turn <= clear[1] + PAIR_SAME \
+	if clear[4] == PAIR_FORGIVEN or clear[4] == PAIR_NEVER \
+			or turn >= clear[0] - PAIR_SAME and turn <= clear[1] + PAIR_SAME \
 			and slide >= clear[2] - PAIR_SLIDE_SAME and slide <= clear[3] + PAIR_SLIDE_SAME:
 		return true
 	var a: BrickWorld.Brick = world.get_brick(one)
 	var b: BrickWorld.Brick = world.get_brick(other)
 	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
 	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
+	if clear[4] == PAIR_UNKNOWN and shape_a != null and shape_b != null and shape_a.has_pieces() \
+			and shape_b.has_pieces():
+		# Each part's pieces only where the other reaches along the line, and
+		# as far again as the joint slides: none further can meet it.
+		var way: Vector3 = (b.transform.basis * line).normalized()
+		var middle: float = (b.transform * (pair[6] as Vector3)).dot(way)
+		var reach_a: Vector2 = Grab._reach_along(a.transform, library.mesh_for(a.part_id).bounds, way) \
+			- Vector2(middle, middle)
+		var reach_b: Vector2 = Grab._reach_along(b.transform, library.mesh_for(b.part_id).bounds, way) \
+			- Vector2(middle, middle)
+		var spare: float = float(pair[8]) + PAIR_ALONG_SLACK
+		# Kept by the two shapes and where the joint is in each: the same pair
+		# in the next grab is not read again.
+		var key: String = "%d|%d|%s|%s|%s|%s|%.2f" % [shape_a.id, shape_b.id,
+			(pair[5] as Vector3).snapped(Vector3.ONE * 0.01), (pair[7] as Vector3).snapped(Vector3.ONE * 0.0001),
+			(pair[6] as Vector3).snapped(Vector3.ONE * 0.01), line.snapped(Vector3.ONE * 0.0001), float(pair[8])]
+		var apart: Variant = _apart_known.get(key)
+		if apart == null:
+			apart = Grab._pieces_apart(Grab._about_line(shape_a, pair[5], pair[7], reach_b.x - spare, reach_b.y + spare),
+				Grab._about_line(shape_b, pair[6], line, reach_a.x - spare, reach_a.y + spare), float(pair[8]))
+			if _apart_known.size() > 2000:
+				_apart_known.clear()
+			_apart_known[key] = apart
+		if bool(apart):
+			clear[4] = PAIR_NEVER
+			_pair_clear[n] = clear
+			return true
 	if clear[4] == PAIR_UNKNOWN:
 		# Into each other where the grab began, or one with no exact shape
 		# (covers cannot judge a joint's own pieces): forgiven, as the rest of
@@ -1341,6 +1378,100 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 	met = int(blocked_by[0])
 	stretch_words = ""
 	return false
+
+
+## Each piece of [param shape] about the line through [param point] along
+## [param way] (the part's own frame) that reaches between [param from] and
+## [param to] along it: [least and most along the line, least and most from
+## it]. A turn about the line keeps each point's place along
+## it and its distance from it, so two parts whose pieces share no place
+## there cannot meet as their joint turns: 8808-1's steering arms, whose
+## kingpins go through two plates each; where the plates are along the line
+## only the kingpin is, narrower than their holes. Kept by shape and line.
+static func _about_line(shape: Exact.Shape, point: Vector3, way: Vector3, from: float = -INF,
+		to: float = INF) -> Array:
+	var key: String = "%d|%s|%s|%.1f|%.1f" % [shape.id, point.snapped(Vector3.ONE * 0.01),
+		way.snapped(Vector3.ONE * 0.0001), from, to]
+	var known: Variant = _footprints.get(key)
+	if known != null:
+		return known
+	var u: Vector3 = (Vector3.UP if absf(way.y) < 0.9 else Vector3.RIGHT).cross(way).normalized()
+	var v: Vector3 = way.cross(u)
+	var out: Array = []
+	var flat := PackedVector2Array()
+	var spread := Vector3(absf(way.x), absf(way.y), absf(way.z))
+	for piece: Exact.Piece in shape.pieces:
+		# Its box first: a piece wholly outside [from, to] along the line is
+		# left out ([param from] and [param to] from [param point]).
+		var middle: float = ((piece.lo + piece.hi) * 0.5 - point).dot(way)
+		var half: float = ((piece.hi - piece.lo) * 0.5).dot(spread)
+		if middle + half < from or middle - half > to:
+			continue
+		var lo: float = INF
+		var hi: float = -INF
+		var far: float = 0.0
+		flat.resize(0)
+		for vert: Vector3 in piece.verts:
+			var d: Vector3 = vert - point
+			var along: float = d.dot(way)
+			lo = minf(lo, along)
+			hi = maxf(hi, along)
+			var across := Vector2(d.dot(u), d.dot(v))
+			flat.append(across)
+			far = maxf(far, across.length())
+		# How near the line the piece comes: none where the line goes through
+		# it, else the nearest edge of its outline seen along the line.
+		var near: float = 0.0
+		var hull: PackedVector2Array = Geometry2D.convex_hull(flat)
+		if hull.size() >= 4 and not Geometry2D.is_point_in_polygon(Vector2.ZERO, hull):
+			near = INF
+			for k: int in hull.size() - 1:
+				near = minf(near, Geometry2D.get_closest_point_to_segment(Vector2.ZERO, hull[k], hull[k + 1]).length())
+		out.append(PackedFloat32Array([lo, hi, near, far]))
+	if _footprints.size() > 2000:
+		_footprints.clear()
+	_footprints[key] = out
+	return out
+
+
+static var _footprints: Dictionary = {}
+static var _apart_known: Dictionary = {}
+## Two pieces this far into each other along a joint's line, or across it,
+## LDU, as [method _about_line] reads them, can still not be said to meet:
+## a face flush on a face, a kingpin's facets in its hole's (a quarter of
+## Exact's own TAU).
+const PAIR_ALONG_SLACK := 0.25
+const PAIR_ACROSS_SLACK := 0.25
+
+
+## Whether no piece of one part ([param a], as [method _about_line] reads
+## it) shares a place along the line and a distance from it with a piece of
+## the other ([param b]), the other slid as far as [param slide] either way.
+static func _pieces_apart(a: Array, b: Array, slide: float) -> bool:
+	# The other's pieces by where they lie along the line, a cell every 4 LDU,
+	# and how near the line any of them comes: a piece of this one no further
+	# out than that meets none (a kingpin in its holes).
+	var cells: Dictionary = {}   ## cell -> Array of indices into b
+	var nearest: float = INF
+	for k: int in b.size():
+		var one: PackedFloat32Array = b[k]
+		nearest = minf(nearest, one[2])
+		for cell: int in range(floori((one[0] - slide) / 4.0), floori((one[1] + slide) / 4.0) + 1):
+			var list: Variant = cells.get(cell)
+			if list == null:
+				cells[cell] = [k]
+			else:
+				(list as Array).append(k)
+	for mine: PackedFloat32Array in a:
+		if mine[3] - nearest <= PAIR_ACROSS_SLACK:
+			continue
+		for cell: int in range(floori(mine[0] / 4.0), floori(mine[1] / 4.0) + 1):
+			for k: int in cells.get(cell, []):
+				var theirs: PackedFloat32Array = b[k]
+				if minf(mine[1], theirs[1] + slide) - maxf(mine[0], theirs[0] - slide) > PAIR_ALONG_SLACK \
+						and minf(mine[3], theirs[3]) - maxf(mine[2], theirs[2]) > PAIR_ACROSS_SLACK:
+					return false
+	return true
 
 
 ## Where [param key] is tested for room with the parts at [param at]: a part
@@ -2079,7 +2210,7 @@ func verify_step() -> bool:
 			if due.is_empty():
 				_checked_angle = next
 				continue
-		var r: Vector2i = _test(_pose_at(next), _verify_from, _budget_left(began), next == now, due)
+		var r: Vector2i = _test(_pose_at(next), _verify_from, _pause_left(began), next == now, due)
 		if r.x == -1:
 			_verify_from = r.y
 			return false
@@ -2110,7 +2241,7 @@ func verify_step() -> bool:
 		_checked_angle = _verifying_lo
 		return true
 	var middle: float = (_verifying_lo + hi) * 0.5
-	var r2: Vector2i = _test(_pose_at(middle), _verify_from, budget_ms)
+	var r2: Vector2i = _test(_pose_at(middle), _verify_from, _pause_left(began))
 	if r2.x == -1:
 		_verify_from = r2.y
 		return false
@@ -2224,6 +2355,15 @@ func _set_value(value: float) -> void:
 
 
 # -- along the way (G13) ------------------------------------------------------------
+
+
+## What is left of a pause's check since [param began] (usec), ms: of
+## [member budget_ms] and [member pause_budget_ms].
+func _pause_left(began: int) -> float:
+	var budget: float = minf(minf(budget_ms, walk_budget_ms), pause_budget_ms)
+	if budget == INF:
+		return INF
+	return budget - float(Time.get_ticks_usec() - began) / 1000.0
 
 
 ## What is left of [member budget_ms] since [param began] (usec), ms.

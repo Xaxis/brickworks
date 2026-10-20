@@ -4335,3 +4335,221 @@ pass.
   fill it.
 - The ball joint's drag, and G14b's and G13b's other leftovers, stand.
 
+
+## 26. Slides in loops, and the pause (Grab 16)
+
+Grab 15 left a loop sliding a clip along its bar where the real part cannot:
+21019-1's slid its clip 4.3 LDU into the plate its handle is on, and
+4002020-1's slid its clip into its bar's ball end, so since Grab 15 that
+turntable stopped at once on its way back (G14a had it moving both ways).
+It left the axle and pin pairs out of the joint-pair test, since a loop
+closed by sliding axles into flanges, and a pause in a loop's drag took a
+phone 37 to 46 ms, its joints' pairs asked there.
+
+**The base.** 2189419d (live main, m101: Grab 15 in), against Grab 15's own
+sweeps: `movesweep_g15` (186 of 405 things move both ways and back) and
+`sweep_g15final` (60 of 168 sets steer), in bench/results/grab15-2026-10-19.
+Each sweep ran from a copy of the worktree, two shards under heavy. Every
+experiment is kept in bench/results/grab16-2026-10-19/`exp/`.
+
+### A slide as far as its parts let it
+
+A loop's solve had no end to a slide on a joint that turns as well: a clip
+on its bar, an axle in a round hole. Only an actuator's stroke was checked.
+And the reading the slide came from let a clip's bore go until its middle
+reached the end of every round on the bar's line, and a hole until its
+middle reached the end of the axle's part, a towball's ball and all.
+
+**By the parts' rounds** (`Bodies._rounds_room`). Each of the two parts is
+read along the joint's line from its connectors: its rounds (shafts, with
+their radius) and its bores. At each place along the line a part is solid
+from its widest bore out to its widest round (all the way out round a bore
+with no round over it); past the shaft part's last round, where the part
+goes on further than an axle's chamfer (2.5 LDU), it is solid all through:
+a towball's ball, a bar's ball end, the plate a handle is on. Two parts may
+not slide into a place where both are solid at one radius, a pin's end
+ridge (6.5 across) in its hole (6) spared, and what is so where they stand
+is forgiven. Read so:
+
+| joint | the reading before | by its rounds |
+|---|---|---|
+| 4002020-1's clip (4081b, a bore 16 long) on its bar with a ball end (22484) | 10 LDU each way | 2 towards the ball, 10 towards the free end |
+| 21019-1's clip (61252, a bore 8 long) on its handle (60478: 8 LDU of bar between two supports 6 across) | 10 each way | none: the clip fills the bar, so it does not slide |
+| 8448-1's rack (32185) on its towball (2736) | 14 down, 23 up through the flange and the ball | 14 down, none up: the flange sits in the rack's counterbore |
+| 5533-1's steering arm (32069), its pin in a brick (2743) | 50 in, 10 out | none in (the pin's collar), 10 out |
+
+**Held there as the loop is solved** (`Linkage._bounded`, `_close_with`). A
+clip's slide is kept inside its range: a step that would take
+it past an end stops at the end, and one standing at an end that the step
+would take further out is held there for that step while the rest is
+solved again without it. Where the two parts' exact shapes are at hand the
+range is theirs (`Bodies.exact_room`: bisected to where they first meet,
+within the bore's middle on its bar); else the rounds'. 4002020-1's clip
+goes 6.37 LDU towards the ball by its shapes, where its rounds said 2: the
+bar narrows to a neck before its ball (`exp/exact_room.gd`; Grab 15's loop
+had slid it 6.27 LDU on the way out, and on the way back on into the
+ball). Read with its shapes from disk, its first grab takes 31 ms more
+natively; a browser that has not fetched them yet holds the clip by its
+rounds.
+
+**4002020-1**, its turntable moved +30, -60 and back as the sweep moves it
+(the loop: 15 joints, 1 turntable, 8 axle, 4 hinge and 2 ball, closed by
+4):
+
+| the clip's slide held | +30 | -60 | back |
+|---|---|---|---|
+| not at all (Grab 15; `exp/movesweep_t2none`) | +5, its covers meet | 0: the clip at once into its bar's ball end | |
+| by its rounds, and every axle's too (`exp/movesweep_t1`) | +17 | -46 | 2° short: the steering link meets a slope brick on the way |
+| by its rounds, axles free (`exp/movesweep_t2clips`) | +16 | -5 | 2° short: the bar meets the slope brick |
+| by its exact shapes (`movesweep_g16`) | +13, its covers meet | -44, the real parts meet | back to 0.0001 LDU |
+
+Held at 2 LDU, the loop took its turn elsewhere and did not come back the
+same way: a loop with freedom left over (G14b) goes out by one path and back
+by another. Held where the clip truly meets the ball, it does. G14a had it
+turning +5° and -10° with the clip sliding into the ball.
+
+**21019-1** is locked: its clip fills its handle's bar, so nothing in its
+loop of 11 joints (4 turntable, 7 hinge) slides, and the loop closes
+neither a degree one way nor the other ("Locked: this loop has no
+freedom"). Grab 15 turned it +0.3° and -1° by sliding the clip, before the
+clip's plate met the handle's (judged real); G13 found the build holds this
+turntable. The sweep counts it to its stop no longer; `--only=clipped`
+holds that it is locked and that the clip never ends into the handle's
+plate.
+
+**An axle's slide is read so too, and not held in a loop.** Held to its
+flanges (`exp/sweep_t3bound`, 21 files: the sets Grab 15 named and others),
+8448-1 and its four other models turned 0.1° each way where Grab 15 turned
+7.2°, the loop closing no further without its towballs sliding up through
+the rack; 8256-1 and its lawn mower turned as before and came back 0.057
+and 0.053 LDU off, and no longer steered. With the axle and pin pairs tested
+as well (`exp/sweep_t3pairs`) 8256-1 steered, but 2.4° where it steered
+11.5°. So the axle and pin pairs stay out of the test, and the slide an
+axle's rounds allow is what a single joint's slide goes by (`Grab._range`).
+Nor is an engine's piston held: kept to its cylinder's rounds, 8218-1's
+stroke was 19.35 LDU where its crank's throw makes it 20 (`grab_probe`'s
+crank and piston), and its crank holds it.
+
+### The pause
+
+A pause in a loop's drag checks its way (`Grab.verify_step`) a frame's share
+at a time. It had the loop's 24 ms, and the loop's joints' pairs are asked
+there (Grab 15); the part or pair begun last could take as long again.
+
+- **4 ms a frame** (`GrabDrag.PAUSE_BUDGET_MS`, `Grab.pause_budget_ms`), the
+  rest in the frames after, from the part and the pair it reached. The
+  first part and the first pair a call asks are always tested, so a pause
+  whose solve took its share still goes on (`Grab._test`).
+- **Pairs that cannot meet are not asked** (`Grab._about_line`,
+  `_pieces_apart`). A turn about a joint's line keeps each point's place
+  along it and its distance from it. Each piece of each part is read so:
+  how far along the line it reaches and how near and far from it (the
+  nearest edge of its outline seen along the line). Two parts none of whose
+  pieces share a place, slid as far as the joint slides, cannot meet as it
+  turns: a quarter LDU each way is spared, a quarter of what a build
+  allows. 8808-1's six pairs are all so: where each plate is along a
+  kingpin's line, only the kingpin is, narrower than the hole. Each part is
+  read only where the other reaches along the line (the arm's 176 pieces
+  to 73 and 56), and the verdict is kept for the next grab.
+
+8808-1's steering dragged 3° a frame to its stop, pausing every 8 frames
+(`native/room_cost_probe.gd`, natively):
+
+| | Grab 15 | Grab 16 |
+|---|---|---|
+| a pause's check of the way | 5.3 to 10.4 ms | 0.25 to 0.94 ms; the first of a grab 3 frames, at worst 5.3 ms (3.5 of it reading the two shapes from disk) |
+| where it stops | ±108° | ±108° |
+
+play_flow, the two builds served side by side and run in turn, 8808-1's
+steering turned into its stop by the mouse at 1280 x 800, and by a finger
+at 390 x 844 with the CPU slowed four times (`web/play_flow_*.log`; the
+first two Grab 16 runs, at 8 ms and before the pairs' reading was made
+cheaper, gave 11 to 12 and 24 to 34 ms):
+
+| the pause's worst frame | by the mouse | slowed four times |
+|---|---|---|
+| m101 (2189419d), 4 runs, load 3 to 15 | 24.1, 24.6, 24.3, 24.6 ms | 34.7, 42.3, 35.6, 39.3 ms |
+| Grab 16, 2 runs, load 3 and 11 | 7.2, 5.6 ms | 18.8, 22.9 ms |
+
+The drag's own frames are as they were: slowed four times, 6.7 and 7.1 ms
+a frame on average and 15.4 and 15.6 at worst (m101: 7.2 and 6.9, 15.6 and
+16.8). Every run passed its 34 checks.
+
+### Swept
+
+**The other moving things** (`movesweep_g16final`: `movesweep_g16`, Grab
+16's 260 sets on d9e7f718, two shards, merged with `movesweep_g16p`, the 37
+of them with an engine's piston run again once a piston's slide was let go
+free, on 6a79564f; each of the 37 as in Grab 15's row both times).
+
+| the same 260 sets | things | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
+|---|---|---|---|---|---|
+| Grab 15 (`movesweep_g15`) | 405 | 186 | 18 | 325 | 228 / 20 / 170 |
+| Grab 16 (`movesweep_g16final`) | 405 | 187 | 17 | 324 | 227 / 19 / 170 |
+
+Gained: 4002020-1's turntable, +13°, -44° and back to 0.0001 LDU. Changed:
+21019-1's turntable, to its stop in Grab 15 (+0°, -1°, judged real), is
+locked, and its boom, which did not move, is locked too. Every other thing
+of the 405 has Grab 15's cause.
+
+**Steering** (`sweep_g16final`: `sweep_g16`, the 181 files on d9e7f718, two
+shards, merged with `sweep_g16p`, the 80 with an engine's piston run again
+on 6a79564f).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| Grab 15 (`sweep_g15final`) | 60 of 168 |
+| Grab 16 (`sweep_g16final`) | 60 of 168 |
+
+Every one of the 181 turns its arms and its rack as in Grab 15's row, to the
+hundredth. In the first run, with a piston's slide held, 8868-1 (which steers
+in neither) moved its rack 0.03 LDU where it had not; let go, as before.
+
+**Proved** (bench/results/grab16-2026-10-19). `grab_probe` windowed through
+`tools/probe.sh`, in full, on the final code (`probes/grab_probe_final.log`):
+470 checks, all passed. New, `-- --only=clipped`: 4002020-1's turntable
+turns +13°, -44° and is back to 0.0001 LDU, and 21019-1's is locked; in
+neither does the clip end into its bar's part by their exact shapes. On
+Grab 15's code the first would fail (+5° and 0°, its sweep row) and so would
+the second (+0° and -1°, neither locked nor turning a degree each way). The
+run before a piston's slide was let go (`probes/grab_probe_g16.log`) passed
+468 of 470: the crank and piston's two (above); `-- --only=loops` then
+passed all 13 (`probes/grab_probe_loops.log`). The keeps are as Grab 15
+left them: the coasted flywheel's 16.0, 18.0 and 16.5 ms, 7191-1's big
+section's keeping frame 20 ms (6 the commit). play_flow,
+two runs a side on the final builds served side by side (above): 34 checks
+passed in every run. The frames gate (`tools/web/cad_frames.mjs --gate`,
+75969-1, the local server, load 11): an orbit's frames at the 95th
+percentile 17.9 ms against 200, select all 32.2 against 400, the timeline's
+Next 9.4 to 18.3 against 200; passed (`web/frames_g16.log`). Neither an
+orbit nor select all runs a room test. The experiments are kept in `exp/`
+with the scratch probes that read the joints (`native/inspect_links.gd`),
+time the pieces' reading (`native/foot_cost.gd`) and a clip's room
+(`exp/exact_room.gd`).
+
+**What got worse.**
+- 21019-1's turntable moved +0.3° and -1° to where its clip's plate met
+  the handle's; it is locked now. Its clip fills its handle's bar, so its
+  loop has nothing to close by; the turn it had came from the clip sliding.
+- The first grab of a loop with a clip reads both parts' exact shapes at the
+  press (31 ms natively for 4002020-1's, most of it reading them from disk);
+  a later grab finds them kept.
+- A pause's check of a loop takes more frames: 4 ms of each, where it had
+  24.
+
+**Left for later.**
+- An axle's slide in a loop: held to its flanges, 8448-1's steering closes
+  0.1° and 8256-1's comes back 0.05 LDU off. 8448-1's loop closes only by
+  sliding a towball up through its rack; how its ball joints are read
+  (G14b's left for later) is where to look. Until then the axle and pin
+  pairs stay out of the joint-pair test.
+- A clip slides no further than what is drawn on its own bar; another part
+  on the same bar (a second clip) is left to the room test.
+- A loop with freedom left over goes out by one path and back by another
+  (4002020-1 with its clip held at 2 LDU); held where the parts truly meet,
+  it came back.
+- In a browser, a loop grabbed before its clip's and bar's shapes have come
+  holds the clip by its rounds (4002020-1's: 2 LDU, not 6.37).
+- A part or a pair begun last in a pause's frame still runs to its end: on
+  the slowed phone the pause's frame was 18.8 and 22.9 ms against its 4.
+- G15's other leftovers stand.
