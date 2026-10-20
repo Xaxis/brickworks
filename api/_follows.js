@@ -169,19 +169,10 @@ export async function follow(request, response) {
 }
 
 /// Whom [account] follows, for them alone and whatever they chose to show:
-/// [{handle, name}], the newest first; null before the file is applied.
+/// [{handle, name}], the newest first; null before supabase/account.sql.
 async function followingMine(account) {
-  let rows;
-  try {
-    rows = await db(`follows?follower=eq.${account}&select=followed,at&order=at.desc&limit=500`);
-  } catch (trouble) {
-    if (NOT_THERE.test(String(trouble?.message || ""))) return null;
-    throw trouble;
-  }
-  if (!rows.length) return [];
-  const people = await db(`people?account=in.(${rows.map((row) => row.followed).join(",")})&select=account,handle,name`);
-  const named = new Map(people.map((one) => [one.account, { handle: one.handle, name: one.name }]));
-  return rows.map((row) => named.get(row.followed)).filter(Boolean);
+  const said = await call("follow_list_mine", { account }, () => null);
+  return Array.isArray(said) ? said : null;
 }
 
 /// ?op=following&handle=X: whom X follows, when they show it. With no
@@ -193,9 +184,10 @@ export async function getFollowing(request, response) {
     response.setHeader("Cache-Control", "private, no-store");
     const asker = await who(request);
     if (!asker) throw refused("sign_in");
+    // Before account.sql: not the list, only that it is not there yet
+    // (ready: false), and the page says how many from follow_state.
     const mine = await followingMine(asker);
-    if (mine === null) throw new Unacceptable(NOT_YET, 503);
-    return response.status(200).json({ mine: true, following: mine });
+    return response.status(200).json({ mine: true, ready: mine !== null, following: mine || [] });
   }
   response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   if (!handle) throw refused("nobody");

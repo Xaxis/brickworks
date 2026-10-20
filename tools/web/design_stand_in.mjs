@@ -1021,7 +1021,7 @@ function people(method, params, body, who, state) {
     if (op === "following" && !params.get("handle")) {
       // Your own, for you alone (your account page), whatever you show.
       if (!who) return answer(401, { error: FOLLOW_WORDS.sign_in });
-      return answer(200, { mine: true, following: FOLLOWS.filter((one) => one.follower === who).sort(byTime("at"))
+      return answer(200, { mine: true, ready: true, following: FOLLOWS.filter((one) => one.follower === who).sort(byTime("at"))
         .map((one) => named(one.followed)).filter(Boolean) });
     }
     if (op === "following") {

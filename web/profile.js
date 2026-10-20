@@ -185,14 +185,23 @@ async function owned() {
   $("owned-more").hidden = false;
 }
 
-/// Whom you follow, for you alone, and your feed's count on its button.
-async function following() {
+/// Whom you follow, for you alone. Where the server cannot list them yet
+/// (ready: false), how many, from your profile's counts ([follows]).
+async function following(follows) {
   const answer = await call("/api/people?op=following").catch(() => null);
   const list = $("following");
   list.replaceChildren();
   const people = answer && answer.status === 200 ? (answer.body.following || []) : null;
   if (!people) {
     $("following-said").textContent = (answer && answer.body && answer.body.error) || "Whom you follow could not be read just now.";
+    return;
+  }
+  if (answer.body.ready === false) {
+    const many = follows && follows.ready ? Number(follows.following) || 0 : null;
+    $("following-said").textContent = many
+      ? `You follow ${counted(many, "designer")}: what they share comes into your feed.`
+      : many === 0 ? "Nobody yet. Press Follow on a designer’s page, or beside their name on a model’s, and what they share comes into your feed."
+        : "What the designers you follow share comes into your feed.";
     return;
   }
   for (const one of people.filter((p) => HANDLE.test(String(p.handle)))) {
@@ -323,7 +332,7 @@ async function load() {
   $("follows-choice").hidden = !(shows && shows.ready) || young;
   $("shows-follows").checked = Boolean(shows && shows.shows_follows);
   // Each of the rest asks for its own; one that fails leaves the others.
-  await Promise.all([favourites(), showDesigns($("designs")), owned(), following(), builds(mine), claude()]
+  await Promise.all([favourites(), showDesigns($("designs")), owned(), following(follows), builds(mine), claude()]
     .map((one) => Promise.resolve(one).catch(() => null)));
   document.documentElement.dataset.profile = "ready";
 }
