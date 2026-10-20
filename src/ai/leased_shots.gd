@@ -169,3 +169,14 @@ func _start() -> void:
 	_pid = OS.create_process(str(words[0]), arguments)
 	if _pid < 0:
 		push_warning("leased shots: could not start %s" % str(words[0]))
+		return
+	# Stopped with the app: a drawer still in the lease's queue when the app
+	# ends would take a slot when its turn came, for nobody.
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	if not root.tree_exiting.is_connected(_stop):
+		root.tree_exiting.connect(_stop)
+
+
+func _stop() -> void:
+	if _pid > 0 and OS.is_process_running(_pid):
+		OS.kill(_pid)

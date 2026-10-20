@@ -2364,7 +2364,8 @@ grep -c "draw_shots: [0-9]* drawn" bench/results/realset-<date>-<arm>/<set>/desi
 its drawer (and with `--history` a second window asked in another order), asks
 each for the same pictures over MCP (view_model corner, front, top and close, an
 edit_model recolour with what it changed picked out, then the back) and compares
-them pixel for pixel. A design's log carries its drawers' lines: `gpu: … waited
+them pixel for pixel. Its window holds a GPU slot while Dubai opens, 4 to 8
+minutes on a busy box: run it when the GPU is quiet. A design's log carries its drawers' lines: `gpu: … waited
 N s`, `draw_shots: ready in N ms`, `NNNNNN drawn in N ms, N bricks`.
 
 Proves it when: every picture comes both ways; the views are the same PNG byte

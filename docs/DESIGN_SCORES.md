@@ -341,11 +341,13 @@ held the lease 15.6 of their 42 minutes of sessions (37%, against all of it in
 a window), and every picture with something in it was drawn (61; the 9 with
 nothing to stage are the letters at once, as in a window). At four workers
 the same four ran beside another agent's realset run on a checkout from
-before this, whose two windowed designs held both slots for all but minutes of
-the half hour: the four drawers held 4.8 minutes of it, other jobs' probes
-waited up to 4 minutes (behind those two, not the drawers), 24 of 89 pictures
+before this, whose windowed designs held the lease 86 minutes of the run's 54,
+both slots most of the time: the four designs' 31 drawers held it 5.6 minutes,
+other agents' probes waited up to 9 minutes (behind those designs and this
+test's own picture check, a window that held a slot 8 minutes), 24 of 89 pictures
 waited out the 2 minutes a picture may wait and were the letters, and the
-sessions ran 19 to 30 minutes against 6 to 15. So a third and fourth worker
+sessions ran 19 to 24 minutes against 6 to 15, the fourth (9470-1) out to its
+45-minute timeout against 14.5. So a third and fourth worker
 pay where the GPU is shared with short jobs, and not beside a run that holds a
 slot a session (an arm on a `--checkout` from before 2026-10-20 still does):
 run such an arm alone. A clean four-worker round is still to be timed. Not

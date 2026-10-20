@@ -86,6 +86,9 @@ def drive(mode: str, model: Path, out: Path, port: int,
           order: list[tuple[str, str, dict]] = ASKED) -> dict[str, list[bytes]]:
     app = start("leased" if mode == "leased" else "window", model, out, port, mode)
     relay = Relay(port)
+    # A call that outlasts the socket's wait becomes a job, followed to its
+    # answer as a session follows it: a picture waiting for the GPU's lease.
+    relay.follow = True
     pictures: dict[str, list[bytes]] = {}
     try:
         relay.call("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
