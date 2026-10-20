@@ -539,3 +539,53 @@ panel" AFTER it.
   meanwhile drops it, and what it had kept is taken back.
   `brickworksShare.motion` has `ms` (all its work), `longest_ms` and
   `slices`.
+
+Proof, on the walk's own observatory
+(`tests/fixtures/mcpwalk3/small-observatory.ldr`, the session's last save,
+doors to 85° and 1.875 turns):
+- `tools/probe.sh motions_probe` (92 checks): define_motion turned the
+  session's copied "Show it all" into the sequence of the three, checked
+  clear (the dome 0° to 110°, the rack slid 6 studs with 25 parts, the
+  doors to ±85°) and the model put back, one step; a sequence of itself
+  and one naming a motion the model lacks refused; its line in place of
+  the 7 copied ones, every other line as it was, AFTER and all; saved and
+  opened, 14 lines byte for byte; played in order (33 parts moved, the
+  dome 110°), backwards in reverse order to as built (0 parts off);
+  rendered whole, 99 frames, "Observatory Show it all.webp"; "Extend the
+  telescope" removed, the sequence said it and played the other two, its
+  line kept, undone; the AFTER chain played as before. The back wall's
+  panels are seen 32% from the back corner and 2% from the front corner,
+  and play_motion's picture of them is from the back; the dome panel's
+  best view is the front (80%, the front corner 51%); "Show it all" is
+  pictured from above (65%, the front corner 29%).
+- `tools/probe.sh motions_panel_probe` at 1400 × 900 and `PROBE_SIZE=1280x720`
+  (71 checks each): the copied "Show it all" removed, New sequence (one
+  step, undone, redone), Down, Up, Take out and Add each one step and
+  undone, Play (99 frames, each holding all 33 moving parts) and Play
+  backwards to as built, the list with it as a row, saved and opened byte
+  for byte; the panel fits both windows. Pictures in
+  `bench/results/motions5-2026-10-20/` (`observatory_*`).
+- `tools/probe.sh share_play_probe` (72): 1484-1 with "Open it all", a
+  sequence of the gates and the mailbox, a button that played both to 90°
+  and, pressed again, put every part as built. A press of "Open the gates"
+  was 67 ms of work over 2 frames, the longest 43.6 ms (taking hold of the
+  joints 2.7 ms, a frame 5.4 ms, keeping it 4.9 ms); cut into 2 ms slices
+  it gave the same 25 frames over 20 slices, the longest no more than the
+  longest thing it cannot cut.
+- mcp_walk3_probe (20), app_tools_probe (103), mcp_sync_probe (12, the
+  tool list written again), motions_render_probe (33), animation_probe
+  (24), pose_probe (25), share_view_probe (173) pass.
+
+Left for later:
+- The press's spread is proven on the desktop, not on a phone slowed four
+  times in a browser (play_flow says the slices now). What it cannot cut
+  stays whole: taking hold of the joints, which reads them again on the
+  page's thread after a change to a model under 300 parts (151 ms here
+  after an undo), and keeping it.
+- render_motion still renders from the front corner unless view= is
+  given; it says when what moves is hidden from there.
+- A motion's joints are still tested apart, and a sequence's motions each
+  as the model stands when it begins: a sequence is how to test them in
+  order.
+- The suggestion list could offer "Show it all" once a model has two or
+  more motions.
