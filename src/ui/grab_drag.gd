@@ -1236,7 +1236,8 @@ func _process(_delta: float) -> void:
 			var cells: Builder = builder
 			_lay_task = WorkerTasks.add(func() -> void:
 				for item: Array in work:
-					out[item[0]] = cells.boxes_for(item[1], item[2]), false, "lay a section's cells")
+					out[item[0]] = BrickLattice.cover_for(cells.boxes_for(item[1], item[2])), false,
+					"lay a section's cells")
 		if _lay_task >= 0:
 			if WorkerThreadPool.is_task_completed(_lay_task):
 				WorkerTasks.collect(_lay_task)
@@ -1245,7 +1246,8 @@ func _process(_delta: float) -> void:
 			var key: int = _lay_keys.pop_back()
 			var brick: BrickWorld.Brick = world.get_brick(key)
 			if brick != null:
-				_laid[key] = builder.boxes_for(library.mesh_for(brick.part_id), _laying.placed[key])
+				_laid[key] = BrickLattice.cover_for(builder.boxes_for(library.mesh_for(brick.part_id),
+					_laying.placed[key]))
 		worst_lay_ms = maxf(worst_lay_ms, float(Time.get_ticks_usec() - began) / 1000.0)
 		if _lay_keys.is_empty() and _lay_task < 0:
 			var held: Grab = _laying

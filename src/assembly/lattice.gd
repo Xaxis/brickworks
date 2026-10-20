@@ -185,15 +185,260 @@ static func boxes_for(
 
 ## The cells of a part that is not square to the grid, as boxes.
 ##
-## A turned part has no box image, so its cells are worked out as before
-## and then run-length merged along x. A 2x4 turned thirty degrees comes
-## back as a few hundred runs instead of nine thousand six hundred cells,
-## which is worth having even though sections are the only thing that
-## turns.
+## A turned part has no box image, so its cells are the ones [method
+## cells_for_turned] keeps, run-length merged along x as [method compress]
+## merges them. A 2x4 turned thirty degrees comes back as a few hundred runs
+## instead of nine thousand six hundred cells, which is worth having even
+## though sections are the only thing that turns.
+##
+## Worked out a line of cells along x at a time, as runs, not cell by cell
+## and then merged: the same boxes in the same order (turned_probe). Cell by
+## cell, a gear 40's cover of 300 boxes took 60 ms, nearly all of keeping a
+## flywheel that had coasted to a stop.
 static func boxes_for_turned(
 	boxes: Array[AABB], origin_cell: Vector3i, basis: Basis
 ) -> PackedInt32Array:
-	return compress(cells_for_turned(boxes, origin_cell, basis))
+	# Each box's reach in cells, and where the lot begins: the order
+	# compress meets the lines in is kept as one number a line.
+	var reach: Array = []
+	var least := Vector3i(1 << 30, 1 << 30, 1 << 30)
+	for box: AABB in boxes:
+		var lo := Vector3(box.position)
+		var hi := lo + Vector3(box.size)
+		var low := Vector3(INF, INF, INF)
+		var high := Vector3(-INF, -INF, -INF)
+		for n: int in 8:
+			var corner: Vector3 = basis * Vector3(
+				hi.x if n & 1 else lo.x,
+				hi.y if n & 2 else lo.y,
+				hi.z if n & 4 else lo.z)
+			low = low.min(corner)
+			high = high.max(corner)
+		reach.append([lo, hi, low, high])
+		least = least.min(Vector3i(floori(low.x), floori(low.y), floori(low.z)))
+	# Vector2i(y, z) -> its runs along x as [first, last] pairs, and each
+	# line once, as compress first meets it: cells_for_turned goes box by
+	# box, then x, y and z, so a line is first met in the first box that
+	# touches it, at that box's first x on it.
+	var lines: Dictionary = {}
+	var order := PackedInt64Array()
+	var slabs: Array = _slabs_of(basis)
+	for b: int in reach.size():
+		_runs_of_box(reach[b], basis, slabs, b, least, lines, order)
+	order.sort()
+	var merged: Dictionary = {}
+	for rank: int in order:
+		var y: int = ((rank >> 13) & 8191) + least.y
+		var z: int = (rank & 8191) + least.z
+		var runs: PackedInt32Array = lines[Vector2i(y, z)]
+		if runs.size() == 2:
+			_note_run(merged, runs[0] + origin_cell.x, runs[1] + 1 + origin_cell.x,
+				z + origin_cell.z, y + origin_cell.y)
+			continue
+		# Several boxes' runs on one line: in order, joined where they
+		# overlap or meet, as compress joins cells one apart.
+		var keyed := PackedInt32Array()
+		for n: int in range(0, runs.size(), 2):
+			keyed.append(((runs[n] - least.x) << 13) | (runs[n + 1] - least.x))
+		keyed.sort()
+		var from: int = (keyed[0] >> 13) + least.x
+		var last: int = (keyed[0] & 8191) + least.x
+		for n: int in range(1, keyed.size()):
+			var next_from: int = (keyed[n] >> 13) + least.x
+			var next_last: int = (keyed[n] & 8191) + least.x
+			if next_from <= last + 1:
+				last = maxi(last, next_last)
+				continue
+			_note_run(merged, from + origin_cell.x, last + 1 + origin_cell.x, z + origin_cell.z,
+				y + origin_cell.y)
+			from = next_from
+			last = next_last
+		_note_run(merged, from + origin_cell.x, last + 1 + origin_cell.x, z + origin_cell.z,
+			y + origin_cell.y)
+	return _boxes_of_runs(merged)
+
+
+## Within this many of touching, a cell is asked by [method _touches_with]
+## rather than read off its line's slabs: far above single precision's
+## rounding at a part's size.
+const RUN_UNSURE := 0.01
+
+
+## The fifteen axes [method _separating] tests a turned box by, each once
+## (a turn about one line gives some several times), for [method
+## _runs_of_box]: [along x: [axis, its reach for a cell, its share of each
+## of the box's half widths] each, the same across x (the axis has no x)].
+## They depend on the turn alone.
+static func _slabs_of(basis: Basis) -> Array:
+	var axes: Array[Vector3] = [
+		Vector3.RIGHT, Vector3.UP, Vector3.BACK,
+		basis[0].normalized(), basis[1].normalized(),
+		basis[2].normalized()]
+	for n: int in 3:
+		for m: int in 3:
+			var cross: Vector3 = axes[n].cross(axes[3 + m])
+			if cross.length_squared() > 0.000001:
+				axes.append(cross.normalized())
+	var along: Array = []
+	var across: Array = []
+	var kept: Array[Vector3] = []
+	for axis: Vector3 in axes:
+		var twin: bool = false
+		for other: Vector3 in kept:
+			if absf(axis.dot(other)) > 0.999999:
+				twin = true
+				break
+		if twin:
+			continue
+		kept.append(axis)
+		var slab: Array = [axis, 0.5 * (absf(axis.x) + absf(axis.y) + absf(axis.z)),
+			Vector3(absf(axis.dot(axes[3])), absf(axis.dot(axes[4])), absf(axis.dot(axes[5])))]
+		if absf(axis.x) < 0.000001:
+			across.append(slab)
+		else:
+			along.append(slab)
+	return [along, across]
+
+
+## The runs along x of the cells one turned box touches, as [method
+## cells_for_turned] keeps them: [param box] is [the box's low and high
+## corners, the turned box's low and high], [param b] its place among the
+## part's boxes, [param slabs] the turn's ([method _slabs_of]). Each line
+## (y, z) touched gets its [first, last] in [param lines], and, the first
+## time, its place in compress's order in [param order]. On a line the
+## cells a box grown by a cell touches are one run (it is convex), read
+## off the slabs; a cell within [constant RUN_UNSURE] of touching is asked
+## exactly, as cells_for_turned asks it ([method _touches_with]). A slab
+## across x says which lines of a row it lets through.
+static func _runs_of_box(box: Array, basis: Basis, slabs: Array, b: int, least: Vector3i,
+		lines: Dictionary, order: PackedInt64Array) -> void:
+	var lo: Vector3 = box[0]
+	var hi: Vector3 = box[1]
+	var low: Vector3 = box[2]
+	var high: Vector3 = box[3]
+	var half: Vector3 = (hi - lo) * 0.5
+	var middle: Vector3 = basis * ((lo + hi) * 0.5)
+	# Along x: a cell's middle x is within reach of q = where the slab's
+	# middle is, read along x, q = base - py * per_y - pz * per_z; the reach
+	# less (sure) and more (may) RUN_UNSURE.
+	var base := PackedFloat64Array()
+	var per_y := PackedFloat64Array()
+	var per_z := PackedFloat64Array()
+	var sure := PackedFloat64Array()
+	var may := PackedFloat64Array()
+	for slab: Array in slabs[0]:
+		var axis: Vector3 = slab[0]
+		var r: float = float(slab[1]) + half.dot(slab[2])
+		var inv: float = 1.0 / axis.x
+		base.append(middle.dot(axis) * inv)
+		per_y.append(axis.y * inv)
+		per_z.append(axis.z * inv)
+		sure.append((r - RUN_UNSURE) * absf(inv))
+		may.append((r + RUN_UNSURE) * absf(inv))
+	# Across x: |middle . axis - py * y - pz * z| within reach.
+	var across := PackedFloat64Array()
+	var across_y := PackedFloat64Array()
+	var across_z := PackedFloat64Array()
+	var across_r := PackedFloat64Array()
+	for slab: Array in slabs[1]:
+		var axis: Vector3 = slab[0]
+		across.append(middle.dot(axis))
+		across_y.append(axis.y)
+		across_z.append(axis.z)
+		across_r.append(float(slab[1]) + half.dot(slab[2]))
+	# The box's own axes and reaches, as cells_for_turned has them, for the
+	# cells asked exactly: worked out when the first is.
+	var axes: Array[Vector3] = []
+	var reaches := PackedFloat64Array()
+	var along: int = base.size()
+	var row := PackedFloat64Array()
+	row.resize(along)
+	var x_from: int = floori(low.x)
+	var x_to: int = ceili(high.x) - 1
+	var z_low: int = floori(low.z)
+	var z_high: int = ceili(high.z) - 1
+	for y: int in range(floori(low.y), ceili(high.y)):
+		var py: float = float(y) + 0.5
+		# The lines of the row each slab across x lets through, by their
+		# middle's z: may, and sure.
+		var may_z0: float = -INF
+		var may_z1: float = INF
+		var sure_z0: float = -INF
+		var sure_z1: float = INF
+		var none: bool = false
+		for n: int in across.size():
+			var k: float = across[n] - py * across_y[n]
+			var r: float = across_r[n]
+			var dz: float = across_z[n]
+			if absf(dz) < 0.000001:
+				if absf(k) > r + RUN_UNSURE:
+					none = true
+					break
+				if absf(k) > r - RUN_UNSURE:
+					sure_z0 = INF
+				continue
+			var a: float = (k - r - RUN_UNSURE) / dz
+			var c: float = (k + r + RUN_UNSURE) / dz
+			may_z0 = maxf(may_z0, minf(a, c))
+			may_z1 = minf(may_z1, maxf(a, c))
+			a = (k - r + RUN_UNSURE) / dz
+			c = (k + r - RUN_UNSURE) / dz
+			sure_z0 = maxf(sure_z0, minf(a, c))
+			sure_z1 = minf(sure_z1, maxf(a, c))
+		if none or may_z0 > may_z1:
+			continue
+		for n: int in along:
+			row[n] = base[n] - py * per_y[n]
+		for z: int in range(maxi(z_low, ceili(may_z0 - 0.5)), mini(z_high, floori(may_z1 - 0.5)) + 1):
+			var pz: float = float(z) + 0.5
+			var may0: float = -INF
+			var may1: float = INF
+			var sure0: float = -INF
+			var sure1: float = INF
+			for n: int in along:
+				var q: float = row[n] - pz * per_z[n]
+				may0 = maxf(may0, q - may[n])
+				may1 = minf(may1, q + may[n])
+				sure0 = maxf(sure0, q - sure[n])
+				sure1 = minf(sure1, q + sure[n])
+			if may0 > may1:
+				continue
+			if pz < sure_z0 or pz > sure_z1:
+				sure0 = INF
+			var first: int = clampi(ceili(may0 - 0.5), x_from, x_to + 1)
+			var last: int = clampi(floori(may1 - 0.5), x_from - 1, x_to)
+			while first <= last and not (float(first) + 0.5 >= sure0 and float(first) + 0.5 <= sure1):
+				if axes.is_empty():
+					var test: Array = _separating(basis, half)
+					axes = test[0]
+					reaches = test[1]
+				if _touches_with(middle, axes, reaches, Vector3(float(first) + 0.5, py, pz)):
+					break
+				first += 1
+			while last >= first and not (float(last) + 0.5 >= sure0 and float(last) + 0.5 <= sure1):
+				if axes.is_empty():
+					var test: Array = _separating(basis, half)
+					axes = test[0]
+					reaches = test[1]
+				if _touches_with(middle, axes, reaches, Vector3(float(last) + 0.5, py, pz)):
+					break
+				last -= 1
+			if last < first:
+				continue
+			var key := Vector2i(y, z)
+			var have: Variant = lines.get(key)
+			if have == null:
+				lines[key] = PackedInt32Array([first, last])
+				order.append((b << 39) | ((first - least.x) << 26) | ((y - least.y) << 13)
+					| (z - least.z))
+				continue
+			var runs: PackedInt32Array = have
+			have = null
+			# Out of the dictionary while it grows, so it grows in place.
+			lines.erase(key)
+			runs.append(first)
+			runs.append(last)
+			lines[key] = runs
 
 
 ## A turned part's cover asked only where something is ([class TurnedCover]):
@@ -452,6 +697,13 @@ static func compress(cells: Array[Vector3i]) -> PackedInt32Array:
 			last = xs[n]
 		_note_run(runs, run_from, last + 1, key.y, key.x)
 
+	return _boxes_of_runs(runs)
+
+
+## [method compress]'s runs along x, "x from, x to, z" -> the y of each, as
+## boxes: the runs at the same x and z on rows next to each other, one box.
+static func _boxes_of_runs(runs: Dictionary) -> PackedInt32Array:
+	var out := PackedInt32Array()
 	for key: Vector3i in runs:
 		var ys: PackedInt32Array = runs[key]
 		ys.sort()
@@ -921,6 +1173,16 @@ func occupy_boxes(brick_id: int, packed: PackedInt32Array) -> void:
 	else:
 		_rows[brick_id] = rows
 	_into_buckets(brick_id, _bounds[brick_id])
+
+
+## [param packed] as [method occupy_moved] takes a cover: [the boxes, their
+## bound, their rows], worked out as [method occupy_boxes] works them out.
+## Safe off the main thread: a big section's covers are worked out on a
+## worker before it is kept (GrabDrag), and the bound and rows of 132 turned
+## parts, 60,000 boxes, were 58 ms of the frame that kept them.
+static func cover_for(packed: PackedInt32Array) -> Array:
+	var bound: PackedInt32Array = _bound_of(packed)
+	return [packed, bound, _rows_of(packed, bound) if packed.size() > ROWS_FROM * 6 else []]
 
 
 ## A brick's cover as the lattice holds it, [its boxes, their bound, its
@@ -1405,7 +1667,11 @@ func release(brick_id: int) -> void:
 		_boxes.erase(brick_id)
 		_bounds.erase(brick_id)
 		return
-	_out_of_buckets(brick_id, _bounds.get(brick_id, _bound_of(packed)))
+	# Not _bounds.get(brick_id, _bound_of(packed)): a default is worked out
+	# whether it is wanted or not, and a big section's keep went over every
+	# box of 132 parts' old covers for nothing, 20 ms.
+	var bound: Variant = _bounds.get(brick_id)
+	_out_of_buckets(brick_id, bound if bound != null else _bound_of(packed))
 	_boxes.erase(brick_id)
 	_bounds.erase(brick_id)
 
