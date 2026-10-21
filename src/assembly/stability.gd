@@ -366,13 +366,15 @@ static func pair_of(a: int, b: int) -> int:
 ## Where covers overlap a tip's cell is in both, and [method
 ## BrickLattice.brick_at] names only the first: where that was the stud's
 ## own part the stud was in nothing. So on a part in an overlapped pair a
-## tip is read in the first part but its own ([method
-## BrickLattice.bricks_at]), and a tip in none is looked round: in a turned
-## 1 x 1 cone's hollow underside it is in no cover, and 1793-1's cones on
-## its tilted round plates stood on no stud (2026-10-21). A third part's
-## cover first is left as it was: picking the part sitting on the stud's
-## foot instead mended 1793-1's hinge plates inside its corner panel but
-## moved 8466-1's stacked plates onto the bricks beside them.
+## tip is read in a part but its own ([method BrickLattice.bricks_at]), and
+## a tip in none is looked round: in a turned 1 x 1 cone's hollow underside
+## it is in no cover, and 1793-1's cones on its tilted round plates stood on
+## no stud (2026-10-21). Of several, it is in the one with a socket where
+## the stud stands, else the first ([method _taking]): a third part's
+## cover can come first. Picking the part sitting on the stud's foot
+## instead mended 1793-1's hinge plates inside its corner panel but moved
+## 8466-1's stacked plates onto the bricks beside them; a socket is where
+## the stud is, not a face near it.
 ##
 ## [param everywhere] false reads a stud's tip only where the lift cannot
 ## tell: on a part the lift reaches across an overlap, and for a stud not
