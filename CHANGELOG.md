@@ -136,6 +136,21 @@ whole cycle.
   otherwise, and 32 come off another way, upward where they only stand on
   the rest. Check stability, a drag's balance and the Tested mark read what
   holds what in a tenth to a fifth less time on 1,000-part Technic sets.
+- Check stability, a drag's balance and the Tested mark weigh two parts
+  whose covers overlap by what holds them. With no stud of either in the
+  other, the edges where the two covers differ were weighed as studs: a
+  Technic beam on its long pin was held by one stud at 9.6 times its working
+  load (8272-1), an axle through a motorcycle's wheel at 150 times
+  (42036-1), and a rim in its tyre, a hinge tile on its hinge and a digger's
+  arm on its holder were over too. They are held by their pin, axle, hinge
+  or turntable, or seated one in the other, and weighed by no stud, as the
+  stability on the status bar weighs them. And a stud is read where its
+  tip is in its own part's cover as well as the part it holds, or in a
+  hollow underside no cover fills: the cones on 1793-1's tilted round plates
+  and on brackets' side studs stand on their studs, and 12 parts of four
+  sets' "Loose parts" are in the sections they are built into. On 45 real
+  sets, five joints said to be overloaded are not; whether each stands, the
+  status bar's stability and every Tested result are unchanged.
 
 ## [0.4.0] - 2026-10-20
 

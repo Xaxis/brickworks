@@ -1777,28 +1777,58 @@ func brick_at(cell: Vector3i) -> int:
 				or cell.y < bound[1] or cell.y >= bound[4] \
 				or cell.z < bound[2] or cell.z >= bound[5]:
 			continue
-		var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
-		var rows: Array = _rows.get(brick_id, [])
-		if not rows.is_empty():
-			# Inside its bound, so on one of its rows: the boxes on it.
-			var heads: PackedInt32Array = rows[4]
-			var next: PackedInt32Array = rows[5]
-			var whose: PackedInt32Array = rows[6]
-			var at: int = heads[(cell.y - int(rows[0])) * int(rows[3]) + cell.z - int(rows[1])]
-			while at >= 0:
-				var o: int = whose[at]
-				if cell.x >= packed[o] and cell.x < packed[o + 3]:
-					return brick_id
-				at = next[at]
-			continue
-		var n: int = 0
-		while n < packed.size():
-			if cell.x >= packed[n] and cell.x < packed[n + 3] \
-					and cell.y >= packed[n + 1] and cell.y < packed[n + 4] \
-					and cell.z >= packed[n + 2] and cell.z < packed[n + 5]:
-				return brick_id
-			n += 6
+		if _has_cell(brick_id, cell):
+			return brick_id
 	return 0
+
+
+## Every brick but [param ignore] whose cover has [param cell], in [method
+## brick_at]'s order. That names the first it comes to, and where two
+## covers overlap the cell is in both: a stud's tip in its own part's cover
+## as well as the part it holds was read as in nothing
+## (Stability.stud_joints).
+func bricks_at(cell: Vector3i, ignore: int = 0) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	var here: Variant = _bucket.get(Vector3i(
+		_floor_div(cell.x, BUCKET), _floor_div(cell.y, BUCKET),
+		_floor_div(cell.z, BUCKET)))
+	if here == null:
+		return out
+	for brick_id: int in here:
+		var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
+		if brick_id == ignore or bound.is_empty() or cell.x < bound[0] or cell.x >= bound[3] \
+				or cell.y < bound[1] or cell.y >= bound[4] \
+				or cell.z < bound[2] or cell.z >= bound[5]:
+			continue
+		if _has_cell(brick_id, cell):
+			out.append(brick_id)
+	return out
+
+
+## Whether [param cell], inside [param brick_id]'s bound, is in its boxes.
+func _has_cell(brick_id: int, cell: Vector3i) -> bool:
+	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
+	var rows: Array = _rows.get(brick_id, [])
+	if not rows.is_empty():
+		# Inside its bound, so on one of its rows: the boxes on it.
+		var heads: PackedInt32Array = rows[4]
+		var next: PackedInt32Array = rows[5]
+		var whose: PackedInt32Array = rows[6]
+		var at: int = heads[(cell.y - int(rows[0])) * int(rows[3]) + cell.z - int(rows[1])]
+		while at >= 0:
+			var o: int = whose[at]
+			if cell.x >= packed[o] and cell.x < packed[o + 3]:
+				return true
+			at = next[at]
+		return false
+	var n: int = 0
+	while n < packed.size():
+		if cell.x >= packed[n] and cell.x < packed[n + 3] \
+				and cell.y >= packed[n + 1] and cell.y < packed[n + 4] \
+				and cell.z >= packed[n + 2] and cell.z < packed[n + 5]:
+			return true
+		n += 6
+	return false
 
 
 ## Is anything standing on these studs? For each stud, [x, z] in studs on
