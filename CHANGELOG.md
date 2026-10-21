@@ -13,7 +13,46 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-20
+
+A release about models that move. A model now carries its own named motions,
+"Open the dome" or "Extend the telescope": kept with one press from what
+moves, recorded by dragging the real parts, or set joint by joint in Build >
+Motions, played forwards and back, strung into a sequence that shows it all,
+filmed from File > Render, and played by anyone from its shared link. Grab
+moves parts as the real ones move, racks and pinions, cranks and sliders,
+worms and friction included, and Simulate turns them the same way. Brickify
+reads PLY, 3MF, VOX and FBX. Part names read right, a part that fails to
+load is asked for again and never lost from the file, and File > New tab
+starts a second model beside the first. Models saved by 0.3.0 open in 0.4.0
+unchanged.
+
 ### Added
+
+- File > New tab starts a new model in a tab of its own, on an empty
+  baseplate, and a reload keeps it. On the desktop it is New window
+  (Ctrl+Shift+N), which starts the app again for a model of its own.
+
+- Anybody can play with what moves on a shared link: steer the wheels by
+  the steering wheel, swing a boom, open the doors, turn a gearbox by its
+  input, by mouse or by finger. It is the builder's own grab, on the same
+  joints, stops and couplings. Nothing is kept, and Reset puts it all back.
+  The gallery's card says what a model moves, and Technic or mechanism
+  finds it.
+
+- A monthly challenge on brickworks.diy, whose rules the site checks on
+  the stored model: entered, voted on and won, and followers hear of
+  entries in their feed.
+
+- The gallery rewards designs that build. Top builds sorts by builds
+  finished, remixes and the Tested mark, never views. The front has this
+  week's pick and a shelf of small builds, under 200 parts. Signed in with
+  your sets, every model says how much of it you own and what you can
+  build now.
+
+- A designer's page leads with what their models earned: builds finished,
+  remixes, Tested, comments. The designer alone sees each model's last 30
+  days, and who built it.
 
 - Brickify reads more of the 3D files people have, in the desktop app and
   in the browser: PLY scans, as text or binary, in their own colours; 3MF
@@ -229,6 +268,12 @@ whole cycle.
 
 ### Changed
 
+- A slow device draws less, and a capable one exactly as before. Where
+  frames are slow (a weak laptop, an old phone, a browser drawing in
+  software) the app lowers its look a rung at a time, while the editor
+  loads, until a frame keeps up, and stops looking once nothing is left
+  to cut. There are no new settings.
+
 - Claude's play_motion shows its picture from the side that sees most of
   what moves, and says which: a back wall's doors opened behind a dome are
   pictured from the back, not the front corner. view= chooses one.
@@ -385,7 +430,6 @@ whole cycle.
   propellers, lights in clips); 31 now go where the file has them, all
   but a car's eight tyres.
 
-### Changed
 
 - Working out a booklet's steps, for a model without steps of its own,
   takes about two thirds of the time it did, and gives the same steps,
@@ -480,6 +524,15 @@ whole cycle.
   library, one with other wheels and tyres, not anything opened before.
 
 ### Fixed
+
+- Mirror and a half turn in place keep a selection on its own footprint.
+  Each used to go round a point that could be half a stud off the middle,
+  and put the selection a stud over, or say "no room to mirror it there".
+
+- Animations. A posed joint comes back where it was built, Play leaves
+  alone the parts it never moved, a session's keys on a part play and
+  render, a part that meets the model while rendering is said, and every
+  MP4 is made at its own frame rate.
 
 - Suggest sections reads a stud that points sideways as holding what is on
   it, and no longer joins two parts at an angle that only stand side by
