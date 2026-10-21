@@ -704,8 +704,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   sweep turns it (`_sweep_one`), both ways and back. `-- --only=meets` (in the full run): a move
   stopped by the model names the two parts that met (`GrabDrag._met_words`),
   and (G13) a made arm turned 90° towards a plate over its way stops at the
-  plate, which a test of the end alone went through, and goes all 90° the
-  other way (`-- --only=path`). `-- --only=beams` (in the full run, and with
+  plate, which a test of the end alone went through, and the other way stops
+  6° round on its hinge's own base (`-- --only=path`). `-- --only=beams` (in the full run, and with
   `--only=moving`): 10205-1's and 10183-1's buffer beam is one body with the
   plate it sits on and turns with it. `-- --only=gapjudge` (or
   `--gap=FILE:DRIVER:MOVER:OTHER` for another pair) writes, for the
@@ -855,7 +855,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `Grab._across`, a slide tests what its turn's sweeps left out,
   `_turn_only`, and a pair whose covers overlap where a grab begins, one
   with no exact shape, goes no deeper than it began, `_no_deeper`, Grab
-  17, MECHANISMS §28, `grab_probe -- --only=bearing` and `--only=path`),
+  17, MECHANISMS §28, `grab_probe -- --only=bearing` and `--only=path`; the
+  joint turned alone's two parts are judged by their exact shapes but the
+  pieces its line goes through and what was built into each other, worked
+  out at the press and asked along the way where due, a click hinge's at
+  each click, `_meeting_pairs`, `_pair_forgives`, `_pairs_due`, hinge77,
+  MECHANISMS §35, `--only=hingerange`: a 3937/3938 top stops 6° the wrong
+  way and 95° the other),
   `follow` (the pointer's ray to an angle, a slide
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
