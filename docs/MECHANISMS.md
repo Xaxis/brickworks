@@ -5476,9 +5476,19 @@ then has.
 
 ### The loop's freedom to spare
 
-Not changed: the walk's poses are still solved from the pose checked last,
-a step at a time, not the drag's frame by frame. Section 30 measured them
-0.0064 LDU apart at 42024-1's stop; a slide's stop is found to 0.1 LDU,
-and `Exact` forgives 1 LDU into each other. Pinning one pose to each
-value of the driver waits for a case where the walk and the drag differ by
-more than that.
+The walk's poses were still not the drag's. Solved back from the pose shown
+at 6 LDU, the forced repro's rod at 5.5 has the beam 3 (#430) 1.11 LDU into
+the cross block (#61) by their exact shapes, no room; walked out from 0, it
+has room to 5.75. A loop with freedom to spare has no one pose for a value
+of its driver, and a stop the walk finds in its own poses need not be one
+the drag met.
+
+2. **The walk goes through the poses the drag showed** (`Grab._shown`,
+   `_frames_on_the_way`). Each frame of a loop's drag shown on trust keeps
+   its pose (`Linkage.kept_state`); the walk after a pause or the release
+   lands on the value of each between the value checked last and the one it
+   checks to, the last shown at each value, in order, puts that pose back
+   and tests it as shown, and solves each step on from it. Traced on the
+   forced repro, whose frames were 2, 4 and 6 LDU: the steps of 0.25 LDU
+   land on 2 and 4 with the frames' own poses, and it is kept at 5.75 as
+   before, the stop between the last frame and the one past it.

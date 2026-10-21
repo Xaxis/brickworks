@@ -2715,8 +2715,8 @@ func verify_step() -> bool:
 		# step on solved from the last of them: a loop with freedom to spare
 		# has no one pose for a value of its driver, and the walk's own, solved
 		# from where it was checked last, were not the drag's. 42024-1's rod,
-		# shown at 2, 4 and 6 LDU, was 1.1 LDU into a cross block at 5.5 solved
-		# back from the pose shown at 6, and clear of it solved out from 0.
+		# shown at 2, 4 and 6 LDU, had a beam 1.1 LDU into a cross block at 5.5
+		# solved back from the pose shown at 6, and room to 5.75 walked out.
 		var frame: bool = not _walk_frames.is_empty() \
 			and (float(_walk_frames[0][0]) - next) * signf(now - _checked_angle) <= 0.0001
 		if frame:
