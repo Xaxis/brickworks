@@ -212,6 +212,9 @@ func _keys_and_frames() -> void:
 	sweep.library = _library
 	var model_before: Array = _snapshot()
 	var pin: Grab = _player.hold(_arm).grab
+	# The top's turn read against the hinge's base is in the base's frame,
+	# and so is the pin it turns about.
+	var pin_axis: Vector3 = _brick("hinge").transform.basis.inverse() * pin.axis.normalized()
 	var turning: Grab = _player.hold(_turret).grab
 	var seen_arm: Array = []
 	var seen_turret: Array = []
@@ -224,7 +227,7 @@ func _keys_and_frames() -> void:
 			var hinge: Transform3D = renderer.staged_transform(_ids["hinge"])
 			var top: Transform3D = renderer.staged_transform(_ids["top"])
 			var table: Transform3D = renderer.staged_transform(_ids["turntable"])
-			seen_arm.append(_about(hinge.basis.inverse() * top.basis, pin.axis.normalized()))
+			seen_arm.append(_about(hinge.basis.inverse() * top.basis, pin_axis))
 			seen_turret.append(_about(table.basis, turning.axis.normalized()))
 			pictures.append(image))
 	_check("every frame is drawn (%d of %d)" % [done, frames], done == frames)
