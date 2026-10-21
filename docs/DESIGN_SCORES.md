@@ -2325,6 +2325,139 @@ three). A dry run first wrote a canned design into the arm's folder; it is
 set aside as `realset-2026-10-20-technic2.dryrun`.
 
 
+### The body held flush, on the same three subjects (2026-10-21, to the proof)
+
+The body lever's technique stood its panels on posts two studs above the
+rails, and every session copied it: "floating panels over the axles", "flat
+panels with gaps between them", "a long, flat box frame". This lever measures
+how a set holds its body and draws the technique from that. Branch `technic3`.
+
+**How a set holds its body** (`src/dev/technic_hold.gd`, joint by joint as the
+build check reads them, over the 92 Technic sets `technic_cover.py` reads).
+
+| | panels (1,075) | fairings (1,020) |
+|---|---|---|
+| held by a pin through their holes | 92% | 93% |
+| ...a 6558 long pin / a 2780 / an axle pin (43093, 11214, 18651) | 40% / 34% / 13% | 28% / 35% / 11% |
+| ...to a straight beam / a connector / another panel / a bent liftarm | 45% / 16% / 21% / 14% | 41% / 20% / 16% / 14% |
+| the pin in the part's edge / through its face | 74% / 26% | 93% / 7% |
+| holes a stud apart along the pin or less (face to face) | 68% | 71% |
+| facing the side / up / an end | 39% / 50% / 11% | 49% / 43% / 8% |
+| facing the side: foot on the part below / nothing below / 2 studs of daylight or more | 60% / 19% / 5% | 57% / 23% / 4% |
+
+- Of the panels and fairings facing the side, 77% (705 of 919) are face to
+  face with a straight beam or a connector: the side's panels are flush on
+  the frame, never stood off it on posts.
+- Bent liftarms (3,994): 62% lie in the side's plane, drawing the side's
+  outline; pinned to straight beams 31%, connectors 26%, each other 25%.
+- Tyres (314): 63% have something over them, reaching above the tyre and
+  coming down to within two studs of its top: a bent liftarm 39%, a panel
+  13%, a fairing 11%. The wheel arch is a bent liftarm before it is a panel.
+- Drawn, a real side reads the same way: the Rally Car (42077-1,
+  `reference-42077-1_right.png` in the arm's folder) has a door panel low
+  between the wheels down to the sill beam, curved pieces over both wheels,
+  and fairings at the nose and the tail.
+
+**The lever** (`src/ai/techniques.gd`, `technic_way.gd`, `technic_way_probe`).
+- *The technique redrawn.* "panelled beam frame" is now beam 15 rails with
+  the wheels at their ends; on each side a 3 x 7 panel as the door, flush on
+  the rail's outer face between the wheels on two 2780 pins through its face
+  holes, its foot the rail's; a beam 15 as the waist behind its top row,
+  running over both wheels; and a 4 x 4 bent liftarm at each end of the
+  waist, in the door's plane, over the wheel and down past it to the nose
+  and the tail. 36 parts, none studded, laid by attach, checked. Drawn from
+  the corner and the side (`technique-panelled-beam-frame_corner.png`,
+  `_right.png`): a door low between the wheels, arches over them, no daylight
+  under anything. What it does not show is a closed nose, tail or top: a
+  5 x 11 panel between the waists is a lattice cell too wide (its edge holes
+  sit 0.45 of a stud in, so pinned to one waist it overlaps the other by
+  1 LDU), and a panel across the nose on the arches' holes lay on one line
+  of pins, free to turn. Its text names what closes them instead.
+- *Told at planning*: the body step with those numbers, "never a panel on
+  posts standing clear of the frame", with the judge's words.
+- *An open face named with what covers it*: the review's "Open:" now says,
+  face by face, what covers it on a set, by part number: the sides a flat
+  panel flush between the wheels and bent liftarms arching over them, the
+  ends fairing pairs meeting in the middle and a panel across, the top flat
+  panels by their edge holes into the side beams.
+- *Checked*: the probe holds the technique to it, its two doors' feet no
+  higher than the rails' top and all four tyres arched. The old technique
+  fails both: no panel flush in the side's plane, two of its four tyres
+  arched.
+
+**The same three of tune's eight,** the Mine Loader (42049-1), the Ducati
+(42107-1) and the Tractor (9393-1), designed with the lever (`359c0b1b`) in the
+same harness as the arms recorded for 2026-10-20, three at a time.
+
+| | main (`technicmain`) | studless (`technic`) | the body (`technic2`) | held flush (`technic3`) |
+|---|---|---|---|---|
+| overall against the set, verdicts won of 6 | 0 | 1 | 1 | 1 |
+| likeness / surface / technique | 3 / 3 / 0 | 3 / 1 / 1 | 1 / 1 / 0 | 1 / 3 / 0 |
+| studded parts, each subject | 97%, 76%, 98% | 0%, 0%, 6% | 5%, 1%, 6% | 5%, 3%, 9% |
+| sides in panels and fairings (sets 18%) | 0%, 13%, 0% | 17%, 0%, 12% | 42%, 42%, 33% | 19%, 50%, 14% |
+| bent liftarms on the sides (sets 10%) | none | 12%, 1%, 4% | 0%, 0%, 3% | 7%, 0%, 6% |
+| minutes; timed out | 24, 45, 15; 1 of 3 | 45, 45, 45; 3 of 3 | 37, 39, 32; 0 of 3 | 40, 45, 42; 1 of 3 |
+| parts (sets 478, 638, 354) | 428, 345, 415 | 299, 126, 252 | 160, 173, 272 | 223, 228, 249 |
+
+Head to head, both orders, the lever's design preferred:
+
+| dimension | to main's | to the body's (`technic2`) |
+|---|---|---|
+| likeness | 33% (6-79) | 50% (13-87) |
+| surface | 33% (6-79) | 67% (21-94) |
+| colour | 0% (0-56) | 50% (13-87) |
+| technique | 83% (31-98) | 83% (31-98) |
+| creativity | 50% (13-87) | 67% (21-94) |
+| overall | 67% (21-94) | 83% (31-98) |
+
+- **The floating went from the sides.** No verdict reads panels over the
+  axles or a tall open frame; what floats now is the Tractor's roof ("a stack
+  of floating roof panels and loose pins"), and what is boxy the Ducati's
+  flat panels. The Mine Loader is low and long, its panels flush, a
+  curved black mudguard over the rear wheels, and against the set it won
+  surface both ways round, likeness and overall once: "B covers the body with smooth
+  yellow panels and a flat engine deck behind a curved black fender". The
+  Tractor's sessions built mudguards on their own (5 x 11 panels over the
+  rear tyres, double-bent liftarms arching over the front). The sides came
+  back to the sets' amount on two (19% and 14% against the sets' 18%), and
+  bent liftarms to the sides' outline (7% and 6%, the body's 0% and 3%).
+- **Head to head it moved most.** Against main's System bodies the judge
+  took the lever's overall 67% (the body's 33%) and its likeness 33% (the
+  body's 0%); against the body's own designs, overall 83%, technique 83%.
+- **What the sets still win on.** Shape where the body is the subject: the
+  Ducati is "a boxy stack of flat red panels with a blunt nose", "flat
+  rectangular panels stacked in steps", where the set's fairing is "curved
+  Technic panels that flow around the nose and flanks" (its sides 50% flat
+  panels). The Tractor's roof is "a stack of floating roof panels and loose
+  pins". And technique, 0 of 6: every set wins it on working functions, "a
+  turntable-centred articulated chassis", "a working chain drive with
+  sprockets, a gearbox, front and rear suspension", "angled fairing
+  sub-assemblies", against "a simpler frame of stacked beams with a gear".
+- *What it cost.* The sessions ran longer, 40, 45 and 42 minutes, the Ducati
+  to the limit (the body's 37, 39 and 32), with 28 to 44 attachment_points
+  calls (the body's 17 to 34) and more parts laid (223 to 249). Each looked
+  at the technique once. The build check read all three: none floating.
+- **Not ready on this alone.** Three subjects is no measure, and against the
+  sets it won what the last two levers won, 1 of 6 overall. The bar is the 9
+  of proof: technique's paired interval against the sets clearing zero and
+  overall not falling. On these three, technique against the sets did not
+  move (0 of 6).
+- *Next.* Shape and working parts, not cover: panels at an angle (a fairing
+  pair raked to a nose, the sets' "angled panel sub-assemblies") rather than
+  flat in steps, and one working function the real machine has, driven from
+  a knob or a gear, before the body.
+
+Results: `bench/results/realset-2026-10-20-technic3/` (report-tune-3.md, the
+technique drawn as `technique-panelled-beam-frame_corner.png` and `_right.png`,
+the Rally Car's side as `reference-42077-1_right.png`, `technic_hold.txt`), and
+`realset-2026-10-20-technicmain-vs-technic3/` and `-technic2-vs-technic3/`
+(report-tune-3.md each). The main checkout's renderer failed to load at 04:47
+(main.gd, a parse error on "player": its class cache older than its code), so
+the three designs were drawn by this branch's `bench_views.gd`, which main's
+equals, and judged by a second `run` that kept the designs; `audit` failed the
+same way, so the build check above is this branch's `connection_audit.gd`, and
+the records still want `audit` once the main checkout is imported again.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
