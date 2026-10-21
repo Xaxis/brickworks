@@ -491,18 +491,14 @@ static func _owners(lattice: BrickLattice, cell: Vector3i, own: int,
 
 ## What a stud standing at [param foot] and pointing [param way], whose tip
 ## is in no part but its own, is in: a hollow the cover leaves open, a
-## round brick's, a cone's or a dish's underside, so the part round it
-## there ([method _round_the_stud]), the first of them. Null for none.
+## round brick's, a cone's or a dish's underside, so the first part of
+## [param boxes] but [param own] round its tip on five of six sides, half a
+## cell past its radius, as a peg in a hole is read (Joints.pushed_in): a
+## cell's coarseness leaves one side of a 1 x 1 cone's thin wall out. Null
+## for none.
 static func _stud_in(foot: Vector3, way: Vector3, own: int, boxes: Dictionary,
 		lattice: BrickLattice) -> Variant:
-	var round: Array = _round_the_stud(lattice, foot + way * Joints.STUD_REACH, way, own, boxes)
-	return round[0] if not round.is_empty() else null
-
-
-## The parts of [param boxes] but [param own] round a stud's [param tip] on
-## five of six sides, half a cell past its radius.
-static func _round_the_stud(lattice: BrickLattice, tip: Vector3, way: Vector3, own: int,
-		boxes: Dictionary) -> Array:
+	var tip: Vector3 = foot + way * Joints.STUD_REACH
 	var across: Vector3 = way.cross(Vector3.UP if absf(way.y) < 0.9 else Vector3.RIGHT).normalized()
 	var other: Vector3 = way.cross(across).normalized()
 	var sides: Dictionary = {}         ## id -> sides it is on
@@ -512,12 +508,11 @@ static func _round_the_stud(lattice: BrickLattice, tip: Vector3, way: Vector3, o
 		for id: int in _owners(lattice, BrickLattice.to_cell(point), own, boxes):
 			sides[id] = int(sides.get(id, 0)) + 1
 		if n == 1 and sides.is_empty():
-			return []
-	var out: Array = []
+			return null
 	for id: int in sides:
 		if int(sides[id]) >= 5:
-			out.append(id)
-	return out
+			return id
+	return null
 
 
 ## Who hands its weight to whom, from [param joints] ([method
