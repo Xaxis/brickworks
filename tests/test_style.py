@@ -250,8 +250,9 @@ def test_a_slopes_box_lies_where_its_own_file_puts_it() -> None:
     from ldraw.geometry import flatten
     from ldraw.library import Library
     low, high = flatten(Library(style.LDRAW), "3040b.dat").bounds()
-    box = Parts().get("3040b").box
-    assert box is not None
+    slope = Parts().get("3040b")
+    assert slope is not None and slope.box is not None
+    box = slope.box
     assert box[0] == pytest.approx((low.x, low.y, low.z), abs=0.01)
     assert box[1] == pytest.approx((high.x, high.y, high.z), abs=0.01)
     assert box[0][2] == pytest.approx(-30.0, abs=0.01)
