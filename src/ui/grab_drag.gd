@@ -541,9 +541,10 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 	else:
 		words = "%s, %s" % [_capital(held.said), held.position_words()]
 		# Its way checked after it was let go met something short of there:
-		# kept at that stop, and said, never moved back unsaid.
-		var now_at: float = held.angle if held.mode != "slide" else held.shift
-		if not is_nan(held.let_go_at) and absf(now_at - held.let_go_at) > 0.01:
+		# kept at that stop, and said, never moved back unsaid. A swing or a
+		# coast that came to rest elsewhere says so itself (the pendulum's
+		# rest was said as stopped short of its let-go, m131).
+		if held.stopped_short:
 			words += "; it stopped where %s, short of where it was let go" % (_met_words(held)
 				if not _met_words(held).is_empty() else "it meets the model")
 		if not swung.is_empty():
@@ -1835,6 +1836,11 @@ static func _on_page(spot: Dictionary, to_window: Transform2D, per_css: float) -
 		spot.erase("pivot")
 		spot["pivot_x"] = roundi(pivot.x)
 		spot["pivot_y"] = roundi(pivot.y)
+	if spot.has("far"):
+		var far: Vector2 = to_window * (spot["far"] as Vector2) / per_css
+		spot.erase("far")
+		spot["far_x"] = roundi(far.x)
+		spot["far_y"] = roundi(far.y)
 	return spot
 
 
@@ -1882,5 +1888,33 @@ func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64A
 					middle = link.point + way * (spot - link.point).dot(way)
 				if not camera.is_position_behind(middle):
 					found["pivot"] = camera.unproject_position(middle)
+				# The part's end furthest from the joint's line, where a turn
+				# shows most: what a check that it moved measures (grab_flow).
+				# The handle is the first corner the pointer lands on, and the
+				# crane arm's was 8 LDU from its hinge: turned 20°, 3 pixels.
+				var far: Vector3 = GrabDrag._far_end(brick.transform, info.bounds, link)
+				if not camera.is_position_behind(far):
+					found["far"] = camera.unproject_position(far)
 				return found
 	return null
+
+
+## The middle of the corners of [param box], where [param at] stands, that
+## are furthest from [param link]'s line (from its point, a ball's).
+static func _far_end(at: Transform3D, box: AABB, link: Bodies.Link) -> Vector3:
+	var way: Vector3 = link.axis.normalized() if link.axis != Vector3.ZERO else Vector3.ZERO
+	var corners: Array[Vector3] = []
+	var reach: Array[float] = []
+	for n: int in 8:
+		var corner: Vector3 = at * box.get_endpoint(n)
+		var off: Vector3 = corner - link.point
+		corners.append(corner)
+		reach.append((off - way * off.dot(way)).length())
+	var most: float = reach.max()
+	var sum := Vector3.ZERO
+	var count: int = 0
+	for n: int in 8:
+		if reach[n] >= most - 0.5:
+			sum += corners[n]
+			count += 1
+	return sum / float(count)
