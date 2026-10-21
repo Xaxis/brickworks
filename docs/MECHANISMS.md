@@ -5415,3 +5415,15 @@ and the slope's bend, before the weight (`sweep_grab20x`): 42125-1 lost
   rounds; how 8448-1 steers there is not measured.
 - The loop with freedom to spare (#65) is where it was: a weight keeps a
   spare slide still, not a spare turn.
+
+### Checked
+
+On d854fab2, in a window (`tools/probe.sh grab_probe`): `--only=grooved`
+(4: 8448-1_Racer's rack +6.35 then back to -6.15, 5533-1's +4.43 then
+-5.31), `groups` (4), `bigstep` (4), `loops` (21), `racks` (43), `worms`
+(34) and `hinge` (18) pass. `--only=actuators` five times: 38 checks in
+four, and once the small actuator, let go at its stop 4.00 LDU out, was
+kept at 1.75 (the false stop of section 30's Grab 19b, which passed it five
+times in five); the wheel loader's arm 95% 15.1 to 16.7 ms a frame.
+`mechanism_probe` (54) and `own_copies_probe` (33) pass. The whole steering
+sweep is not run here.
