@@ -5427,3 +5427,58 @@ kept at 1.75 (the false stop of section 30's Grab 19b, which passed it five
 times in five); the wheel loader's arm 95% 15.1 to 16.7 ms a frame.
 `mechanism_probe` (54) and `own_copies_probe` (33) pass. The whole steering
 sweep is not run here.
+
+## 32. The same shapes on a worker (Grab 21)
+
+Grab 19b left 42024-1's small actuator, let go at its stop 4.00 LDU out,
+kept at 1.75 about one run in four (`--only=actuators`, "kept where it was
+let go"), and read it as the loop's freedom to spare (#65): the walk after
+the release solves its own poses, not the drag's, and met something in one
+the drag never showed. Its forced repro (`repro/grab19_keep_repro.gd`: the
+rod shown on trust at 2, 4 and 6 LDU, then let go through
+`GrabDrag.release`) was kept at 1.75, where the pin joiner #686 meets the
+bent liftarm #670; with the poses at 1.5 to 4 LDU solved first, at 4.31.
+Each was measured on m134 (38f44636) by variants of that repro, which do
+one thing more before the release, on the main thread:
+
+| before the release | kept at |
+|---|---|
+| nothing | 1.75: #686 meets #670 |
+| the poses at 1.5 to 4 LDU solved | 1.75: #686 meets #670 |
+| solved, and #686 and #670 set against each other by their exact shapes | 4.31: #688 meets #670 |
+| #686's and #670's exact shapes read, nothing solved | 4.31: #688 meets #670 |
+| nothing, and the walk run on the main thread, not let go | 5.75: #430 meets #61 |
+
+So not the solves: the shapes. The check after the release runs on a
+worker (`GrabDrag._verify_off_thread`), and there `Exact.shape_for`
+answered null for any shape the main thread had not read yet. A pair with
+a part of no shape is judged by covers, 2 LDU cells that reach past their
+parts (`Grab._clear_exactly`, `_verdict`): #686's cover met #670's at
+1.75, where their shapes are clear. The repro's "solved first" read the two
+shapes as it measured them, and that, not the solving, moved the stop. In
+the probe the drag reads shapes on the main thread as its frames' tests
+reach them, a budget at a time, so whether it had read #686's before the
+release changed from run to run.
+
+1. **A worker reads a shape from disk as the main thread does**
+   (`Exact.shape_for`). In a browser the shapes are fetched on the main
+   thread, and a worker there still answers null for one not fetched, as
+   the main thread does until it comes. Two workers reading one part keep
+   one shape, and an id is given under the lock: shapes' ids key the
+   verdicts between them.
+
+The forced repro is now kept at 5.75 LDU, where the beam 3 (#430) meets
+the cross block (#61), short of where it was shown on trust (6.00) and
+said so, on a worker as on the main thread.
+`exact_probe` asks four workers at once for two shapes not read yet: on
+m134 each answered null; now each reads its shape, the one the main thread
+then has.
+
+### The loop's freedom to spare
+
+Not changed: the walk's poses are still solved from the pose checked last,
+a step at a time, not the drag's frame by frame. Section 30 measured them
+0.0064 LDU apart at 42024-1's stop; a slide's stop is found to 0.1 LDU,
+and `Exact` forgives 1 LDU into each other. Pinning one pose to each
+value of the driver waits for a case where the walk and the drag differ by
+more than that.
