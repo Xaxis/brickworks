@@ -158,7 +158,11 @@ run() {
 # frames holds the app's own work a frame on 75969-1 (200 ms, select all 400).
 # discovery works out the week's pick from every test model built this week:
 # paired with designers, whose castle was built three times, it took the
-# pick and the small builds shelf (2026-10-19).
+# pick and the small builds shelf (2026-10-19). It alone needs the top
+# spots of the gallery's front; a flow that lists a model beside another
+# judges its own model's place by what was listed before it
+# (tools/web/gallery_order.mjs), as share_flow and share_probe failed to
+# when each wanted its model first (m115, m122).
 SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done

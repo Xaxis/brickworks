@@ -65,6 +65,7 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deleteAccount, mintSession } from "./session.mjs";
+import { placed } from "./gallery_order.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -446,6 +447,7 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   const d = await mintSession(emailD);
   const tokenD = d.access_token;
 
+  const listing = Date.now();
   let r = await call("/api/share", { method: "POST", token: tokenA,
     body: { name: "Probe Gallery", author: "Probe Builder", model: MODEL, image: PICTURE, listed: true } });
   const listedId = r.json?.id || "";
@@ -453,10 +455,13 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   check(r.status === 201 && r.json?.listed === true && r.json?.gallery === `${base}/gallery`,
     `published with listed: true (${r.status}, listed ${r.json?.listed}, ${r.json?.gallery})`);
   let l = await list();
-  const card = l.json?.models?.[0] || {};
-  check(l.status === 200 && card.id === listedId && card.name === "Probe Gallery" && card.author === "Probe Builder"
+  // Ahead of everything listed before it; another flow's test model,
+  // listed after it while the release runs two at once, may be ahead.
+  let stands = placed(l.json?.models || [], listedId, { since: listing });
+  const card = (l.json?.models || []).find((m) => m.id === listedId) || {};
+  check(l.status === 200 && stands.ok && card.name === "Probe Gallery" && card.author === "Probe Builder"
     && card.parts === 9 && card.url === `${base}/m/${listedId}` && card.image === `${base}/m/${listedId}.png`,
-    `?op=list has it first, with its name, author, part count, link and picture (${l.status}, ${card.id})`);
+    `?op=list has it newest first, ${stands.said}, with its name, author, part count, link and picture (${l.status}, ${card.id})`);
   check(!("owner" in card) && l.json?.per_page === 24 && typeof l.json?.more === "boolean",
     "...no owner, and a page of 24 that says whether there is another");
   check(!inList(l, unlistedId), "a model shared without the box ticked is not in it");
@@ -503,15 +508,19 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Listed?", model: MODEL, listed: "yes" } });
   check(r.status === 400, `listed that is not true or false: 400 (${r.status}) "${r.json?.error}"`);
 
-  // A name that is markup, listed by somebody else, later: first now.
+  // A name that is markup, listed by somebody else, later: ahead of it now.
   const MARKUP = `<img src=x onerror="alert(1)">Probe & "Co"`;
+  const later = Date.now();
   r = await call("/api/share", { method: "POST", token: tokenD, body: { name: MARKUP, model: SMALL, listed: true } });
   const markupId = r.json?.id || "";
   if (markupId) published.add(markupId);
   l = await list();
-  check(l.json?.models?.[0]?.id === markupId && l.json?.models?.[1]?.id === listedId,
-    "newest first: one listed later is ahead of it");
-  check(l.json?.models?.[0]?.name === MARKUP, "the list gives a name as the text it is, for the page to show as text");
+  stands = placed(l.json?.models || [], markupId, { since: later });
+  const behind = placed(l.json?.models || [], listedId);
+  check(stands.ok && behind.ok && behind.at > stands.at,
+    `newest first: one listed later is ahead of it (${stands.said}; the first ${behind.said})`);
+  check((l.json?.models || []).find((m) => m.id === markupId)?.name === MARKUP,
+    "the list gives a name as the text it is, for the page to show as text");
   seen = await visitorSees([markupId, listedId]);
   check(seen.found.length === 0, `and a visitor's list has neither, past the CDN or through it (${seen.found.join(", ") || "none"})`);
   r = await call(`/m/${markupId}`);
