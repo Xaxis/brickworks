@@ -2325,7 +2325,7 @@ three). A dry run first wrote a canned design into the arm's folder; it is
 set aside as `realset-2026-10-20-technic2.dryrun`.
 
 
-### The body held flush, on the same three subjects (2026-10-21, to the proof)
+### The body held flush, on the same three subjects (2026-10-21, not ready)
 
 The body lever's technique stood its panels on posts two studs above the
 rails, and every session copied it: "floating panels over the axles", "flat
@@ -2457,6 +2457,30 @@ the three designs were drawn by this branch's `bench_views.gd`, which main's
 equals, and judged by a second `run` that kept the designs; `audit` failed the
 same way, so the build check above is this branch's `connection_audit.gd`, and
 the records still want `audit` once the main checkout is imported again.
+
+**On tune's eight, not ready.** The main checkout imported again, its five
+other Technic subjects designed with the lever (`752f83b7`) and all eight
+audited and judged against technicmain's (2026-10-20):
+
+| dimension | technicmain preferred to the set | technic3 preferred to the set | technicmain minus technic3, paired (95%) | technic3 preferred to technicmain, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 38% (14-69) | 6% (1-40) | +31 (+6, +62) | 25% (7-59) |
+| surface | 50% (22-78) | 38% (14-69) | +12 (0, +31) | 25% (7-59) |
+| colour | 25% (7-59) | 12% (2-47) | +12 (-12, +38) | 31% (10-64) |
+| technique | 0% (0-32) | 0% (0-32) | 0 (0, 0) | 88% (53-98) |
+| creativity | 12% (2-47) | 25% (7-59) | -12 (-38, +12) | 50% (22-78) |
+| overall | 0% (0-32) | 6% (1-40) | -6 (-19, 0) | 56% (26-83) |
+
+Three units have moved the idiom and the judge's view of it: between our
+two designs it takes the Technic one on technique nearly every time. Against
+the set nothing has moved on technique, and likeness has fallen, the one
+interval here that clears zero. A real Technic set wins on what it does and
+on looking like its machine; a studless frame with a flush body is neither.
+So the proof half was not run. What is left is the line's own next step:
+the subject's silhouette laid first, then one working function the real
+machine has, driven from a knob or a gear. Results:
+`realset-2026-10-20-technicmain-vs-technic3/report-tune-8.md` beside
+`report-tune-3.md`.
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 
