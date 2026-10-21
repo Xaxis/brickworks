@@ -1431,7 +1431,7 @@ func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dic
 		_slope.resize(cols)
 		_slope.fill(0.0)
 		_slope_col = driver_col
-	var tangent: PackedFloat64Array = _tangent() if part.is_empty() else PackedFloat64Array()
+	var tangent: PackedFloat64Array = _tangent(signf(by)) if part.is_empty() else PackedFloat64Array()
 	for c: int in cols:
 		# A part solved apart keeps its own slope, and the rest theirs.
 		if not part.is_empty() and part.has(c) != inside:
@@ -1449,8 +1449,30 @@ func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dic
 ## so), and 8808-1's wheel turned 90, -180 and 90 came back 1.78 LDU off
 ## (0.003 so; docs/MECHANISMS.md, sections 28 and 30). Only the part solved
 ## apart ([method _reach_parted]) keeps the step's own.
-func _tangent() -> PackedFloat64Array:
-	var held: Dictionary = _carrying if _try_held else {}
+func _tangent(way: float) -> PackedFloat64Array:
+	var held: Dictionary = (_carrying if _try_held else {}).duplicate()
+	var jac: Array = _jacobian(q, {})
+	# A slide at its end that the change would take further out is held
+	# there, as a step's solve holds it, and the rest found without it.
+	for _round: int in 4:
+		var out: PackedFloat64Array = _least_change(jac, held)
+		if out.is_empty():
+			return out
+		var more: bool = false
+		for c: int in _bounded:
+			var span: Vector2 = _limits[c]
+			if not held.has(c) and (q[c] <= span.x + 1e-9 and out[c] * way < 0.0
+					or q[c] >= span.y - 1e-9 and out[c] * way > 0.0):
+				held[c] = true
+				more = true
+		if not more:
+			return out
+	return PackedFloat64Array()
+
+
+## The least change of [method _tangent] with the columns [param held] kept
+## where they are, from the loop's derivatives [param jac] where q stands.
+func _least_change(jac: Array, held: Dictionary) -> PackedFloat64Array:
 	var free := PackedInt32Array()
 	var where := PackedInt32Array()
 	where.resize(cols)
@@ -1473,7 +1495,7 @@ func _tangent() -> PackedFloat64Array:
 	g.fill(0.0)
 	var at_row := PackedInt32Array()
 	var of_row := PackedFloat64Array()
-	for line: PackedFloat64Array in _jacobian(q, {}):
+	for line: PackedFloat64Array in jac:
 		at_row.resize(0)
 		of_row.resize(0)
 		for c: int in cols:
