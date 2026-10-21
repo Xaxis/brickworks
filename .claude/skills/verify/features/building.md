@@ -576,7 +576,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (Balance), the studs and pins that join it to the rest and what that
   carries (80 g a stud, Stability; the studs read as the suggestion reads
   them, `Stability.stud_joints` over the section and the parts beside it,
-  so two parts whose covers overlap are no stud joint), and its own steps;
+  so two parts whose covers overlap are no stud joint; a pair the lift reads
+  only across an overlap, no stud's tip in either, is one pin, axle or clip
+  joint, held by its pin, axle, hinge or turntable or seated, there and in a
+  suggestion's "joined by": 1793-1's turntable no longer stands on 18
+  studs), and its own steps;
   with its parts list,
   BrickLink wanted list and booklet (`_export_booklet` with the rest left
   out). All of it works with the assistant off. For other code:
@@ -821,10 +825,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its holes (`Bodies.pressed_on`), or in one of BrickNet's holes or tubes
   (`Bodies._in_a_hole_exactly`, G13: a train's buffer beam 4022 takes the
   plate's studs in its cap, above its bottom face, where the catalogue reads
-  no socket); a stud the lattice finds in two parts that turn against each
-  other is in the one its foot meets the face of, but where that one has no
-  socket, in the one the lattice found with a BrickNet hole for it
-  (`Bodies._sits_on`); why parts are one body is kept
+  no socket); a stud's tip is in every part but its own whose cover has its
+  cell (`BrickLattice.bricks_at`), of several the first with a socket where
+  the stud stands, facing it (`Joints.socket_at`; 9470-1's plate on Shelob's
+  wedge turned with the winch axle over it); a stud the lattice finds in two
+  parts that turn against each other is in the one its foot meets the face
+  of, of those that reach the stud and take it by a socket or a hole (plates
+  on 8836-1's Technic bricks held axles 35-70 LDU off that turn in them),
+  but where that one has no socket, in the one the lattice found with a
+  BrickNet hole for it (`Bodies._sits_on`); why parts are one body is kept
   (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
   revision, on a worker from 300 parts (`GrabDrag._ready_ahead`), the parts'
   exact shapes read first on the main thread.

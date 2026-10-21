@@ -173,6 +173,37 @@ whole cycle.
   sets' "Loose parts" are in the sections they are built into. On 45 real
   sets, five joints said to be overloaded are not; whether each stands, the
   status bar's stability and every Tested result are unchanged.
+- Evaluate the section and Suggest sections say what joins a section by
+  what holds it. Two parts whose covers overlap, with no stud of either in
+  the other, were counted there as studs where the covers' edges differ:
+  1793-1's section on its 4 x 4 turntable stood on 18 studs of it, and a
+  section of 42077-1's Technic car on 73, where 7 are studs. Each
+  such pair is one pin, axle or clip joint now, held by its pin, axle, hinge
+  or turntable or seated in the other, as Check stability weighs it, and it
+  still joins what it joined: "it is held by 1 pin, axle or clip joint
+  alone". On 45 real sets 164 sections are described otherwise, 2,994 fewer
+  studs and 1,356 more joints in all, and 21 come off another way, 14 of
+  them upward now that nothing stands on them. Which parts make each
+  suggested section is unchanged.
+- A stud whose tip is in more than one part's cover is in the one with a
+  socket for it. A turned part's cover keeps every cell its boxes touch,
+  and the first part named was taken: 1793-1's tilted hinge plates stood in
+  the corner panel round them, not in the plate on them, and 8466-1's
+  stacked plates in the bricks beside them. Six of 1793-1's pairs are stud
+  joints again; on 45 real sets whether each stands, every overloaded joint
+  and every Tested result are unchanged.
+- Grab moves what studs hold with what holds them. A stud whose tip is in
+  its own part's cover as well as another's was read as in nothing:
+  9470-1's plate on Shelob's wedge, held by two of its studs, turned with
+  the winch axle over it. And of two parts that turn against each other,
+  a stud was put in whichever one's box had a face nearest its foot,
+  however far off: plates on 8466-1's and 8836-1's Technic bricks were read
+  as standing on pins and axles 20 to 150 LDU away that turn in those
+  bricks, and held them still. Such a part takes a stud now only where it
+  reaches it and takes it, by a socket or a hole. On 45 real sets 20 move
+  otherwise, most a pin or an axle turning in its hole again. Of 20 sets
+  with a steering the same 17 steer, and 6753-1's, which would not move,
+  turns both ways.
 
 ## [0.4.0] - 2026-10-20
 

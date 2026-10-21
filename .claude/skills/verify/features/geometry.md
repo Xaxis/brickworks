@@ -168,7 +168,10 @@ can occupy the same millimetre.
   by side) are seated, joined by no stud, a pair the lift reads across an
   overlap with no stud's tip in either (a wheel on its spindle) is
   "overlapped" and hands its load on by no stud, and a stud pointing
-  sideways is one. The check reads a stud's tip only where the lift cannot
+  sideways is one. Where covers overlap a tip's cell is in several parts:
+  it is in the one with a socket where the stud stands, else the first
+  (`Stability._taking`; 1793-1's hinge plates in its corner panel). The
+  check reads a stud's tip only where the lift cannot
   tell (`stud_joints(..., false)`: parts in an overlapped pair, studs not
   pointing up); every tip doubled its cost on `stability_probe`'s 800
   bricks. Changing what it reads: compare the verdicts on real sets before
