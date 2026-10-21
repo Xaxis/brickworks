@@ -5942,30 +5942,6 @@ func _hinge_range_check() -> void:
 		var forgiven: int = 0 if but == null else but.a_pieces.count(1) + but.b_pieces.count(1) + but.pairs.size()
 		print("    %s: %s, forgiven %d pieces and pairs, at rest %.2f LDU into each other" % [name, trial.said,
 			forgiven, depth.call(0.0)])
-		if OS.has_environment("HINGE_DEBUG") and but != null:
-			var listed := func(flags: PackedByteArray) -> String:
-				var out := PackedStringArray()
-				for k: int in flags.size():
-					if flags[k] == 1:
-						out.append(str(k))
-				return ",".join(out)
-			print("      #%d %s through: %s; #%d %s through: %s; pairs %s; line %s at %s / %s at %s" % [int(pair[0]),
-				_world.get_brick(int(pair[0])).part_id, listed.call(but.a_pieces), int(pair[1]),
-				_world.get_brick(int(pair[1])).part_id, listed.call(but.b_pieces),
-				but.pairs.keys().map(func(code: int) -> String: return "%d/%d" % [code & 0xFFFFF, code >> 20]),
-				pair[7], pair[5], pair[2], pair[6]])
-			var row := PackedStringArray()
-			for degrees: float in [-90.0, -30.0, -12.0, -6.0, -3.0, 3.0, 6.0, 12.0, 30.0, 90.0]:
-				var at: Dictionary = trial.transforms_at(degrees)
-				var at_a: Transform3D = at.get(int(pair[0]), _world.get_brick(int(pair[0])).transform)
-				var at_b: Transform3D = at.get(int(pair[1]), _world.get_brick(int(pair[1])).transform)
-				var hits: Array = Exact._overlapping(shape_a, shape_b, at_a.affine_inverse() * at_b, 0.0, false, but)
-				var deepest: Array = [0.0, -1, -1]
-				for hit: Array in hits:
-					if float(hit[0]) > float(deepest[0]):
-						deepest = [hit[0], hit[1], hit[2]]
-				row.append("%+.0f: %.2f (%d/%d)" % [degrees, float(deepest[0]), int(deepest[1]), int(deepest[2])])
-			print("      judged: %s" % ", ".join(row))
 		var went: Array = []
 		for degrees: float in [170.0, -170.0]:
 			var before: Dictionary = _snapshot()

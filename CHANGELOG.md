@@ -15,6 +15,14 @@ whole cycle.
 
 ### Fixed
 
+- A hinge turns only as far as its parts let it. The two halves of the
+  joint being turned were never tested against each other, so a hinge
+  brick's top swung through its base either way, though the base's square
+  shoulder stops it 6° the wrong way. The halves are now judged by their
+  real shapes, all but the pin and what it turns in: that top stops at 6°
+  one way and lies down on its side at 95° the other, a 1 x 4 swivel plate
+  swings round one way and stops at 3° the other, and a click hinge goes
+  90° each way.
 - Pressing a motion's button on a shared model's page just after Reset no
   longer stalls the page. The model's joints, changed by the Reset, were
   read again in the frame of the press, though a worker was already
