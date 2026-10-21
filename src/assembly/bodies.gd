@@ -373,6 +373,8 @@ func _read() -> void:
 				detent, slide_and_shaft[0], slide_and_shaft[1], float(zone[4]) if zone.size() > 4 else 0.0,
 				slide_and_shaft[2] if slide_and_shaft.size() > 2 else Vector2.ZERO])
 
+	_cross_in_forks(entries, info_of, rounds, candidates)
+
 	# Balls.
 	var balls: Dictionary = Joints.balls(entries)
 	var seen_balls: Dictionary = {}
@@ -910,6 +912,48 @@ func _rest_racks(entries: Array, candidates: Array) -> void:
 		var reach: float = absf(float(spec.get("to", 20.0)) - float(spec.get("from", -20.0))) * 0.5
 		candidates.append([best, mesh.rack, "rests", rack_at.origin, (rack_at.basis * Vector3.RIGHT).normalized(),
 			true, 0.0, Vector2(reach, reach), mesh.rack])
+
+
+## A universal joint's centre in an end's fork is pinned there on the fork's
+## line, where a file has turned the centre off it: 42125-1 draws both its
+## steering column's centres a quarter turn round from their ends' forks,
+## each pinned in one end only. The other end turned free of it, the cardan
+## shaft between was held by nothing and lodged where its box was most into
+## something, a beam beside it, or, once the column had turned, the column:
+## turned back, the shaft swung round with it into the frame. Added to
+## [param candidates] for each end [param rounds] (Joints.rounds) does not
+## join to its centre.
+func _cross_in_forks(entries: Array, info_of: Dictionary, rounds: Dictionary, candidates: Array) -> void:
+	var centres: Array = []
+	var ends: Array = []
+	for entry: Array in entries:
+		var info: PartLibrary.PartInfo = info_of.get(int(entry[0]))
+		var name: String = info.name if info != null else ""
+		if not name.contains("Universal Joint"):
+			continue
+		if name.contains("Centre") or name.contains("Center"):
+			centres.append(entry)
+		elif name.contains("End"):
+			ends.append(entry)
+	for centre: Array in centres:
+		var middle: Vector3 = (centre[1] as Transform3D).origin
+		for end: Array in ends:
+			if (rounds.get(int(centre[0]), {}) as Dictionary).has(int(end[0])):
+				continue
+			# The fork: two small bores on one line, either side of the middle.
+			var at: Transform3D = end[1]
+			var bores: Array = []
+			for connector: Lbm.Connector in (end[2] as Lbm.PartMesh).connectors:
+				if connector.kind == "bore" and connector.radius < 2.5:
+					bores.append([at * (connector.position + connector.axis * connector.length * 0.5),
+						(at.basis * connector.axis).normalized()])
+			if bores.size() != 2 or absf((bores[0][1] as Vector3).dot(bores[1][1])) < 0.999:
+				continue
+			var fork: Vector3 = ((bores[0][0] as Vector3) + (bores[1][0] as Vector3)) * 0.5
+			if fork.distance_to(middle) > SAME_LINE:
+				continue
+			candidates.append([int(end[0]), int(centre[0]), "hinge", fork, bores[0][1], true, 0.0,
+				Vector2.ZERO, 0])
 
 
 ## Whether [param key]'s part has no exact shape to read its joints from.

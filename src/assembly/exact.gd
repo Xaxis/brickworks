@@ -275,6 +275,76 @@ static func parse(bytes: PackedByteArray) -> Shape:
 	return shape
 
 
+## The shape a round part with no exact shape of its own makes (a tyre, a
+## wheel: its box two sides alike across [param axis], 0 to 2): the prism of
+## [constant ROUND_SIDES] sides inside its box's round. Its box's corners are
+## not the part: a tyre steered about its kingpin swung them 4 LDU into the
+## steering top beside it at 30°, where the round stays clear (8820-1).
+static func round_of(box: AABB, axis: int) -> Shape:
+	var key: String = "%s %d" % [box, axis]
+	_shapes_lock.lock()
+	var known: Shape = _rounds.get(key)
+	_shapes_lock.unlock()
+	if known != null:
+		return known
+	var along := Vector3.ZERO
+	along[axis] = 1.0
+	var one := Vector3.ZERO
+	one[(axis + 1) % 3] = 1.0
+	var two := Vector3.ZERO
+	two[(axis + 2) % 3] = 1.0
+	var radius: float = 0.5 * minf(box.size[(axis + 1) % 3], box.size[(axis + 2) % 3])
+	var half: float = 0.5 * box.size[axis]
+	var middle: Vector3 = box.get_center()
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array([along])
+	var edges := PackedVector3Array([along])
+	for n: int in ROUND_SIDES:
+		var t: float = TAU * float(n) / float(ROUND_SIDES)
+		var rim: Vector3 = (one * cos(t) + two * sin(t)) * radius
+		verts.append(middle + rim - along * half)
+		verts.append(middle + rim + along * half)
+		if n < ROUND_SIDES / 2:
+			var mid: float = t + PI / float(ROUND_SIDES)
+			normals.append(one * cos(mid) + two * sin(mid))
+			edges.append(-one * sin(mid) + two * cos(mid))
+	var piece := Piece.new()
+	piece.verts = verts
+	piece.normals = normals
+	piece.edges = edges
+	piece.lo = verts[0]
+	piece.hi = verts[0]
+	for v: Vector3 in verts:
+		piece.lo = piece.lo.min(v)
+		piece.hi = piece.hi.max(v)
+	piece.spans.resize(normals.size() * 2)
+	for k: int in normals.size():
+		var low: float = INF
+		var high: float = -INF
+		for v: Vector3 in verts:
+			low = minf(low, v.dot(normals[k]))
+			high = maxf(high, v.dot(normals[k]))
+		piece.spans[2 * k] = low
+		piece.spans[2 * k + 1] = high
+	var shape := Shape.new()
+	shape.lo = piece.lo
+	shape.hi = piece.hi
+	shape.pieces.append(piece)
+	_tree_of(shape)
+	_shapes_lock.lock()
+	shape.id = _next_id
+	_next_id += 1
+	_rounds[key] = shape
+	_shapes_lock.unlock()
+	return shape
+
+
+static var _rounds: Dictionary = {}
+## The sides of a round part's prism ([method round_of]): inside the round by
+## 2% of its radius, 0.7 LDU for a tyre 70 across.
+const ROUND_SIDES := 16
+
+
 ## The catalogue's entry whose exact shape [param part_id] has: its own, or for
 ## a model file's own copy of a part LEGO made, that part's (PartInfo.copy_of).
 static func _shaped_as(library: PartLibrary, part_id: String) -> PartLibrary.PartInfo:
