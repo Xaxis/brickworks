@@ -43,7 +43,7 @@
 ## those are the joints that fail: a cantilever's root, a tower's foot, a T on
 ## one stud, a part hung under another. A joint in a bonded wall shares its
 ## load with its neighbours by an amount statics alone cannot say, and is left
-## to Stability's levels. The graph is the studs (Stability.contacts) and the
+## to Stability's levels. The graph is the studs (Stability.stud_joints) and the
 ## pins, axles, clips, hinges and turntables (Joints), so an arm on a pin is
 ## carried by the stud joint under its pin; but only stud joints are checked,
 ## since a pin's friction torque has not been measured.
@@ -323,8 +323,11 @@ var _index_of: Dictionary = {}
 var _edge_a := PackedInt32Array()
 var _edge_b := PackedInt32Array()
 var _edge_stud := PackedByteArray()
-## For a stud edge, which end is the lower.
+## For a stud edge, which end is the lower: the one with the studs.
 var _edge_lower := PackedInt32Array()
+## Stud joints whose studs point sideways or down, by pair
+## (Stability.stud_joints' "sideways"): where their studs are.
+var _sideways: Dictionary = {}
 var _adjacent: Array = []
 ## Depth-first from the floor: each node's parent, its parent edge, and the
 ## nodes in the order they were reached.
@@ -431,7 +434,9 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 	_ground(boxes)
 	if _hull.size() < 3:
 		return false
-	_join(graph["above"], links if links != null else _links())
+	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)
+	_sideways = joints["sideways"]
+	_join(joints, links if links != null else _links())
 	_grow()
 	_find_bridges(boxes)
 	return true
@@ -559,7 +564,13 @@ func _links() -> Array:
 	return out
 
 
-func _join(above: Dictionary, links: Array) -> void:
+## The graph: a node per part and one for the floor, an edge for each pair
+## studs join ([param joints], Stability.stud_joints), each pair [param
+## links] names and each part on the floor. A pair seated one in the other
+## (joints' "seated") is joined but by no stud joint: a cone threaded on an
+## antenna carries its weight to it, but it has no studs to weigh. Left out,
+## 8466-1's 1,197 parts were in no joint, held by pins nothing reads.
+func _join(joints: Dictionary, links: Array) -> void:
 	var count: int = _ids.size()
 	_edge_a = PackedInt32Array()
 	_edge_b = PackedInt32Array()
@@ -587,13 +598,18 @@ func _join(above: Dictionary, links: Array) -> void:
 		_edge_lower.append(lower if stud else -1)
 		(_adjacent[a] as Array).append(e)
 		(_adjacent[b] as Array).append(e)
-	for low: Variant in above:
-		if not _index_of.has(int(low)):
-			continue
-		var a: int = _index_of[int(low)]
-		for high: Variant in above[low]:
-			if _index_of.has(int(high)):
-				add.call(a, int(_index_of[int(high)]), true, a)
+	var under: Dictionary = joints["under"]
+	for key: int in joints["studs"]:
+		var one: int = key >> 32
+		var other: int = key & 0xFFFFFFFF
+		if _index_of.has(one) and _index_of.has(other):
+			add.call(int(_index_of[one]), int(_index_of[other]), true,
+				int(_index_of[int(under[key])]))
+	for key: int in joints["seated"]:
+		var one: int = key >> 32
+		var other: int = key & 0xFFFFFFFF
+		if _index_of.has(one) and _index_of.has(other):
+			add.call(int(_index_of[one]), int(_index_of[other]), false, -1)
 	for pair: Array in links:
 		if _index_of.has(int(pair[0])) and _index_of.has(int(pair[1])):
 			add.call(int(_index_of[int(pair[0])]), int(_index_of[int(pair[1])]), false, -1)
@@ -667,6 +683,10 @@ func _find_bridges(boxes: Dictionary) -> void:
 		var child: int = _bridge_edges[e]
 		var lower: int = _edge_lower[int(e)]
 		var upper: int = _edge_b[int(e)] if _edge_a[int(e)] == lower else _edge_a[int(e)]
+		var side: Variant = _sideways.get(Stability.pair_of(_ids[lower], _ids[upper]))
+		if side != null:
+			_bridges.append(Balance._bridge_of_studs(child, lower, upper, side[0], side[1]))
+			continue
 		var pair := Vector2i(_ids[lower], _ids[upper])
 		var met: Variant = overlaps.get(pair)
 		if met == null:
@@ -695,6 +715,37 @@ func _find_bridges(boxes: Dictionary) -> void:
 			"centre": Vector3(x_from + wide * 0.5, y, z_from + deep * 0.5),
 			"normal": Vector3.UP if child == upper else Vector3.DOWN,
 			"studs": studs, "corners": corners})
+
+
+## A bridge whose studs point sideways or down, from where they stand
+## ([param feet], LDU, pointing [param way]): its plane square to them
+## through their feet, half a stud round them, and its normal toward
+## [param child], as a stud joint lying flat has its normal up when what is
+## on it is the part beyond.
+static func _bridge_of_studs(child: int, lower: int, upper: int, feet: PackedVector3Array,
+		way: Vector3) -> Dictionary:
+	var normal: Vector3 = way.normalized()
+	var u: Vector3 = normal.cross(Vector3.UP)
+	if u.length() < 0.1:
+		u = normal.cross(Vector3.RIGHT)
+	u = u.normalized()
+	var v: Vector3 = normal.cross(u).normalized()
+	var origin: Vector3 = feet[0]
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for foot: Vector3 in feet:
+		var at := Vector2((foot - origin).dot(u), (foot - origin).dot(v))
+		lo = lo.min(at)
+		hi = hi.max(at)
+	var half: float = BrickLattice.STUD * 0.5
+	lo -= Vector2(half, half)
+	hi += Vector2(half, half)
+	var corners := PackedVector3Array([origin + u * lo.x + v * lo.y,
+		origin + u * hi.x + v * lo.y, origin + u * hi.x + v * hi.y,
+		origin + u * lo.x + v * hi.y])
+	return {"child": child, "lower": lower, "upper": upper,
+		"centre": origin + u * (lo.x + hi.x) * 0.5 + v * (lo.y + hi.y) * 0.5,
+		"normal": normal if child == upper else -normal, "studs": feet, "corners": corners}
 
 
 ## Where a stud joint's studs are: the cells [param lower]'s boxes lifted one

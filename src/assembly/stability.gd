@@ -250,8 +250,9 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 
 ## Who rests on whom, as the lattice has it: {"above": id -> {id of each
 ## brick resting on it: cells shared}, "below": the same the other way
-## round, "boxes": id -> the boxes it occupies}. What [method check] weighs
-## and [Balance] cuts.
+## round, "boxes": id -> the boxes it occupies, "bricks": [param bricks]}.
+## What [method check] weighs; the stud joints Balance cuts are read from it
+## by [method stud_joints].
 func contacts(bricks: Array) -> Dictionary:
 	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
 	# Who rests on whom. A brick supports another when one of its cells
@@ -310,7 +311,129 @@ func contacts(bricks: Array) -> Dictionary:
 				below[over] = {}
 			below[over][brick.id] = int(below[over].get(brick.id, 0)) + shared
 
-	return {"above": above, "below": below, "boxes": boxes_of}
+	return {"above": above, "below": below, "boxes": boxes_of, "bricks": bricks}
+
+
+## Lattice cells shared across one stud joint, as [method contacts] counts
+## them: a stud's square, 10 x 10 cells. A 2 x 4 brick on another shares 800
+## (sections_probe), 8 studs.
+const STUD_CELLS := 100.0
+
+
+## Two brick ids as one key, the lower first: how [method stud_joints] and
+## Sections name a pair.
+static func pair_of(a: int, b: int) -> int:
+	return (mini(a, b) << 32) | maxi(a, b)
+
+
+## Which of [param contacts]' parts (what [method contacts] found for them)
+## studs join, as the build check reads studs: {"studs": [method pair_of] ->
+## how many, "under": pair -> the id of the one with the studs, "sideways":
+## pair -> [where its studs stand, LDU, the way they point] for a pair
+## whose studs were read by their tips and do not point up, "seated": pair ->
+## true for a pair the lift reaches only where the two already overlap,
+## joined by no stud: a cone threaded on an antenna, a pin in a beam, or two
+## turned covers side by side}. Only pairs of those parts; worked out once
+## and kept in [param contacts] as "joints", so a caller weighing its parts a
+## few at a time (Tested, BrickifySteps) pays once. Balance, Sections and
+## Tested all read what holds what from here.
+##
+## The lift's resting cells are not studs as they stand. Turned parts'
+## covers side by side overlap their whole height, and the lift read that
+## overlap as each resting on the other: 10179-1's 2 x 3 plates on edge,
+## held by nothing between them, were joined by 6 studs, and a stud
+## pointing sideways never shows in a lift (2026-10-20). So a pair rests on
+## the cells the lift reaches that the two did not already share, and each
+## stud whose tip is in another part joins them (Joints.studs_in), whichever
+## way it points; a pair has whichever count is more.
+static func stud_joints(contacts: Dictionary, library: PartLibrary,
+		lattice: BrickLattice) -> Dictionary:
+	if contacts.has("joints"):
+		return contacts["joints"]
+	var boxes: Dictionary = contacts["boxes"]
+	var above: Dictionary = contacts["above"]
+	var studs: Dictionary = {}
+	var under: Dictionary = {}
+	var sideways: Dictionary = {}
+	var seated: Dictionary = {}
+	var bounds: Dictionary = {}
+	var slices: Dictionary = {}
+	var already: Dictionary = {}
+	for low: Variant in above:
+		if not boxes.has(int(low)):
+			continue
+		var row: Dictionary = above[low]
+		for high: Variant in row:
+			if int(high) == int(low) or not boxes.has(int(high)):
+				continue
+			var key: int = pair_of(int(low), int(high))
+			if not already.has(key):
+				already[key] = _shared(int(low), int(high), boxes, bounds, slices)
+			var resting: int = int(row[high]) - int(already[key])
+			if resting <= 0:
+				seated[key] = true
+				continue
+			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(resting) / STUD_CELLS))
+			under[key] = int(low)
+	var entries: Array = []
+	for brick: BrickWorld.Brick in contacts.get("bricks", []):
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh != null:
+			entries.append([brick.id, brick.transform, mesh])
+	# An Array, not a PackedVector3Array: a packed array read out of a
+	# container is a copy, and appending to it kept nothing.
+	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
+	if lattice != null:
+		for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
+				var at: int = lattice.brick_at(BrickLattice.to_cell(tip))
+				return at if at != int(key) and boxes.has(at) else null):
+			var by := Vector2i(int(stud[0]), int(stud[1]))
+			if not tips.has(by):
+				tips[by] = [[], stud[3]]
+			((tips[by] as Array)[0] as Array).append(stud[2])
+	for by: Vector2i in tips:
+		var feet: Array = (tips[by] as Array)[0]
+		var key: int = pair_of(by.x, by.y)
+		if feet.size() <= int(studs.get(key, 0)):
+			continue
+		studs[key] = feet.size()
+		under[key] = by.x
+		sideways.erase(key)
+		if ((tips[by] as Array)[1] as Vector3).y <= 0.5:
+			sideways[key] = [PackedVector3Array(feet), (tips[by] as Array)[1]]
+	for key: int in studs:
+		seated.erase(key)
+	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
+		"seated": seated}
+	contacts["joints"] = out
+	return out
+
+
+## The cells the covers of [param a] and [param b] share ([param boxes], from
+## [method contacts]), for [method stud_joints]: none where their bounds only
+## touch, and the bigger sliced. [param bounds] and [param slices] keep what
+## was worked out, by id.
+static func _shared(a: int, b: int, boxes: Dictionary, bounds: Dictionary,
+		slices: Dictionary) -> int:
+	for id: int in [a, b]:
+		if not bounds.has(id):
+			bounds[id] = BrickLattice._bound_of(boxes.get(id, PackedInt32Array()))
+	var one: PackedInt32Array = bounds[a]
+	var other: PackedInt32Array = bounds[b]
+	if one.is_empty() or other.is_empty() or one[0] >= other[3] or other[0] >= one[3] \
+			or one[1] >= other[4] or other[1] >= one[4] or one[2] >= other[5] \
+			or other[2] >= one[5]:
+		return 0
+	var big: int = a
+	var small: int = b
+	if (boxes[b] as PackedInt32Array).size() > (boxes[a] as PackedInt32Array).size():
+		big = b
+		small = a
+	if (boxes[big] as PackedInt32Array).size() < SLICED_FROM * 6:
+		return BrickLattice.shared_cells(boxes[big], boxes[small])
+	if not slices.has(big):
+		slices[big] = BrickLattice.slices_of(boxes[big])
+	return BrickLattice.shared_cells_sliced(boxes[big], slices[big], boxes[small])
 
 
 func _assess(

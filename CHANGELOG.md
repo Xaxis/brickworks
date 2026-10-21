@@ -49,6 +49,15 @@ whole cycle.
   the 12 tooth gear it meshes 33.3°; on 42083-1 a copied clutch gear drives
   the differential. Of the 60 copies of gears and their kin in 44 of the
   real sets we test with, 55 are read so.
+- Check stability, the balance a drag shows and the Tested mark read stud
+  joints as Suggest sections and the build check do: a stud pointing
+  sideways holds what is on it and is weighed, and a part seated in another
+  (a pin in a beam, a cone on an antenna) or two parts at an angle side by
+  side are held together but not weighed as studs. On 40 real sets, parts in
+  no joint went from 1,122 to 567 and whether each stands is unchanged; a
+  2 x 12 wedge read as held by one stud at five times its working load is
+  not, and no Tested result changed. Weighing a model takes about half as
+  long again.
 
 ## [0.4.0] - 2026-10-20
 
