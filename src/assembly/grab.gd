@@ -288,6 +288,11 @@ var _step: float = 0.0
 var _verify_last: Dictionary = {}
 var _verify_base: float = 0.0
 var _verify_kept: Array = []
+## A loop's drag: each pose shown on trust since [member _checked_angle], as
+## its frame showed it, [value, Linkage.kept_state()]; and of those, the ones
+## a pause's walk has still to pass, in its order ([method verify_step]).
+var _shown: Array = []
+var _walk_frames: Array = []
 ## How far each tested part goes at most for a unit of the move, LDU
 ## ([method _path_rate]): brick id -> LDU. A part near the joint's line is
 ## tested along the way only as often as it goes [constant PATH_LDU].
@@ -2598,6 +2603,7 @@ func turn_to(degrees: float) -> float:
 		angle = wanted
 		placed = at
 		_keep_loop()
+		_keep_shown()
 		stopped = loop_short
 		return angle
 	if budget_ms < INF:
@@ -2642,6 +2648,7 @@ func _shown_on_trust(checked: bool, value: float, clear_to: float) -> void:
 	if checked:
 		_checked_angle = value
 		unchecked = false
+		_shown.clear()
 	else:
 		# Checked along the way as far as [param clear_to]: the rest of the
 		# way is checked from there.
@@ -2659,6 +2666,7 @@ func _stand_at(value: float) -> void:
 	placed = _pose_at(value)
 	_checked_angle = value
 	unchecked = false
+	_shown.clear()
 	_keep_loop()
 
 
@@ -2700,8 +2708,20 @@ func verify_step() -> bool:
 		_verify_kept = linkage.kept_state()
 		if not _checked_kept.is_empty():
 			linkage.restore_kept(_checked_kept)
+		_walk_frames = _frames_on_the_way(_checked_angle, now)
 	while _verifying_hi == null:
 		var next: float = _next_step(_checked_angle, now)
+		# Through each pose the drag showed on the way, as it showed it, each
+		# step on solved from the last of them: a loop with freedom to spare
+		# has no one pose for a value of its driver, and the walk's own, solved
+		# from where it was checked last, were not the drag's. 42024-1's rod,
+		# shown at 2, 4 and 6 LDU, was 1.1 LDU into a cross block at 5.5 solved
+		# back from the pose shown at 6, and clear of it solved out from 0.
+		var frame: bool = not _walk_frames.is_empty() \
+			and (float(_walk_frames[0][0]) - next) * signf(now - _checked_angle) <= 0.0001
+		if frame:
+			next = float(_walk_frames[0][0])
+			linkage.restore_kept(_walk_frames[0][1])
 		# As a move's own walk tests them: each part as often as it goes
 		# PATH_LDU, every part where it stands. Every part at every step
 		# kept 42081-1's arm, 653 parts, 10 s after it was let go.
@@ -2713,6 +2733,9 @@ func verify_step() -> bool:
 					due[key] = true
 			if due.is_empty():
 				_checked_angle = next
+				if frame:
+					_walk_frames.pop_front()
+					_checked_kept = linkage.kept_state()
 				continue
 		# Where it was let go, the pose shown is what is kept, and what is tested.
 		var r: Vector2i = _test(placed if next == now and linkage != null and not placed.is_empty()
@@ -2723,6 +2746,8 @@ func verify_step() -> bool:
 		_verify_from = 0
 		if r.x == 1:
 			_checked_angle = next
+			if frame:
+				_walk_frames.pop_front()
 			for key: int in due:
 				_verify_last[key] = next
 			_keep_loop()
@@ -2731,6 +2756,7 @@ func verify_step() -> bool:
 			if next == now:
 				_end_verify_walk()
 				unchecked = false
+				_shown.clear()
 				if linkage != null:
 					_checked_kept = linkage.kept_state()
 				return true
@@ -2750,6 +2776,7 @@ func verify_step() -> bool:
 		_wall = hi
 		_verifying_hi = null
 		unchecked = false
+		_shown.clear()
 		stopped = true
 		_checked_angle = _verifying_lo
 		if linkage != null:
@@ -2856,6 +2883,34 @@ func _end_verify_walk() -> void:
 	if linkage != null and not _verify_kept.is_empty():
 		linkage.restore_kept(_verify_kept)
 	_verify_kept = []
+	_walk_frames = []
+
+
+## A loop's pose shown on trust by a drag's frame, kept for the walk that
+## checks the way to it ([method verify_step]).
+func _keep_shown() -> void:
+	if linkage != null and unchecked:
+		_shown.append([angle if mode == "turn" else shift, linkage.kept_state()])
+
+
+## The poses the drag showed ([member _shown]) between [param from] and
+## [param to], not at either: one a value, the last shown there, in order
+## along the way.
+func _frames_on_the_way(from: float, to: float) -> Array:
+	var way: float = signf(to - from)
+	var at: Dictionary = {}
+	for frame: Array in _shown:
+		var along: float = (float(frame[0]) - from) * way
+		if along > 0.0001 and along < absf(to - from) - 0.0001:
+			at[snappedf(float(frame[0]), 0.0001)] = frame
+	var values: Array = at.keys()
+	values.sort()
+	if way < 0.0:
+		values.reverse()
+	var out: Array = []
+	for value: Variant in values:
+		out.append(at[value])
+	return out
 
 
 ## Where everything stands with the joint at [param value]: degrees for a
@@ -3091,6 +3146,7 @@ func slide_to(along: float) -> float:
 		shift = wanted
 		placed = at
 		_keep_loop()
+		_keep_shown()
 		return shift
 	if budget_ms < INF:
 		if not way_left:
