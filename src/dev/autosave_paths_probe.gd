@@ -23,7 +23,8 @@
 ## design loop calls them.
 extends SceneTree
 
-## The desktop's MCP port for this probe (tools/release's range for it).
+## The desktop's MCP port for this probe (tools/release's range for it), or
+## another with `-- --port=N`.
 const PORT := 8943
 ## The name the last part saves the model under.
 const NAMED := "Autosave Paths Probe Model"
@@ -63,9 +64,13 @@ func _run() -> void:
 	_store.scenery.clear()
 	_assistant.forget_built()
 	var connector: CommandSocket = (_main.get("_connector") as ClaudeConnector).rpc
-	_main.call("_open_commands", PORT)
+	var number: int = PORT
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--port="):
+			number = arg.trim_prefix("--port=").to_int()
+	_main.call("_open_commands", number)
 	var port: CommandSocket = _main.get("_commands")
-	_ok(port != null, "the desktop's MCP port is open on %d" % PORT)
+	_ok(port != null, "the desktop's MCP port is open on %d" % number)
 
 	print("\na model already kept")
 	_builder.held_part = "3001"

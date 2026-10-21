@@ -101,8 +101,12 @@ func _run() -> void:
 		and store.title == "Unrestored Probe Kart")
 	store.touch()
 	store.write_now()
-	_check("...and its file is untouched while they come",
-		FileAccess.get_file_as_string(autosave) == coming)
+	# Written while they come, as the autosave writes any model: with them in
+	# it, where the file had them (until 2026-10-20 not written at all).
+	_check("...and its file keeps both parts while they come: %s"
+		% [ModelStore._brick_lines(FileAccess.get_file_as_string(autosave))],
+		ModelStore._brick_lines(FileAccess.get_file_as_string(autosave))
+		== ModelStore._brick_lines(coming))
 	_check("...nothing kept, and nothing said", _copies() == copies
 		and (notice == null or not notice.visible))
 	library.parts.erase(info.id)
