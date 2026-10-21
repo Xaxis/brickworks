@@ -436,15 +436,30 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	# to the end of its room (Bodies.line_room), and run back, a fresh read
 	# with its room from there, 19.5 past where it was built. Held as a
 	# friction bearing is, it stays in what carries it, and goes only where
-	# the part on it is at an end of its own room.
+	# the part on it is at an end of its own room. Only where all the axle
+	# carries of what holds the loop rides on a part sliding along it: a
+	# pinion on the axle itself, or a joint on it that closes a loop, may
+	# need it to slide.
+	var ends: Array = _sides + _rack_sides
+	for k: int in _gear_ends.size():
+		ends.append([_joints_on(int(_gear_ends[k][0][0])), _joints_on(int(_gear_ends[k][1][0]))])
 	for n: int in range(1, links.size()):
 		var c: int = slide_col[n]
-		if not _sliding.has(c) or int(bodies.body_of.get(links[n].shaft_part, -1)) != child_of[n]:
+		var axle: int = child_of[n]
+		if not _sliding.has(c) or _lead(int(bodies.body_of.get(links[n].shaft_part, -1))) != axle:
 			continue
+		var along: Array = []
 		for m: int in links.size():
-			if m != n and parent_of[m] == child_of[n] and slide_col[m] >= 0 and slide_col[m] != driver_col \
+			if m != n and _lead(parent_of[m]) == axle and slide_col[m] >= 0 and slide_col[m] != driver_col \
 					and absf(_axis[m].dot(_axis[n])) > 0.999:
-				_carried[c] = true
+				along.append(m)
+		var spare: bool = not along.is_empty()
+		for pair: Array in ends:
+			for path: PackedInt32Array in pair:
+				if path.has(n) and not along.any(func(m: int) -> bool: return path.has(m)):
+					spare = false
+		if spare:
+			_carried[c] = true
 	# What moves: every body a joint of the loops is on the way to.
 	var moves: Dictionary = {}   ## lead -> whether it moves
 	for body: int in bodies.members:
