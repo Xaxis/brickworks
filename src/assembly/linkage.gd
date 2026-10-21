@@ -907,11 +907,17 @@ static func _worst(r: PackedFloat64Array) -> float:
 ## off its rack (8808-1, 8054-1).
 var _friction: Dictionary = {}
 const FRICTION_WEIGHT := 1000.0
-## An axle's slide along its hole, unbounded in the solve (column -> true),
-## damped [constant SLIDE_WEIGHT] times as hard as a turn; a friction
-## bearing then [constant FRICTION_WEIGHT] times as hard as that.
+## An axle's slide along its hole (column -> true), damped [constant
+## SLIDE_WEIGHT] times as hard as a turn; a friction bearing then
+## [constant FRICTION_WEIGHT] times as hard as that. A slide the loop does
+## not need is its freedom to spare, and the least change of a step still
+## moved some of it: at 30, 8448-1's column slid along its pinion's axle
+## 0.13 LDU on a turn of 30° and came back 0.20 LDU off, and 42125-1's
+## suspension arms slid 0.1 to 0.26 LDU, into the parts flush beside them.
+## At 1000 neither moves (8448-1 back 0.008, 42125-1 0.007), and a slide the
+## loop needs (8256-1's, 8880-1's) moves as before.
 var _sliding: Dictionary = {}
-const SLIDE_WEIGHT := 30.0
+const SLIDE_WEIGHT := 1000.0
 
 
 ## Close the loops with the driver held at q[driver_col], from q as it is.
@@ -1225,11 +1231,6 @@ var _part_rate: float = 0.0
 ## there for a frame.
 var _slope := PackedFloat64Array()
 var _slope_col: int = -1
-## The slope read the step before, and that step's length in the driver's
-## units (0: none read): how the slope bends, so a step starts along the
-## slope halfway along it, not the slope where it begins.
-var _slope_was := PackedFloat64Array()
-var _slope_by: float = 0.0
 ## The columns that turn: not slides, not held still.
 var _turning := PackedInt32Array()
 ## What a close closes to: [constant CLOSE_TO], or on the way
@@ -1246,21 +1247,10 @@ func _closes_at(at: float, from: float, from_q: PackedFloat64Array, but: Diction
 	if _slope_col == driver_col and _slope.size() == cols:
 		q = from_q.duplicate()
 		var by: float = at - from
-		# Along the slope halfway along the step, as the last step's change of
-		# slope says it bends: started along the slope where the step begins,
-		# whatever the loop has to spare drifted with each step, as much each
-		# way, and 8448-1's column, turned +30, -60 and +30 in one grab, came
-		# back slid 0.20 LDU along its pinion's axle (0.022 so; in steps of 1°
-		# from where they begin, 0.035). Not past twice the step it was read
-		# over.
-		var bends: bool = _slope_by != 0.0 and _slope_was.size() == cols and absf(by) <= 2.0 * absf(_slope_by)
 		for c: int in cols:
 			if c != driver_col and not _still.has(c) and not (_try_held and _carrying.has(c)) \
 					and not but.has(c) and (only.is_empty() or only.has(c)):
-				var slope: float = _slope[c]
-				if bends:
-					slope += (_slope[c] - _slope_was[c]) / _slope_by * by * 0.5
-				q[c] += slope * by
+				q[c] += _slope[c] * by
 				if _bounded.has(c):
 					q[c] = clampf(q[c], (_limits[c] as Vector2).x, (_limits[c] as Vector2).y)
 		q[driver_col] = at
@@ -1447,17 +1437,11 @@ func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dic
 	var by: float = at - from
 	if absf(by) < 1e-6:
 		return
-	var had: bool = _slope.size() == cols and _slope_col == driver_col
-	if not had:
+	if _slope.size() != cols or _slope_col != driver_col:
 		_slope.resize(cols)
 		_slope.fill(0.0)
 		_slope_col = driver_col
 	var tangent: PackedFloat64Array = _tangent(signf(by)) if part.is_empty() else PackedFloat64Array()
-	if not tangent.is_empty() and had:
-		_slope_was = _slope.duplicate()
-		_slope_by = by
-	else:
-		_slope_by = 0.0
 	for c: int in cols:
 		# A part solved apart keeps its own slope, and the rest theirs.
 		if not part.is_empty() and part.has(c) != inside:
@@ -1591,8 +1575,7 @@ var _gear_at_keep: Array = []
 func kept_state() -> Array:
 	return [kept.duplicate(), _gear_at_keep.duplicate(true), _keeps, q.duplicate(), _gear_kept.duplicate(true),
 		_memo_keep, _memo_col, _memo_asked, _memo_got, _memo_q.duplicate(), _memo_gears.duplicate(true),
-		_slope.duplicate(), _slope_col, _part_found.duplicate(true), _part_col, _part_rate,
-		_slope_was.duplicate(), _slope_by]
+		_slope.duplicate(), _slope_col, _part_found.duplicate(true), _part_col, _part_rate]
 
 
 ## Put back [param state] ([method kept_state]), as if nothing since.
@@ -1613,8 +1596,6 @@ func restore_kept(state: Array) -> void:
 	_part_found = (state[13] as Array).duplicate(true)
 	_part_col = int(state[14])
 	_part_rate = float(state[15])
-	_slope_was = (state[16] as PackedFloat64Array).duplicate()
-	_slope_by = float(state[17])
 
 
 ## Whether the driver can move at all: the loop closes a little way one way
