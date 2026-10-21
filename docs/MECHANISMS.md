@@ -5263,6 +5263,11 @@ where the long pin (#688) meets the model, the stop the drag found. So the
 walk met #686 only on a pose its own solve's history made: a false stop, and
 it is now said, not hidden.
 
+Checked on 86e4534b, in a window: `--only=actuators` five times, 38 each, the
+small actuator kept at 4.00 every time and the wheel loader's arm 95% 12.5 to
+15.1 ms a frame; `bigstep` (4), `grooved` (4), `groups` (4), `loops` (21) and
+`hinge` (18, 95.4°) pass.
+
 **Left:** the false stop itself. A loop with freedom to spare has no one pose
 for a value of its driver, and the walk cannot replay the drag's. Keeping
 each pose the drag showed (its kept state, a frame at a time) and walking
