@@ -15,6 +15,18 @@ whole cycle.
 
 ### Fixed
 
+- A steering column through two universal joints of the older kind (4L)
+  steers. 8448-1's file draws its column turned a little round its own
+  line, so each joint's centre sat in one fork only: its steering wheel
+  turned nothing, and the steering turned at its pinion was refused,
+  "Locked", once the pinion had turned far enough to meet the column's
+  centre. A centre is in both its forks now, as the 3L joint's was, and the
+  wheel steers: 30° of it slides the rack 6.4 LDU, and 60° back 12.5 the
+  other way. A stud no longer holds a part tilted past it that it does not
+  reach: the column was read as held by one 13 LDU below it.
+- A loop turned in big steps comes back where it began. 8808-1's steering
+  wheel turned 90°, -180° and 90° came back with its column 1.8 LDU along
+  its axle; it comes back within 0.003 LDU.
 - A steering built into a chassis of pins turns, its knuckles with it. On
   42125-1 the steering took in every pin of the frame around it, 106 joints,
   and was refused as too big to move; parts their pins hold as one now move

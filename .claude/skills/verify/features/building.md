@@ -685,10 +685,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   safe door on the hinge only BrickNet's labels name (G14b,
   `Bodies._labelled_hinge`); each also
   checks that no turn stopped where only the two parts' covers met.
-  `-- --only=grooved` (in the full run): 8448-1's racer and 5533-1 turned
-  at their pinion, the rack with holes (32185, 6630) slides on the studs
+  `-- --only=grooved` (in the full run): 8448-1's racer, turned at its
+  steering wheel through its column's two 4L universal joints, and 5533-1,
+  at its pinion: the rack with holes (32185, 6630) slides on the studs
   standing in its groove and comes back on the next turn
-  (`Bodies._grooves_by_shape`). `-- --only=kingpin` (in the full run):
+  (`Bodies._grooves_by_shape`; Grab 19, MECHANISMS §30). `-- --only=kingpin` (in the full run):
   9392-1's steering arm on two balls turns on the line through them
   (`Grab._kingpin`).
   `-- --only=swept` (in the full run): 41999-1 (a pinion lodged where no hole
@@ -865,10 +866,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   of pins takes in the joints that move (42125-1: 35 of 257); an axle's free
   slide is damped 30 times a turn (`SLIDE_WEIGHT`), a friction bearing a
   thousand times that; a rack hung on balls alone rests
-  on what it lies on (`Bodies._rest_racks`), and a 3L universal joint's
-  centre turned off its end's fork is pinned in it (`Bodies._cross_in_forks`), Grab
+  on what it lies on (`Bodies._rest_racks`), and a universal joint's
+  centre turned off its end's fork, 3L or 4L, is pinned in it (`Bodies._cross_in_forks`), Grab
   18, MECHANISMS §29: `grab_probe -- --only=groups` checks them on 42125-1
-  (knuckles 11.5° each way) and a tyre judged by its round on 8820-1. `grab_probe -- --only=loops`: 8020-1_Jeep's
+  (knuckles 11.5° each way) and a tyre judged by its round on 8820-1. Each
+  step starts along the loop's least change (`Linkage._tangent`, Grab 19,
+  MECHANISMS §30): `grab_probe -- --only=bigstep` turns 8808-1's wheel 90,
+  -180 and 90 in three moves and back within 0.01 LDU. `grab_probe -- --only=loops`: 8020-1_Jeep's
   steering (a four-bar: the rocker against two circles meeting) and 8218-1's
   engine (a crank-slider: the piston against the quadratic, the stroke twice
   the throw); `-- --debug` prints the joints, residuals and the derivatives

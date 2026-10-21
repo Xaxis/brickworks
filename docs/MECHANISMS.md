@@ -5039,3 +5039,84 @@ window `--only=bearing` (2) and `--only=path` (6, two gaps);
 `own_copies_probe` (20) passed. The steering sweep, the 60 sets that steer
 in mechverify2: 59 steer both ways and back, 8416-1 held by its worm (above);
 nothing else changed but 42125-1 and 8820-1. The 181 are the lead's.
+
+## 30. A column through two old universal joints, and a loop's least change (Grab 19)
+
+8448-1_Racer, with Grab 18 and its ball socket patch (a socket drawn as a
+bore is a socket): the steering turned at its pinion went +30°, and the
+second turn was refused, "Locked". Each was measured on that base, 5f2ecc9a,
+and after, by a scratch probe calling `move_part` as a session does and by
+the steering sweep.
+
+### Why the second turn locked
+
+The set steers from a large steering wheel (2741) on a column, an axle 8
+with a 4L universal joint (3712 ends, a 3326b centre) at each end, down to
+the pinion. The file places the column as a sub-model of its own ("// Needs
+work", the author wrote), turned 28.4° round its own line from where the
+joints' other ends stand. So each centre is drawn in the column's fork and
+28.4° off the other end's, and the chassis draws a second centre at the same
+point, in the pinion end's fork only. As read:
+
+- **Neither joint joined anything.** The pinion's shaft turned alone, and the
+  steering wheel turned nothing: the sweep turned the set at its pinion.
+- **The column was one with the chassis**, by the studs of a wing brick
+  (2744, #574) 13 LDU below the tilted axle: the lattice covers a part turned
+  off the grid with every cell its boxes' turned corners span, and the stud's
+  tip was in one. A lone stud between parts askew to each other, in no socket
+  or hole, is kept as a joint (42081-1's half pin), and with neither part one
+  stud across it joined them.
+- **Turned 30°, the pinion end's fork met the column's centre**, whose other
+  pin stands 28.4° round: read again, the centre was pinned in both ends, and
+  the pinion's shaft was held through it by a column that was part of the
+  chassis.
+
+Grab 18 had pinned a 3L joint's centre in both forks
+(`Bodies._cross_in_forks`) and left the 4L out because pinned so it locked
+this steering at once: the column held by that stud was why.
+
+1. **A stud reaches into a part turned askew to it only within that part's
+   own box** (`Bodies._reaches_into`, a cell's slack round it). The column is
+   then held by nothing it is drawn in (its axle passes through no hole as
+   placed) and lodged in the wing brick, so the second turn still swung it,
+   hung on the pinion, into a liftarm at -5°.
+2. **Every universal joint's centre is pinned in both its ends' forks as
+   built**, the 4L's as the 3L's (any part named Universal Joint, Centre or
+   End, but a complete assembly). The column is in the loop from the start:
+   the pinion, both joints, the column and the wheel's shaft. The sweep finds
+   that the wheel turns the rack and turns it there: +30° slides the rack 6.36
+   LDU and turns the pinion 35.7° (crosses that stand 68.8° and a column at an
+   angle turn it more than one for one) and the steering arms 9.1°; -60° takes
+   it to -6.15 LDU.
+
+### The loop's freedom to spare (section 28)
+
+Turned back +30°, the wheel came back 1.58 LDU off: the column, between two
+axles that each slide in their holes, slid along itself with them.
+`Linkage._follow_slope` read each step's slope off the step before, and the
+next step started there, so whatever one step's solve slid in the loop's
+freedom to spare, every step after slid again.
+
+3. **A step starts along the loop's least change** (`Linkage._tangent`): the
+   slope where the last step closed, the change of least weight that keeps
+   every row closed for a unit of the driver, weighted as a step's solve
+   weighs it (a slide `SLIDE_WEIGHT`, friction `FRICTION_WEIGHT`), from the
+   normal equations with their weight times 1e-6 on the diagonal. A part
+   solved apart (`_reach_parted`) keeps its step's own.
+
+| back where it began, LDU | before | after |
+|---|---|---|
+| 8808-1's wheel 90, -90 (`--only=bigstep`) | 0.0270 | 0.0013 |
+| 8808-1's wheel 90, -180, 90 (`--only=bigstep`) | 1.7814 | 0.0030 |
+| 8808-1's wheel 30, -60, 30 (the sweep) | 0.0008 | 0.0008 |
+| 8448-1_Racer's wheel 30, -60, 30 (the sweep) | 1.5761 | 0.2084 |
+
+### Left
+
+- **8448-1_Racer comes back 0.21 LDU off** (the sweep asks 0.02), the column
+  slid along the pinion's axle. Each turn reads the joints afresh, and the
+  slide's least change is not the same either way: +30° slid it 0.125 LDU
+  one way, and the 30° back from there 0.229 the other. Every step's solve
+  closed to `CLOSE_TO` changed nothing.
+- 8466-1's steering now moves both ways at its pinion (it was "Locked"), and
+  a centre (#1165, 3326b) comes back 37 LDU off.

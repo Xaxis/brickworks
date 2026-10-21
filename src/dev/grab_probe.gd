@@ -6079,7 +6079,10 @@ func _big_step_check() -> void:
 		_check("bigstep: 8808-1's steering wheel #%d turns %s, a step each" % [wheel,
 			", ".join(plan.map(func(d: float) -> String: return "%+.0f°" % d))], wheel != 0
 			and Array(said).all(func(one: String) -> bool: return one.contains("Moved")))
-		print("  %s  bigstep: back to %.4f LDU (motions, 3° at a time: 0.001)" % ["ok  " if most < 0.01 else "GAP ", most])
+		# Each step started along the last step's slope, whatever it slid in
+		# the loop's freedom to spare: 90, -180, 90 came back 1.78 LDU off
+		# (Grab 19, Linkage._tangent).
+		_check("bigstep: back to %.4f LDU (motions, 3° at a time: 0.001)" % most, most < 0.01)
 		_builder.forget_history()
 
 
