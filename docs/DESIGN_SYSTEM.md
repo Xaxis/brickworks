@@ -81,6 +81,13 @@ controls:
   `web/account.js`, report it in `web/report.js`): a `--panel` card, its
   title an h2, the form, the buttons last with the primary first.
 - **Card**: `.card`, a panel of words.
+- **Command**: `code.cmd`, a line to type in a terminal, in a box of its
+  own that wraps, so a long one (a checksum check) never runs past the
+  edge of a phone. The download page puts a Copy (`.cta.ghost.small`)
+  beside each; the FAQ's connector command has none.
+- **Disclosure**: `details.qa`, a panel whose summary opens what only
+  some people need: the FAQ's answers, the download page's first-launch
+  steps and checksums.
 - **Model card**: `.model` (`web/cards.js` `modelCard` draws it), the one
   card for a shared model on every page: the gallery, the landing page's
   strip, a profile, a collection, your account. In `.models` (a grid),
