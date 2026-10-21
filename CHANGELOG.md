@@ -41,6 +41,14 @@ whole cycle.
   now tested as it slides too.
 - A part stopped against another whose exact shape has not loaded (in a
   browser, at first) no longer goes straight through it on the next move.
+- A model file's own copy of a gear is a gear. A copy read as its part had
+  the gear's holes but not its teeth: Simulate and turning a gear by hand
+  passed it by, and a gear train stopped at it. It now meshes and turns at
+  its teeth's ratio, and a copied turntable, driving ring or sprocket is
+  read as its part too. On 42121-1 a copied 20 tooth gear turned 20° turns
+  the 12 tooth gear it meshes 33.3°; on 42083-1 a copied clutch gear drives
+  the differential. Of the 60 copies of gears and their kin in 44 of the
+  real sets we test with, 55 are read so.
 
 ## [0.4.0] - 2026-10-20
 

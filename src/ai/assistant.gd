@@ -4788,8 +4788,8 @@ static func _joint_lines(part: Lbm.PartMesh, part_id: String = "") -> Array:
 	if part == null:
 		return []
 	var turntables: Dictionary = Mechanism.table().get("turntables", {})
-	if not part_id.is_empty() and (turntables.has(part_id)
-			or turntables.values().has(part_id)):
+	var reads_as: String = Mechanism.reads_as(part_id)
+	if not part_id.is_empty() and (turntables.has(reads_as) or turntables.values().has(reads_as)):
 		var with: Array = _joint_lines(part).duplicate()
 		var spec: Dictionary = Mechanism.spec_of(part_id)
 		with.append(["turntable", Vector3.ZERO, Mechanism._axis_of(spec.get("axis", "y")),
@@ -15938,7 +15938,6 @@ func _racks_said(entries: Array) -> PackedStringArray:
 	var stood: Array = []   ## [index, part, Transform3D], as Racks.find reads them
 	for entry: Array in entries:
 		stood.append([int(entry[0]), str(entry[3]), entry[1]])
-	var racks: Dictionary = Racks.table()
 	var meshed: Dictionary = {}
 	for mesh: Racks.Pinion in Racks.find(stood):
 		meshed[Vector2i(mesh.gear, mesh.rack)] = true
@@ -15946,7 +15945,7 @@ func _racks_said(entries: Array) -> PackedStringArray:
 			% [mesh.gear, mesh.teeth, mesh.rack, _studs(Racks.pitch() * float(mesh.teeth) / STUD)])
 	var per_tooth: float = float(Mechanism.table().get("ldu_per_tooth", 1.25))
 	for rack: Array in stood:
-		var spec: Dictionary = racks.get(rack[1], {})
+		var spec: Dictionary = Racks.spec_of(rack[1])
 		if spec.is_empty() or bool(spec.get("round", false)):
 			continue
 		var rack_at: Transform3D = rack[2]

@@ -60,17 +60,19 @@ class Pinion extends RefCounted:
 			teeth, rack_part]
 
 
-## The rack table: part -> {teeth, from, to, pitch_line, z}.
-static func table() -> Dictionary:
-	return Mechanism.table().get("racks", {})
-
-
 static func pitch() -> float:
 	return float(Mechanism.table().get("rack_pitch", 8.0))
 
 
 static func is_rack(part_id: String) -> bool:
-	return table().has(part_id)
+	return not spec_of(part_id).is_empty()
+
+
+## One part's entry in the rack table ({teeth, from, to, pitch_line, z}), as
+## the part it reads as (Mechanism.reads_as); empty for a part that is not a
+## rack.
+static func spec_of(part_id: String) -> Dictionary:
+	return Mechanism.entry_of("racks", part_id)
 
 
 ## Each linear actuator's screw whose input is a part of its own (the gear
@@ -82,7 +84,6 @@ static func is_rack(part_id: String) -> bool:
 ## extends it is not read from the parts.
 static func screws(entries: Array, links: Array) -> Array[Pinion]:
 	var out: Array[Pinion] = []
-	var table: Dictionary = Mechanism.table().get("actuators", {})
 	var part_of: Dictionary = {}
 	for entry: Array in entries:
 		part_of[int(entry[0])] = entry
@@ -93,13 +94,13 @@ static func screws(entries: Array, links: Array) -> Array[Pinion]:
 		var body_entry: Variant = part_of.get(int(pair[0]))
 		if body_entry == null:
 			continue
-		var spec: Dictionary = table.get(str(body_entry[1]), {})
+		var spec: Dictionary = Mechanism.entry_of("actuators", str(body_entry[1]))
 		if not spec.has("input") or float(spec.get("turns", 0.0)) <= 0.0:
 			continue
 		var way: Vector3 = (link.axis as Vector3).normalized()
 		var point: Vector3 = link.point
 		for entry: Array in entries:
-			if str(entry[1]) != str(spec["input"]):
+			if Mechanism.reads_as(str(entry[1])) != str(spec["input"]):
 				continue
 			var gap: Vector3 = (entry[2] as Transform3D).origin - point
 			if (gap - way * gap.dot(way)).length() > Mechanism.LINE_SLACK:
@@ -138,7 +139,7 @@ static func find(entries: Array) -> Array[Pinion]:
 		return out
 	var per_tooth: float = float(Mechanism.table().get("ldu_per_tooth", 1.25))
 	for rack: Array in racks:
-		var spec: Dictionary = table()[rack[1]]
+		var spec: Dictionary = spec_of(rack[1])
 		var at: Transform3D = rack[2]
 		var inverse: Transform3D = at.affine_inverse()
 		var z: Array = spec.get("z", [-10.0, 10.0])

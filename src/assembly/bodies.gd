@@ -280,7 +280,7 @@ func _read() -> void:
 			inputs[str(actuator_table[body_part]["input"])] = body_part
 	var part_of: Dictionary = {}
 	for entry: Array in entries:
-		part_of[int(entry[0])] = str(entry[3])
+		part_of[int(entry[0])] = Mechanism.reads_as(str(entry[3]))
 
 	# Pins and axles.
 	var shaft_lines: Dictionary = {}
@@ -803,7 +803,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		if not driven.is_empty():
 			var rack: int = int(driven[0])
 			var rack_at: Transform3D = world.get_brick(rack).transform
-			var spec: Dictionary = Racks.table().get(world.get_brick(rack).part_id, {})
+			var spec: Dictionary = Racks.spec_of(world.get_brick(rack).part_id)
 			var reach: float = absf(float(spec.get("to", 20.0)) - float(spec.get("from", -20.0))) * 0.5
 			candidates.append([best, rack, "rests", rack_at.origin, (rack_at.basis * Vector3.RIGHT).normalized(),
 				true, 0.0, Vector2(reach, reach), rack])
@@ -1431,12 +1431,13 @@ func _actuators(entries: Array) -> Array:
 	for body_part: String in table:
 		rod_parts[str(table[body_part]["rod"])] = true
 	for entry: Array in entries:
-		if rod_parts.has(str(entry[3])):
-			if not rods.has(str(entry[3])):
-				rods[str(entry[3])] = []
-			(rods[str(entry[3])] as Array).append(entry)
+		var rod_part: String = Mechanism.reads_as(str(entry[3]))
+		if rod_parts.has(rod_part):
+			if not rods.has(rod_part):
+				rods[rod_part] = []
+			(rods[rod_part] as Array).append(entry)
 	for entry: Array in entries:
-		var spec: Dictionary = table.get(str(entry[3]), {})
+		var spec: Dictionary = Mechanism.entry_of("actuators", str(entry[3]))
 		if spec.is_empty():
 			continue
 		var at: Transform3D = entry[1]
@@ -1473,7 +1474,7 @@ func _rack_housings(entries: Array) -> Array:
 	var out: Array = []
 	var by_housing: Dictionary = {}   ## housing part -> [rack entry, spec]
 	for entry: Array in entries:
-		var spec: Dictionary = Racks.table().get(str(entry[3]), {})
+		var spec: Dictionary = Racks.spec_of(str(entry[3]))
 		if spec.has("housing"):
 			var housing: String = str(spec["housing"])
 			if not by_housing.has(housing):
@@ -1482,12 +1483,13 @@ func _rack_housings(entries: Array) -> Array:
 	if by_housing.is_empty():
 		return out
 	for entry: Array in entries:
-		if not by_housing.has(str(entry[3])):
+		var housing: String = Mechanism.reads_as(str(entry[3]))
+		if not by_housing.has(housing):
 			continue
 		var at: Transform3D = entry[1]
 		var inverse: Transform3D = at.affine_inverse()
 		var info: PartLibrary.PartInfo = library.parts.get(str(entry[3]))
-		for pair: Array in by_housing[str(entry[3])]:
+		for pair: Array in by_housing[housing]:
 			var rack: Array = pair[0]
 			var spec: Dictionary = pair[1]
 			var rack_at: Transform3D = rack[1]
@@ -1523,7 +1525,7 @@ func _rack_housings(entries: Array) -> Array:
 func _in_a_groove(pair: Vector2i, owner: int, found: Array) -> Array:
 	var rack: int = pair.y if owner == pair.x else pair.x
 	var brick: BrickWorld.Brick = world.get_brick(rack)
-	if brick == null or not bool((Racks.table().get(brick.part_id, {}) as Dictionary).get("groove", false)):
+	if brick == null or not bool(Racks.spec_of(brick.part_id).get("groove", false)):
 		return []
 	var up: Vector3 = (brick.transform.basis * Vector3.UP).normalized()
 	var line: Vector3 = (brick.transform.basis * Vector3.RIGHT).normalized()
@@ -1555,7 +1557,7 @@ func _grooves_by_shape(entries: Array, turning: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	for entry: Array in entries:
 		var rack: int = int(entry[0])
-		if not bool((Racks.table().get(str(entry[3]), {}) as Dictionary).get("groove", false)):
+		if not bool(Racks.spec_of(str(entry[3])).get("groove", false)):
 			continue
 		var at: Transform3D = entry[1]
 		var mesh: Lbm.PartMesh = entry[2]
@@ -1601,7 +1603,7 @@ func _grooves_by_shape(entries: Array, turning: Dictionary) -> Dictionary:
 ## A round steering rack (the gear table's racks: round), which slides
 ## through the holder it turns in.
 static func _round_rack(part_id: String) -> bool:
-	return bool((Racks.table().get(part_id, {}) as Dictionary).get("round", false))
+	return bool(Racks.spec_of(part_id).get("round", false))
 
 
 ## Whether [param zone] between [param a] and [param b] is a round rack in

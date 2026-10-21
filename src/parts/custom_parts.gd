@@ -398,11 +398,13 @@ static func _closest_on_triangle(p: Vector3, a: Vector3, b: Vector3, c: Vector3)
 
 ## Read [param info], a part built from a model file's text with [param
 ## mesh], as the part it is a copy of ([method copy_of]), if it is one: that
-## part's joints, cover and exact shape (PartInfo.copy_of, which Exact reads).
-## The copy's surfaces stay its own. Whether it is a copy.
+## part's joints, cover and exact shape (PartInfo.copy_of, which Exact reads),
+## and its entries in the gear table (Mechanism.reads_as): a copy of a gear
+## is a gear. The copy's surfaces stay its own. Whether it is a copy.
 static func read_as_copy(library: PartLibrary, info: PartLibrary.PartInfo,
 		mesh: Lbm.PartMesh) -> bool:
 	var made: String = copy_of(library, info.id, mesh)
+	Mechanism.read_as(info.id, made)
 	if made.is_empty():
 		return false
 	var theirs: Lbm.PartMesh = library.mesh_for(made)
