@@ -172,14 +172,42 @@ func _only(a: int, b: int) -> Array:
 
 func _path(body: int) -> Array:
 	var out: Array = []
-	var at: int = body
+	var at: int = _lead(body)
 	while bodies.parent_link.has(at):
 		out.push_front(bodies.parent_link[at])
-		at = int(bodies.parent_of[at])
+		at = _lead(int(bodies.parent_of[at]))
 	return out
 
 
+## The body that stands for [param body]'s group of bodies held as one
+## (Bodies.held_together): where it stands, they stand.
+func _lead(body: int) -> int:
+	return int(_held.get(body, body))
+
+
+## Bodies.held_together, or empty where the driver turns within a group (then
+## every body is its own, as the tree has them).
+var _held: Dictionary = {}
+
+
 func _read(driver: Bodies.Link, child: int) -> void:
+	# Joints only between bodies not held as one: a steering standing in a
+	# chassis of pins does not take in every pin of it. Not where the driver
+	# is a joint within a group: the tree as it is says it does not move.
+	_held = bodies.held_together()
+	var driven: int = driver.b if bodies.parent_link.get(driver.b) == driver else driver.a
+	if _lead(driven) != driven or _lead(driver.other(driven)) == driven:
+		_held = {}
+	# What closes the loops: every joint between two groups but the one each
+	# group's lead hangs from, which the tree solves for.
+	var closers: Array[Bodies.Link] = []
+	for loop: Bodies.Link in bodies.closing:
+		if _lead(loop.a) != _lead(loop.b):
+			closers.append(loop)
+	if not _held.is_empty():
+		for body: int in bodies.parent_link:
+			if _lead(body) != body and _lead(int(bodies.parent_of[body])) != _lead(body):
+				closers.append(bodies.parent_link[body])
 	var inside: Dictionary = {driver: true}
 	var used: Dictionary = {}
 	var changed: bool = true
@@ -224,7 +252,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 				if not inside.has(one):
 					inside[one] = true
 			changed = true
-		for loop: Bodies.Link in bodies.closing:
+		for loop: Bodies.Link in closers:
 			if used.has(loop):
 				continue
 			var only: Array = _only(loop.a, loop.b)
@@ -367,8 +395,9 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	if not links[0].turns and slide_col[0] >= 0:
 		# An actuator's rod: driven along it.
 		driver_col = slide_col[0]
+	var carrier: PackedInt32Array = _joints_on(parent_of[0])
 	for n: int in range(1, links.size()):
-		if bodies.beyond(child_of[n]).has(parent_of[0]):
+		if carrier.has(n):
 			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0:
@@ -378,20 +407,47 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	var geared: Dictionary = {}
 	for coupling: Mechanism.Coupling in gear_meshes:
 		for key: int in [coupling.one.key, coupling.other.key]:
-			geared[int(bodies.body_of.get(key, -1))] = true
+			geared[_lead(int(bodies.body_of.get(key, -1)))] = true
 	for n: int in range(1, links.size()):
 		if links[n].holds and links[n].turns and geared.has(int(child_of[n])):
 			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0 and c != driver_col:
 					_friction[c] = true
-	# What moves: everything beyond each joint of the loops.
-	var seen: Dictionary = {}
-	for n: int in links.size():
-		for body: int in bodies.beyond(child_of[n]):
-			if seen.has(body):
-				continue
-			seen[body] = true
+	# An axle's slide along its hole, which nothing bounds in the solve: the
+	# loop slides it only where turning will not close the loop. Least squares
+	# over every coordinate alike slid 42125-1's suspension arms along their
+	# axles as its knuckles turned, 0.5 LDU for 10°, until a bush met a shock
+	# absorber at 25°; its knuckles turn on their kingpins without it. A
+	# friction bearing holds harder still: damped alike, a telescope's tube
+	# slid 7.08 LDU of 8 on its rod, its gear chain's friction pin taking the
+	# rest.
+	for n: int in range(1, links.size()):
+		var c: int = slide_col[n]
+		if c >= 0 and links[n].turns and not _limits.has(c) and c != driver_col:
+			_sliding[c] = true
+	# What moves: every body a joint of the loops is on the way to.
+	var moves: Dictionary = {}   ## lead -> whether it moves
+	for body: int in bodies.members:
+		var climb: Array = []
+		var at: int = _lead(body)
+		var goes: bool = false
+		while true:
+			if moves.has(at):
+				goes = bool(moves[at])
+				break
+			if not bodies.parent_link.has(at):
+				goes = false
+				break
+			if _index_of.has(bodies.parent_link[at]):
+				goes = true
+				break
+			climb.append(at)
+			at = _lead(int(bodies.parent_of[at]))
+		moves[at] = goes
+		for one: int in climb:
+			moves[one] = goes
+		if goes:
 			moved.append(body)
 	for body: int in moved:
 		var weight: float = 0.0
@@ -473,8 +529,8 @@ func holds() -> bool:
 ## is not carried by any joint of the loop (a crank on the frame), so a
 ## pointer turning about its line is right.
 func driver_fixed() -> bool:
-	for n: int in range(1, links.size()):
-		if bodies.beyond(child_of[n]).has(parent_of[0]):
+	for n: int in _joints_on(parent_of[0]):
+		if n != 0:
 			return false
 	return true
 
@@ -515,7 +571,7 @@ func _place(body: int, at: PackedFloat64Array, cache: Dictionary) -> Transform3D
 	if cache.has(body):
 		return cache[body]
 	var climb: Array = []
-	var here: int = body
+	var here: int = _lead(body)
 	var base := Transform3D.IDENTITY
 	while true:
 		if cache.has(here):
@@ -525,13 +581,14 @@ func _place(body: int, at: PackedFloat64Array, cache: Dictionary) -> Transform3D
 			cache[here] = Transform3D.IDENTITY
 			break
 		climb.append(here)
-		here = int(bodies.parent_of[here])
+		here = _lead(int(bodies.parent_of[here]))
 	for k: int in range(climb.size() - 1, -1, -1):
 		var one: int = climb[k]
 		var joint: Variant = _index_of.get(bodies.parent_link[one])
 		if joint != null:
 			base = base * _turn_of(int(joint), at)
 		cache[one] = base
+	cache[body] = base
 	return base
 
 
@@ -846,6 +903,11 @@ static func _worst(r: PackedFloat64Array) -> float:
 ## off its rack (8808-1, 8054-1).
 var _friction: Dictionary = {}
 const FRICTION_WEIGHT := 1000.0
+## An axle's slide along its hole, unbounded in the solve (column -> true),
+## damped [constant SLIDE_WEIGHT] times as hard as a turn; a friction
+## bearing then [constant FRICTION_WEIGHT] times as hard as that.
+var _sliding: Dictionary = {}
+const SLIDE_WEIGHT := 30.0
 
 
 ## Close the loops with the driver held at q[driver_col], from q as it is.
@@ -943,8 +1005,8 @@ func _close_with(held: Dictionary) -> bool:
 			var m2: PackedFloat64Array = a.duplicate()
 			var g2: PackedFloat64Array = g
 			for i: int in n:
-				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * (FRICTION_WEIGHT if _friction.has(free[i])
-					else 1.0) + 1e-9
+				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * (FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty()
+					else 1.0) if _friction.has(free[i]) else SLIDE_WEIGHT if _sliding.has(free[i]) else 1.0) + 1e-9
 			if not pinned.is_empty():
 				g2 = g.duplicate()
 				for i: int in pinned:
@@ -1150,9 +1212,9 @@ func _reach(value: float) -> float:
 var _part_found: Array = []
 var _part_col: int = -1
 var _part_rate: float = 0.0
-## How each coordinate went with the driver over the last step that closed,
-## per unit of the driver's, and for which column: where the next step
-## starts from. A small actuator's input turns 2 radians for each LDU its rod
+## How each coordinate goes with the driver where the last step closed, per
+## unit of the driver's ([method _tangent]), and for which column: where the
+## next step starts from. A small actuator's input turns 2 radians for each LDU its rod
 ## goes, and what it drives by a universal joint with it (42024-1): started
 ## where the last step left them, each 4 LDU step began 8 radians out, and
 ## one in five took 24 rounds and still did not close, stopping the drag
@@ -1369,11 +1431,98 @@ func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dic
 		_slope.resize(cols)
 		_slope.fill(0.0)
 		_slope_col = driver_col
+	var tangent: PackedFloat64Array = _tangent(signf(by)) if part.is_empty() else PackedFloat64Array()
 	for c: int in cols:
 		# A part solved apart keeps its own slope, and the rest theirs.
 		if not part.is_empty() and part.has(c) != inside:
 			continue
-		_slope[c] = (q[c] - from_q[c]) / by
+		_slope[c] = tangent[c] if not tangent.is_empty() else (q[c] - from_q[c]) / by
+
+
+## How each coordinate goes with the driver where q stands, per unit of the
+## driver's: the least change that keeps the loops closed, weighted as a step
+## weighs it ([method _close_with]); empty where it cannot be read. Read off
+## the step just taken, the slope carried whatever that step's solve moved
+## in the loop's freedom to spare (a column's slide along its axle), and the
+## next step moved it again: turned +30, -60 and +30 at its wheel, 8448-1's
+## steering column came back slid 1.58 LDU along its pinion's axle (0.21
+## so), and 8808-1's wheel turned 90, -180 and 90 came back 1.78 LDU off
+## (0.003 so; docs/MECHANISMS.md, sections 28 and 30). Only the part solved
+## apart ([method _reach_parted]) keeps the step's own.
+func _tangent(way: float) -> PackedFloat64Array:
+	var held: Dictionary = (_carrying if _try_held else {}).duplicate()
+	var jac: Array = _jacobian(q, {})
+	# A slide at its end that the change would take further out is held
+	# there, as a step's solve holds it, and the rest found without it.
+	for _round: int in 4:
+		var out: PackedFloat64Array = _least_change(jac, held)
+		if out.is_empty():
+			return out
+		var more: bool = false
+		for c: int in _bounded:
+			var span: Vector2 = _limits[c]
+			if not held.has(c) and (q[c] <= span.x + 1e-9 and out[c] * way < 0.0
+					or q[c] >= span.y - 1e-9 and out[c] * way > 0.0):
+				held[c] = true
+				more = true
+		if not more:
+			return out
+	return PackedFloat64Array()
+
+
+## The least change of [method _tangent] with the columns [param held] kept
+## where they are, from the loop's derivatives [param jac] where q stands.
+func _least_change(jac: Array, held: Dictionary) -> PackedFloat64Array:
+	var free := PackedInt32Array()
+	var where := PackedInt32Array()
+	where.resize(cols)
+	for c: int in cols:
+		if c != driver_col and not _still.has(c) and not held.has(c) and not _hold_also.has(c):
+			where[c] = free.size()
+			free.append(c)
+		else:
+			where[c] = -1
+	var n: int = free.size()
+	if n == 0:
+		return PackedFloat64Array()
+	# (JᵀJ + μ W) v = −Jᵀ j, j the driver's column: as μ goes to nought, the
+	# change of least weight that leaves every row where it is.
+	var a := PackedFloat64Array()
+	a.resize(n * n)
+	a.fill(0.0)
+	var g := PackedFloat64Array()
+	g.resize(n)
+	g.fill(0.0)
+	var at_row := PackedInt32Array()
+	var of_row := PackedFloat64Array()
+	for line: PackedFloat64Array in jac:
+		at_row.resize(0)
+		of_row.resize(0)
+		for c: int in cols:
+			if line[c] != 0.0 and where[c] >= 0:
+				at_row.append(where[c])
+				of_row.append(line[c])
+		var driven: float = line[driver_col]
+		for u: int in at_row.size():
+			var i: int = at_row[u]
+			g[i] += of_row[u] * driven
+			for w: int in at_row.size():
+				a[i * n + at_row[w]] += of_row[u] * of_row[w]
+	for i: int in n:
+		var c: int = free[i]
+		var weight: float = FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty() else 1.0) \
+			if _friction.has(c) else SLIDE_WEIGHT if _sliding.has(c) else 1.0
+		a[i * n + i] += 1e-6 * maxf(a[i * n + i], 1.0) * weight + 1e-12
+	if not Linkage._factor(a, n):
+		return PackedFloat64Array()
+	var v: PackedFloat64Array = Linkage._solve_factored(a, n, g)
+	var out := PackedFloat64Array()
+	out.resize(cols)
+	out.fill(0.0)
+	for i: int in n:
+		out[free[i]] = -v[i]
+	out[driver_col] = 1.0
+	return out
 
 
 ## Whether every actuator's and cylinder's rod is within its stroke as q
