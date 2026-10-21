@@ -13,6 +13,9 @@ R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)"); W=$R/.c
 ln -sfnT $R/assets/generated "$W/assets/generated"
 ln -sfnT $R/node_modules "$W/node_modules"
 ln -sfnT $R/vendor "$W/vendor"
+# .env (git-ignored) is read by probes as res://.env: remote_probe found no
+# bucket in a release worktree without it and failed all 12 fetches (m125).
+[ -e "$W/.env" ] || ln -s $R/.env "$W/.env"
 [ -e "$W/tools/web/node_modules" ] || ln -s $R/tools/web/node_modules "$W/tools/web/node_modules"
 mkdir -p "$W/.vercel"; cp $R/.vercel/project.json "$W/.vercel/project.json"
 echo "$W at $(git -C "$W" log --oneline -1)"
