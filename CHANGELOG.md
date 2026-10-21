@@ -102,7 +102,7 @@ whole cycle.
 - Turning 8416-1's fork lift by the gear on its axle is held by the worm
   that drives that axle, as a worm holds any gear turned from the gear's
   side; turn the worm's axle to lift it.
-- A model file's own copy of a LEGO part is read as that part. Studio
+- A model file's own copy of a LEGO® part is read as that part. Studio
   writes the parts it has versions of into the file under names of the
   file's own ("42125 - 60483.dat"), and they were read as parts nobody
   made: no pins or holes, no exact shape. On 42125-1 the steering's tie
