@@ -15,6 +15,13 @@ whole cycle.
 
 ### Fixed
 
+- A motion played backwards puts the axle a part slides along back where
+  it was built. A telescope's tube runs out along an axle held in the
+  frame's bricks, and each step of its run slid the axle half as far, until
+  the axle reached the end of its room on its line: 19.5 LDU out, then
+  played back, 19.5 past where it was built the other way. "Show it all",
+  played backwards, left it there. The axle now stays in what carries it
+  and moves only where the part on it runs out of room.
 - A part let go after a drag is kept where it was let go, every time.
   The check of its way after the release runs beside the window, and there
   a part whose real shape the drag had not looked at yet was judged by its
