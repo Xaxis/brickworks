@@ -1940,45 +1940,6 @@ persubject.py, quotes.py).
 
 
 
-### Likeness: the defining shape first, on the 44 of proof (2026-10-20, not ready)
-
-The verdicts above found that likeness, the subject's defining shape, decides
-60% of the sets' overall wins. So the planner was made to name one to three
-whole-model shapes before any detail (`src/ai/defining_shapes.gd`, branch
-shapefirst at 5b4adaa3): the first build is those shapes alone, each weighed
-against its share of the outline; a shape said to taper or be round is held
-to it; the base a shape stands on is no part of it. Tuned on tune's first
-ten, then run once on the 44 of proof (headless, pictures drawn on the GPU
-lease, 4 at a time; 9 pictures of 5 designs gave up for the letters).
-
-Against the sets, main and shapefirst44 paired over 42 subjects:
-
-| dimension | main | shapefirst44 | main minus shapefirst44 (95%) |
-|---|---|---|---|
-| likeness | 23% | 26% | -4 (-14, +7) |
-| surface | 27% | 35% | -7 (-19, +4) |
-| colour | 24% | 18% | +6 (-6, +17) |
-| technique | 13% | 8% | +5 (+0, +11) |
-| creativity | 33% | 23% | +11 (-2, +23) |
-| overall | 21% | 20% | +1 (-10, +11) |
-
-Head to head the judge preferred main's design overall 62% of the time
-(47-75%), on likeness 60% (44-73%), on creativity 67% (52-79%).
-
-**Not ready**: the likeness gain the lever was for is 4 points and its
-interval holds zero, and main's designs win head to head. What the judge
-says when main wins on likeness is the same each time: the subject is read by
-the features that make its shape its own, Big Ben's slender belfry under a
-two-stage spire, the Flatiron's prow, the Burj Khalifa's tiers and setbacks,
-the Opera House's sail shells, and loses as "a stubby, wide tower", "plain
-grey cylinders", "long flat slabs". Massing first gave the right volumes and
-blunted those features. The lever kept on its branch; the next likeness lever
-names the subject's signature features (what a person recognises it by) and
-checks each in the pictures against the reference, rather than its volumes.
-Results: bench/results/realset-2026-10-20-shapefirst44/ and
-bench/results/realset-2026-10-20-main-vs-shapefirst44/.
-
-
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
