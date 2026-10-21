@@ -16,7 +16,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
 
 - `merge_unit.sh` merges with `--no-commit` as the user. It takes either
   side of the generated files (`tools/mcp_tools.json`, the feature map) and
-  writes them again, and it unions doc conflicts (`resolve_docs.py`). After
+  writes them again, and it unions doc conflicts (`resolve_docs.py`). A
+  unit begun before a version was cut has its changelog entries put under
+  `[Unreleased]` (`changelog_merge.py`), where git would merge them into the
+  released section. After
   the merge it re-imports, so new `class_name`s resolve, then runs the
   parse gate, then rewrites the tool list when `src/net` or `src/ai`
   changed.

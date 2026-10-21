@@ -19,7 +19,12 @@ ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
 for f in $(git diff --name-only HEAD...$REF -- '*.uid' 2>/dev/null); do
   if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1       && cmp -s <(git show "$REF:$f" 2>/dev/null) "$f"; then rm "$f"; fi
 done
-if ! git "${ID[@]}" merge --no-ff --no-commit "$REF" >/dev/null 2>&1; then
+merged=0; git "${ID[@]}" merge --no-ff --no-commit "$REF" >/dev/null 2>&1 && merged=1
+# A unit begun before a version was cut: its changelog entries go under
+# [Unreleased], not the dated section git merges them into, with or
+# without a conflict. Before the docs union below, which would keep both.
+python3 "$HERE/changelog_merge.py" "$REF"
+if [ $merged = 0 ]; then
   # The cached tool list is generated: take either side, write it again below.
   if git diff --name-only --diff-filter=U | grep -qx tools/mcp_tools.json; then
     git checkout --ours tools/mcp_tools.json && git add tools/mcp_tools.json

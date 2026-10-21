@@ -4793,7 +4793,9 @@ Brick 1 x 2 with Hole (#150) meets the Technic Brick 1 x 2 with Hole
 (#151)", the carriage at x = 19.6 studs, 1.99 LDU into the bearing by their
 exact shapes: within a cover's cell (2 LDU), which is where the room test
 finds two parts meet (the shapes only forgive what the covers met; G13's
-left for later). Nothing else that moved is into either bearing.
+left for later). Nothing else that moved is into either bearing. With a
+cover reaching the cell it fell short by (below), 5.05 studs, and no
+deeper than the 1 LDU their shapes allow.
 
 ### A part stopped against another, moved on into it
 
@@ -4826,6 +4828,88 @@ its steering arm on its plate; 4002020-1's turntable +1°, -32° (+13°, -44°).
 Their parts were forgiven as they stood since G13, and judged by their
 shapes the loops close through them. Each stop needs reading (a joint
 Bodies does not see, or a loop's reading) before the rule can go in.
+
+### A turned part's cover a cell short (m131's hold)
+
+`grab_probe --only=hinge` failed on every run with Grab 17: 4096-1's boom,
+the Plate 2 x 8 on its 3937/3938 hinge, stopped at 95.7° where the plate
+(#32) meets the hinge's base (#30), and the probe's room test found room a
+degree on. Before, the base was skipped for every moving part as half of
+the hinge, and the boom went on to 112.8°, to the turntable (#24): there,
+by their exact shapes, 2.6 LDU into the base. Now only the hinge's top (#31)
+is forgiven it. At 90° the plate's underside lies flush on the base's side,
+and past it the plate's overhang turns into the base: by their shapes 1.0
+LDU at 95.5°, 1.24 at 96.7°, 3.4 at 117°. The stop is right and 112.8° was
+not (bisected: 1d27522c, "a bearing is forgiven only for the axle in it").
+
+The room test disagreed with itself. A cover is counted from the cell its
+part's origin is in (`Builder.boxes_for` and `turned_cover`, from
+`BrickLattice.to_cell`, a floor), and a turned part's is not cut back or
+rounded out about where the part is, so it stands up to a cell short of it
+towards +x, +y and +z. Turned an eighth of a degree at a time from 94.7° to
+97.7°, the plate's cover met the base's at 14 of 25 turns and missed it at
+11, in two runs as its origin crossed its cell along z (95.0° to 95.7°,
+96.7° to 97.1°). The shapes only judge what the covers meet
+(`_clear_exactly`), so room came and went with the cell: none at 96.0°, room
+at 96.7°, none at 97.7°. Placed where the part is, its cover met the base
+at all 25.
+
+Now a part off the lattice asks its cover a cell further on, towards +x, +y
+and +z (`Grab._reach_cell`, in `_blocked` and `_blocked_turned`), for a pair
+whose exact shapes then judge it. A pair with no exact shape is judged by
+the cover as it was, so nothing judged by covers alone changes. The boom
+stops at 95.4°, its base met at 95.53° (1.01 LDU by their shapes), and the
+room test agrees at every turn asked between 94.4° and 115.4°. Left: covers
+kept in the lattice, of what stands and of a part placed turned, are counted
+the same way; only the room test reaches the cell.
+
+Checked, in a window: `grab_probe --only=hinge` (18, the click hinge's stop
+unchanged at 90° on its 22° clicks), `--only=minifigure` (9), `--only=loops`
+(15), `--only=racks` (43) and `--only=worms` (34), each as on ec690d35,
+`--only=bearing` (2), `--only=path` (6, its two GAPs) and `--only=steering`
+(36). The steering sweep on nine sets (42125-1, 8820-1, 8808-1, 8448-1's
+racer, 42043-1, 6753-1 and three of 8074-1's) steers where the standing
+sweep (play127) does, five of the nine, each back as far; `own_copies_probe`
+(33) and `mechanism_probe` pass.
+
+### What the joints' halves cost a wheel loader's arm
+
+The same commit (1d27522c) held m131 a second way: 42081-1's arm drawn by
+its linear actuator (`grab_probe --only=actuators`) took its drag's own
+work a frame from 12.1 and 12.3 ms on average, 95% 23.1 and 25.9 (main,
+two runs alternated), to 15.5 and 15.5, 95% 51.2 and 46.2 (1d27522c), and
+the bar is 33. Weighing was 1 to 2 ms of it. The room test, timed part by
+part, met three things main never did, each from a half of a joint now
+tested against what moves:
+
+- The turned fairing (#974, 64683) had its cover asked against everything
+  its cover's reach met, among them a frame (#196, 11954) of 2,573 boxes
+  that its box was not into: 42 to 45 ms a frame, five frames running.
+- `_pair_forgiven` asked whether the two were exact before it needed to,
+  and a shape not yet read is read from disk: 16 of them, 49 ms in a frame.
+- `_rest_with`, a part's overlaps where the grab began asked the first time
+  it is met, asked the clash at rest of its partner across the joint as
+  well: 37 to 48 ms once.
+
+Now a turned cover is asked only against what the part's box is into by
+more than `TOUCHING` (`Grab._into_cover`, as `_boxes_meet` asks it), the
+shapes are read only where they decide, and the partner across a joint is
+not asked its clash at rest (it is forgiven whatever it is). Alternated
+again, two rounds: main 12.1 and 12.3 ms, 95% 23.1 and 25.9; this 12.5 and
+12.2, 95% 22.8 and 20.4; baac8987 (the cover reaching a cell) 15.3 and
+17.2, 95% 46.2 and 52.7; 1d27522c 15.5 and 15.5, 95% 51.2 and 46.2. One
+frame in a run still costs 58 to 70 ms, the first `_rest_with` of a part
+met: the 95% is unchanged by it. 8820-1's steering, which Grab 17 had
+stopped at 6° where a tyre's turned cover reached its steering top, turns
+all 30° again and comes back 0.0042 LDU off, as before Grab 17: the tyre
+has no exact shape, and its box is not into the steering top's cover.
+Left: a whole cover (`_blocked`, a test asked at once) does not ask the box
+first, so for a pair with no exact shape it may still find a cell's reach
+the asked cover lets by. Checked on this, in a window: `grab_probe
+--only=hinge` (18), `minifigure` (9), `loops` (15), `racks` (43) and `worms`
+(34) as on ec690d35, `bearing` (2), `path` (6, its two GAPs), `steering`
+(36); the nine sets' sweep as play127 but 8820-1, above; `own_copies_probe`
+(33) and `mechanism_probe` pass.
 
 ### A loop turned in one big step drifts (not fixed)
 
