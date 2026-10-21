@@ -27,6 +27,16 @@ whole cycle.
   its brick; the slide is held now where the parts on the axle's line meet
   (a gear or a bush against the beam it is beside), read from their exact
   shapes where they are at hand.
+- A frame that swings into the model and stops there no longer spins up a
+  wheel on a free axle in it. The stop was taken from the frame's own turn
+  alone, so each step the wheel kept the turn the frame's fall would have
+  given it and spun faster, for the 40 s a swing may last. A Claude
+  session's move_part that tipped a motorcycle over waited on that swing as
+  it landed, testing for room at every step, and never answered: it hung
+  600 s until the session's connection to the app dropped. The wheel now
+  turns on as it was turning and comes to rest, and a swing worked out for
+  a move_part stops after 8 s at most, where it was last checked for room,
+  and says so.
 - A steering column through two universal joints of the older kind (4L)
   steers. 8448-1's file draws its column turned a little round its own
   line, so each joint's centre sat in one fork only: its steering wheel
