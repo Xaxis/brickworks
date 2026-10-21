@@ -481,6 +481,15 @@ whole cycle.
 
 ### Fixed
 
+- A model file's own copy of a LEGO part is read as that part. Studio
+  writes the parts it has versions of into the file under names of the
+  file's own ("42125 - 60483.dat"), and they were read as parts nobody
+  made: no pins or holes, no exact shape. On 42125-1 the steering's tie
+  rods sat in their knuckles held by nothing, and a part moved near its
+  copied beams was stopped by their boxes. A copy drawn as its part is, to
+  within 1 LDU, now joins and moves as that part does; it is still drawn
+  and saved as the file had it. Of the 2,017 such copies in the real sets
+  we test with, 1,768 are read so; one drawn otherwise stays the file's.
 - Suggest sections reads a stud that points sideways as holding what is on
   it, and no longer joins two parts at an angle that only stand side by
   side. On 10179-1 a 2 x 3 plate on edge went into a section without the

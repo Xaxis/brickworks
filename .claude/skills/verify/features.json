@@ -796,6 +796,14 @@
       "tests": []
     },
     {
+      "id": "cli:own copies read as their parts",
+      "kind": "cli",
+      "entry": "src/dev/own_copies_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/own_copies_probe.gd [-- --survey [--shard=K/N] [--only=PREFIX]]   (a file's own copy of a LEGO part, '42125 - 60483.dat', read as that part for its joints, cover and exact shape where it is drawn as the part is to within 1 LDU: 42125-1's 25 copies, its tie rods' towballs held in the copied knuckles, a copy drawn otherwise left the file's own, every copy written back as it came; --survey counts the OMR's copies and how many are read so, ~4 min a shard)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
