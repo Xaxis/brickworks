@@ -58,9 +58,10 @@ def _boxes() -> dict[str, tuple[list[float], list[float]]]:
     out = {}
     for entry in catalogue["parts"]:
         low, high = entry["bounds_min"], entry["bounds_max"]
-        # The catalogue is +Y up; LDraw is +Y down.
-        out[entry["id"]] = ([low[0], -high[1], low[2]],
-                            [high[0], -low[1], high[2]])
+        # The catalogue is LDraw turned half a turn about x (FLIP in
+        # src/parts/ldr_model.gd): y and z both flip.
+        out[entry["id"]] = ([low[0], -high[1], -high[2]],
+                            [high[0], -low[1], -low[2]])
     return out
 
 

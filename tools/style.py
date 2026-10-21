@@ -279,8 +279,10 @@ class Parts:
         if catalogue is not None and catalogue.exists():
             for entry in json.loads(catalogue.read_text())["parts"]:
                 low, high = entry["bounds_min"], entry["bounds_max"]
-                # The catalogue is +Y up; LDraw is +Y down.
-                box = ((low[0], -high[1], low[2]), (high[0], -low[1], high[2]))
+                # The catalogue is in the app's axes, LDraw's turned half a
+                # turn about x (src/parts/ldr_model.gd FLIP): y and z both
+                # flip. With z left alone a slope's box lay on its other side.
+                box = ((low[0], -high[1], -high[2]), (high[0], -low[1], -low[2]))
                 # Studs, or anti-studs, say which way is up. The catalogue
                 # counts a pin's ends as sockets, and a pin has no up.
                 joints = entry.get("connector_counts") or {}
