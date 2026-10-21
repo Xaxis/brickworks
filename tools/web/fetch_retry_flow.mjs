@@ -97,12 +97,10 @@ let rareAt = "";
 const asks = new Map();      // url -> times asked since failing began
 const answered = new Map();  // url -> what each ask was given
 // The headers a cross-origin bucket's answer carries, so a 503 or a 404 is
-// read as one and not as a request the page's isolation refused. And a type
-// and a body, as the bucket's own answers have: Godot's web client takes an
-// answer whose headers the page cannot read for no answer at all (code 0),
-// and across origins a page reads only a few, Content-Type and Content-Length
-// among them. With these two headers alone, every 404 on a deployment was
-// asked four times, as a fault that may pass (m125's preview, 2026-10-20).
+// read as one and not as a request the page's isolation refused, and a type:
+// across origins a page reads only CORS-safelisted headers, and Godot's web
+// client takes an answer with none for no answer (code 0). Without it every
+// 404 on a deployment was asked four times (m125's preview, 2026-10-20).
 const open = { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin",
   "content-type": "application/json" };
 // The body the parts bucket gives for an object it has not got. Its status is
