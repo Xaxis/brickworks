@@ -462,6 +462,13 @@ func _read() -> void:
 		if _is_tyre(info_of.get(a)) or _is_tyre(info_of.get(b)):
 			continue
 		var pair := Vector2i(mini(a, b), maxi(a, b))
+		# The lattice covers a part turned off the grid with every cell its
+		# boxes' turned corners span: a stud reaches into it only within its
+		# own box. 8448-1's steering column, an axle 8 tilted two ways, had
+		# a wing brick's stud 13 LDU below it in its cover, read as holding
+		# it there, and the column was one with the chassis.
+		if _askew(a, b) and not _reaches_into(b, stud[2], stud[3]):
+			continue
 		if _askew(a, b) and not _takes_stud(b, stud[2], stud[3]):
 			askew[pair] = int(askew.get(pair, 0)) + 1
 		# A part with nothing underneath to take a stud (a bush, a gear, a
@@ -965,16 +972,19 @@ func _rest_racks(entries: Array, candidates: Array) -> void:
 ## something, a beam beside it, or, once the column had turned, the column:
 ## turned back, the shaft swung round with it into the frame. Added to
 ## [param candidates] for each end [param rounds] (Joints.rounds) does not
-## join to its centre. Only the 3L joint's parts (62519 in 62520s), whose
-## ends stand at the joint's middle: pinned so, 8448-1's older 4L joint
-## (3326b in 3712s) locked its steering's loop.
+## join to its centre. The 4L joint's too (3326b in 3712s): 8448-1's file
+## turns its column, a 4L joint at each end, 28 degrees round its own line,
+## so each centre fits the column's forks and not the other end's; turned
+## 30 degrees, the steering's pinion end took the column's centre, and the
+## column, hung on nothing else, swung with it into the chassis, or held
+## it, "Locked".
 func _cross_in_forks(entries: Array, info_of: Dictionary, rounds: Dictionary, candidates: Array) -> void:
 	var centres: Array = []
 	var ends: Array = []
 	for entry: Array in entries:
 		var info: PartLibrary.PartInfo = info_of.get(int(entry[0]))
 		var name: String = info.name if info != null else ""
-		if not name.contains("Universal Joint 3L"):
+		if not name.contains("Universal Joint") or name.contains("Complete"):
 			continue
 		if name.contains("Centre"):
 			centres.append(entry)
@@ -2414,6 +2424,17 @@ func _in_a_socket(key: int, foot: Vector3) -> bool:
 		if at.distance_to(foot) <= Mechanism.STUD_SLACK + 4.0:
 			return true
 	return false
+
+
+## Whether a stud at [param foot] pointing [param way] reaches into
+## [param key]'s own box, a cell's slack round it, as the part is turned.
+func _reaches_into(key: int, foot: Vector3, way: Vector3) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null:
+		return true
+	return mesh.bounds.grow(BrickLattice.CELL).has_point(
+		brick.transform.affine_inverse() * (foot + way * Joints.STUD_REACH))
 
 
 ## Whether [param key] has nothing underneath to take a stud: no socket.
