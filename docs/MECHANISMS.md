@@ -5321,3 +5321,109 @@ in three runs. Once in the five, 42024-1's small actuator, drawn out until it
 met the model at 4.00 LDU and let go, was kept at 1.75 ("kept where it was
 let go" failed); 39be9037 kept it at 4.00 all three times. Left: whether
 the step's new slope stops the keep's walk short of a stop where parts touch.
+
+## 31. An axle's slide in a loop (Grab 20)
+
+Grab 16 left an axle's slide in a loop free (section 26): held to its
+flanges, 8448-1 then turned 0.1° where it turned 7°, its towballs needing
+to slide up through the rack. Grab 19 left 8448-1's steering coming back
+0.20 LDU off, the column slid along the pinion's axle. Each was measured on
+m131 (3b02e21e) by a scratch probe calling `move_part` as a session does,
+and by the steering sweep on 17 sets (the five 8448-1 files, 8466-1, both
+5533-1 files, 8808-1, 8820-1, 42125-1, 8880-1_F1-Racer, 8841-1_Buggy,
+42043-1, 9393-1 and both 8256-1 files).
+
+### Why 8448-1 came back off
+
+8448-1_Racer's wheel turned +30, -60 and +30:
+
+| | back, LDU |
+|---|---|
+| as `move_part` turns it, each turn its joints read afresh | 0.2042 |
+| in one grab, turned to +30, -30 and 0 | 0.2012 |
+| the same, in steps of 1° (`STEP_TURN`) where they are 5° | 0.0353 |
+| every axle's slide in the loop held at nought | 0.0087 |
+
+So not the fresh reads: the steps. The pinion's axle (#417) and the wheel's
+(#440) each slide in their holes, and the column between their joints can
+go along itself with both: freedom the loop does not need. A step starts
+along the loop's least change (section 30) and closes from there, and the
+close moves nothing along that freedom, but the least change bends over a
+step, and what it moved there along the slide was not undone on the way
+back. Held at nought, the loop closes as well (the rack +6.35, -6.15) and
+comes back. So does every slide of 8448-1's: since Grab 18 read the
+towballs' sockets, none of them needs to slide.
+
+Tried and not kept: a step started along the slope halfway along it (the
+last step's change of slope taken as its bend). In one grab 8448-1 came back
+0.022 LDU off; but 8880-1_F1-Racer, turned at its wheel through two 4L
+joints, came back 13.65 LDU off, a cross gone round onto another branch.
+
+### What is on an axle's line
+
+`Link.slide` read an axle against each part it goes through. Each part on
+the axle's side that it goes through or grips is now read too, against each
+part on the other side it goes through (`Bodies.line_room`, from the parts
+`Joints.through` finds on each axle, `Bodies.on_shaft`): by their exact
+shapes where both are at hand, to where they first touch (`Exact.clash`
+forgives `Exact.TAU`, 1 LDU, into each other, taken off), else by their
+rounds. 8448-1's pinion axle read 9.5 and 29.5 LDU against its two bricks;
+its pinion stands against one face of the nearer brick and the column's
+joint end against the other, and by their shapes it goes 2 LDU either way
+(their counterbores). A loop holds an axle's slide inside that, as it holds
+a clip's (`Linkage._bounded`), and still damps it.
+
+Held so, with the slide damped 30 times a turn as before, 42125-1 came back
+0.1155 LDU off where it came back 0.006: its suspension arms slid 0.10 to
+0.26 LDU each way as it steered (as at 30 they always had), and with two of
+them flush against a part one way, held there on the way out, they came
+back by another path.
+
+### A slide moves only where the loop needs it
+
+`SLIDE_WEIGHT` 30 to 1000: a slide the loop needs still moves (the least
+change takes it), and one it does not, does not. On the 17 sets
+(`sweep_grab20y`), against the standing sweep (`sweep_m131f`):
+
+| set | m131f | Grab 20 |
+|---|---|---|
+| 8448-1 and its four other models | rack +6.35, -6.15, back 0.202 to 0.204 | the same rack, back 0.0074 to 0.0078: steers |
+| 42125-1 | back 0.006 | 0.0073 |
+| 8880-1_F1-Racer | back 0.017 | 0.0166 |
+| 8841-1_Buggy | 0.007 | 0.0145 |
+| 8808-1, 8820-1, 9393-1, 42043-1 | 0.001, 0.004, 0.004, 0.000 | 0.001, 0.0039, 0.0035, 0.000 |
+| 8256-1, its lawn mower | steer, 0.000, 0.001 | steer, 0.0004, 0.0005 |
+| 5533-1 | rack +2.67, -0.40: stops on the way back | rack +4.43, -5.31, back 6.43 LDU off (#368) |
+| 5533-1_Tractor-Pulling | back 0.088 | 0.0905 |
+| 8466-1 | rack +1.92, -2.08, back 36.83 (#1165) | the same, 36.92 |
+
+Nothing that steered is lost, and 8448-1's five steer. With the line room
+and the slope's bend, before the weight (`sweep_grab20x`): 42125-1 lost
+(0.1155), 8880-1_F1-Racer lost (1.456).
+
+### Left
+
+- **5533-1** steers both ways now (`--only=grooved`: +4.43, then back to
+  -5.31) and comes back 6.43 LDU off at #368 (2994). Not read yet.
+- **8466-1**: the third turn reads the pinion as a body of two parts on a
+  pin in no loop ("1 body move together"), and a joint's centre (#1165,
+  3326b) turns with it, 37 LDU off. Why the loop is not read there after
+  the second turn is not found.
+- A closing joint's slide is not a coordinate (its along-line gap is left
+  out of the residual), so it is not held to its line's room.
+- A browser that has not fetched the shapes reads the line by the parts'
+  rounds; how 8448-1 steers there is not measured.
+- The loop with freedom to spare (#65) is where it was: a weight keeps a
+  spare slide still, not a spare turn.
+
+### Checked
+
+On d854fab2, in a window (`tools/probe.sh grab_probe`): `--only=grooved`
+(4: 8448-1_Racer's rack +6.35 then back to -6.15, 5533-1's +4.43 then
+-5.31), `groups` (4), `bigstep` (4), `loops` (21), `racks` (43), `worms`
+(34) and `hinge` (18) pass. `--only=actuators` five times: 38 checks in
+four, and once the small actuator, let go at its stop 4.00 LDU out, was
+kept at 1.75 (the false stop of section 30's Grab 19b, which passed it five
+times in five); the wheel loader's arm 95% 15.1 to 16.7 ms a frame.
+`mechanism_probe` (54) and `own_copies_probe` (33) pass. The whole steering
+sweep is not run here.

@@ -298,19 +298,21 @@ func _read(driver: Bodies.Link, child: int) -> void:
 			slide_col.append(-1)
 		elif link.slide.x + link.slide.y > 0.0:
 			# An actuator's stroke, its rod or its body the one that moves;
-			# and a clip on its bar, as far as the two parts let it
+			# a clip on its bar, as far as the two parts let it
 			# (Bodies.exact_room, else Bodies._rounds_room), the solve kept
 			# inside it. Unbounded, a loop closed by sliding 21019-1's clip
 			# 4.3 LDU into the plate its handle is on, and 4002020-1's into
-			# its bar's ball. Not an axle in its hole: kept to its flanges,
-			# 8448-1's steering turned 1° where it turns 11°, its loop read
-			# too stiff without its towballs sliding up through the rack.
-			# Nor an engine's piston: kept to its cylinder's rounds, 8218-1's
+			# its bar's ball. And an axle in its hole, as far as what is on
+			# its line lets it (Bodies.line_room): unbounded, 5533-1's
+			# steering closed by sliding its arm 1.75 LDU on into its brick.
+			# Not an engine's piston: kept to its cylinder's rounds, 8218-1's
 			# stroke was 19.35 LDU where its crank's throw makes it 20.
 			var shaft_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
-			if not link.turns or link.reach != Vector2.ZERO:
+			if not link.turns or link.reach != Vector2.ZERO or link.kind == "axle":
 				var room: Vector2 = link.slide
-				if link.turns:
+				if link.kind == "axle":
+					room = bodies.line_room(link)
+				elif link.turns:
 					var exact: Vector2 = bodies.exact_room(link)
 					if exact.x >= 0.0:
 						room = exact
@@ -414,7 +416,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0 and c != driver_col:
 					_friction[c] = true
-	# An axle's slide along its hole, which nothing bounds in the solve: the
+	# An axle's slide along its hole, within what its line lets it: the
 	# loop slides it only where turning will not close the loop. Least squares
 	# over every coordinate alike slid 42125-1's suspension arms along their
 	# axles as its knuckles turned, 0.5 LDU for 10°, until a bush met a shock
@@ -424,7 +426,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	# rest.
 	for n: int in range(1, links.size()):
 		var c: int = slide_col[n]
-		if c >= 0 and links[n].turns and not _limits.has(c) and c != driver_col:
+		if c >= 0 and links[n].turns and (not _limits.has(c) or links[n].kind == "axle") and c != driver_col:
 			_sliding[c] = true
 	# What moves: every body a joint of the loops is on the way to.
 	var moves: Dictionary = {}   ## lead -> whether it moves
@@ -903,11 +905,17 @@ static func _worst(r: PackedFloat64Array) -> float:
 ## off its rack (8808-1, 8054-1).
 var _friction: Dictionary = {}
 const FRICTION_WEIGHT := 1000.0
-## An axle's slide along its hole, unbounded in the solve (column -> true),
-## damped [constant SLIDE_WEIGHT] times as hard as a turn; a friction
-## bearing then [constant FRICTION_WEIGHT] times as hard as that.
+## An axle's slide along its hole (column -> true), damped [constant
+## SLIDE_WEIGHT] times as hard as a turn; a friction bearing then
+## [constant FRICTION_WEIGHT] times as hard as that. A slide the loop does
+## not need is its freedom to spare, and the least change of a step still
+## moved some of it: at 30, 8448-1's column slid along its pinion's axle
+## 0.13 LDU on a turn of 30° and came back 0.20 LDU off, and 42125-1's
+## suspension arms slid 0.1 to 0.26 LDU, into the parts flush beside them.
+## At 1000 neither moves (8448-1 back 0.008, 42125-1 0.007), and a slide the
+## loop needs (8256-1's, 8880-1's) moves as before.
 var _sliding: Dictionary = {}
-const SLIDE_WEIGHT := 30.0
+const SLIDE_WEIGHT := 1000.0
 
 
 ## Close the loops with the driver held at q[driver_col], from q as it is.
