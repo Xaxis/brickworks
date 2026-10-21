@@ -1783,7 +1783,11 @@ func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 	var short: bool = BrickLattice.is_off_lattice(to.origin)
 	var near: PackedInt32Array = turned.loose_at()
 	for other: int in builder.lattice.blockers_boxes(Grab._reach_cell(near, true) if short else near, 0, skip):
-		if skip.has(other) or _scrubs(key, other) or _bends_aside(other):
+		# Its box first (as [method _boxes_meet] asks it): the cover is asked
+		# where something is box by box, and 42081-1's fairing against the
+		# 2,573 boxes of a frame its box was not into took 42 ms a frame.
+		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
+				or not _into_cover(mesh, to, to * mesh.bounds, other):
 			continue
 		# Theirs a cell further back is ours a cell further on.
 		var theirs: PackedInt32Array = builder.lattice.boxes_of(other)
@@ -2043,13 +2047,13 @@ func _pair_forgiven(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -
 	var with: Dictionary = _rest_with(other)
 	if with.has(key) or _touched_as_built(key, other):
 		return _both_exact(key, other) or _no_deeper(key, other, mesh, to)
-	if _both_exact(key, other):
-		return false
 	# Not for the parts joined to it: an axle is in its bearing as built, and
-	# says nothing of how far a cover reaches past its part.
+	# says nothing of how far a cover reaches past its part. Their shapes are
+	# asked last: read from disk the first time, 16 of them took 42081-1's
+	# arm's drag frame 49 ms.
 	for one: int in with:
 		if not across.has(one):
-			return _no_deeper(key, other, mesh, to)
+			return not _both_exact(key, other) and _no_deeper(key, other, mesh, to)
 	return false
 
 
@@ -2100,11 +2104,15 @@ func _rest_with(other: int) -> Dictionary:
 		return _rest_overlap[other]
 	var with: Dictionary = {}
 	var boxes: PackedInt32Array = builder.lattice.boxes_of(other)
+	# Its partner across the joint is forgiven it whatever their shapes say
+	# ([member _across]), and is not asked: each pair asked reads both shapes
+	# and their clash.
+	var across: Dictionary = _across.get(other, {})
 	if not boxes.is_empty():
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
 			if moving.has(key) or followers.has(key):
 				with[key] = true
-				if _forgiven_at_rest(key, other):
+				if not across.has(key) and _forgiven_at_rest(key, other):
 					_keep_built_touching(key, other)
 	_rest_overlap[other] = with
 	return with
@@ -2223,27 +2231,35 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 		if Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= TOUCHING \
 				or _slides_over(key, mesh, to, other):
 			continue
-		# Into its box: then against its cover, box by box, which hugs it.
-		var cover: PackedInt32Array = builder.lattice.boxes_of(other)
-		var cell_size: float = BrickLattice.CELL
-		# A piece whose box the part's own box, square to the grid, is not
-		# into by more than TOUCHING along some axis is not into the part's
-		# turned box either: the three axes are three of box_depth's fifteen
-		# lines, and along them the part's turned box reaches as far as its
-		# box does. Asked first: a neighbour of hundreds of boxes cost 42081-1's
-		# drag 9 ms a frame by the fifteen lines alone.
-		var lo: Vector3 = box.position / cell_size + Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
-		var hi: Vector3 = box.end / cell_size - Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
-		for at: int in range(0, cover.size(), 6):
-			if float(cover[at + 3]) <= lo.x or float(cover[at]) >= hi.x or float(cover[at + 4]) <= lo.y \
-					or float(cover[at + 1]) >= hi.y or float(cover[at + 5]) <= lo.z or float(cover[at + 2]) >= hi.z:
-				continue
-			var piece := AABB(Vector3(cover[at], cover[at + 1], cover[at + 2]) * cell_size,
-				Vector3(cover[at + 3] - cover[at], cover[at + 4] - cover[at + 1],
-					cover[at + 5] - cover[at + 2]) * cell_size)
-			if Grab.box_depth(to, mesh.bounds, Transform3D.IDENTITY, piece) > TOUCHING:
-				_near_part = other
-				return true
+		if _into_cover(mesh, to, box, other):
+			_near_part = other
+			return true
+	return false
+
+
+## Whether the part [param mesh] at [param to], its world box [param box], is
+## into a box of [param other]'s cover, which hugs it, by more than
+## [constant TOUCHING].
+func _into_cover(mesh: Lbm.PartMesh, to: Transform3D, box: AABB, other: int) -> bool:
+	var cover: PackedInt32Array = builder.lattice.boxes_of(other)
+	var cell_size: float = BrickLattice.CELL
+	# A piece whose box the part's own box, square to the grid, is not
+	# into by more than TOUCHING along some axis is not into the part's
+	# turned box either: the three axes are three of box_depth's fifteen
+	# lines, and along them the part's turned box reaches as far as its
+	# box does. Asked first: a neighbour of hundreds of boxes cost 42081-1's
+	# drag 9 ms a frame by the fifteen lines alone.
+	var lo: Vector3 = box.position / cell_size + Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
+	var hi: Vector3 = box.end / cell_size - Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
+	for at: int in range(0, cover.size(), 6):
+		if float(cover[at + 3]) <= lo.x or float(cover[at]) >= hi.x or float(cover[at + 4]) <= lo.y \
+				or float(cover[at + 1]) >= hi.y or float(cover[at + 5]) <= lo.z or float(cover[at + 2]) >= hi.z:
+			continue
+		var piece := AABB(Vector3(cover[at], cover[at + 1], cover[at + 2]) * cell_size,
+			Vector3(cover[at + 3] - cover[at], cover[at + 4] - cover[at + 1],
+				cover[at + 5] - cover[at + 2]) * cell_size)
+		if Grab.box_depth(to, mesh.bounds, Transform3D.IDENTITY, piece) > TOUCHING:
+			return true
 	return false
 
 
