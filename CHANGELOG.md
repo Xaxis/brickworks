@@ -15,6 +15,18 @@ whole cycle.
 
 ### Fixed
 
+- A steering column comes back where it began. 8448-1's steering wheel,
+  turned 30° one way, 60° the other and back, left its column 0.2 LDU along
+  its pinion's axle: a slide the loop did not need, and each step moved a
+  little of it. An axle's slide in a loop now moves only where the loop
+  needs it, and the column comes back within 0.008 LDU on all five of the
+  set's models. 42125-1's suspension arms no longer slide a tenth of an LDU
+  into the parts beside them as it steers.
+- A loop no longer slides a part along its axle further than what is on the
+  axle lets it. 5533-1's steering closed by sliding its arm 1.75 LDU into
+  its brick; the slide is held now where the parts on the axle's line meet
+  (a gear or a bush against the beam it is beside), read from their exact
+  shapes where they are at hand.
 - A steering column through two universal joints of the older kind (4L)
   steers. 8448-1's file draws its column turned a little round its own
   line, so each joint's centre sat in one fork only: its steering wheel

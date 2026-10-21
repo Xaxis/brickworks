@@ -2267,11 +2267,12 @@ func exact_room(link: Link) -> Vector2:
 ## wheel) against each part on the other side it goes through. 8448-1's
 ## pinion axle reads 9.5 and 29.5 LDU against its two bricks, and its
 ## pinion stands against one face of the nearer brick and its column's
-## universal joint against the other: it does not slide at all. Left free,
-## the loop slid it, and the column with it, 0.2 LDU over a turn out and
-## back. By the two parts' exact shapes where both are at hand, to where
-## they first touch (Exact.clash forgives [constant Exact.TAU] into each
-## other, taken off here); else by their rounds ([method _rounds_room]).
+## universal joint against the other: 2 LDU either way, into the brick's
+## counterbores. 5533-1's steering closed its loop by sliding an arm 1.75
+## LDU on into its brick. By the two parts' exact shapes where both are at
+## hand, to where they first touch (Exact.clash forgives [constant
+## Exact.TAU] into each other, taken off here); else by their rounds
+## ([method _rounds_room]).
 func line_room(link: Link) -> Vector2:
 	if _line_rooms.has(link):
 		return _line_rooms[link]

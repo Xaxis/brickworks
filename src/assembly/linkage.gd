@@ -304,11 +304,9 @@ func _read(driver: Bodies.Link, child: int) -> void:
 			# 4.3 LDU into the plate its handle is on, and 4002020-1's into
 			# its bar's ball. And an axle in its hole, as far as what is on
 			# its line lets it (Bodies.line_room): unbounded, 5533-1's
-			# steering closed by sliding its arm 1.75 LDU on into its brick,
-			# and 8448-1's column slid along its pinion's axle, held there by
-			# the pinion and a joint's end either side of a brick. Not an
-			# engine's piston: kept to its cylinder's rounds, 8218-1's stroke
-			# was 19.35 LDU where its crank's throw makes it 20.
+			# steering closed by sliding its arm 1.75 LDU on into its brick.
+			# Not an engine's piston: kept to its cylinder's rounds, 8218-1's
+			# stroke was 19.35 LDU where its crank's throw makes it 20.
 			var shaft_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
 			if not link.turns or link.reach != Vector2.ZERO or link.kind == "axle":
 				var room: Vector2 = link.slide
