@@ -2481,6 +2481,137 @@ the subject's silhouette laid first, then one working function the real
 machine has, driven from a knob or a gear. Results:
 `realset-2026-10-20-technicmain-vs-technic3/report-tune-8.md` beside
 `report-tune-3.md`.
+### The outline and a working function, on the same three subjects (2026-10-21, not ready)
+
+Against the sets the held-flush lever won no technique verdict in three
+units, and its likeness fell: "no working mechanism", "a long, flat box
+frame", "a tall boxy cage of beams on small car-like wheels". This lever
+gives the session the machine's outline as real Technic sets of its kind
+have it, and has it build one function the real machine has and prove it
+moves before saving. Branch `technic4`.
+
+**How a kind of machine stands, and what works in it** (`tools/technic_shape.py`,
+over the 92 Technic sets `technic_cover.py` reads). A set's kind by a word of
+its name; its length, height, biggest tyre and wheelbase (the first axle to
+the last, tracked machines left out), each a share of its length; what works
+in it by the parts that do it.
+
+| kind (sets) | tyre across, of the length | wheelbase | height | most of them have |
+|---|---|---|---|---|
+| car (26) | 0.17 (0.14-0.21) | 0.61 (0.53-0.67) | 0.36 (0.27-0.55) | steering 21, piston engine 15, suspension 15 |
+| truck (14) | 0.15 (0.11-0.18) | 0.59 (0.46-0.67) | 0.51 (0.37-0.64) | steering 12, differential 8, gearbox 8 |
+| crane (10) | 0.16 (0.10-0.19) | 0.42 (0.39-0.58) | 0.62 (0.47-0.69) | worm 7, turntable 6, steering 5 |
+| loader (8, 4 on wheels) | 0.21 (0.13-0.30) | 0.47 (0.37-0.59) | 0.54 (0.49-0.60) | worm 5, turntable 4, steering 3 |
+| tractor (5) | 0.16 (0.15-0.24) | 0.35 (0.30-0.77) | 0.51 (0.37-0.60) | steering 4, worm 4, linear actuator 3 |
+| motorcycle (2) | 0.24 (0.19-0.28) | 0.63 (0.60-0.66) | 0.57 (0.57-0.58) | piston engine, suspension, chain, 1 each |
+| all 92 | 0.15 (0.11-0.20) | 0.57 (0.42-0.64) | 0.49 (0.35-0.60) | steering 63, gearbox 38, piston engine 37 |
+
+- *Held out, the height is not the kind's.* Tune's eight Technic sets read
+  the same way against their kind: the wheelbase in its range for all seven
+  on wheels, the tyres for five (BASH!'s balloon tyres are 0.32), the height
+  for four of eight (the Mine Loader is 0.27 where a loader is 0.49 to 0.60).
+  So the height and where the masses stand are told off find_reference's
+  picture, and only the tyres and the wheelbase are measured against the
+  kind. Seven of the eight sets have one of their kind's three most usual
+  functions; BASH! has none.
+- *Read twice.* A tyre turned on its axle has a world box up to 1.4 times
+  its size, so it is read across by its own box; a motorcycle's tyre named
+  "... Racing Tread" and a chain of Link Treads at the axles are not tracks,
+  only treads that reach the ground are. The app reads 8260-1 and 42036-1 to
+  within 0.6 of a stud of the script (`technic_way_probe`). The tractor's
+  wheelbase range is wide because two of its five sets carry their trailer.
+
+**The lever** (`src/ai/technic_way.gd`, `assistant.gd`, `command_socket.gd`,
+`technic_way_probe`).
+- *Told at planning*, how_real_sets_build_this on a Technic brief, for the
+  kind the brief names or, failing that, the one the session asks about (the
+  Ducati's sessions asked for "a Technic motorcycle"): the tyres and wheelbase
+  in studs for the brief's length, the tyres its sets run on, the height and
+  masses off the picture, then the kind's functions by count with their parts
+  (a worm 4716 on a 3648b, a linear actuator 61927-f1, a turntable 99009 and
+  99010, an engine's cylinders, pistons and crankshaft), built where the
+  corner picture shows them and proven with move_part and simulate_mechanism.
+- *Said at every build and the whole review*: the outline against the kind,
+  tyres or wheelbase out of range named; what works in it by its parts against
+  the kind's, its signature (the three most usual) named where it has none.
+  The whole review adds what moves as the app reads its joints (Playable).
+- *Held at saving*, once: a Technic design with nothing Playable reads as
+  moving, or none of its kind's signature by its parts.
+- *Two runs.* The first (`technic4`, `d1da8bfd`) told the sessions to take
+  the panelled frame's holds but not to copy it whole; head to head the judge
+  took technic3's designs over all three, so the second (`technic4b`,
+  `2d9ba735`) copies it again, its rails, axles and tyres sized by the outline,
+  and adds what works by its parts.
+
+**The same three of tune's eight,** in the same harness as the arms recorded
+for 2026-10-20, three at a time.
+
+| | main | held flush (`technic3`) | `technic4` | `technic4b` |
+|---|---|---|---|---|
+| overall against the set, verdicts won of 6 | 0 | 1 | 0 | 0 |
+| likeness / surface / technique | 3 / 3 / 0 | 1 / 3 / 0 | 0 / 2 / 0 | 0 / 1 / 0 |
+| studded parts, each subject | 97%, 76%, 98% | 5%, 3%, 9% | 3%, 0%, 6% | 6%, 0%, 5% |
+| tyre across, of the length (the sets' 0.16, 0.27, 0.22) | 0.22, 0.27, 0.34 | 0.17, 0.30, 0.25 | 0.15, 0.31, 0.27 | 0.16, 0.28, 0.23 |
+| wheelbase (the sets' 0.40, 0.63, 0.37) | 0.43, 0.68, 0.56 | 0.45, 0.70, 0.32 | 0.47, 0.69, 0.55 | 0.38, 0.65, 0.50 |
+| what works, by its parts | steering; chain, suspension; steering | worm; chain; steering, worm | worm; chain; steering | worm; chain, piston engine; steering, worm |
+| minutes; saved | 24, 45, 15 | 40, 45, 42 | 30, 45, 40; 3 of 3 | 45, 45, 45; 1 of 3 |
+| parts (sets 478, 638, 354) | 428, 345, 415 | 223, 228, 249 | 216, 192, 270 | 246, 217, 230 |
+
+Head to head, both orders, the lever's design preferred:
+
+| dimension | `technic4` to main's | `technic4` to technic3's | `technic4b` to main's | `technic4b` to technic3's |
+|---|---|---|---|---|
+| likeness | 0% (0-56) | 17% (2-69) | 0% (0-56) | 0% (0-56) |
+| surface | 0% (0-56) | 0% (0-56) | 0% (0-56) | 0% (0-56) |
+| technique | 67% (21-94) | 0% (0-56) | 67% (21-94) | 17% (2-69) |
+| overall | 50% (13-87) | 0% (0-56) | 33% (6-79) | 0% (0-56) |
+
+- **Every design built a function, and it moved.** By the sessions' own
+  checks: the Mine Loader's worm lifts its boom ("5 turns of the knob raise
+  it about 75°") and, in the second run, it steers; the Tractor's knob lifts
+  its hitch ("four turns of the knob raise the linkage by about a stud"); the
+  second Ducati's rear wheel turns a piston engine through two chains ("1.5
+  crank turns per wheel turn"). Saving read them on the joints in the four
+  designs that saved ("moves: boom, gears", "steering, boom, gears"); the
+  gate never had to hold one. The second Tractor and Ducati ran out of time before saving.
+- **The judge credits none of it.** Against the sets, technique 0 of 12 over
+  both runs: "a gear that shows but does little", "one exposed worm gear on a
+  simple boom frame", "gears and panels bolted onto a box with no real
+  purpose", "springs and levers, but they sit inside a sprawling, unenclosed
+  beam scaffold". What wins it on the set is how the working parts are
+  packaged and shaped: "a piston engine block packaged inside the frame",
+  "angled fairing sub-assemblies" and "angled panel sub-assemblies" (in seven
+  of the twelve technique reasons), "a compact, tractor-shaped frame". Head to
+  head with main's System bodies our technique still wins 67%.
+- **The outline came near the set's, and likeness did not move.** The second
+  run's tyres are within 0.01 of the set's on all three and its wheelbase
+  within 0.02 on two (the Tractor's 0.50 against 0.37, inside the
+  trailer-wide range). The likeness reasons are about masses and faces, not
+  proportions: "tall open roll cage", "open lattice cab", "an open beam-cage
+  cab" (in four of the second run's six),
+  "panels sticking out at odd angles", "a long flat box of a bonnet".
+- **It cost the body.** The sessions spent their time on the function: 14
+  move_part calls in two of the second run's sessions, the Ducati laying its
+  engine before its frame (60 parts at 17 minutes), all three of the second
+  run to the 45-minute limit. Head to head technic3's designs won overall 6
+  of 6 against each run, surface 6 of 6.
+- **Not ready.** On these three it falls behind the lever it builds on, head
+  to head and against the sets (overall 0 of 6 against technic3's 1). The
+  proof 9 would not clear its bar on this evidence. The build check read all
+  six: none floating.
+- *Next.* What the judge reads as technique is a mechanism's packaging, not
+  its working: a function enclosed in the body with its signature parts
+  showing where a set shows them (an engine block between the frame rails,
+  shock absorbers at the wheels), and panels at an angle. And the cab: a
+  closed cab of panels and a windscreen, not a cage of beams, named by the
+  review as the open faces are. The tractor's wheelbase measured on the
+  tractor alone.
+
+Results: `bench/results/realset-2026-10-20-technic4/` and `-technic4b/`
+(report-tune-3.md each), `realset-2026-10-20-technicmain-vs-technic4/`,
+`-technic3-vs-technic4/`, `-technicmain-vs-technic4b/` and
+`-technic3-vs-technic4b/` (report-tune-3.md each). The kinds' table is
+`python3 tools/technic_shape.py` (and `--gd` for the one technic_way.gd keeps).
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 
