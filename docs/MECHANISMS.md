@@ -5427,3 +5427,114 @@ kept at 1.75 (the false stop of section 30's Grab 19b, which passed it five
 times in five); the wheel loader's arm 95% 15.1 to 16.7 ms a frame.
 `mechanism_probe` (54) and `own_copies_probe` (33) pass. The whole steering
 sweep is not run here.
+
+## 32. The same shapes on a worker (Grab 21)
+
+Grab 19b left 42024-1's small actuator, let go at its stop 4.00 LDU out,
+kept at 1.75 about one run in four (`--only=actuators`, "kept where it was
+let go"), and read it as the loop's freedom to spare (#65): the walk after
+the release solves its own poses, not the drag's, and met something in one
+the drag never showed. Its forced repro (`repro/grab19_keep_repro.gd`: the
+rod shown on trust at 2, 4 and 6 LDU, then let go through
+`GrabDrag.release`) was kept at 1.75, where the pin joiner #686 meets the
+bent liftarm #670; with the poses at 1.5 to 4 LDU solved first, at 4.31.
+Each was measured on m134 (38f44636) by variants of that repro
+(`repro/grab21_keep_variants.gd`), which do one thing more before the
+release, on the main thread:
+
+| before the release | kept at |
+|---|---|
+| nothing | 1.75: #686 meets #670 |
+| the poses at 1.5 to 4 LDU solved | 1.75: #686 meets #670 |
+| solved, and #686 and #670 set against each other by their exact shapes | 4.31: #688 meets #670 |
+| #686's and #670's exact shapes read, nothing solved | 4.31: #688 meets #670 |
+| nothing, and the same walk run on the main thread, not on a worker | 5.75: #430 meets #61 |
+
+So not the solves: the shapes. The check after the release runs on a
+worker (`GrabDrag._verify_off_thread`), and there `Exact.shape_for`
+answered null for any shape the main thread had not read yet. A pair with
+a part of no shape is judged by covers, 2 LDU cells that reach past their
+parts (`Grab._clear_exactly`, `_verdict`): #686's cover met #670's at
+1.75, where their shapes are clear. The repro's "solved first" read the two
+shapes as it measured them, and that, not the solving, moved the stop. In
+the probe the drag reads shapes on the main thread as its frames' tests
+reach them, a budget at a time, so whether it had read #686's before the
+release changed from run to run.
+
+1. **A worker reads a shape from disk as the main thread does**
+   (`Exact.shape_for`). In a browser the shapes are fetched on the main
+   thread, and a worker there still answers null for one not fetched, as
+   the main thread does until it comes. Two workers reading one part keep
+   one shape, and an id is given under the lock: shapes' ids key the
+   verdicts between them.
+
+The forced repro is now kept at 5.75 LDU, where the beam 3 (#430) meets
+the cross block (#61), short of where it was shown on trust (6.00) and
+said so, on a worker as on the main thread.
+`exact_probe` asks four workers at once for two shapes not read yet: on
+m134 each answered null; now each reads its shape, the one the main thread
+then has.
+
+### The loop's freedom to spare
+
+The walk's poses were still not the drag's. Solved back from the pose shown
+at 6 LDU, the forced repro's rod at 5.5 has the beam 3 (#430) 1.11 LDU into
+the cross block (#61) by their exact shapes, no room; walked out from 0, it
+has room to 5.75. A loop with freedom to spare has no one pose for a value
+of its driver, and a stop the walk finds in its own poses need not be one
+the drag met.
+
+2. **The walk goes through the poses the drag showed** (`Grab._shown`,
+   `_frames_on_the_way`). Each frame of a loop's drag shown on trust keeps
+   its pose (`Linkage.kept_state`); the walk after a pause or the release
+   lands on the value of each between the value checked last and the one it
+   checks to, the last shown at each value, in order, puts that pose back
+   and tests it as shown, and solves each step on from it. Traced on the
+   forced repro, whose frames were 2, 4 and 6 LDU: the steps of 0.25 LDU
+   land on 2 and 4 with the frames' own poses, and it is kept at 5.75 as
+   before, the stop between the frame at 4 and the pose shown at 6.
+
+### Checked
+
+In a window (`tools/probe.sh grab_probe`), on the final code:
+`--only=actuators` six times, 38 checks each, the small actuator kept at
+4.00 LDU every time and 42080-1's crane at -28.00; with the shapes alone
+(1. without 2.) six times more, the same. `grooved` (4), `groups` (4),
+`bigstep` (4), `loops` (21), `racks` (43), `worms` (34), `hinge` (18, the
+boom stopping at 95.4°) and `swing` (28) pass, as they do with 1. alone;
+`mechanism_probe` (54), `own_copies_probe` (33) and `exact_probe` (30)
+pass.
+
+The wheel loader's arm, 95% of a drag frame's own work, ms, a run of m134
+and then one of the change, in turn:
+
+| round | m134 | then |
+|---|---|---|
+| 1 | 15.3 | 14.0, the shapes alone |
+| 2 | 16.9 | 14.2, the shapes alone |
+| 3 | 13.4 | 14.9, the final code |
+| 4 | 14.2 | 16.3, the final code |
+| 5 | 14.3 | 16.6, the final code |
+| 6 | 19.7 | 18.2, the final code |
+
+The box's load moved them more than the code: m134 itself went from 13.4
+to 19.7, four more runs of the shapes alone one after another from 13.7 to
+17.2, and four more of the final code from 12.9 to 16.1. A frame's share of the change is one
+`Linkage.kept_state` a frame, 0.7 µs on 42024-1's loop of 29 joints.
+
+The steering sweep on 19 sets (the five 8448-1 files, 42125-1, 8808-1,
+8820-1, 8880-1_F1-Racer, 8841-1_Buggy, 9393-1, 42043-1, 5533-1, 42024-1,
+42029-1, 42070-1, 8274-1, 6753-1 and 8054-1_Model-C), with the shapes alone
+(`sweep_grab21x`) and on the final code (`sweep_grab21y`), is the same as
+`sweep_grab20` set by set, to the step: 17 steer, 5533-1 comes back 6.43
+LDU off and 6753-1 does not move, as there. A session's move is not a drag:
+it walks its own way and keeps no frames. The whole sweep is not run here.
+
+### Left
+
+- The walk's poses between the drag's frames are still its own, solved
+  from the frame behind. A drag whose frames are far apart (a big section's,
+  a slow device's) leaves the walk more of its own way to solve.
+- `Bodies._unknown_shape` and `_labelled_hinge` still read only shapes
+  already read when off the main thread; the only reader there (GrabDrag's
+  read ahead) reads every part's shape first, so nothing differs today.

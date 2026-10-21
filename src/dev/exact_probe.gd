@@ -188,6 +188,7 @@ func _run() -> void:
 		quit(0)
 		return
 
+	_on_workers()
 	# On a bare floor, as BrickBench stands every build (ExactCheck.tips).
 	_assistant.floor_kind = func() -> String: return ModelFloor.NONE
 	for case: Array in CASES:
@@ -355,6 +356,31 @@ func _hinge() -> void:
 			"the app's tilting hinge at %d degrees: nothing said" % int(degrees),
 			"the app's tilting hinge at %d degrees: %s; %s" % [int(degrees),
 				report.get("summary", ""), "; ".join(PackedStringArray(said))])
+
+
+## A shape not read yet, asked on workers, is read there: one shape, the one
+## the main thread then has. A worker answered null for it, and the room
+## test of a section let go, checked on a worker, judged the pair by their
+## covers: 42024-1's small actuator kept 2.25 LDU short of where it was let
+## go, where a pin joiner's (62462) cover met a bent liftarm (6629) their
+## shapes are clear of (Grab 21).
+func _on_workers() -> void:
+	var parts: Array = ["62462", "6629"]
+	var unread: bool = not Exact.known(_library, parts[0]) and not Exact.known(_library, parts[1])
+	var got: Array = []
+	got.resize(4)
+	var tasks: Array[int] = []
+	for n: int in 4:
+		tasks.append(WorkerThreadPool.add_task(func() -> void:
+			got[n] = Exact.shape_for(_library, parts[n % 2])))
+	for task: int in tasks:
+		WorkerThreadPool.wait_for_task_completion(task)
+	var ok: bool = unread
+	for n: int in 4:
+		var shape: Exact.Shape = got[n]
+		ok = ok and shape != null and shape.has_pieces() and shape == Exact.shape_for(_library, parts[n % 2])
+	_say(ok, "shapes not read yet, asked on four workers at once: each read there, one shape a part",
+		"shapes asked on workers (not read before: %s): %s" % [unread, got])
 
 
 func _say(ok: bool, good: String, bad: String) -> void:

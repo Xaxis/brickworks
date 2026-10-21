@@ -15,6 +15,13 @@ whole cycle.
 
 ### Fixed
 
+- A part let go after a drag is kept where it was let go, every time.
+  The check of its way after the release runs beside the window, and there
+  a part whose real shape the drag had not looked at yet was judged by its
+  2 LDU cells, which reach past it: 42024-1's small actuator, drawn out to
+  its stop and let go, was still kept 2.25 LDU short of it about one time
+  in four, where a pin joiner's cells met a liftarm the joiner is clear of.
+  The check now reads each part's shape wherever it runs.
 - A steering column comes back where it began. 8448-1's steering wheel,
   turned 30° one way, 60° the other and back, left its column 0.2 LDU along
   its pinion's axle: a slide the loop did not need, and each step moved a

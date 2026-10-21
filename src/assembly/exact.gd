@@ -21,8 +21,8 @@
 ## hinge its other half, an axle its hole along a shared line.
 ##
 ## Everything here is plain arithmetic on packed arrays, so it runs on a
-## worker thread and in the browser alike. Shapes are loaded on the main
-## thread (shapes_for, or fetched on the web) and only read after.
+## worker thread and in the browser alike. Shapes are read from disk on any
+## thread (shape_for), and in a browser fetched on the main thread.
 class_name Exact
 extends RefCounted
 
@@ -169,12 +169,11 @@ class Item extends RefCounted:
 
 
 static var _next_id: int = 1
-## mesh hash -> Shape, or null where there is none. Filled on the main
-## thread only, and read on workers too: Bodies reads a big model's shapes
-## on one as it opens (GrabDrag) while the main thread reads others in, and
-## a Dictionary read while another thread adds to it can be read mid-way.
-## So it is read and filled under a lock, as Joints._lines is (racefix,
-## 2026-10-20).
+## mesh hash -> Shape, or null where there is none. Filled and read on
+## any thread: Bodies reads a big model's shapes on a worker as it opens
+## (GrabDrag) while the main thread reads others in, and a Dictionary read
+## while another thread adds to it can be read mid-way. So it is read and
+## filled under a lock, as Joints._lines is (racefix, 2026-10-20).
 static var _shapes: Dictionary = {}
 static var _shapes_lock := Mutex.new()
 ## Verdicts between two shapes at one relative pose: key -> [depth, piece a,
@@ -192,8 +191,12 @@ static func parse(bytes: PackedByteArray) -> Shape:
 	var connector_count: int = bytes.decode_u16(8)
 	var scale: float = bytes.decode_float(12)
 	var shape := Shape.new()
+	# Under the lock: shapes are read on workers too, and two given one id
+	# would share their verdicts.
+	_shapes_lock.lock()
 	shape.id = _next_id
 	_next_id += 1
+	_shapes_lock.unlock()
 	shape.lo = Vector3(bytes.decode_float(16), bytes.decode_float(20), bytes.decode_float(24))
 	shape.hi = Vector3(bytes.decode_float(28), bytes.decode_float(32), bytes.decode_float(36))
 	var at: int = 40
@@ -361,7 +364,12 @@ static func file_for(library: PartLibrary, part_id: String) -> String:
 
 ## A part's exact shape, read from disk the first time, or null where it has
 ## none (BrickNet does not have the part, or the build has no exact/ folder).
-## Main thread: it fills the cache.
+## Read on a worker too, but in a browser, whose shapes are fetched on the
+## main thread: null there until then. A worker that answered null for a
+## shape not yet read judged the pair by its covers where the main thread
+## judged it exactly. 42024-1's small actuator, let go at its stop and
+## checked on a worker, was kept 2.25 LDU short of it, where a pin
+## joiner's cover met a liftarm their shapes are clear of (Grab 21).
 static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	var info: PartLibrary.PartInfo = _shaped_as(library, part_id)
 	if info == null or info.mesh_hash.is_empty():
@@ -372,11 +380,12 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	_shapes_lock.unlock()
 	if known:
 		return kept
-	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+	var main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
+	if not main and OS.has_feature("web"):
 		return null
 	# Already asked for: a look in the browser's pack for a file that is not
 	# there costs a couple of milliseconds, each time.
-	if library.is_exact_on_its_way(info.id):
+	if main and library.is_exact_on_its_way(info.id):
 		return null
 	var path: String = file_for(library, info.id)
 	var shape: Shape = null
@@ -387,7 +396,12 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		library.request_exact(info.id)
 		return null
 	_shapes_lock.lock()
-	_shapes[info.mesh_hash] = shape
+	# Read by another thread meanwhile: one shape a part, as its id keys
+	# verdicts.
+	if _shapes.has(info.mesh_hash):
+		shape = _shapes[info.mesh_hash]
+	else:
+		_shapes[info.mesh_hash] = shape
 	_shapes_lock.unlock()
 	return shape
 
