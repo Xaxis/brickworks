@@ -2305,11 +2305,18 @@ harness as the two arms recorded for 2026-10-20, three at a time.
   smooth System bodies still won likeness 100%, surface 83%, overall 67%; the
   body's technique 67%. Three subjects is no measure: the bar is the 9 of
   proof.
-- *Next.* The body's shape, not its amount: panels flush on the frame with no
-  daylight under them (the technique's stand clear on posts, and were
-  copied), fairing pairs shaping the nose, bonnet and fenders at their angle,
-  bent liftarms drawing the outline; and the review reading a panel standing
-  clear of the frame. The z mirror in `style.py`'s boxes is its own fix.
+- **The technique was the flaw.** Drawn, "panelled beam frame" has its panels
+  on the posts two studs clear of the rails, and its fairings low at the
+  sides beside the wheels (`technique-panelled-beam-frame_corner.png` in the
+  arm's folder): the gap the judge read as "floating panels over the axles",
+  and all three sessions copied it. Its 11-stud rails leave five studs
+  between the wheels, so no 7-stud panel lies on them at rail level.
+- *Next.* The body's shape, not its amount: a technique drawn and looked at
+  before it ships, with panels flush on the frame and no daylight under them
+  (longer rails, or panels above mudguards), fairing pairs shaping the nose,
+  the bonnet and the fenders at their angle, bent liftarms drawing the
+  outline; and the review reading a panel standing clear of the frame. The z
+  mirror in `style.py`'s boxes is its own fix.
 
 Results: `bench/results/realset-2026-10-20-technic2/` (report-tune.md),
 `realset-2026-10-20-technic-vs-technic2/` and
