@@ -58,8 +58,6 @@ const GROW := 1.7
 const SMALL_SHARE := 0.3
 ## How much a pin, an axle, a clip or a hinge holds against a stud.
 const LINK := 2.0
-## Lattice cells shared across one stud joint (Stability.STUD_CELLS).
-const STUD_CELLS := Stability.STUD_CELLS
 ## How far clear of the rest a section broken out stands, in LDU: two studs
 ## to the side, two bricks above.
 const CLEAR_SIDE := 40.0
@@ -1372,38 +1370,49 @@ func find_section(asked: String) -> String:
 
 ## What holds [param ids] to the rest of the model: {"on": rest id -> studs
 ## it stands on, "carries": rest id -> studs standing on it, "links": rest
-## id -> pins, axles, clips and hinges, "studs", "joints", "at": where they
-## are, on average}.
+## id -> pins, axles, clips and hinges, "studs", "pins"}. The studs are read
+## as the suggestion reads them (Stability.stud_joints), over the section and
+## every part beside it: two parts whose covers overlap, a pin in a beam or
+## two turned plates side by side, are not stood on each other, and a stud
+## pointing sideways holds what is on it: the part with the studs carries.
 func joins(ids: Dictionary) -> Dictionary:
 	var lattice: BrickLattice = builder.lattice
+	var bricks: Array = []
+	var beside: Dictionary = {}
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var bound: PackedInt32Array = BrickLattice._bound_of(lattice.boxes_of(brick_id))
+		if brick == null or bound.is_empty():
+			continue
+		bricks.append(brick)
+		for n: int in 3:
+			bound[n] -= 1
+			bound[n + 3] += 1
+		for other: int in lattice.near_bounds(bound, brick_id):
+			if not ids.has(other) and not scenery.has(other):
+				beside[other] = true
+	for other: int in beside:
+		var brick: BrickWorld.Brick = world.get_brick(other)
+		if brick != null:
+			bricks.append(brick)
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = lattice
+	var joints: Dictionary = Stability.stud_joints(judge.contacts(bricks), library, lattice)
+	var under: Dictionary = joints["under"]
 	var on: Dictionary = {}
 	var carries: Dictionary = {}
-	var where := Vector3.ZERO
-	var count: int = 0
-	for brick_id: int in ids:
-		var mine: PackedInt32Array = lattice.boxes_of(brick_id)
-		if mine.is_empty():
-			continue
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		for way: int in [1, -1]:
-			var moved: PackedInt32Array = BrickLattice.moved_by(mine, Vector3i(0, way, 0))
-			for other: int in lattice.near_bounds(moved, brick_id):
-				if ids.has(other) or scenery.has(other):
-					continue
-				var shared: int = BrickLattice.shared_cells(moved, lattice.boxes_of(other))
-				if shared <= 0:
-					continue
-				var into: Dictionary = carries if way == 1 else on
-				into[other] = int(into.get(other, 0)) + shared
-				var them: BrickWorld.Brick = world.get_brick(other)
-				if brick != null and them != null:
-					where += (brick.transform.origin + them.transform.origin) * 0.5
-					count += 1
 	var studs: int = 0
-	for side: Dictionary in [on, carries]:
-		for other: int in side:
-			side[other] = maxi(1, roundi(float(side[other]) / STUD_CELLS))
-			studs += int(side[other])
+	for key: int in joints["studs"]:
+		var one: int = key >> 32
+		var other: int = key & 0xFFFFFFFF
+		if ids.has(one) == ids.has(other):
+			continue
+		var theirs: int = other if ids.has(one) else one
+		var count: int = int(joints["studs"][key])
+		var into: Dictionary = carries if ids.has(int(under[key])) else on
+		into[theirs] = int(into.get(theirs, 0)) + count
+		studs += count
 	# Pins, axles and clips, between it and what is near it.
 	var box: AABB = bounds_of(ids.keys()).grow(BrickLattice.STUD)
 	var near: Array = []
@@ -1431,14 +1440,8 @@ func joins(ids: Dictionary) -> Dictionary:
 				seen[key] = true
 				var theirs: int = b if ids.has(a) else a
 				links[theirs] = int(links.get(theirs, 0)) + 1
-				var x: BrickWorld.Brick = world.get_brick(a)
-				var y: BrickWorld.Brick = world.get_brick(b)
-				if x != null and y != null:
-					where += (x.transform.origin + y.transform.origin) * 0.5
-					count += 1
 	return {"on": on, "carries": carries, "links": links, "studs": studs,
-		"joints": studs + seen.size(), "pins": seen.size(),
-		"at": where / count if count > 0 else Vector3.INF}
+		"pins": seen.size()}
 
 
 ## The way [param ids] come off the model (a unit vector on an axis).

@@ -75,7 +75,7 @@ const TIPPING_MARGIN := 0.5
 const SLENDERNESS_LIMIT := 6.0
 
 ## Boxes on both sides of a joint from which they are compared slice by
-## slice rather than box by box ([method BrickLattice.shared_cells_sliced]).
+## slice rather than box by box ([method BrickLattice.shared_lifted]).
 ## Below it the plain comparison is fewer steps.
 const SLICED_FROM := 8
 
@@ -137,7 +137,6 @@ func check(world: BrickWorld) -> Report:
 	if stopped:
 		return null
 	var above: Dictionary = graph["above"]
-	var below: Dictionary = graph["below"]
 	var boxes_of: Dictionary = graph["boxes"]
 
 	# Push the load downward, sharing it among supporters.
@@ -150,52 +149,51 @@ func check(world: BrickWorld) -> Report:
 	# twenty-six failing joints in a wall that stands up perfectly well.
 	#
 	# A brick's load is its own mass plus whatever is handed down to it,
-	# and it hands that on to the bricks beneath in proportion to how
-	# much of it each one carries. One pass from the top down is enough
-	# because a support graph only ever points downward.
+	# and it hands that on to the bricks beneath in proportion to the studs
+	# between them. One pass from the top down is enough because a support
+	# graph only ever points downward.
 	var order: Array = bricks.duplicate()
 	order.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
 		return a.transform.origin.y > b.transform.origin.y)
+	# Who carries whom is read as Balance and Sections read it. The lift's
+	# own cells read two parts whose covers overlap as each resting on the
+	# other: a pin in a beam, a cone on an antenna, two turned plates side by
+	# side each carried the other, on studs that are not there.
+	var carriers: Dictionary = _carriers(order, stud_joints(graph, library, lattice))
+	if stopped:
+		return null
 
 	var received: Dictionary = {}       ## id -> grams handed down
-	var load_centre: Dictionary = {}    ## id -> grams-weighted position
+	var on_studs: Dictionary = {}       ## id -> grams of that through its studs
+	var holding: Dictionary = {}        ## id -> the studs those stand on
 
 	for item: Variant in order:
 		var brick: BrickWorld.Brick = item
-		var own: float = mass.get(brick.id, 0.0)
-		var carried: float = own + float(received.get(brick.id, 0.0))
-		var centre: Vector3 = _middle(brick) * own
-		if load_centre.has(brick.id):
-			centre += load_centre[brick.id]
-
-		var supporters: Dictionary = below.get(brick.id, {})
+		var supporters: Dictionary = carriers.get(brick.id, {})
 		if supporters.is_empty():
 			continue
-		var total_contact: float = 0.0
+		var carried: float = mass.get(brick.id, 0.0) + float(received.get(brick.id, 0.0))
+		var total: float = 0.0
 		for supporter_id: int in supporters:
-			total_contact += float(supporters[supporter_id])
-		if total_contact <= 0.0:
-			continue
+			total += maxf(1.0, float(supporters[supporter_id]))
 		for supporter_id: int in supporters:
-			var share: float = float(supporters[supporter_id]) / total_contact
-			received[supporter_id] = float(
-				received.get(supporter_id, 0.0)) + carried * share
-			load_centre[supporter_id] = (
-				load_centre.get(supporter_id, Vector3.ZERO) + centre * share)
+			var studs: int = supporters[supporter_id]
+			var handed: float = carried * maxf(1.0, float(studs)) / total
+			received[supporter_id] = float(received.get(supporter_id, 0.0)) + handed
+			if studs > 0:
+				on_studs[supporter_id] = float(on_studs.get(supporter_id, 0.0)) + handed
+				holding[supporter_id] = int(holding.get(supporter_id, 0)) + studs
 
 	for item: Variant in bricks:
 		if stopped:
 			return null
 		var brick: BrickWorld.Brick = item
-		if not above.has(brick.id):
-			continue
-		report.joints += 1
-		var grams: float = float(received.get(brick.id, 0.0))
+		if above.has(brick.id):
+			report.joints += 1
+		var grams: float = float(on_studs.get(brick.id, 0.0))
 		if grams <= 0.0:
 			continue
-		var centre: Vector3 = load_centre.get(brick.id, Vector3.ZERO) / grams
-
-		var risk: Risk = _assess(brick, grams, centre, above)
+		var risk: Risk = _assess(brick, grams, int(holding[brick.id]))
 		if risk != null:
 			report.risks.append(risk)
 
@@ -249,10 +247,11 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 
 
 ## Who rests on whom, as the lattice has it: {"above": id -> {id of each
-## brick resting on it: cells shared}, "below": the same the other way
-## round, "boxes": id -> the boxes it occupies, "bricks": [param bricks]}.
-## What [method check] weighs; the stud joints Balance cuts are read from it
-## by [method stud_joints].
+## brick resting on it: cells shared}, "boxes": id -> the boxes it
+## occupies, "bricks": [param bricks], "overlap": [method pair_of] -> the
+## cells the two share as they stand, for each pair "above" has that share
+## any}. The stud joints [method check] weighs and Balance cuts are read
+## from it by [method stud_joints].
 func contacts(bricks: Array) -> Dictionary:
 	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
 	# Who rests on whom. A brick supports another when one of its cells
@@ -273,7 +272,7 @@ func contacts(bricks: Array) -> Dictionary:
 	# product, rather than a lookup per cell. Verified against the
 	# cell-by-cell count on seven real pairs of parts: identical.
 	var above: Dictionary = {}         ## id -> { id: shared cell count }
-	var below: Dictionary = {}
+	var overlap: Dictionary = {}       ## pair_of -> cells shared as they stand
 	for item: Variant in bricks:
 		if stopped:
 			break
@@ -289,29 +288,28 @@ func contacts(bricks: Array) -> Dictionary:
 		# count being the test. Asking the lattice which ones touch first
 		# compared the same boxes twice: on Orthanc that was 3.9 s, and
 		# counting box against box 6.5 s more.
-		var slices: Array = BrickLattice.slices_of(lid) \
-			if lid.size() >= SLICED_FROM * 6 else []
+		var slices: Array = BrickLattice.slices_of(mine) \
+			if mine.size() >= SLICED_FROM * 6 else []
 		for over: int in lattice.near_bounds(lid, brick.id):
 			# Skipping pairs whose boxes already overlap was tried, on
 			# the theory that a part inside another is not resting on
 			# it. It is wrong, and measurably: a stud belongs to the
 			# brick below and reaches into the brick above, so nearly
 			# every real joint overlaps. The kart went from 42 joints to
-			# 14 and the car from 53 to 44.
+			# 14 and the car from 53 to 44. What the two share as they
+			# stand is counted in the same pass, for stud_joints.
 			var theirs: PackedInt32Array = lattice.boxes_of(over)
-			var shared: int = BrickLattice.shared_cells_sliced(lid, slices, theirs) \
-				if not slices.is_empty() and theirs.size() >= SLICED_FROM * 6 \
-				else BrickLattice.shared_cells(lid, theirs)
-			if shared <= 0:
+			var shared: Vector2i = BrickLattice.shared_lifted(mine,
+				slices if theirs.size() >= SLICED_FROM * 6 else [], theirs)
+			if shared.x <= 0:
 				continue
 			if not above.has(brick.id):
 				above[brick.id] = {}
-			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared
-			if not below.has(over):
-				below[over] = {}
-			below[over][brick.id] = int(below[over].get(brick.id, 0)) + shared
+			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared.x
+			if shared.y > 0:
+				overlap[pair_of(brick.id, over)] = shared.y
 
-	return {"above": above, "below": below, "boxes": boxes_of, "bricks": bricks}
+	return {"above": above, "boxes": boxes_of, "bricks": bricks, "overlap": overlap}
 
 
 ## Lattice cells shared across one stud joint, as [method contacts] counts
@@ -343,7 +341,9 @@ static func pair_of(a: int, b: int) -> int:
 ## overlap as each resting on the other: 10179-1's 2 x 3 plates on edge,
 ## held by nothing between them, were joined by 6 studs, and a stud
 ## pointing sideways never shows in a lift (2026-10-20). So a pair rests on
-## the cells the lift reaches that the two did not already share, and each
+## the cells the lift reaches that the two did not already share
+## ([method contacts]' "overlap", counted in the same pass: counted here
+## afterwards, it was 0.7-1.4 s on 1,000-2,000-part Technic sets), and each
 ## stud whose tip is in another part joins them (Joints.studs_in), whichever
 ## way it points; a pair has whichever count is more.
 static func stud_joints(contacts: Dictionary, library: PartLibrary,
@@ -352,13 +352,11 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		return contacts["joints"]
 	var boxes: Dictionary = contacts["boxes"]
 	var above: Dictionary = contacts["above"]
+	var overlap: Dictionary = contacts["overlap"]
 	var studs: Dictionary = {}
 	var under: Dictionary = {}
 	var sideways: Dictionary = {}
 	var seated: Dictionary = {}
-	var bounds: Dictionary = {}
-	var slices: Dictionary = {}
-	var already: Dictionary = {}
 	for low: Variant in above:
 		if not boxes.has(int(low)):
 			continue
@@ -367,9 +365,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			if int(high) == int(low) or not boxes.has(int(high)):
 				continue
 			var key: int = pair_of(int(low), int(high))
-			if not already.has(key):
-				already[key] = _shared(int(low), int(high), boxes, bounds, slices)
-			var resting: int = int(row[high]) - int(already[key])
+			var resting: int = int(row[high]) - int(overlap.get(key, 0))
 			if resting <= 0:
 				seated[key] = true
 				continue
@@ -409,46 +405,39 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	return out
 
 
-## The cells the covers of [param a] and [param b] share ([param boxes], from
-## [method contacts]), for [method stud_joints]: none where their bounds only
-## touch, and the bigger sliced. [param bounds] and [param slices] keep what
-## was worked out, by id.
-static func _shared(a: int, b: int, boxes: Dictionary, bounds: Dictionary,
-		slices: Dictionary) -> int:
-	for id: int in [a, b]:
-		if not bounds.has(id):
-			bounds[id] = BrickLattice._bound_of(boxes.get(id, PackedInt32Array()))
-	var one: PackedInt32Array = bounds[a]
-	var other: PackedInt32Array = bounds[b]
-	if one.is_empty() or other.is_empty() or one[0] >= other[3] or other[0] >= one[3] \
-			or one[1] >= other[4] or other[1] >= one[4] or one[2] >= other[5] \
-			or other[2] >= one[5]:
-		return 0
-	var big: int = a
-	var small: int = b
-	if (boxes[b] as PackedInt32Array).size() > (boxes[a] as PackedInt32Array).size():
-		big = b
-		small = a
-	if (boxes[big] as PackedInt32Array).size() < SLICED_FROM * 6:
-		return BrickLattice.shared_cells(boxes[big], boxes[small])
-	if not slices.has(big):
-		slices[big] = BrickLattice.slices_of(boxes[big])
-	return BrickLattice.shared_cells_sliced(boxes[big], slices[big], boxes[small])
+## Who hands its weight to whom, from [param joints] ([method
+## stud_joints]): id -> {the id of each part carrying it: the studs between
+## them, 0 for a part seated in it}. A stud joint whose studs point up is
+## carried by the part with the studs. One whose studs point sideways or
+## down, and a part seated in another, is carried by whichever of the two
+## comes later in [param order], the weighing's top-down order.
+static func _carriers(order: Array, joints: Dictionary) -> Dictionary:
+	var rank: Dictionary = {}
+	for n: int in order.size():
+		rank[(order[n] as BrickWorld.Brick).id] = n
+	var out: Dictionary = {}
+	var studs: Dictionary = joints["studs"]
+	var under: Dictionary = joints["under"]
+	var sideways: Dictionary = joints["sideways"]
+	for by_studs: bool in [true, false]:
+		for key: int in (studs if by_studs else joints["seated"]):
+			var one: int = key >> 32
+			var other: int = key & 0xFFFFFFFF
+			if not rank.has(one) or not rank.has(other):
+				continue
+			var low: int = one if int(rank[one]) > int(rank[other]) else other
+			if by_studs and not sideways.has(key):
+				low = int(under[key])
+			var high: int = other if low == one else one
+			if not out.has(high):
+				out[high] = {}
+			out[high][low] = int(studs.get(key, 0))
+	return out
 
 
-func _assess(
-	brick: BrickWorld.Brick, grams: float, centre: Vector3,
-	above: Dictionary
-) -> Risk:
-	# The joint's strength is the number of stud-sized columns shared
-	# with what sits directly on it.
-	var columns: int = 0
-	for other_id: int in above.get(brick.id, {}):
-		columns += int(above[brick.id][other_id])
-	# Cells are 2 LDU and a stud is 20, so a stud's footprint is 100
-	# cells in plan; the count above is per cell, over one layer.
-	var studs: int = maxi(1, int(round(float(columns) / 100.0)))
-
+## Whether [param brick]'s stud joints hold the [param grams] handed down
+## to it through them: [param studs], the studs what is on it stands on.
+func _assess(brick: BrickWorld.Brick, grams: float, studs: int) -> Risk:
 	var holds: float = studs * GRAMS_PER_STUD
 	if grams > holds:
 		var risk := Risk.new()

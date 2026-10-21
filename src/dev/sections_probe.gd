@@ -162,7 +162,7 @@ func _apart_only_unheld(ids: PackedInt64Array, held: Dictionary) -> bool:
 
 
 ## The cells Stability.contacts shares across one stud: a 2 x 4 brick on
-## another is eight studs (Sections.STUD_CELLS).
+## another is eight studs (Stability.STUD_CELLS).
 func _stud_cells() -> void:
 	_main.call("clear_model")
 	await process_frame

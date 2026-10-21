@@ -231,8 +231,8 @@ func _a_tall_model_costs_no_more(library: PartLibrary) -> void:
 ## hundred for a big turned plate, and counting what two of them share box
 ## against box was 10.4 s of Orthanc's 11 s check (8,785 parts, 5,345 of
 ## them turned; run 18), four times building it. The covers are compared
-## slice by slice now (BrickLattice.shared_cells_sliced), which must count
-## exactly what box against box counts.
+## slice by slice now (BrickLattice.shared_lifted), which must count
+## exactly what box against box counts, lifted and as they stand.
 func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 	var ldr: LdrModel = LdrModel.load_file("res://models/orthanc.ldr")
 	if ldr == null:
@@ -261,29 +261,36 @@ func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 	var built: int = maxi(1, Time.get_ticks_usec() - began)
 	var lattice: BrickLattice = builder.lattice
 	# Slice by slice against box by box, on every joint of the first
-	# thousand turned parts.
+	# thousand turned parts: lifted, and as they stand (the cells two parts
+	# already share, which Stability.stud_joints takes off what rests).
 	var pairs: int = 0
 	var wrong: int = 0
 	var turned: int = 0
+	var overlapping: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
 		if turned >= 1000 or BrickLattice.is_square_to_grid(brick.transform.basis):
 			continue
 		turned += 1
-		var lid: PackedInt32Array = BrickLattice.moved_by(
-			lattice.boxes_of(brick.id), Vector3i(0, 1, 0))
-		var slices: Array = BrickLattice.slices_of(lid)
+		var mine: PackedInt32Array = lattice.boxes_of(brick.id)
+		var lid: PackedInt32Array = BrickLattice.moved_by(mine, Vector3i(0, 1, 0))
+		var slices: Array = BrickLattice.slices_of(mine)
 		for over: int in lattice.near_bounds(lid, brick.id):
 			var theirs: PackedInt32Array = lattice.boxes_of(over)
 			pairs += 1
-			if BrickLattice.shared_cells_sliced(lid, slices, theirs) \
-					!= BrickLattice.shared_cells(lid, theirs):
+			var counted := Vector2i(BrickLattice.shared_cells(lid, theirs),
+				BrickLattice.shared_cells(mine, theirs))
+			if counted.y > 0:
+				overlapping += 1
+			if BrickLattice.shared_lifted(mine, slices, theirs) != counted \
+					or BrickLattice.shared_lifted(mine, [], theirs) != counted:
 				wrong += 1
-	if wrong == 0 and pairs > 1000:
-		print("  ok    sliced and box by box count the same on %d pairs of Orthanc's turned parts"
-			% pairs)
+	if wrong == 0 and pairs > 1000 and overlapping > 100:
+		print("  ok    sliced and box by box count the same on %d pairs of Orthanc's turned parts, %d of them overlapping"
+			% [pairs, overlapping])
 	else:
 		_failures += 1
-		print("  FAIL  sliced and box by box differ on %d of %d pairs" % [wrong, pairs])
+		print("  FAIL  sliced and box by box differ on %d of %d pairs (%d overlapping)"
+			% [wrong, pairs, overlapping])
 	began = Time.get_ticks_usec()
 	var judge := Stability.new()
 	judge.library = library
