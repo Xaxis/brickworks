@@ -423,9 +423,19 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	# container is a copy, and appending to it kept nothing.
 	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
 	if lattice != null:
+		# A part in an overlapped pair is where covers overlap, so its tip's
+		# cell has every owner read, and the part it is in is chosen once
+		# the stud's way is known.
 		for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
-				var at: int = lattice.brick_at(BrickLattice.to_cell(tip))
-				return at if at != int(key) and boxes.has(at) else null):
+				var cell: Vector3i = BrickLattice.to_cell(tip)
+				if not unsure.has(int(key)):
+					var at: int = lattice.brick_at(cell)
+					return at if at != int(key) and boxes.has(at) else null
+				return _owners(lattice, cell, int(key), boxes)):
+			if stud[1] is Array:
+				stud[1] = _stud_in(stud[1], stud[2], stud[3], int(stud[0]), contacts, library, lattice)
+				if stud[1] == null:
+					continue
 			var by := Vector2i(int(stud[0]), int(stud[1]))
 			if not tips.has(by):
 				tips[by] = [[], stud[3]]
@@ -446,6 +456,81 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
 		"seated": seated, "overlapped": overlapped}
 	contacts[kept] = out
+	return out
+
+
+## A stud's radius, LDU: 4.8 mm across.
+const STUD_RADIUS := 6.0
+
+
+## The parts of [param boxes] but [param own] whose covers have [param cell].
+static func _owners(lattice: BrickLattice, cell: Vector3i, own: int,
+		boxes: Dictionary) -> Array:
+	var out: Array = []
+	for id: int in lattice.bricks_at(cell, own):
+		if boxes.has(id):
+			out.append(id)
+	return out
+
+
+## Which of [param owners], the parts whose covers have the cell past a
+## stud's tip, the stud standing at [param foot] and pointing [param way] is
+## in. Where covers overlap the cell is in more than one, and the part the
+## stud holds is the one sitting on its foot, its underside there and the
+## stud pointing up into it: not a turned neighbour whose cover reaches past
+## its plastic, as 1793-1's corner panel reaches round the plates on its
+## hinge. Failing that, the first, as [method BrickLattice.brick_at] names
+## it but for the stud's own part. And where the tip is in none, the stud is
+## in a hollow the cover leaves open, a round brick's or a cone's underside:
+## the part round it there ([method _round_the_stud]). Null for none. Its
+## parts by id are kept in [param contacts] the first time they are asked.
+static func _stud_in(owners: Array, foot: Vector3, way: Vector3, own: int,
+		contacts: Dictionary, library: PartLibrary, lattice: BrickLattice) -> Variant:
+	if owners.is_empty():
+		owners = _round_the_stud(lattice, foot + way * Joints.STUD_REACH, way, own,
+			contacts["boxes"])
+	if owners.size() < 2:
+		return owners[0] if not owners.is_empty() else null
+	if not contacts.has("by id"):
+		var by_id: Dictionary = {}
+		for brick: BrickWorld.Brick in contacts.get("bricks", []):
+			by_id[brick.id] = brick
+		contacts["by id"] = by_id
+	var best: Variant = owners[0]
+	var nearest: float = BrickLattice.CELL
+	for id: Variant in owners:
+		var brick: BrickWorld.Brick = (contacts["by id"] as Dictionary).get(id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var back: Transform3D = brick.transform.affine_inverse()
+		if (back.basis * way).normalized().y < 0.9:
+			continue
+		var gap: float = absf((back * foot).y - mesh.bounds.position.y)
+		if gap < nearest:
+			nearest = gap
+			best = id
+	return best
+
+
+## The parts of [param boxes] but [param own] round a stud's [param tip] on
+## five of six sides, half a cell past its radius.
+static func _round_the_stud(lattice: BrickLattice, tip: Vector3, way: Vector3, own: int,
+		boxes: Dictionary) -> Array:
+	var across: Vector3 = way.cross(Vector3.UP if absf(way.y) < 0.9 else Vector3.RIGHT).normalized()
+	var other: Vector3 = way.cross(across).normalized()
+	var sides: Dictionary = {}         ## id -> sides it is on
+	for n: int in 6:
+		var turn: float = TAU * float(n) / 6.0
+		var point: Vector3 = tip + (across * cos(turn) + other * sin(turn)) * (STUD_RADIUS + 1.5)
+		for id: int in _owners(lattice, BrickLattice.to_cell(point), own, boxes):
+			sides[id] = int(sides.get(id, 0)) + 1
+		if n == 1 and sides.is_empty():
+			return []
+	var out: Array = []
+	for id: int in sides:
+		if int(sides[id]) >= 5:
+			out.append(id)
 	return out
 
 

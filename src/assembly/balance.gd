@@ -599,12 +599,14 @@ func _join(joints: Dictionary, links: Array) -> void:
 		(_adjacent[a] as Array).append(e)
 		(_adjacent[b] as Array).append(e)
 	var under: Dictionary = joints["under"]
+	var overlapped: Dictionary = joints["overlapped"]
 	for key: int in joints["studs"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if _index_of.has(one) and _index_of.has(other):
-			add.call(int(_index_of[one]), int(_index_of[other]), true,
-				int(_index_of[int(under[key])]))
+			var by_studs: bool = not overlapped.has(key)
+			add.call(int(_index_of[one]), int(_index_of[other]), by_studs,
+				int(_index_of[int(under[key])]) if by_studs else -1)
 	for key: int in joints["seated"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
