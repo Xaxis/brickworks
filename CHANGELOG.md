@@ -495,6 +495,13 @@ whole cycle.
   kept in the file. One that arrives later is put down. Saving one of your
   own models while a part was still on its way left the part out of the
   file; it is kept where it was.
+- A model with a part that has not arrived, or never does, is kept as you
+  work on it, as any model is. Until now nothing done to it was kept: once
+  one part failed to load, closing the tab or a crash lost everything since
+  the model opened. It comes back with every part, the missing one put down
+  when it arrives. A model of your own with a part this version does not
+  know also keeps that part now, where Save and the working copy used to
+  drop it once you had changed the model.
 - Part names with an accent, a degree sign or another script read as LDraw
   writes them, and searching finds them: "Théoden", "Curve 90°", "Å", "忍者",
   where the parts panel and Claude read "ThÃ©oden" and "90Â°", and "Å" was

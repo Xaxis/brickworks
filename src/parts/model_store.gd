@@ -155,13 +155,10 @@ func touch() -> void:
 		emptied = false
 
 
-## The model on screen is now what somebody meant it to be, whatever it
-## was missing when it opened. Called when they place, remove or change
-## a brick: after that the autosave is saving their work rather than
-## overwriting their file with a worse copy of it.
+## The model on screen is now what somebody meant it to be. Called when
+## they place, remove or change a brick: their own edit taking the last
+## part off is them emptying it ([member emptied]).
 func adopt() -> void:
-	whole = true
-	# Their own edit took the last part off.
 	if world != null and _is_empty():
 		emptied = true
 
@@ -233,16 +230,14 @@ func tick() -> void:
 	if Time.get_ticks_msec() - _dirty_at < AUTOSAVE_DELAY_MS:
 		return
 	_pending = false
-	# Never over a model that did not open whole.
-	#
-	# On the web most geometry is fetched rather than shipped, so a
-	# model can open missing the parts that had not arrived yet. Writing
-	# that back over the file it came from turns a few seconds of
-	# network into a permanent deletion — and the autosave fires a
-	# second after the open, which is exactly when the fetches are still
-	# in flight.
-	if not whole:
-		return
+	# A model short of parts is written too, and loses none of them: what
+	# has not arrived, could not be fetched or is not in the catalogue goes
+	# out where the file had it (_text_into). On the web most geometry is
+	# fetched rather than shipped, and the autosave fires a second after the
+	# open, while the fetches are in flight. Writing the model without them
+	# turned a few seconds of network into a permanent deletion, so until
+	# 2026-10-20 a model short of a part was not written at all: one part
+	# that never came, and nothing done after was kept.
 	# A small model in one go, as before; a big one over frames.
 	if world.brick_count() - scenery.size() < PACED_FROM:
 		_write(autosave(), title)
@@ -295,7 +290,7 @@ func write_now() -> String:
 	_hear()
 	# One being made a slice at a time is not written yet: written now, and
 	# the one going let go.
-	if (_pending or _autosaving) and whole:
+	if _pending or _autosaving:
 		_pending = false
 		_autosaving = false
 		_autosaves += 1
@@ -409,8 +404,6 @@ func save_as(name: String) -> bool:
 		return false
 	if _write(SAVE_DIR + clean + ".ldr", name, true):
 		title = name
-		# Saved by them is theirs, whatever it opened short of.
-		whole = true
 		example = false
 		saved.emit(name)
 		return true
@@ -526,8 +519,7 @@ func begin(name: String) -> void:
 ## [method begin] under [param named] as it is.
 func _begin_as(named: String) -> void:
 	title = named
-	# Nothing in it is missing, so the autosave may keep it — empty too.
-	whole = true
+	# Begun empty by the person: the autosave may keep it so.
 	emptied = true
 	example = false
 	# New work is not the model that was shared: publishing it must not
@@ -871,10 +863,10 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	# Someone else's file is kept, so a save writes back what nobody changed
 	# as it was (SourceFile); the app's own are written whole, as always.
 	# Made before the model is stood on the ground: the file's coordinates.
+	var absent: Array = flattened.filter(func(p: LdrModel.Placement) -> bool:
+		return not library.parts.has(p.part_id))
 	var source: SourceFile = SourceFile.make(text, model, known, mirrored_lines, authored,
-		flattened.filter(func(p: LdrModel.Placement) -> bool:
-			return not library.parts.has(p.part_id))) \
-		if model.author.strip_edges() != "Brickworks" else null
+		absent) if model.author.strip_edges() != "Brickworks" else null
 	_phase("source")
 
 	world.clear()
@@ -889,8 +881,9 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	# What the file holds that is not on the baseplate: kept in it, and said.
 	unshown = missing.duplicate()
 	if source != null and not missing.is_empty():
-		unshown = source.unshown(flattened.filter(func(p: LdrModel.Placement) -> bool:
-			return not library.parts.has(p.part_id)))
+		unshown = source.unshown(absent)
+	# The app's own file carries them itself (_text_into).
+	_absent = absent if source == null else []
 
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
@@ -951,8 +944,6 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 			asked[placement.part_id] = true
 			library.request_mesh(placement.part_id, true)
 
-	_missing_at_open = missing.size()
-	whole = missing.is_empty() and awaited.is_empty()
 	# A model from a file: nobody emptied the baseplate.
 	emptied = false
 	title = _title_of(model, name)
@@ -1196,7 +1187,12 @@ static func title_meta_in(text: String) -> String:
 ## brick, and New said the model had changed. Main opens through here now.
 var awaited: Array[LdrModel.Placement] = []
 var _awaited_in: int = -1
-var _missing_at_open: int = 0
+## Placements of the app's own file whose part the catalogue has not got
+## (a newer build's, say), in the file's coordinates: written back where it
+## had them, as [member awaited] are. Someone else's file keeps its own
+## (SourceFile). Until 2026-10-20 they went from the app's own: a save, or an
+## autosave once the model was edited, wrote it without them.
+var _absent: Array = []
 ## Whether [method not_coming] has said this model's count.
 var _told_not_coming: bool = false
 
@@ -1244,7 +1240,6 @@ func place_awaited(part_id: String) -> int:
 	awaited = still
 	if awaited.is_empty():
 		_settle()
-	whole = awaited.is_empty() and _missing_at_open == 0
 	return landed
 
 
@@ -1376,15 +1371,6 @@ func lowest_of(pairs: Array) -> float:
 	return lowest
 
 
-## Whether the model on screen is the whole of what was opened.
-##
-## False when parts were missing or still arriving. The autosave checks
-## it: writing a model that is missing bricks over the file those bricks
-## came from is how a temporary failure to fetch becomes a permanent
-## loss.
-var whole: bool = true
-
-
 ## The model as LDraw text, for export or for handing to something else.
 ## The model as an .ldr file.
 ##
@@ -1495,13 +1481,22 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		var entry: Dictionary = instances[path]
 		entry["frame"] = back * (entry["frame"] as Transform3D)
 	# What has not arrived, or could not be fetched, goes out last, where the
-	# file had it. Someone else's file carries it below (carried_into); the
-	# app's own was saved without it: a model saved on a phone that lost a
-	# part's fetch lost the part (fetch_retry_probe, 2026-10-20).
+	# file had it, and so does what the catalogue has not got. Someone else's
+	# file carries them below (carried_into); the app's own was saved without
+	# them: a model saved on a phone that lost a part's fetch lost the part
+	# (fetch_retry_probe, 2026-10-20).
 	if _live_source() == null and world.generation() == _awaited_in:
+		# Awaited parts were stood on the ground with the rest; the absent are
+		# as the file had them.
+		var held_at: Array = []
 		for waiting: LdrModel.Placement in awaited:
+			held_at.append([waiting, back * waiting.transform])
+		for absent: LdrModel.Placement in _absent:
+			held_at.append([absent, absent.transform])
+		for pair: Array in held_at:
+			var waiting: LdrModel.Placement = pair[0]
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
-				back * waiting.transform, waiting.step)
+				pair[1], waiting.step)
 			held.group = waiting.group
 			# In its sub-model where the file still has it; loose otherwise,
 			# which a tree writes rather than leaving it out.
@@ -1664,7 +1659,6 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 		return false
 	if _write(SAVE_DIR + clean + ".ldr", name, true, text):
 		title = name
-		whole = true
 		example = false
 		saved.emit(name)
 		return true

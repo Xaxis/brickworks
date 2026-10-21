@@ -19,7 +19,10 @@
 // Then a two-part model whose second part no pack carries (--part, 6020) is
 // opened with every part's geometry answered 404: asked once, not again, and
 // the status bar says once "1 brick — 1 part could not be loaded, and is kept
-// in the file". Pictures of each in OUT.
+// in the file". The tab is reloaded once the autosave has had its time, the
+// part still answered 404: the same model comes back, the part still awaited
+// and said again. Until 2026-10-20 nothing of a model short of a part was
+// autosaved, so the reload brought back the crane. Pictures of each in OUT.
 import { launch, START_MS } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -83,8 +86,10 @@ page.on("console", (m) => {
 });
 
 // What each part's geometry is answered with: "pass" until the app is up, then
-// "flaky" (cut, 503, through) for the crane, then "absent" (404).
+// "flaky" (cut, 503, through) for the crane, then "absent" (404), then "rare"
+// (404 for the rare part's alone).
 let mode = "pass";
+let rareAt = "";
 const asks = new Map();      // url -> times asked since failing began
 const answered = new Map();  // url -> what each ask was given
 // The headers a cross-origin bucket's answer carries, so a 503 or a 404 is
@@ -92,10 +97,11 @@ const answered = new Map();  // url -> what each ask was given
 const open = { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" };
 await context.route(/\.lbm(\?|$)/, async (route) => {
   const at = route.request().url();
-  if (mode === "pass") return route.continue();
+  if (mode === "pass" || mode === "rare" && at !== rareAt) return route.continue();
   const n = (asks.get(at) || 0) + 1;
   asks.set(at, n);
-  const given = mode === "absent" ? "404" : n === 1 ? "cut" : n === 2 ? "503" : "part";
+  const given = mode === "absent" || mode === "rare" ? "404"
+    : n === 1 ? "cut" : n === 2 ? "503" : "part";
   answered.set(at, [...(answered.get(at) || []), given]);
   if (given === "cut") return route.abort("connectionreset");
   if (given === "503") return route.fulfill({ status: 503, headers: open, body: "" });
@@ -211,6 +217,30 @@ try {
     && notLoaded()[0] === "1 brick — 1 part could not be loaded, and is kept in the file",
     `the bar said it once: ${JSON.stringify(notLoaded())}; ${now.bricks} brick(s) down`);
   await shot("rare_part.png");
+
+  // Reloaded once the autosave has had its time (2.5 s after the change, then
+  // stored): the same model, the rare part still awaited, asked again, said.
+  mode = "rare";
+  rareAt = absent.length > 0 ? absent[0][0] : "";
+  await page.waitForTimeout(8000);
+  asks.clear();
+  answered.clear();
+  said.length = 0;
+  last = "";
+  await page.reload({ waitUntil: "domcontentloaded", timeout: START_MS });
+  check(Boolean(await where("open", 400)), "the tab reloaded");
+  const again = await until(() => notLoaded().length > 0, 180);
+  await until(() => false, 4);
+  const back = await state();
+  const asked = [...answered.entries()];
+  check(Boolean(again) && back.bricks === 1 && back.awaited === 1 && notLoaded().length === 1
+    && notLoaded()[0] === "1 brick — 1 part could not be loaded, and is kept in the file",
+    `the reload brought back the model short of ${rare}: ${back.bricks} brick(s) down, `
+    + `${back.awaited} awaited, the bar said ${JSON.stringify(notLoaded())}`);
+  check(asked.length === 1 && asked[0][0] === rareAt && asked[0][1].join(",") === "404",
+    `${rare}'s geometry asked again after the reload: `
+    + asked.map(([at, given]) => `${path.basename(new URL(at).pathname)} ${given.join(",")}`).join("; "));
+  await shot("rare_part_reloaded.png");
 } catch (trouble) {
   check(false, `stopped: ${trouble.message}`);
   await shot("stopped.png");

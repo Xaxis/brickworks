@@ -12,8 +12,9 @@
 ## probe fails there: the autosave and the save both write the empty model.
 ##
 ## The person's own emptying still saves: Clear, New, and their edit taking
-## the last part off. And a model that opened short of parts is still never
-## written back, as before.
+## the last part off. And a model that opened short of a part is written
+## back with every part, the one it lacks too (until 2026-10-20 it was not
+## written at all, so nothing done to it after was kept).
 extends SceneTree
 
 const NAME := "Empty Save Probe House"
@@ -64,7 +65,7 @@ func _run() -> void:
 	_check("nor saved over the named model: %d parts kept (%s)" % [_parts(saved), store.refused],
 		not empty_save and _parts(saved) == had)
 
-	# A model that opened short of parts is still never written back.
+	# A model that opened short of a part is written back with every part.
 	store.open("res://models/house.ldr")
 	store.title = NAME
 	store.adopt()
@@ -75,8 +76,9 @@ func _run() -> void:
 	store.open_text(short, NAME)
 	store.touch()
 	store.write_now()
-	_check("a model that opened short of a part is not autosaved: %d parts kept" % _parts(autosave),
-		_parts(autosave) == had)
+	_check("a model that opened short of a part is autosaved with every part: %d, nosuchpart among them"
+		% _parts(autosave), _parts(autosave) == had + 1
+		and FileAccess.get_file_as_string(autosave).contains(" nosuchpart.dat"))
 
 	# The person's own emptying is saved: Clear…
 	store.open("res://models/house.ldr")

@@ -8,7 +8,8 @@
 ## 3709b on a loaded box). A phone's connection drops the same way.
 ##
 ## The library is pointed at nothing on disk, so every part is fetched, from
-## a host this probe runs on 127.0.0.1:9191 (or the next port free) that
+## a host this probe runs on 127.0.0.1:9191 (or the next port free; from
+## another with `-- --port=N`) that
 ## answers from the checkout's assets/generated and fails on purpose: 3709b
 ## twice with a 503, 3673 once by cutting the connection (HTTP 0), 4519
 ## always 404, 3649 four times (one more than the library asks). Then the
@@ -23,7 +24,14 @@
 ##   for again later is put down, and the bar does not say it again;
 ## - the same for a file the app wrote itself, which is written whole rather
 ##   than back from the file;
-## - an exact shape is asked again the same way, and a 404 for one once.
+## - an exact shape is asked again the same way, and a 404 for one once;
+## - the working model short of 4519 is autosaved after a change nobody made
+##   by hand, 4519 in it where the file had it, and reopened from it with the
+##   change, 4519 awaited and put down when it comes (someone else's file and
+##   the app's own); until 2026-10-20 nothing of a model short of a part was
+##   autosaved;
+## - a whole working model reopened while its parts are on their way is never
+##   written back short of them, at once or after a change.
 extends SceneTree
 
 const PORT := 9191
@@ -95,10 +103,14 @@ func _tick() -> void:
 func _run() -> void:
 	await process_frame
 	# The first port free from PORT, so two runs at once do not meet.
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--port="):
+			_port = arg.trim_prefix("--port=").to_int()
+	var first: int = _port
 	while _server.listen(_port, "127.0.0.1") != OK:
 		_port += 1
-		if _port >= PORT + 9:
-			print("  FAIL  could not listen on %d to %d" % [PORT, PORT + 8])
+		if _port >= first + 9:
+			print("  FAIL  could not listen on %d to %d" % [first, first + 8])
 			quit(1)
 			return
 	process_frame.connect(_tick)
@@ -254,11 +266,130 @@ func _run() -> void:
 		_library.retries == 2 + 1 + 3 + 2 and int(_library._open.get("lbm", 0)) == 0
 		and int(_library._open.get("bwx", 0)) == 0)
 
+	# The working model kept while a part of it never comes.
+	store.keeps = true
+	for its_own: bool in [false, true]:
+		await _autosaved(main, store, world, path, hash_of, its_own)
+	await _half_opened(main, store, world, hash_of)
+
 	print("")
 	print("%d FAILURE(S)" % _failures if _failures
 		else "a failed fetch is asked again, and a part that never came is said and kept")
 	_server.stop()
 	quit(1 if _failures else 0)
+
+
+## The working model kept while a part of it never comes (4519, a 404 every
+## time), someone else's file or one the app wrote itself ([param own]): a
+## change nobody made by hand (one the store hears, as it hears a session's or
+## the assistant's: ModelStore.listen) is written on the autosave's own clock,
+## every part in it and 4519 where the file had it; and the model opened again
+## from it, as start-up does, has the change, 4519 awaited again, and put down
+## when it comes after all. Until 2026-10-20 a model short of a part was never
+## autosaved (the store's flag whole, gone since): closing the tab lost all of it.
+func _autosaved(main: Node, store: ModelStore, world: BrickWorld, path: String,
+		hash_of: Callable, own: bool) -> void:
+	print("\nthe autosave of %s short of 4519" % ("the app's own file" if own else "someone else's file"))
+	var builder: Builder = main.get("_builder")
+	# Every part fetched again, 4519 a 404 again.
+	_library.release_geometry()
+	_plan[hash_of.call("4519")] = [404, -1]
+	var crane := PackedStringArray(CRANE)
+	if own:
+		crane.insert(1, "0 Author: Brickworks")
+	_write(path, "\n".join(crane) + "\n")
+	DirAccess.remove_absolute(ModelStore.autosave())
+	_said.clear()
+	main._open(path)
+	var deadline: int = Time.get_ticks_msec() + 30_000
+	while _matching("could not be loaded").is_empty() and Time.get_ticks_msec() < deadline:
+		await process_frame
+	_check("opened short of 4519: %d bricks, %d awaited" % [world.brick_count(), store.awaited.size()],
+		world.brick_count() == PARTS - 1 and store.awaited.size() == 1)
+	# A brick put down past the builder's signals, as a session's figure goes
+	# (Builder.put_figure): the store hears it, nobody tells it.
+	var at := Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 200.0) + store.lift())
+	builder.register(world.add_brick("3001", 1, at), "3001", at)
+	var waited: float = ModelStore.AUTOSAVE_DELAY_MS / 1000.0 + 1.5
+	await _seconds(waited)
+	var kept: String = FileAccess.get_file_as_string(ModelStore.autosave())
+	var written: Dictionary = _lines_in(kept)
+	_check("autosaved %.1f s after a change nobody made by hand: %d parts, 3001 ×%d, 4519 ×%d where it was"
+		% [waited, _total(written), written.get("3001", 0), written.get("4519", 0)],
+		_total(written) == PARTS + 1 and written.get("3001", 0) == 10
+		and written.get("4519", 0) == 1 and _where_it_was(kept, "4519"))
+
+	# Opened again from it, as start-up does after the tab was closed.
+	world.clear()
+	builder.lattice.clear()
+	builder.forget_history()
+	store.scenery.clear()
+	_said.clear()
+	var back: int = await store.restore_fetched()
+	var awaited := PackedStringArray()
+	for placement: LdrModel.Placement in store.awaited:
+		awaited.append(placement.part_id)
+	_check("reopened from it: %d parts back, %d down, 3001 ×%d, awaited %s"
+		% [back, world.brick_count(), _count(world, "3001"), awaited],
+		back == PARTS + 1 and world.brick_count() == PARTS and _count(world, "3001") == 10
+		and awaited == PackedStringArray(["4519"]))
+	deadline = Time.get_ticks_msec() + 10_000
+	while _matching("could not be loaded").is_empty() and Time.get_ticks_msec() < deadline:
+		await process_frame
+	# And it comes after all.
+	_plan.erase(hash_of.call("4519"))
+	_library.request_mesh("4519", true)
+	deadline = Time.get_ticks_msec() + 10_000
+	while not _has(world, "4519") and Time.get_ticks_msec() < deadline:
+		await process_frame
+	_check("4519, come after all, is put down: %d bricks, %d awaited"
+		% [world.brick_count(), store.awaited.size()],
+		_has(world, "4519") and world.brick_count() == PARTS + 1 and store.awaited.is_empty())
+
+
+## A whole working model opened again while its parts are on their way (every
+## one fetched again: 3001 asked four times over 20 s, 4519 a 404) is never
+## written back short of them: not written now, as a reload writes it
+## (ModelStore.write_now), nor on the autosave's own clock after a change. It
+## did not write then because it wrote nothing for a model short of a part.
+func _half_opened(main: Node, store: ModelStore, world: BrickWorld, hash_of: Callable) -> void:
+	print("\na whole working model reopened while its parts are on their way")
+	var builder: Builder = main.get("_builder")
+	_write(ModelStore.autosave(), "\n".join(CRANE) + "\n")
+	world.clear()
+	builder.lattice.clear()
+	builder.forget_history()
+	store.scenery.clear()
+	_library.release_geometry()
+	# Counted from here: the crane's opens above asked for it already.
+	_asks.erase(hash_of.call("3001"))
+	_plan[hash_of.call("3001")] = [503, 3]
+	_plan[hash_of.call("4519")] = [404, -1]
+	var back: int = await store.restore_fetched()
+	var down: int = world.brick_count()
+	store.touch()
+	store.write_now()
+	var kept: String = FileAccess.get_file_as_string(ModelStore.autosave())
+	var written: Dictionary = _lines_in(kept)
+	_check("written at once, %d of %d down: %d parts, 3001 ×%d, 4519 ×%d where it was"
+		% [down, back, _total(written), written.get("3001", 0), written.get("4519", 0)],
+		back == PARTS and down < PARTS and _total(written) == PARTS
+		and written.get("3001", 0) == 9 and _where_it_was(kept, "4519"))
+	# A change heard while 3001 is still on its way: a part that has come.
+	var deadline: int = Time.get_ticks_msec() + 10_000
+	while not _library.is_resident("3701") and Time.get_ticks_msec() < deadline:
+		await process_frame
+	var at := Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 200.0) + store.lift())
+	builder.register(world.add_brick("3701", 1, at), "3701", at)
+	var waited: float = ModelStore.AUTOSAVE_DELAY_MS / 1000.0 + 1.5
+	await _seconds(waited)
+	var on_its_way: bool = _library.is_on_its_way("3001")
+	kept = FileAccess.get_file_as_string(ModelStore.autosave())
+	written = _lines_in(kept)
+	_check("autosaved %.1f s after a change, 3001 still on its way (%s): %d parts, 3001 ×%d, 3701 ×%d"
+		% [waited, on_its_way, _total(written), written.get("3001", 0), written.get("3701", 0)],
+		on_its_way and _total(written) == PARTS + 1 and written.get("3001", 0) == 9
+		and written.get("3701", 0) == 2 and _where_it_was(kept, "4519"))
 
 
 ## The model saved as Save saves it, read back.

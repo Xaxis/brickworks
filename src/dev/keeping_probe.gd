@@ -13,7 +13,8 @@
 ## And a model that opened short of parts — which on the web is any
 ## model using geometry that had not arrived yet — was written straight
 ## back over the file it came from by the autosave a second later,
-## turning a few seconds of network into a deletion.
+## turning a few seconds of network into a deletion. What it is short of
+## is written back now, where the file had it.
 extends SceneTree
 
 var _failures: int = 0
@@ -92,47 +93,52 @@ func _scenery_after_clear(world: BrickWorld, builder: Builder,
 	builder.lattice.clear()
 
 
-## A model that could not be opened whole must not be written back over
-## the file it came from.
+## A model that opened short of a part keeps it in what is written of it:
+## the autosave a second after the open, Save, Export. Written without it,
+## the autosave turned a part the library lacked into a deletion.
+##
+## Someone else's file keeps its own line (SourceFile). The app's own file
+## wrote the model without it until 2026-10-20 (a part only a newer build's
+## catalogue has), so the autosave refused it until somebody edited it, and
+## then dropped the part (ModelStore._absent).
 func _short_open(store: ModelStore, world: BrickWorld) -> void:
-	var whole: String = "0 Whole\n" \
-		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" \
-		+ "1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
-	store.open_text(whole, "whole.ldr")
-	if store.whole:
-		print("  ok    a model that opened whole is marked so")
-	else:
-		_failures += 1
-		print("  FAIL  a model that opened whole was marked short")
+	for author: String in ["", "0 Author: Brickworks\n"]:
+		var whose: String = "someone else's file" if author.is_empty() else "the app's own file"
+		var short: String = "0 Short\n" + author \
+			+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" \
+			+ "1 4 0 -24 0 1 0 0 0 1 0 0 0 1 9999991.dat\n"
+		var result: Dictionary = store.open_text(short, "short.ldr")
+		if int(result["placed"]) == 1 and int(result["missing"]) == 1:
+			print("  ok    %s missing a part opens with the rest of it" % whose)
+		else:
+			_failures += 1
+			print("  FAIL  %s: %d placed, %d missing" % [whose,
+				int(result["placed"]), int(result["missing"])])
+		# Changed by hand too: what it lacks is still the model's.
+		store.adopt()
+		var text: String = store.to_text("Short")
+		if _places(text, "9999991", [0, -24, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]) \
+				and _places(text, "3001", [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]):
+			print("  ok    and what is written of it keeps the part, where it was")
+		else:
+			_failures += 1
+			print("  FAIL  and what is written of it lost the part it lacks:\n%s" % text)
+		world.clear()
 
-	# One part real, one that this library does not have.
-	var short: String = "0 Short\n" \
-		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" \
-		+ "1 4 0 -24 0 1 0 0 0 1 0 0 0 1 9999991.dat\n"
-	var result: Dictionary = store.open_text(short, "short.ldr")
-	if int(result["placed"]) == 1 and int(result["missing"]) == 1:
-		print("  ok    a model missing a part opens with the rest of it")
-	else:
-		_failures += 1
-		print("  FAIL  %d placed, %d missing" % [
-			int(result["placed"]), int(result["missing"])])
 
-	if store.whole:
-		_failures += 1
-		print("  FAIL  and it was marked whole, so the autosave would "
-			+ "write it back over the file it came from")
-	else:
-		print("  ok    and it is marked short, so the autosave leaves "
-			+ "the file alone")
-
-	# Until somebody changes it by hand, at which point it is theirs.
-	store.adopt()
-	if store.whole:
-		print("  ok    changing it by hand makes it theirs to save")
-	else:
-		_failures += 1
-		print("  FAIL  it is still marked short after being edited")
-	world.clear()
+## Whether [param text] places [param part_id] at [param numbers] (LDraw's
+## twelve), to a hundredth of an LDU.
+static func _places(text: String, part_id: String, numbers: Array) -> bool:
+	for line: String in text.split("\n"):
+		var cut: PackedStringArray = line.strip_edges().split(" ", false)
+		if cut.size() != 15 or cut[0] != "1" or cut[14].get_basename() != part_id:
+			continue
+		var same: bool = true
+		for n: int in 12:
+			same = same and absf(cut[n + 2].to_float() - float(numbers[n])) <= 0.01
+		if same:
+			return true
+	return false
 
 
 ## A model opens standing on the ground, not buried in it.
