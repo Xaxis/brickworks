@@ -2080,6 +2080,19 @@ Results: `bench/results/realset-2026-10-20-shapefirst44/` (report-proof.md),
 the scripts that make each table (extract.py, code.py, families.py,
 same_coder.py, wins.py, reach.py).
 
+
+**What the verdicts' reasons add** (the lead, reading the 42 verdicts main
+won overall). When main wins on likeness the judge names the features that
+make the subject its own: Big Ben's slender belfry under a two-stage spire,
+the Flatiron's prow under its cornice, the Burj Khalifa's tiers and setbacks,
+the Louvre's mansard pavilions; and calls the losing design "a stubby, wide
+tower", "plain grey cylinders", "long flat slabs". Naming the whole-model
+shapes gave the right volumes and blunted those features. So two levers
+follow, in this order: the subject's signature features named at planning
+and each checked by name in the pictures beside the reference (branch
+signature, 2026-10-20); then laying a defining shape from real parts rather
+than describing it, as above.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
