@@ -4859,9 +4859,18 @@ and +z (`Grab._reach_cell`, in `_blocked` and `_blocked_turned`), for a pair
 whose exact shapes then judge it. A pair with no exact shape is judged by
 the cover as it was, so nothing judged by covers alone changes. The boom
 stops at 95.4°, its base met at 95.53° (1.01 LDU by their shapes), and the
-room test agrees at every turn asked between 94.4° and 115.4°. Left: covers kept in
-the lattice, of what stands and of a part placed turned, are counted the
-same way; only the room test reaches the cell.
+room test agrees at every turn asked between 94.4° and 115.4°. Left: covers
+kept in the lattice, of what stands and of a part placed turned, are counted
+the same way; only the room test reaches the cell.
+
+Checked, in a window: `grab_probe --only=hinge` (18, the click hinge's stop
+unchanged at 90° on its 22° clicks), `--only=minifigure` (9), `--only=loops`
+(15), `--only=racks` (43) and `--only=worms` (34), each as on ec690d35,
+`--only=bearing` (2), `--only=path` (6, its two GAPs) and `--only=steering`
+(36). The steering sweep on nine sets (42125-1, 8820-1, 8808-1, 8448-1's
+racer, 42043-1, 6753-1 and three of 8074-1's) steers where the standing
+sweep (play127) does, five of the nine, each back as far; `own_copies_probe`
+(33) and `mechanism_probe` pass.
 
 ### A loop turned in one big step drifts (not fixed)
 
