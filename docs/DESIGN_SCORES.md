@@ -1940,6 +1940,146 @@ persubject.py, quotes.py).
 
 
 
+### The defining shape first, on the 44 of proof (2026-10-20, not ready)
+
+The verdicts said the set wins overall on whether a model reads as its subject,
+by its shape at the whole model's scale, and that our sessions named the
+subject right and decorated a generic mass. This lever had a session name that
+shape before any brick, build it first and see it measured beside the real
+thing. Likeness against the sets went from 22% to 25%, a paired +3 (-7, +14)
+that holds zero; overall did not move; head to head the judge preferred main's
+designs. It is on the branch `shapefirst`, not on main.
+
+**The lever** (`src/ai/defining_shapes.gd`, `defining_shapes_probe`).
+- *Asked at planning.* how_real_sets_build_this, the first call of nearly every
+  session, leads with the ask: the one to three whole-model shapes a person tells
+  the subject by at a glance, each with its geometry, its share of the model's
+  outline and its box. The examples are general (a lighthouse's taper, a
+  tortoise's dome, a crane's jib), never a subject of either half. A nameplate,
+  lights, a sign, a print, a grille or a door is named as a detail, never one.
+- *Held at submission.* The shapes lead submit_design's features, each with
+  `shape`, `share` and its box. A session on a brief whose features start with a
+  detail is sent back, twice at most. A first build with more than half its
+  parts outside its shapes' boxes is the whole model, not the shapes, and is sent
+  back once. The shapes are left out of the feature pass, which works the
+  details.
+- *Measured and shown.* Each build's answer measures each shape in its box: its
+  parts and size, its share of the outline against the share said, its width at
+  foot, middle and top, whether it is a box from every view, the base it stands
+  on left out. It says what is not as said ("it does not taper", "nothing of it
+  is round", "smaller than you said"), with the model from the front, the side
+  and above beside the first reference picture, which the app looks up once
+  where the session has not. look_at_model does the same once the model has
+  changed, and the whole review leads with any shape not yet as said.
+
+**Tuning, on tune's first ten** against t2base's designs (main's code), one
+design a subject, each version read in its transcripts. Verdicts won of 2 a
+subject, likeness to overall:
+- *v1* (`cea3cfb7`, the ask and the send-back): both sessions led with their
+  shapes, the sheep's a "chunky rounded block of bumpy fleece", and built the
+  whole model at once. The measure only said what they had built. Stopped after
+  two.
+- *v2* (`de61219d`, the massing sent back, the share weighed): on nine subjects
+  3 4 7 2 3 4 verdicts, t2base's 5 6 6 2 4 3 on the same nine. Tokyo's session
+  named its towers "tapering from four splayed legs", built straight columns,
+  looked at them beside its photographs and called the massing right; the judge
+  called them "straight-sided stacked columns".
+- *v3* (`fa19fbd3` to `aaaf1613`, the geometry read off the outline): on seven
+  subjects 4 5 4 2 5 1, t2base's 3 5 4 2 4 1. Tokyo's base had been read as each
+  tower's foot (fixed: a part reaching past a box on both sides is no part of
+  it), and its Skytree, said to be all of the model for being the tallest thing
+  in it, was told it was smaller than said and dwarfed the skyline ("a plain
+  white column that dwarfs everything"; fixed: share is of the outline, and a
+  shape said to be most of the model is held to its geometry alone).
+
+**The proof half,** run once on `5b4adaa3`: the lever merged with main's
+gpulease, so the app runs headless and each picture is drawn on the lease; src/ai
+otherwise main's 44's. Against main's 44 standing designs
+(`realset-2026-10-19-main`), in the same harness, started bare.
+
+| dimension | main preferred to the set | the lever preferred to the set | the lever minus main, paired (95%) | the lever preferred to main, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 22% (12-36) | 25% (15-39) | +3 (-7, +14) | 42% (29-57) |
+| surface | 26% (15-41) | 33% (21-48) | +7 (-5, +18) | 38% (25-52) |
+| colour | 26% (15-41) | 19% (10-33) | -7 (-18, +5) | 40% (27-54) |
+| technique | 12% (6-25) | 8% (3-20) | -5 (-10, 0) | 47% (33-61) |
+| creativity | 35% (23-50) | 25% (15-39) | -10 (-22, +1) | 35% (23-50) |
+| overall | 20% (11-35) | 19% (10-33) | -1 (-10, +9) | 39% (26-53) |
+
+- **Likeness's interval holds zero:** not ready. Overall against the sets is
+  where main's is. Head to head the judge preferred main's designs on every
+  dimension, creativity at the edge of noise (65%, 50-77) and overall 61%
+  (47-74). Technique against the sets fell 5 points, its interval reaching
+  zero.
+- **Where likeness moved, both ways.** Gained: Mia's Bedroom (+2), the Trevi
+  Fountain (+1, overall +2), Steve & Creeper (+1, overall +2), Las Vegas, the
+  Bricktober Town Hall, Rise of the Sphinx, the Container Stacker and the Uruk-hai
+  Army (+1 each). Lost: Big Ben and the Flatiron (-2 each, overall -2 each), two
+  of main's wins on reading truer, and Chicago and Emma's studio (-1 each). Net
+  3 verdicts of 88.
+- **The shapes were named and built, and still lost on the same shape.** The
+  Sydney sails, the roller's drum ("a treaded tyre for the drum"), the Burj's
+  taper ("a squat, wide wedding-cake of rectangular steps"), the Guggenheim's
+  rotunda ("capped by a square slab"), the Charger's and the Corvette's bodies
+  ("a boxy, slab-sided yellow brick car"). Naming the shape and measuring it did
+  not give the session the means to build it.
+- **Reach** (each proof transcript counted, not read for lessons,
+  `shapefirst-2026-10-20/reach.py`): all 44 sessions led their first features
+  with defining shapes; 3 were sent back for starting with a detail and 2 first
+  builds for being the whole model; 21 looked the real thing up themselves
+  (main: 21 of 44 saw a reference) and 34 were shown it beside their model; 18
+  were told a shape was not as said.
+- *What it cost.* Sessions took 14.8 minutes at the median (main's 10.7), the
+  BMW out to its 45-minute timeout with its model saved. 9 pictures over 5
+  designs were the letters for want of a drawer in time. The build check read
+  every design and set: a median 0% floating, as main's. The run was SIGTERMed at
+  12:57 with 16 recorded, with every other process on the box older than a few
+  minutes; it was started again at four workers and the other 28 took 3 hours.
+
+**Re-coded with the verdicts' codebook** (`verdicts-2026-10-20/CODEBOOK.md`): the
+lever's 528 dimension verdicts coded by hand, not told which side was the set.
+Main's are the verdicts round's codes; to take the coder out, main's 176 likeness
+and overall verdicts were coded again by the same hand (the same family as the
+verdicts round's primary in 158, the same class in 134).
+
+| primary of the set's wins | main, verdicts' codes | main, this hand | the lever, this hand |
+|---|---|---|---|
+| overall: reads as the subject | 41 of 70 (59%) | 42 of 70 (60%) | 39 of 71 (55%) |
+| overall: the line's way | 21 (30%) | 26 (37%) | 25 (35%) |
+| likeness: reads as the subject | 57 of 69 (83%) | 61 of 69 (88%) | 57 of 66 (86%) |
+| likeness: the line's way | 12 (17%) | 8 (12%) | 9 (14%) |
+
+- **The shape's share of the set's wins did not fall beyond what a coder moves
+  it:** 60% to 55% on overall, 88% to 86% on likeness, one hand. The sets win as
+  often, and on the same thing.
+- **Technic did not move:** 0 of 18 overall verdicts for either arm, the line's
+  way the primary of 13 of main's 18 losses and 16 of the lever's.
+
+**What it says.**
+- *The ask reaches, the build does not follow.* Every session named its
+  subject's shape in the judge's own words (the Skytree's taper, the Trevi's
+  basin, the roller's drum) and led its build with it, and the measure told 18 of
+  them a shape was not as said. The designs' shapes came out no truer. What a
+  session can lay from memory, stacked bricks round a box, is the limit. Words
+  alone moved nothing six times (shapes.gd's header); words with the shape
+  measured and pictured beside the real thing did not either.
+- *It costs the passes after it.* Four more minutes a session, spent on massing
+  and rebuilding; creativity fell 10 points against the sets and 65% to 35%
+  head to head, colour 7.
+- *Next.* Lay the shape, not describe it: for a defining shape said to taper,
+  widen, be round or point, a call that lays it in the box the session gave, as
+  shapes.gd's lofts and revolves lay a hull, in a set builder's parts (setbacks of
+  slopes and tiles for a taper, curved bricks and panels for a drum, wedges
+  leaning together for a shell), checked by this measure. And the line's way for
+  Technic, the next family by size and untouched by this lever.
+
+Results: `bench/results/realset-2026-10-20-shapefirst44/` (report-proof.md),
+`realset-2026-10-20-main-vs-shapefirst44/` (head to head), the tune arms
+`realset-2026-10-20-shapefirst/`, `-shapefirst2/` and `-shapefirst3/`, and in
+`shapefirst-2026-10-20/` the codes (proof-labels.jsonl, main44-labels.jsonl) and
+the scripts that make each table (extract.py, code.py, families.py,
+same_coder.py, wins.py, reach.py).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
