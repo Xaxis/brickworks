@@ -2129,6 +2129,82 @@ is built studless, beams and pins, from how real Technic sets build it. The
 lever is kept on its branch. Results: bench/results/realset-2026-10-20-signature44/
 and realset-2026-10-20-main-vs-signature44/.
 
+### Technic built studless, on tune's Technic subjects (2026-10-21)
+
+Technic lost every overall verdict on main's 44, 13 of 18 on the line's own
+way ("Why the sets win" above). The sessions knew the brief said Technic and
+built System bricks: every Telehandler designed here before this was 84 to 99%
+studded parts, where a real Technic set is 4%. This lever has a Technic brief
+built the way Technic sets are built. Branch `technic`.
+
+**The lever** (`src/ai/technic_way.gd`, `technic_way_probe`).
+- *How the designer knows:* the brief names Technic ("in the style of LEGO®
+  Technic sets", "a Technic excavator"). Not the subject alone: a City
+  front-end loader is studs and a Technic one is beams, and tune has both.
+- *Asked at planning.* how_real_sets_build_this leads, on a Technic brief, with
+  how a Technic set is built, measured over the 92 Technic sets of the OMR from
+  2008 on (the realset subjects left out): 94% of a set's parts studless Technic
+  at the median (pins 36%, beams and liftarms 20%, connectors and cross blocks
+  20%, axles 12%, gears 3%, panels 2%), 4% studded and 9% at most in nine sets
+  of ten; then the order a set is built in (the frame of beams and pins, wheels
+  on axles, panels and bent liftarms for the body, what moves on the real one
+  moving), with part numbers.
+- *Held at submission.* A Technic brief's build more than half studded is sent
+  back once with its numbers, as a character with nothing on a joint is.
+- *A means.* show_technique "studless beam frame": rails, axles, wheels, pins
+  and posts, written connector to connector and checked; find_techniques on a
+  Technic brief answers from Technic sets' pieces (RealSnippets.search's theme).
+
+**Tune's eight Technic subjects,** the lever (`3fbb245c`) and main
+(`80271aa9`, the release head) each designed in the same harness, three at a
+time, the same night.
+
+| dimension | main preferred to the set | the lever preferred to the set | main minus the lever, paired (95%) | the lever preferred to main, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 38% (14-69) | 19% (4-53) | +19 (-12, +50) | 6% (1-40) |
+| surface | 50% (22-78) | 12% (2-47) | +38 (+19, +62) | 12% (2-47) |
+| colour | 25% (7-59) | 6% (1-40) | +19 (+6, +38) | 38% (14-69) |
+| technique | 0% (0-32) | 6% (1-40) | -6 (-19, 0) | 88% (53-98) |
+| creativity | 12% (2-47) | 0% (0-32) | +12 (0, +31) | 44% (17-74) |
+| overall | 0% (0-32) | 6% (1-40) | -6 (-19, 0) | 31% (10-64) |
+
+- **The idiom moved.** Studded parts, the median over the eight: main 91%
+  (57 to 98), the lever 3% (0 to 6), where a Technic set is 4%. No first build
+  was sent back: told at planning, every session built a beam frame from its
+  first submission. Head to head the judge called the lever's technique better
+  88% of the time; against the sets it won its first Technic technique and
+  overall verdicts (the Mine Loader, 1 of 2 each, likeness 2 of 2).
+- **The reasons changed class.** Main lost as before: "a System model that
+  misses the style", "stacked bricks with Technic bricks used only as
+  decoration", BASH! built as the word in Technic bricks. The lever lost on
+  being an unfinished Technic model: "an unclear yellow beam frame", "open
+  studless beams with exposed pin holes, and nothing closes off its surfaces",
+  "a raw beam framework", "loose, floating sub-assemblies and no clear working
+  mechanism". Main's smooth sloped bodies won surface 8 of 16 against the sets;
+  the lever's open frames 2.
+- **Not ready on this alone.** Overall head to head the judge preferred main's
+  designs 69% (36-90), likeness 94%, surface 88%: two of our designs side by
+  side, it took the finished System body over the bare Technic frame, though
+  against the set main won nothing overall.
+- *What it cost.* The lever's sessions ran to their 45-minute timeout in 5 of 8
+  (main 2 of 8), median 45 minutes against main's 22, models saved: laying beams
+  by their holes is slow, and the Ducati stopped at 126 of the set's 638 parts.
+  Pictures given up for the letters: 0 over 8 designs on each arm. The build
+  check read the lever's first five and main's first seven: nothing floating.
+- *Next.* The body. The lever got the frame; what the judge faults now is that
+  nothing covers it. A Technic set's body is panels and bent liftarms pinned to
+  the frame (2% panels by count, most of what is seen), and the sessions ran out
+  of time before any: a call that lays a panel or a fairing on a frame's holes
+  by name (as the frame itself is copied), and the review naming the open
+  faces. And time: the frame done in fewer turns, so the passes after it run.
+
+Results: `bench/results/realset-2026-10-20-technic/` and `-technicmain/`
+(report-tune.md each), `realset-2026-10-20-technicmain-vs-technic/` (head to
+head). The lever's 8464-1 and main's 42006-1 were designed twice: the first
+sessions were orphaned when an outer `timeout` killed their run, and are set
+aside as `*.killed`; the lever's 42107-1 waited on a port and was designed
+alone.
+
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 
