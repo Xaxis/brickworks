@@ -286,7 +286,7 @@ func _run() -> void:
 ## every part in it and 4519 where the file had it; and the model opened again
 ## from it, as start-up does, has the change, 4519 awaited again, and put down
 ## when it comes after all. Until 2026-10-20 a model short of a part was never
-## autosaved (ModelStore.whole): closing the tab lost all done to it since.
+## autosaved (the store's flag whole, gone since): closing the tab lost all of it.
 func _autosaved(main: Node, store: ModelStore, world: BrickWorld, path: String,
 		hash_of: Callable, own: bool) -> void:
 	print("\nthe autosave of %s short of 4519" % ("the app's own file" if own else "someone else's file"))

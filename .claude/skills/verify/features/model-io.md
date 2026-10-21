@@ -570,8 +570,26 @@ Whether what you built is still there tomorrow, and still means the same thing.
   write of a model with no parts goes over a file with parts unless the
   person emptied the baseplate (Clear, New, their own edit taking the last
   part off). The autosave wrote whatever the baseplate held a few seconds
-  after any change, an empty one too. A model that opened short of parts is
-  still never autosaved (`whole`).
+  after any change, an empty one too.
+- `the autosave of a model short of a part` (`ModelStore.tick`,
+  `ModelStore._text_into`): a model with parts not yet fetched, that never
+  come (`ModelStore.awaited`), or that the catalogue has not got
+  (`ModelStore._absent` for the app's own file; `SourceFile` keeps someone
+  else's) is autosaved like any other, those parts written where the file had
+  them, and reopens with every part, the missing ones awaited and put down when
+  they come. Until 2026-10-20 the store wrote nothing of such a model (the flag
+  `whole`, now gone), so one part that never came lost everything done to it
+  for the session; and the app's own file dropped a part the catalogue lacks
+  once edited. What still guards a file: nothing written loses a part it had,
+  an empty model is not written over parts (`emptied`), and a model changed
+  while the paced autosave makes its text is written again, not half.
+  `fetch_retry_probe`'s last part (a host on 9191 or `-- --port=N`, 4519 always
+  404) checks both kinds of file and a whole autosave reopened while its parts
+  are on their way; `keeping_probe`, `empty_save_probe` and `unrestored_probe`
+  check what a short model writes; `fetch_retry_flow` reloads a browser tab on
+  a model whose part 404s. On 5625ed7b fetch_retry fails 7 of its 26 checks,
+  keeping_probe 1, and the flow's reload brings back the model before (the
+  crane, 29 parts) instead.
 - `browser keeps the models` and `models may be cleared warning`
   (`src/net/storage_keep.gd`, `src/ui/storage_offer.gd`, and "Keeping the
   models" in `src/boot/shell.html`): on the web the app asks
