@@ -5584,3 +5584,45 @@ run. The steering sweep on 13 sets (the five 8448-1 files,
 5533-1; `sweep_motions135x`), against `sweep_m134`: 12 steer as there, the
 same to the step but 8841-1_Buggy, back 0.0070 LDU where it was 0.0145.
 5533-1 comes back 6.43 LDU off (#368) as there: not this.
+
+## 34. A hinge built backwards stops its arm at its own base (m135's suite)
+
+The full suite on main (684673c7) failed `pose_probe`: a click on the
+crane's arm slider at -45° kept the key at -22.1°, and the panel said why:
+"Arm stops at -22° of the -45° asked, where the Plate 2 x 6 (#6) meets the
+Hinge 1 x 2 Base (#4). The key is there." Bisected: 21b2f95b passes and
+1d27522c ("a bearing is forgiven only for the axle in it", §31) fails. Since
+that commit, only the hinge's top is forgiven its base, and what the top
+carries is tested against the base too.
+
+The stop is right. 3937's top edge is square on one side (LDraw y 2, z 4.5
+to 10, flush under the top) and rounded about the pin on the other, so the
+top tips one way only. The probe's crane had the hinge facing so that its
+arm rose the blocked way: the arm's short end turns down onto the square
+shoulder. Measured about the pin (y 22, z 0), raised by the angle shown:
+
+| up | arm into base, exact shapes | arm into base, real surface | top into base, exact |
+|---|---|---|---|
+| 12° | 0 | 0 | 1.90 |
+| 14° | 0.18 | 0.18 | 2.18 |
+| 21° | 0.81 | 1.05 | 3.05 |
+| 22° | 0.98 | 1.16 | 3.16 |
+| 23° | 1.14 | 1.27 | 3.27 |
+| 45° | 2.73 | 2.00 (the wall's half) | 4.73 |
+
+"Real surface" is 3937's LDraw triangles sampled every 0.5 LDU against
+3795's solid (its box less its hollow underside). The top itself is 1 LDU
+into its base by 6°, so a real hinge built this way barely moves; the top
+is forgiven its base as the joint's other half. With the hinge turned 180°
+about up, nothing of the arm meets the base by either measure from 0° to
+90°, and the top's deepest is 0.09.
+
+So the probe's crane now has its hinge facing the way the arm rises. Its
+check of each frame drawn read the arm's turn (`hinge⁻¹ · top`, in the
+hinge's frame) against the pin's axis in the world, which agree only for a
+hinge standing unturned; it now reads the pin's axis in the hinge's frame.
+
+### Checked
+
+`pose_probe` passes in a window (the arm keyed at 44°, 49° and 20°, and
+stopped at -17° where it meets the baseplate, as before at 17°).
