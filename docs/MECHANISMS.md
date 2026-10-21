@@ -4850,7 +4850,7 @@ it takes: the slope with its part along that freedom taken out (the least
 change that keeps the loop closed: the free columns' Jacobian's least-norm
 answer for the driver's turn, weighted as `FRICTION_WEIGHT` weights it), and
 both sweeps run again on it. `grab_probe -- --only=bigstep` prints where it
-stands as a GAP.
+stands as a GAP. Done in Grab 19 (section 30), and the GAP is a check.
 
 ### Checked
 
@@ -4990,7 +4990,7 @@ axle instead." So it is with the parts: a worm is self-locking (section 13).
 
 8808-1's wheel turned 90, -180, 90 comes back 1.7814 LDU off and 90, -90
 0.0270, as on the base: the slide's damping does not reach it. Section 28's
-least-norm slope was not tried.
+least-norm slope was not tried (Grab 19 did it: section 30).
 
 ### Left
 
@@ -5010,7 +5010,8 @@ least-norm slope was not tried.
   LDU, its arms 7.65°, where the base went 1.94), and the second is refused,
   "Locked", by what the joints read after that turn: the pinion read one
   body with an axle on a hinge. Not kept: not proven on the other sets in
-  the hour, and the second turn not looked into. The old loop counted the
+  the hour, and the second turn not looked into (Grab 19 kept it and found
+  why: section 30). The old loop counted the
   arms as moving (everything beyond a loop joint), so the rim beside them
   was never tested against them.
 - 8845-1 at -52°: an axle pin read in its track rod's hole on a second line,
@@ -5101,22 +5102,52 @@ freedom to spare, every step after slid again.
    slope where the last step closed, the change of least weight that keeps
    every row closed for a unit of the driver, weighted as a step's solve
    weighs it (a slide `SLIDE_WEIGHT`, friction `FRICTION_WEIGHT`), from the
-   normal equations with their weight times 1e-6 on the diagonal. A part
+   normal equations with their weight times 1e-6 on the diagonal. A slide at
+   its end that the change would take further out is held there, as a
+   step's solve holds it: free to go on past it, 4002020-1's clip on its bar
+   let the turntable turn +15° and -5°, and it came back 2.09 LDU off. A part
    solved apart (`_reach_parted`) keeps its step's own.
 
 | back where it began, LDU | before | after |
 |---|---|---|
 | 8808-1's wheel 90, -90 (`--only=bigstep`) | 0.0270 | 0.0013 |
 | 8808-1's wheel 90, -180, 90 (`--only=bigstep`) | 1.7814 | 0.0030 |
-| 8808-1's wheel 30, -60, 30 (the sweep) | 0.0008 | 0.0008 |
-| 8448-1_Racer's wheel 30, -60, 30 (the sweep) | 1.5761 | 0.2084 |
+| 8808-1's wheel 30, -60, 30 (the sweep) | 0.0008 | 0.0010 |
+| 42125-1's pinion 30, -60, 30 (`--only=groups`) | 0.0170 | 0.0057 |
+| 8448-1_Racer's wheel 30, -60, 30 (the sweep) | 1.5761 | 0.2042 |
+| 4002020-1's turntable 30, -60, back (`--only=clipped`) | +10°, -2°, -7°: 0.0001 | +15°, -39°, +24°: 0.0001 |
+
+### Swept
+
+86 sets from a snapshot of the final code (`sweep_grab19t` in the results):
+the 59 that steer in `play127` and every set with a 4L joint. 62 steer both
+ways and back. Of `play127`'s 59, 58 still do; 8416-1 is held by its worm
+(section 29). Four more steer: 8880-1_F1-Racer, at its steering wheel
+through its 4L joints (its rack did not come back), 8841-1_Buggy (back 1.99
+LDU, now 0.007), 8274-1 (0.022, now 0.002) and 42070-1 (back 0.0198 of the
+0.02 allowed). Of the 58 that steer in both, 16 come back nearer than they
+did (8273-1 0.018 to 0.002, 42075-1 0.018 to 0.004), 39 the same to 0.001
+LDU, and 3 further, by at most 0.0012 (9395-1, 0.0012 to 0.0024). The 86
+took 1,249 s where `play127` took 1,845 s for them.
 
 ### Left
 
-- **8448-1_Racer comes back 0.21 LDU off** (the sweep asks 0.02), the column
+- **8448-1_Racer comes back 0.20 LDU off** (the sweep asks 0.02), the column
   slid along the pinion's axle. Each turn reads the joints afresh, and the
   slide's least change is not the same either way: +30° slid it 0.125 LDU
   one way, and the 30° back from there 0.229 the other. Every step's solve
   closed to `CLOSE_TO` changed nothing.
 - 8466-1's steering now moves both ways at its pinion (it was "Locked"), and
   a centre (#1165, 3326b) comes back 37 LDU off.
+
+### Checked
+
+On the final code: `grab_probe` headless whole, 178 passed and 35 failed,
+the 34 that need a pointer and the big model's section, as on Grab 18
+(165 and 39: those 35, 8074-1_Crane's turntable, 42050-1's ribbed hose and
+8448-1_Racer's two, which all pass now, and `--only=bigstep`'s two gaps are
+checks). `--only=groups` passes as Grab 18 left it, 42125-1 back 0.0057 LDU;
+`--only=racks` (43, before the slope's change) and `--only=clipped` (4).
+`mechanism_probe` (54), `own_copies_probe` (33), `telescope_probe` (32, its
+three gaps; tilted 45° the tube slides 8.000 LDU), `simulate_probe` (41)
+and `motions_probe` (92) pass.
