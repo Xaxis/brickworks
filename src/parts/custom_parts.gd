@@ -194,10 +194,11 @@ const NEEDS := ".needs.ldr"
 ## other's surface. The exact check's own allowance (Exact.TAU), and the
 ## least a joint tells two rounds apart by (Joints.ROUND_FIT): nearer than
 ## that, nothing that reads the part could tell the copy from it. Of the
-## 2,017 copies the OMR's sets carry, 1,606 are drawn as their parts are to
-## a corner, and 162 more are an older drawing of the part, the edge of a
-## pin hole or an axle hole's corners drawn otherwise, within 1 LDU; 243 are
-## further, 78 of them more than 2 LDU (own_copies_probe -- --survey).
+## 2,017 copies the OMR's sets carry, 1,606 are within 0.1 LDU of their
+## parts, and 162 more within 1 LDU: an older drawing of the part, the edge
+## of a pin hole or an axle hole's corners drawn otherwise. 243 are further,
+## 78 of them more than 2 LDU, and 5 do not build (own_copies_probe --
+## --survey).
 const COPY_WITHIN := 1.0
 ## Two corners in one cell of this, in LDU, or cells side by side, are one
 ## corner: both are encoded alike (Lbm), so a copy drawn from the part's own
@@ -218,11 +219,11 @@ static func named_for(library: PartLibrary, id: String) -> String:
 
 
 ## The part [param id] is a copy of, for [param mesh], its geometry as the
-## file draws it: the part it is named for ([method named_for]), or the part
-## that one was renamed to where the stub puts it where it stood, when the
-## two are drawn alike ([method likeness]). "" for a part of the file's own,
-## and for one whose part has no geometry here: on the web, fetched before
-## the file opens ([method _fetch_copied]).
+## file draws it: the part it is named for ([method named_for]), or the one
+## that number moved to where the move turns nothing (42125-1's 3023 is
+## 3023b), when the two are drawn alike ([method likeness]). "" for a part
+## of the file's own, and for one whose part has no geometry here: on the
+## web, fetched before the file opens ([method _fetch_copied]).
 static func copy_of(library: PartLibrary, id: String, mesh: Lbm.PartMesh) -> String:
 	var named: String = named_for(library, id)
 	if named.is_empty() or mesh == null:
@@ -233,7 +234,7 @@ static func copy_of(library: PartLibrary, id: String, mesh: Lbm.PartMesh) -> Str
 	var theirs: Lbm.PartMesh = library.mesh_for(made)
 	if theirs == null:
 		return ""
-	var alike: Dictionary = likeness(mesh, theirs)
+	var alike: Dictionary = likeness(mesh, theirs, true)
 	if float(alike["box"]) > COPY_WITHIN or int(alike["missed"]) > 0:
 		return ""
 	return made
@@ -246,16 +247,21 @@ static func copy_of(library: PartLibrary, id: String, mesh: Lbm.PartMesh) -> Str
 ## each counted once}. A corner with one of the other's beside it is on its
 ## surface; only the rest are measured: a copy drawn from an older version of
 ## the part (42125-1's 23801, before the library's 2022 one) is the same shape
-## in other triangles.
-static func likeness(one: Lbm.PartMesh, other: Lbm.PartMesh) -> Dictionary:
+## in other triangles. With [param first], only as far as the first thing
+## that tells them apart: a box further than [constant COPY_WITHIN], or one
+## corner (10261-1's 47 copies were 888 ms measured whole).
+static func likeness(one: Lbm.PartMesh, other: Lbm.PartMesh, first: bool = false) -> Dictionary:
 	var low: Vector3 = (one.bounds.position - other.bounds.position).abs()
 	var high: Vector3 = (one.bounds.end - other.bounds.end).abs()
 	var box: float = maxf(maxf(low.x, maxf(low.y, low.z)), maxf(high.x, maxf(high.y, high.z)))
+	if first and box > COPY_WITHIN:
+		return {"box": box, "far": box, "missed": 0, "of": 0}
 	var mine: Dictionary = _corners(one)
 	var theirs: Dictionary = _corners(other)
 	var far: Array = [0.0, 0]
-	_measure(_unmatched(mine, theirs), other, far)
-	_measure(_unmatched(theirs, mine), one, far)
+	_measure(_unmatched(mine, theirs), other, far, first)
+	if not first or int(far[1]) == 0:
+		_measure(_unmatched(theirs, mine), one, far, first)
 	return {"box": box, "far": far[0], "missed": far[1], "of": mine.size() + theirs.size()}
 
 
@@ -295,12 +301,19 @@ const SURFACE_REACH := 2.0
 
 
 ## How far each of [param points] is from [param mesh]'s surface, into
-## [param far]: [the furthest, how many further than COPY_WITHIN].
-static func _measure(points: PackedVector3Array, mesh: Lbm.PartMesh, far: Array) -> void:
+## [param far]: [the furthest, how many further than COPY_WITHIN]. With
+## [param first], no further than the first that is.
+static func _measure(points: PackedVector3Array, mesh: Lbm.PartMesh, far: Array,
+		first: bool = false) -> void:
 	if points.is_empty():
 		return
 	# Each triangle filed under every cell its box, grown by SURFACE_REACH,
-	# reaches, so a corner looks in its own cell only.
+	# reaches, so a corner looks in its own cell only; and only under the
+	# cells a corner is in, so a ramp's big slopes are not filed under
+	# hundreds of cells nothing looks in.
+	var wanted: Dictionary = {}
+	for point: Vector3 in points:
+		wanted[Vector3i((point / SURFACE_CELL).floor())] = true
 	var corners := PackedVector3Array()
 	var cells: Dictionary = {}
 	for surface: ArrayMesh in mesh.surfaces:
@@ -317,13 +330,16 @@ static func _measure(points: PackedVector3Array, mesh: Lbm.PartMesh, far: Array)
 				/ SURFACE_CELL).floor())
 			var t: int = corners.size() / 3
 			corners.append_array([a, b, c])
-			for x: int in range(lo.x, hi.x + 1):
-				for y: int in range(lo.y, hi.y + 1):
-					for z: int in range(lo.z, hi.z + 1):
-						var cell := Vector3i(x, y, z)
-						if not cells.has(cell):
-							cells[cell] = []
-						(cells[cell] as Array).append(t)
+			var span: Vector3i = hi - lo + Vector3i.ONE
+			if span.x * span.y * span.z <= wanted.size():
+				for x: int in range(lo.x, hi.x + 1):
+					for y: int in range(lo.y, hi.y + 1):
+						for z: int in range(lo.z, hi.z + 1):
+							_file(cells, wanted, Vector3i(x, y, z), t)
+			else:
+				for cell: Vector3i in wanted:
+					if cell.clamp(lo, hi) == cell:
+						_file(cells, wanted, cell, t)
 	for point: Vector3 in points:
 		var best: float = INF
 		for t: int in cells.get(Vector3i((point / SURFACE_CELL).floor()), []):
@@ -332,6 +348,17 @@ static func _measure(points: PackedVector3Array, mesh: Lbm.PartMesh, far: Array)
 		far[0] = maxf(float(far[0]), best)
 		if best > COPY_WITHIN:
 			far[1] = int(far[1]) + 1
+			if first:
+				return
+
+
+## File triangle [param t] under [param cell], where a corner looks.
+static func _file(cells: Dictionary, wanted: Dictionary, cell: Vector3i, t: int) -> void:
+	if not wanted.has(cell):
+		return
+	if not cells.has(cell):
+		cells[cell] = []
+	(cells[cell] as Array).append(t)
 
 
 ## The point of triangle [param a] [param b] [param c] nearest [param p]
