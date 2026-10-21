@@ -30,7 +30,14 @@ whole cycle.
   showed, and where that met something the section was put back there
   without a word: 42024-1's actuator, let go at its stop 4 LDU out, was kept
   once in three at 1.75. A stop found after the release is now said ("it
-  stopped where ..., short of where it was let go").
+  stopped where ..., short of where it was let go"), and only that: a
+  pendulum that swung and came to rest, or a flywheel that coasted on, is
+  not said to have stopped short.
+- A part held in round holes by two others holds them together. 8808-1's
+  side panels each stand on two headlight bricks' side studs, and were read
+  as turning with one brick on its one stud: on a phone, a finger on the
+  steering wheel that landed on the panel beside it took the panel, and the
+  steering did not turn. The panels are one with the chassis now, as built.
 - A loop turned in big steps comes back where it began. 8808-1's steering
   wheel turned 90°, -180° and 90° came back with its column 1.8 LDU along
   its axle; it comes back within 0.003 LDU.

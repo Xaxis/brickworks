@@ -419,19 +419,24 @@ try {
   await shot("3_arm_after.png");
   const moved = (await until(grab, (g) => (g.handles || []).length >= 2, 10)).handles
     .find((h) => h.id === arm.id);
-  // A 30 degree turn on the hinge moves the arm's middle 7 pixels or so at
-  // this distance (a dozen before the pendulum widened the frame): well
-  // past the 2 the undo is held to below.
-  check(Boolean(moved) && Math.hypot(moved.x - arm.x, moved.y - arm.y) > 5,
-    `the arm stands somewhere else now (${moved && moved.x},${moved && moved.y} from ${arm.x},${arm.y})`);
+  // Measured at the arm's far end (far_x, far_y: the end of its part
+  // furthest from the hinge's line), where a turn shows most. The handle
+  // itself is the first corner the pointer lands on: m131's was 8 LDU from
+  // the hinge, and the arm kept 20 degrees up moved it 3 pixels.
+  const far = (h) => [Number(h.far_x ?? h.x), Number(h.far_y ?? h.y)];
+  const [armX, armY] = far(arm);
+  const [movedX, movedY] = moved ? far(moved) : [NaN, NaN];
+  check(Boolean(moved) && Math.hypot(movedX - armX, movedY - armY) > 5,
+    `the arm stands somewhere else now: its far end at ${movedX},${movedY} from ${armX},${armY}`);
 
   // Undo: back where it was.
   await page.keyboard.press("Control+z");
   await page.waitForTimeout(2500);
   const back = (await until(grab, (g) => (g.handles || []).some((h) => h.id === arm.id), 10)).handles
     .find((h) => h.id === arm.id);
-  check(Boolean(back) && Math.hypot(back.x - arm.x, back.y - arm.y) <= 2,
-    `Ctrl+Z puts the arm back as one step (${back && back.x},${back && back.y})`);
+  const [backX, backY] = back ? far(back) : [NaN, NaN];
+  check(Boolean(back) && Math.hypot(backX - armX, backY - armY) <= 2,
+    `Ctrl+Z puts the arm back as one step: its far end at ${backX},${backY}`);
 
   // The turret round on its turntable, carrying the arm.
   const turret = (await grab()).handles.find((h) => h.kind === "turntable");
