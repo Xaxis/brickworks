@@ -1782,11 +1782,11 @@ func brick_at(cell: Vector3i) -> int:
 	return 0
 
 
-## Every brick but [param ignore] whose cover has [param cell]. [method
-## brick_at] names the first it comes to, and where two covers overlap the
-## cell is in both: a turned part's cover keeps every cell its boxes touch,
-## so a stud's tip was read as in the corner panel beside the plate it holds
-## (1793-1), or in the stud's own part, and so in nothing.
+## Every brick but [param ignore] whose cover has [param cell], in [method
+## brick_at]'s order. That names the first it comes to, and where two
+## covers overlap the cell is in both: a stud's tip in its own part's cover
+## as well as the part it holds was read as in nothing
+## (Stability.stud_joints).
 func bricks_at(cell: Vector3i, ignore: int = 0) -> PackedInt64Array:
 	var out := PackedInt64Array()
 	var here: Variant = _bucket.get(Vector3i(

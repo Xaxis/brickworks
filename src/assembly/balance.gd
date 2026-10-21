@@ -569,7 +569,11 @@ func _links() -> Array:
 ## links] names and each part on the floor. A pair seated one in the other
 ## (joints' "seated") is joined but by no stud joint: a cone threaded on an
 ## antenna carries its weight to it, but it has no studs to weigh. Left out,
-## 8466-1's 1,197 parts were in no joint, held by pins nothing reads.
+## 8466-1's 1,197 parts were in no joint, held by pins nothing reads. So is
+## a pair the lift reads only across covers that overlap (joints'
+## "overlapped"), held by its pin, axle, hinge or turntable, or seated: as
+## stud joints, a Technic beam on its pin was 9.6 times its working load on
+## 8272-1 and an axle in a motorcycle's wheel 150 times on 42036-1.
 func _join(joints: Dictionary, links: Array) -> void:
 	var count: int = _ids.size()
 	_edge_a = PackedInt32Array()

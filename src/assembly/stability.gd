@@ -357,7 +357,22 @@ static func pair_of(a: int, b: int) -> int:
 ## no stud's tip in either, and 8466-1's steering arm was weighed as
 ## carrying its wheel on one stud, overloaded (2026-10-21). They hold the
 ## parts together, as Suggest sections reads them, and are "overlapped":
-## [method check] weighs no stud there.
+## [method check] and Balance weigh no stud there. What holds them is a pin
+## or an axle in its hole (6,080 of the 12,218 such pairs on those sets), a
+## hinge, a turntable or a clip on a bar (1,017), a ball (78), a hose's
+## pieces or a sticker's glue (496), and the rest no joint the connectors
+## name: a part seated in another, or turned beside it.
+##
+## Where covers overlap a tip's cell is in both, and [method
+## BrickLattice.brick_at] names only the first: where that was the stud's
+## own part the stud was in nothing. So on a part in an overlapped pair a
+## tip is read in the first part but its own ([method
+## BrickLattice.bricks_at]), and a tip in none is looked round: in a turned
+## 1 x 1 cone's hollow underside it is in no cover, and 1793-1's cones on
+## its tilted round plates stood on no stud (2026-10-21). A third part's
+## cover first is left as it was: picking the part sitting on the stud's
+## foot instead mended 1793-1's hinge plates inside its corner panel but
+## moved 8466-1's stacked plates onto the bricks beside them.
 ##
 ## [param everywhere] false reads a stud's tip only where the lift cannot
 ## tell: on a part the lift reaches across an overlap, and for a stud not
@@ -423,17 +438,18 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	# container is a copy, and appending to it kept nothing.
 	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
 	if lattice != null:
-		# A part in an overlapped pair is where covers overlap, so its tip's
-		# cell has every owner read, and the part it is in is chosen once
-		# the stud's way is known.
+		# A part in an overlapped pair is where covers overlap: its tip's cell
+		# may be its own as well as the part it holds, and a tip in nothing
+		# is looked round once the stud's way is known ([method _stud_in]).
 		for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
 				var cell: Vector3i = BrickLattice.to_cell(tip)
 				if not unsure.has(int(key)):
 					var at: int = lattice.brick_at(cell)
 					return at if at != int(key) and boxes.has(at) else null
-				return _owners(lattice, cell, int(key), boxes)):
+				var owners: Array = _owners(lattice, cell, int(key), boxes)
+				return owners[0] if not owners.is_empty() else []):
 			if stud[1] is Array:
-				stud[1] = _stud_in(stud[1], stud[2], stud[3], int(stud[0]), contacts, library, lattice)
+				stud[1] = _stud_in(stud[2], stud[3], int(stud[0]), boxes, lattice)
 				if stud[1] == null:
 					continue
 			var by := Vector2i(int(stud[0]), int(stud[1]))
@@ -473,44 +489,14 @@ static func _owners(lattice: BrickLattice, cell: Vector3i, own: int,
 	return out
 
 
-## Which of [param owners], the parts whose covers have the cell past a
-## stud's tip, the stud standing at [param foot] and pointing [param way] is
-## in. Where covers overlap the cell is in more than one, and the part the
-## stud holds is the one sitting on its foot, its underside there and the
-## stud pointing up into it: not a turned neighbour whose cover reaches past
-## its plastic, as 1793-1's corner panel reaches round the plates on its
-## hinge. Failing that, the first, as [method BrickLattice.brick_at] names
-## it but for the stud's own part. And where the tip is in none, the stud is
-## in a hollow the cover leaves open, a round brick's or a cone's underside:
-## the part round it there ([method _round_the_stud]). Null for none. Its
-## parts by id are kept in [param contacts] the first time they are asked.
-static func _stud_in(owners: Array, foot: Vector3, way: Vector3, own: int,
-		contacts: Dictionary, library: PartLibrary, lattice: BrickLattice) -> Variant:
-	if owners.is_empty():
-		owners = _round_the_stud(lattice, foot + way * Joints.STUD_REACH, way, own,
-			contacts["boxes"])
-	if owners.size() < 2:
-		return owners[0] if not owners.is_empty() else null
-	if not contacts.has("by id"):
-		var by_id: Dictionary = {}
-		for brick: BrickWorld.Brick in contacts.get("bricks", []):
-			by_id[brick.id] = brick
-		contacts["by id"] = by_id
-	var best: Variant = owners[0]
-	var nearest: float = BrickLattice.CELL
-	for id: Variant in owners:
-		var brick: BrickWorld.Brick = (contacts["by id"] as Dictionary).get(id)
-		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
-		if mesh == null:
-			continue
-		var back: Transform3D = brick.transform.affine_inverse()
-		if (back.basis * way).normalized().y < 0.9:
-			continue
-		var gap: float = absf((back * foot).y - mesh.bounds.position.y)
-		if gap < nearest:
-			nearest = gap
-			best = id
-	return best
+## What a stud standing at [param foot] and pointing [param way], whose tip
+## is in no part but its own, is in: a hollow the cover leaves open, a
+## round brick's, a cone's or a dish's underside, so the part round it
+## there ([method _round_the_stud]), the first of them. Null for none.
+static func _stud_in(foot: Vector3, way: Vector3, own: int, boxes: Dictionary,
+		lattice: BrickLattice) -> Variant:
+	var round: Array = _round_the_stud(lattice, foot + way * Joints.STUD_REACH, way, own, boxes)
+	return round[0] if not round.is_empty() else null
 
 
 ## The parts of [param boxes] but [param own] round a stud's [param tip] on
