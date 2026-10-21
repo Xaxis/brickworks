@@ -842,7 +842,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				return "This app cannot move parts on their joints."
 			if str(input.get("part", "")).strip_edges().is_empty():
 				return _what_moves(grabbing)
-			return grabbing.for_session(input)
+			return await grabbing.for_session(input)
 		"simulate_mechanism":
 			return await _simulate(input, work)
 		"animate_model":

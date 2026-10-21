@@ -13,11 +13,21 @@
 ## timeout. The Ducati's move_part that hung 600 s (technic lever,
 ## 2026-10-20) was found this way. A tool for seeing a session again, not a
 ## check: it passes or fails nothing.
+##
+## Each call is printed with its longest frame: the longest the main thread
+## went without a frame while it ran, which is how long the window drew
+## nothing. A call that answers as a job is followed as a session follows
+## it, job {"id": N} until it is done, its frames counted with the call's.
+## The calls whose longest frame passed 100 ms are listed again at the end.
 extends SceneTree
+
+const HELD_MS := 100
 
 var _main: Node
 var _socket: CommandSocket
 var _next: int = 0
+var _last_frame_us: int = 0
+var _longest_us: int = 0
 
 
 func _initialize() -> void:
@@ -46,6 +56,8 @@ func _run() -> void:
 	_socket.app = _main
 	_main.add_child(_socket)
 	await process_frame
+	process_frame.connect(_frame)
+	var held := PackedStringArray()
 	for line: String in FileAccess.get_file_as_string(calls_path).split("\n"):
 		var call: Variant = JSON.parse_string(line) if not line.is_empty() else null
 		if not call is Dictionary:
@@ -56,11 +68,39 @@ func _run() -> void:
 		var name: String = str(call["name"])
 		print("call %d %s %s" % [n, name, JSON.stringify(call.get("input", {})).left(160)])
 		var began: int = Time.get_ticks_msec()
+		_longest_us = 0
+		_last_frame_us = Time.get_ticks_usec()
 		var said: String = await _say(name, call.get("input", {}))
-		print("  %d ms: %s" % [Time.get_ticks_msec() - began, said.replace("\n", "\n    ")])
+		while said.begins_with("Started job "):
+			print("  %d ms, longest frame %d ms: %s" % [Time.get_ticks_msec() - began,
+				_longest_ms(), said.replace("\n", "\n    ")])
+			said = await _say(ToolJobs.TOOL, {"id": said.get_slice(" ", 2).to_int()})
+			while said.contains(") is still going, "):
+				said = await _say(ToolJobs.TOOL, {"id": said.get_slice(" ", 1).to_int()})
+		var longest: int = _longest_ms()
+		print("  %d ms, longest frame %d ms: %s" % [Time.get_ticks_msec() - began, longest,
+			said.replace("\n", "\n    ")])
+		if longest > HELD_MS:
+			held.append("call %d %s: %d ms, longest frame %d ms" % [n, name,
+				Time.get_ticks_msec() - began, longest])
+	print("calls with a frame over %d ms: %d" % [HELD_MS, held.size()])
+	for one: String in held:
+		print("  " + one)
 	_main.queue_free()
 	await process_frame
 	quit(0)
+
+
+func _frame() -> void:
+	var now: int = Time.get_ticks_usec()
+	_longest_us = maxi(_longest_us, now - _last_frame_us)
+	_last_frame_us = now
+
+
+## The longest frame of the call so far, the stretch since the last frame
+## taken in.
+func _longest_ms() -> int:
+	return roundi(maxi(_longest_us, Time.get_ticks_usec() - _last_frame_us) / 1000.0)
 
 
 func _say(tool: String, arguments: Dictionary) -> String:

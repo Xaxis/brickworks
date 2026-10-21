@@ -3032,7 +3032,7 @@ func _input_turned(name: String, bodies: Bodies) -> void:
 	var before: Dictionary = _snapshot()
 	var rod_was: Transform3D = _world.get_brick(screw.rack).transform
 	var body_was: Transform3D = _world.get_brick(screw.body).transform
-	var said: String = _grab.for_session({"part": str(screw.gear), "degrees": 360.0})
+	var said: String = await _grab.for_session({"part": str(screw.gear), "degrees": 360.0})
 	await _frames(3)
 	var rod_now: Transform3D = _world.get_brick(screw.rack).transform
 	var body_now: Transform3D = _world.get_brick(screw.body).transform
