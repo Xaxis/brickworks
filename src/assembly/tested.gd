@@ -137,8 +137,9 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	if asked.cancelled:
 		return {}
 
-	# What holds what: what rests on what, and every joint the build check
-	# reads, either way round. And the joints Balance weighs a part by.
+	# What holds what: the studs, as Balance and Sections read them
+	# (Stability.stud_joints), and every other joint the build check reads,
+	# either way round. And the joints Balance weighs a part by.
 	var near: Dictionary = {}
 	for id: int in by_id:
 		near[id] = {}
@@ -147,10 +148,8 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			return
 		(near[a] as Dictionary)[b] = true
 		(near[b] as Dictionary)[a] = true
-	var above: Dictionary = contacts["above"]
-	for under: Variant in above:
-		for over: Variant in (above[under] as Dictionary):
-			link.call(under, over)
+	for key: int in (Stability.stud_joints(contacts, library, lattice)["studs"] as Dictionary):
+		link.call(key >> 32, key & 0xFFFFFFFF)
 	var entries: Array = []
 	var with_paths: Array = []
 	for brick: BrickWorld.Brick in bricks:
@@ -175,10 +174,6 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			link.call(one, other)
 	for pair: Array in Joints.through(entries):
 		link.call(pair[0], pair[1])
-	for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
-			var at: int = lattice.brick_at(BrickLattice.to_cell(tip))
-			return at if at != 0 and at != int(key) else null):
-		link.call(stud[0], stud[1])
 	await asked.next()
 	if asked.cancelled:
 		return {}
