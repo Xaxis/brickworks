@@ -60,10 +60,16 @@ func _run() -> void:
 	_main.call("clear_model")
 
 	print("  a crane: a turret on a turntable, an arm on a hinge on it")
+	# The hinge faces the way the arm rises: its top tips over the base's
+	# rounded side. Turned the other way, the top lies on the base's square
+	# shoulder, and the arm's end meets it 22° up (1.16 LDU into the plate
+	# by the base's real surface, 0.98 by their exact shapes), as Grab has
+	# said since it stopped skipping a hinge's base for what the top carries.
+	var facing := Basis(Vector3.UP, PI)
 	_put("base", "3680", Vector3(0, 8, 0), Basis.IDENTITY, "")
 	_put("turntable", "3679", Vector3(0, 8, 0), Basis.IDENTITY, "Turret#1")
-	_put("hinge", "3937", Vector3(0, 32, 0), Basis.IDENTITY, "Turret#1")
-	_put("top", "3938", Vector3(0, 32, 0), Basis.IDENTITY, "Turret#1/Arm#1")
+	_put("hinge", "3937", Vector3(0, 32, 0), facing, "Turret#1")
+	_put("top", "3938", Vector3(0, 32, 0), facing, "Turret#1/Arm#1")
 	_put("arm", "3795", Vector3(0, 40, 50), Basis(Vector3.UP, PI * 0.5), "Turret#1/Arm#1")
 	await _frames(3)
 	_camera.frame(AABB(Vector3(-120, 0, -120), Vector3(240, 160, 240)), 1.2)
@@ -206,6 +212,9 @@ func _keys_and_frames() -> void:
 	sweep.library = _library
 	var model_before: Array = _snapshot()
 	var pin: Grab = _player.hold(_arm).grab
+	# The top's turn read against the hinge's base is in the base's frame,
+	# and so is the pin it turns about.
+	var pin_axis: Vector3 = _brick("hinge").transform.basis.inverse() * pin.axis.normalized()
 	var turning: Grab = _player.hold(_turret).grab
 	var seen_arm: Array = []
 	var seen_turret: Array = []
@@ -218,7 +227,7 @@ func _keys_and_frames() -> void:
 			var hinge: Transform3D = renderer.staged_transform(_ids["hinge"])
 			var top: Transform3D = renderer.staged_transform(_ids["top"])
 			var table: Transform3D = renderer.staged_transform(_ids["turntable"])
-			seen_arm.append(_about(hinge.basis.inverse() * top.basis, pin.axis.normalized()))
+			seen_arm.append(_about(hinge.basis.inverse() * top.basis, pin_axis))
 			seen_turret.append(_about(table.basis, turning.axis.normalized()))
 			pictures.append(image))
 	_check("every frame is drawn (%d of %d)" % [done, frames], done == frames)
