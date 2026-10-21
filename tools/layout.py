@@ -24,6 +24,11 @@ https://library.ldraw.org/library/omr/<set>-1.mpd), 2026-10-09:
   modular buildings, 1,500-3,100  tall/wide 0.73-1.53, 28-43 bricks tall
   fire stations built here        tall/wide 0.65-0.76, 17-20 bricks tall
 
+Those boxes lay mirrored front to back about each part's origin (only y
+was flipped back from the catalogue). Read right, 2026-10-21: 10176,
+6080 and 6085 contrast 2.2-4.2, tall/wide 0.32-0.61; twelve modular
+buildings tall/wide 0.76-1.69, 27-47 bricks tall.
+
 A real castle's towers stand about three times its walls; the ones
 built here stand about one and a half.  Neither number is advice yet:
 five castles and fourteen modular buildings are a direction, not a norm.
@@ -58,9 +63,10 @@ def _boxes() -> dict[str, tuple[list[float], list[float]]]:
     out = {}
     for entry in catalogue["parts"]:
         low, high = entry["bounds_min"], entry["bounds_max"]
-        # The catalogue is +Y up; LDraw is +Y down.
-        out[entry["id"]] = ([low[0], -high[1], low[2]],
-                            [high[0], -low[1], high[2]])
+        # The catalogue is LDraw turned half a turn about x (FLIP in
+        # src/parts/ldr_model.gd): y and z both flip.
+        out[entry["id"]] = ([low[0], -high[1], -high[2]],
+                            [high[0], -low[1], -low[2]])
     return out
 
 

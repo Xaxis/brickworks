@@ -239,3 +239,20 @@ def test_the_catalogue_knows_moved_parts_and_their_mirror_twins() -> None:
     assert parts.canonical("41770") == "41770a"
     assert parts.mirror("41770") == "41769a"           # Wing 2 x 4 Left -> Right
     assert parts.mirror("3001") == "3001"
+
+
+@pytest.mark.skipif(not style.CATALOGUE.exists() or not (style.LDRAW / "parts").is_dir(),
+                    reason="no catalogue.json or LDraw library")
+def test_a_slopes_box_lies_where_its_own_file_puts_it() -> None:
+    # The catalogue is in the app's axes, LDraw's turned half a turn about
+    # x. Read back with only y flipped, a 2 x 1 slope's box lay on the far
+    # side of its studs, and every measure of a lopsided part was mirrored.
+    from ldraw.geometry import flatten
+    from ldraw.library import Library
+    low, high = flatten(Library(style.LDRAW), "3040b.dat").bounds()
+    slope = Parts().get("3040b")
+    assert slope is not None and slope.box is not None
+    box = slope.box
+    assert box[0] == pytest.approx((low.x, low.y, low.z), abs=0.01)
+    assert box[1] == pytest.approx((high.x, high.y, high.z), abs=0.01)
+    assert box[0][2] == pytest.approx(-30.0, abs=0.01)
