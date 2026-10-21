@@ -332,6 +332,16 @@ static func _add(held: Dictionary, one: Variant, other: Variant) -> void:
 const STUD_REACH := 5.0
 
 
+## Whether a part standing at [param at] has one of [param mesh]'s sockets
+## where a stud stands at [param foot]: the part takes the stud from below.
+static func socket_at(at: Transform3D, mesh: Lbm.PartMesh, foot: Vector3) -> bool:
+	for socket: Vector2 in mesh.sockets:
+		if (at * Vector3(socket.x, mesh.bounds.position.y, socket.y)).distance_to(foot) \
+				<= Mechanism.STUD_SLACK + 4.0:
+			return true
+	return false
+
+
 ## Every stud that reaches into another part, as [whose stud, which part it
 ## reaches into, where the stud stands, which way it points]. Clutch holds
 ## both parts, and the way the stud points says which sits on which: a stud

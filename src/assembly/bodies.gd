@@ -430,15 +430,16 @@ func _read() -> void:
 	# either is a single stud across.
 	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
 	# The baseplate's studs too: a part with one in a socket stands on the
-	# floor (below). A tip is in the first part but its own whose cover has
-	# its cell, as Stability.stud_joints reads it: where two covers overlap
-	# the cell is in both, and the stud's own part named first had it in
+	# floor (below). What a tip is in is every part but its own whose cover
+	# has its cell, as Stability.stud_joints reads it: where covers overlap
+	# the cell is in each, and the stud's own part, named first, had it in
 	# nothing.
 	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
+		var owners: Array = []
 		for there: int in lattice.bricks_at(BrickLattice.to_cell(tip), int(key)):
 			if _up.has(there) or scenery.has(there):
-				return there
-		return null)
+				owners.append(there)
+		return null if owners.is_empty() else owners)
 	# Which parts turn against which: a stud reaching into one of them may be
 	# in the other, the two sharing cells round their joint.
 	var partners: Dictionary = {}   ## id -> Array of ids it turns against
@@ -453,9 +454,23 @@ func _read() -> void:
 	pressed_on.clear()
 	for stud: Array in studs:
 		var a: int = int(stud[0])
-		var b: int = int(stud[1])
+		# Of several, the one with a socket where the stud stands, else the
+		# first: a turned part's cover keeps every cell its boxes touch, so a
+		# third part's can come first. 9470-1's plate on another was read as
+		# in the wedge round them.
+		var owners: Array = stud[1]
+		var b: int = int(owners[0])
+		for id: int in owners:
+			if _in_a_socket(id, stud[2]):
+				b = id
+				break
+		# And of a joint's two halves, only one whose cover has the tip:
+		# 6753-1's frame stands on bricks by its underside studs, and an axle
+		# turning in those bricks, which the studs do not reach, was read as
+		# on them and held its wheels to the frame.
 		if partners.has(b):
-			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array))
+			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array).filter(
+				func(other: int) -> bool: return owners.has(other)))
 		if scenery.has(a) or scenery.has(b):
 			# On the baseplate's studs: a stud in one of its sockets, not a
 			# tyre the plate's studs touch. A tyre is rubber with no socket,
@@ -2535,13 +2550,7 @@ func _nearest_face(foot: Vector3, way: Vector3, ids: Array) -> int:
 func _in_a_socket(key: int, foot: Vector3) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
-	if mesh == null:
-		return false
-	for socket: Vector2 in mesh.sockets:
-		var at: Vector3 = brick.transform * Vector3(socket.x, mesh.bounds.position.y, socket.y)
-		if at.distance_to(foot) <= Mechanism.STUD_SLACK + 4.0:
-			return true
-	return false
+	return mesh != null and Joints.socket_at(brick.transform, mesh, foot)
 
 
 ## Whether a stud at [param foot] pointing [param way] reaches into

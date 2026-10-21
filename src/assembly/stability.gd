@@ -437,21 +437,28 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	# An Array, not a PackedVector3Array: a packed array read out of a
 	# container is a copy, and appending to it kept nothing.
 	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
+	var placed: Dictionary = {}        ## id -> brick, for a tip in several covers
 	if lattice != null:
 		# A part in an overlapped pair is where covers overlap: its tip's cell
-		# may be its own as well as the part it holds, and a tip in nothing
-		# is looked round once the stud's way is known ([method _stud_in]).
+		# may be its own as well as the part it holds, or a third part's too,
+		# and a tip in nothing is looked round, once the stud's foot and way
+		# are known ([method _stud_in], [method _taking]).
 		for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
 				var cell: Vector3i = BrickLattice.to_cell(tip)
 				if not unsure.has(int(key)):
 					var at: int = lattice.brick_at(cell)
 					return at if at != int(key) and boxes.has(at) else null
 				var owners: Array = _owners(lattice, cell, int(key), boxes)
-				return owners[0] if not owners.is_empty() else []):
-			if stud[1] is Array:
+				return owners[0] if owners.size() == 1 else owners):
+			if stud[1] is Array and (stud[1] as Array).is_empty():
 				stud[1] = _stud_in(stud[2], stud[3], int(stud[0]), boxes, lattice)
 				if stud[1] == null:
 					continue
+			elif stud[1] is Array:
+				if placed.is_empty():
+					for brick: BrickWorld.Brick in contacts.get("bricks", []):
+						placed[brick.id] = brick
+				stud[1] = _taking(stud[1], stud[2], placed, library)
 			var by := Vector2i(int(stud[0]), int(stud[1]))
 			if not tips.has(by):
 				tips[by] = [[], stud[3]]
@@ -487,6 +494,22 @@ static func _owners(lattice: BrickLattice, cell: Vector3i, own: int,
 		if boxes.has(id):
 			out.append(id)
 	return out
+
+
+## Of [param owners], the parts whose covers have a stud's tip, the first
+## with a socket where the stud stands at [param foot], else the first.
+## A turned part's cover keeps every cell its boxes touch, so a third part's
+## can be named before the part the stud is in: 1793-1's hinge plates, tilted
+## inside its corner panel, were read as standing in the panel, not in the
+## plate on them.
+static func _taking(owners: Array, foot: Vector3, placed: Dictionary,
+		library: PartLibrary) -> int:
+	for id: int in owners:
+		var brick: BrickWorld.Brick = placed.get(id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh != null and Joints.socket_at(brick.transform, mesh, foot):
+			return id
+	return int(owners[0])
 
 
 ## What a stud standing at [param foot] and pointing [param way], whose tip
