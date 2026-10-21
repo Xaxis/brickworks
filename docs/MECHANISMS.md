@@ -5708,8 +5708,8 @@ which fails the same on 3978c6f7. `--only=hingerange` (9), `--only=path`
 `--only=click` (9, the stop at 45°). `pose_probe` (25), `motions_probe`
 (92), `animation_probe` (24) and `mechanism_probe` (54) pass.
 
-The steering sweep on 20 sets (`sweep_hinge77x`, 55 of whose loops have
-hinges: 8880-1_F1-Racer, 8448-1_Racer, 8830-1, 8062-1_Crane, 8820-1,
+The steering sweep on 20 sets (`sweep_hinge77x`, all but 42024-1 with
+hinges in the loop they steer: 8880-1_F1-Racer, 8448-1_Racer, 8830-1, 8062-1_Crane, 8820-1,
 8022-1_Racecar, 8832-1, 8841-1_Buggy, 8815-1, 8022-1_Robot, 8854-1,
 8835-1_Farm-Tractor, 8020-1_Jeep, 8845-1, 5510-1, 8828-1, 8808-1, 8848-1,
 950-1, 42024-1) against `sweep_joins72`: all 20 steer, each turn and its
