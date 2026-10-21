@@ -4988,6 +4988,12 @@ least-norm slope was not tried.
 
 ### Left
 
+- **8448-1_Racer's grooved rack no longer moves** (`grab_probe --only=grooved`,
+  base 1.94 LDU): "the Wheel Rim 30 x 61 with 3 Spokes Swirled (#478) meets
+  the Technic Suspension Arm 2 x 6.5 Type 2 (#376) at once". Not the
+  universal joint (pinning its 4L joint locked the loop instead), nor the
+  slide's weight (it fails without it). Not looked into further: which of
+  what the grouping moves and leaves standing puts the rim against the arm.
 - 8845-1 at -52°: an axle pin read in its track rod's hole on a second line,
   at a pose its rims' boxes keep it from. Why the exact shapes let it get
   there, and which joint reading should not see it, is not known.
@@ -4997,3 +5003,20 @@ least-norm slope was not tried.
   within 1.5 LDU of; one drawn elsewhere is as before.
 
 ### Checked
+
+On the final code: `grab_probe -- --only=groups` (4: 42125-1's loop of 22
+joints, +30° the rack 8.00 LDU and the knuckles 11.53° and 11.52°, the
+suspension arm 0.102 LDU, the column's two 16s 30.00° each, back 0.0170
+LDU; 8820-1 24°), which fails 3 of 4 on cbfb2506; `telescope_probe` (32,
+its three gaps; a turn slides the tube 21.333 LDU, tilted 45° 7.993 and
+7.999); `--only=clipped` (4: 4002020-1 +10°, -2°, -7°, back 0.0001 LDU).
+Earlier in the unit, with the slide damped as hard as friction:
+`grab_probe` headless whole 164 passed and 41 failed, which run on
+cbfb2506 section by section are the 35 that need a pointer, 42050-1's
+ribbed hose and 8074-1_Crane's turntable (failing there too: the own
+copies'), 4002020-1 (passes now) and 8448-1_Racer's two (Left, above); in a
+window `--only=bearing` (2) and `--only=path` (6, two gaps);
+`motions_probe` (92), `simulate_probe` (41), `mcp_walk3_probe` (20) and
+`own_copies_probe` (20) passed. The steering sweep, the 60 sets that steer
+in mechverify2: 59 steer both ways and back, 8416-1 held by its worm (above);
+nothing else changed but 42125-1 and 8820-1. The 181 are the lead's.

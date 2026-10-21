@@ -5985,7 +5985,9 @@ func _bearing_check() -> void:
 ## A steering in a chassis of pins, and a tyre beside a steering top (Grab
 ## 18, docs/MECHANISMS.md §29): 42125-1's loop is the joints that move, its
 ## rack rests on its beam, its arms stay on their axles and its column turns
-## through its universal joints; 8820-1's tyre is judged by its round.
+## through its universal joints; 8820-1's tyre is judged by its round. The
+## arms slid 1.5 LDU along their axles for the 30° undamped, 0.10 as a slide
+## is damped (Linkage.SLIDE_WEIGHT).
 func _groups_check() -> void:
 	print("\na steering in a chassis of pins, and a tyre by its round")
 	if not await _open("res://vendor/omr/files/42125-1.mpd"):
@@ -6016,7 +6018,7 @@ func _groups_check() -> void:
 	_check("groups: +30° slides the rack #442 %.2f LDU (8 by its teeth), turns the knuckles #344 %.2f° and #340 %.2f°, "
 		% [rack, turned.call(344), turned.call(340)] + "the suspension arm #319 %.3f LDU, the column's 16 #465 %.2f° with #463 %.2f°: %s"
 		% [arm, turned.call(465), turned.call(463), said.get_slice("\n", 1).left(120)],
-		absf(rack - 8.0) < 0.1 and turned.call(344) > 5.0 and turned.call(340) > 5.0 and arm < 0.05
+		absf(rack - 8.0) < 0.1 and turned.call(344) > 5.0 and turned.call(340) > 5.0 and arm < 0.25
 		and absf(turned.call(465) - turned.call(463)) < 0.5)
 	str(await tools.run("move_part", {"part": "#461", "degrees": -60.0}))
 	await _frames(2)
