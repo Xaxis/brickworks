@@ -27,7 +27,7 @@ whole cycle.
   more: the motorcycle's 60 to 126 parts took 0.4 to 1.3 s to check. And a
   feature's real pieces are fitted beside it: a loader's review_model and
   settle_feature took 1.6 to 2.2 s. Replayed, the motorcycle's session has
-  no call holding the window a second, where 14 did, the longest for
+  no call holding the window a second, where 13 did, the longest for
   19.7 s; a loader's has one, where 14 did. What each call answers is
   unchanged.
 
