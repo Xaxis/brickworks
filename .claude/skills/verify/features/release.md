@@ -50,16 +50,23 @@ that offers each system its own build. The cycle and its cadence are
 - `download page`: `web/download.html` with `web/download.js`, served at
   `/download` (tools/site.py copies every file in `web/`; the old
   `/download.html` 308s to `/download`). Reads same-origin `releases.json`, detects the
-  system (`?os=`, then client hints, `navigator.platform`, the user agent; a
-  phone or an iPad gets no guess), offers its primary file with version,
-  size and date, and shows every file with its SHA-256, a Copy button, the
-  command to check it, what the system needs (glibc and oldest macOS read
-  from the packages, disk once unpacked) and, while unsigned, the Gatekeeper
-  and SmartScreen first-launch steps. No release in the manifest reads "on
-  its way" with a link to the web app.
+  system (client hints, `navigator.platform`, the user agent; a phone or an
+  iPad is "mobile", Linux on ARM "other"; `?os=` chooses one), and offers
+  its primary file as the one primary button, version and size in small
+  type, the other systems as links (`?os=`, in place). Folded away
+  (`details.qa`): the first launch, one line saying what happens, its steps
+  (the Gatekeeper and SmartScreen ones only while unsigned, what it needs
+  read from the packages), and Verify the download, a command per file
+  that prints OK or True. What is new: the four lines written for the
+  release in `<ul data-highlights="X">`, or else the summary's first four
+  sentences. A phone is told the desktop app is for a computer and offered
+  the web app first. No release in the manifest reads "on its way" with a
+  link to the web app (2026-10-20: the owner found the page that listed
+  everything at once broken and "way too verbose").
 - `download page check`: `tools/web/download_check.mjs` serves `web/` with a
   CSP at least as strict as the site's and loads the page as Linux, macOS,
-  Windows and an Android phone through the DevTools protocol.
+  Windows and an Android phone through the DevTools protocol, then checks
+  every link the page has.
 
 ## How to reach it
 
@@ -116,10 +123,13 @@ node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
 ```
 
 Proves it when: linux is offered the AppImage, macos the universal zip and
-windows the windows zip, each with the version; the phone is offered nothing
-and told why; the other systems are one click away; nothing is refused by the
-CSP; it ends `the download page offers each system its own build`. With the
-committed (empty) manifest it reads `no release yet` for all four.
+windows the windows zip, each as the one primary button with the version and
+size, about 100 words before anything is opened (150 at most); the phone is
+offered the web app first and told why; the other systems are one click away,
+each with its own steps and checksums, nothing past the edge at 1280 or 390 px
+with everything opened; every link answers; nothing is refused by the CSP; it
+ends `the download page offers each system its own build`. With a manifest
+that has no release it reads `no release yet` for all four.
 
 ## Gotchas
 

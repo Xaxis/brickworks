@@ -59,10 +59,13 @@ tools/release.py publish --draft
 gh workflow run release.yml -f tag=v0.2.0
 gh run watch "$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
 
-# 6. Publish the draft that was checked, then put it on the download page.
+# 6. Publish the draft that was checked, then put it on the download page,
+#    with four short lines on what is new in it: web/download.html's
+#    <ul data-highlights="0.2.0">, in place of the last release's. Without
+#    them the page shows the first sentences of the summary.
 tools/release.py publish                       # writes web/releases.json
 git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
-  commit -m "Brickworks 0.2.0 on the download page" web/releases.json && git push
+  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html && git push
 tools/deploy.sh --prod
 
 # 7. Check it live.
