@@ -312,7 +312,7 @@ async function houseLink(size, shape) {
     check(`"${name}" played: ${joints.map((j) => `${j[0]} ${j[1]}° to ${j[2]}°`).join(", ") || "nothing"}; lit; "${done ? done.p.says : ""}"`,
       Boolean(done) && joints.length > 0 && joints.every((j) => Math.abs(j[2] - j[1]) >= 80) && !done.m.stopped
       && /Press it again to put it back/.test(done.p.says));
-    if (done) say(`the press worked out ${done.m.frames} frames in ${done.m.ms} ms of the app's own time over ${done.m.slices} frames, the longest slice ${done.m.longest_ms} ms${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""}, after waiting ${done.m.waited_ms} ms for the grab and the parts' shapes (said, not judged)`);
+    if (done) say(`the press worked out ${done.m.frames} frames in ${done.m.ms} ms of the app's own time over ${done.m.slices} frames, the longest slice ${done.m.longest_ms} ms${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""}, after waiting ${done.m.waited_ms} ms for the grab and the parts' shapes; of what a slice cannot cut, taking hold of its joints ${done.m.hold_ms} ms, a frame ${done.m.frame_ms} ms, keeping it ${done.m.keep_ms} ms (said, not judged)`);
   }
   await page.waitForTimeout(600);
   await shot(page, `${size}_7_played.png`);

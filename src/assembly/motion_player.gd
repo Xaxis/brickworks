@@ -395,9 +395,9 @@ func begin(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS) -
 	return played
 
 
-## [param played]'s next frames worked out, until Time.get_ticks_usec()
-## passes [param until] (every one when 0), one at least: whether every
-## frame is worked out.
+## [param played]'s next frames worked out, one at least, and then each
+## that would end by Time.get_ticks_usec() [param until] if it took as long
+## as the last (every one when 0): whether every frame is worked out.
 func advance(played: Played, until: int = 0) -> bool:
 	var length: float = played.seconds
 	while played.next < played.count:
@@ -408,8 +408,12 @@ func advance(played: Played, until: int = 0) -> bool:
 			_step(item, item.track.place_at(when))
 		played.frames.append(_composed(played.order))
 		played.next += 1
-		played.frame_ms = maxf(played.frame_ms, (Time.get_ticks_usec() - began) / 1000.0)
-		if until > 0 and Time.get_ticks_usec() >= until:
+		var now: int = Time.get_ticks_usec()
+		played.frame_ms = maxf(played.frame_ms, (now - began) / 1000.0)
+		# Not begun past the slice: a frame begun just inside it, on a phone
+		# slowed four times 46 to 66 ms, made a 40 ms slice 80 to 98 ms
+		# (play_flow).
+		if until > 0 and now + (now - began) >= until:
 			break
 	return played.next >= played.count
 
@@ -551,16 +555,17 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 			paced.playing = begin(paced.order[paced.at], paced.reverse, paced.fps)
 			paced.hold_ms = maxf(paced.hold_ms, (Time.get_ticks_usec() - held_at) / 1000.0)
 			continue
-		if advance(paced.playing, until):
-			paced.frame_ms = maxf(paced.frame_ms, paced.playing.frame_ms)
-			var kept_at: int = Time.get_ticks_usec()
-			finish(paced.playing, true, paced.words if paced.order.size() == 1 else "")
-			paced.keep_ms = maxf(paced.keep_ms, (Time.get_ticks_usec() - kept_at) / 1000.0)
-			paced.kept_at = Time.get_ticks_msec()
-			paced.run.played.append(paced.playing)
-			paced.run.each.append(paced.playing.frames)
-			paced.playing = null
-			paced.at += 1
+		if not advance(paced.playing, until):
+			break
+		paced.frame_ms = maxf(paced.frame_ms, paced.playing.frame_ms)
+		var kept_at: int = Time.get_ticks_usec()
+		finish(paced.playing, true, paced.words if paced.order.size() == 1 else "")
+		paced.keep_ms = maxf(paced.keep_ms, (Time.get_ticks_usec() - kept_at) / 1000.0)
+		paced.kept_at = Time.get_ticks_msec()
+		paced.run.played.append(paced.playing)
+		paced.run.each.append(paced.playing.frames)
+		paced.playing = null
+		paced.at += 1
 	var spent: float = (Time.get_ticks_usec() - began) / 1000.0
 	paced.slices += 1
 	paced.longest_ms = maxf(paced.longest_ms, spent)
