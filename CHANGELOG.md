@@ -15,6 +15,11 @@ whole cycle.
 
 ### Fixed
 
+- Pressing a motion's button on a shared model's page just after Reset no
+  longer stalls the page. The model's joints, changed by the Reset, were
+  read again in the frame of the press, though a worker was already
+  reading them: 96 ms of one frame for 1484-1's house here, several times
+  that on a slow phone. The press now waits for the worker's reading.
 - A part let go after a drag is kept where it was let go, every time.
   The check of its way after the release runs beside the window, and there
   a part whose real shape the drag had not looked at yet was judged by its

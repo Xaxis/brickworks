@@ -477,8 +477,8 @@ func play_in_order(order: Array, reverse: bool, words: String, fps: int = PLAY_F
 	return paced.run
 
 
-## How long a paced run waits for the joints to be read on a worker before
-## it reads them itself, ms.
+## How long a paced run waits for the joints to be read on a worker, when
+## no read is under way, before it reads them itself, ms.
 const READ_WAIT_MS := 1000
 
 
@@ -506,7 +506,7 @@ class Paced extends RefCounted:
 	var hold_ms: float = 0.0
 	var frame_ms: float = 0.0
 	var keep_ms: float = 0.0
-	## When its last motion was kept, ms.
+	## When it began, or its last motion was kept, ms.
 	var kept_at: int = 0
 
 
@@ -517,6 +517,7 @@ func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Pa
 	paced.words = words
 	paced.fps = fps
 	paced.depth = builder.history_depth()
+	paced.kept_at = Time.get_ticks_msec()
 	return paced
 
 
@@ -530,11 +531,15 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 	var until: int = began + int(budget_ms * 1000.0) if budget_ms > 0.0 else 0
 	while until == 0 or Time.get_ticks_usec() < until:
 		if paced.playing == null:
-			# The next motion begins where the last left the model, whose
-			# joints are read again: on a worker for a big model, waited
-			# for here (a second at most) rather than read in this frame.
-			if until > 0 and paced.at > 0 and paced.at < paced.order.size() and not grabbing.is_ready() \
-					and grabbing.reads_ahead() and Time.get_ticks_msec() - paced.kept_at < READ_WAIT_MS:
+			# A motion begins where the model stands, the next where the
+			# last left it, its joints read again after a change: on a
+			# worker for a big model (any model in a link's viewer), waited
+			# for here rather than read in this frame, where the house's 211
+			# parts just after a Reset took 96 ms of one (share_play_probe).
+			# Read here only when no read is under way a second on.
+			if until > 0 and paced.at < paced.order.size() and not grabbing.is_ready() and grabbing.reads_ahead() \
+					and (grabbing.is_reading() or Time.get_ticks_msec() - paced.kept_at < READ_WAIT_MS):
+				grabbing.read_soon()
 				break
 			if paced.at >= paced.order.size():
 				for frames: Array in MotionRender.whole_frames(paced.run.each):

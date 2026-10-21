@@ -1640,6 +1640,18 @@ func reads_ahead() -> bool:
 		and is_processing()
 
 
+## Whether the joints are being read on a worker now.
+func is_reading() -> bool:
+	return _readying >= 0
+
+
+## Read on a worker from the next frame, not once the model has stood still
+## a moment: a press is waiting for it (MotionPlayer.pace_on).
+func read_soon() -> void:
+	_seen_revision = world.revision
+	_changed_at = mini(_changed_at, Time.get_ticks_msec() - READY_AFTER_MS)
+
+
 ## Read now, on this thread: a small model, a browser without threads, or a
 ## press that came before the reading was done.
 func _ready_now() -> void:
