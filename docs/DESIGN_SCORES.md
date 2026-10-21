@@ -2613,6 +2613,17 @@ Results: `bench/results/realset-2026-10-20-technic4/` and `-technic4b/`
 `-technic3-vs-technic4b/` (report-tune-3.md each). The kinds' table is
 `python3 tools/technic_shape.py` (and `--gd` for the one technic_way.gd keeps).
 
+**The Technic line paused here (2026-10-21).** Four units moved the idiom
+(studded parts 91% to 3%), the body (flush, arched) and the mechanics (a
+function that moves, by the session's own check), and the judge took each
+over main's System bricks on technique head to head. None moved a verdict
+against the real set on technique, and likeness fell or stayed. The
+reasons now ask for what a set's designers do over many models: a cab
+closed in angled panels, a mechanism packaged inside the body with its
+signature parts showing. The four levers stay on their branches (technic,
+technic2, technic3, technic4); the next design work goes where a verdict
+against the set has moved before.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
