@@ -4990,22 +4990,23 @@ least-norm slope was not tried.
 
 - **8448-1_Racer's grooved rack no longer moves** (`grab_probe --only=grooved`,
   base 1.94 LDU): "the Wheel Rim 30 x 61 with 3 Spokes Swirled (#478) meets
-  the Technic Suspension Arm 2 x 6.5 Type 2 (#376) at once". Not the
-  universal joint (pinning its 4L joint locked the loop instead), nor the
-  slide's weight (it fails without it), but the grouping. The upper arm
-  (#376, 32195a) is pinned to the chassis at (6, 6.1) studs, and a cross
-  block (#374, 32184) with a 2L axle in each end joins it at (8, 6.1) to
-  body 367, held with the chassis, at (8, 4.1): arm, block and chassis make
-  a triangle, so as the model is read the arm cannot turn, and
-  `held_together` puts it with the chassis. In the old loop of 29 joints its
-  pin was a joint that closed without turning, and everything beyond a
-  loop joint counted as moving, so the rim beside it was never tested
-  against it. Now the rim (#478, no exact shape) turns about its kingpin
-  with the arm inside its box as built (the boxes overlap 35 by 20 by 40
-  LDU), and `_no_deeper` stops it at once. The stop is the rim's box, as
-  8820-1's was the tyre's; a rim judged by its round lets 8845-1 on to -52°
-  (above). What it takes: a shapeless wheel judged by its round, with
-  8845-1's reading at -52° fixed first.
+  the Technic Suspension Arm 2 x 6.5 Type 2 (#376) at once". Its two
+  suspension arms (32195a, #367 and #376) are pinned to the chassis at (6,
+  4.1) and (6, 6.1) studs and joined at (8, 4.1) and (8, 6.1) by a cross
+  block (#374): a parallelogram, free to move. `held_together` grouped them
+  with the chassis because `Bodies._ball_middle` put both arms' ball joints
+  on the steering arm's (32186) first ball, at (11.5, 4.1): it counts only a
+  socket named so, and 32195a's socket is drawn as rounds (a bore 8 across,
+  10 long), which `Joints.balls` reads and `_ball_middle` did not. Two arms
+  on one ball close the parallelogram. Counting such a bore as a socket
+  (`grab18_ball_socket_bores.patch` in the results) puts the upper arm's
+  ball at (11.5, 6.1); then the first turn goes all of 30° (the rack 5.33
+  LDU, its arms 7.65°, where the base went 1.94), and the second is refused,
+  "Locked", by what the joints read after that turn: the pinion read one
+  body with an axle on a hinge. Not kept: not proven on the other sets in
+  the hour, and the second turn not looked into. The old loop counted the
+  arms as moving (everything beyond a loop joint), so the rim beside them
+  was never tested against them.
 - 8845-1 at -52°: an axle pin read in its track rod's hole on a second line,
   at a pose its rims' boxes keep it from. Why the exact shapes let it get
   there, and which joint reading should not see it, is not known.
