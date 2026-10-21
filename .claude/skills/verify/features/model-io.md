@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts -->
 
 ## Sub-features
 
@@ -127,9 +127,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   as that part is to within 1 LDU (every corner of either's triangles to the
   other's surface, and its box), takes that part's connectors, cover and
   exact shape; its triangles and text stay its own. On the web the parts'
-  geometry is fetched before the file opens (`_fetch_copied`). Gears,
-  turntables and actuators are still found by part number (Mechanism's
-  table), so a copied gear is not yet one. `own_copies_probe` opens 42125-1.
+  geometry is fetched before the file opens (`_fetch_copied`). Every lookup
+  of the gear table by part (gears, turntables, driving rings, racks,
+  actuators, and Flex's sprockets) reads a copy as its part
+  (`Mechanism.reads_as`, `entry_of`, `Racks.spec_of`), so a copied gear
+  meshes. `own_copies_probe` opens 42125-1, then drives a copied gear in
+  42121-1, 42083-1 and 42115-1 (Simulate's rate and Grab's turn at the
+  teeth's ratio) and 42054-1's copied turntable top in Simulate; `-- --gears`
+  lists every OMR copy of a part the gear table keys and whether it is read
+  so (60 in 44 files, 55, ~1 min).
 - `table race` (`Mechanism.table`, `Flex.kind_of_piece`, `Exact._sphere`,
   `Exact.shape_for`, `Style.norms`, `Collection._sizes`): a static table
   read at first use, and reached by a worker, is either made as its class
@@ -680,7 +686,8 @@ godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/file
 node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin vendor/omr/files/42082-1.mpd
 godot --headless --path . --script src/dev/carried_fetch_probe.gd -- vendor/omr/files/21321-1.mpd   # carried parts built from LDraw files fetched over HTTP, the library withheld
 godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census bench/results/census.json   # which of vendor/omr's files need the library's files, and which
-godot --headless --path . --script src/dev/own_copies_probe.gd   # 42125-1's own copies of LEGO parts read as those parts: joints, exact shapes, tie rods held, written back as they came
+godot --headless --path . --script src/dev/own_copies_probe.gd   # 42125-1's own copies of LEGO parts read as those parts: joints, exact shapes, tie rods held, written back as they came; copied gears turning theirs (~3 min)
+godot --headless --path . --script src/dev/own_copies_probe.gd -- --gears   # ...every OMR copy of a gear, turntable, ring, rack or actuator, read as its part or its own
 godot --headless --path . --script src/dev/own_copies_probe.gd -- --survey --shard=0/2   # ...and how many of the OMR's copies are read so (run 1/2 too, ~4 min each)
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- rounds=12   # files' carried parts built on every worker at once, each as built alone
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- dir=$PWD/.scratch-data/godot/app_userdata/Brickworks/custom_parts   # ...the parts kept from files, as start-up builds them

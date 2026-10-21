@@ -95,7 +95,52 @@ static func _read_table() -> Dictionary:
 
 ## One part's entry in the table, empty for a part that is not a gear.
 static func spec_of(part_id: String) -> Dictionary:
-	return (table().get("gears", {}) as Dictionary).get(part_id, {})
+	return entry_of("gears", part_id)
+
+
+## [param part_id]'s entry in one of the table's sections keyed by part
+## ("gears", "racks", "actuators", "driving_rings"...), as the part it reads
+## as ([method reads_as]); empty for none.
+static func entry_of(section: String, part_id: String) -> Dictionary:
+	return _entry(section, reads_as(part_id))
+
+
+## The entry in [param section] of the part [param reads] (what a part reads
+## as, [method reads_as]): a Piece's, read once as it is built.
+static func _entry(section: String, reads: String) -> Dictionary:
+	var entry: Variant = (table().get(section, {}) as Dictionary).get(reads)
+	return entry if entry is Dictionary else {}
+
+
+## A model file's own copy of a part LEGO made, drawn as that part is, is
+## read as that part (CustomParts.read_as_copy): 42083-1's "42083 - 35185" is
+## a 35185, 20 teeth and a clutch either side. Every lookup of the
+## table by part goes through [method reads_as], so a copy is a gear, a
+## turntable, a rack or an actuator wherever its part is one. Copy -> part,
+## written as a file's parts are built, and read on Grab's worker as it reads
+## a model's joints: so behind a lock.
+static var _copies: Dictionary = {}
+static var _copies_lock := Mutex.new()
+
+
+## The part [param part_id] is read as in the table: for a model file's own
+## copy of a part LEGO made, that part; itself for every other part.
+static func reads_as(part_id: String) -> String:
+	_copies_lock.lock()
+	var made: String = str(_copies.get(part_id, part_id))
+	_copies_lock.unlock()
+	return made
+
+
+## Say that [param copy] is read as [param made] from now on; with "", that
+## it is a part of its own.
+static func read_as(copy: String, made: String) -> void:
+	_copies_lock.lock()
+	if made.is_empty():
+		_copies.erase(copy)
+	else:
+		_copies[copy] = made
+	_copies_lock.unlock()
 
 
 static func _axis_of(word: Variant) -> Vector3:
@@ -114,6 +159,8 @@ static func _axis_of(word: Variant) -> Vector3:
 class Piece extends RefCounted:
 	var key: int = 0
 	var part: String = ""
+	## The part it is in the table as ([method Mechanism.reads_as]).
+	var reads: String = ""
 	var at: Transform3D
 	var mesh: Lbm.PartMesh
 	var name: String = ""
@@ -259,6 +306,7 @@ static func build(list: Array, held: Array = []) -> Mechanism:
 		piece.key = int(entry.get("key", next))
 		next = maxi(next, piece.key) + 1
 		piece.part = str(entry.get("part", ""))
+		piece.reads = reads_as(piece.part)
 		piece.at = entry.get("at", Transform3D.IDENTITY)
 		piece.mesh = entry.get("mesh")
 		piece.name = str(entry.get("name", ""))
@@ -432,14 +480,14 @@ func _build() -> void:
 	var turntables: Dictionary = table().get("turntables", {})
 	var bases: Dictionary = {}   ## base part -> Array of keys
 	for key: int in parts:
-		var id: String = (parts[key] as Piece).part
+		var id: String = (parts[key] as Piece).reads
 		for top: String in turntables:
 			if str(turntables[top]) == id:
 				if not bases.has(id):
 					bases[id] = []
 				(bases[id] as Array).append(key)
 	for key: int in parts:
-		var base_id: String = str(turntables.get((parts[key] as Piece).part, ""))
+		var base_id: String = str(turntables.get((parts[key] as Piece).reads, ""))
 		if base_id.is_empty():
 			continue
 		var at: Transform3D = (parts[key] as Piece).at
@@ -530,14 +578,14 @@ func _rest_on_studs(studs: Array) -> void:
 		# the column, the train was held to the chassis, and the turn back
 		# turned the column alone.
 		var gear_holes: Array = _holes_of(piece.mesh, _shaft_of(piece.mesh)) \
-			if not spec_of(piece.part).is_empty() else []
+			if not _entry("gears", piece.reads).is_empty() else []
 		for x: int in range(lo.x, hi.x + 1):
 			for y: int in range(lo.y, hi.y + 1):
 				for z: int in range(lo.z, hi.z + 1):
 					for stud: Array in at_foot.get(Vector3i(x, y, z), []):
 						if stud[0] != key and body_of(stud[0]) != body_of(key) \
 								and _stands_on(piece.mesh, inverse, stud[2], stud[3]) \
-								and (spec_of(piece.part).is_empty()
+								and (_entry("gears", piece.reads).is_empty()
 									or _in_a_hole(gear_holes, inverse, stud[2], stud[3])):
 							_join(key, stud[0])
 
@@ -606,14 +654,14 @@ func _stubs(lines: Array) -> void:
 	var with: Array[int] = []
 	var toothed: Array[int] = []
 	for key: int in parts:
-		var spec: Dictionary = spec_of((parts[key] as Piece).part)
+		var spec: Dictionary = _entry("gears", (parts[key] as Piece).reads)
 		if spec.has("stubs"):
 			with.append(key)
 		if not spec.is_empty() and str(spec.get("hole", "none")) != "none":
 			toothed.append(key)
 	for key: int in with:
 		var at: Transform3D = (parts[key] as Piece).at
-		for stub: Array in spec_of((parts[key] as Piece).part)["stubs"]:
+		for stub: Array in _entry("gears", (parts[key] as Piece).reads)["stubs"]:
 			var point: Vector3 = at * Vector3(float(stub[0]), float(stub[1]), float(stub[2]))
 			var way: Vector3 = (at.basis * Vector3(float(stub[3]), float(stub[4]),
 				float(stub[5]))).normalized()
@@ -622,7 +670,7 @@ func _stubs(lines: Array) -> void:
 				if gear == key:
 					continue
 				var there: Transform3D = (parts[gear] as Piece).at
-				var axis: Vector3 = (there.basis * _axis_of(spec_of((parts[gear] as Piece).part)
+				var axis: Vector3 = (there.basis * _axis_of(_entry("gears", (parts[gear] as Piece).reads)
 					.get("axis", "z"))).normalized()
 				if absf(axis.dot(way)) < 0.99:
 					continue
@@ -721,7 +769,7 @@ func _find_gears() -> void:
 	unseated.clear()
 	for key: int in parts:
 		var piece: Piece = parts[key]
-		var spec: Dictionary = spec_of(piece.part)
+		var spec: Dictionary = _entry("gears", piece.reads)
 		if spec.is_empty():
 			continue
 		var specs: Array = [spec]
@@ -763,7 +811,7 @@ func _gear(piece: Piece, spec: Dictionary) -> Gear:
 		gear.arc_middle = (at.basis * Vector3(float(arc[0]), float(arc[1]),
 			float(arc[2]))).normalized()
 		gear.arc_half = deg_to_rad(float(arc[3]))
-	gear.links = int(Flex.SPROCKETS.get(piece.part, 0))
+	gear.links = int(Flex.SPROCKETS.get(piece.reads, 0))
 	return gear
 
 
@@ -1072,7 +1120,7 @@ func _shift() -> void:
 	var carrier_keys: Array[int] = []
 	var clutch_keys: Array[int] = []
 	for key: int in parts:
-		var id: String = (parts[key] as Piece).part
+		var id: String = (parts[key] as Piece).reads
 		if rings.has(id):
 			ring_keys.append(key)
 		if carriers.has(id):
@@ -1080,20 +1128,20 @@ func _shift() -> void:
 		if clutches.has(id):
 			clutch_keys.append(key)
 	for ring: int in ring_keys:
-		var spec: Dictionary = rings[(parts[ring] as Piece).part]
+		var spec: Dictionary = _entry("driving_rings", (parts[ring] as Piece).reads)
 		var at: Transform3D = (parts[ring] as Piece).at
 		var way: Vector3 = (at.basis * _axis_of(spec.get("axis", "z"))).normalized()
 		var reach: float = float(spec.get("reach", 10.0))
 		var span := Vector2(-reach, reach)
 		for carrier: int in carrier_keys:
-			var other: Dictionary = carriers[(parts[carrier] as Piece).part]
+			var other: Dictionary = _entry("ring_carriers", (parts[carrier] as Piece).reads)
 			var there: Transform3D = (parts[carrier] as Piece).at
 			var its: Vector2 = _span_on(there, other, at.origin, way)
 			if its != Vector2.INF and its.x < span.y and its.y > span.x:
 				_join(ring, carrier)
 		var driven: int = 0
 		for gear: int in clutch_keys:
-			var other: Dictionary = clutches[(parts[gear] as Piece).part]
+			var other: Dictionary = _entry("clutch_gears", (parts[gear] as Piece).reads)
 			var there: Transform3D = (parts[gear] as Piece).at
 			var its: Vector2 = _span_on(there, other, at.origin, way)
 			if its == Vector2.INF:

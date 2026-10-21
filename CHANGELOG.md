@@ -490,6 +490,14 @@ whole cycle.
   still drawn and saved as the file had it. Of the 2,017 such copies in
   the real sets we test with, 1,768 are read so; one drawn otherwise stays
   the file's own.
+- A model file's own copy of a gear is a gear. A copy read as its part had
+  the gear's holes but not its teeth: Simulate and turning a gear by hand
+  passed it by, and a gear train stopped at it. It now meshes and turns at
+  its teeth's ratio, and a copied turntable, driving ring or sprocket is
+  read as its part too. On 42121-1 a copied 20 tooth gear turned 20° turns
+  the 12 tooth gear it meshes 33.3°; on 42083-1 a copied clutch gear drives
+  the differential. Of the 60 copies of gears and their kin in 44 of the
+  real sets we test with, 55 are read so.
 - Suggest sections reads a stud that points sideways as holding what is on
   it, and no longer joins two parts at an angle that only stand side by
   side. On 10179-1 a 2 x 3 plate on edge went into a section without the

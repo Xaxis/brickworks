@@ -1075,7 +1075,9 @@ class Sprocket extends RefCounted:
 ## the way its axle hole runs (the thin way where it has no hole), its
 ## middle its box's.
 static func sprocket_of(brick: BrickWorld.Brick, library: PartLibrary) -> Sprocket:
-	if brick == null or not SPROCKETS.has(brick.part_id):
+	# A model file's own copy of a sprocket is one (Mechanism.reads_as).
+	var links: int = int(SPROCKETS.get(Mechanism.reads_as(brick.part_id), 0)) if brick != null else 0
+	if links == 0:
 		return null
 	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 	if part == null:
@@ -1093,7 +1095,7 @@ static func sprocket_of(brick: BrickWorld.Brick, library: PartLibrary) -> Sprock
 	sprocket.brick = brick.id
 	sprocket.centre = brick.transform * part.bounds.get_center()
 	sprocket.axis = (brick.transform.basis * local_axis).normalized()
-	sprocket.links = int(SPROCKETS[brick.part_id])
+	sprocket.links = links
 	sprocket.radius = CHAIN_PITCH * 0.5 / sin(PI / float(sprocket.links))
 	return sprocket
 
