@@ -4860,3 +4860,136 @@ telescope" now stops at 574° of the 612°, where the carriage meets its
 bearing: it slid on into it before, "clear all the way", and that check now
 asks that it does not stop on the dome. The steering sweep (181 sets) is
 not run here: the bearings' test touches every loop's room test.
+
+## 29. A loop of what moves, a rack on its rests, and a tyre's round (Grab 18)
+
+With a file's own copies of parts read as those parts (9dbfc354) on Grab 17
+(e8d58876), the steering sweep (`tools/steer_sweep.py`, 181 sets) found
+42125-1's steering refused as too big, 8820-1's rack sliding a fifth of what
+it did, and 8845-1 lost with Grab 17's bearing rule alone. Each was measured
+on the base, cbfb2506, and after, by the sweep set by set and by a scratch
+probe calling `move_part` as a session does.
+
+### 42125-1: the joints a drive moves
+
+The rack hangs on its track rods by their balls now that the rods are read,
+so its way from what stays runs out through the suspension, and the
+pinion's runs through the housing it turns in, a beam hung on four pins in
+the frame, each pin a body turning in both. `Linkage` took in every loop
+through any joint on those ways, and every loop through theirs: 106 joints
+in the first round (the limit is 40), 257 in all, the frame's pins, the
+doors, the roof. Refused. The sweep's mechverify2 row said it steered: the
+rods were not read then, the rack slid 0.76 LDU and no arm turned.
+
+1. **A loop is solved between groups of bodies held as one**
+   (`Bodies.held_together`). Two groups are one when every way between
+   them together lets no motion of the one against the other: each joint
+   straight between them, and each way through a third body that touches no
+   more than six groups (a pin, a connector), which lets what its two sides
+   let. Motions are twists about the joints' middle in radians and studs; a
+   way counts where it stands 0.03 from the rest (two pins' lines 0.6 LDU or
+   more apart hold). Every anchor is one group. 42125-1: 547 bodies in 353
+   groups, 129 ms, once per reading and only when a loop is read. `Linkage`
+   places each group where its lead (its body nearest an anchor) stands; a
+   lead hangs on the tree's joint, and every other joint between two groups
+   closes a loop. A driver turning within a group is read as before. The
+   steering: 18 joints.
+2. **A rack hung on balls alone rests on what it lies on**
+   (`Bodies._rest_racks`). With nothing guiding it, the rack rolled about
+   its line and swung on the rods: 10° of the pinion slid it 2.67 LDU and
+   turned the knuckles 1.18°. A rack a pinion of another body drives, whose
+   own joints are all balls, rests on the part its box is most into of
+   those sharing its cells (not what its balls join it to, nor its
+   pinion's body), as `_lodge` lays one for a rack nothing holds.
+3. **An axle's free slide moves least.** Least squares over every
+   coordinate alike slid the suspension arms along their axles as the
+   knuckles turned, 0.5 LDU for 10°, until a bush met a shock absorber at
+   25°. Each step damps an axle's unbounded slide as it damps a friction
+   bearing (`FRICTION_WEIGHT`): the arms 0.000 LDU, the knuckles 3.82° for
+   10°.
+4. **A universal joint's centre in an end's fork is pinned there**
+   (`Bodies._cross_in_forks`), and a loop takes in the shafts its gears turn
+   through one (`Grab._only_bearings`). The file draws both centres of the
+   steering column a quarter turn off their ends' forks (the fork's pins
+   along x, the centre's at 45° to it), each pinned in one end only. The
+   cardan shaft between was held by nothing and lodged where its box was
+   most into something: a liftarm beside it, and once the column had turned
+   30°, read again, the column's end. Turned back, the shaft swung round
+   with the column into the frame ("the Technic Universal Joint 3L End
+   (#672) meets the Technic Angle Connector #2 (#649) at once"). A centre
+   within `SAME_LINE` of an end's fork's middle is pinned in it on the
+   fork's line.
+
+After: "a loop of 35 joints (18 axle, 1 rests, 8 ball, 8 hinge), closed by
+13 of them and 2 gear meshes and a 12 tooth pinion in rack 87761". +30°:
+the rack 8.00 LDU (12 teeth of 8 LDU, a twelfth of a turn), the knuckles
+11.54°; -60°: -8.00 LDU, 11.54° the other way; back 0.0069 LDU. The sweep's
+row takes 59 s (it was refused in 25).
+
+### 8820-1's rack
+
+Under Grab 17 it slid +1.12 and -1.45 LDU where it slid 5.34: stopped at 6°
+of 30 where a tyre (#132, 2346, no exact shape) meets the Technic Steering
+Top (#17). The two boxes touch as built, so `_no_deeper` lets them no more
+than 1 LDU into each other, and each 3° of the steering swung the tyre's box
+0.47 LDU further in (0.94 at 6°). Judged as the round its box makes (35 LDU
+across the tread, 30 wide) against the top's exact shape, the tyre is clear
+all the way to 30°, the top's nearest corner 0.09 LDU outside it. The stop
+was false.
+
+5. **A tyre with no exact shape is judged by its round**
+   (`Grab._depth_between`, `Exact.round_of`): the 16-sided prism inside its
+   box's round, against the other part's exact shape. After: +24° (the rack
+   4.21 LDU), where the same tyre meets the Technic Plate 1 x 8 with Holes
+   (#2) under it, by its round and the plate's shape; -59° of -60 (-6.38
+   LDU), where a rim (#133) meets the steering top; back 0.0065 LDU.
+
+Not a wheel's rim. 8845-1's rim (#171), judged by its round, let its
+steering on from -24° to -52°; read again there, its axle pin (#50) is in
+its track rod's (#59) hole on a second line ("lines:50:59"), the arm and the
+rod one body, and the turn back moved only a wheel: 35 LDU off. Its exact
+shapes and the tyres' rounds are clear at -39° (a scan of every moving part
+against everything its box meets). A rim stays judged by its box until that
+reading is fixed.
+
+### 8845-1, the bearing rule and Grab 17 whole
+
+It steers here as with Grab 17 whole: 8.13° (+30 stops where the Wheel Rim
+#177 meets the Technic Plate 1 x 4 with Holes #36), -24° (the rim #171 meets
+plate #63), back 0.0004 LDU. The bearing rule (`_across`) no longer forgives
+the plate its arm's hinge is on for every moving part, so the first turn
+stops at 8° where it went 30°. The second begins there with rim #171 and
+plate #63 in each other's covers, a pair G13 forgives for the grab. With the
+bearing rule alone it was forgiven whole: the rim went through the plate to
+-52°, where the reading above makes the arm one body with its track rod and
+the turn back moves only a wheel (#51 35 LDU off). `_no_deeper`, Grab 17's
+other rule, forgives the pair only as deep as it began: it stops at -24°.
+
+### 8416-1 is held by its worm
+
+Not a steering: a forklift whose lift the sweep turns by the 16 tooth gear
+(#43) on its pinion's axle. That axle carries a 24 tooth crown gear (#28)
+that a worm (#27, 4716, on a vertical axle) meshes, 41 LDU from its middle.
+The loop had taken in the mast's pins and the worm's own axle as joints, and
+a worm the loop carries may turn its gear (`Grab._worm_holding`): the lift
+went 10.67 LDU. Grouped, the mast is one body and the worm's axle is not in
+the loop, so the worm holds the gear: "Held by a worm ... Turn the worm's
+axle instead." So it is with the parts: a worm is self-locking (section 13).
+
+### The big step's drift (not done)
+
+8808-1's wheel turned 90, -180, 90 comes back 1.7814 LDU off and 90, -90
+0.0270, as on the base: the slide's damping does not reach it. Section 28's
+least-norm slope was not tried.
+
+### Left
+
+- 8845-1 at -52°: an axle pin read in its track rod's hole on a second line,
+  at a pose its rims' boxes keep it from. Why the exact shapes let it get
+  there, and which joint reading should not see it, is not known.
+- `held_together` costs 129 to 156 ms on 42125-1's 3,184 parts, at the
+  press of a loop's grab, once a reading.
+- A universal joint's centre is pinned only in a fork whose middle it is
+  within 1.5 LDU of; one drawn elsewhere is as before.
+
+### Checked

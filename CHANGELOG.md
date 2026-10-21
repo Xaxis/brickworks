@@ -481,6 +481,23 @@ whole cycle.
 
 ### Fixed
 
+- A steering built into a chassis of pins turns, its knuckles with it. On
+  42125-1 the steering took in every pin of the frame around it, 106 joints,
+  and was refused as too big to move; parts their pins hold as one now move
+  as one, and the steering's 35 joints turn it: 30° of its pinion slides the
+  rack 8 LDU and turns each knuckle 11.5°, both ways and back. Its rack,
+  hung on its track rods, slides along what it rests on; its suspension arms
+  stay put as the wheels steer, where they slid along their axles until a
+  bush met a shock absorber; and its steering column turns through its two
+  universal joints, whose centres the file draws a quarter turn off their
+  forks.
+- A tyre with no exact shape is judged by its round, not its box. 8820-1's
+  steering stopped at 6° of 30, where a corner of a tyre's box met the
+  steering top beside it; it turns 24° now, where the tyre meets the plate
+  under it.
+- Turning 8416-1's fork lift by the gear on its axle is held by the worm
+  that drives that axle, as a worm holds any gear turned from the gear's
+  side; turn the worm's axle to lift it.
 - A model file's own copy of a LEGO part is read as that part. Studio
   writes the parts it has versions of into the file under names of the
   file's own ("42125 - 60483.dat"), and they were read as parts nobody
