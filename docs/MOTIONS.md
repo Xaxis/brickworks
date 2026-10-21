@@ -587,7 +587,16 @@ Left for later:
   times in a browser (play_flow says the slices now). What it cannot cut
   stays whole: taking hold of the joints, which reads them again on the
   page's thread after a change to a model under 300 parts (151 ms here
-  after an undo), and keeping it.
+  after an undo), and keeping it. (press73, 2026-10-21: a link's viewer
+  reads every model's joints on a worker, and a press now waits for that
+  read, started at once, before its first motion too, as it already did
+  between a sequence's. Pressed just after a Reset, the house had read
+  them again in the press's frame, 93 to 101 ms of it, beside the
+  worker's read: share_play_probe's 2 ms slices are 4.7 to 15 ms now.
+  And a slice begins a frame only when it would end inside the slice, as
+  long as the last took: play_flow's phone, slowed four times, worked the
+  gates' frames 46 to 85 ms each and had slices of 76 to 88 ms; now 49 to
+  68 ms, its longest frame, over 15 or 16 slices rather than 9 to 15.)
 - render_motion still renders from the front corner unless view= is
   given; it says when what moves is hidden from there.
 - A motion's joints are still tested apart, and a sequence's motions each
