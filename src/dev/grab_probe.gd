@@ -5793,15 +5793,16 @@ func _says_what_meets() -> void:
 ## A made model whose way is blocked where its end is not (G13, MECHANISMS
 ## §22): the made crane's arm on its hinge, and a plate 1 x 8 held over the
 ## hinge on a tower beside it, in the arm's way a few tens of degrees over
-## and clear of it lying flat. LDraw's own units, y down.
+## and clear of it lying flat. LDraw's own units, y down. The hinge faces
+## the plate: 3937's square shoulder stops its top 6° the other way (§35).
 const MADE_PATH := """0 An arm on a hinge, and a plate over its way
 0 Name: made_path.ldr
 1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
 1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
 1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
 1 4 0 -96 0 1 0 0 0 1 0 0 0 1 3003.dat
-1 71 0 -120 10 1 0 0 0 1 0 0 0 1 3937.dat
-1 14 0 -120 10 1 0 0 0 1 0 0 0 1 3938.dat
+1 71 0 -120 10 -1 0 0 0 1 0 0 0 -1 3937.dat
+1 14 0 -120 10 -1 0 0 0 1 0 0 0 -1 3938.dat
 1 1 0 -144 10 1 0 0 0 1 0 0 0 1 3004.dat
 1 1 0 -168 10 1 0 0 0 1 0 0 0 1 3004.dat
 1 1 0 -192 10 1 0 0 0 1 0 0 0 1 3004.dat
@@ -5825,7 +5826,8 @@ const MADE_PATH := """0 An arm on a hinge, and a plate over its way
 ## §22): the made arm turned 90° over MCP each way. Towards the plate over it
 ## it stops where it meets the plate, which is clear of the arm lying flat; in
 ## m83, tested only where it ended, it went through the plate. The other way
-## nothing is in its way and it goes all 90°.
+## only its hinge's own base is in its way: its square shoulder stops the top
+## 6° round (§35).
 func _path_check() -> void:
 	print("\na move tested along its way: a made arm, and a plate over its way")
 	var path: String = OUT.path_join("made_path.ldr")
@@ -5855,15 +5857,16 @@ func _path_check() -> void:
 		await _frames(2)
 		if _differs(before) != "none differs":
 			_check("path: one undo puts the arm back (%s)" % _differs(before), false)
-	var blocked: Array = went.filter(func(one: Array) -> bool: return absf(float(one[1])) < 80.0)
-	var open: Array = went.filter(func(one: Array) -> bool: return absf(float(one[1])) >= 89.0)
+	var base: int = _part_numbered("3937")
+	var blocked: Array = went.filter(func(one: Array) -> bool: return str(one[2]).contains("(#%d)" % plate))
+	var shoulder: Array = went.filter(func(one: Array) -> bool: return str(one[2]).contains("(#%d)" % base))
 	var stop: Array = blocked[0] if blocked.size() == 1 else [0.0, 0.0, ""]
 	_check("path: turned 90° towards the plate over it, the arm stops where it meets the plate (%+.0f° asked, now %+.1f°)"
-		% [float(stop[0]), float(stop[1])], blocked.size() == 1 and absf(float(stop[1])) >= 5.0
-		and absf(float(stop[1])) <= 60.0 and str(stop[2]).contains("(#%d)" % plate))
-	_check("path: turned 90° the other way, nothing is in its way and it goes all 90° (%s)" % ", ".join(
+		% [float(stop[0]), float(stop[1])], blocked.size() == 1 and absf(float(stop[1])) >= 10.0
+		and absf(float(stop[1])) <= 60.0)
+	_check("path: turned 90° the other way, only its hinge's own base stops it, at its square shoulder (%s)" % ", ".join(
 		went.map(func(one: Array) -> String: return "%+.0f° to %+.1f°" % [float(one[0]), float(one[1])])),
-		open.size() == 1)
+		shoulder.size() == 1 and absf(float(shoulder[0][1])) <= 8.0)
 	_builder.forget_history()
 
 
@@ -6033,10 +6036,11 @@ func _shapeless_check() -> void:
 		var tools := AppTools.new()
 		tools.app = _main
 		tools.assistant = _main.get("_assistant")
-		# Which way the plate is: the way that stops short.
+		# Which way the plate is: the way that stops on it (the other stops
+		# 6° round, on its hinge's own base).
 		var toward: float = 0.0
 		for degrees: float in [90.0, -90.0]:
-			if absf(turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": degrees})))) < 80.0:
+			if str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": degrees})).contains("(#%d)" % plate):
 				toward = degrees
 			_builder.undo()
 			await _frames(2)
@@ -6065,13 +6069,18 @@ func _shapeless_check() -> void:
 		else:
 			print("  %s  shapeless: turned %+.0f° on into the plate %s, it goes %+.1f° more, its boxes %.2f LDU into the plate's"
 				% ["ok  " if no_further else "GAP ", toward, name, second_at, second_in])
-		var away: float = turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": -toward})))
+		# Away, it goes back past where it was built, as far as its hinge's own
+		# base lets it (§35): 6° the other side.
+		var away_said: String = str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": -toward}))
+		var away: float = turned.call(away_said)
+		var back: bool = absf(away) >= absf(first_at + second_at) + 3.0 and away_said.contains("(#%d)"
+			% _part_numbered("3937"))
 		if shapeless:
-			_check("shapeless: turned %+.0f° away from the plate %s, it goes all of it (%+.1f°)" % [-toward, name, away],
-				absf(away) >= 89.0)
+			_check("shapeless: turned %+.0f° away from the plate %s, it goes %+.1f°, back past where it was built to its hinge's own base"
+				% [-toward, name, away], back)
 		else:
 			# Gone into the plate, the arm is read as joined to it.
-			print("  %s  shapeless: turned %+.0f° away from the plate %s, it goes %+.1f°" % ["ok  " if absf(away) >= 89.0
+			print("  %s  shapeless: turned %+.0f° away from the plate %s, it goes %+.1f°" % ["ok  " if back
 				else "GAP ", -toward, name, away])
 		if shapeless:
 			Exact._shapes.erase(info.mesh_hash)
