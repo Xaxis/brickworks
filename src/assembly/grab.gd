@@ -1440,9 +1440,11 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 		# The joint turned alone's, along the way, only where its moving part
 		# has gone far enough, as a part is tested: asked at every step, a
 		# made crane's arm on its hinge took its drag's walk past its share of
-		# the frame.
-		if linkage == null and not due.is_empty() and not due.has(int(_joint_pairs[k][0])) \
-				and not due.has(int(_joint_pairs[k][1])):
+		# the frame. A click hinge's only on its clicks, where it stands: a
+		# drag's frame steps it a click (22.5°) at once, and 4903-1's, its
+		# halves asked at each of the click's ten steps, ran past its share.
+		if linkage == null and not due.is_empty() and (link.detent > 0.0
+				or not due.has(int(_joint_pairs[k][0])) and not due.has(int(_joint_pairs[k][1]))):
 			continue
 		var asked: int = Time.get_ticks_usec()
 		if not _pair_clear_at(k, at):
