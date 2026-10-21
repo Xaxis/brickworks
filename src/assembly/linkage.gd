@@ -1212,9 +1212,9 @@ func _reach(value: float) -> float:
 var _part_found: Array = []
 var _part_col: int = -1
 var _part_rate: float = 0.0
-## How each coordinate went with the driver over the last step that closed,
-## per unit of the driver's, and for which column: where the next step
-## starts from. A small actuator's input turns 2 radians for each LDU its rod
+## How each coordinate goes with the driver where the last step closed, per
+## unit of the driver's ([method _tangent]), and for which column: where the
+## next step starts from. A small actuator's input turns 2 radians for each LDU its rod
 ## goes, and what it drives by a universal joint with it (42024-1): started
 ## where the last step left them, each 4 LDU step began 8 radians out, and
 ## one in five took 24 rounds and still did not close, stopping the drag
@@ -1431,11 +1431,76 @@ func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dic
 		_slope.resize(cols)
 		_slope.fill(0.0)
 		_slope_col = driver_col
+	var tangent: PackedFloat64Array = _tangent() if part.is_empty() else PackedFloat64Array()
 	for c: int in cols:
 		# A part solved apart keeps its own slope, and the rest theirs.
 		if not part.is_empty() and part.has(c) != inside:
 			continue
-		_slope[c] = (q[c] - from_q[c]) / by
+		_slope[c] = tangent[c] if not tangent.is_empty() else (q[c] - from_q[c]) / by
+
+
+## How each coordinate goes with the driver where q stands, per unit of the
+## driver's: the least change that keeps the loops closed, weighted as a step
+## weighs it ([method _close_with]); empty where it cannot be read. Read off
+## the step just taken, the slope carried whatever that step's solve moved
+## in the loop's freedom to spare (a column's slide along its axle), and the
+## next step moved it again: turned +30, -60 and +30 at its wheel, 8448-1's
+## steering column came back slid 1.58 LDU along its pinion's axle (0.21
+## so), and 8808-1's wheel turned 90, -180 and 90 came back 1.78 LDU off
+## (0.003 so; docs/MECHANISMS.md, sections 28 and 30). Only the part solved
+## apart ([method _reach_parted]) keeps the step's own.
+func _tangent() -> PackedFloat64Array:
+	var held: Dictionary = _carrying if _try_held else {}
+	var free := PackedInt32Array()
+	var where := PackedInt32Array()
+	where.resize(cols)
+	for c: int in cols:
+		if c != driver_col and not _still.has(c) and not held.has(c) and not _hold_also.has(c):
+			where[c] = free.size()
+			free.append(c)
+		else:
+			where[c] = -1
+	var n: int = free.size()
+	if n == 0:
+		return PackedFloat64Array()
+	# (JᵀJ + μ W) v = −Jᵀ j, j the driver's column: as μ goes to nought, the
+	# change of least weight that leaves every row where it is.
+	var a := PackedFloat64Array()
+	a.resize(n * n)
+	a.fill(0.0)
+	var g := PackedFloat64Array()
+	g.resize(n)
+	g.fill(0.0)
+	var at_row := PackedInt32Array()
+	var of_row := PackedFloat64Array()
+	for line: PackedFloat64Array in _jacobian(q, {}):
+		at_row.resize(0)
+		of_row.resize(0)
+		for c: int in cols:
+			if line[c] != 0.0 and where[c] >= 0:
+				at_row.append(where[c])
+				of_row.append(line[c])
+		var driven: float = line[driver_col]
+		for u: int in at_row.size():
+			var i: int = at_row[u]
+			g[i] += of_row[u] * driven
+			for w: int in at_row.size():
+				a[i * n + at_row[w]] += of_row[u] * of_row[w]
+	for i: int in n:
+		var c: int = free[i]
+		var weight: float = FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty() else 1.0) \
+			if _friction.has(c) else SLIDE_WEIGHT if _sliding.has(c) else 1.0
+		a[i * n + i] += 1e-6 * maxf(a[i * n + i], 1.0) * weight + 1e-12
+	if not Linkage._factor(a, n):
+		return PackedFloat64Array()
+	var v: PackedFloat64Array = Linkage._solve_factored(a, n, g)
+	var out := PackedFloat64Array()
+	out.resize(cols)
+	out.fill(0.0)
+	for i: int in n:
+		out[free[i]] = -v[i]
+	out[driver_col] = 1.0
+	return out
 
 
 ## Whether every actuator's and cylinder's rod is within its stroke as q
