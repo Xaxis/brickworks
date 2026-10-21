@@ -5538,3 +5538,49 @@ it walks its own way and keeps no frames. The whole sweep is not run here.
 - `Bodies._unknown_shape` and `_labelled_hinge` still read only shapes
   already read when off the main thread; the only reader there (GrabDrag's
   read ahead) reads every part's shape first, so nothing differs today.
+
+## 33. An axle a part slides along, in what carries it (m135)
+
+m134 left the observatory of the third MCP walk (`motions_probe`, section 7)
+with its axle #148 (3708) 19.5 LDU off where it was built, once "Show it
+all" had played and then played backwards. Bisected: 8903033e passes, the
+Grab 20 merge (38f44636) fails.
+
+The telescope's tube rides on the axle and the gear's rack pushes the tube.
+The axle slides in two of the frame's bricks (#147, #151) and the tube's
+bricks (#149, #150) slide along it: two slides on one line, one after the
+other, so where the axle stands on its line is freedom the loop does not
+need. Damped alike (`SLIDE_WEIGHT`), each step's least change split the
+tube's run between them:
+
+| | out, the axle | back, the axle | off |
+|---|---|---|---|
+| m131 (8903033e), nothing holding the axle's slide | +60.0, out of #147 | -60.0 | 0 |
+| m134, the slide held to its line's room (±19.5, `Bodies.line_room`) | +19.5, at its end | -39.0, from a fresh read's room of (-39, 0) | 19.5 |
+| the axle's slide in what carries it damped as a friction bearing | +0.12 | -0.12 | 0 |
+
+So Grab 20's room was right, and showed the wrong: m131 came back only
+because its unbounded split was the same both ways, having slid the axle out
+of one of the bricks it is in.
+
+1. **An axle a part of the loop slides along stays in what carries it**
+   (`Linkage._carried`, damped as `_friction` is, through one
+   `Linkage._weight` that a step's solve and its least change both read).
+   Only where all the axle carries of what holds the loop (a closing
+   joint's end, a rack, a gear mesh) rides on a part sliding along it: a
+   pinion on the axle itself may need the axle to slide.
+
+### Checked
+
+On the final code, in a window: `motions_probe` 92 of 92 twice (the Grab 20
+merge failed the observatory's backwards, render and undo checks);
+`telescope_probe` (32), `simulate_probe` (41), `mechanism_probe` (54) and
+`grab_probe` `--only=loops` (21), `groups` (4) and `grooved` (4) pass.
+`--only=actuators` three times: 38 checks twice, the small actuator kept at
+4.00 LDU; once 42024-1's rod was not found under the pointer from any of
+three views, a pick before anything is solved, and the rest of it was not
+run. The steering sweep on 13 sets (the five 8448-1 files,
+42125-1, 8808-1, 8820-1, 8880-1_F1-Racer, 8841-1_Buggy, 9393-1, 42043-1,
+5533-1; `sweep_motions135x`), against `sweep_m134`: 12 steer as there, the
+same to the step but 8841-1_Buggy, back 0.0070 LDU where it was 0.0145.
+5533-1 comes back 6.43 LDU off (#368) as there: not this.

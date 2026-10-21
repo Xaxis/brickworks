@@ -870,9 +870,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   not (MECHANISMS §26). The joints solved are those between groups of
   bodies their joints hold as one (`Bodies.held_together`: a frame on four
   pins is one), each group placed with its lead, so a steering in a chassis
-  of pins takes in the joints that move (42125-1: 35 of 257); an axle's free
-  slide is damped 30 times a turn (`SLIDE_WEIGHT`), a friction bearing a
-  thousand times that; a rack hung on balls alone rests
+  of pins takes in the joints that move (42125-1: 35 of 257); an axle's
+  slide is damped a thousand times a turn (`SLIDE_WEIGHT`), a friction
+  bearing, and an axle a part of the loop slides along in what carries it
+  (`Linkage._carried`: `motions_probe`'s observatory, its telescope played
+  out and back), a thousand times that; a rack hung on balls alone rests
   on what it lies on (`Bodies._rest_racks`), and a universal joint's
   centre turned off its end's fork, 3L or 4L, is pinned in it (`Bodies._cross_in_forks`), Grab
   18, MECHANISMS §29: `grab_probe -- --only=groups` checks them on 42125-1

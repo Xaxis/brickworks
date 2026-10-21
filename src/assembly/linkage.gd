@@ -428,6 +428,38 @@ func _read(driver: Bodies.Link, child: int) -> void:
 		var c: int = slide_col[n]
 		if c >= 0 and links[n].turns and (not _limits.has(c) or links[n].kind == "axle") and c != driver_col:
 			_sliding[c] = true
+	# An axle sliding in the holes of what carries it, with a part of the
+	# loop sliding along it: the two slides are one between them, and where
+	# the axle stands on its line is freedom the loop does not need. Damped
+	# alike, each step slid it half the part's way: the observatory's
+	# telescope tube, run 120 LDU out along its axle, took the axle 19.5 LDU
+	# to the end of its room (Bodies.line_room), and run back, a fresh read
+	# with its room from there, 19.5 past where it was built. Held as a
+	# friction bearing is, it stays in what carries it, and goes only where
+	# the part on it is at an end of its own room. Only where all the axle
+	# carries of what holds the loop rides on a part sliding along it: a
+	# pinion on the axle itself, or a joint on it that closes a loop, may
+	# need it to slide.
+	var ends: Array = _sides + _rack_sides
+	for k: int in _gear_ends.size():
+		ends.append([_joints_on(int(_gear_ends[k][0][0])), _joints_on(int(_gear_ends[k][1][0]))])
+	for n: int in range(1, links.size()):
+		var c: int = slide_col[n]
+		var axle: int = child_of[n]
+		if not _sliding.has(c) or _lead(int(bodies.body_of.get(links[n].shaft_part, -1))) != axle:
+			continue
+		var along: Array = []
+		for m: int in links.size():
+			if m != n and _lead(parent_of[m]) == axle and slide_col[m] >= 0 and slide_col[m] != driver_col \
+					and absf(_axis[m].dot(_axis[n])) > 0.999:
+				along.append(m)
+		var spare: bool = not along.is_empty()
+		for pair: Array in ends:
+			for path: PackedInt32Array in pair:
+				if path.has(n) and not along.any(func(m: int) -> bool: return path.has(m)):
+					spare = false
+		if spare:
+			_carried[c] = true
 	# What moves: every body a joint of the loops is on the way to.
 	var moves: Dictionary = {}   ## lead -> whether it moves
 	for body: int in bodies.members:
@@ -916,6 +948,17 @@ const FRICTION_WEIGHT := 1000.0
 ## loop needs (8256-1's, 8880-1's) moves as before.
 var _sliding: Dictionary = {}
 const SLIDE_WEIGHT := 1000.0
+## An axle's slide in what carries it, where a part of the loop slides along
+## it too (column -> true): damped as a friction bearing is.
+var _carried: Dictionary = {}
+
+
+## How hard a step's solve and its least change damp column [param c],
+## a turn's being 1.
+func _weight(c: int) -> float:
+	if _friction.has(c) or _carried.has(c):
+		return FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty() else 1.0)
+	return SLIDE_WEIGHT if _sliding.has(c) else 1.0
 
 
 ## Close the loops with the driver held at q[driver_col], from q as it is.
@@ -1013,8 +1056,7 @@ func _close_with(held: Dictionary) -> bool:
 			var m2: PackedFloat64Array = a.duplicate()
 			var g2: PackedFloat64Array = g
 			for i: int in n:
-				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * (FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty()
-					else 1.0) if _friction.has(free[i]) else SLIDE_WEIGHT if _sliding.has(free[i]) else 1.0) + 1e-9
+				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * _weight(free[i]) + 1e-9
 			if not pinned.is_empty():
 				g2 = g.duplicate()
 				for i: int in pinned:
@@ -1517,10 +1559,7 @@ func _least_change(jac: Array, held: Dictionary) -> PackedFloat64Array:
 			for w: int in at_row.size():
 				a[i * n + at_row[w]] += of_row[u] * of_row[w]
 	for i: int in n:
-		var c: int = free[i]
-		var weight: float = FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty() else 1.0) \
-			if _friction.has(c) else SLIDE_WEIGHT if _sliding.has(c) else 1.0
-		a[i * n + i] += 1e-6 * maxf(a[i * n + i], 1.0) * weight + 1e-12
+		a[i * n + i] += 1e-6 * maxf(a[i * n + i], 1.0) * _weight(free[i]) + 1e-12
 	if not Linkage._factor(a, n):
 		return PackedFloat64Array()
 	var v: PackedFloat64Array = Linkage._solve_factored(a, n, g)
