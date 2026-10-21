@@ -1521,10 +1521,10 @@ func _meeting_pairs() -> void:
 				(a.transform.basis.inverse() * line).normalized(), joined.slide.x + joined.slide.y])
 			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN, 0.0]))
 			_pair_but.append(null)
-			for key: int in [one, other]:
-				if moving.has(key):
-					_pair_parts[key] = true
 			if linkage == null:
+				for key: int in [one, other]:
+					if moving.has(key):
+						_pair_parts[key] = true
 				_pair_judge(_joint_pairs.size() - 1)
 
 
@@ -1532,10 +1532,12 @@ func _meeting_pairs() -> void:
 ## (Exact.Forgiven, [method _pair_forgives]), or null for nothing: a loop's
 ## pair is judged whole.
 var _pair_but: Array = []
-## The moving parts of [member _joint_pairs]: brick id -> true. Each is
-## tested along the way ([method _path_rate]) though its sweep meets nothing
-## else ([method _never_meet]): a bare 3938 top, its base forgiven by the
-## covers, went 168° the wrong way untested, the walk's steps all clear.
+## The joint turned alone's moving parts of [member _joint_pairs]: brick id
+## -> true. Each is rated along the way ([method _path_rate], [method
+## _pairs_due]) though its sweep meets nothing else ([method _never_meet]): a
+## bare 3938 top, its base forgiven by the covers, went 168° the wrong way
+## untested, the walk's steps all clear. Not a loop's: its pairs are asked
+## with its parts, as they were.
 var _pair_parts: Dictionary = {}
 
 
