@@ -5239,3 +5239,13 @@ loader's arm (42081-1) drags at 12.0 ms of its own a frame on average, 95%
 back 0.0057 LDU. `mechanism_probe` (54), `own_copies_probe` (33),
 `telescope_probe` (32, its three gaps; tilted 45° the tube slides 8.000
 LDU), `simulate_probe` (41) and `motions_probe` (92) pass.
+
+Merged with the hinge fix (39be9037), in a window: `--only=groups` (4,
+8820-1 30° of 30), `grooved` (4), `hinge` (18, the boom stopping at 95.4°),
+`loops` (21), `racks` (43), `worms` (34), `bigstep` (4) and `clipped` (4)
+pass. `--only=actuators` five times: the wheel loader's arm drags at 95%
+14.3 to 16.3 ms of its own a frame, where 39be9037 took 19.4, 20.6 and 35.9
+in three runs. Once in the five, 42024-1's small actuator, drawn out until it
+met the model at 4.00 LDU and let go, was kept at 1.75 ("kept where it was
+let go" failed); 39be9037 kept it at 4.00 all three times. Left: whether
+the step's new slope stops the keep's walk short of a stop where parts touch.
