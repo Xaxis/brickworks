@@ -23,8 +23,9 @@
 //      built once. Back and Next onto the last step again, and the page
 //      reloaded and the last step reached again, send nothing more and the
 //      count stays at one. The model's page says "1 built", its gallery card
-//      too, and Most built puts it first. A robot's finish is not counted,
-//      nor the same device's twice; the desktop app's is.
+//      too, and Most built puts it ahead of every card built less. A
+//      robot's finish is not counted, nor the same device's twice; the
+//      desktop app's is.
 //   2. A builder (13 or over, with a profile) adds a photo from the model's
 //      page: a JPEG drawn here with Exif in it — GPS, a phone's make, which
 //      way up it was held — and a comment. What comes back from the server
@@ -44,6 +45,7 @@
 // everything of theirs, their models taken down first.
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { placed } from "./gallery_order.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -387,16 +389,29 @@ try {
   await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
   const said = await visitor.evaluate(() => document.querySelector('[data-count="builds"]')?.textContent || "");
   check(`the model's page says "${said}"`, said === "1 built");
+  // When each card was listed, from the list the page drew it from (a card
+  // does not say): Most built ties by it, newest first.
+  const answers = [];
+  visitor.on("response", (reply) => {
+    if (reply.url().includes("/api/share?op=list")) answers.push(reply.json().catch(() => ({})));
+  });
   await visitor.goto(`${site}/gallery?tests=1&sort=builds`, { waitUntil: "load" });
   await until(visitor, () => document.documentElement.dataset.gallery === "ready", "the gallery", 60);
   const card = await visitor.evaluate((one) => {
     // The list's cards, not the front's shelves above it (the pick, small builds).
-    const first = document.querySelector("#models a.model");
     const mine = document.querySelector(`#models a.model[data-id="${one}"]`);
-    return { first: first?.dataset.id, said: mine?.querySelector("small")?.textContent || "",
+    return { cards: [...document.querySelectorAll("#models a.model")].map((a) => ({ id: a.dataset.id, builds: a.dataset.builds })),
+      said: mine?.querySelector("small")?.textContent || "",
       sorts: [...document.querySelectorAll("#sort option")].map((o) => o.textContent) };
   }, id);
-  check(`its card says "${card.said}", and Most built puts it first (${card.first === id})`, /1 built/.test(card.said) && card.first === id
+  const listed = new Map((await Promise.all(answers)).flatMap((one) => one.models || [])
+    .map((model) => [model.id, model.listed_at]));
+  // Ahead of every card built less, and of as many built and listed before
+  // it; another flow's test model built more, or as often and listed
+  // later, while the release runs two at once (preview_checks.sh), may be
+  // ahead of it.
+  const stands = placed(card.cards.map((one) => ({ ...one, listed_at: listed.get(one.id) || null })), id, { by: "builds" });
+  check(`its card says "${card.said}", and Most built puts it ${stands.said}`, /1 built/.test(card.said) && stands.ok
     && card.sorts.includes("Most built"));
   await shot(visitor, "2_gallery_most_built.png");
   const desk = await api(null, `/api/share?op=built&id=${id}`, { device: randomBytes(16).toString("hex") }, "POST",

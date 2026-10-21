@@ -1756,8 +1756,11 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<deployment> --mas
 The gallery's part of it (since 2026-10-13, two more throwaway accounts;
 `--master` signs in as `MASTER_EMAIL` the way the tests sign in, to take a
 model out; without it that part is skipped and said to be): listed, a model
-is first in `?op=list` with its name, author, count, link and picture, no
-owner, 24 a page; one shared unticked is not there; the list `no-cache`; a page
+is ahead of every card listed before it in `?op=list`, the page newest first,
+with its name, author, count, link and picture, no owner, 24 a page (another
+flow's test model listed after it may be ahead: the release runs two flows at
+once against one database, and a check that wanted it first held m115 and
+m122; `tools/web/gallery_order.mjs` judges where it stands); one shared unticked is not there; the list `no-cache`; a page
 outside 1 to 400 is 400; `listed: "yes"` 400; a name that is markup listed
 later is ahead of it, comes back from the list as text and is escaped on its
 page; a copy published with `remixed_from` says it on its page with a link and
@@ -2544,8 +2547,10 @@ Proves it when it ends "a model can be shared by link, looked at by anyone,
 and taken down": see the steps in the script's header; pictures
 `1_shared.png` to `11_viewer_unpublished.png` and `og_image.png`. The gallery
 in it: the box there and unticked, ticked, published "listed in the gallery";
-its card first on `/gallery` in a browser that never signed in, with its
-name, "N parts, by Flow Builder" and its picture drawn (`1b_gallery.png`); the
+its card on `/gallery` in a browser that never signed in, ahead of every card
+listed before it and the page newest first (`tools/web/gallery_order.mjs`,
+from the list the page drew: another flow's model listed after it may be
+ahead), with its name, "N parts, by Flow Builder" and its picture drawn (`1b_gallery.png`); the
 copier's copy knowing what it came from, shared at a link of its own unlisted,
 its page saying "Remixed from Share Flow Car" with a link (`9b_remix_shared.png`);
 the owner's panel opened again with the box ticked as the link is, unticked
@@ -2841,7 +2846,9 @@ of it is made safe, shown, hidden, reported and taken out" with no `FAIL`: on
 a 390 x 844 touch page, Next to the last step sends one finish and the model
 is built once; Back and Next again, and the viewer opened again in the same
 browser, send nothing more; a robot's finish not counted, the desktop app's
-counted; "1 built" on the page and the card, Most built first; a JPEG drawn
+counted; "1 built" on the page and the card, Most built putting it ahead of
+every card built less (one built more, or as often and listed later, may be
+ahead: `tools/web/gallery_order.mjs`); a JPEG drawn
 with GPS, a make and a comment comes back with markers `e0,db,c0,c4,da`, no
 Exif, GPS, make or comment in its bytes, turned upright; the original gone
 from the uploads bucket; the photo in the strip and on the profile; three a

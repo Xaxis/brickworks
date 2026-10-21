@@ -14,9 +14,9 @@
 //      on the baseplate, presses Share, names it, ticks Show who made it,
 //      says a little about it and tags it (its kind guessed from its name,
 //      its licence CC BY unless changed), ticks List it in the gallery, and
-//      Publish: a link, /m/<id>, and its card on /gallery, first, in a
-//      browser that never signed in, and found there by a word of its
-//      description in the search box and by its tag.
+//      Publish: a link, /m/<id>, and its card on /gallery, ahead of every
+//      card listed before it, in a browser that never signed in, and found
+//      there by a word of its description in the search box and by its tag.
 //   2. A browser that has never signed in opens the link: the model's page
 //      (og:title, og:image, its description, tags, licence and counts, the
 //      view counted once), and View in 3D on it opens the viewer, which
@@ -43,6 +43,7 @@
 // left in the bucket.
 import { launch, allPictures } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { placed } from "./gallery_order.mjs";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import http from "node:http";
@@ -171,27 +172,36 @@ async function fetchText(url) {
 }
 
 /// The gallery as a stranger sees it, in a browser: the cards it draws.
-/// The gallery as a stranger sees it, in a browser: the cards it draws.
 /// Asked with tests=1: the flow signs in at a test address, so its model is
 /// a test, which the gallery shows nobody who does not ask (api/share.js).
 /// [settled] says when what it shows is what was just done: the CDN keeps
 /// the list for up to a minute (api/share.js SHARED_CACHE), so the page is
 /// loaded again until it is, for two minutes at most, as a person would.
+/// Each card with when it was listed, from the list the page drew it from
+/// (a card does not say), to judge its order by (gallery_order.mjs).
 async function galleryCards(name, query = "", settled = () => true) {
   const made = await context();
   const page = await made.newPage();
   listen(page, "gallery");
+  const answers = [];
+  page.on("response", (reply) => {
+    if (reply.url().includes("/api/share?op=list")) answers.push(reply.json().catch(() => ({})));
+  });
   let cards = [];
   const end = Date.now() + 120000;
   for (;;) {
+    answers.length = 0;
     await page.goto(`${site}/gallery?tests=1${query.replace(/^\?/, "&")}`, { waitUntil: "load", timeout: 120000 });
     await until(page, () => document.documentElement.dataset.gallery === "ready"
       || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
     await allPictures(page);
-    cards = await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
+    const listed = new Map((await Promise.all(answers)).flatMap((one) => one.models || [])
+      .map((model) => [model.id, model.listed_at]));
+    cards = (await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
       id: a.dataset.id, href: a.getAttribute("href"), name: a.querySelector("b").textContent,
       about: a.querySelector("span").textContent,
-      picture: (a.querySelector("img") || {}).naturalWidth || 0 })));
+      picture: (a.querySelector("img") || {}).naturalWidth || 0 }))))
+      .map((card) => ({ ...card, listed_at: listed.get(card.id) || null }));
     if (settled(cards) || Date.now() > end) break;
     await page.waitForTimeout(5000);
   }
@@ -246,6 +256,7 @@ try {
   // What the app shows is published a few frames later, not at the click.
   check("ticked", Boolean(await until(ownerPage, () => ((window.brickworksShare || {}).panel || {}).listed === true,
     "the box ticked", 15).catch(() => false)));
+  const listing = Date.now();
   await press(ownerPage, "share_publish");
   const panel = await until(ownerPage, () => {
     const p = (window.brickworksShare || {}).panel || {};
@@ -275,10 +286,14 @@ try {
   if (picture.status === 200) writeFileSync(path.join(out, "og_image.png"), picture.bytes);
 
   console.log("its card on /gallery");
-  const cards = await galleryCards("1b_gallery.png", "", (shown) => shown[0] && shown[0].id === id);
+  // Ahead of everything listed before it, newest first; another flow's
+  // test model, listed after it while the release runs two at once
+  // (preview_checks.sh), may be ahead of it.
+  const cards = await galleryCards("1b_gallery.png", "", (shown) => placed(shown, id).ok);
+  const stands = placed(cards, id, { since: listing });
   const listedCard = cards.find((c) => c.id === id);
-  check(`on /gallery, first of ${cards.length}: "${listedCard && listedCard.name}", ${listedCard && listedCard.about}, its picture ${listedCard && listedCard.picture}px wide`,
-    cards[0] && cards[0].id === id && listedCard.name === NAME && listedCard.href === `/m/${id}`
+  check(`on /gallery, newest first, ${stands.said}: "${listedCard && listedCard.name}", ${listedCard && listedCard.about}, its picture ${listedCard && listedCard.picture}px wide`,
+    stands.ok && listedCard.name === NAME && listedCard.href === `/m/${id}`
     && listedCard.about === `${bricks.toLocaleString("en-US")} part${bricks === 1 ? "" : "s"}, by ${AUTHOR}`
     && listedCard.picture > 0);
   const found = await galleryCards("1c_gallery_search.png", `?q=${WORD}`, (shown) => shown.length > 0);
