@@ -934,6 +934,13 @@ func for_session(input: Dictionary) -> String:
 		await _ready_for_session()
 	if input.has("to"):
 		return _chain_for_session(int(ids[0]), input["to"])
+	# The parts' exact shapes read here, as for a reading on a worker: off
+	# the main thread one not read yet is taken for one with joints
+	# (Bodies._unknown_shape).
+	var part_ids: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		part_ids[brick.part_id] = true
+	Exact.shapes_for(library, part_ids.keys())
 	_session_moving = true
 	var said: String = await _move_for_session(ids, input)
 	_session_moving = false
@@ -944,24 +951,13 @@ func for_session(input: Dictionary) -> String:
 var _session_moving: bool = false
 
 
-## [param work] run on a worker where there are threads, waited for a frame
-## at a time so the window draws meanwhile; here where there are none.
-## Returns what it returns. What it reads stands still meanwhile, as for a
-## section let go ([method _verify_off_thread]): the session holds the app
-## (CommandSocket's turn), a press waits for it ([method press]), and parts
-## that arrive are held aside (PartLibrary.begin_reading).
+## [param work] on a worker (WorkerTasks.awaited): what it returns. What it
+## reads stands still meanwhile, as for a section let go ([method
+## _verify_off_thread]): the session holds the app (CommandSocket's turn),
+## a press waits for it ([method press]), and parts that arrive are held
+## aside.
 func _worked(work: Callable, what: String) -> Variant:
-	if OS.has_feature("nothreads") or not is_inside_tree():
-		return work.call()
-	var out: Array = [null]
-	library.begin_reading()
-	var task: int = WorkerTasks.add(func() -> void: out[0] = work.call(), false, what)
-	library.reading_in(task)
-	while not WorkerThreadPool.is_task_completed(task):
-		await get_tree().process_frame
-	WorkerTasks.collect(task)
-	library.end_reading(task)
-	return out[0]
+	return await WorkerTasks.awaited(work, what, library)
 
 
 ## The cells [param held]'s parts take where it puts them, for Grab.commit,
@@ -969,7 +965,7 @@ func _worked(work: Callable, what: String) -> Variant:
 ## the Ducati's 75-part chassis turned was 200-480 ms of commit. Empty where
 ## there are no threads, and commit works them out.
 func _cells_for(held: Grab) -> Dictionary:
-	if OS.has_feature("nothreads") or not is_inside_tree():
+	if OS.has_feature("nothreads"):
 		return {}
 	var work: Array = []
 	for key: int in held.changed():
@@ -1743,13 +1739,13 @@ func read_soon() -> void:
 ## move after an undo (jobs70, 2026-10-21).
 func _ready_for_session() -> void:
 	while not is_ready():
-		if OS.has_feature("nothreads") or not is_inside_tree():
+		if OS.has_feature("nothreads"):
 			_ready_now()
 			return
 		if _readying < 0:
 			_read_off_thread()
 		while not _reading_done(true):
-			await get_tree().process_frame
+			await Engine.get_main_loop().process_frame
 
 
 ## Read now, on this thread: a small model, a browser without threads, or a

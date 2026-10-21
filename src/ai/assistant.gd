@@ -4419,7 +4419,10 @@ func _attachment_points(args: Dictionary) -> String:
 	if part == null:
 		return "The geometry for %s could not be fetched; ask again." % part_id
 
-	var shape: String = _footprint_sketch(part, at)
+	# On a worker: a part's cover made cell by cell, the Technic motorcycle
+	# wheel's held the window 0.8-1.1 s (jobs70, 2026-10-21).
+	var shape: String = await WorkerTasks.awaited(func() -> Variant:
+		return _footprint_sketch(part, at), "sketch a part's footprint")
 
 	var lines := PackedStringArray()
 	var found: int = 0
@@ -11761,7 +11764,7 @@ func _written_at(model: Model, placement: Placement, mesh: Lbm.PartMesh, at: Tra
 # -- validation ----------------------------------------------------------
 
 
-## The check, off the main thread once a design is big enough to be felt.
+## The check, off the main thread where there are threads.
 ##
 ## On the web the page has one thread, and the check held it: on the
 ## owner's 4,242-part Falcon Heavy a check_design was one 31 s task in a
@@ -11822,9 +11825,13 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	return report
 
 
-## Placements from which a check goes to a worker. Below it a check is a
-## few tens of milliseconds and a worker would only add a frame.
-const CHECK_OFF_THREAD_FROM := 300
+## Placements from which a check goes to a worker: any design, where there
+## are threads. 300 was taken for where a check stops being a few tens of
+## milliseconds, but a Technic design is slow for its size, every pin and
+## hole matched: the Ducati's 60 to 126 parts held the window 0.4-1.3 s at
+## each check_design and edit_model (technic lever, jobs70, 2026-10-21). A
+## worker adds a frame.
+const CHECK_OFF_THREAD_FROM := 1
 
 ## The bricks a check has to fit around, as [method _others_standing] found
 ## them before the worker began.

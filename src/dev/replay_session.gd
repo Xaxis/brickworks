@@ -37,12 +37,15 @@ func _initialize() -> void:
 func _run() -> void:
 	var calls_path: String = ""
 	var only: Dictionary = {}
+	var idle_ms: int = 0
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--calls="):
 			calls_path = argument.trim_prefix("--calls=")
 		elif argument.begins_with("--only="):
 			for n: String in argument.trim_prefix("--only=").split(","):
 				only[int(n)] = true
+		elif argument.begins_with("--idle="):
+			idle_ms = argument.trim_prefix("--idle=").to_int()
 	await process_frame
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
@@ -83,6 +86,13 @@ func _run() -> void:
 		if longest > HELD_MS:
 			held.append("call %d %s: %d ms, longest frame %d ms" % [n, name,
 				Time.get_ticks_msec() - began, longest])
+		if idle_ms > 0:
+			_longest_us = 0
+			_last_frame_us = Time.get_ticks_usec()
+			var idle_until: int = Time.get_ticks_msec() + idle_ms
+			while Time.get_ticks_msec() < idle_until:
+				await process_frame
+			print("  then %d ms idle, longest frame %d ms" % [idle_ms, _longest_ms()])
 	print("calls with a frame over %d ms: %d" % [HELD_MS, held.size()])
 	for one: String in held:
 		print("  " + one)
