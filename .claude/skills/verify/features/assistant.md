@@ -1814,7 +1814,8 @@ fixing what it got wrong.
   stud, nothing between it and the model's edge the way the feature faces;
   the d6 shop's awning and sign were laid on its floors), within `REACH` 4
   studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
-  way put a starfighter's exhausts on its fuselage) — kept when no part runs
+  way put a starfighter's exhausts on its fuselage; the free studs found on a
+  worker, `WorkerTasks.awaited`, 300 ms a piece tried on a Technic loader) — kept when no part runs
   into the model and one is held by it (`OpenPoints.test`); `lay` puts it down through
   `edit_model`, checked like any edit; a plural feature off the middle gets
   its pair, mirrored. `_feature_brief` hands it over: the piece, its credit,

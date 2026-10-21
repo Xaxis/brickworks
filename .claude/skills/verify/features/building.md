@@ -1011,9 +1011,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the calls with a frame over 100 ms listed at the end; `--idle=MS` waits as
   a session thinks between calls (else the app's own work after a change,
   its weigh and its joints read ahead, falls in the next call). The technic
-  lever's Ducati (hang60's calls, 191 of them): before, 69 calls held a frame
-  over 100 ms, the chassis turned 40° 16.8-19.7 s; after, with `--idle=1000`,
-  no move_part, check_design, edit_model or attachment_points over 100 ms.
+  lever's Ducati (hang60's calls, 191 of them): before, 14 calls held a frame
+  over 1 s, the chassis turned 40° 16.8-19.7 s; after, with `--idle=1000`,
+  none, and no move_part over 150 ms. A technic4 loader session (127 calls):
+  14 over 1 s before, one after (review_model surface, 1.7 s).
 - `coasting when flung` (`Grab.fling_rate`, `Swing.fling`, `Swing.add_geared`;
   MECHANISMS §16): let go while the pointer turns it, a section on a free
   joint starts at the pointer's rate (the slope of the turn against the
