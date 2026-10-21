@@ -2,7 +2,7 @@
 ## answer printed with how long it took: through the desktop's MCP port
 ## (CommandSocket.answer_rpc, tools/call), as the session made them.
 ##
-##   godot --headless --path . --script src/dev/replay_session.gd -- --calls=FILE [--only=0,63,65,81,86]
+##   godot --headless --path . --script src/dev/replay_session.gd -- --calls=FILE [--only=0,63,65,81,86] [--idle=MS]
 ##
 ## FILE is one JSON line a call, {n, name, input}: from the session's
 ## transcript (~/.claude/projects/<its folder>/<session>.jsonl), each
@@ -19,6 +19,9 @@
 ## nothing. A call that answers as a job is followed as a session follows
 ## it, job {"id": N} until it is done, its frames counted with the call's.
 ## The calls whose longest frame passed 100 ms are listed again at the end.
+## --idle=MS waits that long between calls, as a session thinks between
+## them, with its own longest frame: without it the app's work after a
+## change (its weigh, its joints read ahead) falls in the next call's frames.
 extends SceneTree
 
 const HELD_MS := 100

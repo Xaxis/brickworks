@@ -444,11 +444,15 @@ fixing what it got wrong.
   from memory gets the proportions wrong in a way no later critique recovers.
 - `a big check on a worker`: `Assistant._checked`, which every tool path
   (check_design, submit_design, edit_model, add_rooms, review_model, and the
-  app's own loop) waits on a frame at a time. From `CHECK_OFF_THREAD_FROM`
-  (300) placements the check runs on a `WorkerThreadPool` task while the app
-  goes on drawing and answering; below it, in place. On the web the page has
-  one thread, and the owner's 4,242-part Falcon Heavy was a 31 s task per
-  check in a browser (3.4 s on the desktop). What the worker reads is made
+  app's own loop) waits on a frame at a time. Every design (`CHECK_OFF_THREAD_FROM`,
+  1 placement) is checked on a `WorkerThreadPool` task while the app goes on
+  drawing and answering; in place only without threads. On the web the page
+  has one thread, and the owner's 4,242-part Falcon Heavy was a 31 s task per
+  check in a browser (3.4 s on the desktop); a Technic design is slow for its
+  size, and the Ducati's 60 to 126 parts held the window 0.4-1.3 s a check
+  when only 300 placements and up went to the worker (jobs70).
+  `attachment_points` sketches a part's footprint on a worker too
+  (`WorkerTasks.awaited`): the motorcycle wheel's took 0.8-1.1 s. What the worker reads is made
   still first: every part is loaded (`_ensure_parts`; a worker never loads,
   `PartLibrary.mesh_for`), the library holds parts that arrive meanwhile aside, and a part made meanwhile waits for the worker
   (`begin_reading`, `end_reading`), the bricks already standing are copies

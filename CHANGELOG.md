@@ -15,6 +15,20 @@ whole cycle.
 
 ### Fixed
 
+- The window no longer freezes while Claude moves a part, checks a design
+  or asks where a part attaches. Each was worked out in one piece on the
+  app's main thread: in a Technic design session, turning a motorcycle's
+  chassis 40° held the window 16 to 20 s while the joints inside it swung
+  to rest, nothing drawn and the session told nothing, and a call that
+  holds the thread cannot become a job. A move is now worked out beside the
+  window, as a big check already was, so the window draws throughout and a
+  move still going after 20 s answers as a job. Every design is now
+  checked beside the window, not only those of 300 parts or more: the
+  motorcycle's 60 to 126 parts took 0.4 to 1.3 s to check. Replayed, the
+  session's longest frame in any move, check, edit or attachment_points
+  call is now under 100 ms, where 69 of its calls held one longer, the
+  longest for 19.7 s. What each call answers is unchanged.
+
 - Pressing a motion's button on a shared model's page just after Reset no
   longer stalls the page. The model's joints, changed by the Reset, were
   read again in the frame of the press, though a worker was already
