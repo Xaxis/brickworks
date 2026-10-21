@@ -4872,6 +4872,25 @@ racer, 42043-1, 6753-1 and three of 8074-1's) steers where the standing
 sweep (play127) does, five of the nine, each back as far; `own_copies_probe`
 (33) and `mechanism_probe` pass.
 
+**What it found that was hidden: 5533-1's steering arm in its brick.**
+`--only=grooved` (not run above) fails with the cover reaching its cell:
+turned +30 at its pinion, 5533-1 stops at 2° where its steering arm (#33,
+32069) meets a Plate 2 x 4 (#19), the rack 0.35 LDU along where it went
+1.76. Their shapes do not overlap as built; at the stop the arm is 1.75 LDU
+into the plate. The arm has not turned there: it has slid 1.75 LDU along
+its own shaft (+x), the axle by which it sits in its Technic brick (#29,
+2743), read with 0 LDU to go that way and 10 the other. The loop closes by
+that slide because an axle's slide in a loop is not held to its range (§26,
+left for later: held, 8448-1 steered 1° where it steers 11°). Without the
+reach, the same +30 kept the arm 1.47 LDU into the plate, 1.47
+into its own brick and 1.47 into the plate under it (#31), none of it as
+built, and the room test passed it: its floored cover was short of all
+three. So the stop is the room test right about the pose the loop chose,
+and what is wrong is the loop's. Damping the axle's slide as a friction
+pin's is damped (`Linkage._friction`, 1000 times) still slid it, the rack
+0.42 LDU, so the loop as read has no other way to close. 8448-1's racer
+passes either way.
+
 ### What the joints' halves cost a wheel loader's arm
 
 The same commit (1d27522c) held m131 a second way: 42081-1's arm drawn by
