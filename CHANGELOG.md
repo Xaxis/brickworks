@@ -20,6 +20,9 @@ whole cycle.
   read again in the frame of the press, though a worker was already
   reading them: 96 ms of one frame for 1484-1's house here, several times
   that on a slow phone. The press now waits for the worker's reading.
+  And on a slow phone a press's work is spread more evenly: with the CPU
+  slowed four times its longest piece of a frame was 76 to 88 ms, and is
+  now no more than one of its frames, 49 to 68 ms.
 - A part let go after a drag is kept where it was let go, every time.
   The check of its way after the release runs beside the window, and there
   a part whose real shape the drag had not looked at yet was judged by its

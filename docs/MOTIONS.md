@@ -592,7 +592,11 @@ Left for later:
   read, started at once, before its first motion too, as it already did
   between a sequence's. Pressed just after a Reset, the house had read
   them again in the press's frame, 93 to 101 ms of it, beside the
-  worker's read: share_play_probe's 2 ms slices are 4.7 to 15 ms now.)
+  worker's read: share_play_probe's 2 ms slices are 4.7 to 15 ms now.
+  And a slice begins a frame only when it would end inside the slice, as
+  long as the last took: play_flow's phone, slowed four times, worked the
+  gates' frames 46 to 85 ms each and had slices of 76 to 88 ms; now 49 to
+  68 ms, its longest frame, over 15 or 16 slices rather than 9 to 15.)
 - render_motion still renders from the front corner unless view= is
   given; it says when what moves is hidden from there.
 - A motion's joints are still tested apart, and a sequence's motions each
