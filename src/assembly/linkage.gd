@@ -196,7 +196,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	# is a joint within a group: the tree as it is says it does not move.
 	_held = bodies.held_together()
 	var driven: int = driver.b if bodies.parent_link.get(driver.b) == driver else driver.a
-	if _lead(driven) != driven or _lead(driver.other(driven)) == driven or OS.has_environment("G18_NO_GROUPS"):
+	if _lead(driven) != driven or _lead(driver.other(driven)) == driven:
 		_held = {}
 	# What closes the loops: every joint between two groups but the one each
 	# group's lead hangs from, which the tree solves for.
