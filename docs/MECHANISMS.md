@@ -5624,5 +5624,8 @@ hinge standing unturned; it now reads the pin's axis in the hinge's frame.
 
 ### Checked
 
-`pose_probe` passes in a window (the arm keyed at 44°, 49° and 20°, and
-stopped at -17° where it meets the baseplate, as before at 17°).
+In a window on 5be39c85 with this: `pose_probe` (the arm keyed at 44°, 49°
+and 20°, and stopped at -17° where it meets the baseplate, as at 17°
+before), `motions_probe` (92), `animation_probe` (24) and `grab_probe`
+`--only=hinge` (18), `cases` (72) and `loops` (21) pass. Nothing outside
+the probe changed.
