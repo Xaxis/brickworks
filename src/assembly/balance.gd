@@ -566,7 +566,10 @@ func _links() -> Array:
 
 ## The graph: a node per part and one for the floor, an edge for each pair
 ## studs join ([param joints], Stability.stud_joints), each pair [param
-## links] names and each part on the floor.
+## links] names and each part on the floor. A pair seated one in the other
+## (joints' "seated") is joined but by no stud joint: a cone threaded on an
+## antenna carries its weight to it, but it has no studs to weigh. Left out,
+## 8466-1's 1,197 parts were in no joint, held by pins nothing reads.
 func _join(joints: Dictionary, links: Array) -> void:
 	var count: int = _ids.size()
 	_edge_a = PackedInt32Array()
@@ -602,6 +605,11 @@ func _join(joints: Dictionary, links: Array) -> void:
 		if _index_of.has(one) and _index_of.has(other):
 			add.call(int(_index_of[one]), int(_index_of[other]), true,
 				int(_index_of[int(under[key])]))
+	for key: int in joints["seated"]:
+		var one: int = key >> 32
+		var other: int = key & 0xFFFFFFFF
+		if _index_of.has(one) and _index_of.has(other):
+			add.call(int(_index_of[one]), int(_index_of[other]), false, -1)
 	for pair: Array in links:
 		if _index_of.has(int(pair[0])) and _index_of.has(int(pair[1])):
 			add.call(int(_index_of[int(pair[0])]), int(_index_of[int(pair[1])]), false, -1)

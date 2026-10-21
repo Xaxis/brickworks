@@ -138,8 +138,10 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		return {}
 
 	# What holds what: the studs, as Balance and Sections read them
-	# (Stability.stud_joints), and every other joint the build check reads,
-	# either way round. And the joints Balance weighs a part by.
+	# (Stability.stud_joints), what is seated in what, and every other joint
+	# the build check reads, either way round. And the joints Balance weighs a
+	# part by. Without what is seated, a cone threaded on an antenna and the
+	# whip on it were loose in 1793-1, and 8466-1's pins held nothing.
 	var near: Dictionary = {}
 	for id: int in by_id:
 		near[id] = {}
@@ -148,8 +150,10 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			return
 		(near[a] as Dictionary)[b] = true
 		(near[b] as Dictionary)[a] = true
-	for key: int in (Stability.stud_joints(contacts, library, lattice)["studs"] as Dictionary):
-		link.call(key >> 32, key & 0xFFFFFFFF)
+	var joints: Dictionary = Stability.stud_joints(contacts, library, lattice)
+	for held: Dictionary in [joints["studs"], joints["seated"]]:
+		for key: int in held:
+			link.call(key >> 32, key & 0xFFFFFFFF)
 	var entries: Array = []
 	var with_paths: Array = []
 	for brick: BrickWorld.Brick in bricks:

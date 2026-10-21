@@ -330,10 +330,13 @@ static func pair_of(a: int, b: int) -> int:
 ## studs join, as the build check reads studs: {"studs": [method pair_of] ->
 ## how many, "under": pair -> the id of the one with the studs, "sideways":
 ## pair -> [where its studs stand, LDU, the way they point] for a pair
-## whose studs were read by their tips and do not point up}. Only pairs of
-## those parts; worked out once and kept in [param contacts] as "joints", so
-## a caller weighing its parts a few at a time (Tested, BrickifySteps) pays
-## once. Balance, Sections and Tested all read what holds what from here.
+## whose studs were read by their tips and do not point up, "seated": pair ->
+## true for a pair the lift reaches only where the two already overlap,
+## joined by no stud: a cone threaded on an antenna, a pin in a beam, or two
+## turned covers side by side}. Only pairs of those parts; worked out once
+## and kept in [param contacts] as "joints", so a caller weighing its parts a
+## few at a time (Tested, BrickifySteps) pays once. Balance, Sections and
+## Tested all read what holds what from here.
 ##
 ## The lift's resting cells are not studs as they stand. Turned parts'
 ## covers side by side overlap their whole height, and the lift read that
@@ -352,6 +355,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	var studs: Dictionary = {}
 	var under: Dictionary = {}
 	var sideways: Dictionary = {}
+	var seated: Dictionary = {}
 	var bounds: Dictionary = {}
 	var slices: Dictionary = {}
 	var already: Dictionary = {}
@@ -367,6 +371,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 				already[key] = _shared(int(low), int(high), boxes, bounds, slices)
 			var resting: int = int(row[high]) - int(already[key])
 			if resting <= 0:
+				seated[key] = true
 				continue
 			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(resting) / STUD_CELLS))
 			under[key] = int(low)
@@ -375,6 +380,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh != null:
 			entries.append([brick.id, brick.transform, mesh])
+	# An Array, not a PackedVector3Array: a packed array read out of a
+	# container is a copy, and appending to it kept nothing.
 	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
 	if lattice != null:
 		for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
@@ -382,10 +389,10 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 				return at if at != int(key) and boxes.has(at) else null):
 			var by := Vector2i(int(stud[0]), int(stud[1]))
 			if not tips.has(by):
-				tips[by] = [PackedVector3Array(), stud[3]]
-			((tips[by] as Array)[0] as PackedVector3Array).append(stud[2])
+				tips[by] = [[], stud[3]]
+			((tips[by] as Array)[0] as Array).append(stud[2])
 	for by: Vector2i in tips:
-		var feet: PackedVector3Array = (tips[by] as Array)[0]
+		var feet: Array = (tips[by] as Array)[0]
 		var key: int = pair_of(by.x, by.y)
 		if feet.size() <= int(studs.get(key, 0)):
 			continue
@@ -393,8 +400,11 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		under[key] = by.x
 		sideways.erase(key)
 		if ((tips[by] as Array)[1] as Vector3).y <= 0.5:
-			sideways[key] = tips[by]
-	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways}
+			sideways[key] = [PackedVector3Array(feet), (tips[by] as Array)[1]]
+	for key: int in studs:
+		seated.erase(key)
+	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
+		"seated": seated}
 	contacts["joints"] = out
 	return out
 
