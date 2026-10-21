@@ -5503,8 +5503,13 @@ const SWEPT_STEERING: Array = [
 ## goes on the first turn].
 const GROOVED: Array = [
 	["res://vendor/omr/files/8448-1_Racer.mpd", 1.0],
-	["res://vendor/omr/files/5533-1.mpd", 1.0],
 ]
+## Tried and not passing: 5533-1's rack went 1.76 LDU only because a loop
+## closed by sliding its steering arm along the axle that seats it in its
+## brick, which has no room that way, and the arm stood 1.47 LDU into that
+## brick and two plates. A cover counted a cell short (MECHANISMS §28) let it
+## through; the room test now stops that pose at 2°. It passes again when a
+## loop holds an axle's slide to its range (§26).
 
 
 func _steer_set(path: String) -> void:
