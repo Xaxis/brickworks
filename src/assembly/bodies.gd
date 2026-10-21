@@ -607,6 +607,8 @@ func _read() -> void:
 						"lines:%d:%d" % [int(c[0]), int(c[1])]) or changed
 					break
 
+	_rest_racks(entries, candidates)
+
 	overruled.clear()
 	for c: Array in candidates:
 		if _find(int(c[0])) == _find(int(c[1])) and str(c[2]) != "stud":
@@ -846,6 +848,68 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		Bodies._piece_join(up, root, into)
 		Bodies._piece_join(up, root, piece)
 		lodged += 1
+
+
+## A rack a pinion of another body stands in slides along its line on what
+## it rests on, where its own joints do not guide it: hung on balls alone (a
+## track rod's at each end), it rolls about its line and swings off it, and
+## a steering's turn went into that and not its arms (42125-1, its file's
+## own copies of the track rods read as the parts: the rack 10 LDU for 30°,
+## the arms 1°). [method _lodge] lays the same joint for a rack nothing
+## holds; this one is held, by balls. Added to [param candidates].
+func _rest_racks(entries: Array, candidates: Array) -> void:
+	var near: Array = []
+	var box_of: Dictionary = {}
+	for entry: Array in entries:
+		var id: String = str(entry[3])
+		if Racks.is_rack(id) or int(Mechanism.spec_of(id).get("teeth", 0)) > 0:
+			near.append([int(entry[0]), id, entry[1]])
+	if near.is_empty():
+		return
+	var done: Dictionary = {}
+	for mesh: Racks.Pinion in Racks.find(near):
+		var body: int = _find(mesh.rack)
+		if mesh.screw or done.has(mesh.rack) or body == _find(mesh.gear):
+			continue
+		done[mesh.rack] = true
+		var joined: Dictionary = {body: true, _find(mesh.gear): true}
+		var balls: int = 0
+		var other_joints: int = 0
+		for c: Array in candidates:
+			var x: int = _find(int(c[0]))
+			var y: int = _find(int(c[1]))
+			if x == y or (x != body and y != body):
+				continue
+			if str(c[2]) == "ball":
+				balls += 1
+				joined[x if y == body else y] = true
+			else:
+				other_joints += 1
+		if balls == 0 or other_joints > 0:
+			continue
+		if box_of.is_empty():
+			for entry: Array in entries:
+				box_of[int(entry[0])] = (entry[1] as Transform3D) * (entry[2] as Lbm.PartMesh).bounds
+		# On the part its box is most into of those that share its cells, not
+		# what its balls join it to, nor its pinion's body.
+		var boxes: PackedInt32Array = lattice.boxes_of(mesh.rack)
+		var best: int = 0
+		var most: float = -1.0
+		for other: int in (lattice.blockers_boxes(boxes, mesh.rack, {}) if not boxes.is_empty() else []):
+			if not _up.has(other) or joined.has(_find(other)) or not box_of.has(other) \
+					or Bodies.bends(library, world.get_brick(other).part_id):
+				continue
+			var shared: float = (box_of[mesh.rack] as AABB).intersection(box_of[other]).get_volume()
+			if shared > most or (is_equal_approx(shared, most) and other < best):
+				most = shared
+				best = other
+		if best == 0:
+			continue
+		var rack_at: Transform3D = world.get_brick(mesh.rack).transform
+		var spec: Dictionary = Racks.table().get(world.get_brick(mesh.rack).part_id, {})
+		var reach: float = absf(float(spec.get("to", 20.0)) - float(spec.get("from", -20.0))) * 0.5
+		candidates.append([best, mesh.rack, "rests", rack_at.origin, (rack_at.basis * Vector3.RIGHT).normalized(),
+			true, 0.0, Vector2(reach, reach), mesh.rack])
 
 
 ## Whether [param key]'s part has no exact shape to read its joints from.
@@ -1621,6 +1685,233 @@ func universals() -> Array:
 
 var _universals: Array = []
 var _universals_read: bool = false
+
+
+## The bodies the joints between them hold as one, though each joint alone
+## turns or slides: a frame on four pins, each pin a body of its own turning
+## in both; a beam on a pin and a hinge on two lines through a connector
+## between. Body -> the body of its group nearest an anchor (itself, alone
+## or nearest), every anchor in one group. Two groups are one when no
+## motion of the one against the other is let by every way between them:
+## each joint straight between them, and each way through a third body,
+## which lets what its two joints let together. Read once, for a loop
+## (Linkage): its joints are those between groups, and a steering does not
+## take in every pin of the chassis it stands in (42125-1's 106 joints).
+func held_together() -> Dictionary:
+	if _held_read:
+		return _held
+	_held_read = true
+	var up: Dictionary = {}
+	for body: int in members:
+		up[body] = body
+	var find := func(at: int) -> int:
+		var x: int = at
+		while int(up[x]) != x:
+			up[x] = up[int(up[x])]
+			x = int(up[x])
+		return x
+	var first_anchor: int = -1
+	for body: int in anchors:
+		if first_anchor < 0:
+			first_anchor = body
+		else:
+			up[find.call(body)] = find.call(first_anchor)
+	for _pass: int in HELD_PASSES:
+		var direct: Dictionary = {}   ## Vector2i of groups -> Array of links
+		var near: Dictionary = {}   ## group -> {group: true}
+		for link: Link in links:
+			var x: int = find.call(link.a)
+			var y: int = find.call(link.b)
+			if x == y:
+				continue
+			var pair := Vector2i(mini(x, y), maxi(x, y))
+			if not direct.has(pair):
+				direct[pair] = []
+				for ends: Array in [[x, y], [y, x]]:
+					if not near.has(ends[0]):
+						near[ends[0]] = {}
+					(near[ends[0]] as Dictionary)[ends[1]] = true
+			(direct[pair] as Array).append(link)
+		# Each pair of groups and the bodies between them: a pin, a connector.
+		var through: Dictionary = {}   ## Vector2i -> Array of groups between
+		for middle: Variant in near:
+			var round: Array = (near[middle] as Dictionary).keys()
+			if round.size() < 2 or round.size() > HELD_THROUGH:
+				continue
+			for i: int in round.size():
+				for j: int in range(i + 1, round.size()):
+					var pair := Vector2i(mini(int(round[i]), int(round[j])), maxi(int(round[i]), int(round[j])))
+					if not through.has(pair):
+						through[pair] = []
+					(through[pair] as Array).append(int(middle))
+		var joined: bool = false
+		var asked: Dictionary = {}
+		for pair: Variant in direct.keys() + through.keys():
+			if asked.has(pair):
+				continue
+			asked[pair] = true
+			var straight: Array = direct.get(pair, [])
+			var between: Array = through.get(pair, [])
+			if straight.size() + between.size() < 2:
+				continue
+			var x: int = (pair as Vector2i).x
+			var y: int = (pair as Vector2i).y
+			if find.call(x) != x or find.call(y) != y:
+				continue
+			var ways: Array = []   ## each way's lets, as [links] or [[links], [links]]
+			for link: Link in straight:
+				ways.append([link])
+			for middle: int in between:
+				if find.call(middle) != middle:
+					continue
+				ways.append([direct.get(Vector2i(mini(x, middle), maxi(x, middle)), []),
+					direct.get(Vector2i(mini(y, middle), maxi(y, middle)), [])])
+			if ways.size() >= 2 and Bodies._held_by(ways):
+				up[y] = x
+				joined = true
+		if not joined:
+			break
+	# Each group's body nearest an anchor stands for it.
+	var depth: Dictionary = {}
+	var lead: Dictionary = {}   ## group -> its body nearest an anchor
+	for body: int in members:
+		var d: int = 0
+		var at: int = body
+		while parent_of.has(at):
+			at = int(parent_of[at])
+			d += 1
+		depth[body] = d
+		var group: int = find.call(body)
+		var best: int = int(lead.get(group, -1))
+		if best < 0 or d < int(depth[best]) or d == int(depth[best]) and body < best:
+			lead[group] = body
+	_held.clear()
+	for body: int in members:
+		_held[body] = int(lead[find.call(body)])
+	return _held
+
+
+var _held: Dictionary = {}
+var _held_read: bool = false
+## Passes over the groups: each joins those held by what the last joined.
+const HELD_PASSES := 12
+## A body between two groups is a way between them when it touches no more
+## than this many groups: a pin, a connector, not a frame.
+const HELD_THROUGH := 6
+## A way of moving one group against another counts when it is this far
+## from what the other ways let, in turns of a radian and studs: two pins'
+## lines 0.6 LDU or more apart hold.
+const HELD_SLACK := 0.03
+
+
+## Whether [param ways] between two groups let no motion of the one against
+## the other: each way a joint, [link], or a body between, [[links to the
+## one], [links to the other]], which lets what either side lets. Motions as
+## twists (a turn and the speed of a point), about the middle of the joints,
+## in radians and studs.
+static func _held_by(ways: Array) -> bool:
+	var middle := Vector3.ZERO
+	var count: int = 0
+	for way: Array in ways:
+		for one: Variant in way:
+			for link: Link in (one if one is Array else [one]):
+				middle += link.point
+				count += 1
+	middle /= maxf(float(count), 1.0)
+	# What every way lets, as what each way holds: the motions square to it.
+	var held: Array = []
+	for way: Array in ways:
+		var lets: Array = []
+		if way.size() == 1 and way[0] is Link:
+			lets = Bodies._lets(way[0], middle)
+		else:
+			for side: Array in way:
+				var both: Array = Bodies._lets(side[0], middle)
+				for n: int in range(1, side.size()):
+					both = Bodies._meet(both, Bodies._lets(side[n], middle))
+				lets.append_array(both)
+		held.append_array(Bodies._square_to(Bodies._basis_of(lets)))
+	return Bodies._basis_of(held).size() >= 6
+
+
+## The motions [param link] lets the one half against the other, about
+## [param middle]: a turn about its line, and a slide along it where it
+## slides; a ball's turns about its middle.
+static func _lets(link: Link, middle: Vector3) -> Array:
+	var at: Vector3 = (link.point - middle) / BrickLattice.STUD
+	var out: Array = []
+	if link.axis == Vector3.ZERO:
+		for way: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
+			out.append(Bodies._twist(way, at.cross(way)))
+		return out
+	var u: Vector3 = link.axis.normalized()
+	if link.turns:
+		out.append(Bodies._twist(u, at.cross(u)))
+	if not link.turns or link.slide.x + link.slide.y > 0.0:
+		out.append(Bodies._twist(Vector3.ZERO, u))
+	return out
+
+
+static func _twist(turn: Vector3, speed: Vector3) -> PackedFloat64Array:
+	return PackedFloat64Array([turn.x, turn.y, turn.z, speed.x, speed.y, speed.z])
+
+
+## An orthonormal basis of what [param vectors] span, each one counted
+## where it stands [constant HELD_SLACK] or more from the rest.
+static func _basis_of(vectors: Array) -> Array:
+	var out: Array = []
+	for v: PackedFloat64Array in vectors:
+		var w: PackedFloat64Array = v.duplicate()
+		for e: PackedFloat64Array in out:
+			var dot: float = 0.0
+			for i: int in 6:
+				dot += w[i] * e[i]
+			for i: int in 6:
+				w[i] -= dot * e[i]
+		var size: float = 0.0
+		for i: int in 6:
+			size += w[i] * w[i]
+		size = sqrt(size)
+		if size < HELD_SLACK:
+			continue
+		for i: int in 6:
+			w[i] /= size
+		out.append(w)
+		if out.size() == 6:
+			break
+	return out
+
+
+## What is square to every one of [param basis] (orthonormal).
+static func _square_to(basis: Array) -> Array:
+	var out: Array = basis.duplicate()
+	var start: int = out.size()
+	for i: int in 6:
+		var e := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+		e[i] = 1.0
+		for f: PackedFloat64Array in out:
+			var dot: float = f[i]
+			for k: int in 6:
+				e[k] -= dot * f[k]
+		var size: float = 0.0
+		for k: int in 6:
+			size += e[k] * e[k]
+		size = sqrt(size)
+		if size < 1e-6:
+			continue
+		for k: int in 6:
+			e[k] /= size
+		out.append(e)
+		if out.size() == 6:
+			break
+	return out.slice(start)
+
+
+## What both [param one] and [param other] let.
+static func _meet(one: Array, other: Array) -> Array:
+	var held: Array = Bodies._square_to(Bodies._basis_of(one))
+	held.append_array(Bodies._square_to(Bodies._basis_of(other)))
+	return Bodies._square_to(Bodies._basis_of(held))
 
 
 ## The racks and pinions with one half in [param inside] (body -> true) and

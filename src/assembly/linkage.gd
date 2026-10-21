@@ -172,14 +172,42 @@ func _only(a: int, b: int) -> Array:
 
 func _path(body: int) -> Array:
 	var out: Array = []
-	var at: int = body
+	var at: int = _lead(body)
 	while bodies.parent_link.has(at):
 		out.push_front(bodies.parent_link[at])
-		at = int(bodies.parent_of[at])
+		at = _lead(int(bodies.parent_of[at]))
 	return out
 
 
+## The body that stands for [param body]'s group of bodies held as one
+## (Bodies.held_together): where it stands, they stand.
+func _lead(body: int) -> int:
+	return int(_held.get(body, body))
+
+
+## Bodies.held_together, or empty where the driver turns within a group (then
+## every body is its own, as the tree has them).
+var _held: Dictionary = {}
+
+
 func _read(driver: Bodies.Link, child: int) -> void:
+	# Joints only between bodies not held as one: a steering standing in a
+	# chassis of pins does not take in every pin of it. Not where the driver
+	# is a joint within a group: the tree as it is says it does not move.
+	_held = bodies.held_together()
+	var driven: int = driver.b if bodies.parent_link.get(driver.b) == driver else driver.a
+	if _lead(driven) != driven or _lead(driver.other(driven)) == driven:
+		_held = {}
+	# What closes the loops: every joint between two groups but the one each
+	# group's lead hangs from, which the tree solves for.
+	var closers: Array[Bodies.Link] = []
+	for loop: Bodies.Link in bodies.closing:
+		if _lead(loop.a) != _lead(loop.b):
+			closers.append(loop)
+	if not _held.is_empty():
+		for body: int in bodies.parent_link:
+			if _lead(body) != body and _lead(int(bodies.parent_of[body])) != _lead(body):
+				closers.append(bodies.parent_link[body])
 	var inside: Dictionary = {driver: true}
 	var used: Dictionary = {}
 	var changed: bool = true
@@ -224,7 +252,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 				if not inside.has(one):
 					inside[one] = true
 			changed = true
-		for loop: Bodies.Link in bodies.closing:
+		for loop: Bodies.Link in closers:
 			if used.has(loop):
 				continue
 			var only: Array = _only(loop.a, loop.b)
@@ -367,8 +395,9 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	if not links[0].turns and slide_col[0] >= 0:
 		# An actuator's rod: driven along it.
 		driver_col = slide_col[0]
+	var carrier: PackedInt32Array = _joints_on(parent_of[0])
 	for n: int in range(1, links.size()):
-		if bodies.beyond(child_of[n]).has(parent_of[0]):
+		if carrier.has(n):
 			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0:
@@ -378,20 +407,44 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	var geared: Dictionary = {}
 	for coupling: Mechanism.Coupling in gear_meshes:
 		for key: int in [coupling.one.key, coupling.other.key]:
-			geared[int(bodies.body_of.get(key, -1))] = true
+			geared[_lead(int(bodies.body_of.get(key, -1)))] = true
 	for n: int in range(1, links.size()):
 		if links[n].holds and links[n].turns and geared.has(int(child_of[n])):
 			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0 and c != driver_col:
 					_friction[c] = true
-	# What moves: everything beyond each joint of the loops.
-	var seen: Dictionary = {}
-	for n: int in links.size():
-		for body: int in bodies.beyond(child_of[n]):
-			if seen.has(body):
-				continue
-			seen[body] = true
+	# An axle's slide along its hole, which nothing bounds in the solve: the
+	# loop slides it only where turning will not close the loop. Least squares
+	# over every coordinate alike slid 42125-1's suspension arms along their
+	# axles as its knuckles turned, 0.5 LDU for 10°, until a bush met a shock
+	# absorber at 25°; its knuckles turn on their kingpins without it.
+	for n: int in range(1, links.size()):
+		var c: int = slide_col[n]
+		if c >= 0 and links[n].turns and not _limits.has(c) and c != driver_col:
+			_friction[c] = true
+	# What moves: every body a joint of the loops is on the way to.
+	var moves: Dictionary = {}   ## lead -> whether it moves
+	for body: int in bodies.members:
+		var climb: Array = []
+		var at: int = _lead(body)
+		var goes: bool = false
+		while true:
+			if moves.has(at):
+				goes = bool(moves[at])
+				break
+			if not bodies.parent_link.has(at):
+				goes = false
+				break
+			if _index_of.has(bodies.parent_link[at]):
+				goes = true
+				break
+			climb.append(at)
+			at = _lead(int(bodies.parent_of[at]))
+		moves[at] = goes
+		for one: int in climb:
+			moves[one] = goes
+		if goes:
 			moved.append(body)
 	for body: int in moved:
 		var weight: float = 0.0
@@ -473,8 +526,8 @@ func holds() -> bool:
 ## is not carried by any joint of the loop (a crank on the frame), so a
 ## pointer turning about its line is right.
 func driver_fixed() -> bool:
-	for n: int in range(1, links.size()):
-		if bodies.beyond(child_of[n]).has(parent_of[0]):
+	for n: int in _joints_on(parent_of[0]):
+		if n != 0:
 			return false
 	return true
 
@@ -515,7 +568,7 @@ func _place(body: int, at: PackedFloat64Array, cache: Dictionary) -> Transform3D
 	if cache.has(body):
 		return cache[body]
 	var climb: Array = []
-	var here: int = body
+	var here: int = _lead(body)
 	var base := Transform3D.IDENTITY
 	while true:
 		if cache.has(here):
@@ -525,13 +578,14 @@ func _place(body: int, at: PackedFloat64Array, cache: Dictionary) -> Transform3D
 			cache[here] = Transform3D.IDENTITY
 			break
 		climb.append(here)
-		here = int(bodies.parent_of[here])
+		here = _lead(int(bodies.parent_of[here]))
 	for k: int in range(climb.size() - 1, -1, -1):
 		var one: int = climb[k]
 		var joint: Variant = _index_of.get(bodies.parent_link[one])
 		if joint != null:
 			base = base * _turn_of(int(joint), at)
 		cache[one] = base
+	cache[body] = base
 	return base
 
 
