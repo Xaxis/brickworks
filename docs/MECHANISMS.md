@@ -3552,7 +3552,13 @@ read as moving.
   coupling, 8074-1's belt wheel by its axle and the half pin by the wheel.
   Two parts with exact shapes are not: lodged so, 42042-1's winch was read
   into a loop of 63 joints. The shapes are read on the main thread before a
-  big model's joints are read on a worker (`GrabDrag._ready_ahead`).
+  big model's joints are read on a worker (`GrabDrag._ready_ahead`). Since
+  the file's copies of the belt wheel are read as 4185a (2026-10-20), it has
+  an exact shape, and its half pin was held by nothing and stayed as the
+  crane turned, stopping it at once: neither the wheel's connectors nor
+  BrickNet's shape name the holes in its rim. A part whose shaft or stud
+  runs in a round hole of the other that names no joint (a bore) is lodged
+  in it, exact shapes or not (`Bodies._in_a_bore`).
 - **21019-1's turntable: real.** A bracket (99781) stands on two studs of
   the plate 8 x 8 on the turntable, and its own studs are in tiles of the
   side that stays: the build holds the turntable, which in the real tower

@@ -510,6 +510,10 @@ whole cycle.
   every such part stayed away for the whole visit. A shared 8808 racer
   opened without the 25 parts of its steering and said only "Parts of it
   move". The question is now asked again, as a part's download is.
+- A half pin standing in a belt wheel's rim turns with the wheel. Nothing
+  named the holes in the rim, so the pin was held by nothing and stayed
+  where it was, and 8074's crane stopped at once when its turntable was
+  turned.
 - A model with a part that has not arrived, or never does, is kept as you
   work on it, as any model is. Until now nothing done to it was kept: once
   one part failed to load, closing the tab or a crash lost everything since

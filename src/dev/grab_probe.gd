@@ -552,8 +552,13 @@ const HOSES: Array = [
 		"pneumaticHoseLQ-12", -6.0, "ldcad"],
 	["42043-1: the arm's second section on its cylinder", "res://vendor/omr/files/42043-1.mpd",
 		"pneumaticHose-19", -6.0],
-	["42050-1: a ribbed hose to the engine turned on its axle", "res://vendor/omr/files/42050-1.mpd",
-		"technicRibHoseLQ-1", 20.0],
+	# A ribbed hose (LDCad's, 71944's pieces). 42050-1's to its engine was the
+	# case until 2026-10-20: the engine turned on its axle only while the
+	# file's copies of the liftarms that axle runs through were parts of its
+	# own, with no joints; read as 33299b (CustomParts.read_as_copy) they key
+	# the axle to the chassis, and the hose has both its ends on it.
+	["8285-1: the bonnet turned on its axle, its ribbed hoses with it", "res://vendor/omr/files/8285-1.mpd",
+		"bonnet#1/technicRibHoseLQ-1", 20.0],
 ]
 
 ## What laying a grab's hoses again may cost a drag's frame, ms: the budget
