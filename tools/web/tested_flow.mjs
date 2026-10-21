@@ -4,12 +4,13 @@
 // to its owner; and a gallery filter, Tested only.
 //
 //   tools/export.sh web
-//   node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web --hold=share_tests &
+//   node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web &
 //   node --env-file=.env tools/web/tested_flow.mjs --url=http://127.0.0.1:8923 --out=shots/tested
 //
-// Until supabase/tested.sql is applied, the local relay holds its table in
-// memory (--hold, tools/web/held_tables.mjs), and says what the gallery's
-// functions would once it is; everything else is the real project.
+// supabase/tested.sql is applied, so the relay uses the real table. Started
+// with --hold=share_tests it keeps the tests in memory instead, and the
+// gallery's Tested only, which reads the real table, lists none of them:
+// that failed the flow on 2026-10-20 with nothing wrong in the app.
 //
 //   1. Three small models, their steps carried and tested as the Share
 //      panel does it (src/dev/tested_probe.gd --write): three bricks stacked
