@@ -274,6 +274,7 @@ func contacts(bricks: Array) -> Dictionary:
 	# cell-by-cell count on seven real pairs of parts: identical.
 	var above: Dictionary = {}         ## id -> { id: shared cell count }
 	var overlap: Dictionary = {}       ## pair_of -> cells shared as they stand
+	var none: Array = []
 	for item: Variant in bricks:
 		if stopped:
 			break
@@ -290,7 +291,7 @@ func contacts(bricks: Array) -> Dictionary:
 		# compared the same boxes twice: on Orthanc that was 3.9 s, and
 		# counting box against box 6.5 s more.
 		var slices: Array = BrickLattice.slices_of(mine) \
-			if mine.size() >= SLICED_FROM * 6 else []
+			if mine.size() >= SLICED_FROM * 6 else none
 		for over: int in lattice.near_bounds(lid, brick.id):
 			# Skipping pairs whose boxes already overlap was tried, on
 			# the theory that a part inside another is not resting on
@@ -301,7 +302,7 @@ func contacts(bricks: Array) -> Dictionary:
 			# stand is counted in the same pass, for stud_joints.
 			var theirs: PackedInt32Array = lattice.boxes_of(over)
 			var shared: Vector2i = BrickLattice.shared_lifted(mine,
-				slices if theirs.size() >= SLICED_FROM * 6 else [], theirs)
+				slices if theirs.size() >= SLICED_FROM * 6 else none, theirs)
 			if shared.x <= 0:
 				continue
 			if not above.has(brick.id):

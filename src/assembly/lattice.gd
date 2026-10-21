@@ -853,15 +853,15 @@ static func shared_lifted(a: PackedInt32Array, slices: Array,
 			var i: int = 0
 			while i < a.size():
 				var wide: int = mini(a[i + 3], b[j + 3]) - maxi(a[i], b[j])
-				if wide > 0:
+				# Apart in y both lifted and as it stands: b from above the
+				# lid's top, or ending at or below a's bottom.
+				if wide > 0 and b[j + 1] <= a[i + 4] and b[j + 4] > a[i + 1]:
 					var deep: int = mini(a[i + 5], b[j + 5]) - maxi(a[i + 2], b[j + 2])
 					if deep > 0:
-						var high: int = mini(a[i + 4] + 1, b[j + 4]) - maxi(a[i + 1] + 1, b[j + 1])
-						if high > 0:
-							lifted += wide * high * deep
-						high = mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1])
-						if high > 0:
-							standing += wide * high * deep
+						lifted += wide * deep * maxi(0,
+							mini(a[i + 4] + 1, b[j + 4]) - maxi(a[i + 1] + 1, b[j + 1]))
+						standing += wide * deep * maxi(0,
+							mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1]))
 				i += 6
 			j += 6
 		return Vector2i(lifted, standing)
@@ -884,17 +884,14 @@ static func shared_lifted(a: PackedInt32Array, slices: Array,
 		for offsets: PackedInt32Array in across:
 			for i: int in offsets:
 				var wide: int = mini(a[i + 3], b[j + 3]) - maxi(a[i], b[j])
-				if wide <= 0:
+				if wide <= 0 or b[j + 1] > a[i + 4] or b[j + 4] <= a[i + 1]:
 					continue
 				var deep: int = mini(a[i + 5], hi_z) - maxi(a[i + 2], lo_z)
-				if deep <= 0:
-					continue
-				var high: int = mini(a[i + 4] + 1, b[j + 4]) - maxi(a[i + 1] + 1, b[j + 1])
-				if high > 0:
-					lifted += wide * high * deep
-				high = mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1])
-				if high > 0:
-					standing += wide * high * deep
+				if deep > 0:
+					lifted += wide * deep * maxi(0,
+						mini(a[i + 4] + 1, b[j + 4]) - maxi(a[i + 1] + 1, b[j + 1]))
+					standing += wide * deep * maxi(0,
+						mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1]))
 		j += 6
 	return Vector2i(lifted, standing)
 
