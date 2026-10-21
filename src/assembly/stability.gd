@@ -346,9 +346,10 @@ static func pair_of(a: int, b: int) -> int:
 ## held by nothing between them, were joined by 6 studs, and a stud
 ## pointing sideways never shows in a lift (2026-10-20). So a pair rests on
 ## the cells the lift reaches that the two did not already share ([method
-## contacts]' "overlap", counted in the same pass), and each stud whose tip
-## is in another part joins them (Joints.studs_in), whichever way it
-## points; a pair has whichever count is more.
+## contacts]' "overlap", counted in the same pass: counted here after, it
+## was 0.3-1.5 s of reading 1,000-1,300-part Technic sets, now 9-21 ms),
+## and each stud whose tip is in another part joins them (Joints.studs_in),
+## whichever way it points; a pair has whichever count is more.
 ##
 ## Even so, what the lift reaches past an overlap is mostly where the two
 ## covers' edges differ: a tyre on its rim, a pin in a beam, a turntable's

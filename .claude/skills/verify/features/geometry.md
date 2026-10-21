@@ -163,9 +163,17 @@ can occupy the same millimetre.
   count the tubes under a part; every one of seven bricks is within 6% of
   BrickLink's weight (a 2x4 2.46 g against 2.32). Load is handed down and
   weighed against studs as Balance, Tested and Sections read them
-  (`Stability.stud_joints`): two parts whose covers overlap (a pin in a beam,
-  a cone on an antenna, turned plates side by side) are seated, joined by no
-  stud, and a stud pointing sideways is one.
+  (`Stability.stud_joints`, each joint one stud at least): two parts whose
+  covers overlap (a pin in a beam, a cone on an antenna, turned plates side
+  by side) are seated, joined by no stud, a pair the lift reads across an
+  overlap with no stud's tip in either (a wheel on its spindle) is
+  "overlapped" and hands its load on by no stud, and a stud pointing
+  sideways is one. The check reads a stud's tip only where the lift cannot
+  tell (`stud_joints(..., false)`: parts in an overlapped pair, studs not
+  pointing up); every tip doubled its cost on `stability_probe`'s 800
+  bricks. Changing what it reads: compare the verdicts on real sets before
+  and after (45 OMR sets, 2026-10-21: none changed but the Falcon's, whose
+  4 x 6 plates hold six cones and two round bricks on ten studs, not two).
 - `balance` (`src/assembly/balance.gd`, pure; docs/MECHANISMS.md §4, phase S1):
   whether the model stands on what it stands on, by how much, and which stud
   joint gives first. The support polygon is the hull of every box within half
