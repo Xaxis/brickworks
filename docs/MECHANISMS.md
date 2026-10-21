@@ -4992,8 +4992,13 @@ least-norm slope was not tried.
   base 1.94 LDU): "the Wheel Rim 30 x 61 with 3 Spokes Swirled (#478) meets
   the Technic Suspension Arm 2 x 6.5 Type 2 (#376) at once". Not the
   universal joint (pinning its 4L joint locked the loop instead), nor the
-  slide's weight (it fails without it). Not looked into further: which of
-  what the grouping moves and leaves standing puts the rim against the arm.
+  slide's weight (it fails without it), but the grouping: the arm is now one
+  group with the chassis and stays, where it was a joint of the old loop of
+  29 and went with the wheel, and the rim (no exact shape) turns about its
+  kingpin with the arm inside its box as built (35 by 20 by 40 LDU of the
+  two boxes overlap), so `_no_deeper` stops it at once. A rim judged by its
+  round would see the arm inside it too; what it takes is a rim's round
+  judged as a ring, or the hub's own parts let through it.
 - 8845-1 at -52°: an axle pin read in its track rod's hole on a second line,
   at a pose its rims' boxes keep it from. Why the exact shapes let it get
   there, and which joint reading should not see it, is not known.
