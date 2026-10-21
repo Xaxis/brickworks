@@ -512,8 +512,8 @@ func _dumped(file_path: String) -> void:
 		lines.append("%d %s %d [%s] group=%s unit=%s step=%d scenery=%s cover=%d:%d" % [brick.id,
 			brick.part_id, brick.color_code, " ".join(numbers), brick.group, brick.unit, brick.step,
 			_store.scenery.has(brick.id), cover.size() / 6, hash(cover)])
-	lines.append("title=%s whole=%s awaited=%d unshown=%s lifted=%.4f floor=%s set=%s share=%s"
-		% [_store.title, _store.whole, _store.awaited.size(), JSON.stringify(_store.unshown),
+	lines.append("title=%s awaited=%d unshown=%s lifted=%.4f floor=%s set=%s share=%s"
+		% [_store.title, _store.awaited.size(), JSON.stringify(_store.unshown),
 		float(_store.get("_lifted_by")), _store.model_floor.words(), _store.from_set,
 		_store.share_id])
 	lines.append("unit_steps=%s" % JSON.stringify(_world.unit_steps))

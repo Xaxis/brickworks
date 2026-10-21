@@ -5189,8 +5189,8 @@ func _on_model_changed() -> void:
 ##
 ## Kept apart from _on_model_changed, which also fires for things the
 ## app did to itself — opening, clearing, the assistant rebuilding. Only
-## a deliberate change should let the autosave write over a file that
-## opened short of parts.
+## a deliberate change taking the last part off lets an empty model be
+## written over a file with parts in it (ModelStore.emptied).
 func _on_model_edited() -> void:
 	if _store != null:
 		_store.adopt()
