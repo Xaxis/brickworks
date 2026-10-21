@@ -160,7 +160,7 @@ func check(world: BrickWorld) -> Report:
 	# other: a pin in a beam, a cone on an antenna, two turned plates side by
 	# side each carried the other, on studs that are not there. A wheel on
 	# its spindle hands its weight on, but on no stud.
-	var carriers: Dictionary = _carriers(order, stud_joints(graph, library, lattice))
+	var carriers: Dictionary = _carriers(order, stud_joints(graph, library, lattice, false))
 	if stopped:
 		return null
 
@@ -357,10 +357,18 @@ static func pair_of(a: int, b: int) -> int:
 ## carrying its wheel on one stud, overloaded (2026-10-21). They hold the
 ## parts together, as Suggest sections reads them, and are "overlapped":
 ## [method check] weighs no stud there.
+##
+## [param everywhere] false reads a stud's tip only where the lift cannot
+## tell: on a part the lift reaches across an overlap, and for a stud not
+## pointing up. A stud pointing up into a part that only touches its own is
+## then what the lift counts there, as it was before tips were read. The
+## status bar's check asks so, after every change: reading every tip, 6,162
+## on stability_probe's 800 bricks, doubled what it cost (2026-10-21).
 static func stud_joints(contacts: Dictionary, library: PartLibrary,
-		lattice: BrickLattice) -> Dictionary:
-	if contacts.has("joints"):
-		return contacts["joints"]
+		lattice: BrickLattice, everywhere: bool = true) -> Dictionary:
+	var kept: String = "joints" if everywhere else "joints where unsure"
+	if contacts.has(kept):
+		return contacts[kept]
 	var boxes: Dictionary = contacts["boxes"]
 	var above: Dictionary = contacts["above"]
 	var overlap: Dictionary = contacts["overlap"]
@@ -369,6 +377,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	var sideways: Dictionary = {}
 	var seated: Dictionary = {}
 	var overlapped: Dictionary = {}
+	var unsure: Dictionary = {}        ## id -> true for a part in an overlapped pair
 	for low: Variant in above:
 		if not boxes.has(int(low)):
 			continue
@@ -385,11 +394,30 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			under[key] = int(low)
 			if overlap.has(key):
 				overlapped[key] = true
+				unsure[int(low)] = true
+				unsure[int(high)] = true
 	var entries: Array = []
+	var ways_of: Dictionary = {}       ## part id -> its studs' ways, its own frame
 	for brick: BrickWorld.Brick in contacts.get("bricks", []):
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if mesh != null:
-			entries.append([brick.id, brick.transform, mesh])
+		if mesh == null:
+			continue
+		if not everywhere and not unsure.has(brick.id):
+			if not ways_of.has(brick.part_id):
+				var ways := PackedVector3Array()
+				for connector: Lbm.Connector in mesh.connectors:
+					if connector.kind == "stud" and connector.gender == "male" \
+							and not ways.has(connector.axis.normalized()):
+						ways.append(connector.axis.normalized())
+				ways_of[brick.part_id] = ways
+			var aside: bool = false
+			for way: Vector3 in ways_of[brick.part_id]:
+				if (brick.transform.basis * way).normalized().y <= 0.5:
+					aside = true
+					break
+			if not aside:
+				continue
+		entries.append([brick.id, brick.transform, mesh])
 	# An Array, not a PackedVector3Array: a packed array read out of a
 	# container is a copy, and appending to it kept nothing.
 	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
@@ -416,7 +444,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		seated.erase(key)
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
 		"seated": seated, "overlapped": overlapped}
-	contacts["joints"] = out
+	contacts[kept] = out
 	return out
 
 
