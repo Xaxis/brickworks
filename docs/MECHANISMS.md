@@ -4872,6 +4872,45 @@ racer, 42043-1, 6753-1 and three of 8074-1's) steers where the standing
 sweep (play127) does, five of the nine, each back as far; `own_copies_probe`
 (33) and `mechanism_probe` pass.
 
+### What the joints' halves cost a wheel loader's arm
+
+The same commit (1d27522c) held m131 a second way: 42081-1's arm drawn by
+its linear actuator (`grab_probe --only=actuators`) took its drag's own
+work a frame from 12.1 and 12.3 ms on average, 95% 23.1 and 25.9 (main,
+two runs alternated), to 15.5 and 15.5, 95% 51.2 and 46.2 (1d27522c), and
+the bar is 33. Weighing was 1 to 2 ms of it. The room test, timed part by
+part, met three things main never did, each from a half of a joint now
+tested against what moves:
+
+- The turned fairing (#974, 64683) had its cover asked against everything
+  its cover's reach met, among them a frame (#196, 11954) of 2,573 boxes
+  that its box was not into: 42 to 45 ms a frame, five frames running.
+- `_pair_forgiven` asked whether the two were exact before it needed to,
+  and a shape not yet read is read from disk: 16 of them, 49 ms in a frame.
+- `_rest_with`, a part's overlaps where the grab began asked the first time
+  it is met, asked the clash at rest of its partner across the joint as
+  well: 37 to 48 ms once.
+
+Now a turned cover is asked only against what the part's box is into by
+more than `TOUCHING` (`Grab._into_cover`, as `_boxes_meet` asks it), the
+shapes are read only where they decide, and the partner across a joint is
+not asked its clash at rest (it is forgiven whatever it is). Alternated
+again, two rounds: main 12.1 and 12.3 ms, 95% 23.1 and 25.9; this 12.5 and
+12.2, 95% 22.8 and 20.4; baac8987 (the cover reaching a cell) 15.3 and
+17.2, 95% 46.2 and 52.7; 1d27522c 15.5 and 15.5, 95% 51.2 and 46.2. One
+frame in a run still costs 58 to 70 ms, the first `_rest_with` of a part
+met: the 95% is unchanged by it. 8820-1's steering, which Grab 17 had
+stopped at 6° where a tyre's turned cover reached its steering top, turns
+all 30° again and comes back 0.0042 LDU off, as before Grab 17: the tyre
+has no exact shape, and its box is not into the steering top's cover.
+Left: a whole cover (`_blocked`, a test asked at once) does not ask the box
+first, so for a pair with no exact shape it may still find a cell's reach
+the asked cover lets by. Checked on this, in a window: `grab_probe
+--only=hinge` (18), `minifigure` (9), `loops` (15), `racks` (43) and `worms`
+(34) as on ec690d35, `bearing` (2), `path` (6, its two GAPs), `steering`
+(36); the nine sets' sweep as play127 but 8820-1, above; `own_copies_probe`
+(33) and `mechanism_probe` pass.
+
 ### A loop turned in one big step drifts (not fixed)
 
 8808-1's steering wheel (#80) turned by move_part, a step each, measured
