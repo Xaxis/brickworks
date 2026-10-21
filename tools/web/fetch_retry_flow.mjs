@@ -80,8 +80,12 @@ const page = await context.newPage();
 page.choosers = [];
 page.on("filechooser", (chooser) => page.choosers.push(chooser));
 const errors = [];
+const t0 = Date.now();
+const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+const heard = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 page.on("console", (m) => {
+  heard.push(`${secs()} ${m.type()} ${m.text()}`);
   if (/SCRIPT ERROR|Parse Error|USER ERROR/.test(m.text())) errors.push(m.text().slice(0, 300));
 });
 
@@ -93,8 +97,18 @@ let rareAt = "";
 const asks = new Map();      // url -> times asked since failing began
 const answered = new Map();  // url -> what each ask was given
 // The headers a cross-origin bucket's answer carries, so a 503 or a 404 is
-// read as one and not as a request the page's isolation refused.
-const open = { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" };
+// read as one and not as a request the page's isolation refused. And a type
+// and a body, as the bucket's own answers have: Godot's web client takes an
+// answer whose headers the page cannot read for no answer at all (code 0),
+// and across origins a page reads only a few, Content-Type and Content-Length
+// among them. With these two headers alone, every 404 on a deployment was
+// asked four times, as a fault that may pass (m125's preview, 2026-10-20).
+const open = { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin",
+  "content-type": "application/json" };
+// The body the parts bucket gives for an object it has not got. Its status is
+// 400; the 404 here is read the same (PartLibrary.may_pass).
+const missing = JSON.stringify({ statusCode: "404", error: "not_found", message: "Object not found",
+  code: "NoSuchKey" });
 await context.route(/\.lbm(\?|$)/, async (route) => {
   const at = route.request().url();
   if (mode === "pass" || mode === "rare" && at !== rareAt) return route.continue();
@@ -103,14 +117,15 @@ await context.route(/\.lbm(\?|$)/, async (route) => {
   const given = mode === "absent" || mode === "rare" ? "404"
     : n === 1 ? "cut" : n === 2 ? "503" : "part";
   answered.set(at, [...(answered.get(at) || []), given]);
+  heard.push(`${secs()} ask ${path.basename(new URL(at).pathname)} -> ${given}`);
   if (given === "cut") return route.abort("connectionreset");
-  if (given === "503") return route.fulfill({ status: 503, headers: open, body: "" });
-  if (given === "404") return route.fulfill({ status: 404, headers: open, body: "" });
+  if (given === "503") return route.fulfill({ status: 503, headers: open,
+    body: JSON.stringify({ message: "Service Unavailable" }) });
+  if (given === "404") return route.fulfill({ status: 404, headers: open, body: missing });
   return route.continue();
 });
 
 let failed = 0;
-const t0 = Date.now();
 const check = (ok, what) => {
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}  [${Math.round((Date.now() - t0) / 1000)}s]`);
   if (!ok) failed += 1;
@@ -246,6 +261,8 @@ try {
   await shot("stopped.png");
 }
 check(errors.length === 0, `no script errors (${errors.slice(0, 3).join(" | ")})`);
+writeFileSync(path.join(out, "console.txt"), heard.join("\n") + "\n");
+console.log(`        the page's console and each ask: ${path.join(out, "console.txt")}`);
 await browser.close();
 console.log(failed ? `${failed} FAILED` : "a part that fails to fetch is asked again, and one that never comes is said");
 process.exit(failed ? 1 : 0);
