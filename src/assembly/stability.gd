@@ -75,7 +75,7 @@ const TIPPING_MARGIN := 0.5
 const SLENDERNESS_LIMIT := 6.0
 
 ## Boxes on both sides of a joint from which they are compared slice by
-## slice rather than box by box ([method BrickLattice.shared_cells_sliced]).
+## slice rather than box by box ([method BrickLattice.shared_lifted]).
 ## Below it the plain comparison is fewer steps.
 const SLICED_FROM := 8
 
@@ -137,7 +137,6 @@ func check(world: BrickWorld) -> Report:
 	if stopped:
 		return null
 	var above: Dictionary = graph["above"]
-	var below: Dictionary = graph["below"]
 	var boxes_of: Dictionary = graph["boxes"]
 
 	# Push the load downward, sharing it among supporters.
@@ -150,52 +149,52 @@ func check(world: BrickWorld) -> Report:
 	# twenty-six failing joints in a wall that stands up perfectly well.
 	#
 	# A brick's load is its own mass plus whatever is handed down to it,
-	# and it hands that on to the bricks beneath in proportion to how
-	# much of it each one carries. One pass from the top down is enough
-	# because a support graph only ever points downward.
+	# and it hands that on to the bricks beneath in proportion to the studs
+	# between them. One pass from the top down is enough because a support
+	# graph only ever points downward.
 	var order: Array = bricks.duplicate()
 	order.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
 		return a.transform.origin.y > b.transform.origin.y)
+	# Who carries whom is read as Balance and Sections read it. The lift's
+	# own cells read two parts whose covers overlap as each resting on the
+	# other: a pin in a beam, a cone on an antenna, two turned plates side by
+	# side each carried the other, on studs that are not there. A wheel on
+	# its spindle hands its weight on, but on no stud.
+	var carriers: Dictionary = _carriers(order, stud_joints(graph, library, lattice, false))
+	if stopped:
+		return null
 
 	var received: Dictionary = {}       ## id -> grams handed down
-	var load_centre: Dictionary = {}    ## id -> grams-weighted position
+	var on_studs: Dictionary = {}       ## id -> grams of that through its studs
+	var holding: Dictionary = {}        ## id -> the studs those stand on
 
 	for item: Variant in order:
 		var brick: BrickWorld.Brick = item
-		var own: float = mass.get(brick.id, 0.0)
-		var carried: float = own + float(received.get(brick.id, 0.0))
-		var centre: Vector3 = _middle(brick) * own
-		if load_centre.has(brick.id):
-			centre += load_centre[brick.id]
-
-		var supporters: Dictionary = below.get(brick.id, {})
+		var supporters: Dictionary = carriers.get(brick.id, {})
 		if supporters.is_empty():
 			continue
-		var total_contact: float = 0.0
+		var carried: float = mass.get(brick.id, 0.0) + float(received.get(brick.id, 0.0))
+		var total: float = 0.0
 		for supporter_id: int in supporters:
-			total_contact += float(supporters[supporter_id])
-		if total_contact <= 0.0:
-			continue
+			total += maxf(1.0, float(supporters[supporter_id]))
 		for supporter_id: int in supporters:
-			var share: float = float(supporters[supporter_id]) / total_contact
-			received[supporter_id] = float(
-				received.get(supporter_id, 0.0)) + carried * share
-			load_centre[supporter_id] = (
-				load_centre.get(supporter_id, Vector3.ZERO) + centre * share)
+			var studs: int = supporters[supporter_id]
+			var handed: float = carried * maxf(1.0, float(studs)) / total
+			received[supporter_id] = float(received.get(supporter_id, 0.0)) + handed
+			if studs > 0:
+				on_studs[supporter_id] = float(on_studs.get(supporter_id, 0.0)) + handed
+				holding[supporter_id] = int(holding.get(supporter_id, 0)) + studs
 
 	for item: Variant in bricks:
 		if stopped:
 			return null
 		var brick: BrickWorld.Brick = item
-		if not above.has(brick.id):
-			continue
-		report.joints += 1
-		var grams: float = float(received.get(brick.id, 0.0))
+		if above.has(brick.id):
+			report.joints += 1
+		var grams: float = float(on_studs.get(brick.id, 0.0))
 		if grams <= 0.0:
 			continue
-		var centre: Vector3 = load_centre.get(brick.id, Vector3.ZERO) / grams
-
-		var risk: Risk = _assess(brick, grams, centre, above)
+		var risk: Risk = _assess(brick, grams, int(holding[brick.id]))
 		if risk != null:
 			report.risks.append(risk)
 
@@ -249,10 +248,11 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 
 
 ## Who rests on whom, as the lattice has it: {"above": id -> {id of each
-## brick resting on it: cells shared}, "below": the same the other way
-## round, "boxes": id -> the boxes it occupies, "bricks": [param bricks]}.
-## What [method check] weighs; the stud joints Balance cuts are read from it
-## by [method stud_joints].
+## brick resting on it: cells shared}, "boxes": id -> the boxes it
+## occupies, "bricks": [param bricks], "overlap": [method pair_of] -> the
+## cells the two share as they stand, for each pair "above" has that share
+## any}. The stud joints [method check] weighs and Balance cuts are read
+## from it by [method stud_joints].
 func contacts(bricks: Array) -> Dictionary:
 	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
 	# Who rests on whom. A brick supports another when one of its cells
@@ -273,7 +273,8 @@ func contacts(bricks: Array) -> Dictionary:
 	# product, rather than a lookup per cell. Verified against the
 	# cell-by-cell count on seven real pairs of parts: identical.
 	var above: Dictionary = {}         ## id -> { id: shared cell count }
-	var below: Dictionary = {}
+	var overlap: Dictionary = {}       ## pair_of -> cells shared as they stand
+	var none: Array = []
 	for item: Variant in bricks:
 		if stopped:
 			break
@@ -289,29 +290,28 @@ func contacts(bricks: Array) -> Dictionary:
 		# count being the test. Asking the lattice which ones touch first
 		# compared the same boxes twice: on Orthanc that was 3.9 s, and
 		# counting box against box 6.5 s more.
-		var slices: Array = BrickLattice.slices_of(lid) \
-			if lid.size() >= SLICED_FROM * 6 else []
+		var slices: Array = BrickLattice.slices_of(mine) \
+			if mine.size() >= SLICED_FROM * 6 else none
 		for over: int in lattice.near_bounds(lid, brick.id):
 			# Skipping pairs whose boxes already overlap was tried, on
 			# the theory that a part inside another is not resting on
 			# it. It is wrong, and measurably: a stud belongs to the
 			# brick below and reaches into the brick above, so nearly
 			# every real joint overlaps. The kart went from 42 joints to
-			# 14 and the car from 53 to 44.
+			# 14 and the car from 53 to 44. What the two share as they
+			# stand is counted in the same pass, for stud_joints.
 			var theirs: PackedInt32Array = lattice.boxes_of(over)
-			var shared: int = BrickLattice.shared_cells_sliced(lid, slices, theirs) \
-				if not slices.is_empty() and theirs.size() >= SLICED_FROM * 6 \
-				else BrickLattice.shared_cells(lid, theirs)
-			if shared <= 0:
+			var shared: Vector2i = BrickLattice.shared_lifted(mine,
+				slices if theirs.size() >= SLICED_FROM * 6 else none, theirs)
+			if shared.x <= 0:
 				continue
 			if not above.has(brick.id):
 				above[brick.id] = {}
-			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared
-			if not below.has(over):
-				below[over] = {}
-			below[over][brick.id] = int(below[over].get(brick.id, 0)) + shared
+			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared.x
+			if shared.y > 0:
+				overlap[pair_of(brick.id, over)] = shared.y
 
-	return {"above": above, "below": below, "boxes": boxes_of, "bricks": bricks}
+	return {"above": above, "boxes": boxes_of, "bricks": bricks, "overlap": overlap}
 
 
 ## Lattice cells shared across one stud joint, as [method contacts] counts
@@ -333,32 +333,52 @@ static func pair_of(a: int, b: int) -> int:
 ## whose studs were read by their tips and do not point up, "seated": pair ->
 ## true for a pair the lift reaches only where the two already overlap,
 ## joined by no stud: a cone threaded on an antenna, a pin in a beam, or two
-## turned covers side by side}. Only pairs of those parts; worked out once
-## and kept in [param contacts] as "joints", so a caller weighing its parts a
-## few at a time (Tested, BrickifySteps) pays once. Balance, Sections and
-## Tested all read what holds what from here.
+## turned covers side by side, "overlapped": pair -> true for a stud pair
+## the lift read across covers that already overlap, with no stud's tip in
+## either}. Only pairs of those parts; worked out once and kept in [param
+## contacts] as "joints", so a caller weighing its parts a few at a time
+## (Tested, BrickifySteps) pays once. Balance, Sections, Tested and [method
+## check] all read what holds what from here.
 ##
 ## The lift's resting cells are not studs as they stand. Turned parts'
 ## covers side by side overlap their whole height, and the lift read that
 ## overlap as each resting on the other: 10179-1's 2 x 3 plates on edge,
 ## held by nothing between them, were joined by 6 studs, and a stud
 ## pointing sideways never shows in a lift (2026-10-20). So a pair rests on
-## the cells the lift reaches that the two did not already share, and each
-## stud whose tip is in another part joins them (Joints.studs_in), whichever
-## way it points; a pair has whichever count is more.
+## the cells the lift reaches that the two did not already share ([method
+## contacts]' "overlap", counted in the same pass: counted here after, it
+## was 0.3-1.5 s of reading 1,000-1,300-part Technic sets, now 9-21 ms),
+## and each stud whose tip is in another part joins them (Joints.studs_in),
+## whichever way it points; a pair has whichever count is more.
+##
+## Even so, what the lift reaches past an overlap is mostly where the two
+## covers' edges differ: a tyre on its rim, a pin in a beam, a turntable's
+## two halves (342 studs). On 45 real sets 17,359 pairs were joined so, with
+## no stud's tip in either, and 8466-1's steering arm was weighed as
+## carrying its wheel on one stud, overloaded (2026-10-21). They hold the
+## parts together, as Suggest sections reads them, and are "overlapped":
+## [method check] weighs no stud there.
+##
+## [param everywhere] false reads a stud's tip only where the lift cannot
+## tell: on a part the lift reaches across an overlap, and for a stud not
+## pointing up. A stud pointing up into a part that only touches its own is
+## then what the lift counts there, as it was before tips were read. The
+## status bar's check asks so, after every change: reading every tip, 6,162
+## on stability_probe's 800 bricks, doubled what it cost (2026-10-21).
 static func stud_joints(contacts: Dictionary, library: PartLibrary,
-		lattice: BrickLattice) -> Dictionary:
-	if contacts.has("joints"):
-		return contacts["joints"]
+		lattice: BrickLattice, everywhere: bool = true) -> Dictionary:
+	var kept: String = "joints" if everywhere else "joints where unsure"
+	if contacts.has(kept):
+		return contacts[kept]
 	var boxes: Dictionary = contacts["boxes"]
 	var above: Dictionary = contacts["above"]
+	var overlap: Dictionary = contacts["overlap"]
 	var studs: Dictionary = {}
 	var under: Dictionary = {}
 	var sideways: Dictionary = {}
 	var seated: Dictionary = {}
-	var bounds: Dictionary = {}
-	var slices: Dictionary = {}
-	var already: Dictionary = {}
+	var overlapped: Dictionary = {}
+	var unsure: Dictionary = {}        ## id -> true for a part in an overlapped pair
 	for low: Variant in above:
 		if not boxes.has(int(low)):
 			continue
@@ -367,19 +387,38 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			if int(high) == int(low) or not boxes.has(int(high)):
 				continue
 			var key: int = pair_of(int(low), int(high))
-			if not already.has(key):
-				already[key] = _shared(int(low), int(high), boxes, bounds, slices)
-			var resting: int = int(row[high]) - int(already[key])
+			var resting: int = int(row[high]) - int(overlap.get(key, 0))
 			if resting <= 0:
 				seated[key] = true
 				continue
 			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(resting) / STUD_CELLS))
 			under[key] = int(low)
+			if overlap.has(key):
+				overlapped[key] = true
+				unsure[int(low)] = true
+				unsure[int(high)] = true
 	var entries: Array = []
+	var ways_of: Dictionary = {}       ## part id -> its studs' ways, its own frame
 	for brick: BrickWorld.Brick in contacts.get("bricks", []):
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if mesh != null:
-			entries.append([brick.id, brick.transform, mesh])
+		if mesh == null:
+			continue
+		if not everywhere and not unsure.has(brick.id):
+			if not ways_of.has(brick.part_id):
+				var ways := PackedVector3Array()
+				for connector: Lbm.Connector in mesh.connectors:
+					if connector.kind == "stud" and connector.gender == "male" \
+							and not ways.has(connector.axis.normalized()):
+						ways.append(connector.axis.normalized())
+				ways_of[brick.part_id] = ways
+			var aside: bool = false
+			for way: Vector3 in ways_of[brick.part_id]:
+				if (brick.transform.basis * way).normalized().y <= 0.5:
+					aside = true
+					break
+			if not aside:
+				continue
+		entries.append([brick.id, brick.transform, mesh])
 	# An Array, not a PackedVector3Array: a packed array read out of a
 	# container is a copy, and appending to it kept nothing.
 	var tips: Dictionary = {}          ## Vector2i(whose, into) -> [feet, way]
@@ -394,6 +433,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	for by: Vector2i in tips:
 		var feet: Array = (tips[by] as Array)[0]
 		var key: int = pair_of(by.x, by.y)
+		overlapped.erase(key)
 		if feet.size() <= int(studs.get(key, 0)):
 			continue
 		studs[key] = feet.size()
@@ -404,51 +444,47 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	for key: int in studs:
 		seated.erase(key)
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
-		"seated": seated}
-	contacts["joints"] = out
+		"seated": seated, "overlapped": overlapped}
+	contacts[kept] = out
 	return out
 
 
-## The cells the covers of [param a] and [param b] share ([param boxes], from
-## [method contacts]), for [method stud_joints]: none where their bounds only
-## touch, and the bigger sliced. [param bounds] and [param slices] keep what
-## was worked out, by id.
-static func _shared(a: int, b: int, boxes: Dictionary, bounds: Dictionary,
-		slices: Dictionary) -> int:
-	for id: int in [a, b]:
-		if not bounds.has(id):
-			bounds[id] = BrickLattice._bound_of(boxes.get(id, PackedInt32Array()))
-	var one: PackedInt32Array = bounds[a]
-	var other: PackedInt32Array = bounds[b]
-	if one.is_empty() or other.is_empty() or one[0] >= other[3] or other[0] >= one[3] \
-			or one[1] >= other[4] or other[1] >= one[4] or one[2] >= other[5] \
-			or other[2] >= one[5]:
-		return 0
-	var big: int = a
-	var small: int = b
-	if (boxes[b] as PackedInt32Array).size() > (boxes[a] as PackedInt32Array).size():
-		big = b
-		small = a
-	if (boxes[big] as PackedInt32Array).size() < SLICED_FROM * 6:
-		return BrickLattice.shared_cells(boxes[big], boxes[small])
-	if not slices.has(big):
-		slices[big] = BrickLattice.slices_of(boxes[big])
-	return BrickLattice.shared_cells_sliced(boxes[big], slices[big], boxes[small])
+## Who hands its weight to whom, from [param joints] ([method
+## stud_joints]): id -> {the id of each part carrying it: the studs between
+## them, 0 for a part held by no stud}. A stud joint whose studs point up is
+## carried by the part with the studs. One whose studs point sideways or
+## down, a part seated in another and a pair "overlapped" (no stud's tip in
+## either) are carried by whichever of the two comes later in [param order],
+## the weighing's top-down order.
+static func _carriers(order: Array, joints: Dictionary) -> Dictionary:
+	var rank: Dictionary = {}
+	for n: int in order.size():
+		rank[(order[n] as BrickWorld.Brick).id] = n
+	var out: Dictionary = {}
+	var studs: Dictionary = joints["studs"]
+	var under: Dictionary = joints["under"]
+	var sideways: Dictionary = joints["sideways"]
+	var overlapped: Dictionary = joints["overlapped"]
+	for by_studs: bool in [true, false]:
+		for key: int in (studs if by_studs else joints["seated"]):
+			var one: int = key >> 32
+			var other: int = key & 0xFFFFFFFF
+			if not rank.has(one) or not rank.has(other):
+				continue
+			var held: int = int(studs[key]) if by_studs and not overlapped.has(key) else 0
+			var low: int = one if int(rank[one]) > int(rank[other]) else other
+			if held > 0 and not sideways.has(key):
+				low = int(under[key])
+			var high: int = other if low == one else one
+			if not out.has(high):
+				out[high] = {}
+			out[high][low] = held
+	return out
 
 
-func _assess(
-	brick: BrickWorld.Brick, grams: float, centre: Vector3,
-	above: Dictionary
-) -> Risk:
-	# The joint's strength is the number of stud-sized columns shared
-	# with what sits directly on it.
-	var columns: int = 0
-	for other_id: int in above.get(brick.id, {}):
-		columns += int(above[brick.id][other_id])
-	# Cells are 2 LDU and a stud is 20, so a stud's footprint is 100
-	# cells in plan; the count above is per cell, over one layer.
-	var studs: int = maxi(1, int(round(float(columns) / 100.0)))
-
+## Whether [param brick]'s stud joints hold the [param grams] handed down
+## to it through them: [param studs], the studs what is on it stands on.
+func _assess(brick: BrickWorld.Brick, grams: float, studs: int) -> Risk:
 	var holds: float = studs * GRAMS_PER_STUD
 	if grams > holds:
 		var risk := Risk.new()

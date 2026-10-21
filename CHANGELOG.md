@@ -87,6 +87,19 @@ whole cycle.
   2 x 12 wedge read as held by one stud at five times its working load is
   not, and no Tested result changed. Weighing a model takes about half as
   long again.
+- The stability on the status bar and Evaluate the section read what holds
+  what as Check stability and Suggest sections do. Two parts whose covers
+  overlap, a pin in a beam or a cone on an antenna, were each weighed as
+  standing on the other's studs, and a section was said to stand on studs
+  of the rest and carry it on the same studs: 40335-1's four loose parts
+  stood on 43 studs and carried 44. Each stud joint is now weighed by its
+  own studs, one at least, not by the area its parts' covers touch: a
+  Falcon Heavy's 4 x 6 plates hold six cones and two round bricks on ten
+  studs and were said to hold them on two, seven joints over. On 45 real
+  sets no other stability verdict changed; 203 sections are described
+  otherwise, and 32 come off another way, upward where they only stand on
+  the rest. Check stability, a drag's balance and the Tested mark read what
+  holds what in a tenth to a fifth less time on 1,000-part Technic sets.
 
 ## [0.4.0] - 2026-10-20
 

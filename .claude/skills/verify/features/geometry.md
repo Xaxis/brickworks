@@ -161,7 +161,19 @@ can occupy the same millimetre.
   on ("tips", from Balance's support polygon), which its levels never could on
   a baseplate: the plate is under every cut, as wide as the ground. Masses
   count the tubes under a part; every one of seven bricks is within 6% of
-  BrickLink's weight (a 2x4 2.46 g against 2.32).
+  BrickLink's weight (a 2x4 2.46 g against 2.32). Load is handed down and
+  weighed against studs as Balance, Tested and Sections read them
+  (`Stability.stud_joints`, each joint one stud at least): two parts whose
+  covers overlap (a pin in a beam, a cone on an antenna, turned plates side
+  by side) are seated, joined by no stud, a pair the lift reads across an
+  overlap with no stud's tip in either (a wheel on its spindle) is
+  "overlapped" and hands its load on by no stud, and a stud pointing
+  sideways is one. The check reads a stud's tip only where the lift cannot
+  tell (`stud_joints(..., false)`: parts in an overlapped pair, studs not
+  pointing up); every tip doubled its cost on `stability_probe`'s 800
+  bricks. Changing what it reads: compare the verdicts on real sets before
+  and after (45 OMR sets, 2026-10-21: none changed but the Falcon's, whose
+  4 x 6 plates hold six cones and two round bricks on ten studs, not two).
 - `balance` (`src/assembly/balance.gd`, pure; docs/MECHANISMS.md §4, phase S1):
   whether the model stands on what it stands on, by how much, and which stud
   joint gives first. The support polygon is the hull of every box within half
@@ -169,7 +181,7 @@ can occupy the same millimetre.
   tipping margin is the centre of mass's distance to its nearest edge in
   studs, the force angle the tilt that carries it over (atan(margin/height),
   Papadopoulos and Rey). Stud joints that are bridges in the graph of what
-  holds what (studs from `Stability.contacts`, pins, clips, hinges and
+  holds what (studs from `Stability.stud_joints`, pins, clips, hinges and
   turntables from `Joints`) carry everything beyond them: the moment about
   the edge they would turn on against M = Σ F·dᵢ at 1 N a stud (working) and
   3 N (lets go), and the pull on a part hung under another. Joints in bonded
@@ -861,7 +873,8 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where the LEGO Group moulds 
   every brick whose bounds meet (`BrickLattice.near_bounds`), the count is the
   test, and a cover of eight boxes or more is sorted into its slices once
   (`slices_of`) so each box of the other meets only the slices at its own z
-  (`shared_cells_sliced`): the graph is 1.6 s and the check 2.2 s, 0.78 times
+  (`shared_lifted`, which counts what the two share as they stand in the same
+  pass, for `stud_joints`): the graph is 1.6 s and the check 2.2 s, 0.78 times
   building it, with every pair's count the same (all 23,501, compared
   2026-10-11) and the same 7,531 joints and verdict. `stability_probe`
   compares the two counts on every joint of a thousand of Orthanc's turned

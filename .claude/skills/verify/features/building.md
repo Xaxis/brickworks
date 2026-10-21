@@ -574,7 +574,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   them, lots, weight, one piece by the joint graph and by the build check
   on it alone (`Assistant._checked`), whether it stands on its own base
   (Balance), the studs and pins that join it to the rest and what that
-  carries (80 g a stud, Stability), and its own steps; with its parts list,
+  carries (80 g a stud, Stability; the studs read as the suggestion reads
+  them, `Stability.stud_joints` over the section and the parts beside it,
+  so two parts whose covers overlap are no stud joint), and its own steps;
+  with its parts list,
   BrickLink wanted list and booklet (`_export_booklet` with the rest left
   out). All of it works with the assistant off. For other code:
   `Sections.graph_of` (the joint graph, static: studs, turns, pins, fixed)
