@@ -4889,7 +4889,11 @@ three. So the stop is the room test right about the pose the loop chose,
 and what is wrong is the loop's. Damping the axle's slide as a friction
 pin's is damped (`Linkage._friction`, 1000 times) still slid it, the rack
 0.42 LDU, so the loop as read has no other way to close. 8448-1's racer
-passes either way.
+passes either way. With Grab 18 and 19's loop solve merged (4d1c9b5f; in
+it, a free axle's slide moves less than a turn, af58aa09), the check passes
+with the cover reaching its cell: the rack goes 2.67 LDU and comes back to
+-0.40, and nothing stops it. Which of their commits does it is not
+bisected.
 
 ### What the joints' halves cost a wheel loader's arm
 
