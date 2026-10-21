@@ -951,7 +951,7 @@ func _rest_racks(entries: Array, candidates: Array) -> void:
 		if best == 0:
 			continue
 		var rack_at: Transform3D = world.get_brick(mesh.rack).transform
-		var spec: Dictionary = Racks.table().get(world.get_brick(mesh.rack).part_id, {})
+		var spec: Dictionary = Racks.spec_of(world.get_brick(mesh.rack).part_id)
 		var reach: float = absf(float(spec.get("to", 20.0)) - float(spec.get("from", -20.0))) * 0.5
 		candidates.append([best, mesh.rack, "rests", rack_at.origin, (rack_at.basis * Vector3.RIGHT).normalized(),
 			true, 0.0, Vector2(reach, reach), mesh.rack])
@@ -2562,6 +2562,13 @@ func _ball_middle(a: int, b: int) -> Vector3:
 				balls.append(brick.transform * connector.position)
 			elif connector.kind == "socket":
 				sockets.append(brick.transform * connector.position)
+			elif connector.kind == "bore" and absf(connector.radius - Joints.BALL_RADIUS) <= Joints.ROUND_FIT * 0.5 \
+					and connector.length > 0.0 and connector.length <= Joints.BALL_RADIUS * 2.0:
+				# A socket drawn as plain rounds, as Joints.balls reads one: 8448-1's
+				# suspension arms (32195a) on a steering arm's three balls (32186).
+				# Not counted, both arms were put on its first ball, and the
+				# parallelogram they make with the chassis read as held.
+				sockets.append(brick.transform * (connector.position + connector.axis * connector.length * 0.5))
 	var best: Vector3 = balls[0] if not balls.is_empty() else world.get_brick(a).transform.origin
 	var nearest: float = INF
 	for ball: Vector3 in balls:
