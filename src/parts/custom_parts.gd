@@ -103,6 +103,7 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 		info.name = known.name
 	# Prints and stickers in bins of their own, as the bin shows them.
 	info.category = PartPrints.bin_for(text)
+	read_as_copy(library, info, built.mesh)
 	var skin: bool = is_skin_text(text)
 	if skin:
 		# A file's hose, not a part to pick from the bin, and not kept.
@@ -171,6 +172,225 @@ static func _kept_needs(id: String) -> Dictionary:
 
 ## The file beside a kept part that holds what it is drawn from.
 const NEEDS := ".needs.ldr"
+
+
+# -- A file's own copy of a part LEGO made -------------------------------------
+#
+# Studio writes the parts it has versions of its own into the file, each as
+# "<set> - <part>.dat" with its subparts and primitives renamed the same way:
+# 42125-1's 1 x 2 thick beams are "42125 - 60483.dat", drawn from
+# "s\42125 - 60483s01.dat" and "42125 - connectcollar3.dat". Built from that
+# text a copy has no joint (the primitives that say where a pin goes are
+# named the file's way), no exact shape (those are the library's parts') and
+# a cover of its own making, so 42125-1's tie rods were held in its copied
+# steering knuckles only by overlap, and Grab's room test judged its copied
+# beams by their boxes. A copy drawn as the part is drawn is read as that
+# part for all three; one drawn otherwise is a part of the file's own, as
+# before. What is drawn is the copy's own geometry, and what is written back
+# its own text.
+
+## How near a copy's geometry must be to the part's it is named for, in LDU:
+## its box face by face, and every corner of either's triangles to the
+## other's surface. The exact check's own allowance (Exact.TAU), and the
+## least a joint tells two rounds apart by (Joints.ROUND_FIT): nearer than
+## that, nothing that reads the part could tell the copy from it. Of the
+## 2,017 copies the OMR's sets carry, 1,606 are drawn as their parts are to
+## a corner, and 162 more are an older drawing of the part, the edge of a
+## pin hole or an axle hole's corners drawn otherwise, within 1 LDU; 243 are
+## further, 78 of them more than 2 LDU (own_copies_probe -- --survey).
+const COPY_WITHIN := 1.0
+## Two corners in one cell of this, in LDU, or cells side by side, are one
+## corner: both are encoded alike (Lbm), so a copy drawn from the part's own
+## LDraw text is the same to a few thousandths.
+const CORNER_CELL := 0.1
+
+
+## The part LEGO made that [param id], a part a model file carries, is named
+## for: what follows the last " - " ("42125 - 60483" is 60483), where the
+## library has a part of that number. "" for every other name.
+static func named_for(library: PartLibrary, id: String) -> String:
+	var at: int = id.rfind(" - ")
+	if at < 0:
+		return ""
+	var named: String = id.substr(at + 3).strip_edges()
+	var info: PartLibrary.PartInfo = library.parts.get(named)
+	return named if info != null and not info.custom else ""
+
+
+## The part [param id] is a copy of, for [param mesh], its geometry as the
+## file draws it: the part it is named for ([method named_for]), or the part
+## that one was renamed to where the stub puts it where it stood, when the
+## two are drawn alike ([method likeness]). "" for a part of the file's own,
+## and for one whose part has no geometry here: on the web, fetched before
+## the file opens ([method _fetch_copied]).
+static func copy_of(library: PartLibrary, id: String, mesh: Lbm.PartMesh) -> String:
+	var named: String = named_for(library, id)
+	if named.is_empty() or mesh == null:
+		return ""
+	if library.moved_by(named) != Transform3D.IDENTITY:
+		return ""
+	var made: String = library.resolve(named)
+	var theirs: Lbm.PartMesh = library.mesh_for(made)
+	if theirs == null:
+		return ""
+	var alike: Dictionary = likeness(mesh, theirs)
+	if float(alike["box"]) > COPY_WITHIN or int(alike["missed"]) > 0:
+		return ""
+	return made
+
+
+## How far apart two parts' geometry is: {"box": the furthest a face of one's
+## box is from the other's, in LDU; "far": the furthest a corner of either's
+## triangles is from the other's surface; "missed": how many corners are
+## further than [constant COPY_WITHIN]; "of": how many corners there are,
+## each counted once}. A corner with one of the other's beside it is on its
+## surface; only the rest are measured: a copy drawn from an older version of
+## the part (42125-1's 23801, before the library's 2022 one) is the same shape
+## in other triangles.
+static func likeness(one: Lbm.PartMesh, other: Lbm.PartMesh) -> Dictionary:
+	var low: Vector3 = (one.bounds.position - other.bounds.position).abs()
+	var high: Vector3 = (one.bounds.end - other.bounds.end).abs()
+	var box: float = maxf(maxf(low.x, maxf(low.y, low.z)), maxf(high.x, maxf(high.y, high.z)))
+	var mine: Dictionary = _corners(one)
+	var theirs: Dictionary = _corners(other)
+	var far: Array = [0.0, 0]
+	_measure(_unmatched(mine, theirs), other, far)
+	_measure(_unmatched(theirs, mine), one, far)
+	return {"box": box, "far": far[0], "missed": far[1], "of": mine.size() + theirs.size()}
+
+
+## Every corner of a part's triangles, each once, in cells of
+## [constant CORNER_CELL]: Vector3i -> the corner.
+static func _corners(mesh: Lbm.PartMesh) -> Dictionary:
+	var out: Dictionary = {}
+	for surface: ArrayMesh in mesh.surfaces:
+		var points: PackedVector3Array = surface.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		for point: Vector3 in points:
+			out[Vector3i((point / CORNER_CELL).round())] = point
+	return out
+
+
+## The corners of [param these] with none of [param those] in or beside
+## their cell.
+static func _unmatched(these: Dictionary, those: Dictionary) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for cell: Vector3i in these:
+		if those.has(cell):
+			continue
+		var near: bool = false
+		for dx: int in [-1, 0, 1]:
+			for dy: int in [-1, 0, 1]:
+				for dz: int in [-1, 0, 1]:
+					if not near and those.has(cell + Vector3i(dx, dy, dz)):
+						near = true
+		if not near:
+			out.append(these[cell])
+	return out
+
+
+## The cells a part's triangles are filed under for [method _measure], in LDU,
+## and how far from a triangle a corner is measured to it: further is INF.
+const SURFACE_CELL := 4.0
+const SURFACE_REACH := 2.0
+
+
+## How far each of [param points] is from [param mesh]'s surface, into
+## [param far]: [the furthest, how many further than COPY_WITHIN].
+static func _measure(points: PackedVector3Array, mesh: Lbm.PartMesh, far: Array) -> void:
+	if points.is_empty():
+		return
+	# Each triangle filed under every cell its box, grown by SURFACE_REACH,
+	# reaches, so a corner looks in its own cell only.
+	var corners := PackedVector3Array()
+	var cells: Dictionary = {}
+	for surface: ArrayMesh in mesh.surfaces:
+		var arrays: Array = surface.surface_get_arrays(0)
+		var at: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var index: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		for n: int in range(0, index.size() - 2, 3):
+			var a: Vector3 = at[index[n]]
+			var b: Vector3 = at[index[n + 1]]
+			var c: Vector3 = at[index[n + 2]]
+			var lo: Vector3i = Vector3i(((a.min(b).min(c) - Vector3.ONE * SURFACE_REACH)
+				/ SURFACE_CELL).floor())
+			var hi: Vector3i = Vector3i(((a.max(b).max(c) + Vector3.ONE * SURFACE_REACH)
+				/ SURFACE_CELL).floor())
+			var t: int = corners.size() / 3
+			corners.append_array([a, b, c])
+			for x: int in range(lo.x, hi.x + 1):
+				for y: int in range(lo.y, hi.y + 1):
+					for z: int in range(lo.z, hi.z + 1):
+						var cell := Vector3i(x, y, z)
+						if not cells.has(cell):
+							cells[cell] = []
+						(cells[cell] as Array).append(t)
+	for point: Vector3 in points:
+		var best: float = INF
+		for t: int in cells.get(Vector3i((point / SURFACE_CELL).floor()), []):
+			best = minf(best, point.distance_to(_closest_on_triangle(point,
+				corners[t * 3], corners[t * 3 + 1], corners[t * 3 + 2])))
+		far[0] = maxf(float(far[0]), best)
+		if best > COPY_WITHIN:
+			far[1] = int(far[1]) + 1
+
+
+## The point of triangle [param a] [param b] [param c] nearest [param p]
+## (Ericson, Real-Time Collision Detection, 5.1.5).
+static func _closest_on_triangle(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
+	var ab: Vector3 = b - a
+	var ac: Vector3 = c - a
+	var ap: Vector3 = p - a
+	var d1: float = ab.dot(ap)
+	var d2: float = ac.dot(ap)
+	if d1 <= 0.0 and d2 <= 0.0:
+		return a
+	var bp: Vector3 = p - b
+	var d3: float = ab.dot(bp)
+	var d4: float = ac.dot(bp)
+	if d3 >= 0.0 and d4 <= d3:
+		return b
+	var vc: float = d1 * d4 - d3 * d2
+	if vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0:
+		return a + ab * (d1 / (d1 - d3))
+	var cp: Vector3 = p - c
+	var d5: float = ab.dot(cp)
+	var d6: float = ac.dot(cp)
+	if d6 >= 0.0 and d5 <= d6:
+		return c
+	var vb: float = d5 * d2 - d1 * d6
+	if vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0:
+		return a + ac * (d2 / (d2 - d6))
+	var va: float = d3 * d6 - d5 * d4
+	if va <= 0.0 and d4 - d3 >= 0.0 and d5 - d6 >= 0.0:
+		return b + (c - b) * ((d4 - d3) / ((d4 - d3) + (d5 - d6)))
+	var whole: float = va + vb + vc
+	if absf(whole) < 1e-12:
+		return a
+	return a + ab * (vb / whole) + ac * (vc / whole)
+
+
+## Read [param info], a part built from a model file's text with [param
+## mesh], as the part it is a copy of ([method copy_of]), if it is one: that
+## part's joints, cover and exact shape (PartInfo.copy_of, which Exact reads).
+## The copy's surfaces stay its own. Whether it is a copy.
+static func read_as_copy(library: PartLibrary, info: PartLibrary.PartInfo,
+		mesh: Lbm.PartMesh) -> bool:
+	var made: String = copy_of(library, info.id, mesh)
+	if made.is_empty():
+		return false
+	var theirs: Lbm.PartMesh = library.mesh_for(made)
+	var part: PartLibrary.PartInfo = library.parts[made]
+	mesh.connectors = theirs.connectors
+	mesh.boxes = theirs.boxes
+	mesh.sockets = theirs.sockets
+	mesh.cell_ldu = theirs.cell_ldu
+	info.copy_of = made
+	info.name = part.name
+	info.connector_counts = part.connector_counts.duplicate()
+	info.stud_count = part.stud_count
+	info.socket_count = part.socket_count
+	info.box_count = part.box_count
+	return true
 
 
 ## A part built from its LDraw text, as [method add] builds it.
@@ -314,6 +534,14 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	# the file carries are built here, and in the model before it opens.
 	var skins_begun: Array = begin_skins(library, model, problems)
 	wanted = _to_build(library, model)
+	# One built before as it is, and not read as a copy then: its part's
+	# geometry may be here now (_fetch_copied, on the web).
+	for file_name: String in model.embedded_parts:
+		var id: String = file_name.get_basename()
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info != null and info.custom and info.copy_of.is_empty() \
+				and not wanted.has(file_name) and not named_for(library, id).is_empty():
+			read_as_copy(library, info, library.mesh_for(id))
 	var texts: Dictionary = {}
 	for file_name: String in wanted:
 		texts[file_name] = model.embedded_parts[file_name]
@@ -449,6 +677,51 @@ static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
 		return
 	await _fetch_until(library, func() -> PackedStringArray:
 		return unreached_by(library, model))
+	await _fetch_copied(library, model)
+
+
+## How long a file waits for the geometry of the parts its own copies are of
+## before it opens without it.
+const COPIES_WAIT_MS := 20000
+
+
+## On the web, the geometry of the parts [param model]'s own copies are named
+## for ([method named_for]), fetched before it opens, so each copy is matched
+## against its part when it is built ([method copy_of]). One whose part does
+## not come is read as a part of the file's own.
+static func _fetch_copied(library: PartLibrary, model: LdrModel) -> void:
+	if not OS.has_feature("web") and sources_from.is_empty():
+		return
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	var wanted := PackedStringArray()
+	for made: String in _copied_parts(library, model):
+		# Read from the build's pack where it is there, or asked for.
+		if library.mesh_for(made) == null and library.is_on_its_way(made):
+			wanted.append(made)
+	var began: int = Time.get_ticks_msec()
+	while not wanted.is_empty() and Time.get_ticks_msec() - began < COPIES_WAIT_MS:
+		for n: int in range(wanted.size() - 1, -1, -1):
+			if not library.is_on_its_way(wanted[n]):
+				wanted.remove_at(n)
+		if not wanted.is_empty():
+			await tree.process_frame
+
+
+## The parts LEGO made that [param model]'s parts not yet read as copies are
+## named for, each once.
+static func _copied_parts(library: PartLibrary, model: LdrModel) -> PackedStringArray:
+	var out := PackedStringArray()
+	for file_name: String in model.embedded_parts:
+		var id: String = file_name.get_basename()
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info != null and (not info.custom or not info.copy_of.is_empty()):
+			continue
+		var named: String = named_for(library, id)
+		if not named.is_empty() and not out.has(library.resolve(named)):
+			out.append(library.resolve(named))
+	return out
 
 
 ## Fetch what [param named] (a callable giving the names still unreached)

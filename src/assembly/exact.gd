@@ -275,9 +275,15 @@ static func parse(bytes: PackedByteArray) -> Shape:
 	return shape
 
 
+## The catalogue's entry whose exact shape [param part_id] has: its own, or for
+## a model file's own copy of a part LEGO made, that part's (PartInfo.copy_of).
+static func _shaped_as(library: PartLibrary, part_id: String) -> PartLibrary.PartInfo:
+	return library.shaped_as(part_id) if library != null else null
+
+
 ## Where a part's exact shape lives, by its mesh hash.
 static func file_for(library: PartLibrary, part_id: String) -> String:
-	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	var info: PartLibrary.PartInfo = _shaped_as(library, part_id)
 	if info == null or info.mesh_hash.is_empty():
 		return ""
 	return library._resolve_root() + "exact/" + info.mesh_hash + ".bwx"
@@ -287,7 +293,7 @@ static func file_for(library: PartLibrary, part_id: String) -> String:
 ## none (BrickNet does not have the part, or the build has no exact/ folder).
 ## Main thread: it fills the cache.
 static func shape_for(library: PartLibrary, part_id: String) -> Shape:
-	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	var info: PartLibrary.PartInfo = _shaped_as(library, part_id)
 	if info == null or info.mesh_hash.is_empty():
 		return null
 	_shapes_lock.lock()
@@ -300,15 +306,15 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		return null
 	# Already asked for: a look in the browser's pack for a file that is not
 	# there costs a couple of milliseconds, each time.
-	if library.is_exact_on_its_way(part_id):
+	if library.is_exact_on_its_way(info.id):
 		return null
-	var path: String = file_for(library, part_id)
+	var path: String = file_for(library, info.id)
 	var shape: Shape = null
 	if FileAccess.file_exists(path):
 		shape = parse(FileAccess.get_file_as_bytes(path))
 	elif OS.has_feature("web"):
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
-		library.request_exact(part_id)
+		library.request_exact(info.id)
 		return null
 	_shapes_lock.lock()
 	_shapes[info.mesh_hash] = shape
@@ -326,7 +332,7 @@ static func keep(mesh_hash: String, bytes: PackedByteArray) -> void:
 
 ## Whether the shape for a part has been looked for (found or not).
 static func known(library: PartLibrary, part_id: String) -> bool:
-	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	var info: PartLibrary.PartInfo = _shaped_as(library, part_id)
 	if info == null or info.mesh_hash.is_empty():
 		return true
 	_shapes_lock.lock()
