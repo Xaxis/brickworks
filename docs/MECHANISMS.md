@@ -4901,15 +4901,19 @@ rods were not read then, the rack slid 0.76 LDU and no arm turned.
    own joints are all balls, rests on the part its box is most into of
    those sharing its cells (not what its balls join it to, nor its
    pinion's body), as `_lodge` lays one for a rack nothing holds.
-3. **An axle's free slide moves least.** Least squares over every
-   coordinate alike slid the suspension arms along their axles as the
-   knuckles turned, 0.5 LDU for 10°, until a bush met a shock absorber at
-   25°. Each step damps an axle's unbounded slide as it damps a friction
-   bearing (`FRICTION_WEIGHT`): the arms 0.000 LDU, the knuckles 3.82° for
-   10°.
+3. **An axle's free slide moves less than a turn.** Least squares over
+   every coordinate alike slid the suspension arms along their axles as
+   the knuckles turned, 0.5 LDU for 10°, until a bush met a shock absorber
+   at 25°. Each step damps an axle's unbounded slide `SLIDE_WEIGHT` (30)
+   times as hard as a turn, and a friction bearing `FRICTION_WEIGHT` times
+   as hard as that, so a telescope's tube still slides 7.99 LDU of 8 on its
+   rod against its chain's friction pin (damped alike, 7.08). Damped a
+   thousand times, the arms stayed to 0.000 LDU, but 4002020-1's turntable,
+   whose clip slides on its bar, came back 0.138 LDU off.
 4. **A universal joint's centre in an end's fork is pinned there**
-   (`Bodies._cross_in_forks`), and a loop takes in the shafts its gears turn
-   through one (`Grab._only_bearings`). The file draws both centres of the
+   (`Bodies._cross_in_forks`, the 3L joint's parts only: pinned so, 8448-1's
+   older 4L joint locked its steering's loop), and a loop takes in the
+   shafts its gears turn through one (`Grab._only_bearings`). The file draws both centres of the
    steering column a quarter turn off their ends' forks (the fork's pins
    along x, the centre's at 45° to it), each pinned in one end only. The
    cardan shaft between was held by nothing and lodged where its box was

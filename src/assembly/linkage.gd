@@ -418,11 +418,14 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	# loop slides it only where turning will not close the loop. Least squares
 	# over every coordinate alike slid 42125-1's suspension arms along their
 	# axles as its knuckles turned, 0.5 LDU for 10°, until a bush met a shock
-	# absorber at 25°; its knuckles turn on their kingpins without it.
+	# absorber at 25°; its knuckles turn on their kingpins without it. A
+	# friction bearing holds harder still: damped alike, a telescope's tube
+	# slid 7.08 LDU of 8 on its rod, its gear chain's friction pin taking the
+	# rest.
 	for n: int in range(1, links.size()):
 		var c: int = slide_col[n]
 		if c >= 0 and links[n].turns and not _limits.has(c) and c != driver_col:
-			_friction[c] = true
+			_sliding[c] = true
 	# What moves: every body a joint of the loops is on the way to.
 	var moves: Dictionary = {}   ## lead -> whether it moves
 	for body: int in bodies.members:
@@ -900,6 +903,11 @@ static func _worst(r: PackedFloat64Array) -> float:
 ## off its rack (8808-1, 8054-1).
 var _friction: Dictionary = {}
 const FRICTION_WEIGHT := 1000.0
+## An axle's slide along its hole, unbounded in the solve (column -> true),
+## damped [constant SLIDE_WEIGHT] times as hard as a turn; a friction
+## bearing then [constant FRICTION_WEIGHT] times as hard as that.
+var _sliding: Dictionary = {}
+const SLIDE_WEIGHT := 30.0
 
 
 ## Close the loops with the driver held at q[driver_col], from q as it is.
@@ -997,8 +1005,8 @@ func _close_with(held: Dictionary) -> bool:
 			var m2: PackedFloat64Array = a.duplicate()
 			var g2: PackedFloat64Array = g
 			for i: int in n:
-				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * (FRICTION_WEIGHT if _friction.has(free[i])
-					else 1.0) + 1e-9
+				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) * (FRICTION_WEIGHT * (SLIDE_WEIGHT if not _sliding.is_empty()
+					else 1.0) if _friction.has(free[i]) else SLIDE_WEIGHT if _sliding.has(free[i]) else 1.0) + 1e-9
 			if not pinned.is_empty():
 				g2 = g.duplicate()
 				for i: int in pinned:

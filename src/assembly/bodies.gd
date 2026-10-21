@@ -922,16 +922,18 @@ func _rest_racks(entries: Array, candidates: Array) -> void:
 ## something, a beam beside it, or, once the column had turned, the column:
 ## turned back, the shaft swung round with it into the frame. Added to
 ## [param candidates] for each end [param rounds] (Joints.rounds) does not
-## join to its centre.
+## join to its centre. Only the 3L joint's parts (62519 in 62520s), whose
+## ends stand at the joint's middle: pinned so, 8448-1's older 4L joint
+## (3326b in 3712s) locked its steering's loop.
 func _cross_in_forks(entries: Array, info_of: Dictionary, rounds: Dictionary, candidates: Array) -> void:
 	var centres: Array = []
 	var ends: Array = []
 	for entry: Array in entries:
 		var info: PartLibrary.PartInfo = info_of.get(int(entry[0]))
 		var name: String = info.name if info != null else ""
-		if not name.contains("Universal Joint"):
+		if not name.contains("Universal Joint 3L"):
 			continue
-		if name.contains("Centre") or name.contains("Center"):
+		if name.contains("Centre"):
 			centres.append(entry)
 		elif name.contains("End"):
 			ends.append(entry)
