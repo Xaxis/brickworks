@@ -504,6 +504,12 @@ whole cycle.
   kept in the file. One that arrives later is put down. Saving one of your
   own models while a part was still on its way left the part out of the
   file; it is kept where it was.
+- In the browser on a slow phone, a model opens with all of its parts. The
+  app asks once as it starts where the parts it does not carry are kept,
+  and a phone still starting when that question timed out was never told:
+  every such part stayed away for the whole visit. A shared 8808 racer
+  opened without the 25 parts of its steering and said only "Parts of it
+  move". The question is now asked again, as a part's download is.
 - A model with a part that has not arrived, or never does, is kept as you
   work on it, as any model is. Until now nothing done to it was kept: once
   one part failed to load, closing the tab or a crash lost everything since
