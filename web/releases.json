@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.3.0",
+ "latest": "0.4.0",
  "releases": [
+  {
+   "version": "0.4.0",
+   "tag": "v0.4.0",
+   "date": "2026-10-20",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.4.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.4.0/CHANGELOG.md",
+   "summary": "A release about models that move. A model now carries its own named motions, \"Open the dome\" or \"Extend the telescope\": kept with one press from what moves, recorded by dragging the real parts, or set joint by joint in Build > Motions, played forwards and back, strung into a sequence that shows it all, filmed from File > Render, and played by anyone from its shared link. Grab moves parts as the real ones move, racks and pinions, cranks and sliders, worms and friction included, and Simulate turns them the same way. Brickify reads PLY, 3MF, VOX and FBX. Part names read right, a part that fails to load is asked for again and never lost from the file, and File > New tab starts a second model beside the first. Models saved by 0.3.0 open in 0.4.0 unchanged.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.4.0-linux-x86_64.AppImage",
+     "size": 569481720,
+     "sha256": "a2831f1388c3e50fdf730cc7de7f48807e8c7c3bb9596e43d3ffe2109e2dd80e",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.4.0/Brickworks-0.4.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.4.0-linux-x86_64.tar.xz",
+     "size": 420722428,
+     "sha256": "2fe0db3cea0ddd9dede7d503a6628be6b188b36d698d1687a92a8cb97615cd73",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.4.0/Brickworks-0.4.0-linux-x86_64.tar.xz",
+     "unpacked": 1478198632,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.4.0-macos-universal.zip",
+     "size": 748681038,
+     "sha256": "dc3bf032695b196881cec62a63ddee125ba8ba130ca87ce2a41c4c854c175542",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.4.0/Brickworks-0.4.0-macos-universal.zip",
+     "unpacked": 1574953098,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.4.0-windows-x86_64.zip",
+     "size": 727044212,
+     "sha256": "faaf2259b39479c9dae5ed1c40fe9548a68306f848ef609a2f1f01455a74c6f1",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.4.0/Brickworks-0.4.0-windows-x86_64.zip",
+     "unpacked": 1513901512,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.3.0",
    "tag": "v0.3.0",

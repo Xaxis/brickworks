@@ -2093,6 +2093,43 @@ and each checked by name in the pictures beside the reference (branch
 signature, 2026-10-20); then laying a defining shape from real parts rather
 than describing it, as above.
 
+### Likeness: the signature features, named and looked at, on the 44 of proof (2026-10-20, not ready)
+
+The shape-first verdicts said a subject is known by its signature features,
+Big Ben's slender belfry under a two-stage spire, the Flatiron's prow, the
+Burj Khalifa's tiers. So the planner was made to name three to five of them,
+each with what it must look like, and before saving the session looked at
+its model beside a reference picture and rebuilt the feature least like the
+real thing (branch signature, 0432339b; `Assistant._signature_gate`). On
+tune's first ten it looked promising and could not be told from noise
+(likeness against the sets 35% against main's 25%, head to head 40%).
+
+Run once on the 44 of proof (4 at a time, headless with pictures on the GPU
+lease; 3 pictures of 3 designs gave up for the letters), against main's 44:
+
+| dimension | main | signature44 | main minus signature44 (95%) |
+|---|---|---|---|
+| likeness | 22% | 24% | -2 (-10, +5) |
+| surface | 26% | 28% | -2 (-12, +8) |
+| colour | 26% | 23% | +3 (-6, +11) |
+| technique | 12% | 11% | +1 (-2, +5) |
+| creativity | 35% | 32% | +3 (-7, +14) |
+| overall | 20% | 22% | -1 (-8, +5) |
+
+Head to head the judge was at a coin's toss: main preferred 52% on likeness
+(38-66%), 55% overall (40-68%).
+
+**Not ready.** Naming the features and looking again did reach every session
+that looked (each rebuilt one), and moved nothing the judge could see. Two
+likeness levers in a row (the defining shape, the signature features) told
+the session what matters and checked it in words; neither changed what was
+built enough. The next lever changes what is built: Technic subjects lost all
+18 overall verdicts, 13 as "System bricks, not Technic", so a Technic subject
+is built studless, beams and pins, from how real Technic sets build it. The
+lever is kept on its branch. Results: bench/results/realset-2026-10-20-signature44/
+and realset-2026-10-20-main-vs-signature44/.
+
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
