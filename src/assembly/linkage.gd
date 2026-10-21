@@ -298,19 +298,23 @@ func _read(driver: Bodies.Link, child: int) -> void:
 			slide_col.append(-1)
 		elif link.slide.x + link.slide.y > 0.0:
 			# An actuator's stroke, its rod or its body the one that moves;
-			# and a clip on its bar, as far as the two parts let it
+			# a clip on its bar, as far as the two parts let it
 			# (Bodies.exact_room, else Bodies._rounds_room), the solve kept
 			# inside it. Unbounded, a loop closed by sliding 21019-1's clip
 			# 4.3 LDU into the plate its handle is on, and 4002020-1's into
-			# its bar's ball. Not an axle in its hole: kept to its flanges,
-			# 8448-1's steering turned 1° where it turns 11°, its loop read
-			# too stiff without its towballs sliding up through the rack.
-			# Nor an engine's piston: kept to its cylinder's rounds, 8218-1's
-			# stroke was 19.35 LDU where its crank's throw makes it 20.
+			# its bar's ball. And an axle in its hole, as far as what is on
+			# its line lets it (Bodies.line_room): unbounded, 5533-1's
+			# steering closed by sliding its arm 1.75 LDU on into its brick,
+			# and 8448-1's column slid along its pinion's axle, held there by
+			# the pinion and a joint's end either side of a brick. Not an
+			# engine's piston: kept to its cylinder's rounds, 8218-1's stroke
+			# was 19.35 LDU where its crank's throw makes it 20.
 			var shaft_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
-			if not link.turns or link.reach != Vector2.ZERO:
+			if not link.turns or link.reach != Vector2.ZERO or link.kind == "axle":
 				var room: Vector2 = link.slide
-				if link.turns:
+				if link.kind == "axle":
+					room = bodies.line_room(link)
+				elif link.turns:
 					var exact: Vector2 = bodies.exact_room(link)
 					if exact.x >= 0.0:
 						room = exact
@@ -414,7 +418,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 					if _axis[n] == Vector3.ZERO else []):
 				if c >= 0 and c != driver_col:
 					_friction[c] = true
-	# An axle's slide along its hole, which nothing bounds in the solve: the
+	# An axle's slide along its hole, within what its line lets it: the
 	# loop slides it only where turning will not close the loop. Least squares
 	# over every coordinate alike slid 42125-1's suspension arms along their
 	# axles as its knuckles turned, 0.5 LDU for 10°, until a bush met a shock
@@ -424,7 +428,7 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	# rest.
 	for n: int in range(1, links.size()):
 		var c: int = slide_col[n]
-		if c >= 0 and links[n].turns and not _limits.has(c) and c != driver_col:
+		if c >= 0 and links[n].turns and (not _limits.has(c) or links[n].kind == "axle") and c != driver_col:
 			_sliding[c] = true
 	# What moves: every body a joint of the loops is on the way to.
 	var moves: Dictionary = {}   ## lead -> whether it moves
@@ -1221,6 +1225,11 @@ var _part_rate: float = 0.0
 ## there for a frame.
 var _slope := PackedFloat64Array()
 var _slope_col: int = -1
+## The slope read the step before, and that step's length in the driver's
+## units (0: none read): how the slope bends, so a step starts along the
+## slope halfway along it, not the slope where it begins.
+var _slope_was := PackedFloat64Array()
+var _slope_by: float = 0.0
 ## The columns that turn: not slides, not held still.
 var _turning := PackedInt32Array()
 ## What a close closes to: [constant CLOSE_TO], or on the way
@@ -1237,10 +1246,21 @@ func _closes_at(at: float, from: float, from_q: PackedFloat64Array, but: Diction
 	if _slope_col == driver_col and _slope.size() == cols:
 		q = from_q.duplicate()
 		var by: float = at - from
+		# Along the slope halfway along the step, as the last step's change of
+		# slope says it bends: started along the slope where the step begins,
+		# whatever the loop has to spare drifted with each step, as much each
+		# way, and 8448-1's column, turned +30, -60 and +30 in one grab, came
+		# back slid 0.20 LDU along its pinion's axle (0.022 so; in steps of 1°
+		# from where they begin, 0.035). Not past twice the step it was read
+		# over.
+		var bends: bool = _slope_by != 0.0 and _slope_was.size() == cols and absf(by) <= 2.0 * absf(_slope_by)
 		for c: int in cols:
 			if c != driver_col and not _still.has(c) and not (_try_held and _carrying.has(c)) \
 					and not but.has(c) and (only.is_empty() or only.has(c)):
-				q[c] += _slope[c] * by
+				var slope: float = _slope[c]
+				if bends:
+					slope += (_slope[c] - _slope_was[c]) / _slope_by * by * 0.5
+				q[c] += slope * by
 				if _bounded.has(c):
 					q[c] = clampf(q[c], (_limits[c] as Vector2).x, (_limits[c] as Vector2).y)
 		q[driver_col] = at
@@ -1427,11 +1447,17 @@ func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dic
 	var by: float = at - from
 	if absf(by) < 1e-6:
 		return
-	if _slope.size() != cols or _slope_col != driver_col:
+	var had: bool = _slope.size() == cols and _slope_col == driver_col
+	if not had:
 		_slope.resize(cols)
 		_slope.fill(0.0)
 		_slope_col = driver_col
 	var tangent: PackedFloat64Array = _tangent(signf(by)) if part.is_empty() else PackedFloat64Array()
+	if not tangent.is_empty() and had:
+		_slope_was = _slope.duplicate()
+		_slope_by = by
+	else:
+		_slope_by = 0.0
 	for c: int in cols:
 		# A part solved apart keeps its own slope, and the rest theirs.
 		if not part.is_empty() and part.has(c) != inside:
@@ -1565,7 +1591,8 @@ var _gear_at_keep: Array = []
 func kept_state() -> Array:
 	return [kept.duplicate(), _gear_at_keep.duplicate(true), _keeps, q.duplicate(), _gear_kept.duplicate(true),
 		_memo_keep, _memo_col, _memo_asked, _memo_got, _memo_q.duplicate(), _memo_gears.duplicate(true),
-		_slope.duplicate(), _slope_col, _part_found.duplicate(true), _part_col, _part_rate]
+		_slope.duplicate(), _slope_col, _part_found.duplicate(true), _part_col, _part_rate,
+		_slope_was.duplicate(), _slope_by]
 
 
 ## Put back [param state] ([method kept_state]), as if nothing since.
@@ -1586,6 +1613,8 @@ func restore_kept(state: Array) -> void:
 	_part_found = (state[13] as Array).duplicate(true)
 	_part_col = int(state[14])
 	_part_rate = float(state[15])
+	_slope_was = (state[16] as PackedFloat64Array).duplicate()
+	_slope_by = float(state[17])
 
 
 ## Whether the driver can move at all: the loop closes a little way one way

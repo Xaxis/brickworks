@@ -81,8 +81,9 @@ class Link extends RefCounted:
 	## A clip's slide as far as its bore's middle stays on its bar, before
 	## its rounds are read ([method Bodies._rounds_room]): as far as the
 	## two parts' exact shapes may be asked ([method Bodies.exact_room]).
-	## Zero for any other slide, which a loop does not hold to its range: an
-	## axle's in its hole, an engine's piston's (its crank holds it).
+	## Zero for any other slide: an axle's in its hole, which a loop holds
+	## to what is on its line ([method Bodies.line_room]), and an engine's
+	## piston's, which it does not (its crank holds it).
 	var reach := Vector2.ZERO
 	## The parts it joins, as [one in a, one in b] pairs.
 	var pairs: Array = []
@@ -177,6 +178,11 @@ var joined_by: Dictionary = {}
 ## Each joint read between two parts that ended in one body: what would
 ## turn but is held, as [a, b, kind].
 var overruled: Array = []
+## Every part each axle or pin goes through or grips (Joints.through),
+## whatever body it is in: shaft part -> Array of part keys. What is on an
+## axle's line besides the axle ([method line_room]).
+var on_shaft: Dictionary = {}
+var _line_rooms: Dictionary = {}   ## Link -> Vector2
 
 var _up: Dictionary = {}
 var _standing: Dictionary = {}   ## brick id -> true: on the baseplate's studs
@@ -288,6 +294,9 @@ func _read() -> void:
 	for one: Array in Joints.through(entries):
 		var a: int = int(one[0])
 		var b: int = int(one[1])
+		if not on_shaft.has(a):
+			on_shaft[a] = []
+		(on_shaft[a] as Array).append(b)
 		if acting.has(Vector2i(mini(a, b), maxi(a, b))):
 			continue
 		if str(one[2]) == "grips":
@@ -2248,6 +2257,89 @@ func exact_room(link: Link) -> Vector2:
 					met = middle
 		out[side] = clear
 	return out
+
+
+## How far an axle's [param link] slides before what is on its line meets,
+## LDU: Vector2(back, on) as [member Link.slide] has it, and no further
+## than that. [member Link.slide] reads the axle against each part it goes
+## through; this reads, besides, each other part on the axle's side of the
+## joint that it goes through or grips (a gear, a bush, a joint's end, a
+## wheel) against each part on the other side it goes through. 8448-1's
+## pinion axle reads 9.5 and 29.5 LDU against its two bricks, and its
+## pinion stands against one face of the nearer brick and its column's
+## universal joint against the other: it does not slide at all. Left free,
+## the loop slid it, and the column with it, 0.2 LDU over a turn out and
+## back. By the two parts' exact shapes where both are at hand, to where
+## they first touch (Exact.clash forgives [constant Exact.TAU] into each
+## other, taken off here); else by their rounds ([method _rounds_room]).
+func line_room(link: Link) -> Vector2:
+	if _line_rooms.has(link):
+		return _line_rooms[link]
+	var room: Vector2 = link.slide
+	var shaft: int = link.shaft_part
+	var shaft_body: int = int(body_of.get(shaft, -1))
+	var hole_body: int = link.b if shaft_body == link.a else link.a
+	var way: Vector3 = link.axis.normalized()
+	var mine: Array = []
+	var theirs: Array = []
+	for key: int in on_shaft.get(shaft, []):
+		var body: int = int(body_of.get(key, -1))
+		if body == shaft_body:
+			mine.append(key)
+		elif body == hole_body:
+			theirs.append(key)
+	for one: int in mine:
+		for other: int in theirs:
+			var met: Vector2 = _room_between(one, other, link.point, way, room)
+			room = Vector2(minf(room.x, met.x), minf(room.y, met.y))
+	_line_rooms[link] = room
+	return room
+
+
+## How far [param other] may go along [param way] (on) and against it
+## (back) from [param one] before the two meet, LDU, no further than
+## [param within] asks: [method line_room]'s reading of one pair.
+func _room_between(one: int, other: int, point: Vector3, way: Vector3, within: Vector2) -> Vector2:
+	var a: BrickWorld.Brick = world.get_brick(one)
+	var b: BrickWorld.Brick = world.get_brick(other)
+	var mesh_a: Lbm.PartMesh = library.mesh_for(a.part_id) if a != null else null
+	var mesh_b: Lbm.PartMesh = library.mesh_for(b.part_id) if b != null else null
+	if mesh_a == null or mesh_b == null:
+		return within
+	# Along the line, how far apart their boxes stand each way: a pair that
+	# cannot meet within the slide is not asked.
+	var reach_a: Vector2 = Grab._reach_along(a.transform, mesh_a.bounds, way)
+	var reach_b: Vector2 = Grab._reach_along(b.transform, mesh_b.bounds, way)
+	var gaps := Vector2(reach_b.x - reach_a.y, reach_a.x - reach_b.y)   ## back, on
+	# Going back, the other part comes towards this one only from the far
+	# side of it along the line; going on, from the near side.
+	var towards: Array = [reach_b.x + reach_b.y > reach_a.x + reach_a.y, reach_b.x + reach_b.y < reach_a.x + reach_a.y]
+	var out: Vector2 = within
+	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
+	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
+	if shape_a != null and shape_b != null and shape_a.has_pieces() and shape_b.has_pieces():
+		var fixed := Exact.Item.new(shape_a, a.transform)
+		if Exact.clash(fixed, Exact.Item.new(shape_b, b.transform)).is_empty():
+			for side: int in 2:
+				var far: float = within[side]
+				# Boxes apart by more than the slide (and the touch it forgives).
+				if far <= 0.0 or not bool(towards[side]) or gaps[side] > far + Exact.TAU:
+					continue
+				var sign: float = -1.0 if side == 0 else 1.0
+				var clear: float = 0.0
+				var met: float = far + Exact.TAU
+				for _round: int in 10:
+					var middle: float = (clear + met) * 0.5
+					if Exact.clash(fixed, Exact.Item.new(shape_b, Transform3D(b.transform.basis,
+							b.transform.origin + way * sign * middle))).is_empty():
+						clear = middle
+					else:
+						met = middle
+				if met <= far + Exact.TAU - 0.001:
+					out[side] = maxf(clear - Exact.TAU, 0.0)
+			return out
+	var rounds: Vector2 = _rounds_room(one, other, point, way)
+	return Vector2(minf(out.x, rounds.x), minf(out.y, rounds.y))
 
 
 ## A part's rounds and bores along a line ([lo, hi, radius, is a bore]) as
