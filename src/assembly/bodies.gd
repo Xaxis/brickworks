@@ -767,8 +767,9 @@ func _lodge(entries: Array, candidates: Array) -> void:
 			# what goes through its middle, else by what its box is most into
 			# (G13): left behind, 8074-1's belt wheel stopped its crane's turn at
 			# once, its axle tested along the way through it. Two parts with
-			# exact shapes are not: lodged so, 42042-1's winch was read into a
-			# loop of 63 joints.
+			# exact shapes are not (lodged so, 42042-1's winch was read into a
+			# loop of 63 joints), but where the one stands in a round hole of
+			# the other that names no joint ([method _in_a_bore]).
 			var lone: int = int(keys[0])
 			var lone_cells: PackedInt32Array = lattice.boxes_of(lone)
 			var middle: Vector3 = (world_box[lone] as AABB).get_center()
@@ -788,7 +789,8 @@ func _lodge(entries: Array, candidates: Array) -> void:
 						from = lone
 			if best != 0 and not _unknown_shape(lone) and not _unknown_shape(best) \
 					and not (_door(lone) and _stays(best, up, staying)
-						and not _labelled_hinge(lone, best).is_empty()):
+						and not _labelled_hinge(lone, best).is_empty()) \
+					and not _in_a_bore(lone, best):
 				best = 0
 		if best == 0:
 			continue
@@ -846,6 +848,47 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		Bodies._piece_join(up, root, into)
 		Bodies._piece_join(up, root, piece)
 		lodged += 1
+
+
+## Whether a shaft or a stud of [param lone]'s part runs in a round hole of
+## [param key]'s part that no pin or axle hole names (a bore, Lbm): on its
+## line and into it, a stud as far as Joints.STUD_REACH. 8074-1's half pins
+## stand so by their studs in their belt wheels' rims, cranks for the winch
+## strings; neither the wheel's connectors nor BrickNet's shape name those
+## holes. Read as 4185a since the file's copies of it are read as the
+## part (CustomParts.read_as_copy), the half pins were held by nothing and
+## stayed where they were as the crane turned, so its turntable stopped at
+## once.
+func _in_a_bore(lone: int, key: int) -> bool:
+	var inner: BrickWorld.Brick = world.get_brick(lone)
+	var outer: BrickWorld.Brick = world.get_brick(key)
+	var shafts: Lbm.PartMesh = library.mesh_for(inner.part_id) if inner != null else null
+	var holes: Lbm.PartMesh = library.mesh_for(outer.part_id) if outer != null else null
+	if shafts == null or holes == null:
+		return false
+	for hole: Lbm.Connector in holes.connectors:
+		if hole.kind != "bore" or hole.length <= 0.0:
+			continue
+		var at: Vector3 = outer.transform * hole.position
+		var way: Vector3 = (outer.transform.basis * hole.axis).normalized()
+		for shaft: Lbm.Connector in shafts.connectors:
+			var reach: float = shaft.length if shaft.kind == "shaft" else (
+				Joints.STUD_REACH if shaft.kind == "stud" else 0.0)
+			if reach <= 0.0:
+				continue
+			var from: Vector3 = inner.transform * shaft.position
+			var along: Vector3 = (inner.transform.basis * shaft.axis).normalized()
+			if absf(along.dot(way)) < 0.99:
+				continue
+			var gap: Vector3 = from - at
+			if (gap - way * gap.dot(way)).length() > 2.0:
+				continue
+			# Where the shaft runs on the hole's line, against where the hole does.
+			var one: float = gap.dot(way)
+			var other: float = one + reach * along.dot(way)
+			if minf(maxf(one, other), hole.length) - maxf(minf(one, other), 0.0) > 1.0:
+				return true
+	return false
 
 
 ## Whether [param key]'s part has no exact shape to read its joints from.

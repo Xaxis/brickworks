@@ -268,6 +268,12 @@ func _run() -> void:
 		await _says_what_meets()
 	if only.is_empty() or only == "meets" or only == "path":
 		await _path_check()
+	if only.is_empty() or only == "path" or only == "shapeless":
+		await _shapeless_check()
+	if only.is_empty() or only == "bearing":
+		await _bearing_check()
+	if only.is_empty() or only == "loops" or only == "bigstep":
+		await _big_step_check()
 	if only.is_empty() or only == "moving" or only == "beams":
 		for one: Array in BEAMS:
 			await _beam_check(one)
@@ -546,8 +552,13 @@ const HOSES: Array = [
 		"pneumaticHoseLQ-12", -6.0, "ldcad"],
 	["42043-1: the arm's second section on its cylinder", "res://vendor/omr/files/42043-1.mpd",
 		"pneumaticHose-19", -6.0],
-	["42050-1: a ribbed hose to the engine turned on its axle", "res://vendor/omr/files/42050-1.mpd",
-		"technicRibHoseLQ-1", 20.0],
+	# A ribbed hose (LDCad's, 71944's pieces). 42050-1's to its engine was the
+	# case until 2026-10-20: the engine turned on its axle only while the
+	# file's copies of the liftarms that axle runs through were parts of its
+	# own, with no joints; read as 33299b (CustomParts.read_as_copy) they key
+	# the axle to the chassis, and the hose has both its ends on it.
+	["8285-1: the bonnet turned on its axle, its ribbed hoses with it", "res://vendor/omr/files/8285-1.mpd",
+		"bonnet#1/technicRibHoseLQ-1", 20.0],
 ]
 
 ## What laying a grab's hoses again may cost a drag's frame, ms: the budget
@@ -5850,6 +5861,164 @@ func _path_check() -> void:
 		went.map(func(one: Array) -> String: return "%+.0f° to %+.1f°" % [float(one[0]), float(one[1])])),
 		open.size() == 1)
 	_builder.forget_history()
+
+
+## A section stopped against a part does not go on through it on its next
+## move (Grab 17): the made arm turned towards the plate over its way, with
+## the plate's exact shape and without it, as a browser has it before the
+## shape is fetched. Where the first move stopped, their covers overlap where
+## the second begins, and forgiven whole for that move, the second went on
+## through the plate: by its covers at once, by its shape 6° on, until the
+## arm's next part met it. Turned away, it goes all 90°.
+func _shapeless_check() -> void:
+	print("\na section stopped against a part, moved on into it")
+	var path: String = OUT.path_join("made_path.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(MADE_PATH)
+	file.close()
+	var now_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
+	var turned := func(said: String) -> float:
+		var found: RegExMatch = now_re.search(said)
+		return float(found.get_string(1)) if found != null and said.contains("Moved") else 0.0
+	for shapeless: bool in [false, true]:
+		if not await _open(path):
+			_check("shapeless: the made arm opens", false)
+			return
+		_grab._ready_now()
+		var arm: int = _part_numbered("3004")
+		var plate: int = _part_numbered("3460")
+		var info: PartLibrary.PartInfo = _library.parts.get("3460")
+		var name: String = "with no exact shape" if shapeless else "with its exact shape"
+		if shapeless:
+			Exact._shapes[info.mesh_hash] = null
+		var tools := AppTools.new()
+		tools.app = _main
+		tools.assistant = _main.get("_assistant")
+		# Which way the plate is: the way that stops short.
+		var toward: float = 0.0
+		for degrees: float in [90.0, -90.0]:
+			if absf(turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": degrees})))) < 80.0:
+				toward = degrees
+			_builder.undo()
+			await _frames(2)
+		var deepest := func() -> float:
+			var most: float = -INF
+			for brick: BrickWorld.Brick in _world.bricks():
+				if brick.id != plate and brick.part_id != "3003":
+					most = maxf(most, Grab.box_depth(brick.transform, _library.mesh_for(brick.part_id).bounds,
+						_world.get_brick(plate).transform, _library.mesh_for("3460").bounds))
+			return most
+		var first_at: float = turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": toward})))
+		var first_in: float = deepest.call()
+		var second: String = str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": toward}))
+		var second_at: float = turned.call(second)
+		var second_in: float = deepest.call()
+		_check("shapeless: turned %+.0f° towards the plate %s, the arm stops at %+.1f°, its boxes %.2f LDU into the "
+			% [toward, name, first_at, first_in] + "plate's", toward != 0.0 and absf(first_at) >= 5.0
+			and absf(first_at) < 80.0)
+		# With both exact shapes the pair is still forgiven whole where it
+		# begins (MECHANISMS §28): judged by its shapes, 42050-1's, 5533-1's
+		# and 4002020-1's steering stopped short.
+		var no_further: bool = absf(second_at) <= 1.0 and second_in <= first_in + Grab.TOUCHING + 0.01
+		if shapeless:
+			_check("shapeless: turned %+.0f° on into the plate %s, it goes %+.1f° more, its boxes %.2f LDU into the plate's: %s"
+				% [toward, name, second_at, second_in, second.get_slice("\n", 0).left(120)], no_further)
+		else:
+			print("  %s  shapeless: turned %+.0f° on into the plate %s, it goes %+.1f° more, its boxes %.2f LDU into the plate's"
+				% ["ok  " if no_further else "GAP ", toward, name, second_at, second_in])
+		var away: float = turned.call(str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": -toward})))
+		if shapeless:
+			_check("shapeless: turned %+.0f° away from the plate %s, it goes all of it (%+.1f°)" % [-toward, name, away],
+				absf(away) >= 89.0)
+		else:
+			# Gone into the plate, the arm is read as joined to it.
+			print("  %s  shapeless: turned %+.0f° away from the plate %s, it goes %+.1f°" % ["ok  " if absf(away) >= 89.0
+				else "GAP ", -toward, name, away])
+		if shapeless:
+			Exact._shapes.erase(info.mesh_hash)
+		_builder.forget_history()
+
+
+## A part slid along an axle stops at the bearing the axle turns in (Grab 17,
+## MCP walk 3): the observatory's carriage, its Technic brick (#150) on the
+## telescope's axle (#148), drawn 6 studs along it towards the bearing at the
+## back wall (#151). Both halves of every joint across the move were skipped
+## for every moving part, so the carriage slid into the bearing, both at
+## (20.5, 4.8, 15) studs, and Bodies read the two as one body after.
+func _bearing_check() -> void:
+	print("\na part slid along an axle, towards the bearing the axle turns in")
+	if not await _open("res://tests/fixtures/mcpwalk3/observatory.ldr"):
+		return
+	_grab._ready_now()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	str(await tools.run("play_motion", {"name": "Open the dome panel"}))
+	await _frames(3)
+	var was: Vector3 = _world.get_brick(150).transform.origin
+	var said: String = str(await tools.run("move_part", {"part": "#149", "along": 6}))
+	await _frames(3)
+	var went: float = (_world.get_brick(150).transform.origin - was).length() / BrickLattice.STUD
+	var into: Dictionary = Exact.clash(Exact.Item.new(Exact.shape_for(_library, "3700"), _world.get_brick(150).transform),
+		Exact.Item.new(Exact.shape_for(_library, "3700"), _world.get_brick(151).transform))
+	# To a cover's cell: the covers find where two parts meet, and the exact
+	# shapes only forgive what the covers met.
+	var depth: float = 0.0 if into.is_empty() else float(into.get("depth", 0.0))
+	_check("bearing: the carriage drawn 6 studs along its axle goes %.2f studs, and is %.2f LDU into its bearing #151 "
+		% [went, depth] + "(a cover's cell is %.0f): %s" % [BrickLattice.CELL, said.get_slice("\n", 1).left(160)],
+		depth <= BrickLattice.CELL and went > 0.5 and went < 6.0)
+	var into_bearings := PackedStringArray()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.id in [147, 148, 151]:
+			continue
+		var shape: Exact.Shape = Exact.shape_for(_library, brick.part_id)
+		if shape == null or not shape.has_pieces():
+			continue
+		for bearing: int in [147, 151]:
+			var them: BrickWorld.Brick = _world.get_brick(bearing)
+			var hit: Dictionary = Exact.clash(Exact.Item.new(shape, brick.transform),
+				Exact.Item.new(Exact.shape_for(_library, them.part_id), them.transform))
+			if not hit.is_empty() and float(hit.get("depth", 0.0)) > BrickLattice.CELL:
+				into_bearings.append("#%d into #%d" % [brick.id, bearing])
+	_check("bearing: nothing that moved is further than a cover's cell into either bearing of the axle (#147, #151)%s" % (
+		"" if into_bearings.is_empty() else ": " + ", ".join(into_bearings)), into_bearings.is_empty())
+	_builder.forget_history()
+
+
+## A loop turned in one big step, and back (Grab 17, motions1): 8808-1's
+## steering wheel turned by move_part, a step each, drifts along its
+## column's free slide. Printed as a GAP, not checked: where it stands back
+## is the measure for the loop solver's fix (docs/MECHANISMS.md §28).
+func _big_step_check() -> void:
+	print("\na loop turned in one big step, and back")
+	for plan: Array in [[90.0, -90.0], [90.0, -180.0, 90.0]]:
+		if not await _open("res://vendor/omr/files/8808-1.mpd"):
+			return
+		_grab._ready_now()
+		var wheel: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+			if info != null and info.name.contains("Steering Wheel") and _grab._bodies.body_of.has(brick.id):
+				wheel = brick.id
+				break
+		var before: Dictionary = _snapshot()
+		var tools := AppTools.new()
+		tools.app = _main
+		tools.assistant = _main.get("_assistant")
+		var said := PackedStringArray()
+		for degrees: float in plan:
+			said.append(str(await tools.run("move_part", {"part": "#%d" % wheel, "degrees": degrees})))
+			await _frames(2)
+		var most: float = 0.0
+		for key: Variant in before:
+			var now: BrickWorld.Brick = _world.get_brick(int(key))
+			if now != null:
+				most = maxf(most, (before[key] as Transform3D).origin.distance_to(now.transform.origin))
+		_check("bigstep: 8808-1's steering wheel #%d turns %s, a step each" % [wheel,
+			", ".join(plan.map(func(d: float) -> String: return "%+.0f°" % d))], wheel != 0
+			and Array(said).all(func(one: String) -> bool: return one.contains("Moved")))
+		print("  %s  bigstep: back to %.4f LDU (motions, 3° at a time: 0.001)" % ["ok  " if most < 0.01 else "GAP ", most])
+		_builder.forget_history()
 
 
 ## Trains whose buffer beam (4022) sits on four studs of a plate that turns

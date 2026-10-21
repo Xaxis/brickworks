@@ -108,7 +108,7 @@
       "kind": "lib",
       "label": "mesh fetch",
       "entry": "src/parts/part_library.gd",
-      "reach": "godot --headless --path . --script src/dev/fetch_probe.gd; godot --headless --path . --script src/dev/fetch_retry_probe.gd   (a host on 9191 that fails on purpose: each fault that may pass asked again after 2, 6 and 12 s, a 404 once, nothing asked twice; a model's parts that never came said once in the status bar and saved whole)",
+      "reach": "godot --headless --path . --script src/dev/fetch_probe.gd; godot --headless --path . --script src/dev/fetch_retry_probe.gd   (a host on 9191 that fails on purpose: each fault that may pass asked again after 2, 6 and 12 s, a 404 once, nothing asked twice; a model's parts that never came said once in the status bar and saved whole; the deployment asked again where parts live)",
       "area": "parts"
     },
     {
@@ -2266,6 +2266,13 @@
       "entry": "src/dev/share_pages_probe.gd",
       "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd   (-- --write IN OUT ... writes each IN with its steps carried to OUT)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "own copies read as their parts",
+      "entry": "src/dev/own_copies_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/own_copies_probe.gd [-- --survey [--shard=K/N] [--only=PREFIX]]   (a file's own copy of a LEGO part, '42125 - 60483.dat', read as that part for its joints, cover and exact shape where it is drawn as the part is to within 1 LDU: 42125-1's 25 copies, its tie rods' towballs held in the copied knuckles, a copy drawn otherwise left the file's own, every copy written back as it came; --survey counts the OMR's copies and how many are read so, ~4 min a shard)",
+      "area": "model-io"
     },
     {
       "kind": "cli",

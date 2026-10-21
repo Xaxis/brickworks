@@ -63,17 +63,37 @@ func wait() -> void:
 		await settled
 
 
-func _ask() -> void:
-	var http := HTTPRequest.new()
-	http.timeout = 20.0
-	add_child(http)
-	if http.request(api_base() + "/api/account") != OK:
-		http.queue_free()
-		_finish()
-		return
-	var result: Array = await http.request_completed
-	http.queue_free()
+## Seconds to wait before asking again when the question went unanswered in
+## a way that may pass (PartLibrary.may_pass: a timeout, a cut connection, the
+## server's fault): three more tries, as a part's fetch is asked again. Asked
+## once until 2026-10-20: a phone whose start-up outlasted the timeout never
+## learned where the parts it did not ship live, and fetched none of them for
+## the session (m127's preview: the shared racer opened without the 25 parts
+## of its steering, and said only "Parts of it move"). A page answered in
+## place of the endpoint is an answer, and not asked again.
+const RETRY_AFTER: Array[float] = [2.0, 6.0, 12.0]
 
+
+func _ask() -> void:
+	for tries: int in RETRY_AFTER.size() + 1:
+		if tries > 0:
+			await get_tree().create_timer(RETRY_AFTER[tries - 1], true, false, true).timeout
+		var http := HTTPRequest.new()
+		http.timeout = 20.0
+		add_child(http)
+		if http.request(api_base() + "/api/account") != OK:
+			http.queue_free()
+			break
+		var result: Array = await http.request_completed
+		http.queue_free()
+		if _read(result) or not PartLibrary.may_pass(int(result[0]), int(result[1])):
+			break
+	_finish()
+
+
+## Take in the answer to one ask ([param result], as
+## [signal HTTPRequest.request_completed] gives it). Whether it was one.
+func _read(result: Array) -> bool:
 	# Parsed through an instance rather than JSON.parse_string, which
 	# pushes an engine error when the body is not JSON. It often is not:
 	# a deployment with no functions behind it answers every path with
@@ -92,7 +112,7 @@ func _ask() -> void:
 			accounts_key = str(body.get("key", ""))
 			# Enabled with nowhere to sign in is no accounts at all.
 			accounts = not accounts_url.is_empty() and not accounts_key.is_empty()
-	_finish()
+	return answered
 
 
 func _finish() -> void:

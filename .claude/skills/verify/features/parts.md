@@ -221,7 +221,7 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only
 godot --headless --path . --script src/dev/search_quality_probe.gd  # how much is worth reading
 godot --headless --path . --script src/dev/inventory_probe.gd       # parts lists of known models
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
-godot --headless --path . --script src/dev/fetch_retry_probe.gd     # a failing host on 9191 (-- --port=N): asked again, said once, saved and autosaved whole
+godot --headless --path . --script src/dev/fetch_retry_probe.gd     # a failing host on 9191 (-- --port=N): asked again, said once, saved and autosaved whole; the deployment asked again where parts live
 node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # the crane in a browser, its fetches cut then 503; a part 404s and the tab reloads with it still awaited (needs serve.py on 9195)
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
@@ -589,9 +589,11 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
 - **The catalogue load is the 15–20s start-up.** Every probe pays it.
 - `fetch` covers the case that broke: two callers asking for the same part, one of
   them never being told it arrived.
-- `fetch_retry` takes about 2 minutes: 20 s the last part's three waits, and
+- `fetch_retry` takes about 3 minutes: 20 s the last part's three waits,
   about 45 s the autosave's part (two opens, each autosave's 2.5 s, a reopen
-  while 3001 waits 20 s). Its
+  while 3001 waits 20 s), and about 50 s the deployment's question
+  (`Deployment`, /api/account on the probe's host: an ask held past its 20 s
+  timeout then asked again, and a 503 every time's three waits). Its
   host is in the probe (a TCPServer polled each frame), so it needs no network;
   it waits for the deployment's answer first, which would otherwise point the
   library back at the real bucket. `fetch_retry_flow` reads the status bar

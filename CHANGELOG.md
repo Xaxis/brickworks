@@ -13,6 +13,35 @@ whole cycle.
 
 ## [Unreleased]
 
+### Fixed
+
+- A model file's own copy of a LEGO part is read as that part. Studio
+  writes the parts it has versions of into the file under names of the
+  file's own ("42125 - 60483.dat"), and they were read as parts nobody
+  made: no pins or holes, no exact shape. On 42125-1 the steering's tie
+  rods sat in their knuckles held by nothing. A copy drawn as its part is,
+  to within 1 LDU, now has that part's pins, holes and exact shape; it is
+  still drawn and saved as the file had it. Of the 2,017 such copies in
+  the real sets we test with, 1,768 are read so; one drawn otherwise stays
+  the file's own.
+- In the browser on a slow phone, a model opens with all of its parts. The
+  app asks once as it starts where the parts it does not carry are kept,
+  and a phone still starting when that question timed out was never told:
+  every such part stayed away for the whole visit. A shared 8808 racer
+  opened without the 25 parts of its steering and said only "Parts of it
+  move". The question is now asked again, as a part's download is.
+- A half pin standing in a belt wheel's rim turns with the wheel. Nothing
+  named the holes in the rim, so the pin was held by nothing and stayed
+  where it was, and 8074's crane stopped at once when its turntable was
+  turned.
+- A part slid along an axle stops at the bearing the axle turns in. The
+  bearing was let through by everything that moved with the axle, so the
+  telescope's carriage in Claude's observatory slid into it, and the two
+  were stuck as one after. A part that turns and slides on its axle is
+  now tested as it slides too.
+- A part stopped against another whose exact shape has not loaded (in a
+  browser, at first) no longer goes straight through it on the next move.
+
 ## [0.4.0] - 2026-10-20
 
 A release about models that move. A model now carries its own named motions,

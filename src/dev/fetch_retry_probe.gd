@@ -31,7 +31,13 @@
 ##   the app's own); until 2026-10-20 nothing of a model short of a part was
 ##   autosaved;
 ## - a whole working model reopened while its parts are on their way is never
-##   written back short of them, at once or after a change.
+##   written back short of them, at once or after a change;
+## - where the parts live, asked of the deployment (/api/account, this host
+##   standing in for it) the same way: twice a 503, or an ask held unanswered
+##   past its timeout, then told; a 503 every time asked four times; a page in
+##   place of the endpoint asked once. Until 2026-10-20 it was asked once:
+##   m127's preview opened the shared racer on a phone whose start-up
+##   outlasted the timeout, and none of the parts the build did not ship came.
 extends SceneTree
 
 const PORT := 9191
@@ -75,8 +81,12 @@ var _port: int = PORT
 var _server := TCPServer.new()
 var _peers: Array[Dictionary] = []
 ## File name -> [how, times]: answered so the first `times` asks (every ask
-## when -1); how is an HTTP status, or 0 for a connection cut unanswered.
+## when -1); how is an HTTP status, 0 for a connection cut unanswered, -1 for
+## one held open unanswered, or -2 for a page in place of the endpoint.
 var _plan: Dictionary = {}
+var _held: Array[StreamPeerTCP] = []
+## Where the deployment this host stands in for says the parts live.
+const PARTS_AT := "https://parts.example/"
 ## File name -> when each ask came, msec.
 var _asks: Dictionary = {}
 var _library: PartLibrary
@@ -271,6 +281,7 @@ func _run() -> void:
 	for its_own: bool in [false, true]:
 		await _autosaved(main, store, world, path, hash_of, its_own)
 	await _half_opened(main, store, world, hash_of)
+	await _deployment_asked_again()
 
 	print("")
 	print("%d FAILURE(S)" % _failures if _failures
@@ -392,6 +403,38 @@ func _half_opened(main: Node, store: ModelStore, world: BrickWorld, hash_of: Cal
 		and written.get("3701", 0) == 2 and _where_it_was(kept, "4519"))
 
 
+## Where the parts live, asked of the deployment (Deployment, /api/account on
+## this host): a fault that may pass is asked again as a part's fetch is, an
+## ask held past its timeout too (m127's preview: a phone whose start-up
+## outlasted it was never told, and fetched no part its build did not ship);
+## a page answered in place of the endpoint is asked once.
+func _deployment_asked_again() -> void:
+	print("\nwhere the parts live, asked of the deployment")
+	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:%d" % _port)
+	var cases: Array = [["twice a 503", [503, 2], [2.0, 6.0], true],
+		["the first ask held unanswered", [-1, 1], [20.0 + 2.0], true],
+		["a page", [-2, -1], [], false],
+		["a 503 every time", [503, -1], [2.0, 6.0, 12.0], false]]
+	for one: Array in cases:
+		_asks.erase("account")
+		_plan["account"] = one[1]
+		var deployment := Deployment.new()
+		var settled: Array = [0]
+		deployment.settled.connect(func() -> void: settled[0] += 1)
+		root.add_child(deployment)
+		var deadline: int = Time.get_ticks_msec() + 60_000
+		while not deployment.finished and Time.get_ticks_msec() < deadline:
+			await process_frame
+		var answered: bool = one[3]
+		_check("%s: %s; settled %d, %s" % [one[0], _gaps("account"), settled[0],
+			"told the parts are at %s" % deployment.parts_url if deployment.answered else "not answered"],
+			_spaced("account", one[2]) and settled[0] == 1 and deployment.answered == answered
+			and deployment.parts_url == (PARTS_AT if answered else ""))
+		deployment.queue_free()
+	_held.clear()
+	OS.unset_environment("BRICKWORKS_API")
+
+
 ## The model saved as Save saves it, read back.
 func _saved_text(store: ModelStore, path: String) -> String:
 	if not store.save_file(path, "Grab crane"):
@@ -431,8 +474,16 @@ func _answer(peer: StreamPeerTCP, file: String) -> void:
 	if how == 0:
 		peer.disconnect_from_host()
 		return
+	if how == -1:
+		_held.append(peer)
+		return
 	var body := PackedByteArray()
-	if how == 200:
+	if how == -2:
+		how = 200
+		body = "<!doctype html><title>Brickworks</title>".to_ascii_buffer()
+	elif how == 200 and file == "account":
+		body = JSON.stringify({"parts_url": PARTS_AT}).to_ascii_buffer()
+	elif how == 200:
 		var folder: String = "parts/" if file.ends_with(".lbm") else "exact/"
 		body = FileAccess.get_file_as_bytes("res://assets/generated/" + folder + file)
 		if body.is_empty():
