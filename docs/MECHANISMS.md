@@ -4992,13 +4992,20 @@ least-norm slope was not tried.
   base 1.94 LDU): "the Wheel Rim 30 x 61 with 3 Spokes Swirled (#478) meets
   the Technic Suspension Arm 2 x 6.5 Type 2 (#376) at once". Not the
   universal joint (pinning its 4L joint locked the loop instead), nor the
-  slide's weight (it fails without it), but the grouping: the arm is now one
-  group with the chassis and stays, where it was a joint of the old loop of
-  29 and went with the wheel, and the rim (no exact shape) turns about its
-  kingpin with the arm inside its box as built (35 by 20 by 40 LDU of the
-  two boxes overlap), so `_no_deeper` stops it at once. A rim judged by its
-  round would see the arm inside it too; what it takes is a rim's round
-  judged as a ring, or the hub's own parts let through it.
+  slide's weight (it fails without it), but the grouping. The upper arm
+  (#376, 32195a) is pinned to the chassis at (6, 6.1) studs, and a cross
+  block (#374, 32184) with a 2L axle in each end joins it at (8, 6.1) to
+  body 367, held with the chassis, at (8, 4.1): arm, block and chassis make
+  a triangle, so as the model is read the arm cannot turn, and
+  `held_together` puts it with the chassis. In the old loop of 29 joints its
+  pin was a joint that closed without turning, and everything beyond a
+  loop joint counted as moving, so the rim beside it was never tested
+  against it. Now the rim (#478, no exact shape) turns about its kingpin
+  with the arm inside its box as built (the boxes overlap 35 by 20 by 40
+  LDU), and `_no_deeper` stops it at once. The stop is the rim's box, as
+  8820-1's was the tyre's; a rim judged by its round lets 8845-1 on to -52°
+  (above). What it takes: a shapeless wheel judged by its round, with
+  8845-1's reading at -52° fixed first.
 - 8845-1 at -52°: an axle pin read in its track rod's hole on a second line,
   at a pose its rims' boxes keep it from. Why the exact shapes let it get
   there, and which joint reading should not see it, is not known.
