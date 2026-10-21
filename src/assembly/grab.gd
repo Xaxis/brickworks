@@ -1437,15 +1437,6 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 			result = -1
 			break
 		n += 1
-		# The joint turned alone's, along the way, only where its moving part
-		# has gone far enough, as a part is tested: asked at every step, a
-		# made crane's arm on its hinge took its drag's walk past its share of
-		# the frame. A click hinge's only on its clicks, where it stands: a
-		# drag's frame steps it a click (22.5°) at once, and 4903-1's, its
-		# halves asked at each of the click's ten steps, ran past its share.
-		if linkage == null and not due.is_empty() and (link.detent > 0.0
-				or not due.has(int(_joint_pairs[k][0])) and not due.has(int(_joint_pairs[k][1]))):
-			continue
 		var asked: int = Time.get_ticks_usec()
 		if not _pair_clear_at(k, at):
 			result = 0
@@ -3097,6 +3088,10 @@ func _walk_steps(from: float, to: float, began: int) -> Array:
 	var least: float = 0.0
 	if linkage != null:
 		least = absf(to - from) / (LOOP_MOST_STEPS if budget_ms == INF else 2.0)
+	# Where the joint turned alone's own two parts were last asked ([method
+	# _pairs_due]); a loop's are asked at every step its parts are.
+	var paired: float = from
+	var alone: bool = linkage == null and not _joint_pairs.is_empty()
 	while true:
 		var next: float = _next_step(clear, to, least)
 		if next == to:
@@ -3109,8 +3104,18 @@ func _walk_steps(from: float, to: float, began: int) -> Array:
 		for key: int in _rates:
 			if float(_rates[key]) * absf(after - float(last.get(key, from))) > PATH_LDU:
 				due[key] = true
-		if not due.is_empty():
-			var r: Vector2i = _test(_pose_at(next), 0, left, false, due)
+		var pairs_due: bool = alone and _pairs_due(paired, next, after)
+		if not due.is_empty() or pairs_due:
+			var pose: Dictionary = _pose_at(next)
+			var r := Vector2i(1, 0)
+			if not due.is_empty():
+				r = _test(pose, 0, left, false, due, not alone)
+			if r.x == 1 and pairs_due:
+				paired = next
+				for k: int in _joint_pairs.size():
+					if not _pair_clear_at(k, pose):
+						r.x = 0
+						break
 			if r.x == 0 and budget_ms == INF and _push_aside(next):
 				r.x = 1
 			if r.x != 1:
@@ -3122,6 +3127,24 @@ func _walk_steps(from: float, to: float, began: int) -> Array:
 			_keep_loop()
 		clear = next
 	return [1, clear, to]
+
+
+## Whether the joint turned alone's own two parts are asked at the step to
+## [param next] of a walk, last asked at [param paired], the step after at
+## [param after]: where their moving part has gone [constant PATH_LDU], as a
+## part is tested. Asked at every step with the arm's other parts, the made
+## crane's arm took its drag's walk past its share of the frame. A click
+## hinge's just past each click, where it stands: a drag's frame steps it a
+## click (22.5°) at once, and 4903-1's halves, asked at each of the walk's
+## ten steps, took it past its share; asked only where it ends, its way's
+## clicks went unasked, and the made one went 157.5° through its base.
+func _pairs_due(paired: float, next: float, after: float) -> bool:
+	if link.detent > 0.0:
+		return floori(next / link.detent) != floori(paired / link.detent)
+	for key: int in _pair_parts:
+		if float(_rates.get(key, 0.0)) * absf(after - paired) > PATH_LDU:
+			return true
+	return false
 
 
 ## The next step from [param from] towards [param to]: [param to] itself
