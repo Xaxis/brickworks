@@ -5146,8 +5146,12 @@ On the final code: `grab_probe` headless whole, 178 passed and 35 failed,
 the 34 that need a pointer and the big model's section, as on Grab 18
 (165 and 39: those 35, 8074-1_Crane's turntable, 42050-1's ribbed hose and
 8448-1_Racer's two, which all pass now, and `--only=bigstep`'s two gaps are
-checks). `--only=groups` passes as Grab 18 left it, 42125-1 back 0.0057 LDU;
-`--only=racks` (43, before the slope's change) and `--only=clipped` (4).
-`mechanism_probe` (54), `own_copies_probe` (33), `telescope_probe` (32, its
-three gaps; tilted 45° the tube slides 8.000 LDU), `simulate_probe` (41)
-and `motions_probe` (92) pass.
+checks). In a window (`tools/probe.sh grab_probe`), 483 passed and one
+failed: 4096-1's hinge stopped at 95.7° with room a degree on, the room
+test's own (it fails on 95ffb570, and the hinge131 unit mends it). There
+8062-1's winch turns through its two 4L joints as before, and the wheel
+loader's arm (42081-1) drags at 12.0 ms of its own a frame on average, 95%
+28.8 (the bar is 33). `--only=groups` passes as Grab 18 left it, 42125-1
+back 0.0057 LDU. `mechanism_probe` (54), `own_copies_probe` (33),
+`telescope_probe` (32, its three gaps; tilted 45° the tube slides 8.000
+LDU), `simulate_probe` (41) and `motions_probe` (92) pass.
