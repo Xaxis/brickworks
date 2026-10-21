@@ -353,15 +353,15 @@ static func pair_of(a: int, b: int) -> int:
 ##
 ## Even so, what the lift reaches past an overlap is mostly where the two
 ## covers' edges differ: a tyre on its rim, a pin in a beam, a turntable's
-## two halves (342 studs). On 45 real sets 17,359 pairs were joined so, with
+## two halves (342 studs). On 45 real sets 12,269 pairs were joined so, with
 ## no stud's tip in either, and 8466-1's steering arm was weighed as
 ## carrying its wheel on one stud, overloaded (2026-10-21). They hold the
 ## parts together, as Suggest sections reads them, and are "overlapped":
-## [method check] and Balance weigh no stud there. What holds them is a pin
-## or an axle in its hole (6,080 of the 12,218 such pairs on those sets), a
-## hinge, a turntable or a clip on a bar (1,017), a ball (78), a hose's
-## pieces or a sticker's glue (496), and the rest no joint the connectors
-## name: a part seated in another, or turned beside it.
+## [method check] and Balance weigh no stud there. Of the 12,225 left once
+## tips are read as below, what holds them is a pin or an axle in its hole
+## (6,080), a hinge, a turntable or a clip on a bar (1,014), a ball (78), a
+## hose's pieces or a sticker's glue (496), and for 4,557 no joint the
+## connectors name: a part seated in another, or turned beside it.
 ##
 ## Where covers overlap a tip's cell is in both, and [method
 ## BrickLattice.brick_at] names only the first: where that was the stud's
