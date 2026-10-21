@@ -140,8 +140,9 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	# What holds what: the studs, as Balance and Sections read them
 	# (Stability.stud_joints), what is seated in what, and every other joint
 	# the build check reads, either way round. And the joints Balance weighs a
-	# part by. Without what is seated, a cone threaded on an antenna and the
-	# whip on it were loose in 1793-1, and 8466-1's pins held nothing.
+	# part by. Without what is seated, 1793-1's whip on a cone threaded on an
+	# antenna was loose, and 8466-1, held by its pins, took 108 s to find
+	# held by touch and went untested (2026-10-20).
 	var near: Dictionary = {}
 	for id: int in by_id:
 		near[id] = {}

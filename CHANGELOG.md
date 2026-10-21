@@ -481,6 +481,15 @@ whole cycle.
 
 ### Fixed
 
+- Check stability, the balance a drag shows and the Tested mark read stud
+  joints as Suggest sections and the build check do: a stud pointing
+  sideways holds what is on it and is weighed, and a part seated in another
+  (a pin in a beam, a cone on an antenna) or two parts at an angle side by
+  side are held together but not weighed as studs. On 40 real sets, parts in
+  no joint went from 1,122 to 567 and whether each stands is unchanged; a
+  2 x 12 wedge read as held by one stud at five times its working load is
+  not, and no Tested result changed. Weighing a model takes about half as
+  long again.
 - Suggest sections reads a stud that points sideways as holding what is on
   it, and no longer joins two parts at an angle that only stand side by
   side. On 10179-1 a 2 x 3 plate on edge went into a section without the
