@@ -158,7 +158,8 @@ func check(world: BrickWorld) -> Report:
 	# Who carries whom is read as Balance and Sections read it. The lift's
 	# own cells read two parts whose covers overlap as each resting on the
 	# other: a pin in a beam, a cone on an antenna, two turned plates side by
-	# side each carried the other, on studs that are not there.
+	# side each carried the other, on studs that are not there. A wheel on
+	# its spindle hands its weight on, but on no stud.
 	var carriers: Dictionary = _carriers(order, stud_joints(graph, library, lattice))
 	if stopped:
 		return null
@@ -331,21 +332,30 @@ static func pair_of(a: int, b: int) -> int:
 ## whose studs were read by their tips and do not point up, "seated": pair ->
 ## true for a pair the lift reaches only where the two already overlap,
 ## joined by no stud: a cone threaded on an antenna, a pin in a beam, or two
-## turned covers side by side}. Only pairs of those parts; worked out once
-## and kept in [param contacts] as "joints", so a caller weighing its parts a
-## few at a time (Tested, BrickifySteps) pays once. Balance, Sections and
-## Tested all read what holds what from here.
+## turned covers side by side, "overlapped": pair -> true for a stud pair
+## the lift read across covers that already overlap, with no stud's tip in
+## either}. Only pairs of those parts; worked out once and kept in [param
+## contacts] as "joints", so a caller weighing its parts a few at a time
+## (Tested, BrickifySteps) pays once. Balance, Sections, Tested and [method
+## check] all read what holds what from here.
 ##
 ## The lift's resting cells are not studs as they stand. Turned parts'
 ## covers side by side overlap their whole height, and the lift read that
 ## overlap as each resting on the other: 10179-1's 2 x 3 plates on edge,
 ## held by nothing between them, were joined by 6 studs, and a stud
 ## pointing sideways never shows in a lift (2026-10-20). So a pair rests on
-## the cells the lift reaches that the two did not already share
-## ([method contacts]' "overlap", counted in the same pass: counted here
-## afterwards, it was 0.7-1.4 s on 1,000-2,000-part Technic sets), and each
-## stud whose tip is in another part joins them (Joints.studs_in), whichever
-## way it points; a pair has whichever count is more.
+## the cells the lift reaches that the two did not already share ([method
+## contacts]' "overlap", counted in the same pass), and each stud whose tip
+## is in another part joins them (Joints.studs_in), whichever way it
+## points; a pair has whichever count is more.
+##
+## Even so, what the lift reaches past an overlap is mostly where the two
+## covers' edges differ: a tyre on its rim, a pin in a beam, a turntable's
+## two halves (342 studs). On 45 real sets 17,359 pairs were joined so, with
+## no stud's tip in either, and 8466-1's steering arm was weighed as
+## carrying its wheel on one stud, overloaded (2026-10-21). They hold the
+## parts together, as Suggest sections reads them, and are "overlapped":
+## [method check] weighs no stud there.
 static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		lattice: BrickLattice) -> Dictionary:
 	if contacts.has("joints"):
@@ -357,6 +367,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	var under: Dictionary = {}
 	var sideways: Dictionary = {}
 	var seated: Dictionary = {}
+	var overlapped: Dictionary = {}
 	for low: Variant in above:
 		if not boxes.has(int(low)):
 			continue
@@ -371,6 +382,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 				continue
 			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(resting) / STUD_CELLS))
 			under[key] = int(low)
+			if overlap.has(key):
+				overlapped[key] = true
 	var entries: Array = []
 	for brick: BrickWorld.Brick in contacts.get("bricks", []):
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
@@ -390,6 +403,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	for by: Vector2i in tips:
 		var feet: Array = (tips[by] as Array)[0]
 		var key: int = pair_of(by.x, by.y)
+		overlapped.erase(key)
 		if feet.size() <= int(studs.get(key, 0)):
 			continue
 		studs[key] = feet.size()
@@ -400,17 +414,18 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	for key: int in studs:
 		seated.erase(key)
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
-		"seated": seated}
+		"seated": seated, "overlapped": overlapped}
 	contacts["joints"] = out
 	return out
 
 
 ## Who hands its weight to whom, from [param joints] ([method
 ## stud_joints]): id -> {the id of each part carrying it: the studs between
-## them, 0 for a part seated in it}. A stud joint whose studs point up is
+## them, 0 for a part held by no stud}. A stud joint whose studs point up is
 ## carried by the part with the studs. One whose studs point sideways or
-## down, and a part seated in another, is carried by whichever of the two
-## comes later in [param order], the weighing's top-down order.
+## down, a part seated in another and a pair "overlapped" (no stud's tip in
+## either) are carried by whichever of the two comes later in [param order],
+## the weighing's top-down order.
 static func _carriers(order: Array, joints: Dictionary) -> Dictionary:
 	var rank: Dictionary = {}
 	for n: int in order.size():
@@ -419,19 +434,21 @@ static func _carriers(order: Array, joints: Dictionary) -> Dictionary:
 	var studs: Dictionary = joints["studs"]
 	var under: Dictionary = joints["under"]
 	var sideways: Dictionary = joints["sideways"]
+	var overlapped: Dictionary = joints["overlapped"]
 	for by_studs: bool in [true, false]:
 		for key: int in (studs if by_studs else joints["seated"]):
 			var one: int = key >> 32
 			var other: int = key & 0xFFFFFFFF
 			if not rank.has(one) or not rank.has(other):
 				continue
+			var held: int = int(studs[key]) if by_studs and not overlapped.has(key) else 0
 			var low: int = one if int(rank[one]) > int(rank[other]) else other
-			if by_studs and not sideways.has(key):
+			if held > 0 and not sideways.has(key):
 				low = int(under[key])
 			var high: int = other if low == one else one
 			if not out.has(high):
 				out[high] = {}
-			out[high][low] = int(studs.get(key, 0))
+			out[high][low] = held
 	return out
 
 
