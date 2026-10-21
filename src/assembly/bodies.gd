@@ -754,6 +754,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		var best: int = 0
 		var most: float = -1.0
 		var from: int = 0
+		var also: Array = []   ## more parts the lone one stands in round holes of
 		for key: int in keys:
 			var boxes: PackedInt32Array = lattice.boxes_of(key)
 			if boxes.is_empty():
@@ -785,6 +786,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 			var lone_cells: PackedInt32Array = lattice.boxes_of(lone)
 			var middle: Vector3 = (world_box[lone] as AABB).get_center()
 			var through: bool = false
+			var sharing: Array = []
 			if not lone_cells.is_empty():
 				for other: int in lattice.near_bounds(lone_cells, lone):
 					if not _up.has(other) or bending.has(other) or not world_box.has(other):
@@ -792,6 +794,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 					var shared: float = (world_box[lone] as AABB).intersection(world_box[other]).get_volume()
 					if shared <= 0.0:
 						continue
+					sharing.append(other)
 					var its_middle: bool = (world_box[other] as AABB).grow(0.5).has_point(middle)
 					if (its_middle and not through) or (its_middle == through and shared > most):
 						through = its_middle
@@ -803,6 +806,16 @@ func _lodge(entries: Array, candidates: Array) -> void:
 						and not _labelled_hinge(lone, best).is_empty()) \
 					and not _in_a_bore(lone, best):
 				best = 0
+			# Standing in round holes of more parts than one, it holds them
+			# together: 8808-1's side panel, a Technic plate whose end holes
+			# are on two headlight bricks' side studs, each brick on one stud.
+			# Lodged in the one alone, that brick and the panel turned on its
+			# stud, and a finger on the panel beside the steering wheel took
+			# it for a part that moves, not the wheel.
+			if best != 0 and not _unknown_shape(lone):
+				for other: int in sharing:
+					if other != best and not _unknown_shape(other) and _in_a_bore(lone, other):
+						also.append(other)
 		if best == 0:
 			continue
 		var into: int = Bodies._piece_find(up, _find(best))
@@ -851,12 +864,18 @@ func _lodge(entries: Array, candidates: Array) -> void:
 				candidates.append([best, from, "hinge", hinge[0], hinge[1], true, 0.0, Vector2.ZERO, 0])
 				Bodies._piece_join(up, piece, into)
 				continue
+		var holders: Array = [into]
+		for other: int in also:
+			holders.append(Bodies._piece_find(up, _find(other)))
 		_join(from, best, "lodged")
+		for other: int in also:
+			_join(from, other, "lodged")
 		lodged_in[from] = best
 		var root: int = _find(from)
 		if not up.has(root):
 			up[root] = root
-		Bodies._piece_join(up, root, into)
+		for holder: int in holders:
+			Bodies._piece_join(up, root, holder)
 		Bodies._piece_join(up, root, piece)
 		lodged += 1
 
@@ -1404,7 +1423,8 @@ func _join_words(one: int, other: int, why: String) -> String:
 			return "%s and %s turn as one (a pin is part of the first thing it is in)" % [
 				_part_named(one), _part_named(other)]
 		"lodged":
-			var lodged_part: int = one if int(lodged_in.get(one, -1)) == other else other
+			var lodged_part: int = one if int(lodged_in.get(one, -1)) == other \
+				or (lodged_in.has(one) and not lodged_in.has(other)) else other
 			return "%s is lodged in %s" % [_part_named(lodged_part),
 				_part_named(other if lodged_part == one else one)]
 		"lines":

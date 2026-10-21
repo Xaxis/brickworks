@@ -204,6 +204,10 @@ var _checked_angle: float = 0.0
 var _checked_kept: Array = []
 ## Where the pointer let it go (GrabDrag), degrees or LDU; NAN until then.
 var let_go_at: float = NAN
+## The release's check, its walk from the pose checked last, stopped it
+## short of [member let_go_at]: said where it is kept (GrabDrag). Not where
+## a swing or a coast after came to rest: that is the swing's to say.
+var stopped_short: bool = false
 var _verify_from: int = 0
 var _verifying_lo: float = 0.0
 var _verifying_hi: Variant = null
@@ -2608,6 +2612,8 @@ func verify_step() -> bool:
 		_checked_angle = _verifying_lo
 		if linkage != null:
 			_checked_kept = linkage.kept_state()
+		if not settled and not is_nan(let_go_at) and absf(_verifying_lo - let_go_at) > 0.01:
+			stopped_short = true
 		return true
 	var middle: float = (_verifying_lo + hi) * 0.5
 	var r2: Vector2i = _test(_pose_at(middle), _verify_from, _pause_left(began))

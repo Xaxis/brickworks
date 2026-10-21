@@ -793,7 +793,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   A lone part sharing no cell with anything, where it or what it is in has
   no exact shape, is held by what goes through its middle, else by what its
   box is most into (G13: 8074-1's belt wheel on its axle, 10015-1's magnet in
-  its coupling).
+  its coupling). One standing in round holes of two parts or more (a stud
+  or a shaft in a bore no joint names, `Bodies._in_a_bore`) is lodged in
+  each of them, and holds them together: 8808-1's side panels, each on two
+  headlight bricks' side studs, are one with the chassis (of grab_probe's
+  47 sets, only 8808-1 has such a part).
   A hose, a tube or a chain (`Flex.strung`) bends: it closes no loop, carries
   nothing on and is tested for room by nothing (`Bodies.flexible`).
   Racks (MECHANISMS §19): a rack in its housing (18942 in 18940) slides on
@@ -1047,8 +1051,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   flexible thing held at both ends and the joint between its ends (FLEX rows).
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
-  drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
-  puts it back, then turns the turret on its turntable, then drags a crank of
+  drags it up (turns on its hinge mid-drag, kept on release, said; its far
+  end, a handle's `far_x`/`far_y`, stands 5 px or more elsewhere), Ctrl+Z
+  puts it back (the far end within 2 px), then turns the turret on its turntable, then drags a crank of
   a flat four-bar beside it round and the loop carries the coupler and the
   other crank, then drags a beam 3 on a free pin out and lets go: it swings
   and comes to rest, and the swing's own frame cost is read from the page;
