@@ -274,6 +274,8 @@ func _run() -> void:
 		await _bearing_check()
 	if only.is_empty() or only == "loops" or only == "bigstep":
 		await _big_step_check()
+	if only.is_empty() or only == "loops" or only == "groups":
+		await _groups_check()
 	if only.is_empty() or only == "moving" or only == "beams":
 		for one: Array in BEAMS:
 			await _beam_check(one)
@@ -5982,6 +5984,66 @@ func _bearing_check() -> void:
 				into_bearings.append("#%d into #%d" % [brick.id, bearing])
 	_check("bearing: nothing that moved is further than a cover's cell into either bearing of the axle (#147, #151)%s" % (
 		"" if into_bearings.is_empty() else ": " + ", ".join(into_bearings)), into_bearings.is_empty())
+	_builder.forget_history()
+
+
+## A steering in a chassis of pins, and a tyre beside a steering top (Grab
+## 18, docs/MECHANISMS.md §29): 42125-1's loop is the joints that move, its
+## rack rests on its beam, its arms stay on their axles and its column turns
+## through its universal joints; 8820-1's tyre is judged by its round. The
+## arms slid 1.5 LDU along their axles for the 30° undamped, 0.10 as a slide
+## is damped (Linkage.SLIDE_WEIGHT).
+func _groups_check() -> void:
+	print("\na steering in a chassis of pins, and a tyre by its round")
+	if not await _open("res://vendor/omr/files/42125-1.mpd"):
+		return
+	await _own_all_copies()
+	_grab._ready_now()
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = _grab._bodies
+	trial.shared_mechanism = _grab.get("_mechanism")
+	var state: String = trial.begin(461, _world.get_brick(461).transform.origin)
+	var joints: int = trial.linkage.links.size() if trial.linkage != null else -1
+	_check("groups: 42125-1's pinion #461 moves in a loop of %d joints of its own (%s)" % [joints, state],
+		state == "moves" and joints > 0 and joints <= Linkage.MOST_JOINTS)
+	var before: Dictionary = _snapshot()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var said: String = str(await tools.run("move_part", {"part": "#461", "degrees": 30.0}))
+	await _frames(2)
+	var rack: float = _world.get_brick(442).transform.origin.distance_to((before[442] as Transform3D).origin)
+	var turned := func(id: int) -> float:
+		return rad_to_deg((_world.get_brick(id).transform.basis * (before[id] as Transform3D).basis.inverse())
+			.get_rotation_quaternion().get_angle())
+	var arm: float = _world.get_brick(319).transform.origin.distance_to((before[319] as Transform3D).origin)
+	_check("groups: +30° slides the rack #442 %.2f LDU (8 by its teeth), turns the knuckles #344 %.2f° and #340 %.2f°, "
+		% [rack, turned.call(344), turned.call(340)] + "the suspension arm #319 %.3f LDU, the column's 16 #465 %.2f° with #463 %.2f°: %s"
+		% [arm, turned.call(465), turned.call(463), said.get_slice("\n", 1).left(120)],
+		absf(rack - 8.0) < 0.1 and turned.call(344) > 5.0 and turned.call(340) > 5.0 and arm < 0.25
+		and absf(turned.call(465) - turned.call(463)) < 0.5)
+	str(await tools.run("move_part", {"part": "#461", "degrees": -60.0}))
+	await _frames(2)
+	str(await tools.run("move_part", {"part": "#461", "degrees": 30.0}))
+	await _frames(2)
+	var most: float = 0.0
+	for key: Variant in before:
+		var now: BrickWorld.Brick = _world.get_brick(int(key))
+		if now != null:
+			most = maxf(most, (before[key] as Transform3D).origin.distance_to(now.transform.origin))
+	_check("groups: -60° and +30° put every part back, %.4f LDU" % most, most < 0.02)
+	_builder.forget_history()
+	if not await _open("res://vendor/omr/files/8820-1.mpd"):
+		return
+	_grab._ready_now()
+	var went: String = str(await tools.run("move_part", {"part": "#60", "degrees": 30.0}))
+	var match: RegExMatch = RegEx.create_from_string("turned (-?[0-9.]+)°").search(went)
+	var degrees: float = float(match.get_string(1)) if match != null else 0.0
+	_check("groups: 8820-1's steering turns %.0f° of 30, past the 6° where its tyre's box met the steering top: %s"
+		% [degrees, went.get_slice("\n", 1).left(160)], degrees >= 20.0)
 	_builder.forget_history()
 
 

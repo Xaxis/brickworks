@@ -859,7 +859,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   flange, a ball end, the plate a handle is on); a loop's clip is held inside
   that by the solve (`Linkage._bounded`), by the two parts' exact shapes where
   they are at hand (`Bodies.exact_room`); an axle's slide and a piston's are
-  not (MECHANISMS §26). `grab_probe -- --only=loops`: 8020-1_Jeep's
+  not (MECHANISMS §26). The joints solved are those between groups of
+  bodies their joints hold as one (`Bodies.held_together`: a frame on four
+  pins is one), each group placed with its lead, so a steering in a chassis
+  of pins takes in the joints that move (42125-1: 35 of 257); an axle's free
+  slide is damped 30 times a turn (`SLIDE_WEIGHT`), a friction bearing a
+  thousand times that; a rack hung on balls alone rests
+  on what it lies on (`Bodies._rest_racks`), and a 3L universal joint's
+  centre turned off its end's fork is pinned in it (`Bodies._cross_in_forks`), Grab
+  18, MECHANISMS §29: `grab_probe -- --only=groups` checks them on 42125-1
+  (knuckles 11.5° each way) and a tyre judged by its round on 8820-1. `grab_probe -- --only=loops`: 8020-1_Jeep's
   steering (a four-bar: the rocker against two circles meeting) and 8218-1's
   engine (a crank-slider: the piston against the quadratic, the stroke twice
   the throw); `-- --debug` prints the joints, residuals and the derivatives

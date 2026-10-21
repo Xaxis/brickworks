@@ -941,11 +941,18 @@ func _carried_by(body: int, carrying: Dictionary) -> bool:
 
 
 ## Whether every joint [param wider] has that [param loop] has not turns a
-## gear: the bearings of a gear chain, not what carries them.
+## gear, or a universal joint's cross or end: the bearings of a gear chain
+## and the shafts it drives on, not what carries them. 42125-1's steering
+## column turns its wheel through two universal joints and a cardan shaft;
+## left out, the loop's gear turned and the one it meshes on the column stood.
 func _only_bearings(loop: Linkage, wider: Linkage) -> bool:
 	var geared: Dictionary = {}
 	for gear: Mechanism.Gear in shared_mechanism.gears:
 		geared[int(bodies.body_of.get(gear.key, -1))] = true
+	for cross: Array in bodies.universals():
+		geared[int(cross[0])] = true
+		for joined: Bodies.Link in [cross[1], cross[2]]:
+			geared[joined.other(int(cross[0]))] = true
 	for n: int in wider.links.size():
 		if not loop.links.has(wider.links[n]) and not geared.has(int(wider.child_of[n])):
 			return false
@@ -2031,13 +2038,56 @@ func _no_deeper(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -> bo
 	var pair := Vector2i(key, other)
 	if not _depth_allowed.has(pair):
 		var from: Transform3D = rest.get(key, world.get_brick(key).transform)
-		var allowed: float = Grab.box_depth(from, mesh.bounds, them.transform, their_mesh.bounds)
+		var allowed: float = _depth_between(key, mesh, from, other, them.transform, their_mesh)
 		_built_for_world()
 		if _built_at.has(key) or _built_at.has(other):
-			allowed = maxf(allowed, Grab.box_depth(_built_at.get(key, from), mesh.bounds,
-				_built_at.get(other, them.transform), their_mesh.bounds))
+			allowed = maxf(allowed, _depth_between(key, mesh, _built_at.get(key, from), other,
+				_built_at.get(other, them.transform), their_mesh))
 		_depth_allowed[pair] = allowed + TOUCHING
-	return Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= float(_depth_allowed[pair])
+	return _depth_between(key, mesh, to, other, them.transform, their_mesh) <= float(_depth_allowed[pair])
+
+
+## How far [param key] ([param mesh] at [param at]) is into [param other]
+## ([param their_mesh] at [param their_at]), LDU: by their boxes, but where
+## one is a round part with no exact shape of its own and the other has one
+## (or is round too), by the round it makes against that shape
+## (Exact.round_of), nought where those are clear. A tyre steered about its
+## kingpin swings its box's corners where the tyre is not: 8820-1's, built
+## against its steering top, stopped at 6° of 30 on that, its round 0.09 LDU
+## clear of the top's shape all the way.
+func _depth_between(key: int, mesh: Lbm.PartMesh, at: Transform3D, other: int, their_at: Transform3D,
+		their_mesh: Lbm.PartMesh) -> float:
+	var mine: Array = _shape_or_round(key, mesh)
+	var theirs: Array = _shape_or_round(other, their_mesh)
+	if mine.is_empty() or theirs.is_empty() or not (bool(mine[1]) or bool(theirs[1])):
+		return Grab.box_depth(at, mesh.bounds, their_at, their_mesh.bounds)
+	var into: Dictionary = Exact.clash(Exact.Item.new(mine[0], at), Exact.Item.new(theirs[0], their_at))
+	return float(into.get("depth", 0.0))
+
+
+## [param key]'s exact shape and false, or where it has none and is a tyre
+## (as its name says, its box two sides alike), the round its box makes and
+## true; or [] for neither. Not a wheel's rim: 8845-1's, judged by its round,
+## let its steering on past -24° to -52°, where its axle pin is read in its
+## track rod's hole and the steering arm one body with the rod.
+func _shape_or_round(key: int, mesh: Lbm.PartMesh) -> Array:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	if brick == null or mesh == null:
+		return []
+	var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+	if shape != null and shape.has_pieces():
+		return [shape, false]
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+	var name: String = info.name.to_lower() if info != null else ""
+	if not (name.contains("tyre") or name.contains("tire")):
+		return []
+	var size: Vector3 = mesh.bounds.size
+	for k: int in 3:
+		var a: float = size[(k + 1) % 3]
+		var b: float = size[(k + 2) % 3]
+		if absf(a - b) <= 2.0 and size[k] < minf(a, b):
+			return [Exact.round_of(mesh.bounds, k), true]
+	return []
 
 
 ## [method _no_deeper]'s measure for each pair asked: Vector2i(moving, other)
