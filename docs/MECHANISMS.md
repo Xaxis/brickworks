@@ -5591,7 +5591,7 @@ The full suite on main (684673c7) failed `pose_probe`: a click on the
 crane's arm slider at -45° kept the key at -22.1°, and the panel said why:
 "Arm stops at -22° of the -45° asked, where the Plate 2 x 6 (#6) meets the
 Hinge 1 x 2 Base (#4). The key is there." Bisected: 21b2f95b passes and
-1d27522c ("a bearing is forgiven only for the axle in it", §31) fails. Since
+1d27522c ("a bearing is forgiven only for the axle in it", §28) fails. Since
 that commit, only the hinge's top is forgiven its base, and what the top
 carries is tested against the base too.
 
