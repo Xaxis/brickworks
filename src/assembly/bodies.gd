@@ -461,7 +461,9 @@ func _read() -> void:
 		var owners: Array = stud[1]
 		var b: int = int(owners[0])
 		for id: int in owners:
-			if _in_a_socket(id, stud[2]):
+			var brick: BrickWorld.Brick = world.get_brick(id)
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+			if mesh != null and Joints.socket_at(brick.transform, mesh, stud[2], stud[3]):
 				b = id
 				break
 		# And of what turns against it, only a part that takes the stud,

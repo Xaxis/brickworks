@@ -334,7 +334,14 @@ const STUD_REACH := 5.0
 
 ## Whether a part standing at [param at] has one of [param mesh]'s sockets
 ## where a stud stands at [param foot]: the part takes the stud from below.
-static func socket_at(at: Transform3D, mesh: Lbm.PartMesh, foot: Vector3) -> bool:
+## Given the stud's [param way], only a part turned to take it along that
+## way: the catalogue reads sockets off any part's bottom face, an axle's
+## end too, and 8466-1's plate under a Technic brick was read as standing
+## in the end of an axle through the brick's hole.
+static func socket_at(at: Transform3D, mesh: Lbm.PartMesh, foot: Vector3,
+		way: Vector3 = Vector3.ZERO) -> bool:
+	if way != Vector3.ZERO and (at.basis * Vector3.UP).normalized().dot(way) < 0.95:
+		return false
 	for socket: Vector2 in mesh.sockets:
 		if (at * Vector3(socket.x, mesh.bounds.position.y, socket.y)).distance_to(foot) \
 				<= Mechanism.STUD_SLACK + 4.0:

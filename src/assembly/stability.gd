@@ -460,7 +460,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 				if placed.is_empty():
 					for brick: BrickWorld.Brick in contacts.get("bricks", []):
 						placed[brick.id] = brick
-				stud[1] = _taking(stud[1], stud[2], placed, library)
+				stud[1] = _taking(stud[1], stud[2], stud[3], placed, library)
 			var by := Vector2i(int(stud[0]), int(stud[1]))
 			if not tips.has(by):
 				tips[by] = [[], stud[3]]
@@ -499,17 +499,18 @@ static func _owners(lattice: BrickLattice, cell: Vector3i, own: int,
 
 
 ## Of [param owners], the parts whose covers have a stud's tip, the first
-## with a socket where the stud stands at [param foot], else the first.
+## with a socket where the stud stands at [param foot] and pointing [param
+## way] (Joints.socket_at), else the first.
 ## A turned part's cover keeps every cell its boxes touch, so a third part's
 ## can be named before the part the stud is in: 1793-1's hinge plates, tilted
 ## inside its corner panel, were read as standing in the panel, not in the
 ## plate on them.
-static func _taking(owners: Array, foot: Vector3, placed: Dictionary,
+static func _taking(owners: Array, foot: Vector3, way: Vector3, placed: Dictionary,
 		library: PartLibrary) -> int:
 	for id: int in owners:
 		var brick: BrickWorld.Brick = placed.get(id)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
-		if mesh != null and Joints.socket_at(brick.transform, mesh, foot):
+		if mesh != null and Joints.socket_at(brick.transform, mesh, foot, way):
 			return id
 	return int(owners[0])
 
