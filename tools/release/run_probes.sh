@@ -21,7 +21,8 @@ for spec in "$@"; do
   log="${prefix}_${name}.log"
   timeout 2400 tools/probe.sh "$name" "${args[@]}" > "$log" 2>&1
   code=$?
-  ok=$(grep -cE '^\s*ok ' "$log")
+  # "ok   ..." in most probes, "PASS: ..." in some (own_copies_probe).
+  ok=$(grep -cE '^\s*(ok |PASS:)' "$log")
   fail=$(grep -ciE '^\s*FAIL' "$log")
   verdict="passed"
   if [ "$code" != 0 ] || [ "$fail" != 0 ]; then
