@@ -3851,6 +3851,8 @@ func swing_words() -> String:
 	var said: String = swing.words()
 	if said.is_empty():
 		return ""
+	if swing.cut_short and _swing_index.has(body):
+		return "%s; it stands at %d°" % [said, roundi(angle)]
 	if not _swing_index.has(body):
 		var names := PackedStringArray()
 		for one: Swing.Joint in swing.joints:

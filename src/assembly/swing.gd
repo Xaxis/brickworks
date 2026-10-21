@@ -75,6 +75,11 @@ const STILL_S := 0.12
 const STILL_SPEED := 0.5
 ## At most this long, s: past it, it is kept where it is.
 const MOST_S := 40.0
+## [method run] works it out for at most this long by the clock, ms: a
+## session's move_part waits on it, and the window with it. Each room test
+## of a 126-part motorcycle cost about 100 ms, so 40 s of its swing, tested
+## at every step, would have taken an hour.
+const RUN_MOST_MS := 8000.0
 ## Projected Gauss-Seidel rounds for the friction of several joints.
 const FRICTION_ROUNDS := 16
 
@@ -156,6 +161,8 @@ var travel: float = 0.0
 ## Room tests run, and the costliest, ms.
 var tests: int = 0
 var worst_test_ms: float = 0.0
+## [method run] ran out of its time and kept it where it was last tested.
+var cut_short: bool = false
 var _still_for: float = 0.0
 var _tested := PackedFloat64Array()
 var _last_way: int = 0
@@ -502,6 +509,14 @@ func step() -> void:
 		inverse.append(Swing.solve(mass, unit))
 	var held := PackedFloat64Array()
 	held.resize(n)
+	# A joint pressed against what stopped it stays while it is pushed on:
+	# what stopped it pushes back on that joint alone, never pulls, so it
+	# moves the rest as its column says. Set to nought by itself, a stopped
+	# frame's turn was taken from the frame and not from a wheel on a free
+	# axle in it, which was left each step the turn the frame's fall gave it
+	# and spun up for ever: a motorcycle's move_part ran for an hour.
+	var stopped := PackedFloat64Array()
+	stopped.resize(n)
 	for _round: int in (1 if n == 1 else FRICTION_ROUNDS):
 		for j: int in n:
 			var column: PackedFloat64Array = inverse[j]
@@ -510,12 +525,20 @@ func step() -> void:
 			var bound: float = STEP * joints[j].friction
 			var wanted: float = clampf(held[j] - free[j] / column[j], -bound, bound)
 			var change: float = wanted - held[j]
+			held[j] = wanted
+			var way: int = joints[j].pressed
+			if way != 0:
+				var push: float = stopped[j] - (free[j] + column[j] * change) / column[j]
+				if push * way > 0.0:
+					push = 0.0
+				change += push - stopped[j]
+				stopped[j] = push
 			if change == 0.0:
 				continue
-			held[j] = wanted
 			for i: int in n:
 				free[i] += column[i] * change
-	# A joint pressed against what stopped it stays while it is pushed on.
+	# What is left of a push into the stop after the rounds, and a joint
+	# pulled away from what stopped it is free again.
 	for j: int in n:
 		var way: int = joints[j].pressed
 		if way != 0:
@@ -597,14 +620,48 @@ func _meet(next: PackedFloat64Array, met: int) -> void:
 	if carrying.is_empty():
 		for j: int in joints.size():
 			carrying[j] = true
+	var halted: Dictionary = {}
 	for j: int in carrying:
 		var way: int = signi(int(signf(next[j] - _tested[j])))
 		if way != 0:
 			joints[j].pressed = way
-			qd[j] = 0.0
+			halted[j] = true
 	q = low
 	_tested = low.duplicate()
+	_halt(halted)
 	stops += 1
+
+
+## Stop the joints [param halted] dead, as what they met stops them: it
+## pushes on those joints alone, so each other joint keeps its momentum
+## (its row of M q'), and what it carries turns on as it was turning. Set
+## to nought by themselves, a wheel on a free axle in a frame that met
+## something took the frame's turn into its own.
+func _halt(halted: Dictionary) -> void:
+	if halted.is_empty():
+		return
+	var n: int = joints.size()
+	var rest: Array[int] = []
+	for j: int in n:
+		if not halted.has(j):
+			rest.append(j)
+	var momentum := PackedFloat64Array()
+	var rows := PackedFloat64Array()
+	if not rest.is_empty():
+		var mass: PackedFloat64Array = dynamics(q, qd)[0]
+		for i: int in rest:
+			var p: float = 0.0
+			for k: int in n:
+				p += mass[i * n + k] * qd[k]
+			momentum.append(p)
+			for k: int in rest:
+				rows.append(mass[i * n + k])
+	var kept: PackedFloat64Array = Swing.solve(rows, momentum) if not rest.is_empty() \
+		else PackedFloat64Array()
+	for j: int in n:
+		qd[j] = 0.0
+	for x: int in rest.size():
+		qd[rest[x]] = kept[x]
 
 
 ## Start it moving as the parts were when what carries them all stopped
@@ -651,11 +708,18 @@ func advance(seconds: float, budget_ms: float = INF) -> float:
 	return ran
 
 
-## Run to rest (a session's move_part, a probe): returns the simulated
-## seconds it swung.
-func run() -> float:
+## Run to rest (a session's move_part, a probe), for at most [param
+## budget_ms] by the clock: past it, it is kept where it was last tested
+## and [member cut_short] says so. Returns the simulated seconds it swung.
+func run(budget_ms: float = RUN_MOST_MS) -> float:
+	var began: int = Time.get_ticks_usec()
 	while not at_rest:
 		step()
+		if not at_rest and float(Time.get_ticks_usec() - began) / 1000.0 > budget_ms:
+			cut_short = true
+			at_rest = true
+			if room.is_valid():
+				q = _tested.duplicate()
 	return time
 
 
@@ -676,13 +740,16 @@ func half_periods() -> PackedFloat64Array:
 ## "swung back and forth 9 times in 3.2 s", or "" for none.
 func words() -> String:
 	var swings: int = turns.size()
-	if time <= STILL_S + STEP * 2.0 and stops == 0:
+	if time <= STILL_S + STEP * 2.0 and stops == 0 and not cut_short:
 		return ""
 	var out: String
+	# How long it moved: the stillness that says it is at rest is not, and
+	# one cut short had none.
+	var lasted: float = time if cut_short else time - STILL_S
 	if absf(flung) > 0.0:
 		# Let go while it moved: how fast, how far it coasted, how long.
 		out = "let go turning at %s turns a second, it coasted %s turns in %s s against its bearing's friction" % [
-			Balance.tidy(absf(flung) / TAU), Balance.tidy(travel / TAU), Balance.tidy(time - STILL_S)]
+			Balance.tidy(absf(flung) / TAU), Balance.tidy(travel / TAU), Balance.tidy(lasted)]
 		# A turn back is a swing when it goes a degree or more before the next:
 		# a train's stop can rock it back by a hair.
 		var back: int = 0
@@ -696,14 +763,22 @@ func words() -> String:
 			out += ", stopping dead where it met the model %s" % ("once" if stops == 1 else "%d times" % stops)
 		if time >= MOST_S:
 			out += "; still turning after %d s, kept where it was" % roundi(MOST_S)
-		return out
+		return out + _cut_words()
 	if swings == 0:
-		out = "swung down under its own weight in %s s" % Balance.tidy(time - STILL_S)
+		out = "swung down under its own weight in %s s" % Balance.tidy(lasted)
 	else:
 		out = "swung down under its own weight and back and forth %d time%s in %s s" % [swings,
-			"" if swings == 1 else "s", Balance.tidy(time - STILL_S)]
+			"" if swings == 1 else "s", Balance.tidy(lasted)]
 	if stops > 0:
 		out += ", stopping dead where it met the model %s" % ("once" if stops == 1 else "%d times" % stops)
 	if time >= MOST_S:
 		out += "; still swinging after %d s, kept where it was" % roundi(MOST_S)
-	return out
+	return out + _cut_words()
+
+
+## How [method run] ran out of time, or "".
+func _cut_words() -> String:
+	if not cut_short:
+		return ""
+	return ("; still moving then, kept where it was: the app works a swing out for at most %d s"
+		% roundi(RUN_MOST_MS / 1000.0))

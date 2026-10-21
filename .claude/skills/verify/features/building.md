@@ -984,7 +984,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   MCP; a column in its swing stopping it where a drag stops. `-- --only=double`:
   two beams on two free pins swinging together, the outer coming to rest
   where the settle hangs it, with pictures. The swing's own frame cost is
-  checked under 33 ms and written to timings.json.
+  checked under 33 ms and written to timings.json. A stop pushes on the
+  stopped joint alone (through the inverse mass) and a meet keeps the other
+  joints' momentum, so a wheel on a free axle in a stopped frame does not
+  spin up; move_part's run stops after `Swing.RUN_MOST_MS` (8 s) by the
+  clock, kept where it was last tested, and says so:
+  `swing_bound_probe` (headless, by hand without a model; each check fails
+  on the code before it). `src/dev/replay_session.gd` replays a session's
+  calls on the real scene, timed, to find a call that never answers.
 - `coasting when flung` (`Grab.fling_rate`, `Swing.fling`, `Swing.add_geared`;
   MECHANISMS §16): let go while the pointer turns it, a section on a free
   joint starts at the pointer's rate (the slope of the turn against the
