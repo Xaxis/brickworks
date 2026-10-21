@@ -454,10 +454,10 @@ func _read() -> void:
 	pressed_on.clear()
 	for stud: Array in studs:
 		var a: int = int(stud[0])
-		# Of several, the one with a socket where the stud stands, else the
-		# first: a turned part's cover keeps every cell its boxes touch, so a
-		# third part's can come first. 9470-1's plate on another was read as
-		# in the wedge round them.
+		# Of several, the first with a socket where the stud stands, facing
+		# it, else the first: a turned part's cover keeps every cell its
+		# boxes touch, so a third part's can come first. 9470-1's plate under
+		# another was read as in the wedge round them.
 		var owners: Array = stud[1]
 		var b: int = int(owners[0])
 		for id: int in owners:
@@ -466,12 +466,11 @@ func _read() -> void:
 			if mesh != null and Joints.socket_at(brick.transform, mesh, stud[2], stud[3]):
 				b = id
 				break
-		# And of what turns against it, only a part that takes the stud,
-		# where it stands: the faces [method _sits_on] weighs are boxes',
-		# however far off. 6753-1's frame stands in the bricks beside it by
-		# its underside studs, and an axle turning in those bricks 70 LDU
-		# away, its top nearer the studs' feet, was read as on them and held
-		# its wheels to the frame; 8836-1's plates held its axles so.
+		# And of what turns against it, only a part that reaches the stud
+		# and takes it: the faces [method _sits_on] weighs are boxes',
+		# however far off. Plates on 8836-1's Technic bricks were read as
+		# standing on axles 35-70 LDU away that turn in those bricks, their
+		# boxes' faces nearer the studs' feet, and held them still.
 		if partners.has(b):
 			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array).filter(
 				func(other: int) -> bool: return (_reaches_into(other, stud[2], stud[3])

@@ -826,13 +826,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`Bodies._in_a_hole_exactly`, G13: a train's buffer beam 4022 takes the
   plate's studs in its cap, above its bottom face, where the catalogue reads
   no socket); a stud's tip is in every part but its own whose cover has its
-  cell (`BrickLattice.bricks_at`), of several the one with a socket where the
-  stud stands (4643-1's 1 x 1 bricks on the boat hull's studs); a stud the
-  lattice finds in two parts that turn against each other is in the one its
-  foot meets the face of, of those whose box it reaches into (6753-1: an
-  axle 70 LDU off its frame's underside studs held its wheels), but where
-  that one has no socket, in the one the lattice found with a BrickNet hole
-  for it (`Bodies._sits_on`); why parts are one body is kept
+  cell (`BrickLattice.bricks_at`), of several the first with a socket where
+  the stud stands, facing it (`Joints.socket_at`; 9470-1's plate on Shelob's
+  wedge turned with the winch axle over it); a stud the lattice finds in two
+  parts that turn against each other is in the one its foot meets the face
+  of, of those that reach the stud and take it by a socket or a hole (plates
+  on 8836-1's Technic bricks held axles 35-70 LDU off that turn in them),
+  but where that one has no socket, in the one the lattice found with a
+  BrickNet hole for it (`Bodies._sits_on`); why parts are one body is kept
   (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
   revision, on a worker from 300 parts (`GrabDrag._ready_ahead`), the parts'
   exact shapes read first on the main thread.

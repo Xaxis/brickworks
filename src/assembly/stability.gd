@@ -357,10 +357,10 @@ static func pair_of(a: int, b: int) -> int:
 ## no stud's tip in either, and 8466-1's steering arm was weighed as
 ## carrying its wheel on one stud, overloaded (2026-10-21). They hold the
 ## parts together, as Suggest sections reads them, and are "overlapped":
-## [method check] and Balance weigh no stud there. Of the 12,225 left once
+## [method check] and Balance weigh no stud there. Of the 12,219 left once
 ## tips are read as below, what holds them is a pin or an axle in its hole
-## (6,080), a hinge, a turntable or a clip on a bar (1,014), a ball (78), a
-## hose's pieces or a sticker's glue (496), and for 4,557 no joint the
+## (6,080), a hinge, a turntable or a clip on a bar (1,017), a ball (78), a
+## hose's pieces or a sticker's glue (496), and for 4,548 no joint the
 ## connectors name: a part seated in another, or turned beside it.
 ##
 ## Where covers overlap a tip's cell is in both, and [method
