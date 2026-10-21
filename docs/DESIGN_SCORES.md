@@ -2205,6 +2205,118 @@ sessions were orphaned when an outer `timeout` killed their run, and are set
 aside as `*.killed`; the lever's 42107-1 waited on a port and was designed
 alone.
 
+### The body on the frame, on three of tune's Technic subjects (2026-10-21, not ready)
+
+The studless lever's frames lost as bare frames: "open studless beams with
+exposed pin holes, and nothing closes off its surfaces", "a raw beam
+framework". Its sessions used no fairing at all, and five of eight ran to
+their 45-minute limit. This lever gives the frame a body, measured off real
+sets, and the frame fewer turns. Branch `technic2`.
+
+**How real sets cover a frame** (`tools/technic_cover.py`). Over the 92
+Technic sets of the OMR from 2008 on, the realset subjects left out: each
+part's box seen from the sides, the ends and the top (by the model's own
+length), the nearest part in each half-stud cell.
+
+| of what a viewer sees, median (quartiles) | sides | ends | top |
+|---|---|---|---|
+| panels and fairings | 18% (9-34) | 15% (5-29) | 25% (12-39) |
+| bent liftarms | 10% (5-16) | 8% (5-14) | 8% (4-12) |
+| bare frame: beams, pins, axles, connectors | 38% (23-57) | 43% (36-55) | 44% (30-57) |
+| wheels and tracks | 19% (2-28) | 11% (3-22) | 3% (1-13) |
+
+- The body's parts by how many sets use them: bent liftarms 32140 (89 of 92)
+  and 32526 (77), the thin fairing pair 11946/11947 (51-52), 32009 (50), the
+  medium fairing pair 64683/64391 (46), the 5 x 11 panel 64782 (43). Fairings
+  come in mirrored pairs.
+- In the 59 sets with coloured panels, 67% of the straight beams are black or
+  grey at the median (49-77), 17% in the body's colour: the colour is on the
+  panels.
+- The first reading had each box mirrored in z: `tools/style.py`'s `Parts`
+  turns the catalogue's boxes to LDraw by y alone, and the catalogue is LDraw
+  turned half a turn about x (`src/parts/ldr_model.gd` FLIP). A bent liftarm
+  read 27% of a side where the app reads 12%. `technic_cover.py` puts z back,
+  and on two designs it reads within a point or two of the app's own
+  `TechnicWay.faces`. The run below was told the first reading (16% and 15%
+  for the sides); every other measure `style.py` makes of an asymmetric part
+  has the same mirror.
+
+**Where the studless lever's time went** (its nine session transcripts).
+85% of a session was the model's, not the app's: 37 of 44 minutes. 87 to
+198 tool calls; attachment_points 22 to 54 of them, with 5 to 17 minutes of
+thinking around them, because most parts were placed by coordinates worked
+out by hand and checked there (attach laid 2 to 15%); edit_model up to 44
+calls of a few parts each, 6 to 9 s each in the app. The first whole-model
+review came at 15 to 42 minutes (the Ducati never had one), and the surface
+and creative passes ran in 3 of 9. The Ducati lost its last ten minutes to a
+move_part that hung for 600 s until the MCP server dropped (reopened from its
+saved file, the same call answers at once: the sections' hinge is not in the
+file).
+
+**The lever** (`src/ai/technic_way.gd`, `techniques.gd`, `technic_way_probe`).
+- *Told at planning*: the body step with those numbers and part numbers, the
+  fairings in pairs, the frame dark and the colour on the panels, never beams
+  stacked side by side as a wall.
+- *A means*: show_technique "panelled beam frame", the studless frame with a
+  3 x 7 panel on two pins on each post and the medium fairing pair low along
+  the sides, laid by attach, checked (27 parts, none studded).
+- *Said at every build and the whole-model review*: what covers the frame,
+  face by face, against those sets (`TechnicWay.cover_said`), the faces below
+  the sets' lowest quartile named open with the parts that cover them, and a
+  frame under half black or grey named.
+- *Time*: the frame and its body in the first submit_design, every pin, beam
+  and panel by attach to a named part, attachment_points once a part, then
+  review_model.
+
+**Three of tune's eight,** the Mine Loader (42049-1), the Ducati (42107-1)
+and the Tractor (9393-1), designed with the lever (`c4f60f05`) in the same
+harness as the two arms recorded for 2026-10-20, three at a time.
+
+| | main (`technicmain`) | studless (`technic`) | the body (`technic2`) |
+|---|---|---|---|
+| overall against the set, verdicts won of 6 | 0 | 1 | 1 |
+| likeness / surface / technique | 3 / 3 / 0 | 3 / 1 / 1 | 1 / 1 / 0 |
+| studded parts, each subject | 97%, 76%, 98% | 0%, 0%, 6% | 5%, 1%, 6% |
+| sides in panels and fairings (sets 18%) | 0%, 13%, 0% | 17%, 0%, 12% | 42%, 42%, 33% |
+| fairings on the sides | 0%, 13%, 0% | none | 14%, 12%, 0% |
+| bent liftarms on the sides (sets 10%) | none | 12%, 1%, 4% | 0%, 0%, 3% |
+| minutes; timed out | 24, 45, 15; 1 of 3 | 45, 45, 45; 3 of 3 | 37, 39, 32; 0 of 3 |
+| parts (sets 478, 638, 354) | 428, 345, 415 | 299, 126, 252 | 160, 173, 272 |
+
+- **The body is there, and the time.** Every face the first build showed bare
+  was named open ("the sides, the ends and the top"), and by the first review
+  the Tractor's and the Mine Loader's sides were a third panels (the Ducati's
+  9%, its top still open). The first review came at 11 to 15 minutes,
+  all three reached the surface and creative passes and saved, none ran to
+  the limit; attach laid 12 to 28% of the parts, attachment_points 17 to 34
+  calls. Head to head the judge took its surface over the studless lever's
+  every time (6 of 6), overall 50%.
+- **The reasons moved again.** From "no bodywork at all" and "nothing closes
+  off its surfaces" to the body's shape: "flat panels with gaps between
+  them", "panels sticking out at odd angles", "a tall open frame with yellow
+  beams floating above the chassis", "a long, flat box frame". The Mine
+  Loader copied the technique's panels standing on posts above the rails and
+  was read as panels floating over the axles; the Tractor's bonnet is still
+  beams stacked side by side, under one flat panel. Overall they are panelled
+  past the sets (33 to 42% of the sides, the sets' upper quartile 34%) with
+  flat panels, and with no bent liftarms where a set has 10%.
+- **Not ready on this.** Against the set it won what the studless lever won (1
+  of 6 overall) and lost likeness (1 of 6 against 3). Head to head main's
+  smooth System bodies still won likeness 100%, surface 83%, overall 67%; the
+  body's technique 67%. Three subjects is no measure: the bar is the 9 of
+  proof.
+- *Next.* The body's shape, not its amount: panels flush on the frame with no
+  daylight under them (the technique's stand clear on posts, and were
+  copied), fairing pairs shaping the nose, bonnet and fenders at their angle,
+  bent liftarms drawing the outline; and the review reading a panel standing
+  clear of the frame. The z mirror in `style.py`'s boxes is its own fix.
+
+Results: `bench/results/realset-2026-10-20-technic2/` (report-tune.md),
+`realset-2026-10-20-technic-vs-technic2/` and
+`-technicmain-vs-technic2/` (report-tune-3.md each, head to head on the
+three). A dry run first wrote a canned design into the arm's folder; it is
+set aside as `realset-2026-10-20-technic2.dryrun`.
+
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 
