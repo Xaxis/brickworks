@@ -4793,7 +4793,9 @@ Brick 1 x 2 with Hole (#150) meets the Technic Brick 1 x 2 with Hole
 (#151)", the carriage at x = 19.6 studs, 1.99 LDU into the bearing by their
 exact shapes: within a cover's cell (2 LDU), which is where the room test
 finds two parts meet (the shapes only forgive what the covers met; G13's
-left for later). Nothing else that moved is into either bearing.
+left for later). Nothing else that moved is into either bearing. With a
+cover reaching the cell it fell short by (below), 5.05 studs, and no
+deeper than the 1 LDU their shapes allow.
 
 ### A part stopped against another, moved on into it
 
@@ -4826,6 +4828,40 @@ its steering arm on its plate; 4002020-1's turntable +1°, -32° (+13°, -44°).
 Their parts were forgiven as they stood since G13, and judged by their
 shapes the loops close through them. Each stop needs reading (a joint
 Bodies does not see, or a loop's reading) before the rule can go in.
+
+### A turned part's cover a cell short (m131's hold)
+
+`grab_probe --only=hinge` failed on every run with Grab 17: 4096-1's boom,
+the Plate 2 x 8 on its 3937/3938 hinge, stopped at 95.7° where the plate
+(#32) meets the hinge's base (#30), and the probe's room test found room a
+degree on. Before, the base was skipped for every moving part as half of
+the hinge, and the boom went on to 112.8°, to the turntable (#24): there,
+by their exact shapes, 2.6 LDU into the base. Now only the hinge's top (#31)
+is forgiven it. At 90° the plate's underside lies flush on the base's side,
+and past it the plate's overhang turns into the base: by their shapes 1.0
+LDU at 95.5°, 1.24 at 96.7°, 3.4 at 117°. The stop is right and 112.8° was
+not (bisected: 1d27522c, "a bearing is forgiven only for the axle in it").
+
+The room test disagreed with itself. A cover is counted from the cell its
+part's origin is in (`Builder.boxes_for` and `turned_cover`, from
+`BrickLattice.to_cell`, a floor), and a turned part's is not cut back or
+rounded out about where the part is, so it stands up to a cell short of it
+towards +x, +y and +z. Turned an eighth of a degree at a time from 94.7° to
+97.7°, the plate's cover met the base's at 14 of 25 turns and missed it at
+11, in two runs as its origin crossed its cell along z (95.0° to 95.7°,
+96.7° to 97.1°). The shapes only judge what the covers meet
+(`_clear_exactly`), so room came and went with the cell: none at 96.0°, room
+at 96.7°, none at 97.7°. Placed where the part is, its cover met the base
+at all 25.
+
+Now a part off the lattice asks its cover a cell further on, towards +x, +y
+and +z (`Grab._reach_cell`, in `_blocked` and `_blocked_turned`), for a pair
+whose exact shapes then judge it. A pair with no exact shape is judged by
+the cover as it was, so nothing judged by covers alone changes. The boom
+stops at 95.4°, its base met at 95.53° (1.01 LDU by their shapes), and the
+room test agrees at every turn asked between 94.4° and 115.4°. Left: covers kept in
+the lattice, of what stands and of a part placed turned, are counted the
+same way; only the room test reaches the cell.
 
 ### A loop turned in one big step drifts (not fixed)
 
