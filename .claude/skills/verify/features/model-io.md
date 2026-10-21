@@ -119,6 +119,17 @@ Whether what you built is still there tomorrow, and still means the same thing.
   at the same instant through first_here (and, with `-- cold`, without: the
   engine's crash, which it shows within ~4,000 rounds), and checks the warm-up
   goes all the way and that the carried parts ask for it.
+- `own copies read as their parts` (`CustomParts.copy_of`, `read_as_copy`,
+  `PartInfo.copy_of`, `PartLibrary.shaped_as`): Studio writes the parts it
+  has versions of into the file as "<set> - <part>.dat", their subparts and
+  primitives renamed the same way, so built from that text a copy has no
+  joint and no exact shape. One named for a part the library has, and drawn
+  as that part is to within 1 LDU (every corner of either's triangles to the
+  other's surface, and its box), takes that part's connectors, cover and
+  exact shape; its triangles and text stay its own. On the web the parts'
+  geometry is fetched before the file opens (`_fetch_copied`). Gears,
+  turntables and actuators are still found by part number (Mechanism's
+  table), so a copied gear is not yet one. `own_copies_probe` opens 42125-1.
 - `table race` (`Mechanism.table`, `Flex.kind_of_piece`, `Exact._sphere`,
   `Exact.shape_for`, `Style.norms`, `Collection._sizes`): a static table
   read at first use, and reached by a worker, is either made as its class
@@ -669,6 +680,8 @@ godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/file
 node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin vendor/omr/files/42082-1.mpd
 godot --headless --path . --script src/dev/carried_fetch_probe.gd -- vendor/omr/files/21321-1.mpd   # carried parts built from LDraw files fetched over HTTP, the library withheld
 godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census bench/results/census.json   # which of vendor/omr's files need the library's files, and which
+godot --headless --path . --script src/dev/own_copies_probe.gd   # 42125-1's own copies of LEGO parts read as those parts: joints, exact shapes, tie rods held, written back as they came
+godot --headless --path . --script src/dev/own_copies_probe.gd -- --survey --shard=0/2   # ...and how many of the OMR's copies are read so (run 1/2 too, ~4 min each)
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- rounds=12   # files' carried parts built on every worker at once, each as built alone
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- dir=$PWD/.scratch-data/godot/app_userdata/Brickworks/custom_parts   # ...the parts kept from files, as start-up builds them
 godot --headless --path . --script src/dev/worker_first_run_probe.gd   # cold operators on every worker at once, through first_here: none wrong, no crash (~70 s)

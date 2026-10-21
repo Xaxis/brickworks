@@ -2269,6 +2269,13 @@
     },
     {
       "kind": "cli",
+      "label": "own copies read as their parts",
+      "entry": "src/dev/own_copies_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/own_copies_probe.gd [-- --survey [--shard=K/N] [--only=PREFIX]]   (a file's own copy of a LEGO part, '42125 - 60483.dat', read as that part for its joints, cover and exact shape where it is drawn as the part is to within 1 LDU: 42125-1's 25 copies, its tie rods' towballs held in the copied knuckles, a copy drawn otherwise left the file's own, every copy written back as it came; --survey counts the OMR's copies and how many are read so, ~4 min a shard)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "carried parts at once",
       "entry": "src/dev/carried_at_once_probe.gd",
       "reach": "godot --headless --path . --script src/dev/carried_at_once_probe.gd [-- rounds=N] [-- dir=PATH] [-- FILE ...]   (the parts files carry built on every worker at once, round after round, each the same to the byte as built alone on the main thread; dir= builds a folder's .dat files as load_all builds those kept; with nothing given 42129-1, 10261-1 and 60216-1; a crash is the run ending on signal 11)",

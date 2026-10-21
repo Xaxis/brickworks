@@ -4749,3 +4749,114 @@ The probe prints these as `GAP`, not failures.
   (move_part's list: "#20 ... on its pin", "#16 Technic Pin with Friction
   and Slots and 1 more part, on its pin"). Either turns the chain, now in
   Simulate too (fix 5). Not looked into further.
+
+## 28. A bearing, a part stopped against another, and a loop's big step (Grab 17)
+
+Three things real sessions met on 2026-10-20 (MCP walk 3, motions1). Each
+was measured on the base, 21b2f95b, and after, by a scratch probe calling
+move_part as a session does; `grab_probe -- --only=bearing`, `--only=path`
+(with `shapeless`) and `--only=bigstep` hold them.
+
+### A part slid into the bearing its axle turns in
+
+The observatory (`tests/fixtures/mcpwalk3/observatory.ldr`), its dome
+opened, the telescope's carriage drawn along its axle: move_part #149
+along=6 slid it all 6 studs, and the carriage's Technic brick (#150) ended
+at (20.5, 4.8, 15) studs, where the axle's bearing (#151) stands, 4.00 LDU
+into it by their exact shapes. Read again, the two were one body. Two
+causes, each enough:
+
+- **Every joint's halves were skipped for every moving part.**
+  `Grab._chosen` put both parts of each joint between what moves and what
+  stays into `skip`, which no moving part is tested against. Now the part
+  that stays is forgiven only for its partner across the joint
+  (`Grab._across`, `_join_across`, `_pair_forgiven`): the axle in its
+  bearing, not the carriage on the axle. Nor does the axle's cover in its
+  bearing count towards what a cover forgives every moving part. The same
+  for a free joint let go to swing (`land_begin`).
+- **A slide was not tested where its turn had swept clear.** A grab of a
+  part that turns and slides on an axle is read as a turn first, and the
+  turn's sweeps leave out what can never meet anything turning about the
+  line (`_never_meet`), and what is on the line itself. move_part along=
+  then slides it (`use_slide`), and the carriage, its sweep round the axle
+  clear, was never tested at all. What was left out for the turn alone
+  (`_turn_only`) is tested again when it slides.
+
+After: "slid 5.1 studs along (asked 6 studs); it stopped where the Technic
+Brick 1 x 2 with Hole (#150) meets the Technic Brick 1 x 2 with Hole
+(#151)", the carriage at x = 19.6 studs, 1.99 LDU into the bearing by their
+exact shapes: within a cover's cell (2 LDU), which is where the room test
+finds two parts meet (the shapes only forgive what the covers met; G13's
+left for later). Nothing else that moved is into either bearing.
+
+### A part stopped against another, moved on into it
+
+The made arm on its hinge and the plate over its way (`MADE_PATH`), turned
+-90° towards the plate: it stops at -20°, where its Brick 1 x 2 (#11)
+meets the plate. Turned -90° again from there:
+
+| the plate | 21b2f95b | now |
+|---|---|---|
+| with none (a browser before the shape is fetched) | all 90°, through the plate; turned back +90° it stops at 66° on the plate | 0°, stopped where it is; +90° back, all of it |
+| with its exact shape | 6° more, a box 12 LDU into the plate's, until the arm's Plate 1 x 2 meets it; then the arm is read as part of the plate and will not move | the same (left, below) |
+
+Where a move stops, the two covers (2 LDU cells that reach past their
+parts) overlap, and a pair whose covers overlap where a grab begins was
+forgiven for the whole grab (G13). Now, where one of the two has no exact
+shape, the covers judge, and cannot tell parts built flush from parts into
+each other: the pair is forgiven only as far as the boxes were into each
+other where the grab began, or as built, and `TOUCHING` (1 LDU) more
+(`_no_deeper`). Away and back is forgiven, on into it is not. The same for
+what a cover forgives every moving part (42042-1's winch drum: `--only=worms`
+passes, 34 checks).
+
+**Left: two exact shapes stopped against each other.** Forgiven only where
+the shapes are into each other where the grab began, and judged by them
+otherwise (`_clear_exactly`, their clash at rest already asked at the press
+by `_forgiven_at_rest`), the made arm stopped at once. But three steerings
+stopped short: 42050-1's at 10° of 30, where an axle joiner (#45) meets the
+axle pin in it (#46), back 0.295 LDU off (it was 0.006); 5533-1's at 2°,
+its steering arm on its plate; 4002020-1's turntable +1°, -32° (+13°, -44°).
+Their parts were forgiven as they stood since G13, and judged by their
+shapes the loops close through them. Each stop needs reading (a joint
+Bodies does not see, or a loop's reading) before the rule can go in.
+
+### A loop turned in one big step drifts (not fixed)
+
+8808-1's steering wheel (#80) turned by move_part, a step each, measured
+where every part stands back (LDU):
+
+| | 90, -90 | 90, -180, 90 | 30, -60, 30 | 11, -11 |
+|---|---|---|---|---|
+| 21b2f95b | 0.0270 | 1.7814 | 0.0008 | 0.0000 |
+| every step of a solve closed to `CLOSE_TO` | 0.0037 | 0.0082 | 0.0146 | 0.0005 |
+| the same, in 3° steps | 0.0019 | 0.0031 | 0.0096 | 0.0001 |
+| Grab moving the loop 3° at a time, each kept, as a motion plays it | 0.2084 | 6.5690 | 0.0117 | 0.0017 |
+
+Every way tried took the big step's drift down only by taking the
+sweeps' own turn (+30, -60, +30) from 0.0008 to about 0.01, half the 0.02
+both sweeps allow, and Grab stepping as a motion steps was worse. None
+was kept. The drift is the loop's freedom to spare (the column's slide
+along its axle): `Linkage._follow_slope` reads each step's slope off the
+step before, freedom to spare and all, and the next step starts from
+there, so whatever one step's solve slid it, the next slides it again. What
+it takes: the slope with its part along that freedom taken out (the least
+change that keeps the loop closed: the free columns' Jacobian's least-norm
+answer for the driver's turn, weighted as `FRICTION_WEIGHT` weights it), and
+both sweeps run again on it. `grab_probe -- --only=bigstep` prints where it
+stands as a GAP.
+
+### Checked
+
+On the final code: `grab_probe` headless whole, 172 passed (the base's 164,
+loops, racks, worms, steering and all, and this unit's 8), and the same 35
+that need a pointer failing, as on the base; in a window `--only=bearing`
+(2) and `--only=path` (6, and the exact shape's two GAPs); headless
+`--only=steering` (36), `--only=clipped` (4) and `--only=grooved` (4), the
+three that stopped short with the exact-shape rule. `motions_probe` (70),
+`telescope_probe` (32, its three gaps), `simulate_probe` (41),
+`placing_probe` and `mcp_walk3_probe` (20) pass. The walk's "Extend the
+telescope" now stops at 574° of the 612°, where the carriage meets its
+bearing: it slid on into it before, "clear all the way", and that check now
+asks that it does not stop on the dome. The steering sweep (181 sets) is
+not run here: the bearings' test touches every loop's room test.

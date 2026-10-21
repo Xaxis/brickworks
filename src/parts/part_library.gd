@@ -264,6 +264,10 @@ class PartInfo extends RefCounted:
 	## Where a custom part shipped in the catalogue keeps its LDraw source,
 	## under the asset root (tools/build_custom.py --into).
 	var source_path: String = ""
+	## For a model file's own copy of a part LEGO made, drawn as that part
+	## is (CustomParts.copy_of): the part's id, whose joints, cover and
+	## exact shape it is read with. Empty for every other part.
+	var copy_of: String = ""
 
 	## What kind of part this is to the LDraw world: a custom tile is a
 	## Tile, whatever the bin files it under.
@@ -1111,9 +1115,10 @@ func _on_fetched(code: int, body: PackedByteArray, hash_name: String,
 ## "none" so it is not asked again; a fault that may pass is asked again
 ## first, as geometry is ([method _ask]). Listen for [signal exact_fetched].
 func request_exact(part_id: String) -> bool:
-	var info: PartInfo = parts.get(part_id)
+	var info: PartInfo = shaped_as(part_id)
 	if info == null or info.mesh_hash.is_empty():
 		return false
+	part_id = info.id
 	if _fetching_exact.has(info.mesh_hash) or _exact_waiting.has(part_id):
 		return true
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
@@ -1145,8 +1150,17 @@ signal exact_fetched(part_id: String)
 
 ## Whether a part's exact shape is still on its way.
 func is_exact_on_its_way(part_id: String) -> bool:
+	var info: PartInfo = shaped_as(part_id)
+	return info != null and (_fetching_exact.has(info.mesh_hash) or _exact_waiting.has(info.id))
+
+
+## The part whose exact shape [param part_id] has: itself, or for a model
+## file's own copy of a part LEGO made, that part (PartInfo.copy_of).
+func shaped_as(part_id: String) -> PartInfo:
 	var info: PartInfo = parts.get(part_id)
-	return info != null and (_fetching_exact.has(info.mesh_hash) or _exact_waiting.has(part_id))
+	if info != null and not info.copy_of.is_empty():
+		return parts.get(info.copy_of)
+	return info
 
 
 func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
