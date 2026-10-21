@@ -1780,9 +1780,14 @@ static var covers_differ: int = 0
 ## touch, or nothing.
 func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 		turned: BrickLattice.TurnedCover) -> PackedInt64Array:
-	for other: int in builder.lattice.blockers_boxes(turned.loose_at(), 0, skip):
-		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
-				or not turned.meets(builder.lattice.boxes_of(other)):
+	var short: bool = BrickLattice.is_off_lattice(to.origin)
+	var near: PackedInt32Array = turned.loose_at()
+	for other: int in builder.lattice.blockers_boxes(Grab._reach_cell(near, true) if short else near, 0, skip):
+		if skip.has(other) or _scrubs(key, other) or _bends_aside(other):
+			continue
+		# Theirs a cell further back is ours a cell further on.
+		var theirs: PackedInt32Array = builder.lattice.boxes_of(other)
+		if not turned.meets(Grab._reach_cell(theirs, false) if short and _both_exact(key, other) else theirs):
 			continue
 		if not _pair_forgiven(key, other, mesh, to) and not _slides_over(key, mesh, to, other) \
 				and not _touching(mesh, to, other) and not _clear_exactly(key, to, other):
@@ -1794,22 +1799,54 @@ func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 ## but what the moving side may press on. What it overlapped where it stood
 ## is forgiven for good; what it slides over across a face square to the
 ## line it turns on, for this part alone ([method _slides_over]).
+##
+## A cover is counted from the cell its part's origin is in, so off the
+## lattice it stands up to a cell short of the part towards +x, +y and +z.
+## 4096-1's boom, turned 96.7° on its hinge, was 1.24 LDU into the hinge's
+## base by their shapes and its cover clear of the base's: the drag stopped
+## at 95.7° and the room test found room a degree on. So a part off the
+## lattice asks its cover a cell further on for any pair whose exact shapes
+## then judge it ([method _clear_exactly]); a pair with no exact shape is
+## judged by the cover as it was.
 func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32Array) -> PackedInt64Array:
 	var forgiven: Array = []
-	var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
+	var short: bool = BrickLattice.is_off_lattice(to.origin)
+	var asked: PackedInt32Array = Grab._reach_cell(packed, true) if short else packed
+	var by_cover: Variant = null
+	var hit: PackedInt64Array = builder.lattice.blockers_boxes(asked, 0, skip)
 	while not hit.is_empty():
 		var other: int = int(hit[0])
-		if _pair_forgiven(key, other, mesh, to) or _scrubs(key, other) or _bends_aside(other) \
+		var missed: bool = false
+		if short and not _both_exact(key, other):
+			if by_cover == null:
+				by_cover = builder.lattice.blockers_boxes(packed, 0, skip)
+			missed = not (by_cover as PackedInt64Array).has(other)
+		if missed or _pair_forgiven(key, other, mesh, to) or _scrubs(key, other) or _bends_aside(other) \
 				or _slides_over(key, mesh, to, other) or _touching(mesh, to, other) \
 				or _clear_exactly(key, to, other):
 			skip[other] = true
 			forgiven.append(other)
 		else:
 			break
-		hit = builder.lattice.blockers_boxes(packed, 0, skip)
+		hit = builder.lattice.blockers_boxes(asked, 0, skip)
 	for other: int in forgiven:
 		skip.erase(other)
 	return hit
+
+
+## [param packed], boxes of cells as the lattice keeps them, each reaching a
+## cell further towards +x, +y and +z ([param on]), or further back towards
+## -x, -y and -z: where a cover counted from its origin's cell may fall short
+## of its part ([method _blocked]).
+static func _reach_cell(packed: PackedInt32Array, on: bool) -> PackedInt32Array:
+	var out: PackedInt32Array = packed.duplicate()
+	var first: int = 3 if on else 0
+	var by: int = 1 if on else -1
+	for n: int in range(0, out.size(), 6):
+		out[n + first] += by
+		out[n + first + 1] += by
+		out[n + first + 2] += by
+	return out
 
 
 ## Whether [param key] at [param to] and [param other] where it stands are
