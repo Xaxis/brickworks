@@ -59,12 +59,18 @@ Measured 2026-10-10 over 273 real models of 100+ parts, median (10th-90th):
   angled         3% (0-21)      27% (12-56)     13% (2-49)
   curve          9% (6-16)      20% (12-31)     15% (7-26)
   plain          53% (40-65)    28% (24-36)     33% (22-47)
-  near_shaped    75% (52-85)    91% (84-97)     82% (53-93)
-  symmetry       53% (28-85)    31% (19-76)     59% (19-94)
+  near_shaped    71% (48-87)    90% (84-97)     82% (53-93)
+  symmetry       55% (28-90)    32% (19-78)     61% (20-96)
 
   models/castle.ldr (run 24)    0% SNOT, 0% angled, 3% curves,
-                                71% plain, 22% near a shaped part,
+                                71% plain, 23% near a shaped part,
                                 55% symmetric
+
+The last two rows were measured again 2026-10-21, over the same sets,
+once part boxes were read with z flipped as well as y. Before, every
+lopsided part's box lay mirrored front to back about its origin, and
+they read castle 75% (52-85) and 53% (28-85), fantasy 91% and 31%
+(19-76), since 2010 59% (19-94) symmetric.
 
 Twelve of the fourteen castles are from 1984-1993, which is why castle
 SNOT is so low; 21325 Medieval Blacksmith (2021) is 34% SNOT, 26%
