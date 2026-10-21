@@ -464,13 +464,15 @@ func _read() -> void:
 			if _in_a_socket(id, stud[2]):
 				b = id
 				break
-		# And of a joint's two halves, only one whose cover has the tip:
-		# 6753-1's frame stands on bricks by its underside studs, and an axle
-		# turning in those bricks, which the studs do not reach, was read as
-		# on them and held its wheels to the frame.
+		# And of a joint's two halves, only one the stud reaches into, as the
+		# part is turned: the faces [method _sits_on] weighs are its box's,
+		# however far off. 6753-1's frame stands in the bricks beside it by
+		# its underside studs, and an axle turning in those bricks 70 LDU
+		# away, its top nearer the studs' feet, was read as on them and held
+		# its wheels to the frame.
 		if partners.has(b):
 			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array).filter(
-				func(other: int) -> bool: return owners.has(other)))
+				func(other: int) -> bool: return _reaches_into(other, stud[2], stud[3])))
 		if scenery.has(a) or scenery.has(b):
 			# On the baseplate's studs: a stud in one of its sockets, not a
 			# tyre the plate's studs touch. A tyre is rubber with no socket,
