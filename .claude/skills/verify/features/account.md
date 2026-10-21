@@ -38,7 +38,12 @@ they have. A Claude connector belongs to the account that switched it on.
   on the device may have renewed it. `keeps = false` for a run nobody is at
   (`Main` sets it from `_gate_wanted`): it starts signed out and never touches
   the person's session. Where to sign in comes from `Deployment`
-  (`accounts_url`, `accounts_key`, from `/api/account`).
+  (`accounts_url`, `accounts_key`, from `/api/account`), and where the parts
+  the build does not ship live (`parts_url`). An ask that goes unanswered in a
+  way that may pass (a timeout, a cut connection, a 5xx) is asked again after
+  2, 6 and 12 s before `settled`: asked once until 2026-10-20, a phone whose
+  start-up outlasted the 20 s timeout fetched no such part all visit
+  (`fetch_retry_probe`'s last part).
 - `account panel` (`src/ui/account_panel.gd`): Account on the toolbar.
   "Signed in as …", whether it was confirmed or is the offline one, what the
   account holds, Sign out (which switches the tab's connector off first;
