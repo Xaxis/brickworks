@@ -199,6 +199,11 @@ var own_words: String = ""
 ## The turn shown is not checked for room yet past [member _checked_angle].
 var unchecked: bool = false
 var _checked_angle: float = 0.0
+## A loop's pose kept where [member _checked_angle] stands (Linkage.kept_state),
+## where a pause's or the release's walk starts from ([method verify_step]).
+var _checked_kept: Array = []
+## Where the pointer let it go (GrabDrag), degrees or LDU; NAN until then.
+var let_go_at: float = NAN
 var _verify_from: int = 0
 var _verifying_lo: float = 0.0
 var _verifying_hi: Variant = null
@@ -431,6 +436,7 @@ func _chosen() -> String:
 				_capital(_named()), link.words().trim_prefix("on "), other_words,
 				loop.said()])
 		linkage = loop
+		_checked_kept = loop.kept_state()
 		moving_bodies = loop.moved
 		ours.clear()
 		moving.clear()
@@ -2505,9 +2511,9 @@ func _shown_on_trust(checked: bool, value: float, clear_to: float) -> void:
 func _stand_at(value: float) -> void:
 	_set_value(value)
 	placed = _pose_at(value)
-	_keep_loop()
 	_checked_angle = value
 	unchecked = false
+	_keep_loop()
 
 
 ## A big section met something at [param value], standing at [param at]: it
@@ -2539,8 +2545,15 @@ func verify_step() -> bool:
 	var began: int = Time.get_ticks_usec()
 	if _verifying_hi == null and linkage != null and _verify_kept.is_empty():
 		# The pose shown, solved from where the move began, kept to come back
-		# to once the way to it is checked ([method _walk]).
+		# to once the way to it is checked ([method _walk]). The way is walked
+		# from the pose checked last, as the drag showed it: solved off the
+		# pose shown, its steps were not the poses the drag had shown (42080-1's
+		# crane 127 LDU off at the end of the walk, 42024-1's actuator 0.02 LDU
+		# at its stop), and where they met something, a pose the drag never
+		# showed was kept: the actuator, let go at that stop, once 1.75 LDU in.
 		_verify_kept = linkage.kept_state()
+		if not _checked_kept.is_empty():
+			linkage.restore_kept(_checked_kept)
 	while _verifying_hi == null:
 		var next: float = _next_step(_checked_angle, now)
 		# As a move's own walk tests them: each part as often as it goes
@@ -2555,7 +2568,9 @@ func verify_step() -> bool:
 			if due.is_empty():
 				_checked_angle = next
 				continue
-		var r: Vector2i = _test(_pose_at(next), _verify_from, _pause_left(began), next == now, due)
+		# Where it was let go, the pose shown is what is kept, and what is tested.
+		var r: Vector2i = _test(placed if next == now and linkage != null and not placed.is_empty()
+			else _pose_at(next), _verify_from, _pause_left(began), next == now, due)
 		if r.x == -1:
 			_verify_from = r.y
 			return false
@@ -2565,14 +2580,21 @@ func verify_step() -> bool:
 			for key: int in due:
 				_verify_last[key] = next
 			_keep_loop()
+			if linkage != null and next != now:
+				_checked_kept = linkage.kept_state()
 			if next == now:
 				_end_verify_walk()
 				unchecked = false
+				if linkage != null:
+					_checked_kept = linkage.kept_state()
 				return true
 			continue
 		_end_verify_walk()
 		_verifying_hi = next
 		_verifying_lo = _checked_angle
+		# Bisected from the last step with room, as the walk got there.
+		if linkage != null and not _checked_kept.is_empty():
+			linkage.restore_kept(_checked_kept)
 	var hi: float = float(_verifying_hi)
 	# A slide is found to a tenth of an LDU, a turn to STOP_TO degrees.
 	if absf(hi - _verifying_lo) < (STOP_TO if mode == "turn" else 0.1):
@@ -2584,6 +2606,8 @@ func verify_step() -> bool:
 		unchecked = false
 		stopped = true
 		_checked_angle = _verifying_lo
+		if linkage != null:
+			_checked_kept = linkage.kept_state()
 		return true
 	var middle: float = (_verifying_lo + hi) * 0.5
 	var r2: Vector2i = _test(_pose_at(middle), _verify_from, _pause_left(began))
@@ -3018,6 +3042,8 @@ func _ball_reach() -> float:
 func _keep_loop() -> void:
 	if linkage != null:
 		linkage.keep()
+		if not unchecked and is_equal_approx(angle if mode == "turn" else shift, _checked_angle):
+			_checked_kept = linkage.kept_state()
 
 
 ## Slide it along its joint's line rather than turn it: a drag along the

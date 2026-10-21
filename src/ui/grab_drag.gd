@@ -433,6 +433,7 @@ func _let_go() -> String:
 	# clock at the release, which a slow frame between the last move and
 	# the button coming up (a browser drawing in software) made a stop.
 	held_fling = held.fling_rate(_held_seen_usec)
+	held.let_go_at = held.angle if held.mode != "slide" else held.shift
 	if held.unchecked:
 		# Checked from here, then kept: on a worker where there are threads,
 		# else a frame at a time (_process).
@@ -539,6 +540,12 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 		_clear_marks()
 	else:
 		words = "%s, %s" % [_capital(held.said), held.position_words()]
+		# Its way checked after it was let go met something short of there:
+		# kept at that stop, and said, never moved back unsaid.
+		var now_at: float = held.angle if held.mode != "slide" else held.shift
+		if not is_nan(held.let_go_at) and absf(now_at - held.let_go_at) > 0.01:
+			words += "; it stopped where %s, short of where it was let go" % (_met_words(held)
+				if not _met_words(held).is_empty() else "it meets the model")
 		if not swung.is_empty():
 			words += "; " + swung
 		if not own.is_empty():

@@ -24,6 +24,13 @@ whole cycle.
   wheel steers: 30° of it slides the rack 6.4 LDU, and 60° back 12.5 the
   other way. A stud no longer holds a part tilted past it that it does not
   reach: the column was read as held by one 13 LDU below it.
+- A loop let go after a drag is checked from where it was last checked, as
+  the drag got there, and the pose it is kept in is the one checked. Its way
+  was solved afresh from where it was let go, through poses the drag never
+  showed, and where that met something the section was put back there
+  without a word: 42024-1's actuator, let go at its stop 4 LDU out, was kept
+  once in three at 1.75. A stop found after the release is now said ("it
+  stopped where ..., short of where it was let go").
 - A loop turned in big steps comes back where it began. 8808-1's steering
   wheel turned 90°, -180° and 90° came back with its column 1.8 LDU along
   its axle; it comes back within 0.003 LDU.
