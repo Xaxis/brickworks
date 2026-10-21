@@ -120,9 +120,12 @@ func _motions() -> void:
 	var said: String = await _say("define_motion", {"name": "Extend the telescope",
 		"after": "Open the dome panel", "driver": {"joint": "#%d" % gear, "turns": 1.7, "seconds": 4}})
 	print("    " + said)
+	# Not on the shut dome. Since Grab 17 the carriage stops where it meets
+	# the bearing its axle turns in (#151), 574° of the 612°: before, it slid
+	# on into it, "clear all the way" (docs/MECHANISMS.md §28).
 	_check("define_motion checks a motion after the ones it follows",
-		said.contains("then \"Open the dome panel\", which it follows") and said.contains("clear all the way")
-		and not said.contains("stops at"))
+		said.contains("then \"Open the dome panel\", which it follows") and not said.contains("Quarter Dome")
+		and (said.contains("clear all the way") or said.contains("(#150) meets the Technic Brick 1 x 2 with Hole (#151)")))
 	_check("...and says the rack slid with it", said.contains("Technic Gear Rack") and said.contains(" slid "))
 	said = await _say("play_motion", {"name": "Open the dome panel"})
 	said = await _say("play_motion", {"name": "Extend the telescope"})
