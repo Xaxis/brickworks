@@ -5224,6 +5224,50 @@ took 1,249 s where `play127` took 1,845 s for them.
 - 8466-1's steering now moves both ways at its pinion (it was "Locked"), and
   a centre (#1165, 3326b) comes back 37 LDU off.
 
+### Kept where it was let go (Grab 19b)
+
+rel-m131 kept 42024-1's small actuator 1.75 LDU out once in three whole runs,
+where the drag had shown it at 4.00, its stop on the model (#688 meets #670):
+`--only=actuators`, "kept where it was let go". A loop's drag tests only the
+pose where the pointer is; its way is checked when the pointer pauses or lets
+go (`Grab.verify_step`), and where that walk meets something it is bisected
+and the section kept at the stop. The walk was solved from the pose shown: its
+first step jumped from there back to the value checked last, and each step on
+from the one before. Its poses were not the ones the drag had shown. Measured
+at the end of the walk against the pose shown, at the let-go value: 42024-1's
+actuator 0.0004 to 0.022 LDU from run to run, 42081-1's arm 0.018 to 0.021,
+and 42080-1's crane 127.6 LDU (a part that spins free, on another turn of
+it). With the old slope (section 28) it was the same: 0.0049, 0.0181 and
+127.6, so the step's least change was not the cause. At a stop where parts
+touch, a few hundredths decide whether the walk meets something before it.
+
+4. **The walk starts from the pose kept where it was checked last**
+   (`Grab._checked_kept`), as the drag got there, and at the let-go value tests
+   the pose shown, which is what is kept. A bisection goes on from the last
+   step with room. Measured again: 0.0064, 0.0078 and 127.6 LDU; the crane's
+   free part is still on another turn, so the walk's own poses still differ
+   from the drag's where a loop has freedom to spare.
+5. **A stop found after the release is said.** Where the walk meets something
+   short of where the pointer let go, the keep says "it stopped where the A
+   (#a) meets the B (#b), short of where it was let go" (`Grab.let_go_at`,
+   `GrabDrag._keep`); before, it said only where it stood.
+
+Forced (`repro/grab19_keep_repro.gd` in the results): the rod
+shown on trust at 6 LDU, past its stop, as a frame whose test is cut short
+shows it, and let go through `GrabDrag.release`. Kept at 1.75 LDU, the
+failing run's value: "it stopped where the Technic Pin Joiner Round with
+Slot (#686) meets the Technic Beam 4 x 6 Liftarm Bent 53.13 (#670), short of
+where it was let go". The same, with the poses at 1.5 to 4 LDU solved first
+(each clear by the two parts' exact shapes, each with room): kept at 4.31,
+where the long pin (#688) meets the model, the stop the drag found. So the
+walk met #686 only on a pose its own solve's history made: a false stop, and
+it is now said, not hidden.
+
+**Left:** the false stop itself. A loop with freedom to spare has no one pose
+for a value of its driver, and the walk cannot replay the drag's. Keeping
+each pose the drag showed (its kept state, a frame at a time) and walking
+between them, or a pose fixed by the driver's value alone, would end it.
+
 ### Checked
 
 On the final code: `grab_probe` headless whole, 178 passed and 35 failed,
