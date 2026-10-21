@@ -209,6 +209,11 @@ func joint_graph(bricks: Array) -> Dictionary:
 ##     studs == 1 and the parts' shapes.
 ##   "under": pair -> the id of the one under, for a stud pair: the one with
 ##     the studs.
+##   "overlapped": pair -> true for a stud pair the lift read only across
+##     covers that overlap, no stud's tip in either: a pin in a beam, a
+##     turntable's halves. It holds them as one, but by its pin, axle, hinge
+##     or turntable, or seated, not by studs: what joins a section says and
+##     weighs it so ([method joins]).
 ##   "turns": pair -> 1 for a shaft turning in a bore (a hinge's pin in its
 ##     eye, a turntable, a clip on a bar, a bar in a hollow stud: Joints.rounds)
 ##     and a ball in a socket (Joints.balls): joints that move.
@@ -237,7 +242,8 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 				Assemblies.path_of(brick)])
 	var kinds: Dictionary = {"turns": [Joints.rounds(entries), Joints.balls(entries)],
 		"pins": [Joints.both_ways(entries)], "fixed": [Joints.held_otherwise(entries, library)]}
-	var out: Dictionary = {"studs": studs, "under": under, "links": {}}
+	var out: Dictionary = {"studs": studs, "under": under, "overlapped": joints["overlapped"],
+		"links": {}}
 	for kind: String in kinds:
 		var found: Dictionary = {}
 		for held: Dictionary in kinds[kind]:
@@ -430,10 +436,16 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 					sits[c] = true
 			else:
 				made.links += 1
+	# A pair read only across covers that overlap is held by its pin, axle,
+	# hinge or turntable, or seated: one joint, not studs to stand on.
+	var overlapped: Dictionary = graph["overlapped"]
 	for key: int in studs:
 		if pace.due():
 			await pace.next()
-		tally.call(key, true)
+		if not overlapped.has(key):
+			tally.call(key, true)
+		elif not links.has(key):
+			tally.call(key, false)
 	for key: int in links:
 		if pace.due():
 			await pace.next()
@@ -1218,6 +1230,12 @@ func _rejoin() -> void:
 		var b: Suggestion = section_of[key & 0xFFFFFFFF]
 		if a == b:
 			continue
+		# Held by its pin, axle, hinge or turntable, or seated ([method joins]).
+		if (graph["overlapped"] as Dictionary).has(key):
+			if not (graph["links"] as Dictionary).has(key):
+				a.links += 1
+				b.links += 1
+			continue
 		a.studs += int(graph["studs"][key])
 		b.studs += int(graph["studs"][key])
 		var low: int = int(graph["under"][key])
@@ -1375,6 +1393,10 @@ func find_section(asked: String) -> String:
 ## every part beside it: two parts whose covers overlap, a pin in a beam or
 ## two turned plates side by side, are not stood on each other, and a stud
 ## pointing sideways holds what is on it: the part with the studs carries.
+## A pair the lift reads only across covers that overlap, with no stud's tip
+## in either (stud_joints' "overlapped"), is held by its pin, axle, hinge or
+## turntable, or seated, as Balance weighs it: one joint of "links", not
+## studs. Read as studs, a turntable held its top on 342 of them.
 func joins(ids: Dictionary) -> Dictionary:
 	var lattice: BrickLattice = builder.lattice
 	var bricks: Array = []
@@ -1403,10 +1425,14 @@ func joins(ids: Dictionary) -> Dictionary:
 	var on: Dictionary = {}
 	var carries: Dictionary = {}
 	var studs: int = 0
+	var overlapped: Array = []
 	for key: int in joints["studs"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if ids.has(one) == ids.has(other):
+			continue
+		if (joints["overlapped"] as Dictionary).has(key):
+			overlapped.append(key)
 			continue
 		var theirs: int = other if ids.has(one) else one
 		var count: int = int(joints["studs"][key])
@@ -1440,6 +1466,13 @@ func joins(ids: Dictionary) -> Dictionary:
 				seen[key] = true
 				var theirs: int = b if ids.has(a) else a
 				links[theirs] = int(links.get(theirs, 0)) + 1
+	# Held by its pin, axle, hinge or turntable, as read just now, or seated.
+	for key: int in overlapped:
+		if seen.has(key):
+			continue
+		seen[key] = true
+		var theirs: int = (key & 0xFFFFFFFF) if ids.has(key >> 32) else key >> 32
+		links[theirs] = int(links.get(theirs, 0)) + 1
 	return {"on": on, "carries": carries, "links": links, "studs": studs,
 		"pins": seen.size()}
 

@@ -430,10 +430,15 @@ func _read() -> void:
 	# either is a single stud across.
 	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
 	# The baseplate's studs too: a part with one in a socket stands on the
-	# floor (below).
+	# floor (below). A tip is in the first part but its own whose cover has
+	# its cell, as Stability.stud_joints reads it: where two covers overlap
+	# the cell is in both, and the stud's own part named first had it in
+	# nothing.
 	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
-		var there: int = lattice.brick_at(BrickLattice.to_cell(tip))
-		return there if there != 0 and there != int(key) else null)
+		for there: int in lattice.bricks_at(BrickLattice.to_cell(tip), int(key)):
+			if _up.has(there) or scenery.has(there):
+				return there
+		return null)
 	# Which parts turn against which: a stud reaching into one of them may be
 	# in the other, the two sharing cells round their joint.
 	var partners: Dictionary = {}   ## id -> Array of ids it turns against
