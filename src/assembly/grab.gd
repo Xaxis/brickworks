@@ -613,6 +613,8 @@ func _chosen() -> String:
 ## turns in, and by nothing else that moves.
 func _join_across(ours: Dictionary) -> void:
 	_across.clear()
+	_verdicts.clear()
+	_along.clear()
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
 			if ours.has(joined.other(one)):
@@ -1803,8 +1805,13 @@ func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 		# Its box first (as [method _boxes_meet] asks it): the cover is asked
 		# where something is box by box, and 42081-1's fairing against the
 		# 2,573 boxes of a frame its box was not into took 42 ms a frame.
-		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
-				or not _into_cover(mesh, to, to * mesh.bounds, other):
+		# What it may go through whatever the pose (its partner across the
+		# joint, what it touched as built) is not asked of the cover at all:
+		# asked first, box by box and then by the cover, 8808-1's steering
+		# arms took a frame 0.4 ms each on the plates their kingpins stand
+		# in, ten times what they took before Grab 17 tested those plates.
+		if skip.has(other) or _verdict_of(key, other) == FORGIVEN or _scrubs(key, other) \
+				or _bends_aside(other) or not _into_cover(mesh, to, to * mesh.bounds, other):
 			continue
 		# Theirs a cell further back is ours a cell further on.
 		var theirs: PackedInt32Array = builder.lattice.boxes_of(other)
@@ -1928,13 +1935,28 @@ func _slides_over(key: int, mesh: Lbm.PartMesh, to: Transform3D, other: int) -> 
 	var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
 	if their_mesh == null:
 		return false
+	if _along_for != axis:
+		_along_for = axis
+		_along.clear()
 	var now: Vector2 = Grab._reach_along(to, mesh.bounds, axis)
-	var was: Vector2 = Grab._reach_along(rest[key], mesh.bounds, axis)
+	# Where it stood and where the other stands, kept for the grab: neither
+	# moves while it lasts.
+	if not _along.has(key):
+		_along[key] = Grab._reach_along(rest[key], mesh.bounds, axis)
+	var was: Vector2 = _along[key]
 	if absf(now.x - was.x) > 0.5 or absf(now.y - was.y) > 0.5:
 		return false
-	var theirs: Vector2 = Grab._reach_along(them.transform, their_mesh.bounds, axis)
+	if not _along.has(other):
+		_along[other] = Grab._reach_along(them.transform, their_mesh.bounds, axis)
+	var theirs: Vector2 = _along[other]
 	var end_on: float = Joints.STUD_REACH + 0.5
 	return theirs.y - was.x <= end_on or was.y - theirs.x <= end_on
+
+
+## [method _slides_over]'s reaches along the grab's line, of the moving
+## parts where they stood and of what they may meet: brick id -> Vector2.
+var _along: Dictionary = {}
+var _along_for := Vector3.ZERO
 
 
 ## Whether the part [param mesh] at [param to] and [param other] only touch:
@@ -1957,27 +1979,32 @@ func _touching(mesh: Lbm.PartMesh, to: Transform3D, other: int) -> bool:
 static func box_depth(a_at: Transform3D, a_box: AABB, b_at: Transform3D, b_box: AABB) -> float:
 	# Each box as its middle and its three half edges, carried: its shadow on
 	# a line reaches the half edges' reaches either side of its middle's.
+	# Held in locals, not arrays: asked for every pair near a moving part
+	# every frame, the arrays were most of what it cost.
 	var a_mid: Vector3 = a_at * a_box.get_center()
 	var b_mid: Vector3 = b_at * b_box.get_center()
-	var a_edges: Array[Vector3] = [a_at.basis[0] * (a_box.size.x * 0.5), a_at.basis[1] * (a_box.size.y * 0.5),
-		a_at.basis[2] * (a_box.size.z * 0.5)]
-	var b_edges: Array[Vector3] = [b_at.basis[0] * (b_box.size.x * 0.5), b_at.basis[1] * (b_box.size.y * 0.5),
-		b_at.basis[2] * (b_box.size.z * 0.5)]
-	var lines: Array[Vector3] = []
-	for k: int in 3:
-		lines.append(a_at.basis[k].normalized())
-		lines.append(b_at.basis[k].normalized())
+	var a0: Vector3 = a_at.basis[0] * (a_box.size.x * 0.5)
+	var a1: Vector3 = a_at.basis[1] * (a_box.size.y * 0.5)
+	var a2: Vector3 = a_at.basis[2] * (a_box.size.z * 0.5)
+	var b0: Vector3 = b_at.basis[0] * (b_box.size.x * 0.5)
+	var b1: Vector3 = b_at.basis[1] * (b_box.size.y * 0.5)
+	var b2: Vector3 = b_at.basis[2] * (b_box.size.z * 0.5)
+	var a_lines: PackedVector3Array = [a_at.basis[0].normalized(), a_at.basis[1].normalized(),
+		a_at.basis[2].normalized()]
+	var b_lines: PackedVector3Array = [b_at.basis[0].normalized(), b_at.basis[1].normalized(),
+		b_at.basis[2].normalized()]
+	var lines: PackedVector3Array = [a_lines[0], b_lines[0], a_lines[1], b_lines[1], a_lines[2], b_lines[2]]
 	for i: int in 3:
 		for j: int in 3:
-			var across: Vector3 = a_at.basis[i].normalized().cross(b_at.basis[j].normalized())
+			var across: Vector3 = a_lines[i].cross(b_lines[j])
 			if across.length() > 0.001:
 				lines.append(across.normalized())
 	var least: float = INF
 	for way: Vector3 in lines:
 		var a_at_way: float = a_mid.dot(way)
-		var a_reach: float = absf(a_edges[0].dot(way)) + absf(a_edges[1].dot(way)) + absf(a_edges[2].dot(way))
+		var a_reach: float = absf(a0.dot(way)) + absf(a1.dot(way)) + absf(a2.dot(way))
 		var b_at_way: float = b_mid.dot(way)
-		var b_reach: float = absf(b_edges[0].dot(way)) + absf(b_edges[1].dot(way)) + absf(b_edges[2].dot(way))
+		var b_reach: float = absf(b0.dot(way)) + absf(b1.dot(way)) + absf(b2.dot(way))
 		least = minf(least, minf(a_at_way + a_reach, b_at_way + b_reach) - maxf(a_at_way - a_reach, b_at_way - b_reach))
 	return least
 
@@ -2058,20 +2085,49 @@ func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 ## press would answer, so a turn tested later finds what one tested earlier
 ## found. [param mesh] at [param to]: where [param key] is tested.
 func _pair_forgiven(key: int, other: int, mesh: Lbm.PartMesh, to: Transform3D) -> bool:
+	var verdict: int = _verdict_of(key, other)
+	return verdict == FORGIVEN or verdict == NO_DEEPER and _no_deeper(key, other, mesh, to)
+
+
+## [method _verdict] for the pair, kept for the grab ([member _verdicts]).
+func _verdict_of(key: int, other: int) -> int:
+	var pair := Vector2i(key, other)
+	var verdict: int = int(_verdicts.get(pair, -1))
+	if verdict < 0:
+		verdict = _verdict(key, other)
+		_verdicts[pair] = verdict
+	return verdict
+
+
+## [method _pair_forgiven]'s answer for the grab, but where it is the pair's
+## depth now: [constant FORGIVEN], [constant NO_DEEPER] or 0, never.
+func _verdict(key: int, other: int) -> int:
 	var across: Dictionary = _across.get(other, {})
 	if across.has(key):
-		return true
+		return FORGIVEN
 	var with: Dictionary = _rest_with(other)
 	if with.has(key) or _touched_as_built(key, other):
-		return _both_exact(key, other) or _no_deeper(key, other, mesh, to)
+		return FORGIVEN if _both_exact(key, other) else NO_DEEPER
 	# Not for the parts joined to it: an axle is in its bearing as built, and
 	# says nothing of how far a cover reaches past its part. Their shapes are
 	# asked last: read from disk the first time, 16 of them took 42081-1's
 	# arm's drag frame 49 ms.
 	for one: int in with:
 		if not across.has(one):
-			return not _both_exact(key, other) and _no_deeper(key, other, mesh, to)
-	return false
+			return 0 if _both_exact(key, other) else NO_DEEPER
+	return 0
+
+
+## [method _verdict]s: forgiven whatever the pose, or as far as no deeper
+## ([method _no_deeper]).
+const FORGIVEN := 1
+const NO_DEEPER := 2
+## Each pair's [method _verdict] for the grab, Vector2i(moving, other) -> it:
+## asked of every part near each moving part every frame, it read the parts'
+## names and shapes afresh each time, a fifth of 8808-1's steering's room
+## test once its front wheels were tested against the plates their kingpins
+## stand in (Grab 17). What it reads stays as it is while the grab lasts.
+var _verdicts: Dictionary = {}
 
 
 ## Whether [param key]'s box, [param mesh] at [param to], is no further into
@@ -2301,26 +2357,112 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 ## into a box of [param other]'s cover, which hugs it, by more than
 ## [constant TOUCHING].
 func _into_cover(mesh: Lbm.PartMesh, to: Transform3D, box: AABB, other: int) -> bool:
-	var cover: PackedInt32Array = builder.lattice.boxes_of(other)
-	var cell_size: float = BrickLattice.CELL
+	var pieces: PackedVector3Array = _pieces(other)
 	# A piece whose box the part's own box, square to the grid, is not
 	# into by more than TOUCHING along some axis is not into the part's
 	# turned box either: the three axes are three of box_depth's fifteen
 	# lines, and along them the part's turned box reaches as far as its
 	# box does. Asked first: a neighbour of hundreds of boxes cost 42081-1's
 	# drag 9 ms a frame by the fifteen lines alone.
-	var lo: Vector3 = box.position / cell_size + Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
-	var hi: Vector3 = box.end / cell_size - Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
-	for at: int in range(0, cover.size(), 6):
-		if float(cover[at + 3]) <= lo.x or float(cover[at]) >= hi.x or float(cover[at + 4]) <= lo.y \
-				or float(cover[at + 1]) >= hi.y or float(cover[at + 5]) <= lo.z or float(cover[at + 2]) >= hi.z:
+	var lo: Vector3 = box.position + Vector3.ONE * (TOUCHING - 0.01)
+	var hi: Vector3 = box.end - Vector3.ONE * (TOUCHING - 0.01)
+	# Then box_depth's fifteen lines, the part's own reach along each worked
+	# out once for all the pieces: carried afresh for each piece, they were
+	# half the room test of 8808-1's steering, its front wheels against the
+	# plates their kingpins stand in (Grab 17 tests those; it skipped them).
+	var lines := PackedVector3Array()
+	var reach := PackedFloat64Array()
+	for at: int in range(0, pieces.size(), 4):
+		var low: Vector3 = pieces[at]
+		var high: Vector3 = pieces[at + 1]
+		if high.x <= lo.x or low.x >= hi.x or high.y <= lo.y or low.y >= hi.y or high.z <= lo.z or low.z >= hi.z:
 			continue
+		if lines.is_empty():
+			lines = Grab._square_lines(to.basis)
+			reach = Grab._reach_on(to, mesh.bounds, lines)
+		if Grab._into_square(lines, reach, pieces[at + 2], pieces[at + 3], TOUCHING):
+			return true
+	return false
+
+
+## [param other]'s cover, which stays where it is while the grab lasts, as
+## its pieces' low and high corners, middles and half sizes in LDU, four to
+## a piece: read from the lattice's cells once, not for each moving part
+## near it each frame.
+func _pieces(other: int) -> PackedVector3Array:
+	if _pieces_for != world.revision:
+		_pieces_for = world.revision
+		_pieces_of.clear()
+	if _pieces_of.has(other):
+		return _pieces_of[other]
+	var cover: PackedInt32Array = builder.lattice.boxes_of(other)
+	var cell_size: float = BrickLattice.CELL
+	var out := PackedVector3Array()
+	for at: int in range(0, cover.size(), 6):
 		var piece := AABB(Vector3(cover[at], cover[at + 1], cover[at + 2]) * cell_size,
 			Vector3(cover[at + 3] - cover[at], cover[at + 4] - cover[at + 1],
 				cover[at + 5] - cover[at + 2]) * cell_size)
-		if Grab.box_depth(to, mesh.bounds, Transform3D.IDENTITY, piece) > TOUCHING:
-			return true
-	return false
+		out.append(piece.position)
+		out.append(piece.end)
+		out.append(piece.get_center())
+		out.append(piece.size * 0.5)
+	_pieces_of[other] = out
+	return out
+
+
+var _pieces_of: Dictionary = {}
+var _pieces_for: int = -1
+
+
+## [method box_depth]'s lines for a box turned by [param turned] against one
+## square to the grid: its own three, the grid's three, and those square to
+## one of each.
+static func _square_lines(turned: Basis) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var grid: Array[Vector3] = [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
+	for k: int in 3:
+		out.append(turned[k].normalized())
+	for i: int in 3:
+		for j: int in 3:
+			var across: Vector3 = turned[i].normalized().cross(grid[j])
+			if across.length() > 0.001:
+				out.append(across.normalized())
+	# The grid's last: a piece [method _into_cover] asks has passed them.
+	for k: int in 3:
+		out.append(grid[k])
+	return out
+
+
+## How far [param box] at [param at] reaches along each of [param lines]:
+## its low and high end on each, in turn.
+static func _reach_on(at: Transform3D, box: AABB, lines: PackedVector3Array) -> PackedFloat64Array:
+	var middle: Vector3 = at * box.get_center()
+	var edges: Array[Vector3] = [at.basis[0] * (box.size.x * 0.5), at.basis[1] * (box.size.y * 0.5),
+		at.basis[2] * (box.size.z * 0.5)]
+	var out := PackedFloat64Array()
+	for way: Vector3 in lines:
+		var mid: float = middle.dot(way)
+		var half: float = absf(edges[0].dot(way)) + absf(edges[1].dot(way)) + absf(edges[2].dot(way))
+		out.append(mid - half)
+		out.append(mid + half)
+	return out
+
+
+## Whether a turned box is into a piece square to the grid, its [param
+## middle] and [param half] its size, by more than [param depth]: [method
+## box_depth] over [param depth], from the box's [param lines] and its
+## [param reach] on them as [method _reach_on] gives them, its half of the
+## measure worked out once. Done at the first line along which they are no
+## deeper.
+static func _into_square(lines: PackedVector3Array, reach: PackedFloat64Array, middle: Vector3,
+		half: Vector3, depth: float) -> bool:
+	for n: int in lines.size():
+		var way: Vector3 = lines[n]
+		var mid: float = middle.dot(way)
+		var spread: float = absf(half.x * way.x) + absf(half.y * way.y) + absf(half.z * way.z)
+		if minf(reach[n * 2 + 1], mid + spread) - maxf(reach[n * 2], mid - spread) <= depth:
+			return false
+	return true
 
 
 var _near_part: int = 0
