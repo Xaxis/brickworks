@@ -16,8 +16,13 @@
 # probe's user:// is never the owner's app data, and never another run's.
 # It is removed when the probe passes and kept when it fails.
 # PROBE_DATA=DIR names one instead. The exit is the probe's, 1 when
-# the script failed to load (Godot exits 0 for that), and 3 when the
-# probe skipped itself.
+# the script failed to load (Godot exits 0 for that), 2 when it was not
+# run, and 3 when the probe skipped itself.
+#
+# Runs at once in one checkout are safe: a probe never writes .godot. Its
+# class list is brought up to date first when it is behind the scripts
+# (tools/fresh_import.sh, one import a checkout), and the probe is not run
+# when even an import leaves it behind.
 # PROBE_DRY=1 prints the command and runs nothing. PROBE_SIZE=WxH runs
 # a windowed probe in a window of that size instead of its header's (Xvfb
 # has no window manager, so a probe cannot resize its own window).
@@ -39,6 +44,11 @@ block=$(awk -v s="--script $file" '
   { cont = 0 }' "$file")
 if [ -z "$block" ]; then
   echo "probe.sh: $file's header gives no command (--script $file); write one there first" >&2
+  exit 2
+fi
+
+if [ -z "${PROBE_DRY:-}" ] && ! tools/fresh_import.sh; then
+  echo "probe.sh: $name not run: its class list is behind the scripts (above)"
   exit 2
 fi
 
