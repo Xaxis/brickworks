@@ -26,6 +26,24 @@ whole cycle.
   each a card with its pictures. A tab with nothing in it says what goes
   there. Links, the banner and the pins are chosen under Settings on your
   account. Nobody's followers are listed, as before.
+- On brickworks.diy a model's page leads with its picture: on a phone the
+  picture, its name, its designer and what you can do with it are the
+  first screen, and on a laptop the column beside the picture stays in view
+  as you read down. The designer has a face, a name and handle that go to
+  their profile, and Follow beside them. Like, Save, Share, Comment, I built
+  it and More are one row of buttons, each with its count once there is
+  one. Save puts the model in your favourites or any of your collections
+  from one list, favourites first. Share copies the link, or opens your
+  phone's share sheet. More copies the code to embed the model in a page
+  of your own, and is where to report it. Build it opens it in 3D. Under
+  the picture, a strip of its other pictures: its designer's own photos of
+  it, added from the page, then photos of real builds; choose one to see it
+  large. Below, tabs that stay in view, About, Comments, Builds, Remixes
+  and Versions, each with its count. Where nobody has commented, built or
+  remixed it yet, the page says so in a line, with the way to be first. It
+  ends with more by the same designer and models like it, by kind and tags,
+  whenever there are three or more to show, and otherwise with more from
+  the gallery, so there is always another model to open.
 
 ## [0.5.0] - 2026-10-22
 

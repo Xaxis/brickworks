@@ -98,6 +98,8 @@ try {
   listen(page, "visitor");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load", timeout: 60000 });
   await page.waitForSelector("button[data-report]:not([hidden])", { timeout: 20000 });
+  // Report it is in the action bar's More (web/model-page.js).
+  await page.click("#more > summary");
   await page.click("button[data-report]");
   await page.waitForSelector("dialog.report[open]", { timeout: 15000 });
   await page.check('dialog.report input[value="copied"]');

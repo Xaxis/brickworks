@@ -1,8 +1,9 @@
-// A shared model's page, /m/<id>, for somebody signed in (the directory,
-// 2026-10-13): Like, Favourite and Add to a collection, each asking to sign
-// in first when this browser is not (web/account.js), and each a call to
-// /api/people. What the page shows without it — the counts, the way into
-// the viewer — needs none of this.
+// A shared model's page, /m/<id> (the directory, 2026-10-13): its action
+// bar (2026-10-22, docs/SOCIAL.md U4): Like, Save (your favourites and your
+// collections, in one list), Share, Comment, I built it and More, Like and
+// Save asking to sign in first when this browser is not (web/account.js),
+// each a call to /api/people. What the page shows without it — the
+// counts, the way into the viewer — needs none of this.
 //
 // Every name shown here (a collection's) is put on the page as text.
 //
@@ -15,7 +16,11 @@
 // markup, and a link in it stays words.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
+import { toast } from "/kit.js";
 
+// The comments' own loader, once they are listed (startComments), for
+// Comment in the action bar to list them again after signing in.
+let commentsLoaded = null;
 const marks = document.getElementById("marks");
 const id = marks && marks.dataset.id;
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
@@ -24,6 +29,87 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
+
+// The strip of its pictures (api/share.js mediaStrip): the one chosen is
+// shown in the picture's place, whole, and edged in the strip. The picture
+// is still the way into the viewer.
+const strip = document.getElementById("pictures");
+if (strip) startPictures(strip);
+// The page's tabs: the part being read is marked as the page scrolls.
+const tabs = document.getElementById("page-tabs");
+if (tabs) startTabs(tabs);
+
+function startPictures(row) {
+  const big = document.querySelector(".model-page .picture");
+  const img = big && big.querySelector("img");
+  if (!img) return;
+  row.addEventListener("click", (event) => {
+    const thumb = event.target.closest("a.thumb[data-picture]");
+    if (!thumb) return;
+    event.preventDefault();
+    img.src = thumb.dataset.picture;
+    img.alt = thumb.querySelector("img")?.alt || img.alt;
+    // The published picture fills its frame; a photo is shown whole.
+    big.classList.toggle("photo", thumb.getAttribute("href").startsWith("#"));
+    for (const one of row.querySelectorAll("a.thumb")) one.removeAttribute("aria-current");
+    thumb.setAttribute("aria-current", "true");
+  });
+}
+
+/// The tab of the part at the top of the screen, under the tabs; a tab
+/// chosen stays marked until the reader scrolls on themselves, since the
+/// last parts are often too short to reach the top.
+function startTabs(nav) {
+  const links = [...nav.querySelectorAll("a[data-tab]")];
+  let held = "";
+  let queued = false;
+  const mark = (key) => {
+    for (const link of links) {
+      if (link.dataset.tab !== key) {
+        link.removeAttribute("aria-current");
+        continue;
+      }
+      link.setAttribute("aria-current", "true");
+      // On a phone the row scrolls inside itself: the marked tab in view.
+      if (link.offsetLeft < nav.scrollLeft || link.offsetLeft + link.offsetWidth > nav.scrollLeft + nav.clientWidth) {
+        nav.scrollLeft = Math.max(0, link.offsetLeft - 16);
+      }
+    }
+  };
+  const stuckAt = parseFloat(getComputedStyle(nav).top) || 0;
+  const reading = () => {
+    queued = false;
+    // Only stuck under the header does it need a ground of its own: under
+    // the picture, it would cut across the picture's shadow.
+    nav.classList.toggle("loose", nav.getBoundingClientRect().top > stuckAt + 1);
+    if (held) return mark(held);
+    // The part read is the one across the top third of what shows under the tabs.
+    const under = nav.getBoundingClientRect().bottom;
+    const line = under + Math.max(16, (innerHeight - under) / 3);
+    let key = links[0]?.dataset.tab || "";
+    for (const link of links) {
+      const part = document.getElementById(link.dataset.tab);
+      if (part && !part.hidden && !link.hidden && part.getBoundingClientRect().top <= line) key = link.dataset.tab;
+    }
+    mark(key);
+  };
+  addEventListener("scroll", () => {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(reading);
+    }
+  }, { passive: true });
+  for (const name of ["wheel", "touchmove", "keydown"]) {
+    addEventListener(name, () => { held = ""; }, { passive: true });
+  }
+  nav.addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-tab]");
+    if (!link) return;
+    held = link.dataset.tab;
+    mark(held);
+  });
+  reading();
+}
 
 function startComments(section) {
   const model = section.dataset.id;
@@ -49,12 +135,19 @@ function startComments(section) {
       const reply = await fetch(path, { headers: { accept: "application/json" } });
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
     }
-    if (answer.status !== 200) return say(answer.body.error || "The comments did not load just now.");
+    if (answer.status !== 200) {
+      // The section stays hidden, and so does its tab.
+      const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
+      if (tab && section.hidden) tab.hidden = true;
+      return say(answer.body.error || "The comments did not load just now.");
+    }
     state = answer.body;
     // Not open on this deployment yet (comments.sql): nothing to show.
     section.hidden = state.ready === false;
     draw();
+    commentsSaid(state, setOpen);
   }
+  commentsLoaded = { reload: load };
 
   function button(words, run, kind = "link") {
     const made = document.createElement("button");
@@ -115,7 +208,10 @@ function startComments(section) {
       item.append(acts);
       list.append(item);
     }
-    if (!(state.comments || []).length) {
+    // None yet: one line, and the way in (the box, or Sign in to comment).
+    const empty = !(state.comments || []).length;
+    section.querySelector(".comments-lede").hidden = empty;
+    if (empty) {
       const none = document.createElement("li");
       none.className = "note none";
       none.textContent = state.open ? "Nobody has commented yet." : "No comments.";
@@ -129,7 +225,7 @@ function startComments(section) {
       const words = document.createElement("p");
       words.className = "note";
       words.textContent = you.why_not || "";
-      why.append(words);
+      if (you.signed_in || !empty) why.append(words);
       if (!you.signed_in) {
         why.append(button("Sign in to comment", async () => {
           if (await askToSignIn("Sign in to add a comment: we email you a code, no password.")) await load();
@@ -218,9 +314,16 @@ function buildPhotos(box) {
   const said = form.querySelector(".said");
   const told = box.querySelector(".build-said");
   const strip = () => document.querySelector("#builds .build-strip");
+  const pictures = document.getElementById("pictures");
+  const addPicture = pictures && pictures.querySelector("[data-add-picture]");
   const MOST = 8 * 1024 * 1024;
   let state = null;
   box.hidden = false;
+  // The owner's own pictures go the same way, from the strip's last tile.
+  addPicture?.addEventListener("click", () => {
+    document.getElementById("builds")?.scrollIntoView({ block: "start" });
+    open.click();
+  });
 
   const say = (text) => { said.textContent = text; };
 
@@ -232,8 +335,17 @@ function buildPhotos(box) {
     if (answer.status !== 200) return;
     state = answer.body;
     if (state.left === 0) open.textContent = "You have added three photos: the most";
+    else if (state.owner) open.textContent = "Add a picture of it";
     open.disabled = state.left === 0;
     if (state.owner) ownerTools(state.photos || []);
+    // Its owner adds pictures of their own under the picture: they lead
+    // the strip (api/share.js mediaStrip), shown to them even while empty.
+    if (state.owner && addPicture) {
+      pictures.hidden = false;
+      addPicture.hidden = false;
+      addPicture.disabled = state.left === 0;
+      addPicture.textContent = state.left === 0 ? "Three added" : "Add a picture";
+    }
     document.documentElement.dataset.buildPhotos = state.owner ? "owner" : "ready";
   }
 
@@ -366,6 +478,24 @@ function buildPhotos(box) {
     caption.append(by);
     figure.append(img, caption);
     row.prepend(figure);
+    // And in the strip under the picture: the owner's with theirs, first.
+    if (pictures) {
+      const thumb = document.createElement("a");
+      thumb.className = "thumb";
+      thumb.href = `#photo-${photo.id}`;
+      thumb.dataset.picture = img.src;
+      if (state?.owner) thumb.dataset.own = "";
+      const small = document.createElement("img");
+      small.src = img.src;
+      small.alt = state?.owner ? "Your picture of it" : "Your build";
+      thumb.append(small);
+      const own = pictures.querySelectorAll("a.thumb[data-own]");
+      const after = state?.owner ? pictures.querySelector("a.thumb:not([href^='#'])") : own[own.length - 1]
+        || pictures.querySelector("a.thumb:not([href^='#'])");
+      if (after) after.after(thumb);
+      else pictures.prepend(thumb);
+      pictures.hidden = false;
+    }
   }
 
   load();
@@ -391,44 +521,112 @@ async function noteForOwner(note) {
   document.documentElement.dataset.testedNote = "shown";
 }
 
+/// An icon button's count, and its name and count as its label ("Like, 12
+/// likes"; "Like" at none), as web/kit.js iconButtonHtml draws them: a
+/// count of none is not shown.
+function setCount(button, n, name, one, many = `${one}s`) {
+  if (!button) return;
+  const value = Number(n) || 0;
+  let shown = button.querySelector(".n");
+  if (value && !shown) {
+    shown = document.createElement("span");
+    shown.className = "n";
+    shown.setAttribute("aria-hidden", "true");
+    button.append(shown);
+  }
+  if (shown && !value) shown.remove();
+  else if (shown) shown.textContent = value.toLocaleString("en-US");
+  button.setAttribute("aria-label", value ? `${name}, ${value.toLocaleString("en-US")} ${value === 1 ? one : many}` : name);
+}
+
+/// A tab's count (api/share.js pageTabs), never one of none.
+function tabCount(tab, n) {
+  const value = Number(n) || 0;
+  let shown = tab.querySelector(".n");
+  if (!value) return shown?.remove();
+  if (!shown) {
+    shown = document.createElement("span");
+    shown.className = "n";
+    tab.append(" ", shown);
+  }
+  shown.textContent = value.toLocaleString("en-US");
+}
+
+/// [text] on the clipboard: the browser's clipboard where the page may use
+/// it (a secure page), else the older way, through a selection. Whether it
+/// went.
+async function copy(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // The older way, below.
+  }
+  const box = document.createElement("textarea");
+  box.value = text;
+  box.setAttribute("readonly", "");
+  box.className = "visually-hidden";
+  document.body.append(box);
+  box.select();
+  let done = false;
+  try {
+    done = document.execCommand("copy");
+  } catch {
+    done = false;
+  }
+  box.remove();
+  return done;
+}
+
+/// The action bar (api/share.js actionBar): Like; Save, which opens your
+/// lists, Favourites first (docs/SOCIAL.md D2); Share, the phone's share
+/// sheet where there is one and else the link copied; Comment and I built
+/// it, which go to their sections; and More: the embed code, Report it,
+/// Takedown requests, and the owner's own. Like and Save ask to sign in
+/// first when this browser is not.
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
-  const keep = marks.querySelector('[data-mark="favourite"]');
-  const collect = marks.querySelector("details.collect");
-  const lists = marks.querySelector(".collect-list");
-  const make = marks.querySelector("form.collect-new");
-  const said = marks.querySelector(".said");
-  const likes = document.querySelector('[data-count="likes"]');
+  const save = marks.querySelector('[data-mark="save"]');
+  const share = marks.querySelector("[data-share]");
+  const comment = marks.querySelector('[data-mark="comment"]');
+  const built = marks.querySelector('[data-mark="built"]');
+  const embed = marks.querySelector("[data-embed]");
+  const panel = document.getElementById("save-panel");
+  const lists = panel.querySelector(".collect-list");
+  const make = panel.querySelector("form.collect-new");
+  const said = document.querySelector(".marks-said");
   let state = null;
-  marks.hidden = false;
 
   const say = (text) => { said.textContent = text; };
-  const counted = (n) => `${Number(n).toLocaleString("en-US")} like${Number(n) === 1 ? "" : "s"}`;
+
+  /// One of Save's lists: a box to tick, its name, and who sees it.
+  function listRow(name, where, has, change, key) {
+    const row = document.createElement("label");
+    row.dataset.list = key;
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = Boolean(has);
+    box.addEventListener("change", () => change(box));
+    const words = document.createElement("span");
+    words.textContent = String(name);
+    const who = document.createElement("small");
+    who.textContent = where;
+    row.append(box, words, who);
+    return row;
+  }
 
   function draw() {
     like.setAttribute("aria-pressed", String(Boolean(state && state.liked)));
-    like.textContent = state && state.liked ? "Liked" : "Like";
-    keep.setAttribute("aria-pressed", String(Boolean(state && state.favourite)));
-    keep.textContent = state && state.favourite ? "In your favourites" : "Favourite";
+    const saved = Boolean(state && (state.favourite || (state.collections || []).some((list) => list.has)));
+    save.toggleAttribute("data-on", saved);
+    save.setAttribute("aria-label", saved ? "Saved" : "Save");
     lists.replaceChildren();
-    for (const list of (state && state.collections) || []) {
-      const row = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = Boolean(list.has);
-      box.addEventListener("change", () => put(list, box));
-      const name = document.createElement("span");
-      name.textContent = String(list.name);
-      const where = document.createElement("small");
-      where.textContent = list.public ? "public" : "private";
-      row.append(box, name, where);
-      lists.append(row);
-    }
-    if (state && !(state.collections || []).length) {
-      const none = document.createElement("p");
-      none.className = "note";
-      none.textContent = "You have no collections yet: name one below.";
-      lists.append(none);
+    if (!state) return;
+    lists.append(listRow("Favourites", "only you", state.favourite, keep, "favourites"));
+    for (const list of state.collections || []) {
+      lists.append(listRow(list.name, list.public ? "public" : "only you", list.has, (box) => put(list, box), list.id));
     }
   }
 
@@ -456,30 +654,30 @@ function start() {
     like.disabled = false;
     if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
     state.liked = answer.body.liked;
-    if (likes) {
-      likes.textContent = counted(answer.body.likes);
-      // Never "0 likes": a count is said once there is one.
-      likes.hidden = !Number(answer.body.likes);
-    }
+    setCount(like, answer.body.likes, "Like", "like");
     say("");
     draw();
   });
 
-  keep.addEventListener("click", async () => {
-    if (!(await ready("Sign in to keep it in your favourites: we email you a code."))) return;
-    keep.disabled = true;
-    const answer = await call(`/api/people?op=favourite&id=${id}`, { method: "POST", body: { on: !state.favourite } });
-    keep.disabled = false;
-    if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
-    state.favourite = answer.body.favourite;
-    say(state.favourite ? "Kept. Your favourites are on your profile page." : "");
-    draw();
+  save.addEventListener("click", async () => {
+    if (!(await ready("Sign in to save it: we email you a code, no password."))) return;
+    panel.hidden = !panel.hidden;
+    save.setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) lists.querySelector("input")?.focus();
   });
 
-  collect.addEventListener("toggle", async () => {
-    if (!collect.open) return;
-    if (!(await ready("Sign in to put it in a collection: we email you a code."))) collect.open = false;
-  });
+  async function keep(box) {
+    box.disabled = true;
+    const answer = await call(`/api/people?op=favourite&id=${id}`, { method: "POST", body: { on: box.checked } });
+    box.disabled = false;
+    if (answer.status !== 200) {
+      box.checked = !box.checked;
+      return say(answer.body.error || "That did not work just now.");
+    }
+    state.favourite = answer.body.favourite;
+    say(state.favourite ? "Saved to your favourites, on your account page." : "Out of your favourites.");
+    draw();
+  }
 
   async function put(list, box) {
     box.disabled = true;
@@ -491,7 +689,8 @@ function start() {
       return say(answer.body.error || "That did not work just now.");
     }
     list.has = box.checked;
-    say(box.checked ? `In ${list.name}.` : `Out of ${list.name}.`);
+    say(box.checked ? `Saved to ${list.name}.` : `Out of ${list.name}.`);
+    draw();
   }
 
   make.addEventListener("submit", async (event) => {
@@ -508,7 +707,86 @@ function start() {
     await load();
   });
 
+  // The page's own address (an older version's is its own), to the phone's
+  // share sheet where the browser has one, else onto the clipboard.
+  share.addEventListener("click", async () => {
+    const url = `${location.origin}${location.pathname}`;
+    const title = document.querySelector("main h1")?.textContent || document.title;
+    if (typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url }))) {
+      try {
+        await navigator.share({ title, url });
+        document.documentElement.dataset.shared = "sheet";
+        return;
+      } catch (trouble) {
+        // Closed without sharing: nothing more to do.
+        if (trouble && trouble.name === "AbortError") return;
+      }
+    }
+    const done = await copy(url);
+    document.documentElement.dataset.shared = done ? "copied" : "failed";
+    toast(done ? "Link copied" : "Copy this page's address to share it");
+  });
+
+  embed.addEventListener("click", async () => {
+    embed.closest("details").open = false;
+    const done = await copy(embed.dataset.embed);
+    toast(done ? "Embed code copied: paste it into a page" : "The embed code did not copy just now");
+  });
+
+  comment.addEventListener("click", async () => {
+    const section = document.getElementById("comments");
+    if (!section) return;
+    if (!signedIn() && !section.hidden && await askToSignIn("Sign in to add a comment: we email you a code, no password.")) {
+      await commentsLoaded?.reload();
+    }
+    section.scrollIntoView({ block: "start" });
+    const box = document.getElementById("comment-body");
+    if (box && !box.closest("form").hidden) box.focus({ preventScroll: true });
+  });
+
+  built.addEventListener("click", () => {
+    document.getElementById("builds")?.scrollIntoView({ block: "start" });
+    const add = document.querySelector("[data-add-build]");
+    if (add && !add.hidden && !add.disabled) add.click();
+    else document.querySelector('.build-form input[type="file"]')?.focus({ preventScroll: true });
+  });
+
   load();
+}
+
+/// What the comments, once listed, change in the action bar: Comment's
+/// count (the ones everybody sees), Comment gone where comments are not
+/// open on this deployment, and for the model's owner their own in More:
+/// comments off or on, and their models' numbers, in place of Report it.
+function commentsSaid(state, setOpen) {
+  const comment = marks && marks.querySelector('[data-mark="comment"]');
+  if (!comment) return;
+  comment.hidden = state.ready === false;
+  const shown = (state.comments || []).filter((one) => !one.hidden).length;
+  setCount(comment, shown, "Comment", "comment");
+  const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
+  if (tab) {
+    tab.hidden = state.ready === false;
+    tabCount(tab, shown);
+  }
+  const menu = marks.querySelector("#more .menu-list");
+  for (const old of menu.querySelectorAll(".owner-only")) old.remove();
+  if (!state.you?.owner) return;
+  menu.querySelector("[data-report]")?.setAttribute("hidden", "");
+  const turn = document.createElement("button");
+  turn.type = "button";
+  turn.className = "owner-only";
+  turn.textContent = state.open ? "Turn comments off" : "Turn comments on";
+  turn.addEventListener("click", () => {
+    marks.querySelector("#more").open = false;
+    setOpen(!state.open);
+  });
+  const numbers = document.createElement("a");
+  numbers.className = "owner-only";
+  numbers.href = "/profile#designs";
+  numbers.textContent = "How your models are doing";
+  menu.prepend(turn, numbers);
+  document.documentElement.dataset.modelOwner = "yes";
 }
 
 // ---------------------------------------------------------------------------
@@ -526,7 +804,7 @@ async function challengeEntry() {
     box = document.createElement("div");
     box.id = "challenge-entry";
     box.className = "challenge-entry";
-    marks.after(box);
+    (document.querySelector(".marks-said") || marks).after(box);
   }
   box.replaceChildren();
   const line = document.createElement("p");

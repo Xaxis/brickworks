@@ -84,6 +84,14 @@ declare -A CMD=(
   # (a throwaway account, deleted after), once supabase/theme.sql is applied.
   [theme]="tools/web/theme_flow.mjs --url=$P --out=$S/${TAG}_theme"
   [theme_account]="tools/web/theme_flow.mjs --url=$P --account --only=home --widths=1280 --out=$S/${TAG}_theme_account"
+  # A model's page (docs/SOCIAL.md U4), the gallery's first model: the
+  # picture, name, designer and action bar on a phone's first screen, the
+  # column beside the picture on a laptop as the page scrolls; Like, Save,
+  # Share, Comment, I built it and More named with their counts, never 0;
+  # Share's link and toast, and the share sheet where there is one; Save's
+  # lists, Favourites first; More's embed code; More by and Similar only
+  # with three cards. Signed in, the API answered by the stand-in.
+  [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
   [download]="tools/web/download_check.mjs --url=$P/download"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
@@ -161,7 +169,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design theme download frames"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design theme model_page download frames"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)
