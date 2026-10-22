@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts -->
 
 ## Sub-features
 
@@ -309,6 +309,54 @@ Whether what you built is still there tomorrow, and still means the same thing.
   opened by hand takes the older model's session, as before. Pictures of the
   File menu at 1280 and 390 px wide (`1_file_menu.png`,
   `6_file_menu_390.png`).
+- `library`: File, Library… (after Open…), or File, Open…, "From the library:
+  real sets and the community's models…" beside the file picker, opens
+  `src/ui/library_dialog.gd` over the model: two shelves, LDraw sets (every
+  model of LDraw's Official Model Repository, `src/net/model_library.gd`,
+  read from the parts store's `library/`: `index.json`, `covers/<id>.webp`,
+  `omr/<file>.mpd`) and Community (`/api/share?op=list`). Search, theme,
+  decade, size and sort for sets (filtered in the app, 24 a page); words,
+  kind, size and sort for the gallery (the API's paging). Open puts the model
+  in a new tab (`TabSession.open_another({"library": id})`, `?new=1&library=`
+  in a browser, `--library=` with `--new-session` on the desktop), so the tab
+  it was chosen in keeps its model; `Main._maybe_open_library` fetches it
+  there, names it "106-1 UNICEF Van" (the files call it "main") and credits
+  it (`ModelStore.credit`, the `0 !BRICKWORKS CREDIT {json}` line, shown in
+  Properties with nothing selected with its LDraw page). A community model
+  opens `?new=1&copy=<id>`, the gallery's own Open in Brickworks
+  (`Main._maybe_copy`), credited to its designer. The desktop keeps the index,
+  covers and models it fetched under `user://library/`; a dev checkout falls
+  back to `vendor/omr/files`. Over MCP: `gallery library=true` searches the
+  sets, `open_model library=<id>` opens one in the session's tab.
+- `library probe`: `tools/probe.sh library_probe` (a window, 1400 x 900). Starts
+  `tools/web/serve.py tests/fixtures/library 8936 --library
+  tests/fixtures/library` (eight sets, three gallery models, one all rights
+  reserved) and points `BRICKWORKS_API` at it. The Open list's row and the
+  File menu's; all eight sets with covers, newest first; "dragon" and "106-1";
+  Town, Town in the 1980s, small, large by most parts, fewest first. Open on
+  106-1 starts a process with `--library=omr-106-1 --new-session` whose
+  working model is the set (65 parts) with its credit line; Community shows
+  three with pictures, Vehicles, "bench", and Open copies the bench in a
+  process with `--copy=LibStubBch` (43 parts, REMIX and CREDIT lines, saved
+  as "Stub Park Bench"). The probe's own model is unchanged. Then 6516-1
+  opened in place shows "LDraw model by Chris Böhnke, CC BY 4.0" and "Its
+  LDraw page" in Properties, kept in the autosave; an unknown id and no
+  connection are each said, as is a store with no library in it. Pictures `shots/library_*.png`. Not in the
+  suite (two more copies of the app). `-- --sample=DIR` serves a store's own
+  `library/` (libdata's sample) and only takes `library_sample*.png`.
+  Passed 47 checks, 0 failures (2026-10-22, 3ffad545).
+- `library browser flow`: `tools/web/library_flow.mjs`, wired into
+  `preview_checks.sh` as `library`. The library and the gallery are played by
+  Playwright's route from `tests/fixtures/library`, so a local export and a
+  deployment run the same. Tab A's File > Library… (by its keys), eight sets
+  with covers, "dragon", Town typed into the theme list, Small; Open on 106-1
+  opens tab B at `?new=1&library=omr-106-1` with 65 parts, its credit and the
+  Properties link; Community's three with pictures, Open on the bench opens
+  tab C at `?new=1&copy=LibStubBch`, copied and credited; A unchanged.
+  Pictures at 1400 x 900 and 390 x 844, dark and light (the app has one
+  look; only the page around it follows the scheme). Passed 26 checks on a
+  local export through `relay_server.mjs --static` (2026-10-22, 3ffad545);
+  not yet run against a deployment.
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and

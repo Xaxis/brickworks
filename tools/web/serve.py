@@ -40,6 +40,18 @@ with nobody's account and no row in the database:
 Given as ID=FILE, and as often as wanted, each link plays its own file
 (share_steps_flow.mjs serves three sizes of one model at once); a plain
 FILE answers every other id.
+
+With --library it stands in for the parts store's library (src/net/
+model_library.gd) and the gallery's list, as the library screen and
+open_model library= read them: /api/account names this server as the
+store, /library/index.json and /library/covers/ are read from DIR, and
+/library/omr/<file> from vendor/omr/files. DIR's gallery.json, when there
+is one, is the gallery: /api/share?op=list answers its models (q matched
+in their names and authors, kind and size kept to), /api/share?id= each
+model's file with its author and licence, and /m/<id>.webp its cover from
+DIR/covers/. tests/fixtures/library is one (src/dev/library_probe.gd):
+
+    tools/web/serve.py tests/fixtures/library 8931 --library tests/fixtures/library
 """
 
 from __future__ import annotations
@@ -67,6 +79,8 @@ class Handler(SimpleHTTPRequestHandler):
     delay: float = 0.0
     share: Path | None = None
     shares: dict[str, Path] = {}
+    library: Path | None = None
+    omr: Path | None = None
 
     def end_headers(self) -> None:
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
@@ -76,6 +90,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - the name http.server calls
         path = self.path.split("?", 1)[0]
+        if self.library is not None and self._library(path):
+            return
         if (self.share is not None or self.shares) and self._shared(path):
             return
         if self.parts_url and path == "/api/account":
@@ -100,6 +116,74 @@ class Handler(SimpleHTTPRequestHandler):
             self._send(200, "application/octet-stream", source.read_bytes())
             return
         super().do_GET()
+
+    def _library(self, path: str) -> bool:
+        """The store's library/ and the gallery, played from --library. True if answered."""
+        assert self.library is not None
+        host = self.headers.get("Host", "127.0.0.1")
+        if path == "/api/account":
+            self._send(200, "application/json", json.dumps({"parts_url": f"http://{host}/"}).encode())
+            return True
+        if path.startswith("/library/"):
+            rest = path[len("/library/"):]
+            if ".." in rest or "\\" in rest:
+                self._send(404, "text/plain", b"")
+                return True
+            source = (self.omr / rest[len("omr/"):] if rest.startswith("omr/") and self.omr
+                      else self.library / rest)
+            if not source.is_file():
+                self._send(404, "text/plain", b"")
+                return True
+            kind = {".json": "application/json", ".webp": "image/webp"}.get(source.suffix,
+                                                                           "text/plain")
+            print(f"library {rest}", flush=True)
+            self._send(200, kind, source.read_bytes())
+            return True
+        gallery = self.library / "gallery.json"
+        if not gallery.is_file():
+            return False
+        models = json.loads(gallery.read_text(encoding="utf-8"))["models"]
+        cover = re.fullmatch(r"/m/([A-Za-z0-9]{10})\.webp", path)
+        if cover:
+            picture = self.library / "covers" / f"{cover.group(1)}.webp"
+            if picture.is_file():
+                self._send(200, "image/webp", picture.read_bytes())
+            else:
+                self._send(404, "text/plain", b"")
+            return True
+        if path != "/api/share":
+            return False
+        query = parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+        asked = {key: (values or [""])[0] for key, values in query.items()}
+        root = Path(__file__).resolve().parents[2]
+        if asked.get("op") == "list":
+            words = asked.get("q", "").lower().split()
+            sizes = {"small": (0, 199), "medium": (200, 999), "large": (1000, 1 << 30)}
+            least, most = sizes.get(asked.get("size", ""), (0, 1 << 30))
+            found = [model for model in models
+                     if all(word in f"{model['name']} {model['author']}".lower() for word in words)
+                     and (not asked.get("kind") or model.get("kind") == asked["kind"])
+                     and least <= model["parts"] <= most]
+            cards = [{"id": model["id"], "name": model["name"], "author": model["author"],
+                      "parts": model["parts"], "kind": model.get("kind"), "licence": model["licence"],
+                      "builds": 0, "url": f"http://{host}/m/{model['id']}",
+                      "thumb": f"http://{host}/m/{model['id']}.webp"} for model in found]
+            page = max(1, int(asked.get("page", "1") or 1))
+            print(f"gallery list {asked}", flush=True)
+            self._send(200, "application/json", json.dumps(
+                {"models": cards[(page - 1) * 24:page * 24], "more": len(cards) > page * 24,
+                 "per_page": 24}).encode())
+            return True
+        model = next((one for one in models if one["id"] == asked.get("id")), None)
+        if model is None:
+            return False
+        text = (root / model["file"]).read_text(encoding="utf-8", errors="replace")
+        print(f"share {model['id']}", flush=True)
+        self._send(200, "application/json", json.dumps({
+            "id": model["id"], "name": model["name"], "author": model["author"],
+            "parts": model["parts"], "licence": model["licence"], "version": 1, "newest": 1,
+            "url": f"https://brickworks.diy/m/{model['id']}", "model": text}).encode())
+        return True
 
     def _shared(self, path: str) -> bool:
         """The link's two addresses, played from --share's file. True if answered."""
@@ -150,6 +234,8 @@ def main() -> int:
     parser.add_argument("--parts", help="serve /parts/*.lbm from here, slowly")
     parser.add_argument("--parts-url", help="answer /api/account with this as where parts live")
     parser.add_argument("--delay", type=float, default=2500.0, help="milliseconds")
+    parser.add_argument("--library", help="answer the store's library/ and the gallery from here")
+    parser.add_argument("--omr", default="vendor/omr/files", help="where library/omr/ is read from")
     parser.add_argument("--share", action="append", default=[],
                         help="answer /api/share?id= and /m/<id> with this model (FILE, or ID=FILE)")
     args = parser.parse_args()
@@ -164,6 +250,9 @@ def main() -> int:
             Handler.share = Path(file).resolve()
     if args.parts_url:
         Handler.parts_url = args.parts_url
+    if args.library:
+        Handler.library = Path(args.library).resolve()
+        Handler.omr = Path(args.omr).resolve()
     server = ThreadingHTTPServer(
         ("127.0.0.1", args.port), partial(Handler, directory=args.directory))
     print(f"serving {args.directory} at http://127.0.0.1:{args.port}/ (COOP/COEP on)"

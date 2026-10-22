@@ -4862,12 +4862,16 @@
       "readOnlyHint": false,
       "title": "Open a model"
     },
-    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
+    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's model of that real set, credited to whoever made it, as File, Library… does. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "discard_changes": {
           "type": "boolean"
+        },
+        "library": {
+          "description": "a library id from gallery library=true, like omr-10179-1",
+          "type": "string"
         },
         "link": {
           "description": "a gallery model's link id, or its /m/ address",
@@ -5335,10 +5339,14 @@
       "readOnlyHint": true,
       "title": "Search the gallery"
     },
-    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a collection); each with its link id, part count, credit, licence, how many built it and what moves in it (steering, a boom: anybody can move them on its link) and its own motions by name (open_model link= opens a copy, and play_motion plays them). shelves=true: the gallery's front, this week's pick and the small builds, and what the person can build now from their collection. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, how many built it, its comments and photos of real builds, and its picture — to learn how it is built. designer=<handle> (a list's \"by Name (@handle)\"): a designer's page, what their models earned and their models. Read-only: nothing on the baseplate changes, and liking, following and commenting are the person's own, on the site. Credit its builder and keep to its licence in anything made from it.",
+    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a collection); each with its link id, part count, credit, licence, how many built it and what moves in it (steering, a boom: anybody can move them on its link) and its own motions by name (open_model link= opens a copy, and play_motion plays them). shelves=true: the gallery's front, this week's pick and the small builds, and what the person can build now from their collection. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, how many built it, its comments and photos of real builds, and its picture — to learn how it is built. designer=<handle> (a list's \"by Name (@handle)\"): a designer's page, what their models earned and their models. library=true: LDraw's models of real sets instead, matching q (a name or a set number), theme, decade (\"1990s\") and size, sorted newest, oldest, largest, smallest or name; each with its library id, which open_model library= opens, and its maker and licence. Read-only: nothing on the baseplate changes, and liking, following and commenting are the person's own, on the site. Credit its builder and keep to its licence in anything made from it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "decade": {
+          "description": "with library=true: like 1990s",
+          "type": "string"
+        },
         "designer": {
           "description": "a designer's handle, from a list's \"by Name (@handle)\"",
           "type": "string"
@@ -5362,6 +5370,10 @@
             "other"
           ],
           "type": "string"
+        },
+        "library": {
+          "description": "search LDraw's models of real sets instead",
+          "type": "boolean"
         },
         "open": {
           "description": "a model's link id, from a search, to read it",
@@ -5392,7 +5404,7 @@
           "type": "string"
         },
         "sort": {
-          "description": "newest when omitted; owned only for a person signed in with a collection",
+          "description": "newest when omitted; owned only for a person signed in with a collection; oldest, largest, smallest and name only with library=true",
           "enum": [
             "newest",
             "views",
@@ -5400,13 +5412,21 @@
             "remixes",
             "builds",
             "top",
-            "owned"
+            "owned",
+            "oldest",
+            "largest",
+            "smallest",
+            "name"
           ],
           "type": "string"
         },
         "technic": {
           "description": "only Technic models and mechanisms",
           "type": "boolean"
+        },
+        "theme": {
+          "description": "with library=true: a theme, like Town or Technic",
+          "type": "string"
         }
       },
       "type": "object"

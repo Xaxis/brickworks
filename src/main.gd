@@ -104,6 +104,13 @@ var _view_versions: Array = []
 var _copy_started: bool = false
 var _first_open_done: bool = false
 var _shared: SharedModels
+## LDraw's models of real sets (src/net/model_library.gd): the library File,
+## Open, Library… shows, and open_model library= over MCP. [member
+## _from_library] is one to open in this tab once it is up (?library=<id>,
+## as --library=<id>): LibraryDialog opens it in a new tab so
+## (TabSession.open_another), and the tab it was chosen in keeps its model.
+var _model_library: ModelLibrary
+var _from_library: String = ""
 ## The comments on the link open in the viewer (api/people.js ?op=comments,
 ## StepComments): the server's last answer, shown by the viewer and the
 ## step player alike. The viewer reads nobody's account, so who is here is
@@ -589,6 +596,9 @@ func _tell_page() -> void:
 		# for the count to hold still between two looks, which it does
 		# between two arrivals (booklet_flow.mjs on 7636, 2026-10-16).
 		"awaited": _store.awaited.size(),
+		# Who made the model and on what terms, when it is someone else's
+		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
+		"credit": _store.credit,
 		# What it stands on, and the plates laid as scenery, for
 		# tools/web/floor_flow.mjs.
 		"floor": _store.model_floor.to_meta().trim_prefix(ModelFloor.META),
@@ -1308,6 +1318,8 @@ func _ready() -> void:
 		_viewing = _argument("--view")
 	if _copying.is_empty() and SharedModels.is_id(_argument("--copy")):
 		_copying = _argument("--copy")
+	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
+		_from_library = _argument("--library")
 	# And which version of it, a number or nothing.
 	if _viewing_version == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--v")) != null:
 		_viewing_version = _argument("--v").to_int()
@@ -1378,6 +1390,7 @@ func _ready() -> void:
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
 	_maybe_copy()
+	_maybe_open_library()
 	# Somebody with saved models: the browser is asked to keep them, as it
 	# is at a first save (StorageKeep, ModelStore._write).
 	if ModelStore.any_saved():
@@ -2870,6 +2883,8 @@ func _maybe_copy() -> void:
 	_store.remixed_from = _copying
 	# And which version of it: what its page says the copy was made of.
 	_store.remixed_from_version = maxi(int(shared.get("version", 0)), 0)
+	# Its designer and licence, shown in Properties (Inspector).
+	_store.credit = SharedModels.credit_of(shared, _copying)
 	_bar.opened.emit(int(result["placed"]))
 	var since: int = Time.get_ticks_msec()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
@@ -2881,7 +2896,50 @@ func _maybe_copy() -> void:
 		return
 	var kept: String = _store.unused_name(name)
 	_store.save_as(kept)
-	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was" % kept)
+	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was; %s"
+		% [kept, ModelBar.credit_words(_store.credit)])
+
+
+## A model of the library opened in this tab (?library=<id>, from
+## LibraryDialog's Open): fetched, opened on the empty baseplate a new tab
+## begins on, and credited to whoever made it ([member ModelStore.credit]).
+## The status bar says it is coming, and why when it cannot.
+func _maybe_open_library() -> void:
+	if _from_library.is_empty():
+		return
+	var id: String = _from_library
+	_from_library = ""
+	var job: Working.Job = Working.begin("Fetching %s from the library…" % id)
+	await job.shown()
+	var entry: Dictionary = await _model_library.find(id)
+	if entry.is_empty():
+		job.end()
+		_set_address("")
+		_bar.say("could not open it: %s" % _model_library.trouble)
+		return
+	var title: String = ModelLibrary.title_of(entry)
+	job.end()
+	job = Working.begin("Fetching %s from the library…" % title)
+	await job.shown()
+	var got: Dictionary = await _model_library.model_text(entry)
+	job.end()
+	_set_address("")
+	if not str(got["error"]).is_empty():
+		_bar.say("could not open %s: %s" % [title, got["error"]])
+		return
+	if _store.has_unsaved_work():
+		_bar.say("%s is not opened: this tab has work not saved" % title)
+		return
+	if _assistant != null:
+		_assistant.forget_built()
+	var placed: int = await _bar.open_text_with_progress(str(got["text"]), title)
+	if placed <= 0 and _store.awaited.is_empty():
+		_bar.say("could not open %s: it could not be read" % title)
+		return
+	_store.credit = ModelLibrary.credit_of(entry)
+	_store.touch()
+	_bar.opened.emit(placed)
+	_bar.say("opened %s — %s" % [title, ModelBar.credit_words(_store.credit)])
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -3689,6 +3747,10 @@ func _build_ui() -> void:
 	if _shared == null:
 		_shared = SharedModels.new()
 	add_child(_shared)
+	_model_library = ModelLibrary.new()
+	_model_library.parts = _library
+	_model_library.deployment = _deployment
+	add_child(_model_library)
 
 	_assistant = Assistant.new()
 	_assistant.library = _library

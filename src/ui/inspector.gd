@@ -51,6 +51,10 @@ var _facts: Label
 var _actions: HBoxContainer
 ## What the model stands on, shown with nothing selected.
 var floor_picker: FloorPicker
+var _credit: VBoxContainer
+var _credit_words: Label
+var _credit_link: LinkButton
+var _credit_page: String = ""
 var _joined_button: Button
 var _lock_button: Button
 var _hide_button: Button
@@ -125,6 +129,22 @@ func _ready() -> void:
 		shell.app.call("floor_part_of_model", on))
 	if floor_layer != null:
 		floor_layer.changed.connect(_show_floor)
+	# And whose it is, when it is someone else's: who made it, its licence
+	# and its page (ModelStore.credit), as the library or the gallery said.
+	_credit = VBoxContainer.new()
+	_credit.visible = false
+	_credit.add_theme_constant_override("separation", 0)
+	column.add_child(_credit)
+	_credit_words = Label.new()
+	_credit_words.add_theme_font_size_override("font_size", 12)
+	_credit_words.modulate = Color(1, 1, 1, 0.75)
+	_credit_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_credit.add_child(_credit_words)
+	_credit_link = Look.link("Its page", 12)
+	_credit_link.pressed.connect(func() -> void:
+		if not _credit_page.is_empty():
+			OS.shell_open(_credit_page))
+	_credit.add_child(_credit_link)
 
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -348,6 +368,7 @@ func _refresh(_now: bool) -> void:
 		if _idle:
 			_show_floor()
 		idled.emit(_idle)
+	_show_credit()
 	if not _open:
 		return
 	var state: String = _state_of(bricks)
@@ -380,6 +401,24 @@ func _state_of(bricks: Array[BrickWorld.Brick]) -> String:
 		parts.append(shell.assemblies.selected_assembly())
 		parts.append(shell.assemblies.entered)
 	return "|".join(parts)
+
+
+## Whose the model is, with nothing selected: "LDraw model by Roland Dahl,
+## CCAL 2.0" and a link to its page, for a model from the library or the
+## gallery; nothing for the person's own.
+func _show_credit() -> void:
+	var credit: Dictionary = shell.store.credit if shell.store != null else {}
+	var words: String = ModelBar.credit_words(credit)
+	var shown: bool = _open and _idle and not words.is_empty()
+	if _credit.visible != shown:
+		_credit.visible = shown
+	if _credit_words.text != words:
+		_credit_words.text = words
+		_credit_page = str(credit.get("page", ""))
+		_credit_link.visible = not _credit_page.is_empty()
+		_credit_link.text = "Its LDraw page" if str(credit.get("from", "")) == ModelLibrary.FROM \
+			else "Its page"
+		_credit_link.tooltip_text = _credit_page
 
 
 ## The model's floor, in the picker.
@@ -763,6 +802,8 @@ func controls_by_name() -> Dictionary:
 	if not is_visible_in_tree():
 		return {}
 	var out: Dictionary = {"properties": _header}
+	if _credit.visible and _credit_link.visible:
+		out["prop_credit_page"] = _credit_link
 	if _open and _versions_button.is_visible_in_tree():
 		out["prop_versions"] = _versions_button
 	if _open and _place.visible:
