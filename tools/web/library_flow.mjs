@@ -220,6 +220,45 @@ await context.addInitScript(() => {
     last = now;
   }, 50);
 });
+// --live: every engine frame timed too, whole and inside WebGL, as
+// cad_frames.mjs times them: window.__frames, [start, ms, ms in WebGL]. A
+// frame less its WebGL is the app's own work, which an interval's gap is
+// not on a browser drawing in software: there the page waits on the drawing
+// of frames handed over before, whatever the frame it is in costs.
+if (live) await context.addInitScript(() => {
+  const frames = [];
+  window.__frames = frames;
+  const real = window.requestAnimationFrame.bind(window);
+  let inside = false;
+  let gl = 0;
+  const timed = (callback) => (time) => {
+    if (inside) { callback(time); return; }
+    inside = true;
+    gl = 0;
+    const t0 = performance.now();
+    try { callback(time); } finally {
+      inside = false;
+      frames.push([t0, performance.now() - t0, gl]);
+      if (frames.length > 40000) frames.splice(0, 20000);
+    }
+  };
+  const context = WebGL2RenderingContext.prototype;
+  for (const name of Object.getOwnPropertyNames(context)) {
+    const d = Object.getOwnPropertyDescriptor(context, name);
+    if (!d || typeof d.value !== "function" || name === "constructor") continue;
+    const was = d.value;
+    context[name] = function (...a) {
+      const t0 = performance.now();
+      try { return was.apply(this, a); } finally { gl += performance.now() - t0; }
+    };
+  }
+  let inner = real;
+  Object.defineProperty(window, "requestAnimationFrame", {
+    configurable: true,
+    get() { const at = inner; return (callback) => at(timed(callback)); },
+    set(f) { inner = f; },
+  });
+});
 
 // The live library: every model, and the biggest opened in a tab of its own.
 async function liveFlow(a, aTitle, aBricks) {
@@ -236,8 +275,16 @@ async function liveFlow(a, aTitle, aBricks) {
   await controlAt(b, "model_name");
   // The stall of the page's start (the engine's own) is not the open's.
   await b.evaluate(() => { window.__stall = { longest: 0, at: 0 }; window.__gaps = []; });
+  const from = await b.evaluate(() => performance.now());
   const opened = await until(async () => (await state(b)).bricks >= 1200 && !(await state(b)).awaited, 900);
   const took = Math.round((Date.now() - began) / 1000);
+  // Until the model is drawn: 3 s of frames each under 100 ms of the app's
+  // own work, two minutes at most.
+  await until(() => b.evaluate(() => {
+    const t = performance.now();
+    const recent = window.__frames.filter(([t0]) => t0 >= t - 3000);
+    return recent.length > 0 && recent.every(([, d, g]) => d - g < 100);
+  }), 120);
   const bState = await state(b);
   check(`8466-1 open in ${took} s: ${bState.bricks} parts, "${await b.title()}"`,
     opened && (await b.title()).startsWith("8466-1 "));
@@ -266,6 +313,23 @@ async function liveFlow(a, aTitle, aBricks) {
   console.log(`  ...its stalls over 250 ms: ${stalls.list.length ? stalls.list.join(" | ") : "none"}`);
   console.log(`  the longest while it said Opening: ${stalls.opening ? `${stalls.opening} ms` : "under 250 ms"}, over ${stalls.laid} ms`);
   console.log(`  ...the open's phases: ${JSON.stringify(bState.open_phases || {})}`);
+  // The open's own stall: its longest frame less its WebGL, from the tab
+  // showing its controls until the model is whole and drawn (--open-ms, 500).
+  const openMs = Number(args["open-ms"] && args["open-ms"] !== true ? args["open-ms"] : 500);
+  const own = await b.evaluate((since) => {
+    const work = (window.brickworksWork || []).filter((w) => w.ended);
+    const doing = (t0, t1) => work.filter((w) => w.at - w.ms <= t1 && w.at >= t0).map((w) => w.what)
+      .join(", ") || "after the bar";
+    const frames = window.__frames.filter(([t0]) => t0 >= since)
+      .map(([t0, d, g]) => ({ t0, d, g, own: d - g })).sort((x, y) => y.own - x.own);
+    return { frames: frames.length, longest: frames.length ? frames[0].own : 0,
+      over: frames.filter((f) => f.own > 100).length,
+      top: frames.slice(0, 6).map((f) => `${Math.round(f.own)} ms (whole ${Math.round(f.d)}, WebGL `
+        + `${Math.round(f.g)}; ${doing(f.t0, f.t0 + f.d)})`) };
+  }, from);
+  console.log(`  ...its frames' own work, the longest six of ${own.frames}: ${own.top.join(" | ")}`);
+  check(`...the open's longest frame of the app's own work ${Math.round(own.longest)} ms of ${openMs} `
+    + `(${own.over} frames over 100 ms)`, own.frames > 0 && own.longest < openMs);
   check(`...credited: ${JSON.stringify(bState.credit)}`, bState.credit && String(bState.credit.page || "")
     .startsWith("https://library.ldraw.org/omr/sets/"));
   await b.screenshot({ path: `${out}/live_2_8466.png` });

@@ -1075,23 +1075,15 @@ static func _add_skin(library: PartLibrary, built: PartForge.Result, text: Strin
 ## that could not be built is left for the open, which builds it again and
 ## says why. Each skin's text is made from its sub-model on a worker too,
 ## where there are threads: made here, 8466-1's 29 were 0.95 s of a desktop's
-## frame. That reads the library and adds nothing to it; each skin is added
-## here once it is built, after any worker reading the library has finished
-## (PartLibrary.being_read), as adding waits for those.
+## frame. That reads the library, as a reader of it (PartLibrary.begin_reading),
+## and adds nothing to it; each skin is added here once it is built, after
+## any worker reading the library has finished (PartLibrary.being_read), as
+## adding waits for those.
 static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
-	var begun: Array = []
-	if OS.has_feature("web") and not OS.has_feature("threads"):
-		begun = begin_skins(library, model, PackedStringArray())
-	else:
-		var made: Array = [[]]
-		var reading: int = WorkerTasks.add(func() -> void:
-			made[0] = begin_skins(library, model, PackedStringArray()), true,
-			"read a model's flexible parts")
-		while not WorkerThreadPool.is_task_completed(reading):
-			await tree.process_frame
-		WorkerTasks.collect(reading)
-		begun = made[0]
+	var begun: Array = await WorkerTasks.awaited(func() -> Variant:
+		return begin_skins(library, model, PackedStringArray()),
+		"read a model's flexible parts", library)
 	for entry: Dictionary in begun:
 		var task: int = int(entry["task"])
 		if task < 0:
