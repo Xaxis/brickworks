@@ -1,5 +1,5 @@
 // The landing page's strip from the live gallery (index.html #made): the
-// Top builds, as the gallery orders them, drawn as web/cards.js draws
+// Top builds, as the gallery orders them, drawn as web/card.js draws
 // every card.
 //
 // It must never show a dead card. So a card is put in only once its
@@ -8,7 +8,7 @@
 // does not come leaves it hidden. Asked as the strip nears the screen
 // (the sentence under the pictures above it), not before, so a visitor
 // who never scrolls fetches none of it.
-import { modelCard, pictureOf } from "/cards.js";
+import { modelCard, pictureOf } from "/card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const MOST = 8;

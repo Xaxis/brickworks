@@ -39,6 +39,8 @@ async function followButton(button) {
       // (api/people.js earnedHtml): kept so, the words beside it.
       const big = counted.querySelector("b");
       const words = counted.querySelector("span");
+      // Said once there is one, as every count is.
+      counted.hidden = !Number(state.followers);
       if (big && words) {
         big.textContent = Number(state.followers).toLocaleString("en-US");
         words.textContent = state.followers === 1 ? "follower" : "followers";

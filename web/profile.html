@@ -57,12 +57,9 @@
 .account-head h1 { margin: 0; overflow-wrap: anywhere; }
 .account-head .handle { margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
 .account-head .handle a { color: var(--ink); }
-.initial { width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; flex: none;
-	background: var(--accent); color: var(--on-accent); font-size: 28px; font-weight: 720; text-transform: uppercase; }
 @media (max-width: 700px) {
 	.account-head { grid-template-columns: auto minmax(0, 1fr); }
 	.account-head .actions { grid-column: 1 / -1; }
-	.initial { width: 52px; height: 52px; font-size: 23px; border-radius: 14px; }
 }
 .account-body { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: var(--s-6); align-items: start; }
 @media (max-width: 860px) { .account-body { grid-template-columns: minmax(0, 1fr); gap: 0; } }
@@ -71,11 +68,6 @@
 .account-main > section > h2, .account-main .designs h2 { font-size: var(--t-h2); margin: 0 0 6px; }
 .account-main .designs { margin: 0 0 var(--s-7); scroll-margin-top: 84px; }
 .account-main .lead { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 70ch; }
-.following { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.following a { display: inline-block; text-decoration: none; padding: 6px 12px; border-radius: 999px;
-	border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: var(--t-small); }
-.following a:hover { border-color: var(--ink-faint); }
-.following small { color: var(--ink-faint); margin-left: 6px; }
 .profile-form { max-width: none; margin: 0; }
 .profile-form label { max-width: 560px; }
 .connections { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
@@ -134,7 +126,7 @@
 
 		<div id="signed-in" hidden>
 			<header class="account-head">
-				<div class="initial" id="initial" aria-hidden="true">B</div>
+				<span class="avatar big" id="initial" aria-hidden="true">B</span>
 				<div>
 					<h1 id="title">Your account</h1>
 					<p class="handle" id="handle-line">Choose the name the gallery shows for you, under Settings.</p>
@@ -194,7 +186,7 @@
 					<section id="following-part" aria-labelledby="following-h">
 						<h2 id="following-h">Following</h2>
 						<p class="lead" id="following-said">The designers you follow: what they share comes into your feed.</p>
-						<ul class="following" id="following"></ul>
+						<ul class="pills" id="following"></ul>
 					</section>
 
 					<section id="builds" aria-labelledby="builds-h">

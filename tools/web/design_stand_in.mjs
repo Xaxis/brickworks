@@ -709,6 +709,14 @@ function handlersOf(apiDir) {
 /// A page the server makes, by [apiDir]'s own handlers: {status, html,
 /// headers}, and for a picture its bytes.
 export async function serverPage(apiDir, pathname) {
+  const route = routeOf(pathname);
+  if (!route) return { status: 404, html: "", headers: {} };
+  return serverAsk(apiDir, route);
+}
+
+/// What [apiDir]'s handler [name] ("share" or "people") answers [query]
+/// with, asked as a page is: {status, html, headers}, html the body.
+export async function serverAsk(apiDir, { name, query }) {
   // What the handlers read to call themselves configured (api/_db.js
   // dbConfigured, api/_auth.js authConfigured, api/share.js's reads as a
   // visitor), set before they are imported.
@@ -716,11 +724,9 @@ export async function serverPage(apiDir, pathname) {
   process.env.SUPABASE_SECRET_KEY = SECRET;
   process.env.SUPABASE_PUBLISHABLE_KEY = PUBLISHABLE;
   standIn();
-  const route = routeOf(pathname);
-  if (!route) return { status: 404, html: "", headers: {} };
-  const handler = (await handlersOf(apiDir))[route.name];
+  const handler = (await handlersOf(apiDir))[name];
   const site = new URL(ORIGIN);
-  const request = { method: "GET", query: route.query, body: undefined,
+  const request = { method: "GET", query, body: undefined,
     headers: { host: site.host, "x-forwarded-proto": site.protocol.replace(":", ""), accept: "text/html",
       "user-agent": "Mozilla/5.0 (X11; Linux x86_64) Brickworks design check" } };
   const response = {

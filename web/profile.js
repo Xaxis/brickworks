@@ -10,8 +10,9 @@
 // so one that cannot be read leaves the others standing.
 import { age, askAgeIfAsked, askToSignIn, call, email, signOut, signedIn } from "/account.js";
 import { showFeedCount } from "/follow.js";
+import { avatarHtml } from "/kit.js";
 
-// What only a signed-in page draws (cards.js, designs.js), fetched as the
+// What only a signed-in page draws (card.js, designs.js), fetched as the
 // page starts when this browser has a sign-in, and not at all when not:
 // the page a visitor who is not signed in gets is two lines and a button.
 let counted;
@@ -19,7 +20,7 @@ let modelCard;
 let showDesigns;
 let drawing = null;
 function drawn() {
-  drawing ||= Promise.all([import("/cards.js"), import("/designs.js")]).then(([cards, designs]) => {
+  drawing ||= Promise.all([import("/card.js"), import("/designs.js")]).then(([cards, designs]) => {
     ({ counted, modelCard } = cards);
     ({ showDesigns } = designs);
   });
@@ -145,7 +146,9 @@ function listRow(list) {
 function drawHead(mine, follows) {
   const name = mine ? String(mine.name) : "";
   $("title").textContent = name || "Your account";
-  $("initial").textContent = (name || email() || "B").trim().charAt(0) || "B";
+  // Their avatar, made from their handle as every page makes it (web/kit.js).
+  $("initial").outerHTML = avatarHtml({ handle: mine?.handle || email() || "", name: name || email() || "B" },
+    { size: "big", id: "initial" });
   const line = $("handle-line");
   line.replaceChildren();
   if (mine && HANDLE.test(String(mine.handle))) {
@@ -153,7 +156,9 @@ function drawHead(mine, follows) {
     page.href = `/u/${mine.handle}`;
     line.append(page);
     if (follows && follows.ready) {
-      line.append(` · ${counted(follows.followers, "follower")} · ${Number(follows.following) || 0} following`);
+      // Said once there are any, as every count is: never "0 followers".
+      if (Number(follows.followers)) line.append(` · ${counted(follows.followers, "follower")}`);
+      if (Number(follows.following)) line.append(` · ${Number(follows.following).toLocaleString("en-US")} following`);
     }
   } else {
     line.append("Choose the name the gallery shows for you, under ");
@@ -219,7 +224,7 @@ async function following(follows) {
     return;
   }
   for (const one of people.filter((p) => HANDLE.test(String(p.handle)))) {
-    const to = make("a", "", String(one.name || one.handle), make("small", "", `@${one.handle}`));
+    const to = make("a", "pill", String(one.name || one.handle), make("small", "", `@${one.handle}`));
     to.href = `/u/${one.handle}`;
     list.append(make("li", "", to));
   }

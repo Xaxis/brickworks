@@ -83,7 +83,7 @@ def test_a_card_says_them_as_a_sentence_says_them() -> None:
         return
     assert said == ["open the dome, extend the telescope", "R2 waves, LED on, a gate swings", "steering, boom", "",
                     "one, two, three and 1 more"]
-    cards = (ROOT / "web/cards.js").read_text()
+    cards = (ROOT / "web/card.js").read_text()
     # The card's own words for them, the same rule as the page's.
     rule = r"/^[A-Z][a-z]*\b/.test(name) ? name[0].toLowerCase() + name.slice(1) : name"
     assert rule in cards and rule.replace("\\b", "\\\\b") in DIRECTORY.replace("\\b", "\\\\b")

@@ -80,7 +80,7 @@ function startComments(section) {
       head.append(who);
       if (one.by_owner) {
         const tag = document.createElement("span");
-        tag.className = "tag";
+        tag.className = "pill";
         tag.textContent = "its builder";
         head.append(" ", tag);
       }
@@ -456,7 +456,11 @@ function start() {
     like.disabled = false;
     if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
     state.liked = answer.body.liked;
-    if (likes) likes.textContent = counted(answer.body.likes);
+    if (likes) {
+      likes.textContent = counted(answer.body.likes);
+      // Never "0 likes": a count is said once there is one.
+      likes.hidden = !Number(answer.body.likes);
+    }
     say("");
     draw();
   });

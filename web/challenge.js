@@ -8,6 +8,7 @@
 // Names and credits were typed by strangers, so every one goes on the page
 // as text, never as markup; a link is built from a model's id alone.
 import { askToSignIn, call, signedIn } from "/account.js";
+import { counted, modelCard } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -16,69 +17,24 @@ const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", ye
 const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
 let state = null;
 
-function counted(n, one, many) {
-  const value = Number(n) || 0;
-  return `${value.toLocaleString("en-US")} ${value === 1 ? one : many || `${one}s`}`;
-}
 const say = (text) => { $("said").textContent = text; };
 
-/// An entry's card, as the gallery draws one, with what the challenge
-/// says of it under its numbers, and a button under it when there is one.
+/// An entry's card, the gallery's own (web/card.js), with what the
+/// challenge says of it under its numbers, and a button under it when there
+/// is one.
 function card(model, lines, action) {
   const box = document.createElement("div");
   box.className = "kept";
   box.dataset.entry = model.id;
   box.dataset.way = model.way || "";
-  const link = document.createElement("a");
-  link.className = "model";
-  link.href = `/m/${model.id}`;
-  link.dataset.id = model.id;
-  const frame = document.createElement("div");
-  frame.className = "frame";
-  const version = typeof model.thumb === "string" ? (model.thumb.split("?v=")[1] || "") : "";
-  const picture = model.thumb ? `/m/${model.id}.webp${/^[a-z0-9]+$/.test(version) ? `?v=${version}` : ""}`
-    : model.image ? `/m/${model.id}.png` : "";
-  if (picture) {
-    const img = document.createElement("img");
-    img.src = picture;
-    img.alt = String(model.name);
-    img.width = 1200;
-    img.height = 630;
-    img.loading = "lazy";
-    img.decoding = "async";
-    frame.append(img);
-  } else {
-    frame.classList.add("none");
-    frame.textContent = "No picture";
-  }
-  const words = document.createElement("div");
-  words.className = "words";
-  const name = document.createElement("b");
-  name.textContent = String(model.name);
-  name.title = String(model.name);
-  const about = document.createElement("span");
-  about.textContent = model.author ? `${counted(model.parts, "part")}, by ${model.author}` : counted(model.parts, "part");
-  const numbers = document.createElement("small");
-  const said = [];
-  if (Number(model.likes)) said.push(counted(model.likes, "like"));
-  if (Number(model.remixes)) said.push(counted(model.remixes, "remix", "remixes"));
-  if (Number(model.builds)) said.push(counted(model.builds, "built", "built"));
-  numbers.textContent = said.join(" · ");
-  words.append(name, about, numbers);
-  if (model.tested === true) {
-    const mark = document.createElement("small");
-    mark.className = "tested";
-    mark.textContent = "✓ Tested";
-    mark.title = "Stands at every step · every step reachable · every part made in its colour · nothing loose";
-    words.append(mark);
-  }
+  const link = modelCard(model);
+  const words = link.querySelector(".words");
   for (const text of lines.filter(Boolean)) {
     const line = document.createElement("small");
     line.className = "challenge-said";
     line.textContent = text;
     words.append(line);
   }
-  link.append(frame, words);
   box.append(link);
   if (action) {
     const button = document.createElement("button");
@@ -183,7 +139,8 @@ function draw() {
     for (const entry of (group.entries || []).filter((one) => ID.test(String(one.id)))) {
       const lines = [];
       if (entry.winner) lines.push("Winner");
-      if (c.state === "ended" && entry.votes !== null) lines.push(counted(entry.votes, "vote"));
+      // A count is said once there is one: never "0 votes".
+      if (c.state === "ended" && Number(entry.votes)) lines.push(counted(entry.votes, "vote"));
       if (c.state !== "ended" && !entry.keeps) lines.push("No longer keeps the rules: a newer version broke one");
       for (const win of entry.won || []) if (win.challenge !== c.id) lines.push(`Won “${win.title}”`);
       grid.append(card(entry, lines, voteOf(c, entry)));

@@ -68,6 +68,20 @@ The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,
 | `--control-h` | 44 px | a field's and a button's height, so side by side they line up |
 | `--r-1`, `--r-2`, `--r-3`, `--r-pill` | 6, 10, 14, 999 px | corners: small (a chip, a code box), a control's, a card's or panel's, a pill's; a circle is 50% |
 | `--control-radius`, `--radius` | `--r-2`, `--r-3` | a control's corners, a card's |
+| `--t-code` | 0.92em | code in a line of words: a monospace face looks larger at one size |
+| `--shade`, `--shine` | dark and light, see-through | a brick's lower edge and top: the 404's wall, a colour's dot |
+| `--scrim` | black, 55% | the dim behind an open dialog |
+| `--avatar-1` … `-8`, `--on-avatar` | eight tiles, white | an avatar made from a handle, its letter 5.37:1 or more on each |
+
+**Only the scale (2026-10-22).** Every font size is a `--t-*`, every corner
+an `--r-*` (`--radius`, `--control-radius`), `0` or `50%`, and every colour
+a token, in `site.css`, `directory.css`, a page's own `<style>` and a
+`style=""`. There were 33 sizes and 16 corners for 7 and 2 tokens.
+`design_flow.mjs` names any rule off the scale; a page that needs a colour
+adds a token to `:root`, and only `:root` makes one. And **a count is
+said once there is one**: never "0 likes" or "following 0" (a card, a
+model's page, a profile, your account); a count that a press can make one
+is on the page, `hidden`, for the script to show.
 
 ## Components
 
@@ -105,12 +119,17 @@ The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,
 - **Disclosure**: `details.qa`, a panel whose summary opens what only
   some people need: the FAQ's answers, the download page's first-launch
   steps and checksums.
-- **Model card**: `.model` (`web/cards.js` `modelCard` draws it), the one
-  card for a shared model on every page: the gallery, the landing page's
-  strip, a profile, a collection, your account. In `.models` (a grid),
-  `.models.compact` (more to a row, beside a rail) or `.models.row` (one
-  row that scrolls inside itself, never the page). Its Tested mark is
-  `.model .tested`.
+- **Model card**: `.model`, the one card for a shared model on every page:
+  the gallery, the landing page's strip, a profile, a collection, a model's
+  remixes, your account. One renderer, `web/card.js` `cardHtml`, a pure
+  string function: the server's pages draw with it (through
+  `api/_card.js`, which `tools/deploy.sh` replaces with the file itself)
+  and the browser with `modelCard`, the same string parsed, so the two are
+  the same markup (`tools/web/card_check.mjs` proves it). Its picture is
+  4:3, the middle of the 1200 x 630 one by `object-fit: cover`
+  (docs/SOCIAL.md D3). In `.models` (a grid), `.models.compact` (more to a
+  row, beside a rail) or `.models.row` (one row that scrolls inside
+  itself, never the page). Its Tested mark is a `.pill.good`.
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -124,6 +143,44 @@ The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,
   The theme (`[data-theme-choice]`: System, Light, Dark), with its word in
   `.theme-choice`; any `[data-theme-choice]` button works with no script of
   the page's own.
+- **Pill**: `.pill`, a fact, a tag or a mark, small and round. A link or a
+  button pill (`a.pill`, `button.pill`, `summary.pill`) is a finger's
+  height, 32 px, and takes the pointer's edge. `.good` green (Tested),
+  `.new` edged in `--accent-edge`, `.tag` says "#" first, `small` inside
+  for a quieter part (a handle). A row of them is `ul.pills` or
+  `div.pills`. The one pill: a model's facts and tags, its Tested mark,
+  the gallery's tag filter, a comment's "its builder", the feed's New,
+  whom you follow on your account. There were seven copies.
+- **Tabs**: `.tabs`, a row of links or buttons, the one shown
+  `aria-current="page"` (or `aria-selected` in a tablist), underlined in
+  `--accent-edge`, a count in `.n`; on a phone the row scrolls inside
+  itself. For the gallery's Top · New · Following and a profile's Models
+  · Builds · Collections (docs/SOCIAL.md U3, U5).
+- **Avatar**: `.avatar`, a person's picture or one made from their handle
+  (`web/kit.js` `avatarHtml`: a round tile in one of eight colours, the
+  same for a handle on every page, and the first letter of their name;
+  never a figure's likeness, docs/TRADEMARKS.md). Sizes `.small` 24
+  (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile). It is
+  decoration beside the name, so `aria-hidden`.
+- **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
+  share, comment, more, build; `web/kit.js` `iconHtml`), drawn in the
+  words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
+  as tall as a field (`.small` 36 for a card's row), its count beside its
+  icon once there is one. Its label says its name and count to a screen
+  reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
+  and pressed is edged in `--accent-edge` with its icon filled.
+- **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
+  the screen, in the page's colours the other way round, read out
+  (`role="status"`), gone in 2.4 s.
+- **More menu**: `details.more-menu`, an `.icon-btn` summary with the
+  more icon and the header Menu's `.menu-list` panel of links and
+  buttons (Report it, Takedown requests), opening along the row from the
+  button's start (`.end`: back from its end, at a row's end). It opens with no script;
+  `web/kit.js` closes it on a click elsewhere and on Escape.
+- **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
+  served, never published: `tools/site.py` leaves out a name that starts
+  with "_") shows every component once, drawn by `web/kit.js` and
+  `web/card.js`, so `design_flow.mjs` judges what no page uses yet.
 - **Settings**: `.settings`, a panel of `.setting` rows, what a setting is
   (an `h3` and a line) and its control beside it, under it on a phone;
   `.wide` takes the whole row. What cannot be undone is `.setting.danger`
@@ -136,7 +193,12 @@ and opens every dialog, at 390 and 1280 px, light and dark, signed out and
 signed in, and fails on what a person would notice: a visible control the
 browser drew its own way, controls of one kind on a page that differ from
 each other (the fields in type, height, corners, border or fill; the
-buttons of one size), and a page that scrolls sideways on a phone.
+buttons of one size), a page that scrolls sideways on a phone, a count of
+none shown ("0 likes"), and any rule in the page's stylesheets, its own
+style or a `style=""` with a font size, corner or colour off the scale
+(named once, with its stylesheet). Against the site before the kit
+(2026-10-22) it named 178 such rules (123 sizes, 43 corners, 12 colours or
+fonts) and a quiet model's "0 remixes"; after, none.
 
     node tools/web/design_flow.mjs --out=shots/design
 

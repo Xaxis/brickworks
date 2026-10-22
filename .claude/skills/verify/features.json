@@ -322,6 +322,14 @@
       "tests": []
     },
     {
+      "id": "cli:card check",
+      "kind": "cli",
+      "entry": "tools/web/card_check.mjs",
+      "reach": "node tools/web/card_check.mjs   (no network: the server's /c/<id> cards against the browser's, and sample cards by the server's module and the browser's; --root=DIR for another checkout)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:carried fetch probe",
       "kind": "cli",
       "entry": "src/dev/carried_fetch_probe.gd",
@@ -2442,6 +2450,14 @@
       "tests": []
     },
     {
+      "id": "ui:component kit",
+      "kind": "ui",
+      "entry": "web/kit.js",
+      "reach": "the pill, tabs, avatar, icon buttons (web/icons.svg), the toast and the more menu (site.css \"the kit\"); all at once on /_kit when the checkout is served (web/_kit.html, never published); the avatar on /profile",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:connect Claude sign-in page",
       "kind": "ui",
       "entry": "web/authorize.html",
@@ -2653,6 +2669,14 @@
       "entry": "src/assembly/mirror.gd",
       "reach": "godot --path .  (select, Shift-M or Edit, Mirror)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:model card",
+      "kind": "ui",
+      "entry": "web/card.js",
+      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
+      "area": "web",
       "tests": []
     },
     {

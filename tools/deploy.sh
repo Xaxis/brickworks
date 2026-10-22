@@ -172,6 +172,9 @@ for handler in api/*.js; do
   for shared in api/_*.js; do
     [ -f "$shared" ] && cp "$shared" "$fn/"
   done
+  # The one model card (web/card.js), which api/_card.js passes through in
+  # a checkout: here the file itself, so a function needs no web/.
+  cp web/card.js "$fn/_card.js"
   if [ "$route" = collection ]; then
     if [ ! -f assets/generated/sets/index.json ]; then
       echo "deploy FAILED: no assets/generated/sets/index.json for /api/collection (tools/collection_data.py)"; exit 1

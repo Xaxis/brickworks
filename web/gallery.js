@@ -27,8 +27,8 @@
 // throughout: the site's content security policy lets a page talk to
 // itself and a short list of others.
 //
-// Each card is web/cards.js's, the one every page of the site draws.
-import { counted, modelCard as card } from "/cards.js";
+// Each card is web/card.js's, the one every page of the site draws.
+import { counted, modelCard as card } from "/card.js";
 
 (function () {
   "use strict";
@@ -232,7 +232,8 @@ import { counted, modelCard as card } from "/cards.js";
     if (tag) {
       const chip = document.createElement("button");
       chip.type = "button";
-      chip.textContent = `#${tag} ×`;
+      chip.className = "pill tag";
+      chip.textContent = `${tag} ×`;
       chip.setAttribute("aria-label", `Stop filtering by the tag ${tag}`);
       chip.addEventListener("click", () => { tag = ""; ask(); });
       chips.append(chip);

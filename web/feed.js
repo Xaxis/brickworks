@@ -34,9 +34,9 @@ function row(one) {
   if (one.after) what.append(` ${String(one.after)}`);
   if (one.new) {
     const tag = document.createElement("span");
-    tag.className = "tag";
+    tag.className = "pill new";
     tag.textContent = "New";
-    what.append(tag);
+    what.append(" ", tag);
   }
   link.append(what);
   if (one.said) {

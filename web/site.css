@@ -47,6 +47,16 @@
 	--brick-yellow: var(--yellow);
 	--brick-blue: #1e5aa8;
 	--brick-green: #00852b;
+	/* A brick's shading (the 404's wall, a colour's dot): its lower edge in
+	   shadow, its top in light. And the dim behind an open dialog. */
+	--shade: rgba(0, 0, 0, 0.3);
+	--shine: rgba(255, 255, 255, 0.18);
+	--scrim: rgba(0, 0, 0, 0.55);
+	/* An avatar made from a handle (web/kit.js avatarHtml): one of eight
+	   tiles, its letter in white, 4.5:1 or more on each, in both themes. */
+	--avatar-1: #b42318; --avatar-2: #1f5fbf; --avatar-3: #1f7a3d; --avatar-4: #7a3fb0;
+	--avatar-5: #9a4a00; --avatar-6: #0e6f8a; --avatar-7: #a3175a; --avatar-8: #4b5563;
+	--on-avatar: #ffffff;
 	/* Controls: a field and a button side by side are the same height,
 	   with the same corners; every field has the same fill. */
 	--field: var(--bg-soft);
@@ -73,6 +83,8 @@
 	--t-small: 14.5px;
 	--t-tiny: 13px;
 	--t-micro: 12px;
+	/* Code in a line of words: a monospace face looks larger at one size. */
+	--t-code: 0.92em;
 	/* And one rhythm: the space above a page's title, between its sections,
 	   and the steps between. */
 	--s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
@@ -126,7 +138,7 @@ body {
 	margin: 0;
 	background: var(--bg);
 	color: var(--ink);
-	font: 400 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+	font: 400 var(--t-body)/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
 		Roboto, Helvetica, Arial, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
@@ -134,11 +146,11 @@ body {
 img { max-width: 100%; height: auto; display: block; }
 a { color: inherit; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
-code { font: 0.92em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { font: var(--t-code)/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 /* A command to type: a box of its own that wraps, so a long one never
    pushes the page sideways or hides its end past the edge of a phone. */
 code.cmd {
-	display: block; margin: 6px 0; padding: 8px 10px; border-radius: 8px;
+	display: block; margin: 6px 0; padding: 8px 10px; border-radius: var(--r-1);
 	background: var(--bg-soft); border: 1px solid var(--line); color: var(--ink);
 	font-size: var(--t-tiny); white-space: pre-wrap; overflow-wrap: anywhere;
 }
@@ -169,7 +181,7 @@ a:focus-visible { border-radius: var(--r-1); }
 .bar { display: flex; align-items: center; gap: 12px; min-height: 60px; }
 .mark {
 	display: inline-flex; align-items: center; gap: 10px;
-	font-weight: 680; letter-spacing: -0.02em; font-size: 17.5px;
+	font-weight: 680; letter-spacing: -0.02em; font-size: var(--t-h3);
 	text-decoration: none; padding: 6px 4px;
 }
 /* The mark (web/icon.svg): a cube with a corner cut away. The .chip every
@@ -178,7 +190,7 @@ a:focus-visible { border-radius: var(--r-1); }
 .nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
 .nav a {
 	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
-	padding: 8px 11px; border-radius: 9px; white-space: nowrap;
+	padding: 8px 11px; border-radius: var(--r-2); white-space: nowrap;
 }
 .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); background: var(--panel); }
 .nav .cta { margin-left: 8px; }
@@ -189,18 +201,18 @@ a:focus-visible { border-radius: var(--r-1); }
    not run inline anyway. */
 .menu { display: none; position: relative; }
 .menu summary {
-	list-style: none; cursor: pointer; padding: 8px 12px; border-radius: 9px;
+	list-style: none; cursor: pointer; padding: 8px 12px; border-radius: var(--control-radius);
 	border: 1px solid var(--line); font-size: var(--t-small); color: var(--ink);
 }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] summary { background: var(--panel); }
 .menu-list {
 	position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px;
-	display: grid; padding: 6px; border-radius: 12px;
+	display: grid; padding: 6px; border-radius: var(--r-3);
 	background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
 }
 .menu-list nav { display: grid; }
-.menu-list a { text-decoration: none; padding: 10px 12px; border-radius: 8px; color: var(--ink-soft); }
+.menu-list a { text-decoration: none; padding: 10px 12px; border-radius: var(--r-1); color: var(--ink-soft); }
 .menu-list a:hover { background: var(--panel-hi); color: var(--ink); }
 /* The theme on Menu, under the links: the whole width, a button a third. */
 .menu-list .theme-choice { display: grid; gap: var(--s-2); margin: 6px 0 0; padding: 12px 6px 6px; border-top: 1px solid var(--line); }
@@ -208,7 +220,7 @@ a:focus-visible { border-radius: var(--r-1); }
 /* What came into your feed since you opened it (web/follow.js): a small
    count on Account, and on Menu where Account is behind it. */
 .site-head .count {
-	display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px;
+	display: inline-block; min-width: 18px; padding: 0 5px; border-radius: var(--r-pill);
 	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700;
 	line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
 }
@@ -229,7 +241,7 @@ a:focus-visible { border-radius: var(--r-1); }
 .cta, :where(button) {
 	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 	min-height: var(--control-h); padding: 9px 20px; border-radius: var(--control-radius);
-	font: inherit; font-weight: 640; font-size: 15.5px; line-height: 24px; white-space: nowrap;
+	font: inherit; font-weight: 640; font-size: var(--t-body); line-height: 24px; white-space: nowrap;
 	text-decoration: none; cursor: pointer;
 	background: var(--accent); color: var(--on-accent); border: 1px solid transparent;
 }
@@ -237,8 +249,8 @@ a:focus-visible { border-radius: var(--r-1); }
 .cta.ghost, :where(button) { background: transparent; color: var(--ink); border-color: var(--line); }
 .cta.ghost:hover, :where(button):hover { background: var(--panel); filter: none; }
 .cta.ghost[aria-pressed="true"] { border-color: var(--accent-edge); }
-.cta.small { min-height: 36px; padding: 5px 12px; font-size: 14px; }
-.cta.big { min-height: 52px; padding: 13px 26px; font-size: 17px; border-radius: 13px; }
+.cta.small { min-height: 36px; padding: 5px 12px; font-size: var(--t-small); }
+.cta.big { min-height: 52px; padding: 13px 26px; font-size: var(--t-h3); border-radius: var(--control-radius); }
 .nav .cta { min-height: 38px; padding: 8px 14px; font-size: var(--t-small); }
 summary.cta { width: fit-content; list-style: none; }
 summary.cta::-webkit-details-marker { display: none; }
@@ -294,8 +306,8 @@ button.link:hover { color: var(--ink); background: none; }
 :where(input[type="file"]) { height: var(--control-h); padding: 5px 12px 5px 5px; line-height: 32px; color: var(--ink-soft); cursor: pointer; }
 :where(input[type="file"])::file-selector-button {
 	box-sizing: border-box; height: 32px; margin: 0 12px 0 0; padding: 0 12px; cursor: pointer;
-	font: inherit; font-size: 14px; font-weight: 640; color: var(--ink);
-	background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+	font: inherit; font-size: var(--t-small); font-weight: 640; color: var(--ink);
+	background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-1);
 }
 /* A checkbox or radio: the browser's own, which every keyboard and screen
    reader knows, at one size and in the accent. With its words, a
@@ -328,8 +340,8 @@ dialog {
 	width: min(420px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: var(--radius);
 	background: var(--panel); color: var(--ink); padding: 22px; box-shadow: var(--shadow);
 }
-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
-dialog h2 { font-size: 22px; margin: 0 0 6px; }
+dialog::backdrop { background: var(--scrim); }
+dialog h2 { font-size: var(--t-h3); margin: 0 0 6px; }
 dialog p { color: var(--ink-soft); margin: 0 0 14px; }
 dialog form label { margin-bottom: 14px; }
 dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
@@ -355,8 +367,8 @@ h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: 
 	letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
 }
 .lede { margin: 0 0 var(--s-5); font-size: var(--t-lede); color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
-.sub { margin: 0 0 var(--s-5); color: var(--ink-soft); max-width: 66ch; font-size: 17px; text-wrap: pretty; }
-.note { margin: 14px 0 0; font-size: 14px; color: var(--ink-faint); }
+.sub { margin: 0 0 var(--s-5); color: var(--ink-soft); max-width: 66ch; font-size: var(--t-lede); text-wrap: pretty; }
+.note { margin: 14px 0 0; font-size: var(--t-small); color: var(--ink-faint); }
 .center { text-align: center; }
 .center .lede, .center .sub { margin-inline: auto; }
 
@@ -377,7 +389,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .page section { margin-top: var(--s-7); }
 .page section > h2:first-child { margin-top: 0; }
 .prose { max-width: 760px; }
-.prose h2 { font-size: 19px; margin: var(--s-6) 0 6px; letter-spacing: -0.01em; }
+.prose h2 { font-size: var(--t-h3); margin: var(--s-6) 0 6px; letter-spacing: -0.01em; }
 .prose p { color: var(--ink-soft); margin: 0 0 var(--s-3); }
 .prose p b { color: var(--ink); font-weight: 620; }
 
@@ -389,13 +401,16 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	background: var(--panel); border: 1px solid var(--line);
 	border-radius: var(--radius); padding: 22px;
 }
-.card p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+.card p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
 /* A model: the one card for a shared model, wherever one is listed (the
-   gallery, the landing page, a profile, a collection, your account). The
-   shape of the picture a share is published with, 1200 x 630, so rows
-   line up and the space is held before it comes. .models lays them out;
-   .models.row is one row that scrolls inside itself, never the page. */
+   gallery, the landing page, a profile, a collection, a model's remixes,
+   your account), drawn by web/card.js on the server and in the browser.
+   Its picture 4:3, the middle of the 1200 x 630 one a share is published
+   with (docs/SOCIAL.md D3): a model shows 1.43 times larger at the same
+   width, rows line up, and the space is held before the picture comes.
+   .models lays them out; .models.row is one row that scrolls inside
+   itself, never the page. */
 .models { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .models.row {
 	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(230px, 280px);
@@ -411,10 +426,10 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 }
 .model:hover { border-color: var(--ink-faint); }
 .model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
-.model .frame { aspect-ratio: 1200 / 630; background: var(--bg-soft); overflow: hidden; }
+.model .frame { aspect-ratio: 4 / 3; background: var(--bg-soft); overflow: hidden; }
 .model .frame img { width: 100%; height: 100%; object-fit: cover; }
 .model .frame.none {
-	display: grid; place-items: center; color: var(--ink-faint); font-size: 14px;
+	display: grid; place-items: center; color: var(--ink-faint); font-size: var(--t-small);
 	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
 }
 .model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
@@ -423,12 +438,122 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	color: var(--ink); font-size: var(--t-body); font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
-.model small { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
-/* Marked Tested (api/_tested.js): small and green, on every card. */
-.model .tested { justify-self: start; font-size: var(--t-micro); font-weight: 600; color: var(--green);
-	border: 1px solid var(--green); border-radius: var(--r-pill); padding: 0 8px; margin-top: 4px; }
+.model span { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.model small:not(.pill) { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
+/* How much of it the signed-in person's collection holds, and what moves. */
+.model small.moves, .model small.owned.all { color: var(--ink); font-weight: 600; }
+.model small.owned { color: var(--ink-soft); }
+/* Marked Tested (api/_tested.js): a pill.good, on every card. */
+.model .words > .pill { justify-self: start; margin-top: var(--s-1); }
 .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+/* -- the kit --------------------------------------------------------
+   What a social page is made of (docs/DESIGN_SYSTEM.md, web/kit.js): the
+   pill, tabs, an avatar, an icon and an icon button with its count, the
+   toast, the "more" menu. web/_kit.html shows each, in both themes. */
+
+/* A pill: a fact, a tag, a mark. One that is a link or a button is taller,
+   a finger's width, and takes the pointer's edge. .good is green (Tested),
+   .new is edged in the accent, .tag says "#" first. A row of them is
+   .pills. */
+.pill {
+	display: inline-flex; align-items: center; gap: var(--s-1); min-height: 24px; padding: 1px 10px;
+	border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--panel);
+	font: inherit; font-size: var(--t-tiny); font-weight: 500; line-height: 20px; white-space: nowrap;
+	color: var(--ink-soft); text-decoration: none;
+}
+a.pill, button.pill, summary.pill { min-height: 32px; padding: 5px 12px; font-size: var(--t-small); color: var(--ink); cursor: pointer; }
+a.pill:hover, button.pill:hover, summary.pill:hover { border-color: var(--ink-faint); background: var(--panel); }
+summary.pill { width: fit-content; list-style: none; }
+summary.pill::-webkit-details-marker { display: none; }
+.pill.good { color: var(--green); border-color: var(--green); font-weight: 600; }
+.pill.new { color: var(--ink); border-color: var(--accent-edge); }
+.pill.tag { gap: 0; }
+.pill.tag::before { content: "#"; color: var(--ink-faint); }
+/* Its quieter part: a handle after a name. */
+.pill small { color: var(--ink-faint); font-size: inherit; }
+.pills { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+
+/* Tabs: a row of links or buttons, the one shown aria-current (or
+   aria-selected in a tablist) underlined in the accent's edge. On a phone
+   the row scrolls inside itself, never the page. A count in .n. */
+.tabs {
+	display: flex; gap: var(--s-1); margin: 0 0 var(--s-5); padding: 0; list-style: none;
+	overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; border-bottom: 1px solid var(--line);
+}
+.tabs a, .tabs button {
+	flex: none; display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--control-h);
+	margin: 0 0 -1px; padding: 0 var(--s-3); border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+	background: none; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.tabs a:hover, .tabs button:hover { color: var(--ink); background: none; }
+.tabs [aria-current="page"], .tabs [aria-current="true"], .tabs [aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent-edge); }
+.tabs .n { color: var(--ink-faint); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* An avatar: a person's picture, or one made from their handle (web/kit.js
+   avatarHtml): a round tile in one of eight colours and its first letter,
+   never a figure's likeness (docs/TRADEMARKS.md). Four sizes: .small 24
+   (a byline), 40, .big 64 (your account), .huge 112 (a profile). */
+.avatar {
+	display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; overflow: hidden;
+	border-radius: 50%; background: var(--avatar-8); color: var(--on-avatar);
+	font-size: var(--t-h3); font-weight: 700; line-height: 1; text-transform: uppercase; user-select: none;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar.small { width: 24px; height: 24px; font-size: var(--t-micro); }
+.avatar.big { width: 64px; height: 64px; font-size: var(--t-h2); }
+.avatar.huge { width: 112px; height: 112px; font-size: var(--t-h1); }
+.avatar.c1 { background: var(--avatar-1); } .avatar.c2 { background: var(--avatar-2); }
+.avatar.c3 { background: var(--avatar-3); } .avatar.c4 { background: var(--avatar-4); }
+.avatar.c5 { background: var(--avatar-5); } .avatar.c6 { background: var(--avatar-6); }
+.avatar.c7 { background: var(--avatar-7); } .avatar.c8 { background: var(--avatar-8); }
+
+/* An icon from the sprite (web/icons.svg, web/kit.js iconHtml), in the
+   words' colour; filled when its button is pressed. */
+.icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* An icon button: a round button with an icon, and its count beside it
+   once there is one (never "0"). Its name and count are its label for a
+   screen reader ("Like, 12 likes"); a toggle is aria-pressed, and pressed
+   it is edged in the accent and its icon filled. .small for a card's row. */
+.icon-btn {
+	display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+	min-width: var(--control-h); min-height: var(--control-h); padding: 0 12px;
+	border: 1px solid var(--line); border-radius: var(--r-pill); background: transparent; color: var(--ink);
+	font: inherit; font-size: var(--t-small); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
+	text-decoration: none; cursor: pointer; list-style: none;
+}
+.icon-btn::-webkit-details-marker { display: none; }
+.icon-btn:hover { background: var(--panel); }
+.icon-btn[aria-pressed="true"] { border-color: var(--accent-edge); }
+.icon-btn[aria-pressed="true"] .icon { fill: currentColor; }
+.icon-btn.small { min-width: 36px; min-height: 36px; padding: 0 10px; }
+.icon-btn.small .icon { width: 18px; height: 18px; }
+
+/* The toast (web/kit.js toast): a line that says what just happened
+   ("Link copied") at the foot of the screen, read out, gone in a moment. */
+.toast {
+	position: fixed; left: 50%; bottom: var(--s-5); z-index: 60; max-width: calc(100vw - 32px);
+	padding: 10px 18px; border-radius: var(--r-pill); background: var(--ink); color: var(--bg);
+	font-size: var(--t-small); font-weight: 600; box-shadow: var(--shadow);
+	transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+}
+.toast.shown { transform: translate(-50%, 0); opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* The "more" menu: an icon button that opens a short list of what else
+   can be done (Report it, Takedown requests), the header Menu's panel.
+   A <details>, so it opens with no script; web/kit.js closes it on a click
+   elsewhere or Escape. */
+.more-menu { position: relative; display: inline-block; }
+/* It opens from its button's start, along the row; .end at a row's end
+   opens back from the button's end, so it never runs off the page. */
+.more-menu .menu-list { z-index: 30; left: 0; right: auto; }
+.more-menu.end .menu-list { left: auto; right: 0; }
+.menu-list > button {
+	justify-content: flex-start; min-height: 0; padding: 10px 12px; border: 0; border-radius: var(--r-1);
+	background: none; color: var(--ink-soft); font-size: var(--t-body); font-weight: 400; text-align: left;
+}
+.menu-list > button:hover { background: var(--panel-hi); color: var(--ink); }
 
 /* A page's own index (your account): its sections, in a rail beside them
    on a laptop and in a row across the top on a phone that scrolls inside
@@ -436,7 +561,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .subnav { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 2px; }
 .subnav a {
 	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
-	padding: 8px 12px; border-radius: 9px; white-space: nowrap;
+	padding: 8px 12px; border-radius: var(--r-2); white-space: nowrap;
 }
 .subnav a:hover, .subnav a[aria-current="true"] { color: var(--ink); background: var(--panel); }
 @media (max-width: 860px) {
@@ -463,8 +588,8 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .setting.danger summary { color: var(--bad); }
 .cta.danger, .cta.danger:hover { color: var(--bad); border-color: var(--bad); }
 .dot {
-	display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none;
-	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3); margin-right: 9px; vertical-align: -1px;
+	display: inline-block; width: 12px; height: 12px; border-radius: var(--r-1); flex: none;
+	box-shadow: inset 0 -2px 0 var(--shade); margin-right: 9px; vertical-align: -1px;
 }
 
 .shot {
@@ -472,25 +597,25 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	border: 1px solid var(--line); background: var(--bg-soft); box-shadow: var(--shadow);
 }
 .shot img { width: 100%; }
-figcaption { padding: 12px 16px 14px; font-size: 14px; color: var(--ink-soft); }
-figcaption b { display: block; color: var(--ink); font-size: 15px; font-weight: 640; }
+figcaption { padding: 12px 16px 14px; font-size: var(--t-small); color: var(--ink-soft); }
+figcaption b { display: block; color: var(--ink); font-size: var(--t-small); font-weight: 640; }
 
 .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); list-style: none; margin: 0; padding: 0; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; }
-.stat b { display: block; font-size: 28px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.stat span { font-size: 14px; color: var(--ink-soft); }
+.stat b { display: block; font-size: var(--t-h2); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stat span { font-size: var(--t-small); color: var(--ink-soft); }
 
 details.qa {
-	border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+	border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
 	padding: 0 20px;
 }
 details.qa + details.qa { margin-top: 10px; }
 details.qa summary {
-	cursor: pointer; padding: 16px 0; font-weight: 620; font-size: 16.5px;
+	cursor: pointer; padding: 16px 0; font-weight: 620; font-size: var(--t-body);
 	list-style: none; display: flex; justify-content: space-between; gap: 16px;
 }
 details.qa summary::-webkit-details-marker { display: none; }
-details.qa summary::after { content: "+"; color: var(--ink-faint); font-weight: 500; font-size: 20px; line-height: 1; }
+details.qa summary::after { content: "+"; color: var(--ink-faint); font-weight: 500; font-size: var(--t-h3); line-height: 1; }
 details.qa[open] summary::after { content: "–"; }
 details.qa > div { padding: 0 0 18px; color: var(--ink-soft); }
 details.qa > div p { margin: 0 0 10px; }
@@ -506,7 +631,7 @@ details.qa > div p { margin: 0 0 10px; }
 .foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin-left: auto; }
 .foot-links a { color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); padding: 6px 0; }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
-.legal p { margin: 0 0 6px; max-width: 110ch; font-size: 12.5px; line-height: 1.6; }
+.legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
 .legal a { color: var(--ink-soft); }
 
 /* Read aloud, not shown. */

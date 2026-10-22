@@ -60,28 +60,22 @@
 .search { display: flex; gap: 8px; }
 .search input { flex: 1; }
 .search button { flex: none; }
-.filters { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-soft); }
+.filters { border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg-soft); }
 .filters summary {
-	cursor: pointer; list-style: none; padding: 10px 14px; font-weight: 600; font-size: 15px;
+	cursor: pointer; list-style: none; padding: 10px 14px; font-weight: 600; font-size: var(--t-small);
 	display: flex; justify-content: space-between; gap: 10px;
 }
 .filters summary::-webkit-details-marker { display: none; }
 .filters summary::after { content: "+"; color: var(--ink-faint); font-weight: 500; }
 .filters[open] summary::after { content: "–"; }
-.filters summary .said { color: var(--ink-soft); font-weight: 500; font-size: 14px; margin-left: auto; }
+.filters summary .said { color: var(--ink-soft); font-weight: 500; font-size: var(--t-small); margin-left: auto; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 2px 14px 14px; }
-.filter-row label { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--ink-soft); }
+.filter-row label { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
 .filter-row .tick { align-items: center; }
 .filter-row .tick input { margin: 0; }
 .order-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 16px; }
-.order { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--ink-soft); }
-.found { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
-.chips button {
-	font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); cursor: pointer;
-	border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; min-height: 34px;
-}
-.chips button:hover { border-color: var(--ink-faint); }
+.order { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
+.found { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
 .more { margin-top: 26px; }
 .yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
@@ -90,25 +84,21 @@
    builds that scrolls sideways inside itself on a phone, never the page. */
 .shelves { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; margin: 4px 0 30px; }
 .shelves > * { min-width: 0; }
-.shelves h2, .all-h { font-size: clamp(19px, 2.4vw, 23px); margin: 0; }
+.shelves h2, .all-h { font-size: var(--t-h3); margin: 0; }
 .all-h { margin: 0 0 10px; }
 .pick .eyebrow { margin: 0 0 8px; }
-.pick-card .why { margin: 6px 0 0; color: var(--ink); font-size: 14.5px; font-weight: 560; }
+.pick-card .why { margin: 6px 0 0; color: var(--ink); font-size: var(--t-small); font-weight: 560; }
 @media (min-width: 760px) {
 	.pick-card { flex-direction: row; }
-	.pick-card .frame { flex: 0 0 58%; }
+	.pick-card .frame { flex: 0 0 44%; }
 	.pick-card .words { align-content: center; padding: 20px 24px; }
-	.pick-card b { font-size: 21px; -webkit-line-clamp: 3; }
+	.pick-card b { font-size: var(--t-h3); -webkit-line-clamp: 3; }
 }
 .shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
-.shelf-head a { font-size: 14.5px; color: var(--ink-soft); }
-.shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: 14.5px; }
-.score-said { margin: -6px 0 16px; color: var(--ink-soft); font-size: 14px; }
-/* How much of a model the signed-in person's collection holds. */
-.model small.moves { color: var(--ink); font-weight: 600; }
-.model small.owned { color: var(--ink-soft); }
-.model small.owned.all { color: var(--ink); font-weight: 600; }
-.yours h2 { font-size: clamp(22px, 3vw, 28px); }
+.shelf-head a { font-size: var(--t-small); color: var(--ink-soft); }
+.shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: var(--t-small); }
+.score-said { margin: -6px 0 16px; color: var(--ink-soft); font-size: var(--t-small); }
+.yours h2 { font-size: var(--t-h2); }
 .yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 16px; }
 </style>
 <script src="/follow.js" type="module"></script>
@@ -207,7 +197,7 @@
 		<h2 class="all-h" id="all-h" hidden>Everything in the gallery</h2>
 		<div class="order-row">
 			<p class="found" id="found" aria-live="polite"></p>
-			<div class="chips" id="chips"></div>
+			<div class="pills" id="chips"></div>
 			<label class="order">Sort
 				<select id="sort" name="sort"><option value="newest">Newest</option></select></label>
 		</div>
