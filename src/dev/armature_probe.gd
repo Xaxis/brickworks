@@ -27,7 +27,8 @@
 ##     entry that builds when submitted as it is; build it when it comes again;
 ##     and never send back a vehicle with its crew, a toy car, a tower, or a
 ##     scene a character is in (a pyramid with statues, a river with a
-##     crocodile), while the bench's characters still are.
+##     crocodile), or a part of one alone (an owl's head, a bust), while the
+##     bench's characters, and an owl, still are.
 ##
 ## --out=DIR writes each laid kind as DIR/<kind>.ldr, for BrickBench's verify.py.
 extends SceneTree
@@ -589,6 +590,13 @@ func _refusals() -> void:
 	for character: Array in CHARACTERS:
 		await _sent_back_or_not(character, true)
 	await _sent_back_or_not(POTATO, false)
+	# A part of a character alone is that part: the entry lays the whole body,
+	# so an owl's head was sent back to be built as an owl on four legs. The
+	# owl itself still is (surface_probe's owl head, 2026-10-22).
+	for part: Array in PARTS:
+		await _sent_back_or_not(part, false)
+	await _sent_back_or_not(["A barn owl on a branch.", "owl", "Barn Owl",
+		"A white barn owl perched on a branch, its face a heart."], true)
 
 	# Over the connector no brief is said: the model cleared starts a new
 	# subject, and the statue built before is not what the lighthouse is.
@@ -659,6 +667,15 @@ const CHARACTERS: Array = [
 		"boy in shark armour", "Shark Armour Boy",
 		"A brick-built boy in silver shark armour on a small dark grey base: spiky brown hair, "
 		+ "toothy grin."],
+]
+## Parts of characters alone, as a session names them.
+const PARTS: Array = [
+	["An owl's head, carved in brick.", "owl head", "Owl Head",
+		"The head of a barn owl: a heart-shaped face, two black eyes, a small beak."],
+	["A bust of a man, in brick.", "bust", "Bust of a Man",
+		"A bust of a bearded man on a short plinth."],
+	["A dragon's wing for a display.", "dragon wing", "Dragon Wing",
+		"A dragon's wing spread out, ribs and membrane."],
 ]
 const POTATO: Array = ["A brown potato-shaped toy wears a black hat and blue shoes. It has white "
 	+ "eyes, an orange nose, and a mustache. Use at most 400 pieces.", "potato toy",

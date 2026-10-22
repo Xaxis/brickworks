@@ -326,24 +326,27 @@ func _figure() -> void:
 
 
 ## A section hung on the app's own tilting hinge, as a session writes it: the
-## two halves the app lays are clean by BrickNet's shapes at any angle it
-## opens to, and folded the way it does not open, named as the hinge it is.
+## two halves the app lays are clean by BrickNet's shapes at any angle, either
+## way, laid facing the way it opens; and two laid by hand folded the way they
+## do not open are named as the hinge they are.
 func _hinge() -> void:
 	# Asked of the joint, on a baseplate: a flap opened past its brick's edge,
 	# stood alone on a bare floor, tips, as it would in the hand.
 	_assistant.floor_kind = func() -> String: return ModelFloor.BASEPLATE
 	var folded: Assistant.Model = _assistant._read_model({"bricks": [
 		{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0},
-		{"part": "3023", "color": 0, "x": 0, "y": 0, "z": 0, "section": "flap"}],
-		"sections": [{"name": "flap", "x": 0, "y": 3, "z": 0, "axis": "x",
-			"degrees": -45, "hinge": "tilting"}]})
+		{"part": "3937", "color": 0, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "3938", "color": 0, "x": 0, "y": -0.75, "z": -0.5, "rot": 0, "section": "flap"},
+		{"part": "3023", "color": 0, "x": 0, "y": 1.25, "z": -0.5, "section": "flap"}],
+		"sections": [{"name": "flap", "x": 0, "y": 4.75, "z": 0.5, "axis": "x",
+			"degrees": -45}]})
 	var named: Array = (_assistant._check(folded, true).get("exact", {}) as Dictionary).get(
 		"collision", [])
 	_say(named.any(func(s: Variant) -> bool: return str(s).contains("3938") \
 			and str(s).contains("hinge")),
-		"the app's tilting hinge folded -45 degrees, into its base: named as the hinge",
-		"the app's tilting hinge folded -45 degrees: not named (%s)" % [named])
-	for degrees: float in [0.0, 30.0, 60.0, 90.0]:
+		"a tilting hinge laid by hand folded -45 degrees, into its base: named as the hinge",
+		"a tilting hinge laid by hand folded -45 degrees: not named (%s)" % [named])
+	for degrees: float in [-90.0, -45.0, 0.0, 30.0, 60.0, 90.0]:
 		var model: Assistant.Model = _assistant._read_model({"bricks": [
 			{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0},
 			{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0, "section": "flap"},

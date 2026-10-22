@@ -252,9 +252,11 @@ async function main() {
   check(r.status === 200 && r.headers.get("content-type")?.startsWith("text/html"), `the link's page: 200 HTML (${r.status})`);
   check(r.text.includes('<meta property="og:title" content="Probe Tower — a Brickworks model">'), "its og:title names the model");
   check(r.text.includes(`<meta property="og:image" content="${base}/m/${id}.png">`), "its og:image is the model's picture");
-  check(r.text.includes("9 parts, by Probe Builder"), "it says the part count and who made it");
-  check(r.text.includes(`<a class="cta" href="/app?view=${id}">View in 3D</a>`) && r.text.includes('<script src="/share-page.js"')
-    && r.text.includes(`data-viewer="/app?view=${id}"`), "a person goes on to the viewer, /app?view=<id>, with View in 3D");
+  check(r.text.includes('<li class="pill">9 parts</li>') && r.text.includes("<b>Probe Builder</b>"),
+    "it says the part count and who made it");
+  check(r.text.includes(`<a class="cta" href="/app?view=${id}" `) && r.text.includes(">Build it</a>")
+    && r.text.includes('<script src="/share-page.js"') && r.text.includes(`data-viewer="/app?view=${id}"`),
+  "a person goes on to the viewer, /app?view=<id>, with Build it");
   check(/frame-ancestors 'none'/.test(r.headers.get("content-security-policy") || ""), "the page is not frameable");
 
   r = await call(`/m/${id}.png`);
@@ -803,13 +805,14 @@ async function theDirectory(tokenA) {
   const page = r.text;
   check(r.status === 200 && page.includes(`<p class="description">A gatehouse with a ${word} on the wall.\n\nIt &lt;b&gt;opens&lt;/b&gt; &amp; &quot;closes&quot;.</p>`),
     "its page: the description, escaped, its lines kept");
-  check(page.includes('<a href="/gallery?tag=castle">castle</a>') && page.includes('<a href="/gallery?tag=b%20gate%20b">b gate b</a>'),
+  check(page.includes('href="/gallery?tag=castle">castle</a>') && page.includes('href="/gallery?tag=b%20gate%20b">b gate b</a>'),
     "its tags, each a link to the gallery filtered by it");
   check(page.includes('<a href="/gallery?kind=castle">Castles and fantasy</a>'), "its kind, a link to the gallery's");
   check(page.includes("<b>CC BY-SA 4.0.</b>") && page.includes('href="https://creativecommons.org/licenses/by-sa/4.0/"')
     && page.includes("credit Probe Builder"), "its licence, with whom to credit and the licence itself");
-  check(page.includes("2 steps") && page.includes(">0 views<") && page.includes(">1 remix<"),
-    "its steps and counts: 2 steps, 0 views, 1 remix");
+  // A count is said once there is one: no "0 views" (docs/SOCIAL.md).
+  check(page.includes("2 steps") && !page.includes("0 views") && page.includes(">1 remix<"),
+    "its steps and counts: 2 steps, no views said, 1 remix");
   check(page.includes(`href="/m/${remix}"`) && page.includes("Probe Gate Remix"), "what was remixed from it, a card linking its page");
   check(page.includes('<link rel="stylesheet" href="/site.css">') && page.includes('class="site-head"')
     && page.includes('class="site-foot"') && /LEGO® is a trademark of the LEGO Group/.test(page),
@@ -937,7 +940,8 @@ async function thePeople(tokenA, tokenB) {
   r = await call("/u/nobody-has-this");
   check(r.status === 404, `a handle nobody has: 404 (${r.status})`);
   r = await call(`/m/${credited}`);
-  check(r.text.includes(`Shared by <a href="/u/${handle}">&lt;b&gt;Probe&lt;/b&gt;`), "the credited model's page links its profile");
+  check(r.text.includes(`<a class="who" href="/u/${handle}">`) && r.text.includes("<b>&lt;b&gt;Probe&lt;/b&gt;"),
+    "the credited model's page links its profile");
   r = await call(`/m/${nameless}`);
   check(!r.text.includes(`/u/${handle}`), "the one shared without a name does not");
   let l = await call(`/api/share?op=list&page=1&tests=1&q=probe%20credited`);
@@ -961,7 +965,8 @@ async function thePeople(tokenA, tokenB) {
   r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenB, body: { on: false } });
   check(r.json?.likes === 1 && r.json?.liked === false, "unliked: 1");
   r = await call(`/m/${credited}`);
-  check(r.text.includes('<span data-count="likes">1 like</span>'), "its page counts it");
+  check(r.text.includes('aria-label="Like, 1 like"') && r.text.includes('<span class="n" aria-hidden="true">1</span>'),
+    "its page counts it, on its Like");
   l = await call("/api/share?op=list&page=1&tests=1&sort=likes");
   const liked = (l.json?.models || []).map((m) => m.likes);
   check(liked.every((n, k) => k === 0 || n <= liked[k - 1]) && (l.json?.models || []).find((m) => m.id === credited)?.likes === 1,

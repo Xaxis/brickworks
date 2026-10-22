@@ -260,18 +260,25 @@ const PAGES = [
       return [["filters", "#filters"]];
     } },
   { name: "model", path: `/m/${stand.MODEL_ID}`,
+    // The comments listed (Comment's count), and signed out Report it made
+    // live in More.
     ready: (page, { signedIn }) => until(page, signedIn
-      ? () => !document.querySelector("#marks")?.hidden
+      ? () => !document.getElementById("comments")?.hidden
       : () => !document.querySelector('[data-report="this model"]')?.hidden),
     open: async (page, { signedIn }) => {
       if (!signedIn) {
+        await page.click("#more > summary");
+        const shown = await until(page, () => document.querySelector("#more[open]"));
+        const states = [[shown ? "more" : "more (missing)", ".side"]];
         await page.click('[data-report="this model"]');
         const opened = await until(page, () => document.querySelector("dialog.report[open]"));
-        const states = [[opened ? "report" : "report (missing)", "dialog.report"]];
+        states.push([opened ? "report" : "report (missing)", "dialog.report"]);
         return states;
       }
-      await page.evaluate(() => document.querySelector("details.collect")?.setAttribute("open", ""));
-      const states = [["collect", ".marks"]];
+      // Save: your lists, Favourites first (web/model-page.js).
+      await page.click('#marks [data-mark="save"]');
+      const saved = await until(page, () => !document.getElementById("save-panel")?.hidden);
+      const states = [[saved ? "save" : "save (missing)", ".side"]];
       const add = page.locator("[data-add-build]");
       if (await add.isVisible().catch(() => false)) {
         await add.click();

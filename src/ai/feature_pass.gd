@@ -213,7 +213,7 @@ func spot_for(name: String) -> Dictionary:
 ## The real pieces for a feature that lay whole, best first: the subject's
 ## own sets first (RealSnippets.search), then any.
 func candidates_for(name: String) -> Array:
-	var subject: String = Assistant._subject_words(assistant._brief)
+	var subject: String = Assistant._subject_words(assistant._asked_as())
 	var query: String = ("%s %s" % [subject, name]).strip_edges()
 	var box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
 	var widest: float = maxf(box.size.x, box.size.z) / STUD

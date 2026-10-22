@@ -413,6 +413,59 @@ const PLANTS: Array = ["tree", "flower", "plant", "bonsai", "tree trunk", "mushr
 ## "mouth" alone, which a clock, a cliff and a river have.
 const FACE_WORDS: Array = ["eyes", "eyebrows", "eyelashes", "eyelids", "moustache",
 	"mustache", "grin", "grinning", "smile", "smiling", "frown", "frowning", "googly"]
+## A part of a character's body, or what is worn on one, said alone: a design
+## headed by one is that part, not the character.
+const BODY_PARTS: Array = ["head", "bust", "skull", "face", "mask", "helmet", "wing", "tail",
+	"paw", "claw", "hand", "fist", "foot", "hoof", "leg", "arm", "beak", "torso"]
+
+
+## Words of a design's name that say which one or how it is built, not what it
+## is: a red house and a red car are not one subject.
+const NOT_A_SUBJECT: Array = ["red", "blue", "yellow", "green", "black", "white", "gray",
+	"brown", "orange", "purple", "pink", "tan", "gold", "silver", "dark", "light", "bright",
+	"small", "smaller", "big", "bigger", "large", "larger", "little", "tiny", "giant", "huge",
+	"mini", "micro", "tall", "taller", "short", "long", "wide", "great", "classic", "modern",
+	"old", "vintage", "retro", "simple", "detailed", "custom", "lego", "brick", "minifigure",
+	"minifig", "scale", "front", "back", "top", "side", "left", "right"]
+
+
+## Whether a design named [param name] is of the subject [param said] (what the
+## design standing was asked for and called): they share a word naming a
+## subject, in any of its forms; not a colour, a size, a part of a body (an
+## owl's head and a lion's are two subjects) or a filler. A name with no such
+## word says nothing, and is taken to be the same.
+static func same_subject(said: String, name: String) -> bool:
+	var ours: PackedStringArray = _subject_words(said)
+	var theirs: PackedStringArray = _subject_words(name)
+	if ours.is_empty() or theirs.is_empty():
+		return true
+	for word: String in theirs:
+		if ours.has(word):
+			return true
+	return false
+
+
+static func _subject_words(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for word: String in RealSnippets.words(text):
+		if not word in NOT_A_SUBJECT and not word in BODY_PARTS:
+			out.append(word)
+	return out
+
+
+## Whether a design called [param name] is a part of a character alone: headed
+## by a part of a body and naming whose. "Owl Head" is an owl's head, which
+## the figure pattern would lay as a whole owl on four legs; "Toilet Head",
+## headed the same, names no character, and is the toilet its brief is. A
+## name, not a brief: a sentence's last word before its first "with" can be
+## its verb's object ("a knight raises his sword arm").
+static func part_alone(name: String) -> bool:
+	var parts: Dictionary = {}
+	for word: Variant in BODY_PARTS:
+		parts[str(word)] = true
+	var head: String = head_noun(name)
+	return not head.is_empty() and not SubjectWords.kind_of_word(head, parts).is_empty() \
+		and not character_of(name).is_empty()
 
 
 ## Whether [param about] is a figure, a creature or a character, which a set

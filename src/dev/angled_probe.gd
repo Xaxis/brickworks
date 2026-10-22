@@ -1,5 +1,7 @@
 ## Can the system hold a part that is not square to the grid?
 ##
+##   godot --headless --path . --script src/dev/angled_probe.gd
+##
 ## Every placement this app makes is one of 24 axis-aligned
 ## orientations, but an .ldr written by somebody else can carry any
 ## rotation at all, and the reader parses the full matrix. So the

@@ -22,7 +22,7 @@
 //      Next to the last step: the app sends one finish and the model is
 //      built once. Back and Next onto the last step again, and the page
 //      reloaded and the last step reached again, send nothing more and the
-//      count stays at one. The model's page says "1 built", its gallery card
+//      count stays at one. The model's page says "I built it, 1 build", its card
 //      too, and Most built puts it ahead of every card built less. A
 //      robot's finish is not counted, nor the same device's twice; the
 //      desktop app's is.
@@ -387,8 +387,9 @@ try {
   const visitor = await visitorContext.newPage();
   listen(visitor, "visitor");
   await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
-  const said = await visitor.evaluate(() => document.querySelector('[data-count="builds"]')?.textContent || "");
-  check(`the model's page says "${said}"`, said === "1 built");
+  // The action bar's I built it, its count beside it and in its name.
+  const said = await visitor.evaluate(() => document.querySelector('#marks [data-mark="built"]')?.getAttribute("aria-label") || "");
+  check(`the model's page says "${said}"`, said === "I built it, 1 build");
   // When each card was listed, from the list the page drew it from (a card
   // does not say): Most built ties by it, newest first.
   const answers = [];
