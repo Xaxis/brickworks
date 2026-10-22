@@ -83,6 +83,7 @@ const PAGES = [
   { path: "/takedown", canonical: `${SITE}/takedown` },
   { path: "/admin", private: true },
   { path: "/profile", private: true },
+  { path: "/settings", private: true },
 ];
 // The newest model in the gallery, whose page is the site's too.
 // Asked past the CDN, which keeps the list for up to a minute: a model a
@@ -183,6 +184,7 @@ for (const [from, to] of [
   ["/takedown.html", "/takedown"],
   ["/admin.html", "/admin"],
   ["/profile.html", "/profile"],
+  ["/settings.html", "/settings"],
   ["/download.html?os=macos", "/download?os=macos"],
   ["/authorize.html", "/oauth/authorize"],
   ["/download/", "/download"],
@@ -356,7 +358,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
 const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
-  ["/compare", "compare"], ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/profile", "profile"], ["/takedown", "takedown"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
+  ["/compare", "compare"], ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/profile", "profile"], ["/settings", "settings"], ["/takedown", "takedown"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });

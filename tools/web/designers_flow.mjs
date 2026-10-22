@@ -411,7 +411,8 @@ try {
     check(`...the castle first, ${JSON.stringify(castle.n)}, "${castle.builders}", the secret among them; nothing sideways`,
       expect(mine.rows) && !(await sideways(page)));
     await shot(page, `${width === 1280 ? "5" : "6"}_ada_own-${width}.png`);
-    await page.goto(`${site}/profile`, { waitUntil: "load" });
+    // Insights, a tab of her profile only she sees (docs/SOCIAL.md U6).
+    await page.goto(`${site}/profile?tab=insights`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.profile === "ready", "her Account");
     await pictures(page, "#designs .design-builders img, #designs .design-row .pic img");
     const account = await mineDrawn(page, "designs");

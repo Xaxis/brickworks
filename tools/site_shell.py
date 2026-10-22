@@ -39,9 +39,9 @@ HEAD = re.compile(r'(?:<meta name="theme-color"[^>]*>\n)+<script src="/theme\.js
 OLD_BAR = re.compile(r'<meta name="theme-color"[^>]*>\n')
 STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links. The
-# landing page marks the mark.
+# landing page marks the mark; your settings are part of your account.
 OWN = {"index.html": "/", "gallery.html": "/gallery", "download.html": "/download",
-       "profile.html": "/profile"}
+       "profile.html": "/profile", "settings.html": "/profile"}
 
 
 def shell() -> tuple[str, str, str]:

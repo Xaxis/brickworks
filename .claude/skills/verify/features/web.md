@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
 
 ## Sub-features
 
@@ -553,30 +553,49 @@ plan with Claude as the client.
   project 2026-10-22 for m145 with `tools/apply_sql.mjs`, dry-run first, and
   recorded here as the project has no migration table; before it the page
   had none and `POST ?op=showcase` said 503 "not open yet", after checking
-  what it is sent); chosen under Settings on `/profile`
-  (`#showcase-form`, shown once `?op=me` says `showcase.ready`);
+  what it is sent); chosen in Edit profile on `/profile`
+  (`#showcase` in `#edit-dialog`, shown once `?op=me` says
+  `showcase.ready`; a save sends only what was changed);
   `/c/<id>` — a public collection's name, "N models,
   collected by <their profile>", its description and its listed models in the
   order they were put there. Every word escaped; og tags and a canonical link.
 - `your profile page` (`web/profile.html`, `web/profile.js`): `/profile`,
-  noindex, titled Your account (rebuilt 2026-10-20 as one page, not a stack of
-  forms). Signed out: one line of what an account gives, and Sign in (the
-  dialog of `site sign-in`). Signed in: their name, initial, `/u/` page and
-  follower counts at the top with Your public page (`#view`) and Your feed
-  (`#to-feed`); a rail of the sections (`.subnav`); their models
-  (`designs.js`), favourites with Let it go, collections (a name to make a new
-  one, each with its name, Public, Save, Delete, Its page when public, and what
-  is in it with Take it out), the sets they own and what in the gallery they
-  build (`/api/collection`, `/api/share?op=shelves&mine=1`), whom they follow
-  (`/api/people?op=following` with no handle: theirs, for them alone), the
-  photos of their builds; then Settings: the name, handle and about-you form,
-  email and what is emailed, privacy (the age answer, showing whom they
-  follow), the Claude connection (`/api/oauth?op=connections`, Disconnect
-  with a confirm), Sign out, and Delete this account (`api/account.js
-  ?op=delete`, their address typed to confirm: the files of their build
-  photos and of photos of their models deleted, then the account, every row
-  of theirs cascading; the site owner's refused). people_flow deletes its
-  visitor this way.
+  noindex, titled Your profile (2026-10-22, docs/SOCIAL.md U6: your account
+  as your profile). Signed out: one line of what an account gives, and Sign
+  in (the dialog of `site sign-in`). Signed in with no profile: `#start`,
+  the form's two fields (name, handle; `#save` says Make my profile), and
+  the tabs Saved · Sets · Insights; under 13 the fields off and `#young`
+  says why. With a profile: `#me`, the head `/u/<handle>` draws (banner,
+  `.huge` avatar, `#title`, `#handle-line` "@handle · Designer/Builder ·
+  building here since", `#bio-shown`, `#links-shown` ugc nofollow,
+  `#numbers` with no count of none, `#pinned`), read from `?op=profile`
+  with `tests=1` (only ever your own), and Edit profile (`#edit`), Settings
+  (`#to-settings`), Share (`#share`: the share sheet on a phone, else the
+  link copied and a toast) and More (`#view` your page as others see it,
+  `#to-feed`). Then `#tabs`, each a `?tab=` of the address, drawn when
+  first opened: Models (8 cards at a time, `#models-more`), Builds (yours
+  and others' of your models), and, only yours, Saved (`#favourites` with
+  Let it go, `#lists` the collections with Public, Save, Delete, Its page
+  and What is in it, `#following`), Sets (`#owned-*`: `/api/collection`,
+  `/api/share?op=shelves&mine=1`) and Insights (`#designs`, `designs.js`).
+  Edit profile (`#edit-dialog`, or `/profile?edit=1` from Settings and
+  from `[data-edit-own]` on your own `/u/<handle>`, which `web/follow.js`
+  shows where Follow would be):
+  avatar (made from the handle), name, handle, about you, two links, the
+  banner and three pins; Save posts `?op=profile`, then `?op=showcase` with
+  only what changed, and redraws the page with no reload.
+- `your settings page` (`web/settings.html`, `web/settings.js`):
+  `/settings`, noindex (the account page's settings until 2026-10-22).
+  Signed out: Sign in. Signed in, one `.settings` panel: Profile (`#profile-line`,
+  Edit profile to `/profile?edit=1`), Appearance (`#theme-part`), Email
+  (`#who`, `#mail-comments` and `#mail-kinds`), Privacy (`#age-said`,
+  `#shows-follows`), Claude (`/api/oauth?op=connections`, Disconnect with a
+  confirm), Sign out, and Delete this account (`api/account.js ?op=delete`,
+  their address typed to confirm: the files of their build photos and of
+  photos of their models deleted, then the account, every row of theirs
+  cascading; the site owner's refused). people_flow and account_page_flow
+  delete their accounts this way; `documentElement.dataset.settings` says
+  `ready` or `signed-out`.
 - `model page action bar` (`web/model-page.js`, `api/share.js` `actionBar`,
   2026-10-22, docs/SOCIAL.md U4): on `/m/<id>`, `#marks.action-bar`, the
   kit's icon buttons drawn by the server: Like (`[data-mark="like"]`,
@@ -761,7 +780,7 @@ plan with Claude as the client.
   edged in `--accent-edge` (the yellow in dark, `#a67c00` in light: the
   yellow was 1.33:1 there). In the footer of every page, on Menu at a
   phone's width (inside `details.menu`, under the links; the header keeps
-  its four things) and in Settings on /profile (`#theme-part`). The light
+  its four things) and in Settings › Appearance on /settings (`#theme-part`). The light
   set in `web/site.css` is keyed on `<html data-theme="light">` and, with
   no choice, on `prefers-color-scheme: light`; the two copies must be equal
   (`tests/test_site_contrast.py`, which also measures every text token on
@@ -915,8 +934,8 @@ plan with Claude as the client.
   The page is the same bytes for everybody; `#designs-mine` is empty and
   hidden in it.
 - `your models as a designer` (`web/designs.js` `showDesigns`): on your own
-  `/u/<handle>` (How your models are doing) and on `/profile` (Your models,
-  as a designer; `web/profile.js`): totals (`.mine-totals`, opens and
+  `/u/<handle>` (How your models are doing) and on `/profile?tab=insights`
+  (Your models, as a designer; `web/profile.js`): totals (`.mine-totals`, opens and
   builds finished leading), then a row a model (`li.design-row[data-id]`,
   its numbers `dd[data-kind]`, the last 30 days large and in all beneath,
   who built it with their photos). `document.documentElement.dataset.designs`
@@ -1990,9 +2009,11 @@ collect it and be found by name": see the steps in its header — a signed-out
 visitor's Like opening the dialog (`1_sign_in_dialog.png`), the code minted
 on the test side typed in, the like going through with the count, Favourite,
 a collection made with the house in it (`2_model_marked-laptop.png`);
-`/profile` saying the address and offering no name, a name and handle saved,
-the house in favourites, the collection made public with its page
-(`3_profile-laptop.png`); `/c/<id>` and `/u/<owner>` signed out
+`/profile` with no profile yet offering two fields on its Saved tab, the
+house in favourites, a name and handle making the profile drawn at once,
+Edit profile's words shown with no reload, the collection made public with
+its page (`3_profile-laptop.png`); `/settings` with the address and Claude,
+and the account deleted there; `/c/<id>` and `/u/<owner>` signed out
 (`4_collection-laptop.png`, `5_profile_public-laptop.png`) and `/u/<visitor>`
 with the public list; and the model page (with the collection panel open),
 `/profile`, `/c/<id>` and `/u/<owner>` at 390 px with nothing sideways
@@ -3236,6 +3257,37 @@ seven refusals, Ada's links, banner and pins kept (or "not open yet"
 before the SQL on a preview) and her page as above. `design_flow` judges
 `person`, `person-builds`, `person-lists` (More open), `person-house` and
 `person-new` for controls, the scale and zeros.
+
+### Your account as your profile (/profile, /settings)
+
+docs/SOCIAL.md U6. Throwaway accounts on the site's live project, deleted
+by the end; a relay, or a preview:
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 8890 &
+node --env-file=.env tools/web/account_page_flow.mjs --url=http://127.0.0.1:8890 --out=shots/account_page
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/account_page_flow.mjs --url=<preview> --out=shots/account_page
+```
+
+It passes when it ends "account page: N passed, 0 failed": Ada set all the
+old page could (name, handle, words, two links, a banner, two pins, a
+favourite, a private collection, two email choices, whom she follows
+shown); signed out both pages offer Sign in; signed in at 1280 and 390 in
+both themes her head as `/u/` draws it with her links, banner and pins in
+her order, the tabs Models · Builds · Saved · Sets · Insights with Models
+open (4 of her 5 and Show more), under 2,000 px at 1280, avatar, name and
+Edit profile above 844 px at 390 with the head's buttons in one row; Edit profile holds all nine fields as she set them, a name changed
+there shows with no reload and nothing else changes (`?op=me` and her
+public page read back); Saved, Sets and Insights drawn, and a reload keeps
+the tab; her own `/u/` page offers Edit profile (to her alone) and it opens
+the dialog; `/settings` has the seven rows with her choices, an email choice
+and the theme changed and changed back, Settings' Edit profile opens the
+dialog, Sign out; Bea with no profile sees two fields and her profile
+drawn at once; Ada deleted from Settings is gone from the sign-in service,
+her page and models 404, and no row of hers in people, profile_shows,
+model_collections or model_favourites. `design_flow` judges `account`
+(Edit open), `account-saved`, `account-sets`, `account-insights` and
+`settings` (Delete open).
 
 ### The gallery (/gallery), as a person uses it
 

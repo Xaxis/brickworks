@@ -128,6 +128,16 @@ declare -A CMD=(
   # and in: avatar, numbers with no count of none, links ugc nofollow,
   # pins, tabs. The account deleted after, and its row of profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
+  # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
+  # set all the old account page could (her name, words, links, banner and
+  # pins, a favourite, a collection, her emails, whom she follows shown)
+  # finds it on /profile, her page's head and tabs, and in Edit profile; a
+  # name changed there shows with no reload and nothing else changes;
+  # Saved, Sets and Insights; /settings has every row with her choices;
+  # Bea with no profile makes one in two fields; Ada deletes her account
+  # from Settings and every row of hers goes. 390 and 1280 px, light and
+  # dark, signed in and out; the throwaway accounts deleted after.
+  [account_page]="tools/web/account_page_flow.mjs --url=$P --out=$S/${TAG}_account_page"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"

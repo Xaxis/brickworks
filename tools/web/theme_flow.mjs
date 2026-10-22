@@ -76,7 +76,8 @@ const AUTHORIZE = "/oauth/authorize?response_type=code&client_id=theme-flow&redi
 // Every kind of page; bare: no header or footer, so chosen from another tab.
 const PAGES = [
   { name: "home", path: "/" }, { name: "gallery", path: "/gallery" }, { name: "download", path: "/download" },
-  { name: "account", path: "/profile" }, { name: "feed", path: "/feed" }, { name: "challenge", path: "/challenge" },
+  { name: "account", path: "/profile" }, { name: "settings", path: "/settings" }, { name: "feed", path: "/feed" },
+  { name: "challenge", path: "/challenge" },
   { name: "compare", path: "/compare" }, { name: "faq", path: "/faq" }, { name: "changelog", path: "/changelog" },
   { name: "privacy", path: "/privacy" }, { name: "terms", path: "/terms" }, { name: "guidelines", path: "/guidelines" },
   { name: "takedown", path: "/takedown" }, { name: "404", path: "/no-such-page-here" },
@@ -301,7 +302,7 @@ async function signedIn(browser) {
     const first = await newContext(browser, width, session);
     if (memory) await memory.route(first);
     const page = await first.newPage();
-    await visit(page, "/profile");
+    await visit(page, "/settings");
     await page.waitForSelector("#theme-part [data-theme-choice]", { state: "visible", timeout: 20000 });
     const sent = page.waitForResponse((r) => r.url().includes("op=theme") && r.request().method() === "POST", { timeout: 15000 });
     await press(page, "dark", "settings");

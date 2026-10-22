@@ -146,9 +146,6 @@ is on the page, `hidden`, for the script to show.
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
   width, the legal pages), narrower and quieter.
 - **Empty**: `.state`, a dashed box for what has nothing yet.
-- **Page index**: `.subnav`, the sections of a long page (your account):
-  a rail beside them on a laptop, a row across the top on a phone that
-  scrolls inside itself; the one on screen `aria-current="true"`.
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
   `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field.
   The theme (`[data-theme-choice]`: System, Light, Dark), with its word in
@@ -211,11 +208,21 @@ is on the page, `hidden`, for the script to show.
   and how many are on, its panel the fields of a search.
 - **A person's page** (`/u/<handle>`, `web/directory.css`, docs/SOCIAL.md
   U5): the head (`.profile-head`: a `.huge` avatar, the name, the handle,
-  Follow, Share and More), `.numbers` (one row of counts, each `<b>` and
+  Follow, Share and More; on your own page Edit profile where Follow
+  would be), `.numbers` (one row of counts, each `<b>` and
   its word, hidden at none), `.pinned` (a `.models.row`), the `.tabs`, and
   two cards of its own: `.list-card` (a collection, a `.mosaic` of up to
   four pictures kept wide) and `.build-grid` (photos of builds in columns,
   any shape).
+- **Your profile** (`/profile`, `web/profile.html`, docs/SOCIAL.md U6):
+  your page as a person's page draws it (the same `.profile-head`,
+  `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share
+  and More in its head; the tabs Models · Builds as everybody sees them,
+  then Saved · Sets · Insights, which only you see, each a `?tab=` of its
+  own. Edit profile is a `dialog` of the site's fields; signed in with no
+  profile, the same form is in the page with its two fields, name and
+  handle. `/settings` is one `.settings` panel: Profile, Appearance, Email,
+  Privacy, Claude, Sign out, Delete account.
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
   with "_") shows every component once, drawn by `web/kit.js` and

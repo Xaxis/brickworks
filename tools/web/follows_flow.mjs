@@ -414,14 +414,17 @@ try {
   // is not whom he follows: only the Follows list says that.
   check("his profile does not list whom he follows, until he chooses", followsListed(bobsPage).length === 0
     && !bobsPage.includes('id="follows-h"') && statOn(bobsPage, "following") === "1 following");
+  // His choices are in Settings (docs/SOCIAL.md U6), his feed a link on his profile.
   await bobPage.goto(`${site}/profile`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.profile === "ready", "Bob's /profile");
+  const feed = await bobPage.evaluate(() => document.getElementById("to-feed")?.getAttribute("href"));
+  await bobPage.goto(`${site}/settings`, { waitUntil: "load" });
+  await until(bobPage, () => document.documentElement.dataset.settings === "ready", "Bob's /settings");
   const boxes = await bobPage.evaluate(() => ({
     kinds: [...document.querySelectorAll("#mail-kinds input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`),
-    shown: !document.getElementById("mail-kinds").hidden, follows: !document.getElementById("follows-choice").hidden,
-    feed: document.getElementById("to-feed")?.getAttribute("href") }));
-  check(`/profile: the feed's kinds ${boxes.kinds.join(" ")}, a way to the feed (${boxes.feed})`, boxes.shown && boxes.follows
-    && boxes.kinds.join(" ") === "models:true versions:true photos:true remixes:false" && boxes.feed === "/feed");
+    shown: !document.getElementById("mail-kinds").hidden, follows: !document.getElementById("follows-choice").hidden }));
+  check(`/settings: the feed's kinds ${boxes.kinds.join(" ")}; /profile: a way to the feed (${feed})`, boxes.shown && boxes.follows
+    && boxes.kinds.join(" ") === "models:true versions:true photos:true remixes:false" && feed === "/feed");
   await bobPage.check("#shows-follows");
   await until(bobPage, () => /Shown/.test(document.getElementById("follows-said")?.textContent || ""), "shown");
   await shot(bobPage, "8_profile_choices.png", true);

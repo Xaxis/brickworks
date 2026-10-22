@@ -131,7 +131,7 @@ const MAPPED = [
 ];
 // And the site's pages at their bare names, as deploy.sh serves them.
 const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"], [/^\/gallery\/?$/, "gallery.html"],
-  [/^\/profile\/?$/, "profile.html"]];
+  [/^\/profile\/?$/, "profile.html"], [/^\/settings\/?$/, "settings.html"]];
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", svg: "image/svg+xml",
   png: "image/png", json: "application/json", css: "text/css" };
 

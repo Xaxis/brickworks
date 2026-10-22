@@ -1,32 +1,35 @@
 <!DOCTYPE html>
 <!--
-  Your account, at /profile (and /profile.html, which redirects here).
+  Your profile, at /profile (and /profile.html, which redirects here): your
+  page as everybody sees it at /u/<handle>, and what only you see beside it
+  (docs/SOCIAL.md U6, D9; the owner, 2026-10-20: the old account page was
+  "complete garbage", a stack of forms).
 
-  Signed out, one line of what an account gives, and Sign in. Signed in,
-  one page that is yours (the owner, 2026-10-20: the old one was "complete
-  garbage", a stack of forms): who you are in the gallery at the top, with
-  your public page and your feed; then your models and how each is doing
-  (web/designs.js), your favourites, your collections of models, the sets
-  you own and what they build, whom you follow, the photos of your builds;
-  and last the settings: your public name, email, privacy, the Claude
-  connection, signing out and deleting the account. A rail of the sections
-  beside them on a laptop, across the top on a phone.
+  Signed out, one line of what an account gives, and Sign in. Signed in
+  with no profile yet, two fields, a name and a handle. With one, its head
+  as /u/<handle> draws it (banner, avatar, name, handle, words, links, one
+  row of numbers, the pinned models) with Edit profile, Settings and Share;
+  then tabs: Models and Builds as everybody sees them, and Saved
+  (favourites, collections, whom you follow), Sets (what you own and what
+  it builds) and Insights (how your models are doing), which only you see.
+  Edit profile opens a dialog of everything the profile shows; it saves
+  and the page shows it at once. The settings are at /settings.
 
   Signed in with the app's own sign-in in this browser (web/account.js):
   a code sent to your email, no password, the same session the app keeps.
   Everything comes from the site's API (/api/people, /api/collection,
-  /api/share, /api/oauth, /api/account), and profile.js puts every word on
-  the page as text. No inline script: the site's security policy allows
-  none it has not hashed. The look is /site.css and /directory.css; the
-  style below only lays this page out.
+  /api/share), and profile.js puts every word on the page as text. No
+  inline script: the site's security policy allows none it has not hashed.
+  The look is /site.css and /directory.css (the same head as /u/<handle>);
+  the style below only lays this page out.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Your account · Brickworks</title>
-<meta name="description" content="Your Brickworks account: your models and how they are doing, your favourites and collections, the sets you own, whom you follow, and your settings.">
+<title>Your profile · Brickworks</title>
+<meta name="description" content="Your Brickworks profile: your models and builds as everybody sees them, and what only you see: what you saved, the sets you own and how your models are doing.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://brickworks.diy/profile">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -51,30 +54,39 @@
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <style>
-/* Laid out here; every control and card is site.css's. */
+/* Laid out here; every control and card is site.css's, the head the same
+   as a person's page (directory.css). */
 .account-out { max-width: 640px; }
-.account-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-4) var(--s-5); align-items: center; margin: 0 0 var(--s-6); }
-.account-head h1 { margin: 0; overflow-wrap: anywhere; }
-.account-head .handle { margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
-.account-head .handle a { color: var(--ink); }
-@media (max-width: 700px) {
-	.account-head { grid-template-columns: auto minmax(0, 1fr); }
-	.account-head .actions { grid-column: 1 / -1; }
+.start { max-width: 640px; margin: 0 0 var(--s-7); }
+.start h1 { margin: 0 0 var(--s-2); }
+.start > p { margin: 0 0 var(--s-4); font-size: var(--t-body); }
+.start .profile-form { margin: 0; }
+.account .person.profile { padding: 0; }
+.account .tab-panel > section { margin: 0 0 var(--s-6); }
+.account .tab-panel > section:last-child { margin-bottom: 0; }
+.account .tab-panel .lead { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 70ch; }
+.account .tab-panel .private { margin: 0 0 var(--s-4); font-size: var(--t-small); color: var(--ink-soft); }
+.account #following .pill .avatar { margin-left: -6px; }
+/* On a phone the head's four buttons are three: Share is in More. */
+.account .menu-list .share-item { display: none; }
+@media (max-width: 640px) {
+	.account #share { display: none; }
+	.account .menu-list .share-item { display: flex; }
 }
-.account-body { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: var(--s-6); align-items: start; }
-@media (max-width: 860px) { .account-body { grid-template-columns: minmax(0, 1fr); gap: 0; } }
-.account-main { min-width: 0; }
-.account-main > section { margin: 0 0 var(--s-7); scroll-margin-top: 84px; }
-.account-main > section > h2, .account-main .designs h2 { font-size: var(--t-h2); margin: 0 0 6px; }
-.account-main .designs { margin: 0 0 var(--s-7); scroll-margin-top: 84px; }
-.account-main .lead { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 70ch; }
-.profile-form { max-width: none; margin: 0; }
-.profile-form label { max-width: 560px; }
-.connections { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
-.connections li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px;
-	font-size: var(--t-small); color: var(--ink-soft); }
-.connections b { color: var(--ink); }
-.delete-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
+.account .work { margin-top: var(--s-5); }
+.edit-dialog { width: min(560px, calc(100vw - 32px)); }
+.edit-dialog .profile-form { gap: 0; max-width: none; margin: 0; }
+.edit-dialog .avatar-row { display: flex; align-items: center; gap: var(--s-4); margin: 0 0 var(--s-4); }
+.edit-dialog .avatar-row p { margin: 0; font-size: var(--t-small); }
+.edit-dialog .actions { margin-top: var(--s-2); }
+/* Two links side by side, three pins in a row, from a laptop's width. */
+.edit-dialog .pair, .edit-dialog .pins { display: grid; gap: 0 var(--s-3); }
+.edit-dialog fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.edit-dialog legend { padding: 0; margin: 0 0 6px; font-size: var(--t-small); color: var(--ink-soft); }
+@media (min-width: 600px) {
+	.edit-dialog .pair { grid-template-columns: 1fr 1fr; }
+	.edit-dialog .pins { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -125,39 +137,86 @@
 		</section>
 
 		<div id="signed-in" hidden>
-			<header class="account-head">
-				<span class="avatar big" id="initial" aria-hidden="true">B</span>
-				<div>
-					<h1 id="title">Your account</h1>
-					<p class="handle" id="handle-line">Choose the name the gallery shows for you, under Settings.</p>
-				</div>
-				<div class="actions">
-					<a class="cta ghost" id="view" href="/gallery" hidden>Your public page</a>
-					<a class="cta ghost" href="/feed" id="to-feed">Your feed</a>
-				</div>
-			</header>
 			<p class="note" id="young" hidden>Public profiles and public collections are for people
 				13 and over, so this account keeps its collections and favourites to itself. Building,
 				your models and sharing them by link are all yours.</p>
 
-			<div class="account-body">
-				<nav class="subnav" aria-label="On this page">
-					<a href="#designs">Models</a>
-					<a href="#favourites-part">Favourites</a>
-					<a href="#lists-part">Collections</a>
-					<a href="#owned">Your sets</a>
-					<a href="#following-part">Following</a>
-					<a href="#builds">Builds</a>
-					<a href="#settings">Settings</a>
+			<!-- Signed in with no profile yet: a name and a handle. The form
+			     is the Edit dialog's, here until there is a profile. -->
+			<section class="start" id="start" aria-labelledby="start-h" hidden>
+				<h1 id="start-h">Make your profile</h1>
+				<p>A name and a handle, and your models in the gallery have a page of their own. The rest
+					(a few words, links, the models you pin) can wait for Edit profile.</p>
+			</section>
+
+			<!-- Your page as everybody sees it (api/people.js profilePage), drawn here. -->
+			<div class="person profile" id="me" hidden>
+				<div class="banner" id="banner-shown" hidden></div>
+				<header class="profile-head">
+					<span class="avatar huge" id="avatar" aria-hidden="true"></span>
+					<div class="who">
+						<h1 id="title">Your profile</h1>
+						<p class="handle" id="handle-line"></p>
+					</div>
+					<div class="acts">
+						<button class="cta ghost" type="button" id="edit">Edit profile</button>
+						<a class="cta ghost" href="/settings" id="to-settings">Settings</a>
+						<button type="button" class="icon-btn" id="share" aria-label="Share" data-share-page><svg class="icon" aria-hidden="true"><use href="/icons.svg#share"></use></svg></button>
+						<details class="more-menu end">
+							<summary class="icon-btn" aria-label="More"><svg class="icon" aria-hidden="true"><use href="/icons.svg#more"></use></svg></summary>
+							<div class="menu-list">
+								<button type="button" class="share-item" data-share-page>Share your page</button>
+								<a href="/gallery" id="view">Your page as others see it</a>
+								<a href="/feed" id="to-feed">Your feed</a>
+							</div>
+						</details>
+					</div>
+				</header>
+				<p class="bio" id="bio-shown" hidden></p>
+				<ul class="links" id="links-shown" aria-label="Elsewhere" hidden></ul>
+				<ul class="numbers" id="numbers" aria-label="Your numbers"></ul>
+				<section class="pinned" id="pinned" aria-labelledby="pinned-h" hidden>
+					<h2 id="pinned-h">Pinned</h2>
+					<div class="models row" id="pins"></div>
+				</section>
+			</div>
+
+			<div class="profile work" id="work">
+				<nav class="tabs" id="tabs" aria-label="Your profile">
+					<a href="/profile?tab=models" data-tab="models" data-public>Models <span class="n" hidden></span></a>
+					<a href="/profile?tab=builds" data-tab="builds" data-public>Builds <span class="n" hidden></span></a>
+					<a href="/profile?tab=saved" data-tab="saved">Saved</a>
+					<a href="/profile?tab=sets" data-tab="sets">Sets</a>
+					<a href="/profile?tab=insights" data-tab="insights">Insights</a>
 				</nav>
 
-				<div class="account-main">
-					<!-- How each model you shared is doing, for you alone (web/designs.js). -->
-					<section class="designs" id="designs" aria-label="Your models, as a designer"></section>
+				<div class="tab-panel" data-panel="models" hidden>
+					<div class="models" id="my-models"></div>
+					<p class="paging" id="models-paging" hidden><button class="cta ghost" type="button" id="models-more">Show more</button></p>
+					<p class="state" id="no-models" hidden>Nothing in the gallery yet. Share a model from the app (Share, on its bar),
+						list it with your name, and it is here and on your page.</p>
+				</div>
 
+				<div class="tab-panel" data-panel="builds" hidden>
+					<section id="builds-made" aria-labelledby="built-h" hidden>
+						<h2 id="built-h">Built by you</h2>
+						<p class="lead">Photos of your real builds of models in the gallery.</p>
+						<div class="build-grid" id="builds-strip"></div>
+					</section>
+					<section id="builds-of" aria-labelledby="built-of-h" hidden>
+						<h2 id="built-of-h">Built by others</h2>
+						<p class="lead" id="builds-of-said"></p>
+						<div class="build-grid" id="builds-of-strip"></div>
+					</section>
+					<p class="state" id="builds-said" hidden>No builds yet. Built one for real? Press <b>I built it</b> on its page
+						to add a photo; photos other people post of your models show here too.</p>
+				</div>
+
+				<div class="tab-panel" data-panel="saved" hidden>
+					<p class="private">Only you see this tab.</p>
 					<section id="favourites-part" aria-labelledby="favourites-h">
 						<h2 id="favourites-h">Favourites</h2>
-						<p class="lead">Only you see these. Press Favourite on any model’s page to keep it here.</p>
+						<p class="lead">Press Save on any model’s page and tick Favourites to keep it here.</p>
 						<div class="models compact" id="favourites"></div>
 						<p class="state" id="no-favourites" hidden>Nothing yet.</p>
 					</section>
@@ -165,7 +224,7 @@
 					<section id="lists-part" aria-labelledby="lists-h">
 						<h2 id="lists-h">Collections</h2>
 						<p class="lead">Named lists of models. A public one has a page of its own and is on your
-							profile; a private one only you see. Add a model to one from its page.</p>
+							profile; a private one only you see. Add a model to one with Save, on its page.</p>
 						<form class="collect-new" id="new-list">
 							<label class="visually-hidden" for="new-name">A new collection’s name</label>
 							<input id="new-name" maxlength="80" placeholder="A new collection’s name">
@@ -175,6 +234,15 @@
 						<p class="said" id="lists-said" role="status"></p>
 					</section>
 
+					<section id="following-part" aria-labelledby="following-h">
+						<h2 id="following-h">Following</h2>
+						<p class="lead" id="following-said">The designers you follow: what they share comes into your feed.</p>
+						<ul class="pills" id="following"></ul>
+					</section>
+				</div>
+
+				<div class="tab-panel" data-panel="sets" hidden>
+					<p class="private">Only you see this tab.</p>
 					<section id="owned" aria-labelledby="owned-h">
 						<h2 id="owned-h">Your sets</h2>
 						<p class="lead" id="owned-said">What you own, and what in the gallery it builds.</p>
@@ -182,148 +250,54 @@
 						<div class="models row" id="owned-models" hidden></div>
 						<p class="note" id="owned-more" hidden><a href="/gallery?sort=owned">Everything in the gallery, by how much of it you own</a></p>
 					</section>
+				</div>
 
-					<section id="following-part" aria-labelledby="following-h">
-						<h2 id="following-h">Following</h2>
-						<p class="lead" id="following-said">The designers you follow: what they share comes into your feed.</p>
-						<ul class="pills" id="following"></ul>
-					</section>
-
-					<section id="builds" aria-labelledby="builds-h">
-						<h2 id="builds-h">Your builds</h2>
-						<p class="lead" id="builds-said">Built one for real? Press <b>I built it</b> on its page to add a photo.</p>
-						<div class="build-strip" id="builds-strip" hidden></div>
-					</section>
-
-					<section id="settings" aria-labelledby="settings-h">
-						<h2 id="settings-h">Settings</h2>
-						<div class="settings">
-							<form class="setting profile-form" id="profile-form">
-								<div class="wide">
-									<h3>How the gallery shows you</h3>
-									<p>Your models are on your profile when you list them and tick <b>Show who made it</b>;
-										a model shared without a name stays without one.</p>
-								</div>
-								<label class="wide">Name <input id="name" maxlength="40" autocomplete="nickname" required
-									placeholder="What you like to be called here"></label>
-								<label class="wide">Handle <span class="hint">brickworks.diy/u/<b id="handle-shown">…</b></span>
-									<input id="handle" maxlength="24" autocomplete="username" required
-										pattern="[a-z0-9][a-z0-9\-]{1,22}[a-z0-9]" placeholder="3 to 24 letters, digits and hyphens"></label>
-								<label class="wide">About you <textarea id="bio" maxlength="300" rows="3"
-									placeholder="What you build, a few words. Optional."></textarea></label>
-								<div class="wide actions">
-									<button class="cta" type="submit" id="save">Save</button>
-									<p class="said" id="profile-said" role="status"></p>
-								</div>
-							</form>
-
-							<form class="setting profile-form" id="showcase-form" hidden>
-								<div class="wide">
-									<h3>What your profile shows</h3>
-									<p>Up to two links of yours elsewhere, one of your models’ pictures across the top,
-										and up to three of your models pinned above the rest. Anyone can see them.</p>
-								</div>
-								<label class="wide">A link <input id="link-1" type="url" maxlength="200" inputmode="url"
-									placeholder="https://… a portfolio, a Flickr, a shop"></label>
-								<label class="wide">Another link <input id="link-2" type="url" maxlength="200" inputmode="url"
-									placeholder="https://… optional"></label>
-								<label class="wide">Across the top <select id="banner"><option value="">None</option></select></label>
-								<label class="wide">Pinned first <select id="pin-1" data-pin><option value="">None</option></select></label>
-								<label class="wide">Pinned second <select id="pin-2" data-pin><option value="">None</option></select></label>
-								<label class="wide">Pinned third <select id="pin-3" data-pin><option value="">None</option></select></label>
-								<div class="wide actions">
-									<button class="cta" type="submit" id="showcase-save">Save</button>
-									<p class="said" id="showcase-said" role="status"></p>
-								</div>
-							</form>
-
-							<div class="setting" id="email-part">
-								<div class="wide">
-									<h3>Email</h3>
-									<p id="who"></p>
-								</div>
-								<div class="wide" id="mail" hidden>
-									<p>Brickworks emails you only what you ask for here, from the address sign-in codes
-										come from. Off until you turn it on.</p>
-									<label class="choice"><input type="checkbox" id="mail-comments">
-										Email me when somebody comments on a model I shared: at most one email a day</label>
-									<div id="mail-kinds" hidden>
-										<p>And in the same email, at most one a day, what came into your feed:</p>
-										<label class="choice"><input type="checkbox" id="mail-models" data-kind="models">
-											New models from people I follow</label>
-										<label class="choice"><input type="checkbox" id="mail-versions" data-kind="versions">
-											New versions of their models</label>
-										<label class="choice"><input type="checkbox" id="mail-photos" data-kind="photos">
-											Photos of builds: of my models, and by people I follow</label>
-										<label class="choice"><input type="checkbox" id="mail-remixes" data-kind="remixes">
-											Remixes of my models</label>
-									</div>
-									<p class="said" id="mail-said" role="status"></p>
-								</div>
-							</div>
-
-							<div class="setting" id="privacy-part">
-								<div class="wide">
-									<h3>Privacy</h3>
-									<p id="age-said">Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.</p>
-								</div>
-								<div class="wide" id="follows-choice" hidden>
-									<p>Your profile shows how many people follow you and how many you follow, never who.
-										Nobody is told you followed them, and following is not a way to write to anybody.</p>
-									<label class="choice"><input type="checkbox" id="shows-follows">
-										Show on my profile whom I follow</label>
-									<p class="said" id="follows-said" role="status"></p>
-								</div>
-							</div>
-
-							<div class="setting" id="theme-part">
-								<div>
-									<h3>Theme</h3>
-									<p>System follows your computer’s light or dark setting. Kept in this browser,
-										and on your account, so your other browsers follow it once you sign in.</p>
-								</div>
-								<div class="segmented" role="group" aria-label="Theme">
-									<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
-									<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-									<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
-								</div>
-							</div>
-
-							<div class="setting" id="claude-part">
-								<div>
-									<h3>Claude</h3>
-									<p id="claude-said">Whether your Claude can work in your Brickworks tabs.</p>
-									<ul class="connections" id="connections"></ul>
-								</div>
-								<a class="cta ghost" href="/faq#claude" id="claude-how">How to connect</a>
-							</div>
-
-							<div class="setting">
-								<div>
-									<h3>Sign out</h3>
-									<p>This browser forgets its sign-in. Your account and everything in it stay.</p>
-								</div>
-								<button class="cta ghost" type="button" id="sign-out">Sign out</button>
-							</div>
-
-							<div class="setting danger" id="delete-part">
-								<details class="wide">
-									<summary class="cta ghost">Delete this account…</summary>
-									<form class="delete-form" id="delete-form">
-										<p>Your models come out of the gallery and their links stop working; your
-											favourites, collections, comments, follows, photos, the sets you own and your
-											Claude connections are deleted with the account. It cannot be undone.</p>
-										<label>Type your email address to confirm
-											<input id="delete-confirm" type="email" autocomplete="off" required></label>
-										<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button></div>
-										<p class="said" id="delete-said" role="status"></p>
-									</form>
-								</details>
-							</div>
-						</div>
-					</section>
+				<div class="tab-panel" data-panel="insights" hidden>
+					<!-- How each model you shared is doing, for you alone (web/designs.js). -->
+					<section class="designs" id="designs" aria-label="Your models, as a designer"></section>
 				</div>
 			</div>
+
+			<dialog class="edit-dialog" id="edit-dialog" aria-labelledby="edit-h">
+				<h2 id="edit-h">Edit profile</h2>
+				<form class="profile-form" id="profile-form">
+					<div class="avatar-row" data-more>
+						<span class="avatar big" id="avatar-edit" aria-hidden="true"></span>
+						<p>Your avatar is made from your handle: its colour and your name’s first letter.</p>
+					</div>
+					<label>Name <input id="name" maxlength="40" autocomplete="nickname" required
+						placeholder="What you like to be called here"></label>
+					<label>Handle <span class="hint">brickworks.diy/u/<b id="handle-shown">…</b></span>
+						<input id="handle" maxlength="24" autocomplete="username" required
+							pattern="[a-z0-9][a-z0-9\-]{1,22}[a-z0-9]" placeholder="3 to 24 letters, digits and hyphens"></label>
+					<label data-more>About you <textarea id="bio" maxlength="300" rows="3"
+						placeholder="What you build, a few words. Optional."></textarea></label>
+					<div id="showcase" data-more hidden>
+						<div class="pair">
+							<label>A link <input id="link-1" type="url" maxlength="200" inputmode="url"
+								placeholder="https://… a portfolio, a shop"></label>
+							<label>Another link <input id="link-2" type="url" maxlength="200" inputmode="url"
+								placeholder="https://… optional"></label>
+						</div>
+						<label>Across the top <small>one of your models’ pictures</small>
+							<select id="banner"><option value="">None</option></select></label>
+						<fieldset>
+							<legend>Pinned above the rest, in this order</legend>
+							<div class="pins">
+								<label><span class="visually-hidden">Pinned first</span><select id="pin-1" data-pin><option value="">None</option></select></label>
+								<label><span class="visually-hidden">Pinned second</span><select id="pin-2" data-pin><option value="">None</option></select></label>
+								<label><span class="visually-hidden">Pinned third</span><select id="pin-3" data-pin><option value="">None</option></select></label>
+							</div>
+						</fieldset>
+					</div>
+					<p class="note" data-more>Whom your profile shows you follow is in <a href="/settings#privacy-part">Settings</a>.</p>
+					<div class="actions">
+						<button class="cta" type="submit" id="save">Save</button>
+						<button class="cta ghost" type="button" id="cancel" data-more>Cancel</button>
+					</div>
+					<p class="said" id="profile-said" role="status"></p>
+				</form>
+			</dialog>
 		</div>
 	</div>
 </main>

@@ -17,17 +17,20 @@
 //      test side, as the tests sign in), the code, Sign in — and the like
 //      goes through, the count with it. Save: Favourites, ticked; a new
 //      collection named, made and ticked.
-//   3. /profile: their address said, no name yet; a name and a handle
-//      chosen and saved; the house in their favourites; the collection,
-//      made public, with a page of its own.
+//   3. /profile: no profile yet, so two fields to make one and the Saved
+//      tab, the house in their favourites and their collection there; a
+//      name and a handle make the profile, drawn at once; Edit profile adds
+//      their words, shown with no reload; the collection made public, with
+//      a page of its own.
 //   4. /c/<id>: the collection's page, the house in it, its maker's name.
 //      /u/<owner>: the owner's profile, the house credited to them.
 //   5. Each page at 390 and 1280 px: no console error, no refused request,
 //      nothing scrolling sideways.
-//   6. /profile again, as the home it is: their name and their page at the
-//      top, its sections, the header saying Account; then Delete this
-//      account, their address typed to confirm, and they are signed out and
-//      gone from the sign-in service (api/account.js ?op=delete).
+//   6. /profile again, as the home it is: their name and handle at the top,
+//      the tabs, the header saying Account; /settings with their address
+//      and Claude; then Delete this account there, their address typed to
+//      confirm, and they are signed out and gone from the sign-in service
+//      (api/account.js ?op=delete).
 //
 // The owner's account is deleted at the end, and everything of theirs with
 // it; the house is taken down first, so no file is left. Pictures in --out.
@@ -192,20 +195,33 @@ try {
   await page.goto(`${site}/profile`, { waitUntil: "load", timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.profile, null, { timeout: 30000 }).catch(() => {});
   state = await page.evaluate(() => ({ ready: document.documentElement.dataset.profile,
-    who: document.getElementById("who").textContent, name: document.getElementById("name").value,
+    start: !document.getElementById("start").hidden, name: document.getElementById("name").value,
+    tab: document.querySelector("#tabs [aria-current=page]")?.dataset.tab || "",
     favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id),
     lists: [...document.querySelectorAll("#lists .list-mine input:not([type=checkbox])")].map((i) => i.value) }));
-  check(`signed in there too, its address said and no name made from it (${state.who.slice(0, 50)}, "${state.name}")`,
-    state.ready === "ready" && state.who.includes(visitorEmail) && state.name === "");
+  check(`signed in there too, no profile yet: two fields to make one, no name made from the address ("${state.name}"), `
+    + `on the ${state.tab} tab`, state.ready === "ready" && state.start && state.name === "" && state.tab === "saved");
   check(`the house in their favourites, and their collection (${state.favourites.length}, ${state.lists.join(", ")})`,
     state.favourites.includes(modelId) && state.lists.includes(LIST));
   await page.fill("#name", "Flow Visitor");
   await page.fill("#handle", visitorHandle);
-  await page.fill("#bio", "Looks at houses.");
   await page.click("#save");
   await page.waitForFunction(() => /Saved|handle|name/.test(document.getElementById("profile-said").textContent), null, { timeout: 15000 }).catch(() => {});
-  check(`a name and a handle saved: "${await page.textContent("#profile-said")}"`,
-    (await page.textContent("#profile-said")) === "Saved." && (await page.getAttribute("#view", "href")) === `/u/${visitorHandle}`);
+  await page.waitForFunction(() => !document.getElementById("me").hidden, null, { timeout: 15000 }).catch(() => {});
+  check(`a name and a handle make their profile, drawn at once: "${await page.textContent("#title")}", `
+    + `"${await page.textContent("#profile-said")}"`, (await page.textContent("#profile-said")) === "Saved."
+    && (await page.textContent("#title")) === "Flow Visitor" && (await page.getAttribute("#view", "href")) === `/u/${visitorHandle}`);
+  // The rest from Edit profile: shown with no reload.
+  await page.click("#edit");
+  await page.waitForSelector("dialog#edit-dialog[open]", { timeout: 15000 });
+  await page.fill("#bio", "Looks at houses.");
+  await page.click("#save");
+  await page.waitForFunction(() => !document.querySelector("dialog#edit-dialog[open]")
+    && document.getElementById("bio-shown").textContent === "Looks at houses.", null, { timeout: 15000 }).catch(() => {});
+  check(`Edit profile: their words on the page at once, the dialog closed ("${await page.textContent("#bio-shown")}")`,
+    (await page.textContent("#bio-shown")) === "Looks at houses." && !(await page.isVisible("dialog#edit-dialog")));
+  await page.click('#tabs a[data-tab="saved"]');
+  await page.waitForSelector("#lists .list-mine", { timeout: 15000 });
   const listId = await page.evaluate((name) => [...document.querySelectorAll("#lists .list-mine")]
     .find((one) => one.querySelector(".list-top input").value === name)?.dataset.id || "", LIST);
   const row = page.locator(`#lists .list-mine[data-id="${listId}"]`);
@@ -253,7 +269,8 @@ try {
   await phone.addInitScript((value) => { try { localStorage.setItem("brickworks.session", value); } catch {} }, kept);
   const small = await phone.newPage();
   listen(small, "phone");
-  for (const [where, name] of [[`/m/${modelId}`, "model"], ["/profile", "profile"], [`/c/${listId}?tests=1`, "collection"],
+  for (const [where, name] of [[`/m/${modelId}`, "model"], ["/profile", "profile"], ["/profile?tab=saved", "profile_saved"],
+    ["/settings", "settings"], [`/c/${listId}?tests=1`, "collection"],
     [`/u/${ownerHandle}?tests=1`, "profile_public"]]) {
     await small.goto(site + where, { waitUntil: "load", timeout: 60000 });
     await small.waitForTimeout(1500);
@@ -263,25 +280,36 @@ try {
   }
   await phone.close();
 
-  // --- 6. The account page as a home, then the account deleted from it.
-  console.log("their account page, and deleting the account from it");
+  // --- 6. Their profile as a home, their settings, then the account
+  // deleted from Settings.
+  console.log("their profile, their settings, and deleting the account from Settings");
   await page.goto(`${site}/profile`, { waitUntil: "load", timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.profile === "ready", null, { timeout: 30000 }).catch(() => {});
   state = await page.evaluate(() => ({ title: document.getElementById("title").textContent,
-    page: document.querySelector("#handle-line a")?.getAttribute("href") || "",
-    rail: [...document.querySelectorAll(".subnav a")].map((a) => a.textContent),
-    following: document.getElementById("following-said").textContent,
-    owned: document.getElementById("owned-said").textContent,
-    claude: document.getElementById("claude-said").textContent,
-    favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id),
+    handle: document.getElementById("handle-line").textContent, page: document.getElementById("view").getAttribute("href"),
+    tabs: [...document.querySelectorAll("#tabs a:not([hidden])")].map((a) => a.dataset.tab),
     nav: document.querySelector(".site-head .nav a[data-account]")?.firstChild?.textContent.trim() || "" }));
-  check(`one page that is theirs: "${state.title}", ${state.page}, ${state.rail.join(" · ")}`,
-    state.title === "Flow Visitor" && state.page === `/u/${visitorHandle}` && state.rail.length === 7);
-  check(`its sections drawn: the house kept; following "${state.following.slice(0, 30)}"; sets "${state.owned.slice(0, 30)}"; `
-    + `Claude "${state.claude.slice(0, 30)}"`, state.favourites.includes(modelId) && /^Nobody yet/.test(state.following)
-    && /^Tell Brickworks what you own/.test(state.owned) && /^Not connected/.test(state.claude));
+  check(`their page, theirs to change: "${state.title}", "${state.handle}", ${state.page}, ${state.tabs.join(" · ")}`,
+    state.title === "Flow Visitor" && state.handle.startsWith(`@${visitorHandle}`) && state.page === `/u/${visitorHandle}`
+    && state.tabs.join(" ") === "models builds saved sets insights");
   check(`the header says Account while signed in: "${state.nav}"`, state.nav === "Account");
   await shot(page, "7_account-laptop.png");
+  await page.click('#tabs a[data-tab="saved"]');
+  await page.waitForFunction(() => !/^The designers/.test(document.getElementById("following-said").textContent), null, { timeout: 15000 }).catch(() => {});
+  await page.click('#tabs a[data-tab="sets"]');
+  await page.waitForFunction(() => !/^What you own/.test(document.getElementById("owned-said").textContent), null, { timeout: 15000 }).catch(() => {});
+  state = await page.evaluate(() => ({ following: document.getElementById("following-said").textContent,
+    owned: document.getElementById("owned-said").textContent,
+    favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id) }));
+  check(`its tabs drawn: the house kept; following "${state.following.slice(0, 30)}"; sets "${state.owned.slice(0, 30)}"`,
+    state.favourites.includes(modelId) && /^Nobody yet/.test(state.following) && /^Tell Brickworks what you own/.test(state.owned));
+  await page.goto(`${site}/settings`, { waitUntil: "load", timeout: 60000 });
+  await page.waitForFunction(() => document.documentElement.dataset.settings === "ready", null, { timeout: 30000 }).catch(() => {});
+  state = await page.evaluate(() => ({ who: document.getElementById("who").textContent,
+    claude: document.getElementById("claude-said").textContent, profile: document.getElementById("profile-line").textContent }));
+  check(`/settings: "${state.who.slice(0, 50)}", Claude "${state.claude.slice(0, 30)}", "${state.profile.slice(0, 40)}"`,
+    state.who.includes(visitorEmail) && /^Not connected/.test(state.claude) && state.profile.includes(`/u/${visitorHandle}`));
+  await shot(page, "7_settings-laptop.png");
   visitorId = await page.evaluate(() => {
     try {
       return JSON.parse(localStorage.getItem("brickworks.session") || "{}").user_id || "";
@@ -298,7 +326,7 @@ try {
     out: !document.getElementById("signed-out").hidden, said: document.querySelector("#signed-out .lede").textContent,
     kept: localStorage.getItem("brickworks.session"),
     nav: document.querySelector(".site-head .nav a[data-account]")?.textContent.trim() || "" }));
-  check(`deleted from its own page: signed out, the header says "${state.nav}", "${state.said.slice(0, 40)}"`,
+  check(`deleted from Settings: signed out, the header says "${state.nav}", "${state.said.slice(0, 40)}"`,
     state.deleted && state.out && !state.kept && state.nav === "Sign in" && /deleted/.test(state.said));
   deletedByPage = state.deleted && !(await accountExists(visitorEmail));
   check("and gone from the sign-in service", deletedByPage);
