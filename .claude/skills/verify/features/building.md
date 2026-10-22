@@ -1007,8 +1007,20 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   spin up; move_part's run stops after `Swing.RUN_MOST_MS` (8 s) by the
   clock, kept where it was last tested, and says so:
   `swing_bound_probe` (headless, by hand without a model; each check fails
-  on the code before it). `src/dev/replay_session.gd` replays a session's
-  calls on the real scene, timed, to find a call that never answers.
+  on the code before it). A session's move_part is worked out on a worker
+  (`GrabDrag.for_session`, a coroutine: the joints read from copies, the part
+  taken hold of, its turn, its swing or settle, its cells; the words and the
+  step on the main thread), so the window draws and a move past 20 s answers
+  as a job (ToolJobs); a press waits meanwhile (`is_settling`).
+  `src/dev/replay_session.gd` replays a session's calls on the real scene,
+  each with its time and its longest frame, a job followed to its answer, and
+  the calls with a frame over 100 ms listed at the end; `--idle=MS` waits as
+  a session thinks between calls (else the app's own work after a change,
+  its weigh and its joints read ahead, falls in the next call). The technic
+  lever's Ducati (hang60's calls, 191 of them): before, 13 calls held a frame
+  over 1 s, the chassis turned 40° 16.8-19.7 s; after, with `--idle=1000`,
+  none, and no move_part over 150 ms. A technic4 loader session (127 calls):
+  14 over 1 s before, one after (review_model surface, 1.7 s).
 - `coasting when flung` (`Grab.fling_rate`, `Swing.fling`, `Swing.add_geared`;
   MECHANISMS §16): let go while the pointer turns it, a section on a free
   joint starts at the pointer's rate (the slope of the turn against the

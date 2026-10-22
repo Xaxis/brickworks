@@ -166,6 +166,11 @@ var _held_seen_usec: int = 0
 func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: bool = false) -> bool:
 	if world == null or camera == null:
 		return false
+	# Not while a session's move is worked out on a worker (for_session):
+	# what the press takes hold of is about to move, and the worker reads it.
+	if _session_moving:
+		last_words = "busy"
+		return true
 	_held_seen_usec = Time.get_ticks_usec()
 	var origin: Vector3 = camera.ray_origin(screen)
 	var direction: Vector3 = camera.ray_normal(screen)
@@ -912,6 +917,13 @@ func _exit_tree() -> void:
 ## A session's move_part (AppTools): the same reading, joint, stops, gears,
 ## settling and weighing as a person's drag, as one undo step. With only
 ## part= it changes nothing and says what would move.
+##
+## A coroutine. What takes the time (the joints read, the part taken hold
+## of, its way tested, its swing to rest, its cells) is worked out on a
+## worker and waited for a frame at a time, so the window draws and a call
+## that runs long becomes a job (ToolJobs); the words and the step are made
+## here. Worked out here, the Ducati's chassis turned 40° held the window
+## 16-20 s, its inner joints settling (technic lever, jobs70, 2026-10-21).
 func for_session(input: Dictionary) -> String:
 	var asked: String = str(input.get("part", "")).strip_edges()
 	var ids: Array = _named_parts(asked)
@@ -919,10 +931,57 @@ func for_session(input: Dictionary) -> String:
 		return ("No part or sub-assembly %s here. part= takes a part's number (look_at_model) or "
 			+ "a sub-assembly's name.") % asked
 	if not is_ready():
-		_ready_now()
+		await _ready_for_session()
 	if input.has("to"):
 		return _chain_for_session(int(ids[0]), input["to"])
-	var held: Grab = _taken(ids)
+	# The parts' exact shapes read here, as for a reading on a worker: off
+	# the main thread one not read yet is taken for one with joints
+	# (Bodies._unknown_shape).
+	var part_ids: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		part_ids[brick.part_id] = true
+	Exact.shapes_for(library, part_ids.keys())
+	_session_moving = true
+	var said: String = await _move_for_session(ids, input)
+	_session_moving = false
+	return said
+
+
+## A session's move being worked out on a worker ([method for_session]).
+var _session_moving: bool = false
+
+
+## [param work] on a worker (WorkerTasks.awaited): what it returns. What it
+## reads stands still meanwhile, as for a section let go ([method
+## _verify_off_thread]): the session holds the app (CommandSocket's turn),
+## a press waits for it ([method press]), and parts that arrive are held
+## aside.
+func _worked(work: Callable, what: String) -> Variant:
+	return await WorkerTasks.awaited(work, what, library)
+
+
+## The cells [param held]'s parts take where it puts them, for Grab.commit,
+## worked out on a worker (Builder.boxes_for is safe off the main thread):
+## the Ducati's 75-part chassis turned was 200-480 ms of commit. Empty where
+## there are no threads, and commit works them out.
+func _cells_for(held: Grab) -> Dictionary:
+	if OS.has_feature("nothreads"):
+		return {}
+	var work: Array = []
+	for key: int in held.changed():
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		if brick != null:
+			work.append([key, library.mesh_for(brick.part_id), held.placed[key]])
+	var cells: Builder = builder
+	return await _worked(func() -> Variant:
+		var out: Dictionary = {}
+		for item: Array in work:
+			out[item[0]] = BrickLattice.cover_for(cells.boxes_for(item[1], item[2]))
+		return out, "lay a session's move's cells")
+
+
+func _move_for_session(ids: Array, input: Dictionary) -> String:
+	var held: Grab = await _worked(func() -> Variant: return _taken(ids), "take hold of a part")
 	var first: int = ids[0]
 	var state: String = held.state
 	if state == "rigid":
@@ -970,7 +1029,7 @@ func for_session(input: Dictionary) -> String:
 			return "%s\nIt does not slide: nothing it is on is longer than the hole it is in." % lines[0]
 		held.use_slide()
 		var wanted: float = float(input["along"]) * BrickLattice.STUD
-		held.slide_to(wanted)
+		await _worked(func() -> Variant: return held.slide_to(wanted), "slide a part")
 		asked_for = "%s studs" % Balance.studs(float(input["along"]))
 	elif held.mode == "ball":
 		var way: Array = input.get("axis", []) as Array
@@ -979,10 +1038,12 @@ func for_session(input: Dictionary) -> String:
 		var about := Vector3(float(way[0]), float(way[1]), float(way[2]))
 		if about.length() < 0.001:
 			return "axis= must not be [0, 0, 0]."
-		held.ball_to(Basis(about.normalized(), deg_to_rad(float(input.get("degrees", 0.0)))))
+		var turned := Basis(about.normalized(), deg_to_rad(float(input.get("degrees", 0.0))))
+		await _worked(func() -> Variant: return held.ball_to(turned), "turn a part on its ball")
 		asked_for = "%s°" % Balance.tidy(float(input.get("degrees", 0.0)))
 	else:
-		held.turn_to(float(input.get("degrees", 0.0)))
+		var degrees: float = float(input.get("degrees", 0.0))
+		await _worked(func() -> Variant: return held.turn_to(degrees), "turn a part")
 		asked_for = "%s°" % Balance.tidy(float(input.get("degrees", 0.0)))
 	var stopped: bool = held.stopped
 	# Let go turning, as a pointer's flick lets it go: spin= degrees a second.
@@ -1004,15 +1065,17 @@ func for_session(input: Dictionary) -> String:
 	if began and _falls_first(held):
 		swung = ""
 	elif held.swing != null:
-		held.swing.run()
-		held.swing_pose()
+		await _worked(func() -> Variant:
+			held.swing.run()
+			held.swing_pose()
+			return null, "swing a part to rest")
 		last_swing = held.swing
 		swung = held.swing_words()
 	else:
-		swung = held.settle()
+		swung = await _worked(func() -> Variant: return held.settle(), "settle a part")
 	var depth: int = builder.history_depth()
 	var own: String = _own_copies(held)
-	var moved: int = held.commit(held.step_words())
+	var moved: int = held.commit(held.step_words(), await _cells_for(held))
 	builder.fold_since(depth)
 	if moved == 0:
 		lines.append("It did not move: %s" % (("%s holds it, pulled to its full length." % held.stretch_words)
@@ -1049,15 +1112,17 @@ func for_session(input: Dictionary) -> String:
 				% [fell["words"], Balance.studs(-after.margin), after.edge]
 				+ "about that edge until the floor stopped it, falling for %s s." % Balance.tidy(fall_seconds))
 			if world.brick_count() < READY_OFF_THREAD_FROM:
-				_ready_now()
+				await _ready_for_session()
 				var landed := Grab.new()
 				landed.world = world
 				landed.builder = builder
 				landed.library = library
 				landed.bodies = _bodies
 				if landed.land_begin((timing["line"] as Vector3) * float(timing["speed"]), timing["point"]):
-					landed.swing.run()
-					landed.swing_pose()
+					await _worked(func() -> Variant:
+						landed.swing.run()
+						landed.swing_pose()
+						return null, "swing a part to rest as it lands")
 					last_swing = landed.swing
 					landed.commit("swung %s as it landed" % landed.said)
 					builder.fold_since(depth)
@@ -1464,7 +1529,8 @@ func _process(_delta: float) -> void:
 
 ## Whether a grab let go is still being checked before it is kept.
 func is_settling() -> bool:
-	return _settling != null or _laying != null or not _falling.is_empty() or _swinging != null
+	return _settling != null or _laying != null or not _falling.is_empty() or _swinging != null \
+		or _session_moving
 
 
 ## Whether a section let go is swinging.
@@ -1586,22 +1652,37 @@ func _ready_ahead() -> void:
 		_seen_revision = world.revision
 		_changed_at = now
 	if _readying >= 0:
-		if not WorkerThreadPool.is_task_completed(_readying):
-			return
-		WorkerTasks.collect(_readying)
-		library.end_reading(_readying)
-		_readying = -1
-		if _ready_for == world.revision and grab == null:
-			_adopt(_ready_out, _ready_for)
-		_still.free()
-		_still = null
-		_still_lattice = null
+		_reading_done(grab == null)
 		return
 	if grab != null or is_ready() or now - _changed_at < READY_AFTER_MS:
 		return
 	if world.brick_count() < read_off_thread_from or OS.has_feature("nothreads"):
 		_ready_now()
 		return
+	_read_off_thread()
+
+
+## The reading on a worker taken in once it is done, kept when it is of the
+## model as it stands and [param keep]. False while it is still going.
+func _reading_done(keep: bool) -> bool:
+	if _readying < 0:
+		return true
+	if not WorkerThreadPool.is_task_completed(_readying):
+		return false
+	WorkerTasks.collect(_readying)
+	library.end_reading(_readying)
+	_readying = -1
+	if _ready_for == world.revision and keep:
+		_adopt(_ready_out, _ready_for)
+	_still.free()
+	_still = null
+	_still_lattice = null
+	return true
+
+
+## What a grab needs read on a worker, from copies of the model and its
+## lattice made here.
+func _read_off_thread() -> void:
 	var started: int = Time.get_ticks_msec()
 	_ready_for = world.revision
 	# The parts' exact shapes, read here: a worker reads only those already
@@ -1650,6 +1731,21 @@ func is_reading() -> bool:
 func read_soon() -> void:
 	_seen_revision = world.revision
 	_changed_at = mini(_changed_at, Time.get_ticks_msec() - READY_AFTER_MS)
+
+
+## Read for a session's move (for_session): on a worker where there are
+## threads, whatever the model's size, a reading already going waited for.
+## Read here, the Ducati's 126 parts held the window 200-400 ms at every
+## move after an undo (jobs70, 2026-10-21).
+func _ready_for_session() -> void:
+	while not is_ready():
+		if OS.has_feature("nothreads"):
+			_ready_now()
+			return
+		if _readying < 0:
+			_read_off_thread()
+		while not _reading_done(true):
+			await Engine.get_main_loop().process_frame
 
 
 ## Read now, on this thread: a small model, a browser without threads, or a

@@ -340,14 +340,20 @@ func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
 	var ids: Array = []
 	for brick: BrickWorld.Brick in assistant._bricks_inside({}):
 		ids.append(brick.id)
-	var free: Array = []
 	var box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
 	var out: Vector3 = Assistant.FACES.get(facing, Vector3.UP)
-	for point: OpenPoints.Point in read.points_of(ids):
-		if point.kind == "stud" and point.by == 0 and point.section.is_empty() \
-				and point.at.distance_to(target) <= REACH and _outside(point, out, box) \
-				and (facing == "up" or absf((point.at - target).dot(out)) <= DEPTH):
-			free.append(point)
+	# On a worker (WorkerTasks.awaited): the model's open points read, and
+	# each free stud near the spot walked out through the lattice, were 300 ms
+	# of one frame for every piece tried, six to a feature, on a Technic
+	# loader's 128 parts (jobs70, 2026-10-21).
+	var free: Array = await WorkerTasks.awaited(func() -> Variant:
+		var found: Array = []
+		for point: OpenPoints.Point in read.points_of(ids):
+			if point.kind == "stud" and point.by == 0 and point.section.is_empty() \
+					and point.at.distance_to(target) <= REACH and _outside(point, out, box) \
+					and (facing == "up" or absf((point.at - target).dot(out)) <= DEPTH):
+				found.append(point)
+		return found, "find the free studs a feature's piece may sit on", assistant.library)
 	free.sort_custom(func(a: OpenPoints.Point, b: OpenPoints.Point) -> bool:
 		return a.at.distance_to(target) < b.at.distance_to(target))
 	for option: Array in _ways(facing):

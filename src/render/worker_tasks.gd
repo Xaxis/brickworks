@@ -72,6 +72,31 @@ static func add(work: Callable, high_priority: bool = false, description: String
 	return task
 
 
+## [param work] run on a worker and waited for a frame at a time, so the
+## window draws and a session's call can become a job meanwhile (ToolJobs):
+## what it returns. Here and now where there are no threads. Given
+## [param library], parts that arrive meanwhile are held aside until it is
+## done (PartLibrary.begin_reading), for work that reads it. A coroutine:
+##
+##   var said: String = await WorkerTasks.awaited(func() -> Variant: return ..., "sketch a part")
+static func awaited(work: Callable, description: String, library: PartLibrary = null) -> Variant:
+	if OS.has_feature("nothreads"):
+		return work.call()
+	var out: Array = [null]
+	if library != null:
+		library.begin_reading()
+	var task: int = add(func() -> void: out[0] = work.call(), false, description)
+	if library != null:
+		library.reading_in(task)
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	while not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+	collect(task)
+	if library != null:
+		library.end_reading(task)
+	return out[0]
+
+
 ## Wait for [param task] to end, and let the engine let go of it. Nothing
 ## when it has been already.
 static func collect(task: int) -> void:

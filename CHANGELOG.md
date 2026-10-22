@@ -23,6 +23,22 @@ whole cycle.
   one way and lies down on its side at 95° the other, a 1 x 4 swivel plate
   swings round one way and stops at 3° the other, and a click hinge goes
   90° each way.
+- The window no longer freezes while Claude moves a part, checks a design,
+  asks where a part attaches or settles a feature. Each was worked out in
+  one piece on the app's main thread: in a Technic design session, turning
+  a motorcycle's chassis 40° held the window 16 to 20 s while the joints
+  inside it swung to rest, nothing drawn and the session told nothing, and
+  a call that holds the thread cannot become a job. A move is now worked
+  out beside the window, as a big check already was, so the window draws
+  throughout and a move still going after 20 s answers as a job. Every
+  design is now checked beside the window, not only those of 300 parts or
+  more: the motorcycle's 60 to 126 parts took 0.4 to 1.3 s to check. And a
+  feature's real pieces are fitted beside it: a loader's review_model and
+  settle_feature took 1.6 to 2.2 s. Replayed, the motorcycle's session has
+  no call holding the window a second, where 13 did, the longest for
+  19.7 s; a loader's has one, where 14 did. What each call answers is
+  unchanged.
+
 - Pressing a motion's button on a shared model's page just after Reset no
   longer stalls the page. The model's joints, changed by the Reset, were
   read again in the frame of the press, though a worker was already
