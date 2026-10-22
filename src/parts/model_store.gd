@@ -1212,20 +1212,21 @@ func register_later() -> void:
 ## ships. At once, with nothing fetched or waited for, on the desktop and for
 ## a file that needs nothing.
 ## [param parsed] is [param text] already read (ModelBar.read_off_frame).
-## A big file is read on a worker and its flexible parts built on workers
-## first, and a big model laid a slice at a time ([method _open_into]),
-## counted by [param job], the work the bar shows, where there is one.
+## With [param job], the work the status bar shows (File, Open, the
+## library, a version), over frames: a big file read on a worker, its
+## flexible parts built on workers, and a big model laid a slice at a time
+## ([method _open_into]), the job counting it.
 func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = null,
 		job: Working.Job = null) -> Dictionary:
 	var began: int = Time.get_ticks_usec()
 	var model: LdrModel = parsed
-	if model == null and text.length() >= READ_OFF_FRAME_FROM:
+	if model == null and job != null and text.length() >= READ_OFF_FRAME_FROM:
 		model = await _off_frame(func() -> LdrModel: return LdrModel.parse(text, name))
 	elif model == null:
 		model = LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
-	if not model.generated.is_empty():
+	if job != null and not model.generated.is_empty():
 		await CustomParts.warm_skins(library, model)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
 	began = Time.get_ticks_usec()
@@ -1233,11 +1234,14 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 	# And the skins that waited for a file fetched just now, built the same
 	# way: built by the open, each was waited for in its frame (8466-1's
 	# zdampedshock1 spring, 1.5 s of a browser's).
-	if not model.generated.is_empty():
+	if job != null and not model.generated.is_empty():
 		await CustomParts.warm_skins(library, model)
 	var fetched_in: float = (Time.get_ticks_usec() - began) / 1000.0
 	var out: Array = []
-	await _open_into(out, text, name, model, job if job != null else Working.Job.new())
+	if job != null:
+		await _open_into(out, text, name, model, job)
+	else:
+		_open_into(out, text, name, model, null)
 	open_phases["parse"] = parsed_in
 	open_phases["fetch"] = fetched_in
 	return out[0]
