@@ -2751,8 +2751,10 @@ the studs-up build (6.3%), and at 24 studs 34% and 5.4%. Every run is one
 piece, passes, stands with no joint past its load, and is 98.2% or more in
 a part (the fifth round 98.0%); parts 1.08 times m137's at 48 and 1.09 at
 24; time 1.01 times m137's at 48, laid side by side (1.27). The bar's 80%
-and 30% are not met. The bands were not tried again, and nothing here lays
-studs down or reaches 3DBenchy's walls.
+and 30% are not met. The fifth round's bands, laid on this, hold 97% in a
+part now and turn 51%, but no nearer the model, and Bob at 24 studs takes
+1.151 times m137's parts: not in. Nothing here lays studs down or reaches
+3DBenchy's walls.
 
 **Where the model went** (`src/dev/snot_gaps.gd`, new: each model cell no
 part fills with the sides turned that the build with them upright fills,
@@ -2825,6 +2827,7 @@ studs (turned, nearer than studs up, parts and time against m137):
 | From 63 (sine 0.46) | 96.6% | 97.7% | | 50%, 7.9%, 1.11 |
 | From 65, joined where every part is beside a shell | 97.6% | 98.1% | 98.7% | 46%, 7.2%, 1.09; the bunny's stitch 59 tries |
 | From 65, joined where any part is (kept) | 97.8% | 98.3% | 98.8% | 46%, 7.2%, 1.08, 1.01 |
+| That, and the fifth round's bands | 97.9% | 97.8% | 98.5% | 51%, 7.1%, 1.11 (Bob at 24 studs 1.151), 1.21 |
 
 - *Half a plate proud*: a row's half plate at its foot or head may be the
   shell's own air. From 60 degrees it took the bunny at 28 studs from 97.1%
@@ -2839,11 +2842,14 @@ studs (turned, nearer than studs up, parts and time against m137):
 - *From 60 and 63 degrees*: the blue bunny stays under 97%, and from 60 Bob
   at 48 studs is 1.16 times m137's parts. Out; 65 holds every check here.
   The blue bunny at 20 studs is the narrowest: 97.6% from 65, 96.6% from 63.
-- *The bands* were not tried again: a row on its side is two and a half
-  plates, so a band of three or four leaves half a plate to a plate and a
-  half of the model in no part all along it, which the fifth round measured
-  (Bob and the bunny at 24 studs a point and a half less in a part); joining
-  what the core is cut into does not reach that.
+- *The bands*, the fifth round's (`_cube_free`), laid on this: they hold 97%
+  in a part now (with the join; the fifth round's 95.5% on the bunny at 28
+  studs), and turn 5 points more at 48 studs and 4 at 24; but the steep
+  faces come no nearer the model (7.1%), Bob at 24 studs takes 1.151 times
+  m137's parts, over the bar, and Bob at 48 is seen further off from the
+  sides (Hausdorff95 0.61 studs from 0.58). A row on its side is two and a
+  half plates, so a band of three or four plates is a staircase of its own.
+  Out, by a part in a thousand; the first to try again.
 
 **The bench again** (smooth, the three; the studs-up build is m137's laid
 with `Options.snot` false; m137 and the branch at `f209a60a` laid side by
@@ -2874,7 +2880,10 @@ against the studs-up build's 0.50 to 0.59).
 
 **Pictures.** The three at 24 and 48 studs from every side and from under,
 m137 beside the branch (`pictures --views corner,front,back,left,right,under`,
-not committed). PICTURES_NOTE
+not committed). The bunny's flank and haunch and Bob's body are plates on
+their sides further round than before, and the dark slots by m137's bunny's
+eye are gone; 3DBenchy reads as m137's. From under, the undersides are
+upright plates as before, and nothing hangs loose.
 
 **Not done.** Studs down (inverted brackets 99780 and 99781, 2436 hung
 under a shell, held to the core above) and 3DBenchy's walls (47905 through
@@ -2911,6 +2920,36 @@ the bunny at 48's time; turning from 65 degrees is new to the eleven models
 not run here, which is what this run would show.
 
 ### Proof
+
+The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`), on the branch's last code:
+
+- `brickify_probe` (headless): all 84 pass. The blue bunny at 20 studs, one
+  colour, 97.8% in a part (the fifth round 96.6%, m137 98.7%), 548 parts, 4
+  mended; the bunny at 28 studs 98.3%; the forty-stud bunny 98.8%, 2,333
+  parts, 475 on their sides (upright 53), 172 of 202 steep cubes turned, 1.09
+  times m137's 2,143; the sphere 1,964 parts (1.01 times m137's 1,948), 516
+  on their sides; every one of 2,173 slopes sold in its colour; every stitch
+  ends in its rounds, the forty-stud bunny's in 17 (the fifth round 34).
+- `brickify_buy_probe` (headless): all 25 pass; the bunny 41 steps from 42
+  courses, 14 panels built on the side, none held by nothing. With
+  `--steps-only` on Bob, the Stanford bunny and 3DBenchy at 48 studs: 58, 115
+  and 77 steps, 81, 148 and 34 panels built on the side, every partial build
+  standing (the fifth round 58, 110 and 68; 79, 136 and 18).
+- `snot_probe` (11), `shapes_probe` (78), `balance_probe` (46) and
+  `stability_probe` (9): all pass. One earlier `stability_probe` run in this
+  round, at a load near 14, failed one timing ratio (Orthanc's check 3.0
+  times its build, at most 2.7; 2.83 in the run that passed); the change does
+  not touch what it times.
+- `brickify_ui_probe` in a window on the GPU: all 21 pass; the bunny lands
+  as 1,375 parts with 29 panels.
+- In a browser, on a local export (`tools/export.sh web`,
+  `tools/web/serve.py build/web 8972 --parts assets/generated/parts`):
+  `brickify_flow.mjs` (the bunny: 1,385 parts, 29 side panels, its booklet 59
+  pages for its 56 steps), the same with the fox at 24 studs (245 parts, "on
+  a stand"), and `mesh_formats_flow.mjs`: 14, 14 and 17 checks, all pass. Not
+  run against a preview.
+- `featuremap affected --since 44fde7cd` names no feature; the recipe and
+  `snot_gaps.gd` are in `.claude/skills/verify/features/brickify.md`.
 
 The fifth round's runs (`snot84`, 2026-10-21, `7ca53c1e`), on the branch's last code:
 
@@ -3010,6 +3049,19 @@ After the sixth round:
   lanes turning with the side, would take it.
 - **Its margin is narrow**: the blue bunny at 20 studs is 97.8% in a part from
   65 degrees, 96.6% from 63. `snot_gaps.gd` says where any model's is lost.
+- **Where the steep faces are left upright** at 48 studs, by the reasons of
+  the cubes holding them (each smooth arm's `cubes_why`, every cut): on Bob
+  77% and on the bunny 64% are in a cube of a later cut that a shell before
+  has plates of (`shelled`): the bands. Their shells come out a staircase of
+  rows two and a half plates tall; a part that ends on a plate (a jumper on
+  its side, a headlight brick's half-plate offset) would let a band be laid
+  flush. On 3DBenchy 67% are in a cube with no core three studs behind it
+  (`backed`): its walls.
+- **Nearer the model**: turning more moves the error little (the bands: 5
+  points more turned, no nearer). A third of the turned faces are nearest
+  the side of a plate on its side, the shell's own steps (the fourth round's
+  finding): slopes on their sides along both the lanes and the rows, and
+  across the shells' depths, are what would take the error down.
 - **The bands**, **3DBenchy's walls** and **studs down**, as the fifth round
   left them: a part a row tall that ends on a plate; 47905 on a wall's middle
   line; brackets two turns from the core.
