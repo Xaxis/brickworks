@@ -51,7 +51,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
 windowed=(motions motions_panel motions_render telescope floor share_view share_play
   simulate typing slow_frames look progress render collection_ui library
   animation balance_view outline outline_cost placing offgrid booklet_edit
-  "command:--judge")
+  "command:--judge --subjects=orthanc")
 # Not run here, each with why. A probe goes here only for one of these
 # reasons; a check that is merely slow or failing is still a check.
 out=(
