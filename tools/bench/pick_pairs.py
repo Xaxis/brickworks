@@ -2,7 +2,7 @@
 """The app's pick between two designs of one brief, read against the real sets.
 
     env -u ANTHROPIC_API_KEY python3 tools/bench/pick_pairs.py run --out NAME \\
-        --arms t2base:2026-10-19,t2plan3:2026-10-19 --subjects 40148-1,7410-1 [--jobs 3]
+        --arms t2base:2026-10-19,t2plan3:2026-10-19 [--subjects 40148-1,7410-1] [--jobs 3]
     python3 tools/bench/pick_pairs.py report --out NAME
 
 `run` takes every pair of the arms' designs of each subject, shows it to the
@@ -43,7 +43,8 @@ def design(arm: str, number: str) -> dict:
     ours = record["keys"]["ours"]
     won = sum(v["winners"]["overall"] == ours for v in record.get("verdicts", []))
     return {"key": ours, "views": str(where / "views"), "brief": record["brief"],
-            "won": won, "judged": len(record.get("verdicts", []))}
+            "won": won, "judged": len(record.get("verdicts", [])),
+            "seconds": (record.get("design") or {}).get("seconds", 0.0)}
 
 
 def ask(first: dict, second: dict, number: str, out: Path) -> dict:
@@ -70,13 +71,16 @@ def ask(first: dict, second: dict, number: str, out: Path) -> dict:
 
 def run(args: argparse.Namespace) -> int:
     out = RESULTS / args.out
+    arms = args.arms.split(",")
+    rounds = [RESULTS / f"realset-{arm.split(':')[1]}-{arm.split(':')[0]}" for arm in arms]
+    every = set.intersection(*({p.parent.name for p in r.glob("*/record.json")} for r in rounds))
     tasks = []
-    for number in args.subjects.split(","):
-        made = [design(arm, number) for arm in args.arms.split(",")]
+    for number in args.subjects.split(",") if args.subjects else sorted(every):
+        made = [design(arm, number) for arm in arms]
         for x, y in itertools.combinations(made, 2):
             tasks += [(x, y, number), (y, x, number)]
     with ThreadPoolExecutor(args.jobs) as pool:
-        for found in pool.map(lambda t: ask(*t, out), tasks):
+        for found in pool.map(lambda t: ask(t[0], t[1], t[2], out), tasks):
             print(found["number"], found["first"].split(":")[0], found["second"].split(":")[0],
                   "->", found.get("kept", "").split(":")[0] or found.get("error", "")[:120],
                   f"{found.get('seconds', 0):.1f}s", flush=True)
@@ -96,12 +100,13 @@ def bench_verdicts(number: str) -> dict[tuple[str, str], str]:
 def report(args: argparse.Namespace) -> int:
     out = RESULTS / args.out
     asks = [json.loads(f.read_text()) for f in sorted((out / "asks").glob("*/*.json"))]
-    won = {}
+    made = {}
     for a in asks:
         for key in (a["first"], a["second"]):
-            if key not in won:
+            if key not in made:
                 name, date, number = key.split(":")
-                won[key] = design(f"{name}:{date}", number)["won"]
+                made[key] = design(f"{name}:{date}", number)
+    won = {key: d["won"] for key, d in made.items()}
     pairs: dict[tuple, list] = {}
     for a in asks:
         pairs.setdefault((a["number"], *sorted((a["first"], a["second"]))), []).append(a)
@@ -175,6 +180,16 @@ def report(args: argparse.Namespace) -> int:
           f"{statistics.mean(tin):,.0f} tokens in, {statistics.mean(tout):,.0f} out; "
           f"models {dict(Counter(a.get('model') for a in asks))}")
 
+    # The wait: both designs side by side, then both asks side by side, against one design.
+    waits = [(max(made[x]["seconds"], made[y]["seconds"]) + max(a["seconds"] for a in both),
+              (made[x]["seconds"] + made[y]["seconds"]) / 2)
+             for (number, x, y), both in pairs.items() if len(both) == 2]
+    if waits and all(one for _, one in waits):
+        print(f"the wait, two designs and the pick against one design: "
+              f"{sum(w for w, _ in waits) / sum(o for _, o in waits):.2f}x "
+              f"({statistics.mean(w for w, _ in waits) / 60:.1f} min against "
+              f"{statistics.mean(o for _, o in waits) / 60:.1f})")
+
     if reasons_wrong:
         print("\nwhere it kept the worse:")
         for a in reasons_wrong:
@@ -185,12 +200,13 @@ def report(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="what", required=True)
     r = sub.add_parser("run")
     r.add_argument("--out", required=True)
     r.add_argument("--arms", required=True, help="name:date of each realset round, comma-separated")
-    r.add_argument("--subjects", required=True, help="set numbers, comma-separated")
+    r.add_argument("--subjects", default="",
+                   help="set numbers, comma-separated; every one all the arms designed if none")
     r.add_argument("--jobs", type=int, default=3)
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
