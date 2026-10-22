@@ -363,8 +363,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   whole library (1,575), and 8466-1 opened in a new tab, its download
   counted in MB on the status bar, read on a worker, its 29 hoses built on
   workers (`CustomParts.warm_skins`), and the tab's longest stall measured by
-  an interval timer: 3.3 s, the layout's own frame, where it was 11.6 s
-  before the hoses were built ahead (local export, real store, dcf6e538).
+  an interval timer: 3.3 and 4.2 s in two runs, the layout's own frame (said
+  first, "Opening 8466-1…"), where it was 11.6 s
+  before the hoses were built ahead; then the real gallery's shelf, 7 models
+  with their pictures (local export, real store, e62d9c76).
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and
