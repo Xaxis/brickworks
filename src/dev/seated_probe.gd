@@ -19,7 +19,11 @@
 ##     it is a body of its own and turns on its axle, and what joins it says
 ##     no stud of that brick;
 ##   1793-1's hinge plate 2 x 5 pivot is seated in its top's large hole:
-##     what joins it says the top.
+##     what joins it says the top;
+##   5767-1's windscreen sides, a plate and a tile swung 16 degrees on a
+##     hinge, hold the plate with a handle at their far end on one stud: it
+##     turns on that stud, as a plate swung on one stud does, and is not
+##     held there by clutch.
 extends SceneTree
 
 var _failures: int = 0
@@ -65,9 +69,10 @@ func _run() -> void:
 		return
 	await _tow_truck()
 	await _pivot_plate()
+	await _swung()
 	if _failures == 0:
-		print("seated: a part seated in another joins, side by side does not, and studs into a part "
-			+ "turned to them hold only where it takes them")
+		print("seated: a part seated in another joins, side by side does not, studs into a part "
+			+ "turned to them hold only where it takes them, and one so taken turns")
 	else:
 		print("seated: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -269,6 +274,55 @@ func _pivot_plate() -> void:
 			joined += 1
 	_check("the hinge plate 2 x 5 pivot seated in its top's large hole (%d)" % found, found >= 1)
 	_check("  what joins the pivot says its top (%d of %d)" % [joined, found], found > 0 and joined == found)
+
+
+## Whether parts turned [param one] and [param other] stand turned to each
+## other off the square by more than a degree.
+static func _turned_to(one: Basis, other: Basis) -> bool:
+	return _turned(one.orthonormalized().inverse() * other.orthonormalized())
+
+
+## 5767-1's windscreen: each side's plate and tile, swung 16 degrees on a
+## hinge, take the plate with a handle at their far end on one stud, the
+## plate's in its socket and its own in the tile. Read as Grab reads them
+## (Bodies): every joint between a handle and that plate or tile turns on
+## its stud, and none holds it by clutch. (The handles' bars in clips are
+## hinges, and not these.)
+func _swung() -> void:
+	print("5767-1:")
+	if not await _open("res://vendor/omr/files/5767-1.mpd"):
+		return
+	var bodies: Bodies = Bodies.read(_world, _library, _builder.lattice, _store.scenery, _builder.locked)
+	var handles: Dictionary = {}
+	var turns: Array = []
+	var other_kinds: Array = []
+	var held: Array = []
+	var sides: Dictionary = _ids_set(_of("3710") + _of("2431"))
+	for handle: int in _of("60478"):
+		var basis: Basis = _world.get_brick(handle).transform.basis
+		for link: Bodies.Link in bodies.links:
+			for pair: Array in link.pairs:
+				var other: int = int(pair[1]) if int(pair[0]) == handle \
+					else (int(pair[0]) if int(pair[1]) == handle else 0)
+				if other == 0 or not sides.has(other) \
+						or not _turned_to(basis, _world.get_brick(other).transform.basis):
+					continue
+				handles[handle] = true
+				if link.kind == "stud":
+					turns.append(other)
+				else:
+					other_kinds.append(link.kind)
+		for why: Array in bodies.joined_by.get(handle, []):
+			if str(why[1]).begins_with("studs") and sides.has(int(why[0])) \
+					and _turned_to(basis, _world.get_brick(int(why[0])).transform.basis):
+				handles[handle] = true
+				held.append(_name(int(why[0])))
+	_check("the windscreen's two plates with a handle, under and over parts swung on a hinge (%d)"
+		% handles.size(), handles.size() == 2)
+	_check("  each turns on its one stud with them (%d pairs on a joint that turns on a stud, %s)" % [turns.size(),
+		str(other_kinds) if not other_kinds.is_empty() else "no other"],
+		turns.size() >= 4 and other_kinds.is_empty())
+	_check("  and none is held by it (held by studs: %s)" % str(held), held.is_empty())
 
 
 ## What [param path] reads: its seated pairs (beside or not) and pivots.
