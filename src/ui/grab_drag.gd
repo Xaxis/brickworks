@@ -1631,6 +1631,12 @@ var _still_lattice: BrickLattice = null
 var _ready_out: Array = []
 var _seen_revision: int = -1
 var _changed_at: int = 0
+## The parts whose exact shapes were not here yet when the joints were last
+## read: part id -> true. On the web they are fetched as they are asked for,
+## and read without them a hinge BrickNet's labels name is not seen, so the
+## part on it is held rigidly (1484-1's mailbox door, shapes96).
+var unread_shapes: Dictionary = {}
+var _reading_unread: Dictionary = {}
 ## How long the last reading took, ms, and whether it ran on a worker.
 var ready_ms: int = 0
 var ready_off_thread: bool = false
@@ -1686,6 +1692,7 @@ func _reading_done(keep: bool, wait: bool = false) -> bool:
 	_readying = -1
 	if _ready_for == world.revision and keep:
 		_adopt(_ready_out, _ready_for)
+		unread_shapes = _reading_unread
 	_still.free()
 	_still = null
 	_still_lattice = null
@@ -1704,6 +1711,7 @@ func _read_off_thread() -> void:
 	for brick: BrickWorld.Brick in world.bricks():
 		part_ids[brick.part_id] = true
 	Exact.shapes_for(library, part_ids.keys())
+	_reading_unread = _unknown_shapes(part_ids.keys())
 	_still = world.copy_for_reading()
 	_still_lattice = builder.lattice.copy_for_reading()
 	var floor_ids: Dictionary = scenery.duplicate()
@@ -1771,9 +1779,33 @@ func _ready_now() -> void:
 		if is_ready():
 			return
 	var started: int = Time.get_ticks_msec()
+	var part_ids: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		part_ids[brick.part_id] = true
+	var unread: Dictionary = _unknown_shapes(part_ids.keys())
 	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked.duplicate())
 	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3], read[4]], world.revision)
+	unread_shapes = unread
 	ready_off_thread = false
+
+
+## Of [param part_ids], those whose exact shapes are not here yet: on the
+## web, where they are fetched. Elsewhere any thread reads one from disk.
+func _unknown_shapes(part_ids: Array) -> Dictionary:
+	var out: Dictionary = {}
+	if not OS.has_feature("web"):
+		return out
+	for part_id: Variant in part_ids:
+		if not Exact.known(library, str(part_id)):
+			out[str(part_id)] = true
+	return out
+
+
+## Read again soon, on a worker where there are threads, though the model
+## has not changed: shapes it was read without have come since.
+func read_again() -> void:
+	_judge_revision = -1
+	read_soon()
 
 
 static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,

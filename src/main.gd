@@ -2307,6 +2307,7 @@ func _view_shared() -> void:
 		await get_tree().process_frame
 		_camera.frame(_built_bounds())
 	_view_phases["parts"] = Time.get_ticks_msec() - began
+	_ask_shapes()
 	# The steps whoever shared it worked out, when they came with it and
 	# match what opened (SharedPages): a phone does not work them out. An
 	# old link, or one that does not match, has them worked out here.
@@ -2955,12 +2956,20 @@ var _motion_frames: Array = []
 var _motion_began: int = 0
 var _motion_shown: int = -1
 var _motion_said: String = ""
-## A press that came while the grab was busy, or the parts' shapes were on
-## their way: played once they are (or [constant SHAPES_WAIT_MS] after it),
-## not dropped. And the parts whose exact shapes are still to be asked for,
-## a few a frame, once the model's motions are offered.
+## A press that came while the grab was busy, or the shapes it is judged by
+## were on their way: played once they are here (or [constant
+## SHAPES_WAIT_MS] after it), not dropped. The parts whose exact shapes it
+## waits for (_motion_parts, and any its working out asked for that were
+## still on their way), and the motion they are for. And the parts whose
+## exact shapes are still to be asked for, a few a frame, from the moment
+## the model's parts are all here (_ask_shapes), and the parts whose shapes
+## the joints are read again with once all are here.
 var _motion_due: String = ""
 var _motion_due_at: int = 0
+var _motion_needs: Array = []
+var _motion_needs_for: String = ""
+## How often the press was worked out again for a shape it found missing.
+var _motion_again: int = 0
 ## A press being worked out a slice a frame (MotionPlayer.pace_on): on a
 ## phone with the CPU slowed four times two gates' 25 frames took 713 ms of
 ## one frame. What was pressed, which way, and how long it waited first.
@@ -2970,10 +2979,11 @@ var _shapes_to_ask: Array = []
 var _shape_parts: Array = []
 ## How much of a frame a press works for, ms: the rest of it is the page's.
 const MOTION_SLICE_MS := 40.0
-## How long a press waits for the parts' shapes: judged by their covers, a
-## motion's first press on the web stopped a gate at 6° of 90°, where the
-## shapes, fetched as the check asks for them, let it open (play_flow, on
-## the local relay).
+## How long a press waits at most for the shapes it is judged by: judged by
+## the parts' covers, a motion's first press on the web stopped a gate at
+## 6° of 90°, where the shapes let it open (play_flow, on the local relay).
+## Its own come first (PartLibrary.prefer_exact), so only a connection that
+## has stopped answering waits this long.
 const SHAPES_WAIT_MS := 10000
 ## What the last press played, for a page that checks it (play_flow.mjs):
 ## its name, which way, each joint from where to where, whether one
@@ -3036,6 +3046,9 @@ func _play_stop() -> void:
 	_grabbing = false
 	_motion_stop()
 	_motion_due = ""
+	_motion_due_at = 0
+	_motion_needs = []
+	_motion_needs_for = ""
 	_shapes_to_ask = []
 	_shape_parts = []
 	if _share_view != null:
@@ -3068,10 +3081,19 @@ func _play_frame() -> void:
 			Exact.shape_for(_library, part_id)
 	_pace_motion()
 	if not _motion_due.is_empty() and not _grab_drag.is_settling() and not _grab_drag.is_grabbing() \
-			and (not _shapes_coming() or Time.get_ticks_msec() > _motion_due_at + SHAPES_WAIT_MS):
+			and (not _shapes_coming(_motion_needs) or Time.get_ticks_msec() > _motion_due_at + SHAPES_WAIT_MS):
 		var name: String = _motion_due
 		_motion_due = ""
 		_play_motion(name)
+	# Every shape here, the joints read again once where they were read
+	# without some: a drag is then judged by them, and a part on a hinge
+	# that only its shape names moves.
+	elif not _shape_parts.is_empty() and _motion_due.is_empty() and _motion_paced == null \
+			and _grab_drag.is_ready() and not _grab_drag.is_grabbing() and not _grab_drag.is_settling() \
+			and not _shapes_coming(_shape_parts):
+		if _read_without(_shape_parts):
+			_grab_drag.read_again()
+		_shape_parts = []
 
 
 ## What moves, read from the joints the grab found: said on the viewer.
@@ -3090,16 +3112,6 @@ func _play_found() -> void:
 		for motion: Motions.Motion in _world.motions.list:
 			names.append(motion.name)
 	_share_view.show_motions(names)
-	# And every part's exact shape asked for now, so a motion is judged by
-	# them and not by the parts' covers (Exact.shape_for fetches on the web).
-	_shape_parts = []
-	if not names.is_empty():
-		var seen: Dictionary = {}
-		for brick: BrickWorld.Brick in _world.bricks():
-			if not seen.has(brick.part_id):
-				seen[brick.part_id] = true
-				_shape_parts.append(brick.part_id)
-	_shapes_to_ask = _shape_parts.duplicate()
 
 
 func _touch_screen() -> bool:
@@ -3329,10 +3341,16 @@ func _play_motion(name: String) -> void:
 		return
 	if _grab_drag.is_swinging():
 		_grab_drag.cancel()
+	# The shapes it is judged by, fetched ahead of the rest.
+	if _motion_needs_for != motion.name:
+		_motion_needs_for = motion.name
+		_motion_needs = _motion_parts(motion)
+		_motion_again = 0
+	_library.prefer_exact(_motion_needs)
 	# Played as soon as it can be, not dropped: once the grab is at rest and
-	# the parts' shapes are here, or have been waited for long enough.
+	# those shapes are here, or have been waited for long enough.
 	var now: int = Time.get_ticks_msec()
-	var waiting: bool = _grab_drag.is_grabbing() or _grab_drag.is_settling() or (_shapes_coming()
+	var waiting: bool = _grab_drag.is_grabbing() or _grab_drag.is_settling() or (_shapes_coming(_motion_needs)
 		and now < (_motion_due_at if _motion_due_at > 0 else now) + SHAPES_WAIT_MS)
 	if waiting:
 		if _motion_due_at == 0:
@@ -3340,17 +3358,24 @@ func _play_motion(name: String) -> void:
 		_motion_due = motion.name
 		_share_view.play_said("Getting “%s” ready…" % motion.name)
 		return
-	var waited: int = now - _motion_due_at if _motion_due_at > 0 else 0
+	var first: int = _motion_due_at if _motion_due_at > 0 else now
 	_motion_due = ""
 	_motion_due_at = 0
 	_motion_stop()
+	# Its joints read again where they were read without those shapes: the
+	# house's mailbox door, its hinge named only by its shape, was held
+	# rigidly (MotionPlayer.pace_on waits for the reading).
+	if _read_without(_motion_needs):
+		_grab_drag.read_again()
+	# What its working out asks for still on its way is noted from here.
+	Exact.missed_taken()
 	var back: bool = _share_view.motions_out.has(name.to_lower())
 	# A sequence plays each of its motions from where the one before left
 	# the model, and backwards in reverse order: one step, as one motion.
 	# Worked out a slice a frame, so the page never waits long for it.
 	_motion_paced = _motions.pace(_world.motions.played_by(motion, back), back,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
-	_motion_pressed = {"motion": motion, "back": back, "waited": waited}
+	_motion_pressed = {"motion": motion, "back": back, "first": first, "waited": now - first}
 	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
 	_pace_motion()
 
@@ -3364,13 +3389,34 @@ func _pace_motion() -> void:
 	if _grab_drag.is_grabbing():
 		_motion_drop()
 		return
-	if not _motions.pace_on(_motion_paced, MOTION_SLICE_MS):
+	Exact.noting = true
+	var done: bool = _motions.pace_on(_motion_paced, MOTION_SLICE_MS)
+	Exact.noting = false
+	if not done:
 		return
 	var paced: MotionPlayer.Paced = _motion_paced
 	_motion_paced = null
 	var run: MotionPlayer.Run = paced.run
 	var motion: Motions.Motion = _motion_pressed["motion"]
 	var back: bool = _motion_pressed["back"]
+	# Worked out with a part judged by its cover, its shape still on its
+	# way: taken back before it is drawn, and pressed again once that shape
+	# is here too. A part beyond what _motion_parts reaches.
+	var missed: Array = Exact.missed_taken().filter(func(part_id: String) -> bool:
+		return _library.is_exact_on_its_way(part_id))
+	var first: int = _motion_pressed["first"]
+	if not missed.is_empty() and Time.get_ticks_msec() < first + SHAPES_WAIT_MS:
+		if _builder.history_depth() > paced.depth:
+			_builder.undo_steps(_builder.history_depth() - paced.depth)
+		for part_id: String in missed:
+			if not _motion_needs.has(part_id):
+				_motion_needs.append(part_id)
+		_library.prefer_exact(missed)
+		_motion_again += 1
+		_motion_due = motion.name
+		_motion_due_at = first
+		_share_view.play_said("Getting “%s” ready…" % motion.name)
+		return
 	var items: Array = []
 	var refused := PackedStringArray()
 	for played: MotionPlayer.Played in run.played:
@@ -3380,9 +3426,12 @@ func _pace_motion() -> void:
 		"ms": snappedf(paced.total_ms, 0.1), "longest_ms": snappedf(paced.longest_ms, 0.1),
 		"slices": paced.slices, "hold_ms": snappedf(paced.hold_ms, 0.1), "frame_ms": snappedf(paced.frame_ms, 0.1),
 		"keep_ms": snappedf(paced.keep_ms, 0.1), "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
+		"shapes_waited": _motion_needs.size(), "worked_again": _motion_again,
 		"motions": run.played.size(),
 		"joints": items.map(func(item: MotionPlayer.Item) -> Array:
 			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}
+	# The next press finds its shapes from where the model stands then.
+	_motion_needs_for = ""
 	if items.is_empty():
 		_share_view.play_said(_visitor_words("“%s” does not play: %s." % [motion.name,
 			"; ".join(refused) if not refused.is_empty() else "nothing in it moves here"]))
@@ -3413,14 +3462,103 @@ func _motion_drop() -> void:
 	_share_view.play_said("")
 
 
-## Whether a part's exact shape is still to be asked for or on its way.
-func _shapes_coming() -> bool:
-	if not _shapes_to_ask.is_empty():
-		return true
-	for part_id: String in _shape_parts:
-		if _library.is_exact_on_its_way(part_id):
+## Whether the exact shape of any of [param parts] is still to be asked for
+## or on its way.
+func _shapes_coming(parts: Array) -> bool:
+	for part_id: String in parts:
+		if _shapes_to_ask.has(part_id) or _library.is_exact_on_its_way(part_id):
 			return true
 	return false
+
+
+## Whether the joints were last read without the shape of any of [param
+## parts] that is here now.
+func _read_without(parts: Array) -> bool:
+	for part_id: String in parts:
+		if _grab_drag.unread_shapes.has(part_id) and Exact.known(_library, part_id):
+			return true
+	return false
+
+
+## Every part's exact shape asked for, a few a frame (_play_frame), once the
+## shared model's parts are all here, so a motion and a drag are judged by
+## them and not by the parts' covers (Exact.shape_for fetches them on the
+## web). Those [method _motion_parts] names for its motions first, the rest
+## nearest them first. Asked only once the joints were read, in the file's
+## order, the house's gates' came 10 s after the first, 38 s into a slow
+## connection: the press waited its 10 s and stopped a gate at 6° (shapes96).
+func _ask_shapes() -> void:
+	var first: Dictionary = {}
+	var near: Array = []
+	if _world.motions != null:
+		for motion: Motions.Motion in _world.motions.list:
+			for part_id: String in _motion_parts(motion):
+				first[part_id] = true
+			near.append_array(_motion_boxes(motion))
+	var order: Array = []
+	var seen: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if seen.has(brick.part_id):
+			continue
+		seen[brick.part_id] = true
+		var far: float = 0.0 if first.has(brick.part_id) else INF
+		if far > 0.0 and not near.is_empty():
+			var mid: Vector3 = _box_of(brick).get_center()
+			for box: AABB in near:
+				far = minf(far, mid.distance_to(box.get_center()))
+		order.append([far, order.size(), brick.part_id])
+	order.sort_custom(func(a: Array, b: Array) -> bool:
+		return a[0] < b[0] or a[0] == b[0] and a[1] < b[1])
+	_shape_parts = order.map(func(one: Array) -> String: return one[2])
+	# Asked from the back.
+	_shapes_to_ask = _shape_parts.duplicate()
+	_shapes_to_ask.reverse()
+
+
+## The parts whose exact shapes [param motion] is judged by, as far as can
+## be told before it is played: each part on its joints, and every part
+## within reach of them, as far again as they are long (a gate swung on its
+## hinge sweeps its own length). A press waits for these; any further that
+## its working out asks for it waits for too (_pace_motion).
+func _motion_parts(motion: Motions.Motion) -> Array:
+	var boxes: Array = _motion_boxes(motion)
+	var out: Array = []
+	if boxes.is_empty():
+		return out
+	for brick: BrickWorld.Brick in _world.bricks():
+		if out.has(brick.part_id):
+			continue
+		var box: AABB = _box_of(brick)
+		for reach: AABB in boxes:
+			if reach.intersects(box):
+				out.append(brick.part_id)
+				break
+	return out
+
+
+## Where [param motion]'s joints' parts reach: for each joint, the box round
+## its parts grown by its longest side. A sequence, its motions'.
+func _motion_boxes(motion: Motions.Motion) -> Array:
+	var out: Array = []
+	for one: Motions.Motion in _world.motions.played_by(motion):
+		for joint: Motions.Joint in one.joints():
+			var box := AABB()
+			var any: bool = false
+			for id: Variant in _motions.parts_of(joint):
+				var brick: BrickWorld.Brick = _world.get_brick(int(id))
+				if brick == null:
+					continue
+				box = box.merge(_box_of(brick)) if any else _box_of(brick)
+				any = true
+			if any:
+				out.append(box.grow(box.get_longest_axis_size()))
+	return out
+
+
+## The box [param brick] takes where it stands, by its catalogue bounds.
+func _box_of(brick: BrickWorld.Brick) -> AABB:
+	var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+	return brick.transform * mesh.bounds if mesh != null else AABB(brick.transform.origin, Vector3.ZERO)
 
 
 ## The playing motion's frame for now, drawn; its words said once it ends. A
