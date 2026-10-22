@@ -217,6 +217,26 @@
 								</div>
 							</form>
 
+							<form class="setting profile-form" id="showcase-form" hidden>
+								<div class="wide">
+									<h3>What your profile shows</h3>
+									<p>Up to two links of yours elsewhere, one of your models’ pictures across the top,
+										and up to three of your models pinned above the rest. Anyone can see them.</p>
+								</div>
+								<label class="wide">A link <input id="link-1" type="url" maxlength="200" inputmode="url"
+									placeholder="https://… a portfolio, a Flickr, a shop"></label>
+								<label class="wide">Another link <input id="link-2" type="url" maxlength="200" inputmode="url"
+									placeholder="https://… optional"></label>
+								<label class="wide">Across the top <select id="banner"><option value="">None</option></select></label>
+								<label class="wide">Pinned first <select id="pin-1" data-pin><option value="">None</option></select></label>
+								<label class="wide">Pinned second <select id="pin-2" data-pin><option value="">None</option></select></label>
+								<label class="wide">Pinned third <select id="pin-3" data-pin><option value="">None</option></select></label>
+								<div class="wide actions">
+									<button class="cta" type="submit" id="showcase-save">Save</button>
+									<p class="said" id="showcase-said" role="status"></p>
+								</div>
+							</form>
+
 							<div class="setting" id="email-part">
 								<div class="wide">
 									<h3>Email</h3>
