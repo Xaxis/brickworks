@@ -398,6 +398,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.faces = faces
 		if pattern.get("cubes") is Dictionary:
 			plan.cubes = pattern["cubes"]
+		if pattern.get("cube_phases") is Array:
+			plan.cube_phases = pattern["cube_phases"]
 		if pattern.get("side_fine") is Callable:
 			plan.side_fine = pattern["side_fine"]
 		plan.mirror_of()
@@ -2998,6 +3000,11 @@ class Plan extends RefCounted:
 	## step, its studs up, whichever way it turns; turned out, the same side
 	## is plates two fifths of a stud thick, slopes and tiles facing it.
 	var cubes: Dictionary = {}
+	## The cubes cut again a few plates up (Brickify.Grid.cube_phases):
+	## [[phase, cubes]], tried after [member cubes] where they leave the
+	## side upright; and the phase of the cubes being laid.
+	var cube_phases: Array = []
+	var _phase: int = 0
 	## Each cube's studs and plates, as Brickify's cubes are cut.
 	const CUBE_STUDS := 2
 	const CUBE_PLATES := 5
@@ -3027,6 +3034,32 @@ class Plan extends RefCounted:
 	## core, and the shell laid again without it. First-tier connections
 	## only: a side stud into a plate's underside, nothing wedged.
 	func _cube_shells(kind: String) -> Array:
+		var first: Dictionary = cubes
+		var out: Array = []
+		var kept_list: Array = []
+		for cut: Array in [[0, cubes]] + cube_phases:
+			_phase = cut[0]
+			cubes = cut[1]
+			out.append_array(_cube_shells_at(kind))
+			if stop.is_valid() and bool(stop.call()):
+				break
+		_phase = 0
+		cubes = first
+		var kept_cubes: int = 0
+		for shell: Dictionary in out:
+			kept_cubes += (shell["cubes"] as Array).size()
+			for c: Vector3i in shell["cubes"]:
+				kept_list.append(Vector3i(c.x, c.y * CUBE_PLATES + int(shell["phase"]), c.z))
+		_why_not["kept"] = kept_cubes
+		_why_not["asked"] = cubes.size()
+		Shapes.last["cubes"] = _why_not
+		# Each turned cube by its foot plate, for the bench to say where a side is
+		# turned.
+		Shapes.last["cubes_kept"] = kept_list
+		return out
+
+	## The shells of the cubes of [member _phase].
+	func _cube_shells_at(kind: String) -> Array:
 		var groups: Dictionary = {}    ## Vector3i(way x, way z, depth) -> cubes
 		var keys: Array = cubes.keys()
 		keys.sort()
@@ -3071,8 +3104,8 @@ class Plan extends RefCounted:
 				var count: Dictionary = {}    ## cube -> [plates, covered]
 				for plate: Variant in shell["cells"]:
 					var p: Vector3i = plate
-					var c := Vector3i(floori(p.x / float(CUBE_STUDS)), floori(p.y / float(CUBE_PLATES)),
-						floori(p.z / float(CUBE_STUDS)))
+					var c := Vector3i(floori(p.x / float(CUBE_STUDS)),
+						floori((p.y - _phase) / float(CUBE_PLATES)), floori(p.z / float(CUBE_STUDS)))
 					var was: Vector2i = count.get(c, Vector2i.ZERO)
 					count[c] = was + Vector2i(1, 1 if covered.has(p) else 0)
 				var kept: Array = []
@@ -3095,12 +3128,6 @@ class Plan extends RefCounted:
 				out.append(shell)
 			else:
 				_why_not["unheld"] = int(_why_not.get("unheld", 0)) + list.size()
-		var kept_cubes: int = 0
-		for shell: Dictionary in out:
-			kept_cubes += (shell["cubes"] as Array).size()
-		_why_not["kept"] = kept_cubes
-		_why_not["asked"] = cubes.size()
-		Shapes.last["cubes"] = _why_not
 		return out
 
 	## The plates of [param shell]'s cubes in a row of a lane where none of its
@@ -3140,12 +3167,23 @@ class Plan extends RefCounted:
 
 	## Whether the model has a plate in cube [param c].
 	func _cube_has_model(c: Vector3i) -> bool:
+		var j0: int = c.y * CUBE_PLATES + _phase
 		for dx: int in CUBE_STUDS:
 			for dz: int in CUBE_STUDS:
 				var cell := Vector2i(c.x * CUBE_STUDS + dx, c.z * CUBE_STUDS + dz)
-				for j: int in range(c.y * CUBE_PLATES, c.y * CUBE_PLATES + CUBE_PLATES):
+				for j: int in range(j0, j0 + CUBE_PLATES):
 					if at(cell, j) >= 0:
 						return true
+		return false
+
+	## Whether any plate of [param cells] from [param j0] up a cube's height is
+	## a shell's, or taken by one.
+	func _cube_shelled(cells: Array[Vector2i], j0: int) -> bool:
+		for cell: Vector2i in cells:
+			for j: int in range(j0, j0 + CUBE_PLATES):
+				var key := Vector3i(cell.x, j, cell.y)
+				if shelled.has(key) or taken.has(key):
+					return true
 		return false
 
 	## One shell of the cubes [param list], all facing [param facing] at one
@@ -3167,7 +3205,12 @@ class Plan extends RefCounted:
 			for dx: int in CUBE_STUDS:
 				for dz: int in CUBE_STUDS:
 					cells.append(Vector2i(c.x * CUBE_STUDS + dx, c.z * CUBE_STUDS + dz))
-			var j0: int = c.y * CUBE_PLATES
+			var j0: int = c.y * CUBE_PLATES + _phase
+			# Cut again a few plates up, only where no shell before has any of
+			# it: half a cube on a shell's edge would be a cap of its own.
+			if _phase != 0 and _cube_shelled(cells, j0):
+				_why_not["shelled"] = int(_why_not.get("shelled", 0)) + 1
+				continue
 			var plates: Array[Vector3i] = []
 			var empty: Array[Vector3i] = []
 			var beyond: int = 0
@@ -3265,7 +3308,8 @@ class Plan extends RefCounted:
 		_shells_made += 1
 		var shell := {"facing": facing, "along": along, "a0": lanes.x, "a1": lanes.y + 1,
 			"face": face, "top": top, "rows": 2 * (top - bottom) / CUBE_PLATES, "held": {},
-			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept}
+			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept,
+			"phase": _phase}
 		return shell if _anchored(shell) else {}
 
 	## The pieces of the core apart from the rest, of [constant CUT_OFF] parts

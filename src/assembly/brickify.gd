@@ -204,6 +204,11 @@ class Grid extends RefCounted:
 	## The cubes of the surface that face out (see [method Brickify._cubes]):
 	## Vector3i(x / 2, j / 5, z / 2) -> the way out, Vector2i(x, z).
 	var cubes: Dictionary = {}
+	## The same cubes cut again with their courses started a few plates up
+	## ([constant CUBE_PHASES]): [[phase, cubes]], each keyed Vector3i(x / 2,
+	## (j - phase) / 5, z / 2). Where the first cut is not turned, one of these
+	## may be.
+	var cube_phases: Array = []
 	## Rays across, for those sides: along x through every third of a stud
 	## along z and up, and along z through every third across and up; where
 	## each goes in and comes out, studs along it, as [member spans] has them.
@@ -501,6 +506,8 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
 		clock = Time.get_ticks_msec()
 		grid.cubes = _cubes(grid, points, count, outward, progress)
 		if not grid.cubes.is_empty():
+			for phase: int in CUBE_PHASES:
+				grid.cube_phases.append([phase, _cubes(grid, points, count, outward, progress, phase)])
 			grid.side_rows = ceili(grid.tall / PLATES * FINE)
 			grid.spans_x = _side_spans(grid, points, count, outward, true, progress)
 			grid.spans_z = _side_spans(grid, points, count, outward, false, progress)
@@ -520,16 +527,20 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 	# shell's slopes inside its cubes): a third of a stud round each.
 	var wanted := PackedByteArray()
 	wanted.resize(fu * fv)
-	for key: Variant in grid.cubes:
-		var way: Vector2i = grid.cubes[key]
-		if (way.x != 0) != along_x:
-			continue
-		var c: Vector3i = key
-		var across: int = c.z if along_x else c.x
-		for iu: int in range(maxi(0, across * CUBE_STUDS * FINE - 1), mini(fu, (across + 1) * CUBE_STUDS * FINE + 1)):
-			for iv: int in range(maxi(0, floori(c.y * CUBE_PLATES / PLATES * FINE) - 1),
-					mini(fv, ceili((c.y + 1) * CUBE_PLATES / PLATES * FINE) + 1)):
-				wanted[iu * fv + iv] = 1
+	for cut: Array in [[0, grid.cubes]] + grid.cube_phases:
+		var phase: int = cut[0]
+		var cubes: Dictionary = cut[1]
+		for key: Variant in cubes:
+			var way: Vector2i = cubes[key]
+			if (way.x != 0) != along_x:
+				continue
+			var c: Vector3i = key
+			var across: int = c.z if along_x else c.x
+			var j0: int = c.y * CUBE_PLATES + phase
+			for iu: int in range(maxi(0, across * CUBE_STUDS * FINE - 1), mini(fu, (across + 1) * CUBE_STUDS * FINE + 1)):
+				for iv: int in range(maxi(0, floori(j0 / PLATES * FINE) - 1),
+						mini(fv, ceili((j0 + CUBE_PLATES) / PLATES * FINE) + 1)):
+					wanted[iu * fv + iv] = 1
 	const NUDGE_U := 0.0000613
 	const NUDGE_V := 0.0000287
 	for t: int in count:
@@ -603,6 +614,17 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 ## the model 0.9 degrees more.
 const CUBE_STUDS := 2
 const CUBE_PLATES := 5
+## The lattice of cubes is cut again with its courses started this many
+## plates up, in turn, and a side the cuts before leave upright is laid on
+## its side in these, where no shell has any of it. A cube five plates tall
+## at a side's top or foot holds the side and the top or the underside it
+## turns into, which face different ways, or a cap a plate or two thick
+## over it that its shell would leave standing on its edge: at 48 studs,
+## 69% and 68% of the steep surface of Bob and the Stanford bunny lay in a
+## cube facing out, and 90% and 85% in one at some phase. Cut again two
+## plates up alone, 31% of the steep faces of Bob, the bunny and 3DBenchy
+## were turned, from 27%; at every phase, 37%.
+const CUBE_PHASES: Array[int] = [2, 4, 1, 3]
 const STEEP := 0.36
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
@@ -610,7 +632,7 @@ const CUBE_IN := 0.5
 
 
 static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float,
-		progress: Progress = null) -> Dictionary:
+		progress: Progress = null, phase: int = 0) -> Dictionary:
 	var sums: Dictionary = {}    ## Vector3i -> Vector3, area times the way out, square studs
 	var areas: Dictionary = {}   ## Vector3i -> float
 	var iso := Vector3(1.0, 1.0 / PLATES, 1.0)
@@ -640,7 +662,7 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 					var v: float = (m + (1.0 if flip == 0 else 2.0) / 3.0) / k
 					var p: Vector3 = a + (b - a) * u + (c - a) * v
 					p += Vector3(inward.x, inward.y * PLATES, inward.z)
-					var key := Vector3i(floori(p.x / CUBE_STUDS), floori(p.y / CUBE_PLATES),
+					var key := Vector3i(floori(p.x / CUBE_STUDS), floori((p.y - phase) / CUBE_PLATES),
 						floori(p.z / CUBE_STUDS))
 					sums[key] = (sums.get(key, Vector3.ZERO) as Vector3) + share
 					areas[key] = float(areas.get(key, 0.0)) + each
@@ -1688,6 +1710,7 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 	if not grid.cubes.is_empty():
 		shape["sideways"] = true
 		shape["cubes"] = grid.cubes
+		shape["cube_phases"] = grid.cube_phases
 		if options.near:
 			shape["side_fine"] = grid.side
 	return shape

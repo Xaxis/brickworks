@@ -189,11 +189,13 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 			info["cubes"] = Shapes.last.get("cubes", {})
 			# Which cubes faced out, and which were laid on their side: where
 			# a steep face not turned lies (brickify_bench.py faces).
+			# Each [x / 2, its foot plate, z / 2], and the way it faces.
 			var asked: Array = []
-			for key: Variant in grid.cubes:
-				var c: Vector3i = key
-				var way: Vector2i = grid.cubes[key]
-				asked.append([c.x, c.y, c.z, way.x, way.y])
+			for cut: Array in [[0, grid.cubes]] + grid.cube_phases:
+				for key: Variant in cut[1]:
+					var c: Vector3i = key
+					var way: Vector2i = (cut[1] as Dictionary)[key]
+					asked.append([c.x, c.y * Brickify.CUBE_PLATES + int(cut[0]), c.z, way.x, way.y])
 			info["cubes_asked"] = asked
 			var turned: Array = []
 			for c: Variant in Shapes.last.get("cubes_kept", []):
