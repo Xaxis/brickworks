@@ -384,7 +384,9 @@ func _build() -> void:
 		var piece: Piece = parts[key]
 		var mesh: Lbm.PartMesh = piece.mesh
 		var at: Transform3D = piece.at
-		if mesh == null:
+		# A universal joint drawn whole keys no shaft: it is its cross, posed
+		# where its ends put it ([method join_universals]).
+		if mesh == null or Bodies.whole_cross(mesh):
 			continue
 		var shaft: Array = _shaft_of(mesh)
 		if not shaft.is_empty():

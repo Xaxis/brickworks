@@ -288,12 +288,21 @@ func _read() -> void:
 	for entry: Array in entries:
 		part_of[int(entry[0])] = Mechanism.reads_as(str(entry[3]))
 
+	# A universal joint drawn whole is its cross, pinned to the shaft in each
+	# end ([method _whole_crosses]): nothing else joins it.
+	whole_crosses.clear()
+	for entry: Array in entries:
+		if Bodies.whole_cross(entry[2]):
+			whole_crosses[int(entry[0])] = true
+
 	# Pins and axles.
 	var shaft_lines: Dictionary = {}
 	var pin_rows: Dictionary = {}   ## pin -> the parts it is in
 	for one: Array in Joints.through(entries):
 		var a: int = int(one[0])
 		var b: int = int(one[1])
+		if whole_crosses.has(a) or whole_crosses.has(b):
+			continue
 		if not on_shaft.has(a):
 			on_shaft[a] = []
 		(on_shaft[a] as Array).append(b)
@@ -335,7 +344,8 @@ func _read() -> void:
 			var a: int = int(one)
 			var b: int = int(other)
 			var pair := Vector2i(mini(a, b), maxi(a, b))
-			if done.has(pair) or shaft_lines.has(pair) or acting.has(pair):
+			if done.has(pair) or shaft_lines.has(pair) or acting.has(pair) \
+					or whole_crosses.has(a) or whole_crosses.has(b):
 				continue
 			done[pair] = true
 			var zones: Array = rounds[one][other]
@@ -383,6 +393,7 @@ func _read() -> void:
 				slide_and_shaft[2] if slide_and_shaft.size() > 2 else Vector2.ZERO])
 
 	_cross_in_forks(entries, info_of, rounds, candidates)
+	_whole_crosses(entries, candidates)
 
 	# Balls.
 	var balls: Dictionary = Joints.balls(entries)
@@ -578,7 +589,8 @@ func _read() -> void:
 		candidates.append(in_grooves[pair])
 	for pair: Vector2i in per_pair:
 		var found: Array = per_pair[pair]
-		if turning.has(pair) or in_grooves.has(pair):
+		if turning.has(pair) or in_grooves.has(pair) \
+				or whole_crosses.has(pair.x) or whole_crosses.has(pair.y):
 			continue
 		var groove: Array = _in_a_groove(pair, int(stud_of.get(pair, pair.x)), found)
 		if not groove.is_empty():
@@ -1061,6 +1073,110 @@ func _cross_in_forks(entries: Array, info_of: Dictionary, rounds: Dictionary, ca
 				continue
 			candidates.append([int(end[0]), int(centre[0]), "hinge", fork, bores[0][1], true, 0.0,
 				Vector2.ZERO, 0])
+
+
+## A universal joint drawn as one part (9244, 3712c01, 61903) is its cross:
+## a body of its own, pinned on its fork's line to the shaft in each end, as
+## [method _cross_in_forks] pins a centre in its ends' forks. Read as the one
+## rigid part it is drawn as, it was keyed to whichever shaft lined up with
+## its axle hole where the model stood: 8466-1's turned with its wheel's hub
+## one way, with the frame the other, and was left 10.74 LDU off. LDraw draws
+## each with its first end towards -z (in Godot's frame), its fork across x,
+## and the second towards +z turned a quarter round, its fork across y. An
+## end's shaft is an axle square to that end's fork, on a line through the
+## middle, reaching into the end from its side: where the joint has bent,
+## its line is no longer the part's. Added to [param candidates].
+func _whole_crosses(entries: Array, candidates: Array) -> void:
+	for entry: Array in entries:
+		var key: int = int(entry[0])
+		if not whole_crosses.has(key):
+			continue
+		var at: Transform3D = entry[1]
+		var mesh: Lbm.PartMesh = entry[2]
+		var middle: Vector3 = at.origin
+		var long: float = maxf(absf(mesh.bounds.position.z), absf(mesh.bounds.end.z))
+		for end: Array in [[-at.basis.z.normalized(), at.basis.x.normalized()],
+				[at.basis.z.normalized(), at.basis.y.normalized()]]:
+			var out: Vector3 = end[0]
+			var fork: Vector3 = end[1]
+			var best: int = 0
+			var nearest: float = INF
+			for other: Array in entries:
+				var other_key: int = int(other[0])
+				if other_key == key or whole_crosses.has(other_key):
+					continue
+				var other_at: Transform3D = other[1]
+				var other_mesh: Lbm.PartMesh = other[2]
+				var box: AABB = (other_at * other_mesh.bounds).grow(1.0)
+				if not box.intersects(AABB(middle - Vector3.ONE * long, Vector3.ONE * long * 2.0)):
+					continue
+				for line: Array in Joints._lines_of(other_mesh)[0]:
+					if str(line[0]) != "axle":
+						continue
+					var origin: Vector3 = other_at * (line[1] as Vector3)
+					var way: Vector3 = (other_at.basis * (line[2] as Vector3)).normalized()
+					if absf(way.dot(fork)) > WHOLE_SQUARE:
+						continue
+					var gap: Vector3 = middle - origin
+					var along: float = gap.dot(way)
+					if (gap - way * along).length() > SAME_LINE:
+						continue
+					# Its reach either side of the middle, out of this end.
+					var lo: float = float(line[3]) - along
+					var hi: float = float(line[4]) - along
+					var sign: float = 1.0 if way.dot(out) > 0.0 else -1.0
+					var near: float = minf(lo * sign, hi * sign)
+					var far: float = maxf(lo * sign, hi * sign)
+					if far <= 0.0 or near > long - Joints.ROUND_DEPTH:
+						continue
+					if near < nearest:
+						nearest = near
+						best = other_key
+			if best != 0:
+				candidates.append([best, key, "hinge", middle, fork, true, 0.0, Vector2.ZERO, 0])
+
+
+## An end's shaft is square to its fork's line to within this, the cosine.
+const WHOLE_SQUARE := 0.05
+
+
+## Whether [param mesh] is a universal joint drawn whole ([method
+## _whole_crosses]): an axle hole along z, and two forks' bores at its
+## middle, one pair across x and one across y. Read from its connectors, as a
+## browser has them, and kept per mesh.
+static func whole_cross(mesh: Lbm.PartMesh) -> bool:
+	if mesh == null:
+		return false
+	var key: int = mesh.get_instance_id()
+	_whole_lock.lock()
+	var known: Variant = _whole_known.get(key)
+	_whole_lock.unlock()
+	if known != null:
+		return bool(known)
+	var across: Array[int] = [0, 0]
+	var hole: bool = false
+	for connector: Lbm.Connector in mesh.connectors:
+		var at: Vector3 = connector.position
+		var way: Vector3 = connector.axis.normalized()
+		if connector.kind == "axle_hole" and absf(way.z) > 0.999 and Vector2(at.x, at.y).length() < 1.0:
+			hole = true
+		elif connector.kind == "bore" and absf(at.z) < 1.0 and at.length() < 12.0:
+			if absf(way.x) > 0.999 and absf(at.y) < 1.0:
+				across[0] += 1
+			elif absf(way.y) > 0.999 and absf(at.x) < 1.0:
+				across[1] += 1
+	var whole: bool = hole and across[0] == 2 and across[1] == 2
+	_whole_lock.lock()
+	_whole_known[key] = whole
+	_whole_lock.unlock()
+	return whole
+
+
+## Parts read as a universal joint drawn whole: key -> true.
+var whole_crosses: Dictionary = {}
+static var _whole_known: Dictionary = {}
+## Read on a worker as well as on the main thread, as Joints' lines are.
+static var _whole_lock := Mutex.new()
 
 
 ## Whether [param key]'s part has no exact shape to read its joints from.

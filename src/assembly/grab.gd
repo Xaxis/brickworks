@@ -1507,7 +1507,9 @@ func _meeting_pairs() -> void:
 			for key: int in [one, other]:
 				if _thin_on(key, joined.point, line) or _round_on(key, joined.point, line):
 					turns_in_place = true
-			if turns_in_place:
+			# A universal joint drawn whole is posed as its cross, and its ends
+			# stand off its shafts as it bends: its shafts are in its ends.
+			if turns_in_place or bodies.whole_crosses.has(one) or bodies.whole_crosses.has(other):
 				continue
 			var reach_a: Vector2 = Grab._reach_along(a.transform, mesh_a.bounds, line)
 			var reach_b: Vector2 = Grab._reach_along(b.transform, mesh_b.bounds, line)
