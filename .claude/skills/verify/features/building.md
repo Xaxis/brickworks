@@ -700,7 +700,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   at the pinion at its rack's end +30, -60 and back as the sweep turns it:
   the turn back still turns the loop, and the rack comes back within 0.05
   LDU (a loop carries no pinion off its rack, `Linkage._within`; Grab 22,
-  MECHANISMS §36). `-- --only=kingpin` (in the full run):
+  MECHANISMS §36). Both 5533-1 and 8466-1 come back within the sweep's 0.02
+  LDU (a loop measured from how it was built, `Linkage._from_built`), and
+  8466-1's four universal joints drawn as one part (9244) are each a cross on
+  two hinges square to each other (`Bodies._whole_crosses`; Grab 23,
+  MECHANISMS §37). `-- --only=kingpin` (in the full run):
   9392-1's steering arm on two balls turns on the line through them
   (`Grab._kingpin`).
   `-- --only=swept` (in the full run): 41999-1 (a pinion lodged where no hole

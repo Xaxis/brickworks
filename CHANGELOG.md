@@ -39,6 +39,21 @@ whole cycle.
 
 ### Fixed
 
+- A steering turned one way, the other and back now comes back where it was
+  built. A turn that could not quite close its linkage kept it a little
+  open, and the next turn took the gap for closed: Red Fury's (5533-1)
+  steering came back with a wheel 6.4 LDU off. Each joint of a linkage is
+  now measured against how it was built, a turn keeps only a closed
+  linkage, and a knuckle a turn slid out along its axle slides back when
+  the steering is turned back. Its wheels come back within 0.004 LDU. On 20
+  real sets turned this way, all 20 now come back within 0.02 LDU, where 17
+  did.
+- A universal joint drawn as one part bends as a universal joint. It was
+  read as one stiff part fixed to whichever shaft lined up with it, so it
+  turned with a wheel one way and with the frame the other: the 4x4
+  off-roader (8466-1), turned one way and back, left one 10.7 LDU off. It
+  is now its own cross, turning on a pin to the shaft in each end, as a
+  universal joint built of its three parts does.
 - A steering no longer loses the rack it is turned by. A pinion standing at
   the end of its rack could be carried past the rack's last tooth by a
   turn, and the next turn found it out of the rack and turned it alone, the

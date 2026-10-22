@@ -33,8 +33,8 @@ const CLOSE_TO := 0.05
 ## this, LDU: near enough the loop to start the next step from, which is all
 ## it is for.
 const ON_THE_WAY := 0.5
-## The last step closes on towards this while each round takes a tenth off
-## what is left ([method _close_with]).
+## Turned back to where it was built, the last step closes on towards this
+## while each round takes a tenth off what is left ([method _close_with]).
 const CLOSE_FINE := 0.0005
 ## A step turns no coordinate further than this, radians (29°), as far as
 ## the last step's slope says: what a small actuator's screw drives turns 2
@@ -599,7 +599,19 @@ func _closes_built(at: float, from_q: PackedFloat64Array) -> bool:
 	if not apart:
 		return false
 	q = start
-	return _close() and _within()
+	_fine = true
+	var closed: bool = _close() and _within()
+	_fine = false
+	return closed
+
+
+## Whether a close goes on to [constant CLOSE_FINE]: only back where the loop
+## was built ([method _closes_built]). Stopped at a fifth of CLOSE_TO, a turn
+## back left 8466-1's rack 0.011 LDU off its driver, and its steering column,
+## turning with a pinion in that rack, 0.2 LDU off at its top universal joint,
+## 220 LDU from the pinion's line. Asked of every drag's frame, the round more
+## it takes cost the wheel loader's arm 1 ms of its 95th frame in 14.
+var _fine: bool = false
 
 
 ## [param pair]'s two parts as they stand against each other, from how they
@@ -1156,12 +1168,11 @@ func _close_with(held: Dictionary) -> bool:
 			where[c] = -1
 	var n: int = free.size()
 	# Closed to a fifth of the tolerance, so the last step stands well inside
-	# it; a step on the way only to within it. And on, as long as each round
-	# takes a tenth off what is left, to [constant CLOSE_FINE]: a turn's last
-	# step 0.01 LDU off its rack left 8466-1's steering column 0.2 LDU off at
-	# its top universal joint, 18 times further from the pinion's line.
+	# it; a step on the way only to within it. Back where it was built, on as
+	# long as each round takes a tenth off what is left, to [constant
+	# CLOSE_FINE] ([member _fine]).
 	var aim: float = _tolerance * 0.2 if _tolerance == CLOSE_TO else _tolerance
-	var fine: float = CLOSE_FINE if _tolerance == CLOSE_TO else aim
+	var fine: float = CLOSE_FINE if _fine and _tolerance == CLOSE_TO else aim
 	var gaining: bool = true
 	var at_row := PackedInt32Array()
 	var of_row := PackedFloat64Array()

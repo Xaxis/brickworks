@@ -5865,3 +5865,99 @@ The whole sweep is the lead's: from a locked snapshot of this,
 `SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run grab22
 --jobs=3`, then `table grab22 --against=hinge77`; the bar is every set that
 steers in hinge77 (77) steering, nothing lost.
+
+## 37. A universal joint drawn whole, and a loop measured from how it was built (Grab 23)
+
+Grab 22 left 8466-1 coming back 10.74 LDU off at a universal joint drawn as
+one part (#651, 9244), and 5533-1 6.43 LDU off at a wheel (#368), its loop
+kept open by one move and read closed by the next (section 36). Each was
+measured on m140 (4c747508) by a scratch probe calling `move_part` as the
+sweep does (+30, -60, then back by the turn measured).
+
+### 8466-1: a universal joint drawn whole
+
+9244 is a shortcut for 3712c01, which LDraw draws as two 4L ends and a
+centre in one part (3712c01-c03, 575c01-c02, 4240416 and the 3L 61903 the
+same). Its connectors make one axle hole along its whole length, its middle
+at the centre, so an axle reaching within 2 LDU of the centre was keyed to
+it (`Joints.through`): as built the drive shaft (#653) was, and the
+half-shaft in its far end (#658), 20 LDU short, was not. After the first
+turn the half-shaft lined up with it and it was keyed to the wheel's hub;
+after the second, to the frame; the turn back left it 10.74 LDU off.
+
+1. **A universal joint drawn whole is its cross** (`Bodies._whole_crosses`,
+   `Bodies.whole_cross`): a body of its own, joined by nothing but a hinge
+   to the shaft in each end, at its middle, on that end's fork line, as
+   `_cross_in_forks` pins a two-part joint's centre. LDraw draws each with
+   its first end towards -z (Godot's frame), its fork across x, and the
+   second turned a quarter round towards +z, its fork across y. An end's
+   shaft is an axle square to its fork's line, through the middle, reaching
+   into the end from its side: where the joint has bent, the shaft no longer
+   lies along the part. Read from the connectors (an axle hole along z and
+   two pairs of fork bores across x and y at the middle), as a browser has
+   them. `Bodies.universals` then reads it as it reads a two-part joint, and
+   the gear reading keys no shaft to it (`Mechanism._build`), so a turn
+   passes through it as through the two-part kind. Posed as its cross, its
+   drawn ends stand off its shafts as it bends: the pair is not tested by
+   their shapes (`Grab._meeting_pairs`).
+
+8466-1's front half-shafts run from the joint (x=±100) to a wheel spindle's
+axle driver (32494) at the steering's kingpin (x=±210): the steering turns
+about the axle driver's ball, and the half-shaft does not steer. Lodged in
+the wheel as one piece with it, it had steered, and carried the joint off.
+As its cross, the joint stays where its shafts are.
+
+8466-1 then came back 0.199 LDU off at its steering column's top centre
+(#1165, 3326b), which hangs 220 LDU from the pinion column it turns with
+(#736): the rack came back 0.011 LDU off its driver, and the column turned
+0.069° with it.
+
+### 5533-1: a loop measured from how it was built
+
+5533-1's steering arms swing on circles while its rack's holes go in a line,
+so its loop closes exactly only by sliding a steering knuckle (32069) out
+along its axle (section 36). The first turn kept a step that closed only on
+the way (0.24 LDU open), and the next read it closed.
+
+2. **A closing joint and a rack are measured from how their two parts were
+   built** (`Linkage._from_built`): the far half's point and line are where
+   the near half's stood against it as built (`Grab._built_at`, where a grab
+   first moved each part), and a rack's teeth from where its pinion stood in
+   them, turn and all. A gap a move left is closed by the next; a gap built
+   into the model is nought, so a pin built a little off its hole starts no
+   move with one to close. Two parts further than 1 LDU from how they were
+   built (`FROM_BUILT_MOST`) were rebuilt, not left open, and are read as
+   they stand.
+3. **A move keeps only a closed pose** (`Linkage._reach`): where the last
+   step does not close and nothing short of it does, the step before is
+   closed all the way there, else the move goes back to the furthest step
+   that closed all the way. Grab 22 tried this alone: 11° and -13°, back
+   3.05 LDU off. With 2. alone, the second turn found the loop open by 0.24
+   LDU where no turn closed it, and did not move.
+4. **The last step closes on while that converges** (`Linkage.CLOSE_FINE`,
+   0.0005 LDU, in `_close_with`): past a fifth of `CLOSE_TO`, on as long as
+   each round takes a tenth off what is left. Stopped at 0.01, 8466-1's rack
+   came back 0.011 LDU off and its column's top 0.199; first only while each
+   round halved it, 0.004 and 0.068, the rack's slide damped as a spare
+   slide is (`SLIDE_WEIGHT`).
+5. **A loop turned back to where it was built puts its spare slides back**
+   (`Linkage._closes_built`): where the driver stands within 0.001 of its
+   turn as built, the last step is tried first with every slide the loop has
+   to spare where it was built. Least change kept a slide the way out took:
+   5533-1's knuckle slid 2.9 LDU out on the second turn, and on the way back
+   its arm turned to make up for it, the wheel 0.28 LDU off.
+
+On the scratch probe, turned +30, -60 and back:
+
+| | 5533-1, rack | back, LDU | 8466-1, rack | back, LDU |
+|---|---|---|---|---|
+| m140 | +4.43, -5.31 | 6.43 (#368) | +1.92, -1.98 | 10.74 (#651) |
+| 1. | | | +1.92, -1.98 | 0.199 (#1165) |
+| and 2., 3., 4. (halving) | +2.03, -2.07 | 1.106 (#370) | +1.92, -1.99 | 0.068 (#1165) |
+| and 4. (a tenth) | | 0.278 (#370) | | 0.002 |
+| and 5. | +2.03, -2.07 | 0.003 | +1.93, -1.99 | 0.005 |
+
+5533-1 steers less far: its loop closes to `CLOSE_TO` only that far, and
+the 4.43 LDU it went before was with a pin 0.24 LDU out of its hole.
+
+### Checked
