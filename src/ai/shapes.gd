@@ -2708,6 +2708,12 @@ class Plan extends RefCounted:
 	## Plates of the shape a shell has taken, Vector3i(x, j, z): a later
 	## shell does not reach into them.
 	var shelled: Dictionary = {}
+	## For a shell's own plan, whether a plate of its frame (lane, plates
+	## out, row, at its middle) is the shell's own, its plates or the air
+	## of its box ([member room]); or free in the model, the shell's or
+	## nobody's ([member air]), where a stud may stand.
+	var room: Callable = Callable()
+	var air: Callable = Callable()
 
 	## A curved side laid on its side, as a set's flank is: where the shape
 	## bulges out of a face of its core — an owl's breast, the shoulder of a
@@ -3678,6 +3684,18 @@ class Plan extends RefCounted:
 						and not beside.has(key):
 					return false
 			return true
+		# And whether it is the shell's own: its plates or the air of its box,
+		# which it keeps clear. Free air past the box is no one's yet, and the
+		# core's surface is laid there after: on Bob a curved 3 x 1 of a shell
+		# stood in the air over a stud where the core then laid a cheese slope.
+		var own := func(x: float, j: float, z: float) -> bool:
+			var p: Vector3 = to_world.call(x, j, z)
+			var row: float = p.y + Shapes.PLATES_PER_STUD * (z - floorf(z) - 1.0)
+			for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+				var key := Vector3i(floori(p.x), j_, floori(p.z))
+				if j_ < 0 or not mine.has(key) and not beside.has(key):
+					return false
+			return true
 		# Held where an anchor the core kept reaches: one in a column the
 		# core's own pruning let go holds nothing.
 		# Tried before the core is laid, every side stud it was given.
@@ -3735,6 +3753,8 @@ class Plan extends RefCounted:
 			sub.colour_at = local_colour
 			sub.sample = func(x: float, j: float, z: float) -> bool:
 				return int(local_colour.call(x, j, z)) >= 0
+			sub.room = own
+			sub.air = room
 			sub.held = held_here
 			# A sculpt's colours and the colours it may lay go with it on its side.
 			sub.colour_shown = colour_shown
@@ -4674,12 +4694,35 @@ class Plan extends RefCounted:
 	## bunny at 48 studs had 276 cheese slopes 1 x 1; at 0.1, 201, and as
 	## near. At 0.1 the probe's sphere took 5 parts more than main's, at 0.15
 	## its seams bridged fell a point short of main's; at 0.12 both hold.
-	const LONGER := 0.12
+	const LONGER := 0.06
 	## What a degree between a part's surface and the model's costs, in studs
 	## of distance: shading shows the turn, as Chamfer shows the gap.
-	const TURN := 0.004
+	const TURN := 0.1
 	## The longest surface part, in studs along its fall.
 	const LONGEST := 4
+	## Fit each surface part where the model's surface leans as well as where
+	## its studs step down (_fit_near).
+	const LEAN_FIRST := true
+	## The most a part fitted to the lean alone may stand off the model's
+	## surface at any third of a stud, plates.
+	const PROUD := 1.0
+
+	## The base, in plates, that lays a part's surface ([param near], at each
+	## third of a stud) nearest the model's ([param ahead], rows of thirds)
+	## over its [param length] studs: the mean of the two's differences,
+	## rounded; -1 where the model has too little surface there.
+	static func _fitted_base(ahead: Array, near: Array, length: int) -> int:
+		var sum: float = 0.0
+		var count: int = 0
+		for n: int in length:
+			var row: PackedFloat32Array = ahead[n]
+			for t: int in 3:
+				if not is_nan(row[t]):
+					sum += row[t] - float(near[3 * n + t])
+					count += 1
+		if count < length * 2:
+			return -1
+		return roundi(sum / count)
 
 	## [method _fit] by distance, where the plan has [member fine]: at each
 	## place a slope could start, every slope, curved slope and inverted one
@@ -4722,11 +4765,14 @@ class Plan extends RefCounted:
 			for o: int in Shapes.OUT.size():
 				var out: Vector2i = Shapes.OUT[o]
 				var inner: Vector2i = cell - out
-				if not height.has(inner):
-					continue
-				var top: int = height[inner]
+				# Its high end by the stud above it where that stud stands higher;
+				# else, the lean first: where the model's own surface falls away
+				# along [param out], at the height that lays it nearest (below).
+				var stepped: bool = height.has(inner)
+				var top: int = height[inner] if stepped else int(height[cell])
 				var drop: int = (int(height[cell]) - top) if under else (top - int(height[cell]))
-				if drop < 1:
+				stepped = stepped and drop >= 1
+				if not stepped and not LEAN_FIRST:
 					continue
 				# The model's surface over each stud a part here could cover.
 				var ahead: Array = []
@@ -4743,11 +4789,35 @@ class Plan extends RefCounted:
 						continue
 					# Its high end flush with the stud above, or as far under it as
 					# it is tall: a steep slope's flat top where the stud it covers
-					# is, not where the one above it is.
-					for drop_by: int in maxi(3, tall_ + 1):
-						var base: int = (top + drop_by) if under else (top - tall_ - drop_by)
+					# is, not where the one above it is. And at the height its
+					# surface is nearest the model's, wherever that is.
+					var bases: Array[int] = []
+					if stepped:
+						for drop_by: int in maxi(3, tall_ + 1):
+							bases.append((top + drop_by) if under else (top - tall_ - drop_by))
+					var steps: int = bases.size()
+					# Not the curved four-long ones: fitted to the lean their tips ran
+					# past the model's edge, the farthest of anything seen from the side.
+					if LEAN_FIRST and not (length == LONGEST and entry[0] != "straight"):
+						var fitted: int = _fitted_base(ahead, near, length)
+						# Its high end no higher than a plate over the stud above or
+						# its own (under an overhang, no lower): its back stood proud
+						# of the model, seen from the side.
+						if fitted != -1 and height.has(inner):
+							var high: int = maxi(int(height[inner]), int(height[cell]))
+							var low: int = mini(int(height[inner]), int(height[cell]))
+							if (not under and fitted + tall_ > high + 1) or (under and fitted < low - 1):
+								fitted = -1
+						if fitted != -1 and not bases.has(fitted):
+							bases.append(fitted)
+					for b_: int in bases.size():
+						var base: int = bases[b_]
 						if base < 0:
 							continue
+						# Fitted to the lean alone, it stands on the model's surface over
+						# every stud, none of it [constant PROUD] plates off: a curved 4 x 1
+						# fitted by its mean ran its tip out past the model's edge.
+						var strict: bool = b_ >= steps
 						var fits: bool = true
 						var gap: float = 0.0
 						var stair: float = 0.0
@@ -4762,14 +4832,25 @@ class Plan extends RefCounted:
 									or not _stands_at(at_, int(height[at_]), base, tall_, under):
 								fits = false
 								break
+							# On its side, a straight slope's stud on its high end stands
+							# in nothing of another side's: at a corner of Bob two shells
+							# met, and one's stud stood in the other's curved slope.
+							if n == 0 and air.is_valid() and not under and entry[0] == "straight" \
+									and not bool(air.call(at_.x + 0.5, base + tall_ + 0.5, at_.y + 0.5)):
+								fits = false
+								break
 							var row: PackedFloat32Array = ahead[n]
 							var flat: float = float(first[at_])
+							var here_count: int = 0
 							for s: int in 3:
 								var m: float = row[s]
 								var p: float = base + float(near[3 * n + s])
 								if is_nan(m):
 									was = Vector3(NAN, NAN, NAN)
 									continue
+								if strict and absf(m - p) > PROUD:
+									fits = false
+								here_count += 1
 								gap += absf(m - p)
 								stair += absf(m - flat)
 								count += 1
@@ -4780,6 +4861,10 @@ class Plan extends RefCounted:
 									stair_turn += absf(model_angle - atan((flat - was.z) * 1.2))
 									turns += 1
 								was = Vector3(m, p, flat)
+							if strict and here_count < 2:
+								fits = false
+							if not fits:
+								break
 						if not fits or count < length * 2:
 							continue
 						var mean_gap: float = gap / count
@@ -4846,8 +4931,18 @@ class Plan extends RefCounted:
 	## stands at [param at_], whose top (or under an overhang, foot) is
 	## [param here]: within it, and on the shape's own plates (hung from them).
 	func _stands_at(at_: Vector2i, here: int, base: int, tall_: int, under: bool) -> bool:
-		if here < base or here > base + tall_:
+		if here < base or here > base + tall_ or base + tall_ > tall:
 			return false
+		# What it stands in past the shape's top (under an overhang, below its
+		# foot) is air nothing else has: fitted to the lean a plate proud of
+		# its stud, a curved 4 x 1 on Bob's flank stood out of its shell's box
+		# into a cheese slope of the side beside it, and three parts were
+		# taken out.
+		for j: int in (range(base, here) if under else range(here, base + tall_)):
+			var key := Vector3i(at_.x, j, at_.y)
+			if taken.has(key) or shelled.has(key) \
+					or (room.is_valid() and not bool(room.call(at_.x + 0.5, j + 0.5, at_.y + 0.5))):
+				return false
 		# Not under a shell: a slope's studs (an inverted one's, or a straight
 		# one's flat top) ran into the plate on its side over it.
 		if shelled.has(Vector3i(at_.x, base + tall_, at_.y)):
