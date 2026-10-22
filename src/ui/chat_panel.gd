@@ -375,11 +375,17 @@ func gave_up(why: String) -> void:
 
 ## The same three handlers the assistant's signals use, so a design run
 ## looks the same in the panel whichever side of the window it is on.
-func follow(session: ClaudeCode) -> void:
+## [param ends] says the run's end in place of the session's own: a design
+## made twice ends when the better of the two stands (BestOfTwo).
+func follow(session: ClaudeCode, ends: Signal = Signal()) -> void:
 	if not session.progress.is_connected(_on_progress):
 		session.progress.connect(_on_progress)
 		session.said.connect(_on_said)
-		session.finished.connect(_on_finished)
+	var end: Signal = session.finished if ends.is_null() else ends
+	if not ends.is_null() and session.finished.is_connected(_on_finished):
+		session.finished.disconnect(_on_finished)
+	if not end.is_connected(_on_finished):
+		end.connect(_on_finished)
 
 
 func bind(to: Assistant) -> void:
