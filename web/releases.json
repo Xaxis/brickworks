@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.4.0",
+ "latest": "0.5.0",
  "releases": [
+  {
+   "version": "0.5.0",
+   "tag": "v0.5.0",
+   "date": "2026-10-22",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.5.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.5.0/CHANGELOG.md",
+   "summary": "A release about opening and moving real models. File > Library\u2026 opens any of 1,575 models of real LEGO\u00ae sets and their alternate builds, from LDraw's Official Model Repository, each with its cover, its builder credited and its licence, in a tab of its own; the gallery's shared models are a shelf beside them. Grab turns 85 of the repository's sets by their steering as the real ones turn, where 0.4.0 turned 59: universal joints bend, racks keep their pinions, a loop comes back where it began, and a hinge turns as far as its parts let it. My Claude designs a new model twice, side by side, and keeps the better, and Undo takes back all of a session's first design. The window no longer stops while Claude moves a part or checks a design. Brickify lays more of a model's steep sides on their sides, and the undersides of overhangs in slopes you can buy. Claude's domes of hinged panels build again, and a second design in one chat keeps its own subject. Models saved by 0.4.0 open in 0.5.0 unchanged.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.5.0-linux-x86_64.AppImage",
+     "size": 569842168,
+     "sha256": "b0d236ce0e6f933f24fad3d71d320f209d71fd9c849f2cf12494ade8f30384f1",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.5.0/Brickworks-0.5.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.5.0-linux-x86_64.tar.xz",
+     "size": 421046500,
+     "sha256": "1edb374c995b6f43c93142e08078529da5538f7ba2d0f99b3e600d31f969922c",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.5.0/Brickworks-0.5.0-linux-x86_64.tar.xz",
+     "unpacked": 1478658460,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.5.0-macos-universal.zip",
+     "size": 749294361,
+     "sha256": "e5bdfecd4f4c675061c514310a3c00bb593393cd185363125830f17218df7c97",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.5.0/Brickworks-0.5.0-macos-universal.zip",
+     "unpacked": 1575412926,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.5.0-windows-x86_64.zip",
+     "size": 727657540,
+     "sha256": "79233ef4732cde308f911aff4b762893adb665407deda3bec1c4a78237f0b16d",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.5.0/Brickworks-0.5.0-windows-x86_64.zip",
+     "unpacked": 1514361340,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.4.0",
    "tag": "v0.4.0",
