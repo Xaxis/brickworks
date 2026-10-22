@@ -929,7 +929,8 @@ async function thePeople(tokenA, tokenB) {
   check(r.status === 200 && r.json?.models_count === 0 && (r.json?.models || []).length === 0,
     `as a visitor sees it, none of its models: they are tests (${r.json?.models_count}, ${(r.json?.models || []).length})`);
   r = await call(`/u/${handle}`);
-  check(r.status === 200 && !r.text.includes(`/m/${credited}`) && r.text.includes("0 models in the gallery"),
+  // It says so in words: a count of none is not shown (design_flow).
+  check(r.status === 200 && !r.text.includes(`/m/${credited}`) && r.text.includes("Nothing in the gallery yet."),
     `and its page shows none (${r.status})`);
   r = await call(`/u/${handle}?tests=1`);
   check(r.status === 200 && r.text.includes("&lt;b&gt;Probe&lt;/b&gt; &amp; &quot;Maker&quot;") && !r.text.includes("<b>Probe</b>")
