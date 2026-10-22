@@ -754,14 +754,17 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary, sideways: Di
 ## Unit 5: a side steeper than 60 degrees laid on its side, in Lambrecht's
 ## cubes (two studs by five plates by two studs) on side studs. The sphere and
 ## the forty-stud bunny against themselves laid upright: many more parts on
-## their sides, still in one piece and whole, at most 15% more parts; and a
-## block whose flank leans 20 degrees off upright, that flank laid on its side
-## in plates, slopes and tiles facing out.
+## their sides, still in one piece and whole, in at most 1.15 times m137's
+## parts; and a block whose flank leans 20 degrees off upright, that flank laid
+## on its side in plates, slopes and tiles facing out.
 func _sideways(round: Dictionary, round_upright: Dictionary, big: Dictionary,
 		big_upright: Dictionary, out_dir: String) -> void:
-	# The bench's bar is 15% more parts; a sphere, steep all round, is the
-	# most a model turns, and is held to 25%.
-	for one: Array in [["the sphere", round, round_upright, 1.25], ["the forty-stud bunny", big, big_upright, 1.15]]:
+	# The bench's bar is 1.15 times m137's parts (unit 5's fifth round), as
+	# the bunny was held to 15% more than upright when m137's turned sides
+	# were the first: m137 laid the sphere in 1,948 (upright 1,589) and the
+	# bunny in 2,143 (1,943).
+	for one: Array in [["the sphere", round, round_upright, 1.15 * 1948], ["the forty-stud bunny", big,
+			big_upright, 1.15 * 2143]]:
 		var laid: Dictionary = one[1]
 		var upright: Dictionary = one[2]
 		if laid.is_empty() or upright.is_empty():
@@ -775,7 +778,7 @@ func _sideways(round: Dictionary, round_upright: Dictionary, big: Dictionary,
 			+ "%d upright (%+.1f%%), %.1f%% of it in a part") % [one[0], on_side, was, int(cubes.get("kept", 0)),
 				int(cubes.get("asked", 0)), parts, parts_was, 100.0 * (float(parts) / parts_was - 1.0),
 				100.0 * float(laid["report"]["coverage"])],
-			on_side >= was + 100 and parts <= parts_was * float(one[3])
+			on_side >= was + 100 and parts <= float(one[3])
 			and float(laid["report"]["coverage"]) >= 0.97)
 	# A block twelve units by four and sixteen tall, turned 30 degrees about
 	# its up: every side upright and none square to x or z, so laid upright

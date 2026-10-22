@@ -603,14 +603,16 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 ## Lambrecht's are [lambrecht]: as long every way (40 LDU), so a cube turned
 ## on its side fills the same box. One faces out where the model's surface
 ## in it, its triangles' areas summed by the way each faces, turns from
-## level by under [constant STEEP] (sine, 30 degrees): a side steeper than 60
-## degrees, every face the bench calls steep. From 69 (unit 5's first round,
-## when a cap over a cube left it upright), the faces between 60 and 69, a
-## quarter of the steep surface of Bob and the Stanford bunny, were 11% and
-## 32% turned and turned from the model 46 degrees, laid upright as a
-## staircase; from 60, with the shells cut at every phase, 43% and 45%, and
-## the steep faces of Bob, the bunny and 3DBenchy at 48 studs turned 0.4 to
-## 0.5 degrees less. Measured half a stud inside the surface, so a side within half a
+## level by under [constant STEEP] (sine, 21 degrees): a side steeper than 69
+## degrees. Between 60 and 69 the 65 degree slopes laid upright do as well
+## (unit 4): turned from 60, Spot's steep faces turned from the model 0.8
+## degrees more and the side views of both it and the Stanford bunny stood
+## further off. Unit 5's fifth round turned from 60 again, cut at every phase:
+## a quarter of the steep surface of Bob and the bunny lies between 60 and 69,
+## turned 11% and 32% and 46 degrees from the model, and turned from 60, 43%
+## and 45%, every steep face of the three at 48 studs 0.4 degrees nearer; but
+## the probe's bunny at 28 studs fell to 96.4% in a part (bar 97%), so it
+## waits on what its shells leave out. Measured half a stud inside the surface, so a side within half a
 ## stud of a cube's back (no stud of the model in that cube) is the cube
 ## behind's; only where the surface in it is at least [constant CUBE_AREA]
 ## square studs and mostly faces one way ([constant CUBE_AGREES]). A side
@@ -629,7 +631,7 @@ const CUBE_PLATES := 5
 ## plates up alone, 31% of the steep faces of Bob, the bunny and 3DBenchy
 ## were turned, from 27%; at every phase, 37%.
 const CUBE_PHASES: Array[int] = [2, 4, 1, 3]
-const STEEP := 0.5
+const STEEP := 0.36
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
 const CUBE_IN := 0.5
