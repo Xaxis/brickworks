@@ -579,7 +579,8 @@ func _apply(step: Dictionary) -> Dictionary:
 
 	var part_id: String = step.get("part", "")
 	var at: Transform3D = step.get("transform", Transform3D.IDENTITY)
-	var new_id: int = world.add_brick(part_id, int(step.get("color", 0)), at)
+	var new_id: int = world.add_brick(part_id, int(step.get("color", 0)), at,
+		int(step.get("was", 0)))
 	if new_id != 0:
 		world.get_brick(new_id).group = str(step.get("group", ""))
 		world.get_brick(new_id).unit = str(step.get("unit", ""))
@@ -592,11 +593,12 @@ func _apply(step: Dictionary) -> Dictionary:
 		else:
 			lattice.occupy_boxes(new_id,
 				boxes_for(library.mesh_for(part_id), at))
-		# The brick that comes back is a new id. Steps further back that
-		# name the one that went — a paint before a swap, a move before a
-		# removal — are read through this, or undoing past it did nothing.
+		# The brick comes back under its old number (BrickWorld.add_brick),
+		# or a new one when that is taken. Steps further back that name the
+		# one that went — a paint before a swap, a move before a removal —
+		# are read through this then, or undoing past it did nothing.
 		if step.has("was"):
-			_renumbered[int(step["was"])] = new_id
+			renumber(int(step["was"]), new_id)
 	return {"undo": "remove", "brick": new_id}
 
 
