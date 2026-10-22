@@ -1557,6 +1557,12 @@ func _ask_claude_code(brief: String) -> void:
 		_builder.lattice.clear()
 		_builder.forget_history()
 		_lay_baseplate()
+		# A new model named for its brief, as the panel begins one
+		# (_make_room), so the design's own name goes over it: it kept the
+		# name of whatever this run opened on, and a second design of a pair
+		# handed the person's model back called "Car".
+		_store.begin(ModelStore.name_for(brief))
+		_named_for_work = _store.title
 	else:
 		var picked: int = _select_inside(about)
 		if picked == 0 or not _assistant.focus_on(_builder.selection.keys(), true).is_empty():
@@ -1881,7 +1887,10 @@ func _second_design(brief: String) -> BestOfTwo:
 	second.titled.connect(_on_titled)
 	second.finished.connect(func(_ok: bool, _summary: String) -> void:
 		if second.record.get("kept", "") == "second":
+			# The first's parts are gone, and what the assistant kept of them;
+			# the subject is the same brief.
 			_assistant.forget_built()
+			_assistant.heard(brief, true)
 			_on_model_edited()
 			_camera.frame(_built_bounds())
 		_best_of_two = null)

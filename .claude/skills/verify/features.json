@@ -192,6 +192,22 @@
       "tests": []
     },
     {
+      "id": "cli:best of two probe",
+      "kind": "cli",
+      "entry": "src/dev/best_of_two_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/best_of_two_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:best of two walk probe",
+      "kind": "cli",
+      "entry": "src/dev/best_of_two_walk_probe.gd",
+      "reach": "env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief=\"a small red post box\" --port=PORT --record=FILE.json   (in a window on the GPU; spends two design sessions and a pick)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:big models stay fast",
       "kind": "cli",
       "entry": "src/dev/bigmodel_probe.gd",
@@ -1422,6 +1438,14 @@
       "entry": "src/assembly/balance.gd",
       "reach": "godot --headless --path . --script src/dev/balance_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:best of two",
+      "kind": "lib",
+      "entry": "src/ai/best_of_two.gd",
+      "reach": "tools/probe.sh best_of_two_probe   (then env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief=\"a small red post box\" --port=PORT: a real brief through the panel, two sessions and a pick)",
+      "area": "assistant",
       "tests": []
     },
     {

@@ -1932,6 +1932,27 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "best of two",
+      "entry": "src/ai/best_of_two.gd",
+      "reach": "tools/probe.sh best_of_two_probe   (then env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief=\"a small red post box\" --port=PORT: a real brief through the panel, two sessions and a pick)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "best of two probe",
+      "entry": "src/dev/best_of_two_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/best_of_two_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "best of two walk probe",
+      "entry": "src/dev/best_of_two_walk_probe.gd",
+      "reach": "env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief=\"a small red post box\" --port=PORT --record=FILE.json   (in a window on the GPU; spends two design sessions and a pick)",
+      "area": "assistant"
+    },
+    {
       "kind": "cli",
       "label": "design undo probe",
       "entry": "src/dev/design_undo_probe.gd",

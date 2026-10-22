@@ -2882,7 +2882,25 @@ failing, the first. A change to a model, a selection, a sketch and every
 session from outside (the MCP port, the connector) are one session, as they
 were.
 
-BEST2APP_WALK
+Two small briefs through the panel, on the subscription, end to end
+(`best_of_two_walk_probe`: the app opened in a window, My Claude ticked, the
+brief typed and sent):
+
+| brief | the first | the second | the pick | kept | wait until it stood |
+|---|---|---|---|---|---|
+| a small red post box | 175 s, 10 parts | 105 s, 14 parts | B, 12.9 s, 12.2k tokens in, 0.9k out | the second | 188 s, 1.08x the first |
+| a wooden park bench | 193 s, 63 parts | 163 s, 53 parts | A, 10.7 s, 12.2k in, 0.8k out | the first | 204 s, 1.06x |
+
+Each time both sessions said they were on the subscription, the second's
+pictures were all drawn by the person's app (none given up), the kept design
+stood on the baseplate with its own parts' count and name, the card closed on
+its summary, the first's history was kept (with the second's one step on it
+where it was kept, Undo bringing the first back), and nothing of the second
+was left running. Its reasons read as a set designer's: the post box "carries
+recognisable post-box detail (finial, black band, plinth) from every angle ...
+while A only reads as a post box from the front"; the bench "has the right
+long-bench proportions and clean, consistent cast-iron-and-timber detail ...
+while B's uneven slats and stubby shape make it look unfinished".
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 

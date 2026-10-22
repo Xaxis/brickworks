@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe -->
 
 ## Sub-features
 

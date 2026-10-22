@@ -10,9 +10,9 @@
 ## second design started beside the first, in an app of its own with no
 ## window, and ended with a design of its own; the pick was asked and
 ## answered; the kept design is the model on the baseplate, the panel's card
-## closed on it; Undo brings the other back where the second was kept, and
-## undoing every step leaves the bare baseplate the design began on, and
-## Redo puts it all back; nothing of the second is left running. The wait
+## closed on it; the first's history is kept with one step on it where the
+## second was kept, Undo brings the first back, every step undoes and Redo
+## puts it all back; nothing of the second is left running. The wait
 ## until the kept design stands is printed against the first design's own
 ## time. --record writes what was decided and timed, as JSON.
 extends SceneTree
@@ -86,8 +86,10 @@ func _run() -> void:
 	var port: int = pair._port
 	var pid: int = pair._pid
 	var first_ms: Array = [0]
+	var first_depth: Array = [0]
 	(_main.call("claude_code") as ClaudeCode).finished.connect(func(_ok: bool, _s: String) -> void:
-		first_ms[0] = Time.get_ticks_msec() - started, CONNECT_ONE_SHOT)
+		first_ms[0] = Time.get_ticks_msec() - started
+		first_depth[0] = builder.history_depth(), CONNECT_ONE_SHOT)
 	var ended: Array = []
 	pair.finished.connect(func(ok: bool, summary: String) -> void:
 		ended.append({"ok": ok, "summary": summary, "record": pair.record.duplicate(true),
@@ -147,6 +149,10 @@ func _run() -> void:
 		not chat._working and bool(end["ok"]))
 	_check("the model is called \"%s\"" % store.title, store.title != ModelStore.UNTITLED)
 	var depth: int = builder.history_depth()
+	print("        the history, newest first: %s" % ", ".join(builder.history_words(12)))
+	_check("the first's %d steps of history kept, %s on them" % [first_depth[0],
+		"the second's one" if kept == "second" else "nothing"],
+		depth == int(first_depth[0]) + (1 if kept == "second" else 0))
 	builder.undo()
 	var undone: int = world.brick_count() - store.scenery.size()
 	if kept == "second":
@@ -161,8 +167,8 @@ func _run() -> void:
 	while builder.undo():
 		undos += 1
 	var bare: int = world.brick_count() - store.scenery.size()
-	_check("every step undone, %d of them, leaves the bare baseplate it began on (%d parts)"
-		% [undos, bare], bare == 0)
+	_check("every step undone, %d of them, as the history allows (%d parts left)"
+		% [undos, bare], undos == depth)
 	for _n: int in undos:
 		builder.redo()
 	_check("and redone, the kept design again (%d parts)" % (world.brick_count()
