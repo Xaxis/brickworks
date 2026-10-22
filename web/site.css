@@ -12,8 +12,13 @@
   beside a full-size year box. tools/web/design_flow.mjs keeps it so.
 
   Contrast is measured, not eyeballed: every text colour here is at least
-  4.5:1 on the background it sits on, in both schemes (WCAG AA). The old
-  "faint" grey was 42% white, 3.4:1, and it was on half the small print.
+  4.5:1 on each surface it sits on, and an edge that marks a state 3:1, in
+  both themes (WCAG AA; tests/test_site_contrast.py). The old "faint" grey
+  was 42% white, 3.4:1, and it was on half the small print.
+
+  Two themes, the person's choice (System, Light or Dark: web/theme.js
+  sets data-theme on <html> before the page is drawn). Dark is the set
+  below; the light set is chosen, or the system's when nothing was.
 */
 :root {
 	--bg: #0e1013;
@@ -30,25 +35,44 @@
 	--green: #57c97e;
 	--accent: var(--yellow);
 	--on-accent: #17130a;
+	/* An edge in the accent that marks a state (a pressed toggle, the New
+	   pill, the older-version box): the yellow is 1.33:1 on the light
+	   pages, so the light set darkens it to 3:1. A yellow button keeps
+	   the yellow. */
+	--accent-edge: var(--yellow);
 	--focus: #7cb8ff;
 	--bad: #ef7a72;
+	/* The 404's wall: four bricks, the same in both themes. */
+	--brick-red: #b40000;
+	--brick-yellow: var(--yellow);
+	--brick-blue: #1e5aa8;
+	--brick-green: #00852b;
 	/* Controls: a field and a button side by side are the same height,
 	   with the same corners; every field has the same fill. */
 	--field: var(--bg-soft);
 	--control-h: 44px;
-	--control-radius: 10px;
-	--radius: 14px;
+	/* Four corners: small (a chip, a code box), a control's, a card's or a
+	   panel's, and a pill's; a circle is 50%. */
+	--r-1: 6px;
+	--r-2: 10px;
+	--r-3: 14px;
+	--r-pill: 999px;
+	--control-radius: var(--r-2);
+	--radius: var(--r-3);
 	--page: 1140px;
 	/* One type scale for every page (docs/DESIGN_SYSTEM.md): the landing
-	   page's one line, a page's title, a section's, a card's; then the
-	   words. Each page used to size its own titles, from 26 to 74 px. */
+	   page's one line, a page's title, a section's, a card's; the lede;
+	   then the words, small print, the smallest, and a count's. Each page
+	   used to size its own titles, from 26 to 74 px. */
 	--t-display: clamp(40px, 6.6vw, 68px);
 	--t-h1: clamp(32px, 4.6vw, 46px);
 	--t-h2: clamp(23px, 2.8vw, 30px);
 	--t-h3: 18px;
 	--t-lede: clamp(17px, 1.9vw, 19px);
+	--t-body: 16px;
 	--t-small: 14.5px;
 	--t-tiny: 13px;
+	--t-micro: 12px;
 	/* And one rhythm: the space above a page's title, between its sections,
 	   and the steps between. */
 	--s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
@@ -57,8 +81,27 @@
 	--shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
 	color-scheme: dark;
 }
+/* The light set, twice: chosen (data-theme="light"), and the system's
+   when nothing was chosen. CSS cannot say "this attribute or this media
+   query" in one rule; tests/test_site_contrast.py fails if they differ. */
+:root[data-theme="light"] {
+	--bg: #f4f5f7;
+	--bg-soft: #eceef2;
+	--panel: #ffffff;
+	--panel-hi: #f7f8fa;
+	--line: rgba(15, 20, 28, 0.12);
+	--ink: #12161c;
+	--ink-soft: #424954;
+	--ink-faint: #5b626d;
+	--green: #1f7a3d;
+	--accent-edge: #a67c00;
+	--focus: #1f5fbf;
+	--bad: #b42318;
+	--shadow: 0 30px 60px -32px rgba(20, 30, 50, 0.35);
+	color-scheme: light;
+}
 @media (prefers-color-scheme: light) {
-	:root {
+	:root:not([data-theme]) {
 		--bg: #f4f5f7;
 		--bg-soft: #eceef2;
 		--panel: #ffffff;
@@ -68,7 +111,8 @@
 		--ink-soft: #424954;
 		--ink-faint: #5b626d;
 		--green: #1f7a3d;
-		--focus: #1f5fbf;
+		--accent-edge: #a67c00;
+			--focus: #1f5fbf;
 		--bad: #b42318;
 		--shadow: 0 30px 60px -32px rgba(20, 30, 50, 0.35);
 		color-scheme: light;
@@ -96,20 +140,20 @@ code { font: 0.92em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 code.cmd {
 	display: block; margin: 6px 0; padding: 8px 10px; border-radius: 8px;
 	background: var(--bg-soft); border: 1px solid var(--line); color: var(--ink);
-	font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere;
+	font-size: var(--t-tiny); white-space: pre-wrap; overflow-wrap: anywhere;
 }
 [hidden] { display: none !important; }
 
 /* Keyboard focus, visible on every control in both schemes. The ring
    follows a control's own corners; it does not change them. */
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-a:focus-visible { border-radius: 6px; }
+a:focus-visible { border-radius: var(--r-1); }
 
 .wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);
-	padding: 10px 14px; border-radius: 10px; font-weight: 650; text-decoration: none;
+	padding: 10px 14px; border-radius: var(--r-2); font-weight: 650; text-decoration: none;
 }
 .skip:focus { top: 12px; }
 
@@ -133,7 +177,7 @@ a:focus-visible { border-radius: 6px; }
 .chip { width: 26px; height: 26px; flex: none; background: url(/icon.svg) center / contain no-repeat; }
 .nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
 .nav a {
-	text-decoration: none; color: var(--ink-soft); font-size: 14.5px;
+	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
 	padding: 8px 11px; border-radius: 9px; white-space: nowrap;
 }
 .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); background: var(--panel); }
@@ -146,7 +190,7 @@ a:focus-visible { border-radius: 6px; }
 .menu { display: none; position: relative; }
 .menu summary {
 	list-style: none; cursor: pointer; padding: 8px 12px; border-radius: 9px;
-	border: 1px solid var(--line); font-size: 14.5px; color: var(--ink);
+	border: 1px solid var(--line); font-size: var(--t-small); color: var(--ink);
 }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] summary { background: var(--panel); }
@@ -155,13 +199,17 @@ a:focus-visible { border-radius: 6px; }
 	display: grid; padding: 6px; border-radius: 12px;
 	background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
 }
+.menu-list nav { display: grid; }
 .menu-list a { text-decoration: none; padding: 10px 12px; border-radius: 8px; color: var(--ink-soft); }
 .menu-list a:hover { background: var(--panel-hi); color: var(--ink); }
+/* The theme on Menu, under the links: the whole width, a button a third. */
+.menu-list .theme-choice { display: grid; gap: var(--s-2); margin: 6px 0 0; padding: 12px 6px 6px; border-top: 1px solid var(--line); }
+.menu-list .segmented { display: grid; grid-template-columns: repeat(3, 1fr); }
 /* What came into your feed since you opened it (web/follow.js): a small
    count on Account, and on Menu where Account is behind it. */
 .site-head .count {
 	display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px;
-	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700;
+	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700;
 	line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
 }
 /* On Menu, over its corner: the header has no room at 390 px for more. */
@@ -188,10 +236,10 @@ a:focus-visible { border-radius: 6px; }
 .cta:hover { filter: brightness(1.07); }
 .cta.ghost, :where(button) { background: transparent; color: var(--ink); border-color: var(--line); }
 .cta.ghost:hover, :where(button):hover { background: var(--panel); filter: none; }
-.cta.ghost[aria-pressed="true"] { border-color: var(--accent); }
+.cta.ghost[aria-pressed="true"] { border-color: var(--accent-edge); }
 .cta.small { min-height: 36px; padding: 5px 12px; font-size: 14px; }
 .cta.big { min-height: 52px; padding: 13px 26px; font-size: 17px; border-radius: 13px; }
-.nav .cta { min-height: 38px; padding: 8px 14px; font-size: 14.5px; }
+.nav .cta { min-height: 38px; padding: 8px 14px; font-size: var(--t-small); }
 summary.cta { width: fit-content; list-style: none; }
 summary.cta::-webkit-details-marker { display: none; }
 button.link {
@@ -203,6 +251,23 @@ button.link:hover { color: var(--ink); background: none; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .actions.center { justify-content: center; }
 
+/* A choice of a few, side by side: buttons in a row, the one chosen
+   pressed (aria-pressed) and edged in the accent. The theme (System,
+   Light, Dark: web/theme.js) in the footer, on Menu and in Settings.
+   As tall as a field, with its buttons inside. */
+.segmented {
+	display: inline-flex; gap: 2px; padding: 3px; margin: 0;
+	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft);
+}
+.segmented button {
+	min-height: 36px; padding: 5px 12px; border-radius: var(--r-1); border: 1px solid transparent;
+	font-size: var(--t-small); font-weight: 600; line-height: 24px; color: var(--ink-soft); background: transparent;
+}
+.segmented button:hover { color: var(--ink); background: var(--panel); }
+.segmented button[aria-pressed="true"] { color: var(--ink); background: var(--panel); border-color: var(--accent-edge); }
+/* Its words beside it: what is being chosen. */
+.theme-choice { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); font-size: var(--t-small); color: var(--ink-soft); }
+
 /* -- fields ---------------------------------------------------------
    A text box, a dropdown, a text area and a file picker are one box. By
    element at zero specificity (:where), so no field is ever left to the
@@ -210,7 +275,7 @@ button.link:hover { color: var(--ink); background: none; }
 
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
 	min-width: 0; max-width: 100%; min-height: var(--control-h); margin: 0; padding: 9px 12px;
-	font: inherit; font-size: 16px; line-height: 24px; color: var(--ink);
+	font: inherit; font-size: var(--t-body); line-height: 24px; color: var(--ink);
 	background-color: var(--field); border: 1px solid var(--line); border-radius: var(--control-radius);
 }
 :where(input, textarea)::placeholder { color: var(--ink-faint); }
@@ -236,21 +301,21 @@ button.link:hover { color: var(--ink); background: none; }
    reader knows, at one size and in the accent. With its words, a
    label.choice (or .tick): the box on the first line, then the words. */
 :where(input[type="checkbox"], input[type="radio"]) {
-	width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--accent); cursor: pointer;
+	width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--accent-edge); cursor: pointer;
 }
 .choice, .tick {
 	display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 6px 0;
-	font-size: 14.5px; line-height: 24px; color: var(--ink); cursor: pointer;
+	font-size: var(--t-small); line-height: 24px; color: var(--ink); cursor: pointer;
 }
 .choice > input, .tick > input { margin-top: 3px; }
 /* In a form, a field's words above it. */
-:where(form) label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); }
-:where(form) label small { font-size: 13px; font-weight: 400; color: var(--ink-faint); }
+:where(form) label { display: grid; gap: 6px; font-size: var(--t-small); color: var(--ink-soft); }
+:where(form) label small { font-size: var(--t-tiny); font-weight: 400; color: var(--ink-faint); }
 /* A date: day, month and year, three dropdowns side by side under its
    words (fieldset.date, its legend the words). Never the browser's own date
    box, which draws itself, and differently in every browser. */
 fieldset.date { min-width: 0; margin: 0; padding: 0; border: 0; }
-fieldset.date legend { padding: 0; margin: 0 0 6px; font-size: 14.5px; color: var(--ink-soft); }
+fieldset.date legend { padding: 0; margin: 0 0 6px; font-size: var(--t-small); color: var(--ink-soft); }
 fieldset.date .dropdowns {
 	display: grid; gap: 8px; grid-template-columns: minmax(76px, 2fr) minmax(0, 4fr) minmax(88px, 3fr);
 }
@@ -286,7 +351,7 @@ h2 {
 }
 h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
 .eyebrow {
-	display: inline-block; margin: 0 0 14px; font-size: 13px; font-weight: 650;
+	display: inline-block; margin: 0 0 14px; font-size: var(--t-tiny); font-weight: 650;
 	letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
 }
 .lede { margin: 0 0 var(--s-5); font-size: var(--t-lede); color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
@@ -355,14 +420,14 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
 /* A name is at most 80 characters (api/share.js); two lines of it here. */
 .model b {
-	color: var(--ink); font-size: 16px; font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
+	color: var(--ink); font-size: var(--t-body); font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
-.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+.model small { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
 /* Marked Tested (api/_tested.js): small and green, on every card. */
-.model .tested { justify-self: start; font-size: 12px; font-weight: 600; color: var(--green);
-	border: 1px solid var(--green); border-radius: 999px; padding: 0 8px; margin-top: 4px; }
+.model .tested { justify-self: start; font-size: var(--t-micro); font-weight: 600; color: var(--green);
+	border: 1px solid var(--green); border-radius: var(--r-pill); padding: 0 8px; margin-top: 4px; }
 .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
 
 /* A page's own index (your account): its sections, in a rail beside them
@@ -391,7 +456,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 }
 .setting + .setting { border-top: 1px solid var(--line); }
 .setting .wide { grid-column: 1 / -1; }
-.setting h3 { font-size: 16px; margin: 0 0 2px; }
+.setting h3 { font-size: var(--t-body); margin: 0 0 2px; }
 .setting p { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-small); max-width: 70ch; }
 .setting .actions .said { margin: 0; }
 @media (max-width: 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }
@@ -436,9 +501,9 @@ details.qa > div p { margin: 0 0 10px; }
 
 .site-foot { border-top: 1px solid var(--line); padding: var(--s-6) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
 .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
-.foot-top .mark { font-size: 16px; }
+.foot-top .mark { font-size: var(--t-body); }
 .foot-top .chip { width: 22px; height: 22px; }
-.foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); }
+.foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin-left: auto; }
 .foot-links a { color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); padding: 6px 0; }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
 .legal p { margin: 0 0 6px; max-width: 110ch; font-size: 12.5px; line-height: 1.6; }

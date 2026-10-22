@@ -25,6 +25,9 @@
 <title>Brickworks — accounts</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
   /* The site's colours, type and controls (site.css); here only this
@@ -52,7 +55,7 @@
   td.n { text-align: right; font-variant-numeric: tabular-nums; }
   .faint { color: var(--ink-faint); }
   .hide { display: none; }
-  .warn { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 14px; }
+  .warn { border-color: var(--accent-edge); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 14px; }
   .foot { margin-top: 30px; color: var(--ink-faint); font-size: 12.5px; }
   h2 { font-size: 19px; margin: 34px 0 4px; }
   h2 + .note { margin: 0 0 12px; }
@@ -64,8 +67,8 @@
   td.acts button + button { margin-left: 6px; }
   td.acts button { min-height: 36px; padding: 6px 12px; font-size: 14px; }
 /* The report an email of reports named (#report-N). */
-#reports tr.asked td { background: rgba(242, 197, 54, 0.14); }
-#reports tr.asked td:first-child { box-shadow: inset 3px 0 0 #f2c536; }
+#reports tr.asked td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+#reports tr.asked td:first-child { box-shadow: inset 3px 0 0 var(--accent-edge); }
 /* A reported photo of a build, to look at before taking it out. */
 #reports .reported-photo { max-width: 160px; height: auto; border-radius: 6px; display: block; margin-bottom: 4px; }
 /* The challenge's form (supabase/challenges.sql): its fields stacked, the days side by side. */

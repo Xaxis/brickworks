@@ -1228,6 +1228,13 @@ function account(method, params, body, who, state) {
   }
   // The age question answered: it went, 13 or over.
   if (method === "POST" && params.get("op") === "age") return who ? answer(200, { age: { ask: false, over_13: true } }) : answer(401, { error: SIGN_IN });
+  // The theme on the account (supabase/theme.sql): state.theme, or never
+  // chosen; one sent is kept (state.theme is the caller's to change).
+  if (params.get("op") === "theme") {
+    if (!who) return answer(401, { error: SIGN_IN });
+    if (method === "POST") return answer(200, { theme: body?.theme, kept: true });
+    return answer(200, { theme: state.theme || "system", chosen: Boolean(state.theme), ready: true });
+  }
   if (method !== "GET") return answer(405, { error: "GET, or POST ?op=age" });
   const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null };
   if (!who) return answer(200, { ...base, signed_in: false });

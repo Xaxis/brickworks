@@ -17,6 +17,14 @@
 //   account that has answered keeps its answer: a second try changes
 //   nothing, and what comes back is the answer it gave.
 //
+//   GET ?op=theme, with a token: the theme this account chose for the
+//   site ({theme: system, light or dark, chosen, ready}), and POST ?op=theme
+//   with {theme} to keep one (2026-10-22, supabase/theme.sql), so a new
+//   browser follows a person once they sign in (web/theme-account.js).
+//   Until theme.sql is applied the column is not there: GET answers
+//   "system", not chosen, ready false, and POST keeps nothing (kept
+//   false); neither is an error, since the browser keeps it all the same.
+//
 //   POST ?op=delete, with a token and {confirm: <the account's address>}:
 //   the account deleted, and everything of it (2026-10-20). The address
 //   typed again is the confirmation, so a stray click or a stolen page
@@ -67,8 +75,11 @@ export default async function handler(request, response) {
   if (request.method === "POST" && String(request.query?.op || "") === "delete") {
     return deleteAccount(request, response);
   }
+  if (String(request.query?.op || "") === "theme" && ["GET", "POST"].includes(request.method)) {
+    return theme(request, response);
+  }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=age or ?op=delete" });
+    return response.status(405).json({ error: "GET, or POST ?op=age, ?op=theme or ?op=delete" });
   }
 
   const enabled = authConfigured();
@@ -165,6 +176,70 @@ async function takeAge(request, response) {
   } catch (trouble) {
     console.error(`account: the age was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not take that just now. Try again in a minute." });
+  }
+}
+
+const THEMES = ["system", "light", "dark"];
+// PostgREST's answer to a column it does not know: 400 (42703 on a read,
+// PGRST204 on a write). theme.sql not applied.
+const NO_COLUMN = /: 400$/;
+let saidNoTheme = false;
+
+/// The site's theme on the account: read (GET) or kept (POST {theme}).
+async function theme(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  if (!authConfigured()) return response.status(503).json({ error: "Accounts are not configured here." });
+  let claims;
+  try {
+    claims = await verify(bearer(request));
+  } catch (error) {
+    const status = error instanceof AuthError ? error.status : 401;
+    return response.status(status).json({ error: error.message });
+  }
+  const notHere = (trouble) => {
+    if (NO_COLUMN.test(String(trouble?.message || "")) && !saidNoTheme) {
+      saidNoTheme = true;
+      console.error("account: supabase/theme.sql is not applied here; the theme is kept in the browser only");
+    } else if (!NO_COLUMN.test(String(trouble?.message || ""))) {
+      console.error(`account: no theme: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
+  };
+  if (request.method === "GET") {
+    const none = { theme: "system", chosen: false, ready: false };
+    if (!dbConfigured()) return response.status(200).json(none);
+    try {
+      const rows = await db(`profiles?id=eq.${claims.sub}&select=theme`);
+      const kept = THEMES.includes(rows?.[0]?.theme) ? rows[0].theme : null;
+      return response.status(200).json({ theme: kept || "system", chosen: Boolean(kept), ready: true });
+    } catch (trouble) {
+      notHere(trouble);
+      return response.status(200).json(none);
+    }
+  }
+  let body = request.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
+  }
+  const wanted = String(body?.theme || "");
+  if (!THEMES.includes(wanted)) return response.status(422).json({ error: "A theme is system, light or dark." });
+  if (!dbConfigured()) return response.status(200).json({ theme: wanted, kept: false });
+  try {
+    const changed = await db(`profiles?id=eq.${claims.sub}`, { method: "PATCH", body: { theme: wanted },
+      prefer: "return=representation" });
+    // An account older than schema.sql's trigger has no row: one is made.
+    if (!changed?.length) {
+      await db("profiles?on_conflict=id", { method: "POST", body: { id: claims.sub, email: claims.email || null, theme: wanted },
+        prefer: "resolution=merge-duplicates,return=minimal" });
+    }
+    return response.status(200).json({ theme: wanted, kept: true });
+  } catch (trouble) {
+    notHere(trouble);
+    if (NO_COLUMN.test(String(trouble?.message || ""))) return response.status(200).json({ theme: wanted, kept: false });
+    return response.status(502).json({ error: "Brickworks could not keep that just now. It is kept in this browser." });
   }
 }
 

@@ -14,7 +14,13 @@ page itself. tests/test_site_shell.py runs the check.
 
 The app (/app), the owner's admin page and the connector's sign-in
 (authorize.html, which Claude opens and which has its own stricter page)
-have no site header and are left alone.
+have no site header and keep their own.
+
+Every page that uses the site's stylesheet, those two as well, also
+gets the shell's <head> lines just before it: the browser bar's colour
+in each theme and /theme.js, which sets the theme the person chose
+before the page is drawn (2026-10-22). A page's old single theme-color
+line is replaced by them.
 """
 
 from __future__ import annotations
@@ -29,18 +35,21 @@ SHELL = WEB / "_shell.html"
 
 HEADER = re.compile(r'<header class="site-head">.*?</header>', re.S)
 FOOTER = re.compile(r'<footer class="site-foot">.*?</footer>', re.S)
+HEAD = re.compile(r'(?:<meta name="theme-color"[^>]*>\n)+<script src="/theme\.js"></script>')
+OLD_BAR = re.compile(r'<meta name="theme-color"[^>]*>\n')
+STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links. The
 # landing page marks the mark.
 OWN = {"index.html": "/", "gallery.html": "/gallery", "download.html": "/download",
        "profile.html": "/profile"}
 
 
-def shell() -> tuple[str, str]:
+def shell() -> tuple[str, str, str]:
     text = SHELL.read_text(encoding="utf-8")
-    header, footer = HEADER.search(text), FOOTER.search(text)
-    if not header or not footer:
-        raise SystemExit("site_shell: web/_shell.html has no site-head header or site-foot footer")
-    return header.group(0), footer.group(0)
+    head, header, footer = HEAD.search(text), HEADER.search(text), FOOTER.search(text)
+    if not head or not header or not footer:
+        raise SystemExit("site_shell: web/_shell.html has no theme lines, site-head header or site-foot footer")
+    return head.group(0), header.group(0), footer.group(0)
 
 
 def marked(header: str, page: str) -> str:
@@ -54,12 +63,22 @@ def marked(header: str, page: str) -> str:
 
 
 def pages() -> list[Path]:
+    """The pages of the site: each that uses its stylesheet."""
     return [path for path in sorted(WEB.glob("*.html"))
-            if not path.name.startswith("_") and HEADER.search(path.read_text(encoding="utf-8"))]
+            if not path.name.startswith("_") and STYLESHEET in path.read_text(encoding="utf-8")]
 
 
-def stamped(path: Path, header: str, footer: str) -> str:
-    text = path.read_text(encoding="utf-8")
+def themed(text: str, head: str) -> str:
+    """[text] with the shell's <head> lines, just before the stylesheet."""
+    if HEAD.search(text):
+        return HEAD.sub(lambda _: head, text, count=1)
+    return OLD_BAR.sub("", text).replace(STYLESHEET, f"{head}\n{STYLESHEET}", 1)
+
+
+def stamped(path: Path, head: str, header: str, footer: str) -> str:
+    text = themed(path.read_text(encoding="utf-8"), head)
+    if not HEADER.search(text):
+        return text
     text = HEADER.sub(lambda _: marked(header, path.name), text, count=1)
     if not FOOTER.search(text):
         raise SystemExit(f"site_shell: {path.name} has a site header and no site-foot footer")
@@ -68,10 +87,10 @@ def stamped(path: Path, header: str, footer: str) -> str:
 
 def main(argv: list[str]) -> int:
     check = "--check" in argv
-    header, footer = shell()
+    head, header, footer = shell()
     differ = []
     for path in pages():
-        want = stamped(path, header, footer)
+        want = stamped(path, head, header, footer)
         if want == path.read_text(encoding="utf-8"):
             continue
         differ.append(path.name)
@@ -79,10 +98,10 @@ def main(argv: list[str]) -> int:
             path.write_text(want, encoding="utf-8")
     if check:
         if differ:
-            print("site_shell: these pages' header or footer is not web/_shell.html's "
+            print("site_shell: these pages' theme lines, header or footer are not web/_shell.html's "
                   f"(tools/site_shell.py writes it): {', '.join(differ)}")
             return 1
-        print(f"site_shell: {len(pages())} pages, one header and one footer")
+        print(f"site_shell: {len(pages())} pages, one theme, header and footer")
         return 0
     print(f"site_shell: wrote {len(differ)} of {len(pages())} pages" + (f": {', '.join(differ)}" if differ else ""))
     return 0
