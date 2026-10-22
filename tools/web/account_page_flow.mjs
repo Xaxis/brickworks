@@ -332,6 +332,22 @@ try {
     }
   }
 
+  // Her own public page offers Edit profile where Follow would be; nobody
+  // else's does.
+  for (const [who, label] of [[ada, "her own /u/ page"], [bea, "her /u/ page to Bea"], [null, "her /u/ page signed out"]]) {
+    const { page, context } = await open(`/u/${ADA}?tests=1`, { width: 1280, theme: "dark", who, label });
+    await until(page, () => document.querySelector("button[data-follow]") && (!document.querySelector("button[data-follow]").hidden
+      || !document.querySelector("[data-edit-own]").hidden));
+    const shown = await page.isVisible("[data-edit-own]");
+    check(`${label}: Edit profile ${shown ? "offered" : "not offered"}`, shown === (who === ada));
+    if (who === ada) {
+      await page.click("[data-edit-own]");
+      check(`${label}: Edit profile opens the dialog on /profile`, await until(page,
+        () => document.querySelector("dialog#edit-dialog[open]") && document.getElementById("name").value === "Ada Account", null, 30000));
+    }
+    await context.close();
+  }
+
   // --- 6. Her settings --------------------------------------------------------
   console.log("6. her settings");
   for (const width of [1280, 390]) {

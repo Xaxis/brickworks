@@ -1048,7 +1048,8 @@ async function profilePage(request, response) {
     </div>
     <div class="acts">
       ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
-        data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>` : ""}
+        data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>
+      <a class="cta ghost" href="/profile?edit=1" data-edit-own hidden>Edit profile</a>` : ""}
       ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
       ${more}
     </div>

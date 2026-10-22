@@ -413,11 +413,19 @@ const DRAW = { models: drawModels, builds: drawBuilds, saved: drawSaved, sets: d
 /// The tabs there are: Models and Builds only with a profile.
 const tabsNow = () => TABS.filter((tab) => handleOf() || !["models", "builds"].includes(tab));
 
+/// The tab a bare /profile opens: as /u/<handle> does, the first of Models
+/// and Builds with something in it; else Saved.
+function firstTab() {
+  const counted = (tab) => Number(document.querySelector(`#tabs [data-tab="${tab}"] .n`)?.textContent.replace(/\D/g, "")) || 0;
+  return handleOf() ? ["models", "builds"].find(counted) || "saved" : "saved";
+}
+
 /// Shows [tab], drawing it the first time, and says so in the address so a
 /// reload or a link comes back to it.
 async function choose(tab, { push = false } = {}) {
   const there = tabsNow();
-  const chosen = there.includes(tab) ? tab : there[0];
+  const first = firstTab();
+  const chosen = there.includes(tab) ? tab : first;
   for (const link of document.querySelectorAll("#tabs [data-tab]")) {
     link.hidden = !there.includes(link.dataset.tab);
     if (link.dataset.tab === chosen) link.setAttribute("aria-current", "page");
@@ -425,7 +433,7 @@ async function choose(tab, { push = false } = {}) {
   }
   for (const panel of document.querySelectorAll("#work [data-panel]")) panel.hidden = panel.dataset.panel !== chosen;
   const address = new URL(location.href);
-  if (chosen === there[0]) address.searchParams.delete("tab");
+  if (chosen === first) address.searchParams.delete("tab");
   else address.searchParams.set("tab", chosen);
   history[push ? "pushState" : "replaceState"](null, "", address.pathname + address.search + address.hash);
   if (!drawnTabs.has(chosen)) {

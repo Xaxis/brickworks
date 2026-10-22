@@ -208,7 +208,8 @@ is on the page, `hidden`, for the script to show.
   and how many are on, its panel the fields of a search.
 - **A person's page** (`/u/<handle>`, `web/directory.css`, docs/SOCIAL.md
   U5): the head (`.profile-head`: a `.huge` avatar, the name, the handle,
-  Follow, Share and More), `.numbers` (one row of counts, each `<b>` and
+  Follow, Share and More; on your own page Edit profile where Follow
+  would be), `.numbers` (one row of counts, each `<b>` and
   its word, hidden at none), `.pinned` (a `.models.row`), the `.tabs`, and
   two cards of its own: `.list-card` (a collection, a `.mosaic` of up to
   four pictures kept wide) and `.build-grid` (photos of builds in columns,

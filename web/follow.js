@@ -34,6 +34,9 @@ async function followButton(button) {
     button.setAttribute("aria-pressed", state.you_follow ? "true" : "false");
     button.title = state.you_follow ? "You follow them: press to stop" : "See what they share in your feed";
     button.hidden = state.mine;
+    // On your own page, Edit profile where Follow would be (docs/SOCIAL.md U6).
+    const own = button.closest(".profile-head")?.querySelector("[data-edit-own]");
+    if (own) own.hidden = !state.mine;
     for (const counted of document.querySelectorAll(`[data-followers="${handle}"], .person[data-handle="${handle}"] [data-followers]`)) {
       // A designer's page draws it as a tile, its number large
       // (api/people.js earnedHtml): kept so, the words beside it.

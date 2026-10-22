@@ -578,7 +578,9 @@ plan with Claude as the client.
   Let it go, `#lists` the collections with Public, Save, Delete, Its page
   and What is in it, `#following`), Sets (`#owned-*`: `/api/collection`,
   `/api/share?op=shelves&mine=1`) and Insights (`#designs`, `designs.js`).
-  Edit profile (`#edit-dialog`, or `/profile?edit=1` from Settings):
+  Edit profile (`#edit-dialog`, or `/profile?edit=1` from Settings and
+  from `[data-edit-own]` on your own `/u/<handle>`, which `web/follow.js`
+  shows where Follow would be):
   avatar (made from the handle), name, handle, about you, two links, the
   banner and three pins; Save posts `?op=profile`, then `?op=showcase` with
   only what changed, and redraws the page with no reload.
@@ -3273,11 +3275,12 @@ favourite, a private collection, two email choices, whom she follows
 shown); signed out both pages offer Sign in; signed in at 1280 and 390 in
 both themes her head as `/u/` draws it with her links, banner and pins in
 her order, the tabs Models · Builds · Saved · Sets · Insights with Models
-open, under 2,000 px at 1280, avatar, name and Edit profile above 844 px at
-390; Edit profile holds all nine fields as she set them, a name changed
+open (4 of her 5 and Show more), under 2,000 px at 1280, avatar, name and
+Edit profile above 844 px at 390 with the head's buttons in one row; Edit profile holds all nine fields as she set them, a name changed
 there shows with no reload and nothing else changes (`?op=me` and her
 public page read back); Saved, Sets and Insights drawn, and a reload keeps
-the tab; `/settings` has the seven rows with her choices, an email choice
+the tab; her own `/u/` page offers Edit profile (to her alone) and it opens
+the dialog; `/settings` has the seven rows with her choices, an email choice
 and the theme changed and changed back, Settings' Edit profile opens the
 dialog, Sign out; Bea with no profile sees two fields and her profile
 drawn at once; Ada deleted from Settings is gone from the sign-in service,
