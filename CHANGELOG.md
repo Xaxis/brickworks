@@ -22,6 +22,11 @@ whole cycle.
   to make the owl's head bigger, the app's own designer forgot it was an owl.
   A design submitted under a name of another subject now begins a new
   subject, and a change to the model you have keeps the one it was.
+- A dome or a ball of hinged panels that Claude lays as one shell builds
+  again. Its crown, a big inverted dish, was set down on a disc of plates:
+  the studs ran into its rim and nothing held it, so the check refused
+  every such shell. The dish is now held by round plates up into the 2 x 2
+  under its middle, as a builder holds one, with tiles under its rim.
 
 ## [0.5.0] - 2026-10-22
 
