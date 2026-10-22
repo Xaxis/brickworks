@@ -540,6 +540,65 @@ static func clash(a: Item, b: Item, placing: bool = false) -> Dictionary:
 		"piece_b": int(verdict[2]), "axis": (a.at.basis * (verdict[3] as Vector3)).normalized()}
 
 
+## What [method clash_but] passes over: pieces of a and of b (1 each piece
+## forgiven, or empty for none), and pairs of them (b's piece << 20 | a's ->
+## true).
+class Forgiven extends RefCounted:
+	var a_pieces := PackedByteArray()
+	var b_pieces := PackedByteArray()
+	var pairs: Dictionary = {}
+
+	func is_empty() -> bool:
+		return pairs.is_empty() and not a_pieces.has(1) and not b_pieces.has(1)
+
+
+## [method clash], passing over the pieces and pairs of pieces [param but]
+## forgives: a joint's own two parts, a pin in its hole and what they were
+## built into each other by, judged by the rest of their shapes. Not kept
+## among the verdicts, which are the whole shapes'.
+static func clash_but(a: Item, b: Item, but: Forgiven) -> Dictionary:
+	if a == null or b == null or not a.shape.has_pieces() or not b.shape.has_pieces():
+		return {}
+	var hits: Array = _overlapping(a.shape, b.shape, a.at.affine_inverse() * b.at, TAU, true, but)
+	if hits.is_empty():
+		return {}
+	var verdict: Array = hits[0]
+	return {"depth": float(verdict[0]), "piece_a": int(verdict[1]),
+		"piece_b": int(verdict[2]), "axis": (a.at.basis * (verdict[3] as Vector3)).normalized()}
+
+
+## Each piece of [param shape] the line through [param point] along [param
+## way] (the part's own frame) goes through, or passes within [param slack]
+## of: 1, else 0. A piece is the slabs between its spans along its normals,
+## so the line is in it where it is in every slab.
+static func through(shape: Shape, point: Vector3, way: Vector3, slack: float) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(shape.pieces.size())
+	for p: int in shape.pieces.size():
+		var piece: Piece = shape.pieces[p]
+		var lo: float = -INF
+		var hi: float = INF
+		var missed: bool = piece.normals.is_empty()
+		for k: int in piece.normals.size():
+			var n: Vector3 = piece.normals[k]
+			var at: float = n.dot(point)
+			var rate: float = n.dot(way)
+			var low: float = piece.spans[2 * k] - slack
+			var high: float = piece.spans[2 * k + 1] + slack
+			if absf(rate) < 1e-6:
+				missed = at < low or at > high
+			else:
+				var t0: float = (low - at) / rate
+				var t1: float = (high - at) / rate
+				lo = maxf(lo, minf(t0, t1))
+				hi = minf(hi, maxf(t0, t1))
+				missed = lo > hi
+			if missed:
+				break
+		out[p] = 0 if missed else 1
+	return out
+
+
 ## A relative pose said in whole numbers, so the same pose found twice is
 ## one key: thousandths of an LDU, ten-thousandths of a turn.
 static func _key(ida: int, idb: int, rel: Transform3D) -> Array:
@@ -657,9 +716,10 @@ static func _extent(verts: PackedVector3Array, way: Vector3) -> float:
 ## overlap are found by the two shapes' trees ([method _tree_of]), and asked
 ## in the order every pair was asked before, b's pieces then a's: a steering
 ## arm of 176 pieces beside a Technic brick of 316, asked every pair's boxes,
-## took 1.5 ms, and by the trees 0.4 (G14a).
+## took 1.5 ms, and by the trees 0.4 (G14a). [param but]: pieces and pairs
+## passed over ([method clash_but]).
 static func _overlapping(a: Shape, b: Shape, rel: Transform3D, allowed: float,
-		first: bool) -> Array:
+		first: bool, but: Forgiven = null) -> Array:
 	var hits: Array = []
 	var whole: Array = box_in(b.lo, b.hi, rel)
 	var b_lo: Vector3 = whole[0]
@@ -723,6 +783,9 @@ static func _overlapping(a: Shape, b: Shape, rel: Transform3D, allowed: float,
 	for pair: int in pairs:
 		var j: int = pair >> 20
 		var i: int = pair & 0xFFFFF
+		if but != null and (but.pairs.has(pair) or not but.a_pieces.is_empty() and but.a_pieces[i] == 1
+				or not but.b_pieces.is_empty() and but.b_pieces[j] == 1):
+			continue
 		var q: Piece = b.pieces[j]
 		if moved_for != j:
 			moved_for = j

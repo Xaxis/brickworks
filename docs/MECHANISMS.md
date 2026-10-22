@@ -5629,3 +5629,104 @@ and 20°, and stopped at -17° where it meets the baseplate, as at 17°
 before), `motions_probe` (92), `animation_probe` (24) and `grab_probe`
 `--only=hinge` (18), `cases` (72) and `loops` (21) pass. Nothing outside
 the probe changed.
+
+## 35. A hinge turns only as far as its parts let it (hinge77)
+
+Since Grab 17 (§28) the part that stays is forgiven only its partner
+across the joint (`Grab._across`), but that partner whatever their shapes
+say. So a bare hinge turned either way as far as it was asked. On
+3978c6f7, each made hinge below (its base locked, its top turned over
+MCP, `grab_probe --only=hingerange`) went all 170° both ways and ended 4.0
+to 4.5 LDU into its base by their exact shapes. pose136 had measured
+3937's top 1 LDU into its base 6° the wrong way (§34).
+
+1. **The joint turned alone is judged as a loop's joints are**
+   (`_meeting_pairs`, `_pair_clear_at`): its two parts by their exact
+   shapes, at every pose the room test asks. The covers still forgive the
+   partner; the pair test judges it.
+2. **Forgiven only what turns in place and what was built into each
+   other** (`_pair_forgives`): each piece the joint's line goes through
+   (`Exact.through`, within 0.25 LDU: a pin in its hole, a knuckle on its
+   pin, a clip on its bar), and each pair of pieces more than `Exact.TAU`
+   into each other where the grab began or where the two were built
+   (`Exact.overlaps`). The rest is judged (`Exact.clash_but`). For 3937 and
+   3938 that is 5 pieces (the top's fingers and bar, the base's boss); for
+   44301 and 44302 5 pieces and 20 pairs built into each other.
+3. **Worked out at the press** (`_pair_judge`): asked in the drag's first
+   frame it took 1.1 ms for 3937/3938 and 6.3 ms for the click hinge (its
+   134 pieces read about the line), past the walk's 2 ms share, and the made
+   crane's drag was shown on trust and checked at the release, too late for
+   it to fall when let go. In a frame now: 0.4 to 0.7 ms the first ask.
+4. **Asked along the way where it is due** (`_pairs_due` in
+   `_walk_steps`). The top's sweep round the line met nothing but its base,
+   which the covers forgive, so `_never_meet` set it with `_on_the_line`,
+   the walk tested no step of it, and the top went 168° the wrong way
+   before a stop was looked for. Its moving part is rated now
+   (`_pair_parts`), and the pair is asked where that part has gone
+   `PATH_LDU`, as a part is tested: asked at every step the arm's other
+   parts were, the made crane's drag ran past its share and was shown on
+   trust. A click hinge's just past each click it crosses, where it stands:
+   a drag's frame steps it 22.5° at once, and 4903-1's, asked at each of the
+   walk's ten steps, ran past the share, shown at 67.5° on trust, past where
+   its plate meets its base (1.09 LDU at 55°, 3.44 at 90°); asked only where
+   a move ends, the made one went 157.5° through its base. It stops at 45°
+   now; on 3978c6f7 it went on to 90°, where its covers met the model.
+
+Measured, judged as Grab judges them (`--only=hingerange`):
+
+| hinge | the wrong way | there, LDU | a step on | the open way | there | a step on |
+|---|---|---|---|---|---|---|
+| 3937/3938 | 5.9° | 0.99 | 1.14 | 95.4° | 0.98 | 1.17 |
+| 2429/2430 (1 x 4 swivel) | 2.8° | 0.98 | 1.33 | all 170° | 0.31 | 0.31 |
+| 44301a/44302a (click, 22.5° clicks) | 90° | 0.04 | 1.93 | 90° | 0.04 | 1.93 |
+
+3937/3938's top by angle: 0.51 LDU into its base at -3°, 1.00 at -6°, 1.90
+at -12° (pose136's 1.90), 3.93 at -30°; the open way no more than 0.09 to
+90°. The click hinge's two ways are alike (its plates end to end).
+
+**Left as it was: a loop's pair into each other where the grab began** is
+still forgiven whole. Judged but for its pin, 8448-1's racer steered 22° of
+30 and stopped where a universal joint's end (#446, 3712) met its centre
+(#316, 3326b) by 1.10 LDU, a piece of the end's fork tip against the
+centre's other arm, which a pure turn about their pin keeps apart: the
+loop's solve closes to a tolerance and the centre is posed by its own
+reading. A loop's pair clear of each other where the grab began is judged
+whole, as before.
+
+The probes' made models with 3937/3938 had their hinges facing the way
+their tests need: `MADE_PATH`'s arm turned towards the plate the wrong way
+and now faces it (the other way its own base stops it at 6°), and
+`pose_probe`'s turret stop, -17° on the baseplate since §34, is now -6° on
+the hinge's own base.
+
+### Checked
+
+On the final code: `grab_probe` whole in a window, 489 passed and one
+failed, the big model's section held by a worm (7191-1, `--only=big`),
+which fails the same on 3978c6f7. `--only=hingerange` (9), `--only=path`
+(6), `--only=falling` (26, its drag checked every frame, as on 3978c6f7),
+`--only=click` (9, the stop at 45°). `pose_probe` (25), `motions_probe`
+(92), `animation_probe` (24) and `mechanism_probe` (54) pass.
+
+The steering sweep on 20 sets (`sweep_hinge77x`, all but 42024-1 with
+hinges in the loop they steer: 8880-1_F1-Racer, 8448-1_Racer, 8830-1, 8062-1_Crane, 8820-1,
+8022-1_Racecar, 8832-1, 8841-1_Buggy, 8815-1, 8022-1_Robot, 8854-1,
+8835-1_Farm-Tractor, 8020-1_Jeep, 8845-1, 5510-1, 8828-1, 8808-1, 8848-1,
+950-1, 42024-1) against `sweep_joins72`: all 20 steer, each turn and its
+way back the same to the hundredth, but 8841-1_Buggy back 0.007 LDU where
+it was 0.015.
+
+The drag's cost, each alternated with 3978c6f7, two rounds:
+
+| | 3978c6f7 | this |
+|---|---|---|
+| 42081-1's arm (`--only=actuators`), the drag's own work a frame | mean 9.3 and 7.3 ms, 95% 14.4 and 13.1 | mean 8.6 and 7.6, 95% 15.0 and 14.1 |
+| 8808-1's steering on a phone, the CPU slowed 4 times (`play_flow --sizes=phone`) | mean 9.28 and 9.29 ms, worst 20.86 and 20.79 | mean 10.10 and 9.08, worst 22.57 and 19.65 |
+
+Turned alone, a turntable's two halves are now judged every frame: its
+drag 1.88 ms a frame on average (4096-1), 1.58 (30181-1), worst 3.9.
+
+The full sweep is the lead's: from a locked snapshot of this,
+`SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run hinge77
+--jobs=3`, then `table hinge77 --against=joins72`; the bar is every set
+that steers in joins72 (77) steering, nothing lost.

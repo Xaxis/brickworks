@@ -238,22 +238,24 @@ var _spin_with: Dictionary = {}
 ## Parts met, each with the moving parts whose covers overlapped it where
 ## they stood: brick id -> {moving id: true} ([method _rest_with]).
 var _rest_overlap: Dictionary = {}
-## A loop's own joints' parts that can meet as the joints turn ([method
-## _meeting_pairs]): [part, the part across its joint, the joint's line in
-## the second's frame, a line square to it there, the first's turn against
-## the second where the grab began, inverted, the joint's point in the
-## first's frame, and in the second's]. Each pair turns (and slides) against
-## each other on its joint, and the rest of the room test never asks one of
-## them about the other.
+## A loop's own joints' parts that can meet as the joints turn, or the
+## joint turned alone's ([method _meeting_pairs]): [part, the part across its
+## joint, the joint's line in the second's frame, a line square to it there,
+## the first's turn against the second where the grab began, inverted, the
+## joint's point in the first's frame, and in the second's]. Each pair turns
+## (and slides) against each other on its joint, and the rest of the room
+## test never asks one of them about the other.
 var _joint_pairs: Array = []
 ## For each of [member _joint_pairs], its joint's turn, radians, and slide,
-## LDU, from where the grab began, as far as each was found clear, whether
-## the two were into each other there, and what testing them last took:
-## [least turn, most turn, least slide, most slide, PAIR_UNKNOWN,
-## PAIR_APART_AT_REST or PAIR_FORGIVEN, ms].
+## LDU, from where the grab began, as far as each was found clear, how the
+## two are judged, and what testing them last took: [least turn, most turn,
+## least slide, most slide, PAIR_UNKNOWN, PAIR_JUDGED or PAIR_FORGIVEN, ms].
 var _pair_clear: Array = []
 const PAIR_UNKNOWN := 0.0
-const PAIR_APART_AT_REST := 1.0
+## By their exact shapes, but what [member _pair_but] forgives.
+const PAIR_JUDGED := 1.0
+## Not judged: one has no exact shape, or a loop's pair is into each other
+## where the grab began ([method _pair_clear_at]).
 const PAIR_FORGIVEN := 2.0
 ## Cannot meet however the joint turns and slides ([method _pieces_apart]).
 const PAIR_NEVER := 3.0
@@ -1469,14 +1471,22 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 ## either. Asked every frame, the six pairs of 8808-1's steering (its arms in
 ## two plates each) took its drag's room test from 0.5 ms a frame to 5 to 10,
 ## so a loop's drag asks them on the pause, with its way ([method turn_to]).
+##
+## Out of a loop, the joint turned alone is asked the same, every frame: its
+## partner across it is forgiven by the covers ([member _across]) and judged
+## here. Forgiven whole, a bare 3937 hinge turned either way, though its
+## base's square shoulder stops its top 6° the wrong way (§34).
 func _meeting_pairs() -> void:
 	_joint_pairs.clear()
 	_pair_clear.clear()
-	if linkage == null:
-		return
+	_pair_but.clear()
+	_pair_parts.clear()
 	var joints: Array[Bodies.Link] = []
-	joints.append_array(linkage.links)
-	joints.append_array(linkage.closing)
+	if linkage != null:
+		joints.append_array(linkage.links)
+		joints.append_array(linkage.closing)
+	elif link != null:
+		joints.append(link)
 	for joined: Bodies.Link in joints:
 		if not joined.kind in PAIR_KINDS:
 			continue
@@ -1510,6 +1520,25 @@ func _meeting_pairs() -> void:
 				a.transform.affine_inverse() * joined.point, b.transform.affine_inverse() * joined.point,
 				(a.transform.basis.inverse() * line).normalized(), joined.slide.x + joined.slide.y])
 			_pair_clear.append(PackedFloat64Array([0.0, 0.0, 0.0, 0.0, PAIR_UNKNOWN, 0.0]))
+			_pair_but.append(null)
+			if linkage == null:
+				for key: int in [one, other]:
+					if moving.has(key):
+						_pair_parts[key] = true
+				_pair_judge(_joint_pairs.size() - 1)
+
+
+## For each of [member _joint_pairs], what of the two its test passes over
+## (Exact.Forgiven, [method _pair_forgives]), or null for nothing: a loop's
+## pair is judged whole.
+var _pair_but: Array = []
+## The joint turned alone's moving parts of [member _joint_pairs]: brick id
+## -> true. Each is rated along the way ([method _path_rate], [method
+## _pairs_due]) though its sweep meets nothing else ([method _never_meet]): a
+## bare 3938 top, its base forgiven by the covers, went 168° the wrong way
+## untested, the walk's steps all clear. Not a loop's: its pairs are asked
+## with its parts, as they were.
+var _pair_parts: Dictionary = {}
 
 
 ## The joints whose own two parts are tested against each other in a loop
@@ -1546,50 +1575,17 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 			or turn >= clear[0] - PAIR_SAME and turn <= clear[1] + PAIR_SAME \
 			and slide >= clear[2] - PAIR_SLIDE_SAME and slide <= clear[3] + PAIR_SLIDE_SAME:
 		return true
-	var a: BrickWorld.Brick = world.get_brick(one)
-	var b: BrickWorld.Brick = world.get_brick(other)
-	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
-	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
-	if clear[4] == PAIR_UNKNOWN and shape_a != null and shape_b != null and shape_a.has_pieces() \
-			and shape_b.has_pieces():
-		# Each part's pieces only where the other reaches along the line, and
-		# as far again as the joint slides: none further can meet it.
-		var way: Vector3 = (b.transform.basis * line).normalized()
-		var middle: float = (b.transform * (pair[6] as Vector3)).dot(way)
-		var reach_a: Vector2 = Grab._reach_along(a.transform, library.mesh_for(a.part_id).bounds, way) \
-			- Vector2(middle, middle)
-		var reach_b: Vector2 = Grab._reach_along(b.transform, library.mesh_for(b.part_id).bounds, way) \
-			- Vector2(middle, middle)
-		var spare: float = float(pair[8]) + PAIR_ALONG_SLACK
-		# Kept by the two shapes and where the joint is in each: the same pair
-		# in the next grab is not read again.
-		var key: String = "%d|%d|%s|%s|%s|%s|%.2f" % [shape_a.id, shape_b.id,
-			(pair[5] as Vector3).snapped(Vector3.ONE * 0.01), (pair[7] as Vector3).snapped(Vector3.ONE * 0.0001),
-			(pair[6] as Vector3).snapped(Vector3.ONE * 0.01), line.snapped(Vector3.ONE * 0.0001), float(pair[8])]
-		var apart: Variant = _apart_known.get(key)
-		if apart == null:
-			apart = Grab._pieces_apart(Grab._about_line(shape_a, pair[5], pair[7], reach_b.x - spare, reach_b.y + spare),
-				Grab._about_line(shape_b, pair[6], line, reach_a.x - spare, reach_a.y + spare), float(pair[8]))
-			if _apart_known.size() > 2000:
-				_apart_known.clear()
-			_apart_known[key] = apart
-		if bool(apart):
-			clear[4] = PAIR_NEVER
-			_pair_clear[n] = clear
-			return true
 	if clear[4] == PAIR_UNKNOWN:
-		# Into each other where the grab began, or one with no exact shape
-		# (covers cannot judge a joint's own pieces): forgiven, as the rest of
-		# the room test forgives such a pair. Asked here, not at the press:
-		# for six pairs, reading their shapes and asking took 8808-1's
-		# steering's press from 6 ms to 19.
-		clear[4] = PAIR_FORGIVEN if shape_a == null or shape_b == null or not shape_a.has_pieces() \
-			or not shape_b.has_pieces() or not Exact.clash(Exact.Item.new(shape_a, a.transform),
-			Exact.Item.new(shape_b, b.transform)).is_empty() else PAIR_APART_AT_REST
-		_pair_clear[n] = clear
-		if clear[4] == PAIR_FORGIVEN:
+		_pair_judge(n)
+		clear = _pair_clear[n]
+		if clear[4] == PAIR_FORGIVEN or clear[4] == PAIR_NEVER:
 			return true
-	if Exact.clash(Exact.Item.new(shape_a, at_one), Exact.Item.new(shape_b, at_other)).is_empty():
+	var shape_a: Exact.Shape = Exact.shape_for(library, world.get_brick(one).part_id)
+	var shape_b: Exact.Shape = Exact.shape_for(library, world.get_brick(other).part_id)
+	var but: Exact.Forgiven = _pair_but[n]
+	var item_a := Exact.Item.new(shape_a, at_one)
+	var item_b := Exact.Item.new(shape_b, at_other)
+	if (Exact.clash(item_a, item_b) if but == null else Exact.clash_but(item_a, item_b, but)).is_empty():
 		_pair_clear[n] = PackedFloat64Array([minf(clear[0], turn), maxf(clear[1], turn),
 			minf(clear[2], slide), maxf(clear[3], slide), clear[4], clear[5]])
 		return true
@@ -1597,6 +1593,116 @@ func _pair_clear_at(n: int, at: Dictionary) -> bool:
 	met = int(blocked_by[0])
 	stretch_words = ""
 	return false
+
+
+## How the [param n]th of [member _joint_pairs] is judged, worked out once:
+## [constant PAIR_NEVER], [constant PAIR_FORGIVEN] or [constant PAIR_JUDGED]
+## (and what it forgives, [member _pair_but]). A loop's pairs are asked it on
+## the pause, the first time each is tested: for six pairs, reading their
+## shapes and asking took 8808-1's steering's press from 6 ms to 19. The
+## joint turned alone is asked at the press ([method _meeting_pairs]): asked
+## in the drag's first frame, a click hinge's 6 ms took the frame past its
+## share, and the drag was shown on trust.
+func _pair_judge(n: int) -> void:
+	var pair: Array = _joint_pairs[n]
+	var line: Vector3 = pair[2]
+	var clear: PackedFloat64Array = _pair_clear[n]
+	var a: BrickWorld.Brick = world.get_brick(int(pair[0]))
+	var b: BrickWorld.Brick = world.get_brick(int(pair[1]))
+	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
+	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
+	# One with no exact shape (covers cannot judge a joint's own pieces):
+	# forgiven, as the rest of the room test forgives such a pair.
+	if shape_a == null or shape_b == null or not shape_a.has_pieces() or not shape_b.has_pieces():
+		clear[4] = PAIR_FORGIVEN
+		_pair_clear[n] = clear
+		return
+	# Each part's pieces only where the other reaches along the line, and as
+	# far again as the joint slides: none further can meet it.
+	var way: Vector3 = (b.transform.basis * line).normalized()
+	var middle: float = (b.transform * (pair[6] as Vector3)).dot(way)
+	var reach_a: Vector2 = Grab._reach_along(a.transform, library.mesh_for(a.part_id).bounds, way) \
+		- Vector2(middle, middle)
+	var reach_b: Vector2 = Grab._reach_along(b.transform, library.mesh_for(b.part_id).bounds, way) \
+		- Vector2(middle, middle)
+	var spare: float = float(pair[8]) + PAIR_ALONG_SLACK
+	# Kept by the two shapes and where the joint is in each: the same pair in
+	# the next grab is not read again.
+	var key: String = "%d|%d|%s|%s|%s|%s|%.2f" % [shape_a.id, shape_b.id,
+		(pair[5] as Vector3).snapped(Vector3.ONE * 0.01), (pair[7] as Vector3).snapped(Vector3.ONE * 0.0001),
+		(pair[6] as Vector3).snapped(Vector3.ONE * 0.01), line.snapped(Vector3.ONE * 0.0001), float(pair[8])]
+	var apart: Variant = _apart_known.get(key)
+	if apart == null:
+		apart = Grab._pieces_apart(Grab._about_line(shape_a, pair[5], pair[7], reach_b.x - spare, reach_b.y + spare),
+			Grab._about_line(shape_b, pair[6], line, reach_a.x - spare, reach_a.y + spare), float(pair[8]))
+		if _apart_known.size() > 2000:
+			_apart_known.clear()
+		_apart_known[key] = apart
+	if bool(apart):
+		clear[4] = PAIR_NEVER
+		_pair_clear[n] = clear
+		return
+	# The joint turned alone is judged by their shapes but what [method
+	# _pair_forgives] passes over. A loop's pair into each other where the
+	# grab began is forgiven whole: the loop's solve closes to a tolerance and
+	# a universal joint's centre is posed by its own reading, so the two do
+	# not turn exactly about their line, and judged but for their pin,
+	# 8448-1's racer stopped 22° into its 30° where a universal joint's end
+	# met its centre by 1.1 LDU.
+	if linkage != null and not Exact.clash(Exact.Item.new(shape_a, a.transform),
+			Exact.Item.new(shape_b, b.transform)).is_empty():
+		clear[4] = PAIR_FORGIVEN
+		_pair_clear[n] = clear
+		return
+	clear[4] = PAIR_JUDGED
+	_pair_clear[n] = clear
+	if linkage == null:
+		_pair_but[n] = _pair_forgives(n, shape_a, shape_b)
+
+
+## What the [param n]th of [member _joint_pairs] ([param shape_a] and
+## [param shape_b], its two parts' shapes) is forgiven against each other, or
+## null for nothing: each piece the joint's line goes through, which turns
+## (or slides) in place as a pin in its hole, a hinge's knuckle on its pin, a
+## clip on its bar; and each pair of pieces into each other where the grab
+## began or where the two were built. The rest of the two is judged, so a
+## hinge turns only as far as its parts let it: 3937's square shoulder stops
+## its top 6° the wrong way, 1 LDU into it, and turned the open way the two
+## stay clear. Forgiven whole, every hinge turned either way.
+func _pair_forgives(n: int, shape_a: Exact.Shape, shape_b: Exact.Shape) -> Exact.Forgiven:
+	var pair: Array = _joint_pairs[n]
+	var one: int = pair[0]
+	var other: int = pair[1]
+	var but := Exact.Forgiven.new()
+	but.a_pieces = Grab._through(shape_a, pair[5], pair[7])
+	but.b_pieces = Grab._through(shape_b, pair[6], pair[2])
+	var at_one: Transform3D = rest.get(one, world.get_brick(one).transform)
+	var at_other: Transform3D = rest.get(other, world.get_brick(other).transform)
+	var poses: Array = [[at_one, at_other]]
+	_built_for_world()
+	if _built_at.has(one) or _built_at.has(other):
+		poses.append([_built_at.get(one, at_one), _built_at.get(other, at_other)])
+	for pose: Array in poses:
+		for hit: Array in Exact.overlaps(Exact.Item.new(shape_a, pose[0]), Exact.Item.new(shape_b, pose[1])):
+			but.pairs[(int(hit[2]) << 20) | int(hit[1])] = true
+	return but if not but.is_empty() else null
+
+
+## [method Exact.through] at [constant PAIR_ACROSS_SLACK], kept by shape and
+## line: the same joint's parts in the next grab are not read again.
+static func _through(shape: Exact.Shape, point: Vector3, way: Vector3) -> PackedByteArray:
+	var key: String = "%d|%s|%s" % [shape.id, point.snapped(Vector3.ONE * 0.01), way.snapped(Vector3.ONE * 0.0001)]
+	var known: Variant = _through_known.get(key)
+	if known != null:
+		return known
+	var out: PackedByteArray = Exact.through(shape, point, way, PAIR_ACROSS_SLACK)
+	if _through_known.size() > 2000:
+		_through_known.clear()
+	_through_known[key] = out
+	return out
+
+
+static var _through_known: Dictionary = {}
 
 
 ## Each piece of [param shape] about the line through [param point] along
@@ -2984,6 +3090,10 @@ func _walk_steps(from: float, to: float, began: int) -> Array:
 	var least: float = 0.0
 	if linkage != null:
 		least = absf(to - from) / (LOOP_MOST_STEPS if budget_ms == INF else 2.0)
+	# Where the joint turned alone's own two parts were last asked ([method
+	# _pairs_due]); a loop's are asked at every step its parts are.
+	var paired: float = from
+	var alone: bool = linkage == null and not _joint_pairs.is_empty()
 	while true:
 		var next: float = _next_step(clear, to, least)
 		if next == to:
@@ -2996,8 +3106,18 @@ func _walk_steps(from: float, to: float, began: int) -> Array:
 		for key: int in _rates:
 			if float(_rates[key]) * absf(after - float(last.get(key, from))) > PATH_LDU:
 				due[key] = true
-		if not due.is_empty():
-			var r: Vector2i = _test(_pose_at(next), 0, left, false, due)
+		var pairs_due: bool = alone and _pairs_due(paired, next, after)
+		if not due.is_empty() or pairs_due:
+			var pose: Dictionary = _pose_at(next)
+			var r := Vector2i(1, 0)
+			if not due.is_empty():
+				r = _test(pose, 0, left, false, due, not alone)
+			if r.x == 1 and pairs_due:
+				paired = next
+				for k: int in _joint_pairs.size():
+					if not _pair_clear_at(k, pose):
+						r.x = 0
+						break
 			if r.x == 0 and budget_ms == INF and _push_aside(next):
 				r.x = 1
 			if r.x != 1:
@@ -3009,6 +3129,24 @@ func _walk_steps(from: float, to: float, began: int) -> Array:
 			_keep_loop()
 		clear = next
 	return [1, clear, to]
+
+
+## Whether the joint turned alone's own two parts are asked at the step to
+## [param next] of a walk, last asked at [param paired], the step after at
+## [param after]: where their moving part has gone [constant PATH_LDU], as a
+## part is tested. Asked at every step with the arm's other parts, the made
+## crane's arm took its drag's walk past its share of the frame. A click
+## hinge's just past each click, where it stands: a drag's frame steps it a
+## click (22.5°) at once, and 4903-1's halves, asked at each of the walk's
+## ten steps, took it past its share; asked only where it ends, its way's
+## clicks went unasked, and the made one went 157.5° through its base.
+func _pairs_due(paired: float, next: float, after: float) -> bool:
+	if link.detent > 0.0:
+		return floori(next / link.detent) != floori(paired / link.detent)
+	for key: int in _pair_parts:
+		if float(_rates.get(key, 0.0)) * absf(after - paired) > PATH_LDU:
+			return true
+	return false
 
 
 ## The next step from [param from] towards [param to]: [param to] itself
@@ -3074,7 +3212,8 @@ func _path_rate(now: float) -> float:
 	var most: float = 0.0
 	_rates.clear()
 	for key: Variant in b:
-		if not a.has(key) or _on_the_line.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
+		if not a.has(key) or _on_the_line.has(key) and not _pair_parts.has(key) \
+				or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
 			continue
 		var brick: BrickWorld.Brick = world.get_brick(int(key))
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
