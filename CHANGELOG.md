@@ -20,10 +20,13 @@ whole cycle.
   five plates; at a side's top or foot such a block also held the top or
   the underside it turned into, or a thin cap over it, and the whole block
   stayed upright. The blocks are now tried at each height a plate apart, and
-  a thin cap that runs back over the model's core is held by it. On a
-  rubber duck, the Stanford bunny and 3DBenchy at 48 studs, 42% of the
-  steep faces are laid by parts turned to face them, from 27%, in 4% more
-  parts; every build is still checked as one piece.
+  a thin cap that runs back over the model's core is held by it. On three
+  of the models Brickify is measured on (Bob, the Stanford bunny and
+  3DBenchy) at 48 studs, 42% of the steep faces are laid by parts turned to
+  face them, from 27%, in 4% more parts; every build is still checked as
+  one piece, and every step of its booklet stands. A part on its side that
+  rested on the model held by no stud, once a part beside it was taken out,
+  now goes with it.
 
 ### Fixed
 

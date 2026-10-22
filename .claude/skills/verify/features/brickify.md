@@ -81,10 +81,14 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   panels on a flat side; steep sides on their sides (`Options.snot`,
   Shapes' `cubes`): the model's surface summed by area and the way it faces
   into cubes two studs by five plates by two studs (`Brickify._cubes`,
-  Lambrecht's), a cube steeper than about 69 degrees facing out along x or z;
+  Lambrecht's), a cube steeper than about 69 degrees facing out along x or z,
+  and cut again with its courses started 2, 4, 1 and 3 plates up
+  (`CUBE_PHASES`, `Grid.cube_phases`, `Plan._phase`), each later cut tried only
+  where no shell has any of the cube (`_cube_shelled`);
   the cubes facing one way at one depth one shell (`Plan._cube_shells`,
   `_cube_shell`), each cube the side's outermost with the core three studs
-  behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it, laid as a design's
+  behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it unless the
+  cap runs on back over the core behind the cube, on the core there, laid as a design's
   curved side is (`lay_shell`, its up turned out) and held by bricks with side
   studs (30414, 11211, 87087) in the core's wall behind each cube's top row
   (`_anchored`; first tier only); its slopes fitted by distance to the side
@@ -339,7 +343,11 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   and 15% more parts, 97% in a part; a block turned 30 degrees about its up, its sides
 #   on their sides with slopes facing out; the 65 degree ledge laid upright. 2026-10-17
 #   on the unit 5 branch: 84 ok; sphere 416 on their sides (44), 1,948 parts (1,589);
-#   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81).
+#   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81). 2026-10-21, the
+#   fourth round (cubes at every phase, caps held by the core): 84 ok; sphere 386 on
+#   their sides (44), 1,832 parts (1,589, +15.3% of 25%); forty-stud bunny 420 (53),
+#   2,205 (1,943, +13.5% of 15%): near its bound, so a change that turns more must
+#   weigh the parts it costs.
 XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd \
     [-- --models=FILE@STUDS@UP,... --out=DIR]
 #   unit 7, buy it or build it from what you own (docs/BRICKIFY.md section 11): the
@@ -354,7 +362,10 @@ XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_
 #   pieces counted. Then laid from a collection of set 10698's 790 parts
 #   (SetInventories, never the person's): drawn, how, never more than on hand, the
 #   shortfall, the colour cost against the build laid without it, still one piece;
-#   and again taking any colour where it shows. --out writes NAME_STUDS.ldr with its
+#   and again taking any colour where it shows. "none held by nothing" caught unit 5's
+#   fourth round: four parts of the bunny's shells left resting on its core, held by
+#   no stud, until a shell was pruned again after parts were taken out of it
+#   (BrickifySteps.Plan.unheld_at names them). --out writes NAME_STUDS.ldr with its
 #   steps and buy.json. Broken on purpose (each part at its own course, or no step put
 #   in with the next) it fails: 352 held by nothing and the first step in 8 pieces;
 #   the fox's steps 8 and 9 with 3 stud joints overloaded. Its lists and files go to
@@ -474,6 +485,13 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/run   # where
 #   nearest a part on its side at 29.0°; side views' Hausdorff95 ("sides") 0.86 from 0.84;
 #   28 of 28 whole and one piece, the temple's moon kept; parts 8.1% more at 48. faces
 #   splits the steep faces by the part nearest (out_on_side, out_upright).
+#   2026-10-21, unit 5's fourth round (docs/BRICKIFY.md section 10): a job's "arms" may
+#   name "upright" (smooth with Options.snot false, the studs-up build SNOT is measured
+#   against); faces gives "turned", "turned_out" and "turned_down", the share of what
+#   faces out or down whose nearest part has its top toward it (up within 60 degrees);
+#   each smooth arm's JSON has "cubes_asked" and "cubes_turned" (every phase, by foot
+#   plate) and its joints past their load ("balance"."over_joints"); pictures --views
+#   corner,front,back,left,right,under draws each from every side and underneath.
 #   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
 #   48 studs 52,160 parts from 59,156 (2.42 times the greedy stack's from 2.74), 1x1s
 #   35.1% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.2% from 25.9%;
