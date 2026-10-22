@@ -97,8 +97,9 @@ try {
   const page = await context.newPage();
   listen(page, "visitor");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load", timeout: 60000 });
-  await page.waitForSelector("button[data-report]:not([hidden])", { timeout: 20000 });
-  // Report it is in the action bar's More (web/model-page.js).
+  // Report it is in the action bar's More (web/model-page.js): made live
+  // there by web/report.js, and seen only once More is open.
+  await page.waitForSelector("button[data-report]:not([hidden])", { state: "attached", timeout: 20000 });
   await page.click("#more > summary");
   await page.click("button[data-report]");
   await page.waitForSelector("dialog.report[open]", { timeout: 15000 });
