@@ -72,6 +72,10 @@ declare -A CMD=(
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
   [design]="tools/web/design_flow.mjs --url=$P --out=$S/${TAG}_design"
+  # local only: card_check.mjs. It compares the cards the checkout's api/
+  # makes with those its web/card.js draws in a browser, both from the same
+  # stand-in data; a deployment's cards come from the same file (deploy.sh
+  # copies web/card.js into each function), and [design] judges them there.
   # The theme (web/theme.js): System, Light and Dark chosen in the footer,
   # on Menu at 390 and from another tab for /admin and the Claude sign-in,
   # on every kind of page at 390 and 1280: at once, kept across a reload and

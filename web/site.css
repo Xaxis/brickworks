@@ -495,17 +495,17 @@ summary.pill::-webkit-details-marker { display: none; }
    (a byline), 40, .big 64 (your account), .huge 112 (a profile). */
 .avatar {
 	display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; overflow: hidden;
-	border-radius: 50%; background: var(--avatar, var(--avatar-8)); color: var(--on-avatar);
+	border-radius: 50%; background: var(--avatar-8); color: var(--on-avatar);
 	font-size: var(--t-h3); font-weight: 700; line-height: 1; text-transform: uppercase; user-select: none;
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar.small { width: 24px; height: 24px; font-size: var(--t-micro); }
 .avatar.big { width: 64px; height: 64px; font-size: var(--t-h2); }
 .avatar.huge { width: 112px; height: 112px; font-size: var(--t-h1); }
-.avatar.c1 { --avatar: var(--avatar-1); } .avatar.c2 { --avatar: var(--avatar-2); }
-.avatar.c3 { --avatar: var(--avatar-3); } .avatar.c4 { --avatar: var(--avatar-4); }
-.avatar.c5 { --avatar: var(--avatar-5); } .avatar.c6 { --avatar: var(--avatar-6); }
-.avatar.c7 { --avatar: var(--avatar-7); } .avatar.c8 { --avatar: var(--avatar-8); }
+.avatar.c1 { background: var(--avatar-1); } .avatar.c2 { background: var(--avatar-2); }
+.avatar.c3 { background: var(--avatar-3); } .avatar.c4 { background: var(--avatar-4); }
+.avatar.c5 { background: var(--avatar-5); } .avatar.c6 { background: var(--avatar-6); }
+.avatar.c7 { background: var(--avatar-7); } .avatar.c8 { background: var(--avatar-8); }
 
 /* An icon from the sprite (web/icons.svg, web/kit.js iconHtml), in the
    words' colour; filled when its button is pressed. */
@@ -545,11 +545,11 @@ summary.pill::-webkit-details-marker { display: none; }
    elsewhere or Escape. */
 .more-menu { position: relative; display: inline-block; }
 .more-menu .menu-list { z-index: 30; }
-.menu-list button {
+.menu-list > button {
 	justify-content: flex-start; min-height: 0; padding: 10px 12px; border: 0; border-radius: var(--r-1);
 	background: none; color: var(--ink-soft); font-size: var(--t-body); font-weight: 400; text-align: left;
 }
-.menu-list button:hover { background: var(--panel-hi); color: var(--ink); }
+.menu-list > button:hover { background: var(--panel-hi); color: var(--ink); }
 
 /* A page's own index (your account): its sections, in a rail beside them
    on a laptop and in a row across the top on a phone that scrolls inside

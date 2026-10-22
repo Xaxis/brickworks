@@ -189,7 +189,7 @@ function offScale() {
       const at = one.indexOf(":");
       if (at < 0) continue;
       const prop = one.slice(0, at).trim().toLowerCase();
-      const value = one.slice(at + 1).replace(/!important/i, "").trim();
+      const value = one.slice(at + 1).replace(/!important/i, "").replace(/;\s*$/, "").trim();
       if (!prop || !value) continue;
       const said = `${prop}: ${value}`;
       if (prop.startsWith("--")) {
@@ -291,6 +291,9 @@ const PAGES = [
       return [[opened ? "enter" : "enter (missing)", "dialog.enter"]];
     } },
   { name: "model-older", path: `/m/${stand.MODEL_ID}/v/1` },
+  // A model nobody has remixed or liked yet, as most of the live gallery
+  // is: its page says no count of none ("0 remixes").
+  { name: "model-quiet", path: "/m/DesignFox1", local: true },
   { name: "embed", path: `/m/${stand.MODEL_ID}/embed` },
   { name: "person", path: `/u/${stand.HANDLE}` },
   { name: "collection", path: `/c/${stand.LIST_ID}` },

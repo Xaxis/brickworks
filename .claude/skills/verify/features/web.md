@@ -648,9 +648,36 @@ plan with Claude as the client.
   header of four things and one footer, `web/_shell.html`,
   `tools/site_shell.py`), one type scale (`--t-*`) and rhythm (`--s-*`,
   `--page-top`, `--section`), the page template (`.page`, `.page-head`,
-  `.prose`), the one model card (`.model`, drawn by `web/cards.js`, in
-  `.models`, `.models.compact` or `.models.row`), `.state`, `.subnav`,
-  `.settings`/`.setting` and `.danger`.
+  `.prose`), the one model card (`.model`, in `.models`, `.models.compact`
+  or `.models.row`), `.state`, `.subnav`, `.settings`/`.setting` and
+  `.danger`. Since 2026-10-22 (docs/SOCIAL.md U2) only the token scale:
+  every font size `var(--t-*)`, every corner `var(--r-*)` (or
+  `--radius`, `--control-radius`, `0`, `50%`), every colour a token, in
+  site.css, directory.css, each page's `<style>` and the embed's; tokens
+  are made only in `:root`. And no count of none on a page ("0 likes",
+  "following 0"): a count a press can change is on the page `hidden`.
+- `model card` (`web/card.js`, 2026-10-22): one renderer, `cardHtml(model,
+  {earned})`, a pure string function; `modelCard` parses it in the
+  browser (gallery, landing strip, /profile), and the server's pages
+  draw with it through `api/_card.js` (a pass-through in a checkout;
+  `tools/deploy.sh` copies web/card.js over it in each function): /u/
+  (earned on a designer's page), /c/, and a model's remixes on /m/ (in
+  `.models.compact`; the `.mini` card is gone). Its picture is 4:3 by
+  `object-fit: cover` of the 1200 x 630 one; Tested is a `.pill.good`.
+- `card check` (`tools/web/card_check.mjs`, local only): below.
+- `component kit` (`web/kit.js`, `web/icons.svg`, site.css "the kit",
+  2026-10-22): `.pill` (`a`/`button`/`summary.pill` 32 px; `.good`,
+  `.new`, `.tag`; rows in `.pills`) for a model's facts and tags, its
+  Tested mark, the gallery's tag filter (`#chips`), a comment's "its
+  builder", the feed's New and whom you follow on /profile; `.tabs`;
+  `.avatar` (`avatarHtml`: a tile of `--avatar-1..8` by FNV-1a of the
+  handle, the first letter; sizes `.small`, `.big`, `.huge`), on /profile's
+  head (`#initial`); `.icon` and `.icon-btn` (`iconButtonHtml`: label
+  "Like, 12 likes", the count shown only when not zero, `aria-pressed` for
+  a toggle); `toast()`; `details.more-menu` with the header's
+  `.menu-list`, closed by a click elsewhere or Escape. `web/_kit.html` at
+  `/_kit` (served by the stand-in, never deployed: tools/site.py skips
+  "_" names) shows each.
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
   `[design]`): every page and dialog, below.
 - `theme choice` (2026-10-22, docs/SOCIAL.md U1): System, Light or Dark,
@@ -1988,7 +2015,9 @@ heavy node tools/web/design_flow.mjs --root=<an old export> --out=…   # an old
 node tools/web/design_flow.mjs --url=<preview>                        # a deployment's pages, the API stood in
 ```
 
-It visits home, gallery (its filters opened at 390), a model's page (signed
+It visits home, gallery (its filters opened at 390), a model nobody has
+remixed (`/m/DesignFox1`, local only), the kit page `/_kit` with its more
+menu open (local only), a model's page (signed
 out: Report it opens the report dialog; signed in: the collect panel, the
 comment form, and I built it's photo form with its file picker), the
 stand-in's own model signed in with Enter this month's challenge and its
@@ -2001,8 +2030,11 @@ guidelines, privacy, takedown and the 404 page, at 390 and 1280, light and
 dark, signed out and in. It fails a visible control the browser drew its
 own way (a `menulist` dropdown, a checkbox in its own colour, 13.33 px type),
 controls of one kind on a page that differ (fields in type, height,
-corners, border or fill; buttons of one size), and a page wider than 390
-with anything open. It proves it when it ends `design flow: N pages and
+corners, border or fill; buttons of one size), a page wider than 390
+with anything open, a count of none shown ("0 remixes", "following 0"),
+and, once each however many pages have it, any rule in a page's
+stylesheets, `<style>` or `style=""` with a font size, corner or colour off
+the token scale (`style: <sheet> | <selector> | <declaration>`). It proves it when it ends `design flow: N pages and
 dialogs, M controls; P checks passed, 0 failed` (2026-10-19: 188, 1,264,
 188, 0; with the challenge's page and dialog and /admin's date dropdowns,
 204, 1,464, 204, 0). On the site before the age fix (an export of `c98af5bd^`'s web/

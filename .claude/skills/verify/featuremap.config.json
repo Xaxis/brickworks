@@ -2647,6 +2647,27 @@
     },
     {
       "kind": "ui",
+      "label": "model card",
+      "entry": "web/card.js",
+      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card check",
+      "entry": "tools/web/card_check.mjs",
+      "reach": "node tools/web/card_check.mjs   (no network: the server's /c/<id> cards against the browser's, and sample cards by the server's module and the browser's; --root=DIR for another checkout)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "component kit",
+      "entry": "web/kit.js",
+      "reach": "the pill, tabs, avatar, icon buttons (web/icons.svg), the toast and the more menu (site.css \"the kit\"); all at once on /_kit when the checkout is served (web/_kit.html, never published); the avatar on /profile",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "theme choice",
       "entry": "web/theme.js",
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
