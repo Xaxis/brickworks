@@ -792,16 +792,16 @@ export const NEXT_LEAST = 3;
 /// The cards a model's page ends with: more by its designer, their other
 /// models in the gallery by Top builds; and similar models, of its kind or
 /// sharing its tags, the most tags shared first, then its kind, then Top
-/// builds. Never from who looked at what (D13). A card the page shows
+/// builds; or, with neither, the gallery's Top. Never from who looked at
+/// what (D13). A card the page shows
 /// already (the model, its remixes, a card in More by) is not shown again.
 /// Read through directory_models, as the gallery is, so a model taken out
 /// is never offered; a test model's own page, which only a probe has the
 /// link to, offers test models too, as it lists its test remixes
 /// (supabase/test_models.sql). The database not answering is no rows: the
 /// page is drawn without them, never refused.
-async function nextOf(origin, id, model) {
-  const none = { by: [], like: [] };
-  const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
+async function nextOf(origin, id, model, own) {
+  const none = { by: [], like: [], gallery: [] };
   if (!own) return none;
   const ask = (query) => db("rpc/directory_models", { method: "POST",
     body: { query: { sort: "top", tests: own.test === true, ...query } } }).catch(() => []);
@@ -825,7 +825,15 @@ async function nextOf(origin, id, model) {
   const like = [...found.values()].sort((a, b) => near(b) - near(a) || top(b) - top(a)
     || String(b.listed_at || "").localeCompare(String(a.listed_at || ""))).slice(0, NEXT_MOST);
   const cards = (rows) => (rows.length >= NEXT_LEAST ? rows.map((row) => cardOf(origin, row)) : []);
-  return { by: cards(by), like: cards(like) };
+  const next = { by: cards(by), like: cards(like), gallery: [] };
+  // Neither row: the gallery's own Top, so the page's last screen always
+  // has another model to open (docs/SOCIAL.md U4), however few there are.
+  if (!next.by.length && !next.like.length) {
+    const top = await ask({ size: NEXT_MOST + shown.size });
+    next.gallery = (top || []).filter((row) => row && !shown.has(row.id)).slice(0, NEXT_MOST)
+      .map((row) => cardOf(origin, row));
+  }
+  return next;
 }
 
 /// A row of cards the page ends with, or nothing for none.
@@ -866,11 +874,13 @@ function actionBar(origin, id, model) {
     + `<p class="said marks-said" role="status"></p>`;
 }
 
-/// /m/X: the model's own page. Its picture first, and beside it on a laptop
-/// (under it on a phone) what it is, who made it, the way into the viewer
-/// and the app, and the action bar; then its builds, versions, what its
-/// owner said, comments, licence and remix tree; and at the end more by its
-/// designer and similar models. Every word an owner typed is escaped.
+/// /m/X: the model's own page. Its picture first, with the strip of its
+/// other pictures, and beside it on a laptop (under it on a phone) what it
+/// is, who made it, the way into the viewer and the app, and the action
+/// bar; then its tabs, About (what its owner said, its tags and licence),
+/// Comments, Builds, Remixes and Versions, each a part of the page; and at
+/// the end more by its designer and similar models, or, with neither, the
+/// gallery's. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
 function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] }) {
@@ -882,6 +892,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const old = version.n !== newest;
   const title = old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
   const viewer = `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
+  const copyLink = `/app?copy=${id}${old ? `&v=${version.n}` : ""}`;
   const shownModel = old ? { ...model, parts: version.parts } : model;
   const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.png` : "")
     : (model.has_image ? `/m/${id}.png` : "");
@@ -911,8 +922,8 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     movesWords(model) ? `<li class="pill">${escapeHtml(`Moves: ${movesWords(model)}`)}</li>` : "",
     Number(model.views) ? `<li class="pill"><span data-count="views">${count(model.views, "view")}</span></li>` : "",
     `<li class="pill">${model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link"}</li>`,
-    newest > 1 ? `<li><a class="pill version-line" href="#versions-h">Version ${version.n}${old ? ` of ${newest}` : ""}</a></li>` : "",
-    Number(model.remixes) ? `<li><a class="pill" href="#tree-h">${count(model.remixes, "remix", "remixes")}</a></li>` : "",
+    newest > 1 ? `<li><a class="pill version-line" href="#versions">Version ${version.n}${old ? ` of ${newest}` : ""}</a></li>` : "",
+    Number(model.remixes) ? `<li><a class="pill" href="#remixes">${count(model.remixes, "remix", "remixes")}</a></li>` : "",
   ].join("");
   const tags = (model.tags || []).map((tag) =>
     `<li><a class="pill tag" href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
@@ -944,15 +955,18 @@ ${header}
   ${old ? `<p class="old-version" role="note"><b>An older version.</b> This is version ${version.n} of
     ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
   <div class="top">
+    <div class="media">
     <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
       ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
+    ${mediaStrip(model, picture, photos)}
+    </div>
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
       <div class="actions">
         <a class="cta" href="${escapeHtml(viewer)}" title="Turn it in 3D, step through its build, and get its booklet and parts list: no account needed">Build it</a>
-        <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
+        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
       </div>
       ${actionBar(origin, id, model)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark)}</li>` : ""}${facts}</ul>
@@ -960,33 +974,64 @@ ${header}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
-  ${buildsSection(id, model, photos)}
-  ${versionsSection(id, versions, version)}
-  ${model.description || tags ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
+  ${pageTabs(model, newest)}
+  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
-    ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}</section>` : ""}
+    ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
+    <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
   ${commentsSection(id, version.n, newest, version.steps ?? model.steps ?? null)}
-  <section class="licence" aria-labelledby="licence-h"><h2 id="licence-h">Licence</h2>
-    ${licenceWords(model)}</section>
-  <section class="tree" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
+  ${buildsSection(id, model, photos)}
+  <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
     ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
     ${listedRemixes.length || unlisted
       ? `<h3>Made from it</h3>${listedRemixes.length
         ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
         + (unlisted ? `<p class="note">${listedRemixes.length ? "And " : ""}${count(unlisted, "remix", "remixes")} `
           + `shared by link, not in the gallery.</p>` : "")
-      : `<p class="note">Nobody has remixed it yet. Open in Brickworks makes a copy of your own to change;
-        share that, and it shows here.</p>`}
+      : `<p class="note none">Nobody has remixed it yet. <a href="${escapeHtml(copyLink)}">Open it in Brickworks</a>
+        to make a copy of your own to change; share that, and it shows here.</p>`}
   </section>
+  ${versionsSection(id, versions, version)}
     </div>
   </div>
   ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by) : ""}
   ${nextRow("similar", "Similar models", next.like)}
+  ${nextRow("from-gallery", "More in the gallery", next.gallery || [])}
 </article>
 </main>
 ${footer}
 </body>
 </html>`;
+}
+
+/// The strip under the picture (docs/SOCIAL.md U4): the picture it was
+/// published with, then its owner's own photos, then the photos of real
+/// builds, each a link to its place under Builds; web/model-page.js shows
+/// the one chosen in the picture's place. With no photo it is drawn hidden,
+/// for its owner to add the first: model-page.js shows it to them alone.
+function mediaStrip(model, picture, photos) {
+  const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
+    + `width="96" height="72" loading="lazy" decoding="async"></a>`;
+  const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
+  return `<div class="media-strip" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
+    + (picture ? thumb(picture, `${model.name}, as it was published`,
+      `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
+    + photos.map((photo) => thumb(file(photo), photo.own ? `${model.name}, a photo by its designer`
+      : `A real build of ${model.name}${photo.by ? `, by ${photo.by.name}` : ""}`,
+    `href="#photo-${photo.id}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
+    + `<button type="button" class="thumb add" data-add-picture hidden>Add a picture</button></div>`;
+}
+
+/// The page's tabs (docs/SOCIAL.md U4): a link to each part below, with its
+/// count once there is one, kept on screen as the page scrolls; the one
+/// being read is marked by web/model-page.js, which also counts the
+/// comments as it lists them. Versions only once there are two.
+function pageTabs(model, newest) {
+  const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${name}`
+    + `${Number(n) ? ` <span class="n">${Number(n).toLocaleString("en-US")}</span>` : ""}</a>`;
+  return `<nav class="tabs page-tabs" id="page-tabs" aria-label="On this page">${tab("about", "About")}`
+    + `${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`
+    + `${newest > 1 ? tab("versions", "Versions", newest) : ""}</nav>`;
 }
 
 /// One photo of a real build, as the strip shows it: the photo, the line
@@ -1006,15 +1051,17 @@ function buildFigure(model, photo) {
 /// Built by people: how many have built it to the last step, the strip of
 /// photos of their real builds, and the way to add one (web/model-page.js
 /// shows the form to somebody signed in, and to the model's owner the
-/// photos they hid, with a way to hide each).
+/// photos they hid, with a way to hide each). Nobody yet is one line and
+/// the way in, never a count of none.
 function buildsSection(id, model, photos) {
   const builds = Number(model.builds) || 0;
   return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
     <h2 id="builds-h">Built by people</h2>
-    <p class="built-line">${builds ? `Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
-      + "by people following its steps in Brickworks." : "Nobody has followed its steps to the last one here yet."}</p>
+    ${builds ? `<p class="built-line">Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
+      + "by people following its steps in Brickworks.</p>" : ""}
     ${photos.length ? `<div class="build-strip">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
-      : `<p class="note no-builds">No photos of a real build yet. Built it? Add yours.</p>`}
+      : `<p class="note no-builds">${builds ? "No photos of a real build yet. Built it? Add yours."
+        : "Nobody has built it yet. Built it? Add a photo of yours."}</p>`}
     <div class="add-build" id="add-build" data-id="${id}" hidden>
       <button type="button" class="cta ghost" data-add-build>I built it: add a photo</button>
       <form class="build-form" hidden>
@@ -1083,7 +1130,7 @@ function versionsSection(id, versions, shown) {
     return `<li><a href="${href}">Version ${one.n}</a>${one.n === newest ? ", the newest" : ""}, `
       + `${when(one.at)}${words ? `: ${escapeHtml(words)}` : ""}${one.note ? ` <q>${escapeHtml(one.note)}</q>` : ""}</li>`;
   }).join("");
-  return `<section class="versions" aria-labelledby="versions-h"><h2 id="versions-h">Versions</h2>
+  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">Versions</h2>
     <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : `Version ${shown.n}, the first.`}
       <span class="when">${when(shown.at)}</span></p>
     ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
@@ -1270,9 +1317,16 @@ async function read(request, response) {
     const versions = await versionsOf(id, page);
     const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
     if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
+    // Whose it is: their own pictures lead its strip, and the page leads on
+    // to the rest of their work. The database not answering is no owner.
+    const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
     const [mark, photos, next] = await Promise.all([markOf(db, id, shown.n),
-      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page)]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), photos, next));
+      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own)]);
+    // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
+    // then the builds of everybody else, newest first.
+    const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
+      .sort((a, b) => Number(b.own) - Number(a.own));
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next));
   }
 
   const row = await publishedRow(id);

@@ -33,6 +33,19 @@
 //      (3) and no Similar (2 found); its remix at dusk has Similar (3: kind
 //      and a shared tag) and no More by (Jo has no other model).
 //   7. The paragraph that explained the buttons is gone.
+//   8. Tabs under it, About, Comments, Builds, Remixes and (with two or
+//      more) Versions, each with its count once there is one; a tab chosen
+//      brings its part to just under the tabs, which stay on screen under
+//      the header, marked as the one being read.
+//   9. A strip of its pictures under the picture: the published one first
+//      and marked, then the photos; choosing one shows it in the picture's
+//      place. With none it is not shown, but to its owner, who has Add a
+//      picture there, which opens the photo form.
+//  10. A model with no comments, builds or remixes (the stand-in's bakery,
+//      Sam's, shared by link) says so in one line each, with the way in,
+//      and shows no count of none anywhere.
+//  11. The last screen always has another model to open: with neither row,
+//      the gallery's own (More in the gallery).
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
 // Save's lists and More open.
@@ -70,8 +83,13 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // More by and in Similar (0 for no row). On a deployment, its own model, and
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
-  { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell" },
-  { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist" },
+  { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
+    tabs: ["About", "Comments 3", "Builds 37", "Remixes 3", "Versions 2"], thumbs: 3 },
+  { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
+    tabs: ["About", "Comments 1", "Builds 3", "Remixes", "Versions"].slice(0, 4), thumbs: 0 },
+  // Signed in, Sam's own: More has the owner's own in place of Report it.
+  { name: "bakery", path: "/m/SamModel02", by: 0, like: 0, gallery: true, favourite: false, designer: null,
+    tabs: ["About", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true },
 ];
 let remoteDb = "";
 const asProject = (text) => (remoteDb ? text.split(stand.DB).join(remoteDb) : text);
@@ -98,9 +116,9 @@ function read() {
     label: (b.getAttribute("aria-label") || "").replace(/^Saved$/, "Save"), n: b.querySelector(".n")?.textContent || "",
     box: box(b), pressed: b.getAttribute("aria-pressed"),
   }));
-  const rows = Object.fromEntries(["more-by", "similar"].map((key) => [key,
+  const rows = Object.fromEntries(["more-by", "similar", "from-gallery"].map((key) => [key,
     document.getElementById(key) ? document.querySelectorAll(`#${key} a.model`).length : 0]));
-  const zeros = [...document.querySelectorAll("#marks .n, .facts .pill")]
+  const zeros = [...document.querySelectorAll("#marks .n, .facts .pill, #page-tabs .n")]
     .filter((el) => el.getClientRects().length && /^0\b|(^|\s)0 \w/.test(el.textContent.trim()))
     .map((el) => el.textContent.trim());
   return {
@@ -114,6 +132,33 @@ function read() {
     bar: box(bar),
     side: box(document.querySelector(".model-page .side")),
     named, rows, zeros,
+    tabs: [...document.querySelectorAll("#page-tabs a")].filter((a) => !a.hidden)
+      .map((a) => a.textContent.replace(/\s+/g, " ").trim()),
+    strip: (() => {
+      const row = document.getElementById("pictures");
+      if (!row || row.hidden) return null;
+      return { thumbs: [...row.querySelectorAll("a.thumb")].map((a) => ({ href: a.getAttribute("href"),
+        current: a.getAttribute("aria-current") === "true" })),
+      add: !row.querySelector("[data-add-picture]").hidden, box: box(row) };
+    })(),
+    // The page's last cards, and any count of none said in words.
+    lastCards: (() => {
+      const rows = [...document.querySelectorAll("main .next")];
+      return rows.length ? rows[rows.length - 1].querySelectorAll("a.model").length : 0;
+    })(),
+    noneSaid: (document.querySelector("main")?.innerText.match(/(^|[^\d,])0 (comments?|builds?|built|remix(es)?|likes?|views?|photos?)\b/g) || []),
+    empties: {
+      comments: document.querySelector("#comments .comment-list .none")?.textContent || "",
+      commentsWayIn: Boolean([...document.querySelectorAll("#comments .comment-why button, #comments form.comment-new")]
+        .find((el) => !el.hidden && el.getClientRects().length)),
+      commentsLines: [...document.querySelectorAll("#comments p.note:not(.owner-line), #comments li.note")]
+        .filter((el) => !el.hidden && el.getClientRects().length && el.textContent.trim()).length,
+      builds: document.querySelector("#builds .no-builds")?.textContent || "",
+      buildsLines: [...document.querySelectorAll("#builds > p")].filter((el) => el.getClientRects().length && el.textContent.trim()).length,
+      buildsWayIn: Boolean([...document.querySelectorAll("#builds [data-add-build]")].find((el) => el.getClientRects().length)),
+      remixes: document.querySelector("#remixes .none")?.textContent.replace(/\s+/g, " ").trim() || "",
+      remixesWayIn: Boolean(document.querySelector('#remixes .none a[href^="/app?copy="]')),
+    },
     // The old paragraph that said what View in 3D and Open in Brickworks do.
     paragraph: /View in 3D turns it, steps through its build/.test(document.body.innerText),
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -223,10 +268,90 @@ try {
             if (one.by !== null) {
               check(`${label}: More by ${one.by ? `shows ${one.by}` : "is not shown"} (${seen.rows["more-by"]}), Similar ${one.like ? `shows ${one.like}` : "is not shown"} (${seen.rows.similar})`,
                 seen.rows["more-by"] === one.by && seen.rows.similar === one.like);
+              check(`${label}: More in the gallery ${one.gallery ? "shows, with neither row" : "is not shown"} (${seen.rows["from-gallery"]})`,
+                one.gallery ? seen.rows["from-gallery"] >= 1 && seen.rows["from-gallery"] <= 6 : seen.rows["from-gallery"] === 0);
             } else {
               check(`${label}: More by (${seen.rows["more-by"]}) and Similar (${seen.rows.similar}) each none or three to six`,
-                Object.values(seen.rows).every((n) => n === 0 || (n >= 3 && n <= 6)));
+                [seen.rows["more-by"], seen.rows.similar].every((n) => n === 0 || (n >= 3 && n <= 6)));
             }
+            // 11. Another model to open, at the end.
+            check(`${label}: the last screen has another model to open (${seen.lastCards} cards in its last row)`, seen.lastCards >= 1);
+
+            // 8. The tabs.
+            const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
+            const wantNames = ["About", "Comments", "Builds", "Remixes", "Versions"].slice(0, tabNames.includes("Versions") ? 5 : 4);
+            check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
+              : JSON.stringify(tabNames) === JSON.stringify(wantNames) || JSON.stringify(tabNames) === JSON.stringify(wantNames.filter((n) => n !== "Comments")));
+
+            // 9. The strip of its pictures.
+            if (one.thumbs !== undefined && !(signedIn && one.owner)) {
+              check(`${label}: the strip has ${seen.strip ? seen.strip.thumbs.length : "no"} pictures (${one.thumbs || "none"} wanted), the published one first and marked`,
+                one.thumbs ? seen.strip?.thumbs.length === one.thumbs && seen.strip.thumbs[0].current
+                  && !seen.strip.thumbs[0].href.startsWith("#") && seen.strip.thumbs.slice(1).every((t) => t.href.startsWith("#photo-"))
+                  && !seen.strip.add : seen.strip === null);
+            } else if (seen.strip) {
+              check(`${label}: the strip's first picture is the published one, marked`, seen.strip.thumbs[0]?.current === true);
+            }
+            if (seen.strip && seen.strip.thumbs.length > 1) {
+              await page.click("#pictures a.thumb:nth-of-type(2)");
+              await page.waitForTimeout(150);
+              const big = await page.evaluate(() => ({ src: document.querySelector(".model-page .picture img").getAttribute("src"),
+                photo: document.querySelector(".model-page .picture").classList.contains("photo"),
+                current: document.querySelector("#pictures a.thumb:nth-of-type(2)").getAttribute("aria-current"),
+                first: document.querySelector("#pictures a.thumb").getAttribute("aria-current"), y: scrollY }));
+              check(`${label}: choosing a photo in the strip shows it in the picture's place, whole (${big.src})`,
+                /op=photo_file&id=[A-Za-z0-9]{10}$/.test(big.src) && big.photo && big.current === "true" && big.first === null && big.y === 0);
+              if (out) await page.screenshot({ path: path.join(out, `${stem}_photo.png`) });
+              await page.click("#pictures a.thumb:nth-of-type(1)");
+            }
+            if (signedIn && one.owner) {
+              check(`${label}: its owner has Add a picture in the strip, shown though it has no photo (${JSON.stringify(seen.strip?.thumbs.length)} pictures)`,
+                Boolean(seen.strip?.add));
+              await page.click("#pictures [data-add-picture]");
+              const formOpen = await until(page, () => !document.querySelector("#builds .build-form").hidden, null, 4000);
+              check(`${label}: Add a picture opens the photo form`, formOpen);
+              await page.click("#builds .build-form [data-cancel]").catch(() => {});
+            }
+
+            // 10. Nothing yet, said once, with the way in.
+            check(`${label}: no count of none said in words (${seen.noneSaid.join(", ") || "none"})`, !seen.noneSaid.length);
+            if (one.empty) {
+              const e = seen.empties;
+              check(`${label}: no comments is one line, "${e.comments}", and the way in`,
+                e.comments === "Nobody has commented yet." && e.commentsLines === 1 && e.commentsWayIn);
+              check(`${label}: no builds is one line, "${e.builds}", and the way in`,
+                e.builds.startsWith("Nobody has built it yet.") && e.buildsLines === 1 && e.buildsWayIn);
+              check(`${label}: no remixes is one line, "${e.remixes.slice(0, 40)}…", and the way in`,
+                e.remixes.startsWith("Nobody has remixed it yet.") && e.remixesWayIn);
+            }
+
+            // 8b. A tab chosen: its part just under the tabs, the tabs on
+            // screen under the header, it marked; the page scrolled on, the
+            // tabs still there.
+            await page.click('#page-tabs a[data-tab="comments"]');
+            await page.waitForTimeout(250);
+            const went = await page.evaluate(() => {
+              const tabs = document.getElementById("page-tabs").getBoundingClientRect();
+              const head = document.querySelector(".site-head").getBoundingClientRect();
+              const part = document.getElementById("comments").getBoundingClientRect();
+              const end = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+              return { tabsTop: tabs.top, tabsBottom: tabs.bottom, head: head.bottom, part: part.top, end,
+                current: document.querySelector("#page-tabs [aria-current]")?.dataset.tab };
+            });
+            check(`${label}: the Comments tab brings the comments under the tabs (${Math.round(went.part)} px, tabs ${Math.round(went.tabsTop)}-${Math.round(went.tabsBottom)}), marked ${went.current}`,
+              went.current === "comments" && Math.abs(went.tabsTop - went.head) <= 2
+              && (went.end || (went.part >= went.tabsBottom - 1 && went.part <= went.tabsBottom + 40)));
+            await page.mouse.wheel(0, 500);
+            await page.waitForTimeout(300);
+            const later = await page.evaluate(() => ({ top: document.getElementById("page-tabs").getBoundingClientRect().top,
+              head: document.querySelector(".site-head").getBoundingClientRect().bottom,
+              rest: document.querySelector(".model-page .rest").getBoundingClientRect().bottom,
+              current: document.querySelector("#page-tabs [aria-current]")?.dataset.tab }));
+            check(`${label}: scrolled on, the tabs stay under the header (${Math.round(later.top)} px), marking ${later.current}`,
+              Boolean(later.current) && (Math.abs(later.top - later.head) <= 2 || later.rest < later.head + 120));
+            if (out) await page.screenshot({ path: path.join(out, `${stem}_tabs.png`) });
+            await page.evaluate(() => window.scrollTo(0, 0));
+            await page.waitForTimeout(150);
             if (out) await page.screenshot({ path: path.join(out, `${stem}.png`), fullPage: true, timeout: 60000 }).catch(() => {});
 
             // 3. Share: the link copied, and said.
@@ -241,8 +366,9 @@ try {
             await page.click("#more > summary");
             const more = await page.evaluate(() => [...document.querySelectorAll("#more .menu-list > *")]
               .filter((el) => !el.hidden && el.getClientRects().length).map((el) => el.textContent.trim()));
-            check(`${label}: More holds ${more.join(" | ")}`, ["Copy the embed code", "Report it", "Takedown requests"]
-              .every((want) => more.includes(want)));
+            const owns = signedIn && one.owner;
+            check(`${label}: More holds ${more.join(" | ")}`, ["Copy the embed code", owns ? "How your models are doing" : "Report it",
+              "Takedown requests"].every((want) => more.includes(want)) && (!owns || !more.includes("Report it")));
             if (out) await page.screenshot({ path: path.join(out, `${stem}_more.png`) });
             await page.click("#more [data-embed]");
             await page.waitForTimeout(150);

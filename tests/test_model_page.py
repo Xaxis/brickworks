@@ -18,9 +18,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def pages(*paths: str, failing: str = "") -> list[dict] | None:
+# A photo the watchtower's own designer, Robin, posted of it: the stand-in
+# has none, so the test adds it to what the database answers.
+OWNERS_PHOTO = {"id": "PhotoOwn01", "model": "DesignAbc1", "account": "11111111-1111-4111-8111-111111111111",
+                "words": "The banner, in the evening light.", "width": 1200, "height": 900,
+                "at": "2026-10-01T10:00:00Z", "hidden_at": None}
+
+
+def pages(*paths: str, failing: str = "", owners_photo: bool = False) -> list[dict] | None:
     """Each of [paths] as the server makes it: {status, html}. With
-    [failing], every database request whose address has it answers 500."""
+    [failing], every database request whose address has it answers 500;
+    with [owners_photo], the watchtower has a photo by its designer, the
+    oldest of its photos."""
     if shutil.which("node") is None:
         return None
     script = (
@@ -30,6 +39,13 @@ def pages(*paths: str, failing: str = "") -> list[dict] | None:
         "if (failing) { const real = globalThis.fetch;"
         "  globalThis.fetch = async (input, init) => String(input.url || input).includes(failing)"
         "    ? new Response('{}', { status: 500 }) : real(input, init); }"
+        f"const owners = {json.dumps(OWNERS_PHOTO if owners_photo else None)};"
+        "if (owners) { const real = globalThis.fetch;"
+        "  globalThis.fetch = async (input, init) => { const url = String(input.url || input);"
+        "    const answer = await real(input, init);"
+        "    if (!/build_photos\\?model=eq\\.DesignAbc1&/.test(url)) return answer;"
+        "    const rows = await answer.json(); return new Response(JSON.stringify([...rows, owners]),"
+        "      { status: 200, headers: { 'content-type': 'application/json' } }); }; }"
         "const out = [];"
         f"for (const path of {json.dumps(list(paths))}) {{ const r = await s.serverPage('api', path);"
         "  out.push({ status: r.status, html: r.html }); }"
@@ -106,3 +122,76 @@ def test_the_page_is_drawn_without_what_comes_next_when_the_database_will_not_sa
     assert page["status"] == 200
     assert row(page["html"], "more-by") is None and row(page["html"], "similar") is None
     assert "<h1>Riverside Watchtower</h1>" in page["html"]
+
+
+def strip(html: str) -> list[str] | None:
+    """What the strip under the picture links to, in order, or None when it
+    is drawn hidden."""
+    found = re.search(r'<div class="media-strip" id="pictures"([^>]*)>([\s\S]*?)</div>', html)
+    assert found, "no strip"
+    if "hidden" in found.group(1):
+        return None
+    return re.findall(r'<a class="thumb" href="([^"]+)"', found.group(2))
+
+
+def tabs(html: str) -> list[str]:
+    nav = re.search(r'<nav class="tabs page-tabs" id="page-tabs"[\s\S]*?</nav>', html)
+    assert nav, "no tabs"
+    return [re.sub(r"<[^>]+>", "", one).strip() for one in re.findall(r"<a [^>]*>([\s\S]*?)</a>", nav.group(0))]
+
+
+def test_the_strip_leads_with_the_published_picture_then_the_owners_photos_then_builds() -> None:
+    said = pages("/m/DesignAbc1", "/m/SamModel02", owners_photo=True)
+    if said is None:
+        return
+    tower, bakery = (one["html"] for one in said)
+    # The owner's photo is the oldest, yet it comes before the builds by
+    # Priya (16 October) and Jo (12 October), newest first.
+    assert strip(tower) == ["/m/DesignAbc1.png", "#photo-PhotoOwn01", "#photo-PhotoBbb02", "#photo-PhotoAaa01"]
+    assert 'alt="Riverside Watchtower, a photo by its designer"' in tower
+    assert re.search(r'<a class="thumb" href="/m/DesignAbc1.png"[^>]*aria-current="true"', tower)
+    # And in Built by people, the same order.
+    assert re.findall(r'<figure class="build" id="photo-([A-Za-z0-9]{10})"', tower) == [
+        "PhotoOwn01", "PhotoBbb02", "PhotoAaa01"]
+    # No photo: drawn hidden, for its owner's Add a picture alone.
+    assert strip(bakery) is None
+    assert "data-add-picture hidden" in bakery
+
+
+def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
+    said = pages("/m/DesignAbc1", "/m/SamModel02")
+    if said is None:
+        return
+    tower, bakery = (one["html"] for one in said)
+    # Comments are counted as they are listed, in the page (model-page.js).
+    assert tabs(tower) == ["About", "Comments", "Builds 37", "Remixes 3", "Versions 2"]
+    assert tabs(bakery) == ["About", "Comments", "Builds", "Remixes"]
+    for html in (tower, bakery):
+        for key in ("about", "comments", "builds", "remixes"):
+            assert f'id="{key}"' in html, key
+    assert 'id="versions"' in tower and 'id="versions"' not in bakery
+
+
+def test_a_model_nobody_has_built_or_remixed_says_so_once_with_the_way_in() -> None:
+    said = pages("/m/SamModel02")
+    if said is None:
+        return
+    page = said[0]["html"]
+    builds = re.search(r'<section class="builds"[\s\S]*?<div class="add-build"', page).group(0)
+    assert re.findall(r"<p[^>]*>([\s\S]*?)</p>", builds) == ["Nobody has built it yet. Built it? Add a photo of yours."]
+    remixes = re.search(r'<section class="tree" id="remixes"[\s\S]*?</section>', page).group(0)
+    assert "Nobody has remixed it yet." in remixes and 'href="/app?copy=SamModel02"' in remixes
+    assert not re.search(r">0 |\b0 (views|likes|remixes|built|builds)\b", page)
+
+
+def test_with_neither_row_the_page_ends_on_the_gallerys_own() -> None:
+    said = pages("/m/SamModel02", "/m/DesignAbc1")
+    if said is None:
+        return
+    bakery, tower = (one["html"] for one in said)
+    # Sam's bakery: no credit, no kind's or tags' three; the gallery's Top.
+    assert row(bakery, "more-by") is None and row(bakery, "similar") is None
+    shown = row(bakery, "from-gallery")
+    assert shown and 1 <= len(shown) <= 6 and "SamModel02" not in shown
+    # A page with a row of its own does not add the gallery's.
+    assert row(tower, "from-gallery") is None

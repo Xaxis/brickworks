@@ -30,6 +30,78 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
+// The strip of its pictures (api/share.js mediaStrip): the one chosen is
+// shown in the picture's place, whole, and edged in the strip. The picture
+// is still the way into the viewer.
+const strip = document.getElementById("pictures");
+if (strip) startPictures(strip);
+// The page's tabs: the part being read is marked as the page scrolls.
+const tabs = document.getElementById("page-tabs");
+if (tabs) startTabs(tabs);
+
+function startPictures(row) {
+  const big = document.querySelector(".model-page .picture");
+  const img = big && big.querySelector("img");
+  if (!img) return;
+  row.addEventListener("click", (event) => {
+    const thumb = event.target.closest("a.thumb[data-picture]");
+    if (!thumb) return;
+    event.preventDefault();
+    img.src = thumb.dataset.picture;
+    img.alt = thumb.querySelector("img")?.alt || img.alt;
+    // The published picture fills its frame; a photo is shown whole.
+    big.classList.toggle("photo", thumb.getAttribute("href").startsWith("#"));
+    for (const one of row.querySelectorAll("a.thumb")) one.removeAttribute("aria-current");
+    thumb.setAttribute("aria-current", "true");
+  });
+}
+
+/// The tab of the part at the top of the screen, under the tabs; a tab
+/// chosen stays marked until the reader scrolls on themselves, since the
+/// last parts are often too short to reach the top.
+function startTabs(nav) {
+  const links = [...nav.querySelectorAll("a[data-tab]")];
+  let held = "";
+  let queued = false;
+  const mark = (key) => {
+    for (const link of links) {
+      if (link.dataset.tab === key) link.setAttribute("aria-current", "true");
+      else link.removeAttribute("aria-current");
+    }
+  };
+  const stuckAt = parseFloat(getComputedStyle(nav).top) || 0;
+  const reading = () => {
+    queued = false;
+    // Only stuck under the header does it need a ground of its own: under
+    // the picture, it would cut across the picture's shadow.
+    nav.classList.toggle("loose", nav.getBoundingClientRect().top > stuckAt + 1);
+    if (held) return mark(held);
+    const line = nav.getBoundingClientRect().bottom + 16;
+    let key = links[0]?.dataset.tab || "";
+    for (const link of links) {
+      const part = document.getElementById(link.dataset.tab);
+      if (part && !part.hidden && !link.hidden && part.getBoundingClientRect().top <= line) key = link.dataset.tab;
+    }
+    mark(key);
+  };
+  addEventListener("scroll", () => {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(reading);
+    }
+  }, { passive: true });
+  for (const name of ["wheel", "touchmove", "keydown"]) {
+    addEventListener(name, () => { held = ""; }, { passive: true });
+  }
+  nav.addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-tab]");
+    if (!link) return;
+    held = link.dataset.tab;
+    mark(held);
+  });
+  reading();
+}
+
 function startComments(section) {
   const model = section.dataset.id;
   const version = Number(section.dataset.version) || 1;
@@ -122,7 +194,10 @@ function startComments(section) {
       item.append(acts);
       list.append(item);
     }
-    if (!(state.comments || []).length) {
+    // None yet: one line, and the way in (the box, or Sign in to comment).
+    const empty = !(state.comments || []).length;
+    section.querySelector(".comments-lede").hidden = empty;
+    if (empty) {
       const none = document.createElement("li");
       none.className = "note none";
       none.textContent = state.open ? "Nobody has commented yet." : "No comments.";
@@ -136,7 +211,7 @@ function startComments(section) {
       const words = document.createElement("p");
       words.className = "note";
       words.textContent = you.why_not || "";
-      why.append(words);
+      if (you.signed_in || !empty) why.append(words);
       if (!you.signed_in) {
         why.append(button("Sign in to comment", async () => {
           if (await askToSignIn("Sign in to add a comment: we email you a code, no password.")) await load();
@@ -225,9 +300,16 @@ function buildPhotos(box) {
   const said = form.querySelector(".said");
   const told = box.querySelector(".build-said");
   const strip = () => document.querySelector("#builds .build-strip");
+  const pictures = document.getElementById("pictures");
+  const addPicture = pictures && pictures.querySelector("[data-add-picture]");
   const MOST = 8 * 1024 * 1024;
   let state = null;
   box.hidden = false;
+  // The owner's own pictures go the same way, from the strip's last tile.
+  addPicture?.addEventListener("click", () => {
+    document.getElementById("builds")?.scrollIntoView({ block: "start" });
+    open.click();
+  });
 
   const say = (text) => { said.textContent = text; };
 
@@ -239,8 +321,17 @@ function buildPhotos(box) {
     if (answer.status !== 200) return;
     state = answer.body;
     if (state.left === 0) open.textContent = "You have added three photos: the most";
+    else if (state.owner) open.textContent = "Add a picture of it";
     open.disabled = state.left === 0;
     if (state.owner) ownerTools(state.photos || []);
+    // Its owner adds pictures of their own under the picture: they lead
+    // the strip (api/share.js mediaStrip), shown to them even while empty.
+    if (state.owner && addPicture) {
+      pictures.hidden = false;
+      addPicture.hidden = false;
+      addPicture.disabled = state.left === 0;
+      addPicture.textContent = state.left === 0 ? "Three added" : "Add a picture";
+    }
     document.documentElement.dataset.buildPhotos = state.owner ? "owner" : "ready";
   }
 
@@ -373,6 +464,24 @@ function buildPhotos(box) {
     caption.append(by);
     figure.append(img, caption);
     row.prepend(figure);
+    // And in the strip under the picture: the owner's with theirs, first.
+    if (pictures) {
+      const thumb = document.createElement("a");
+      thumb.className = "thumb";
+      thumb.href = `#photo-${photo.id}`;
+      thumb.dataset.picture = img.src;
+      if (state?.owner) thumb.dataset.own = "";
+      const small = document.createElement("img");
+      small.src = img.src;
+      small.alt = state?.owner ? "Your picture of it" : "Your build";
+      thumb.append(small);
+      const own = pictures.querySelectorAll("a.thumb[data-own]");
+      const after = state?.owner ? pictures.querySelector("a.thumb:not([href^='#'])") : own[own.length - 1]
+        || pictures.querySelector("a.thumb:not([href^='#'])");
+      if (after) after.after(thumb);
+      else pictures.prepend(thumb);
+      pictures.hidden = false;
+    }
   }
 
   load();
@@ -414,6 +523,19 @@ function setCount(button, n, name, one, many = `${one}s`) {
   if (shown && !value) shown.remove();
   else if (shown) shown.textContent = value.toLocaleString("en-US");
   button.setAttribute("aria-label", value ? `${name}, ${value.toLocaleString("en-US")} ${value === 1 ? one : many}` : name);
+}
+
+/// A tab's count (api/share.js pageTabs), never one of none.
+function tabCount(tab, n) {
+  const value = Number(n) || 0;
+  let shown = tab.querySelector(".n");
+  if (!value) return shown?.remove();
+  if (!shown) {
+    shown = document.createElement("span");
+    shown.className = "n";
+    tab.append(" ", shown);
+  }
+  shown.textContent = value.toLocaleString("en-US");
 }
 
 /// [text] on the clipboard: the browser's clipboard where the page may use
@@ -626,7 +748,13 @@ function commentsSaid(state, setOpen) {
   const comment = marks && marks.querySelector('[data-mark="comment"]');
   if (!comment) return;
   comment.hidden = state.ready === false;
-  setCount(comment, (state.comments || []).filter((one) => !one.hidden).length, "Comment", "comment");
+  const shown = (state.comments || []).filter((one) => !one.hidden).length;
+  setCount(comment, shown, "Comment", "comment");
+  const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
+  if (tab) {
+    tab.hidden = state.ready === false;
+    tabCount(tab, shown);
+  }
   const menu = marks.querySelector("#more .menu-list");
   for (const old of menu.querySelectorAll(".owner-only")) old.remove();
   if (!state.you?.owner) return;

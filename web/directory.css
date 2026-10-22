@@ -3,11 +3,13 @@
   they have and the site's other pages do not.
 
   A shared model's page, /m/<id> (api/share.js): the picture first and
-  large; beside it on a laptop, in a column that stays on screen as the page
-  scrolls, what it is, who made it, Build it and the action bar; under it on
-  a phone, so the picture, the name, the designer and the action bar are
-  the first screen. Then its builds, versions, words, comments, licence and
-  remix tree, and at the end more by its designer and similar models.
+  large, with a strip of its other pictures under it; beside it on a
+  laptop, in a column that stays on screen as the page scrolls, what it is,
+  who made it, Build it and the action bar; under it on a phone, so the
+  picture, the name, the designer and the action bar are the first screen.
+  Then tabs that stay on screen, About, Comments, Builds, Remixes and
+  Versions, each a part of the page; and at the end more by its designer
+  and similar models, or the gallery's.
 */
 .model-page { padding: 22px 0 72px; }
 .crumbs { font-size: var(--t-small); color: var(--ink-faint); margin: 0 0 14px; }
@@ -17,7 +19,7 @@
 	grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
 	grid-template-areas: "picture side" "rest side";
 }
-.model-page .picture { grid-area: picture; }
+.model-page .media { grid-area: picture; min-width: 0; }
 .model-page .side { grid-area: side; position: sticky; top: 84px; min-width: 0; }
 .model-page .rest { grid-area: rest; min-width: 0; }
 @media (max-width: 900px) {
@@ -41,6 +43,36 @@
 	background: var(--accent); color: var(--on-accent); font-weight: 650; font-size: var(--t-small);
 }
 .model-page .picture:hover .go { filter: brightness(1.07); }
+
+/* The strip of its pictures (api/share.js mediaStrip): the one it was
+   published with, its owner's photos, then photos of real builds; the one
+   shown in the picture's place edged in the accent. It scrolls across on
+   its own, never the page. A photo shown large is shown whole. */
+.media-strip {
+	display: flex; gap: var(--s-2); margin-top: var(--s-3); padding: 3px;
+	overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
+}
+.media-strip[hidden] { display: none; }
+.media-strip .thumb {
+	flex: none; display: block; width: 96px; height: 72px; padding: 0; overflow: hidden;
+	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft);
+}
+.media-strip .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.media-strip .thumb[aria-current="true"] { outline: 2px solid var(--accent-edge); outline-offset: 1px; }
+.media-strip .thumb.add {
+	display: inline-grid; place-items: center; border-style: dashed; cursor: pointer;
+	font: inherit; font-size: var(--t-tiny); font-weight: 600; color: var(--ink-soft); line-height: 1.2;
+}
+.media-strip .thumb.add:hover { color: var(--ink); border-color: var(--ink-faint); }
+.media-strip .thumb.add[hidden] { display: none; }
+.model-page .picture.photo img { object-fit: contain; background: var(--bg-soft); }
+@media (max-width: 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
+
+/* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
+   under the header as the page scrolls past its parts. */
+.model-page .page-tabs { position: sticky; top: 61px; z-index: 5; background: var(--bg); margin-bottom: var(--s-2); }
+.model-page .page-tabs.loose { background: none; }
+.model-page .rest > section { scroll-margin-top: 124px; }
 
 .model-page h1 { font-size: var(--t-h1); margin: 0 0 12px; overflow-wrap: anywhere; line-height: 1.15; }
 .model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
@@ -84,13 +116,14 @@
 .model-page .next h2 a { color: inherit; }
 
 .model-page section { margin-top: 34px; max-width: 72ch; }
-.model-page .rest > section:first-child { margin-top: 12px; }
+.model-page .rest > section:first-of-type { margin-top: 12px; }
 /* Gone to from the action bar: clear of the header, which stays on screen. */
 .model-page section { scroll-margin-top: 84px; }
 .model-page section h2 { font-size: var(--t-h3); margin: 0 0 8px; }
 .model-page section h3 { font-size: var(--t-small); margin: 16px 0 8px; color: var(--ink-soft); font-weight: 600; }
 .model-page .tags { margin: 18px 0 0; }
 .model-page .description { margin: 0; white-space: pre-line; overflow-wrap: anywhere; color: var(--ink); }
+.model-page .licence h3 { margin-top: 18px; }
 .model-page .licence p { margin: 0; color: var(--ink-soft); }
 .model-page .licence b { color: var(--ink); }
 
