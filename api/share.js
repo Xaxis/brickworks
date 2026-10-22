@@ -22,19 +22,22 @@
 //                            cards show, made by the app beside the big one
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
 //                            a time, searched (q), filtered (kind, size,
-//                            instructions, technic, tested, tag) and sorted
-//                            (sort: newest, views, likes, remixes, builds,
-//                            top); with tests=1, test models too, which
-//                            nobody else is shown
+//                            instructions, technic, tested, tag, made:
+//                            hand or assistant) and sorted (sort: newest,
+//                            views, likes, remixes, builds, top; window:
+//                            week or month, Top's); with tests=1, test
+//                            models too, which nobody else is shown
 //   GET  ?op=shelves         /gallery's front: this week's pick and the small
 //                            builds' shelf (supabase/discovery.sql); tests=1
 //                            as the list
 //   GET  ?op=list&mine=1     the list, with the session: each card's share of
-//   GET  ?op=shelves&mine=1  its parts the person owns (owned), the sort
-//                            owned (Parts I own) and ready=1 (only what they
-//                            can build now) on the list, and the shelf of
-//                            what they can build now on the front; never
-//                            kept by the CDN
+//   GET  ?op=shelves&mine=1  its parts the person owns (owned) and whether
+//                            they like it (liked), the sort owned (Parts I
+//                            own), ready=1 (only what they can build now)
+//                            and following=1 (the models of the people they
+//                            follow) on the list, and the shelf of what
+//                            they can build now on the front; never kept
+//                            by the CDN
 //   GET  ?op=tested&id=X     the owner's own: what the app found of the
 //                            newest version, every test and why, passed
 //                            or not (with v=N, version N's)
@@ -141,7 +144,7 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf,
+  KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   listQuery, looksLikePerson, modelHash, motionsIn, movesWords, partFacts, siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
@@ -1276,15 +1279,22 @@ async function read(request, response) {
 }
 
 /// /gallery's models, a page at a time: the listed ones a query asks for
-/// (api/_directory.js listQuery), through directory_models, which says
-/// for itself what a visitor may see. With the kinds, sizes and sorts it
-/// knows, so a client can ask in its words.
+/// (api/_directory.js listQuery), through gallery_models, which says for
+/// itself what a visitor may see. With the kinds, sizes, sorts, Top's
+/// windows and how a model was made, so a client can ask in its words;
+/// signed in, whether they like each, and Following.
+///
+/// Until supabase/gallery_tabs.sql is applied there is no gallery_models:
+/// the list is asked of directory_models, as before, and says nothing of
+/// windows, Made or Following, so the page offers none of them; a question
+/// that asks one is refused in words (400), never a 500.
 async function gallery(request, response, origin) {
   const mine = await whoseOwn(request, origin);
   let asked;
   let said;
   try {
-    ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool) }));
+    ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool),
+      signedIn: Boolean(mine) }));
   } catch (trouble) {
     // Signed in, with nothing in their collection to sort or filter by.
     if (mine && trouble instanceof Unacceptable && trouble.status === 401) {
@@ -1295,7 +1305,22 @@ async function gallery(request, response, origin) {
   }
   // Their shares only once there is something to share of.
   if (mine?.pool) asked.pool = mine.account;
-  const rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
+  if (asked.following) asked.following = mine.account;
+  let rows;
+  let tabs = true;
+  try {
+    rows = await db("rpc/gallery_models", { method: "POST", body: { query: asked } });
+  } catch (trouble) {
+    if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
+    if (asked.following || asked.days || asked.made) {
+      throw new Unacceptable("Following, Made and Top's time windows are not here yet: they come with "
+        + "the gallery's next update.");
+    }
+    tabs = false;
+    rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
+  }
+  const models = await withWins(rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)), Boolean(said.tests));
+  if (mine) await withLiked(models, mine.account);
   // Kept briefly by the CDN, like the pages: the same question asked by
   // a hundred phones is one call to the database. Never with test models,
   // nor anybody's own shares.
@@ -1305,13 +1330,34 @@ async function gallery(request, response, origin) {
     per_page: PER_PAGE,
     more: rows.length > PER_PAGE,
     // What each won in the monthly challenges (supabase/challenges.sql).
-    models: await withWins(rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)), Boolean(said.tests)),
+    models,
     kinds: KINDS,
     sizes: Object.entries(SIZES).map(([id, size]) => ({ id, label: size.label })),
     sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
+    ...(tabs ? {
+      windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
+      mades: Object.entries(MADES).map(([id, label]) => ({ id, label })),
+      following: Boolean(mine),
+    } : {}),
     score: SCORE,
     ...(mine ? { mine: mine.pool } : {}),
   });
+}
+
+/// Which of [cards] [account] likes, said on each (liked), for the hearts
+/// on the cards: their own, so only in an answer never kept by the CDN.
+/// Left unsaid when it cannot be read.
+async function withLiked(cards, account) {
+  const ids = cards.map((one) => String(one.id)).filter((id) => ID.test(id));
+  if (!ids.length) return cards;
+  try {
+    const liked = new Set((await db(`model_likes?account=eq.${account}&model=in.(${[...new Set(ids)].join(",")})&select=model`))
+      .map((row) => row.model));
+    for (const one of cards) one.liked = liked.has(one.id);
+  } catch {
+    // Unsaid: the hearts are drawn as not pressed.
+  }
+  return cards;
 }
 
 /// The person asking with &mine=1, and what their collection holds as the
@@ -1420,16 +1466,20 @@ async function shelves(request, response, origin) {
     // The monthly challenge open now, or the next (supabase/challenges.sql).
     challengeLine(tests),
   ]);
+  const cards = {
+    ready: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
+    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? cardOf(origin, pick.card) : null,
+    small: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
+  };
+  if (mine) await withLiked([...cards.ready, ...(cards.pick ? [cards.pick] : []), ...cards.small], mine.account);
   response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
-    ...(mine ? { mine: mine.pool, ready: { models: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
-      more: (ready || []).length > SHELF } } : {}),
-    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? {
+    ...(mine ? { mine: mine.pool, ready: { models: cards.ready, more: (ready || []).length > SHELF } } : {}),
+    pick: cards.pick ? {
       chosen: pick.chosen === true, until: pick.chosen === true ? pick.until ?? null : null,
-      week: weekOf(pick.week), model: cardOf(origin, pick.card),
+      week: weekOf(pick.week), model: cards.pick,
     } : null,
-    small: { size: "small", label: SIZES.small.label, most: SIZES.small.most,
-      models: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
+    small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: cards.small,
       more: (small || []).length > SHELF },
     challenge,
     score: SCORE,

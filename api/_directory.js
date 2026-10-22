@@ -9,6 +9,7 @@
 
 import { createHash, createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
+import { ASSISTANT_TAGS } from "./_card.js";
 
 /// The kinds of model the gallery filters by. The same ids, in the same
 /// order, as src/net/model_kinds.gd, which guesses one from a model's name
@@ -65,6 +66,18 @@ export const SORTS = {
   // By SCORE (supabase/discovery.sql gallery_score).
   top: "Top builds",
 };
+
+/// Top's time windows (docs/SOCIAL.md D6): the builds finished and the
+/// remixes listed in the past [days], with the Tested mark, as this week's
+/// pick weighs its week (supabase/gallery_tabs.sql gallery_models). All
+/// time is none.
+export const WINDOWS = { week: { days: 7, label: "This week" }, month: { days: 30, label: "This month" } };
+
+/// How a model was made, as its tags say until the app says it as it
+/// publishes (D7): with the assistant or Brickify (web/card.js
+/// ASSISTANT_TAGS, the same two the SQL reads), or by hand, every other.
+export const MADES = { hand: "Hand-built", assistant: "With the assistant" };
+export { ASSISTANT_TAGS };
 
 /// The sorts only a signed-in person with a collection is offered (the list
 /// asked with mine=1): the largest share of its parts they own first
@@ -252,8 +265,11 @@ export function testsAsked(query) {
 export const TESTS_CACHE = "private, no-store";
 
 /// The list's query string, checked: {asked, said}. asked is what
-/// directory_models takes; said is the query as understood, for the answer.
-export function listQuery(query, perPage, mostPages, { mine = false } = {}) {
+/// gallery_models (or directory_models) takes; said is the query as
+/// understood, for the answer. [signedIn]: asked with a sign-in, which
+/// Following needs; asked.following is then true, for the caller to make
+/// the account's.
+export function listQuery(query, perPage, mostPages, { mine = false, signedIn = false } = {}) {
   const page = Number(query.page ?? 1);
   if (!Number.isInteger(page) || page < 1 || page > mostPages) {
     throw new Unacceptable(`page is a whole number from 1 to ${mostPages}`);
@@ -285,6 +301,18 @@ export function listQuery(query, perPage, mostPages, { mine = false } = {}) {
     said[name] = true;
     asked[column] = true;
   }
+  const made = String(query.made ?? "");
+  if (made) {
+    if (!(made in MADES)) throw new Unacceptable(`made is one of ${Object.keys(MADES).join(", ")}`);
+    said.made = asked.made = made;
+  }
+  // The models of the people the asker follows, credited to them.
+  const followed = String(query.following ?? "").toLowerCase();
+  if (followed && followed !== "0" && followed !== "false") {
+    if (!YES.has(followed)) throw new Unacceptable("following is 1 or left out");
+    if (!signedIn) throw new Unacceptable("sign in, and ask with mine=1, to see the models of the people you follow", 401);
+    said.following = asked.following = true;
+  }
   const tag = query.tag === undefined ? "" : cleanTag(query.tag);
   if (query.tag !== undefined && String(query.tag) !== "") {
     if (tag.length < 2) throw new Unacceptable("a tag is two letters or more");
@@ -297,6 +325,13 @@ export function listQuery(query, perPage, mostPages, { mine = false } = {}) {
       : `sort is one of ${Object.keys(sorts).join(", ")}`, sort in MINE_SORTS ? 401 : 400);
   }
   said.sort = asked.sort = sort;
+  const span = String(query.window ?? "");
+  if (span) {
+    if (!(span in WINDOWS)) throw new Unacceptable(`window is one of ${Object.keys(WINDOWS).join(", ")}`);
+    if (sort !== "top") throw new Unacceptable("a window is Top's: ask it with sort=top");
+    said.window = span;
+    asked.days = WINDOWS[span].days;
+  }
   // Only what the asker can build now, every piece in their collection.
   const ready = String(query.ready ?? "").toLowerCase();
   if (ready && ready !== "0" && ready !== "false") {
@@ -387,6 +422,9 @@ export function cardOf(origin, row) {
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     // How many have built it to the last step (supabase/builds.sql).
     builds: Number(row.builds) || 0,
+    // What was said about it that anybody may read (supabase/gallery_tabs.sql);
+    // none before.
+    comments: Number(row.comments) || 0,
     // What moves in it, as its app found (supabase/play.sql); none before.
     moves: movesOf(row.moves),
     // Its own motions, by name, read from the text published

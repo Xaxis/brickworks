@@ -1,14 +1,24 @@
 // A shared model's card, the one every page draws (site.css .model): the
 // gallery, the landing page's strip, a profile, a collection, a model's
-// remixes, your account. Its picture, its name, its parts and who made it,
-// its numbers once there are any, and what it has: how much of it your
-// collection holds, what it won, what moves in it, the Tested mark.
+// remixes, your account. Its picture with its marks over a corner (Tested,
+// made with the assistant), its name, who made it with their avatar and a
+// link to their profile, its size, what it has (how much of it your
+// collection holds, what it won, what moves in it), and its numbers once
+// there are any: a like, which the gallery lets you give from the card,
+// the builds finished and the comments, each as an icon and a count.
 //
 // One renderer for the server and the browser: cardHtml is a pure string
 // function, so api/people.js and api/share.js put it in the pages they
 // make and modelCard parses the same string here. There were three that
 // differed (docs/SOCIAL.md, section 1); tools/web/card_check.mjs proves a
-// server-made card and a browser-made one are the same markup.
+// server-made card and a browser-made one are the same markup. A
+// deployment copies this file alone beside its functions (tools/deploy.sh),
+// so it imports nothing: the kit's avatar and icons are made here, and
+// web/kit.js passes them on.
+//
+// The card is an article, not a link: its name is the link to the model's
+// page, stretched over the whole card (site.css), so the designer's name
+// and the like button inside it can be links and buttons of their own.
 //
 // Names and credits were typed by strangers, so every word is escaped;
 // the link is built from the model's id alone, and the caller passes only
@@ -23,6 +33,60 @@ export const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
 export function counted(n, one, many) {
   const value = Number(n) || 0;
   return `${value.toLocaleString("en-US")} ${value === 1 ? one : many || `${one}s`}`;
+}
+
+/// Which of the eight avatar tiles a handle has (1-8): the same every time
+/// and on every page, spread evenly (FNV-1a of the handle).
+export function avatarTone(handle) {
+  let hash = 0x811c9dc5;
+  for (const c of String(handle || "").toLowerCase()) {
+    hash ^= c.codePointAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return (hash % 8) + 1;
+}
+
+/// A person's avatar: their picture when they have one, else a tile in
+/// their handle's colour with the first letter of their name. Never a
+/// figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11). [size] is
+/// "small", "", "big" or "huge"; it is decoration beside their name, so
+/// hidden from a screen reader.
+export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
+  const letter = [...String(name || handle || "?").trim()][0] || "?";
+  const classes = ["avatar", size, `c${avatarTone(handle || name)}`].filter(Boolean).join(" ");
+  return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${picture
+    ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
+}
+
+/// The icons there are (web/icons.svg).
+export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter"];
+
+/// An icon from the sprite, in the words' colour.
+export function iconHtml(name) {
+  if (!ICONS.includes(name)) throw new Error(`no icon named ${name}`);
+  return `<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#${name}"></use></svg>`;
+}
+
+/// An icon button: its icon and its count beside it once there is one,
+/// its name and count its label ("Like, 12 likes"; "Like" at none). A
+/// toggle ([pressed] true or false) is aria-pressed.
+export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, attrs = "" }) {
+  const n = Number(count) || 0;
+  const said = n ? `${name}, ${n.toLocaleString("en-US")} ${n === 1 ? one : many || `${one}s`}` : name;
+  return `<button type="button" class="icon-btn${small ? " small" : ""}" aria-label="${escapeHtml(said)}"`
+    + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
+    + `${iconHtml(icon)}${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
+}
+
+/// A count as a card shows it: its icon and its number, with its words for
+/// a screen reader and on hover ("4 built"); "" at none, never "0".
+function tallyHtml(icon, n, one, many) {
+  const value = Number(n) || 0;
+  if (!value) return "";
+  const words = counted(value, one, many);
+  return `<span class="tally" title="${escapeHtml(words)}">${iconHtml(icon)}`
+    + `<span class="n">${escapeHtml(value.toLocaleString("en-US"))}</span>`
+    + `<span class="visually-hidden">${escapeHtml(words.slice(words.indexOf(" ")))}</span></span>`;
 }
 
 /// What the asker's collection holds of a card's model, in a line, or "".
@@ -52,39 +116,72 @@ export function pictureOf(model) {
     : model.image ? `/m/${model.id}.png` : "";
 }
 
+/// The tags that say a model was made with the assistant or Brickify, as
+/// the guidelines ask a designer to tag it (web/guidelines.html), until the
+/// app says so as it publishes (docs/SOCIAL.md D7, U16). The gallery's
+/// "With the assistant" filter reads the same two (api/_directory.js,
+/// supabase/gallery_tabs.sql gallery_models).
+export const ASSISTANT_TAGS = ["ai-designed", "brickify"];
+
+/// "assistant" for a model tagged as made with the assistant or Brickify,
+/// "hand" for every other.
+export function madeWith(model) {
+  const tags = Array.isArray(model.tags) ? model.tags : [];
+  return tags.some((tag) => ASSISTANT_TAGS.includes(tag)) ? "assistant" : "hand";
+}
+
 // What the Tested mark means, said on hover.
 const TESTED_SAYS = "Stands at every step · every step reachable · every part made in its colour · nothing loose";
+// A handle, as api/people.js keeps one: only such a one makes a link.
+const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 
 /// The card for [model] (a card as /api/share and /api/people send one),
 /// as HTML.
 ///
 /// [earned]: a designer's page's card (supabase/designers.sql), which leads
 /// with what the model earned, builds finished and remixes, then comments
-/// and likes, and never its views.
-export function cardHtml(model, { earned = false } = {}) {
+/// and likes, in words, and never its views.
+/// [like]: its like is a button (data-like, the model's id), pressed when
+/// model.liked; the gallery's script makes it work. Elsewhere it is a count.
+export function cardHtml(model, { earned = false, like = false } = {}) {
   const id = String(model.id);
   const name = escapeHtml(model.name);
   const picture = pictureOf(model);
-  const parts = counted(model.parts, "part");
-  // Said once there is one: "0 views" on every new card reads as a gallery
-  // nobody visits.
-  const said = [];
-  const say = (n, one, many) => { if (Number(n)) said.push(counted(n, one, many)); };
+  const data = [`data-id="${escapeHtml(id)}"`, `data-builds="${Number(model.builds) || 0}"`];
+  if (earned) data.push(`data-remixes="${Number(model.remixes) || 0}"`, `data-comments="${Number(model.comments) || 0}"`);
+  // Over the picture's corner: the Tested mark, and how it was made.
+  const marks = [];
+  // Marked Tested: its newest version passed the four tests the app ran
+  // as it was published (api/_tested.js), said on hover.
+  if (model.tested === true) {
+    marks.push(`<span class="pill good tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</span>`);
+    data.push('data-tested="yes"');
+  }
+  if (madeWith(model) === "assistant") {
+    const brickified = (model.tags || []).includes("brickify") && !(model.tags || []).includes("ai-designed");
+    marks.push(`<span class="pill made" title="${brickified ? "Made from a 3D model with Brickify, as its designer tagged it"
+      : "Designed with the assistant, as its designer tagged it"}">${brickified ? "Brickify" : "Assistant"}</span>`);
+    data.push('data-made="assistant"');
+  }
+  // Who made it: their avatar and name, a link to their profile, when they
+  // have one shown in public (supabase directory_card's by); else the name
+  // they credited it to, as words; else nobody.
+  const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
+  const who = by
+    ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle }, { size: "small" })}`
+      + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
+    : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
+  const lines = [];
   if (earned) {
+    // Said once there is one, in words: the designer's page counts them.
+    const said = [];
+    const say = (n, one, many) => { if (Number(n)) said.push(counted(n, one, many)); };
     say(model.builds, "built", "built");
     say(model.remixes, "remix", "remixes");
     say(model.comments, "comment");
     say(model.likes, "like");
-  } else {
-    say(model.views, "view");
-    say(model.likes, "like");
-    say(model.remixes, "remix", "remixes");
-    // Built to the last step, once per device (supabase/builds.sql).
-    say(model.builds, "built", "built");
+    lines.push(`<small>${escapeHtml(said.join(" · "))}</small>`);
   }
-  const data = [`data-id="${escapeHtml(id)}"`, `data-builds="${Number(model.builds) || 0}"`];
-  if (earned) data.push(`data-remixes="${Number(model.remixes) || 0}"`, `data-comments="${Number(model.comments) || 0}"`);
-  const lines = [];
   // Signed in with a collection: how much of it is theirs already.
   const theirs = ownedLine(model.owned);
   if (theirs) {
@@ -111,19 +208,23 @@ export function cardHtml(model, { earned = false } = {}) {
     data.push(`data-moves="${escapeHtml(moves.join(","))}"`);
     if (motions.length) data.push(`data-motions="${escapeHtml(motions.join("|"))}"`);
   }
-  // Marked Tested: its newest version passed the four tests the app ran
-  // as it was published (api/_tested.js), said on hover.
-  if (model.tested === true) {
-    lines.push(`<small class="pill good tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</small>`);
-    data.push('data-tested="yes"');
+  // Its numbers as icons, each once there is one: a like (a button where
+  // the page makes it one), builds finished to the last step, once per
+  // device (supabase/builds.sql), and comments. Views are never shown or
+  // ranked (docs/SOCIAL.md D6).
+  if (!earned) {
+    const liked = like ? iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like",
+      pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : tallyHtml("like", model.likes, "like");
+    const acts = liked + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
+    if (acts) lines.push(`<small class="acts">${acts}</small>`);
   }
-  return `<a class="model" href="/m/${escapeHtml(id)}" ${data.join(" ")}>`
+  return `<article class="model" ${data.join(" ")}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" loading="lazy" decoding="async">`
-      : "No picture"}</div>`
-    + `<div class="words"><b title="${name}">${name}</b>`
-    + `<span>${escapeHtml(model.author ? `${parts}, by ${model.author}` : parts)}</span>`
-    + `<small>${escapeHtml(said.join(" · "))}</small>${lines.join("")}</div></a>`;
+      : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}</div>`
+    + `<div class="words"><a class="open" href="/m/${escapeHtml(id)}"><b title="${name}">${name}</b></a>`
+    + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span></span>`
+    + `${lines.join("")}</div></article>`;
 }
 
 /// The card for [model] as an element, in a browser: cardHtml's markup.
