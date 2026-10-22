@@ -46,6 +46,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import path, { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+// What a notification says and how they are grouped (docs/SOCIAL.md U7):
+// pure, so the stand-in answers as the API does.
+import { noticeGroups } from "../../api/_notifications.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -340,6 +343,24 @@ const FEED = [
   { kind: "model", at: "2026-10-01T17:00:00Z", by: MIKA, model: "MikaRobot1", name: "Pocket Mech" },
 ];
 const FEED_SEEN = "2026-10-14T00:00:00Z";
+
+// Sam's notifications (supabase/notifications.sql notification_list): what
+// happened to the tram and the bakery, newest first; the tram's group
+// opened since its photo, so only its newer rows are unread.
+const NOTICES = [
+  { kind: "likes", at: "2026-10-16T11:40:00Z", on: "SamModel01", model: "SamModel01", name: "Harbour Tram", likes: 12,
+    day: "2026-10-16" },
+  { kind: "comment", at: "2026-10-16T09:30:00Z", on: "SamModel01", by: PRIYA, model: "SamModel01", name: "Harbour Tram",
+    step: 2, comment: 105, said: "The pantograph is a clever trick." },
+  { kind: "photo", at: "2026-10-14T19:10:00Z", on: "SamModel01", by: JO, model: "SamModel01", name: "Harbour Tram",
+    photo: "PhotoEee05", words: "Ran it round the whole layout.", yours: true },
+  { kind: "remix", at: "2026-10-13T12:00:00Z", on: "SamModel01", by: MIKA, model: "MikaTram01", name: "Night Tram",
+    of: "SamModel01", of_name: "Harbour Tram" },
+  { kind: "result", at: "2026-10-02T09:00:00Z", on: "SamModel02", model: "SamModel02", name: "Corner Bakery", challenge: 3,
+    title: "Main Street September", way: "hand", won: true, votes: 9 },
+  { kind: "likes", at: "2026-10-01T20:15:00Z", on: "SamModel02", model: "SamModel02", name: "Corner Bakery", likes: 1,
+    day: "2026-10-01" },
+];
 
 // This month's challenge (supabase/challenges.sql), open, two entries in
 // each group. Sam voted for the rover with the assistant, so /challenge
@@ -1151,8 +1172,24 @@ function people(method, params, body, who, state) {
       return answer(200, { ready: true, rows, more: false, seen_at: FEED_SEEN });
     }
     if (op === "feed_count") {
-      return answer(200, who ? { count: FEED.filter((row) => Date.parse(row.at) > Date.parse(FEED_SEEN)).length, signed_in: true,
-        ready: true } : { count: 0, signed_in: false });
+      if (!who) return answer(200, { count: 0, signed_in: false });
+      const fresh = (rows) => rows.filter((row) => Date.parse(row.at) > Date.parse(FEED_SEEN)).length;
+      const feed = fresh(FEED.filter((row) => !["comment", "remix"].includes(row.kind) && !row.yours));
+      const me = personOf(ME);
+      return answer(200, { count: fresh(NOTICES) + feed, notifications: fresh(NOTICES), feed, signed_in: true, ready: true,
+        me: { handle: me.handle, name: me.name } });
+    }
+    if (op === "notifications") {
+      const rows = NOTICES.map((row) => {
+        const by = row.by ? personOf(row.by) : null;
+        return { ...row, by: by ? { handle: by.handle, name: by.name } : null };
+      });
+      const models = Object.fromEntries([...new Set(NOTICES.map((row) => row.on))].map((id) => {
+        const m = MODELS.find((one) => one.id === id) || {};
+        return [id, { name: m.name, has_image: m.has_image === true, has_thumb: m.has_thumb === true, updated_at: m.updated_at }];
+      }));
+      return answer(200, { ready: true, kept: true, seen_at: FEED_SEEN, ...noticeGroups({ rows, models, seen_at: FEED_SEEN,
+        read_at: null, reads: { SamModel01: "2026-10-15T00:00:00Z", SamModel02: "2026-10-03T00:00:00Z" } }) });
     }
     if (op === "designs") return designs(params);
     if (op === "challenge") return challengePage(who);

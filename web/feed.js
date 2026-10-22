@@ -1,12 +1,14 @@
-// /feed (2026-10-18, supabase/follows.sql): what is new for the signed-in
-// account, newest first, from /api/people?op=feed. Each row is one link,
-// to the model, the version, the photo or the comment; the rows that came
+// /feed (2026-10-18, supabase/follows.sql): what the people the signed-in
+// account follows made, newest first, from /api/people?op=feed. Each row
+// is one link, to the model, the version or the photo; the rows that came
 // since the feed was last opened are marked new. Opening it is what clears
-// the count on Account (the server marks the first page as seen).
+// its count (the server marks the first page as seen). What happened to
+// your own models is Notifications (2026-10-22, web/notifications.js), a
+// tab beside it; before supabase/notifications.sql it is here too.
 //
 // Every word is put on the page as text.
 import { askToSignIn, call, signOut, signedIn } from "/account.js";
-import { showFeedCount } from "/follow.js";
+import { showFeedCount, showTabCounts } from "/follow.js";
 
 const $ = (id) => document.getElementById(id);
 const WHEN = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -74,8 +76,8 @@ async function page() {
   if (rows.length) oldest = rows[rows.length - 1].at;
   $("empty").hidden = $("rows").children.length > 0;
   $("older").hidden = !answer.body.more;
-  // Opened: what was counted is seen now.
-  await showFeedCount().catch(() => null);
+  // Opened: what was counted is seen now; Notifications' is what is left.
+  showTabCounts(await showFeedCount().catch(() => null));
   document.documentElement.dataset.feed = "ready";
 }
 

@@ -59,7 +59,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 }
 
 /// The icons there are (web/icons.svg).
-export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter"];
+export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {

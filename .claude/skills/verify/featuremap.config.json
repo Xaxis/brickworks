@@ -2495,14 +2495,14 @@
       "kind": "ui",
       "label": "your feed page",
       "entry": "web/feed.html",
-      "reach": "https://brickworks.diy/feed   (feed.js: signed in, newest first, each row a link; opening it clears the count on Account)",
+      "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each row a link; opening it clears its count; Notifications a tab beside it)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "follow a person and the count on Account",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/u/<handle> and /m/<id> (Follow); every page's header (Account and its count, on Menu at a phone's width)",
+      "reach": "https://brickworks.diy/u/<handle> and /m/<id> (Follow); every page's header (signed in, your avatar and what is new for you, on Menu at a phone's width)",
       "area": "web"
     },
     {
@@ -2888,6 +2888,34 @@
       "label": "account page browser flow",
       "entry": "tools/web/account_page_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8890 &  node --env-file=.env tools/web/account_page_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>; throwaway accounts, deleted after)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the account menu",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "notifications apart from the feed",
+      "entry": "api/_notifications.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/notifications.sql --dry --try=tools/notifications_try.sql --table=notification_marks   (after the live files; then the notifications browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "notifications page",
+      "entry": "web/notifications.html",
+      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first; opening it clears the avatar's count; a group read once opened; Mark all read)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "notifications browser flow",
+      "entry": "tools/web/notifications_flow.mjs",
+      "reach": "node --env-file=.env tools/web/notifications_flow.mjs --url=http://127.0.0.1:8820 --out=DIR   (a local relay_server.mjs 8820, nothing held, or --hold=notifications for the file as applied; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>)",
       "area": "web"
     }
   ]

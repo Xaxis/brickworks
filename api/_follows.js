@@ -13,9 +13,11 @@
 //   GET  ?op=feed&before=ISO      (session) a page of the caller's feed,
 //                                 newest first, each row with its words and
 //                                 its link; the first page counts as the
-//                                 feed opened, which clears the count
-//   GET  ?op=feed_count           (session) {count}: rows since the feed was
-//                                 last opened, at most 99, for Account
+//                                 feed opened, which clears its count
+//
+// Since supabase/notifications.sql the feed is what the people you follow
+// made; what happened to your own models is Notifications, and the count
+// is api/_notifications.js's.
 //
 // Who may follow and who may be followed is the database's to say
 // (follow_trouble), and its trigger says it again whatever writes: an
@@ -228,20 +230,14 @@ export async function feed(request, response, { origin }) {
       throw new Unacceptable("before is a time, as a row of the feed gives it");
     }
   }
-  // The first page is the feed opened: the count clears.
-  const page = await call("feed_of", { viewer: asker, before, size: 30, mark: before === null },
-    () => ({ missing: true }));
+  // The first page is the feed opened: the count clears. What the people
+  // you follow made (supabase/notifications.sql follow_page); before that
+  // file, the feed of before, with your models' news in it too.
+  const asked = { viewer: asker, before, size: 30, mark: before === null };
+  const page = await call("follow_page", asked, () => call("feed_of", asked, () => ({ missing: true })));
   if (page && page.missing) return response.status(200).json({ ready: false, rows: [], more: false, seen_at: null });
   const seen = page?.seen_at ? Date.parse(page.seen_at) : null;
   const rows = (page?.rows || []).map((row) => ({ ...feedSaid(row, origin), model: row.model,
     new: seen === null || Date.parse(row.at) > seen }));
   return response.status(200).json({ ready: true, rows, more: page?.more === true, seen_at: page?.seen_at ?? null });
-}
-
-export async function feedCount(request, response) {
-  response.setHeader("Cache-Control", "private, no-store");
-  const asker = await who(request);
-  if (!asker) return response.status(200).json({ count: 0, signed_in: false });
-  const count = await call("feed_count", { viewer: asker }, () => null);
-  return response.status(200).json({ count: Number(count) || 0, signed_in: true, ready: count !== null });
 }

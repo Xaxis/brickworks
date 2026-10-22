@@ -27,8 +27,8 @@ sized its own titles, from 26 to 74 px. Now:
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
   copy. The header: Gallery · Download · Account (Sign in until you are,
-  web/follow.js) · **Open the app**; on a phone the mark, the way in and
-  Menu. The footer: the mark and a row of links (Compare, FAQ, Changelog,
+  then your avatar: the account menu, below) · **Open the app**; on a
+  phone the mark, the way in and Menu (your avatar, once signed in). The footer: the mark and a row of links (Compare, FAQ, Changelog,
   Source, Privacy, Terms, Guidelines, Takedown), then every notice
   docs/TRADEMARKS.md asks for, small and quiet.
 - **One type scale** (`--t-display`, `--t-h1`, `--t-h2`, `--t-h3`,
@@ -173,7 +173,7 @@ is on the page, `hidden`, for the script to show.
   (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile). It is
   decoration beside the name, so `aria-hidden`.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
-  share, comment, more, build, search, filter; `web/kit.js` `iconHtml`),
+  share, comment, more, build, search, filter, award; `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
   icon once there is one. Its label says its name and count to a screen
@@ -223,6 +223,23 @@ is on the page, `hidden`, for the script to show.
   profile, the same form is in the page with its two fields, name and
   handle. `/settings` is one `.settings` panel: Profile, Appearance, Email,
   Privacy, Claude, Sign out, Delete account.
+- **The account menu** (`web/follow.js`, docs/SOCIAL.md U7): signed in,
+  your avatar in the header (`summary.account-btn`, 36 px) with what is
+  new for you as the header's `.count` over its corner, opening a
+  `details.more-menu.end.account-menu` with the header Menu's panel: who
+  you are (`.menu-who`), your places (`.account-part nav`: Your profile,
+  Notifications and Your feed each with its `.count`, Saved, Settings),
+  the theme and Sign out (`.menu-list > .sign-out`). At a phone's width
+  Menu's summary is the avatar and its panel holds the site's links, then
+  the same. Open, the avatar is ringed in `--accent-edge`.
+- **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
+  a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
+  `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did
+  it) or an icon (likes, a challenge's end), `.what` its words, a New
+  `.pill`, a quote and the time. Not opened yet: `.unread`, edged in
+  `--accent-edge` with a `.dot`. The page's head is `.notices-head` (the
+  title and Mark all read); `/notifications` and `/feed` share one `.tabs`
+  row, each tab's count in `.n`, hidden at none.
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
   with "_") shows every component once, drawn by `web/kit.js` and

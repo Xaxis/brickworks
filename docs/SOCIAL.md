@@ -500,6 +500,11 @@ a page load and in the list with its picture; ten likes on one model
 are one row; nothing says who followed you or names who liked. *Supabase:* `feed_rows` split by kind into
 `notification_rows` and `follow_rows` (new functions), likes counted per
 day from `model_likes`; `feed_marks` gains `notifications_seen_at`.
+*Built (2026-10-22, `supabase/notifications.sql`):* the marks as two new
+tables instead, `notification_marks` (seen, all read) and
+`notification_reads` (a model's group opened), so no live table is
+altered; the avatar's count is notifications and the feed together, as
+the app's Account says it.
 
 **U8. Comments that talk** (M). *What:* one level of replies, the newest
 thread first and replies oldest first under it, the avatar and "Designer"

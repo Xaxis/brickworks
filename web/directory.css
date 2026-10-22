@@ -282,6 +282,39 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .feed-row q { display: block; margin: 4px 0 0; color: var(--ink-soft); }
 .feed-row small { display: block; margin-top: 4px; color: var(--ink-faint); font-size: var(--t-tiny); }
 
+/* Notifications (/notifications, web/notifications.js, docs/SOCIAL.md U7):
+   one group a model, its picture and name, then each thing that happened
+   to it, newest first, with who did it (their avatar) or what it is (an
+   icon: likes, a challenge's end). A group not opened yet is edged and
+   dotted in the accent's edge. */
+.notices-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.notices-head h1 { margin: 0; }
+.notices { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); max-width: 760px; }
+.notice {
+	display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--s-4); align-items: start;
+	padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.notice.unread { border-color: var(--accent-edge); }
+.notice .pic { display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-2); background: var(--bg-soft); }
+.notice .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.notice h2 { display: flex; align-items: center; gap: var(--s-2); margin: 2px 0 var(--s-2); font-size: var(--t-body); }
+.notice h2 a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.notice h2 a:hover { text-decoration: underline; }
+.notice .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-edge); }
+.notice .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.notice .lines a { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--ink); text-decoration: none; }
+.notice .lines a:hover .what { text-decoration: underline; text-decoration-color: var(--ink-faint); }
+.notice .lines .avatar.small, .notice .lines .icon { margin-top: 1px; }
+.notice .lines .icon { width: 24px; color: var(--ink-soft); }
+.notice .what { min-width: 0; font-size: var(--t-small); line-height: 1.45; overflow-wrap: anywhere; }
+.notice .what b { font-weight: 650; }
+.notice .what .pill { margin-left: 2px; }
+.notice .what q { display: block; margin-top: 2px; color: var(--ink-soft); }
+.notice .what time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
+@media (max-width: 600px) {
+	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
+}
+
 
 /* A designer's page (api/people.js earnedHtml, supabase/designers.sql): what
    their models earned, builds finished and remixes leading, as tiles; the
