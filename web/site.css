@@ -250,7 +250,9 @@ a:focus-visible { border-radius: var(--r-1); }
 .account-part nav a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .account-part nav a[aria-current="page"] { color: var(--ink); background: var(--panel-hi); }
 .menu .account-part { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
-.menu-list > .sign-out { margin-top: 6px; border-top: 1px solid var(--line); border-radius: 0; }
+/* Sign out last, a menu's button as any other, under a line. */
+.menu-list > :has(+ .sign-out) { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.menu-list > .sign-out { margin-top: 6px; }
 @media (max-width: 860px) {
 	.nav a:not(.cta), .nav .account-menu { display: none; }
 	.menu { display: block; }
