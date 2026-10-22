@@ -5718,7 +5718,23 @@ func _grooved_check(path: String, least: float) -> void:
 	var back: float = float((steps[1] as Dictionary).get("rack_ldu", went)) if steps.size() > 1 else went
 	_check("%s: turned -60 after, the rack comes back along its groove, from %+.2f to %+.2f LDU" % [name, went,
 		back], absf(went) >= least and (back - went) * signf(went) < -0.5)
+	if COMES_BACK.has(name):
+		_comes_back_check(name, row)
 	_builder.forget_history()
+
+
+## Turned +30, -60 and back as the sweep turns them, these come back where
+## they stood (Grab 23): 5533-1's steering kept a loop open that the next
+## turn read as closed, and came back 6.43 LDU off; 8466-1's one-piece
+## universal joint was keyed to whichever shaft lined up with it, 10.74.
+const COMES_BACK: Array = ["5533-1", "8466-1"]
+
+
+## [param row], a sweep's, came back within the sweep's 0.02 LDU.
+func _comes_back_check(name: String, row: Dictionary) -> void:
+	var off: float = float(row.get("back_ldu", INF))
+	_check("%s: turned +30, -60 and back, every part comes back within %.3f LDU of where it stood%s" % [name, off,
+		"" if off <= 0.02 else " (%s)" % str(row.get("cause", "")).left(160)], off <= 0.02)
 
 
 ## A pinion at its rack's last tooth stays in it ([constant KEPT_IN_RACK]):
@@ -5738,6 +5754,28 @@ func _kept_in_rack_check(path: String) -> void:
 	_check("%s: the rack comes back to %+.2f LDU of where it stood, from %s and %s" % [name, rack,
 		str((steps[0] as Dictionary).get("rack_ldu", "")) if steps.size() > 0 else "",
 		str((steps[1] as Dictionary).get("rack_ldu", "")) if steps.size() > 1 else ""], absf(rack) <= 0.05)
+	if COMES_BACK.has(name):
+		_comes_back_check(name, row)
+	# A universal joint drawn whole (9244) is its cross: a body of its own on a
+	# hinge to the shaft in each end, the two square (Bodies._whole_crosses).
+	var bodies: Bodies = _grab._bodies
+	var wholes: int = 0
+	var crosses: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not Bodies.whole_cross(_library.mesh_for(brick.part_id)):
+			continue
+		wholes += 1
+		var body: int = int(bodies.body_of.get(brick.id, -1))
+		var lines: Array[Vector3] = []
+		for link: Bodies.Link in bodies.touching.get(body, []):
+			if link.kind == "hinge":
+				lines.append(link.axis.normalized())
+		if (bodies.members.get(body, PackedInt64Array()) as PackedInt64Array).size() == 1 and lines.size() == 2 \
+				and absf(lines[0].dot(lines[1])) < 0.05:
+			crosses += 1
+	if wholes > 0:
+		_check("%s: each of its %d universal joints drawn as one part is its own cross, on two hinges square to each other (%d)"
+			% [name, wholes, crosses], crosses == wholes)
 	_builder.forget_history()
 
 
