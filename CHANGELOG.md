@@ -92,6 +92,13 @@ whole cycle.
 
 ### Fixed
 
+- Claude's second design in one chat is judged as what it is. Asked for an
+  owl's head and then a house roof without pressing Clear, Claude was told
+  the house was a creature with nothing on a joint, and your own Claude over
+  the connector had the house sent back to be built as a jointed owl. Asked
+  to make the owl's head bigger, the app's own designer forgot it was an owl.
+  A design submitted under a name of another subject now begins a new
+  subject, and a change to the model you have keeps the one it was.
 - A part Claude hangs on a hinge brick (3937) now tips whichever way it is
   asked. The hinge brick's top tips one way only, and the app laid it facing
   the same way whatever the angle, so a wing, a flap or a lid tipped the

@@ -66,7 +66,11 @@ fixing what it got wrong.
   hyphenated word by its last part, and never a vehicle (its crew is its
   crew); the subject is the brief, what a session from
   outside was started on or asked plan_scale, find_reference and
-  how_real_sets_build_this about (`Assistant.heard`), and the design's name. For
+  how_real_sets_build_this about (`Assistant.heard`), and the design's name,
+  one design's: it begins again (`Assistant._begin_subject`) at a fresh brief,
+  a session's brief, Clear or a design submitted under a name sharing no
+  subject word with the one standing (`Style.same_subject`), and a revision
+  keeps it (`second_design_probe`). For
   one: check_design's and submit_design's reply, while nothing in it is posed
   (`_posed`: an attach, a joint's part, a turned or hinged section), leads its
   advice with each joint's one call (`_on_joints_said`, twice in full and then a
@@ -2530,6 +2534,7 @@ BrickBench venv, `python -I`, BRICKNET_DATA set; to make more, call
 ```sh
 godot --headless --path . --script src/dev/figure_joints_probe.gd    # what a figure, a creature and a tower are told, where
 godot --headless --path . --script src/dev/techniques_probe.gd       # "jointed figure" and "jointed animal" build
+godot --headless --path . --script src/dev/second_design_probe.gd    # a second design in one chat is its own subject, a revision the first's
 ```
 
 Proves it when `figure_joints_probe` ends "0 failed": the subject is read by its
@@ -2552,6 +2557,17 @@ statue names its left and right arms stiff, of the posed one nothing. On merge29
 and no reply in that arm's 28 bench sessions told of joints. The techniques probe
 builds both armatures by the check, and BrickBench's verify.py passes them
 exported, with the figure's right arm raised too (2026-10-15).
+
+`second_design_probe` proves the subject is one design's, when it ends "a second
+design keeps its own subject, a revision the first's": over MCP on the real scene
+(CommandSocket.answer_rpc), an owl head, then the owl's head bigger (still told
+of its joints, read_guide "shapes" still led by the character), then a house roof
+with no Clear (built, not sent back, not told of joints, its subject names no
+owl); in the app's own loop (its `_on_response`, offline), "make it bigger" after
+an owl head is still a creature before it submits, a house roof asked next in the
+same conversation is not told of joints, and New starts "a lighthouse" alone. On
+the tree before it (a63858d6) 8 of its 24 checks fail: the house is sent back as
+a jointed owl, the revision's subject is "make it bigger".
 
 ### Characters laid on joints (the figure pattern)
 
