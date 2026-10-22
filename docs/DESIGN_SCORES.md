@@ -2624,6 +2624,131 @@ signature parts showing. The four levers stay on their branches (technic,
 technic2, technic3, technic4); the next design work goes where a verdict
 against the set has moved before.
 
+### What has moved a verdict, and the next lever (2026-10-21)
+
+Fifteen levers since 2026-10-16 changed how a design is made; none has lifted
+main's 44 of proof (overall 20%, technique 12%, likeness 22%) beyond noise.
+This reads every verdict on disk for what has moved one: 418 distinct designs
+of 61 subjects, 5,268 dimension verdicts against the sets, 684 head to head.
+
+**Every lever against the sets.** Base → lever, the share won against the set,
+with the paired 95% interval (lever less base) where one was taken; head to
+head, the lever's design preferred overall. Two halves read "tune; proof".
+
+| lever | what it changed | subjects | overall | likeness | technique | head to head |
+|---|---|---|---|---|---|---|
+| armature | figures on working joints | 10 | 20 → 25 (-25, +35) | 30 → 30 | 5 → 15 | 75% (44-92) |
+| square sent back | a joint asked for once | 10; 10 | 30 → 15 (-35, 0); 25 → 15 (-30, 0) | 30 → 15; 30 → 20 | 5 → 5; 15 → 5 | 55%; 30% |
+| faces on their side | plain faces laid on side studs | 10; 10 | 30 → 20 (-35, +10); 25 → 20 (-30, +10) | 30 → 10; 30 → 25 | 5 → 5; 15 → 5 | 20%; 30% |
+| figfaces, jointcheck | the figure's faces; joints let be | 3; 10 | 50 → 33; 30 → 20 | 50 → 33; 30 → 20 | 33 → 17; 5 → 0 | 67%; |
+| bodies shown | the line's built bodies at planning | 10; 10 | 30 → 25 (-15, 0); 25 → 25 (-25, +20) | 30 → 30; 30 → 30 | 5 → 10; 15 → 5 | 35%; 30% |
+| built bodies | legs, block figure, boom laid by the app | 10; 10 | 30 → 20 (-30, 0); 25 → 15 (-35, +10) | 30 → 20; 30 → 30 | 5 → 0; 15 → 0 | 25%; 25% |
+| t2plan3 | sub-assemblies planned, held to | 10; 10 | 15 → 20 (-15, +30); 20 → 20 (-20, +25) | 25 → 15; 25 → 20 | 10 → 20; 0 → 10 | 55%; 50% |
+| t3lay | the planned joint laid | 10; 10 | 20 → 10 (-25, 0); 20 → 30 (0, +30) | 15 → 10; 25 → 40 | 20 → 15; 0 → 20 | 30%; 60% |
+| t3lay44 | the same | 44 | 20 → 22 (-7, +10) | 22 → 25 (-7, +15) | 12 → 15 (-3, +9) | 55% (40-68) |
+| shapefirst44 | defining shapes named, measured | 44 | 20 → 19 (-10, +9) | 22 → 25 (-7, +14) | 12 → 8 (-10, 0) | 39% (26-53) |
+| signature44 | signature features named, looked at | 44 | 20 → 22 (-5, +8) | 22 → 24 (-5, +10) | 12 → 11 (-5, +2) | 45% (32-60) |
+| technic, technic3 | studless; panels flush on the frame | 8 | 0 → 6, 6 (0, +19) | 38 → 19, 6 (-62, -6) | 0 → 6, 0 | 31%, 56% |
+| technic2, 4, 4b | a body; the outline and a function | 3 | 0 → 17, 0, 0 | 50 → 17, 0, 0 | 0 → 0 | 33%, 50%, 33% |
+
+One interval against the sets left zero for a lever: the armature's colour on
+proof's ten, 15 → 30 (+5, +30); none on overall, likeness or technique. Some
+fell beyond noise (surface, colour, creativity, the flush body's likeness). The
+judge saw the changes head to head (the armature 75%, the Technic frames'
+technique 88%, 53-98, twice); against the set it did not count them.
+
+**Why: the subject decides the verdict.** Over the 418 designs, each judged
+both orders, the share of a verdict's variance (unbiased):
+
+| | overall | likeness | technique |
+|---|---|---|---|
+| which subject | 60% | 51% | 59% |
+| which design of it | 13% | 15% | 0% |
+| which order the judge saw them in | 27% | 34% | 41% |
+
+A lever acts on the design, and technique has no design share: two designs of
+one subject differ on it no more than one design judged twice. Proof's 44 have
+four designs each (main, t3lay44, shapefirst44, signature44): 30 were won
+overall by none (Architecture 11, Technic 9, City 3, Friends 2, five more), 6
+by all, 8 by some (Big Ben, the Trevi, the Flatiron, The Cave, Steve & Creeper,
+the Container Stacker, Gandalf Arrives, the Uruk-hai Army). A design lever is
+read on about those eight.
+
+**What wins.** Our 105 overall wins to 2026-10-20, by the verdicts round's
+codes: reads as the subject 44, it hangs together 42, the line's way 14, colour
+4, surface 1, technique and play none. Where a subject is in reach, the draw
+decides it: main's Big Ben, a slender tower alone on its plinth, won both
+verdicts, and shapefirst44's, squat in a street of a bus, trees and bollards,
+lost both; shapefirst44's Trevi, travertine wings and nameplate, won both, and
+main's all-white façade neither.
+
+**What a session lacks.** *Knowledge,* outside a line's idiom, it has: a blind
+reader named 30 of main's 44 as their subject, and every shapefirst44 session
+named its shape in the judge's words. *Time* binds only Technic: main's 44 took
+10.7 minutes at the median, none reached 45, and within a subject minutes go
+with overall at +0.07 (-0.01, +0.15). *Tools:* a named taper, drum or shell
+came out no truer, and bodies the app laid were taken off or read as plain.
+*Checking:* the judge compares and the session never does; it looks at its own
+model alone, and settled 101 features "built by the design".
+
+**The one thing on disk that moves a verdict on the 44 is a choice.** The
+head-to-head judge sees two of our designs and never the set. Where the two
+did differently against the set, it named the better 52 times in 60 (87%; tune
+21 of 25, proof 31 of 35). Keeping the one it prefers overall, on proof's 44
+(main's design against each lever arm's, 132 pairs, resampled by subject):
+
+| | either kept | the preferred kept | gain (95%) | the better against the set kept |
+|---|---|---|---|---|
+| overall | 20.6% | 24.2% | +3.6 (+0.6, +7.4) | 25.4% |
+| likeness | 23.1% | 28.0% | +4.9 (+1.7, +8.7) | 30.3% |
+| creativity | 33.0% | 39.8% | +6.8 (+3.8, +10.2) | 45.5% |
+
+Technique +1.1 (-0.9, +3.2). Over every pair on disk: tune +4.1 overall (+1.0,
++7.8), proof +5.3 (+2.2, +8.8). No lever's interval on the 44 has left zero;
+this does, and takes most of what a perfect pick would. It is not a better way
+to make a design but the judge's comparison, made before the person sees one.
+
+**The next lever: two designs, the better kept.**
+- *What it changes.* A brief is designed twice on the same code, apart, and the
+  app keeps the one a blind pairwise look prefers: Claude with Read only, each
+  model's three views under hashed names, the brief and the reference picture,
+  asked which a set designer would rather ship, both orders, a split kept as
+  the first. No set is shown. Side by side, the person waits one design and
+  spends two on the subscription.
+- *Why it should move a verdict:* a design's draw is 13 to 15% of a verdict,
+  more than any lever moved, and the pick takes it.
+- *Which subjects:* those whose designs split (the eight above: landmarks
+  whose proportion a session gets right one time in two, BrickHeadz, Minecraft
+  and Middle-earth scenes, a City vehicle). Not the 30 no design of ours has
+  won: they need a different design, not a choice.
+- *The screen:* tune's three subjects whose designs split most, each designed
+  13 or 14 times: Year of the Sheep (40148-1), Jungle River (7410-1), Micro
+  World - The End (21107-1). First, no design: the app's pick over every pair
+  of t2base's, t2plan3's, t3lay's and signature2's designs of each (18 pairs,
+  15 split against the set, 9 with the bench's head to head; 36 asks, about 15
+  minutes). Then the lever end to end on the three.
+- *The bar.* To go on: the pick names the better in 80% of the pairs that split
+  (the bench judge's 84% on tune), the wait within 1.3 times one design. Ready
+  on proof's 44, where main's 44 stand as one of each two (44 more designs on
+  main's code, about 6.5 hours at two workers, 88 asks, `compare`): overall's
+  paired interval against main's leaves zero and likeness does not fall.
+- *After it:* a perfect pick keeps 20.7%, 25.4%, 27.6% and 29.5% overall from
+  one to four designs; the pick at the first build is the cheap form.
+
+**Not again.** Technique against the sets by any change to the design: no
+design share, seven levers, none of the set's overall wins. Words at planning
+checked in words (the line's bodies, the plan, the defining shapes, the
+signature features): each reached every session and moved nothing. Bodies the
+app lays from a generic pattern: taken off on sight or read as plain plates,
+and the dressing fell with them (colour -25 on proof). Shares toward the sets'
+(SNOT, joints): t3lay44 tripled SNOT for no verdict, and within a subject more
+SNOT goes with likeness at -0.14 (-0.27, -0.01). More session time outside
+Technic: no link. And the Technic line as it stood: its nine proof subjects
+have been won by no design of ours.
+
+Results: `bench/results/lever81-2026-10-21/` (`extract.py`, `arms.py`,
+`variance.py`, `subjects44.py`, `pick.py`, `pick44.py`, `behaviour.py`).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
