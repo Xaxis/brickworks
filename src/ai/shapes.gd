@@ -3017,6 +3017,12 @@ class Plan extends RefCounted:
 	## A fox at 48 studs, two studs deep, hung its head on two joints past
 	## their load more than upright; three, as many as upright.
 	const CUBE_BACK := 3
+	## How many cubes deep one shell runs, out from the innermost, where a
+	## cube and the one past it at the same height both face out. One deep, a
+	## side leaning out down a cube's height left the inner cube upright, the
+	## model past it in its lower plates; on Bob and the Stanford bunny at 48
+	## studs, nearly every cube refused so.
+	const CUBE_DEEP := 2
 	## The most parts of a piece of the core a shell cuts off that are taken
 	## out before the check (Shapes.lay).
 	const CUT_OFF := 16
@@ -3089,7 +3095,16 @@ class Plan extends RefCounted:
 		for key: Variant in moved:
 			var c: Vector3i = key
 			var facing: Vector2i = moved[c]
-			var group := Vector3i(facing.x, facing.y, c.x if facing.x != 0 else c.z)
+			# A side that leans out down a cube's height is a cube facing out
+			# and the one past it at the same height facing out too: one shell,
+			# the two deep ([constant CUBE_DEEP]), counted from the innermost.
+			var out3 := Vector3i(facing.x, 0, facing.y)
+			var root: Vector3i = c
+			while moved.get(root - out3, Vector2i.ZERO) == facing:
+				root -= out3
+			var steps: int = absi((c - root).x + (c - root).z)
+			root += out3 * (steps - steps % CUBE_DEEP)
+			var group := Vector3i(facing.x, facing.y, root.x if facing.x != 0 else root.z)
 			if not groups.has(group):
 				groups[group] = []
 			(groups[group] as Array).append(c)
@@ -3213,6 +3228,11 @@ class Plan extends RefCounted:
 		var bottom: int = 1 << 30
 		var kept: Array = []
 		var out3 := Vector3i(facing.x, 0, facing.y)
+		# The outermost first: a cube with the model past it is kept where the
+		# cube past it is.
+		list = list.duplicate()
+		list.sort_custom(func(a: Vector3i, b: Vector3i) -> bool:
+			return a.x * facing.x + a.z * facing.y > b.x * facing.x + b.z * facing.y)
 		for c: Vector3i in list:
 			var cells: Array[Vector2i] = []
 			for dx: int in CUBE_STUDS:
@@ -3267,7 +3287,7 @@ class Plan extends RefCounted:
 				var inner: bool = _lane(cell, facing, along).y == inmost
 				for j: int in range(j0, j0 + CUBE_PLATES):
 					var key := Vector3i(cell.x, j, cell.y)
-					if at(past, j) >= 0:
+					if at(past, j) >= 0 and not kept.has(c + out3):
 						beyond += 1
 					if inner:
 						var deep_enough: bool = true
@@ -3328,10 +3348,13 @@ class Plan extends RefCounted:
 		for key: Vector3i in outside:
 			taken[key] = true
 		_shells_made += 1
+		var outmost: int = face
+		for key: Variant in mine:
+			outmost = maxi(outmost, _lane(Vector2i((key as Vector3i).x, (key as Vector3i).z), facing, along).y)
 		var shell := {"facing": facing, "along": along, "a0": lanes.x, "a1": lanes.y + 1,
 			"face": face, "top": top, "rows": 2 * (top - bottom) / CUBE_PLATES, "held": {},
 			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept,
-			"phase": _phase}
+			"phase": _phase, "depth": roundi((outmost - face + 1) * Shapes.PLATES_PER_STUD)}
 		if _anchored(shell):
 			return shell
 		_why_not["unanchored"] = int(_why_not.get("unanchored", 0)) + kept.size()
@@ -3485,7 +3508,7 @@ class Plan extends RefCounted:
 		var face: int = shell["face"]
 		var top: int = shell["top"]
 		var rows: int = shell["rows"]
-		var depth: int = roundi(SHELL_DEPTH * Shapes.PLATES_PER_STUD)
+		var depth: int = int(shell.get("depth", roundi(SHELL_DEPTH * Shapes.PLATES_PER_STUD)))
 		var to_world := func(x: float, j: float, z: float) -> Vector3:
 			var p: Vector2 = _point(a0 + x, face + j / Shapes.PLATES_PER_STUD, facing, along)
 			return Vector3(p.x, top - Shapes.PLATES_PER_STUD * z, p.y)
