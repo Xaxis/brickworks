@@ -1249,6 +1249,14 @@
       "tests": []
     },
     {
+      "id": "cli:undo ids probe",
+      "kind": "cli",
+      "entry": "src/dev/undo_ids_probe.gd",
+      "reach": "tools/probe.sh undo_ids_probe",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:unrestored probe",
       "kind": "cli",
       "entry": "src/dev/unrestored_probe.gd",

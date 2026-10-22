@@ -2763,6 +2763,13 @@
       "entry": "src/dev/first_design_undo_probe.gd",
       "reach": "tools/probe.sh first_design_undo_probe",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "undo ids probe",
+      "entry": "src/dev/undo_ids_probe.gd",
+      "reach": "tools/probe.sh undo_ids_probe",
+      "area": "mcp"
     }
   ]
 }
