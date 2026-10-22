@@ -413,6 +413,25 @@ const PLANTS: Array = ["tree", "flower", "plant", "bonsai", "tree trunk", "mushr
 ## "mouth" alone, which a clock, a cliff and a river have.
 const FACE_WORDS: Array = ["eyes", "eyebrows", "eyelashes", "eyelids", "moustache",
 	"mustache", "grin", "grinning", "smile", "smiling", "frown", "frowning", "googly"]
+## A part of a character's body, or what is worn on one, said alone: a design
+## headed by one is that part, not the character.
+const BODY_PARTS: Array = ["head", "bust", "skull", "face", "mask", "helmet", "wing", "tail",
+	"paw", "claw", "hand", "fist", "foot", "hoof", "leg", "arm", "beak", "torso"]
+
+
+## Whether a design called [param name] is a part of a character alone: headed
+## by a part of a body and naming whose. "Owl Head" is an owl's head, which
+## the figure pattern would lay as a whole owl on four legs; "Toilet Head",
+## headed the same, names no character, and is the toilet its brief is. A
+## name, not a brief: a sentence's last word before its first "with" can be
+## its verb's object ("a knight raises his sword arm").
+static func part_alone(name: String) -> bool:
+	var parts: Dictionary = {}
+	for word: Variant in BODY_PARTS:
+		parts[str(word)] = true
+	var head: String = head_noun(name)
+	return not head.is_empty() and not SubjectWords.kind_of_word(head, parts).is_empty() \
+		and not character_of(name).is_empty()
 
 
 ## Whether [param about] is a figure, a creature or a character, which a set
