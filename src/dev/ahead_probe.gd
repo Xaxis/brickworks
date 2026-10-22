@@ -7,11 +7,13 @@
 ##
 ## The frames are the main thread's: the clock between one frame and the
 ## next, headless, so nothing is drawn. Each act prints its longest frames,
-## when they came after it, and how the joints were read. With
-## --most-ms=N each act's longest frame is checked against N ms; PATHs after
-## the -- replace the default models (the Ducati a session designed, which
-## is in a git-ignored bench folder and skipped where it is not, 8808-1 and
-## 42004-1).
+## when they came after it, and how the joints were read. Then a press
+## while the joints are read on a worker must take hold once they are, with
+## the worker's reading, and one while a session's move is worked out must
+## say why it does nothing. With --most-ms=N each act's longest frame is
+## checked against N ms; PATHs after the -- replace the default models (the
+## Ducati a session designed, in a git-ignored bench folder and skipped
+## where it is not; 8808-1; 42004-1).
 extends SceneTree
 
 const MODELS: Array = [
@@ -108,6 +110,7 @@ func _one(path: String) -> void:
 		tried.append([bodies.parts_of(bodies.beyond(child)).size(), child])
 	tried.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 	var moved: bool = false
+	var moved_key: int = -1
 	for entry: Array in tried.slice(0, 12):
 		var key: int = int((bodies.members[int(entry[1])] as PackedInt64Array)[0])
 		for degrees: float in [20.0, -20.0]:
@@ -117,6 +120,7 @@ func _one(path: String) -> void:
 			if _builder.history_depth() > depth:
 				_report("move #%d %s°" % [key, degrees], timed)
 				moved = true
+				moved_key = key
 				break
 			await _still()
 		if moved:
@@ -158,6 +162,54 @@ func _one(path: String) -> void:
 	_check("%s: a part placed by a click" % path.get_file(), _world.brick_count() == count + 1)
 	_key_now(KEY_ESCAPE)
 	await _frames(4)
+	if moved:
+		await _presses(moved_key, path.get_file())
+
+
+## A press on [param key] while the joints are read on a worker takes hold
+## once the reading is done, and takes the worker's reading rather than
+## reading again; one while a session's move is worked out says why it
+## does nothing.
+func _presses(key: int, file: String) -> void:
+	await _still()
+	var camera: CadCamera = _main.get("_camera")
+	_key_now(KEY_Z, true)
+	var waited: int = Time.get_ticks_msec()
+	while not _grab.is_reading() and Time.get_ticks_msec() - waited < 5000:
+		await process_frame
+	var reading: bool = _grab.is_reading()
+	var screen: Vector2 = camera.unproject_position(_world.get_brick(key).transform.origin)
+	var pressed_at: int = Time.get_ticks_usec()
+	var took: bool = _grab.press(key, screen)
+	var press_ms: float = (Time.get_ticks_usec() - pressed_at) / 1000.0
+	var held: bool = took and _grab.grab != null and _grab.grab.state == "moves"
+	_check(("%s: a press while the joints are read on a worker (%s) takes hold once they are, "
+		+ "in %.0f ms, with the worker's reading (%d ms %s)") % [file, reading, press_ms, _grab.ready_ms,
+		"on a worker" if _grab.ready_off_thread else "here"],
+		reading and held and _grab.ready_off_thread and _grab.is_ready())
+	_grab.cancel()
+	await _still()
+	var depth: int = _builder.history_depth()
+	var done: Array = [false]
+	var moving: Callable = func() -> void:
+		await _tools.run("move_part", {"part": "#%d" % key, "degrees": 15.0})
+		done[0] = true
+	moving.call()
+	waited = Time.get_ticks_msec()
+	while not bool(_grab.get("_session_moving")) and not done[0] and Time.get_ticks_msec() - waited < 5000:
+		await process_frame
+	var during: bool = bool(_grab.get("_session_moving"))
+	var status: Label = (_main.get("_bar") as ModelBar).get("_status")
+	status.text = ""
+	_grab.press(key, screen)
+	var said: String = status.text
+	_check("%s: a press while a session's move is worked out (%s) says so: \"%s\"" % [file, during, said],
+		during and said == GrabDrag.READING_WORDS and _grab.grab == null)
+	waited = Time.get_ticks_msec()
+	while not done[0] and Time.get_ticks_msec() - waited < 60000:
+		await process_frame
+	if _builder.history_depth() > depth:
+		_builder.undo()
 
 
 ## Until the joints are read for the model as it stands and nothing is
