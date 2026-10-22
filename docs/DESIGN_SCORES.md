@@ -2889,7 +2889,7 @@ brief typed and sent):
 | brief | the first | the second | the pick | kept | wait until it stood |
 |---|---|---|---|---|---|
 | a small red post box | 175 s, 10 parts | 105 s, 14 parts | B, 12.9 s, 12.2k tokens in, 0.9k out | the second | 188 s, 1.08x the first |
-| a wooden park bench | 193 s, 63 parts | 163 s, 53 parts | A, 10.7 s, 12.2k in, 0.8k out | the first | 204 s, 1.06x |
+| a wooden park bench | 184 s, 70 parts | 147 s, 46 parts | A, 8.5 s, 12.1k in, 0.6k out | the first | 193 s, 1.05x |
 
 Each time both sessions said they were on the subscription, the second's
 pictures were all drawn by the person's app (none given up), the kept design
@@ -2898,9 +2898,11 @@ its summary, the first's history was kept (with the second's one step on it
 where it was kept, Undo bringing the first back), and nothing of the second
 was left running. Its reasons read as a set designer's: the post box "carries
 recognisable post-box detail (finial, black band, plinth) from every angle ...
-while A only reads as a post box from the front"; the bench "has the right
-long-bench proportions and clean, consistent cast-iron-and-timber detail ...
-while B's uneven slats and stubby shape make it look unfinished".
+while A only reads as a post box from the front"; the bench "has a park
+bench's long, low shape and solid end frames, so it reads as the subject from
+every view, while B's proportions and four-leg stance make it look like a
+chair". Results: `bench/results/best2app-2026-10-22/` (each walk's record,
+the six pictures the pick was shown, the second's model and its log).
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 

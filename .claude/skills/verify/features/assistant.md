@@ -31,7 +31,8 @@ fixing what it got wrong.
   only the last kept). The second's pictures are drawn by the person's app
   (`LeasedShots.Drawer` over `DIR/shots`, as a drawer process draws a bench
   design's), its saves stay in DIR, and it writes `result.json` as it ends;
-  `DIR/stop` or no `DIR/beat` for 60 s stops its session. When both have ended
+  `DIR/stop` or no `DIR/beat` for 60 s stops its session, and past its grace
+  the app ends the session named in `DIR/session.pid`, then the second. When both have ended
   DesignPick is asked once (the first as A) on the corner, front and close
   pictures, kept in DIR beside `record.json`, and the second, when kept, is
   swapped in as one undo step (`Builder.swap_bricks`), the person's own parts
@@ -2376,7 +2377,13 @@ its Claude Code session are gone. It prints the wait against the first
 design's own time: the bar is near the 1.19x of the proof's 44
 (docs/DESIGN_SCORES.md, "Best of two, steps 2 and 3"). `--port` is the
 person's app's own; the second takes the next free one. `--record` copies the
-six pictures, the second's model and its log beside the JSON.
+six pictures, the second's model and its log beside the JSON. 2026-10-22, on
+Opus 5.5: a small red post box, the second kept, 188 s against the first's
+175 (1.08x); a wooden park bench, the first kept, 193 s against 184 (1.05x);
+the pick 8.5-12.9 s and about 12k tokens in. Every step undone leaves the
+first's opening submit standing (55 and 8 parts): a session's submit that
+chooses a floor is folded into the floor's own step (CommandSocket._one_step),
+on main as here.
 
 ### A design's pictures on a lease of their own
 
