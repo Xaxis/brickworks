@@ -135,7 +135,12 @@ function startComments(section) {
       const reply = await fetch(path, { headers: { accept: "application/json" } });
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
     }
-    if (answer.status !== 200) return say(answer.body.error || "The comments did not load just now.");
+    if (answer.status !== 200) {
+      // The section stays hidden, and so does its tab.
+      const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
+      if (tab && section.hidden) tab.hidden = true;
+      return say(answer.body.error || "The comments did not load just now.");
+    }
     state = answer.body;
     // Not open on this deployment yet (comments.sql): nothing to show.
     section.hidden = state.ready === false;

@@ -191,6 +191,15 @@ try {
             colorScheme: theme, extraHTTPHeaders: headers,
             ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
           await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb });
+          // A deployment's own comments, asked as a visitor: the stand-in
+          // knows none of its models.
+          if (remote) {
+            await context.route((url) => url.origin === new URL(remote).origin && url.pathname === "/api/people"
+              && url.searchParams.get("op") === "comments", (route) => {
+              const { authorization, ...rest } = route.request().headers();
+              return route.continue({ headers: { ...rest, ...headers } });
+            });
+          }
           // What the page copies, and what it gives a share sheet, kept for
           // this flow to read: the clipboard of a page on plain http is not
           // the page's to use, nor to read back here.
@@ -338,18 +347,21 @@ try {
             // 8b. A tab chosen: its part just under the tabs, the tabs on
             // screen under the header, it marked; the page scrolled on, the
             // tabs still there.
-            await page.click('#page-tabs a[data-tab="comments"]');
+            // Comments, or where comments are not open, Builds.
+            const target = await page.evaluate(() => (document.querySelector('#page-tabs a[data-tab="comments"]').hidden
+              ? "builds" : "comments"));
+            await page.click(`#page-tabs a[data-tab="${target}"]`);
             await settled(page);
-            const went = await page.evaluate(() => {
+            const went = await page.evaluate((key) => {
               const tabs = document.getElementById("page-tabs").getBoundingClientRect();
               const head = document.querySelector(".site-head").getBoundingClientRect();
-              const part = document.getElementById("comments").getBoundingClientRect();
+              const part = document.getElementById(key).getBoundingClientRect();
               const end = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
               return { tabsTop: tabs.top, tabsBottom: tabs.bottom, head: head.bottom, part: part.top, end,
                 current: document.querySelector("#page-tabs [aria-current]")?.dataset.tab };
-            });
-            check(`${label}: the Comments tab brings the comments under the tabs (${Math.round(went.part)} px, tabs ${Math.round(went.tabsTop)}-${Math.round(went.tabsBottom)}), marked ${went.current}`,
-              went.current === "comments" && Math.abs(went.tabsTop - went.head) <= 2
+            }, target);
+            check(`${label}: the ${target} tab brings its part under the tabs (${Math.round(went.part)} px, tabs ${Math.round(went.tabsTop)}-${Math.round(went.tabsBottom)}), marked ${went.current}`,
+              went.current === target && Math.abs(went.tabsTop - went.head) <= 2
               && (went.end || (went.part >= went.tabsBottom - 1 && went.part <= went.tabsBottom + 40)));
             await page.mouse.wheel(0, 500);
             await settled(page);

@@ -2151,7 +2151,12 @@ header, the strip not leading with the published picture or a photo
 chosen not shown whole in its place, the owner without Add a picture or
 it not opening the form, an empty part in more than one line or without
 its way in, or the old paragraph. Pictures of each page whole, its first
-screen, Save, More, a photo chosen and the tabs stuck.
+screen, Save, More, a photo chosen and the tabs stuck. On a deployment
+(`--url`) its comments are asked of it as a visitor, not of the stand-in;
+where comments are not open the Builds tab is the one chosen. 2026-10-22:
+556 passed, 0 failed here; 148 passed, 0 failed with `--url=` a local
+`relay_server.mjs` on the live database (the gallery's first model, which
+ends on More in the gallery).
 
 ```sh
 heavy node tools/web/model_page_flow.mjs --out=shots/model_page      # this checkout
