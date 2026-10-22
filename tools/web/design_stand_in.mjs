@@ -175,6 +175,44 @@ const STATS = {
 // Whose newest version passed the app's four tests.
 const TESTED = new Set([MODEL_ID, "DesignGea1", "DesignPar1", "PriyaSpc01", "SamModel01"]);
 
+// A profile's page (api/people.js profilePage, supabase/profile_shows.sql):
+// what Robin chose to show (two links, the watchtower across the top, three
+// models pinned); Alex, new, with nothing yet; the house account,
+// credited "Brickworks" as the live
+// gallery's seven models are, which chose nothing; and Ines, with 60 models,
+// every one of which her page reaches. The house's and Ines's are test
+// models, which only a page asked with tests=1 shows: the gallery here is
+// as it was.
+const HOUSE = "88888888-8888-4888-8888-888888888888";
+const INES = "99999999-9999-4999-8999-999999999999";
+const ALEX = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+PEOPLE.push(
+  { account: ALEX, handle: "new-here", name: "Alex Moreau", email: "alex@example.com", bio: null,
+    created_at: "2026-10-21T09:00:00Z", last_sign_in: "2026-10-21T09:05:00Z" },
+  { account: HOUSE, handle: "brickworks", name: "Brickworks", email: "house@example.com", bio: null,
+    created_at: "2026-10-11T09:00:00Z", last_sign_in: "2026-10-13T09:00:00Z" },
+  { account: INES, handle: "ines-many", name: "Ines Ferreira", email: "ines@example.com",
+    bio: "Sixty small builds, one a week, each under a hundred parts.", created_at: "2025-11-02T09:00:00Z",
+    last_sign_in: "2026-10-19T09:00:00Z" });
+for (const [at, [name, kind, parts]] of [["Wizard's Tower", "castle", 9541], ["Sports Car", "vehicle", 412],
+  ["Harbour Crane", "mechanism", 980], ["Lighthouse", "architecture", 640], ["Market Stall", "town", 210],
+  ["Space Shuttle", "space", 1320], ["Steam Train", "vehicle", 760]].entries()) {
+  MODELS.push(model({ id: `HouseMod0${at + 1}`, owner: HOUSE, name, author: "Brickworks", parts, steps: 12 + at, kind,
+    tags: ["ai-designed"], test: true, listed_at: `2026-10-1${at}T10:00:00Z`, updated_at: `2026-10-1${at}T10:00:00Z`,
+    description: "Designed with the assistant." }));
+}
+for (let at = 1; at <= 60; at++) {
+  const day = new Date(Date.UTC(2025, 10, 2) + at * 7 * 864e5).toISOString();
+  MODELS.push(model({ id: `InesMod${String(at).padStart(3, "0")}`, owner: INES, name: `Small build ${at}`,
+    author: "Ines Ferreira", parts: 20 + at, steps: 4, kind: "nature", test: true, has_thumb: at % 2 === 0,
+    listed_at: day, updated_at: day }));
+}
+const SHOWS = [
+  { account: ROBIN, links: ["https://robin-castell.example/castles", "https://www.flickr.com/photos/robin-castell"],
+    banner: MODEL_ID, pins: ["DesignGea1", MODEL_ID, "DesignFox1"], updated_at: "2026-10-20T10:00:00Z" },
+  { account: INES, links: [], banner: null, pins: ["InesMod003", "InesMod059"], updated_at: "2026-10-20T10:00:00Z" },
+];
+
 // The watchtower's two versions; every other model is its version 1.
 const VERSIONS = [
   { model: MODEL_ID, n: 2, at: "2026-10-15T18:20:00Z", note: "A portcullis that opens, and a sixth step for the banner.",
@@ -413,10 +451,10 @@ function collectionPage(id) {
 }
 
 /// profile_page: a profile's counts and its public lists.
-function profilePage(handle) {
+function profilePage(handle, tests = false) {
   const person = personNamed(handle);
   if (!person) return null;
-  const theirs = listModels({ owner: person.account, size: 1000 });
+  const theirs = listModels({ owner: person.account, size: 1000, tests });
   return { handle: person.handle, name: person.name, bio: person.bio, since: person.created_at,
     models: theirs.length, likes: theirs.reduce((sum, one) => sum + one.likes, 0),
     collections: LISTS.filter((list) => list.owner === person.account && list.public).sort(byTime("updated_at"))
@@ -427,10 +465,10 @@ function profilePage(handle) {
 const photosWhere = (test) => PHOTOS.filter((one) => !one.removed_at && !one.hidden_at && test(one)).sort(byTime("at"));
 
 /// designer_page: what a designer's models earned, for anybody.
-function designerPage(handle) {
+function designerPage(handle, tests = false) {
   const person = personNamed(handle);
   if (!person) return null;
-  const theirs = listModels({ owner: person.account, size: 1000 });
+  const theirs = listModels({ owner: person.account, size: 1000, tests });
   const ids = new Set(theirs.map((one) => one.id));
   const comments = COMMENTS.filter((one) => ids.has(one.model) && !one.removed_at && !one.hidden_at && one.author !== person.account);
   const photos = photosWhere((one) => ids.has(one.model) && one.account !== person.account);
@@ -499,16 +537,17 @@ const TABLES = {
   follows: () => FOLLOWS,
   barred_models: () => [],
   barred_accounts: () => ADMIN.barred,
+  profile_shows: () => SHOWS,
 };
 
 // The functions the handlers call (rpc/<name>), each with what it was sent.
 const RPC = {
   directory_model: ({ model_id }) => modelPage(model_id),
   directory_models: ({ query }) => listModels(query || {}),
-  profile_page: ({ wanted }) => profilePage(wanted),
+  profile_page: ({ wanted, tests }) => profilePage(wanted, tests === true),
   collection_page: ({ list }) => collectionPage(list),
   collection_count: ({ list, private: hidden }) => collectionCount(list, hidden === true),
-  designer_page: ({ wanted }) => designerPage(wanted),
+  designer_page: ({ wanted, tests }) => designerPage(wanted, tests === true),
   follow_state: ({ asker, wanted }) => followState(asker || null, wanted),
   follow_list: ({ wanted }) => followList(wanted),
   follow_choice: ({ account }) => ({ shows_follows: SHOWS_FOLLOWS.has(account) }),
@@ -709,9 +748,12 @@ function handlersOf(apiDir) {
 /// A page the server makes, by [apiDir]'s own handlers: {status, html,
 /// headers}, and for a picture its bytes.
 export async function serverPage(apiDir, pathname) {
-  const route = routeOf(pathname);
+  const [path, search = ""] = String(pathname).split("?");
+  const route = routeOf(path);
   if (!route) return { status: 404, html: "", headers: {} };
-  return serverAsk(apiDir, route);
+  // Its question too (a profile's ?tab= and ?page=, tests=1), as the
+  // deployment passes it on; never over what the path says.
+  return serverAsk(apiDir, { ...route, query: { ...Object.fromEntries(new URLSearchParams(search)), ...route.query } });
 }
 
 /// What [apiDir]'s handler [name] ("share" or "people") answers [query]
@@ -957,13 +999,13 @@ function follows(handle, who, state, on = null) {
 }
 
 /// /api/people?op=profile&handle=X: a profile as anybody sees it, as JSON.
-function profile(handle) {
+function profile(handle, page = 1, tests = false) {
   const person = personNamed(handle);
   if (!person) return answer(404, { error: "nobody has that handle" });
-  const about = profilePage(person.handle);
-  const earned = designerPage(person.handle);
+  const about = profilePage(person.handle, tests);
+  const earned = designerPage(person.handle, tests);
   const state = followState(null, person.handle);
-  const page = cardPage({ owner: person.account, sort: "top" });
+  const cards = cardPage({ owner: person.account, sort: "top", tests }, page);
   const built = photosWhere((one) => one.account === person.account && shownModel(one.model)?.listed)
     .map((one) => ({ ...photoSaid(one), model_name: modelOf(one.model).name }));
   return answer(200, { handle: person.handle, name: person.name, bio: person.bio, since: person.created_at,
@@ -972,8 +1014,8 @@ function profile(handle) {
       tested: earned.tested, likes: earned.likes, builders: earned.builders, followers: state.followers,
       photos: earned.photos.map((one) => ({ ...one, url: `${ORIGIN}/api/people?op=photo_file&id=${one.id}`,
         page: `${ORIGIN}/m/${one.model}#photo-${one.id}` })) } : null,
-    collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...page,
-    models: page.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
+    collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...cards,
+    models: cards.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
 }
 
 /// A list as the asker may see it: public, or theirs.
@@ -1008,9 +1050,13 @@ function people(method, params, body, who, state) {
       return answer(200, { profile: { handle: me.handle, name: me.name, bio: me.bio, created_at: me.created_at },
         collections: LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at")).map(({ models, owner, ...list }) =>
           ({ ...list, count: collectionCount(list.id, true) })),
-        mail: { ...MAIL, ready: true, kinds: true }, follows: { ready: true, shows_follows: SHOWS_FOLLOWS.has(ME) } });
+        mail: { ...MAIL, ready: true, kinds: true }, follows: { ready: true, shows_follows: SHOWS_FOLLOWS.has(ME) },
+        // What their profile shows (supabase/profile_shows.sql): nothing chosen
+        // yet, and the models they may choose from.
+        showcase: { ready: true, links: [], banner: null, pins: [],
+          models: listModels({ owner: ME, size: 200 }).map((one) => ({ id: one.id, name: one.name, picture: one.has_image })) } });
     }
-    if (op === "profile") return profile(params.get("handle"));
+    if (op === "profile") return profile(params.get("handle"), page, asked(params.get("tests")));
     if (op === "marks") {
       if (!ID.test(id)) return answer(400, { error: "name a link: ?id=<ten characters>" });
       return answer(200, { liked: likedBy(ME, id), favourite: keptBy(ME, id),
@@ -1353,7 +1399,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
     if (/^\/(m|u|c)\//.test(url.pathname)) {
-      const made = await serverPage(api, url.pathname);
+      const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it.
       const policy = made.headers?.["content-security-policy"];
       return route.fulfill({ status: made.status, contentType: "text/html; charset=utf-8", body: made.html,

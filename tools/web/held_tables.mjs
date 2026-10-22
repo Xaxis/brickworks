@@ -141,6 +141,31 @@ const TABLES = {
     defaults: () => ({}),
     check: (row) => (Number.isInteger(row.report) && typeof row.photo === "string" ? "" : "report_photos_check"),
   },
+  // supabase/profile_shows.sql: what a profile shows besides its name,
+  // one row an account, written as PostgREST's upsert writes it.
+  profile_shows: {
+    key: ["account"],
+    parents: [],
+    defaults: () => ({ links: [], banner: null, pins: [], updated_at: new Date().toISOString() }),
+    check(row) {
+      const link = /^https:\/\/[^/?#@\s]+\.[^/?#@\s]+([/?#]\S*)?$/;
+      if (!Array.isArray(row.links) || row.links.length > 2
+        || row.links.some((one) => typeof one !== "string" || one.length < 12 || one.length > 200 || !link.test(one))) {
+        return "profile_shows_links_check";
+      }
+      if (!Array.isArray(row.pins) || row.pins.length > 3 || new Set(row.pins).size !== row.pins.length
+        || row.pins.some((id) => !/^[A-Za-z0-9]{10}$/.test(String(id)))) return "profile_shows_pins_check";
+      if (row.banner !== null && !/^[A-Za-z0-9]{10}$/.test(String(row.banner))) return "profile_shows_banner_check";
+      return "";
+    },
+    // The profile's trigger (trust.sql trust_guard_person): 13 or over.
+    async guard(row, rows, base, headers) {
+      const age = await globalThis.fetch(`${base}/rest/v1/rpc/age_of`, { method: "POST",
+        headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify({ account: row.account }) });
+      const said = age.ok ? await age.json() : null;
+      return said && said.over_13 === true ? "" : "brickworks: a public profile is for accounts 13 or over";
+    },
+  },
   // supabase/tested.sql
   share_tests: {
     key: ["model", "n"],
@@ -254,7 +279,7 @@ async function answer(real, base, url, init = {}) {
 
   const filters = [];
   for (const [column, said] of params) {
-    if (["select", "order", "limit"].includes(column)) continue;
+    if (["select", "order", "limit", "on_conflict"].includes(column)) continue;
     const eq = /^eq\.(.*)$/.exec(said);
     const among = /^in\.\((.*)\)$/.exec(said);
     const is = /^is\.(null|true|false)$/.exec(said);
@@ -283,11 +308,13 @@ async function answer(real, base, url, init = {}) {
   }
   if (method === "POST") {
     const given = JSON.parse(String(init.body || "null"));
+    const merging = params.has("on_conflict") && String(init.headers?.prefer || "").includes("resolution=merge-duplicates");
     for (const one of Array.isArray(given) ? given : [given]) {
-      const row = { ...table.defaults(), ...one };
+      const before = merging ? rows.find((other) => table.key.every((column) => other[column] === one[column])) : null;
+      const row = { ...table.defaults(), ...(before || {}), ...one };
       const broken = table.check(row);
       if (broken) return json(400, { code: "23514", message: `violates check constraint "${broken}"` });
-      if (rows.some((other) => table.key.every((column) => other[column] === row[column]))) {
+      if (!before && rows.some((other) => table.key.every((column) => other[column] === row[column]))) {
         return json(409, { code: "23505", message: `duplicate key value violates unique constraint "${path}_pkey"` });
       }
       for (const { column, table: parentTable, on } of table.parents || [table.parent]) {
@@ -302,7 +329,10 @@ async function answer(real, base, url, init = {}) {
       }
       const refused = table.guard ? await table.guard(row, rows, base, init.headers) : "";
       if (refused) return json(400, { code: "P0001", message: refused });
-      rows.push(row);
+      // An upsert (on_conflict, resolution=merge-duplicates): the row there
+      // takes the columns given, as PostgREST's insert ... on conflict does.
+      if (before) Object.assign(before, one);
+      else rows.push(row);
     }
     return new Response(null, { status: 201 });
   }

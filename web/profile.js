@@ -331,6 +331,7 @@ async function load() {
   $("handle").value = handle;
   $("bio").value = mine && mine.bio ? String(mine.bio) : "";
   $("handle-shown").textContent = handle || "your-handle";
+  drawShowcase(mine, answer.body.showcase, young);
   $("view").hidden = !mine;
   if (mine && HANDLE.test(handle)) $("view").href = `/u/${handle}`;
   const follows = mine && HANDLE.test(handle)
@@ -438,6 +439,48 @@ $("profile-form").addEventListener("submit", async (event) => {
     $("view").href = `/u/${handle}`;
   }
   drawHead({ handle, name: answer.body.name }, null);
+});
+/// What your profile shows besides its name (supabase/profile_shows.sql):
+/// your links, a banner and pins, chosen from your models in the gallery.
+/// Only once you have a profile, and once the server keeps them.
+function drawShowcase(mine, showcase, young) {
+  const form = $("showcase-form");
+  form.hidden = !mine || !showcase || !showcase.ready;
+  if (form.hidden) return;
+  const models = (showcase.models || []).filter((one) => ID.test(String(one.id)));
+  const fill = (select, chosen, pictured) => {
+    select.replaceChildren(make("option", "", "None"));
+    select.firstChild.value = "";
+    for (const one of models) {
+      if (pictured && !one.picture) continue;
+      const option = make("option", "", String(one.name));
+      option.value = one.id;
+      select.append(option);
+    }
+    select.value = models.some((one) => one.id === chosen) ? chosen : "";
+  };
+  fill($("banner"), showcase.banner, true);
+  for (const [at, select] of [...form.querySelectorAll("select[data-pin]")].entries()) fill(select, showcase.pins?.[at], false);
+  $("link-1").value = showcase.links?.[0] || "";
+  $("link-2").value = showcase.links?.[1] || "";
+  for (const field of form.querySelectorAll("input, select, button[type=submit]")) field.disabled = young;
+}
+$("showcase-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = $("showcase-form");
+  $("showcase-save").disabled = true;
+  const pins = [...form.querySelectorAll("select[data-pin]")].map((select) => select.value).filter(Boolean);
+  const answer = await call("/api/people?op=showcase", { method: "POST", body: {
+    links: [$("link-1").value, $("link-2").value].map((one) => one.trim()).filter(Boolean),
+    banner: $("banner").value || null, pins: [...new Set(pins)] } });
+  $("showcase-save").disabled = false;
+  if (answer.status !== 200) {
+    $("showcase-said").textContent = answer.body.error || "That did not work just now.";
+    return;
+  }
+  $("link-1").value = answer.body.links?.[0] || "";
+  $("link-2").value = answer.body.links?.[1] || "";
+  $("showcase-said").textContent = "Saved. Your profile shows it within a minute.";
 });
 $("new-list").addEventListener("submit", async (event) => {
   event.preventDefault();
