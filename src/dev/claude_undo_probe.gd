@@ -63,15 +63,15 @@ func _run() -> void:
 		"the person's brick is down, one step to undo (%d)" % _builder.history_depth())
 	var said: String = await _call("edit_model", {"add": [
 		{"part": "3001", "color": 1, "x": 10, "y": 0, "z": 10, "rot": 0}]})
-	_ok(said.begins_with("Done") and _world.brick_count() == 2,
+	_ok(said.begins_with("Done") and _built() == 2,
 		"the session's edit lands: %s" % said.left(40))
 	_ok(_builder.history_depth() == 2, "...as a step of its own (%d): %s" % [
 		_builder.history_depth(), _builder.history_words(1)[0] if _builder.history_depth() > 0 else ""])
 	_builder.undo()
-	_ok(_world.brick_count() == 1 and _world.get_brick(theirs) != null,
+	_ok(_built() == 1 and _world.get_brick(theirs) != null,
 		"Undo takes back the session's edit and keeps the person's brick")
 	_builder.undo()
-	_ok(_world.brick_count() == 0, "a second Undo takes the person's brick")
+	_ok(_built() == 0, "a second Undo takes the person's brick")
 
 	print("\nevery tool that changes the model is one step, and Undo puts it back")
 	_builder.update_preview(Vector3(40.0, 400.0, 40.0), Vector3.DOWN)
@@ -178,6 +178,18 @@ func _first_of_theirs(theirs: int) -> int:
 		if brick.id != theirs and not (_socket.assistant.scenery as Dictionary).has(brick.id):
 			return brick.id
 	return 0
+
+
+## The parts of the model, without the baseplate it stands on. Cleared
+## above, the floor is laid again at the end of the frame after the person's
+## first part (Main._edited_soon), and since a session's check runs on a
+## worker (CHECK_OFF_THREAD_FROM) that frame comes during its edit.
+func _built() -> int:
+	var count: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not (_socket.assistant.scenery as Dictionary).has(brick.id):
+			count += 1
+	return count
 
 
 ## Bricks standing but not drawn: the build animation's still to come.
