@@ -24,7 +24,7 @@
 ## Ctrl+K on a selection does nothing, and the connector cannot be switched
 ## on. The first visit's button brings every one of those back; Settings
 ## takes them away again by a click, saying the connections are off with
-## it, and brings them back.
+## it, and brings them back. Check stability says what it found either way.
 ##
 ## With -- --assistant=on, as /app?assistant=on is on the web: the app
 ## opens with the assistant on, remembered, its column open, and no button.
@@ -363,6 +363,12 @@ func _all_of_it_back(how: String) -> void:
 	(shell.get("_about") as AcceptDialog).hide()
 	_ok((_main.get("_connector") as ClaudeConnector).get("held") == false,
 		"the connector can be switched on again")
+	await shell.call("_check_stability")
+	await _frames(10)
+	var said: String = str(shell.status.fields()["line"])
+	var balance: Balance.Report = shell.balance_shown
+	_ok(balance != null and not balance.empty and said.contains(balance.words()),
+		"Check stability says what it found with it on too: \"%s\"" % said.left(70))
 
 
 # -- a short build with it off -------------------------------------------------
