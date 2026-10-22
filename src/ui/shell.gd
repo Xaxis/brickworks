@@ -1310,8 +1310,9 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) 
 	return report
 
 
-## From this many parts the weighing goes to a worker, as the status bar's
-## does (Main.WEIGH_OFF_THREAD_FROM).
+## From this many parts the weighing goes to a worker: it is asked for, and
+## Working shows while it runs. The status bar's is on a worker at any size
+## (Main._weigh), since it runs after every change.
 const WEIGH_OFF_THREAD_FROM := 600
 
 

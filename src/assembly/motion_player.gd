@@ -537,9 +537,9 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 		if paced.playing == null:
 			# A motion begins where the model stands, the next where the
 			# last left it, its joints read again after a change: on a
-			# worker for a big model (any model in a link's viewer), waited
-			# for here rather than read in this frame, where the house's 211
-			# parts just after a Reset took 96 ms of one (share_play_probe).
+			# worker where there are threads, waited for here rather than
+			# read in this frame, where the house's 211 parts just after a
+			# Reset took 96 ms of one (share_play_probe).
 			# Read here only when no read is under way a second on.
 			if until > 0 and paced.at < paced.order.size() and not grabbing.is_ready() and grabbing.reads_ahead() \
 					and (grabbing.is_reading() or Time.get_ticks_msec() - paced.kept_at < READ_WAIT_MS):
