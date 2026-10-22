@@ -341,8 +341,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   as "Stub Park Bench"). The probe's own model is unchanged. Then 6516-1
   opened in place shows "LDraw model by Chris Böhnke, CC BY 4.0" and "Its
   LDraw page" in Properties, kept in the autosave; an unknown id and no
-  connection are each said. Pictures `shots/library_*.png`. Not in the
-  suite (two more copies of the app).
+  connection are each said, as is a store with no library in it. Pictures `shots/library_*.png`. Not in the
+  suite (two more copies of the app). `-- --sample=DIR` serves a store's own
+  `library/` (libdata's sample) and only takes `library_sample*.png`.
+  Passed 47 checks, 0 failures (2026-10-22, 3ffad545).
 - `library browser flow`: `tools/web/library_flow.mjs`, wired into
   `preview_checks.sh` as `library`. The library and the gallery are played by
   Playwright's route from `tests/fixtures/library`, so a local export and a
@@ -351,7 +353,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   opens tab B at `?new=1&library=omr-106-1` with 65 parts, its credit and the
   Properties link; Community's three with pictures, Open on the bench opens
   tab C at `?new=1&copy=LibStubBch`, copied and credited; A unchanged.
-  Pictures at 1400 x 900 and 390 x 844, dark and light.
+  Pictures at 1400 x 900 and 390 x 844, dark and light (the app has one
+  look; only the page around it follows the scheme). Passed 26 checks on a
+  local export through `relay_server.mjs --static` (2026-10-22, 3ffad545);
+  not yet run against a deployment.
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and
