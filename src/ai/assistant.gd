@@ -924,14 +924,15 @@ class Section extends RefCounted:
 		return out
 
 	## The quarter turn that lays a hinge brick's pin along [member axis],
-	## facing the way [member degrees] tips its top. 3937's top tips one way
-	## only (docs/MECHANISMS.md §34): at rot 0 it opens to positive degrees
-	## about x, at rot 1 to negative about z. A builder tipping it the other
-	## way turns the brick round, as FigurePattern's waist does; laid square
-	## whatever the sign, a wing tipped 15 degrees about z had its top folded
-	## 2.3 LDU into its base, refused (surface_probe, since 61c53fb9).
+	## facing the way the section tips its top. 3937's top tips one way only
+	## (docs/MECHANISMS.md §34): at rot 0 it opens to positive degrees about
+	## x, which is a negative pitch, at rot 1 to negative degrees about z or
+	## a negative roll. A builder tipping it the other way turns the brick
+	## round, as FigurePattern's waist does; laid square whatever the sign, a
+	## wing tipped 15 degrees about z had its top folded 2.3 LDU into its
+	## base, refused (surface_probe, since 61c53fb9).
 	func hinge_rot() -> int:
-		var turn: float = wrapf(degrees, -180.0, 180.0)
+		var turn: float = wrapf(degrees - pitch if axis == "x" else degrees + roll, -180.0, 180.0)
 		if axis == "x":
 			return 2 if turn < 0.0 else 0
 		return 3 if axis == "z" and turn > 0.0 else 1

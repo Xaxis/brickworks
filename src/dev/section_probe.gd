@@ -601,6 +601,17 @@ func _hinged() -> void:
 		_check("a spire leaning %d degrees about %s on hinge: true holds, its hinge at rot %d: %s"
 			% [int(case[1]), case[0], (model.sections["spire"] as Assistant.Section).base_rot,
 				verdict["summary"]], bool(verdict["ok"]))
+	# Said by a pitch or a roll the same: a pitch of 20 folded it as -20
+	# degrees about x did.
+	for case: Array in [["pitch", 20.0], ["pitch", -20.0], ["roll", 20.0], ["roll", -20.0]]:
+		var args: Dictionary = spire.duplicate(true)
+		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0, case[0]: case[1],
+			"hinge": true}]
+		var model: Assistant.Model = _assistant._read_model(args)
+		var verdict: Dictionary = _assistant._check(model, true)
+		_check("...and at a %s of %d, its hinge at rot %d: %s" % [case[0], int(case[1]),
+			(model.sections["spire"] as Assistant.Section).base_rot, verdict["summary"]],
+			bool(verdict["ok"]))
 	# Laid by hand the way it does not open, it is refused as the hinge still.
 	for rot: int in [0, 2]:
 		var by_hand: Dictionary = {"bricks": [

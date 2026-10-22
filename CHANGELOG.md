@@ -81,6 +81,17 @@ whole cycle.
 
 ### Fixed
 
+- A part Claude hangs on a hinge brick (3937) now tips whichever way it is
+  asked. The hinge brick's top tips one way only, and the app laid it facing
+  the same way whatever the angle, so a wing, a flap or a lid tipped the
+  other way had its top folded into its base and the design was refused
+  since 15 October. The hinge is now turned round to face the tip, as a
+  builder turns it, so a pair of wings tipped apart builds. Laid by hand
+  folded into its base, a hinge is still refused.
+- Claude asked for a head, a bust or a wing alone (an owl's head, a bust
+  of a man) is no longer sent back to build a whole jointed animal or
+  person in its place. A whole figure or creature with nothing on a joint
+  is still sent back once.
 - A steering turned one way, the other and back now comes back where it was
   built. A turn that could not quite close its linkage kept it a little
   open, and the next turn took the gap for closed: Red Fury's (5533-1)
