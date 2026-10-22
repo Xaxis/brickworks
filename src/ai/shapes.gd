@@ -402,6 +402,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			plan.cubes = pattern["cubes"]
 		if pattern.get("cube_phases") is Array:
 			plan.cube_phases = pattern["cube_phases"]
+		if pattern.get("cube_bins") is Dictionary:
+			plan.cube_bins = pattern["cube_bins"]
 		if pattern.get("side_fine") is Callable:
 			plan.side_fine = pattern["side_fine"]
 		plan.mirror_of()
@@ -3025,6 +3027,10 @@ class Plan extends RefCounted:
 	## [[phase, cubes]], each cube in the patch of the cubes facing its way at
 	## its depth in every cut ([method _cube_shells]).
 	var cube_phases: Array = []
+	## The model's surface a plate at a time in each two-stud column
+	## (Brickify.Grid.cube_bins): a patch's row is its own only where the
+	## surface in it faces the patch's way, or there is none.
+	var cube_bins: Dictionary = {}
 	## Each cube's studs and plates, as Brickify's cubes are cut.
 	const CUBE_STUDS := 2
 	const CUBE_PLATES := 5
@@ -3221,6 +3227,21 @@ class Plan extends RefCounted:
 				taken.erase(plate)
 				shelled.erase(plate)
 				given_back[plate] = true
+
+	## Whether the model's surface in the plates [param low] to [param high] of
+	## stud [param cell]'s two-stud column faces [param facing], as a cube's must
+	## (Brickify.STEEP, sine 0.6), or there is next to none of it.
+	func _row_faces(cell: Vector2i, low: float, high: float, facing: Vector2i) -> bool:
+		var sum := Vector3.ZERO
+		var bx: int = floori(cell.x / float(CUBE_STUDS))
+		var bz: int = floori(cell.y / float(CUBE_STUDS))
+		for j: int in range(floori(low), ceili(high)):
+			var share: float = 1.0 if j >= low and j + 1 <= high else 0.5
+			sum += (cube_bins.get(Vector3i(bx, j, bz), Vector3.ZERO) as Vector3) * share
+		if sum.length() < 0.25:
+			return true
+		var way: Vector3 = sum.normalized()
+		return absf(way.y) < 0.6 and way.x * facing.x + way.z * facing.y > 0.5
 
 	## Whether the model has a plate in cube [param c] of cut [param phase].
 	func _cube_has_model(c: Vector3i, phase: int) -> bool:
@@ -3425,6 +3446,8 @@ class Plan extends RefCounted:
 					if j >= low and j + 1 <= high:
 						whole = whole and kept_boxes.has(Vector3i(cell.x, j, cell.y))
 				if not whole or not bool(row_free.call(cell, low, high)):
+					continue
+				if Shapes.TRY.contains("rowface") and not _row_faces(cell, low, high, facing):
 					continue
 				var at_ := Vector2i(lt.x, w)
 				reach[at_] = maxi(int(reach.get(at_, lt.y)), lt.y)
