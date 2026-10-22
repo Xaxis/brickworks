@@ -3966,6 +3966,22 @@ class Plan extends RefCounted:
 				else:
 					sub.made = []
 		_close_side_studs(shell, sub, held_here, masked, local_colour)
+		if Shapes.TRY.contains("tally") and shell.has("id"):
+			var got: Dictionary = {}
+			for one: Dictionary in sub.made:
+				for cell: Vector2i in one.get("_cells", []):
+					for v: int in int(one.get("_h", 1)):
+						var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5, cell.y + 0.5)
+						var row: float = top - Shapes.PLATES_PER_STUD * (cell.y + 1)
+						for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+							var key := Vector3i(floori(p.x), j_, floori(p.z))
+							if mine.has(key):
+								got[key] = true
+			var trial_held: int = (shell.get("_held", {}) as Dictionary).size()
+			print("TALLY shell %d %s: plates %d, trial covered %d, real covered %d, held %d of %d tried, %s" % [
+				int(shell["id"]), str(shell["facing"]), mine.size(),
+				(shell.get("covered_at", {}) as Dictionary).size(), got.size(), held_here.size(),
+				trial_held, "reused" if is_same(sub, shell.get("_sub")) else "relaid"])
 		# How much of each shell its side studs kept, for a probe to say.
 		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),
 			sub.made.size(), laid, sub.held.size(), roundi(100.0 * float(shell["covered"]))])
