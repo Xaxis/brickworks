@@ -52,6 +52,20 @@ whole cycle.
 
 ### Fixed
 
+- A shared model's motions play in full on a slow connection. A motion is
+  judged by its parts' exact shapes, which the web fetches as they are
+  wanted. They were asked for only once the model's joints had been read,
+  all of them in the file's order, and a press waited up to 10 s and then
+  played without those still on their way: with its parts coming a second
+  or two apart, the house's (1484-1) second gate stopped at 6° of 90°, and
+  its mailbox door, held to the box by joints read without the door's
+  shape, did not open at all. The shapes are now asked for as soon as the
+  model's parts are here, those of the parts a motion moves and sweeps past
+  first, and a press waits for those alone: 0.9 to 4.3 s on that
+  connection, and none on a normal one, where a phone had waited 5 to 10 s.
+  A press that still meets a part whose shape is on its way is worked out
+  again once it has come, and the joints are read again once the shapes
+  they were read without are here, in the builder on the web as on a link.
 - A steering no longer loses the rack it is turned by. A pinion standing at
   the end of its rack could be carried past the rack's last tooth by a
   turn, and the next turn found it out of the rack and turned it alone, the
