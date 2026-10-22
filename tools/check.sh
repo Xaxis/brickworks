@@ -13,14 +13,84 @@
 # whether a part is the size it claims. And a parse check, which catches
 # the class of mistake that makes every other check fail at once.
 #
-# Not run here: anything that spends money. Those are
-# src/dev/{revise,sideways,stream,bakeoff}_probe.gd, run by hand when the
-# thing they exercise has changed.
+# Every probe in src/dev is run here, or named in `out` below with why not
+# (anything that spends money, among others), and the run stops before it
+# starts when one is in neither.
 set -uo pipefail
 # Guarded: a cd that fails leaves the script running against
 # whatever directory it was started from, which for a deploy means
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
+
+# The probes run headless, in this order. The MCP first of all: it is the
+# app's AI interface, and it falls behind with nothing failing — a tool
+# list four tools stale, a menu command no session can reach (mcp_sync);
+# and the window's commands as tools, each read back off the model
+# (app_tools).
+headless=(mcp_sync app_tools element_files element modify part_tool dimensions
+  snap stability history restore store versions empty_save instructions
+  playback responsive search inventory mosaic world_view controls snot technic
+  joints exact by_connector joint_check flex clutch mechanism axle variety
+  repeat usage kinds rules angled section sections scale bigmodel quit edit
+  selection mirror scanner attach import lxf io mesh_export select reader
+  camera brain keeping glyph fetch fetch_retry busy dropped vocab reference
+  search_quality moved availability holds pieces mcp claude_code techniques
+  patterns face features creative rooms style figure_joints armature turned
+  detail chat sketch project example_name minifig print sticker mould brickify
+  claude_undo design_undo first_design_undo undo_ids read_only collection
+  share_pages tested new_window best_of_two selection_fit swing_bound
+  table_race technic_hand ahead art_plan autosave_paths balance brickify_buy
+  build_steps cabin_glass cabins carried_at_once carried_fetch decor
+  design_memory dome dress exact_cost fidelity flex_skin gear_ratio
+  hinged_panels mcp_walk mcp_walk3 mesh_formats own_copies page_places
+  parts_only print_search shapes snippets standing subject_words surface
+  unrestored update viewer_tools worker_first_run)
+# In a window, each as its own header says (tools/probe.sh: the size it
+# names, on Xvfb and the GPU, a data folder of its own). NAME, or
+# NAME:ARGS for what the probe is given after its `--`.
+windowed=(motions motions_panel motions_render telescope floor share_view
+  share_play simulate grab typing slow_frames look progress render
+  collection_ui library animation balance_view outline outline_cost placing
+  offgrid booklet_edit "command:--judge")
+# Not run here, each with why. A probe goes here only for one of these
+# reasons; a check that is merely slow or failing is still a check.
+out=(
+  bakeoff           # spends money: real designs on the API key, dollars a run
+  revise            # spends money: a design on the API key
+  sideways          # spends money: a design on the API key
+  stream            # spends money: a request on the API key
+  best_of_two_walk  # spends two designs and a pick of the subscription; best_of_two is its offline half
+  account           # needs the relay with .env's keys, and makes accounts in production Supabase
+  connector         # needs the relay with .env's keys, and makes accounts in production Supabase
+  tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
+  tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
+  harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
+  roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
+  candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench
+  daylight          # a measuring tool for one file and box; patterns runs its functions here
+  technique_sheet   # pictures for a person, no pass or fail
+  gallery           # pictures of every shipped model for a person, no pass or fail
+  anim_walk         # an audit: every answer printed for a person, no pass or fail
+)
+# A probe in no list never ran: the lists were kept by hand, and 85 of 214
+# were in none, two of them failing on main for days with nothing said
+# (claude_undo, surface; 2026-10-22). So the run stops here, before it
+# starts, naming each. And a name in a list with no probe of that name.
+probes=$(ls src/dev/*_probe.gd | sed 's#^src/dev/##; s#_probe\.gd$##' | sort)
+listed=$({ printf '%s\n' "${headless[@]}" "${windowed[@]%%:*}" "${out[@]}"
+  # and those run by hand below, each by its script
+  grep -v '^\s*#' tools/check.sh | grep -oE 'src/dev/[a-z0-9_]+_probe\.gd' \
+    | sed 's#^src/dev/##; s#_probe\.gd$##'
+  grep -oE '^\s*probe [a-z0-9_]+' tools/check.sh | awk '{print $2}'
+} | sort -u)
+unlisted=$(comm -23 <(echo "$probes") <(echo "$listed"))
+unknown=$(comm -13 <(echo "$probes") <(echo "$listed"))
+if [ -n "$unlisted$unknown" ]; then
+  [ -z "$unlisted" ] || echo "check: in no list here, so never run:" $unlisted
+  [ -z "$unknown" ] || echo "check: listed here, but no src/dev/NAME_probe.gd:" $unknown
+  echo "  put each probe in the suite (headless, windowed), or in out with why it is not"
+  exit 1
+fi
 # Never the person's own app data (~/.local/share/godot/app_userdata/
 # Brickworks, their models and settings): a Godot left to the default
 # XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
@@ -77,6 +147,12 @@ run() {
   if echo "$output" | grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script'; then
     status=1
   fi
+  # And a probe that skipped itself exits 0 having checked nothing, which
+  # tools/probe.sh fails with 3: a joint check "passed" so with its parts'
+  # exact shapes gone (2026-10-19).
+  if [ "$status" = 0 ] && echo "$output" | grep -qE '^[a-z_ ]+probe: SKIPPED'; then
+    status=3
+  fi
   if [ "$status" = 124 ]; then
     # Not a pass and not a failure: nothing was proven either way, and
     # saying "ok" or "FAIL" would both be claims nobody can stand up.
@@ -91,7 +167,7 @@ run() {
     # once missed: bigmodel failed m87's suite with nothing said under it,
     # and passed alone (2026-10-19). Every probe ends on the same leak
     # lines, so those are left out; with nothing else, its last lines.
-    said=$(echo "$output" | grep -E 'FAIL|ERROR|Error|error|crash|signal' \
+    said=$(echo "$output" | grep -E 'FAIL|ERROR|Error|error|crash|signal|SKIPPED' \
       | grep -vE 'were leaked at exit|RID allocations|object\.cpp' | head -8)
     [ -n "$said" ] || said=$(echo "$output" | tail -5)
     echo "$said" | sed 's/^/          /'
@@ -160,11 +236,7 @@ else
 fi
 
 echo "── godot probes ──"
-# The MCP first of all: it is the app's AI interface, and it falls behind
-# with nothing failing — a tool list four tools stale, a menu command no
-# session can reach (mcp_sync); and the window's commands as tools, each
-# read back off the model (app_tools).
-for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints exact by_connector joint_check flex clutch mechanism axle variety repeat usage kinds rules angled section sections scale bigmodel quit edit selection mirror scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch fetch_retry busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style figure_joints armature turned detail chat sketch project example_name minifig print sticker mould brickify; do
+for name in "${headless[@]}"; do
   probe "$name"
 done
 
@@ -385,6 +457,12 @@ run "draws only what changed" "${cursor_screen[@]}" godot --path . --resolution 
 # hand drew the castle for 23 s with the pointer still.
 run "draws only what changed, big" "${cursor_screen[@]}" godot --path . --resolution 1280x860 \
   --script src/dev/idle_probe.gd -- --model=res://models/castle.ldr
+# And the rest, each in the window its header asks for.
+for spec in "${windowed[@]}"; do
+  name=${spec%%:*}; args=()
+  [ "$spec" = "$name" ] || read -r -a args <<< "${spec#*:}"
+  run "$name" tools/probe.sh "${name}_probe" "${args[@]}"
+done
 
 # Two processes and a socket between them, which is a different kind of
 # failure from anything a single probe can have: the app's half can be
@@ -398,6 +476,12 @@ if [ "$network" = 1 ]; then
   probe remote
   probe reference_lookup
   run "open (over the wire)" godot --path . --script src/dev/open_probe.gd
+  # The model library as the app opens it, from the store (.env's PARTS_URL),
+  # and the gallery as a session reads it, from the hosted gallery.
+  parts_url=$(sed -n 's/^PARTS_URL=//p' .env 2>/dev/null | tr -d "\"'")
+  run "the library from the store" godot --headless --path . \
+    --script src/dev/library_open_probe.gd -- --base="$parts_url"
+  probe gallery_tool
 fi
 
 echo ""
