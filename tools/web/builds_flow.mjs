@@ -346,7 +346,12 @@ try {
     // now, the link's page): what this device kept is all it has.
     await page.goto(`${site}/app?view=${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the viewer again", 600);
-    // A link left in the step player opens straight on its kept page.
+    // A link left in the step player opens straight on its kept page, once
+    // its steps are worked out, which is after the viewer is ready
+    // (Main._view_shared): on a busy box seconds after. Read at a fixed 3 s
+    // from ready, it opened just after, its Build it went with the bar, and
+    // the flow waited 60 s for a button no longer there (m146).
+    await until(page, () => Boolean(window.brickworksStepsReady), "the steps worked out again", 120);
     await page.waitForTimeout(3000);
     if (!(await page.evaluate(() => ((window.brickworksShare || {}).build || {}).open === true))) await tap(page, "view_build");
     await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player again", 60);

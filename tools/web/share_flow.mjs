@@ -279,7 +279,10 @@ try {
   check(`the link's page: ${page.status}, og:title and og:image`, page.status === 200
     && html.includes(`<meta property="og:title" content="${NAME} — a Brickworks model">`)
     && html.includes(`<meta property="og:image" content="${link}.png">`));
-  check(`...crediting ${AUTHOR} with the part count`, html.includes(`by ${AUTHOR}`) && /\d+ parts/.test(html));
+  // The credit is the designer's row under its name, the count a pill.
+  const credit = /<div class="shared-by">[\s\S]*?<\/div>/.exec(html)?.[0] || "";
+  check(`...crediting ${AUTHOR} with the part count`, credit.includes(`<b>${AUTHOR}</b>`)
+    && /<li class="pill">[\d,]+ parts?<\/li>/.test(html));
   check("...what was said about it, its tags and its licence",
     html.includes(`<p class="description">${ABOUT}</p>`) && html.includes('href="/gallery?tag=car"')
     && html.includes('href="/gallery?tag=flow%20test"') && html.includes("<b>CC BY 4.0.</b>")

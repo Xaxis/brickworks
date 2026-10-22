@@ -945,8 +945,11 @@ async function thePeople(tokenA, tokenB) {
   r = await call(`/m/${credited}`);
   check(r.text.includes(`<a class="who" href="/u/${handle}">`) && r.text.includes("<b>&lt;b&gt;Probe&lt;/b&gt;"),
     "the credited model's page links its profile");
+  // Its page may end on the credited one's card, which names its designer
+  // (More in the gallery): the page itself, above those rows, credits none.
   r = await call(`/m/${nameless}`);
-  check(!r.text.includes(`/u/${handle}`), "the one shared without a name does not");
+  check(r.status === 200 && !r.text.split('<section class="next"')[0].includes(`/u/${handle}`)
+    && !r.text.includes('<div class="shared-by">'), "the one shared without a name does not");
   let l = await call(`/api/share?op=list&page=1&tests=1&q=probe%20credited`);
   const card = (l.json?.models || []).find((m) => m.id === credited) || {};
   check(card.by?.handle === handle && (l.json?.models || []).find((m) => m.id === nameless)?.by == null,
