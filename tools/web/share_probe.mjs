@@ -803,7 +803,9 @@ async function theDirectory(tokenA) {
   const page = r.text;
   check(r.status === 200 && page.includes(`<p class="description">A gatehouse with a ${word} on the wall.\n\nIt &lt;b&gt;opens&lt;/b&gt; &amp; &quot;closes&quot;.</p>`),
     "its page: the description, escaped, its lines kept");
-  check(page.includes('<a href="/gallery?tag=castle">castle</a>') && page.includes('<a href="/gallery?tag=b%20gate%20b">b gate b</a>'),
+  // A tag is drawn as the kit's pill (site.css .pill.tag), so its link has a
+  // class: the check is its address and its words, whatever it is styled as.
+  check(page.includes('href="/gallery?tag=castle">castle</a>') && page.includes('href="/gallery?tag=b%20gate%20b">b gate b</a>'),
     "its tags, each a link to the gallery filtered by it");
   check(page.includes('<a href="/gallery?kind=castle">Castles and fantasy</a>'), "its kind, a link to the gallery's");
   check(page.includes("<b>CC BY-SA 4.0.</b>") && page.includes('href="https://creativecommons.org/licenses/by-sa/4.0/"')
