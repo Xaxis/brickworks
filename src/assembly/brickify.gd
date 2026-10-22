@@ -114,6 +114,10 @@ class Options extends RefCounted:
 	## staircase of studs up, as [method build] lays it again where the
 	## build leaves a region of the model out.
 	var snot: bool = true
+	## Plates of the grid (x, plate, z) no turned cube is laid near: where a
+	## build with its sides turned held a part past its working load beside a
+	## shell, and no prop could take it ([method build] lays it again so).
+	var upright_near: Array[Vector3i] = []
 
 	func copied() -> Options:
 		var out := Options.new()
@@ -505,6 +509,9 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
 	if options.smooth and options.snot:
 		clock = Time.get_ticks_msec()
 		var cuts: Array = _cubes(grid, points, count, outward, progress, [0] + Array(CUBE_PHASES))
+		if not options.upright_near.is_empty():
+			for n: int in cuts.size():
+				cuts[n] = _cubes_away(cuts[n], 0 if n == 0 else CUBE_PHASES[n - 1], options.upright_near)
 		grid.cubes = cuts[0] if not cuts.is_empty() else {}
 		if not grid.cubes.is_empty():
 			for n: int in cuts.size() - 1:
@@ -640,6 +647,23 @@ const STEEP := 0.42
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
 const CUBE_IN := 0.5
+
+
+## [param cubes] (cut [param phase] plates up) but those within a stud and two
+## plates of any plate in [param near]: the side there stays upright.
+static func _cubes_away(cubes: Dictionary, phase: int, near: Array[Vector3i]) -> Dictionary:
+	var out: Dictionary = {}
+	for key: Variant in cubes:
+		var c: Vector3i = key
+		var low := Vector3i(c.x * CUBE_STUDS, c.y * CUBE_PLATES + phase, c.z * CUBE_STUDS)
+		var high: Vector3i = low + Vector3i(CUBE_STUDS, CUBE_PLATES, CUBE_STUDS)
+		var close: bool = false
+		for p: Vector3i in near:
+			close = close or p.x >= low.x - 1 and p.x < high.x + 1 and p.z >= low.z - 1 \
+				and p.z < high.z + 1 and p.y >= low.y - 2 and p.y < high.y + 2
+		if not close:
+			out[c] = cubes[c]
+	return out
 
 
 static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float,
@@ -1892,6 +1916,7 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 					== bool(report.get("ok", false)):
 				report = _again(after, report)
 				report["propped"] = props
+				balance = weighed
 			else:
 				model.placements.resize(was)
 	times["check.props"] = Time.get_ticks_msec() - t4
@@ -1917,6 +1942,30 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			"at %d studs nothing of it held together" % options.studs)
 	var out: Dictionary = {"model": model, "report": report, "grid": grid, "trouble": trouble,
 		"ms": times}
+	# A part held past its working load beside a turned side, that no prop
+	# could take, is laid again with the cubes about it upright, and the one
+	# with fewer such parts kept, the time of both counted. Upright, a core
+	# bonds an overhang across the plates the shell took: the armadillo at 24
+	# studs hung a 1 x 2 plate on one stud of another, 40 plates over the
+	# ground, beside a shell facing out along x, where upright it had none.
+	var relaid: bool = false
+	if options.snot and options.smooth and options.upright_near.is_empty() and balance != null \
+			and balance.over > 0:
+		var near: Array[Vector3i] = _past_load_by_shells(model, checker, balance, lift)
+		if not near.is_empty():
+			var again: Options = options.copied()
+			again.upright_near = near
+			var other: Dictionary = build(mesh, again, checker, progress, false)
+			var weighed: Balance.Report = other.get("report", {}).get("balance")
+			var better: bool = other.has("model") and weighed != null and weighed.over < balance.over \
+				and float(other["report"]["coverage"]) >= float(report["coverage"]) - 0.005
+			var kept: Dictionary = other if better else out
+			var spent: Dictionary = times if better else other.get("ms", {})
+			for step: String in ["measure", "lay", "check"]:
+				kept["ms"][step] = int(kept["ms"].get(step, 0)) + int(spent.get(step, 0))
+			out = kept
+			report = out["report"]
+			relaid = better
 	# A bonded core is kept only if it keeps as much of the model. Where the
 	# bonded build leaves a region of it out, it is laid again by the colours
 	# measured and the one that fills more of the model kept, the time of both
@@ -1926,7 +1975,7 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# its slopes fitted by distance, the temple lost the moon again. And with
 	# its sides upright: laid first upright and bonded, then unbonded, the
 	# temple was laid three times, twice `main`'s time.
-	if (options.bond or (options.near or options.snot) and options.smooth) \
+	if not relaid and (options.bond or (options.near or options.snot) and options.smooth) \
 			and not (report["lost"]["regions"] as Array).is_empty():
 		var unbonded: Options = options.copied()
 		unbonded.bond = false
@@ -1945,6 +1994,41 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# What it lost is said; and where most of it went, a size that keeps it.
 	if suggest and float(report["coverage"]) < 0.75:
 		out["studs"] = _keeps_at(mesh, options, checker, progress)
+	return out
+
+
+## The plates of each part on either side of a stud joint past its working
+## load that lies beside a turned side's plates (Shapes.last's "shelled"),
+## the grid's own, lifted [param lift] plates by a stand; [] where none does.
+static func _past_load_by_shells(model: Assistant.Model, checker: Assistant,
+		balance: Balance.Report, lift: int) -> Array[Vector3i]:
+	var shelled: Dictionary = Shapes.last.get("shelled", {})
+	var out: Array[Vector3i] = []
+	if shelled.is_empty():
+		return out
+	for one: Balance.JointLoad in balance.joints:
+		if one.ratio <= 1.0:
+			break
+		var plates: Array[Vector3i] = []
+		var beside: bool = false
+		for index: int in [one.beyond - 1, one.held_by - 1]:
+			if index < 0 or index >= model.placements.size():
+				continue
+			var placement: Assistant.Placement = model.placements[index]
+			var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+			if part == null:
+				continue
+			var box: AABB = checker._transform(placement, part) * part.bounds
+			for x: int in range(roundi(box.position.x / 20.0), roundi(box.end.x / 20.0)):
+				for z: int in range(roundi(box.position.z / 20.0), roundi(box.end.z / 20.0)):
+					for j: int in range(roundi(box.position.y / 8.0) - lift, roundi(box.end.y / 8.0) - lift):
+						var p := Vector3i(x, j, z)
+						plates.append(p)
+						for step: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1),
+								Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+							beside = beside or shelled.has(p + step)
+		if beside:
+			out.append_array(plates)
 	return out
 
 
