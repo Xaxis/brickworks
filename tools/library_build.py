@@ -225,7 +225,10 @@ def stage(out: Path) -> int:
     (out / "library" / "covers").mkdir(parents=True, exist_ok=True)
     # The staged tree is not the project's: Godot leaves it alone.
     (out / ".gdignore").touch()
-    for m in models:
+    # Only models whose cover is drawn are listed, and only their files staged:
+    # the screen shows each one's picture.
+    drawn = [m for m in models if (out / m["cover"]).is_file()]
+    for m in drawn:
         target = out / m["file"]
         source = Path(m["_source"])
         if not target.exists() or target.stat().st_size != source.stat().st_size:
@@ -234,8 +237,6 @@ def stage(out: Path) -> int:
     for stray in shelf.glob("*.mpd"):
         if stray.name not in have:
             stray.unlink()
-    # Only models whose cover is drawn are listed: the screen shows each one's.
-    drawn = [m for m in models if (out / m["cover"]).is_file()]
     index = written(drawn)
     (out / "library" / "index.json").write_text(
         json.dumps(index, ensure_ascii=False, separators=(",", ":")))
@@ -318,18 +319,20 @@ def sample(source: Path, to: Path, count: int) -> int:
     models = index["models"]
     chosen: list[dict] = []
     themes: set[str] = set()
-    # One per top theme first, largest themes first, then the alternates and
-    # the biggest and smallest, so the screen meets each kind of row.
+    # One per top theme first, largest themes first, then the other licence,
+    # alternates and the biggest and smallest, so the screen meets each kind
+    # of row.
     by_theme: dict[str, list[dict]] = {}
     for m in models:
         by_theme.setdefault(m["theme"].split(" > ")[0], []).append(m)
     for theme in sorted(by_theme, key=lambda t: -len(by_theme[t])):
-        if len(chosen) >= count - 6:
+        if len(chosen) >= count - 7:
             break
         pick = by_theme[theme][len(by_theme[theme]) // 2]
         chosen.append(pick)
         themes.add(theme)
-    extra = [m for m in models if m["alternate_of"]][:3]
+    extra = [m for m in models if m["licence"] != "CCAL 2.0"][:1]
+    extra += [m for m in models if m["alternate_of"]][:3]
     extra += sorted(models, key=lambda m: m["parts"])[:1] + sorted(models, key=lambda m: -m["parts"])[:2]
     for m in extra:
         if m not in chosen and len(chosen) < count:

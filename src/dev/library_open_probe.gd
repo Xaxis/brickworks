@@ -5,6 +5,13 @@
 ## be what models.json and the index say.
 ##
 ##   godot --headless --path . --script src/dev/library_open_probe.gd -- --base=URL [ID ...]
+##   godot --headless --path . --script src/dev/library_open_probe.gd -- --recount [--recount-out=FILE]
+##
+## With --recount, every model in vendor/omr is counted again as
+## collection_models.gd counts it and held to models.json, nothing opened:
+## a model whose count moved since models.json was written is said (and
+## written to FILE as JSON), and the fix is to run collection_models.gd again,
+## then tools/library_build.py stage.
 ##
 ## URL is the store's root as the app has it (PARTS_URL): library/index.json
 ## is under it. A staged library served on a local port does
@@ -45,6 +52,9 @@ func _run() -> void:
 			base = a.substr(7)
 		elif not a.begins_with("--"):
 			ids.append(a)
+	if OS.get_cmdline_user_args().has("--recount"):
+		await _recount()
+		return
 	if base.is_empty():
 		print("library_open_probe: give --base=URL, the store's root")
 		quit(2)
@@ -148,3 +158,44 @@ func _run() -> void:
 			read and cover.get_size() == Vector2i(512, 384))
 	print("library_open_probe: %d models, %d failures" % [chosen.size(), _failures])
 	quit(0 if _failures == 0 and chosen.size() >= 1 else 1)
+
+
+## Every model counted again and held to models.json.
+func _recount() -> void:
+	var out: String = ""
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("--recount-out="):
+			out = a.substr(14)
+	var library := PartLibrary.new()
+	if not library.load_catalogue():
+		print("library_open_probe: no catalogue")
+		quit(1)
+		return
+	var counter: GDScript = load("res://src/dev/collection_models.gd")
+	var listed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SetInventories.ROOT + "models.json"))
+	var moved: Array = []
+	var same: int = 0
+	var began: int = Time.get_ticks_msec()
+	for entry: Variant in (listed as Dictionary).get("models", []):
+		var model: Dictionary = entry
+		var file_name: String = str(model["file"])
+		var was: int = 0
+		for row: Variant in model.get("p", []):
+			was += int((row as Array)[2])
+		var needs: Dictionary = counter.listed(file_name, str(model["set"]), library)
+		var now: int = 0
+		for key: String in needs:
+			now += int(needs[key])
+		if now == was:
+			same += 1
+		else:
+			moved.append({"file": file_name, "models_json": was, "now": now})
+	print("library_open_probe: %d of %d models count as models.json says, %d moved, in %d s" % [
+		same, same + moved.size(), moved.size(), (Time.get_ticks_msec() - began) / 1000])
+	for one: Dictionary in moved.slice(0, 20):
+		print("  %s: models.json %d, now %d" % [one["file"], one["models_json"], one["now"]])
+	if not out.is_empty():
+		var file: FileAccess = FileAccess.open(out, FileAccess.WRITE)
+		file.store_string(JSON.stringify(moved, " "))
+		file.close()
+	quit(0)
