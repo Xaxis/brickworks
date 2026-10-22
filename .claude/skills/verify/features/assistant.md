@@ -2566,7 +2566,7 @@ with no Clear (built, not sent back, not told of joints, its subject names no
 owl); in the app's own loop (its `_on_response`, offline), "make it bigger" after
 an owl head is still a creature before it submits, a house roof asked next in the
 same conversation is not told of joints, and New starts "a lighthouse" alone. On
-the tree before it (a63858d6) 8 of its 24 checks fail: the house is sent back as
+the tree before it (a63858d6) 8 of its 23 checks fail: the house is sent back as
 a jointed owl, the revision's subject is "make it bigger".
 
 ### Characters laid on joints (the figure pattern)
