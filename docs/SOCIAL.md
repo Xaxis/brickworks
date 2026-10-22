@@ -72,8 +72,10 @@ have none).
 The plan: a foundation (tokens, a theme choice, a small component kit and
 one card), then the gallery and the model page, the profile and your
 account, notifications and a visual feed, then onboarding and the
-community's depth. Ten units of about three hours each for the first
-five phases. Every new table is additive; nothing needs the owner.
+community's depth: ten units for the first five phases, four of them
+large, so about fourteen three-hour units. Every new table is additive.
+Nothing needs the owner; one call is the lead's (which account is the
+house's, U10).
 
 ## 1. What we have
 
@@ -86,7 +88,7 @@ much as the full ones (section 4, D12).
 
 | Feature | Where | How good | Where it is weak (evidence) |
 |---|---|---|---|
-| Gallery: search, kind, size, instructions, Technic, Tested, sort (Newest, Most viewed, liked, remixed, built, Top builds), tag chips, the question in the address | `web/gallery.html`, `web/gallery.js`, `api/share.js ?op=list` | Solid: fast (30 s CDN), shareable searches, text set safely, ranking that rewards builds over views | Words first, cards late (above). One card a row on a phone, 3 at 1280: a 7-model gallery is 3,932 px on a phone. Filters fold into a bar; Sort is a dropdown. No tabs (New / Top / Following). "Show more" only, and Back loses the place. Shelves show with one card (Small builds = the sports car, repeated in the grid) |
+| Gallery: search, kind, size, instructions, Technic, Tested, sort (Newest, Most viewed, liked, remixed, built, Top builds), tag chips, the question in the address | `web/gallery.html`, `web/gallery.js`, `api/share.js ?op=list` | Solid: fast (30 s CDN), shareable searches, text set safely, ranking that rewards builds over views | Words first, cards late (above). One card a row on a phone, 3 at 1280: a 7-model gallery is 3,932 px on a phone. Filters fold into a bar; Sort is a dropdown. No tabs (New / Top / Following). "Show more" only: the pages it loads are not in the address and nothing keeps the place, so Back keeps it only when the browser's back-forward cache happens to hold the page. Shelves show with one card (Small builds = the sports car, repeated in the grid) |
 | This week's pick, Small builds, You can build now (signed in, with a collection) | `supabase/discovery.sql`, `gallery.js` | A real differentiator: Rebrickable's Build engine is the only peer with "build with my parts" ([RB-G]) | A quiet week has no pick, so the front is empty; a shelf of one looks broken |
 | The model card (`.model`) | `web/cards.js` `modelCard`; and again `api/people.js` `cardHtml`; and `api/share.js` `smallCard` (`.mini`) | One look, picture held at 1200 x 630 so rows line up, zeros hidden | Three renderers that differ: the server's card has no Moves or parts-owned line, and shows Tested only on a designer's page. No designer avatar or link, no like from the card. The 1200 x 630 frame wastes most of itself on tall models: the Wizard's Tower fills about a sixth of its frame's width (`live-gallery-1280-dark.png`) |
 | Model page `/m/<id>`: picture, View in 3D, Open in Brickworks (copy), facts, counts, Like, Favourite, Add to a collection, Built by people (photos, I built it), versions, About, tags, comments on the model and on steps, licence, remix line, Report | `api/share.js` `sharePage`, `web/model-page.js`, `web/directory.css` | Deep: versions with what changed, step comments, real-build photos and the remix line are each more than most peers have | One picture, no gallery of pictures. Two "View in 3D" a few cm apart. Five text buttons in two rows, counts in a separate line that shows zeros ("0 likes 0 remixes 0 built") though cards hide them. No Share, no embed offered (an embed exists at `/m/<id>/embed`). The right column ends a third of the way down and the rest of the page is a 72-character column on the left (`live-model-tower-1280-dark.png`). Comments are flat, oldest first, no replies. Nothing to go to next |
@@ -98,7 +100,7 @@ much as the full ones (section 4, D12).
 | Your account `/profile` | `web/profile.html`, `web/profile.js`, `web/designs.js` | Complete: your models' numbers, favourites, collections, sets, following, builds, settings, Claude, delete | A dashboard and every setting on one 5,000 px page under a letter avatar; nothing of it looks like your profile; editing your public name is a form under Settings |
 | Challenges `/challenge` | `supabase/challenges.sql`, `web/challenge.*` | Rules checked on the stored model; hand-built and assistant-built entries kept apart | Between challenges the page is one sentence: no past challenges, no winners, no "next" |
 | Designers' numbers, This week's pick on /admin, reports and takedowns, the age question | many | Careful | Not the owner's ask; stays |
-| Light theme | `web/site.css` `@media (prefers-color-scheme: light)` | Every token redefined, contrast measured (`live-*-light.png`) | No choice on the site; follows the computer only; `theme-color` dark on every page |
+| Light theme | `web/site.css` `@media (prefers-color-scheme: light)` | Every token redefined, contrast measured (`live-*-light.png`) | No choice on the site; follows the computer only; `theme-color` dark on every static page |
 
 What to keep whatever changes: Top builds' weighing (a build 3, a remix
 2, Tested 5, views 0), counts-not-lists for follows, the trust rules
@@ -239,9 +241,12 @@ checking every page at 390 and 1280 px, light and dark, signed in and out
 **What a light theme needs.** The colours are already tokens with a light
 set, measured at 4.5:1 or better. Missing:
 
-1. **A choice.** System, Light or Dark, in the header's menu (one control,
-   a sun/moon that cycles, with its name for screen readers) and in
-   Settings › Appearance. System by default.
+1. **A choice.** System, Light or Dark, as three buttons in a row
+   (`.segmented`, the pressed one `aria-pressed`): in the footer of every
+   page and on Menu at a phone's width for everybody, in the account menu
+   and in Settings › Appearance once signed in. System by default. Not a
+   fifth thing in the header: `tests/test_site_shell.py` holds it to four,
+   after the owner found it crowded (2026-10-20).
 2. **Tokens that answer to it.** The light set moves from
    `@media (prefers-color-scheme: light) { :root {…} }` to
    `:root[data-theme="light"]`, and the system's choice applies only when
@@ -300,9 +305,10 @@ Each decided here, with its reason (`brickworks-decide-dont-wait`).
   Following. Views never rank.
 - **D7. Hand-built and With the assistant are said and filterable**, as
   Sketchfab's Human Created and AI Generated ([SK-P]): a mark on the card
-  and a filter. The community distrusts AI-designed work (the Reddit
-  reply in the owner's notes) and the guidelines already ask for the label
-  (`ai-designed`, `brickify` tags). Read from the tags until the app says
+  and a filter. The community distrusts AI-designed work (a Reddit reply
+  to the owner's post, 2026-10-13: "that Assistant looks worryingly AI…
+  a LOT of us… building freely… not AI designed") and the guidelines
+  already ask for the label (`ai-designed`, `brickify` tags). Read from the tags until the app says
   it at publish (U16).
 - **D8. Theme: System, Light, Dark**; System by default; the browser
   remembers, the account remembers (section 3).
@@ -311,11 +317,14 @@ Each decided here, with its reason (`brickworks-decide-dont-wait`).
   owner-only tabs (Saved, Sets, Insights) and an Edit profile button.
   Settings move to `/settings`. Signed in without a profile, `/profile`
   makes one in two fields.
-- **D10. Notifications apart from the feed.** A bell in the header with
-  its count: what happened to your work (comments, replies, builds and
-  photos, remixes, likes as a number, challenge results). The feed is
-  what the people you follow made. Today's `feed_rows` already has both
-  kinds; they are split by kind.
+- **D10. Notifications apart from the feed.** What happened to your work
+  (comments, replies, builds and photos, remixes, likes as a number,
+  challenge results) is Notifications; the feed is what the people you
+  follow made. Today's `feed_rows` already has both kinds; they are split
+  by kind. The header keeps its four things: signed in, Account becomes
+  your avatar, carrying today's count, and opens a menu (Your profile,
+  Notifications with its count, Your feed, Saved, Settings, the theme,
+  Sign out), as GitHub's and YouTube's do.
 - **D11. Avatars: a generated one for everybody, a picture for who wants
   one.** Generated from the handle (a coloured tile and the initial, no
   figure likeness: the Minifigure is a mark, `docs/TRADEMARKS.md`). An
@@ -347,13 +356,15 @@ Supabase changes additive, in a new `supabase/*.sql` applied by the lead.
 
 **U1. Tokens and the theme choice** (M). *What:* the token set completed
 (type to 8 sizes, radius to 4, `--note`, the 404's colours,
-`theme-color`), the light set keyed on `data-theme`, `/theme.js` in every
-page's head (static pages through `web/_shell.html` and
-`tools/site_shell.py`, the server's through `siteChrome`), a theme control
-in the header and in Settings, the choice in `localStorage` and on the
+`theme-color`), a `.segmented` control (three buttons in a row), the
+light set keyed on `data-theme`, `/theme.js` in every page's head
+(static pages through `web/_shell.html` and `tools/site_shell.py`, the
+server's through `siteChrome`), the theme control in the footer, on Menu
+and in Settings (section 3), the choice in `localStorage` and on the
 account (`profiles.theme`, `GET/POST /api/account?op=theme`), the privacy
 page's line. *Why:* the owner's ask; section 3. *Now:* system only.
-*Acceptance:* at 390 and 1280, on all 14 static pages and `/m/`, `/u/`,
+*Acceptance:* at 390 and 1280, on all 16 static pages (the 14 with the
+site's header, /admin and the Claude sign-in page) and `/m/`, `/u/`,
 `/c/`: choosing Light, Dark or System changes the page at once, with no
 reload; a reload and a new tab keep it; a probe reading `body`'s
 background at first paint finds the chosen theme, never the other (no
@@ -366,7 +377,9 @@ text check (theme in ('system','light','dark'))`.
 
 **U2. The component kit and one card** (M). *What:* `.pill`, `.tabs`,
 `.avatar` (generated fallback), `.icon-btn` with a count, an icon sprite,
-a toast ("Link copied"), a "more" menu; one card renderer (a pure string
+a toast ("Link copied"), a "more" menu (an icon button says its name
+and count to a screen reader, "Like, 12 likes", and a toggle is
+`aria-pressed`); one card renderer (a pure string
 function the API and the browser both use, `web/card.js`, with a test that
 the server's card and the browser's are the same markup); the six pill
 copies, the gallery's chip control and the per-page controls deleted;
@@ -394,7 +407,7 @@ with the way in. *Why:* sections 1 and 2; D3-D7. *Now:* above.
 *Acceptance:* at 390 x 844 the first card's picture starts within 330 px
 of the top and four cards' names are on the first two screens; at 1280 x
 900 at least four cards are wholly on the first screen; a like from a card
-changes its count and the model page's; Back from a model returns to the
+changes its count at once and the model page shows it liked; Back from a model returns to the
 same card within 100 px; a search address sent to somebody shows the same
 cards; light and dark. *Supabase:* the list gains each card's designer
 handle and avatar and its comment count: a new `directory_models` version
@@ -423,20 +436,9 @@ screen always has another model to open. *Supabase:* `model_pictures`
 cascade` both ways; the photo's file deleted by name with the account),
 or a `kind` column on `build_photos`: the unit chooses, additive either way.
 
-**U5. Comments that talk** (M). *What:* one level of replies, the newest
-thread first and replies oldest first under it, the avatar and "Designer"
-on the model's owner, the step a comment is on as a pill that opens the
-viewer at that step, the box shown to everybody (signing in from it),
-replies in Notifications. *Why:* conversation is the social act; flat
-oldest-first lists bury the new. *Acceptance:* a reply shows under its
-comment at 390 and 1280; hiding a comment hides its replies; the rules
-(13+, limits, comments off, under-13 owners) unchanged and proven by
-`comments_flow`. *Supabase:* `model_comments.parent` (nullable, additive)
-and the comment functions' new versions.
-
 ### Phase 3: profile and your account
 
-**U6. The public profile** (L). *What:* a header with a banner (one of
+**U5. The public profile** (L). *What:* a header with a banner (one of
 their models' pictures, chosen), the avatar, name, @handle, bio, up to
 three links (shown as their domain, `rel="ugc nofollow"`), since when, one
 row of numbers (models, builds finished of their models, followers,
@@ -455,7 +457,7 @@ under 13 or taken out is not shown (as now). *Supabase:* `people` gains
 `shows_likes` (default false); `profile_pins` (account, model, place);
 new versions of `profile_page` and `directory_card`.
 
-**U7. Your account, as your profile** (L). *What:* `/profile` is your
+**U6. Your account, as your profile** (L). *What:* `/profile` is your
 `/u/<handle>` page plus owner-only tabs **Saved** (favourites and your
 collections, managed in place), **Sets** (what you own and what it
 builds), **Insights** (today's designer numbers); **Edit profile** in a
@@ -471,27 +473,38 @@ shows on the profile without a reload; the account page is under 2,000 px
 tall at 1280 with its first tab open; Delete still deletes everything,
 proven by account_flow against a deployment.
 
-### Phase 4: notifications and the feed
+### Phase 4: notifications, comments and the feed
 
-**U8. Notifications** (M). *What:* a bell in the header (beside Account,
-on Menu on a phone) with the count that is on Account today, opening
-`/notifications`: comments and replies on your models, photos of builds
-of them, remixes of them, challenge results, and likes as a number per
-model per day ("Wizard's Tower: 4 new likes"), grouped by model, newest
-group first ([DC], [AN]); read as you open them; Mark all read; the daily
-email choices unchanged. *Why:* D10. *Acceptance:* a comment on your
-model shows on the bell within a page load and in the list with its
-picture; ten likes on one model are one row; nothing says who followed
+**U7. Notifications** (M). *What:* Account in the header becomes your
+avatar with today's count, opening the account menu (D10); its
+Notifications opens `/notifications`: comments and replies on your
+models, photos of builds of them, remixes of them, challenge results,
+and likes as a number per model per day ("Wizard's Tower: 4 new
+likes"), grouped by model, newest group first ([DC], [AN]); read as you
+open them; Mark all read; the daily email choices unchanged. *Why:* D10.
+*Acceptance:* a comment on your model shows in the avatar's count within
+a page load and in the list with its picture; ten likes on one model are one row; nothing says who followed
 you or names who liked. *Supabase:* `feed_rows` split by kind into
 `notification_rows` and `follow_rows` (new functions), likes counted per
-day from `model_likes`; `feed_marks` gains `notified_at`.
+day from `model_likes`; `feed_marks` gains `notifications_seen_at`.
+
+**U8. Comments that talk** (M). *What:* one level of replies, the newest
+thread first and replies oldest first under it, the avatar and "Designer"
+on the model's owner, the step a comment is on as a pill that opens the
+viewer at that step, the box shown to everybody (signing in from it),
+replies in Notifications. *Why:* conversation is the social act; flat
+oldest-first lists bury the new. *Acceptance:* a reply shows under its
+comment at 390 and 1280; hiding a comment hides its replies; the rules
+(13+, limits, comments off, under-13 owners) unchanged and proven by
+`comments_flow`. *Supabase:* `model_comments.parent` (nullable, additive)
+and the comment functions' new versions.
 
 **U9. A feed you look at** (M). *What:* `/feed` as cards: a new model (its
 picture, name, designer), a new version (what changed), a build photo
 (the photo), a challenge entry; signed out and when you follow nobody,
 **Latest on Brickworks** (newest listed models and build photos) and
 designers to follow (by Top builds of their models, D1-safe: profiles
-shown in public only); the 90-word lede gone. *Why:* section 1; [NN-ES];
+shown in public only); the 60-word lede gone. *Why:* section 1; [NN-ES];
 [AC]. *Acceptance:* at 390 every row with a picture shows it; the
 signed-out page shows at least the newest models; following somebody from
 the suggestions fills the feed on the next load.
@@ -526,13 +539,74 @@ What we will not build: messages between people, lists of followers,
 "X followed you", view counts as a ranking, streaks, or anything that
 shows a person's activity they did not choose to show (D1, D13).
 
+### Sketches
+
+Layouts, not looks: for the units to start from, in the site's own
+components. Brackets are buttons, parentheses an avatar.
+
+The card (U3), the same on every page:
+
+    +---------------------------------+
+    | [Tested] [Moves]                |   marks over the picture's corner
+    |                                 |
+    |        the picture, 4:3         |
+    |                                 |
+    +---------------------------------+
+    | Wizard's Tower                  |   name, one line
+    | (av) Robin Castell              |   avatar and name, a link to /u/
+    | [heart 12]  built 4  comments 3 |   like from the card; zeros hidden
+    +---------------------------------+
+
+The gallery at 390 (U3): the header, then at once
+
+    Gallery                      [search]
+    [Top] [New] [Following]          This week v
+    (All) (Castles) (Space) (Vehicles) (Town) ->      pills, scroll inside
+    [Filters 2]                       Hand-built, Tested...
+    +-----------+ +-----------+
+    |   card    | |   card    |       two columns from 390 px
+    +-----------+ +-----------+
+
+The model page at 1280 (U4):
+
+    Gallery > Castles and fantasy
+    +--------------------------------+  Wizard's Tower
+    |                                |  (av) Robin Castell        [Follow]
+    |          the picture           |  (9,541 parts) (1,324 steps) (Tested)
+    |                                |  [Build it]  [Open in Brickworks]
+    +--------------------------------+  [heart 12] [Save] [Share] [3] [I built it] [...]
+    [pic] [pic] [build photo] [build photo] ->     the column stays beside the
+                                                   picture as the page scrolls
+    About | Comments 3 | Builds 4 | Remixes 3 | Versions 2     tabs that stay on screen
+    ...
+    More by Robin Castell   [card] [card] [card] [card]
+    Like this               [card] [card] [card] [card]
+
+At 390 the same, one column: the picture, the name, the designer and
+the action bar on the first screen, the tabs below.
+
+The profile at 390 (U5):
+
+    [ banner: one of their models' pictures ]
+    (avatar)  Robin Castell
+              @robin · building here since March 2026
+    I design castles and small mechanisms, built to be built.
+    robincastell.example · flickr.com/robin
+    4 models · 77 builds of them · 3 followers · following 2
+    [Follow] [Share]
+    Pinned   [card] [card] ->
+    Models 4 | Builds 1 | Collections 2 | About        tabs, scroll inside
+    +-----------+ +-----------+
+    |   card    | |   card    |
+    +-----------+ +-----------+
+
 ### Rules every unit keeps
 
 - "LEGO®" only as an adjective, the disclaimer in the footer, no LEGO
   Group pictures or logo, no mark in a feature's name
   (`docs/TRADEMARKS.md`, `tests/test_trademarks.py`).
 - No new tracking (D13); the privacy page updated in the same commit as
-  anything it should say (U1's theme, U4's and U6's pictures).
+  anything it should say (U1's theme, U4's and U5's pictures).
 - Account deletion keeps working: every new table cascades from
   `auth.users`, every new stored file is deleted by name before the
   account, and `account_flow` proves it on a deployment.
@@ -547,15 +621,15 @@ shows a person's activity they did not choose to show (D1, D13).
 **The top ten, in order:** (1) the theme choice on a complete token set,
 U1; (2) the component kit and one card, U2; (3) the gallery grid, tabs and
 card actions, U3; (4) the model page's media, action bar and what comes
-next, U4; (5) the public profile with avatar, tabs and pins, U6; (6) your
-account as your profile, with Settings apart, U7; (7) notifications apart
-from the feed, U8; (8) comments with replies, U5; (9) a visual feed with
+next, U4; (5) the public profile with avatar, tabs and pins, U5; (6) your
+account as your profile, with Settings apart, U6; (7) notifications apart
+from the feed, U7; (8) comments with replies, U8; (9) a visual feed with
 Latest for everybody, U9; (10) first steps and the house profile, U10.
 
 **The first three units:**
 
 - **U1, Tokens and theme.** Bar: System, Light and Dark chosen in the
-  header and in Settings on all 17 kinds of page at 390 and 1280; no
+  footer, Menu and Settings on all 19 kinds of page at 390 and 1280; no
   flash (first-paint background is the chosen theme on every page); kept
   across reload, tab and, signed in, a new browser; every text token at
   4.5:1 or more in both themes by script; `theme-color` follows;
