@@ -27,21 +27,6 @@ whole cycle.
   there. Links, the banner and the pins are chosen under Settings on your
   account. Nobody's followers are listed, as before.
 
-### Fixed
-
-- Claude's second design in one chat is judged as what it is. Asked for an
-  owl's head and then a house roof without pressing Clear, Claude was told
-  the house was a creature with nothing on a joint, and your own Claude over
-  the connector had the house sent back to be built as a jointed owl. Asked
-  to make the owl's head bigger, the app's own designer forgot it was an owl.
-  A design submitted under a name of another subject now begins a new
-  subject, and a change to the model you have keeps the one it was.
-- A dome or a ball of hinged panels that Claude lays as one shell builds
-  again. Its crown, a big inverted dish, was set down on a disc of plates:
-  the studs ran into its rim and nothing held it, so the check refused
-  every such shell. The dish is now held by round plates up into the 2 x 2
-  under its middle, as a builder holds one, with tiles under its rim.
-
 ## [0.5.0] - 2026-10-22
 
 A release about opening and moving real models. File > Library… opens any
@@ -55,8 +40,9 @@ parts let it. My Claude designs a new model twice, side by side, and keeps
 the better, and Undo takes back all of a session's first design. The window
 no longer stops while Claude moves a part or checks a design. Brickify lays
 more of a model's steep sides on their sides, and the undersides of
-overhangs in slopes you can buy. Models saved by 0.4.0 open in 0.5.0
-unchanged.
+overhangs in slopes you can buy. Claude's domes of hinged panels build
+again, and a second design in one chat keeps its own subject. Models saved
+by 0.4.0 open in 0.5.0 unchanged.
 
 ### Added
 
@@ -137,6 +123,18 @@ unchanged.
 
 ### Fixed
 
+- Claude's second design in one chat is judged as what it is. Asked for an
+  owl's head and then a house roof without pressing Clear, Claude was told
+  the house was a creature with nothing on a joint, and your own Claude over
+  the connector had the house sent back to be built as a jointed owl. Asked
+  to make the owl's head bigger, the app's own designer forgot it was an owl.
+  A design submitted under a name of another subject now begins a new
+  subject, and a change to the model you have keeps the one it was.
+- A dome or a ball of hinged panels that Claude lays as one shell builds
+  again. Its crown, a big inverted dish, was set down on a disc of plates:
+  the studs ran into its rim and nothing held it, so the check refused
+  every such shell. The dish is now held by round plates up into the 2 x 2
+  under its middle, as a builder holds one, with tiles under its rim.
 - A part Claude hangs on a hinge brick (3937) now tips whichever way it is
   asked. The hinge brick's top tips one way only, and the app laid it facing
   the same way whatever the angle, so a wing, a flap or a lid tipped the

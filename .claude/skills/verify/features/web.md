@@ -549,9 +549,11 @@ plan with Claude as the client.
   tab says what goes there (`.state`); whom they follow (`section.follows`)
   only when they chose to show it, never their followers. Links, banner and
   pins: `supabase/profile_shows.sql` (one row an account, cascades from
-  auth.users, 13+ by trust.sql's profile trigger; not applied 2026-10-22:
-  the page has none and `POST ?op=showcase` says 503 "not open yet", after
-  checking what it is sent); chosen under Settings on `/profile`
+  auth.users, 13+ by trust.sql's profile trigger; applied to the live
+  project 2026-10-22 for m145 with `tools/apply_sql.mjs`, dry-run first, and
+  recorded here as the project has no migration table; before it the page
+  had none and `POST ?op=showcase` said 503 "not open yet", after checking
+  what it is sent); chosen under Settings on `/profile`
   (`#showcase-form`, shown once `?op=me` says `showcase.ready`);
   `/c/<id>` — a public collection's name, "N models,
   collected by <their profile>", its description and its listed models in the
