@@ -33,6 +33,14 @@ declare -A CMD=(
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"
   [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
+  # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
+  # the header with what is new, its menu (Menu at 390 px); a comment, a
+  # photo and ten likes on a throwaway designer's model as one group with
+  # its picture, the likes one row naming nobody; opened, the count gone;
+  # a group read once opened, Mark all read; the feed apart; signed out at
+  # both widths. Throwaway accounts, deleted after; before and after
+  # supabase/notifications.sql (it reads which from the answer).
+  [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
   # Top builds, this week's pick and small builds, and the owner's choice of
   # the pick on /admin: API routes only, with the bypass (supabase/discovery.sql).
   [discovery]="tools/web/discovery_flow.mjs --url=$P --out=$S/${TAG}_discovery"

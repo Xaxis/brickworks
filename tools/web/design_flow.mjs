@@ -326,6 +326,19 @@ const PAGES = [
     ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
   { name: "feed", path: "/feed",
     ready: (page, { signedIn }) => (signedIn ? until(page, () => document.querySelectorAll(".feed-row").length > 0) : true) },
+  // Notifications (docs/SOCIAL.md U7): a group a model, with its picture;
+  // and signed in, the account menu open from the avatar (Menu on a phone).
+  { name: "notifications", path: "/notifications",
+    ready: (page, { signedIn }) => (signedIn ? until(page, () => document.querySelectorAll("#groups .notice").length > 0)
+      : until(page, () => document.documentElement.dataset.notifications === "signed-out")),
+    open: async (page, { signedIn }) => {
+      if (!signedIn) return [];
+      const where = (page.viewportSize()?.width || 1280) <= 860 ? ".site-head .menu" : ".site-head .account-menu";
+      await page.click(`${where} summary`);
+      const opened = await page.waitForFunction((at) => document.querySelector(`${at}[open] .account-part`), where,
+        { timeout: 8000 }).then(() => true, () => false);
+      return [[opened ? "account menu" : "account menu (missing)", where]];
+    } },
   // Your profile (docs/SOCIAL.md U6): your page's head and its first tab;
   // Edit profile's dialog; and the tabs only you see, each its own page.
   { name: "account", path: "/profile",

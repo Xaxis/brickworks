@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
 
 ## Sub-features
 
@@ -853,14 +853,65 @@ plan with Claude as the client.
   answers as "not open yet" and nothing else changes.
 - `your feed page` (`web/feed.html`): with `web/feed.js`, `/feed`, signed in,
   newest first, one link a row, New on what came since the last opening,
-  Older for the page before; signed out, Sign in.
+  Older for the page before; signed out, Sign in. Since 2026-10-22
+  (docs/SOCIAL.md U7) what the people you follow made (`follow_page`),
+  Notifications a tab beside it (`.tabs`, each with what is new in it);
+  before `supabase/notifications.sql` it is the feed of before, your
+  models' news in it too.
 - `follow a person and the count on Account` (`web/follow.js`): loaded by
   every page with the site's header, the model page and `/u/`, `/c/`.
   `button[data-follow]` shown once `?op=follows` answers (Follow, Following,
   hidden on your own; signed out it opens the sign-in dialog; a refusal is
-  said beside it), and `a[data-account]` in the header given a count
-  (`.count`) leading to `/feed` while there is one, and on Menu at 860 px
-  and under.
+  said beside it), and `a[data-account]` in the header: Sign in until you
+  are, then hidden for your avatar (below), which carries the count.
+- `the account menu` (`web/follow.js` `showFeedCount`, 2026-10-22,
+  docs/SOCIAL.md U7, D10): signed in, `details.more-menu.end.account-menu`
+  after the hidden `a[data-account]` in `.nav`: its summary `.account-btn`
+  is your avatar (`avatarHtml`, 36 px) with `.count` over its corner (what
+  is new: notifications and the feed together, as `?op=feed_count`'s
+  `count`), labelled "Your account, N new"; its `.menu-list` holds
+  `.account-part` (`.menu-who`: avatar, name, @handle; then `nav` links
+  `data-place` profile, notifications, feed, saved, settings, the two
+  with their own `.count`), the footer's theme choice and
+  `button.sign-out`. At 860 px and under the avatar menu is hidden and
+  `details.menu`'s summary becomes the avatar (`.account-btn`), its list
+  the site's links, the same `.account-part`, the theme and Sign out. Who
+  you are and the counts come from `GET ?op=feed_count` (`me`,
+  `notifications`, `feed`), kept in `sessionStorage["brickworks.me"]` so
+  the next page draws at once (cleared by `signOut()`); /feed and
+  /notifications ask only once they have opened.
+- `notifications apart from the feed` (`api/_notifications.js`,
+  `supabase/notifications.sql`, **not applied to the live project** until
+  the lead applies it): `GET ?op=notifications` (session; marks them
+  seen) answers `{ready, kept, seen_at, groups: [{model, name, picture,
+  link, at, new, unread, rows: [{kind, at, who, by, did, said, link, new,
+  unread}]}], unread, fresh}`: comments, photos of builds of your models,
+  remixes, `likes` a row a model a day ("10 new likes today", never who),
+  `result` a challenge's end (won, or see who did); grouped by the model
+  they are about, newest group first (`noticeGroups`, pure). `POST
+  ?op=notifications_read {model}` (that group read) or `{all: true}` (Mark
+  all read; also clears the count); a model not yours 404, not an id 400.
+  `GET ?op=feed_count` adds `notifications`, `feed` and `me`; `count` is
+  the two together (the app's Account reads only `count`). Tables
+  `notification_marks` (seen_at, read_at; an account without a row has its
+  feed's) and `notification_reads` (account, model, at), both cascading;
+  functions `notification_rows` and `follow_rows` (the live `feed_rows`
+  split by kind), `notification_list`, `notification_read`,
+  `notification_counts`, `follow_page`; `feed_of`, `feed_count`,
+  `feed_rows` and the day's email unchanged. Before the file: the rows
+  from `feed_of` and `model_likes`, the feed's seen_at the only mark (read
+  is seen), `kept: false`, no challenge results.
+- `notifications page` (`web/notifications.html`, `web/notifications.js`):
+  `/notifications`, `ol#groups` of `li.notice` (`data-model`; `.unread`
+  edged and dotted in `--accent-edge` until a link in it is followed,
+  which posts `notifications_read` with `keepalive`), each `.pic` (4:3) and
+  `h2` name, `ul.lines` (`li[data-kind]`, an avatar for a person, the like
+  or award icon otherwise, New since the last opening, the time); `#all-read`
+  while any is unread; `#empty` with its ways in; `#not-yet`; signed out,
+  Sign in. `html[data-notifications]` is `ready`, `signed-out` or
+  `failed`.
+- `notifications browser flow` (`tools/web/notifications_flow.mjs`,
+  preview check `[notifications]`): below.
 - `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
   `src/ui/model_bar.gd` `show_feed_count`. "Account · N" on the bar, "N new
   in your feed since you last opened it." and Open your feed (control
@@ -2357,6 +2408,14 @@ node --env-file=.env tools/web/relay_server.mjs 9251 --static=build/web \
 node --env-file=.env tools/web/follows_flow.mjs --url=http://127.0.0.1:9251 --out=shots/follows
 ```
 
+Since 2026-10-22 the header's Account is the avatar (`the account
+menu`) and, once `supabase/notifications.sql` is applied, the photo and
+the comment on Bob's barn are his Notifications, not his feed: the flow
+reads which from `?op=feed_count` (`notifications` a number) and opens
+the avatar's menu at Notifications or Your feed accordingly. Passed both
+ways, 2026-10-22, `--site`: through a relay with nothing held, and with
+`--hold=notifications` (`tools/web/notifications_stand_in.mjs`).
+
 `follows_flow` proves it when it ends "follows: a follow, the feed, the
 count on Account, under 13, and counts not lists": two profiles, Bob's
 barn, his email choices read back by `/profile`; Follow on Ada's profile
@@ -2382,6 +2441,72 @@ microsecond, a time that is not one 400. 52 checks, all ok, on the live
 project through a relay with nothing held and `BW_BYPASS` set, and 53
 (the knock) against the held relay, 2026-10-18, about 4 minutes each with
 the app.
+
+Notifications apart from the feed (2026-10-22, docs/SOCIAL.md U7). The
+SQL first, after the live files (follows and challenges are applied), in
+one rolled-back transaction:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/notifications.sql \
+  --dry --try=tools/notifications_try.sql --table=notification_marks
+```
+
+It proves it when every line says what its label says: Ada's
+notifications newest first `likes` (10, today), `result` twice (the mill
+not won, the tower won with 5), `remix` (on the mill), `photo`, `comment`,
+`likes` (3, yesterday), not her own like or comment nor the hidden one;
+today's ten likes one row saying 10, no like naming who; the two models'
+pictures; her feed Bob's cart `model` and `challenge`, not his photo of
+her tower; never opened `{"feed":2,"notifications":7}` beside the old
+`feed_count` 5, null for nobody; opened, seen before null, then
+notifications 0 and feed 2; opened 25 minutes ago, 4; read: the tower
+`{read: true}`, Bob of her tower and a model nobody has `nobody`, nobody
+`sign_in`; the tower read, all read never; Mark all read, read_at set,
+reads `{}`, count 0; Ed's marks his feed's until the new feed is opened,
+then still his old ones while his feed is seen now; `feed_of` as before
+(remix, photo, comment, model, challenge); no execute for anon or
+authenticated, the service role executing and not reading the tables;
+her marks and reads gone with her account; "rolled back, nothing kept".
+
+Then the code, in real browsers, against the live project through a local
+relay (nothing held: the API reads the feed of before), and holding the
+file's functions (`--hold=notifications`: the marks in memory, the rows
+from the project's `feed_rows` and `model_likes`, as the SQL reads them;
+not a challenge's end):
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 8820 &
+node --env-file=.env tools/web/relay_server.mjs 8821 --hold=notifications &
+node --env-file=.env tools/web/notifications_flow.mjs --url=http://127.0.0.1:8820 --out=shots/notifications
+node --env-file=.env tools/web/notifications_flow.mjs --url=http://127.0.0.1:8821 --out=shots/notifications-held
+BW_BYPASS=$VERCEL_BYPASS node tools/web/notifications_flow.mjs --url=<preview> --out=shots/notifications
+```
+
+`notifications_flow` proves it when it ends "notifications: the avatar,
+the menu, the list, read and seen, the feed apart: ok": Ada's avatar where
+Sign in was, no count, its menu her name and handle and the five places
+and Sign out (`1_account_menu-1280-dark.png`); Bob's comment and photo and
+ten likes (each liker with a profile); her count 3 (2 before the file, the
+old feed's), on the avatar labelled "Your account, 3 new" and on
+Notifications in its menu (`2_avatar_count-1280-dark.png`), at 390 px on
+Menu, which is her avatar and holds the site's links and hers, nothing
+sideways (`3_menu-390-light.png`); /notifications one group, the tower's
+picture drawn, rows likes, photo, comment, "10 new likes today" with no
+avatar, Bob's two with his avatar and their `#comment-`/`#photo-` links,
+all New and unread, no liker's name or handle on the page and nothing of
+following; the count gone on the page and from the API; Mark all read
+offered (`4_notifications-1280-dark.png`, `4_notifications-390-light.png`);
+reloaded no longer New (still unread after the file, read before it); the
+comment's row opening its model, Back showing the group read, kept on a
+reload; Bob may not read hers (404, after the file); signed out 401, not
+an id 400; the Your feed tab: her feed without the comment and photo after
+the file, with them before (`6_feed-1280-dark.png`); Bob's like making 11
+and the group unread again; Mark all read kept across a reload
+(`7_notifications_read-1280-light.png`); Bob's empty page
+(`7_empty-1280-light.png`); signed out at 1280 dark and 390 light and dark
+(`7_signed_out-*.png`); Sign out from her menu. 40 checks before the file
+and 41 held, all ok, 2026-10-22, about a minute each; the throwaway
+accounts deleted.
 
 Discovery (2026-10-19): Top builds, this week's pick, small builds, and
 build with what I own. The SQL first, after the live files, in one
