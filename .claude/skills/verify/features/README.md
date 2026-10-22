@@ -43,6 +43,11 @@ Never driven from here:
 - **Godot exits 0 on a parse error.** A probe is a pass only when it exits 0 *and*
   printed no `FAIL`, `SCRIPT ERROR` or `Parse Error`. `tools/check.sh` enforces
   that; by hand, read the output.
+- **A new probe is in the suite, or says why not.** `tools/check.sh` runs every
+  `src/dev/*_probe.gd` in its `headless` or `windowed` list (or a run written
+  out by hand), or names it in `out` with the reason; it stops before running
+  anything when a probe is in none, and names it. 85 of 214 were in none on
+  2026-10-22, two of them failing on main for days.
 - A recipe lists every entry point. Proving one does not prove the others.
 - An unreachable entry point is reported with its missing precondition, not
   counted as verified.
