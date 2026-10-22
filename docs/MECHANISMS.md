@@ -5852,8 +5852,8 @@ without friction", the rack back to -2.09 LDU), `groups` (4), `loops` (21),
 `bigstep` (4), `hinge` (27), and the whole probe, 496 passed and none
 failed (`actuators` and `cases` within it: the wheel loader's arm 95% 13.0
 ms of the drag's own work a frame, the small actuator 13.8). `motions_probe` 92 of 92 (with the pinion held to its own rack
-alone, 10 failed: the telescope stopped at 225°), `mechanism_probe` (54) and
-`own_copies_probe` (33) pass.
+alone, 10 failed: the telescope stopped at 225°), `telescope_probe` (32),
+`mechanism_probe` (54) and `own_copies_probe` (33) pass.
 
 The steering sweep on 19 sets (the five 8448-1 files, 5533-1, 8466-1,
 42125-1, 8808-1, 8820-1, 8880-1_F1-Racer, 8841-1_Buggy, 9393-1, 42043-1,
