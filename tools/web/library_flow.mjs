@@ -38,7 +38,12 @@
 // a new tab. That tab's longest stall is measured from the page itself (an
 // interval timer's longest gap: the engine's frame and the page share one
 // thread), with what its status bar said while the file came and was read,
-// and how long it all took. Then the real gallery on the Community shelf.
+// and how long it all took; and held to --open-ms (500) as the app's own
+// work, its longest frame less its WebGL from the tab's controls showing
+// until the model is whole and drawn (an interval's gap on a browser drawing
+// in software is the page waiting on frames drawn before). Then the real
+// gallery on the Community shelf. Run against a local export with
+// serve.py --parts-url "$PARTS_URL", the deployment's store.
 // Pictures live_1_sets.png, live_2_8466.png, live_3_community.png.
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
