@@ -1,16 +1,18 @@
-// Your account, /profile (profile.html): who you are in the gallery, your
-// models (designs.js), favourites, collections, the sets you own and what
-// they build, whom you follow, your build photos, and the settings, from
-// the site's API, signed in with the app's own sign-in in this browser
-// (account.js).
+// Your profile, /profile (profile.html): your page as everybody sees it at
+// /u/<handle>, with Edit profile, and the tabs only you see beside its
+// own (docs/SOCIAL.md U6, D9). Models and Builds as everybody sees them;
+// Saved (favourites, collections, whom you follow), Sets (what you own and
+// what it builds) and Insights (how your models are doing, designs.js).
+// Signed in with no profile yet, a name and a handle to make one. The
+// settings are at /settings (settings.js).
 //
 // Every word — a name, a handle, a collection's, a model's — goes on the
 // page as text, never as markup; a link is built from an id or a handle
-// only when it is one. Each section asks for its own and draws what came,
-// so one that cannot be read leaves the others standing.
-import { age, askAgeIfAsked, askToSignIn, call, email, signOut, signedIn } from "/account.js";
+// only when it is one. Each tab asks for its own when it is first opened
+// and draws what came, so one that cannot be read leaves the others.
+import { askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { showFeedCount } from "/follow.js";
-import { avatarHtml } from "/kit.js";
+import { avatarHtml, toast } from "/kit.js";
 
 // What only a signed-in page draws (card.js, designs.js), fetched as the
 // page starts when this browser has a sign-in, and not at all when not:
@@ -31,9 +33,21 @@ if (signedIn()) drawn();
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
-const when = (iso) => (Number.isFinite(Date.parse(iso || "")) ? DAY.format(new Date(iso)) : "");
-let handle = "";
+const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const TABS = ["models", "builds", "saved", "sets", "insights"];
+// Models are shown a few rows at a time, so the page's first screen is
+// your profile and its work, not a wall of cards: Show more for the rest.
+const STEP = 8;
+
+// What the server said of you: op=me (your profile, collections, mail,
+// what your profile shows and what you may pin) and op=profile (your page
+// as everybody sees it), and whether you are under 13.
+let mine = null;
+let shown = null;
+let young = false;
+// Each tab is drawn once, when first opened, and again after a change.
+const drawnTabs = new Set();
+let models = { queue: [], page: 0, more: false };
 
 /// An element, its class, and what is in it: text or elements.
 function make(tag, className = "", ...inside) {
@@ -43,6 +57,8 @@ function make(tag, className = "", ...inside) {
   return made;
 }
 
+const handleOf = () => (mine && mine.profile && HANDLE.test(String(mine.profile.handle)) ? String(mine.profile.handle) : "");
+
 /// A model's card with a button under it, for something to do with it here.
 function kept(model, action) {
   const box = make("div", "kept", modelCard(model));
@@ -51,6 +67,178 @@ function kept(model, action) {
   button.addEventListener("click", () => action.run(button, box));
   box.append(button);
   return box;
+}
+
+// ---------------------------------------------------------------------------
+// The head: your page's, as /u/<handle> draws it (api/people.js profilePage).
+
+/// The row of numbers: what your work earned and who follows you, each
+/// said once there is one ("0 likes" never), builds finished first.
+function numbersOf(body) {
+  const earned = body && body.designer && Number(body.designer.models) > 0 ? body.designer : null;
+  const rows = [
+    ["builds", earned?.builds, "build finished", "builds finished"],
+    ["remixes", earned?.remixes, "remix", "remixes"],
+    ["models", earned ? earned.models : body?.models_count, "model", "models"],
+    ["likes", earned ? earned.likes : body?.likes, "like", "likes"],
+    ["followers", body?.followers, "follower", "followers"],
+    ["following", body?.following, "following", "following"],
+  ];
+  return rows.filter(([, n]) => Number(n) > 0).map(([kind, n, one, many]) => {
+    const li = make("li", "", make("b", "", Number(n).toLocaleString("en-US")), " ", make("span", "", Number(n) === 1 ? one : many));
+    li.dataset.stat = kind;
+    return li;
+  });
+}
+
+function drawHead() {
+  const person = mine.profile;
+  const handle = handleOf();
+  const body = shown || {};
+  const name = String(body.name || person.name || "");
+  $("title").textContent = name;
+  $("avatar").outerHTML = avatarHtml({ handle, name }, { size: "huge", id: "avatar" });
+  const designer = body.designer && Number(body.designer.models) > 0;
+  const since = Date.parse(body.since || person.created_at || "");
+  const line = $("handle-line");
+  line.replaceChildren(`@${handle} · `, make("span", "", designer ? "Designer" : "Builder"),
+    Number.isFinite(since) ? ` · building here since ${SINCE.format(since)}` : "");
+  line.querySelector("span").dataset.role = "";
+  const bio = body.bio ?? person.bio;
+  $("bio-shown").textContent = bio ? String(bio) : "";
+  $("bio-shown").hidden = !bio;
+  const links = $("links-shown");
+  links.replaceChildren(...(Array.isArray(body.links) ? body.links : []).filter((one) => /^https:\/\//.test(String(one.href)))
+    .map((one) => {
+      const a = make("a", "", String(one.said || one.href));
+      a.href = String(one.href);
+      a.rel = "ugc nofollow noopener";
+      a.target = "_blank";
+      return make("li", "", a);
+    }));
+  links.hidden = links.children.length === 0;
+  $("numbers").replaceChildren(...numbersOf(body));
+  const banner = $("banner-shown");
+  const pictured = body.banner && ID.test(String(body.banner)) ? String(body.banner) : "";
+  banner.replaceChildren();
+  if (pictured) {
+    const img = make("img");
+    img.src = `/m/${pictured}.png`;
+    img.alt = "";
+    img.width = 1200;
+    img.height = 630;
+    img.decoding = "async";
+    banner.append(img);
+  }
+  banner.hidden = !pictured;
+  $("me").classList.toggle("bannered", Boolean(pictured));
+  $("me").classList.toggle("designer", Boolean(designer));
+  const pins = (Array.isArray(body.pins) ? body.pins : []).filter((one) => ID.test(String(one.id)));
+  $("pins").replaceChildren(...pins.map((card) => modelCard(card, { earned: Boolean(designer) })));
+  $("pinned").hidden = pins.length === 0;
+  $("view").href = `/u/${handle}`;
+  $("edit").disabled = young;
+  // The tabs' counts, once there is one.
+  const counts = { models: Number(body.models_count) || 0,
+    builds: (Array.isArray(body.built) ? body.built.length : 0) + (designer ? (body.designer.photos || []).length : 0) };
+  for (const [tab, n] of Object.entries(counts)) {
+    const said = document.querySelector(`#tabs [data-tab="${tab}"] .n`);
+    said.textContent = n.toLocaleString("en-US");
+    said.hidden = !n;
+  }
+}
+
+/// Your page as everybody sees it, asked again: after a save, and once at
+/// the start. Test models are asked for too: they are only ever your own.
+async function readShown() {
+  const handle = handleOf();
+  if (!handle) {
+    shown = null;
+    return;
+  }
+  const answer = await call(`/api/people?op=profile&handle=${encodeURIComponent(handle)}&tests=1`).catch(() => null);
+  // None for an account the site's owner took out of the gallery, or under
+  // 13: the head is drawn from what you saved.
+  shown = answer && answer.status === 200 ? answer.body : null;
+}
+
+// ---------------------------------------------------------------------------
+// The tabs.
+
+async function drawModels() {
+  const grid = $("my-models");
+  grid.replaceChildren();
+  const body = shown;
+  const earned = Boolean(body && body.designer && Number(body.designer.models) > 0);
+  models = { queue: (body && Array.isArray(body.models) ? body.models : []).filter((one) => ID.test(String(one.id))),
+    page: 1, more: Boolean(body && body.more), earned };
+  showModels();
+  $("no-models").hidden = grid.children.length > 0;
+}
+
+/// The next few of your models; the next page of them asked for when the
+/// ones read are all shown.
+async function showModels({ focus = false } = {}) {
+  const grid = $("my-models");
+  if (!models.queue.length && models.more) {
+    const handle = handleOf();
+    const answer = await call(`/api/people?op=profile&handle=${encodeURIComponent(handle)}&tests=1&page=${models.page + 1}`)
+      .catch(() => null);
+    if (!answer || answer.status !== 200) {
+      toast("That did not load just now. Try again in a minute.");
+      return;
+    }
+    models.page += 1;
+    models.more = Boolean(answer.body.more);
+    models.queue = (answer.body.models || []).filter((one) => ID.test(String(one.id)));
+  }
+  const next = models.queue.splice(0, STEP).map((model) => modelCard(model, { earned: models.earned }));
+  grid.append(...next);
+  $("models-paging").hidden = !(models.queue.length || models.more);
+  // A keyboard is taken to the first new card, not left at the end.
+  if (focus) next[0]?.querySelector("a.open")?.focus({ preventScroll: true });
+}
+
+/// A photo of a real build, as a person's page shows one.
+function buildFigure(photo, { by = false } = {}) {
+  const img = make("img");
+  img.src = `/api/people?op=photo_file&id=${photo.id}`;
+  img.alt = `A build of ${String(photo.model_name || "a model")}`;
+  img.width = Number(photo.width) || 1;
+  img.height = Number(photo.height) || 1;
+  img.loading = "lazy";
+  img.decoding = "async";
+  const open = make("a", "", img);
+  open.href = `/m/${photo.model}#photo-${photo.id}`;
+  const model = make("a", "", String(photo.model_name || "The model"));
+  model.href = `/m/${photo.model}`;
+  const caption = make("figcaption", "", photo.words ? make("q", "", String(photo.words)) : null, model);
+  if (by) {
+    const who = photo.by && HANDLE.test(String(photo.by.handle)) ? make("a", "", String(photo.by.name)) : null;
+    if (who) who.href = `/u/${photo.by.handle}`;
+    caption.append(", built by ", who || "a builder");
+  }
+  const figure = make("figure", "build", open, caption);
+  figure.id = `photo-${photo.id}`;
+  return figure;
+}
+
+function drawBuilds() {
+  const body = shown || {};
+  const usable = (list) => (Array.isArray(list) ? list : []).filter((one) => ID.test(String(one.id)) && ID.test(String(one.model)));
+  const built = usable(body.built);
+  const designer = body.designer && Number(body.designer.models) > 0 ? body.designer : null;
+  const theirs = designer ? usable(designer.photos) : [];
+  $("builds-strip").replaceChildren(...built.map((one) => buildFigure(one)));
+  $("builds-made").hidden = built.length === 0;
+  $("builds-of-strip").replaceChildren(...theirs.map((one) => buildFigure(one, { by: true })));
+  $("builds-of").hidden = theirs.length === 0;
+  if (theirs.length) {
+    const people = Number(designer.builders) || 0;
+    $("builds-of-said").textContent = `${people === 1 ? "One person" : `${people.toLocaleString("en-US")} people`} posted photos `
+      + "of their real builds of your models.";
+  }
+  $("builds-said").hidden = built.length + theirs.length > 0;
 }
 
 async function favourites() {
@@ -86,7 +274,7 @@ function listRow(list) {
   box.type = "checkbox";
   box.checked = Boolean(list.public);
   open.append(box, document.createTextNode(" Public"));
-  if (document.documentElement.dataset.young === "yes") box.disabled = true;
+  if (young) box.disabled = true;
   const save = document.createElement("button");
   save.type = "button";
   save.className = "cta ghost";
@@ -102,14 +290,14 @@ function listRow(list) {
   const many = document.createElement("small");
   many.textContent = counted(list.count, "model");
   top.append(name, open, save, drop, page, many);
-  const shown = document.createElement("details");
+  const shownIn = document.createElement("details");
   const summary = document.createElement("summary");
   summary.textContent = "What is in it";
   const grid = document.createElement("div");
   grid.className = "models compact";
-  shown.append(summary, grid);
-  shown.addEventListener("toggle", async () => {
-    if (!shown.open || grid.dataset.loaded) return;
+  shownIn.append(summary, grid);
+  shownIn.addEventListener("toggle", async () => {
+    if (!shownIn.open || grid.dataset.loaded) return;
     grid.dataset.loaded = "1";
     const answer = await call(`/api/people?op=collection&id=${list.id}&page=1`);
     for (const model of (answer.body.models || []).filter((m) => ID.test(String(m.id)))) {
@@ -137,49 +325,57 @@ function listRow(list) {
     if (answer.status === 200) row.remove();
     else $("lists-said").textContent = answer.body.error || "That did not work just now.";
   });
-  row.append(top, shown);
+  row.append(top, shownIn);
   return row;
 }
 
-/// Who you are in the gallery, at the top: your name, your page, your
-/// counts; or, before you chose a name, where to choose one.
-function drawHead(mine, follows) {
-  const name = mine ? String(mine.name) : "";
-  $("title").textContent = name || "Your account";
-  // Their avatar, made from their handle as every page makes it (web/kit.js).
-  $("initial").outerHTML = avatarHtml({ handle: mine?.handle || email() || "", name: name || email() || "B" },
-    { size: "big", id: "initial" });
-  const line = $("handle-line");
-  line.replaceChildren();
-  if (mine && HANDLE.test(String(mine.handle))) {
-    const page = make("a", "", `brickworks.diy/u/${mine.handle}`);
-    page.href = `/u/${mine.handle}`;
-    line.append(page);
-    if (follows && follows.ready) {
-      // Said once there are any, as every count is: never "0 followers".
-      if (Number(follows.followers)) line.append(` · ${counted(follows.followers, "follower")}`);
-      if (Number(follows.following)) line.append(` · ${Number(follows.following).toLocaleString("en-US")} following`);
-    }
-  } else {
-    line.append("Choose the name the gallery shows for you, under ");
-    const to = make("a", "", "Settings");
-    to.href = "#settings";
-    line.append(to, ".");
+/// Whom you follow, for you alone. Where the server cannot list them yet
+/// (ready: false), how many, from your page's counts.
+async function following() {
+  const answer = await call("/api/people?op=following").catch(() => null);
+  const list = $("following");
+  list.replaceChildren();
+  const people = answer && answer.status === 200 ? (answer.body.following || []) : null;
+  if (!people) {
+    $("following-said").textContent = (answer && answer.body && answer.body.error) || "Whom you follow could not be read just now.";
+    return;
   }
+  const nobody = "Nobody yet. Press Follow on a designer’s page, or beside their name on a model’s, and what they share comes into your feed.";
+  if (answer.body.ready === false) {
+    const many = shown ? Number(shown.following) || 0 : null;
+    $("following-said").textContent = many ? `You follow ${counted(many, "designer")}: what they share comes into your feed.`
+      : many === 0 ? nobody : "What the designers you follow share comes into your feed.";
+    return;
+  }
+  for (const one of people.filter((p) => HANDLE.test(String(p.handle)))) {
+    const to = make("a", "pill", String(one.name || one.handle), make("small", "", `@${one.handle}`));
+    to.href = `/u/${one.handle}`;
+    to.insertAdjacentHTML("afterbegin", avatarHtml({ handle: one.handle, name: one.name }, { size: "small" }));
+    list.append(make("li", "", to));
+  }
+  $("following-said").textContent = people.length
+    ? `${counted(people.length, "designer")}: what they share comes into your feed.` : nobody;
+}
+
+async function drawSaved() {
+  const lists = $("lists");
+  lists.replaceChildren();
+  for (const list of mine.collections || []) if (ID.test(String(list.id))) lists.append(listRow(list));
+  await Promise.all([favourites(), following()].map((one) => one.catch(() => null)));
 }
 
 /// The sets you own (in the app, Build › My collection), and what in the
 /// gallery they build, every part yours.
-async function owned() {
-  const [kept, shelves] = await Promise.all([
+async function drawSets() {
+  const [owned, shelves] = await Promise.all([
     call("/api/collection").catch(() => null),
     call("/api/share?op=shelves&mine=1").catch(() => null),
   ]);
   const said = $("owned-said");
   const counts = $("owned-counts");
   const row = $("owned-models");
-  const sets = kept && kept.status === 200 && Array.isArray(kept.body.sets) ? kept.body.sets : [];
-  const parts = kept && kept.status === 200 && Array.isArray(kept.body.parts) ? kept.body.parts : [];
+  const sets = owned && owned.status === 200 && Array.isArray(owned.body.sets) ? owned.body.sets : [];
+  const parts = owned && owned.status === 200 && Array.isArray(owned.body.parts) ? owned.body.parts : [];
   const pool = shelves && shelves.status === 200 ? shelves.body.mine : null;
   const pieces = pool ? Number(pool.pieces) || 0 : parts.reduce((all, one) => all + (Number(one.qty) || 0), 0);
   if (!sets.length && !parts.length && !pieces) {
@@ -204,94 +400,167 @@ async function owned() {
   $("owned-more").hidden = false;
 }
 
-/// Whom you follow, for you alone. Where the server cannot list them yet
-/// (ready: false), how many, from your profile's counts ([follows]).
-async function following(follows) {
-  const answer = await call("/api/people?op=following").catch(() => null);
-  const list = $("following");
-  list.replaceChildren();
-  const people = answer && answer.status === 200 ? (answer.body.following || []) : null;
-  if (!people) {
-    $("following-said").textContent = (answer && answer.body && answer.body.error) || "Whom you follow could not be read just now.";
-    return;
+const DRAW = { models: drawModels, builds: drawBuilds, saved: drawSaved, sets: drawSets,
+  insights: () => showDesigns($("designs")) };
+
+/// The tabs there are: Models and Builds only with a profile.
+const tabsNow = () => TABS.filter((tab) => handleOf() || !["models", "builds"].includes(tab));
+
+/// Shows [tab], drawing it the first time, and says so in the address so a
+/// reload or a link comes back to it.
+async function choose(tab, { push = false } = {}) {
+  const there = tabsNow();
+  const chosen = there.includes(tab) ? tab : there[0];
+  for (const link of document.querySelectorAll("#tabs [data-tab]")) {
+    link.hidden = !there.includes(link.dataset.tab);
+    if (link.dataset.tab === chosen) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
   }
-  if (answer.body.ready === false) {
-    const many = follows && follows.ready ? Number(follows.following) || 0 : null;
-    $("following-said").textContent = many
-      ? `You follow ${counted(many, "designer")}: what they share comes into your feed.`
-      : many === 0 ? "Nobody yet. Press Follow on a designer’s page, or beside their name on a model’s, and what they share comes into your feed."
-        : "What the designers you follow share comes into your feed.";
-    return;
+  for (const panel of document.querySelectorAll("#work [data-panel]")) panel.hidden = panel.dataset.panel !== chosen;
+  const address = new URL(location.href);
+  if (chosen === there[0]) address.searchParams.delete("tab");
+  else address.searchParams.set("tab", chosen);
+  history[push ? "pushState" : "replaceState"](null, "", address.pathname + address.search + address.hash);
+  if (!drawnTabs.has(chosen)) {
+    drawnTabs.add(chosen);
+    await Promise.resolve(DRAW[chosen]()).catch(() => null);
   }
-  for (const one of people.filter((p) => HANDLE.test(String(p.handle)))) {
-    const to = make("a", "pill", String(one.name || one.handle), make("small", "", `@${one.handle}`));
-    to.href = `/u/${one.handle}`;
-    list.append(make("li", "", to));
-  }
-  $("following-said").textContent = people.length
-    ? `${counted(people.length, "designer")}: what they share comes into your feed.`
-    : "Nobody yet. Press Follow on a designer’s page, or beside their name on a model’s, and what they share comes into your feed.";
+  return chosen;
 }
 
-/// The photos of your builds that show on your profile.
-async function builds(mine) {
-  const strip = $("builds-strip");
-  strip.replaceChildren();
-  if (!mine || !HANDLE.test(String(mine.handle))) {
-    strip.hidden = true;
-    return;
-  }
-  const answer = await call(`/api/people?op=profile&handle=${encodeURIComponent(mine.handle)}`).catch(() => null);
-  const photos = answer && answer.status === 200 && Array.isArray(answer.body.built) ? answer.body.built : [];
-  for (const photo of photos.filter((one) => ID.test(String(one.id)) && ID.test(String(one.model)))) {
-    const img = make("img");
-    img.src = `/api/people?op=photo_file&id=${photo.id}`;
-    img.alt = photo.words ? String(photo.words) : `A photo of ${String(photo.model_name || "a build")}`;
-    img.loading = "lazy";
-    img.width = Number(photo.width) || 1200;
-    img.height = Number(photo.height) || 900;
-    const to = make("a", "", String(photo.model_name || "The model"));
-    to.href = `/m/${photo.model}#photo-${photo.id}`;
-    strip.append(make("figure", "build", img, make("figcaption", "", photo.words ? make("q", "", String(photo.words)) : "", to)));
-  }
-  strip.hidden = strip.children.length === 0;
-  if (photos.length) $("builds-said").textContent = `${counted(photos.length, "photo")} of your builds, on your profile.`;
+for (const link of document.querySelectorAll("#tabs [data-tab]")) {
+  link.addEventListener("click", (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
+    event.preventDefault();
+    choose(link.dataset.tab, { push: true });
+  });
+}
+addEventListener("popstate", () => {
+  if (signedIn() && mine) choose(new URLSearchParams(location.search).get("tab") || "");
+});
+$("models-more").addEventListener("click", () => showModels({ focus: true }));
+
+// ---------------------------------------------------------------------------
+// Making your profile, and Edit profile.
+
+const form = $("profile-form");
+const dialog = $("edit-dialog");
+// What the dialog was filled with, so a save sends only what changed.
+let filled = null;
+
+/// The form as a start (a name and a handle, in the page) or as Edit
+/// profile (everything your page shows, in its dialog).
+function placeForm(start) {
+  if (start) $("start").append(form);
+  else dialog.append(form);
+  for (const part of form.querySelectorAll("[data-more]")) part.hidden = start;
+  $("showcase").hidden = start || !(mine.showcase && mine.showcase.ready) || young;
+  $("save").textContent = start ? "Make my profile" : "Save";
+  for (const field of form.querySelectorAll("input, textarea, select, button[type=submit]")) field.disabled = young;
 }
 
-/// The Claude connection: which Claude apps may work in your tabs, and a
-/// way to end one. Ending it loses what that connector was allowed to do,
-/// so it asks first.
-async function claude() {
-  const answer = await call("/api/oauth?op=connections").catch(() => null);
-  const list = $("connections");
-  list.replaceChildren();
-  const connections = answer && answer.status === 200 && Array.isArray(answer.body.connections) ? answer.body.connections : null;
-  if (!connections) {
-    $("claude-said").textContent = "Whether your Claude is connected could not be read just now.";
-    return;
+function fillForm() {
+  const person = mine.profile || {};
+  $("name").value = person.name ? String(person.name) : "";
+  $("handle").value = person.handle ? String(person.handle) : "";
+  $("bio").value = person.bio ? String(person.bio) : "";
+  $("handle-shown").textContent = $("handle").value || "your-handle";
+  $("avatar-edit").outerHTML = avatarHtml({ handle: $("handle").value, name: $("name").value || "?" }, { size: "big", id: "avatar-edit" });
+  const showcase = mine.showcase || {};
+  const choices = (showcase.models || []).filter((one) => ID.test(String(one.id)));
+  const fill = (select, chosen, pictured) => {
+    select.replaceChildren(make("option", "", "None"));
+    select.firstChild.value = "";
+    for (const one of choices) {
+      if (pictured && !one.picture) continue;
+      const option = make("option", "", String(one.name));
+      option.value = one.id;
+      select.append(option);
+    }
+    select.value = choices.some((one) => one.id === chosen) ? chosen : "";
+  };
+  fill($("banner"), showcase.banner, true);
+  for (const [at, select] of [...form.querySelectorAll("select[data-pin]")].entries()) fill(select, showcase.pins?.[at], false);
+  $("link-1").value = showcase.links?.[0] || "";
+  $("link-2").value = showcase.links?.[1] || "";
+  filled = showcaseFields();
+  $("profile-said").textContent = "";
+}
+
+function showcaseFields() {
+  return { links: [$("link-1").value, $("link-2").value].map((one) => one.trim()).filter(Boolean),
+    banner: $("banner").value || null,
+    pins: [...new Set([...form.querySelectorAll("select[data-pin]")].map((select) => select.value).filter(Boolean))] };
+}
+
+function openEdit() {
+  if (!handleOf() || young) return;
+  fillForm();
+  placeForm(false);
+  dialog.showModal();
+  $("name").focus();
+}
+
+$("edit").addEventListener("click", openEdit);
+$("cancel").addEventListener("click", () => dialog.close());
+$("handle").addEventListener("input", () => {
+  $("handle-shown").textContent = $("handle").value.trim().toLowerCase() || "your-handle";
+});
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const start = !handleOf();
+  $("save").disabled = true;
+  const said = (words) => {
+    $("profile-said").textContent = words;
+    $("save").disabled = false;
+  };
+  const answer = await call("/api/people?op=profile", { method: "POST", body: {
+    handle: $("handle").value.trim().toLowerCase(), name: $("name").value, bio: start ? "" : $("bio").value } });
+  if (answer.status !== 200) return said(answer.body.error || "That did not work just now.");
+  // Links, the banner and pins: only what was changed, so a pin the list
+  // here cannot offer (a model taken out of the gallery since) is kept.
+  if (!start && mine.showcase && mine.showcase.ready && !young) {
+    const now = showcaseFields();
+    const changed = {};
+    if (JSON.stringify(now.links) !== JSON.stringify(filled.links)) changed.links = now.links;
+    if (now.banner !== filled.banner) changed.banner = now.banner;
+    if (JSON.stringify(now.pins) !== JSON.stringify(filled.pins)) changed.pins = now.pins;
+    if (Object.keys(changed).length) {
+      const kept = await call("/api/people?op=showcase", { method: "POST", body: changed });
+      if (kept.status !== 200) {
+        await refresh();
+        return said(`Your name was saved; the rest was not: ${kept.body.error || "that did not work just now."}`);
+      }
+    }
   }
-  $("claude-how").hidden = connections.length > 0;
-  $("claude-said").textContent = connections.length
-    ? "These can work in your Brickworks tabs, as you, while a tab is open."
-    : "Not connected. With the assistant on, Connect Claude in the app, or add Brickworks to Claude yourself.";
-  for (const one of connections) {
-    const since = when(one.since);
-    const used = when(one.last_used);
-    const words = make("span", "", make("b", "", String(one.client || "A Claude app")),
-      since ? ` since ${since}` : "", used ? `, last used ${used}` : "");
-    const end = make("button", "link", "Disconnect");
-    end.type = "button";
-    end.addEventListener("click", async () => {
-      // Claude forgets the tool permissions given to a connection when it is
-      // disconnected, which is why nothing here suggests doing it (2026-10-20).
-      if (!confirm(`Disconnect ${String(one.client || "this app")}? It can no longer work in your tabs. Claude also `
-        + "forgets the tool permissions you gave it, so connecting again asks for them all again.")) return;
-      end.disabled = true;
-      const gone = await call(`/api/oauth?op=disconnect&id=${encodeURIComponent(String(one.id))}`, { method: "POST" });
-      if (gone.status === 200) claude();
-      else end.disabled = false;
-    });
-    list.append(make("li", "", words, end));
+  said("Saved.");
+  await refresh();
+  if (dialog.open) dialog.close();
+  toast(start ? "Your profile is made" : "Saved. Your page shows it within a minute.");
+});
+
+/// Everything asked again and drawn: after a save, your page shows it at
+/// once, with no reload.
+async function refresh() {
+  const answer = await call("/api/people?op=me");
+  if (answer.status === 200) mine = answer.body;
+  await readShown();
+  draw();
+  for (const tab of ["models", "builds"]) drawnTabs.delete(tab);
+  await choose(new URLSearchParams(location.search).get("tab") || "");
+}
+
+/// The page for what is known: the start or your profile's head.
+function draw() {
+  const handle = handleOf();
+  $("start").hidden = Boolean(handle);
+  $("me").hidden = !handle;
+  if (handle) {
+    drawHead();
+    if (!dialog.open) placeForm(false);
+  } else {
+    fillForm();
+    placeForm(true);
   }
 }
 
@@ -308,179 +577,51 @@ async function load() {
     signOut();
     return load();
   }
+  mine = answer.body;
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
-  $("who").textContent = `Signed in as ${email()}. Only you see the address; the gallery shows the name above.`;
-  $("delete-confirm").placeholder = email();
   // The age question, if this account has not answered it; and under 13,
   // no public profile or public list here (the server refuses them too).
   const answered = await askAgeIfAsked().catch(() => null);
-  const young = Boolean(answered && answered.over_13 === false);
+  young = Boolean(answered && answered.over_13 === false);
   $("young").hidden = !young;
-  for (const field of $("profile-form").querySelectorAll("input, textarea, button[type=submit]")) field.disabled = young;
   document.documentElement.dataset.young = young ? "yes" : "no";
-  const kept = answered || await age().catch(() => null);
-  $("age-said").textContent = kept && kept.over_13 === true
-    ? "You told Brickworks you are 13 or over. Only that is kept, never your date of birth."
-    : kept && kept.over_13 === false
-      ? "You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept."
-      : "Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.";
-  const mine = answer.body.profile;
-  handle = mine ? String(mine.handle) : "";
-  $("name").value = mine ? String(mine.name) : "";
-  $("handle").value = handle;
-  $("bio").value = mine && mine.bio ? String(mine.bio) : "";
-  $("handle-shown").textContent = handle || "your-handle";
-  drawShowcase(mine, answer.body.showcase, young);
-  $("view").hidden = !mine;
-  if (mine && HANDLE.test(handle)) $("view").href = `/u/${handle}`;
-  const follows = mine && HANDLE.test(handle)
-    ? await call(`/api/people?op=follows&handle=${encodeURIComponent(handle)}`).then((a) => (a.status === 200 ? a.body : null), () => null)
-    : null;
-  drawHead(mine, follows);
-  const lists = $("lists");
-  lists.replaceChildren();
-  for (const list of answer.body.collections || []) if (ID.test(String(list.id))) lists.append(listRow(list));
-  // What is emailed (api/_comments.js): comments on their models, at most
-  // once a day, off until chosen. Not there before comments.sql. And the
-  // feed's kinds, one choice each, since follows.sql.
-  const mail = answer.body.mail;
-  $("mail").hidden = !(mail && mail.ready !== false);
-  $("mail-comments").checked = Boolean(mail && mail.comments);
-  $("mail-kinds").hidden = !(mail && mail.kinds === true);
-  for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
-  // Whether their profile shows whom they follow (supabase/follows.sql).
-  const shows = answer.body.follows;
-  $("follows-choice").hidden = !(shows && shows.ready) || young;
-  $("shows-follows").checked = Boolean(shows && shows.shows_follows);
-  // Each of the rest asks for its own; one that fails leaves the others.
-  await Promise.all([favourites(), showDesigns($("designs")), owned(), following(follows), builds(mine), claude()]
-    .map((one) => Promise.resolve(one).catch(() => null)));
+  await readShown();
+  draw();
+  drawnTabs.clear();
+  await choose(new URLSearchParams(location.search).get("tab") || "");
+  // From Settings' Edit profile.
+  if (new URLSearchParams(location.search).get("edit") === "1") {
+    const address = new URL(location.href);
+    address.searchParams.delete("edit");
+    history.replaceState(null, "", address.pathname + address.search);
+    openEdit();
+  }
   document.documentElement.dataset.profile = "ready";
 }
 
-$("mail-comments").addEventListener("change", async () => {
-  const box = $("mail-comments");
-  box.disabled = true;
-  const answer = await call("/api/people?op=mail", { method: "POST", body: { comments: box.checked } });
-  box.disabled = false;
-  if (answer.status !== 200) {
-    box.checked = !box.checked;
-    $("mail-said").textContent = answer.body.error || "That did not work just now.";
-    return;
-  }
-  $("mail-said").textContent = answer.body.comments
-    ? "On: at most one email a day, when somebody comments on a model you shared."
-    : "Off: no emails about comments.";
-});
-
-const KIND_WORDS = { models: "new models from people you follow", versions: "new versions of their models",
-  photos: "photos of builds", remixes: "remixes of your models" };
-for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) {
-  box.addEventListener("change", async () => {
-    const kind = box.dataset.kind;
-    box.disabled = true;
-    const answer = await call("/api/people?op=mail", { method: "POST", body: { [kind]: box.checked } });
-    box.disabled = false;
-    if (answer.status !== 200) {
-      box.checked = !box.checked;
-      $("mail-said").textContent = answer.body.error || "That did not work just now.";
+$("share").addEventListener("click", async () => {
+  const url = `${location.origin}/u/${handleOf()}`;
+  if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+    try {
+      await navigator.share({ title: `${mine.profile.name} on Brickworks`, url });
       return;
+    } catch (trouble) {
+      if (trouble?.name === "AbortError") return;
     }
-    $("mail-said").textContent = answer.body[kind]
-      ? `On: ${KIND_WORDS[kind]} in the day's one email.`
-      : `Off: no emails about ${KIND_WORDS[kind]}.`;
-  });
-}
-
-$("shows-follows").addEventListener("change", async () => {
-  const box = $("shows-follows");
-  box.disabled = true;
-  const answer = await call("/api/people?op=follow_choice", { method: "POST", body: { shows: box.checked } });
-  box.disabled = false;
-  if (answer.status !== 200) {
-    box.checked = !box.checked;
-    $("follows-said").textContent = answer.body.error || "That did not work just now.";
-    return;
   }
-  $("follows-said").textContent = answer.body.shows_follows
-    ? "Shown: your profile lists whom you follow."
-    : "Not shown: your profile says only how many.";
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("Link copied");
+  } catch {
+    toast(`Could not copy it: your page is ${url}`);
+  }
 });
-
 $("sign-in").addEventListener("click", async () => {
   if (await askToSignIn("Sign in with your email address: we send you a code, no password.")) {
     showFeedCount().catch(() => null);
     load();
   }
-});
-$("sign-out").addEventListener("click", () => {
-  signOut();
-  showFeedCount().catch(() => null);
-  load();
-});
-$("handle").addEventListener("input", () => {
-  $("handle-shown").textContent = $("handle").value.trim().toLowerCase() || "your-handle";
-});
-$("profile-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  $("save").disabled = true;
-  const answer = await call("/api/people?op=profile", { method: "POST", body: {
-    handle: $("handle").value.trim().toLowerCase(), name: $("name").value, bio: $("bio").value } });
-  $("save").disabled = false;
-  if (answer.status !== 200) {
-    $("profile-said").textContent = answer.body.error || "That did not work just now.";
-    return;
-  }
-  $("profile-said").textContent = "Saved.";
-  $("view").hidden = false;
-  if (HANDLE.test(String(answer.body.handle))) {
-    handle = String(answer.body.handle);
-    $("view").href = `/u/${handle}`;
-  }
-  drawHead({ handle, name: answer.body.name }, null);
-});
-/// What your profile shows besides its name (supabase/profile_shows.sql):
-/// your links, a banner and pins, chosen from your models in the gallery.
-/// Only once you have a profile, and once the server keeps them.
-function drawShowcase(mine, showcase, young) {
-  const form = $("showcase-form");
-  form.hidden = !mine || !showcase || !showcase.ready;
-  if (form.hidden) return;
-  const models = (showcase.models || []).filter((one) => ID.test(String(one.id)));
-  const fill = (select, chosen, pictured) => {
-    select.replaceChildren(make("option", "", "None"));
-    select.firstChild.value = "";
-    for (const one of models) {
-      if (pictured && !one.picture) continue;
-      const option = make("option", "", String(one.name));
-      option.value = one.id;
-      select.append(option);
-    }
-    select.value = models.some((one) => one.id === chosen) ? chosen : "";
-  };
-  fill($("banner"), showcase.banner, true);
-  for (const [at, select] of [...form.querySelectorAll("select[data-pin]")].entries()) fill(select, showcase.pins?.[at], false);
-  $("link-1").value = showcase.links?.[0] || "";
-  $("link-2").value = showcase.links?.[1] || "";
-  for (const field of form.querySelectorAll("input, select, button[type=submit]")) field.disabled = young;
-}
-$("showcase-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = $("showcase-form");
-  $("showcase-save").disabled = true;
-  const pins = [...form.querySelectorAll("select[data-pin]")].map((select) => select.value).filter(Boolean);
-  const answer = await call("/api/people?op=showcase", { method: "POST", body: {
-    links: [$("link-1").value, $("link-2").value].map((one) => one.trim()).filter(Boolean),
-    banner: $("banner").value || null, pins: [...new Set(pins)] } });
-  $("showcase-save").disabled = false;
-  if (answer.status !== 200) {
-    $("showcase-said").textContent = answer.body.error || "That did not work just now.";
-    return;
-  }
-  $("link-1").value = answer.body.links?.[0] || "";
-  $("link-2").value = answer.body.links?.[1] || "";
-  $("showcase-said").textContent = "Saved. Your profile shows it within a minute.";
 });
 $("new-list").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -494,42 +635,5 @@ $("new-list").addEventListener("submit", async (event) => {
   $("new-name").value = "";
   $("lists").prepend(listRow({ id: answer.body.id, name: answer.body.name, public: false, count: 0 }));
 });
-$("delete-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const typed = $("delete-confirm").value.trim();
-  if (typed.toLowerCase() !== email().toLowerCase()) {
-    $("delete-said").textContent = "That is not the address this account signs in with.";
-    return;
-  }
-  if (!confirm("Delete this account and everything in it, for good?")) return;
-  $("delete-go").disabled = true;
-  const answer = await call("/api/account?op=delete", { method: "POST", body: { confirm: typed } });
-  $("delete-go").disabled = false;
-  if (answer.status !== 200) {
-    $("delete-said").textContent = answer.body.error || "That did not work just now.";
-    return;
-  }
-  signOut();
-  showFeedCount().catch(() => null);
-  document.documentElement.dataset.deleted = "yes";
-  await load();
-  $("signed-out").querySelector(".lede").textContent = "Your account is deleted, and everything in it. "
-    + "Sign in again with any address to start a new one.";
-});
-
-// The rail says which section is on the screen.
-const rail = [...document.querySelectorAll(".subnav a")];
-if ("IntersectionObserver" in window && rail.length) {
-  const watch = new IntersectionObserver((seen) => {
-    for (const one of seen) {
-      if (!one.isIntersecting) continue;
-      for (const a of rail) a.setAttribute("aria-current", String(a.getAttribute("href") === `#${one.target.id}`));
-    }
-  }, { rootMargin: "-30% 0px -60% 0px" });
-  for (const a of rail) {
-    const target = document.getElementById(a.getAttribute("href").slice(1));
-    if (target) watch.observe(target);
-  }
-}
 
 load();

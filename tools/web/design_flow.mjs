@@ -326,10 +326,17 @@ const PAGES = [
     ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
   { name: "feed", path: "/feed",
     ready: (page, { signedIn }) => (signedIn ? until(page, () => document.querySelectorAll(".feed-row").length > 0) : true) },
+  // Your profile (docs/SOCIAL.md U6): your page's head and its first tab;
+  // Edit profile's dialog; and the tabs only you see, each its own page.
   { name: "account", path: "/profile",
-    ready: (page, { signedIn }) => (signedIn ? until(page, () => document.querySelector("#name")?.value) : true),
+    ready: (page, { signedIn }) => (signedIn ? until(page, () => document.documentElement.dataset.profile === "ready") : true),
     open: async (page, { signedIn }) => {
-      if (signedIn) return [];
+      if (signedIn) {
+        await page.click("#edit");
+        const opened = await until(page, () => document.querySelector("dialog#edit-dialog[open]")
+          && document.querySelector("#name")?.value);
+        return [[opened ? "edit" : "edit (missing)", "dialog#edit-dialog"]];
+      }
       await page.click("#sign-in");
       if (!(await until(page, () => document.querySelector("dialog.sign-in[open]")))) return [["sign-in (missing)", "dialog.sign-in"]];
       const states = [["sign-in", "dialog.sign-in"]];
@@ -338,6 +345,24 @@ const PAGES = [
       const coded = await until(page, () => /code sent/.test(document.querySelector("dialog.sign-in label")?.textContent || ""));
       states.push([coded ? "sign-in code" : "sign-in code (missing)", "dialog.sign-in"]);
       return states;
+    } },
+  { name: "account-saved", path: "/profile?tab=saved", signedInOnly: true,
+    ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready"
+      && document.querySelectorAll("#favourites .model").length > 0) },
+  { name: "account-sets", path: "/profile?tab=sets", signedInOnly: true,
+    ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready") },
+  { name: "account-insights", path: "/profile?tab=insights", signedInOnly: true,
+    ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready") },
+  // Your settings, apart from your profile (docs/SOCIAL.md U6): the same
+  // rows the account page ended with.
+  { name: "settings", path: "/settings",
+    ready: (page, { signedIn }) => (signedIn ? until(page, () => document.documentElement.dataset.settings === "ready")
+      : until(page, () => document.documentElement.dataset.settings === "signed-out")),
+    open: async (page, { signedIn }) => {
+      if (!signedIn) return [];
+      await page.click("#delete-part summary");
+      const opened = await until(page, () => document.querySelector("#delete-part details[open]"));
+      return [[opened ? "delete" : "delete (missing)", "#delete-part"]];
     } },
   // The age question, which a signed-in page asks once of an account that
   // has not answered it: the owner's example. Only the dialog is judged.

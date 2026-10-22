@@ -600,22 +600,6 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 }
 .menu-list > button:hover { background: var(--panel-hi); color: var(--ink); }
 
-/* A page's own index (your account): its sections, in a rail beside them
-   on a laptop and in a row across the top on a phone that scrolls inside
-   itself, never the page. */
-.subnav { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 2px; }
-.subnav a {
-	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
-	padding: 8px 12px; border-radius: var(--r-2); white-space: nowrap;
-}
-.subnav a:hover, .subnav a[aria-current="true"] { color: var(--ink); background: var(--panel); }
-@media (max-width: 860px) {
-	.subnav {
-		position: static; flex-direction: row; overflow-x: auto; overscroll-behavior-x: contain;
-		margin: 0 0 var(--s-5); padding: 0 0 var(--s-2); border-bottom: 1px solid var(--line);
-	}
-}
-
 /* Settings: a panel of rows, each what a setting is and its control
    beside it (under it on a phone). .wide takes the whole row. A row that
    cannot be undone is .danger, and so is its button. */
