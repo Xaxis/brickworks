@@ -320,8 +320,8 @@ Each decided here, with its reason (`brickworks-decide-dont-wait`).
   and a filter. The community distrusts AI-designed work (a Reddit reply
   to the owner's post, 2026-10-13: "that Assistant looks worryingly AI…
   a LOT of us… building freely… not AI designed") and the guidelines
-  already ask for the label (`ai-designed`, `brickify` tags). Read from the tags until the app says
-  it at publish (U16).
+  already ask for the label (`ai-designed`, `brickify` tags). Read from
+  the tags until the app says it at publish (U16).
 - **D8. Theme: System, Light, Dark**; System by default; the browser
   remembers, the account remembers (section 3).
 - **D9. Your profile is your public page with Edit**, as on Instagram,
@@ -419,10 +419,10 @@ same card; shelves only with 3 cards; empty and "nothing matches" states
 with the way in. *Why:* sections 1 and 2; D3-D7. *Now:* above.
 *Acceptance:* at 390 x 844 the first card's picture starts within 330 px
 of the top and four cards' names are on the first two screens; at 1280 x
-900 at least four cards are wholly on the first screen; a like from a card
-changes its count at once and the model page shows it liked; Back from a model returns to the
-same card within 100 px; a search address sent to somebody shows the same
-cards; light and dark. *Supabase:* the list gains each card's designer
+900 at least four cards are wholly on the first screen; a like from a
+card changes its count at once and the model page shows it liked; Back
+from a model returns to the same card within 100 px; a search address
+sent to somebody shows the same cards; light and dark. *Supabase:* the list gains each card's designer
 handle and avatar and its comment count: a new `directory_models` version
 (functions replaced as builds.sql and discovery.sql did; no table change).
 
@@ -496,8 +496,8 @@ and likes as a number per model per day ("Wizard's Tower: 4 new
 likes"), grouped by model, newest group first ([DC], [AN]); read as you
 open them; Mark all read; the daily email choices unchanged. *Why:* D10.
 *Acceptance:* a comment on your model shows in the avatar's count within
-a page load and in the list with its picture; ten likes on one model are one row; nothing says who followed
-you or names who liked. *Supabase:* `feed_rows` split by kind into
+a page load and in the list with its picture; ten likes on one model
+are one row; nothing says who followed you or names who liked. *Supabase:* `feed_rows` split by kind into
 `notification_rows` and `follow_rows` (new functions), likes counted per
 day from `model_likes`; `feed_marks` gains `notifications_seen_at`.
 
