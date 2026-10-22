@@ -1148,6 +1148,23 @@ var _exact_waiting: PackedStringArray = PackedStringArray()
 signal exact_fetched(part_id: String)
 
 
+## The exact shapes of these parts fetched next, ahead of the others still
+## waiting their turn: a motion's press waits for its own (main.gd). Only
+## reorders.
+func prefer_exact(part_ids: Array) -> void:
+	var first := PackedStringArray()
+	for part_id: Variant in part_ids:
+		var info: PartInfo = shaped_as(str(part_id))
+		if info != null and _exact_waiting.has(info.id) and not first.has(info.id):
+			first.append(info.id)
+	if first.is_empty():
+		return
+	for part_id: String in _exact_waiting:
+		if not first.has(part_id):
+			first.append(part_id)
+	_exact_waiting = first
+
+
 ## Whether a part's exact shape is still on its way.
 func is_exact_on_its_way(part_id: String) -> bool:
 	var info: PartInfo = shaped_as(part_id)

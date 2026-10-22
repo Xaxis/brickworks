@@ -176,6 +176,12 @@ static var _next_id: int = 1
 ## filled under a lock, as Joints._lines is (racefix, 2026-10-20).
 static var _shapes: Dictionary = {}
 static var _shapes_lock := Mutex.new()
+## Parts whose shape the main thread asked for while [member noting] and it
+## was still on its way, so judged without it: part id -> true, until
+## [method missed_taken]. Main thread only: a motion's press notes what its
+## working out asks for (main.gd).
+static var noting: bool = false
+static var _missed: Dictionary = {}
 ## Verdicts between two shapes at one relative pose: key -> [depth, piece a,
 ## piece b, axis] or []. Shared by checks on different threads.
 static var _verdicts: Dictionary = {}
@@ -386,6 +392,8 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	# Already asked for: a look in the browser's pack for a file that is not
 	# there costs a couple of milliseconds, each time.
 	if main and library.is_exact_on_its_way(info.id):
+		if noting:
+			_missed[info.id] = true
 		return null
 	var path: String = file_for(library, info.id)
 	var shape: Shape = null
@@ -393,7 +401,8 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		shape = parse(FileAccess.get_file_as_bytes(path))
 	elif OS.has_feature("web"):
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
-		library.request_exact(info.id)
+		if library.request_exact(info.id) and main and noting:
+			_missed[info.id] = true
 		return null
 	_shapes_lock.lock()
 	# Read by another thread meanwhile: one shape a part, as its id keys
@@ -412,6 +421,14 @@ static func keep(mesh_hash: String, bytes: PackedByteArray) -> void:
 	_shapes_lock.lock()
 	_shapes[mesh_hash] = shape
 	_shapes_lock.unlock()
+
+
+## The parts asked for on the main thread since the last call while their
+## shapes were on their way ([member _missed]), and forgotten.
+static func missed_taken() -> Array:
+	var out: Array = _missed.keys()
+	_missed.clear()
+	return out
 
 
 ## Whether the shape for a part has been looked for (found or not).
