@@ -369,7 +369,7 @@ def sheet(out: Path, count: int) -> int:
     for page in range(0, len(picked), 30):
         some = picked[page:page + 30]
         rows = (len(some) + across - 1) // across
-        board = Image.new("RGB", (across * tile[0], rows * (tile[1] + label)), "white")
+        board = Image.new("RGB", (across * tile[0], rows * (tile[1] + label)), 0xFFFFFF)
         draw = ImageDraw.Draw(board)
         for n, m in enumerate(some):
             x, y = (n % across) * tile[0], (n // across) * (tile[1] + label)

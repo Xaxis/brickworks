@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project -->
 
 ## Sub-features
 
@@ -90,6 +90,25 @@ which models they could build from what they have. Added 2026-10-12.
   few pieces more than the box holds (2 of 246 whole before, 2026-10-19,
   `bench/results/ownedsets-2026-10-19`). Run after `tools/collection_data.py`,
   which rewrites every file in the folder, this one too.
+- `model library` (`tools/library_build.py`, `src/dev/library_covers.gd`): the
+  data behind opening any official model from inside the app. Every
+  `vendor/omr` model with a cover drawn by the app's own ModelShot (built,
+  the three-quarter view, 512 x 384 WebP), staged as the parts store holds it:
+  `library/index.json`, `library/omr/<file>.mpd` (LDraw's bytes, licence lines
+  kept), `library/covers/<id>.webp`. The index is `{"version": 1, "models":
+  [{id, kind, set, name, theme, year, parts, file, cover, author, licence,
+  page, alternate_of}]}` in that order (the library screen reads it); name,
+  set, year, theme, page and parts are models.json's, author and licence the
+  file's own main-model header ("CCAL 2.0" or "CC BY 4.0"); names carry LEGO®
+  with its mark. `covers` draws on the GPU lease in drawers of up to 100
+  models, each leaving after 20 s when another job waits; 1,575 covers in
+  29.7 min, none failed (2026-10-22). 6360-1 is left out: its main model is
+  empty, so nothing opens.
+- `model library in storage` (`tools/storage_library.py`): the staged
+  `library/` into the parts bucket under `library/`, beside `ldraw/parts/`, as
+  `application/octet-stream` (the only type the bucket takes); a model or cover
+  already there is left, the index sent last over the old one, five minutes'
+  cache. 3,151 files, 388 MB (2026-10-22, not yet uploaded).
 - `/api/collection` (`api/collection.js`, `supabase/collection.sql`): GET, POST
   an import, PUT the whole collection, DELETE. Every import is parsed and
   mapped here (Rebrickable CSV with quoted fields, BrickLink XML, Rebrickable's
@@ -132,6 +151,14 @@ python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
 godot --headless --path . --script src/dev/collection_models.gd
 node tools/apply_sql.mjs --look        # what the live table is (PG_MODULE=…, see the file)
+# the model library: covers (GPU, ~30 min), staged, held to the format, looked at
+python3 tools/library_build.py covers && python3 tools/library_build.py stage
+python3 tools/library_build.py check && python3 tools/library_build.py sheet --count 60
+python3 tools/minitest.py tests/test_library.py
+python3 -m http.server 8961 --bind 127.0.0.1 --directory bench/results/library-2026-10-22 &
+godot --headless --path . --script src/dev/library_open_probe.gd -- --base=http://127.0.0.1:8961/
+godot --headless --path . --script src/dev/library_open_probe.gd -- --recount
+tools/storage_library.py --check       # what the upload would send; without --check it sends it
 ```
 
 Proves it when:
@@ -168,6 +195,15 @@ Proves it when:
   accounts and their rows gone at the end.
 - `collection_flow.mjs` ends `imported, short, exported, ranked and opened in a
   browser`; look at `1_need_empty.png` to `5_opened.png`.
+- `library_build.py check` says `0 problems` and `test_library` passes (the
+  checker caught each of eleven ways of breaking a model, and the index built
+  from every file holds: an author and a licence for each). Look at
+  `bench/results/library-2026-10-22/sheets/`: every cover a built model,
+  framed with a margin. `library_open_probe` ends `0 failures`: the index
+  fetched from the served store, and three models (44, 635 and 8,968 parts)
+  fetched byte for byte as LDraw has them, opened with the app's reader and
+  counted as models.json counts them; `--recount` finds every model as
+  models.json says (1,575 of 1,575, 2026-10-22).
 
 Last proven 2026-10-12 on the preview of `133ed75`
 (brickworks-4ox4aq5lj-xaxis-projects.vercel.app): `collection_probe.mjs` 44 of

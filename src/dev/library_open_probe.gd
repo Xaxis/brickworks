@@ -115,9 +115,20 @@ func _run() -> void:
 			if ids.has(str(m["id"])):
 				chosen.append(m)
 	var counter: GDScript = load("res://src/dev/collection_models.gd")
+	# Each counted before any is opened: opening a file adds the parts it
+	# carries to the library (CustomParts.take_from), and counting after that
+	# counts parts models.json, made with none opened, did not (the Colosseum
+	# after it opened: 9,028 against 8,968).
+	var fetched: Array = []
+	var totals: Array = []
 	for m: Dictionary in chosen:
+		var got: PackedByteArray = await _fetch(base + str(m["file"]))
+		fetched.append(got)
+		totals.append(_counted(got.get_string_from_utf8(), str(m["set"]), library, counter))
+	for n: int in chosen.size():
+		var m: Dictionary = chosen[n]
 		print("%s (%s, %s): %d parts in the index" % [m["id"], m["set"], m["name"], int(m["parts"])])
-		var bytes: PackedByteArray = await _fetch(base + str(m["file"]))
+		var bytes: PackedByteArray = fetched[n]
 		var text: String = bytes.get_string_from_utf8()
 		# The file it was staged from: the id is "omr-" and its name, as a
 		# store path can carry it (tools/library_build.py safe_stem).
@@ -140,14 +151,7 @@ func _run() -> void:
 			"" if missing.is_empty() else ", and %d it names that no library has (%s)"
 			% [missing.size(), ModelStore.named_counts(missing)]],
 			int(opened.get("placed", 0)) > 0 and world.brick_count() == int(opened.get("placed", 0)))
-		# Counted as models.json was: the file's ownable parts, matched to its set.
-		var needs: Dictionary = Collection.needs_of_ldraw(text, library)
-		var held: Dictionary = counter._held(str(m["set"]).to_lower(), library)
-		if not needs.is_empty() and not held.is_empty():
-			needs = Collection.as_its_set(needs, held, Callable(counter, "drawn_with"), library)
-		var total: int = 0
-		for key: String in needs:
-			total += int(needs[key])
+		var total: int = totals[n]
 		_check("its parts counted as What can I build? counts them: %d, models.json %d, the index %d" % [
 			total, int(counted.get(original, -1)), int(m["parts"])],
 			total == int(counted.get(original, -1)) and total == int(m["parts"]))
@@ -158,6 +162,19 @@ func _run() -> void:
 			read and cover.get_size() == Vector2i(512, 384))
 	print("library_open_probe: %d models, %d failures" % [chosen.size(), _failures])
 	quit(0 if _failures == 0 and chosen.size() >= 1 else 1)
+
+
+## A file's parts as models.json counts them: its ownable parts, matched to
+## its set (collection_models.gd's listed, from text rather than a path).
+static func _counted(text: String, number: String, library: PartLibrary, counter: GDScript) -> int:
+	var needs: Dictionary = Collection.needs_of_ldraw(text, library)
+	var held: Dictionary = counter._held(number.to_lower(), library)
+	if not needs.is_empty() and not held.is_empty():
+		needs = Collection.as_its_set(needs, held, Callable(counter, "drawn_with"), library)
+	var total: int = 0
+	for key: String in needs:
+		total += int(needs[key])
+	return total
 
 
 ## Every model counted again and held to models.json.
