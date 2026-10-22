@@ -283,6 +283,10 @@ func _dome() -> void:
 	_judge({"pattern": "shell", "kind": "dome", "across": 32, "at": {"x": 30, "y": 0, "z": 30},
 		"color": 15}, "--big_ldr=", "Hinged dome 32")
 	print("")
+	print("  and one 29 across, its crown the 8 x 8 dish")
+	_judge({"pattern": "shell", "kind": "dome", "across": 29, "at": {"x": 30, "y": 0, "z": 30},
+		"color": 71}, "--dome29_ldr=", "Hinged dome 29")
+	print("")
 	print("  and a ball 28 across on a stand: the same strips hung below the ring")
 	_judge({"pattern": "shell", "kind": "ball", "across": 28, "at": {"x": 20, "y": 0, "z": 20},
 		"color": 1}, "--ball_ldr=", "Hinged ball")

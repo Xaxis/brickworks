@@ -24,8 +24,9 @@
 ##               over the panel's length (2 x 4) or two (2 x 2 twice)
 ##   the seam    each band's last row raised a plate, its tiles reaching two
 ##               studs on over the band above, which folds in under them
-##   the crown   a dish over the top band's end, on discs of plates
-##               stepping in as the sphere does when the end is wider
+##   the crown   a dish over the top band's end, held up into its middle,
+##               on discs of plates stepping in as the sphere does when
+##               the end is wider
 ##   the foot    a course of bricks round the ring's edge, as tall as the
 ##               slot between the ring and the panels
 ##
@@ -67,15 +68,26 @@ const RINGS: Array = [
 	[34.0, 0.0], [36.75, 15.0], [37.0, 0.0],
 ]
 
-## The dishes a crown is made of, [part, radius in studs], smallest first.
-## Each is a solid box to the check, so nothing may stand under its rim.
-const CROWNS: Array = [["3960", 2.0], ["44375b", 3.0], ["3961", 4.0], ["50990b", 5.0]]
+## The dishes a crown is made of, [part, radius in studs, plates from its
+## rim up to the 2 x 2 under its middle], smallest first. Each is hollow
+## out to its rim, and that 2 x 2 is all that holds it: set down on studs,
+## its rim sits on them and nothing joins it. The 4 x 4 (3960) is solid
+## underneath but for one hole at its middle, off the column's studs.
+const CROWNS: Array = [["44375b", 3.0, 1], ["3961", 4.0, 2], ["50990b", 5.0, 2]]
+
+## Runs of plates, bricks and tiles a stud wide, by length in studs.
+const PLATES: Dictionary = {1: "3024", 2: "3023b", 3: "3623", 4: "3710", 6: "3666", 8: "3460"}
+const BRICKS: Dictionary = {1: "3005", 2: "3004", 3: "3622", 4: "3010", 6: "3009", 8: "3008"}
+const TILES: Dictionary = {1: "3070b", 2: "3069b", 3: "63864", 4: "2431", 6: "6636", 8: "4162"}
 
 ## Wedge plates, as [the panel's left side, its right] for each length
 ## along the panel: square, each one's straight edge against the plates
 ## between them and its wide end at the panel's foot. LDraw's "right" wing
-## is the one for a panel's left edge.
-const WINGS: Dictionary = {2: ["24307", "24299"], 4: ["41769b", "41770b"]}
+## is the one for a panel's left edge. The 2 x 4s without the chamfer, which
+## have BrickNet shapes: on 41769b, which has none, the check fell back on
+## the lattice for the 1 x 1 tile on its last stud, and the lattice let one
+## of a ball's twelve fall (the strip turned 210 degrees under the ring).
+const WINGS: Dictionary = {2: ["24307", "24299"], 4: ["41769a", "41770a"]}
 
 ## How far a high strip stands over its low neighbours, in plates: as far
 ## as a low panel's plates and tiles are thick, so a low panel inside the
@@ -446,12 +458,12 @@ class Plan extends RefCounted:
 						hung_capped[cell] = true
 		# Round a ball's middle the ring shows as a band: the panels' colour.
 		var band: int = colour if ball else -1
-		_lay(drum, foot + 2, true, true, band)
-		_lay(capped, foot + 5, false, false, band)
-		_lay(hung, foot - 3, true, true, band)
-		_lay(hung_capped, foot - 4, false, false, band)
-		_lay(cells, foot, true, false, band)
-		_lay(cells, foot + 1, false, false, band)
+		_lay(drum, foot + 2, true, BRICKS, band)
+		_lay(capped, foot + 5, false, PLATES, band)
+		_lay(hung, foot - 3, true, BRICKS, band)
+		_lay(hung_capped, foot - 4, false, PLATES, band)
+		_lay(cells, foot, true, PLATES, band)
+		_lay(cells, foot + 1, false, PLATES, band)
 		for half: int in (2 if ball else 1):
 			for strip: int in STRIPS:
 				_swivel(_pivot(strip, half), foot + 2 if half == 0 else foot - 1, strip, half)
@@ -492,10 +504,10 @@ class Plan extends RefCounted:
 				if Vector2(x + 0.5 - middle.x, z + 0.5 - middle.y).length() <= out:
 					cells[Vector2i(x, z)] = true
 
-	## [param cells] laid at [param y] in runs of plates along x or along z,
-	## or with [param course] of bricks, in the frame's colour or [param
-	## color].
-	func _lay(cells: Dictionary, y: int, along_x: bool, course: bool = false,
+	## [param cells] laid at [param y] in runs along x or along z of plates,
+	## or of what [param kind] names (BRICKS, TILES), in the frame's colour
+	## or [param color].
+	func _lay(cells: Dictionary, y: int, along_x: bool, kind: Dictionary = PLATES,
 			color: int = -1) -> void:
 		if cells.is_empty():
 			return
@@ -512,7 +524,7 @@ class Plan extends RefCounted:
 					run.append(along)
 					continue
 				if not run.is_empty():
-					_lay_run(y, line_at, run[0], run[-1] + 1, along_x, course, color)
+					_lay_run(y, line_at, run[0], run[-1] + 1, along_x, kind, color)
 				run.clear()
 
 	## A stud on the half grid at [param at] for a base to turn on: a round
@@ -778,6 +790,11 @@ class Plan extends RefCounted:
 	## On a column of round bricks from the ring. Sized to the high ends
 	## alone, a dish's rim showed sky over each low end; one flat disc out
 	## to the top band in the frame's colour read as a lid on a cone.
+	##
+	## The dish is held by round plates from the column or the disc up into
+	## the 2 x 2 under its middle, and the last disc is tiles wherever a stud
+	## would reach under it. Set down on the disc's studs, every shell's dish
+	## was held by nothing and had a ring of them pushed into its rim.
 	func _crown() -> void:
 		var top: Dictionary = bands[-1]
 		var end: Vector2 = top["ends"][1]
@@ -789,14 +806,16 @@ class Plan extends RefCounted:
 		# The round the tiers step in along: through the top band's high
 		# ends, which stand off the sphere by their spacers and tiles.
 		var outer: float = maxf(radius + lift, end.length())
+		# The discs' layers as [cells, y, along x], laid once the dish is known.
+		var layers: Array = []
 		var tier: int = 0
 		while float(CROWNS[-1][1]) * STUD < need:
 			var cells: Dictionary = {}
 			_disc(cells, centre, need / STUD + 0.5)
 			if tier == 0:
-				_lay(cells, at, true, false, colour)
+				layers.append([cells.duplicate(), at, true])
 				at += 1
-			_lay(cells, at, tier % 2 == 1, false, colour)
+			layers.append([cells, at, tier % 2 == 1])
 			at += 1
 			tier += 1
 			# The next in to where the sphere is at its top, by half a plate
@@ -809,6 +828,23 @@ class Plan extends RefCounted:
 				dish = row
 				break
 		var r: float = float(dish[1])
+		# Under the dish, but for the 2 x 2 the round plates stand on, the
+		# last layer's cells whose stud (6 LDU round its middle) reaches in.
+		var under: Dictionary = {}
+		if not layers.is_empty():
+			var last: Dictionary = layers[-1][0]
+			for cell: Vector2i in last.keys():
+				var off: Vector2 = Vector2(cell.x + 0.5, cell.y + 0.5) - centre
+				if off.length() * STUD < r * STUD + 6.0 and maxf(absf(off.x), absf(off.y)) > 1.0:
+					under[cell] = true
+					last.erase(cell)
+		for layer: Array in layers:
+			_lay(layer[0], layer[1], layer[2], PLATES, colour)
+		if not under.is_empty():
+			_lay(under, at - 1, layers[-1][2], TILES, colour)
+		for y: int in range(at, at + int(dish[2])):
+			bricks.append({"part": "4032a", "color": frame, "x": centre.x - 1, "y": y,
+				"z": centre.y - 1, "rot": 0})
 		bricks.append({"part": str(dish[0]), "color": colour, "x": centre.x - r, "y": at,
 			"z": centre.y - r, "rot": 0})
 
@@ -847,13 +883,13 @@ class Plan extends RefCounted:
 				"z": centre.y, "rot": 0})
 			y += 1
 
-	## A row of plates (or bricks) from [param from] to [param to]. Their
+	## A row of plates (or [param kind]) from [param from] to [param to]. Their
 	## joints fall where the row's own place says, three studs on from the
 	## row beside it, not where the run starts: a disc's middle rows all
 	## start together, and laid from there both layers of a ball's ring broke
 	## at the same lines into blocks eight studs square, each held by nothing.
 	func _lay_run(y: int, at: int, from: int, to: int, along_x: bool,
-			course: bool = false, color: int = -1) -> void:
+			kind: Dictionary = PLATES, color: int = -1) -> void:
 		var shift: int = posmod(at * 3, 8)
 		var pieces: Array[int] = []
 		var here: int = from
@@ -883,10 +919,7 @@ class Plan extends RefCounted:
 			index = 0
 		here = from
 		for used: int in pieces:
-			var part: String = ({1: "3005", 2: "3004", 3: "3622", 4: "3010", 6: "3009",
-				8: "3008"} if course else {1: "3024", 2: "3023b", 3: "3623", 4: "3710",
-				6: "3666", 8: "3460"})[used]
-			bricks.append({"part": part, "color": frame if color < 0 else color,
+			bricks.append({"part": str(kind[used]), "color": frame if color < 0 else color,
 				"x": here if along_x else at, "y": y,
 				"z": at if along_x else here, "rot": 0 if along_x else 1})
 			here += used
