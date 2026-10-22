@@ -32,7 +32,7 @@
       "tests": []
     },
     {
-      "id": "api:Claude's sign-in (OAuth)",
+      "id": "api:Claude's OAuth sign-in",
       "kind": "api",
       "entry": "api/oauth.js",
       "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
