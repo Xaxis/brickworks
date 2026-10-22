@@ -18,7 +18,8 @@
 # list's classes at the same paths. Then it imports holding
 # .godot/import.lock, so runs started together import once: the others
 # wait for the lock and find the list made. Exits 0 when the list is the
-# scripts', 1 with the difference when it is not even after an import.
+# scripts', 1 with the difference when it is not even after an import, and
+# 1 without importing when two scripts have one class_name.
 #   --check   say what is behind, import nothing
 set -u
 check=; [ "${1:-}" = --check ] && check=1
@@ -39,13 +40,22 @@ in_scripts() {
 in_list() {
   [ -f "$list" ] && awk -F'"' '/^"class": /{ c = $4 } /^"path": /{ print c, $4 }' "$list" | LC_ALL=C sort
 }
+# One walk of the tree, the cost of a run whose list is current: comm -3
+# prints the scripts' lines bare and the list's after a tab.
 behind() {
-  LC_ALL=C comm -23 <(in_scripts) <(in_list) | sed 's/^/  not in the class list: /'
-  LC_ALL=C comm -13 <(in_scripts) <(in_list) | sed 's/^/  in the class list, not in a script: /'
+  LC_ALL=C comm -3 <(in_scripts) <(in_list) \
+    | sed -e 's/^\t/  in the class list, not in a script: /;t' -e 's/^/  not in the class list: /'
 }
 
 said=$(behind)
 [ -z "$said" ] && exit 0
+# Two scripts of one class_name: the list keeps one, so no import ends it,
+# and Godot's import says nothing of it (tried, 2026-10-22).
+twice=$(in_scripts | awk '{ n[$1]++; at[$1] = at[$1] " " $2 }
+  END { for (c in n) if (n[c] > 1) print "  two scripts are class_name " c ":" at[c] }')
+if [ -n "$twice" ]; then
+  echo "fresh_import: no import can bring $(pwd)'s class list up to date:"; echo "$twice"; exit 1
+fi
 if [ -n "$check" ]; then
   echo "fresh_import: $(pwd)'s class list is behind its scripts:"; echo "$said" | head -10; exit 1
 fi

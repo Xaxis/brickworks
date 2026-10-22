@@ -22,7 +22,7 @@
 # Runs at once in one checkout are safe: a probe never writes .godot. Its
 # class list is brought up to date first when it is behind the scripts
 # (tools/fresh_import.sh, one import a checkout), and the probe is not run
-# when even an import leaves it behind.
+# when no import can: two scripts of one class_name, or a failed import.
 # PROBE_DRY=1 prints the command and runs nothing. PROBE_SIZE=WxH runs
 # a windowed probe in a window of that size instead of its header's (Xvfb
 # has no window manager, so a probe cannot resize its own window).
@@ -48,7 +48,7 @@ if [ -z "$block" ]; then
 fi
 
 if [ -z "${PROBE_DRY:-}" ] && ! tools/fresh_import.sh; then
-  echo "probe.sh: $name not run: its class list is behind the scripts (above)"
+  echo "probe.sh: $name not run: its class list cannot be brought up to date; fix what is said above (a class_name in two scripts, or the import's error), then run it again"
   exit 2
 fi
 
