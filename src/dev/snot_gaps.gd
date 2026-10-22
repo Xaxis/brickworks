@@ -56,6 +56,14 @@ func _run() -> void:
 			var read: Dictionary = MeshFilePicker.read_path(bits[0])
 			mesh = MeshFile.read(read["bytes"], bits[0].get_file(), read["extras"])
 			options.up = bits[2]
+		if OS.get_environment("GAPS_BUILD") != "":
+			var built: Dictionary = Brickify.build(mesh, options, _checker)
+			var report: Dictionary = built.get("report", {})
+			print("BUILD %s: %d parts, %.2f%% in a part, %d mended, stand %s, bond %s, propped %s, lost %s" % [spec,
+				(built["model"] as Assistant.Model).placements.size() if built.has("model") else 0,
+				100.0 * float(report.get("coverage", 0.0)), int(report.get("mended", 0)),
+				str(report.get("stand", {}).get("why", "")), str(report.get("bond", "")),
+				str(report.get("propped", "")), str((report.get("lost", {}) as Dictionary).get("regions", []).size())])
 		var turned: Dictionary = _lay(mesh, options)
 		var upright_options: Brickify.Options = options.copied()
 		upright_options.snot = false
@@ -72,6 +80,7 @@ func _lay(mesh: MeshFile, options: Brickify.Options) -> Dictionary:
 	var trouble: Array = []
 	var made: Array = Shapes.lay(shape, trouble, _library)
 	var last: Dictionary = Shapes.last.duplicate()
+	last["_cuts"] = [[0, shape.get("cubes", {})]] + (shape.get("cube_phases", []) as Array)
 	var model := Assistant.Model.new()
 	var shells_only := Assistant.Model.new()
 	for raw: Dictionary in made:
@@ -139,6 +148,8 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 				elif cut.has(key):
 					w = "cut off (%s), %s, %s" % [cut[key], _where(key, frames),
 						"given back" if given.has(key) else "the core's"]
+					if OS.get_environment("GAPS_WHY") != "" and not given.has(key):
+						w += ": " + _cube_why(key, last)
 				elif shelled.has(key):
 					var centre := Vector3((x + 0.5) * 20.0, (j + 0.5) * 8.0, (z + 0.5) * 20.0)
 					var near: float = INF
@@ -157,6 +168,30 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 					examples[w] = []
 				if (examples[w] as Array).size() < 6:
 					(examples[w] as Array).append(key)
+	var pick: String = OS.get_environment("GAPS_AT")
+	if not pick.is_empty():
+		var b: PackedStringArray = pick.split(",")
+		var at := Vector3i(int(b[0]), int(b[1]), int(b[2]))
+		print("  around %s, plates %d up, x across, z down: . air, # filled, c cut, g given back and cut, S shell's, u shell's and empty, o empty" % [str(at), at.y - 3])
+		for dz: int in range(-3, 4):
+			var row: String = "   "
+			for j: int in range(at.y - 3, at.y + 4):
+				for dx: int in range(-3, 4):
+					var k := Vector3i(at.x + dx, j, at.z + dz)
+					var ch: String = " "
+					if k.x >= 0 and k.z >= 0 and k.x < grid.across and k.z < grid.deep and k.y >= 0 and k.y < grid.tall:
+						var i: int = grid.index(k.x, k.y, k.z)
+						if shelled.has(k):
+							ch = "S" if ta[i] == 1 else "u"
+						elif cut.has(k):
+							ch = "g" if given.has(k) else "c"
+						elif grid.state[i] == 1:
+							ch = "#" if ta[i] == 1 else "o"
+						else:
+							ch = "."
+					row += ("*" if k == at else ch)
+				row += "  "
+			print(row)
 	var lines: Array = []
 	for w: Variant in why:
 		lines.append("  %5d %5.2f%%  %s  e.g. %s" % [why[w], 100.0 * int(why[w]) / cells, w, str(examples[w])])
@@ -200,3 +235,18 @@ func _where(key: Vector3i, frames: Array) -> String:
 		else:
 			best = "off its corner"
 	return best
+
+
+## The cube [param key] is in at the cut whose cube was asked, and why it
+## stayed upright; or "in no cube facing out".
+func _cube_why(key: Vector3i, last: Dictionary) -> String:
+	var whys: Dictionary = {}
+	for one: Array in last.get("cubes_why", []):
+		whys[Vector3i(int(one[0]), int(one[1]), int(one[2]))] = str(one[3])
+	var out: PackedStringArray = []
+	for cut: Array in last.get("_cuts", []):
+		var phase: int = cut[0]
+		var c := Vector3i(floori(key.x / 2.0), floori((key.y - phase) / 5.0), floori(key.z / 2.0))
+		if (cut[1] as Dictionary).has(c):
+			out.append("%d:%s" % [phase, whys.get(Vector3i(c.x, c.y * 5 + phase, c.z), "?")])
+	return "in no cube facing out" if out.is_empty() else ",".join(out)
