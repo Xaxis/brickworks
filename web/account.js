@@ -130,6 +130,9 @@ export async function redeem(address, code) {
     throw new Error(body.msg || body.error_description || "Could not sign in. Try again.");
   }
   keep(body, address);
+  // Signed in: what follows a person from browser to browser (their theme,
+  // web/theme.js) is fetched for this page.
+  dispatchEvent(new Event("brickworks:signed-in"));
   return body.access_token;
 }
 

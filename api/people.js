@@ -715,6 +715,7 @@ ${url ? `<meta property="og:url" content="${escapeHtml(url)}">\n` : ""}<meta pro
 <meta name="twitter:image" content="${escapeHtml(image || `${origin}/share.png`)}">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+${siteChrome().head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>

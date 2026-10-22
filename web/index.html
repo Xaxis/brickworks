@@ -36,7 +36,6 @@
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/favicon-180.png">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1013">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
@@ -55,6 +54,9 @@
 <meta name="twitter:description" content="In any browser, nothing to install. It checks that your model stands, opens and saves Studio .io, and exports 3D, renders and booklets. Free.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="twitter:image:alt" content="The Brickworks mark, a cube with a corner cut away, and the words: a complete CAD for LEGO® models, beside a render of a grey stone castle in bricks.">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
 /* -- the opening: one line, one way in, and the app itself --------- */
@@ -113,11 +115,20 @@
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
-			<nav class="menu-list" aria-label="Menu">
-				<a href="/gallery">Gallery</a>
-				<a href="/download">Download</a>
-				<a href="/profile" data-account>Sign in</a>
-			</nav>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery">Gallery</a>
+					<a href="/download">Download</a>
+					<a href="/profile" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
 		</details>
 	</div>
 </header>
@@ -235,6 +246,13 @@
 				<a href="/guidelines">Guidelines</a>
 				<a href="/takedown">Takedown</a>
 			</nav>
+			<div class="theme-choice"><span aria-hidden="true">Theme</span>
+				<div class="segmented" role="group" aria-label="Theme">
+					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+				</div>
+			</div>
 		</div>
 		<div class="legal">
 			<p>

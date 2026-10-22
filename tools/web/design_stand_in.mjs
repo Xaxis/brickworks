@@ -19,6 +19,9 @@
 //   fixtures, and anything else goes out as before.
 // - signedInStorage: what the browser keeps when it is signed in as EMAIL.
 //
+// And serveSite, all three put together in a browser context: the site as
+// deploy.sh serves it, for design_flow.mjs and theme_flow.mjs.
+//
 //   import { ORIGIN, apiAnswer, serverPage, signedInStorage } from "./design_stand_in.mjs";
 //   const said = apiAnswer({ url: new URL(request.url()), method, body, state });
 //   const { status, html } = await serverPage(`${checkout}/api`, "/m/DesignAbc1");
@@ -40,8 +43,9 @@
 // deployment checks it: response_type=code, code_challenge_method=S256 and
 // a code_challenge of 43 base64url characters, or it shows its refusal.
 
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { existsSync, readFileSync } from "node:fs";
+import path, { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -1228,6 +1232,13 @@ function account(method, params, body, who, state) {
   }
   // The age question answered: it went, 13 or over.
   if (method === "POST" && params.get("op") === "age") return who ? answer(200, { age: { ask: false, over_13: true } }) : answer(401, { error: SIGN_IN });
+  // The theme on the account (supabase/theme.sql): state.theme, or never
+  // chosen; one sent is kept (state.theme is the caller's to change).
+  if (params.get("op") === "theme") {
+    if (!who) return answer(401, { error: SIGN_IN });
+    if (method === "POST") return answer(200, { theme: body?.theme, kept: true });
+    return answer(200, { theme: state.theme || "system", chosen: Boolean(state.theme), ready: true });
+  }
   if (method !== "GET") return answer(405, { error: "GET, or POST ?op=age" });
   const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null };
   if (!who) return answer(200, { ...base, signed_in: false });
@@ -1270,4 +1281,79 @@ export function apiAnswer({ url, method = "GET", body, state = {} }) {
     case "collection": return who ? answer(200, OWNED_SETS) : answer(401, { error: SIGN_IN });
     default: return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// The site in a browser, as deploy.sh serves it.
+
+const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript",
+  ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml",
+  ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" };
+const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../web/share.png"));
+
+/// A file of [web] at the address deploy.sh serves it: bare names, / for
+/// the landing page, /oauth/authorize for the connector's sign-in, and the
+/// 404 page for anything else.
+function staticFile(web, pathname) {
+  const named = { "/": "index.html", "/oauth/authorize": "authorize.html" }[pathname.replace(/\/$/, "") || "/"];
+  const candidates = named ? [named] : [pathname.slice(1), `${pathname.slice(1).replace(/\/$/, "")}.html`];
+  for (const name of candidates) {
+    if (!name || name.includes("..")) continue;
+    const file = path.join(web, name);
+    if (existsSync(file) && !file.endsWith(path.sep)) {
+      try {
+        return { status: 200, body: readFileSync(file), type: TYPES[path.extname(file)] || "application/octet-stream" };
+      } catch { /* a directory: the next one */ }
+    }
+  }
+  return { status: 404, body: readFileSync(path.join(web, "404.html")), type: TYPES[".html"] };
+}
+
+const isPicture = (url) => /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.(png|webp)$/.test(url.pathname)
+  || (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file");
+
+/// Every request of [context] answered as a deployment of [web] and [api]
+/// would: their files, the server's pages made by [api]'s handlers (with
+/// the security policy they send), every API call by apiAnswer with
+/// [state], and the sign-in service. With [remote] the pages are that
+/// deployment's ([headers] sent with each) and only the API is answered
+/// here, as its Supabase project [remoteDb] where the page asks that.
+export async function serveSite(context, { web, api, remote = "", headers = {}, remoteDb = "", state = {} }) {
+  const asProject = (text) => (remoteDb ? text.split(DB).join(remoteDb) : text);
+  await context.route(/.*/, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    // A deployment's pages may reach only its own Supabase project (their
+    // policy), so there the stand-in answers as that project.
+    const db = url.origin === DB || url.origin === remoteDb;
+    const ours = url.origin === ORIGIN || db || (remote && url.origin === new URL(remote).origin);
+    // Anything else to whatever else answers it (browser.mjs quiets the
+    // visit counter); nothing else is fetched from here.
+    if (!ours) return route.fallback();
+    if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
+    if (db || url.pathname.startsWith("/api/")) {
+      let body;
+      try {
+        body = request.postData() ? JSON.parse(request.postData()) : undefined;
+      } catch {
+        body = undefined;
+      }
+      const signedIn = Boolean(request.headers().authorization);
+      // Asked as of the stand-in's own site and project, whichever answered.
+      const asked = new URL(url.pathname + url.search, db ? DB : ORIGIN);
+      const said = apiAnswer({ url: asked, method: request.method(), body, state: { ...state, signedIn } });
+      if (!said) return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+      return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
+    }
+    if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
+    if (/^\/(m|u|c)\//.test(url.pathname)) {
+      const made = await serverPage(api, url.pathname);
+      // With the security policy the server sends with it.
+      const policy = made.headers?.["content-security-policy"];
+      return route.fulfill({ status: made.status, contentType: "text/html; charset=utf-8", body: made.html,
+        headers: policy ? { "content-security-policy": policy } : {} });
+    }
+    const file = staticFile(web, url.pathname);
+    return route.fulfill({ status: file.status, contentType: file.type, body: file.body });
+  });
 }

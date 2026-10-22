@@ -32,25 +32,42 @@ sized its own titles, from 26 to 74 px. Now:
   Source, Privacy, Terms, Guidelines, Takedown), then every notice
   docs/TRADEMARKS.md asks for, small and quiet.
 - **One type scale** (`--t-display`, `--t-h1`, `--t-h2`, `--t-h3`,
-  `--t-lede`, `--t-small`, `--t-tiny`): `h1` is a page's title at `--t-h1`
-  on every page; the landing page's one line is `h1.display`; `h2` a
-  section's. A page does not size its own titles.
+  `--t-lede`, then the words: `--t-body` 16, `--t-small` 14.5, `--t-tiny`
+  13, `--t-micro` 12): `h1` is a page's title at `--t-h1` on every page;
+  the landing page's one line is `h1.display`; `h2` a section's. A page
+  does not size its own titles.
 - **One rhythm** (`--s-1` 4 px to `--s-7` 48 px, `--page-top` above a
   page's title, `--section` between sections).
 
+## Themes
+
+Dark, and light (2026-10-22, the owner: "a light color theme as an option
+so user can choose between dark/light"). The person chooses System, Light
+or Dark in the footer of every page, on Menu at a phone's width and in
+Settings; System, the default, follows the computer. `web/theme.js`, in
+every page's `<head>` before the stylesheet, sets `<html data-theme>` from
+the choice kept in the browser before anything is drawn, and the two
+`theme-color` lines so the browser's bar is the page's colour. The light
+set in `site.css` is written twice, under `:root[data-theme="light"]` and,
+with no choice, `prefers-color-scheme: light`; `tests/test_site_contrast.py`
+fails if they differ, and measures every text token on every surface
+(4.5:1) and the state edges (3:1) in both. Never a colour outside the
+tokens: a page that needs one adds a token.
+
 ## Tokens
 
-The colours were already there (`--bg`, `--panel`, `--line`, `--ink`,
-`--ink-soft`, `--ink-faint`, `--accent`, `--on-accent`, `--focus`,
-`--radius`), redefined for `prefers-color-scheme: light`. Added for the
-controls:
+The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,
+`--ink`, `--ink-soft`, `--ink-faint`, `--accent`, `--on-accent`,
+`--focus`, `--bad`, `--green`), each with its light value. And:
 
 | Token | Value | For |
 |---|---|---|
+| `--accent-edge` | the yellow; `#a67c00` in light | an edge that marks a state: a pressed toggle, the New pill, the older-version box, a checkbox. The yellow is 1.33:1 on the light pages; a yellow button keeps the yellow |
+| `--brick-red`, `-yellow`, `-blue`, `-green` | the bricks' colours, both themes | the 404's wall |
 | `--field` | `--bg-soft` | the fill of every field |
 | `--control-h` | 44 px | a field's and a button's height, so side by side they line up |
-| `--control-radius` | 10 px | a field's and a button's corners |
-| `--bad` | red, per scheme | words that say something was refused |
+| `--r-1`, `--r-2`, `--r-3`, `--r-pill` | 6, 10, 14, 999 px | corners: small (a chip, a code box), a control's, a card's or panel's, a pill's; a circle is 50% |
+| `--control-radius`, `--radius` | `--r-2`, `--r-3` | a control's corners, a card's |
 
 ## Components
 
@@ -102,6 +119,11 @@ controls:
 - **Page index**: `.subnav`, the sections of a long page (your account):
   a rail beside them on a laptop, a row across the top on a phone that
   scrolls inside itself; the one on screen `aria-current="true"`.
+- **Segmented**: `.segmented`, a few buttons in a row, the chosen one
+  `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field.
+  The theme (`[data-theme-choice]`: System, Light, Dark), with its word in
+  `.theme-choice`; any `[data-theme-choice]` button works with no script of
+  the page's own.
 - **Settings**: `.settings`, a panel of `.setting` rows, what a setting is
   (an `h3` and a line) and its control beside it, under it on a phone;
   `.wide` takes the whole row. What cannot be undone is `.setting.danger`
@@ -120,4 +142,8 @@ buttons of one size), and a page that scrolls sideways on a phone.
 
 It needs no network and no account (`tools/web/design_stand_in.mjs`
 answers the API and makes the server's pages from the checkout's `api/`).
+`tools/web/theme_flow.mjs` (preview check `[theme]`) chooses each theme on
+every kind of page at both widths, and fails on a reload, a theme not kept
+across a reload or a new tab, or a single frame of a load in the other
+theme.
 Against the site before this, it fails the age question by name.

@@ -26,6 +26,14 @@ whole cycle.
   what it fetched, so a set opened once opens again offline. Your Claude
   can find the sets too (gallery library=true) and open one (open_model
   library=).
+- brickworks.diy has a light theme as well as the dark one, and you choose:
+  System, Light or Dark, at the foot of every page, on Menu on a phone, and
+  in Settings. System, the default, follows your computer. The page changes
+  as you press, opens in your choice from then on with no flash of the
+  other, and the browser's bar takes the page's colour. Signed in, your
+  account keeps it, so a new browser follows once you sign in. In the light
+  theme a pressed button, such as Following, now has an edge you can see.
+
 - My Claude designs a new model twice, side by side, and keeps the better.
   A second session starts with yours, in a copy of the app with no window
   and a baseplate of its own. When both have built, the app is shown each

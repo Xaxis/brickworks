@@ -450,11 +450,19 @@ export const NOTICE = "LEGO® is a trademark of the LEGO Group of companies whic
 
 let chrome = null;
 
-/// The header and footer every page of the site has, taken from the
-/// gallery's own page (web/gallery.html: beside this file as _site.html in
-/// a deployment, where deploy.sh puts it), so a page made here changes
-/// when the site's do. Nothing is marked as the page being looked at. A
-/// plain header and footer, with the notice, if the page is not there.
+// What every page's <head> carries before the site's stylesheet
+// (web/_shell.html): the browser bar's colour in each theme, and the script
+// that sets the theme the person chose before the page is drawn.
+const THEME_HEAD = '<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">\n'
+  + '<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">\n'
+  + '<script src="/theme.js"></script>';
+
+/// The header and footer every page of the site has, and the theme's lines
+/// for its <head>, taken from the gallery's own page (web/gallery.html:
+/// beside this file as _site.html in a deployment, where deploy.sh puts
+/// it), so a page made here changes when the site's do. Nothing is marked
+/// as the page being looked at. A plain header and footer, with the
+/// notice, if the page is not there.
 export function siteChrome() {
   if (chrome) return chrome;
   let page = "";
@@ -467,8 +475,10 @@ export function siteChrome() {
   }
   const header = (page.match(/<header class="site-head">[\s\S]*?<\/header>/) || [""])[0];
   const footer = (page.match(/<footer class="site-foot">[\s\S]*?<\/footer>/) || [""])[0];
+  const head = (page.match(/(?:<meta name="theme-color"[^>]*>\n)+<script src="\/theme\.js"><\/script>/) || [""])[0];
   const plain = (html) => html.replace(/\s+aria-current="page"/g, "");
   chrome = {
+    head: head || THEME_HEAD,
     header: header ? plain(header) : `<header class="site-head"><div class="wrap bar">`
       + `<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>`
       + `<nav class="nav" aria-label="Main"><a href="/gallery">Gallery</a>`

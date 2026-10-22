@@ -1241,6 +1241,14 @@
       "tests": []
     },
     {
+      "id": "cli:theme browser flow",
+      "kind": "cli",
+      "entry": "tools/web/theme_flow.mjs",
+      "reach": "node tools/web/theme_flow.mjs   (no network: the checkout's pages served as design_flow serves them; --url=<deployment> for a preview, --account there once supabase/theme.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:two chats browser flow",
       "kind": "cli",
       "entry": "tools/web/tabpair_flow.mjs",
@@ -3135,6 +3143,14 @@
       "entry": "tools/viewer/card.js",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "ui:theme choice",
+      "kind": "ui",
+      "entry": "web/theme.js",
+      "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
+      "area": "web",
       "tests": []
     },
     {

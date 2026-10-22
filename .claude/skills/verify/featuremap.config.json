@@ -2798,6 +2798,20 @@
       "entry": "tools/web/library_flow.mjs",
       "reach": "node tools/web/relay_server.mjs 8937 --static=build/web, then node tools/web/library_flow.mjs --url=http://127.0.0.1:8937/app --out=shots/library   (with .env sourced; the library and gallery played from tests/fixtures/library)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "theme choice",
+      "entry": "web/theme.js",
+      "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "theme browser flow",
+      "entry": "tools/web/theme_flow.mjs",
+      "reach": "node tools/web/theme_flow.mjs   (no network: the checkout's pages served as design_flow serves them; --url=<deployment> for a preview, --account there once supabase/theme.sql is applied)",
+      "area": "web"
     }
   ]
 }

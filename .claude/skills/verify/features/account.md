@@ -73,6 +73,12 @@ they have. A Claude connector belongs to the account that switched it on.
   `profiles.over_13` and `age_asked_at` are kept, never the date. An answer
   stands — a second try returns the first — except that an under-13 answer
   is asked again a year on. See [web](web.md) for what it refuses.
+- `GET` and `POST /api/account?op=theme` (2026-10-22, Bearer): the site's
+  theme on the account (`profiles.theme`, `supabase/theme.sql`). GET
+  `{theme: system|light|dark, chosen, ready}`; POST `{theme}` answers
+  `{theme, kept}`, 422 for anything else. Before theme.sql (PostgREST 400
+  for the column) GET says `system`, `ready: false`, and POST `kept: false`:
+  never an error. See [web](web.md) "theme choice".
 - `the age question in the sign-in screen` (`src/ui/sign_in_gate.gd`,
   `Account.age_ask`, `over_13`, `asking_who`, `answer_age`): after a code is
   typed the screen stays up ("Signing you in…") for `/api/account`; a start

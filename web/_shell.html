@@ -12,7 +12,20 @@
   and the way in. What the CAD does and the assistant are sections of the
   landing page; questions, the changelog and the legal pages are in the
   footer. Account says Sign in until you are (web/follow.js).
+
+  And what every page's <head> carries (tools/site_shell.py puts it there,
+  before site.css, on the pages without the header too): the browser
+  bar's colour in each theme, and web/theme.js, which sets the theme the
+  person chose before the page is drawn, so it never flashes the other.
+  A file, not inline: the server's pages allow no inline script.
+
+  The theme is chosen in the footer, on Menu (a phone's) and in Settings:
+  System, Light or Dark, three buttons in a row (.segmented), the chosen
+  one pressed. Not in the header, which keeps its four things.
 -->
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
 <header class="site-head">
 	<div class="wrap bar">
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
@@ -24,11 +37,20 @@
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
-			<nav class="menu-list" aria-label="Menu">
-				<a href="/gallery">Gallery</a>
-				<a href="/download">Download</a>
-				<a href="/profile" data-account>Sign in</a>
-			</nav>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery">Gallery</a>
+					<a href="/download">Download</a>
+					<a href="/profile" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
 		</details>
 	</div>
 </header>
@@ -46,6 +68,13 @@
 				<a href="/guidelines">Guidelines</a>
 				<a href="/takedown">Takedown</a>
 			</nav>
+			<div class="theme-choice"><span aria-hidden="true">Theme</span>
+				<div class="segmented" role="group" aria-label="Theme">
+					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+				</div>
+			</div>
 		</div>
 		<div class="legal">
 			<p>

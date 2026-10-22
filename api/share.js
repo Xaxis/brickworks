@@ -803,7 +803,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const shownModel = old ? { ...model, parts: version.parts } : model;
   const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.png` : "")
     : (model.has_image ? `/m/${id}.png` : "");
-  const { header, footer } = siteChrome();
+  const { head, header, footer } = siteChrome();
   const kind = kindLabel(model.kind);
   const about = model.description
     ? model.description.replace(/\s+/g, " ").slice(0, 157) + (model.description.length > 157 ? "…" : "")
@@ -838,7 +838,8 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
 <html lang="en">
 <head>
 ${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url })}
-${old ? '<meta name="robots" content="noindex">\n' : ""}<link rel="stylesheet" href="/site.css">
+${old ? '<meta name="robots" content="noindex">\n' : ""}${head}
+<link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/share-page.js" defer></script>
 <script src="/model-page.js" type="module"></script>
@@ -1026,12 +1027,13 @@ function versionsSection(id, versions, shown) {
 /// /m/X/v/N for a version the model does not have.
 function noVersionPage(origin, id, model, asked, newest) {
   const title = `There is no version ${asked} of this model`;
-  const { header, footer } = siteChrome();
+  const { head, header, footer } = siteChrome();
   return `<!doctype html>
 <html lang="en">
 <head>
 ${pageHead(origin, model, id, title)}
 <meta name="robots" content="noindex">
+${head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/follow.js" type="module"></script>
@@ -1087,12 +1089,13 @@ function gonePage(origin, id, existed) {
   const said = existed
     ? "Whoever shared it has taken it down. If they share it again, this link will work again."
     : "The link may be mistyped, or cut short.";
-  const { header, footer } = siteChrome();
+  const { head, header, footer } = siteChrome();
   return `<!doctype html>
 <html lang="en">
 <head>
 ${pageHead(origin, null, id, title)}
 <meta name="robots" content="noindex">
+${head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/follow.js" type="module"></script>
