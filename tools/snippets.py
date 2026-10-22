@@ -36,12 +36,16 @@ The descriptions are written offline by Claude from a thumbnail and the
 part list (`batches` writes the part lists; src/dev/snippet_thumbs.gd
 renders the thumbnails; tools/describe_snippets.sh runs the sessions)
 into assets/knowledge/snippet_texts.jsonl.gz, which `build` reads back.
+Each is kept with the parts it was written from (looked_at), and given
+only to a piece that still has them: rebuilt, a piece with other parts
+is in the next `batches` to be described again.
 """
 
 from __future__ import annotations
 
 import argparse
 import gzip
+import hashlib
 import json
 import math
 import re
@@ -60,7 +64,9 @@ FILES = ROOT / "vendor" / "omr" / "files"
 OUT = ROOT / "assets" / "knowledge" / "snippets.json.gz"
 TEXTS = ROOT / "assets" / "knowledge" / "snippet_texts.jsonl.gz"
 # Whether each lays whole on its own (src/dev/snippet_verdicts.gd): a
-# local cache like the thumbnails, a few minutes to make again.
+# local cache like the thumbnails, a few minutes to make again, and made
+# again after every build: it is by id, and a cluster's id can come to
+# hold other parts (looked_at).
 VERDICTS = ROOT / "vendor" / "omr" / "snippet_verdicts.jsonl"
 # A piece that lays as it stands counts this much more in a search.
 LAYS = 1.25
@@ -358,7 +364,8 @@ def _subject_words(*texts: str) -> list[str]:
     return sorted(said)
 
 
-def build(most: int, out: Path, texts: Path, clusters_a_set: int) -> int:
+def build(most: int, out: Path, texts: Path, clusters_a_set: int,
+          verdicts: Path = VERDICTS) -> int:
     parts = style.Parts()
     index = {r["number"]: r for r in omr._index()}
     written = {"named": 0, "cluster": 0}
@@ -469,7 +476,7 @@ def build(most: int, out: Path, texts: Path, clusters_a_set: int) -> int:
                 entries.append(entry)
                 written["cluster"] += 1
 
-    _finish(entries, out, texts)
+    _finish(entries, out, texts, verdicts)
     print(f"{written['named']} named sub-models and {written['cluster']} clusters "
           f"from {len(files)} models")
     for why, count in skipped.most_common():
@@ -477,21 +484,16 @@ def build(most: int, out: Path, texts: Path, clusters_a_set: int) -> int:
     return 0
 
 
-def _finish(entries: list[dict], out: Path, texts: Path) -> None:
+def _finish(entries: list[dict], out: Path, texts: Path, verdicts_at: Path = VERDICTS) -> None:
     """Descriptions, verdicts and search terms onto the pieces, and the index
     written. Everything that is not reading the models, so that a new
     batch of descriptions is seconds to take in (build --from)."""
-    said = {}
-    if texts.exists():
-        for line in _lines(texts):
-            if line.strip():
-                row = json.loads(line)
-                said[row["id"]] = row["text"]
+    said = _texts(texts)
     verdicts = {}
-    if VERDICTS.exists():
+    if verdicts_at.exists():
         # Read while snippet_verdicts.gd is still writing it, the last line
         # can be half a line.
-        for line in VERDICTS.read_text().splitlines():
+        for line in verdicts_at.read_text().splitlines():
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
@@ -499,7 +501,8 @@ def _finish(entries: list[dict], out: Path, texts: Path) -> None:
             verdicts[row["id"]] = row
     described = 0
     for entry in entries:
-        entry["text"] = said.get(entry["id"], "")
+        row = said.get(entry["id"])
+        entry["text"] = row["text"] if row and row.get("of") == looked_at(entry) else ""
         described += bool(entry["text"])
         verdict = verdicts.get(entry["id"])
         if verdict is not None:
@@ -542,7 +545,7 @@ def _about(entry: dict) -> list[str]:
     return _subject_words(set_words, *entry["in"], entry["name"])
 
 
-def rebuild(source: Path, out: Path, texts: Path) -> int:
+def rebuild(source: Path, out: Path, texts: Path, verdicts: Path = VERDICTS) -> int:
     """The index again from an index: new descriptions, verdicts or search
     rules, without reading 1,500 models."""
     entries = load(source)["entries"]
@@ -550,7 +553,7 @@ def rebuild(source: Path, out: Path, texts: Path) -> int:
         entry.pop("lays", None)
         entry.pop("why", None)
         entry["subject"] = _about(entry)
-    _finish(entries, out, texts)
+    _finish(entries, out, texts, verdicts)
     return 0
 
 
@@ -709,9 +712,8 @@ def batches(document: dict, thumbs: Path, out: Path, size: int, texts: Path) -> 
     from PIL import Image, ImageDraw
     parts = style.Parts()
     colours = _colour_names()
-    done = set()
-    if texts.exists():
-        done = {json.loads(l)["id"] for l in _lines(texts) if l.strip()}
+    now = {e["id"]: looked_at(e) for e in document["entries"]}
+    done = {k for k, row in _texts(texts).items() if row.get("of") == now.get(k)}
     # Nor any already in a batch here: run again once more pictures are
     # made, this adds batches after the ones a describing run is working
     # through.
@@ -758,14 +760,29 @@ def _lines(path: Path) -> list[str]:
     return (gzip.decompress(raw) if path.suffix == ".gz" else raw).decode().splitlines()
 
 
-def merge_texts(folder: Path, texts: Path) -> int:
-    """The describers' answers, numbered as their batch was, into the texts file."""
-    known = {}
-    if texts.exists():
-        for line in _lines(texts):
-            if line.strip():
-                row = json.loads(line)
-                known[row["id"]] = row["text"]
+def _texts(path: Path) -> dict[str, dict]:
+    """The descriptions written so far, by id: {"id", "text", "of"}."""
+    if not path.exists():
+        return {}
+    return {row["id"]: row for row in map(json.loads, filter(str.strip, _lines(path)))}
+
+
+def looked_at(entry: dict) -> str:
+    """What a piece's description was written from, its parts and colours,
+    said short. A cluster's id is its rank in its set, so a rebuild that
+    finds other parts there keeps the id: 2,413 of 3,366 did when the part
+    boxes were turned the right way round, and kept describing the parts
+    they no longer had. A description is the piece's only while this
+    matches."""
+    return hashlib.sha1(json.dumps(entry["bom"]).encode()).hexdigest()[:12]
+
+
+def merge_texts(folder: Path, texts: Path, index: Path = OUT) -> int:
+    """The describers' answers, numbered as their batch was, into the texts
+    file, each with what it was written from (looked_at) in the index the
+    batches were made from."""
+    known = _texts(texts)
+    now = {e["id"]: looked_at(e) for e in load(index)["entries"]}
     added = 0
     for answer in sorted(folder.glob("batch_*.json")):
         if not answer.with_suffix(".png").exists():
@@ -781,12 +798,15 @@ def merge_texts(folder: Path, texts: Path) -> int:
         for item in items:
             n = int(item.get("n", 0))
             text = " ".join(str(item.get("text", "")).split())
-            if 1 <= n <= len(ids) and text and ids[n - 1] not in known:
-                known[ids[n - 1]] = text
+            if not (1 <= n <= len(ids) and text and ids[n - 1] in now):
+                continue
+            key = ids[n - 1]
+            if known.get(key, {}).get("of") != now[key]:
+                known[key] = {"id": key, "text": text, "of": now[key]}
                 added += 1
     texts.parent.mkdir(parents=True, exist_ok=True)
-    written = "".join(json.dumps({"id": k, "text": v}, ensure_ascii=False) + "\n"
-                      for k, v in sorted(known.items())).encode()
+    written = "".join(json.dumps(row, ensure_ascii=False) + "\n"
+                      for _, row in sorted(known.items())).encode()
     texts.write_bytes(gzip.compress(written, 9, mtime=0) if texts.suffix == ".gz" else written)
     print(f"{added} descriptions added; {len(known)} in {texts}")
     return 0
@@ -809,6 +829,8 @@ def main() -> int:
     one.add_argument("--texts", type=Path, default=TEXTS)
     one.add_argument("--from", dest="source", type=Path,
                      help="an index to take the pieces from, rather than the models")
+    one.add_argument("--verdicts", type=Path, default=VERDICTS,
+                     help="src/dev/snippet_verdicts.gd's answers for this index")
     two = sub.add_parser("search")
     two.add_argument("query")
     two.add_argument("--max-studs", type=float, default=0.0)
@@ -830,13 +852,15 @@ def main() -> int:
     five = sub.add_parser("texts")
     five.add_argument("folder", type=Path)
     five.add_argument("--texts", type=Path, default=TEXTS)
+    five.add_argument("--index", type=Path, default=OUT,
+                      help="the index the batches were made from")
     args = parser.parse_args()
     if args.command == "build":
         if args.source:
-            return rebuild(args.source, args.out, args.texts)
-        return build(args.most, args.out, args.texts, args.clusters)
+            return rebuild(args.source, args.out, args.texts, args.verdicts)
+        return build(args.most, args.out, args.texts, args.clusters, args.verdicts)
     if args.command == "texts":
-        return merge_texts(args.folder, args.texts)
+        return merge_texts(args.folder, args.texts, args.index)
     document = load(getattr(args, "index", OUT))
     if args.command == "credits":
         by: dict[str, set[str]] = {}

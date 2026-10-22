@@ -15,6 +15,12 @@ whole cycle.
 
 ### Fixed
 
+- Claude is told the real size of the pieces it finds in real sets. Every
+  part whose shape is lopsided was measured on the wrong side of itself,
+  so 4,388 of the 9,555 named pieces had the wrong size: 7745's track oval
+  was offered as 209 x 161 studs and is 136 x 88. The 2,556 pieces of
+  craft found round a bracket, hinge or slope were cut out again from
+  their real neighbours and described again from new pictures.
 - A hinge turns only as far as its parts let it. The two halves of the
   joint being turned were never tested against each other, so a hinge
   brick's top swung through its base either way, though the base's square
