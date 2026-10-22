@@ -8,14 +8,16 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      330 px of the top, two cards to a row; at 1280 four whole cards on
+//      330 px of the top, two cards to a row, four cards' names on the
+//      first two screens; at 1280 four whole cards on
 //      the first screen; Top the tab shown, its window All time; nothing
 //      scrolls sideways; a picture of it in each theme;
 //   2. Top, New and Following: New is the newest first and says so in the
 //      address; Top over this week is the week's builds and remixes, no
 //      pick, no shelves; a kind's pill and Made in Filters ask the list
 //      and mark their cards; Following, signed in, is only the people Sam
-//      follows, and is not offered signed out;
+//      follows, and is not offered signed out; a search (words, New, a
+//      size, two pages) sent to somebody shows them the same cards;
 //   3. a like from a card: signed out it asks to sign in; signed in the
 //      heart is pressed and its count one more at once, and the model's own
 //      page shows it liked;
@@ -143,6 +145,8 @@ const drawn = (page) => page.evaluate(() => {
     address: location.pathname + location.search,
     firstPicture: Math.round(firstPicture + scrollY),
     columns: firstRow.length,
+    // Where each card's name ends, down the page, in the order they come.
+    names: cards.map((el) => Math.round(el.querySelector(".open b").getBoundingClientRect().bottom + scrollY)).sort((a, b) => a - b),
     whole: boxes.filter((b) => b.top >= 0 && b.bottom <= innerHeight && b.width > 0).length,
     tab,
     tabs: [...document.querySelectorAll("#tabs [data-tab]")].filter((a) => !a.hidden).map((a) => a.dataset.tab),
@@ -179,6 +183,8 @@ try {
       if (width === 390) {
         check(seen.firstPicture <= 330 && seen.columns === 2 && !seen.sideways,
           `390 ${theme}: the first card's picture at ${seen.firstPicture} px (330 at most), ${seen.columns} to a row, nothing sideways`);
+        check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
+          `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
       } else {
         check(seen.whole >= 4 && seen.columns === 4 && !seen.sideways,
           `1280 ${theme}: ${seen.whole} whole cards on the first screen (4 at least), ${seen.columns} to a row, nothing sideways`);
@@ -243,6 +249,65 @@ try {
     check(seen.tab === "following" && seen.ids.length > 0 && whose.every((href) => ["/u/mika-mocs", "/u/priya-plays"].includes(href)),
       `Following: ${seen.ids.length} cards, all by ${whose.join(", ")} (whom Sam follows)`);
     await shot(page, "2_following_390.png");
+    await context.close();
+  }
+
+  // A search sent to somebody: the words, a filter, New and a second page,
+  // all in the address; opened by somebody else, on a phone in the dark,
+  // the same cards in the same order, and the controls saying the same.
+  {
+    const { context, page } = await visit({ width: 1280 });
+    await gallery(page);
+    await page.fill("#q", "crowd");
+    await until(page, () => location.search.includes("q=crowd") && document.documentElement.dataset.gallery === "ready");
+    await page.click('#tabs [data-tab="new"]');
+    await until(page, () => location.search.includes("sort=newest") && document.documentElement.dataset.gallery === "ready");
+    await page.click("#filters summary");
+    await page.selectOption("#size", "medium");
+    await until(page, () => location.search.includes("size=medium") && document.documentElement.dataset.gallery === "ready");
+    await page.click("#filters summary");
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await until(page, () => Number(document.documentElement.dataset.pages) === 2);
+    const sent = await drawn(page);
+    await context.close();
+    const other = await visit({ width: 390, theme: "dark" });
+    await gallery(other.page, sent.address);
+    await until(other.page, () => Number(document.documentElement.dataset.pages) === 2);
+    const got = await drawn(other.page);
+    const controls = await other.page.evaluate(() => ({ q: document.getElementById("q").value,
+      size: document.getElementById("size").value, on: document.getElementById("filters-said").textContent }));
+    check(/[?&]page=2\b/.test(sent.address) && sent.ids.length === 48 && got.ids.join(",") === sent.ids.join(",")
+      && got.tab === "new" && controls.q === "crowd" && controls.size === "medium" && controls.on === "1",
+      `a search sent to somebody: ${sent.address}, ${sent.ids.length} cards; opened at 390 in the dark, ${got.ids.length} cards, `
+      + `${got.ids.join(",") === sent.ids.join(",") ? "the same, in the same order" : "NOT the same"}, New, "${controls.q}", ${controls.size}, Filters ${controls.on}`);
+    await shot(other.page, "2_search_sent_390_dark.png");
+    await other.context.close();
+  }
+  // Filters on a phone: a sheet inside the screen. A search that finds
+  // nothing says so, and its Clear brings the gallery back.
+  {
+    const { context, page } = await visit({ width: 390 });
+    await gallery(page);
+    await page.click("#filters summary");
+    const sheet = await page.evaluate(() => {
+      const box = document.querySelector("#filters .sheet").getBoundingClientRect();
+      return { left: Math.round(box.left), right: Math.round(box.right), width: innerWidth };
+    });
+    check(sheet.left >= 0 && sheet.right <= sheet.width, `390: Filters opens a sheet inside the screen (${sheet.left} to ${sheet.right} of ${sheet.width})`);
+    await shot(page, "2_filters_390.png");
+    await page.click("#filters summary");
+    await page.fill("#q", "zzzqx");
+    await until(page, () => location.search.includes("q=zzzqx") && document.documentElement.dataset.gallery === "ready");
+    let seen = await drawn(page);
+    const words = await page.evaluate(() => document.getElementById("nothing").textContent.replace(/\s+/g, " ").trim());
+    check(seen.states.join(",") === "nothing" && seen.ids.length === 0 && !seen.pick && !seen.shelves,
+      `nothing matches "zzzqx": "${words}"`);
+    await shot(page, "2_nothing_390.png");
+    await page.click("#clear");
+    await until(page, () => location.search === "" && document.documentElement.dataset.gallery === "ready");
+    seen = await drawn(page);
+    check(seen.ids.length > 0 && seen.states.length === 0 && (await page.inputValue("#q")) === "",
+      `...and Clear brings the gallery back: ${seen.ids.length} cards, ${seen.address}`);
     await context.close();
   }
 
