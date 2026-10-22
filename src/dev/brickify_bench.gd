@@ -9,6 +9,8 @@ extends SceneTree
 ##           into whole bricks (a stud across, a brick tall), each course
 ##           covered greedily by the largest standard brick of one colour
 ##           that fits, studs up, courses turned alternately. Not mended.
+##   upright smooth with its sides laid studs up (Options.snot false): what
+##           SNOT is measured against. Only where a job's "arms" names it.
 ##
 ## Each is checked as check_design checks a design, and weighed (Balance).
 ## What it writes, for tools/bench/brickify_bench.py to measure likeness:
@@ -27,6 +29,8 @@ extends SceneTree
 ## JOBS.json: {"models": [{"slug", "file", "up", "sizes": [24, 48]}]}.
 
 const ARMS: PackedStringArray = ["smooth", "plain", "greedy"]
+## Every arm a job may name, in the order laid.
+const ALL_ARMS: PackedStringArray = ["smooth", "upright", "plain", "greedy"]
 const COLOUR_SAMPLES := 250000
 
 var _library: PartLibrary
@@ -142,13 +146,14 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 		arms: PackedStringArray) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	var grid: Brickify.Grid = null
-	for arm: String in ARMS:
+	for arm: String in ALL_ARMS:
 		if not arms.has(arm):
 			continue
 		var options := Brickify.Options.new()
 		options.studs = studs
 		options.up = up
 		options.smooth = arm != "plain"
+		options.snot = arm != "upright"
 		var model: Assistant.Model
 		var info: Dictionary = {"arm": arm, "studs": studs}
 		var t0: int = Time.get_ticks_msec()
@@ -181,6 +186,19 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 			info["lost_share"] = float((report.get("lost", {}) as Dictionary).get("share", 0.0))
 			info["lost_regions"] = ((report.get("lost", {}) as Dictionary).get("regions", []) as Array).size()
 			info["said"] = Brickify.said(result)
+			info["cubes"] = Shapes.last.get("cubes", {})
+			# Which cubes faced out, and which were laid on their side: where
+			# a steep face not turned lies (brickify_bench.py faces).
+			var asked: Array = []
+			for key: Variant in grid.cubes:
+				var c: Vector3i = key
+				var way: Vector2i = grid.cubes[key]
+				asked.append([c.x, c.y, c.z, way.x, way.y])
+			info["cubes_asked"] = asked
+			var turned: Array = []
+			for c: Variant in Shapes.last.get("cubes_kept", []):
+				turned.append([(c as Vector3i).x, (c as Vector3i).y, (c as Vector3i).z])
+			info["cubes_turned"] = turned
 			# The stand, by its parts (indices now) and how far it lifts the
 			# model: brickify_bench.py lines the model up again and leaves the
 			# stand out of the likeness, which is of the model.
