@@ -5776,7 +5776,12 @@ not move it.
    began, and a move that would carry it further stops there, as at a
    stop. 8466-1's second turn stops at -22° with the rack at -1.98 (the
    pinion 3.98 LDU past the last tooth), and the turn back turns the loop:
-   the rack comes back to -0.01 LDU.
+   the rack comes back to -0.01 LDU. Held to its own rack, the
+   observatory's telescope (`motions_probe`) stopped at 225° of 675°: its
+   tube carries 1 x 4 racks end to end, and the pinion runs on from one
+   into the next. So the room is every rack of the rack's body whose teeth
+   the pinion would stand in, met end to end along its line (`Racks._fit`,
+   what `Racks.find` asks of a pinion but where along the rack).
 
 8466-1 still does not come back: the worst part is now #651, a universal
 joint drawn as one part (9244, "Complete Assembly Shortcut"), 10.74 LDU
