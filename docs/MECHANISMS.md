@@ -5740,6 +5740,17 @@ The full sweep is the lead's: from a locked snapshot of this,
 --jobs=3`, then `table hinge77 --against=joins72`; the bar is every set
 that steers in joins72 (77) steering, nothing lost.
 
+### The browser checks' cranes (pose148)
+
+Two browser checks built the crane with its hinge the blocked way too.
+`flex_pose_flow.mjs`, run by no release from m124 to m145, failed in m146:
+its arm, asked -45° and then 45°, stopped at -22° on the base's shoulder
+from 1d27522c (21b2f95b reached -45°), at -6° on the top's own base from
+8d1aa81d, and at 17° on the baseplate the other way throughout. The
+`grab_flow.mjs` arm's drag up stopped at -5.9° and passed its 5° by 0.9.
+Both now have the hinge turned about up: the slider keys the arm at 44°,
+and the drag turns it 37.1°.
+
 ## 36. A pinion at its rack's end, and a loop kept open (Grab 22)
 
 Grab 20 left two sets of the steering sweep coming back wrong (section 31):

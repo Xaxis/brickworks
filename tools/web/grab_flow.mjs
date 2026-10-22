@@ -78,7 +78,10 @@ const first = args.bypass
 mkdirSync(out, { recursive: true });
 
 // LDraw's own coordinates (-Y up): a 2x2 turntable on a 4x4 plate, a hinge
-// brick on the turntable's top and a long arm on the hinge's top.
+// brick on the turntable's top and a long arm on the hinge's top. The hinge
+// faces the way the arm rises (3937's top tips one way only, as
+// flex_pose_flow.mjs says): faced the other way, the drag up stopped 5.9°
+// on, where the top met its base, which only just passed for a turn.
 const model = path.resolve(out, "grab_crane.ldr");
 writeFileSync(model, [
   "0 Grab crane",
@@ -86,8 +89,8 @@ writeFileSync(model, [
   "1 71 0 0 0 1 0 0 0 1 0 0 0 1 3031.dat",
   "1 7 0 -8 0 1 0 0 0 1 0 0 0 1 3680.dat",
   "1 7 0 -8 0 1 0 0 0 1 0 0 0 1 3679.dat",
-  "1 15 0 -32 0 1 0 0 0 1 0 0 0 1 3937.dat",
-  "1 4 0 -32 0 1 0 0 0 1 0 0 0 1 3938.dat",
+  "1 15 0 -32 0 -1 0 0 0 1 0 0 0 -1 3937.dat",
+  "1 4 0 -32 0 -1 0 0 0 1 0 0 0 -1 3938.dat",
   "1 4 0 -40 -50 0 0 1 0 1 0 -1 0 0 3795.dat",
   // The four-bar, flat beside it: a beam 15 the frame, two beams 5 its
   // cranks pinned 120 apart, a beam 7 the coupler across their far ends.
