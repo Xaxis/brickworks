@@ -66,6 +66,11 @@ What each one guards against, all learned the hard way on 2026-10-13:
   check failed at load 75-95 and held m33 twice on 2026-10-16; the only way
   on was a fresh deploy and every check again. Rerun the one that failed,
   alone, when the load allows, then promote with it.
+- `timing_ab.sh <base-wt> <new-wt> <rounds> <out> -- <flow…>` tells a
+  timing failure's cause: the change, or the load. It serves both builds'
+  `build/web` and runs the flow on each in turn, so the load weighs on both
+  alike. m142's phone drag failed its preview twice; the live m141 failed
+  the same bar 2 runs in 3 beside it (2026-10-22).
 - `ship.sh` runs the merge gates itself, once for every unit merged, under
   the release's priority: the parse gate on every GDScript file changed since
   main, and the tool list against the app. Run per merge without priority,
