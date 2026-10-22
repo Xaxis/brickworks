@@ -2962,8 +2962,7 @@ var _motion_said: String = ""
 ## waits for (_motion_parts, and any its working out asked for that were
 ## still on their way), and the motion they are for. And the parts whose
 ## exact shapes are still to be asked for, a few a frame, from the moment
-## the model's parts are all here (_ask_shapes), and the parts whose shapes
-## the joints are read again with once all are here.
+## the model's parts are all here (_ask_shapes).
 var _motion_due: String = ""
 var _motion_due_at: int = 0
 var _motion_needs: Array = []
@@ -2976,7 +2975,6 @@ var _motion_again: int = 0
 var _motion_paced: MotionPlayer.Paced = null
 var _motion_pressed: Dictionary = {}
 var _shapes_to_ask: Array = []
-var _shape_parts: Array = []
 ## How much of a frame a press works for, ms: the rest of it is the page's.
 const MOTION_SLICE_MS := 40.0
 ## How long a press waits at most for the shapes it is judged by: judged by
@@ -3050,7 +3048,6 @@ func _play_stop() -> void:
 	_motion_needs = []
 	_motion_needs_for = ""
 	_shapes_to_ask = []
-	_shape_parts = []
 	if _share_view != null:
 		_share_view.show_played(false)
 		_share_view.play_said("")
@@ -3085,15 +3082,6 @@ func _play_frame() -> void:
 		var name: String = _motion_due
 		_motion_due = ""
 		_play_motion(name)
-	# Every shape here, the joints read again once where they were read
-	# without some: a drag is then judged by them, and a part on a hinge
-	# that only its shape names moves.
-	elif not _shape_parts.is_empty() and _motion_due.is_empty() and _motion_paced == null \
-			and _grab_drag.is_ready() and not _grab_drag.is_grabbing() and not _grab_drag.is_settling() \
-			and not _shapes_coming(_shape_parts):
-		if _read_without(_shape_parts):
-			_grab_drag.read_again()
-		_shape_parts = []
 
 
 ## What moves, read from the joints the grab found: said on the viewer.
@@ -3509,10 +3497,9 @@ func _ask_shapes() -> void:
 		order.append([far, order.size(), brick.part_id])
 	order.sort_custom(func(a: Array, b: Array) -> bool:
 		return a[0] < b[0] or a[0] == b[0] and a[1] < b[1])
-	_shape_parts = order.map(func(one: Array) -> String: return one[2])
 	# Asked from the back.
-	_shapes_to_ask = _shape_parts.duplicate()
-	_shapes_to_ask.reverse()
+	order.reverse()
+	_shapes_to_ask = order.map(func(one: Array) -> String: return one[2])
 
 
 ## The parts whose exact shapes [param motion] is judged by, as far as can

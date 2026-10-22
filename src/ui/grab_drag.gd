@@ -1637,6 +1637,7 @@ var _changed_at: int = 0
 ## part on it is held rigidly (1484-1's mailbox door, shapes96).
 var unread_shapes: Dictionary = {}
 var _reading_unread: Dictionary = {}
+var _unread_looked_at: int = 0
 ## How long the last reading took, ms, and whether it ran on a worker.
 var ready_ms: int = 0
 var ready_off_thread: bool = false
@@ -1671,6 +1672,13 @@ func _ready_ahead() -> void:
 	if _readying >= 0:
 		_reading_done(grab == null)
 		return
+	# Read again once the shapes it was read without have come, twice a
+	# second at most: in the builder on the web as on a shared link's page.
+	if is_ready() and grab == null and not is_settling() and not _session_moving \
+			and not unread_shapes.is_empty() and now - _unread_looked_at >= 500:
+		_unread_looked_at = now
+		if _shapes_came():
+			read_again()
 	if grab != null or is_ready() or now - _changed_at < READY_AFTER_MS:
 		return
 	if OS.has_feature("nothreads"):
@@ -1799,6 +1807,17 @@ func _unknown_shapes(part_ids: Array) -> Dictionary:
 		if not Exact.known(library, str(part_id)):
 			out[str(part_id)] = true
 	return out
+
+
+## Whether the shapes the joints were read without have all come, or will
+## not (none is on its way), and one at least has.
+func _shapes_came() -> bool:
+	var came: bool = false
+	for part_id: String in unread_shapes:
+		if library.is_exact_on_its_way(part_id):
+			return false
+		came = came or Exact.known(library, part_id)
+	return came
 
 
 ## Read again soon, on a worker where there are threads, though the model
