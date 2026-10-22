@@ -27,6 +27,16 @@ What each one guards against, all learned the hard way on 2026-10-13:
   each added a `"dome"` key to one dictionary, git merged both without a
   conflict, and Godot could not parse `assistant.gd`. The tool-list probe
   hung on it rather than failing.
+- Probes may run at once in one checkout (`tools/probe.sh`, so
+  `run_probes.sh` too): none writes `.godot`. A class list older than the
+  scripts is what fails them, every script naming a class it lacks: a
+  `.godot` copied from another worktree, or kept across a merge, checkout
+  or bisect. surface108's three probes failed with 9,377 errors,
+  `"BestOfTwo" not declared`, put down to running at once; one probe alone
+  on that list fails the same (2026-10-22). `probe.sh` imports first when
+  the list is behind (`tools/fresh_import.sh`, one import a checkout under
+  `.godot/import.lock`) and refuses (exit 2) when an import cannot fix it;
+  the parse gate imports whenever it is behind, not only when it is missing.
 - `preview_checks.sh` runs the named browser checks, two at a time. Timing
   checks (idle, arrival, progress, cursor) run alone: beside a heavy flow,
   idle drew 4 frames for 7 moves, against 16 alone. An unknown name fails,
