@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two -->
 
 ## Sub-features
 
@@ -23,6 +23,26 @@ fixing what it got wrong.
   eights each way. Checked by `rules_probe` ("a small round body", "choosing a
   scale"), `floor_probe` (the garden's 16 x 8) and `mcp_sync_probe` (the head
   under 3,500).
+- `best of two`: `src/ai/best_of_two.gd`. A new brief sent with My Claude on
+  a bare baseplate (main's `design_locally`, `_second_design`) is designed
+  twice: the person's session in the window, and a second started at once as
+  the app again, `--headless -- --mcp=PORT --ask-claude-code=BRIEF
+  --out=DIR/second.ldr --second-design=DIR` (DIR is `user://best_of/<time>/`,
+  only the last kept). The second's pictures are drawn by the person's app
+  (`LeasedShots.Drawer` over `DIR/shots`, as a drawer process draws a bench
+  design's), its saves stay in DIR, and it writes `result.json` as it ends;
+  `DIR/stop` or no `DIR/beat` for 60 s stops its session. When both have ended
+  DesignPick is asked once (the first as A) on the corner, front and close
+  pictures, kept in DIR beside `record.json`, and the second, when kept, is
+  swapped in as one undo step (`Builder.swap_bricks`), the person's own parts
+  put down meanwhile left standing. The second gets 30% of the first's time
+  more, at least 90 s. Either failing, the other is kept with no pick; the
+  pick failing, the first. `Assistant.BEST_OF` = 1 turns it off. The panel's
+  card ends on the pair's end (`ChatPanel.follow(session, ends)`), with the
+  kept design's summary. Never for a change, a selection, a sketch, `--ask-claude-code`
+  from a command line (the bench) or any session from outside.
+  `best_of_two_probe` (the rules, the undo, the card; no subscription) and
+  `best_of_two_walk_probe` (a real brief through the panel).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
@@ -2337,6 +2357,26 @@ and a half of ten took 45-55 minutes on two or three workers; 2026-10-19, the
 grown proof half on main: 88 of 88 verdicts with all six pictures, orders
 agreeing on 88%, the first shown winning 45%, 34 new subjects in five hours on
 two workers with the GPU shared, nine minutes a subject).
+
+### Best of two: each new brief designed twice in the app
+
+```sh
+tools/probe.sh best_of_two_probe       # headless, no subscription: how the second starts, which is kept, the undo, the card
+env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief="a small red post box" \
+  --port=8953 --record=$SCRATCH/postbox.json   # in a window on the GPU: two sessions and a pick
+```
+
+The walk opens the app as a person does, ticks My Claude, types the brief and
+sends it. Proves it when: the second started beside the first and its own
+`app.log` says it connected on the subscription and ended with parts; the pick
+answered A or B and that one is on the baseplate with its parts' count; the
+card closed; Undo gives the first back where the second was kept, every step
+undone leaves the bare baseplate and Redo puts it all back; the second app and
+its Claude Code session are gone. It prints the wait against the first
+design's own time: the bar is near the 1.19x of the proof's 44
+(docs/DESIGN_SCORES.md, "Best of two, steps 2 and 3"). `--port` is the
+person's app's own; the second takes the next free one. `--record` copies the
+six pictures, the second's model and its log beside the JSON.
 
 ### A design's pictures on a lease of their own
 

@@ -2826,6 +2826,64 @@ design's paired interval against main's.
 Results: `bench/results/pick83-2026-10-21/` and `pick83-2026-10-21-r2/`
 (`asks/<set>/<first>__<second>.json`, each with what it saw in A and B and why).
 
+### Best of two, steps 2 and 3: two designs side by side, the app keeps one (2026-10-22)
+
+**Step 2, the three tune subjects** (`best2a` and `best2b`, one worker each,
+side by side). The wait for two designs and the pick is 1.12 times one
+design's. The pick kept the better of the two in 5 of 6 asks.
+
+**The proof, on proof's 44.** A second arm, `main2`, designed the 44 at main's
+commit 64fdf184 beside main's own 2026-10-19 arm, and `pick_pairs.py` asked
+the pick of each pair once.
+
+| | |
+|---|---|
+| pairs that split against the set, the better named | 15 of 18 asks (83%) |
+| kept the design shown first | 41 of 88 asks: no order bias |
+| the wait, two side by side and the pick, against one design | 1.19x |
+| a pick | about 11 s and 13k tokens |
+| won overall against the set, per design kept: the picked one | 26.7% |
+| ...either one, at random | 21.6% |
+| ...the better one, had we known | 28.4% |
+
+Kept minus main's own 44, paired, with a 95% bootstrap interval:
+
+| verdict | kept minus main |
+|---|---|
+| overall | +6.2 (+0.0, +13.6) |
+| likeness | +5.7 (+0.0, +12.5) |
+| surface | +5.7 (+0.0, +13.1) |
+| colour | +8.0 (+2.3, +14.8) |
+| technique | +2.3 (-0.6, +6.2) |
+| creativity | +12.5 (+4.5, +21.6) |
+
+The pick takes most of what an oracle would: 26.7% of the 28.4% a perfect
+choice of the two wins, from 21.6% for either. Every verdict moves up and
+none down; colour and creativity clear zero. *Caveat:* `main2` ran with the
+corrected style norms, since the shared norms file changed in m133 (style59:
+the symmetry advice moved by 1 or 2 points), so a little of the gain may be
+the norms and not the pick.
+
+Results: `bench/results/realset-2026-10-22-best2a/`, `-best2b/` and
+`best2-2026-10-22/` (step 2); `realset-2026-10-22-main2/` and
+`best2-proof-2026-10-22/` (the proof).
+
+**In the app (`best2app`).** It is now how the app designs. A new brief sent
+with My Claude, on a bare baseplate, is designed twice (`Assistant.BEST_OF`, 2):
+the person's own session in the window, as before, and a second started at
+the same moment in a copy of the app with no window, on its own port and
+baseplate, its pictures drawn by the person's app, which has the graphics
+card (BestOfTwo, src/ai/best_of_two.gd). When both have ended, DesignPick is
+asked once and the kept design is the person's model: the second goes down in
+place of the first as one step, so Undo brings the first back. Once the first
+has ended the second has 30% of its time more, at least 90 s, and is then
+stopped. Either one failing, the other is kept without asking; the pick
+failing, the first. A change to a model, a selection, a sketch and every
+session from outside (the MCP port, the connector) are one session, as they
+were.
+
+BEST2APP_WALK
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

@@ -81,6 +81,9 @@ var _stop_asked_ms: int = 0
 var _beat_ms: int = 0
 var _deciding: bool = false
 var _shot: ModelShot = null
+## Parts the person put down while the two were designed: theirs, and left
+## standing whichever design is kept.
+var _theirs: Dictionary = {}
 
 
 ## The second design's folder, when this app is one; "" otherwise.
@@ -134,6 +137,7 @@ func start(text: String, first: ClaudeCode, after_port: int) -> bool:
 	_drawer.library = library
 	_drawer.parent = self
 	first.finished.connect(_first_ended, CONNECT_ONE_SHOT)
+	builder.placed.connect(func(id: int, _part: String) -> void: _theirs[id] = true)
 	print("best of two: a second design started on port %d, in %s" % [_port, _dir])
 	return true
 
@@ -162,7 +166,7 @@ func _process(_delta: float) -> void:
 			_stop_asked_ms = now
 			_ask_to_stop()
 		elif now - _stop_asked_ms > int(STOP_GRACE_S * 1000.0):
-			OS.kill(_pid)
+			_end_second()
 
 
 ## Nothing of the second left running when the app closes.
@@ -180,7 +184,17 @@ func stop() -> void:
 	while second_running() and Time.get_ticks_msec() < until:
 		OS.delay_msec(50)
 	if second_running():
-		OS.kill(_pid)
+		_end_second()
+
+
+## End the second that did not stop when asked, and its session first: the
+## session is the second's child, and ending the second alone would leave it
+## running on the person's subscription.
+func _end_second() -> void:
+	var session: int = FileAccess.get_file_as_string(_dir.path_join("session.pid")).to_int()
+	if session > 0:
+		OS.kill(session)
+	OS.kill(_pid)
 
 
 func _draw(asked: String) -> void:
@@ -339,14 +353,15 @@ func _placements(text: String) -> Array:
 
 
 ## The second in place of the first, as one step of the history: Undo puts
-## the first back, and every step before it stays as it was.
+## the first back, and every step before it stays as it was. What the
+## person put down meanwhile stays where they put it.
 func _put_down(text: String) -> bool:
 	var items: Array = _placements(text)
 	if items.is_empty():
 		return false
 	var first := PackedInt64Array()
 	for brick: BrickWorld.Brick in world.bricks():
-		if not store.scenery.has(brick.id):
+		if not store.scenery.has(brick.id) and not _theirs.has(brick.id):
 			first.append(brick.id)
 	builder.clear_selection()
 	var steps: Array = builder.swap_bricks(first, items)
@@ -365,8 +380,9 @@ func _parts() -> int:
 ## A folder for this run, the last run's taken away first.
 func _fresh_dir() -> String:
 	var root: String = ProjectSettings.globalize_path(ROOT)
-	for old: String in DirAccess.get_directories_at(root):
-		_remove(root.path_join(old))
+	if DirAccess.dir_exists_absolute(root):
+		for old: String in DirAccess.get_directories_at(root):
+			_remove(root.path_join(old))
 	var dir: String = root.path_join("%d" % int(Time.get_unix_time_from_system()))
 	if DirAccess.make_dir_recursive_absolute(dir.path_join("shots")) != OK:
 		return ""
@@ -419,6 +435,10 @@ func _write_record() -> void:
 ## asks, or has not said it is there for [constant ORPHANED_S].
 static func watch_from_second(owner: Node, session: ClaudeCode) -> void:
 	var dir: String = second_of()
+	var pid: FileAccess = FileAccess.open(dir.path_join("session.pid"), FileAccess.WRITE)
+	if pid != null:
+		pid.store_string(str(session._pid))
+		pid.close()
 	var clock := Timer.new()
 	clock.wait_time = 2.0
 	clock.autostart = true
