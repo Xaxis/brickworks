@@ -3,8 +3,8 @@
 ## the real scene (main.gd's press, the slop, GrabDrag), the parts read as
 ## rigid bodies (Bodies) and moved as the joint allows (Grab).
 ##
-##   godot --headless --path . --script src/dev/grab_probe.gd
 ##   godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd
+##   godot --headless --path . --script src/dev/grab_probe.gd
 ##   godot --headless --path . --script src/dev/grab_probe.gd -- --survey vendor/omr/files/X.mpd ...
 ##
 ## For each case: the part dragged turns (or slides) to where the pointer
