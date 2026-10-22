@@ -124,6 +124,14 @@
       "tests": []
     },
     {
+      "id": "cli:account page browser flow",
+      "kind": "cli",
+      "entry": "tools/web/account_page_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 8890 &  node --env-file=.env tools/web/account_page_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>; throwaway accounts, deleted after)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:age browser flow",
       "kind": "cli",
       "entry": "tools/web/age_flow.mjs",
@@ -2943,7 +2951,7 @@
       "id": "ui:profile and collection pages",
       "kind": "ui",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": []
     },
@@ -3366,11 +3374,19 @@
       "id": "ui:your profile page",
       "kind": "ui",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in; your models, favourites, collections, sets, following, builds; settings, the Claude connection, delete the account)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, ?tab=)",
       "area": "web",
       "tests": [
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "ui:your settings page",
+      "kind": "ui",
+      "entry": "web/settings.html",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Sign out, Delete account)",
+      "area": "web",
+      "tests": []
     }
   ]
 }

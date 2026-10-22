@@ -67,6 +67,12 @@
 .account .tab-panel .lead { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 70ch; }
 .account .tab-panel .private { margin: 0 0 var(--s-4); font-size: var(--t-small); color: var(--ink-soft); }
 .account #following .pill .avatar { margin-left: -6px; }
+/* On a phone the head's four buttons are three: Share is in More. */
+.account .menu-list .share-item { display: none; }
+@media (max-width: 640px) {
+	.account #share { display: none; }
+	.account .menu-list .share-item { display: flex; }
+}
 .account .work { margin-top: var(--s-5); }
 .edit-dialog { width: min(560px, calc(100vw - 32px)); }
 .edit-dialog .profile-form { gap: 0; max-width: none; margin: 0; }
@@ -155,10 +161,11 @@
 					<div class="acts">
 						<button class="cta ghost" type="button" id="edit">Edit profile</button>
 						<a class="cta ghost" href="/settings" id="to-settings">Settings</a>
-						<button type="button" class="icon-btn" id="share" aria-label="Share"><svg class="icon" aria-hidden="true"><use href="/icons.svg#share"></use></svg></button>
+						<button type="button" class="icon-btn" id="share" aria-label="Share" data-share-page><svg class="icon" aria-hidden="true"><use href="/icons.svg#share"></use></svg></button>
 						<details class="more-menu end">
 							<summary class="icon-btn" aria-label="More"><svg class="icon" aria-hidden="true"><use href="/icons.svg#more"></use></svg></summary>
 							<div class="menu-list">
+								<button type="button" class="share-item" data-share-page>Share your page</button>
 								<a href="/gallery" id="view">Your page as others see it</a>
 								<a href="/feed" id="to-feed">Your feed</a>
 							</div>

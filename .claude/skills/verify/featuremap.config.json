@@ -1571,14 +1571,21 @@
       "kind": "ui",
       "label": "profile and collection pages",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "your profile page",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in; your models, favourites, collections, sets, following, builds; settings, the Claude connection, delete the account)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, ?tab=)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your settings page",
+      "entry": "web/settings.html",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Sign out, Delete account)",
       "area": "web"
     },
     {
@@ -2580,6 +2587,13 @@
       "label": "gallery browser flow",
       "entry": "tools/web/gallery_flow.mjs",
       "reach": "node tools/web/gallery_flow.mjs --out=DIR   (this checkout's web/ and api/, the API answered by the stand-in and a crowd of 130, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=DIR   (the deployment's pages, the API still the stand-in's)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "account page browser flow",
+      "entry": "tools/web/account_page_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 8890 &  node --env-file=.env tools/web/account_page_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>; throwaway accounts, deleted after)",
       "area": "web"
     },
     {

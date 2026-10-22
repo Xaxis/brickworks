@@ -35,9 +35,16 @@ const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 const TABS = ["models", "builds", "saved", "sets", "insights"];
-// Models are shown a few rows at a time, so the page's first screen is
-// your profile and its work, not a wall of cards: Show more for the rest.
-const STEP = 8;
+// Models are shown a row at a time on a laptop (two on a phone), so the
+// page is your profile and its work, not a wall of cards (docs/SOCIAL.md
+// U6: under 2,000 px at 1280): Show more for the rest, two rows a press.
+function step(first) {
+  const grid = $("my-models");
+  // The grid's columns as drawn ("300px 300px …"), or as written while hidden.
+  const said = getComputedStyle(grid).gridTemplateColumns;
+  const columns = Number(/repeat\((\d+)/.exec(said)?.[1]) || said.split(" ").filter(Boolean).length || 2;
+  return columns * (first && columns > 2 ? 1 : 2);
+}
 
 // What the server said of you: op=me (your profile, collections, mail,
 // what your profile shows and what you may pin) and op=profile (your page
@@ -172,13 +179,13 @@ async function drawModels() {
   const earned = Boolean(body && body.designer && Number(body.designer.models) > 0);
   models = { queue: (body && Array.isArray(body.models) ? body.models : []).filter((one) => ID.test(String(one.id))),
     page: 1, more: Boolean(body && body.more), earned };
-  showModels();
+  await showModels({ first: true });
   $("no-models").hidden = grid.children.length > 0;
 }
 
 /// The next few of your models; the next page of them asked for when the
 /// ones read are all shown.
-async function showModels({ focus = false } = {}) {
+async function showModels({ focus = false, first = false } = {}) {
   const grid = $("my-models");
   if (!models.queue.length && models.more) {
     const handle = handleOf();
@@ -192,7 +199,7 @@ async function showModels({ focus = false } = {}) {
     models.more = Boolean(answer.body.more);
     models.queue = (answer.body.models || []).filter((one) => ID.test(String(one.id)));
   }
-  const next = models.queue.splice(0, STEP).map((model) => modelCard(model, { earned: models.earned }));
+  const next = models.queue.splice(0, step(first)).map((model) => modelCard(model, { earned: models.earned }));
   grid.append(...next);
   $("models-paging").hidden = !(models.queue.length || models.more);
   // A keyboard is taken to the first new card, not left at the end.
@@ -600,7 +607,7 @@ async function load() {
   document.documentElement.dataset.profile = "ready";
 }
 
-$("share").addEventListener("click", async () => {
+for (const button of document.querySelectorAll("[data-share-page]")) button.addEventListener("click", async () => {
   const url = `${location.origin}/u/${handleOf()}`;
   if (navigator.share && matchMedia("(pointer: coarse)").matches) {
     try {

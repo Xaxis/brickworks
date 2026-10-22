@@ -148,12 +148,15 @@ const profileSaid = (page) => page.evaluate(() => {
       current: a.getAttribute("aria-current") === "page", n: a.querySelector(".n:not([hidden])")?.textContent || "" })),
     panel: [...document.querySelectorAll("#work [data-panel]")].filter((p) => !p.hidden).map((p) => p.dataset.panel),
     cards: [...document.querySelectorAll("#my-models .model")].map((card) => card.dataset.id),
+    more: !document.getElementById("models-paging").hidden,
     avatar: (() => {
       const a = document.getElementById("avatar");
       return a ? { letter: a.textContent, tile: [...a.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(a).bottom } : null;
     })(),
     nameBottom: box(document.getElementById("title"))?.bottom ?? 1e9,
     editBottom: box(document.getElementById("edit"))?.bottom ?? 1e9,
+    actsRows: new Set([...document.querySelectorAll(".profile-head .acts > *")].filter((one) => one.offsetParent)
+      .map((one) => Math.round(one.getBoundingClientRect().top))).size,
     height: document.documentElement.scrollHeight,
     screen: innerHeight,
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -179,7 +182,9 @@ try {
     body: { handle: ADA, name: "Ada Account", bio: "Castles and small machines.\nFor the account page flow." } });
   check(`her profile: ${r.status} /u/${r.json?.handle}`, r.status === 200 && r.json?.handle === ADA);
   const picture = readFileSync(path.join(root, "web/share.png")).toString("base64");
-  for (const [file, name] of [["castle.ldr", "Account Castle"], ["lighthouse.ldr", "Account Lighthouse"]]) {
+  // Five: more than a laptop's row, so Show more is on the page measured.
+  for (const [file, name] of [["castle.ldr", "Account Castle"], ["lighthouse.ldr", "Account Lighthouse"],
+    ["house.ldr", "Account House"], ["car.ldr", "Account Car"], ["boat.ldr", "Account Boat"]]) {
     r = await api("/api/share", { method: "POST", token: ada.access_token, body: { name: `${name} ${rand}`, author: "Ada Account",
       model: readFileSync(path.join(root, "models", file), "utf8"), image: picture, listed: true, kind: "castle",
       tags: "account flow", licence: "cc-by-4.0" } });
@@ -241,17 +246,22 @@ try {
         && said.links.map((one) => one.href).join(" ") === LINKS.join(" ")
         && said.links.every((one) => /\bugc\b/.test(one.rel) && /\bnofollow\b/.test(one.rel))
         && said.banner === `/m/${made[1]}.png` && said.pins.join(",") === `${made[1]},${made[0]}`);
-      check(`${label}: numbers ${said.numbers.join(" · ")}, none of none`, said.numbers.every((one) => !/^0\b/.test(one)));
+      check(`${label}: numbers ${said.numbers.join(" · ")}, none of none`, said.numbers.join() === "5 models");
       check(`${label}: tabs ${said.tabs.map((t) => `${t.tab}${t.n ? ` ${t.n}` : ""}${t.current ? "*" : ""}`).join(" · ")}, `
-        + `Models open with her ${said.cards.length} models`,
+        + `Models open with ${said.cards.length} of her 5 models and Show more`,
         said.tabs.map((t) => t.tab).join(",") === "models,builds,saved,sets,insights" && said.tabs[0].current
-        && said.tabs.every((t) => t.n !== "0") && said.panel.join() === "models" && said.cards.length === 2
-        && said.cards.every((id) => made.includes(id)));
+        && said.tabs[0].n === "5" && said.tabs.every((t) => t.n !== "0") && said.panel.join() === "models"
+        && said.cards.length === 4 && said.cards.every((id) => made.includes(id)) && said.more);
+      await page.click("#models-more");
+      const all = await until(page, () => document.querySelectorAll("#my-models .model").length === 5
+        && document.getElementById("models-paging").hidden);
+      check(`${label}: Show more brings the fifth, and goes`, all);
       if (width === 1280) check(`${label}: ${said.height} px tall with its first tab open (under 2,000)`, said.height < 2000);
       else {
         const last = Math.max(said.avatar?.bottom ?? 1e9, said.nameBottom, said.editBottom);
         check(`${label}: avatar, name and Edit profile on the first screen (to ${Math.round(last)} of ${said.screen} px), `
-          + `tabs ${said.tabsScroll ? "scroll inside their row" : "fit"}`, last <= said.screen);
+          + `its buttons in ${said.actsRows} row, tabs ${said.tabsScroll ? "scroll inside their row" : "fit"}`,
+        last <= said.screen && said.actsRows === 1);
       }
       check(`${label}: nothing sideways`, !said.sideways);
       await shot(page, `profile_${width}_${theme}.png`);
