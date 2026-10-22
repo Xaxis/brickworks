@@ -34,6 +34,6 @@ for spec in "$@"; do
     verdict="unproven (no ok line)"; bad=1
   fi
   echo "$name exit=$code ok=$ok fail=$fail $verdict"
-  [ "$verdict" = passed ] || grep -E '^\s*FAIL|no web pack|SKIPPED|SCRIPT ERROR' "$log" | head -3 | sed 's/^/    /'
+  [ "$verdict" = passed ] || grep -E '^\s*FAIL|no web pack|SKIPPED|SCRIPT ERROR|two scripts are|not run:' "$log" | head -3 | sed 's/^/    /'
 done
 exit $bad

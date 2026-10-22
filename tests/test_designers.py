@@ -113,19 +113,23 @@ def test_the_page_counts_as_its_cards_do() -> None:
 
 def test_a_designer_card_leads_with_builds_and_never_says_views() -> None:
     # The one card (web/card.js), which the profile page draws its models with.
-    assert 'import { cardHtml } from "./_card.js";' in PEOPLE
+    assert re.search(r'import \{ cardHtml\b[^}]*\} from "\./_card\.js";', PEOPLE)
     card = js_function((ROOT / "web/card.js").read_text(encoding="utf-8"), "cardHtml")
-    earned = card[card.index("if (earned) {"): card.index("} else {")]
+    start = card.index("if (earned) {")
+    earned = card[start: card.index("\n  }", start)]
     order = [earned.index(f"model.{kind},") for kind in ("builds", "remixes", "comments", "likes")]
     assert order == sorted(order), "builds, remixes, comments, likes"
     assert "views" not in earned
+    # Nor does any other card (docs/SOCIAL.md D6).
+    assert "model.views" not in card
 
 
-def test_the_band_leads_with_builds_and_remixes() -> None:
-    band = js_function(PEOPLE, "earnedHtml")
-    kinds = re.findall(r'tile\("([a-z]+)"', band)
-    assert kinds == ["builds", "remixes", "tested", "comments", "models", "followers"]
-    assert re.search(r'tile\("builds",[^\n]*true\)', band) and re.search(r'tile\("remixes",[^\n]*true\)', band)
+def test_the_numbers_lead_with_builds_and_remixes() -> None:
+    # One row of numbers on a profile (docs/SOCIAL.md U5), each hidden at none.
+    row = js_function(PEOPLE, "numbersHtml")
+    kinds = re.findall(r'stat\("([a-z]+)"', row)
+    assert kinds == ["builds", "remixes", "models", "likes", "followers", "following"]
+    assert "${zero(n)}" in row and 'data-followers' in row
 
 
 def test_the_own_numbers_are_never_kept_and_only_the_caller_s() -> None:

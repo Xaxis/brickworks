@@ -409,42 +409,80 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    Its picture 4:3, the middle of the 1200 x 630 one a share is published
    with (docs/SOCIAL.md D3): a model shows 1.43 times larger at the same
    width, rows line up, and the space is held before the picture comes.
-   .models lays them out; .models.row is one row that scrolls inside
-   itself, never the page. */
-.models { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+   Its name is the link, stretched over the whole card; the designer's
+   name and a like button sit above it, links and buttons of their own.
+   .models lays them out: two to a row on a phone, three from 900 px,
+   four from 1200; .models.row is one row that scrolls inside itself,
+   never the page. */
+.models { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 900px) { .models { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
+@media (min-width: 1200px) { .models { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .models.row {
-	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(230px, 280px);
+	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(200px, 260px);
 	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px;
 }
 .models.row .model { scroll-snap-align: start; }
-/* Beside a rail or in a narrower column: more to a row. */
-.models.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+/* Beside a rail or in a narrower column: more to a row. Cards that each
+   carry a button under them (a challenge's entries): fewer, one to a row
+   on a phone, so the button's words fit. */
+.models.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+.models.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 .model {
-	display: flex; flex-direction: column; text-decoration: none; color: inherit; min-width: 0;
+	position: relative; display: flex; flex-direction: column; color: inherit; min-width: 0;
 	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
 	background: var(--panel); box-shadow: var(--shadow);
 }
 .model:hover { border-color: var(--ink-faint); }
 .model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
-.model .frame { aspect-ratio: 4 / 3; background: var(--bg-soft); overflow: hidden; }
+.model .frame { position: relative; aspect-ratio: 4 / 3; background: var(--bg-soft); overflow: hidden; }
 .model .frame img { width: 100%; height: 100%; object-fit: cover; }
 .model .frame.none {
 	display: grid; place-items: center; color: var(--ink-faint); font-size: var(--t-small);
 	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
 }
-.model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
+/* Its marks over the picture's top corner: Tested, how it was made. */
+.model .marks { position: absolute; top: var(--s-2); left: var(--s-2); right: var(--s-2); display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.model .marks .pill { box-shadow: 0 1px 3px var(--shade); }
+.model .words { flex: 1; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+@media (min-width: 900px) { .model .words { padding: 12px 16px 14px; } }
+/* The name: the card's one link to the model, stretched over all of it. */
+.model .open { color: inherit; text-decoration: none; }
+.model .open::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
+.model .open:focus-visible { outline: none; }
+.model .open:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* A name is at most 80 characters (api/share.js); two lines of it here. */
 .model b {
-	color: var(--ink); font-size: var(--t-body); font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+	color: var(--ink); font-size: var(--t-body); font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
 }
-.model span { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+/* Who made it, with their avatar, and its size. */
+.model .by {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-2); min-width: 0;
+	color: var(--ink-soft); font-size: var(--t-small); line-height: 1.5;
+}
+.model .who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; color: var(--ink-soft); }
+.model .who span:not(.avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model a.who { position: relative; z-index: 1; text-decoration: none; }
+.model a.who:hover { color: var(--ink); text-decoration: underline; }
+.model .parts { color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; }
 .model small:not(.pill) { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
 /* How much of it the signed-in person's collection holds, and what moves. */
 .model small.moves, .model small.owned.all { color: var(--ink); font-weight: 600; }
 .model small.owned { color: var(--ink-soft); }
-/* Marked Tested (api/_tested.js): a pill.good, on every card. */
-.model .words > .pill { justify-self: start; margin-top: var(--s-1); }
+/* Its numbers, last: a like (a button in the gallery), builds and comments,
+   each an icon and a count. */
+.model .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); margin-top: auto; padding-top: 6px; }
+.model .acts .icon-btn { position: relative; z-index: 1; margin-left: -4px; }
+.model .tally { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink-soft); font-size: var(--t-small); }
+.model .tally .icon { width: 17px; height: 17px; }
+/* Two to a row on a phone: the words a step smaller, so a name, its
+   designer and its numbers fit a card 170 px wide. */
+@media (max-width: 899px) {
+	.model b { font-size: var(--t-small); }
+	.model .by, .model .tally { font-size: var(--t-tiny); }
+	.model .acts { gap: var(--s-1) var(--s-2); }
+	.model .acts .icon-btn { padding: 0 8px; }
+}
 .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
 
 /* -- the kit --------------------------------------------------------
@@ -473,6 +511,11 @@ summary.pill::-webkit-details-marker { display: none; }
 /* Its quieter part: a handle after a name. */
 .pill small { color: var(--ink-faint); font-size: inherit; }
 .pills { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+/* One row of them that scrolls sideways inside itself (the gallery's
+   kinds), never the page. A pressed one is chosen, edged in the accent. */
+.pills.row { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px; }
+.pills.row > * { flex: none; }
+button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: var(--accent-edge); background: var(--panel-hi); }
 
 /* Tabs: a row of links or buttons, the one shown aria-current (or
    aria-selected in a tablist) underlined in the accent's edge. On a phone
@@ -524,8 +567,10 @@ summary.pill::-webkit-details-marker { display: none; }
 }
 .icon-btn::-webkit-details-marker { display: none; }
 .icon-btn:hover { background: var(--panel); }
-.icon-btn[aria-pressed="true"] { border-color: var(--accent-edge); }
-.icon-btn[aria-pressed="true"] .icon { fill: currentColor; }
+/* data-on: on, for a button that opens something rather than toggling
+   (Save, when the model is in one of your lists). */
+.icon-btn[aria-pressed="true"], .icon-btn[data-on] { border-color: var(--accent-edge); }
+.icon-btn[aria-pressed="true"] .icon, .icon-btn[data-on] .icon { fill: currentColor; }
 .icon-btn.small { min-width: 36px; min-height: 36px; padding: 0 10px; }
 .icon-btn.small .icon { width: 18px; height: 18px; }
 

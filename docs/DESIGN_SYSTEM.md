@@ -127,9 +127,20 @@ is on the page, `hidden`, for the script to show.
   and the browser with `modelCard`, the same string parsed, so the two are
   the same markup (`tools/web/card_check.mjs` proves it). Its picture is
   4:3, the middle of the 1200 x 630 one by `object-fit: cover`
-  (docs/SOCIAL.md D3). In `.models` (a grid), `.models.compact` (more to a
-  row, beside a rail) or `.models.row` (one row that scrolls inside
-  itself, never the page). Its Tested mark is a `.pill.good`.
+  (docs/SOCIAL.md D3), with its marks over the top corner (`.marks`: the
+  Tested `.pill.good`, and `.pill.made` Assistant or Brickify, read from
+  its tags). It is an `article`: its name (`a.open`) is the one link to the
+  model, stretched over the whole card, so the designer's name and a like
+  sit inside it as a link and a button of their own. Under the name, `.by`:
+  the designer's `.small` avatar and name (`a.who`, to their page) and its
+  size; then `.acts`, its numbers last, each an icon and a count and none
+  at nought: the like (an `.icon-btn.small`, `aria-pressed`, when the page
+  passes `like: true`, as the gallery does; a `.tally` elsewhere), builds
+  finished and comments. In `.models` (a grid: two to a row on a phone,
+  three from 900 px, four from 1200), `.models.compact` (more to a row,
+  beside a rail), `.models.wide` (fewer, one to a row on a phone, for cards
+  that carry a button under them) or `.models.row` (one row that scrolls
+  inside itself, never the page).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -148,7 +159,9 @@ is on the page, `hidden`, for the script to show.
   height, 32 px, and takes the pointer's edge. `.good` green (Tested),
   `.new` edged in `--accent-edge`, `.tag` says "#" first, `small` inside
   for a quieter part (a handle). A row of them is `ul.pills` or
-  `div.pills`. The one pill: a model's facts and tags, its Tested mark,
+  `div.pills`; `.pills.row` keeps them on one line that scrolls inside
+  itself (the gallery's kinds), and a chosen button pill is
+  `aria-pressed="true"`, edged in `--accent-edge`. The one pill: a model's facts and tags, its Tested mark,
   the gallery's tag filter, a comment's "its builder", the feed's New,
   whom you follow on your account. There were seven copies.
 - **Tabs**: `.tabs`, a row of links or buttons, the one shown
@@ -163,12 +176,29 @@ is on the page, `hidden`, for the script to show.
   (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile). It is
   decoration beside the name, so `aria-hidden`.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
-  share, comment, more, build; `web/kit.js` `iconHtml`), drawn in the
-  words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
+  share, comment, more, build, search, filter; `web/kit.js` `iconHtml`),
+  drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
   icon once there is one. Its label says its name and count to a screen
   reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
-  and pressed is edged in `--accent-edge` with its icon filled.
+  and pressed is edged in `--accent-edge` with its icon filled. A button
+  that opens something rather than toggling (Save, which opens your
+  lists) is `aria-expanded`, and `data-on` while what it stands for is on
+  (the model is in one of your lists), drawn as pressed. The server's
+  pages draw the kit from the same file: `web/card.js` makes the avatar,
+  the icons and the icon button (`web/kit.js` passes them on to the
+  browser's pages), and the server imports them through `api/_card.js`,
+  which `tools/deploy.sh` replaces with `web/card.js` itself.
+- **Action bar**: `.action-bar`, a model's page's row of icon buttons
+  (Like, Save, Share, Comment, I built it) with the more menu at its end;
+  one row across the column on a phone. `api/share.js` `actionBar`,
+  `web/model-page.js`.
+- **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
+  `.media`, the picture and under it `.media-strip`, a row of thumbnails
+  that scrolls inside itself, the one shown large `aria-current` and edged
+  in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
+  and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
+  sticky under the header, with a ground of its own only once stuck.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`), gone in 2.4 s.
@@ -176,7 +206,16 @@ is on the page, `hidden`, for the script to show.
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the
   button's start (`.end`: back from its end, at a row's end). It opens with no script;
-  `web/kit.js` closes it on a click elsewhere and on Escape.
+  `web/kit.js` closes it on a click elsewhere and on Escape. The gallery's
+  Filters is one too, its summary a `summary.pill` with the filter icon
+  and how many are on, its panel the fields of a search.
+- **A person's page** (`/u/<handle>`, `web/directory.css`, docs/SOCIAL.md
+  U5): the head (`.profile-head`: a `.huge` avatar, the name, the handle,
+  Follow, Share and More), `.numbers` (one row of counts, each `<b>` and
+  its word, hidden at none), `.pinned` (a `.models.row`), the `.tabs`, and
+  two cards of its own: `.list-card` (a collection, a `.mosaic` of up to
+  four pictures kept wide) and `.build-grid` (photos of builds in columns,
+  any shape).
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
   with "_") shows every component once, drawn by `web/kit.js` and

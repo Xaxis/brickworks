@@ -316,8 +316,16 @@ var _before_detail: String = ""
 ## What a run may spend in turns. MAX_TURNS, until detailing begins and
 ## each assembly brings its own.
 var _turn_cap: int = MAX_TURNS
+## What the design is about, which every check, guide and pass reads it by
+## ([method _subject_of]): what it was asked for, what it was submitted as and
+## what was heard of it. One design's, from when it begins
+## ([method _begin_subject]: a fresh brief, a session's brief, Clear, a design
+## submitted of another subject) until the next does. A revision keeps it.
+##
 ## What was asked for, so a pass can say what real sets of that kind are
-## built from.
+## built from: a fresh design's brief in this app's own loop. A revision's
+## words are heard, not asked: "make it bigger" replaced "an owl head", and
+## the owl's revision was no creature (second_design_probe).
 var _brief: String = ""
 ## What a session from outside has said its subject is, before any design
 ## names it: the brief Claude Code was started with ([method heard]), and the
@@ -327,6 +335,13 @@ var _brief: String = ""
 var _heard: String = ""
 ## The brief a session was started on, which outlives a clear_model inside it.
 var _heard_fresh: String = ""
+## What was heard since the last design was submitted: the next one's, if the
+## next is of another subject.
+var _heard_since: String = ""
+## The name the design was last submitted under, and that with its
+## description; "" before its first.
+var _named: String = ""
+var _named_as: String = ""
 ## What the person owns ("part/colour" -> how many, CollectionStore.on_hand),
 ## for a brief that asks to be built from their collection
 ## (Collection.wanted_in). Empty when nothing is known.
@@ -923,9 +938,19 @@ class Section extends RefCounted:
 			out += ", within '%s'" % within
 		return out
 
-	## The quarter turn that lays a hinge brick's pin along [member axis].
+	## The quarter turn that lays a hinge brick's pin along [member axis],
+	## facing the way the section tips its top. 3937's top tips one way only
+	## (docs/MECHANISMS.md §34): at rot 0 it opens to positive degrees about
+	## x, which is a negative pitch, at rot 1 to negative degrees about z or
+	## a negative roll. A builder tipping it the other way turns the brick
+	## round, as FigurePattern's waist does; laid square whatever the sign, a
+	## wing tipped 15 degrees about z had its top folded 2.3 LDU into its
+	## base, refused (surface_probe, since 61c53fb9).
 	func hinge_rot() -> int:
-		return 0 if axis == "x" else 1
+		var turn: float = wrapf(degrees - pitch if axis == "x" else degrees + roll, -180.0, 180.0)
+		if axis == "x":
+			return 2 if turn < 0.0 else 0
+		return 3 if axis == "z" and turn > 0.0 else 1
 
 
 class Model extends RefCounted:
@@ -1478,7 +1503,13 @@ func _start(text: String) -> void:
 	_turn_cap = MAX_TURNS
 	_art_laid = 0
 	_art_name = ""
-	_brief = text
+	# A fresh design is a new subject. A revision, or a request about a
+	# selection, is of the one standing, and its words are heard.
+	if not _scoped and _messages.is_empty():
+		_heard_fresh = ""
+		_begin_subject(text)
+	else:
+		heard(text)
 	_joints_told = 0
 	_joint_parts_told = false
 	_spend = Brain.Spend.new()
@@ -2342,7 +2373,7 @@ func _keep_the_failure(report: Dictionary) -> void:
 	var file: FileAccess = FileAccess.open(failed_design, FileAccess.WRITE)
 	if file == null:
 		return
-	file.store_string(JSON.stringify({"brief": _brief,
+	file.store_string(JSON.stringify({"brief": _asked_as(),
 		"summary": report.get("summary", ""),
 		"feedback": report.get("feedback", ""),
 		"design": _last_submitted}, "\t"))
@@ -2716,7 +2747,7 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 	var present := PackedStringArray()
 	var palette := PackedStringArray()
 	var listed: Dictionary = {}
-	for raw: Variant in library.kinds_for(_brief):
+	for raw: Variant in library.kinds_for(_asked_as()):
 		var kind: Dictionary = raw
 		kinds.append(str(kind.get("kind", "")))
 		for entry: Variant in kind.get("parts", []):
@@ -2757,7 +2788,7 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 		have[library.resolve(part_id)] = true
 	var lacking := PackedStringArray()
 	var offered: Dictionary = {}
-	for raw: Variant in library.kinds_for(_brief):
+	for raw: Variant in library.kinds_for(_asked_as()):
 		for entry: Variant in (raw as Dictionary).get("common", []):
 			var part_id: String = str((entry as Array)[0])
 			if offered.has(part_id) or have.has(library.resolve(part_id)):
@@ -2784,7 +2815,7 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 	# the message above, did not move: 21 one-off shapes, then 13.
 	var accents := PackedStringArray()
 	var named_accent: Dictionary = {}
-	for raw: Variant in library.kinds_for(_brief):
+	for raw: Variant in library.kinds_for(_asked_as()):
 		for entry: Variant in (raw as Dictionary).get("accents", []):
 			var part_id: String = str((entry as Array)[0])
 			if named_accent.has(part_id) or have.has(library.resolve(part_id)):
@@ -3444,6 +3475,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				sketch_chosen.emit(0)
 			_last_submitted = args
 			_pending = _read_model(args)
+			_subject_submitted(_pending)
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
 			_say_shorthand_trouble()
@@ -5487,7 +5519,7 @@ func _search(query: String, limit: int) -> String:
 			" among %s (%d that do are not on it)" % [PartsOnly.named(), barred]
 				if limited else ""]
 	# Built from their own collection: what they own first, and how much.
-	var from_collection: bool = not owned.is_empty() and Collection.wanted_in(_brief)
+	var from_collection: bool = not owned.is_empty() and Collection.wanted_in(_subject_of())
 	if from_collection:
 		usable = Collection.owned_first(usable, owned)
 
@@ -5688,13 +5720,50 @@ func _style(model: Model) -> String:
 	return Style.advice(Style.measure(parts), Style.group_for(about), about, shaped)
 
 
-## What the subject is said to be: the brief, what a session from outside said
-## of it before naming a design ([member _heard]), and the design's own name
-## and description.
+## What the subject is said to be: the brief, what the design was submitted as,
+## what was heard of it ([member _heard]), and [param model]'s own name and
+## description.
 func _subject_of(model: Model = null) -> String:
+	var said: String = "%s %s %s" % [_brief, _named_as, _heard]
 	if model == null:
-		return "%s %s" % [_brief, _heard]
-	return "%s %s %s %s" % [_brief, _heard, model.name, model.description]
+		return said
+	return "%s %s %s" % [said, model.name, model.description]
+
+
+## What the design was asked for, or failing that what it was submitted as: for
+## a pass that reads the brief alone.
+func _asked_as() -> String:
+	return _brief if not _brief.strip_edges().is_empty() else _named_as
+
+
+## A new design's subject, begun from [param brief]: nothing read by the last
+## one's, nor told it once a design, carries over. The brief a session was
+## started on stays.
+func _begin_subject(brief: String, heard_of_it: String = "") -> void:
+	_brief = brief
+	_heard = ("%s %s" % [_heard_fresh, heard_of_it]).strip_edges()
+	_heard_since = ""
+	_named = ""
+	_named_as = ""
+	_joints_told = 0
+	_joint_parts_told = false
+	_joints_refused = false
+
+
+## A design submitted is of the subject standing, or begins another. Another
+## when it is named and shares no word naming a subject with what the standing
+## one was asked for and called (Style.same_subject): the house roof after an
+## owl head was sent back to be laid as a jointed owl. What was heard since the
+## last submission is then the new one's. A revision keeps the subject, renamed
+## or not.
+func _subject_submitted(design: Model) -> void:
+	if not _named.is_empty() and not Style.same_subject(
+			"%s %s %s" % [_brief, _heard_fresh, _named], design.name):
+		_begin_subject("", _heard_since)
+	_named = design.name.strip_edges()
+	_named_as = ("%s. %s" % [_named, design.description.strip_edges()]) \
+		if not _named.is_empty() else design.description.strip_edges()
+	_heard_since = ""
 
 
 ## The subject a session was started on, or asked a tool about: kept for the
@@ -5703,19 +5772,17 @@ func _subject_of(model: Model = null) -> String:
 func heard(subject: String, fresh: bool = false) -> void:
 	var said: String = subject.strip_edges()
 	if fresh:
-		_heard = said
 		_heard_fresh = said
-		# What the last design from outside was called is not this one's
-		# subject: a lighthouse after a statue was read as a figure.
-		if not _busy:
-			_brief = ""
-		_joints_told = 0
-		_joint_parts_told = false
-		_joints_refused = false
+		# What the last design was called is not this one's subject: a
+		# lighthouse after a statue was read as a figure.
+		_begin_subject(_brief if _busy else "")
 		return
-	if said.is_empty() or _heard.to_lower().contains(said.to_lower()):
+	if said.is_empty():
 		return
-	_heard = ("%s %s" % [_heard, said]).strip_edges().right(HEARD_MOST)
+	if not _heard.to_lower().contains(said.to_lower()):
+		_heard = ("%s %s" % [_heard, said]).strip_edges().right(HEARD_MOST)
+	if not _heard_since.to_lower().contains(said.to_lower()):
+		_heard_since = ("%s %s" % [_heard_since, said]).strip_edges().right(HEARD_MOST)
 
 
 ## How much of what was heard is kept, in characters: a brief and a few subjects.
@@ -5864,9 +5931,11 @@ func _unjointed_refusal(design: Model) -> String:
 	var call: String = _figure_call(design, kind)
 	# Sent back only when the character is the subject. One in a scene is
 	# still told of its joints (_on_joints_said): people in scenes posed more
-	# for it (docs/BRICKBENCH.md, "figures on joints").
-	if call.is_empty() or Style.in_a_scene(_subject_of(design),
-			[_heard_fresh, design.name, design.description]):
+	# for it (docs/BRICKBENCH.md, "figures on joints"). So is a part of one
+	# alone, an owl's head: the call lays the whole body, and "leave out the
+	# body it replaces" would replace the model (surface_probe, since 78c4e508).
+	if call.is_empty() or Style.part_alone(design.name) or Style.in_a_scene(
+			_subject_of(design), [_heard_fresh, design.name, design.description]):
 		return ""
 	_joints_refused = true
 	var what: String = "figure" if kind == "figure" else "creature"
@@ -5976,7 +6045,7 @@ func _variety(model: Model) -> String:
 	# so in words built solid shells. The style advice naming restyle_model
 	# is what got the finishing pass used.
 	var rooms: String = ""
-	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	var about: String = "%s %s %s" % [_asked_as(), model.name, model.description]
 	if Style.group_for(about) in ["fantasy", "buildings_since_2010"] \
 			and (thin_shapes > 0 and shapes.size() < thin_shapes
 				or thin_lots > 0 and lots.size() < thin_lots):
@@ -10744,7 +10813,7 @@ var _outside_creative: Dictionary = {}
 
 ## The pass's brief for the model as it stands.
 func _creative_brief() -> String:
-	var subject: String = _brief.strip_edges()
+	var subject: String = _asked_as().strip_edges()
 	if subject.length() > 160:
 		subject = subject.substr(0, subject.rfind(" ", 160)) + "…"
 	var worked := PackedStringArray()
@@ -13854,7 +13923,7 @@ func _wide_yard(model: Model, box_of: Dictionary) -> String:
 	if box_of.size() < DAYLIGHT_FROM:
 		return ""
 	var stand := RegEx.create_from_string("\\b(%s)\\b" % STAND_WORDS)
-	if stand.search(("%s %s %s" % [_brief, model.name, model.description]).to_lower()) != null:
+	if stand.search(("%s %s %s" % [_asked_as(), model.name, model.description]).to_lower()) != null:
 		return ""
 	var low: int = 1 << 30
 	var high: int = -(1 << 30)
@@ -13964,7 +14033,7 @@ func _dark_and_plain(model: Model) -> String:
 func _straight_shaft(model: Model, box_of: Dictionary) -> String:
 	if box_of.size() < DARK_FROM:
 		return ""
-	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	var about: String = "%s %s %s" % [_asked_as(), model.name, model.description]
 	var traits: Dictionary = Style.traits_of(about)
 	if traits.has("round") or traits.has("vehicle"):
 		return ""
@@ -16930,8 +16999,7 @@ func forget_built() -> void:
 	# subject, or the statue built before it makes the lighthouse after it a
 	# figure. The brief a session was started on stays.
 	if not _busy:
-		_brief = ""
-		_heard = _heard_fresh
+		_begin_subject("")
 
 
 func clear_built() -> void:
@@ -19271,7 +19339,6 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_reviewing = {}
 		_detail_added = []
 		_exact_save_refusals = 0
-		_brief = "%s. %s" % [design.name, design.description]
 		# Submitted again with the same features keeps what was done for them.
 		if design.features != _outside_features:
 			_feature_used = {}

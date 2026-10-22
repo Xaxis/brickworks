@@ -22,19 +22,22 @@
 //                            cards show, made by the app beside the big one
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
 //                            a time, searched (q), filtered (kind, size,
-//                            instructions, technic, tested, tag) and sorted
-//                            (sort: newest, views, likes, remixes, builds,
-//                            top); with tests=1, test models too, which
-//                            nobody else is shown
+//                            instructions, technic, tested, tag, made:
+//                            hand or assistant) and sorted (sort: newest,
+//                            views, likes, remixes, builds, top; window:
+//                            week or month, Top's); with tests=1, test
+//                            models too, which nobody else is shown
 //   GET  ?op=shelves         /gallery's front: this week's pick and the small
 //                            builds' shelf (supabase/discovery.sql); tests=1
 //                            as the list
 //   GET  ?op=list&mine=1     the list, with the session: each card's share of
-//   GET  ?op=shelves&mine=1  its parts the person owns (owned), the sort
-//                            owned (Parts I own) and ready=1 (only what they
-//                            can build now) on the list, and the shelf of
-//                            what they can build now on the front; never
-//                            kept by the CDN
+//   GET  ?op=shelves&mine=1  its parts the person owns (owned) and whether
+//                            they like it (liked), the sort owned (Parts I
+//                            own), ready=1 (only what they can build now)
+//                            and following=1 (the models of the people they
+//                            follow) on the list, and the shelf of what
+//                            they can build now on the front; never kept
+//                            by the CDN
 //   GET  ?op=tested&id=X     the owner's own: what the app found of the
 //                            newest version, every test and why, passed
 //                            or not (with v=N, version N's)
@@ -141,7 +144,7 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf,
+  KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   listQuery, looksLikePerson, modelHash, motionsIn, movesWords, partFacts, siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
@@ -151,8 +154,12 @@ import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
-// The one model card, the browser's too (web/card.js): a model's remixes.
+// The one model card, the browser's too (web/card.js): a model's remixes,
+// more by its designer and similar models.
 import { cardHtml } from "./_card.js";
+// The kit, made in the card's file: the designer's avatar and the action
+// bar's buttons.
+import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -751,11 +758,6 @@ ${rows.join("\n")}
 `);
 }
 
-/// A count is said once there is one, as a card says it: "0 likes" reads as
-/// a page nobody visits (docs/SOCIAL.md). Kept on the page, hidden, for the
-/// page's script to show when a like makes it one.
-const zero = (n) => (Number(n) ? "" : " hidden");
-
 /// The Tested mark, for a version that passed (api/_tested.js publicMark):
 /// small, the four results on hover (its title) and on a tap (it opens),
 /// and whose finding it is. Nothing for any other version.
@@ -768,12 +770,124 @@ function testedMark(mark) {
     + `building it by its own ${count(mark.steps, "step")}.</p></div></details>`;
 }
 
-/// /m/X: the model's own page. What its owner said about it, what it is,
-/// its counts, its licence and its remix tree, with the way into the 3D
-/// viewer and into the app. Every word an owner typed is escaped.
+/// Who made it, at the head of its page: their avatar, name and handle, a
+/// link to their profile, and Follow beside it (web/follow.js shows it once
+/// it knows who is asking). A credit with no profile behind it is the name
+/// alone, with an avatar made from it; a model shared with no credit, none.
+function designerRow(model) {
+  if (model.by) {
+    const handle = escapeHtml(model.by.handle);
+    return `<div class="shared-by"><a class="who" href="/u/${handle}">${avatarHtml(model.by)}`
+      + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
+      + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>Follow</button>`
+      + `<span class="said" role="status"></span></div>`;
+  }
+  if (!model.author) return "";
+  return `<div class="shared-by"><span class="who">${avatarHtml({ name: model.author })}`
+    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
+}
+
+/// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
+/// NEXT_MOST cards a row, and a row only once it has NEXT_LEAST, since a
+/// row of one or two reads as a gallery nobody uses.
+export const NEXT_MOST = 6;
+export const NEXT_LEAST = 3;
+
+/// The cards a model's page ends with: more by its designer, their other
+/// models in the gallery by Top builds; and similar models, of its kind or
+/// sharing its tags, the most tags shared first, then its kind, then Top
+/// builds; or, with neither, the gallery's Top. Never from who looked at
+/// what (D13). A card the page shows
+/// already (the model, its remixes, a card in More by) is not shown again.
+/// Read through directory_models, as the gallery is, so a model taken out
+/// is never offered; a test model's own page, which only a probe has the
+/// link to, offers test models too, as it lists its test remixes
+/// (supabase/test_models.sql). The database not answering is no rows: the
+/// page is drawn without them, never refused.
+async function nextOf(origin, id, model, own) {
+  const none = { by: [], like: [], gallery: [] };
+  if (!own) return none;
+  const ask = (query) => db("rpc/directory_models", { method: "POST",
+    body: { query: { sort: "top", tests: own.test === true, ...query } } }).catch(() => []);
+  const tags = model.tags || [];
+  const [theirs, kin, ...tagged] = await Promise.all([
+    model.by ? ask({ owner: own.owner, size: NEXT_MOST + 1 }) : [],
+    model.kind ? ask({ kind: model.kind, size: 24 }) : [],
+    ...tags.slice(0, 3).map((tag) => ask({ tag, size: 12 })),
+  ]);
+  const by = (theirs || []).filter((row) => row && row.id !== id).slice(0, NEXT_MOST);
+  const shown = new Set([id, ...(model.remixes_listed || []).map((row) => row.id),
+    ...(by.length >= NEXT_LEAST ? by.map((row) => row.id) : [])]);
+  const top = (row) => SCORE.builds * (Number(row.builds) || 0) + SCORE.remixes * (Number(row.remixes) || 0)
+    + (row.tested === true ? SCORE.tested : 0);
+  const near = (row) => 2 * (row.tags || []).filter((tag) => tags.includes(tag)).length
+    + (model.kind && row.kind === model.kind ? 1 : 0);
+  const found = new Map();
+  for (const row of [...(kin || []), ...tagged.flat()]) {
+    if (row && !shown.has(row.id) && !found.has(row.id)) found.set(row.id, row);
+  }
+  const like = [...found.values()].sort((a, b) => near(b) - near(a) || top(b) - top(a)
+    || String(b.listed_at || "").localeCompare(String(a.listed_at || ""))).slice(0, NEXT_MOST);
+  const cards = (rows) => (rows.length >= NEXT_LEAST ? rows.map((row) => cardOf(origin, row)) : []);
+  const next = { by: cards(by), like: cards(like), gallery: [] };
+  // Neither row: the gallery's own Top, so the page's last screen always
+  // has another model to open (docs/SOCIAL.md U4), however few there are.
+  if (!next.by.length && !next.like.length) {
+    const top = await ask({ size: NEXT_MOST + shown.size });
+    next.gallery = (top || []).filter((row) => row && !shown.has(row.id)).slice(0, NEXT_MOST)
+      .map((row) => cardOf(origin, row));
+  }
+  return next;
+}
+
+/// A row of cards the page ends with, or nothing for none.
+function nextRow(key, title, cards) {
+  if (!cards.length) return "";
+  return `<section class="next" id="${key}" aria-labelledby="${key}-h"><h2 id="${key}-h">${title}</h2>`
+    + `<div class="models row">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
+}
+
+/// The action bar: Like, Save, Share, Comment, I built it and More, each an
+/// icon button that says its name and count (web/kit.js), never a count of
+/// none. web/model-page.js makes them work, asking to sign in first where
+/// one must be; it counts the comments as it lists them.
+function actionBar(origin, id, model) {
+  const embed = links(origin, id).embed;
+  return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
+    + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false,
+      attrs: 'data-mark="like" title="Like it"' })
+    + `<button type="button" class="icon-btn" data-mark="save" aria-label="Save" aria-expanded="false" `
+      + `aria-controls="save-panel" title="Save it to your favourites or a collection">${iconHtml("save")}</button>`
+    + iconButtonHtml({ icon: "share", name: "Share", attrs: 'data-share title="Share it: copy its link"' })
+    + iconButtonHtml({ icon: "comment", name: "Comment", attrs: 'data-mark="comment" title="Comments on it and its steps"' })
+    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build",
+      attrs: 'data-mark="built" title="I built it: add a photo of your build"' })
+    + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
+      + `${iconHtml("more")}</summary><div class="menu-list">`
+      + `<button type="button" data-embed="${escapeHtml(embed)}">Copy the embed code</button>`
+      + `<button type="button" data-report="this model" data-report-model="${id}" hidden>Report it</button>`
+      + `<a href="/takedown">Takedown requests</a></div></details>`
+    + `</div>`
+    // Save opens your lists, Favourites first (docs/SOCIAL.md D2), and a
+    // new collection's name; drawn by web/model-page.js once signed in.
+    + `<div class="save-panel" id="save-panel" hidden><p class="save-head">Save it to</p>`
+    + `<div class="collect-list"></div>`
+    + `<form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>`
+    + `<input id="new-list" maxlength="80" placeholder="A new collection">`
+    + `<button class="cta ghost" type="submit">Make it</button></form></div>`
+    + `<p class="said marks-said" role="status"></p>`;
+}
+
+/// /m/X: the model's own page. Its picture first, with the strip of its
+/// other pictures, and beside it on a laptop (under it on a phone) what it
+/// is, who made it, the way into the viewer and the app, and the action
+/// bar; then its tabs, About (what its owner said, its tags and licence),
+/// Comments, Builds, Remixes and Versions, each a part of the page; and at
+/// the end more by its designer and similar models, or, with neither, the
+/// gallery's. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
-function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = []) {
+function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] }) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -782,6 +896,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const old = version.n !== newest;
   const title = old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
   const viewer = `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
+  const copyLink = `/app?copy=${id}${old ? `&v=${version.n}` : ""}`;
   const shownModel = old ? { ...model, parts: version.parts } : model;
   const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.png` : "")
     : (model.has_image ? `/m/${id}.png` : "");
@@ -800,15 +915,20 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       + `${fromVersion ? `, <a class="from-version" href="/m/${parent.id}/v/${fromVersion}">version ${fromVersion}</a>` : ""}`
       + `${parent.author ? `, by ${escapeHtml(parent.author)}` : ""}</p>`
     : `<p class="from">Remixed from a model shared by link</p>`;
-  // A model shared before the directory was not counted: its steps are
-  // not known, and are not said.
+  // What it is, as pills, each said once there is one. A model shared
+  // before the directory was not counted: its steps are not known, and are
+  // not said.
   const facts = [
-    model.steps ? `${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}` : "",
-    model.technic ? "Technic or a mechanism" : "",
+    `<li class="pill">${escapeHtml(count(shownModel.parts, "part"))}</li>`,
+    model.steps ? `<li class="pill">${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}</li>` : "",
+    model.technic ? `<li class="pill">Technic or a mechanism</li>` : "",
     // What it does: its own motions' names, else what its app found moves.
-    movesWords(model) ? escapeHtml(`Moves: ${movesWords(model)}`) : "",
-    model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link",
-  ].filter(Boolean);
+    movesWords(model) ? `<li class="pill">${escapeHtml(`Moves: ${movesWords(model)}`)}</li>` : "",
+    Number(model.views) ? `<li class="pill"><span data-count="views">${count(model.views, "view")}</span></li>` : "",
+    `<li class="pill">${model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link"}</li>`,
+    newest > 1 ? `<li><a class="pill version-line" href="#versions">Version ${version.n}${old ? ` of ${newest}` : ""}</a></li>` : "",
+    Number(model.remixes) ? `<li><a class="pill" href="#remixes">${count(model.remixes, "remix", "remixes")}</a></li>` : "",
+  ].join("");
   const tags = (model.tags || []).map((tag) =>
     `<li><a class="pill tag" href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
   const line = (model.from || []).map((one) => one.id
@@ -839,67 +959,83 @@ ${header}
   ${old ? `<p class="old-version" role="note"><b>An older version.</b> This is version ${version.n} of
     ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
   <div class="top">
+    <div class="media">
     <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
-      ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630">`
+      ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
+    ${mediaStrip(model, picture, photos)}
+    </div>
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
-      <p class="by">${escapeHtml(describe(shownModel))}${newest > 1
-        ? ` · <a class="version-line" href="#versions-h">version ${version.n}${old ? ` of ${newest}` : ""}</a>` : ""}</p>
-      ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`
-        + ` <button type="button" class="link follow" data-follow="${escapeHtml(model.by.handle)}" hidden>Follow</button>`
-        + `<span class="said" role="status"></span></p>` : ""}
-      ${fromLine}
-      ${testedMark(mark)}
-      <ul class="facts pills">${facts.map((fact) => `<li class="pill">${fact}</li>`).join("")}</ul>
-      <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
-      <p class="counts"><span data-count="views"${zero(model.views)}>${count(model.views, "view")}</span>
-        <span data-count="likes"${zero(model.likes)}>${count(model.likes, "like")}</span>
-        <span data-count="remixes"${zero(model.remixes)}>${count(model.remixes, "remix", "remixes")}</span>
-        <a data-count="builds" href="#builds-h"${zero(model.builds)}>${count(model.builds, "built", "built")}</a></p>
+      ${designerRow(model)}
       <div class="actions">
-        <a class="cta" href="${escapeHtml(viewer)}">View in 3D</a>
-        <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
+        <a class="cta" href="${escapeHtml(viewer)}" title="Turn it in 3D, step through its build, and get its booklet and parts list: no account needed">Build it</a>
+        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
       </div>
-      <div class="marks" id="marks" data-id="${id}" hidden>
-        <button type="button" class="cta ghost small" data-mark="like" aria-pressed="false">Like</button>
-        <button type="button" class="cta ghost small" data-mark="favourite" aria-pressed="false">Favourite</button>
-        <details class="collect"><summary class="cta ghost small">Add to a collection</summary>
-          <div class="collect-panel"><div class="collect-list"></div>
-            <form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>
-              <input id="new-list" maxlength="80" placeholder="A new collection">
-              <button class="cta ghost" type="submit">Make it</button></form></div></details>
-        <p class="said" role="status"></p>
-      </div>
-      <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
-        list, with no account. Open in Brickworks copies it into your own models, to change and make yours.</p>
-      <p class="note report-line"><button type="button" class="link" data-report="this model"
-        data-report-model="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
+      ${actionBar(origin, id, model)}
+      <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark)}</li>` : ""}${facts}</ul>
+      ${fromLine}
+      <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
-  </div>
-  ${buildsSection(id, model, photos)}
-  ${versionsSection(id, versions, version)}
-  ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
-    <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
-  ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
+    <div class="rest">
+  ${pageTabs(model, newest)}
+  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
+    ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
+    ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
+    <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
   ${commentsSection(id, version.n, newest, version.steps ?? model.steps ?? null)}
-  <section class="licence" aria-labelledby="licence-h"><h2 id="licence-h">Licence</h2>
-    ${licenceWords(model)}</section>
-  <section class="tree" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
+  ${buildsSection(id, model, photos)}
+  <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
     ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
     ${listedRemixes.length || unlisted
       ? `<h3>Made from it</h3>${listedRemixes.length
         ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
         + (unlisted ? `<p class="note">${listedRemixes.length ? "And " : ""}${count(unlisted, "remix", "remixes")} `
           + `shared by link, not in the gallery.</p>` : "")
-      : `<p class="note">Nobody has remixed it yet. Open in Brickworks makes a copy of your own to change;
-        share that, and it shows here.</p>`}
+      : `<p class="note none">Nobody has remixed it yet. <a href="${escapeHtml(copyLink)}">Open it in Brickworks</a>
+        to make a copy of your own to change; share that, and it shows here.</p>`}
   </section>
+  ${versionsSection(id, versions, version)}
+    </div>
+  </div>
+  ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by) : ""}
+  ${nextRow("similar", "Similar models", next.like)}
+  ${nextRow("from-gallery", "More in the gallery", next.gallery || [])}
 </article>
 </main>
 ${footer}
 </body>
 </html>`;
+}
+
+/// The strip under the picture (docs/SOCIAL.md U4): the picture it was
+/// published with, then its owner's own photos, then the photos of real
+/// builds, each a link to its place under Builds; web/model-page.js shows
+/// the one chosen in the picture's place. With no photo it is drawn hidden,
+/// for its owner to add the first: model-page.js shows it to them alone.
+function mediaStrip(model, picture, photos) {
+  const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
+    + `width="96" height="72" loading="lazy" decoding="async"></a>`;
+  const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
+  return `<div class="media-strip" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
+    + (picture ? thumb(picture, `${model.name}, as it was published`,
+      `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
+    + photos.map((photo) => thumb(file(photo), photo.own ? `${model.name}, a photo by its designer`
+      : `A real build of ${model.name}${photo.by ? `, by ${photo.by.name}` : ""}`,
+    `href="#photo-${photo.id}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
+    + `<button type="button" class="thumb add" data-add-picture hidden>Add a picture</button></div>`;
+}
+
+/// The page's tabs (docs/SOCIAL.md U4): a link to each part below, with its
+/// count once there is one, kept on screen as the page scrolls; the one
+/// being read is marked by web/model-page.js, which also counts the
+/// comments as it lists them. Versions only once there are two.
+function pageTabs(model, newest) {
+  const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${name}`
+    + `${Number(n) ? ` <span class="n">${Number(n).toLocaleString("en-US")}</span>` : ""}</a>`;
+  return `<nav class="tabs page-tabs" id="page-tabs" aria-label="On this page">${tab("about", "About")}`
+    + `${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`
+    + `${newest > 1 ? tab("versions", "Versions", newest) : ""}</nav>`;
 }
 
 /// One photo of a real build, as the strip shows it: the photo, the line
@@ -919,15 +1055,17 @@ function buildFigure(model, photo) {
 /// Built by people: how many have built it to the last step, the strip of
 /// photos of their real builds, and the way to add one (web/model-page.js
 /// shows the form to somebody signed in, and to the model's owner the
-/// photos they hid, with a way to hide each).
+/// photos they hid, with a way to hide each). Nobody yet is one line and
+/// the way in, never a count of none.
 function buildsSection(id, model, photos) {
   const builds = Number(model.builds) || 0;
   return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
     <h2 id="builds-h">Built by people</h2>
-    <p class="built-line">${builds ? `Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
-      + "by people following its steps in Brickworks." : "Nobody has followed its steps to the last one here yet."}</p>
+    ${builds ? `<p class="built-line">Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
+      + "by people following its steps in Brickworks.</p>" : ""}
     ${photos.length ? `<div class="build-strip">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
-      : `<p class="note no-builds">No photos of a real build yet. Built it? Add yours.</p>`}
+      : `<p class="note no-builds">${builds ? "No photos of a real build yet. Built it? Add yours."
+        : "Nobody has built it yet. Built it? Add a photo of yours."}</p>`}
     <div class="add-build" id="add-build" data-id="${id}" hidden>
       <button type="button" class="cta ghost" data-add-build>I built it: add a photo</button>
       <form class="build-form" hidden>
@@ -996,7 +1134,7 @@ function versionsSection(id, versions, shown) {
     return `<li><a href="${href}">Version ${one.n}</a>${one.n === newest ? ", the newest" : ""}, `
       + `${when(one.at)}${words ? `: ${escapeHtml(words)}` : ""}${one.note ? ` <q>${escapeHtml(one.note)}</q>` : ""}</li>`;
   }).join("");
-  return `<section class="versions" aria-labelledby="versions-h"><h2 id="versions-h">Versions</h2>
+  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">Versions</h2>
     <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : `Version ${shown.n}, the first.`}
       <span class="when">${when(shown.at)}</span></p>
     ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
@@ -1183,9 +1321,16 @@ async function read(request, response) {
     const versions = await versionsOf(id, page);
     const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
     if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
-    const [mark, photos] = await Promise.all([markOf(db, id, shown.n),
-      photosWhere(`model=eq.${id}`, shownPublicly)]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), photos));
+    // Whose it is: their own pictures lead its strip, and the page leads on
+    // to the rest of their work. The database not answering is no owner.
+    const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
+    const [mark, photos, next] = await Promise.all([markOf(db, id, shown.n),
+      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own)]);
+    // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
+    // then the builds of everybody else, newest first.
+    const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
+      .sort((a, b) => Number(b.own) - Number(a.own));
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next));
   }
 
   const row = await publishedRow(id);
@@ -1276,15 +1421,22 @@ async function read(request, response) {
 }
 
 /// /gallery's models, a page at a time: the listed ones a query asks for
-/// (api/_directory.js listQuery), through directory_models, which says
-/// for itself what a visitor may see. With the kinds, sizes and sorts it
-/// knows, so a client can ask in its words.
+/// (api/_directory.js listQuery), through gallery_models, which says for
+/// itself what a visitor may see. With the kinds, sizes, sorts, Top's
+/// windows and how a model was made, so a client can ask in its words;
+/// signed in, whether they like each, and Following.
+///
+/// Until supabase/gallery_tabs.sql is applied there is no gallery_models:
+/// the list is asked of directory_models, as before, and says nothing of
+/// windows, Made or Following, so the page offers none of them; a question
+/// that asks one is refused in words (400), never a 500.
 async function gallery(request, response, origin) {
   const mine = await whoseOwn(request, origin);
   let asked;
   let said;
   try {
-    ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool) }));
+    ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool),
+      signedIn: Boolean(mine) }));
   } catch (trouble) {
     // Signed in, with nothing in their collection to sort or filter by.
     if (mine && trouble instanceof Unacceptable && trouble.status === 401) {
@@ -1295,7 +1447,22 @@ async function gallery(request, response, origin) {
   }
   // Their shares only once there is something to share of.
   if (mine?.pool) asked.pool = mine.account;
-  const rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
+  if (asked.following) asked.following = mine.account;
+  let rows;
+  let tabs = true;
+  try {
+    rows = await db("rpc/gallery_models", { method: "POST", body: { query: asked } });
+  } catch (trouble) {
+    if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
+    if (asked.following || asked.days || asked.made) {
+      throw new Unacceptable("Following, Made and Top's time windows are not here yet: they come with "
+        + "the gallery's next update.");
+    }
+    tabs = false;
+    rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
+  }
+  const models = await withWins(rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)), Boolean(said.tests));
+  if (mine) await withLiked(models, mine.account);
   // Kept briefly by the CDN, like the pages: the same question asked by
   // a hundred phones is one call to the database. Never with test models,
   // nor anybody's own shares.
@@ -1305,13 +1472,34 @@ async function gallery(request, response, origin) {
     per_page: PER_PAGE,
     more: rows.length > PER_PAGE,
     // What each won in the monthly challenges (supabase/challenges.sql).
-    models: await withWins(rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)), Boolean(said.tests)),
+    models,
     kinds: KINDS,
     sizes: Object.entries(SIZES).map(([id, size]) => ({ id, label: size.label })),
     sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
+    ...(tabs ? {
+      windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
+      mades: Object.entries(MADES).map(([id, label]) => ({ id, label })),
+      following: Boolean(mine),
+    } : {}),
     score: SCORE,
     ...(mine ? { mine: mine.pool } : {}),
   });
+}
+
+/// Which of [cards] [account] likes, said on each (liked), for the hearts
+/// on the cards: their own, so only in an answer never kept by the CDN.
+/// Left unsaid when it cannot be read.
+async function withLiked(cards, account) {
+  const ids = cards.map((one) => String(one.id)).filter((id) => ID.test(id));
+  if (!ids.length) return cards;
+  try {
+    const liked = new Set((await db(`model_likes?account=eq.${account}&model=in.(${[...new Set(ids)].join(",")})&select=model`))
+      .map((row) => row.model));
+    for (const one of cards) one.liked = liked.has(one.id);
+  } catch {
+    // Unsaid: the hearts are drawn as not pressed.
+  }
+  return cards;
 }
 
 /// The person asking with &mine=1, and what their collection holds as the
@@ -1420,16 +1608,20 @@ async function shelves(request, response, origin) {
     // The monthly challenge open now, or the next (supabase/challenges.sql).
     challengeLine(tests),
   ]);
+  const cards = {
+    ready: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
+    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? cardOf(origin, pick.card) : null,
+    small: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
+  };
+  if (mine) await withLiked([...cards.ready, ...(cards.pick ? [cards.pick] : []), ...cards.small], mine.account);
   response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
-    ...(mine ? { mine: mine.pool, ready: { models: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
-      more: (ready || []).length > SHELF } } : {}),
-    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? {
+    ...(mine ? { mine: mine.pool, ready: { models: cards.ready, more: (ready || []).length > SHELF } } : {}),
+    pick: cards.pick ? {
       chosen: pick.chosen === true, until: pick.chosen === true ? pick.until ?? null : null,
-      week: weekOf(pick.week), model: cardOf(origin, pick.card),
+      week: weekOf(pick.week), model: cards.pick,
     } : null,
-    small: { size: "small", label: SIZES.small.label, most: SIZES.small.most,
-      models: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
+    small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: cards.small,
       more: (small || []).length > SHELF },
     challenge,
     score: SCORE,

@@ -15,8 +15,8 @@
 //      sign-in dialog, their address, Email me a code (one code sent to a
 //      Resend test address that delivers nowhere; a fresh one minted on the
 //      test side, as the tests sign in), the code, Sign in — and the like
-//      goes through, the count with it. Favourite. Add to a collection, a
-//      new one named, made and ticked.
+//      goes through, the count with it. Save: Favourites, ticked; a new
+//      collection named, made and ticked.
 //   3. /profile: their address said, no name yet; a name and a handle
 //      chosen and saved; the house in their favourites; the collection,
 //      made public, with a page of its own.
@@ -157,20 +157,26 @@ try {
   }
   await page.waitForFunction(() => document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed") === "true",
     null, { timeout: 30000 }).catch(() => {});
+  // The action bar's Like (web/model-page.js): pressed, its count beside
+  // it and in its name.
   let state = await page.evaluate(() => ({
-    like: document.querySelector('[data-mark="like"]').textContent,
+    like: document.querySelector('[data-mark="like"]').getAttribute("aria-label"),
     pressed: document.querySelector('[data-mark="like"]').getAttribute("aria-pressed"),
-    likes: document.querySelector('[data-count="likes"]').textContent,
+    likes: document.querySelector('[data-mark="like"] .n')?.textContent || "",
     dialog: Boolean(document.querySelector("dialog.sign-in")),
     kept: Boolean(JSON.parse(localStorage.getItem("brickworks.session") || "null")?.refresh_token),
   }));
-  check(`signed in, and the like went through: ${state.like}, ${state.likes}`,
-    !state.dialog && state.pressed === "true" && state.likes === "1 like" && state.kept);
-  await page.click('[data-mark="favourite"]');
-  await page.waitForFunction(() => document.querySelector('[data-mark="favourite"]')?.getAttribute("aria-pressed") === "true",
-    null, { timeout: 15000 }).catch(() => {});
-  check("kept in their favourites", (await page.textContent('[data-mark="favourite"]')) === "In your favourites");
-  await page.click("details.collect summary");
+  check(`signed in, and the like went through: ${state.like}`,
+    !state.dialog && state.pressed === "true" && state.like === "Like, 1 like" && state.likes === "1" && state.kept);
+  // Save: their lists, Favourites first (docs/SOCIAL.md D2).
+  await page.click('[data-mark="save"]');
+  await page.waitForSelector('#save-panel:not([hidden]) label[data-list="favourites"] input', { timeout: 15000 });
+  await page.check('#save-panel label[data-list="favourites"] input');
+  await page.waitForFunction(() => document.querySelector('[data-mark="save"]')?.hasAttribute("data-on")
+    && /favourites/i.test(document.querySelector(".marks-said")?.textContent || ""), null, { timeout: 15000 }).catch(() => {});
+  check(`kept in their favourites: "${await page.textContent(".marks-said")}"`,
+    await page.evaluate(() => document.querySelector('#save-panel label[data-list="favourites"] input').checked
+      && document.querySelector('[data-mark="save"]').getAttribute("aria-label") === "Saved"));
   await page.fill("form.collect-new input", LIST);
   await page.click('form.collect-new button[type="submit"]');
   await page.waitForFunction((name) => [...document.querySelectorAll(".collect-list label")]
@@ -187,7 +193,7 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.profile, null, { timeout: 30000 }).catch(() => {});
   state = await page.evaluate(() => ({ ready: document.documentElement.dataset.profile,
     who: document.getElementById("who").textContent, name: document.getElementById("name").value,
-    favourites: [...document.querySelectorAll("#favourites a.model")].map((a) => a.dataset.id),
+    favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id),
     lists: [...document.querySelectorAll("#lists .list-mine input:not([type=checkbox])")].map((i) => i.value) }));
   check(`signed in there too, its address said and no name made from it (${state.who.slice(0, 50)}, "${state.name}")`,
     state.ready === "ready" && state.who.includes(visitorEmail) && state.name === "");
@@ -219,20 +225,25 @@ try {
   listen(look, "stranger");
   await look.goto(`${site}/c/${listId}?tests=1`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ title: document.querySelector("h1")?.textContent,
-    by: document.querySelector(".handle")?.textContent, cards: [...document.querySelectorAll("a.model")].map((a) => a.dataset.id) }));
+    by: document.querySelector(".handle")?.textContent, cards: [...document.querySelectorAll(".model")].map((a) => a.dataset.id) }));
   check(`/c/${listId}: "${state.title}", ${state.by}, the house in it`, state.title === LIST && state.cards.includes(modelId)
     && /Flow Visitor/.test(state.by || ""));
   await shot(look, "4_collection-laptop.png");
   await look.goto(`${site}/u/${ownerHandle}?tests=1`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ title: document.querySelector("h1")?.textContent,
-    cards: [...document.querySelectorAll("a.model")].map((a) => a.dataset.id) }));
+    cards: [...document.querySelectorAll(".model")].map((a) => a.dataset.id) }));
   check(`/u/${ownerHandle}: "${state.title}", the house credited to them`, state.title === "Flow Owner" && state.cards.includes(modelId));
   await shot(look, "5_profile_public-laptop.png");
+  // Nothing of theirs in the gallery, a public list: their page opens on
+  // its Collections tab, and its Models tab says what goes there.
   await look.goto(`${site}/u/${visitorHandle}`, { waitUntil: "load", timeout: 60000 });
-  state = await look.evaluate(() => ({ lists: [...document.querySelectorAll(".lists a")].map((a) => a.textContent),
-    none: document.querySelector(".person .note")?.textContent || "" }));
-  check(`/u/${visitorHandle}: their public collection, and nothing of theirs in the gallery yet`,
-    state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
+  state = await look.evaluate(() => ({ lists: [...document.querySelectorAll(".list-card b")].map((b) => b.textContent),
+    tab: document.querySelector(".tabs [aria-current=page]")?.dataset.tab || "" }));
+  await look.click('.tabs a[data-tab="models"]');
+  await look.waitForLoadState("load");
+  state.none = await look.evaluate(() => document.querySelector(".tab-panel .state")?.textContent || "");
+  check(`/u/${visitorHandle}: their public collection (the ${state.tab} tab), and nothing of theirs in the gallery yet`,
+    state.tab === "collections" && state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
 
   // --- 5. At a phone's width.
   console.log("at 390 px");
@@ -246,7 +257,7 @@ try {
     [`/u/${ownerHandle}?tests=1`, "profile_public"]]) {
     await small.goto(site + where, { waitUntil: "load", timeout: 60000 });
     await small.waitForTimeout(1500);
-    if (name === "model") await small.click("details.collect summary").catch(() => {});
+    if (name === "model") await small.click('[data-mark="save"]').catch(() => {});
     check(`${where} at 390 px: nothing sideways`, !(await sideways(small)));
     await shot(small, `6_${name}-phone.png`);
   }
@@ -262,7 +273,7 @@ try {
     following: document.getElementById("following-said").textContent,
     owned: document.getElementById("owned-said").textContent,
     claude: document.getElementById("claude-said").textContent,
-    favourites: [...document.querySelectorAll("#favourites a.model")].map((a) => a.dataset.id),
+    favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id),
     nav: document.querySelector(".site-head .nav a[data-account]")?.firstChild?.textContent.trim() || "" }));
   check(`one page that is theirs: "${state.title}", ${state.page}, ${state.rail.join(" · ")}`,
     state.title === "Flow Visitor" && state.page === `/u/${visitorHandle}` && state.rail.length === 7);

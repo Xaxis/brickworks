@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow -->
 
 ## Sub-features
 
@@ -526,10 +526,36 @@ plan with Claude as the client.
   owner every published one), `list_page` (`/c/<id>`, public only). HEAD as
   GET. Pages made with the site's header and footer (`siteChrome`, `_site.html`
   beside the function too), cards server-made (`cardHtml`), no script.
-- `profile and collection pages`: `/u/<handle>` — the name, @handle, since
-  when, about them, how many models in the gallery and likes, public
-  collections, and the models they listed and are credited for (never one
-  shared without a name); `/c/<id>` — a public collection's name, "N models,
+- `profile and collection pages`: `/u/<handle>` (rebuilt 2026-10-22,
+  docs/SOCIAL.md U5, `api/people.js` `profilePage`, `web/person.js`) — a
+  person-shaped page, the same for everybody it shows (the house account
+  too, no special case): a banner (`.banner`, one of their models' pictures,
+  chosen) if any; the head (`header.profile-head`: `.avatar.huge` made from
+  the handle by `web/card.js` `avatarHtml` through `api/_card.js`, `h1`,
+  `@handle · [data-role] Designer|Builder · since`, Follow, Share
+  `button[data-share]` (copies the link, "Link copied" toast; the share sheet
+  on a touch screen), More `details.more-menu` with Report it); the bio;
+  links (`ul.links`, https, `rel="ugc nofollow noopener"`, said as their
+  domain); one row of numbers (`ul.numbers li[data-stat]`: builds,
+  remixes, models, likes, followers `[data-followers]`, following, each
+  `hidden` at none); wins as pills; Pinned (`.pinned .models.row`, up to
+  three, their order); then `nav.tabs` Models · Builds · Collections, each
+  a page of its own (`?tab=`; the default the first with something in it),
+  a count `.n` once there is one, `.tab-panel[data-panel]`: Models 24 a page
+  (`[data-models]`, Show more `a[data-more]` appends the next page from
+  `?op=profile&page=N`, a link to `?page=N` with no script), Builds
+  (`.builds-made`, `.builds-of`, photos in `.build-grid` columns),
+  Collections (`a.list-card`, a `.mosaic` of up to four pictures); an empty
+  tab says what goes there (`.state`); whom they follow (`section.follows`)
+  only when they chose to show it, never their followers. Links, banner and
+  pins: `supabase/profile_shows.sql` (one row an account, cascades from
+  auth.users, 13+ by trust.sql's profile trigger; applied to the live
+  project 2026-10-22 for m145 with `tools/apply_sql.mjs`, dry-run first, and
+  recorded here as the project has no migration table; before it the page
+  had none and `POST ?op=showcase` said 503 "not open yet", after checking
+  what it is sent); chosen under Settings on `/profile`
+  (`#showcase-form`, shown once `?op=me` says `showcase.ready`);
+  `/c/<id>` — a public collection's name, "N models,
   collected by <their profile>", its description and its listed models in the
   order they were put there. Every word escaped; og tags and a canonical link.
 - `your profile page` (`web/profile.html`, `web/profile.js`): `/profile`,
@@ -551,12 +577,62 @@ plan with Claude as the client.
   photos and of photos of their models deleted, then the account, every row
   of theirs cascading; the site owner's refused). people_flow deletes its
   visitor this way.
-- `like and keep a model` (`web/model-page.js`): on `/m/<id>`, hidden
-  until the script runs: Like (aria-pressed, the count beside the views
-  updated), Favourite, Add to a collection (each list ticked or not, a new
-  one named and made with the model in it). Signed out, each opens the
-  sign-in dialog first and goes on once signed in. The page's policy lets it
+- `model page action bar` (`web/model-page.js`, `api/share.js` `actionBar`,
+  2026-10-22, docs/SOCIAL.md U4): on `/m/<id>`, `#marks.action-bar`, the
+  kit's icon buttons drawn by the server: Like (`[data-mark="like"]`,
+  aria-pressed, its count beside it and in its label, "Like, 96 likes"),
+  Save (`[data-mark="save"]`, aria-expanded: `#save-panel` opens your lists,
+  Favourites first as `label[data-list="favourites"]`, ticked when it is a
+  favourite, then each collection, and a new one named and made with the
+  model in it; `data-on` and the label "Saved" while it is in any),
+  Share (`[data-share]`: `navigator.share` with the page's address where
+  the browser has it, else the address copied and the toast "Link
+  copied"), Comment (`[data-mark="comment"]`, its count set once the
+  comments are listed, the ones everybody sees; to the comments, the box
+  focused; hidden where comments are not open), I built it
+  (`[data-mark="built"]`, the builds count; to Built by people, opening
+  the photo form) and More (`details#more.more-menu`: Copy the embed code
+  `[data-embed]`, Report it `[data-report]`, Takedown requests; for the
+  model's owner, comments off or on and their numbers instead of Report).
+  Like, Save and Comment signed out open the sign-in dialog first and go
+  on once signed in. Never a count of none. The page's policy lets it
   reach the sign-in service (`SUPABASE_URL`) as well as itself.
+- `more by and similar models` (`api/share.js` `nextOf`, 2026-10-22): the
+  end of `/m/<id>`: `#more-by` (the designer's other listed, credited
+  models, `directory_models` with `owner`, by Top builds) and `#similar`
+  (`directory_models` by its kind and by each of its first three tags,
+  ranked by tags shared, then kind, then Top builds; never what anybody
+  looked at), each a `.models.row` of cards drawn only with three, six at
+  most, and no card the page shows already (the model, its listed
+  remixes, More by's); with neither row, `#from-gallery`, More in the
+  gallery: the gallery's Top, however few, so the last screen always has
+  another model to open. A test model's page offers test models too. A
+  database error is no row, never a 500. No new SQL.
+- `model page pictures and tabs` (`api/share.js` `mediaStrip`, `pageTabs`,
+  `web/model-page.js` `startPictures`, `startTabs`, 2026-10-22,
+  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip`: the
+  published picture first (`aria-current`), then its owner's own photos
+  (`data-own`; build photos posted by the model's owner, through the same
+  pipeline, so no new table), then photos of real builds, newest first,
+  each a link to its figure under Builds; chosen, it is shown whole in the
+  picture's place (`.picture.photo`), which stays the way into the viewer.
+  With no photo the strip is drawn hidden, and shown to the model's owner
+  alone with `[data-add-picture]` Add a picture, which opens the photo
+  form (three an account on a model, as for any builder). Under it,
+  `#page-tabs`, the kit's `.tabs`: About (`#about`: its words, tags and
+  licence), Comments (counted once listed; hidden where comments are not
+  open), Builds, Remixes and, with two or more, Versions, each with its
+  count, never one of none; sticky under the header (`.loose`, with no
+  ground, until it sticks), the part at the top marked `aria-current`, a
+  tab chosen marked until the reader scrolls on. Nothing yet is one line
+  and the way in: "Nobody has commented yet." and the box or Sign in to
+  comment, "Nobody has built it yet. Built it? Add a photo of yours." and
+  I built it, "Nobody has remixed it yet." with Open it in Brickworks.
+  `tests/test_model_page.py` makes the stand-in's pages with the real
+  handler (no browser): the rows, their order, the bar's names and counts,
+  and the page drawn when `directory_models` answers 500.
+- `model page browser flow` (`tools/web/model_page_flow.mjs`, preview check
+  `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser
   (`localStorage` `brickworks.session`), renewed when an access token kept for
   the tab (`sessionStorage`) has run out and put back for the app; a dialog
@@ -826,14 +902,14 @@ plan with Claude as the client.
   (30), `MINE_CACHE` (`private, no-store`, on every answer, a 401 too).
   Before the file is applied the page is as before and `?op=designs`
   answers `ready: false`.
-- `a designer's page` (`api/people.js` `profilePage`, `earnedHtml`,
+- `a designer's page` (`api/people.js` `profilePage`, `numbersHtml`,
   `stripHtml`, `cardHtml(card, {earned})`): `/u/<handle>` with a model in
-  the gallery says Designer and leads with tiles (`ul.earned`, each
-  `li[data-earned]`: builds and remixes `.lead`, then tested, comments,
-  models, followers, `[data-followers]`, which `web/follow.js` keeps large
-  when it counts again), a line of likes and following, Start with their
-  most built (`.start-with`, Build it to `/app?view=<id>`), Built by others
-  (`.builds-of`), and the cards by Top builds (`a.model[data-builds]
+  the gallery says Designer (`[data-role]`) and its numbers are what the
+  models earned (builds finished and remixes first, `[data-followers]`,
+  which `web/follow.js` counts again); on the Models tab Start with their
+  most built (`.start-with`, Build it to `/app?view=<id>`) and the cards by
+  Top builds; Built by others (`.builds-of`) on the Builds tab; the cards
+  (`a.model[data-builds]
   [data-remixes][data-comments]`, "3 built · 1 remix · 1 comment", Tested,
   never views). `?op=profile` gives `designer` and each card's `comments`.
   The page is the same bytes for everybody; `#designs-mine` is empty and
@@ -846,6 +922,8 @@ plan with Claude as the client.
   who built it with their photos). `document.documentElement.dataset.designs`
   is `ready`, `empty`, `not-yet`, `not-mine`, `signed-out` or `trouble`.
 - `designers browser flow` (`tools/web/designers_flow.mjs`): below.
+- `profile browser flow` (`tools/web/profile_flow.mjs`, preview check
+  `[profile]`): below.
 - `the monthly challenge's rules` (`supabase/challenges.sql`, 2026-10-19):
   tables `challenges` (title, brief, `starts_on`/`ends_on` whole UTC days,
   `most_parts`, `set_number`/`set_name`, `tested`, `test`, `ended_at`,
@@ -1029,32 +1107,40 @@ plan with Claude as the client.
   with no errors and nine in ten within `--most-ms` (2500).
 - `gallery page` (`web/gallery.html`, `web/gallery.js`): `/gallery`, its
   `.html` redirecting to it as every page's does (`deploy.sh`'s page loop; the
-  local relay maps `/gallery` itself). The site's header (Gallery is now
-  `/gallery` in every page's nav, its one change to the other pages), a grid of cards in the
-  shape of a share's 1200 x 630 picture — the picture, the name (two lines at
-  most, the whole in its title), "N parts, by X" — each a link to `/m/<id>`;
-  Show more for the next page; words for nothing listed, for a list that did
-  not load and for no JavaScript; how to put yours there; the site's footer
-  with the LDraw and LEGO® notices and a line on reporting a model. Names and
-  credits are put in with `textContent`, links built from an id that matches
-  `^[A-Za-z0-9]{10}$` only. `data-gallery` on `<html>` says `ready` or `broken`
-  for a check (`asking` while a question is out). Since Tested (2026-10-18):
-  a card marked Tested (`data-tested="yes"`, the four in its title) and a
-  Tested only box (`tested=1` in the address), proven by `tested_flow` (the
-  Tested entry below). Since the directory: a
-  search box (asked 350 ms after typing stops, at once on Enter), Filters
-  (Kind and Size, filled from the list's own `kinds` and `sizes`; Has
-  instructions; Technic or mechanism; open on a screen 760 px wide or more,
-  folded on a phone with what they say on the folded line), Sort, a tag as a
-  chip to take off, "N models", and words for nothing matching with a button
-  that clears it all. The question lives in the address
-  (`/gallery?q=castle&kind=space&sort=views`), put back with `replaceState`,
-  so a search can be sent and a reload asks it again; an address asking for
+  local relay maps `/gallery` itself). Since U3 (docs/SOCIAL.md, 2026-10-22)
+  the work first: the title and a search (`#q`, asked 350 ms after typing
+  stops, at once on Enter) on one line; the tabs `#tabs [data-tab]` Top · New
+  · Following (Following only signed in and once the list says `following:
+  true`), one `aria-current`; Top over `#window` (All time, This month, This
+  week: `window=month` or `week`, offered when the list sends `windows`); the kinds as
+  `#kinds button.pill[data-kind]`, one `aria-pressed`, a row that scrolls
+  inside itself; `#filters` (a `.more-menu` whose summary says how many are on)
+  holding the order (Top builds, Newest, Most liked, Most built, Most remixed,
+  Parts I own signed in; never Most viewed), Size, `#made` (Hand-built, With the
+  assistant: offered when the list sends `mades`), Has instructions, Technic,
+  Tested only, and Clear the filters; a tag as a chip to take off. Then the
+  cards (`web/card.js`, `like: true`), two to a row under 900 px, three to
+  1200, four above; on the front (Top, all time, nothing asked) this week's
+  pick first and the shelves after the first rows (`ui:the gallery's front
+  shelves`). A card's heart likes it from the card, signed in, at once
+  (`POST /api/people?op=like`), and asks to sign in when not. The next page
+  comes by itself as Show more nears the screen, three times
+  (`data-auto`), then waits for Show more; the address keeps the question and
+  how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
+  with `replaceState`, so it can be sent; a card opened is kept in the
+  history's state and Back puts it where it was (`data-back` its id or
+  `lost`). States: `#empty` (nothing listed, with Open the app), `#nothing`
+  (nothing matches, with Clear), `#quiet` (Following with nobody, or a quiet
+  week, with its way back), `#broken`. `data-gallery` on `<html>` is `asking`,
+  `ready` or `broken`, `data-pages` how many are shown. An address asking
   what the list does not know gets the whole gallery and its address put
-  right; an answer to an older question is thrown away. A card shows the
-  small picture when there is one, and its views, likes and remixes. An
-  address with `tests=1` asks the list with it on every question, test
-  models in (share_flow opens `/gallery?tests=1`: its model is a test's).
+  right; an answer to an older question is thrown away. `tests=1` asks the
+  list with test models in on every question. Before `supabase/gallery_tabs.sql`
+  is applied `api/share.js` answers from `directory_models` and refuses
+  `window`, `following` and `made` in words (400); after, from
+  `gallery_models`, its cards carrying `comments`.
+- `gallery browser flow` (`tools/web/gallery_flow.mjs`, preview check
+  `[gallery]`): below.
 - `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
   the project's own showcase models, listed by the project's account
   (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
@@ -1086,10 +1172,15 @@ plan with Claude as the client.
   app's isolation headers and CSP are not put on them. Since the directory
   (2026-10-13) `/m/<id>` is the model's own page, a page of the site (its
   stylesheet, header and footer, `siteChrome`; `web/directory.css` for what only
-  it has): the picture (a link into the viewer), the name, "N parts, by X",
-  what it was remixed from while that is listed ("a model shared by link"
-  when not), its steps and whether they are its builder's, Technic, when it
-  was listed, its views, likes and remixes, View in 3D and Open in Brickworks;
+  it has). Since U4 (2026-10-22) the picture (a link into the viewer) leads,
+  with a column beside it on a laptop that stays on screen as the page
+  scrolls (`.side`, sticky) and under it on a phone: the name, the designer
+  (`.shared-by`: avatar, name and @handle linking to /u/, Follow), Build it
+  (the viewer, `.actions a.cta`) and Open in Brickworks, the action bar
+  (below), then facts as pills (Tested first, parts, steps and whether they
+  are its builder's, Technic, Moves, views, when it was listed, its version
+  and remixes as links), and what it was remixed from while that is listed
+  ("a model shared by link" when not); its builds, versions,
   what its owner wrote (escaped, its lines kept), its tags (each a link to
   `/gallery?tag=`), its kind (in the crumbs, a link to `/gallery?kind=`), its
   licence in words with whom to credit and the licence's own page, and its
@@ -2015,11 +2106,13 @@ heavy node tools/web/design_flow.mjs --root=<an old export> --out=…   # an old
 node tools/web/design_flow.mjs --url=<preview>                        # a deployment's pages, the API stood in
 ```
 
+```
+
 It visits home, gallery (its filters opened at 390), a model nobody has
 remixed (`/m/DesignFox1`, local only), the kit page `/_kit` with its more
 menu open (local only), a model's page (signed
-out: Report it opens the report dialog; signed in: the collect panel, the
-comment form, and I built it's photo form with its file picker), the
+out: More opened, and its Report it opens the report dialog; signed in:
+Save's lists, the comment form, and I built it's photo form with its file picker), the
 stand-in's own model signed in with Enter this month's challenge and its
 dialog (here only: a deployment has none of the stand-in's models), an older
 version, the embed card, a person, a collection, `/challenge` (an open one,
@@ -2046,6 +2139,39 @@ and api/, given as `--root=`) it fails the age question by name:
 `select#age-month … the browser's own dropdown (appearance auto)`, its
 13.33 px type, and the year box differing from it in type, corners, fill
 and height. Pictures of every state in --out.
+
+The model page (docs/SOCIAL.md U4), with no network: the stand-in's
+watchtower (More by Robin Castell, 3 cards; no Similar, 2 found; a strip
+of 3 pictures), its remix at dusk (Similar, 3; no More by; no strip) and
+Sam's bakery, shared by link, that nobody has commented on, built or
+remixed (More in the gallery; signed in it is Sam's own: Add a picture),
+at 390 and 1280, light and dark, signed out and in. It fails on the
+picture, name, designer and action bar not all on a phone's first screen,
+the column not staying beside the picture on a laptop, the bar's six
+names not Like, Save, Share, Comment, I built it, More, a count not in
+its label or a count of none (in the bar, the facts, the tabs or any
+words on the page), Share not copying the link with "Link copied" (or,
+given a share sheet, not using it), Save not asking to sign in or not
+opening Favourites first and ticked, More without the embed code, Report
+it (its owner: How your models are doing) and Takedown requests, a row of
+fewer than three, the last row without a model, the tabs not About,
+Comments, Builds, Remixes (Versions) with their counts, a tab not
+bringing its part under the tabs or the tabs not staying under the
+header, the strip not leading with the published picture or a photo
+chosen not shown whole in its place, the owner without Add a picture or
+it not opening the form, an empty part in more than one line or without
+its way in, or the old paragraph. Pictures of each page whole, its first
+screen, Save, More, a photo chosen and the tabs stuck. On a deployment
+(`--url`) its comments are asked of it as a visitor, not of the stand-in;
+where comments are not open the Builds tab is the one chosen. 2026-10-22:
+556 passed, 0 failed here; 148 passed, 0 failed with `--url=` a local
+`relay_server.mjs` on the live database (the gallery's first model, which
+ends on More in the gallery).
+
+```sh
+heavy node tools/web/model_page_flow.mjs --out=shots/model_page      # this checkout
+node tools/web/model_page_flow.mjs --url=<preview>                   # a deployment's first gallery model
+```
 
 The one model card, server against browser, with no network (local
 only: preview_checks.sh says why):
@@ -2552,8 +2678,8 @@ under 13 refused; `/challenge` signed out (`5_challenge_visitor-*`), the
 gallery's line (`6_gallery_line-1280.png`), Ed's two votes
 (`7_challenge_ed-*`), Bob's vote, second vote and own refused, Cy told why
 (`8_challenge_cy-390.png`); ended on `/admin`, the winners 2 and 1 votes
-(`9_challenge_winners-*`), Ada's Challenges won and the card
-(`10_designer_won-390.png`), the gallery card's `won`; no page errors.
+(`9_challenge_winners-*`), Ada's win as a pill under her numbers (the
+house and its 2 votes in its title) and the card (`10_designer_won-390.png`), the gallery card's `won`; no page errors.
 A visitor's answer is `public, max-age=0` on a deployment (Vercel's CDN
 keeps `s-maxage` for itself), so there the CDN answering the same question
 again (`x-vercel-cache: HIT`) is the proof; locally, `s-maxage=30`. 50
@@ -3067,6 +3193,101 @@ frame was N ms (budget 500)`, every call answered. Against the build before
 2026-10-11 it fails: a check_design was one 31 s task, a submit 43 s, and the
 look that followed came back "The Brickworks tab did not answer in time" while
 the build animation weighed the model once a step.
+
+### A person's page (/u/), and what it shows
+
+The SQL first, in a rolled-back dry run (never applied by a unit):
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/profile_shows.sql \
+  --dry --try=tools/profile_shows_try.sql --table=profile_shows
+```
+
+It passes when Ada's links, banner and pins are allowed and read back; an
+http link, three links, a password in a link, a host with no dot,
+javascript:, four pins, a pin twice, a pin or a banner not an id are each
+refused by a check; Cy (under 13) and Di (never asked) refused by the
+profile's trigger; anon and authenticated may not read; her row gone when
+her account is deleted; "rolled back, nothing kept" (2026-10-22: all so).
+
+Then the page, locally from the stand-in's people (Robin with links, a
+banner and pins; the house account; Ines with 60 models; Alex with
+nothing), and on the relay or a preview with a throwaway designer:
+
+```sh
+node tools/web/profile_flow.mjs --out=shots/profile
+node --env-file=.env tools/web/relay_server.mjs 8993 --hold=profile_shows &
+node --env-file=.env tools/web/profile_flow.mjs --url=http://127.0.0.1:8993 --out=shots/profile-relay
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=shots/profile-preview
+```
+
+It passes when it ends "N passed, 0 failed" (2026-10-22: 196 locally, 82 on
+the relay): at 390 and 1280, light and dark, signed out and in, the avatar a
+tile with the initial, every shown number not 0, links https and ugc
+nofollow, the tabs one current with no count of none, at 390 the avatar,
+name, numbers and Follow above 844 px; Robin's numbers builds first (77),
+his links said as their domain, the watchtower banner loaded, his pins in
+his order, whom he follows and no follower named, Share copying the link
+and saying so, More opening Report it; the Builds and Collections tabs;
+the house's 7 models and its empty tabs' words; Ines's 60 models reached
+by Show more twice, page 3 as served 12 cards; on the relay, op=showcase's
+seven refusals, Ada's links, banner and pins kept (or "not open yet"
+before the SQL on a preview) and her page as above. `design_flow` judges
+`person`, `person-builds`, `person-lists` (More open), `person-house` and
+`person-new` for controls, the scale and zeros.
+
+### The gallery (/gallery), as a person uses it
+
+The SQL first, in rolled-back dry runs (never applied by a unit): what it
+adds, then that the gallery answers as it did.
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/gallery_tabs.sql \
+  --dry --try=tools/gallery_tabs_try.sql --table=shared_models
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/sql_compare.mjs supabase/gallery_tabs.sql comments
+```
+
+The first passes when the Tower's card says 1 comment (its hidden one not
+counted); Top over all time is Tower, Wall, Hut, over 30 days Tower, Wall,
+over 7 days Tower; with the assistant the Hut and the Tower, by hand the
+Wall; Bob's Following Ada's three, the Hut gone from it once uncredited,
+Cy's none; a visitor's list no test model; gallery_models the same as
+directory_models on all 14 questions without a new word; both functions
+the service role's alone; and "rolled back, nothing kept" (2026-10-22: all
+so, a page of Top in 9 ms, this week's in 5). The second passes at "17 of
+17 answered the same" (2026-10-22).
+
+Then the page, this checkout's `web/` and `api/` with the stand-in's API
+and a crowd of 130 behind its own models, or a deployment's pages with the
+same API:
+
+```sh
+node tools/web/gallery_flow.mjs --out=shots/gallery
+BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=shots/gallery-preview
+```
+
+It passes when it ends "N passed, 0 failed" (2026-10-22: 37 locally, and
+37 with `--url` on `relay_server.mjs` serving this checkout's pages): at
+390 x 844, light and dark, the first card's picture within 330 px of the
+top, two to a row and four cards' names on the first two screens; at 1280
+x 900 four whole cards, four to a row; Top over all time with this week's
+pick first and no count of 0; New newest first; Top over this week the
+week's, no pick or shelves; the Space pill pressed; Made with the
+assistant every card marked, Filters saying 1; Following only signed in,
+only whom Sam follows; a search with New, a size and two pages opened by
+somebody else at 390 in the dark showing the same 48 cards in the same
+order; Filters a sheet inside a phone's screen; nothing matching said,
+and Clear bringing the gallery back; a like from a card signed out asking
+to sign in, signed in pressed and one more at once, its page saying
+Liked; three pages by scrolling, then Show more, page=5 in the address;
+Back to card 101 within 100 px; the empty gallery, an empty Following and
+a quiet week each saying theirs with its way; and `api/share.js` before
+the SQL refusing a window or Made in words (400), after offering them with
+each card's comments. Pictures `gallery_<width>_<theme>[_fold].png` and
+each step's. `design_flow` judges `gallery` for controls, the scale and
+zeros.
 
 ## Gotchas
 

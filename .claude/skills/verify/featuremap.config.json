@@ -1480,7 +1480,7 @@
       "kind": "ui",
       "label": "gallery page",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=views   (gallery.js reads /api/share?op=list with the search, filters and sort; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (Top, New, Following signed in; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; gallery.js reads /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web"
     },
     {
@@ -1578,7 +1578,7 @@
       "kind": "ui",
       "label": "profile and collection pages",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle>  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web"
     },
     {
@@ -1586,13 +1586,6 @@
       "label": "your profile page",
       "entry": "web/profile.html",
       "reach": "https://brickworks.diy/profile   (profile.js: sign in; your models, favourites, collections, sets, following, builds; settings, the Claude connection, delete the account)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "like and keep a model",
-      "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Favourite, Add to a collection; signs in on the way)",
       "area": "web"
     },
     {
@@ -2131,7 +2124,7 @@
       "kind": "cli",
       "label": "big models stay fast",
       "entry": "src/dev/bigmodel_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened, or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
+      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--paced] [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened (--paced: opened over frames as File, Open opens one, with its longest frame; its dump is the one frame's, byte for byte; every open's autosave, made on a worker, held to its save made in a frame), or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
       "area": "view"
     },
     {
@@ -2839,6 +2832,48 @@
       "label": "component kit",
       "entry": "web/kit.js",
       "reach": "the pill, tabs, avatar, icon buttons (web/icons.svg), the toast and the more menu (site.css \"the kit\"); all at once on /_kit when the checkout is served (web/_kit.html, never published); the avatar on /profile",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "gallery browser flow",
+      "entry": "tools/web/gallery_flow.mjs",
+      "reach": "node tools/web/gallery_flow.mjs --out=DIR   (this checkout's web/ and api/, the API answered by the stand-in and a crowd of 130, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=DIR   (the deployment's pages, the API still the stand-in's)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "profile browser flow",
+      "entry": "tools/web/profile_flow.mjs",
+      "reach": "node tools/web/profile_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=profile_shows until supabase/profile_shows.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "model page action bar",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "model page pictures and tabs",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs About, Comments, Builds, Remixes, Versions, kept on screen)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "more by and similar models",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "model page browser flow",
+      "entry": "tools/web/model_page_flow.mjs",
+      "reach": "node tools/web/model_page_flow.mjs --out=shots/model_page   (no network: the stand-in's watchtower, its remix at dusk and Sam's bakery that nobody has built; --url=<deployment> for a preview's first gallery model)",
       "area": "web"
     }
   ]

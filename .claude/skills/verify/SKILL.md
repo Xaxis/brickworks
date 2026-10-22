@@ -71,6 +71,15 @@ size, gives it its own data folder, the GPU lease and Xvfb for a window, and
 fails a run that printed a script error or skipped itself (both exit 0
 from Godot). `PROBE_DRY=1` shows the command.
 
+Probes may run at once in one checkout: none writes `.godot`. What breaks
+them is a class list (`.godot/global_script_class_cache.cfg`) older than the
+scripts, from a copied `.godot` or a merge, checkout or bisect: every script
+naming a missing class fails, as `"BestOfTwo" not declared`. `probe.sh`
+imports first when the list is behind (`tools/fresh_import.sh`, one import a
+checkout, the others wait for it) and does not run the probe (exit 2) when an
+import cannot fix it. A probe run by hand gets no such check: run
+`tools/fresh_import.sh` first.
+
 Needs: a display (`DISPLAY` or `WAYLAND_DISPLAY`) for anything that draws —
 previews, the renders the assistant is shown, and what a dragged box catches all
 come from a SubViewport that a headless run has no device to draw into. Needs

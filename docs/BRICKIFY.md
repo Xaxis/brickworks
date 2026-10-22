@@ -3319,6 +3319,103 @@ pieces all take a cube's box as given (`_cube_shell`, `_anchored`,
 nothing laid past its own room (it removed every overlap the lean-fitted
 slopes made), and leaving the curved four-long ones to the steps.
 
+### Turned sides cut as patches: the screen fails (2026-10-22)
+
+snot99's change again (`cab8395e` on lean97's `3bf21553`), with a turned side
+cut as a patch instead of a cube at a time; screened beside `bbecd818`, both
+from locked checkouts laid at the same time. Scripts, runs and pictures in
+`bench/results/brickify8-2026-10-21/snot100`; the code screened is `46a630d8`.
+
+**What was screened.** Each of the five cuts of the cube lattice
+(`Brickify.CUBE_PHASES`) made its own shells, and a cube of a later cut was
+refused where an earlier shell had any of it: on Spot at 48 studs 2,725 cubes
+were refused so, and 2,209 more came to no shell with the rest of their group.
+Now the cubes of every cut that face one way at one depth are one patch
+(`Plan._cube_shells`, `_group_cut`), tried and laid once. Its rows run two and
+a half plates down from the top of the cut most of its cubes are in, and a row
+of a stud is the patch's where the cubes kept hold that row's whole plates
+(`_cube_shell`): its outline is any set of lanes and rows of its own frame,
+not a set of 2 x 5 x 2 boxes. The checks of each cube (the side's outermost,
+the core behind it, no cap over it, plates enough, its plates covered) stay as
+they were. Spot's cubes refused for a band fell to 700 and those lost with
+their group to 151; Bob at 48 studs is 31 patches, Spot 29. Laid for real,
+the patches' parts cover 98% of the plates they take.
+
+**The screen**, each against `bbecd818` laid at the same time:
+
+| | matched | error over every face | distance | sides95 (studs) | parts | time | in a part |
+|---|---|---|---|---|---|---|---|
+| Bob 48 | 10.5% to **23.9%** | 38.2° to 33.6° (**12.0% lower**) | 3.4% nearer | 0.57 to **0.67** | 1.09x | **1.43x** | 99.3% to **98.4%** |
+| Spot 48 | 10.0% to **20.7%** | 35.8° to 33.4° (**6.6% lower**) | 1.8% further | 0.52 to **0.64** | 1.04x | **1.96x** | 99.1% to **98.2%** |
+| 3DBenchy 48 | 4.1% to 15.4% | 33.0° to 31.0° (5.9%) | 1.6% nearer | 0.57 to **0.62** | **1.11x** | **1.99x** | 99.6% to **98.6%** |
+| Bob 24 | 5.0% to 11.8% | 39.8° to 38.7° (2.7%) | 4.8% further | 0.52 to **0.66** | 1.00x | **1.42x** | 98.2% to **96.3%** |
+| Spot 24 | 6.1% to 15.0% | 35.6° to 34.6° (2.9%) | 4.1% further | 0.48 to **0.59** | 1.04x | 1.30x | 99.1% to **97.2%** |
+| 3DBenchy 24 | 0.8% to 6.0% | 37.7° to 35.8° (5.1%) | 1.2% nearer | 0.56 to **0.58** | 1.09x | 0.69x | 99.5% to **98.3%** |
+
+All six are one piece, pass the check and have no joint past its load.
+3DBenchy had a part mended out at 24 studs and three at 48 (`bbecd818`
+none). **It fails.** Both lean bars pass at 48 studs, by more than snot99's
+cubes: Bob 23.9% matched and 12.0% lower, Spot 20.7% and 6.6%. Every other
+bar is missed: the side views stand 0.02 to 0.14 studs further off on all
+six, 3DBenchy at 48 takes 1.11 times the parts, four of the six more than 1.30
+times the time (Spot and 3DBenchy at 48 near twice), 3DBenchy loses parts to
+the mend, and every run keeps 0.9 to 1.9 points less of the model in a part.
+snot99's cubes brought back onto `bbecd818` (`tries/s99`) stand 0.59, 0.59,
+0.73, 0.56, 0.54 and 0.56 studs off in the side views (the table's order) and
+keep 99.1%, 99.5%, 96.6%, 98.9%, 97.5% and 98.8%: the patch is further off
+from the side at 48 studs and keeps less everywhere; only Bob at 24 is nearer
+(0.66 against 0.73). Nothing went on to the fourteen or the probes.
+
+**The pictures** (`pics/`, the base then the patch). At 48 studs Bob's ring
+and Spot's flank read smoother, more of each turned: Bob's steep faces 84%
+turned, from 56% (snot99 73%). At 24 studs Bob's head has a hole where a
+patch took its plates, and upright bricks stand with their studs open along
+the ring's top edge, over the turned rows.
+
+**The tries** (the same six, one checkout, the patch with a flag at a time,
+`tries/`):
+
+- *Cut by cut, as snot99* (`phased`): snot99's numbers to within run noise,
+  so the patch's code lays a side as the cubes did when its cuts are kept
+  apart.
+- *Every lean-fitted part over the model at every third of a stud* (`full`):
+  no change on any run. The lean-fitted slopes seen past the model's outline
+  are not tips over nothing.
+- *A patch solid from its face out* (`solid`, a row of a lane that stands
+  further out taking the model between it and the face): no change. Laid for
+  real, the patches cover 98% of their plates; they do not hang from nothing.
+- *A cube kept only where its parts cover 80% of its plates* (`keeps8`):
+  3DBenchy at 48 had 25 parts mended out and Spot fell to 15.1% matched and
+  0.2% worse in error.
+- *A row kept only where its own surface faces the patch's way* (`rowface`,
+  Brickify's surface summed a plate at a time): side views 0.54 to 0.71, Spot
+  18.3% matched.
+
+**What holds it.** Not the cube's outline. Seen from the four sides
+(`farkind.py`, `fardiag.py`, Spot at 48 studs), the build's points over half
+a stud from the model's go from 6.1% to 8.8%. Those sunk behind the model's
+surface go from 4.5% to 7.1%, nearly all upright bricks: plain 2 x 4s,
+side-stud bricks (30414) and the plain bricks a patch's unused side studs
+become (3005, 3004, 3003). Two thirds of the rise is on the 27% of the surface
+that leans 30 degrees or more up or down, where a side turns into a top or an
+underside: a patch's first and last rows. Points proud of the model or past
+its outline are as many as before (1.7%). On Bob at 24 the
+same: 5.9% to 9.6%, sunk 4.4% to 6.7%; there 1.2% are past the outline
+(from 0.1%), 3710s and lean-fitted curved slopes on the ring's top.
+
+Across every try the side views and the share kept moved with how much of
+each side was turned, whatever its outline: each way that turned more lost
+more. A patch turns more than the cubes because it no longer refuses a cut's
+cube for touching another cut's shell, and what it gains in lean it loses
+where its rows end against a top or an underside: the bricks behind those
+rows show, set back from the model's surface. So the next step is that seam, not the cut: where a side
+leans past 30 degrees into a top or an underside, laid by the core's
+lean-fitted slopes and stopped there by the patch, with the side-stud bricks
+held back from its first and last rows. Kept from this round: grouping a
+side's cubes across cuts (its refusals fall from 4,934 to 851 on Spot at 48)
+is the outline that seam would need. The code is reverted on the branch;
+`46a630d8` keeps it, with its try flags (`Shapes.TRY`).
+
 ### Proof
 
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the

@@ -191,15 +191,19 @@ async function galleryCards(name, query = "", settled = () => true) {
   const end = Date.now() + 120000;
   for (;;) {
     answers.length = 0;
-    await page.goto(`${site}/gallery?tests=1${query.replace(/^\?/, "&")}`, { waitUntil: "load", timeout: 120000 });
+    // Newest first, as this flow places its model; the gallery's own
+    // default is Top.
+    const asked = query.includes("sort=") ? query.replace(/^\?/, "&") : `${query.replace(/^\?/, "&")}&sort=newest`;
+    await page.goto(`${site}/gallery?tests=1${asked}`, { waitUntil: "load", timeout: 120000 });
     await until(page, () => document.documentElement.dataset.gallery === "ready"
       || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
     await allPictures(page);
     const listed = new Map((await Promise.all(answers)).flatMap((one) => one.models || [])
       .map((model) => [model.id, model.listed_at]));
-    cards = (await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
-      id: a.dataset.id, href: a.getAttribute("href"), name: a.querySelector("b").textContent,
-      about: a.querySelector("span").textContent,
+    // A card's size and its designer, said as one line ("3 parts, by Flow").
+    cards = (await page.evaluate(() => [...document.querySelectorAll("#models .model")].map((a) => ({
+      id: a.dataset.id, href: a.querySelector("a.open").getAttribute("href"), name: a.querySelector("b").textContent,
+      about: [a.querySelector(".parts")?.textContent, a.querySelector(".who")?.textContent].filter(Boolean).join(", by "),
       picture: (a.querySelector("img") || {}).naturalWidth || 0 }))))
       .map((card) => ({ ...card, listed_at: listed.get(card.id) || null }));
     if (settled(cards) || Date.now() > end) break;
@@ -299,7 +303,7 @@ try {
   const found = await galleryCards("1c_gallery_search.png", `?q=${WORD}`, (shown) => shown.length > 0);
   check(`found by a word of its description in the search box: ${found.length} card, ${found[0] && found[0].name}`,
     found.length === 1 && found[0].id === id);
-  const tagged = await galleryCards("1d_gallery_tag.png", "?tag=flow%20test&sort=views", (shown) => shown.some((c) => c.id === id));
+  const tagged = await galleryCards("1d_gallery_tag.png", "?tag=flow%20test&sort=likes", (shown) => shown.some((c) => c.id === id));
   check(`and by its tag, most viewed first: ${tagged.map((c) => c.name).join(", ")}`,
     tagged.some((c) => c.id === id));
 

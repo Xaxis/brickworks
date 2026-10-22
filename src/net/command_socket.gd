@@ -386,6 +386,7 @@ func answer_rpc(request: Dictionary) -> Variant:
 		# The viewer's own, from the card in Claude (ViewerTools): read at
 		# once, whoever has the app, and none of the app's tools.
 		if ViewerTools.handles(name):
+			await _until_whole()
 			return _result(sent_id, await _viewer().answer(name, input,
 				jobs.running() != null or _in_hand > 0))
 		asked.emit(name)
@@ -795,6 +796,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 		return [await jobs.call_tool(name, {}, func(_work: Working.Job) -> Variant:
 			# One step too: a review lays a feature's piece, saving can hand
 			# the next feature back laid, and clearing takes everything off.
+			await _until_whole()
 			var before: Dictionary = _before_change(name)
 			_at_work += 1
 			var said: Variant = await _run_own(name, input)
@@ -813,6 +815,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 		# Cancelled in the moment before it began: a renderer told to stop
 		# before it starts forgets it was told.
 		var answer: Variant = "Cancelled before it began: nothing was done."
+		await _until_whole()
 		if work == null or not work.cancelled:
 			answer = await _run(name, input, work, chat)
 		_hand_back()
@@ -949,6 +952,15 @@ func _take_a_turn() -> bool:
 		await get_tree().process_frame
 	_in_hand += 1
 	return true
+
+
+## A model being laid over frames (ModelStore.laying), waited for until it is
+## all down: no tool reads half of it as the model, or changes it. A call
+## that waits long becomes a job (ToolJobs.call_tool).
+func _until_whole() -> void:
+	var store: ModelStore = app.get("_store") if app != null else null
+	while store != null and store.laying:
+		await get_tree().process_frame
 
 
 func _hand_back() -> void:

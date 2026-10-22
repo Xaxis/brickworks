@@ -45,7 +45,9 @@
       "entry": "api/account.js",
       "reach": "curl -s https://brickworks.diy/api/account",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "api:GET /api/admin",
@@ -77,7 +79,9 @@
       "entry": "api/account.js",
       "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "api:POST /api/mcp",
@@ -211,7 +215,7 @@
       "id": "cli:big models stay fast",
       "kind": "cli",
       "entry": "src/dev/bigmodel_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened, or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
+      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--paced] [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened (--paced: opened over frames as File, Open opens one, with its longest frame; its dump is the one frame's, byte for byte; every open's autosave, made on a worker, held to its save made in a frame), or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
       "area": "view",
       "tests": []
     },
@@ -600,6 +604,14 @@
       "tests": []
     },
     {
+      "id": "cli:gallery browser flow",
+      "kind": "cli",
+      "entry": "tools/web/gallery_flow.mjs",
+      "reach": "node tools/web/gallery_flow.mjs --out=DIR   (this checkout's web/ and api/, the API answered by the stand-in and a crowd of 130, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=DIR   (the deployment's pages, the API still the stand-in's)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:gallery tool probe",
       "kind": "cli",
       "entry": "src/dev/gallery_tool_probe.gd",
@@ -761,6 +773,14 @@
       "entry": "tools/storage_library.py",
       "reach": "tools/storage_library.py --check   (the staged library/ in the parts bucket under library/, what is not up yet and its size; without --check uploads it, the index last)",
       "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:model page browser flow",
+      "kind": "cli",
+      "entry": "tools/web/model_page_flow.mjs",
+      "reach": "node tools/web/model_page_flow.mjs --out=shots/model_page   (no network: the stand-in's watchtower, its remix at dusk and Sam's bakery that nobody has built; --url=<deployment> for a preview's first gallery model)",
+      "area": "web",
       "tests": []
     },
     {
@@ -929,6 +949,14 @@
       "entry": "tools/web/studio_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
       "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "cli:profile browser flow",
+      "kind": "cli",
+      "entry": "tools/web/profile_flow.mjs",
+      "reach": "node tools/web/profile_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=profile_shows until supabase/profile_shows.sql is applied)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1470,7 +1498,9 @@
       "entry": "src/account/account.gd",
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "lib:add a minifig",
@@ -1518,7 +1548,9 @@
       "entry": "src/assembly/brickify.gd",
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
       "area": "brickify",
-      "tests": []
+      "tests": [
+        "tests/test_gallery_tabs.py"
+      ]
     },
     {
       "id": "lib:brickify from a collection",
@@ -1837,6 +1869,14 @@
       "tests": []
     },
     {
+      "id": "lib:more by and similar models",
+      "kind": "lib",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:motions",
       "kind": "lib",
       "entry": "src/assembly/motions.gd",
@@ -2042,7 +2082,9 @@
       "entry": "web/account.js",
       "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "lib:stability",
@@ -2123,7 +2165,6 @@
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
       "tests": [
-        "tests/test_designers.py",
         "tests/test_discovery.py"
       ]
     },
@@ -2559,9 +2600,10 @@
       "id": "ui:gallery page",
       "kind": "ui",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=views   (gallery.js reads /api/share?op=list with the search, filters and sort; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (Top, New, Following signed in; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; gallery.js reads /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -2611,14 +2653,6 @@
       "entry": "src/ui/library_dialog.gd",
       "reach": "godot --path .  (File, Library\u2026, or File, Open\u2026, From the library\u2026: LDraw sets and Community, searched, filtered, Open in a new tab or window)",
       "area": "model-io",
-      "tests": []
-    },
-    {
-      "id": "ui:like and keep a model",
-      "kind": "ui",
-      "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Favourite, Add to a collection; signs in on the way)",
-      "area": "web",
       "tests": []
     },
     {
@@ -2676,6 +2710,22 @@
       "kind": "ui",
       "entry": "web/card.js",
       "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:model page action bar",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:model page pictures and tabs",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs About, Comments, Builds, Remixes, Versions, kept on screen)",
       "area": "web",
       "tests": []
     },
@@ -2893,7 +2943,7 @@
       "id": "ui:profile and collection pages",
       "kind": "ui",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle>  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": []
     },
@@ -3166,6 +3216,7 @@
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/test_site_shell.py"
       ]
     },

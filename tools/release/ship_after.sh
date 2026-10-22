@@ -10,7 +10,10 @@
 # let m43's ship go at once (2026-10-17).
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-S="${RELEASE_OUT:?set RELEASE_OUT to the releases folder}"
+# Absolute: ship.sh runs from the worktree, where a relative folder is another
+# one; m144's first ship failed "preview deploy failed" on it (2026-10-22).
+S="$(realpath -m "${RELEASE_OUT:?set RELEASE_OUT to the releases folder}")"
+export RELEASE_OUT="$S"
 PREV="$1"; W="$2"; TAG="$3"; shift 3
 
 result_of() {

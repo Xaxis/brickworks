@@ -13,6 +13,77 @@ whole cycle.
 
 ## [Unreleased]
 
+### Changed
+
+- The gallery on brickworks.diy puts the models first: on a phone the
+  first cards are on the first screen, two to a row, and a laptop shows
+  four. Top, New and, signed in, Following are tabs, with Top over this
+  week, this month or all time; the kinds are a row of pills, and the
+  rest (the order, the size, instructions, Technic, Tested, and hand-built
+  or made with the assistant) is under Filters. A card says who designed
+  it, with their avatar and a link to their page, marks a model made with
+  the assistant or Brickify, and shows its likes, builds and comments.
+  Like a model from its card. The next page comes as you scroll, three
+  times, then Show more; the address says how far you went, and Back from
+  a model returns you to its card.
+- A person's page on brickworks.diy (/u/ and their handle) looks like a
+  person's: their avatar, name and handle, what they say about themselves,
+  up to two links of theirs elsewhere, one row of numbers (builds finished
+  of their models, remixes, models, likes, followers) and Follow, Share and
+  More beside their name. Up to three of their models can be pinned above
+  the rest, and one of their models' pictures can run across the top. Their
+  work is in tabs: Models, every one of them page by page (a profile used to
+  stop at the first 24), Builds, the photos of real builds, and Collections,
+  each a card with its pictures. A tab with nothing in it says what goes
+  there. Links, the banner and the pins are chosen under Settings on your
+  account. Nobody's followers are listed, as before.
+- On brickworks.diy a model's page leads with its picture: on a phone the
+  picture, its name, its designer and what you can do with it are the
+  first screen, and on a laptop the column beside the picture stays in view
+  as you read down. The designer has a face, a name and handle that go to
+  their profile, and Follow beside them. Like, Save, Share, Comment, I built
+  it and More are one row of buttons, each with its count once there is
+  one. Save puts the model in your favourites or any of your collections
+  from one list, favourites first. Share copies the link, or opens your
+  phone's share sheet. More copies the code to embed the model in a page
+  of your own, and is where to report it. Build it opens it in 3D. Under
+  the picture, a strip of its other pictures: its designer's own photos of
+  it, added from the page, then photos of real builds; choose one to see it
+  large. Below, tabs that stay in view, About, Comments, Builds, Remixes
+  and Versions, each with its count. Where nobody has commented, built or
+  remixed it yet, the page says so in a line, with the way to be first. It
+  ends with more by the same designer and models like it, by kind and tags,
+  whenever there are three or more to show, and otherwise with more from
+  the gallery, so there is always another model to open.
+- A big model opens without freezing the window. Its file is read, its
+  flexible parts are built and the parts it carries are made while the app
+  goes on drawing, and its parts are then put down a slice of each frame,
+  the status bar counting "Opening 8466-1… 40%". The model appears whole
+  once every part is down; until then the view still turns, and edits,
+  Save and your Claude's tools wait for it rather than see half a model.
+  Someone else's big file is written back for the autosave on a worker
+  too, so the parts that arrive after it opens no longer each hold the
+  window. 8466-1 from the library held a browser for 3.7 to 3.8 seconds at
+  once and 2 more after; its longest moment now is a third to half a
+  second. A model of under 200 parts opens in one frame, as it always has.
+
+## [0.5.0] - 2026-10-22
+
+A release about opening and moving real models. File > Library… opens any
+of 1,575 models of real LEGO® sets and their alternate builds, from LDraw's
+Official Model Repository, each with its cover, its builder credited and its
+licence, in a tab of its own; the gallery's shared models are a shelf beside
+them. Grab turns 85 of the repository's sets by their steering as the real
+ones turn, where 0.4.0 turned 59: universal joints bend, racks keep their
+pinions, a loop comes back where it began, and a hinge turns as far as its
+parts let it. My Claude designs a new model twice, side by side, and keeps
+the better, and Undo takes back all of a session's first design. The window
+no longer stops while Claude moves a part or checks a design. Brickify lays
+more of a model's steep sides on their sides, and the undersides of
+overhangs in slopes you can buy. Claude's domes of hinged panels build
+again, and a second design in one chat keeps its own subject. Models saved
+by 0.4.0 open in 0.5.0 unchanged.
+
 ### Added
 
 - File, Library… opens any model of a real LEGO® set that LDraw's Official
@@ -52,8 +123,9 @@ whole cycle.
   model fills a card about 1.4 times wider. A model's remixes are shown as
   full cards too, a profile's and a collection's cards now say what moves,
   and a model's facts, tags and Tested mark are one kind of round pill
-  throughout the site. Counts of nothing are no longer shown: no more
-  "0 likes 0 remixes" on a model's page or "0 followers" on a profile. Your
+  throughout the site. Counts of nothing are no longer shown: a model
+  nobody has liked or remixed yet, or a profile nobody follows yet, no
+  longer says so with a zero. Your
   account shows a round avatar in a colour of your own, made from your
   handle. Type sizes and corners across the site come from one short scale,
   so pages that were a little different now match.
@@ -92,6 +164,29 @@ whole cycle.
 
 ### Fixed
 
+- Claude's second design in one chat is judged as what it is. Asked for an
+  owl's head and then a house roof without pressing Clear, Claude was told
+  the house was a creature with nothing on a joint, and your own Claude over
+  the connector had the house sent back to be built as a jointed owl. Asked
+  to make the owl's head bigger, the app's own designer forgot it was an owl.
+  A design submitted under a name of another subject now begins a new
+  subject, and a change to the model you have keeps the one it was.
+- A dome or a ball of hinged panels that Claude lays as one shell builds
+  again. Its crown, a big inverted dish, was set down on a disc of plates:
+  the studs ran into its rim and nothing held it, so the check refused
+  every such shell. The dish is now held by round plates up into the 2 x 2
+  under its middle, as a builder holds one, with tiles under its rim.
+- A part Claude hangs on a hinge brick (3937) now tips whichever way it is
+  asked. The hinge brick's top tips one way only, and the app laid it facing
+  the same way whatever the angle, so a wing, a flap or a lid tipped the
+  other way had its top folded into its base and the design was refused
+  since 15 October. The hinge is now turned round to face the tip, as a
+  builder turns it, so a pair of wings tipped apart builds. Laid by hand
+  folded into its base, a hinge is still refused.
+- Claude asked for a head, a bust or a wing alone (an owl's head, a bust
+  of a man) is no longer sent back to build a whole jointed animal or
+  person in its place. A whole figure or creature with nothing on a joint
+  is still sent back once.
 - A steering turned one way, the other and back now comes back where it was
   built. A turn that could not quite close its linkage kept it a little
   open, and the next turn took the gap for closed: Red Fury's (5533-1)

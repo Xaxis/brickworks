@@ -458,16 +458,16 @@ func _on_pick(id: int) -> void:
 
 
 ## Open a saved model or an example, the status bar saying so first
-## (Working) and drawn before the open, which is one long frame on a big
-## model. How many parts landed.
+## (Working) and drawn before the open. How many parts landed.
 ##
-## Not a slice at a time: put down that way in a browser drawing in
-## software, Orthanc took 16 s, and 8.8 s with slices of a tenth of a
-## second, against 3.7 s in one frame (2026-10-13).
+## A big model is laid a slice at a time, counted on the bar, with nothing
+## of it drawn until it is all down (ModelStore._open_into): drawn as it went
+## down, in a browser drawing in software, Orthanc took 16 s, and 8.8 s with
+## slices of a tenth of a second, against 3.7 s in one frame (2026-10-13).
 func open_with_progress(path: String) -> int:
 	var job: Working.Job = Working.begin("Opening %s…" % path.get_file())
 	await job.shown()
-	var placed: int = await store.open_fetched(path)
+	var placed: int = await store.open_fetched(path, job)
 	job.end()
 	return placed
 
@@ -481,8 +481,8 @@ func open_with_progress(path: String) -> int:
 ## Read on a worker first, and its flexible parts built on workers, the bar
 ## saying so: the library's biggest file, 8466-1 at 36 MB, took 2.1 s of a
 ## desktop's frame to read and 2.6 s more to build its 29 hoses, and a
-## browser drawing in software is several times slower. Laying it out is
-## still one long frame, said before it begins.
+## browser drawing in software is several times slower. Then laid out a
+## slice at a time (ModelStore._open_into), the bar counting it.
 func open_text_with_progress(text: String, name: String) -> Dictionary:
 	var job: Working.Job = Working.begin("Reading %s (%s)…" % [name, ModelLibrary.size_words(text.length())])
 	await job.shown()
@@ -493,7 +493,7 @@ func open_text_with_progress(text: String, name: String) -> Dictionary:
 	job.end()
 	job = Working.begin("Opening %s…" % name)
 	await job.shown()
-	var result: Dictionary = await store.open_text_fetched(text, name, parsed)
+	var result: Dictionary = await store.open_text_fetched(text, name, parsed, job)
 	job.end()
 	if not str(result["error"]).is_empty():
 		result["placed"] = 0
@@ -568,7 +568,7 @@ func open_version(version: ModelVersions.Version, name: String = "") -> int:
 		name = store.title
 	var job: Working.Job = Working.begin("Opening “%s” as saved %s…" % [name, version.when()])
 	await job.shown()
-	var placed: int = await store.open_version(version.path, name)
+	var placed: int = await store.open_version(version.path, name, job)
 	job.end()
 	if placed <= 0 and store.awaited.is_empty():
 		return 0
@@ -590,13 +590,13 @@ func _import() -> void:
 		_picker.library = store.library
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
-			# Reading a big model is a long frame: the status bar says so
-			# first (Working), and has been drawn before it begins. Not a
-			# slice at a time: see open_with_progress.
+			# The status bar says so first (Working), and has been drawn
+			# before it begins; a big file is read and laid over frames,
+			# counted there (see open_with_progress).
 			var job: Working.Job = Working.begin("Opening %s…" % file_name.get_file())
 			await job.shown()
 			var result: Dictionary = await store.open_text_fetched(
-				text, file_name.get_basename())
+				text, file_name.get_basename(), null, job)
 			job.end()
 			if not str(result["error"]).is_empty():
 				_say(str(result["error"]))

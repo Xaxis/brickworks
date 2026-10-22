@@ -682,6 +682,8 @@ func _build_with(name: String, bricks: Array, sections: Array) -> void:
 	assistant._busy = false
 	world.clear()
 	builder.lattice.clear()
+	# Not forgotten, as a session submitting one design after another does
+	# not: each fixture is a design of its own subject (second_design_probe).
 	var args: Dictionary = {"name": name, "description": "a fixture", "bricks": bricks,
 		"features": []}
 	if not sections.is_empty():

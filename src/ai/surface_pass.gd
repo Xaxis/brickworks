@@ -847,7 +847,7 @@ func _is_mosaic() -> bool:
 ## from outside, the request's first sentence in the app's loop — and not its
 ## description, where a car's roof and windscreen are described.
 func _straight_first() -> bool:
-	var words: PackedStringArray = assistant._brief.get_slice(".", 0).to_lower().replace(
+	var words: PackedStringArray = assistant._asked_as().get_slice(".", 0).to_lower().replace(
 		",", " ").replace("-", " ").split(" ", false)
 	for word: String in words:
 		if BUILT_WORDS.has(word) or BUILT_WORDS.has(word.trim_suffix("s")):

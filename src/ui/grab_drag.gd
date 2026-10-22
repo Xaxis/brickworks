@@ -1672,6 +1672,14 @@ func _ready_ahead() -> void:
 	if _readying >= 0:
 		_reading_done(grab == null)
 		return
+	# Not while parts go down with the drawing held (a model being laid, a
+	# design put down a slice at a time): half of it is not the model, and a
+	# model laid stands still between slices while its lattice is told of
+	# each part, so 10179-1 was read half laid, its parts' shapes read here,
+	# a frame of 1.4 to 1.9 s.
+	if world.is_drawing_held():
+		_changed_at = now
+		return
 	# Read again once the shapes it was read without have come, twice a
 	# second at most: in the builder on the web as on a shared link's page.
 	if is_ready() and grab == null and not is_settling() and not _session_moving \

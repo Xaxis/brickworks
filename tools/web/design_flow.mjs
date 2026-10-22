@@ -254,24 +254,35 @@ const PAGES = [
   { name: "home", path: "/" },
   { name: "gallery", path: "/gallery",
     ready: (page) => until(page, () => document.querySelectorAll("#models .model").length > 0),
-    open: async (page, { width }) => {
-      if (width > 600) return [];
+    // Filters, a sheet over the cards at every width (docs/SOCIAL.md U3).
+    open: async (page) => {
       await page.click("#filters summary");
       return [["filters", "#filters"]];
     } },
   { name: "model", path: `/m/${stand.MODEL_ID}`,
+    // The comments listed (Comment's count), and signed out Report it made
+    // live in More. On a deployment the page is its own model, whose
+    // comments the stand-in answering the API has none of: there, the
+    // comments asked and either listed or said why not.
     ready: (page, { signedIn }) => until(page, signedIn
-      ? () => !document.querySelector("#marks")?.hidden
+      ? (remote ? () => !document.getElementById("comments")?.hidden
+        || Boolean(document.querySelector("#comments .comments-said")?.textContent)
+        : () => !document.getElementById("comments")?.hidden)
       : () => !document.querySelector('[data-report="this model"]')?.hidden),
     open: async (page, { signedIn }) => {
       if (!signedIn) {
+        await page.click("#more > summary");
+        const shown = await until(page, () => document.querySelector("#more[open]"));
+        const states = [[shown ? "more" : "more (missing)", ".side"]];
         await page.click('[data-report="this model"]');
         const opened = await until(page, () => document.querySelector("dialog.report[open]"));
-        const states = [[opened ? "report" : "report (missing)", "dialog.report"]];
+        states.push([opened ? "report" : "report (missing)", "dialog.report"]);
         return states;
       }
-      await page.evaluate(() => document.querySelector("details.collect")?.setAttribute("open", ""));
-      const states = [["collect", ".marks"]];
+      // Save: your lists, Favourites first (web/model-page.js).
+      await page.click('#marks [data-mark="save"]');
+      const saved = await until(page, () => !document.getElementById("save-panel")?.hidden);
+      const states = [[saved ? "save" : "save (missing)", ".side"]];
       const add = page.locator("[data-add-build]");
       if (await add.isVisible().catch(() => false)) {
         await add.click();
@@ -296,6 +307,20 @@ const PAGES = [
   { name: "model-quiet", path: "/m/DesignFox1", local: true },
   { name: "embed", path: `/m/${stand.MODEL_ID}/embed` },
   { name: "person", path: `/u/${stand.HANDLE}` },
+  // A person's other tabs (api/people.js profilePage, docs/SOCIAL.md U5):
+  // photos of real builds in columns, and collections as cards; the house
+  // account, credited "Brickworks" as the live gallery's models are, and
+  // somebody with nothing yet, whose tabs say what goes there. Its More
+  // menu open. Here only: the stand-in's people.
+  { name: "person-builds", path: `/u/${stand.HANDLE}?tab=builds`, local: true },
+  { name: "person-lists", path: `/u/${stand.HANDLE}?tab=collections`, local: true,
+    open: async (page) => {
+      await page.click(".profile-head .more-menu summary");
+      const opened = await until(page, () => document.querySelector(".profile-head .more-menu[open]"));
+      return [[opened ? "more" : "more (missing)", ".profile-head .more-menu"]];
+    } },
+  { name: "person-house", path: "/u/brickworks?tests=1", local: true },
+  { name: "person-new", path: "/u/new-here", local: true },
   { name: "collection", path: `/c/${stand.LIST_ID}` },
   { name: "challenge", path: "/challenge",
     ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
