@@ -274,8 +274,15 @@ func key_of(brick_id: int) -> String:
 
 
 ## Place a brick. Returns its id, or 0 if the part has no geometry.
-func add_brick(part_id: String, color_code: int, at: Transform3D) -> int:
-	var brick_id: int = _place(part_id, color_code, at)
+##
+## [param as_id] puts a brick taken off back under the number it had
+## (Builder's undo and redo), when that number is free: numbers are never
+## handed out twice in a world, so it is unless the brick is back already.
+## Back under a new one, every holder of the old went stale: a session's
+## next edit by the number it was told found no brick, and a reject of the
+## surface pass's pieces said they were off while they stood.
+func add_brick(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -> int:
+	var brick_id: int = _place(part_id, color_code, at, as_id)
 	if brick_id != 0:
 		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
 			"colour": color_code, "at": _bricks[brick_id].transform})
@@ -298,7 +305,7 @@ func clear_ghosts() -> void:
 	_ghosts.clear()
 
 
-func _place(part_id: String, color_code: int, at: Transform3D) -> int:
+func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -> int:
 	if library == null:
 		push_error("brick world: no part library set")
 		return 0
@@ -326,8 +333,11 @@ func _place(part_id: String, color_code: int, at: Transform3D) -> int:
 		part = library.mesh_for(part_id)
 	if part == null:
 		return 0
-	var brick := Brick.new(_next_id, real, color_code, at * by)
-	_next_id += 1
+	var number: int = as_id if as_id > 0 and as_id < _next_id and not _bricks.has(as_id) \
+		else _next_id
+	var brick := Brick.new(number, real, color_code, at * by)
+	if number == _next_id:
+		_next_id += 1
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()

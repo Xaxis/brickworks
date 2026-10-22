@@ -106,6 +106,11 @@ whole cycle.
   floor, no longer part of the model; it comes back as it was. And a design
   undone and redone stays Claude's: the next one submitted is laid in its
   place, where it was laid beside it.
+- A part that Undo takes off and Redo puts back keeps its number. It came
+  back under a new one, so whatever had named it lost it: Claude's next
+  edit by the number it had been told found no such part, and rejecting
+  the pieces the surface pass laid said they were off while all of them
+  still stood.
 - A message in the status bar lasts its full four seconds when the same
   words are said again. The first saying's timer cleared them as it ran
   out: Check stability pressed twice two seconds apart dropped the weak

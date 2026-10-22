@@ -99,6 +99,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
+  A part an undo or redo puts back keeps its number (`BrickWorld.add_brick`
+  `as_id`), so what named it still does: a session's next edit, the
+  assistant's record, the surface pass's pieces (`undo_ids_probe`).
   On a big model an undo or redo is the parts' own work and nothing more: a
   part moved by whole cells (a nudge, its undo and redo) has its lattice cover
   moved (`BrickLattice.shift`, `occupy_moved`), not worked out again from the

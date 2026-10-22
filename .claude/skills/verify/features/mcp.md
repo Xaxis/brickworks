@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:first design undo probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -477,6 +477,7 @@ godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, t
 godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that looks changes nothing
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
 tools/probe.sh first_design_undo_probe                              # a first design's floor and parts one step, undone and redone whole
+tools/probe.sh undo_ids_probe                                       # a part back from Undo or Redo keeps its number
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
@@ -755,7 +756,18 @@ All of these are in `tools/check.sh`.
   A figure goes down past the builder's signals (`Builder.put_figure`), so
   before 2026-10-19 a minifigure Claude stood up was lost on reload, and a
   clear_model went unsaved (the probe calls through the app's own connector
-  socket, and fails both without it).
+  socket, and fails both without it). Its counts leave out the baseplate:
+  the probe clears the floor, Main lays it again at the end of the frame
+  after the person's first part, and since a check runs on a worker
+  (21040677) that frame comes inside the session's edit. Counted with the
+  floor, it failed 3 checks from then until 2026-10-22.
+  `undo_ids_probe`: a part Undo takes off and Redo puts back keeps its
+  number (`BrickWorld.add_brick`'s `as_id`, from the step's `was`). It came
+  back as a new one, and everything holding the old went stale: a
+  session's next edit_model by the number it was told ("No brick has
+  number 1"), the assistant's `_placed_ids` until Claude's next call, and
+  the surface pass's `Finding.ids`, so settle_surface reject said the
+  pieces were off while all 12 stood. Fails 4 checks on 1baf3516.
   `first_design_undo_probe`: a call that keeps steps of its own and changes
   the model past them too is both, one step. A session's first submit_design
   lays its parts with no step, then the floor it chose is kept

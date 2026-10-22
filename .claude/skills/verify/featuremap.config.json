@@ -2812,6 +2812,13 @@
       "entry": "tools/web/theme_flow.mjs",
       "reach": "node tools/web/theme_flow.mjs   (no network: the checkout's pages served as design_flow serves them; --url=<deployment> for a preview, --account there once supabase/theme.sql is applied)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "undo ids probe",
+      "entry": "src/dev/undo_ids_probe.gd",
+      "reach": "tools/probe.sh undo_ids_probe",
+      "area": "mcp"
     }
   ]
 }
