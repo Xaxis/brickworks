@@ -3176,7 +3176,8 @@ node tools/web/gallery_flow.mjs --out=shots/gallery
 BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=shots/gallery-preview
 ```
 
-It passes when it ends "N passed, 0 failed" (2026-10-22: 37 locally): at
+It passes when it ends "N passed, 0 failed" (2026-10-22: 37 locally, and
+37 with `--url` on `relay_server.mjs` serving this checkout's pages): at
 390 x 844, light and dark, the first card's picture within 330 px of the
 top, two to a row and four cards' names on the first two screens; at 1280
 x 900 four whole cards, four to a row; Top over all time with this week's
