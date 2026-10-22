@@ -13,6 +13,22 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-22
+
+A release about opening and moving real models. File > Library… opens any
+of 1,575 models of real LEGO® sets and their alternate builds, from LDraw's
+Official Model Repository, each with its cover, its builder credited and its
+licence, in a tab of its own; the gallery's shared models are a shelf beside
+them. Grab turns 85 of the repository's sets by their steering as the real
+ones turn, where 0.4.0 turned 59: universal joints bend, racks keep their
+pinions, a loop comes back where it began, and a hinge turns as far as its
+parts let it. My Claude designs a new model twice, side by side, and keeps
+the better, and Undo takes back all of a session's first design. The window
+no longer stops while Claude moves a part or checks a design. Brickify lays
+more of a model's steep sides on their sides, and the undersides of
+overhangs in slopes you can buy. Models saved by 0.4.0 open in 0.5.0
+unchanged.
+
 ### Added
 
 - File, Library… opens any model of a real LEGO® set that LDraw's Official
