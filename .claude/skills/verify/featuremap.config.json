@@ -2763,6 +2763,20 @@
       "entry": "src/dev/first_design_undo_probe.gd",
       "reach": "tools/probe.sh first_design_undo_probe",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "model library",
+      "entry": "tools/library_build.py",
+      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-22/library/)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "model library in storage",
+      "entry": "tools/storage_library.py",
+      "reach": "tools/storage_library.py --check   (the staged library/ in the parts bucket under library/, what is not up yet and its size; without --check uploads it, the index last)",
+      "area": "collection"
     }
   ]
 }
