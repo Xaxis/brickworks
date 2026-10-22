@@ -48,7 +48,10 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
   unrestored update viewer_tools worker_first_run grab)
 # In a window, each as its own header says (tools/probe.sh: the size it
 # names, on Xvfb and the GPU, a data folder of its own), NAME or NAME:ARGS.
-windowed=(motions motions_panel motions_render telescope floor share_view share_play
+# @out in ARGS is a folder of this run's: left to themselves the motions
+# probes write their pictures over a dated folder in the main checkout's
+# bench/results.
+windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
   simulate typing slow_frames look progress render collection_ui library
   animation balance_view outline outline_cost placing offgrid booklet_edit
   "command:--judge --subjects=orthanc")
@@ -91,6 +94,8 @@ if [ -n "$unlisted$unknown" ]; then
   echo "  put each probe in the suite (headless, windowed), or in out with why it is not"
   exit 1
 fi
+# --lists: only that, which a merge can ask in a second.
+case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list"; exit 0 ;; esac
 # Never the person's own app data (~/.local/share/godot/app_userdata/
 # Brickworks, their models and settings): a Godot left to the default
 # XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
@@ -468,6 +473,7 @@ run "draws only what changed, big" "${cursor_screen[@]}" godot --path . --resolu
 for spec in "${windowed[@]}"; do
   name=${spec%%:*}; args=()
   [ "$spec" = "$name" ] || read -r -a args <<< "${spec#*:}"
+  args=("${args[@]/#@out/$XDG_DATA_HOME/$name}")
   run "$name" tools/probe.sh "${name}_probe" "${args[@]}"
 done
 
