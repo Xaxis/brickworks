@@ -28,8 +28,8 @@
 ##   7. Over MCP, as the person's Claude calls it: gallery library=true finds
 ##      sets by words, theme and decade, each with its id; open_model
 ##      library= opens one here, refused first while there is unsaved work.
-##   8. A library id the store has not got, and no connection at all, are
-##      each said.
+##   8. A library id the store has not got, a store with no library in it,
+##      and no connection at all, are each said.
 ##
 ## Real processes in this run's data folder (tools/probe.sh gives one),
 ## stopped by their ids at the end, with the stand-in server. Not in the
@@ -280,17 +280,25 @@ func _run() -> void:
 	await _main.call("_maybe_open_library")
 	_check("an id the library has not got: %s" % bar.status_text(),
 		bar.status_text() == "could not open it: The library has no model omr-99999-1.")
+	# Nothing kept on this computer from here on: the index fetched above is.
+	DirAccess.remove_absolute(ModelLibrary.KEPT + "index.json")
+	var elsewhere := PartLibrary.new()
+	elsewhere.remote_parts = "http://127.0.0.1:%d/nothing/" % PORT
+	var empty := ModelLibrary.new()
+	empty.parts = elsewhere
+	_main.add_child(empty)
+	var none: Array = await empty.models()
+	_check("a store with no library in it: %s" % empty.trouble, none.is_empty()
+		and empty.trouble == "The library did not send its index (it answered 404). Try again later.")
 	OS.kill(_server)
 	_server = 0
 	await create_timer(0.5).timeout
-	DirAccess.remove_absolute(ModelLibrary.KEPT + "index.json")
 	var cold := ModelLibrary.new()
 	cold.parts = _main.get("_library")
 	_main.add_child(cold)
-	var none: Array = await cold.models()
+	none = await cold.models()
 	_check("no connection, nothing kept: %s" % cold.trouble, none.is_empty()
-		and cold.trouble == ("Could not reach the library for the library's index. Check the "
-			+ "connection and try again."))
+		and cold.trouble == "Could not reach the library. Check the connection and try again.")
 	dialog.open("community")
 	await _until(func() -> bool: return str(dialog.last.get("status", "")).begins_with("Could not"), 30.0)
 	_check("the community shelf says so: %s" % dialog.last.get("status", ""),

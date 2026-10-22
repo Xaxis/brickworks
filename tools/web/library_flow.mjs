@@ -17,7 +17,7 @@
 //   1. Tab A, signed in, has its model. File > Library… (the File menu, by
 //      its keys) opens the screen on the LDraw sets: eight, with covers.
 //   2. A search ("dragon"), the theme filter chosen by typing in its list
-//      (Town: three), the size filter (Small: two of them).
+//      (Town: three), the size filter (Under 200 parts: two of them).
 //   3. Open on 106-1 opens tab B at ?new=1&library=omr-106-1: the set, 65
 //      parts, named "106-1 UNICEF Van", credited to its LDraw author under
 //      CCAL 2.0 with its LDraw page in Properties; ?library gone from its
@@ -234,7 +234,7 @@ try {
     (async () => await choose(a, "library_theme", "Town", "theme", "Town")
       && await until(async () => (await shelf(a)).total === 3, 20))());
   await checkAfter(async () => `...small: ${await shown(a)}`,
-    (async () => await choose(a, "library_size", "Small", "size", "small")
+    (async () => await choose(a, "library_size", "Under", "size", "small")
       && await until(async () => (await shelf(a)).total === 2, 20))());
   await a.screenshot({ path: `${out}/2_filtered.png` });
   await choose(a, "library_theme", "Any", "theme", "");

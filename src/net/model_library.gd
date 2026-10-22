@@ -78,7 +78,7 @@ func models() -> Array:
 	var json := JSON.new()
 	if int(got["code"]) != 200 or json.parse((got["bytes"] as PackedByteArray).get_string_from_utf8()) != OK \
 			or not json.data is Dictionary or not (json.data as Dictionary).get("models") is Array:
-		trouble = _unreached(got, "the library's index")
+		trouble = _unreached(got, "its index")
 	else:
 		trouble = ""
 		var kept: Array = []
@@ -276,11 +276,12 @@ static func picture(bytes: PackedByteArray) -> Texture2D:
 	return ImageTexture.create_from_image(image) if read == OK else null
 
 
-## Why [param what] did not come, in words for a person.
+## Why [param what] did not come, in words for a person: the store's
+## answer for an object it has not got is a 400, which is not a word.
 static func _unreached(got: Dictionary, what: String) -> String:
 	if int(got["code"]) == 0:
-		return "Could not reach the library for %s. Check the connection and try again." % what
-	return "The library did not have %s (it answered %d)." % [what, int(got["code"])]
+		return "Could not reach the library. Check the connection and try again."
+	return "The library did not send %s (it answered %d). Try again later." % [what, int(got["code"])]
 
 
 ## [param path] under the store: {code, bytes}. The desktop keeps what came
