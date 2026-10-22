@@ -333,9 +333,12 @@ static func pair_of(a: int, b: int) -> int:
 ## whose studs were read by their tips and do not point up, "seated": pair ->
 ## true for a pair the lift reaches only where the two already overlap,
 ## joined by no stud: a cone threaded on an antenna, a pin in a beam, or two
-## turned covers side by side, "overlapped": pair -> true for a stud pair
-## the lift read across covers that already overlap, with no stud's tip in
-## either}. Only pairs of those parts; worked out once and kept in [param
+## turned covers side by side, "beside": pair -> true for a "seated" pair
+## that is only touching, joined by nothing (below), "overlapped": pair ->
+## true for a stud pair the lift read across covers that already overlap,
+## with no stud's tip in either, "pivots": pair -> [where its stud stands,
+## the way it points] for a pair one stud joins into a part turned to it off
+## the square, which turns on that stud (below)}. Only pairs of those parts; worked out once and kept in [param
 ## contacts] as "joints", so a caller weighing its parts a few at a time
 ## (Tested, BrickifySteps) pays once. Balance, Sections, Tested and [method
 ## check] all read what holds what from here.
@@ -375,6 +378,20 @@ static func pair_of(a: int, b: int) -> int:
 ## instead mended 1793-1's hinge plates inside its corner panel but moved
 ## 8466-1's stacked plates onto the bricks beside them; a socket is where
 ## the stud is, not a face near it.
+##
+## Studs into a part turned to them off the square ([method turned_to]) hold
+## only where it takes them, in a socket facing them or a hole along them
+## ([method _takes]), as Bodies reads them; the others are tips in its
+## turned cover, which keeps every cell its boxes touch. 6753-1's steering
+## plate, laid at 30 degrees on two hinges, stood on a stud of each hinge's
+## base as well as on its top. A pair none of whose studs is taken leans on
+## them: "seated" and "beside", touching and joined by nothing. One stud
+## taken is a pivot: the part turned to it stands at its angle by turning on
+## it, and a builder turns it so (Sections reads it as a joint that turns).
+##
+## A "seated" pair is seated where some box of one part's own cover goes
+## into the other's; one that only touches, two turned covers side by side,
+## is "beside" too, once [method beside] is asked.
 ##
 ## [param everywhere] false reads a stud's tip only where the lift cannot
 ## tell: on a part the lift reaches across an overlap, and for a stud not
@@ -465,10 +482,27 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			if not tips.has(by):
 				tips[by] = [[], stud[3]]
 			((tips[by] as Array)[0] as Array).append(stud[2])
+	if not tips.is_empty() and placed.is_empty():
+		for brick: BrickWorld.Brick in contacts.get("bricks", []):
+			placed[brick.id] = brick
+	var askew: Dictionary = {}         ## pair -> Array of [Vector2i by, feet taken, way]
+	var by_tips: Dictionary = {}       ## pair -> true where a stud's tip was read
 	for by: Vector2i in tips:
 		var feet: Array = (tips[by] as Array)[0]
 		var key: int = pair_of(by.x, by.y)
+		by_tips[key] = true
 		overlapped.erase(key)
+		var whose: BrickWorld.Brick = placed.get(by.x)
+		var into: BrickWorld.Brick = placed.get(by.y)
+		if whose != null and into != null and turned_to(whose.transform.basis, into.transform.basis):
+			var way: Vector3 = (tips[by] as Array)[1]
+			var mesh: Lbm.PartMesh = library.mesh_for(into.part_id)
+			var taken: Array = feet.filter(func(foot: Vector3) -> bool:
+				return mesh != null and _takes(into.transform, mesh, foot, way))
+			if not askew.has(key):
+				askew[key] = []
+			(askew[key] as Array).append([by, taken, way])
+			continue
 		if feet.size() <= int(studs.get(key, 0)):
 			continue
 		studs[key] = feet.size()
@@ -476,12 +510,208 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		sideways.erase(key)
 		if ((tips[by] as Array)[1] as Vector3).y <= 0.5:
 			sideways[key] = [PackedVector3Array(feet), (tips[by] as Array)[1]]
+	# Studs into a part turned to them off the square hold only where it
+	# takes them, as Bodies reads them: the rest are tips in its turned
+	# cover, which keeps every cell its boxes touch. One so taken is a pivot.
+	var pivots: Dictionary = {}
+	var beside: Dictionary = {}
+	for key: int in askew:
+		var most: Array = []
+		var count: int = 0
+		for one: Array in askew[key]:
+			count += (one[1] as Array).size()
+			if most.is_empty() or (one[1] as Array).size() > (most[1] as Array).size():
+				most = one
+		sideways.erase(key)
+		if count == 0:
+			# It leans on a stud it does not take: touching, held by nothing.
+			studs.erase(key)
+			under.erase(key)
+			seated[key] = true
+			beside[key] = true
+			continue
+		studs[key] = count
+		under[key] = (most[0] as Vector2i).x
+		var way: Vector3 = most[2]
+		if way.y <= 0.5:
+			sideways[key] = [PackedVector3Array(most[1]), way]
+		if count == 1:
+			pivots[key] = [(most[1] as Array)[0], way]
+	# And a pair turned to each other that the lift alone stood one on the
+	# other, no stud's tip in either: a turned cover rests on the other's
+	# cells, and leans there. 6753-1's steering plate, laid at 30 degrees on
+	# its hinges' tops, rested so on their bases. Not for the status bar's
+	# check, which keeps the lift's reading.
+	if everywhere:
+		var turned: Dictionary = {}    ## id -> turned off the world's square
+		for key: int in studs.keys():
+			if by_tips.has(key) or overlapped.has(key):
+				continue
+			var ends: Array = [key >> 32, key & 0xFFFFFFFF]
+			var any: bool = false
+			for id: int in ends:
+				if not turned.has(id):
+					if placed.is_empty():
+						for brick: BrickWorld.Brick in contacts.get("bricks", []):
+							placed[brick.id] = brick
+					var brick: BrickWorld.Brick = placed.get(id)
+					turned[id] = brick != null and turned_to(Basis.IDENTITY, brick.transform.basis)
+				any = any or bool(turned[id])
+			if not any or not turned_to((placed[ends[0]] as BrickWorld.Brick).transform.basis,
+					(placed[ends[1]] as BrickWorld.Brick).transform.basis):
+				continue
+			studs.erase(key)
+			under.erase(key)
+			sideways.erase(key)
+			seated[key] = true
+			beside[key] = true
 	for key: int in studs:
 		seated.erase(key)
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
-		"seated": seated, "overlapped": overlapped}
+		"seated": seated, "overlapped": overlapped, "pivots": pivots, "beside": beside}
 	contacts[kept] = out
 	return out
+
+
+## Of [param contacts]' seated pairs ([method stud_joints]' "seated"), those
+## that only touch, joined by nothing: its "beside", and each seated pair
+## whose own boxes do not go one into the other ([method _seated_in]): two
+## turned covers side by side. What joins a section asks it; Balance, which
+## weighs what rests on what, does not, and stud_joints stays as quick as it
+## was: read with it, 8466-1's 589 seated pairs took 28 ms to 93-184.
+## Worked out once and kept with the joints.
+static func beside(contacts: Dictionary, library: PartLibrary, lattice: BrickLattice) -> Dictionary:
+	var joints: Dictionary = stud_joints(contacts, library, lattice)
+	if joints.has("beside read"):
+		return joints["beside"]
+	var out: Dictionary = joints["beside"]
+	var placed: Dictionary = {}
+	for brick: BrickWorld.Brick in contacts.get("bricks", []):
+		placed[brick.id] = brick
+	for key: int in joints["seated"]:
+		if out.has(key):
+			continue
+		var one: BrickWorld.Brick = placed.get(key >> 32)
+		var other: BrickWorld.Brick = placed.get(key & 0xFFFFFFFF)
+		if one != null and other != null and not _seated_in(one, other, library):
+			out[key] = true
+	joints["beside read"] = true
+	return out
+
+
+## Two parts turned to each other further off the square than this, as the
+## cosine of the angle: 1 degree. A file's turns written to three places
+## (0.999, 0.036) are square.
+const ASKEW_COS := 0.99985
+
+
+## Whether parts turned [param one] and [param other] stand turned to each
+## other off the square: their studs and sockets on grids that do not meet.
+static func turned_to(one: Basis, other: Basis) -> bool:
+	var between: Basis = one.orthonormalized().inverse() * other.orthonormalized()
+	for c: int in 3:
+		var column: Vector3 = between[c].normalized()
+		if maxf(absf(column.x), maxf(absf(column.y), absf(column.z))) < ASKEW_COS:
+			return true
+	return false
+
+
+## Whether a part at [param at] takes a stud standing at [param foot] and
+## pointing [param way]: in one of its sockets facing it, or in a pin or
+## axle hole along it, its tip within the hole (Bodies._takes_stud).
+static func _takes(at: Transform3D, mesh: Lbm.PartMesh, foot: Vector3, way: Vector3) -> bool:
+	if Joints.socket_at(at, mesh, foot, way):
+		return true
+	var tip: Vector3 = foot + way * Joints.STUD_REACH
+	for end: JointSnap.End in JointSnap.ends_of(mesh):
+		if not end.is_hole():
+			continue
+		var hole: JointSnap.End = end.placed(at, 0)
+		if absf(hole.axis.dot(way)) < 0.99:
+			continue
+		var gap: Vector3 = tip - hole.at
+		var along: float = gap.dot(hole.axis)
+		if absf(along) <= hole.reach + 1.0 and (gap - hole.axis * along).length() <= 2.0:
+			return true
+	return false
+
+
+## How far one part's own boxes must go into another's to be seated in it,
+## LDU: half a cell. Two turned plates side by side touch to a hundredth.
+const SEAT_DEPTH := 1.0
+
+
+## Whether [param one] and [param other] are seated one in the other: some
+## box of one's own cover (Lbm.PartMesh.boxes, as it is turned) goes into
+## one of the other's past [constant SEAT_DEPTH] every way (the separating
+## axes of two boxes). A turned part's lattice cover keeps every cell its
+## boxes touch, so two such covers side by side overlap where the parts
+## only touch: 6753-1's trailer, drawn tipped 2 degrees, had its plates
+## side by side read as seated in each other. A part with no boxes, or
+## stretched, is taken as seated, as the lift says. A cover that fills a
+## hollow seats what stands in it: 1793-1's figure in its corner panel.
+static func _seated_in(one: BrickWorld.Brick, other: BrickWorld.Brick, library: PartLibrary) -> bool:
+	var a_mesh: Lbm.PartMesh = library.mesh_for(one.part_id)
+	var b_mesh: Lbm.PartMesh = library.mesh_for(other.part_id)
+	if a_mesh == null or b_mesh == null or a_mesh.boxes.is_empty() or b_mesh.boxes.is_empty():
+		return true
+	for at: Transform3D in [one.transform, other.transform]:
+		for c: int in 3:
+			if absf(at.basis[c].length() - 1.0) > 0.01:
+				return true
+	# Two parts square to the lattice and on it have covers to the cell: what
+	# they share is plastic in plastic. Only a turned cover is rounded out.
+	if BrickLattice.is_square_to_grid(one.transform.basis) and BrickLattice.is_square_to_grid(other.transform.basis) \
+			and not BrickLattice.is_off_lattice(one.transform.origin) \
+			and not BrickLattice.is_off_lattice(other.transform.origin):
+		return true
+	# The other's boxes in one's own frame.
+	var between: Transform3D = one.transform.orthonormalized().affine_inverse() \
+		* other.transform.orthonormalized()
+	var axes: Array[Vector3] = [between.basis[0], between.basis[1], between.basis[2]]
+	var a_cell: float = a_mesh.cell_ldu
+	var b_cell: float = b_mesh.cell_ldu
+	for b_box: AABB in b_mesh.boxes:
+		var b_half: Vector3 = b_box.size * b_cell * 0.5
+		var b_mid: Vector3 = between * (b_box.position * b_cell + b_half)
+		var reach := Vector3.ZERO
+		for c: int in 3:
+			reach += (axes[c] * b_half[c]).abs()
+		var near: Vector3 = a_mesh.bounds.size * 0.5 + Vector3.ONE * a_cell + reach \
+			- (b_mid - a_mesh.bounds.get_center()).abs()
+		if near[near.min_axis_index()] <= SEAT_DEPTH:
+			continue
+		for a_box: AABB in a_mesh.boxes:
+			var a_half: Vector3 = a_box.size * a_cell * 0.5
+			var gap: Vector3 = b_mid - (a_box.position * a_cell + a_half)
+			# The box round the other's turned box first, then every axis.
+			var room: Vector3 = a_half + reach - gap.abs()
+			if room[room.min_axis_index()] <= SEAT_DEPTH:
+				continue
+			if _into(a_half, b_half, axes, gap):
+				return true
+	return false
+
+
+## Whether a box of half size [param a_half] square in its frame and one of
+## [param b_half] along [param axes], [param gap] between their middles, go
+## one into the other past [constant SEAT_DEPTH] along every separating axis.
+static func _into(a_half: Vector3, b_half: Vector3, axes: Array[Vector3], gap: Vector3) -> bool:
+	var tried: Array[Vector3] = [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
+	tried.append_array(axes)
+	for a: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
+		for b: Vector3 in axes:
+			var across: Vector3 = a.cross(b)
+			if across.length_squared() > 1e-6:
+				tried.append(across.normalized())
+	for line: Vector3 in tried:
+		var a_reach: float = absf(line.x) * a_half.x + absf(line.y) * a_half.y + absf(line.z) * a_half.z
+		var b_reach: float = 0.0
+		for c: int in 3:
+			b_reach += absf(axes[c].dot(line)) * b_half[c]
+		if a_reach + b_reach - absf(gap.dot(line)) <= SEAT_DEPTH:
+			return false
+	return true
 
 
 ## A stud's radius, LDU: 4.8 mm across.

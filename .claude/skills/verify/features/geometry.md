@@ -176,7 +176,15 @@ can occupy the same millimetre.
   "overlapped" and hands its load on by no stud, and a stud pointing
   sideways is one. Where covers overlap a tip's cell is in several parts:
   it is in the one with a socket where the stud stands, else the first
-  (`Stability._taking`; 1793-1's hinge plates in its corner panel). The
+  (`Stability._taking`; 1793-1's hinge plates in its corner panel). Studs
+  into a part turned to them off the square (`Stability.turned_to`) hold
+  only where it takes them, in a socket or a hole (`Stability._takes`):
+  none taken, the pair only touches ("seated" and "beside"); one, it is a
+  "pivot". With every tip read, a pair turned to each other that the lift
+  alone stood one on the other only touches too: 6753-1's steering plate,
+  laid at 30° on two hinges' tops, stands on no stud of their bases.
+  `Stability.beside` (asked by what joins a section, not by Balance) tells
+  seated pairs that only touch from those seated in each other. The
   check reads a stud's tip only where the lift cannot
   tell (`stud_joints(..., false)`: parts in an overlapped pair, studs not
   pointing up); every tip doubled its cost on `stability_probe`'s 800

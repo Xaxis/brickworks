@@ -1101,7 +1101,9 @@ Sections read the same graph:
 |---|---|
 | two studs or more in another part (`Joints.studs_in`) | rigid |
 | one stud, when either part is a single stud across | turns on the stud: a 1x1 round plate, a minifigure's head |
-| one stud under a wider part | rigid: clutch holds it |
+| one stud into a part turned to it off the square, in a socket or hole of it | turns on the stud: it came to its angle so |
+| studs into a part turned to them, in no socket or hole of it | nothing: the part leans on them (6753-1's fifth wheel) |
+| one stud under a wider part square to it | rigid: clutch holds it |
 | an axle in an axle hole (`Joints.through`, "grips") | rigid |
 | an axle in a round hole ("turns") | turns on its line; slides as far as the axle reaches |
 | a pin in a round hole | turns on its line; a pin is held by its collar and does not slide. A pin keyed to nothing is part of the first thing it is in (Mechanism's rule) |

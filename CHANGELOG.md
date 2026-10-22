@@ -76,6 +76,20 @@ whole cycle.
   a smooth frame allows three times in five. Where the steering stops, and
   what it meets, are unchanged.
 
+### Fixed
+
+- A part laid at an angle is held by the studs it sits on, and not by one
+  it only leans on. The tow truck's (6753-1) steering plate, laid at 30
+  degrees on two hinges, was weighed as standing on a stud of each hinge's
+  base as well as on their tops, and its fifth wheel, tipped on its axle,
+  was held by a stud of the brick under it, so a drag would not turn it: it
+  turns on its axle now. A part turned on one stud, as the convertible's
+  (5767-1) windscreen sides hold the plates with a handle at their ends,
+  turns on that stud, where it was held as if square. And a part seated in
+  another with no stud, a control stick in its socket, is joined to it in
+  Suggest sections and Evaluate the section, and two plates side by side
+  that only touch are not.
+
 ## [0.5.0] - 2026-10-22
 
 A release about opening and moving real models. File > Library… opens any

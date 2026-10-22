@@ -58,6 +58,11 @@ const GROW := 1.7
 const SMALL_SHARE := 0.3
 ## How much a pin, an axle, a clip or a hinge holds against a stud.
 const LINK := 2.0
+## How much a part seated in another holds, by no stud and no joint the
+## connectors name: a cone threaded on an antenna, a stick in its socket, a
+## plate in a slope's hollow. As one stud: it holds by its fit, less than a
+## pin and its collar.
+const SEATED := 1.0
 ## How far clear of the rest a section broken out stands, in LDU: two studs
 ## to the side, two bricks above.
 const CLEAR_SIDE := 40.0
@@ -147,6 +152,16 @@ static func _pair(a: int, b: int) -> int:
 	return Stability.pair_of(a, b)
 
 
+## How much a pair of [param graph]'s "links" holds ([method graph_of]): a
+## pin, an axle, a clip, a hinge or glue [constant LINK], a part seated in
+## another and nothing else [constant SEATED].
+static func link_holds(graph: Dictionary, key: int) -> float:
+	if (graph["seated"] as Dictionary).has(key) and not (graph["turns"] as Dictionary).has(key) \
+			and not (graph["pins"] as Dictionary).has(key) and not (graph["fixed"] as Dictionary).has(key):
+		return SEATED
+	return LINK
+
+
 # -- reading the model ----------------------------------------------------------
 
 
@@ -213,7 +228,13 @@ func joint_graph(bricks: Array) -> Dictionary:
 ##     covers that overlap, no stud's tip in either: a pin in a beam, a
 ##     turntable's halves. It holds them as one, but by its pin, axle, hinge
 ##     or turntable, or seated, not by studs: what joins a section says and
-##     weighs it so ([method joins]).
+##     weighs it so ([method joins]). And a pair one stud joins into a part
+##     turned to it off the square (Stability.stud_joints' "pivots"): it
+##     turns on that stud, one joint, weighed as its one stud.
+##   "seated": pair -> 1 for a part seated in another, by no stud and no
+##     joint the connectors name (stud_joints' "seated" but "beside"): a
+##     stick in its socket, a plate in a slope's hollow. In "links" too,
+##     weighed as [constant SEATED].
 ##   "turns": pair -> 1 for a shaft turning in a bore (a hinge's pin in its
 ##     eye, a turntable, a clip on a bar, a bar in a hollow stud: Joints.rounds)
 ##     and a ball in a socket (Joints.balls): joints that move.
@@ -223,7 +244,7 @@ func joint_graph(bricks: Array) -> Dictionary:
 ##     apart.
 ##   "fixed": pair -> 1 for what is held otherwise and never moves (glue, a
 ##     hose's pieces, magnets: Joints.held_otherwise).
-##   "links": pair -> 1 for any of turns, pins and fixed.
+##   "links": pair -> 1 for any of turns, pins, fixed and seated.
 static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice) -> Dictionary:
 	var own: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:
@@ -231,7 +252,9 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = lattice
-	var joints: Dictionary = Stability.stud_joints(judge.contacts(bricks), library, lattice)
+	var contacts: Dictionary = judge.contacts(bricks)
+	var joints: Dictionary = Stability.stud_joints(contacts, library, lattice)
+	var beside: Dictionary = Stability.beside(contacts, library, lattice)
 	var studs: Dictionary = joints["studs"]
 	var under: Dictionary = joints["under"]
 	var entries: Array = []
@@ -242,8 +265,16 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 				Assemblies.path_of(brick)])
 	var kinds: Dictionary = {"turns": [Joints.rounds(entries), Joints.balls(entries)],
 		"pins": [Joints.both_ways(entries)], "fixed": [Joints.held_otherwise(entries, library)]}
-	var out: Dictionary = {"studs": studs, "under": under, "overlapped": joints["overlapped"],
-		"links": {}}
+	var overlapped: Dictionary = joints["overlapped"]
+	if not (joints["pivots"] as Dictionary).is_empty():
+		overlapped = overlapped.duplicate()
+		overlapped.merge(joints["pivots"])
+	var seated: Dictionary = {}
+	for key: int in joints["seated"]:
+		if not beside.has(key) and own.has(key >> 32) and own.has(key & 0xFFFFFFFF):
+			seated[key] = 1
+	var out: Dictionary = {"studs": studs, "under": under, "overlapped": overlapped,
+		"seated": seated, "links": seated.duplicate()}
 	for kind: String in kinds:
 		var found: Dictionary = {}
 		for held: Dictionary in kinds[kind]:
@@ -634,7 +665,8 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 		for key: int in graph[kind]:
 			var a: int = index_of[key >> 32]
 			var b: int = index_of[key & 0xFFFFFFFF]
-			var much: float = float(graph["studs"][key]) if kind == "studs" else LINK
+			var much: float = float(graph["studs"][key]) if kind == "studs" \
+				else Sections.link_holds(graph, key)
 			held[a][b] = float(held[a].get(b, 0.0)) + much
 			held[b][a] = float(held[b].get(a, 0.0)) + much
 
@@ -1273,7 +1305,7 @@ func _most_joined(made: Suggestion) -> int:
 				continue
 			var other: Suggestion = b if a == made else a
 			held[other.number] = float(held.get(other.number, 0.0)) \
-				+ (float(graph["studs"][key]) if kind == "studs" else LINK)
+				+ (float(graph["studs"][key]) if kind == "studs" else Sections.link_holds(graph, key))
 	var best: int = 0
 	var most: float = 0.0
 	for number: int in held:
@@ -1396,7 +1428,12 @@ func find_section(asked: String) -> String:
 ## A pair the lift reads only across covers that overlap, with no stud's tip
 ## in either (stud_joints' "overlapped"), is held by its pin, axle, hinge or
 ## turntable, or seated, as Balance weighs it: one joint of "links", not
-## studs. Read as studs, a turntable held its top on 342 of them.
+## studs. Read as studs, a turntable held its top on 342 of them. So is a
+## part seated in another (stud_joints' "seated" but "beside"), a stick in
+## its socket, and a pair one stud joins into a part turned to it ("pivots"),
+## which turns on it: 6753-1's steering wheel stood on 9 studs, two of them
+## the hinges' bases' under its plate laid at 30 degrees, and its stick in
+## the socket on the plate was joined by nothing.
 func joins(ids: Dictionary) -> Dictionary:
 	var lattice: BrickLattice = builder.lattice
 	var bricks: Array = []
@@ -1420,7 +1457,9 @@ func joins(ids: Dictionary) -> Dictionary:
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = lattice
-	var joints: Dictionary = Stability.stud_joints(judge.contacts(bricks), library, lattice)
+	var contacts: Dictionary = judge.contacts(bricks)
+	var joints: Dictionary = Stability.stud_joints(contacts, library, lattice)
+	var touching: Dictionary = Stability.beside(contacts, library, lattice)
 	var under: Dictionary = joints["under"]
 	var on: Dictionary = {}
 	var carries: Dictionary = {}
@@ -1431,7 +1470,7 @@ func joins(ids: Dictionary) -> Dictionary:
 		var other: int = key & 0xFFFFFFFF
 		if ids.has(one) == ids.has(other):
 			continue
-		if (joints["overlapped"] as Dictionary).has(key):
+		if (joints["overlapped"] as Dictionary).has(key) or (joints["pivots"] as Dictionary).has(key):
 			overlapped.append(key)
 			continue
 		var theirs: int = other if ids.has(one) else one
@@ -1439,6 +1478,9 @@ func joins(ids: Dictionary) -> Dictionary:
 		var into: Dictionary = carries if ids.has(int(under[key])) else on
 		into[theirs] = int(into.get(theirs, 0)) + count
 		studs += count
+	for key: int in joints["seated"]:
+		if not touching.has(key) and ids.has(key >> 32) != ids.has(key & 0xFFFFFFFF):
+			overlapped.append(key)
 	# Pins, axles and clips, between it and what is near it.
 	var box: AABB = bounds_of(ids.keys()).grow(BrickLattice.STUD)
 	var near: Array = []
@@ -1466,7 +1508,8 @@ func joins(ids: Dictionary) -> Dictionary:
 				seen[key] = true
 				var theirs: int = b if ids.has(a) else a
 				links[theirs] = int(links.get(theirs, 0)) + 1
-	# Held by its pin, axle, hinge or turntable, as read just now, or seated.
+	# Held by its pin, axle, hinge or turntable, as read just now, seated, or
+	# on one stud it turns on.
 	for key: int in overlapped:
 		if seen.has(key):
 			continue

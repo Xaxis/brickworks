@@ -11,8 +11,11 @@
 ##     it reaches into). Two or more between two parts hold them as one. One
 ##     alone turns when either part is a single stud across (a 1x1 round
 ##     plate, a minifigure's head on its neck): builders use it as a
-##     turntable. One under a wider part holds, as clutch holds a plate on
-##     one stud of a wall.
+##     turntable, and where the part it is in stands turned to it off the
+##     square, as a plate swung on one stud does. One under a wider part
+##     square to it holds, as clutch holds a plate on one stud of a wall.
+##     Studs into a part turned to them hold only where it takes them, in
+##     a socket or a hole.
 ##   pins and axles (Joints.through): an axle in an axle hole holds; an axle
 ##     or a pin in a round hole turns on its line, and slides along it as far
 ##     as the shaft reaches.
@@ -535,9 +538,15 @@ func _read() -> void:
 	# gear's holes, and the next reading locked the column, both kingpins
 	# and their gears to the chassis: the column would not turn back. A
 	# section built at an angle is square to itself and held as it was, and
-	# a half pin's stud in a turned part (42081-1's arm) is one stud.
+	# a half pin's stud in a turned part (42081-1's arm) is one stud. So is
+	# a lone stud nothing of a wider part takes: the part leans on it, as
+	# Stability.stud_joints reads it. 6753-1's fifth wheel, tipped 19 degrees
+	# on its axle, sat on a stud of the chassis brick under it, held rigidly
+	# by it, and its axle could not turn.
 	for pair: Vector2i in askew:
-		if int(askew[pair]) >= 2 and int(askew[pair]) == (per_pair[pair] as Array).size():
+		var lone: bool = int(askew[pair]) == 1 and not _one_stud(info_of.get(pair.x)) \
+			and not _one_stud(info_of.get(pair.y))
+		if (int(askew[pair]) >= 2 or lone) and int(askew[pair]) == (per_pair[pair] as Array).size():
 			per_pair.erase(pair)
 	for pair: Vector2i in pressed:
 		if per_pair.has(pair) and int(pressed[pair]) == (per_pair[pair] as Array).size():
@@ -596,7 +605,12 @@ func _read() -> void:
 		if not groove.is_empty():
 			candidates.append(groove)
 			continue
-		if found.size() == 1 and (_one_stud(info_of.get(pair.x)) or _one_stud(info_of.get(pair.y))):
+		# One stud alone turns where either part is a single stud across, or
+		# where the part it is in stands turned to it off the square: it came
+		# to its angle by turning on the stud (Stability.stud_joints' pivots).
+		if found.size() == 1 and (_one_stud(info_of.get(pair.x)) or _one_stud(info_of.get(pair.y))
+				or Stability.turned_to(world.get_brick(pair.x).transform.basis,
+					world.get_brick(pair.y).transform.basis)):
 			candidates.append([pair.x, pair.y, "stud", found[0][0], found[0][1], true, 0.0,
 				Vector2.ZERO, 0])
 		else:
