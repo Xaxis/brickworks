@@ -33,8 +33,8 @@ const CLOSE_TO := 0.05
 ## this, LDU: near enough the loop to start the next step from, which is all
 ## it is for.
 const ON_THE_WAY := 0.5
-## The last step closes on towards this while each round halves what is left
-## ([method _close_with]).
+## The last step closes on towards this while each round takes a tenth off
+## what is left ([method _close_with]).
 const CLOSE_FINE := 0.0005
 ## A step turns no coordinate further than this, radians (29°), as far as
 ## the last step's slope says: what a small actuator's screw drives turns 2
@@ -552,6 +552,54 @@ func _from_built(built: Dictionary) -> void:
 			if absf(off) > FROM_BUILT_MOST:
 				off = 0.0
 		_rack_built.append(off)
+	# Where each slide the loop has to spare stood as built, against where it
+	# stands: the coordinate that puts it back.
+	_slide_built.clear()
+	for n: int in links.size():
+		var c: int = slide_col[n]
+		if c < 0 or not _sliding.has(c) or c == driver_col:
+			continue
+		var change: Variant = _since_built(links[n].pairs[0] as Array, child_of[n], built)
+		var since: float = 0.0
+		if change != null:
+			since = _axis[n].dot(_point[n] - (change as Transform3D) * _point[n])
+		if absf(since) <= FROM_BUILT_MOST * 10.0:
+			_slide_built[c] = -since
+	# And where the driver stood as built: its turn (or slide) back there.
+	_driver_built = NAN
+	var driven: Variant = _since_built(links[0].pairs[0] as Array, child_of[0], built) if not links.is_empty() else null
+	if driven != null:
+		var back: Transform3D = driven
+		if driver_col == slide_col[0]:
+			_driver_built = _axis[0].dot(back * _point[0] - _point[0])
+		elif _axis[0] != Vector3.ZERO:
+			var turn: Quaternion = back.basis.orthonormalized().get_rotation_quaternion()
+			_driver_built = 2.0 * atan2(Vector3(turn.x, turn.y, turn.z).dot(_axis[0]), turn.w)
+			_driver_built = wrapf(_driver_built, -PI, PI)
+
+
+## Whether the loops close with the driver at [param at], where it was
+## built, and each slide they have to spare back where it was built too
+## ([member _slide_built]), from [param from_q]. A slide the loop took on the
+## way out is kept by least change on the way back, where turning would close
+## it as well: 5533-1's steering knuckle slid 2.9 LDU out along its axle, and
+## came back with its arm turned to make up for it, its wheel 0.28 LDU off.
+func _closes_built(at: float, from_q: PackedFloat64Array) -> bool:
+	if _slide_built.is_empty() or is_nan(_driver_built) or absf(at - _driver_built) > BACK_AT_BUILT:
+		return false
+	var start: PackedFloat64Array = from_q.duplicate()
+	start[driver_col] = at
+	var apart: bool = false
+	for c: int in _slide_built:
+		var to: float = float(_slide_built[c])
+		if _bounded.has(c):
+			to = clampf(to, (_limits[c] as Vector2).x, (_limits[c] as Vector2).y)
+		apart = apart or absf(start[c] - to) > CLOSE_FINE
+		start[c] = to
+	if not apart:
+		return false
+	q = start
+	return _close() and _within()
 
 
 ## [param pair]'s two parts as they stand against each other, from how they
@@ -575,6 +623,8 @@ func _since_built(pair: Array, body_one: int, built: Dictionary) -> Variant:
 	return b.transform * b0.affine_inverse() * a0 * a.transform.affine_inverse()
 
 
+## A driver this near where it was built, radians or LDU, is back there.
+const BACK_AT_BUILT := 0.001
 ## How far a joint's halves may stand from how they were built, LDU (and its
 ## lines, over [constant AXIS_SCALE]), and be read as a gap a move left: past
 ## [constant ON_THE_WAY], what a step along the way closes to.
@@ -584,6 +634,10 @@ const FROM_BUILT_MOST := 1.0
 var _far_half: Array = []
 ## Each rack's teeth off its pinion's since built, LDU ([method _from_built]).
 var _rack_built := PackedFloat64Array()
+## Each spare slide's coordinate as built: column -> value ([method _from_built]).
+var _slide_built: Dictionary = {}
+## The driver's coordinate as built, or NAN where it has not moved since.
+var _driver_built: float = NAN
 
 
 ## The loop joints on the way from the anchor to [param body].
@@ -1103,15 +1157,15 @@ func _close_with(held: Dictionary) -> bool:
 	var n: int = free.size()
 	# Closed to a fifth of the tolerance, so the last step stands well inside
 	# it; a step on the way only to within it. And on, as long as each round
-	# halves what is left, to [constant CLOSE_FINE]: a turn's last step 0.01
-	# LDU off its rack left 8466-1's steering column 0.2 LDU off at its top
-	# universal joint, 18 times further from the pinion's line.
+	# takes a tenth off what is left, to [constant CLOSE_FINE]: a turn's last
+	# step 0.01 LDU off its rack left 8466-1's steering column 0.2 LDU off at
+	# its top universal joint, 18 times further from the pinion's line.
 	var aim: float = _tolerance * 0.2 if _tolerance == CLOSE_TO else _tolerance
 	var fine: float = CLOSE_FINE if _tolerance == CLOSE_TO else aim
-	var halved: bool = true
+	var gaining: bool = true
 	var at_row := PackedInt32Array()
 	var of_row := PackedFloat64Array()
-	while (now > aim or now > fine and halved) and iterations < ITERATIONS and n > 0:
+	while (now > aim or now > fine and gaining) and iterations < ITERATIONS and n > 0:
 		iterations += 1
 		var jac: Array = _jacobian(q, cache)
 		# Normal equations: (JᵀJ + λ diag) dq = −Jᵀr, from each row's few
@@ -1186,7 +1240,7 @@ func _close_with(held: Dictionary) -> bool:
 			var tr: PackedFloat64Array = _residual(trial, trial_cache)
 			var then: float = _worst(tr)
 			if then < now:
-				halved = then < now * 0.5
+				gaining = then < now * 0.9
 				q = trial
 				r = tr
 				now = then
@@ -1329,7 +1383,7 @@ func _reach(value: float) -> float:
 	for n: int in range(1, count + 1):
 		var at: float = lerpf(from, value, float(n) / float(count))
 		_tolerance = CLOSE_TO if n == count else ON_THE_WAY
-		var closed: bool = _closes_at(at, good, good_q)
+		var closed: bool = n == count and _closes_built(at, good_q) or _closes_at(at, good, good_q)
 		_tolerance = CLOSE_TO
 		if closed:
 			_follow_slope(at, good, good_q)
