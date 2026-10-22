@@ -3,17 +3,29 @@
   they have and the site's other pages do not.
 
   A shared model's page, /m/<id> (api/share.js): the picture first and
-  large, what it is beside it on a laptop and under it on a phone, then
-  what its owner wrote, its licence and its remix tree.
+  large; beside it on a laptop, in a column that stays on screen as the page
+  scrolls, what it is, who made it, Build it and the action bar; under it on
+  a phone, so the picture, the name, the designer and the action bar are
+  the first screen. Then its builds, versions, words, comments, licence and
+  remix tree, and at the end more by its designer and similar models.
 */
 .model-page { padding: 22px 0 72px; }
 .crumbs { font-size: var(--t-small); color: var(--ink-faint); margin: 0 0 14px; }
 .crumbs a { color: var(--ink-soft); }
 .model-page .top {
-	display: grid; gap: 22px 32px; align-items: start;
-	grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+	display: grid; gap: 22px 40px; align-items: start;
+	grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+	grid-template-areas: "picture side" "rest side";
 }
-@media (max-width: 900px) { .model-page .top { grid-template-columns: minmax(0, 1fr); } }
+.model-page .picture { grid-area: picture; }
+.model-page .side { grid-area: side; position: sticky; top: 84px; min-width: 0; }
+.model-page .rest { grid-area: rest; min-width: 0; }
+@media (max-width: 900px) {
+	.model-page { padding-top: 12px; }
+	.model-page .crumbs { margin-bottom: 10px; }
+	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 16px; }
+	.model-page .side { position: static; }
+}
 
 /* The picture is the shape it was published at, 1200 x 630, so the page
    holds its space before it arrives. */
@@ -30,16 +42,51 @@
 }
 .model-page .picture:hover .go { filter: brightness(1.07); }
 
-.model-page h1 { font-size: var(--t-h1); margin: 0 0 6px; overflow-wrap: anywhere; line-height: 1.15; }
-.model-page .by { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-body); overflow-wrap: anywhere; }
+.model-page h1 { font-size: var(--t-h1); margin: 0 0 12px; overflow-wrap: anywhere; line-height: 1.15; }
 .model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .from a { color: var(--ink); }
-.model-page .facts { margin: 0 0 12px; }
-.model-page .counts { margin: 0 0 16px; color: var(--ink-soft); font-size: var(--t-small); display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.model-page .counts span { font-variant-numeric: tabular-nums; }
-.model-page .side .note { margin-top: 12px; }
+/* The facts are words, not controls: a long one ("Moves: ...") wraps. */
+.model-page .facts { margin: 18px 0 12px; align-items: center; }
+.model-page .facts .pill { white-space: normal; max-width: 100%; }
+/* The Tested mark, first of them; open, its four results take the row. */
+.model-page .facts .tested-mark { margin: 0; }
+.model-page .facts li.tested:has(> .tested-mark[open]) { flex-basis: 100%; }
+.model-page .side .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 12px; }
+
+/* Who made it: their avatar, name and handle, a link to their profile,
+   and Follow beside it. */
+.model-page .shared-by { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: 0 0 14px; }
+.model-page .shared-by .who { display: inline-flex; align-items: center; gap: var(--s-3); min-width: 0; color: var(--ink); text-decoration: none; }
+.model-page .shared-by .names { display: grid; min-width: 0; line-height: 1.3; }
+.model-page .shared-by .names b { font-weight: 640; overflow-wrap: anywhere; }
+.model-page .shared-by .names small { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.model-page .shared-by a.who:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
+.model-page .shared-by .said { flex-basis: 100%; }
+.model-page .shared-by .said:empty { display: none; }
+
+/* The action bar (web/model-page.js): the kit's icon buttons in a row,
+   More at its end; Save's lists open under it and push the page down. */
+.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
+.action-bar .more-menu { margin-left: auto; }
+/* On a phone, one row across the column, More at its end. */
+@media (max-width: 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
+.save-panel {
+	margin-top: 10px; max-width: 420px; padding: 12px; border-radius: var(--r-3);
+	border: 1px solid var(--line); background: var(--panel); display: grid; gap: 8px;
+}
+.save-panel .save-head { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--ink-soft); }
+.marks-said { margin: 6px 0 0; }
+.marks-said:empty { display: none; }
+
+/* What comes next: more by its designer, similar models, a row each. */
+.model-page .next { margin-top: var(--section); max-width: none; }
+.model-page .next h2 { font-size: var(--t-h2); margin: 0 0 12px; overflow-wrap: anywhere; }
+.model-page .next h2 a { color: inherit; }
 
 .model-page section { margin-top: 34px; max-width: 72ch; }
+.model-page .rest > section:first-child { margin-top: 12px; }
+/* Gone to from the action bar: clear of the header, which stays on screen. */
+.model-page section { scroll-margin-top: 84px; }
 .model-page section h2 { font-size: var(--t-h3); margin: 0 0 8px; }
 .model-page section h3 { font-size: var(--t-small); margin: 16px 0 8px; color: var(--ink-soft); font-weight: 600; }
 .model-page .tags { margin: 18px 0 0; }
@@ -55,7 +102,6 @@
 	background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); overflow-wrap: anywhere;
 }
 .model-page .old-version a { color: var(--ink); font-weight: 600; }
-.model-page .version-line { color: inherit; }
 .model-page .versions .changed { margin: 0 0 8px; color: var(--ink); }
 .model-page .versions .when { color: var(--ink-faint); font-size: var(--t-small); margin-left: 4px; }
 .model-page .version-note {
@@ -76,18 +122,8 @@
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
 
-/* Like, Favourite and Add to a collection, on a model's page (model-page.js);
-   hidden until the script is there to make them work. */
-.marks { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin: 14px 0 0; }
-.collect[open] summary { border-color: var(--ink-faint); }
-/* Open, it takes a row of its own and the page moves down for it: hung
-   over the page from the button it ran off a laptop's right edge. */
-.collect[open] { flex-basis: 100%; }
-.collect-panel {
-	margin-top: 8px; max-width: 420px;
-	padding: 12px; border-radius: var(--r-3); border: 1px solid var(--line); background: var(--panel);
-	display: grid; gap: 8px;
-}
+/* Save's lists (model-page.js): Favourites first, then each collection,
+   and a new one's name. */
 .collect-list { display: grid; gap: 4px; max-height: 240px; overflow: auto; }
 .collect-list label { display: flex; gap: 8px; align-items: center; font-size: var(--t-small); min-height: 34px; cursor: pointer; }
 .collect-list label span { flex: 1; overflow-wrap: anywhere; }
@@ -96,9 +132,6 @@
 /* A name box beside its buttons: room for ten letters, then whatever is left;
    it never pushes its row past a phone's edge. */
 .collect-new > input, .list-top > input { flex: 1 1 10em; width: 10em; }
-.marks .said { flex-basis: 100%; margin: 0; font-size: var(--t-small); color: var(--ink-soft); min-height: 1em; }
-.shared-by { margin: 0 0 8px; color: var(--ink-soft); }
-.shared-by a { color: var(--ink); }
 
 /* A model's card is site.css's .model; here only what a card on these
    pages adds: a button under it on your account (.kept). */
@@ -153,7 +186,6 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
    (never the page), and the form to add one. On a profile, what they built. */
 .model-page .builds { max-width: none; }
 .model-page .built-line { margin: 0 0 12px; color: var(--ink-soft); }
-.model-page .counts a[data-count="builds"] { color: inherit; font-variant-numeric: tabular-nums; }
 .build-strip {
 	display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; padding: 2px 2px 10px;
 	scroll-snap-type: x proximity; max-width: 100%;
@@ -202,7 +234,6 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .person .counts { margin-bottom: 12px; }
 .follow-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 26px; min-height: 1em; }
 .follow-line .said, .shared-by .said { margin: 0; font-size: var(--t-small); }
-.shared-by button.follow { margin-left: 4px; }
 button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .feed-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 10px; max-width: 72ch; }
 .feed-row a {

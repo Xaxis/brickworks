@@ -151,8 +151,11 @@ import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
-// The one model card, the browser's too (web/card.js): a model's remixes.
+// The one model card, the browser's too (web/card.js): a model's remixes,
+// more by its designer and similar models.
 import { cardHtml } from "./_card.js";
+// The kit (web/kit.js): the designer's avatar and the action bar's buttons.
+import { avatarHtml, iconButtonHtml, iconHtml } from "./_kit.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -751,11 +754,6 @@ ${rows.join("\n")}
 `);
 }
 
-/// A count is said once there is one, as a card says it: "0 likes" reads as
-/// a page nobody visits (docs/SOCIAL.md). Kept on the page, hidden, for the
-/// page's script to show when a like makes it one.
-const zero = (n) => (Number(n) ? "" : " hidden");
-
 /// The Tested mark, for a version that passed (api/_tested.js publicMark):
 /// small, the four results on hover (its title) and on a tap (it opens),
 /// and whose finding it is. Nothing for any other version.
@@ -768,12 +766,114 @@ function testedMark(mark) {
     + `building it by its own ${count(mark.steps, "step")}.</p></div></details>`;
 }
 
-/// /m/X: the model's own page. What its owner said about it, what it is,
-/// its counts, its licence and its remix tree, with the way into the 3D
-/// viewer and into the app. Every word an owner typed is escaped.
+/// Who made it, at the head of its page: their avatar, name and handle, a
+/// link to their profile, and Follow beside it (web/follow.js shows it once
+/// it knows who is asking). A credit with no profile behind it is the name
+/// alone, with an avatar made from it; a model shared with no credit, none.
+function designerRow(model) {
+  if (model.by) {
+    const handle = escapeHtml(model.by.handle);
+    return `<div class="shared-by"><a class="who" href="/u/${handle}">${avatarHtml(model.by)}`
+      + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
+      + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>Follow</button>`
+      + `<span class="said" role="status"></span></div>`;
+  }
+  if (!model.author) return "";
+  return `<div class="shared-by"><span class="who">${avatarHtml({ name: model.author })}`
+    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
+}
+
+/// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
+/// NEXT_MOST cards a row, and a row only once it has NEXT_LEAST, since a
+/// row of one or two reads as a gallery nobody uses.
+export const NEXT_MOST = 6;
+export const NEXT_LEAST = 3;
+
+/// The cards a model's page ends with: more by its designer, their other
+/// models in the gallery by Top builds; and similar models, of its kind or
+/// sharing its tags, the most tags shared first, then its kind, then Top
+/// builds. Never from who looked at what (D13). A card the page shows
+/// already (the model, its remixes, a card in More by) is not shown again.
+/// Read through directory_models, as the gallery is, so a model taken out
+/// is never offered; a test model's own page, which only a probe has the
+/// link to, offers test models too, as it lists its test remixes
+/// (supabase/test_models.sql). The database not answering is no rows: the
+/// page is drawn without them, never refused.
+async function nextOf(origin, id, model) {
+  const none = { by: [], like: [] };
+  const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
+  if (!own) return none;
+  const ask = (query) => db("rpc/directory_models", { method: "POST",
+    body: { query: { sort: "top", tests: own.test === true, ...query } } }).catch(() => []);
+  const tags = model.tags || [];
+  const [theirs, kin, ...tagged] = await Promise.all([
+    model.by ? ask({ owner: own.owner, size: NEXT_MOST + 1 }) : [],
+    model.kind ? ask({ kind: model.kind, size: 24 }) : [],
+    ...tags.slice(0, 3).map((tag) => ask({ tag, size: 12 })),
+  ]);
+  const by = (theirs || []).filter((row) => row && row.id !== id).slice(0, NEXT_MOST);
+  const shown = new Set([id, ...(model.remixes_listed || []).map((row) => row.id),
+    ...(by.length >= NEXT_LEAST ? by.map((row) => row.id) : [])]);
+  const top = (row) => SCORE.builds * (Number(row.builds) || 0) + SCORE.remixes * (Number(row.remixes) || 0)
+    + (row.tested === true ? SCORE.tested : 0);
+  const near = (row) => 2 * (row.tags || []).filter((tag) => tags.includes(tag)).length
+    + (model.kind && row.kind === model.kind ? 1 : 0);
+  const found = new Map();
+  for (const row of [...(kin || []), ...tagged.flat()]) {
+    if (row && !shown.has(row.id) && !found.has(row.id)) found.set(row.id, row);
+  }
+  const like = [...found.values()].sort((a, b) => near(b) - near(a) || top(b) - top(a)
+    || String(b.listed_at || "").localeCompare(String(a.listed_at || ""))).slice(0, NEXT_MOST);
+  const cards = (rows) => (rows.length >= NEXT_LEAST ? rows.map((row) => cardOf(origin, row)) : []);
+  return { by: cards(by), like: cards(like) };
+}
+
+/// A row of cards the page ends with, or nothing for none.
+function nextRow(key, title, cards) {
+  if (!cards.length) return "";
+  return `<section class="next" id="${key}" aria-labelledby="${key}-h"><h2 id="${key}-h">${title}</h2>`
+    + `<div class="models row">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
+}
+
+/// The action bar: Like, Save, Share, Comment, I built it and More, each an
+/// icon button that says its name and count (web/kit.js), never a count of
+/// none. web/model-page.js makes them work, asking to sign in first where
+/// one must be; it counts the comments as it lists them.
+function actionBar(origin, id, model) {
+  const embed = links(origin, id).embed;
+  return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
+    + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false,
+      attrs: 'data-mark="like" title="Like it"' })
+    + `<button type="button" class="icon-btn" data-mark="save" aria-label="Save" aria-expanded="false" `
+      + `aria-controls="save-panel" title="Save it to your favourites or a collection">${iconHtml("save")}</button>`
+    + iconButtonHtml({ icon: "share", name: "Share", attrs: 'data-share title="Share it: copy its link"' })
+    + iconButtonHtml({ icon: "comment", name: "Comment", attrs: 'data-mark="comment" title="Comments on it and its steps"' })
+    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build",
+      attrs: 'data-mark="built" title="I built it: add a photo of your build"' })
+    + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
+      + `${iconHtml("more")}</summary><div class="menu-list">`
+      + `<button type="button" data-embed="${escapeHtml(embed)}">Copy the embed code</button>`
+      + `<button type="button" data-report="this model" data-report-model="${id}" hidden>Report it</button>`
+      + `<a href="/takedown">Takedown requests</a></div></details>`
+    + `</div>`
+    // Save opens your lists, Favourites first (docs/SOCIAL.md D2), and a
+    // new collection's name; drawn by web/model-page.js once signed in.
+    + `<div class="save-panel" id="save-panel" hidden><p class="save-head">Save it to</p>`
+    + `<div class="collect-list"></div>`
+    + `<form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>`
+    + `<input id="new-list" maxlength="80" placeholder="A new collection">`
+    + `<button class="cta ghost" type="submit">Make it</button></form></div>`
+    + `<p class="said marks-said" role="status"></p>`;
+}
+
+/// /m/X: the model's own page. Its picture first, and beside it on a laptop
+/// (under it on a phone) what it is, who made it, the way into the viewer
+/// and the app, and the action bar; then its builds, versions, what its
+/// owner said, comments, licence and remix tree; and at the end more by its
+/// designer and similar models. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
-function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = []) {
+function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] }) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -800,15 +900,20 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       + `${fromVersion ? `, <a class="from-version" href="/m/${parent.id}/v/${fromVersion}">version ${fromVersion}</a>` : ""}`
       + `${parent.author ? `, by ${escapeHtml(parent.author)}` : ""}</p>`
     : `<p class="from">Remixed from a model shared by link</p>`;
-  // A model shared before the directory was not counted: its steps are
-  // not known, and are not said.
+  // What it is, as pills, each said once there is one. A model shared
+  // before the directory was not counted: its steps are not known, and are
+  // not said.
   const facts = [
-    model.steps ? `${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}` : "",
-    model.technic ? "Technic or a mechanism" : "",
+    `<li class="pill">${escapeHtml(count(shownModel.parts, "part"))}</li>`,
+    model.steps ? `<li class="pill">${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}</li>` : "",
+    model.technic ? `<li class="pill">Technic or a mechanism</li>` : "",
     // What it does: its own motions' names, else what its app found moves.
-    movesWords(model) ? escapeHtml(`Moves: ${movesWords(model)}`) : "",
-    model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link",
-  ].filter(Boolean);
+    movesWords(model) ? `<li class="pill">${escapeHtml(`Moves: ${movesWords(model)}`)}</li>` : "",
+    Number(model.views) ? `<li class="pill"><span data-count="views">${count(model.views, "view")}</span></li>` : "",
+    `<li class="pill">${model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link"}</li>`,
+    newest > 1 ? `<li><a class="pill version-line" href="#versions-h">Version ${version.n}${old ? ` of ${newest}` : ""}</a></li>` : "",
+    Number(model.remixes) ? `<li><a class="pill" href="#tree-h">${count(model.remixes, "remix", "remixes")}</a></li>` : "",
+  ].join("");
   const tags = (model.tags || []).map((tag) =>
     `<li><a class="pill tag" href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
   const line = (model.from || []).map((one) => one.id
@@ -840,48 +945,26 @@ ${header}
     ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
   <div class="top">
     <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
-      ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630">`
+      ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
-      <p class="by">${escapeHtml(describe(shownModel))}${newest > 1
-        ? ` · <a class="version-line" href="#versions-h">version ${version.n}${old ? ` of ${newest}` : ""}</a>` : ""}</p>
-      ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`
-        + ` <button type="button" class="link follow" data-follow="${escapeHtml(model.by.handle)}" hidden>Follow</button>`
-        + `<span class="said" role="status"></span></p>` : ""}
-      ${fromLine}
-      ${testedMark(mark)}
-      <ul class="facts pills">${facts.map((fact) => `<li class="pill">${fact}</li>`).join("")}</ul>
-      <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
-      <p class="counts"><span data-count="views"${zero(model.views)}>${count(model.views, "view")}</span>
-        <span data-count="likes"${zero(model.likes)}>${count(model.likes, "like")}</span>
-        <span data-count="remixes"${zero(model.remixes)}>${count(model.remixes, "remix", "remixes")}</span>
-        <a data-count="builds" href="#builds-h"${zero(model.builds)}>${count(model.builds, "built", "built")}</a></p>
+      ${designerRow(model)}
       <div class="actions">
-        <a class="cta" href="${escapeHtml(viewer)}">View in 3D</a>
-        <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
+        <a class="cta" href="${escapeHtml(viewer)}" title="Turn it in 3D, step through its build, and get its booklet and parts list: no account needed">Build it</a>
+        <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
       </div>
-      <div class="marks" id="marks" data-id="${id}" hidden>
-        <button type="button" class="cta ghost small" data-mark="like" aria-pressed="false">Like</button>
-        <button type="button" class="cta ghost small" data-mark="favourite" aria-pressed="false">Favourite</button>
-        <details class="collect"><summary class="cta ghost small">Add to a collection</summary>
-          <div class="collect-panel"><div class="collect-list"></div>
-            <form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>
-              <input id="new-list" maxlength="80" placeholder="A new collection">
-              <button class="cta ghost" type="submit">Make it</button></form></div></details>
-        <p class="said" role="status"></p>
-      </div>
-      <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
-        list, with no account. Open in Brickworks copies it into your own models, to change and make yours.</p>
-      <p class="note report-line"><button type="button" class="link" data-report="this model"
-        data-report-model="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
+      ${actionBar(origin, id, model)}
+      <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark)}</li>` : ""}${facts}</ul>
+      ${fromLine}
+      <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
-  </div>
+    <div class="rest">
   ${buildsSection(id, model, photos)}
   ${versionsSection(id, versions, version)}
-  ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
-    <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
-  ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
+  ${model.description || tags ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
+    ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
+    ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}</section>` : ""}
   ${commentsSection(id, version.n, newest, version.steps ?? model.steps ?? null)}
   <section class="licence" aria-labelledby="licence-h"><h2 id="licence-h">Licence</h2>
     ${licenceWords(model)}</section>
@@ -895,6 +978,10 @@ ${header}
       : `<p class="note">Nobody has remixed it yet. Open in Brickworks makes a copy of your own to change;
         share that, and it shows here.</p>`}
   </section>
+    </div>
+  </div>
+  ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by) : ""}
+  ${nextRow("similar", "Similar models", next.like)}
 </article>
 </main>
 ${footer}
@@ -1183,9 +1270,9 @@ async function read(request, response) {
     const versions = await versionsOf(id, page);
     const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
     if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
-    const [mark, photos] = await Promise.all([markOf(db, id, shown.n),
-      photosWhere(`model=eq.${id}`, shownPublicly)]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), photos));
+    const [mark, photos, next] = await Promise.all([markOf(db, id, shown.n),
+      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page)]);
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), photos, next));
   }
 
   const row = await publishedRow(id);

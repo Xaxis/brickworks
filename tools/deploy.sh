@@ -175,6 +175,8 @@ for handler in api/*.js; do
   # The one model card (web/card.js), which api/_card.js passes through in
   # a checkout: here the file itself, so a function needs no web/.
   cp web/card.js "$fn/_card.js"
+  # The kit (web/kit.js) likewise, as api/_kit.js: its card is _card.js here.
+  sed 's#"\./card\.js"#"./_card.js"#' web/kit.js > "$fn/_kit.js"
   if [ "$route" = collection ]; then
     if [ ! -f assets/generated/sets/index.json ]; then
       echo "deploy FAILED: no assets/generated/sets/index.json for /api/collection (tools/collection_data.py)"; exit 1

@@ -524,8 +524,10 @@ summary.pill::-webkit-details-marker { display: none; }
 }
 .icon-btn::-webkit-details-marker { display: none; }
 .icon-btn:hover { background: var(--panel); }
-.icon-btn[aria-pressed="true"] { border-color: var(--accent-edge); }
-.icon-btn[aria-pressed="true"] .icon { fill: currentColor; }
+/* data-on: on, for a button that opens something rather than toggling
+   (Save, when the model is in one of your lists). */
+.icon-btn[aria-pressed="true"], .icon-btn[data-on] { border-color: var(--accent-edge); }
+.icon-btn[aria-pressed="true"] .icon, .icon-btn[data-on] .icon { fill: currentColor; }
 .icon-btn.small { min-width: 36px; min-height: 36px; padding: 0 10px; }
 .icon-btn.small .icon { width: 18px; height: 18px; }
 
