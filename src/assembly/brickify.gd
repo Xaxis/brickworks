@@ -209,11 +209,6 @@ class Grid extends RefCounted:
 	## (j - phase) / 5, z / 2). Where the first cut is not turned, one of these
 	## may be.
 	var cube_phases: Array = []
-	## The model's surface summed a plate at a time in each two-stud column:
-	## Vector3i(x / 2, j, z / 2) -> its area times the way it faces (studs,
-	## plates a fifth of a stud), from which [member cubes] are summed; a
-	## turned side's patch keeps only the rows whose own surface faces its way.
-	var cube_bins: Dictionary = {}
 	## Rays across, for those sides: along x through every third of a stud
 	## along z and up, and along z through every third across and up; where
 	## each goes in and comes out, studs along it, as [member spans] has them.
@@ -641,7 +636,7 @@ const CUBE_PLATES := 5
 ## plates up alone, 31% of the steep faces of Bob, the bunny and 3DBenchy
 ## were turned, from 27%; at every phase, 37%.
 const CUBE_PHASES: Array[int] = [2, 4, 1, 3]
-const STEEP := 0.6
+const STEEP := 0.42
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
 const CUBE_IN := 0.5
@@ -688,7 +683,6 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 					var key := Vector3i(floori(p.x / CUBE_STUDS), floori(p.y), floori(p.z / CUBE_STUDS))
 					sums[key] = (sums.get(key, Vector3.ZERO) as Vector3) + share
 					areas[key] = float(areas.get(key, 0.0)) + each
-	grid.cube_bins = sums
 	var out: Array = []
 	for phase: int in phases:
 		var cube_sums: Dictionary = {}
@@ -1744,7 +1738,6 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		shape["sideways"] = true
 		shape["cubes"] = grid.cubes
 		shape["cube_phases"] = grid.cube_phases
-		shape["cube_bins"] = grid.cube_bins
 		if options.near:
 			shape["side_fine"] = grid.side
 	return shape
