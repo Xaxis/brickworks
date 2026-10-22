@@ -580,6 +580,9 @@ plan with Claude as the client.
   most, and no card the page shows already (the model, its listed
   remixes, More by's). A test model's page offers test models too. A
   database error is no row, never a 500. No new SQL.
+  `tests/test_model_page.py` makes the stand-in's pages with the real
+  handler (no browser): the rows, their order, the bar's names and counts,
+  and the page drawn when `directory_models` answers 500.
 - `model page browser flow` (`tools/web/model_page_flow.mjs`, preview check
   `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser
