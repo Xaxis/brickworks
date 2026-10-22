@@ -602,6 +602,13 @@
       "area": "elements"
     },
     {
+      "kind": "api",
+      "label": "Claude's OAuth sign-in",
+      "entry": "api/oauth.js",
+      "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
+      "area": "account"
+    },
+    {
       "kind": "ui",
       "label": "connect Claude sign-in page",
       "entry": "web/authorize.html",
@@ -2577,20 +2584,6 @@
     },
     {
       "kind": "cli",
-      "label": "gallery browser flow",
-      "entry": "tools/web/gallery_flow.mjs",
-      "reach": "node tools/web/gallery_flow.mjs --out=DIR   (this checkout's web/ and api/, the API answered by the stand-in and a crowd of 130, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=DIR   (the deployment's pages, the API still the stand-in's)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "profile browser flow",
-      "entry": "tools/web/profile_flow.mjs",
-      "reach": "node tools/web/profile_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=profile_shows until supabase/profile_shows.sql is applied)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "designers browser flow",
       "entry": "tools/web/designers_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designers_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=model_opens until designers.sql is applied)",
@@ -2842,11 +2835,18 @@
       "area": "web"
     },
     {
-      "kind": "api",
-      "label": "Claude's OAuth sign-in",
-      "entry": "api/oauth.js",
-      "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
-      "area": "account"
+      "kind": "cli",
+      "label": "gallery browser flow",
+      "entry": "tools/web/gallery_flow.mjs",
+      "reach": "node tools/web/gallery_flow.mjs --out=DIR   (this checkout's web/ and api/, the API answered by the stand-in and a crowd of 130, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=DIR   (the deployment's pages, the API still the stand-in's)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "profile browser flow",
+      "entry": "tools/web/profile_flow.mjs",
+      "reach": "node tools/web/profile_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=profile_shows until supabase/profile_shows.sql is applied)",
+      "area": "web"
     },
     {
       "kind": "ui",
