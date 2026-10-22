@@ -1879,18 +1879,24 @@ func clear() -> void:
 
 
 ## A copy to be read on another thread while this one goes on changing.
-## Shallow, and still a copy: every value is a packed array, and a packed
-## array is copied the moment either side writes to it, so nothing the
-## live lattice does afterwards reaches this one. Without the columns,
-## which only placing a brick by hand asks about.
+## Without the columns, which only placing a brick by hand asks about.
+##
+## The boxes, bounds and rows are shallow copies: the live lattice puts a
+## new array in place of one, never writes into it. The buckets are not
+## shallow: the live lattice takes a bucket's list out and writes into it
+## where it stands ([method _take_out], [method _into_buckets]), and a
+## shallow copy held the same list, which the worker reading it found
+## shorter half way through (Stability.contacts on bigmodel_probe's 5,000
+## parts, "Index 1 is out of bounds", 2026-10-21). Each list is its own
+## here, its contents shared until either side writes.
 func copy_for_reading() -> BrickLattice:
 	var copy := BrickLattice.new()
 	copy.keeps_columns = false
 	copy._boxes = _boxes.duplicate()
-	copy._bucket = _bucket.duplicate()
+	copy._bucket = _bucket.duplicate(true)
 	copy._bounds = _bounds.duplicate()
 	copy._rows = _rows.duplicate()
-	copy._extent = _extent
+	copy._extent = _extent.duplicate()
 	return copy
 
 

@@ -1169,6 +1169,14 @@
       "tests": []
     },
     {
+      "id": "cli:the builder's frames after a change",
+      "kind": "cli",
+      "entry": "src/dev/ahead_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/ahead_probe.gd -- --most-ms=50   (tools/probe.sh ahead_probe: a part turned by move_part, Ctrl+Z, a part placed by a click, on the Ducati a session designed, 8808-1 and 42004-1, each followed 4 s while the joints are read and the model weighed on workers; then a press while the joints are read takes the worker's reading, and one while a session moves a part says so)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:the same plans from two checkouts",
       "kind": "cli",
       "entry": "tools/plan_diff.py",

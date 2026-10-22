@@ -168,7 +168,10 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 		return false
 	# Not while a session's move is worked out on a worker (for_session):
 	# what the press takes hold of is about to move, and the worker reads it.
+	# Said, as a press before the joints are read is: unsaid, a press there
+	# did nothing at all (jobs70).
 	if _session_moving:
+		say.call(READING_WORDS)
 		last_words = "busy"
 		return true
 	_held_seen_usec = Time.get_ticks_usec()
@@ -181,8 +184,9 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	# anchor following it.
 	if chained and selection.size() <= 1:
 		if not is_ready():
-			if world.brick_count() >= READY_OFF_THREAD_FROM and not OS.has_feature("nothreads"):
-				say.call("Reading how this model's parts are joined… a moment, then drag again.")
+			if world.brick_count() >= WAITED_BELOW and not OS.has_feature("nothreads"):
+				read_soon()
+				say.call(READING_WORDS)
 				return true
 			_ready_now()
 		var links := GrabChain.new()
@@ -202,11 +206,13 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	grab.builder = builder
 	grab.library = library
 	if not is_ready():
-		# A big model is read on a worker; a press before it is done waits
-		# for it rather than hold the window for seconds.
-		if world.brick_count() >= READY_OFF_THREAD_FROM and not OS.has_feature("nothreads"):
+		# The joints are read on a worker; a press on a big model before
+		# they are says so rather than hold the window for seconds, and one
+		# on a smaller model waits for the rest of the reading (_ready_now).
+		if world.brick_count() >= WAITED_BELOW and not OS.has_feature("nothreads"):
 			grab = null
-			say.call("Reading how this model's parts are joined… a moment, then drag again.")
+			read_soon()
+			say.call(READING_WORDS)
 			last_words = "reading"
 			return true
 		_ready_now()
@@ -718,7 +724,7 @@ func _fall_frame() -> void:
 ## the same step. False when nothing swings, or the model is too big to read
 ## again in a frame.
 func _land(timing: Dictionary, depth: int, words: String) -> bool:
-	if world.brick_count() >= READY_OFF_THREAD_FROM:
+	if world.brick_count() >= WAITED_BELOW:
 		return false
 	_ready_now()
 	var held := Grab.new()
@@ -1111,7 +1117,7 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 			lines.append("Then it %s: its centre of mass was %s studs past its %s edge, and it turned "
 				% [fell["words"], Balance.studs(-after.margin), after.edge]
 				+ "about that edge until the floor stopped it, falling for %s s." % Balance.tidy(fall_seconds))
-			if world.brick_count() < READY_OFF_THREAD_FROM:
+			if world.brick_count() < WAITED_BELOW:
 				await _ready_for_session()
 				var landed := Grab.new()
 				landed.world = world
@@ -1604,14 +1610,15 @@ func catch() -> void:
 
 # -- ready ahead of the press ------------------------------------------------------
 
-## From this many parts the reading goes to a worker, as the balance's does.
-const READY_OFF_THREAD_FROM := 300
-## From this many parts the reading ahead goes to a worker here: the
-## builder's [constant READY_OFF_THREAD_FROM]; a shared model's viewer reads
-## every model on a worker (1), since nothing waits on it there and its
-## 93-part racer read on the page's thread was 147 ms of one frame in
-## SwiftShader (play_flow), four times that on a slowed phone.
-var read_off_thread_from: int = READY_OFF_THREAD_FROM
+## Below this many parts a press before the joints are read waits for the
+## rest of the reading ([method _ready_now]); from it, the press says so
+## ([constant READING_WORDS]) and the person drags again: Bodies.read and
+## Balance.prepare cost 0.4 s and more at 1,300 parts. Nor is a model this
+## big read again for a landing.
+const WAITED_BELOW := 300
+## What a press says when what it would take hold of is still being worked
+## out: the joints read, or a session's move.
+const READING_WORDS := "Reading how this model's parts are joined… a moment, then drag again."
 ## How long the model must stand still before it is read, ms: not between
 ## the parts of one paste.
 const READY_AFTER_MS := 250
@@ -1644,6 +1651,10 @@ func is_ready() -> bool:
 ## Read what a grab needs once the model has stood still a moment, so a
 ## press finds it ready: Bodies.read and Balance.prepare cost 0.4 s and more
 ## at 1,300 parts, which at the press held the drag's first frame for 5 s.
+## On a worker where there are threads, whatever the model's size: read
+## here, the Ducati a session designed (126 parts) held the window 0.5 to
+## 1.2 s after every move and undo (jobs70, 2026-10-21), and a shared
+## model's 93-part racer 147 ms of a frame in SwiftShader (play_flow).
 func _ready_ahead() -> void:
 	if world == null or builder == null:
 		return
@@ -1656,18 +1667,19 @@ func _ready_ahead() -> void:
 		return
 	if grab != null or is_ready() or now - _changed_at < READY_AFTER_MS:
 		return
-	if world.brick_count() < read_off_thread_from or OS.has_feature("nothreads"):
+	if OS.has_feature("nothreads"):
 		_ready_now()
 		return
 	_read_off_thread()
 
 
 ## The reading on a worker taken in once it is done, kept when it is of the
-## model as it stands and [param keep]. False while it is still going.
-func _reading_done(keep: bool) -> bool:
+## model as it stands and [param keep]. False while it is still going,
+## unless [param wait]: then waited for here.
+func _reading_done(keep: bool, wait: bool = false) -> bool:
 	if _readying < 0:
 		return true
-	if not WorkerThreadPool.is_task_completed(_readying):
+	if not wait and not WorkerThreadPool.is_task_completed(_readying):
 		return false
 	WorkerTasks.collect(_readying)
 	library.end_reading(_readying)
@@ -1715,10 +1727,9 @@ func _read_off_thread() -> void:
 
 
 ## Whether the joints, once the model has changed, are read on a worker
-## (a big model, where threads are): a press can wait for them.
+## (where threads are): a press can wait for them.
 func reads_ahead() -> bool:
-	return world != null and world.brick_count() >= read_off_thread_from and not OS.has_feature("nothreads") \
-		and is_processing()
+	return world != null and not OS.has_feature("nothreads") and is_processing()
 
 
 ## Whether the joints are being read on a worker now.
@@ -1748,9 +1759,17 @@ func _ready_for_session() -> void:
 			await Engine.get_main_loop().process_frame
 
 
-## Read now, on this thread: a small model, a browser without threads, or a
-## press that came before the reading was done.
+## Read now: a browser without threads, or a press (a motion played, a
+## session's question) before the reading on a worker was done. One under
+## way is waited for, and taken if it is of the model as it stands, rather
+## than read again here beside it: what is left of it is less than a whole
+## reading, and two at once run the same code on two threads. Otherwise
+## read here, on this thread.
 func _ready_now() -> void:
+	if _readying >= 0:
+		_reading_done(true, true)
+		if is_ready():
+			return
 	var started: int = Time.get_ticks_msec()
 	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked.duplicate())
 	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3], read[4]], world.revision)

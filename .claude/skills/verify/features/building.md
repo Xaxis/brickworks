@@ -835,8 +835,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   but where that one has no socket, in the one the lattice found with a
   BrickNet hole for it (`Bodies._sits_on`); why parts are one body is kept
   (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
-  revision, on a worker from 300 parts (`GrabDrag._ready_ahead`), the parts'
-  exact shapes read first on the main thread.
+  revision, on a worker wherever there are threads (`GrabDrag._ready_ahead`;
+  from 300 parts until 2026-10-21), the parts' exact shapes read first on the
+  main thread; a press before it is done waits for the rest below 300 parts
+  (`GrabDrag._ready_now`) and says so from 300. The status bar's weighing
+  (`Main._weigh`) is on a worker too. `the builder's frames after a change`
+  (`tools/probe.sh ahead_probe -- --most-ms=50`, headless, about 3 min):
+  move_part, Ctrl+Z and a click placing a part on the Ducati, 8808-1 and
+  42004-1, each act's longest main-thread frame under 50 ms (9 to 18; on
+  85bd1c4a 0.17 to 2.2 s), a press while the worker reads taking hold with
+  its reading, and one during a session's move saying why it does nothing.
   `grab_probe -- --survey FILE` prints the bodies and joints.
 - `moving a body on its joint` (`src/assembly/grab.gd`, `Grab`): one grab's
   state, pure until `commit`: `begin` (what moves, on what, or "rigid",
@@ -1011,7 +1019,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`GrabDrag.for_session`, a coroutine: the joints read from copies, the part
   taken hold of, its turn, its swing or settle, its cells; the words and the
   step on the main thread), so the window draws and a move past 20 s answers
-  as a job (ToolJobs); a press waits meanwhile (`is_settling`).
+  as a job (ToolJobs); a press meanwhile says it is reading the joints
+  (`GrabDrag.READING_WORDS`) and does nothing (`is_settling`).
   `src/dev/replay_session.gd` replays a session's calls on the real scene,
   each with its time and its longest frame, a job followed to its answer, and
   the calls with a frame over 100 ms listed at the end; `--idle=MS` waits as

@@ -193,6 +193,11 @@ func _placing_on_each_floor() -> void:
 		_main.set("_stability_revision", -1)
 		_main.call("_weigh")
 		await _frames(5)
+		# Weighed on a worker (Main._weigh): its answer a few frames on.
+		for _n: int in 600:
+			if not bool(_main.get("_weighing")):
+				break
+			await process_frame
 		var stands: String = str(_main.get("_stability_text"))
 		_check("...and it stands up against the ground (%s)" % stands, stands.begins_with("stands up"))
 		await _shot("placed_" + kind)

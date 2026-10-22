@@ -162,7 +162,7 @@ func read() -> void:
 func read_mechanism() -> Simulation:
 	var bricks: Array = world.bricks()
 	if bricks.size() < READ_OFF_THREAD_FROM or OS.has_feature("nothreads"):
-		return _held(Simulation.read(bricks, library, scenery))
+		return await _held(Simulation.read(bricks, library, scenery))
 	var still: BrickWorld = world.copy_for_reading()
 	var standing: Array = still.bricks()
 	# Every mesh it reads, loaded here first: a reader may not load one.
@@ -178,14 +178,18 @@ func read_mechanism() -> Simulation:
 	WorkerTasks.collect(task)
 	library.end_reading(task)
 	still.free()
-	return _held(made[0])
+	return await _held(made[0])
 
 
 ## [param simulation] read in the world as a drag reads it, with the drag's
-## joints when they are read for the model as it stands.
+## joints when they are read for the model as it stands: waited for while a
+## worker reads them (GrabDrag._ready_ahead) rather than read again here
+## beside it.
 func _held(simulation: Simulation) -> Simulation:
 	if simulation == null or builder == null:
 		return simulation
+	while grabbing != null and grabbing.reads_ahead() and grabbing.is_reading():
+		await get_tree().process_frame
 	var joints: Bodies = grabbing.read_bodies() if grabbing != null else null
 	if joints == null and world.brick_count() >= READ_OFF_THREAD_FROM:
 		# Read ahead off the frame once the model stands still (GrabDrag); not

@@ -38,6 +38,21 @@ whole cycle.
   no call holding the window a second, where 13 did, the longest for
   19.7 s; a loader's has one, where 14 did. What each call answers is
   unchanged.
+- The window no longer stops for a moment after each part moved, each undo
+  and each part placed. Once the model stood still, the app read how its
+  parts are joined, ready for the next drag, and weighed it for the status
+  bar, both on the main thread for a model of under 300 and 600 parts: on a
+  motorcycle of 126 parts that held the window 0.4 s and then 0.2 s every
+  time, and on a 248-part backhoe loader 1.8 s and then up to 2.2 s. Both
+  now run beside the window at any size, as a shared model's player already
+  read its joints, and the longest frame after a move, an undo or a part
+  placed is 18 ms on all three models measured, where it was 0.17 to 2.2 s.
+  A drag that starts before the reading is done waits for the rest of it.
+  And a press on a part while Claude is moving one now says why nothing
+  happens, as a press does while a big model's joints are still being read.
+  A model weighed or read beside the window while parts were moved could be
+  read half moved, its worker stopping with an error: each reading now has a
+  copy of its own.
 
 - Pressing a motion's button on a shared model's page just after Reset no
   longer stalls the page. The model's joints, changed by the Reset, were

@@ -1160,10 +1160,16 @@ published (above): honest to a factor of two.
 **Ready before the press.** The bodies, the graph Balance weighs
 (`Balance.prepare`) and the gear trains (`Mechanism.build`, anchors as the
 ground) are read once a model revision, a quarter of a second after it last
-changed, on a worker from 300 parts (`GrabDrag._ready_ahead`), so a press finds
-them read. On 7191 (1,312 parts) that takes 4 to 7 s on a loaded box; a press
-on a big model before it is done says so and waits, rather than hold the
-window. Each frame a moving part's box is asked of the lattice first, and its
+changed, on a worker wherever there are threads (`GrabDrag._ready_ahead`), so
+a press finds them read. On 7191 (1,312 parts) that takes 4 to 7 s on a loaded
+box; a press on a model of 300 parts or more before it is done says so, rather
+than hold the window, and one on a smaller model waits for the rest of the
+reading (`GrabDrag._ready_now`) rather than read it again beside the worker.
+Until 2026-10-21 a model under 300 parts was read on the main thread, and
+its Main._weigh for the status bar under 600: after every move, undo and part
+placed the 126-part Ducati a session designed held the window 0.4 s and then
+0.2 s, 42004-1's 248 parts 1.8 s and then up to 2.2 s. On a worker the
+longest frame after each is 9 to 18 ms (`ahead_probe`, headless). Each frame a moving part's box is asked of the lattice first, and its
 turned cover is worked out only when something it may hit is near it; a part
 whose whole sweep round the line meets nothing is never tested.
 
@@ -3422,8 +3428,9 @@ means a part that moves within a fingertip of it, about 10 points
 weigh the model each frame either (once, as it is let go, for a fall):
 on a phone slowed four times the weighing took the worst drag frame from
 19 to 47 ms. The joints are read on a worker in the viewer whatever the
-model's size (`GrabDrag.read_off_thread_from`): the 93-part racer read on
-the page's thread was 147 to 159 ms of one frame in SwiftShader.
+model's size (`GrabDrag._ready_ahead`, in the builder too since
+2026-10-21): the 93-part racer read on the page's thread was 147 to 159 ms
+of one frame in SwiftShader.
 
 **Proved** (2026-10-19). `tools/probe.sh share_play_probe` (windowed, on
 the GPU), 40 checks: 8808-1 opened by its link, "Moves: steering" said
@@ -3551,8 +3558,8 @@ read as moving.
   else by what its box is most into (`Bodies._lodge`): the magnet by its
   coupling, 8074-1's belt wheel by its axle and the half pin by the wheel.
   Two parts with exact shapes are not: lodged so, 42042-1's winch was read
-  into a loop of 63 joints. The shapes are read on the main thread before a
-  big model's joints are read on a worker (`GrabDrag._ready_ahead`). Since
+  into a loop of 63 joints. The shapes are read on the main thread before
+  the model's joints are read on a worker (`GrabDrag._ready_ahead`). Since
   the file's copies of the belt wheel are read as 4185a (2026-10-20), it has
   an exact shape, and its half pin was held by nothing and stayed as the
   crane turned, stopping it at once: neither the wheel's connectors nor

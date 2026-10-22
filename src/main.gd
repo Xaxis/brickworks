@@ -25,8 +25,6 @@ var _stability_at: int = 0
 var _stability_revision: int = -1
 ## Whether a worker is weighing the model now.
 var _weighing: bool = false
-## Bricks from which the model is weighed on a worker.
-const WEIGH_OFF_THREAD_FROM := 600
 var _counts: Label
 var _bin_dock: SideDock
 var _chat_dock: SideDock
@@ -2032,7 +2030,6 @@ func _enter_view() -> void:
 		_grab_drag.say = _play_says
 		_grab_drag.edited = _played
 		_grab_drag.show_marks = false
-		_grab_drag.read_off_thread_from = 1
 	# The lattice is told of the parts once the model is up (what is under
 	# a pointer is all it is for here): over a second of a slowed phone's
 	# way to the first step on 4,000 parts.
@@ -5745,10 +5742,13 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 ## animation rebuilt every frame and this ran each time, 4.4 s on the
 ## Falcon Heavy's 4,242 parts.
 ##
-## And on a worker for a big model: a quarter of a second on the desktop for
-## the 4,242-part Falcon, several times that in a browser, after every
-## change. The worker reads copies of the world and the lattice, made here
-## in a few milliseconds, and the library holds new parts aside meanwhile.
+## And on a worker, where there are threads, whatever the model's size: a
+## quarter of a second on the desktop for the 4,242-part Falcon, several
+## times that in a browser, after every change; and weighed here the
+## Ducati a session designed (126 parts) held the window 210 to 230 ms
+## after every move, undo and part placed, 42004-1's 248 parts 1.2 to 2.2
+## s. The worker reads copies of the world and the lattice, made here in a
+## few milliseconds, and the library holds new parts aside meanwhile.
 func _weigh() -> void:
 	# The viewer says nothing of whether it stands (its status bar shows
 	# only the work), and weighing a big model copied it whole first.
@@ -5770,7 +5770,7 @@ func _weigh() -> void:
 	# The baseplate is the floor, not the model: whether it tips is asked
 	# of what stands on it.
 	_stability.floor_ids = scenery
-	if _world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+	if OS.has_feature("nothreads"):
 		report = _stability.check(_world)
 	else:
 		_weighing = true
