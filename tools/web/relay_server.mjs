@@ -60,6 +60,10 @@
 // remixes, comments, photos and model_views (tools/web/designers_stand_in.mjs),
 // for tools/web/designers_flow.mjs.
 //
+// --hold=profile_shows holds supabase/profile_shows.sql: what a profile
+// shows besides its name (links, a banner, pinned models), its upserts and
+// its refusals, for tools/web/profile_flow.mjs.
+//
 // --hold=challenges holds supabase/challenges.sql: its tables in memory and
 // its functions answered over the real project's models, Tested marks and
 // trust (tools/web/challenges_stand_in.mjs), for tools/web/challenges_flow.mjs.

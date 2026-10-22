@@ -228,11 +228,16 @@ try {
     cards: [...document.querySelectorAll(".model")].map((a) => a.dataset.id) }));
   check(`/u/${ownerHandle}: "${state.title}", the house credited to them`, state.title === "Flow Owner" && state.cards.includes(modelId));
   await shot(look, "5_profile_public-laptop.png");
+  // Nothing of theirs in the gallery, a public list: their page opens on
+  // its Collections tab, and its Models tab says what goes there.
   await look.goto(`${site}/u/${visitorHandle}`, { waitUntil: "load", timeout: 60000 });
-  state = await look.evaluate(() => ({ lists: [...document.querySelectorAll(".lists a")].map((a) => a.textContent),
-    none: document.querySelector(".person .note")?.textContent || "" }));
-  check(`/u/${visitorHandle}: their public collection, and nothing of theirs in the gallery yet`,
-    state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
+  state = await look.evaluate(() => ({ lists: [...document.querySelectorAll(".list-card b")].map((b) => b.textContent),
+    tab: document.querySelector(".tabs [aria-current=page]")?.dataset.tab || "" }));
+  await look.click('.tabs a[data-tab="models"]');
+  await look.waitForLoadState("load");
+  state.none = await look.evaluate(() => document.querySelector(".tab-panel .state")?.textContent || "");
+  check(`/u/${visitorHandle}: their public collection (the ${state.tab} tab), and nothing of theirs in the gallery yet`,
+    state.tab === "collections" && state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
 
   // --- 5. At a phone's width.
   console.log("at 390 px");

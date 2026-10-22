@@ -932,6 +932,14 @@
       "tests": []
     },
     {
+      "id": "cli:profile browser flow",
+      "kind": "cli",
+      "entry": "tools/web/profile_flow.mjs",
+      "reach": "node tools/web/profile_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=profile_shows until supabase/profile_shows.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:progress check",
       "kind": "cli",
       "entry": "tools/web/progress_check.mjs",
@@ -2123,7 +2131,6 @@
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
       "tests": [
-        "tests/test_designers.py",
         "tests/test_discovery.py"
       ]
     },
@@ -2893,7 +2900,7 @@
       "id": "ui:profile and collection pages",
       "kind": "ui",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle>  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": []
     },

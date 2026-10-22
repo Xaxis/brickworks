@@ -24,16 +24,17 @@
 //      Built on 3, 1 and 1 devices; opened by 4, 1 and 2 visitors. Bob
 //      remixes the castle, comments on it and on the barn, and posts a photo
 //      of his build of the castle; Ada answers his comment (not counted).
-//   2. A visitor, signed out, at 1280 and 390 px: Designer; 4 builds
-//      finished, 1 remix, 1 Tested, 2 comments, 2 models, 0 followers, each
-//      the sum of the cards; the castle first; its card "3 built · 1 remix ·
-//      1 comment" and Tested, no views anywhere; Bob's photo under Built by
-//      others; Start with their most built; no numbers of Ada's own, and the
-//      page as served has none either.
+//   2. A visitor, signed out, at 1280 and 390 px: Designer; one row of
+//      numbers, 4 builds finished, 1 remix, 2 models, no followers said,
+//      each the sum of the cards (and 1 Tested, 2 comments, as the cards
+//      say); the castle first; its card "3 built · 1 remix · 1 comment" and
+//      Tested, no views anywhere; Bob's photo under Built by others, on the
+//      Builds tab; Start with their most built; no numbers of Ada's own,
+//      and the page as served has none either.
 //   3. Bob, signed in, at 1280 and 390 px: the same page, none of Ada's
 //      numbers; asked for them by her handle the API says only that they are
 //      not his; asked plainly, it answers his own models, none of hers. He
-//      follows her: the followers tile says 1.
+//      follows her: her followers say 1.
 //   4. Ada, signed in, on her own page at 1280 and 390 px: How your models
 //      are doing, the castle first, its 4 opens, 3 builds, 1 remix, 1
 //      comment, and who built it (Bob, with his photo), and the secret shared
@@ -197,14 +198,15 @@ async function opened(id, n) {
 
 /// The designer's page as drawn: the band, the cards, the strip, the panel.
 const pageDrawn = (page) => page.evaluate(() => {
-  const tiles = Object.fromEntries([...document.querySelectorAll(".earned:not(.mine-totals) li")].map((li) => [li.dataset.earned,
-    { n: li.querySelector("b")?.textContent || "", text: li.textContent.replace(/\s+/g, " ").trim(), lead: li.classList.contains("lead") }]));
+  // The profile's one row of numbers (api/people.js numbersHtml).
+  const tiles = Object.fromEntries([...document.querySelectorAll(".profile .numbers li")].map((li) => [li.dataset.stat,
+    { n: li.querySelector("b")?.textContent || "", text: li.textContent.replace(/\s+/g, " ").trim(), shown: !li.hidden }]));
   const cards = [...document.querySelectorAll(".models .model")].map((a) => ({ id: a.dataset.id,
     builds: Number(a.dataset.builds), remixes: Number(a.dataset.remixes), comments: Number(a.dataset.comments),
     said: a.querySelector("small")?.textContent || "", tested: Boolean(a.querySelector(".tested")) }));
   const mine = document.getElementById("designs-mine");
   return {
-    eyebrow: document.querySelector(".person .eyebrow")?.textContent || "",
+    eyebrow: document.querySelector(".profile-head [data-role]")?.textContent || "",
     order: Object.keys(tiles), tiles, cards,
     strip: [...document.querySelectorAll(".builds-of figure.build")].map((f) => ({ id: f.id,
       text: f.textContent.replace(/\s+/g, " ").trim(), by: f.querySelector("figcaption a[href^='/u/']")?.getAttribute("href") || "",
@@ -303,27 +305,35 @@ try {
     listen(page, `visitor at ${width} px`);
     await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.designs, "designs.js said");
-    await pictures(page, ".builds-of figure.build img");
     const drawn = await pageDrawn(page);
     if (width === 1280) {
-      check(`"${drawn.eyebrow}": ${drawn.order.map((k) => drawn.tiles[k].text).join(" · ")}`, drawn.eyebrow === "Designer"
-        && drawn.order.join(",") === "builds,remixes,tested,comments,models,followers"
-        && drawn.tiles.builds.n === "4" && drawn.tiles.remixes.n === "1" && drawn.tiles.tested.n === "1"
-        && drawn.tiles.comments.n === "2" && drawn.tiles.models.n === "2" && drawn.tiles.followers.text === "0 followers");
-      check("builds finished and remixes lead", drawn.tiles.builds.lead && drawn.tiles.remixes.lead && !drawn.tiles.comments.lead);
+      // One row of numbers, builds finished and remixes first; a count of
+      // none hidden. Tested and comments are each card's.
+      check(`"${drawn.eyebrow}": ${drawn.order.filter((k) => drawn.tiles[k].shown).map((k) => drawn.tiles[k].text).join(" · ")}`,
+        drawn.eyebrow === "Designer" && drawn.order.join(",") === "builds,remixes,models,likes,followers,following"
+        && drawn.tiles.builds.n === "4" && drawn.tiles.remixes.n === "1" && drawn.tiles.models.n === "2"
+        && !drawn.tiles.followers.shown && drawn.tiles.followers.text === "0 followers");
       const sum = (kind) => drawn.cards.reduce((total, one) => total + one[kind], 0);
       check(`each the sum of the cards: builds ${sum("builds")}, remixes ${sum("remixes")}, comments ${sum("comments")}, Tested ${drawn.cards.filter((one) => one.tested).length}`,
         String(sum("builds")) === drawn.tiles.builds.n && String(sum("remixes")) === drawn.tiles.remixes.n
-          && String(sum("comments")) === drawn.tiles.comments.n && String(drawn.cards.filter((one) => one.tested).length) === drawn.tiles.tested.n);
+          && sum("comments") === d.comments && drawn.cards.filter((one) => one.tested).length === d.tested);
       check(`the castle first, its card "${drawn.cards[0]?.said}", Tested; the barn's "${drawn.cards[1]?.said}"`,
         drawn.cards[0]?.id === ids.castle && drawn.cards[0].said === "3 built · 1 remix · 1 comment" && drawn.cards[0].tested
           && drawn.cards[1]?.id === ids.barn && drawn.cards[1].said === "1 built · 1 comment" && !drawn.cards[1].tested);
       check("no card says its views", !drawn.views);
-      check(`Built by others: "${drawn.strip[0]?.text}", by ${drawn.strip[0]?.by}, its picture loaded`, drawn.strip.length === 1
-        && drawn.strip[0].id === `photo-${kept.body.id}` && drawn.strip[0].by === `/u/${BOB}` && /kitchen table/.test(drawn.strip[0].text)
-        && drawn.strip[0].loaded);
       check(`"${drawn.start}" → ${drawn.build}`, /Start with their most built: Designers Castle .*, 3 builds finished, Tested\. Build it/.test(drawn.start)
         && drawn.build === `/app?view=${ids.castle}`);
+      // Photos of builds are the Builds tab's.
+      await page.click('.profile .tabs a[data-tab="builds"]');
+      await page.waitForLoadState("load");
+      await pictures(page, ".builds-of figure.build img");
+      const built = await pageDrawn(page);
+      check(`Built by others: "${built.strip[0]?.text}", by ${built.strip[0]?.by}, its picture loaded`, built.strip.length === 1
+        && built.strip[0].id === `photo-${kept.body.id}` && built.strip[0].by === `/u/${BOB}` && /kitchen table/.test(built.strip[0].text)
+        && built.strip[0].loaded);
+      await shot(page, "1_visitor-1280-builds.png");
+      await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
+      await until(page, () => document.documentElement.dataset.designs, "designs.js said");
     }
     check(`at ${width} px, none of Ada's own numbers (${drawn.designs}), and nothing sideways`,
       !drawn.mineShown && drawn.mineText === "" && drawn.designs === "signed-out" && !(await sideways(page)));
@@ -363,8 +373,9 @@ try {
   // Bob's own page: a designer's too (his remix is in the gallery), and his
   // photo of her castle under Built, as builds_flow has it.
   const bobsPage = await (await fetch(`${site}/u/${BOB}?tests=1`, { headers })).text();
-  check("Bob's own page: a designer's too, for his remix, and his photo of her castle under Built", /<p class="eyebrow">Designer<\/p>/.test(bobsPage)
-    && bobsPage.includes('class="builds-made"') && bobsPage.includes(`id="photo-${kept.body.id}"`));
+  const bobsBuilds = await (await fetch(`${site}/u/${BOB}?tab=builds&tests=1`, { headers })).text();
+  check("Bob's own page: a designer's too, for his remix, and his photo of her castle under Built", /<span data-role>Designer<\/span>/.test(bobsPage)
+    && bobsBuilds.includes('class="builds-made"') && bobsBuilds.includes(`id="photo-${kept.body.id}"`));
   const asHers = await api(`/api/people?op=designs&handle=${ADA}`, { token: bob.access_token });
   check(`Bob asks for Ada's by her handle: ${asHers.status} ${JSON.stringify(asHers.body)}`,
     asHers.status === 200 && JSON.stringify(asHers.body) === '{"mine":false}');
