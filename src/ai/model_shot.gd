@@ -338,10 +338,14 @@ func _settle() -> void:
 
 
 ## How many pictures are being taken, and what the display was set to
-## before the first of them.
-var _held: int = 0
-var _was_vsync: int = DisplayServer.VSYNC_ENABLED
-var _was_max_fps: int = 0
+## before the first of them. Kept for every picture-taker at once, since
+## the display is one: two taking pictures at the same time (a design's own
+## and the second design's drawn beside it, BestOfTwo) each kept what it
+## found, the second found it quickened, put that back last, and left the
+## window drawing as fast as it could for good.
+static var _held: int = 0
+static var _was_vsync: int = DisplayServer.VSYNC_ENABLED
+static var _was_max_fps: int = 0
 
 
 func _take(world: BrickWorld, from: String,

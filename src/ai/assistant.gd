@@ -27,6 +27,10 @@ const MESSAGES_URL := "https://api.anthropic.com/v1/messages"
 ## What designs when nothing has been chosen. The choosing lives in
 ## [Brain], with the table of what each model will actually accept.
 const MODEL := Brain.DEFAULT_MODEL
+## How many designs the app makes of a new brief on the person's
+## subscription, side by side, keeping the one DesignPick prefers
+## (BestOfTwo). 1 makes one, as before.
+const BEST_OF := 2
 ## Turns, not repairs. Most of a design is looking parts up and checking
 ## work; 24 was not enough and a run ended having built nothing at all
 ## after spending its budget on three-brick experiments.

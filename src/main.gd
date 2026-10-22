@@ -1557,6 +1557,12 @@ func _ask_claude_code(brief: String) -> void:
 		_builder.lattice.clear()
 		_builder.forget_history()
 		_lay_baseplate()
+		# A new model named for its brief, as the panel begins one
+		# (_make_room), so the design's own name goes over it: it kept the
+		# name of whatever this run opened on, and a second design of a pair
+		# handed the person's model back called "Car".
+		_store.begin(ModelStore.name_for(brief))
+		_named_for_work = _store.title
 	else:
 		var picked: int = _select_inside(about)
 		if picked == 0 or not _assistant.focus_on(_builder.selection.keys(), true).is_empty():
@@ -1587,12 +1593,17 @@ func _ask_claude_code(brief: String) -> void:
 		print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0,
 			note.replace("\n", "\n             ")]))
 	_watch_sketches(session, started)
+	if not BestOfTwo.second_of().is_empty():
+		BestOfTwo.watch_from_second(self, session)
 	if not about.is_empty():
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
 				(Time.get_ticks_msec() - started) / 1000.0, words, _builder.history_depth()]))
 	var outcome: Array = await session.finished
 	_ask_went_well = bool(outcome[0])
+	if not BestOfTwo.second_of().is_empty():
+		BestOfTwo.say_how_it_went(bool(outcome[0]), str(outcome[1]),
+			_world.brick_count() - _store.scenery.size(), _store.title)
 	print("claude code ok=%s bricks=%d  (%.0fs)\n  %s" % [
 		outcome[0], _world.brick_count() - _store.scenery.size(),
 		(Time.get_ticks_msec() - started) / 1000.0,
@@ -1851,6 +1862,49 @@ func claude_code() -> ClaudeCode:
 	return _claude_code
 
 
+## The brief the panel last began a new design with, until it is sent.
+var _fresh_brief: String = ""
+## The second design of the brief being designed twice, while it runs.
+var _best_of_two: BestOfTwo = null
+
+
+## A second design of [param brief] beside the session just started, the
+## better of the two kept as the person's model (BestOfTwo); null when
+## Assistant.BEST_OF is 1 or a second cannot start, and the first is alone.
+func _second_design(brief: String) -> BestOfTwo:
+	if Assistant.BEST_OF < 2 or _commands == null:
+		return null
+	var second := BestOfTwo.new()
+	second.world = _world
+	second.builder = _builder
+	second.library = _library
+	second.store = _store
+	add_child(second)
+	if not second.start(brief, _claude_code, _commands.port()):
+		second.queue_free()
+		return null
+	_best_of_two = second
+	second.titled.connect(_on_titled)
+	second.finished.connect(func(_ok: bool, _summary: String) -> void:
+		if second.record.get("kept", "") == "second":
+			# The first's parts are gone, and what the assistant kept of them;
+			# the subject is the same brief.
+			_assistant.forget_built()
+			_assistant.heard(brief, true)
+			_on_model_edited()
+			_camera.frame(_built_bounds())
+		_best_of_two = null)
+	return second
+
+
+## The design's own name, once it stands, over the one its brief gave the
+## model, or over none; never over a name somebody gave it.
+func _on_titled(name: String) -> void:
+	if name != _store.title and _store.title in [ModelStore.UNTITLED, _named_for_work]:
+		_store.begin(name)
+		_named_for_work = _store.title
+
+
 ## Select the parts whose middles are inside a box given as
 ## "x0,x1,y0,y1,z0,z1" in studs and plates. How many.
 func _select_inside(box: String) -> int:
@@ -1927,6 +1981,10 @@ func _make_room(name: String) -> void:
 ## as an export, and an export on the web is a download: a session's save
 ## there never reached the models at all.
 func save_model(path: String) -> bool:
+	# A second design's saves stay with it, out of the person's models: the
+	# one kept is theirs once it is put down (BestOfTwo).
+	if not BestOfTwo.second_of().is_empty():
+		return _store.export_to(BestOfTwo.second_of().path_join(path.get_file()), "Model")
 	if path.begins_with(ModelStore.SAVE_DIR):
 		return _store.save_file(path, "Model")
 	return _store.export_to(path, "Model")
@@ -3951,13 +4009,9 @@ func _build_ui() -> void:
 	_chat.offers_hidden_colours = _offers_hidden_colours
 	_chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
 	_chat.designing.connect(func(brief: String) -> void:
+		_fresh_brief = brief
 		_make_room(ModelStore.name_for(brief)))
-	# The design's own name, once it stands, over the one its brief gave the
-	# model, or over none; never over a name somebody gave it.
-	_assistant.titled.connect(func(name: String) -> void:
-		if name != _store.title and _store.title in [ModelStore.UNTITLED, _named_for_work]:
-			_store.begin(name)
-			_named_for_work = _store.title)
+	_assistant.titled.connect(_on_titled)
 	# What the design said it stands on, laid when it stands.
 	_assistant.floor_chosen.connect(_on_floor_chosen)
 	_assistant.finished.connect(func(ok: bool, _summary: String) -> void:
@@ -3981,10 +4035,16 @@ func _build_ui() -> void:
 	# machine has the Claude Code to do it with. The panel offers the
 	# choice only then.
 	_chat.design_locally.connect(func(brief: String) -> void:
+		# A new design of a whole model on a bare baseplate is made twice,
+		# side by side, and the better kept (BestOfTwo); a change to a model,
+		# a selection or a sketch is one session.
+		var twice: bool = brief == _fresh_brief and _world.brick_count() == _store.scenery.size()
+		_fresh_brief = ""
 		if not design_with_claude_code(brief):
 			_chat.gave_up("Could not start Claude Code.")
 			return
-		_chat.follow(claude_code()))
+		var second: BestOfTwo = _second_design(brief) if twice else null
+		_chat.follow(claude_code(), second.finished if second != null else Signal()))
 
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the

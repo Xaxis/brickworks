@@ -2749,6 +2749,161 @@ have been won by no design of ours.
 Results: `bench/results/lever81-2026-10-21/` (`extract.py`, `arms.py`,
 `variance.py`, `subjects44.py`, `pick.py`, `pick44.py`, `behaviour.py`).
 
+### Best of two, step 1: the app's own pick (2026-10-21, `pick83`)
+
+Can the app tell the better of two designs, as it would for a person? Not
+the bench's judge: `DesignPick` (src/ai/design_pick.gd) starts Claude Code on
+the subscription with no tools at all and sends one message: the brief and
+each design's corner, front and close pictures (ModelShot's, as the design
+saw them), asking which a set designer would rather ship: first which reads
+at a glance as the subject, then which hangs together as one finished model.
+No set, no reference, no file read. It was asked over every pair of t2base's,
+t2plan3's, t3lay's and signature2's designs of Year of the Sheep, Jungle River
+and Micro World - The End (18 pairs, 15 split against the set), both ways
+round, and the whole run twice (`tools/bench/pick_pairs.py`, 72 asks).
+
+| | run 1 | run 2 | both |
+|---|---|---|---|
+| asks on split pairs, the better kept | 28 of 30 | 25 of 30 | 53 of 60 (88%) |
+| pairs, both orders: the better named (a split counts half) | 14 of 15 (93%) | 12.5 of 15 (83%) | 88% |
+| the two orders agree | 18 of 18 | 15 of 18 | 33 of 36 |
+| kept the one shown first | 18 of 36 | 17 of 36 | 49% |
+| the bench's judge agrees, same pair, same order | 15 of 18 | 14 of 18 | 81% |
+
+The confusion table, both runs, asks on split pairs: the better shown as A,
+kept A 26 and B 4; shown as B, kept A 3 and B 27. No order bias. The same ask
+twice gave the same answer 33 times in 36. The bar, 80% of split pairs, is
+met in each run; 88% over both, about 78 to 94% were the asks independent,
+which they are not (15 pairs of 12 designs on three subjects). Where the two
+were two verdicts apart against the set it kept the better 20 of 20; one
+apart, 33 of 40, and every miss was one apart. Of its seven disagreements
+with the bench's judge, four are on a pair the set calls a tie and two on the
+pair the bench judge itself split.
+
+*What it gets wrong, from its reasons:* it keeps the design that carries the
+brief's words plainest, which is not always the set's way. Year of the Sheep,
+t3lay over t2plan3 in all four asks: "a woolly body and a face with eyes"
+over "a horned box head that reads as a goat"; the bench judge split on that
+pair too. Jungle River, twice in eight: "a continuous channel with banks
+reads as a river" over the better-built scene. Micro World, once: a "clean,
+open" layout over a crowded one.
+
+*Cost:* 10.5 s an ask at the median (7.8 to 16.3), 12,200 tokens in (six
+pictures of about 1,400, written to the cache once) and 800 out, on Opus 5.5,
+the subscription's default. Two orders side by side wait for the slower, about
+12 s. They buy nothing: a split is kept as the first, which is as good as a
+coin, so two asks are right as often as one on average, at twice the tokens. The app should ask once, in
+either order; step 2 asks both only to measure.
+
+*The wait:* of the 13 designs of each subject on disk, the slower of two
+takes 1.14 times one design (12.5 minutes against 10.9 on these pairs, 1.15
+with the pick), so 1.3 holds if two sessions side by side run no slower than
+one. Step 2 measures that.
+
+**Step 2: make two, pick one, on the same three subjects.** From a worktree
+at this branch, the two arms side by side, one worker each, so each subject's
+two designs run together (about 45 minutes and 12 asks against the sets):
+
+    BENCH_PORTS=8961-8964 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py run \
+      --which tune --arm best2a --subjects 40148-1,7410-1,21107-1 --jobs 1 --date 2026-10-22 --audit-later
+    BENCH_PORTS=8965-8969 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py run \
+      --which tune --arm best2b --subjects 40148-1,7410-1,21107-1 --jobs 1 --date 2026-10-22 --audit-later
+
+then the pick (6 asks, a minute) and its reading:
+
+    env -u ANTHROPIC_API_KEY python3 tools/bench/pick_pairs.py run --out best2-2026-10-22 \
+      --arms best2a:2026-10-22,best2b:2026-10-22
+    python3 tools/bench/pick_pairs.py report --out best2-2026-10-22
+
+Read "the wait ... against one design" (the bar: 1.3x or under) and "overall
+won against the set, per design kept: picked, either, the better". Three
+pairs cannot test the 80% again; step 2 proves the lever runs end to end and
+what it costs in time. Then lever81's ready run on proof's 44: 44 more
+designs on main's code beside main's own, `pick_pairs.py run --arms
+main:DATE,main2:DATE` (88 asks, about five minutes at three jobs), and the kept
+design's paired interval against main's.
+
+Results: `bench/results/pick83-2026-10-21/` and `pick83-2026-10-21-r2/`
+(`asks/<set>/<first>__<second>.json`, each with what it saw in A and B and why).
+
+### Best of two, steps 2 and 3: two designs side by side, the app keeps one (2026-10-22)
+
+**Step 2, the three tune subjects** (`best2a` and `best2b`, one worker each,
+side by side). The wait for two designs and the pick is 1.12 times one
+design's. The pick kept the better of the two in 5 of 6 asks.
+
+**The proof, on proof's 44.** A second arm, `main2`, designed the 44 at main's
+commit 64fdf184 beside main's own 2026-10-19 arm, and `pick_pairs.py` asked
+the pick of each pair once.
+
+| | |
+|---|---|
+| pairs that split against the set, the better named | 15 of 18 asks (83%) |
+| kept the design shown first | 41 of 88 asks: no order bias |
+| the wait, two side by side and the pick, against one design | 1.19x |
+| a pick | about 11 s and 13k tokens |
+| won overall against the set, per design kept: the picked one | 26.7% |
+| ...either one, at random | 21.6% |
+| ...the better one, had we known | 28.4% |
+
+Kept minus main's own 44, paired, with a 95% bootstrap interval:
+
+| verdict | kept minus main |
+|---|---|
+| overall | +6.2 (+0.0, +13.6) |
+| likeness | +5.7 (+0.0, +12.5) |
+| surface | +5.7 (+0.0, +13.1) |
+| colour | +8.0 (+2.3, +14.8) |
+| technique | +2.3 (-0.6, +6.2) |
+| creativity | +12.5 (+4.5, +21.6) |
+
+The pick takes most of what an oracle would: 26.7% of the 28.4% a perfect
+choice of the two wins, from 21.6% for either. Every verdict moves up and
+none down; colour and creativity clear zero. *Caveat:* `main2` ran with the
+corrected style norms, since the shared norms file changed in m133 (style59:
+the symmetry advice moved by 1 or 2 points), so a little of the gain may be
+the norms and not the pick.
+
+Results: `bench/results/realset-2026-10-22-best2a/`, `-best2b/` and
+`best2-2026-10-22/` (step 2); `realset-2026-10-22-main2/` and
+`best2-proof-2026-10-22/` (the proof).
+
+**In the app (`best2app`).** It is now how the app designs. A new brief sent
+with My Claude, on a bare baseplate, is designed twice (`Assistant.BEST_OF`, 2):
+the person's own session in the window, as before, and a second started at
+the same moment in a copy of the app with no window, on its own port and
+baseplate, its pictures drawn by the person's app, which has the graphics
+card (BestOfTwo, src/ai/best_of_two.gd). When both have ended, DesignPick is
+asked once and the kept design is the person's model: the second goes down in
+place of the first as one step, so Undo brings the first back. Once the first
+has ended the second has 30% of its time more, at least 90 s, and is then
+stopped. Either one failing, the other is kept without asking; the pick
+failing, the first. A change to a model, a selection, a sketch and every
+session from outside (the MCP port, the connector) are one session, as they
+were.
+
+Two small briefs through the panel, on the subscription, end to end
+(`best_of_two_walk_probe`: the app opened in a window, My Claude ticked, the
+brief typed and sent):
+
+| brief | the first | the second | the pick | kept | wait until it stood |
+|---|---|---|---|---|---|
+| a small red post box | 175 s, 10 parts | 105 s, 14 parts | B, 12.9 s, 12.2k tokens in, 0.9k out | the second | 188 s, 1.08x the first |
+| a wooden park bench | 184 s, 70 parts | 147 s, 46 parts | A, 8.5 s, 12.1k in, 0.6k out | the first | 193 s, 1.05x |
+
+Each time both sessions said they were on the subscription, the second's
+pictures were all drawn by the person's app (none given up), the kept design
+stood on the baseplate with its own parts' count and name, the card closed on
+its summary, the first's history was kept (with the second's one step on it
+where it was kept, Undo bringing the first back), and nothing of the second
+was left running. Its reasons read as a set designer's: the post box "carries
+recognisable post-box detail (finial, black band, plinth) from every angle ...
+while A only reads as a post box from the front"; the bench "has a park
+bench's long, low shape and solid end frames, so it reads as the subject from
+every view, while B's proportions and four-leg stance make it look like a
+chair". Results: `bench/results/best2app-2026-10-22/` (each walk's record,
+the six pictures the pick was shown, the second's model and its log).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

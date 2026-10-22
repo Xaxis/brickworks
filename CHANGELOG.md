@@ -13,6 +13,19 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- My Claude designs a new model twice, side by side, and keeps the better.
+  A second session starts with yours, in a copy of the app with no window
+  and a baseplate of its own. When both have built, the app is shown each
+  design's pictures and your brief, and keeps the one a set designer would
+  rather ship; it goes on your baseplate as one step, so Undo brings the
+  other back. Against the real sets of 44 subjects the kept design won
+  overall 26.7% of the time, where one design won 21.6%, and the wait was
+  1.19 times one design's. A change to a model, a selection, Sketch first
+  and Claude on your plan over the connector or MCP are one session, as
+  before.
+
 ### Changed
 
 - Brickify lays more of a model's steep sides on their sides. A side was
