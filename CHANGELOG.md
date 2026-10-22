@@ -50,6 +50,9 @@ whole cycle.
   A drag that starts before the reading is done waits for the rest of it.
   And a press on a part while Claude is moving one now says why nothing
   happens, as a press does while a big model's joints are still being read.
+  A model weighed or read beside the window while parts were moved could be
+  read half moved, its worker stopping with an error: each reading now has a
+  copy of its own.
 
 - Pressing a motion's button on a shared model's page just after Reset no
   longer stalls the page. The model's joints, changed by the Reset, were
