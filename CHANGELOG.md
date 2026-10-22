@@ -66,6 +66,15 @@ whole cycle.
   window. 8466-1 from the library held a browser for 3.7 to 3.8 seconds at
   once and 2 more after; its longest moment now is a third to half a
   second. A model of under 200 parts opens in one frame, as it always has.
+- Turning a model's moving parts by hand is lighter on a phone. Each frame
+  of the drag looks at the parts near each moving part once, not twice,
+  keeps what it learned of them for the rest of the drag, and asks only the
+  moving parts which of them a nearby part was built against. Turning
+  8808-1's steering wheel with a finger on a phone slowed four times, the
+  app's own work in the drag's slowest frame was 25 to 29 ms in five tries
+  (27 typical), where it had been 21 to 72 ms (33 typical), over the 33 ms
+  a smooth frame allows three times in five. Where the steering stops, and
+  what it meets, are unchanged.
 
 ## [0.5.0] - 2026-10-22
 

@@ -1418,6 +1418,29 @@ func blockers_boxes(packed: PackedInt32Array, ignore: int = 0,
 	return PackedInt64Array(found.keys())
 
 
+## Those of [param among] that [method blockers_boxes] would find for
+## [param packed], but [param ignore]: each asked by its own bound, not every
+## brick in every bucket the boxes reach. Grab asks which of its few moving
+## parts a part they come near overlapped where it stands, and asked of the
+## lattice a plate's hundreds of boxes cost a drag frame 0.1 ms each on a
+## desktop, a quarter of that frame's room test.
+func meeting_of(packed: PackedInt32Array, among: Array, ignore: int = 0) -> PackedInt64Array:
+	var found := PackedInt64Array()
+	if packed.is_empty():
+		return found
+	var mine: PackedInt32Array = _bound_of(packed)
+	var plain: bool = _plain(packed)
+	for other: int in among:
+		if other == ignore:
+			continue
+		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
+		if not _overlaps_pairwise(mine, bound):
+			continue
+		if _meets(packed, mine, plain, other, bound):
+			found.append(other)
+	return found
+
+
 ## The bricks whose bounds meet the bounds of these boxes: everything
 ## that could touch them, to be counted by the caller (Stability, which
 ## counts the cells shared and so needs no second, exact test first).

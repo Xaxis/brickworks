@@ -1390,11 +1390,14 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 		# the air cost a windmill's drag 38 ms a frame that way. Then its
 		# turned box against each part near it: apart from all of them, or
 		# only touching, it meets nothing (a steering's wheel beside its
-		# mudguard cost 19 ms a test by its turned cover).
+		# mudguard cost 19 ms a test by its turned cover). Its neighbours
+		# are sifted once: _boxes_meet forgives what it is joined to as
+		# _near_anything did, and asked of both, each part's were sifted
+		# twice a frame.
 		if meets.has(key):
 			if not bool(meets[key]):
 				continue
-		elif not _near_anything(box, key) or not _boxes_meet(key, mesh, to, box):
+		elif not _boxes_meet(key, mesh, to, box):
 			continue
 		var part_began: int = Time.get_ticks_usec()
 		# A part at a turn whose cover is not kept is asked where something
@@ -1854,7 +1857,7 @@ func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> 
 			continue
 		var to: Transform3D = _tested_at(key, at, carried_at)
 		var box: AABB = to * mesh.bounds
-		var may: bool = _near_anything(box, key) and _boxes_meet(key, mesh, to, box)
+		var may: bool = _boxes_meet(key, mesh, to, box)
 		out[key] = may
 		if not may or not builder.turned_wanted(mesh, to.basis):
 			continue
@@ -2024,8 +2027,18 @@ func _clear_exactly(key: int, to: Transform3D, other: int) -> bool:
 ## its frame met the cable's skin hanging from it, and 10252-1's arm where it
 ## met a rubber band.
 func _bends_aside(other: int) -> bool:
+	if _bends.has(other):
+		return _bends[other]
 	var brick: BrickWorld.Brick = world.get_brick(other)
-	return brick != null and Bodies.bends(library, brick.part_id)
+	var bends: bool = brick != null and Bodies.bends(library, brick.part_id)
+	_bends[other] = bends
+	return bends
+
+
+## [method _bends_aside] for each part asked, kept for the grab: it reads the
+## part's name for a hose's, a string's or a chain's every time, and was
+## asked of each part a turned cover met, every frame.
+var _bends: Dictionary = {}
 
 
 ## Whether [param key] is a tyre and [param other] the baseplate it stands
@@ -2048,7 +2061,8 @@ func _scrubs(key: int, other: int) -> bool:
 ## line keeps every point's place along it, so the two meet no more than
 ## they did; the 2 LDU cells of a turned part's cover cannot tell. The
 ## cover counted them as one, and the arm would not turn at all.
-func _slides_over(key: int, mesh: Lbm.PartMesh, to: Transform3D, other: int) -> bool:
+func _slides_over(key: int, mesh: Lbm.PartMesh, to: Transform3D, other: int,
+		now := Vector2(NAN, NAN)) -> bool:
 	if mode == "ball" or axis == Vector3.ZERO or not rest.has(key):
 		return false
 	var them: BrickWorld.Brick = world.get_brick(other)
@@ -2058,7 +2072,10 @@ func _slides_over(key: int, mesh: Lbm.PartMesh, to: Transform3D, other: int) -> 
 	if _along_for != axis:
 		_along_for = axis
 		_along.clear()
-	var now: Vector2 = Grab._reach_along(to, mesh.bounds, axis)
+	# [param now]: its reach along the line at [param to], when the caller
+	# has it.
+	if is_nan(now.x):
+		now = Grab._reach_along(to, mesh.bounds, axis)
 	# Where it stood and where the other stands, kept for the grab: neither
 	# moves while it lasts.
 	if not _along.has(key):
@@ -2345,11 +2362,16 @@ func _rest_with(other: int) -> Dictionary:
 	# and their clash.
 	var across: Dictionary = _across.get(other, {})
 	if not boxes.is_empty():
-		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
-			if moving.has(key) or followers.has(key):
-				with[key] = true
-				if not across.has(key) and _forgiven_at_rest(key, other):
-					_keep_built_touching(key, other)
+		# Only the moving side's parts are wanted, and are asked for one by
+		# one (BrickLattice.meeting_of).
+		var ours: Array = moving.keys()
+		for key: int in followers:
+			if not moving.has(key):
+				ours.append(key)
+		for key: int in builder.lattice.meeting_of(boxes, ours, other):
+			with[key] = true
+			if not across.has(key) and _forgiven_at_rest(key, other):
+				_keep_built_touching(key, other)
 	_rest_overlap[other] = with
 	return with
 
@@ -2464,27 +2486,94 @@ func _never_meet() -> void:
 ## Boxes hold the shapes, so boxes apart are shapes apart, and the turned
 ## cover need not be worked out.
 func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bool:
+	# What is the part's own at this pose, worked out for the first
+	# neighbour that asks and kept for the rest: its reach along the grab's
+	# line, and its turned box's lines.
+	var now := Vector2(NAN, NAN)
+	var square: Array = []
+	# Its box as box_depth carries it: its middle and half edges.
+	var a_mid: Vector3 = to * mesh.bounds.get_center()
+	var a0: Vector3 = to.basis[0] * (mesh.bounds.size.x * 0.5)
+	var a1: Vector3 = to.basis[1] * (mesh.bounds.size.y * 0.5)
+	var a2: Vector3 = to.basis[2] * (mesh.bounds.size.z * 0.5)
 	for other: int in _near(box, key):
 		if _pair_forgiven(key, other, mesh, to):
 			continue
-		var them: BrickWorld.Brick = world.get_brick(other)
-		var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
-		if their_mesh == null:
+		var theirs: Array = _their_box(other)
+		if theirs.is_empty():
 			return true
-		if Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= TOUCHING \
-				or _slides_over(key, mesh, to, other):
+		# Apart along one of their box's own three edges, as box_depth
+		# measures it there, and box_depth, the least over fifteen lines, is
+		# no more: its other twelve lines (nine of them crossed and made unit
+		# afresh for every pair) are not asked. Most of what a moving part
+		# comes near stands square beside it.
+		var apart: bool = false
+		for k: int in 3:
+			var way: Vector3 = theirs[2 + k]
+			var a_at_way: float = a_mid.dot(way)
+			var a_reach: float = absf(a0.dot(way)) + absf(a1.dot(way)) + absf(a2.dot(way))
+			var b_at_way: float = theirs[5 + k * 2]
+			var b_reach: float = theirs[6 + k * 2]
+			if minf(a_at_way + a_reach, b_at_way + b_reach) - maxf(a_at_way - a_reach, b_at_way - b_reach) \
+					<= TOUCHING:
+				apart = true
+				break
+		if apart or Grab.box_depth(to, mesh.bounds, theirs[0], theirs[1]) <= TOUCHING:
 			continue
-		if _into_cover(mesh, to, box, other):
+		if is_nan(now.x) and axis != Vector3.ZERO:
+			now = Grab._reach_along(to, mesh.bounds, axis)
+		if _slides_over(key, mesh, to, other, now):
+			continue
+		if _into_cover(mesh, to, box, other, square):
 			_near_part = other
 			return true
 	return false
 
 
+## [param other]'s box, which stays where it is while the grab lasts, as
+## [method box_depth] reads it: [its transform, its bounds, its three edges
+## made unit, then along each its middle's place and its reach], or [] where
+## it has no geometry yet. Kept for the grab once it has.
+func _their_box(other: int) -> Array:
+	if _their_for != world.revision:
+		_their_for = world.revision
+		_theirs.clear()
+	var kept: Array = _theirs.get(other, [])
+	if not kept.is_empty():
+		return kept
+	var them: BrickWorld.Brick = world.get_brick(other)
+	var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+	if their_mesh == null:
+		return []
+	var b_at: Transform3D = them.transform
+	var b_box: AABB = their_mesh.bounds
+	var b_mid: Vector3 = b_at * b_box.get_center()
+	var b0: Vector3 = b_at.basis[0] * (b_box.size.x * 0.5)
+	var b1: Vector3 = b_at.basis[1] * (b_box.size.y * 0.5)
+	var b2: Vector3 = b_at.basis[2] * (b_box.size.z * 0.5)
+	kept = [b_at, b_box, b_at.basis[0].normalized(), b_at.basis[1].normalized(),
+		b_at.basis[2].normalized()]
+	for k: int in 3:
+		var way: Vector3 = kept[2 + k]
+		kept.append(b_mid.dot(way))
+		kept.append(absf(b0.dot(way)) + absf(b1.dot(way)) + absf(b2.dot(way)))
+	_theirs[other] = kept
+	return kept
+
+
+var _theirs: Dictionary = {}
+var _their_for: int = -1
+
+
 ## Whether the part [param mesh] at [param to], its world box [param box], is
 ## into a box of [param other]'s cover, which hugs it, by more than
-## [constant TOUCHING].
-func _into_cover(mesh: Lbm.PartMesh, to: Transform3D, box: AABB, other: int) -> bool:
+## [constant TOUCHING]. [param square]: the part's turned box's lines and
+## its reach on them at [param to], [method _square_lines] and [method
+## _reach_on], worked out here when empty and kept in it for the next
+## neighbour asked at the same pose.
+func _into_cover(mesh: Lbm.PartMesh, to: Transform3D, box: AABB, other: int, square: Array = []) -> bool:
 	var pieces: PackedVector3Array = _pieces(other)
+	var chunks: PackedVector3Array = _pieces_near[other]
 	# A piece whose box the part's own box, square to the grid, is not
 	# into by more than TOUCHING along some axis is not into the part's
 	# turned box either: the three axes are three of box_depth's fifteen
@@ -2497,18 +2586,29 @@ func _into_cover(mesh: Lbm.PartMesh, to: Transform3D, box: AABB, other: int) -> 
 	# out once for all the pieces: carried afresh for each piece, they were
 	# half the room test of 8808-1's steering, its front wheels against the
 	# plates their kingpins stand in (Grab 17 tests those; it skipped them).
-	var lines := PackedVector3Array()
-	var reach := PackedFloat64Array()
-	for at: int in range(0, pieces.size(), 4):
-		var low: Vector3 = pieces[at]
-		var high: Vector3 = pieces[at + 1]
-		if high.x <= lo.x or low.x >= hi.x or high.y <= lo.y or low.y >= hi.y or high.z <= lo.z or low.z >= hi.z:
+	# The pieces a run of PIECE_RUN at a time, by the box round the run: a
+	# plate's cover is hundreds of pieces, of which the part's box is near a
+	# few, and asked one by one they were a third of 8808-1's steering's
+	# test of its neighbours' covers.
+	for run: int in range(0, chunks.size(), 2):
+		var run_low: Vector3 = chunks[run]
+		var run_high: Vector3 = chunks[run + 1]
+		if run_high.x <= lo.x or run_low.x >= hi.x or run_high.y <= lo.y or run_low.y >= hi.y \
+				or run_high.z <= lo.z or run_low.z >= hi.z:
 			continue
-		if lines.is_empty():
-			lines = Grab._square_lines(to.basis)
-			reach = Grab._reach_on(to, mesh.bounds, lines)
-		if Grab._into_square(lines, reach, pieces[at + 2], pieces[at + 3], TOUCHING):
-			return true
+		var first: int = run * 2 * PIECE_RUN
+		for at: int in range(first, mini(first + 4 * PIECE_RUN, pieces.size()), 4):
+			var low: Vector3 = pieces[at]
+			var high: Vector3 = pieces[at + 1]
+			if high.x <= lo.x or low.x >= hi.x or high.y <= lo.y or low.y >= hi.y or high.z <= lo.z \
+					or low.z >= hi.z:
+				continue
+			if square.is_empty():
+				var lines: PackedVector3Array = Grab._square_lines(to.basis)
+				square.append(lines)
+				square.append(Grab._reach_on(to, mesh.bounds, lines))
+			if Grab._into_square(square[0], square[1], pieces[at + 2], pieces[at + 3], TOUCHING):
+				return true
 	return false
 
 
@@ -2520,11 +2620,13 @@ func _pieces(other: int) -> PackedVector3Array:
 	if _pieces_for != world.revision:
 		_pieces_for = world.revision
 		_pieces_of.clear()
+		_pieces_near.clear()
 	if _pieces_of.has(other):
 		return _pieces_of[other]
 	var cover: PackedInt32Array = builder.lattice.boxes_of(other)
 	var cell_size: float = BrickLattice.CELL
 	var out := PackedVector3Array()
+	var runs := PackedVector3Array()
 	for at: int in range(0, cover.size(), 6):
 		var piece := AABB(Vector3(cover[at], cover[at + 1], cover[at + 2]) * cell_size,
 			Vector3(cover[at + 3] - cover[at], cover[at + 4] - cover[at + 1],
@@ -2533,12 +2635,24 @@ func _pieces(other: int) -> PackedVector3Array:
 		out.append(piece.end)
 		out.append(piece.get_center())
 		out.append(piece.size * 0.5)
+		if (at / 6) % PIECE_RUN == 0:
+			runs.append(piece.position)
+			runs.append(piece.end)
+		else:
+			runs[runs.size() - 2] = runs[runs.size() - 2].min(piece.position)
+			runs[runs.size() - 1] = runs[runs.size() - 1].max(piece.end)
 	_pieces_of[other] = out
+	_pieces_near[other] = runs
 	return out
 
 
 var _pieces_of: Dictionary = {}
+## Each of [member _pieces_of]'s, the box round each run of [constant
+## PIECE_RUN] pieces in turn: its low and high corners.
+var _pieces_near: Dictionary = {}
 var _pieces_for: int = -1
+## Pieces of a cover asked by the box round them first, at a time.
+const PIECE_RUN := 8
 
 
 ## [method box_depth]'s lines for a box turned by [param turned] against one
@@ -2623,7 +2737,12 @@ func _near(box: AABB, key: int = 0) -> PackedInt64Array:
 	var kept: Array = _near_kept.get(key, []) if key != 0 else []
 	if kept.is_empty() or lo.x < int(kept[0][0]) or lo.y < int(kept[0][1]) or lo.z < int(kept[0][2]) \
 			or hi.x > int(kept[0][3]) or hi.y > int(kept[0][4]) or hi.z > int(kept[0][5]):
-		var margin: int = NEAR_MARGIN if key != 0 else 0
+		# A part that left the cells asked for goes fast (a steering's wheels
+		# go 3 or 4 cells a frame): asked again with twice the margin, up to
+		# NEAR_MOST. At NEAR_MARGIN each time, 8808-1's steering asked the
+		# lattice 28 times in six frames, a fifth of its room test.
+		var margin: int = 0 if key == 0 else NEAR_MARGIN if kept.is_empty() \
+			else mini(int(kept[3]) * 2, NEAR_MOST)
 		var grown := PackedInt32Array([lo.x - margin, lo.y - margin, lo.z - margin, hi.x + margin,
 			hi.y + margin, hi.z + margin])
 		var ids := PackedInt64Array()
@@ -2632,7 +2751,7 @@ func _near(box: AABB, key: int = 0) -> PackedInt64Array:
 			if not skip.has(other):
 				ids.append(other)
 				bounds.append_array(builder.lattice._bounds[other])
-		kept = [grown, ids, bounds]
+		kept = [grown, ids, bounds, margin]
 		if key != 0:
 			_near_kept[key] = kept
 	var found: PackedInt64Array = kept[1]
@@ -2649,9 +2768,13 @@ func _near(box: AABB, key: int = 0) -> PackedInt64Array:
 ## How many cells all round a moving part's neighbours are asked for at once
 ## ([method _near]): a part goes a cell or two a frame.
 const NEAR_MARGIN := 4
+## The most cells all round they are asked for, for a part that keeps
+## leaving them.
+const NEAR_MOST := 16
 ## [method _near]'s asks for each moving part: brick id -> [the cells asked,
-## what is in them, their bounds]; and the model's revision and how many parts
-## the moving side may press on when they were asked.
+## what is in them, their bounds, the margin asked with]; and the model's
+## revision and how many parts the moving side may press on when they were
+## asked.
 var _near_kept: Dictionary = {}
 var _near_for := Vector2i(-1, -1)
 
