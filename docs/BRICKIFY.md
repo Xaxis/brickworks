@@ -3079,6 +3079,90 @@ now. On to the fourteen only if Bob and Spot at 48 studs reach 20% matched
 what held it. The rule wins left in the cubes, 7 to 10 points of steep-face
 error at most, are not the next unit.
 
+### Laying the lean first: the screen fails (2026-10-22)
+
+**The measure.** `brickify_bench.py faces` now gives each arm a `matched`
+share: of the points seen that lean 10 to 40 degrees from all six axes, the
+share whose nearest part face is within 10 degrees of the model's. It also
+gives `every`, the error and distance over every face. On `main` at 48 studs
+Bob has 8.3% matched and Spot 9.2%, the study's "about 9%".
+
+**Where the lean is lost.** On `main`, Bob's and Spot's leaning faces were
+traced to the part nearest each (`why.py`; it, the runs and every try on the
+way are in `bench/results/brickify8-2026-10-21/lean97`). Where a
+slope in the right plane is nearest, 61% of them are matched: the fit is
+right. But 72% of those a slope could match are nearest a flat face (a
+tile, a plate, a brick's side): no slope was laid there. Bob's yellow
+underside had almost none at all. Its inverted 3 x 1 and 2 x 2 were laid
+as 4287a and 3660a, two moulds sold in almost no colour: 72 went down,
+and 259 more places fitted one not sold in the colour there.
+
+**What was screened** (`3bf21553`). `Shapes.Plan._fit_near` fitted a slope
+only where the stud behind it stood a plate higher, so the voxels' steps
+decided where a lean could go. In every frame at once (studs up, under an
+overhang, and in the turned shells, which fit the same way), each slope
+was also tried at the height that lays it nearest the model, wherever the
+surface falls away. It had to stay within 1.5 plates of the model at every
+third of a stud, with its high end no more than a plate over the stud
+behind it. The angle was weighed 25 times as much (`TURN` 0.004 to 0.1)
+and a longer part had to be nearer to win (`LONGER` 0.12 to 0.06). The
+inverted slopes went down in the moulds sold now (4287c, 3660b). Plates
+filled in under a slope that stood over its stud were tried and dropped:
+they matched no more and stood out in the side views.
+
+**The screen**, laid beside `main` at the same time, from locked
+checkouts of each:
+
+| | matched | error over every face | distance | sides95 (studs) | parts | time |
+|---|---|---|---|---|---|---|
+| Bob 48 | 8.3% to **22.3%** | 39.6° to 35.5° (**10.3% lower**) | 3.3% nearer | 0.58 to 0.55 | 1.02x | 1.01x |
+| Spot 48 | 9.2% to **16.2%** | 36.3° to 35.3° (**2.7%**) | 0.2% | 0.52 to **0.56** | 1.00x | 1.24x |
+| 3DBenchy 48 | 4.1% to 8.3% | 33.1° to 32.3° (2.3%) | 0.1% further | 0.57 to **0.61** | 1.01x | **1.60x** |
+| Bob 24 | 4.8% to 13.6% | 41.1° to 37.9° (7.8%) | 1.7% | 0.53 to **0.58** | 0.96x | 0.97x |
+| Spot 24 | 5.4% to 11.0% | 36.2° to 35.7° (1.4%) | 3.4% | 0.48 to **0.50** | 0.95x | 1.07x |
+| 3DBenchy 24 | 0.8% to 1.1% | 37.7° to 37.2° (1.3%) | 1.6% further | 0.56 to **0.60** | 0.96x | 1.22x |
+
+All six are one piece, pass the check, have no joint past its load and are
+97.8% or more in a part. Spot at 48 had 4 parts mended out and 3DBenchy at
+48 had 2 (`main` 0). **It fails.** Bob passes both bars. Spot reaches 16%
+and 2.7%, short of 20% and 5%. The side views stand 0.02 to 0.05 studs
+further off on five of the six, and 3DBenchy at 48 took 1.6 times `main`'s
+time on a loaded box. Nothing went on to the fourteen or the probes. The
+code is reverted on the branch; `3bf21553` keeps it.
+
+**Why Spot falls short.** 74% of Spot's leaning faces are on its sides,
+against Bob's 53%. Bob's tops and undersides take the new slopes well: of
+the faces a part could match, 65% of its tops and 36% of its undersides are
+matched (from 31% and 0.1%). On the sides Spot gets to 21%. The sides are
+laid in the turned shells, each in its own frame over only the cubes it
+was given, so a run of slopes stops at the shell's edge. Within a shell a
+fitted slope lost to the shell's own staircase 446 times against 1,154
+laid (a run before the last tuning). Of what a part could match on Spot's
+sides, 59% is still nearest a flat face. And 34% of Spot's leaning faces
+(43% of Bob's) lean so far between two axes that no part facing an axis
+comes within 10 degrees of them. The side views worsen where the new
+curved 4 x 1s and inverted curved 4 x 1s (61678, 93606, 13547) end past
+the model's edge: they are now among the farthest points seen from the
+side.
+
+**Kept from it.** The inverted slopes in the moulds sold now help without
+the rest. On `main` with only that change, Bob at 48 is 10.3% matched and
+3.5% lower in error over every face. Spot is 9.8% and 1.4% lower. Parts are
+1.01 times, the side views are no worse (0.57 and 0.52), and nothing is
+mended out. Two ids in `Shapes.Plan.INVERTED` change, 4287a to 4287c and
+3660a to 3660b. Read off their meshes they are the same size and turn,
+but the new moulds' studs on top read over every row (4287c's over all
+three), which changes what the check counts as held. It needs the probes
+run before it ships.
+
+**What next for the lean.** It cannot get further while the turned
+shells' cubes decide where a run of slopes may lie. A side has to be laid
+as the tops now are: cut into patches by its lean, each a run as long as
+the surface holds, anchored where the core can hold it. For faces that
+lean between two axes, the wedges and corner slopes that face that way
+(43710 and 43711, 6564 and 6565, wedge plates on a diagonal edge) would
+need their own fit. Neither is a tuning of the cubes.
+
 ### Proof
 
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
