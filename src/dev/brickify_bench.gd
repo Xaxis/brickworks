@@ -356,6 +356,20 @@ func _record(model: Assistant.Model, info: Dictionary, stem: String, slug: Strin
 		info["balance"] = {"grams": balance.grams, "margin": balance.margin,
 			"tilt": balance.tilt, "bridges": balance.joints.size(), "over": balance.over,
 			"adrift": balance.adrift, "stands": balance.stands()}
+		# Each joint past its working load: what hangs on what, on how many studs.
+		var over: Array = []
+		for joint: Balance.JointLoad in balance.joints:
+			if joint.ratio > 1.0:
+				var held: Assistant.Placement = model.placements[joint.held_by] \
+					if joint.held_by >= 0 and joint.held_by < model.placements.size() else null
+				var beyond: Assistant.Placement = model.placements[joint.beyond] \
+					if joint.beyond >= 0 and joint.beyond < model.placements.size() else null
+				over.append({"beyond": joint.beyond_part, "held_by": joint.held_part,
+					"beyond_face": beyond.face if beyond != null else "",
+					"held_face": held.face if held != null else "", "studs": joint.studs,
+					"grams": joint.grams, "ratio": joint.ratio, "hangs": joint.hangs,
+					"at": [joint.at.x, joint.at.y, joint.at.z]})
+		info["balance"]["over_joints"] = over
 	var counts: Dictionary = {"curved": 0, "sloped": 0, "tile": 0, "plain": 0, "sideways": 0}
 	var colours: Dictionary = {}
 	var lots: Dictionary = {}

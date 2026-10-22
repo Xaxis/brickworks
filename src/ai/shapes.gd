@@ -3221,23 +3221,29 @@ class Plan extends RefCounted:
 			# Nor under a cap of the core a plate or two thick, which would
 			# stand on the shell's edge and be held by nothing: a single tile
 			# over a bunny's flank came away on its own. Above a cube of the
-			# same shell, a brick or more of the core, or two plates that reach
-			# the core behind, it is held. The same under it: a ledge a plate or
-			# two thick hung from it.
+			# same shell, a brick or more of the core, or a cap that runs on
+			# back over the core behind the cube, on the core there, it is held:
+			# the core's plates bridge from one to the other. The same under it:
+			# a ledge a plate or two thick hung from it, unless it runs on back
+			# under the core.
 			var capped: bool = false
 			if not list.has(c + Vector3i(0, 1, 0)):
 				for cell: Vector2i in cells:
 					var over: int = 0
 					while over < 3 and at(cell, j0 + CUBE_PLATES + over) >= 0:
 						over += 1
-					capped = capped or over == 1 \
-						or over == 2 and at(cell - facing, j0 + CUBE_PLATES) < 0
+					if over == 1 or over == 2:
+						var behind: Vector2i = cell - facing * (1 + _lane(cell, facing, along).y - inmost)
+						capped = capped or at(behind, j0 + CUBE_PLATES) < 0 \
+							or at(behind, j0 + CUBE_PLATES - 1) < 0
 			if not list.has(c - Vector3i(0, 1, 0)):
 				for cell: Vector2i in cells:
 					var under: int = 0
 					while under < 3 and j0 - 1 - under >= 0 and at(cell, j0 - 1 - under) >= 0:
 						under += 1
-					capped = capped or (under == 1 or under == 2) and j0 - 1 - under >= 0
+					if (under == 1 or under == 2) and j0 - 1 - under >= 0:
+						var behind: Vector2i = cell - facing * (1 + _lane(cell, facing, along).y - inmost)
+						capped = capped or at(behind, j0 - 1) < 0 or at(behind, j0) < 0
 			if capped:
 				_why_not["capped"] = int(_why_not.get("capped", 0)) + 1
 				continue
@@ -3310,7 +3316,10 @@ class Plan extends RefCounted:
 			"face": face, "top": top, "rows": 2 * (top - bottom) / CUBE_PLATES, "held": {},
 			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept,
 			"phase": _phase}
-		return shell if _anchored(shell) else {}
+		if _anchored(shell):
+			return shell
+		_why_not["unanchored"] = int(_why_not.get("unanchored", 0)) + kept.size()
+		return {}
 
 	## The pieces of the core apart from the rest, of [constant CUT_OFF] parts
 	## or fewer, that touch a shell (with [param wholly], every part of them
