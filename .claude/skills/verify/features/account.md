@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age -->
 
 ## Sub-features
 
@@ -124,7 +124,7 @@ they have. A Claude connector belongs to the account that switched it on.
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
   (403), and work goes only to a tab with an owner.
-- `Claude's sign-in (OAuth)` (`api/oauth.js`, `api/_oauth.js`,
+- `Claude's OAuth sign-in` (`api/oauth.js`, `api/_oauth.js`,
   `supabase/oauth.sql`; written up with sources in `docs/CONNECTING.md`):
   one connector address for everybody, `https://brickworks.diy/api/mcp`, that
   Claude signs in to as MCP's authorization spec says. Asked with no token the
