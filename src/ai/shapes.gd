@@ -2708,6 +2708,10 @@ class Plan extends RefCounted:
 	## Plates of the shape a shell has taken, Vector3i(x, j, z): a later
 	## shell does not reach into them.
 	var shelled: Dictionary = {}
+	## For a shell's own plan, whether a plate of its frame (lane, plates
+	## out, row, at its middle) is free in the model: the shell's, or
+	## nobody's (lay_shell's room).
+	var room: Callable = Callable()
 
 	## A curved side laid on its side, as a set's flank is: where the shape
 	## bulges out of a face of its core — an owl's breast, the shoulder of a
@@ -3735,6 +3739,7 @@ class Plan extends RefCounted:
 			sub.colour_at = local_colour
 			sub.sample = func(x: float, j: float, z: float) -> bool:
 				return int(local_colour.call(x, j, z)) >= 0
+			sub.room = room
 			sub.held = held_here
 			# A sculpt's colours and the colours it may lay go with it on its side.
 			sub.colour_shown = colour_shown
@@ -4899,8 +4904,18 @@ class Plan extends RefCounted:
 	## stands at [param at_], whose top (or under an overhang, foot) is
 	## [param here]: within it, and on the shape's own plates (hung from them).
 	func _stands_at(at_: Vector2i, here: int, base: int, tall_: int, under: bool) -> bool:
-		if here < base or here > base + tall_:
+		if here < base or here > base + tall_ or base + tall_ > tall:
 			return false
+		# What it stands in past the shape's top (under an overhang, below its
+		# foot) is air nothing else has: fitted to the lean a plate proud of
+		# its stud, a curved 4 x 1 on Bob's flank stood out of its shell's box
+		# into a cheese slope of the side beside it, and three parts were
+		# taken out.
+		for j: int in (range(base, here) if under else range(here, base + tall_)):
+			var key := Vector3i(at_.x, j, at_.y)
+			if taken.has(key) or shelled.has(key) \
+					or (room.is_valid() and not bool(room.call(at_.x + 0.5, j + 0.5, at_.y + 0.5))):
+				return false
 		# Not under a shell: a slope's studs (an inverted one's, or a straight
 		# one's flat top) ran into the plate on its side over it.
 		if shelled.has(Vector3i(at_.x, base + tall_, at_.y)):

@@ -636,7 +636,7 @@ const CUBE_PLATES := 5
 ## plates up alone, 31% of the steep faces of Bob, the bunny and 3DBenchy
 ## were turned, from 27%; at every phase, 37%.
 const CUBE_PHASES: Array[int] = [2, 4, 1, 3]
-const STEEP := 0.42
+const STEEP := 0.6
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
 const CUBE_IN := 0.5
