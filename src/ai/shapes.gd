@@ -3024,6 +3024,8 @@ class Plan extends RefCounted:
 	var _shells_made: int = 0
 	## Why cubes were left upright, by reason, for a probe to say.
 	var _why_not: Dictionary = {}
+	## And each cube refused, [x / 2, its foot plate, z / 2, why], for the bench.
+	var _why_at: Array = []
 	## The model's side at a point (Brickify.Grid.side): with it, a cube's
 	## shell fits its slopes by distance (_fit_near) as a top's are.
 	var side_fine: Callable = Callable()
@@ -3056,6 +3058,9 @@ class Plan extends RefCounted:
 		# Each turned cube by its foot plate, for the bench to say where a side is
 		# turned.
 		Shapes.last["cubes_kept"] = kept_list
+		# And each cube refused, why: "lost" where its group came to no shell,
+		# "moved" where the side's outermost cube was tried in its place.
+		Shapes.last["cubes_why"] = _why_at
 		return out
 
 	## The shells of the cubes of [member _phase].
@@ -3075,6 +3080,9 @@ class Plan extends RefCounted:
 				if cubes.has(past) or moved.has(past) or not _cube_has_model(past):
 					break
 				c = past
+			if c != key:
+				_why_at.append([(key as Vector3i).x, (key as Vector3i).y * CUBE_PLATES + _phase,
+					(key as Vector3i).z, "moved"])
 			if moved.has(c):
 				continue
 			moved[c] = facing
@@ -3117,6 +3125,9 @@ class Plan extends RefCounted:
 					break
 				_why_not["uncovered"] = int(_why_not.get("uncovered", 0)) + (shell["cubes"] as Array).size() \
 					- kept.size()
+				for c: Vector3i in shell["cubes"]:
+					if not kept.has(c):
+						_why_at.append([c.x, c.y * CUBE_PLATES + _phase, c.z, "uncovered"])
 				drop_shell(shell)
 				shell = {}
 				if kept.is_empty():
@@ -3128,6 +3139,8 @@ class Plan extends RefCounted:
 				out.append(shell)
 			else:
 				_why_not["unheld"] = int(_why_not.get("unheld", 0)) + list.size()
+				for c: Vector3i in list:
+					_why_at.append([c.x, c.y * CUBE_PLATES + _phase, c.z, "lost"])
 		return out
 
 	## The plates of [param shell]'s cubes in a row of a lane where none of its
@@ -3210,6 +3223,7 @@ class Plan extends RefCounted:
 			# it: half a cube on a shell's edge would be a cap of its own.
 			if _phase != 0 and _cube_shelled(cells, j0):
 				_why_not["shelled"] = int(_why_not.get("shelled", 0)) + 1
+				_why_at.append([c.x, j0, c.z, "shelled"])
 				continue
 			var plates: Array[Vector3i] = []
 			var empty: Array[Vector3i] = []
@@ -3246,6 +3260,7 @@ class Plan extends RefCounted:
 						capped = capped or at(behind, j0 - 1) < 0 or at(behind, j0) < 0
 			if capped:
 				_why_not["capped"] = int(_why_not.get("capped", 0)) + 1
+				_why_at.append([c.x, j0, c.z, "capped"])
 				continue
 			for cell: Vector2i in cells:
 				var past: Vector2i = cell + facing * CUBE_STUDS
@@ -3273,6 +3288,7 @@ class Plan extends RefCounted:
 			if beyond > 0 or backed < CUBE_STUDS * CUBE_PLATES * 6 / 10 or plates.size() < CUBE_LEAST:
 				var why: String = "beyond" if beyond > 0 else ("backed" if plates.size() >= CUBE_LEAST else "few")
 				_why_not[why] = int(_why_not.get(why, 0)) + 1
+				_why_at.append([c.x, j0, c.z, why])
 				continue
 			kept.append(c)
 			for key: Vector3i in plates:
@@ -3319,6 +3335,8 @@ class Plan extends RefCounted:
 		if _anchored(shell):
 			return shell
 		_why_not["unanchored"] = int(_why_not.get("unanchored", 0)) + kept.size()
+		for c: Vector3i in kept:
+			_why_at.append([c.x, c.y * CUBE_PLATES + _phase, c.z, "unanchored"])
 		return {}
 
 	## The pieces of the core apart from the rest, of [constant CUT_OFF] parts

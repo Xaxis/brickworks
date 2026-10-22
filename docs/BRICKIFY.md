@@ -2684,12 +2684,17 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
 After the fourth round:
 
 - **The bar, by far.** 42% of the steep faces turned at 48 studs against 80%,
-  and 5.6% nearer than studs up against 30%. Most of what is left upright on
-  Bob and the bunny lies in cubes that face out but are refused: model
-  further out than the cube in some plate (`beyond`), too few of its plates
-  (`few`), the core too shallow behind (`backed`). On 3DBenchy, walls a stud
-  or two thick: a shell there needs no core behind it, held through the
-  wall, which no rule here lays.
+  and 5.6% nearer than studs up against 30%. Of the steep faces left
+  upright in a cube facing out, on Bob 39% and on the bunny 22% lie where
+  every phase's cube overlaps a shell already laid at another (a band of
+  one to four plates between two shells whose courses do not line up);
+  then model further out than the cube in some plate (`beyond`), 19% and
+  11% more, and the core too shallow behind (`backed`), 10% on the bunny
+  (each smooth arm's `cubes_why`). Refused only where a shell has the
+  cube's model plates, not its air, a point more (43%). Shells that run
+  across phases, a row's height at a time, are what would reach the bands.
+  On 3DBenchy, walls a stud or two thick: a shell there needs no core
+  behind it, held through the wall, which no rule here lays.
 - **Turned, the error is the shell's own steps.** A third of the turned
   faces are nearest the side of a plate on its side, at 66°. Slopes on their
   side fall along the shell's lanes or rows only; a shell that runs across

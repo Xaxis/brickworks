@@ -489,8 +489,9 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/run   # where
 #   name "upright" (smooth with Options.snot false, the studs-up build SNOT is measured
 #   against); faces gives "turned", "turned_out" and "turned_down", the share of what
 #   faces out or down whose nearest part has its top toward it (up within 60 degrees);
-#   each smooth arm's JSON has "cubes_asked" and "cubes_turned" (every phase, by foot
-#   plate) and its joints past their load ("balance"."over_joints"); pictures --views
+#   each smooth arm's JSON has "cubes_asked", "cubes_turned" and "cubes_why" (every
+#   phase, by foot plate; why each was refused) and its joints past their load
+#   ("balance"."over_joints"); pictures --views
 #   corner,front,back,left,right,under draws each from every side and underneath.
 #   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
 #   48 studs 52,160 parts from 59,156 (2.42 times the greedy stack's from 2.74), 1x1s

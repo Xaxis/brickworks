@@ -201,6 +201,7 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 			for c: Variant in Shapes.last.get("cubes_kept", []):
 				turned.append([(c as Vector3i).x, (c as Vector3i).y, (c as Vector3i).z])
 			info["cubes_turned"] = turned
+			info["cubes_why"] = Shapes.last.get("cubes_why", [])
 			# The stand, by its parts (indices now) and how far it lifts the
 			# model: brickify_bench.py lines the model up again and leaves the
 			# stand out of the likeness, which is of the model.
