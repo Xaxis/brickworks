@@ -77,6 +77,12 @@ whole cycle.
   floor, no longer part of the model; it comes back as it was. And a design
   undone and redone stays Claude's: the next one submitted is laid in its
   place, where it was laid beside it.
+- A message in the status bar lasts its full four seconds when the same
+  words are said again. The first saying's timer cleared them as it ran
+  out: Check stability pressed twice two seconds apart dropped the weak
+  joints it named half a second after the second press, leaving only the
+  balance, and "1 selected" vanished early after selecting, clearing and
+  selecting again.
 - A steering no longer loses the rack it is turned by. A pinion standing at
   the end of its rack could be carried past the rack's last tooth by a
   turn, and the next turn found it out of the rack and turned it alone, the
