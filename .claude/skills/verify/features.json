@@ -211,7 +211,7 @@
       "id": "cli:big models stay fast",
       "kind": "cli",
       "entry": "src/dev/bigmodel_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened, or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
+      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--paced] [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened (--paced: opened over frames as File, Open opens one, with its longest frame; its dump is the one frame's, byte for byte), or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
       "area": "view",
       "tests": []
     },
