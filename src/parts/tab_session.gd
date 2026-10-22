@@ -81,18 +81,29 @@ static func opened_new() -> bool:
 ## page open a tab only in answer to one (Shell.IN_THE_PRESS); noopener,
 ## so the two pages do not share one thread. On the desktop, New window:
 ## the app started again ([method window_arguments]).
-static func open_another() -> void:
+##
+## [param then] is what the new one opens once it is up, as its address
+## says it in a browser and its command line on the desktop: {"library":
+## an id} a model of the library (Main._maybe_open_library), {"copy": a
+## link's id} a gallery model copied (Main._maybe_copy). LibraryDialog.
+static func open_another(then: Dictionary = {}) -> void:
 	if OS.has_feature("web"):
+		var query: String = "?new=1"
+		for key: String in then:
+			query += "&%s=%s" % [key.uri_encode(), str(then[key]).uri_encode()]
 		JavaScriptBridge.eval("""
 			(() => {
 				const there = new URL(location.href);
-				there.search = "?new=1";
+				there.search = %s;
 				there.hash = "";
 				window.open(there.href, "_blank", "noopener");
 			})();
-		""", true)
+		""" % JSON.stringify(query), true)
 		return
-	var pid: int = OS.create_instance(window_arguments())
+	var arguments: PackedStringArray = window_arguments()
+	for key: String in then:
+		arguments.append("--%s=%s" % [key, then[key]])
+	var pid: int = OS.create_instance(arguments)
 	if pid <= 0:
 		push_warning("could not start another window")
 

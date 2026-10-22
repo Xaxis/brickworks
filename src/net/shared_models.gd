@@ -27,6 +27,20 @@ static func embed_for(id: String) -> String:
 		+ 'title="A Brickworks model" loading="lazy"></iframe>') % link_for(id)
 
 
+## Who made a shared model and on what terms, as a copy of it carries them
+## (ModelStore.credit): its designer, its licence by name, and its link.
+const GALLERY := "the Brickworks gallery"
+
+
+static func credit_of(body: Dictionary, id: String) -> Dictionary:
+	var licence: Variant = body.get("licence")
+	var url: String = str(body.get("url", link_for(id)))
+	return {"by": str(body["author"]) if body.get("author") is String else "",
+		"licence": str(GalleryTool.LICENCES[licence][0]) if licence is String
+			and GalleryTool.LICENCES.has(licence) else "no licence chosen",
+		"page": url if url.begins_with("https://") else "", "from": GALLERY}
+
+
 ## The model at a link: {code, body}. 200 with {name, author, parts,
 ## model, url…}; 410 taken down; 404 never there; 0 unreachable.
 ##

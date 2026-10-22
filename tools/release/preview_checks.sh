@@ -80,6 +80,10 @@ declare -A CMD=(
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
+  # File > Library…: an LDraw set and a community model each opened in a tab
+  # of its own, the first tab untouched; the library and the gallery played
+  # from tests/fixtures/library by Playwright's route (src/ui/library_dialog.gd).
+  [library]="tools/web/library_flow.mjs --url=$P/app --out=$S/${TAG}_library"
   # My collection in a real browser: a throwaway account imports a parts
   # export, adds a set, reads what is short and ranks what it can build;
   # the account and its collection are deleted after (tools/web/collection_flow.mjs).

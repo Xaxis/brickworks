@@ -42,7 +42,7 @@ var _gallery: GalleryTool
 ## The window's commands (Shell) a session does with a tool: command id, or
 ## a prefix ending in "*", -> the tool.
 const COMMANDS: Dictionary = {
-	"new": "clear_model", "clear": "clear_model", "open": "open_model",
+	"new": "clear_model", "clear": "clear_model", "open": "open_model", "library": "open_model",
 	"save": "save_model", "save_as": "save_model", "versions": "open_model",
 	"export_all": "export_model",
 	"export_ldraw": "export_model", "export_io": "export_model", "export_3d": "export_model",
@@ -169,7 +169,8 @@ is held still when named Frame.
  - open_model: lists the person's saved models and the examples, and \
 opens one. It cannot be undone: save_model first. Each save is kept, the \
 last 20: name= with versions=true lists a model's, version=N opens one. \
-link= opens a copy of a gallery model, as Open in Brickworks does.
+link= opens a copy of a gallery model, as Open in Brickworks does; \
+library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
@@ -576,11 +577,14 @@ func definitions() -> Array:
 				+ "as File, Versions… shows: versions=true lists name='s, newest first, and "
 				+ "version=N opens the Nth. link= a gallery model's link id (gallery) opens a "
 				+ "copy of it saved in the person's models, as Open in Brickworks on its page "
-				+ "does. Opening cannot be undone, so it is refused while "
+				+ "does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's "
+				+ "model of that real set, credited to whoever made it, as File, Library… does. "
+				+ "Opening cannot be undone, so it is refused while "
 				+ "the model has changes not saved, unless discard_changes=true."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
+				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest"},
 				"discard_changes": {"type": "boolean"},
@@ -2246,6 +2250,9 @@ func _open(input: Dictionary) -> String:
 	var name: String = str(input.get("name", "")).strip_edges().trim_suffix(".ldr")
 	if not str(input.get("link", "")).strip_edges().is_empty():
 		return await _open_link(str(input["link"]).strip_edges(), bool(input.get("discard_changes", false)))
+	if not str(input.get("library", "")).strip_edges().is_empty():
+		return await _open_library(str(input["library"]).strip_edges(),
+			bool(input.get("discard_changes", false)))
 	if name.is_empty():
 		var said := PackedStringArray()
 		said.append("Open now: %s." % store.title)
@@ -2343,6 +2350,7 @@ func _open_link(link: String, discard: bool) -> String:
 	store.share_id = ""
 	store.remixed_from = id
 	store.remixed_from_version = maxi(int(body.get("version", 0)), 0)
+	store.credit = SharedModels.credit_of(body, id)
 	bar.opened.emit(int(result["placed"]))
 	var since: int = Time.get_ticks_msec()
 	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
@@ -2364,6 +2372,48 @@ func _open_link(link: String, discard: bool) -> String:
 		+ "it. Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
 		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms] + _opened_motions()
+
+
+## open_model library=: LDraw's model of a real set, from the library File,
+## Library… shows (ModelLibrary), opened in place of what is on the baseplate
+## as open_model name= opens one, credited to whoever made it
+## (ModelStore.credit). Not saved: it is the person's to save, as a set
+## opened from the window is.
+func _open_library(id: String, discard: bool) -> String:
+	var store: ModelStore = app.get("_store")
+	var bar: ModelBar = app.get("_bar")
+	var books: ModelLibrary = app.get("_model_library")
+	if books == null:
+		return "This app has no library."
+	if not ModelLibrary.is_id(id):
+		return "library is an id from gallery library=true, like omr-10179-1."
+	if store.has_unsaved_work() and not discard:
+		return ("The model on the baseplate, %s, has changes that are not saved, and opening "
+			% store.title + "cannot be undone. save_model first, or give discard_changes=true.")
+	var entry: Dictionary = await books.find(id)
+	if entry.is_empty():
+		return books.trouble + " gallery library=true q= finds a set."
+	var title: String = ModelLibrary.title_of(entry)
+	var got: Dictionary = await books.model_text(entry)
+	if not str(got["error"]).is_empty():
+		return "Could not open %s: %s" % [title, got["error"]]
+	if assistant != null:
+		assistant.forget_built()
+	var placed: int = await bar.open_text_with_progress(str(got["text"]), title)
+	if placed <= 0 and store.awaited.is_empty():
+		return "Could not read %s." % title
+	store.credit = ModelLibrary.credit_of(entry)
+	store.touch()
+	bar.opened.emit(placed)
+	var since: int = Time.get_ticks_msec()
+	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+		await app.get_tree().create_timer(0.3).timeout
+	return ("Opened %s: %d parts, %s (%s). It is LDraw's model of the real set: credit %s and keep "
+		+ "to its licence in anything made from it. Not saved: save_model keeps it in the person's "
+		+ "models. look_at_model to see it.") % [title,
+		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(),
+		ModelBar.credit_words(store.credit), entry["page"],
+		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] + _opened_motions()
 
 
 # -- the parts list and the collection ------------------------------------------------

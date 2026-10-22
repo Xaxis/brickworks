@@ -19,6 +19,11 @@
 ## "Open the dome", "Extend the telescope"", docs/MOTIONS.md), which its link
 ## plays by a button each, and play_motion plays once it is opened.
 ##
+## And the library (2026-10-22): library=true searches LDraw's models of
+## real sets instead (ModelLibrary, the shelf File, Library… shows), by
+## name or set number, theme, decade and size, each with its library id,
+## which open_model library= opens.
+##
 ## A tool of AppTools (gallery), served wherever the app's tools are: the
 ## desktop's MCP port, My Claude and the connector.
 class_name GalleryTool
@@ -26,6 +31,8 @@ extends RefCounted
 
 const SIZES: Array[String] = ["small", "medium", "large"]
 const SORTS: Array[String] = ["newest", "views", "likes", "remixes", "builds", "top", "owned"]
+## And the library's own (library=true): ModelLibrary.SORTS.
+const LIBRARY_SORTS: Array[String] = ["oldest", "largest", "smallest", "name"]
 ## Each sort as a heading says it.
 const SORT_WORDS: Dictionary = {"newest": "newest first", "views": "most viewed first",
 	"likes": "most liked first", "remixes": "most remixed first", "builds": "most built first",
@@ -68,7 +75,11 @@ static func definition() -> Dictionary:
 			+ "its parts by kind and the most used, its credit and its licence, how many built it, "
 			+ "its comments and photos of real builds, and its picture — to learn how it is built. "
 			+ "designer=<handle> (a list's \"by Name (@handle)\"): a designer's page, what their "
-			+ "models earned and their models. Read-only: nothing on the baseplate changes, and "
+			+ "models earned and their models. library=true: LDraw's models of real sets instead, "
+			+ "matching q (a name or a set number), theme, decade (\"1990s\") and size, sorted "
+			+ "newest, oldest, largest, smallest or name; each with its library id, which "
+			+ "open_model library= opens, and its maker and licence. "
+			+ "Read-only: nothing on the baseplate changes, and "
 			+ "liking, following and commenting are the person's own, on the site. Credit its "
 			+ "builder and keep to its licence in anything made from it."),
 		"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -77,8 +88,12 @@ static func definition() -> Dictionary:
 			"size": {"type": "string", "enum": SIZES},
 			"technic": {"type": "boolean", "description": "only Technic models and mechanisms"},
 			"instructions": {"type": "boolean", "description": "only models with their builder's own steps"},
-			"sort": {"type": "string", "enum": SORTS, "description": "newest when omitted; owned only for "
-				+ "a person signed in with a collection"},
+			"sort": {"type": "string", "enum": SORTS + LIBRARY_SORTS, "description": "newest when omitted; "
+				+ "owned only for a person signed in with a collection; oldest, largest, smallest and "
+				+ "name only with library=true"},
+			"library": {"type": "boolean", "description": "search LDraw's models of real sets instead"},
+			"theme": {"type": "string", "description": "with library=true: a theme, like Town or Technic"},
+			"decade": {"type": "string", "description": "with library=true: like 1990s"},
 			"shelves": {"type": "boolean", "description": "the gallery's front: this week's pick, the small "
 				+ "builds, and what the person can build now"},
 			"page": {"type": "integer", "description": "1 when omitted"},
@@ -98,7 +113,64 @@ func run(input: Dictionary) -> Variant:
 		return await _designer(str(input["designer"]).strip_edges().trim_prefix("@").to_lower())
 	if bool(input.get("shelves", false)):
 		return await _shelves()
+	if bool(input.get("library", false)):
+		return await _library(input)
 	return await _search(input)
+
+
+## LDraw's models of real sets, as File, Library… shelves them
+## (ModelLibrary.search): a page, each with its library id.
+func _library(input: Dictionary) -> String:
+	var books: ModelLibrary = app.get("_model_library") if app != null else null
+	if books == null:
+		return "This app has no library."
+	var sort: String = str(input.get("sort", "newest"))
+	if not ModelLibrary.SORTS.has(sort):
+		return "With library=true, sort is %s." % ", ".join(ModelLibrary.SORTS)
+	var size: String = str(input.get("size", ""))
+	if not size.is_empty() and not SIZES.has(size):
+		return "size is small, medium or large."
+	var every: Array = await books.models()
+	if every.is_empty():
+		return books.trouble
+	var theme: String = str(input.get("theme", "")).strip_edges()
+	var themes: PackedStringArray = ModelLibrary.themes(every)
+	if not theme.is_empty():
+		var named: String = ""
+		for one: String in themes:
+			if one.to_lower() == theme.to_lower():
+				named = one
+		if named.is_empty():
+			return "No theme %s. The themes: %s." % [theme, ", ".join(themes)]
+		theme = named
+	var page: int = maxi(1, int(input.get("page", 1)))
+	var words: String = str(input.get("q", "")).strip_edges().left(100)
+	var found: Dictionary = ModelLibrary.search(every, {"q": words, "theme": theme,
+		"decade": str(input.get("decade", "")).strip_edges(), "size": size, "sort": sort, "page": page})
+	var said := PackedStringArray()
+	for one: String in ["\"%s\"" % words if not words.is_empty() else "", theme,
+			str(input.get("decade", "")), size]:
+		if not one.is_empty():
+			said.append(one)
+	var heading: String = "LDraw's models of real sets%s, %s, page %d of %d (%s in all)" % [
+		" (" + ", ".join(said) + ")" if not said.is_empty() else "",
+		str(ModelLibrary.SORT_WORDS[sort]).to_lower(), int(found["page"]), int(found["pages"]),
+		_count(int(found["total"]))]
+	if int(found["total"]) == 0:
+		return "%s: nothing matches. Fewer words, or no theme, finds more." % heading
+	var lines := PackedStringArray(["%s:" % heading])
+	var number: int = (int(found["page"]) - 1) * ModelLibrary.PER_PAGE
+	for entry: Dictionary in found["models"]:
+		number += 1
+		lines.append("%d. %s (%s) — %s parts, %s%s, by %s, %s%s" % [number, ModelLibrary.title_of(entry),
+			entry["id"], _count(int(entry["parts"])), ModelLibrary.tidy(str(entry["theme"])),
+			", %d" % int(entry["year"]) if int(entry["year"]) > 0 else "", entry["author"],
+			entry["licence"], ", an alternate model" if not str(entry["alternate_of"]).is_empty() else ""])
+	if int(found["page"]) < int(found["pages"]):
+		lines.append("More: page=%d." % (int(found["page"]) + 1))
+	lines.append(("open_model library=<id> opens one in place of the model on the baseplate. Each is "
+		+ "made by the LDraw member named, under its licence: credit them in anything made from it."))
+	return "\n".join(lines)
 
 
 ## The person's session for the gallery's own question about them (mine=1):
@@ -227,7 +299,7 @@ func _search(input: Dictionary) -> String:
 		said.append("with their builder's own steps")
 	var sort: String = str(input.get("sort", "newest"))
 	if not SORTS.has(sort):
-		return "sort is %s." % ", ".join(SORTS)
+		return "sort is %s (oldest, largest, smallest and name are library=true's)." % ", ".join(SORTS)
 	# Parts I own is the person's own question: with their session, and
 	# only once they are signed in.
 	var token: String = await _token() if sort == "owned" else ""

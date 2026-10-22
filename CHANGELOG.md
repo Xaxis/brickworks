@@ -15,6 +15,17 @@ whole cycle.
 
 ### Added
 
+- File, Library… opens any model of a real LEGO® set that LDraw's Official
+  Model Repository has, or a model the community shared in the gallery.
+  Search by name or set number, filter by theme, years and size, and sort;
+  the covers come a page at a time. Open puts the model in a new tab (a new
+  window on the desktop), so the model you have open is never touched. A set
+  opens credited to the LDraw member who made it, under its licence, with a
+  link to its LDraw page in Properties; a community model is copied into
+  your models as Open in Brickworks on its page does. The desktop keeps
+  what it fetched, so a set opened once opens again offline. Your Claude
+  can find the sets too (gallery library=true) and open one (open_model
+  library=).
 - My Claude designs a new model twice, side by side, and keeps the better.
   A second session starts with yours, in a copy of the app with no window
   and a baseplate of its own. When both have built, the app is shown each

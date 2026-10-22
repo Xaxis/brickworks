@@ -35,6 +35,8 @@ var _picker: ModelFilePicker
 # reports a negative id as the item's index, so "From a file…", first in
 # the menu, opened whichever model was first after it.
 const IMPORT := 1 << 30
+## And the row for the library (LibraryDialog), beside it.
+const LIBRARY := IMPORT + 1
 
 signal cleared()
 ## A new model: an empty baseplate, no name and a fresh conversation.
@@ -53,6 +55,9 @@ signal minifig_wanted()
 signal controls_wanted()
 ## Someone wants to see who is signed in, or sign out.
 signal account_wanted()
+## Someone wants the library: LDraw's models of real sets and the
+## community's (LibraryDialog, which Shell owns).
+signal library_wanted()
 signal opened(bricks: int)
 
 
@@ -317,6 +322,11 @@ func model_name() -> String:
 	return text if not text.is_empty() else "Untitled"
 
 
+## What the status line says now, for the browser flows.
+func status_text() -> String:
+	return _status.text
+
+
 ## Say something in the bar's status line. Public because the parts list
 ## and the booklet live outside the bar but have nowhere else to report.
 func say(text: String) -> void:
@@ -407,6 +417,7 @@ func _on_open() -> void:
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
 	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_saves.add_item("From the library: real sets and the community's models…", LIBRARY)
 	_saves.add_separator()
 	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
@@ -431,6 +442,9 @@ func _on_pick(id: int) -> void:
 	if id == IMPORT:
 		_import()
 		return
+	if id == LIBRARY:
+		library_wanted.emit()
+		return
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
@@ -450,6 +464,39 @@ func open_with_progress(path: String) -> int:
 	var placed: int = await store.open_fetched(path)
 	job.end()
 	return placed
+
+
+## A model's text opened and called [param name], said first as
+## [method open_with_progress] says it: how many parts landed, 0 when it
+## could not be read. Called that whatever the file calls itself: a set's
+## file from the library calls its model "main" (ModelLibrary).
+func open_text_with_progress(text: String, name: String) -> int:
+	var job: Working.Job = Working.begin("Opening %s…" % name)
+	await job.shown()
+	var result: Dictionary = await store.open_text_fetched(text, name)
+	job.end()
+	if not str(result["error"]).is_empty():
+		return 0
+	if store.title != name:
+		store.title = name
+		_name.text = name
+		model_named.emit(name)
+		store.touch()
+	return int(result["placed"])
+
+
+## Who made a model and on what terms, in a line: "LDraw model by Roland
+## Dahl, CCAL 2.0" (ModelStore.credit); "" for the person's own.
+static func credit_words(credit: Dictionary) -> String:
+	if credit.is_empty():
+		return ""
+	var from: String = str(credit.get("from", ""))
+	var by: String = str(credit.get("by", ""))
+	var said: String = ("LDraw model" if from == ModelLibrary.FROM else "Model") \
+		+ (" by %s" % by if not by.is_empty() else "")
+	if not str(credit.get("licence", "")).is_empty():
+		said += ", " + str(credit["licence"])
+	return said
 
 
 ## A save of a model kept as a version (File, Versions…; open_model over

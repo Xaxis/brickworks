@@ -76,6 +76,13 @@ const REMIX_VERSION_META := "0 !BRICKWORKS REMIX_VERSION "
 ## recolours a set's parts.
 var from_set: String = ""
 const SET_META := "0 !BRICKWORKS FROM_SET "
+## Who made this model and on what terms, when it came from someone else:
+## {by, licence, page, from}, as the library (ModelLibrary.credit_of) or the
+## gallery (Main._maybe_copy) said it; empty for the person's own. Kept the
+## same way as [member share_id], and shown in Properties with nothing
+## selected (Inspector).
+var credit: Dictionary = {}
+const CREDIT_META := "0 !BRICKWORKS CREDIT "
 ## The hidden parts' colours chosen for this model (HiddenColours.Plan
 ## .scheme), for the booklet to show; empty when none were.
 var hidden_scheme: Dictionary = {}
@@ -527,6 +534,7 @@ func _begin_as(named: String) -> void:
 	share_id = ""
 	remixed_from = ""
 	remixed_from_version = 0
+	credit = {}
 	from_set = ""
 	hidden_scheme = {}
 	# Nobody's file: written whole, where it stands.
@@ -955,6 +963,7 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	share_id = share_in(text)
 	remixed_from = remix_in(text)
 	remixed_from_version = remix_version_in(text) if not remixed_from.is_empty() else 0
+	credit = credit_in(text)
 	var said: ModelFloor = ModelFloor.read(text)
 	model_floor = said if said != null else ModelFloor.preferred()
 	from_set = set_in(text)
@@ -1156,7 +1165,7 @@ static func _without_app_lines(text: String) -> String:
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
-				or line.begins_with(REMIX_VERSION_META) \
+				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
 				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
@@ -1756,7 +1765,7 @@ func _write(path: String, title: String, with_steps: bool = false,
 		refused = NewerBuild.REFUSAL
 		return false
 	var text: String = with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version)
+		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version, credit)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate
@@ -1801,16 +1810,38 @@ static func _has_parts(text: String) -> bool:
 ## [param text] with the link it is shared at and the link it was copied
 ## from, each on a line after its first (inside the model itself, for an
 ## .mpd); as it is for neither.
-static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0) -> String:
+static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0,
+		credited: Dictionary = {}) -> String:
 	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
 		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "") \
-		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "")
+		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "") \
+		+ (CREDIT_META + JSON.stringify(credited) + "\n" if not credited.is_empty() else "")
 	if lines.is_empty():
 		return text
 	var cut: int = text.find("\n")
 	if cut < 0:
 		return text + "\n" + lines
 	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
+
+
+## Who a model's text says made it ([member credit]), or {}: each of by,
+## licence, page and from a line of words, the page an https address.
+static func credit_in(text: String) -> Dictionary:
+	var found: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS CREDIT (\\{.*\\})\\s*$").search(text)
+	if found == null:
+		return {}
+	var json := JSON.new()
+	if json.parse(found.get_string(1)) != OK or not json.data is Dictionary:
+		return {}
+	var out: Dictionary = {}
+	for key: String in ["by", "licence", "page", "from"]:
+		var value: Variant = (json.data as Dictionary).get(key)
+		if value is String and not (value as String).is_empty():
+			out[key] = (value as String).replace("\n", " ").left(200)
+	if not str(out.get("page", "")).begins_with("https://"):
+		out.erase("page")
+	return out
 
 
 ## The link a model's text says it is shared at, or empty.

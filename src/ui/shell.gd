@@ -35,6 +35,8 @@ var grid: StudGrid
 var tour: Tour
 ## My collection: src/ui/collection_dialog.gd.
 var collection: CollectionDialog
+## File, Library…: src/ui/library_dialog.gd.
+var library_dialog: LibraryDialog
 ## The cut-away and x-ray: src/ui/see_inside.gd.
 var see_inside: SeeInside
 ## File, Versions…: src/ui/versions_dialog.gd.
@@ -73,7 +75,7 @@ const ALT := KEY_MASK_ALT
 
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
 const MENUS: Array = [
-	["File", ["new", "new_window", "open", ">recent", ">import", "-", "save", "save_as",
+	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
 		"versions", "-", "share", ">export", "render", "instructions", "-", "clear", "account",
 		"quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
@@ -246,6 +248,13 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	var parts_list: Variant = app.get("_inventory")
 	if parts_list is InventoryPanel:
 		(parts_list as InventoryPanel).need_wanted.connect(func() -> void: collection.open("need"))
+
+	# Any of LDraw's models of real sets, or the community's, opened in a
+	# tab of its own: src/ui/library_dialog.gd. File, Open leads there too.
+	library_dialog = LibraryDialog.new()
+	library_dialog.said.connect(func(text: String) -> void: bar.say(text))
+	library_dialog.attach(app)
+	bar.library_wanted.connect(func() -> void: library_dialog.open())
 
 	# Every text field gives the keys back: src/ui/focus_guard.gd.
 	add_child(FocusGuard.new())
@@ -623,6 +632,9 @@ func _define() -> void:
 		"Start a new model in a %s of its own" % ("tab" if web else "window"))
 	_add("open", "Open…", CTRL | KEY_O, bar._on_open, Callable(),
 		"Reopen a saved model, an example, or a file from this computer")
+	_add("library", "Library…", 0, func() -> void: library_dialog.open(), Callable(),
+		"Any of LDraw's models of real sets, or a model the community shared, opened in a new %s"
+		% ("tab" if web else "window"))
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
 	_add("import_lxf", "LEGO® Digital Designer model (.lxf)…", 0, bar._import)
@@ -2093,6 +2105,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(banner.controls_by_name())
 	if collection != null:
 		out.merge(collection.controls_by_name())
+	if library_dialog != null:
+		out.merge(library_dialog.controls_by_name())
 	var parts_list: Variant = app.get("_inventory") if app != null else null
 	if parts_list is InventoryPanel:
 		out.merge((parts_list as InventoryPanel).controls_by_name())

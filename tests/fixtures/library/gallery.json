@@ -1,0 +1,31 @@
+{
+ "models": [
+  {
+   "id": "LibStubKrt",
+   "name": "Stub Go-Kart",
+   "author": "Ada Builder",
+   "licence": "cc-by-4.0",
+   "kind": "vehicle",
+   "file": "models/kart.ldr",
+   "parts": 44
+  },
+  {
+   "id": "LibStubLgt",
+   "name": "Stub Lighthouse",
+   "author": "Ben Bricks",
+   "licence": "cc-by-sa-4.0",
+   "kind": "town",
+   "file": "models/lighthouse.ldr",
+   "parts": 84
+  },
+  {
+   "id": "LibStubBch",
+   "name": "Stub Park Bench",
+   "author": "Cleo Plates",
+   "licence": "all-rights-reserved",
+   "kind": "other",
+   "file": "models/bench.ldr",
+   "parts": 43
+  }
+ ]
+}
