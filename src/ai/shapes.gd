@@ -3399,28 +3399,60 @@ class Plan extends RefCounted:
 		# plates; the half plate it shares with the row beside it is its too.
 		# A row reaching a plate another shell has, or glass, is the core's.
 		var mine: Dictionary = {}
-		var outside: Array[Vector3i] = []
+		var empty: Dictionary = {}
+		var row_free := func(cell: Vector2i, low: float, high: float) -> bool:
+			for j: int in range(floori(low), ceili(high)):
+				var p := Vector3i(cell.x, j, cell.y)
+				if j < 0 or taken.has(p) or shelled.has(p) or Shapes.is_glass(library, at(cell, j)):
+					return false
+			return true
+		var take_row := func(cell: Vector2i, low: float, high: float) -> void:
+			for j: int in range(floori(low), ceili(high)):
+				var p := Vector3i(cell.x, j, cell.y)
+				if at(cell, j) >= 0:
+					mine[p] = true
+				else:
+					empty[p] = true
+		var reach: Dictionary = {}    ## Vector2i(lane, row) -> the outermost stud out with the row whole
 		for key: Variant in columns_in:
 			var cell: Vector2i = key
+			var lt: Vector2i = _lane(cell, facing, along)
 			for w: int in rows:
 				var high: float = top - Shapes.PLATES_PER_STUD * w
 				var low: float = high - Shapes.PLATES_PER_STUD
 				var whole: bool = true
-				var free: bool = true
 				for j: int in range(floori(low), ceili(high)):
-					var p := Vector3i(cell.x, j, cell.y)
 					if j >= low and j + 1 <= high:
-						whole = whole and kept_boxes.has(p)
-					free = free and j >= 0 and not taken.has(p) and not shelled.has(p) \
-						and not Shapes.is_glass(library, at(cell, j))
-				if not whole or not free:
+						whole = whole and kept_boxes.has(Vector3i(cell.x, j, cell.y))
+				if not whole or not bool(row_free.call(cell, low, high)):
 					continue
-				for j: int in range(floori(low), ceili(high)):
-					var p := Vector3i(cell.x, j, cell.y)
-					if at(cell, j) >= 0:
-						mine[p] = true
-					elif not mine.has(p):
-						outside.append(p)
+				var at_ := Vector2i(lt.x, w)
+				reach[at_] = maxi(int(reach.get(at_, lt.y)), lt.y)
+				take_row.call(cell, low, high)
+		# Solid from the face out: a row of a lane whose cubes stand further out
+		# than the face takes the model between them and the face too, so it
+		# stands on the face, where the side studs hold it, and not on nothing.
+		if Shapes.TRY.contains("solid"):
+			for key: Variant in reach:
+				var at_: Vector2i = key
+				var high: float = top - Shapes.PLATES_PER_STUD * at_.y
+				var low: float = high - Shapes.PLATES_PER_STUD
+				var cells_in: Array[Vector2i] = []
+				var all_free: bool = true
+				for t: int in range(face, int(reach[at_])):
+					var q: Vector2 = _point(at_.x + 0.5, t + 0.5, facing, along)
+					var cell := Vector2i(floori(q.x), floori(q.y))
+					if columns_in.has(cell) and mine.has(Vector3i(cell.x, floori(low) + 1, cell.y)):
+						continue
+					all_free = all_free and bool(row_free.call(cell, low, high))
+					cells_in.append(cell)
+				if all_free:
+					for cell: Vector2i in cells_in:
+						take_row.call(cell, low, high)
+		var outside: Array[Vector3i] = []
+		for p: Vector3i in empty:
+			if not mine.has(p):
+				outside.append(p)
 		if mine.is_empty():
 			return {}
 		# Not over a side-stud brick another shell laid, its studs up into
