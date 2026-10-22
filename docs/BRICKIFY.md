@@ -3057,8 +3057,12 @@ After the sixth round:
   its side, a headlight brick's half-plate offset) would let a band be laid
   flush. On 3DBenchy 67% are in a cube with no core three studs behind it
   (`backed`): its walls.
-- **Nearer the model**: turning more moves the error little (the bands: 5
-  points more turned, no nearer). A third of the turned faces are nearest
+- **Nearer the model**: at 48 studs the turned steep faces stand 31° from the
+  model (Bob 31.4°, the bunny 30.9°) and those left upright 45° to 47°, where
+  the studs-up build is 40° to 43° over all. Every steep face turned at 31°
+  would be a quarter nearer than studs up; the bar's 30% also wants the turned
+  surface itself nearer, about 28°. Turning more moves the error little (the
+  bands: 5 points more turned, no nearer). A third of the turned faces are nearest
   the side of a plate on its side, the shell's own steps (the fourth round's
   finding): slopes on their sides along both the lanes and the rows, and
   across the shells' depths, are what would take the error down.
