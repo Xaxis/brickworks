@@ -13,6 +13,30 @@ whole cycle.
 
 ## [Unreleased]
 
+### Changed
+
+- Brickify lays more of a model's steep sides on their sides. A side was
+  turned only where it fell in one of a fixed set of blocks two studs by
+  five plates; at a side's top or foot such a block also held the top or
+  the underside it turned into, or a thin cap over it, and the whole block
+  stayed upright. The blocks are now tried at each height a plate apart, and
+  a thin cap that runs back over the model's core is held by it. On three
+  of the models Brickify is measured on (Bob, the Stanford bunny and
+  3DBenchy) at 48 studs, 42% of the steep faces are laid by parts turned to
+  face them, from 27%, in 4% more parts; every build is still checked as
+  one piece, and every step of its booklet stands. A part on its side that
+  rested on the model held by no stud, once a part beside it was taken out,
+  now goes with it.
+- Brickify turns a side that leans out as one piece of work. Where a side
+  leaned out down one of those blocks, the block past it was turned and the
+  block itself, with the model past it, stayed upright. The two are now laid
+  on their side together, two blocks deep: 44% of the steep faces of the
+  same three models at 48 studs, from 42%, in 2% more parts.
+- Brickify turns a side on its side from 65 degrees, where it was 69: 46% of
+  the steep faces of the same three models at 48 studs, from 44%, the steep
+  faces 7.2% nearer the model than laid with their studs up, every build in
+  8% more parts than before any were turned and in the same time.
+
 ### Fixed
 
 - Claude is told the real size of the pieces it finds in real sets. Every
@@ -21,6 +45,18 @@ whole cycle.
   was offered as 209 x 161 studs and is 136 x 88. The 2,556 pieces of
   craft found round a bracket, hinge or slope were cut out again from
   their real neighbours and described again from new pictures.
+- Brickify no longer leaves out the model beside a side it turned. Where a
+  side laid on its side ended, the model past it, a stud wide, was held to
+  the rest only side by side and was taken out before anything could join
+  it: a small bunny lost 2% of itself. It is now joined to the rest first.
+  A brick with studs on its side that such a side hangs from is no longer
+  laid again as a plain brick while pieces are being joined, which had let
+  most of the side fall away.
+- Brickify no longer leaves a part hanging past what its studs hold beside
+  a side it turned. Where nothing can prop it, the side about it is laid
+  again upright, as a builder would bond that overhang, and the build that
+  holds better is kept. Only that place is laid again, so it costs a second
+  or two rather than the whole model's time over.
 - A hinge turns only as far as its parts let it. The two halves of the
   joint being turned were never tested against each other, so a hinge
   brick's top swung through its base either way, though the base's square

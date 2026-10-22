@@ -398,6 +398,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.faces = faces
 		if pattern.get("cubes") is Dictionary:
 			plan.cubes = pattern["cubes"]
+		if pattern.get("cube_phases") is Array:
+			plan.cube_phases = pattern["cube_phases"]
 		if pattern.get("side_fine") is Callable:
 			plan.side_fine = pattern["side_fine"]
 		plan.mirror_of()
@@ -505,7 +507,10 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		var stitched: bool = bool(pattern.get("stitch_first", false))
 		# What a sculpt's shells cut off is taken out before the stitch spends
 		# its rounds on it: a bunny at 48 studs tried 86 joins where it had 27.
+		# Joined first where they meet the core, as the stitch's first way
+		# joins, all at once: only what that leaves is taken out.
 		if not shells.is_empty():
+			last["joined_cut_off"] = plan.join_cut_off()
 			last["cut_off"] = plan.cut_off(true)
 		if stitched:
 			plan.stitch()
@@ -561,6 +566,16 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# truck's strip a stud wide under its flank was 29 parts in three pieces.
 	if not plan.cubes.is_empty() and not shells.is_empty():
 		last["cut_off"] = int(last.get("cut_off", 0)) + plan.cut_off() + plan.caps_apart()
+	# What a sculpt's turned sides took from the core and gave back, and what
+	# was cut off beside them, for src/dev/snot_gaps.gd to say which of the
+	# model no part fills, and why.
+	last["shelled"] = plan.shelled
+	last["given_back"] = plan.given_back
+	last["cut_cells"] = plan.cut_cells
+	last["shell_frames"] = shells.map(func(one: Dictionary) -> Dictionary:
+		return {"facing": one["facing"], "along": one["along"], "a0": one["a0"], "a1": one["a1"],
+			"face": one["face"], "top": one["top"], "rows": one["rows"],
+			"depth": one.get("depth", roundi(Plan.SHELL_DEPTH * PLATES_PER_STUD))})
 	# What each screen laid, or why it laid none; and a steep front of a raised
 	# solid said with no screen, which is how a session says a cabin.
 	said.append_array(plan.screens_said)
@@ -2998,6 +3013,11 @@ class Plan extends RefCounted:
 	## step, its studs up, whichever way it turns; turned out, the same side
 	## is plates two fifths of a stud thick, slopes and tiles facing it.
 	var cubes: Dictionary = {}
+	## The cubes cut again a few plates up (Brickify.Grid.cube_phases):
+	## [[phase, cubes]], tried after [member cubes] where they leave the
+	## side upright; and the phase of the cubes being laid.
+	var cube_phases: Array = []
+	var _phase: int = 0
 	## Each cube's studs and plates, as Brickify's cubes are cut.
 	const CUBE_STUDS := 2
 	const CUBE_PLATES := 5
@@ -3010,6 +3030,12 @@ class Plan extends RefCounted:
 	## A fox at 48 studs, two studs deep, hung its head on two joints past
 	## their load more than upright; three, as many as upright.
 	const CUBE_BACK := 3
+	## How many cubes deep one shell runs, out from the innermost, where a
+	## cube and the one past it at the same height both face out. One deep, a
+	## side leaning out down a cube's height left the inner cube upright, the
+	## model past it in its lower plates; on Bob and the Stanford bunny at 48
+	## studs, nearly every cube refused so.
+	const CUBE_DEEP := 2
 	## The most parts of a piece of the core a shell cuts off that are taken
 	## out before the check (Shapes.lay).
 	const CUT_OFF := 16
@@ -3017,6 +3043,13 @@ class Plan extends RefCounted:
 	var _shells_made: int = 0
 	## Why cubes were left upright, by reason, for a probe to say.
 	var _why_not: Dictionary = {}
+	## And each cube refused, [x / 2, its foot plate, z / 2, why], for the bench.
+	var _why_at: Array = []
+	## The plates of the core's parts cut off beside a shell (cut_off,
+	## caps_apart), each by which, and the shells' plates given back to the
+	## core (_give_back): what Shapes.last tells a probe of a turned side.
+	var cut_cells: Dictionary = {}
+	var given_back: Dictionary = {}
 	## The model's side at a point (Brickify.Grid.side): with it, a cube's
 	## shell fits its slopes by distance (_fit_near) as a top's are.
 	var side_fine: Callable = Callable()
@@ -3027,6 +3060,35 @@ class Plan extends RefCounted:
 	## core, and the shell laid again without it. First-tier connections
 	## only: a side stud into a plate's underside, nothing wedged.
 	func _cube_shells(kind: String) -> Array:
+		var first: Dictionary = cubes
+		var out: Array = []
+		var kept_list: Array = []
+		for cut: Array in [[0, cubes]] + cube_phases:
+			_phase = cut[0]
+			cubes = cut[1]
+			out.append_array(_cube_shells_at(kind))
+			if stop.is_valid() and bool(stop.call()):
+				break
+		_phase = 0
+		cubes = first
+		var kept_cubes: int = 0
+		for shell: Dictionary in out:
+			kept_cubes += (shell["cubes"] as Array).size()
+			for c: Vector3i in shell["cubes"]:
+				kept_list.append(Vector3i(c.x, c.y * CUBE_PLATES + int(shell["phase"]), c.z))
+		_why_not["kept"] = kept_cubes
+		_why_not["asked"] = cubes.size()
+		Shapes.last["cubes"] = _why_not
+		# Each turned cube by its foot plate, for the bench to say where a side is
+		# turned.
+		Shapes.last["cubes_kept"] = kept_list
+		# And each cube refused, why: "lost" where its group came to no shell,
+		# "moved" where the side's outermost cube was tried in its place.
+		Shapes.last["cubes_why"] = _why_at
+		return out
+
+	## The shells of the cubes of [member _phase].
+	func _cube_shells_at(kind: String) -> Array:
 		var groups: Dictionary = {}    ## Vector3i(way x, way z, depth) -> cubes
 		var keys: Array = cubes.keys()
 		keys.sort()
@@ -3042,13 +3104,25 @@ class Plan extends RefCounted:
 				if cubes.has(past) or moved.has(past) or not _cube_has_model(past):
 					break
 				c = past
+			if c != key:
+				_why_at.append([(key as Vector3i).x, (key as Vector3i).y * CUBE_PLATES + _phase,
+					(key as Vector3i).z, "moved"])
 			if moved.has(c):
 				continue
 			moved[c] = facing
 		for key: Variant in moved:
 			var c: Vector3i = key
 			var facing: Vector2i = moved[c]
-			var group := Vector3i(facing.x, facing.y, c.x if facing.x != 0 else c.z)
+			# A side that leans out down a cube's height is a cube facing out
+			# and the one past it at the same height facing out too: one shell,
+			# the two deep ([constant CUBE_DEEP]), counted from the innermost.
+			var out3 := Vector3i(facing.x, 0, facing.y)
+			var root: Vector3i = c
+			while moved.get(root - out3, Vector2i.ZERO) == facing:
+				root -= out3
+			var steps: int = absi((c - root).x + (c - root).z)
+			root += out3 * (steps - steps % CUBE_DEEP)
+			var group := Vector3i(facing.x, facing.y, root.x if facing.x != 0 else root.z)
 			if not groups.has(group):
 				groups[group] = []
 			(groups[group] as Array).append(c)
@@ -3071,8 +3145,8 @@ class Plan extends RefCounted:
 				var count: Dictionary = {}    ## cube -> [plates, covered]
 				for plate: Variant in shell["cells"]:
 					var p: Vector3i = plate
-					var c := Vector3i(floori(p.x / float(CUBE_STUDS)), floori(p.y / float(CUBE_PLATES)),
-						floori(p.z / float(CUBE_STUDS)))
+					var c := Vector3i(floori(p.x / float(CUBE_STUDS)),
+						floori((p.y - _phase) / float(CUBE_PLATES)), floori(p.z / float(CUBE_STUDS)))
 					var was: Vector2i = count.get(c, Vector2i.ZERO)
 					count[c] = was + Vector2i(1, 1 if covered.has(p) else 0)
 				var kept: Array = []
@@ -3084,6 +3158,9 @@ class Plan extends RefCounted:
 					break
 				_why_not["uncovered"] = int(_why_not.get("uncovered", 0)) + (shell["cubes"] as Array).size() \
 					- kept.size()
+				for c: Vector3i in shell["cubes"]:
+					if not kept.has(c):
+						_why_at.append([c.x, c.y * CUBE_PLATES + _phase, c.z, "uncovered"])
 				drop_shell(shell)
 				shell = {}
 				if kept.is_empty():
@@ -3095,12 +3172,8 @@ class Plan extends RefCounted:
 				out.append(shell)
 			else:
 				_why_not["unheld"] = int(_why_not.get("unheld", 0)) + list.size()
-		var kept_cubes: int = 0
-		for shell: Dictionary in out:
-			kept_cubes += (shell["cubes"] as Array).size()
-		_why_not["kept"] = kept_cubes
-		_why_not["asked"] = cubes.size()
-		Shapes.last["cubes"] = _why_not
+				for c: Vector3i in list:
+					_why_at.append([c.x, c.y * CUBE_PLATES + _phase, c.z, "lost"])
 		return out
 
 	## The plates of [param shell]'s cubes in a row of a lane where none of its
@@ -3137,15 +3210,27 @@ class Plan extends RefCounted:
 				mine.erase(plate)
 				taken.erase(plate)
 				shelled.erase(plate)
+				given_back[plate] = true
 
 	## Whether the model has a plate in cube [param c].
 	func _cube_has_model(c: Vector3i) -> bool:
+		var j0: int = c.y * CUBE_PLATES + _phase
 		for dx: int in CUBE_STUDS:
 			for dz: int in CUBE_STUDS:
 				var cell := Vector2i(c.x * CUBE_STUDS + dx, c.z * CUBE_STUDS + dz)
-				for j: int in range(c.y * CUBE_PLATES, c.y * CUBE_PLATES + CUBE_PLATES):
+				for j: int in range(j0, j0 + CUBE_PLATES):
 					if at(cell, j) >= 0:
 						return true
+		return false
+
+	## Whether any plate of [param cells] from [param j0] up a cube's height is
+	## a shell's, or taken by one.
+	func _cube_shelled(cells: Array[Vector2i], j0: int) -> bool:
+		for cell: Vector2i in cells:
+			for j: int in range(j0, j0 + CUBE_PLATES):
+				var key := Vector3i(cell.x, j, cell.y)
+				if shelled.has(key) or taken.has(key):
+					return true
 		return false
 
 	## One shell of the cubes [param list], all facing [param facing] at one
@@ -3162,12 +3247,23 @@ class Plan extends RefCounted:
 		var bottom: int = 1 << 30
 		var kept: Array = []
 		var out3 := Vector3i(facing.x, 0, facing.y)
+		# The outermost first: a cube with the model past it is kept where the
+		# cube past it is.
+		list = list.duplicate()
+		list.sort_custom(func(a: Vector3i, b: Vector3i) -> bool:
+			return a.x * facing.x + a.z * facing.y > b.x * facing.x + b.z * facing.y)
 		for c: Vector3i in list:
 			var cells: Array[Vector2i] = []
 			for dx: int in CUBE_STUDS:
 				for dz: int in CUBE_STUDS:
 					cells.append(Vector2i(c.x * CUBE_STUDS + dx, c.z * CUBE_STUDS + dz))
-			var j0: int = c.y * CUBE_PLATES
+			var j0: int = c.y * CUBE_PLATES + _phase
+			# Cut again a few plates up, only where no shell before has any of
+			# it: half a cube on a shell's edge would be a cap of its own.
+			if _phase != 0 and _cube_shelled(cells, j0):
+				_why_not["shelled"] = int(_why_not.get("shelled", 0)) + 1
+				_why_at.append([c.x, j0, c.z, "shelled"])
+				continue
 			var plates: Array[Vector3i] = []
 			var empty: Array[Vector3i] = []
 			var beyond: int = 0
@@ -3178,32 +3274,39 @@ class Plan extends RefCounted:
 			# Nor under a cap of the core a plate or two thick, which would
 			# stand on the shell's edge and be held by nothing: a single tile
 			# over a bunny's flank came away on its own. Above a cube of the
-			# same shell, a brick or more of the core, or two plates that reach
-			# the core behind, it is held. The same under it: a ledge a plate or
-			# two thick hung from it.
+			# same shell, a brick or more of the core, or a cap that runs on
+			# back over the core behind the cube, on the core there, it is held:
+			# the core's plates bridge from one to the other. The same under it:
+			# a ledge a plate or two thick hung from it, unless it runs on back
+			# under the core.
 			var capped: bool = false
 			if not list.has(c + Vector3i(0, 1, 0)):
 				for cell: Vector2i in cells:
 					var over: int = 0
 					while over < 3 and at(cell, j0 + CUBE_PLATES + over) >= 0:
 						over += 1
-					capped = capped or over == 1 \
-						or over == 2 and at(cell - facing, j0 + CUBE_PLATES) < 0
+					if over == 1 or over == 2:
+						var behind: Vector2i = cell - facing * (1 + _lane(cell, facing, along).y - inmost)
+						capped = capped or at(behind, j0 + CUBE_PLATES) < 0 \
+							or at(behind, j0 + CUBE_PLATES - 1) < 0
 			if not list.has(c - Vector3i(0, 1, 0)):
 				for cell: Vector2i in cells:
 					var under: int = 0
 					while under < 3 and j0 - 1 - under >= 0 and at(cell, j0 - 1 - under) >= 0:
 						under += 1
-					capped = capped or (under == 1 or under == 2) and j0 - 1 - under >= 0
+					if (under == 1 or under == 2) and j0 - 1 - under >= 0:
+						var behind: Vector2i = cell - facing * (1 + _lane(cell, facing, along).y - inmost)
+						capped = capped or at(behind, j0 - 1) < 0 or at(behind, j0) < 0
 			if capped:
 				_why_not["capped"] = int(_why_not.get("capped", 0)) + 1
+				_why_at.append([c.x, j0, c.z, "capped"])
 				continue
 			for cell: Vector2i in cells:
 				var past: Vector2i = cell + facing * CUBE_STUDS
 				var inner: bool = _lane(cell, facing, along).y == inmost
 				for j: int in range(j0, j0 + CUBE_PLATES):
 					var key := Vector3i(cell.x, j, cell.y)
-					if at(past, j) >= 0:
+					if at(past, j) >= 0 and not kept.has(c + out3):
 						beyond += 1
 					if inner:
 						var deep_enough: bool = true
@@ -3224,6 +3327,7 @@ class Plan extends RefCounted:
 			if beyond > 0 or backed < CUBE_STUDS * CUBE_PLATES * 6 / 10 or plates.size() < CUBE_LEAST:
 				var why: String = "beyond" if beyond > 0 else ("backed" if plates.size() >= CUBE_LEAST else "few")
 				_why_not[why] = int(_why_not.get(why, 0)) + 1
+				_why_at.append([c.x, j0, c.z, why])
 				continue
 			kept.append(c)
 			for key: Vector3i in plates:
@@ -3263,10 +3367,19 @@ class Plan extends RefCounted:
 		for key: Vector3i in outside:
 			taken[key] = true
 		_shells_made += 1
+		var outmost: int = face
+		for key: Variant in mine:
+			outmost = maxi(outmost, _lane(Vector2i((key as Vector3i).x, (key as Vector3i).z), facing, along).y)
 		var shell := {"facing": facing, "along": along, "a0": lanes.x, "a1": lanes.y + 1,
 			"face": face, "top": top, "rows": 2 * (top - bottom) / CUBE_PLATES, "held": {},
-			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept}
-		return shell if _anchored(shell) else {}
+			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept,
+			"phase": _phase, "depth": roundi((outmost - face + 1) * Shapes.PLATES_PER_STUD)}
+		if _anchored(shell):
+			return shell
+		_why_not["unanchored"] = int(_why_not.get("unanchored", 0)) + kept.size()
+		for c: Vector3i in kept:
+			_why_at.append([c.x, c.y * CUBE_PLATES + _phase, c.z, "unanchored"])
+		return {}
 
 	## The pieces of the core apart from the rest, of [constant CUT_OFF] parts
 	## or fewer, that touch a shell (with [param wholly], every part of them
@@ -3291,8 +3404,104 @@ class Plan extends RefCounted:
 			for n: int in made.size():
 				if not gone.has(n):
 					left.append(made[n])
+				else:
+					for cell: Vector2i in made[n].get("_cells", []):
+						for v: int in int(made[n].get("_h", 1)):
+							cut_cells[Vector3i(cell.x, roundi(float(made[n]["y"])) + v, cell.y)] = \
+								"wholly" if wholly else "cut"
 			made = left
 		return gone.size()
+
+	## The pieces of the core a shell cuts off, as [method cut_off] finds
+	## them (any part beside a shell), joined to the rest where they meet it: a
+	## plate of one and a plate of the rest side by side laid again across
+	## (the stitch's first way), and where a brick of the rest stands beside
+	## a plate of one, that brick laid again as three plates to be paired the
+	## next pass. All at once, a few passes. A turned cube leaves the side's
+	## surface past its shell's end, and the plates of its own rows it laid
+	## nothing in, beside the core and on nothing: taken out unjoined, a blue
+	## bunny at 20 studs lost 2.1% of itself; left to the stitch, which joins
+	## one piece a round, a forty-eight-stud Bob took 11.6 s to stitch from
+	## 4.5. Joined so only where every part was beside a shell, the bunny at 48
+	## studs turned from 65 degrees still stitched 59 of them (12.3 s); any
+	## part, 22 (5.8 s). How many were joined.
+	func join_cut_off() -> int:
+		if cubes.is_empty() or shelled.is_empty():
+			return 0
+		var joined: int = 0
+		for _pass: int in 4:
+			var found: Array = pieces()
+			var main: Dictionary = {}
+			for n: int in (found[0] if not found.is_empty() else []):
+				main[n] = true
+			var apart: Array = []
+			for piece: Array in found.slice(1):
+				if piece.size() > CUT_OFF:
+					continue
+				var touches: bool = false
+				for n: int in piece:
+					touches = touches or beside_shell(made[n])
+				if touches:
+					apart.append(piece)
+			if apart.is_empty():
+				break
+			var plain: Dictionary = _plain_cells(main)
+			var gone: Dictionary = {}
+			var added: Array = []
+			var unpaired: Array = []
+			for piece: Array in apart:
+				var pair: Array = _pair(piece, main, plain)
+				if pair.is_empty() or gone.has(pair[0]) or gone.has(pair[1]):
+					unpaired.append(piece)
+					continue
+				var across: Array = _across(made[pair[0]], made[pair[1]])
+				if across.is_empty():
+					continue
+				gone[pair[0]] = true
+				gone[pair[1]] = true
+				added.append_array(across)
+				joined += 1
+			# None side by side at one height: the rest's bricks beside a plate
+			# of one laid again as three plates each, to be paired next pass.
+			if not unpaired.is_empty():
+				var bricks: Dictionary = {}    ## Vector3i plate -> a brick of the rest
+				for m: Variant in main:
+					var two: Dictionary = made[m]
+					if _plain(two) and int(two["_h"]) == 3:
+						for cell: Vector2i in two["_cells"]:
+							for h: int in 3:
+								bricks[Vector3i(cell.x, int(round(float(two["y"]))) + h, cell.y)] = m
+				var unbricked: Dictionary = {}
+				for piece: Array in unpaired:
+					for n: int in piece:
+						var one: Dictionary = made[n]
+						if not _plain(one) or int(one["_h"]) != 1:
+							continue
+						var y: int = int(round(float(one["y"])))
+						for cell: Vector2i in one["_cells"]:
+							for step: Vector2i in Shapes.OUT:
+								var m: int = int(bricks.get(Vector3i(cell.x + step.x, y, cell.y + step.y), -1))
+								if m >= 0 and not gone.has(m) \
+										and int((made[m] as Dictionary)["color"]) == int(one["color"]):
+									unbricked[m] = true
+				for m: Variant in unbricked:
+					gone[m] = true
+					var brick: Dictionary = made[m]
+					var cells: Dictionary = {}
+					for cell: Vector2i in brick["_cells"]:
+						cells[cell] = true
+					for h: int in 3:
+						for part: Dictionary in _tile(cells.duplicate(), int(round(float(brick["y"]))) + h,
+								int(brick["color"]), Shapes.CORE_PLATES, {}, -1):
+							added.append(_annotated(part, Shapes.CORE_PLATES, 1, true))
+			if gone.is_empty():
+				break
+			var kept: Array = []
+			for n: int in made.size():
+				if not gone.has(n):
+					kept.append(made[n])
+			made = kept + added
+		return joined
 
 	## The pieces of the core apart from the rest of three parts or fewer, each
 	## at the core's top (nothing of it, or a shell, over any of its parts), that
@@ -3325,6 +3534,10 @@ class Plan extends RefCounted:
 			for n: int in made.size():
 				if not gone.has(n):
 					left.append(made[n])
+				else:
+					for cell: Vector2i in made[n].get("_cells", []):
+						for v: int in int(made[n].get("_h", 1)):
+							cut_cells[Vector3i(cell.x, roundi(float(made[n]["y"])) + v, cell.y)] = "caps"
 			made = left
 		return gone.size()
 
@@ -3414,7 +3627,7 @@ class Plan extends RefCounted:
 		var face: int = shell["face"]
 		var top: int = shell["top"]
 		var rows: int = shell["rows"]
-		var depth: int = roundi(SHELL_DEPTH * Shapes.PLATES_PER_STUD)
+		var depth: int = int(shell.get("depth", roundi(SHELL_DEPTH * Shapes.PLATES_PER_STUD)))
 		var to_world := func(x: float, j: float, z: float) -> Vector3:
 			var p: Vector2 = _point(a0 + x, face + j / Shapes.PLATES_PER_STUD, facing, along)
 			return Vector3(p.x, top - Shapes.PLATES_PER_STUD * z, p.y)
@@ -3603,6 +3816,7 @@ class Plan extends RefCounted:
 				if one.has("_holds"):
 					for cell: Vector2i in one["_cells"]:
 						stud_tops[Vector3i(cell.x, int(one["y"]) + int(one["_h"]), cell.y)] = true
+			var laid_here: int = sub.made.size()
 			sub.made = sub.made.filter(func(one: Dictionary) -> bool:
 				for cell: Vector2i in one.get("_cells", []):
 					for v: int in int(one.get("_h", 1)):
@@ -3612,6 +3826,17 @@ class Plan extends RefCounted:
 							if stud_tops.has(Vector3i(floori(p.x), j_, floori(p.z))):
 								return false
 				return true)
+			# What a part taken out held goes too: pruned again from the side
+			# studs. Left, a cube's four parts on the Stanford bunny's flank
+			# rested on its core held by no stud, and the steps put them last.
+			if sub.made.size() < laid_here and faces.is_empty():
+				var foot: bool = false
+				for one: Dictionary in sub.made:
+					foot = foot or roundi(float(one["y"])) == 0
+				if foot:
+					sub.prune()
+				else:
+					sub.made = []
 		_close_side_studs(shell, sub, held_here, masked, local_colour)
 		# How much of each shell its side studs kept, for a probe to say.
 		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),
@@ -5685,10 +5910,13 @@ class Plan extends RefCounted:
 		return []
 
 	## A plate, a brick or a top tile: what can be laid again over the same
-	## studs as other plates, bricks or tiles. Not a slope or a wedge.
+	## studs as other plates, bricks or tiles. Not a slope or a wedge, nor a
+	## brick with studs on its side a shell hangs from: laid again across a
+	## piece the shells cut off, a bunny's 1 x 2 with studs on its side came
+	## back plain, and its shell lost 7 of its 10 parts.
 	func _plain(one: Dictionary) -> bool:
 		if not one.has("_cells") or (one["_cells"] as Array).is_empty() or bool(one.get("_slope", false)) \
-				or bool(one.get("_fixed", false)):
+				or bool(one.get("_fixed", false)) or one.has("_holds"):
 			return false
 		var studs: int = (one["_studs"] as Array).size()
 		return studs == (one["_cells"] as Array).size() or (studs == 0 and bool(one.get("_top", false)))

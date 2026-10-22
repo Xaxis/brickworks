@@ -81,10 +81,16 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   panels on a flat side; steep sides on their sides (`Options.snot`,
   Shapes' `cubes`): the model's surface summed by area and the way it faces
   into cubes two studs by five plates by two studs (`Brickify._cubes`,
-  Lambrecht's), a cube steeper than about 69 degrees facing out along x or z;
+  Lambrecht's), a cube steeper than about 65 degrees (`STEEP`) facing out along x or z,
+  and cut again with its courses started 2, 4, 1 and 3 plates up
+  (`CUBE_PHASES`, `Grid.cube_phases`, `Plan._phase`), each later cut tried only
+  where no shell has any of the cube (`_cube_shelled`);
   the cubes facing one way at one depth one shell (`Plan._cube_shells`,
-  `_cube_shell`), each cube the side's outermost with the core three studs
-  behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it, laid as a design's
+  `_cube_shell`), and a cube with the one past it at the same height facing
+  out too, the two one shell two cubes deep (`CUBE_DEEP`, the shell's
+  `"depth"`), each cube the side's outermost with the core three studs
+  behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it unless the
+  cap runs on back over the core behind the cube, on the core there, laid as a design's
   curved side is (`lay_shell`, its up turned out) and held by bricks with side
   studs (30414, 11211, 87087) in the core's wall behind each cube's top row
   (`_anchored`; first tier only); its slopes fitted by distance to the side
@@ -92,8 +98,18 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   face only where a side stud grips it; a cube its shell covers under
   `CUBE_KEEPS` given back to the core and the shell cut again; laid once (the
   trial kept where the core kept its side studs); a piece of the core of 16
-  parts or fewer a shell cuts off taken out before the check (`Plan.cut_off`,
-  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`);
+  parts or fewer a shell cuts off joined to the rest first, a plate of it and
+  one of the rest side by side laid again across, a brick beside it laid again
+  as plates (`Plan.join_cut_off`, `Shapes.last["joined_cut_off"]`), and what
+  that leaves taken out before the check (`Plan.cut_off`,
+  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`;
+  what the shells took, gave back and cut off in `Shapes.last["shelled"]`,
+  `"given_back"`, `"cut_cells"`, `"shell_frames"`); a side-stud brick never
+  plain to the stitch (`Plan._plain`); a stud joint past its working load
+  left after the props, beside a shell, has the cubes about it and what it
+  hangs from laid again upright in the build itself, as a wall is patched
+  (`_past_load_by_shells`, `_upright_about`), and the build with fewer such
+  joints kept;
   the rays across cast only through cubes facing that way; a build that
   leaves a region out laid again unbonded and by the flag with its sides
   upright, two lays at most as on `main`; one colour asked for keeps its
@@ -339,7 +355,17 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   and 15% more parts, 97% in a part; a block turned 30 degrees about its up, its sides
 #   on their sides with slopes facing out; the 65 degree ledge laid upright. 2026-10-17
 #   on the unit 5 branch: 84 ok; sphere 416 on their sides (44), 1,948 parts (1,589);
-#   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81).
+#   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81). 2026-10-21, the
+#   fourth round (cubes at every phase, caps held by the core): 84 ok; sphere 386 on
+#   their sides (44), 1,832 parts (1,589, +15.3% of 25%); forty-stud bunny 420 (53),
+#   2,205 (1,943, +13.5% of 15%): near its bound, so a change that turns more must
+#   weigh the parts it costs. 2026-10-21, the fifth round (shells two cubes deep): the
+#   bound is now the bench's bar, 1.15 times m137's parts (sphere 1,948, bunny 2,143,
+#   laid on m137 the same night); sphere 499 on their sides, 1,986 parts (+25.0%),
+#   bunny 445, 2,250 (+15.8%, 1.05 times m137's), each 98.6% or more in a part; 83 of
+#   84: the blue bunny at 20 studs 96.6% in a part, 4 mended (m137 98.7%). Cubes facing
+#   out from 60 degrees fail the bunny at 28 studs (96.4%), and so do the bands
+#   between phases (95.5%): the check that holds what a shell leaves out.
 XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd \
     [-- --models=FILE@STUDS@UP,... --out=DIR]
 #   unit 7, buy it or build it from what you own (docs/BRICKIFY.md section 11): the
@@ -354,7 +380,10 @@ XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_
 #   pieces counted. Then laid from a collection of set 10698's 790 parts
 #   (SetInventories, never the person's): drawn, how, never more than on hand, the
 #   shortfall, the colour cost against the build laid without it, still one piece;
-#   and again taking any colour where it shows. --out writes NAME_STUDS.ldr with its
+#   and again taking any colour where it shows. "none held by nothing" caught unit 5's
+#   fourth round: four parts of the bunny's shells left resting on its core, held by
+#   no stud, until a shell was pruned again after parts were taken out of it
+#   (BrickifySteps.Plan.unheld_at names them). --out writes NAME_STUDS.ldr with its
 #   steps and buy.json. Broken on purpose (each part at its own course, or no step put
 #   in with the next) it fails: 352 held by nothing and the first step in 8 pieces;
 #   the fox's steps 8 and 9 with 3 stud joints overloaded. Its lists and files go to
@@ -370,6 +399,14 @@ godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:U
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
 #   what one check costs alone and weighed. Run main's beside the branch's in
 #   one heavy job: on a shared box only the ratio means anything.
+XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/snot_gaps.gd -- bunny:20:one bunny:28 [FILE:STUDS:UP ...]
+#   unit 5's sixth round (docs/BRICKIFY.md section 10): which of a model no part fills with
+#   its sides turned that the build with them upright fills, laid step by step, by why (cut
+#   off beside a shell and where against it, a shell's plate no part fills, the mend, both
+#   miss it), before and after the mend. GAPS_AT=x,j,z draws the cells round one, GAPS_WHY=1
+#   says why the cubes there stayed upright, GAPS_BUILD=1 lays it with Brickify.build too.
+#   2026-10-21 on the fifth round's code, the blue bunny at 20 studs: 70 cells of 2,072 lost
+#   against upright's 10, 43 of them cut off before the stitch. On snot85: 46 lost.
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
 #   clicked: one sub-assembly "bunny" holding every part (its side panels inside it),
@@ -474,6 +511,14 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/run   # where
 #   nearest a part on its side at 29.0°; side views' Hausdorff95 ("sides") 0.86 from 0.84;
 #   28 of 28 whole and one piece, the temple's moon kept; parts 8.1% more at 48. faces
 #   splits the steep faces by the part nearest (out_on_side, out_upright).
+#   2026-10-21, unit 5's fourth round (docs/BRICKIFY.md section 10): a job's "arms" may
+#   name "upright" (smooth with Options.snot false, the studs-up build SNOT is measured
+#   against); faces gives "turned", "turned_out" and "turned_down", the share of what
+#   faces out or down whose nearest part has its top toward it (up within 60 degrees);
+#   each smooth arm's JSON has "cubes_asked", "cubes_turned" and "cubes_why" (every
+#   phase, by foot plate; why each was refused) and its joints past their load
+#   ("balance"."over_joints"); pictures --views
+#   corner,front,back,left,right,under draws each from every side and underneath.
 #   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
 #   48 studs 52,160 parts from 59,156 (2.42 times the greedy stack's from 2.74), 1x1s
 #   35.1% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.2% from 25.9%;

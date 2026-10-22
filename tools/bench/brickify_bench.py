@@ -62,7 +62,7 @@ import statistics
 import sys
 from pathlib import Path
 
-ARMS = ("smooth", "plain", "greedy", "outside")
+ARMS = ("smooth", "upright", "plain", "greedy", "outside")
 VIEWS_RES = 320
 HALF_STUD = 10.0  # LDU
 STUD = 20.0
@@ -338,13 +338,13 @@ def stand_of(arm: dict) -> tuple[set[int], float]:
 
 
 def build_mesh(arm: dict, lib: Library, stand: bool = False, cut: float | None = None,
-               sideways: list | None = None):
+               sideways: list | None = None, ups: list | None = None):
     """Every part's triangles placed, and each triangle's colour. Lowered by a stand's lift, so
     the model lines up with the model it came from; the stand itself only when asked (a
     picture shows it; likeness is of the model). With `cut` (LDU along z), only the parts whose
     middle is short of it, each a shade lighter or darker than the next, so the courses inside
     show part by part. With `sideways` (a list), it gets for each triangle whether its part
-    lies on its side (the part's up not the world's)."""
+    lies on its side (the part's up not the world's); with `ups`, the way its part's up points."""
     np = _np()
     tris, cols = [], []
     skip, lift = stand_of(arm)
@@ -363,6 +363,10 @@ def build_mesh(arm: dict, lib: Library, stand: bool = False, cut: float | None =
         if sideways is not None:
             # LDraw's up is -y: a part whose -y is within 60 degrees of level lies on its side.
             sideways.append(np.full(len(t), abs((mat[:, :3] @ np.array([0.0, -1.0, 0.0]))[1]) < 0.5))
+        if ups is not None:
+            # The parts' own frames are the app's, y up (an upright part's up is the world's).
+            up = mat[:, :3] @ np.array([0.0, 1.0, 0.0])
+            ups.append(np.tile(up / max(np.linalg.norm(up), 1e-9), (len(t), 1)))
         rgb = np.array(lib.colours.get(int(code), (1.0, 0.0, 1.0)), dtype=np.float32)
         c = fixed.copy()
         c[codes == 16] = rgb
@@ -812,22 +816,25 @@ def do_faces(args: argparse.Namespace) -> int:
                 if not arm.get("placed"):
                     continue
                 on_side: list = []
-                tris, _ = build_mesh(arm, lib, sideways=on_side)
+                part_up: list = []
+                tris, _ = build_mesh(arm, lib, sideways=on_side, ups=part_up)
                 tri_side = np.concatenate(on_side) if on_side else np.zeros(0, dtype=bool)
+                tri_up = np.concatenate(part_up) if part_up else np.zeros((0, 3))
                 bc = caster(tris)
-                bp, bn, bs = [], [], []
+                bp, bn, bs, bu = [], [], [], []
                 for d in dirs:
                     hit, loc, tri = cast(bc, centre, radius, d, args.res)
                     bp.append(loc[hit])
                     bn.append(facing(bc.mesh.face_normals[tri[hit]], d))
                     bs.append(tri_side[tri[hit]])
+                    bu.append(tri_up[tri[hit]])
                 # Seen from the four sides alone: the model's points and the build's in those views,
                 # the larger of the two 95th percentiles of each from the other (Hausdorff95), studs.
                 side_m = np.concatenate([hits[i][1][hits[i][0]] for i in SIDE_VIEWS])
                 side_b = np.concatenate([bp[i] for i in SIDE_VIEWS])
                 d_mb, _ = cKDTree(side_b).query(side_m)
                 d_bm, _ = cKDTree(side_m).query(side_b)
-                bp, bn, bs = np.concatenate(bp), np.concatenate(bn), np.concatenate(bs)
+                bp, bn, bs, bu = np.concatenate(bp), np.concatenate(bn), np.concatenate(bs), np.concatenate(bu)
                 dist, near = cKDTree(bp).query(pts)
                 err = np.degrees(np.arccos(np.clip(np.abs((nrm * bn[near]).sum(axis=1)), 0, 1)))
                 row[arm_name] = {name: {"normal_deg": float(err[m].mean()) if m.any() else None,
@@ -840,6 +847,19 @@ def do_faces(args: argparse.Namespace) -> int:
                     row[arm_name]["out_" + which] = {
                         "share": float(m.sum() / max(1, steep.sum())),
                         "normal_deg": float(err[m].mean()) if m.any() else None,
+                        "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
+                # SNOT in every direction: of the faces that face out within 30 degrees of level,
+                # or down, those whose nearest part has its top turned to face them (its up within
+                # 60 degrees of their way out): on its side facing out, or upside down under them.
+                # "turned" is all of those; "turned_out" the steep ones alone, "turned_down" the
+                # rest.
+                facing_part = (nrm * bu[near]).sum(axis=1) >= 0.5
+                for which, m in (("turned", nrm[:, 1] <= 0.5), ("turned_out", steep),
+                                 ("turned_down", nrm[:, 1] <= -0.5)):
+                    row[arm_name][which] = {
+                        "share": float((m & facing_part).sum() / max(1, m.sum())),
+                        "normal_deg": float(err[m].mean()) if m.any() else None,
+                        "there_deg": float(err[m & facing_part].mean()) if (m & facing_part).any() else None,
                         "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
                 row[arm_name]["sides"] = {
                     "hausdorff95_studs": float(max(np.percentile(d_mb, 95), np.percentile(d_bm, 95)) / STUD),
@@ -854,7 +874,10 @@ def do_faces(args: argparse.Namespace) -> int:
                         f"{name} {row[arm_name][name]['normal_deg'] or 0:4.1f}° {row[arm_name][name]['lost_studs'] or 0:.2f}"
                         for name, _, _ in FACES), f"| sides H95 {row[arm_name]['sides']['hausdorff95_studs']:.2f}",
                         f"| out on its side {row[arm_name]['out_on_side']['share']:.0%}"
-                        f" {row[arm_name]['out_on_side']['normal_deg'] or 0:.1f}°", flush=True)
+                        f" {row[arm_name]['out_on_side']['normal_deg'] or 0:.1f}°"
+                        f"| turned {row[arm_name]['turned']['share']:.0%}"
+                        f" (out {row[arm_name]['turned_out']['share']:.0%},"
+                        f" down {row[arm_name]['turned_down']['share']:.0%})", flush=True)
             target.write_text(json.dumps(results, indent=1))
     return 0
 
@@ -918,10 +941,26 @@ def do_pictures(args: argparse.Namespace) -> int:
     arms = [a for a in ARMS if not args.arms or a in args.arms.split(",")]
     before = Path(args.before) if args.before else None
     before_lib = Library(before, load_colours()) if before else None
+    for view in args.views.split(","):
+        _pictures_from(args, view, out, into, lib, only, arms, before, before_lib)
+    return 0
+
+
+# Where each picture looks from, the way the eye looks: a corner above, each side a little
+# above it, and from underneath.
+VIEWS = {"corner": (-0.62, -0.42, -0.66), "front": (0.0, -0.3, -1.0), "back": (0.0, -0.3, 1.0),
+         "left": (1.0, -0.3, 0.0), "right": (-1.0, -0.3, 0.0), "under": (-0.35, 0.9, -0.3)}
+
+
+def _pictures_from(args, view, out, into, lib, only, arms, before, before_lib):
+    np = _np()
+    from PIL import Image, ImageDraw, ImageFont
+    from scipy.spatial import cKDTree
+
     # Cut, the cut face nearly head on.
-    d = np.array([-0.3, -0.35, -0.89]) if args.cut else np.array([-0.62, -0.42, -0.66])
+    d = np.array([-0.3, -0.35, -0.89]) if args.cut else np.array(VIEWS[view], dtype=np.float64)
     d /= np.linalg.norm(d)
-    light = np.array([0.35, -0.8, -0.45])
+    light = np.array([0.35, -0.8, -0.45]) if view != "under" else np.array([0.35, 0.8, -0.45])
     light /= np.linalg.norm(light)
     res = args.res
     for model_dir in sorted(p for p in out.iterdir() if (p / "source.json").exists()):
@@ -982,10 +1021,10 @@ def do_pictures(args: argparse.Namespace) -> int:
             for n, (name, pixels) in enumerate(panels):
                 sheet.paste(Image.fromarray(pixels), (n * res, label))
                 draw.text((n * res + 8, 4), name, fill=(40, 40, 40), font=font)
-            target = into / f"{model_dir.name}-{size_dir.name}{'-cut' if args.cut else ''}.jpg"
+            seen_from = "" if view == "corner" else f"-{view}"
+            target = into / f"{model_dir.name}-{size_dir.name}{'-cut' if args.cut else seen_from}.jpg"
             sheet.save(target, quality=args.quality, optimize=True)
             print(target)
-    return 0
 
 
 # -- report ---------------------------------------------------------------------
@@ -1264,6 +1303,8 @@ def main() -> int:
     p.add_argument("--before", default="", help="an earlier run of the same models: each arm before, then after")
     p.add_argument("--cut", action="store_true",
                    help="each build cut in half across z, its parts shaded apart, to see the core's courses")
+    p.add_argument("--views", default="corner",
+                   help="from where, any of " + ",".join(VIEWS) + " (one sheet each)")
     p = sub.add_parser("report")
     p.add_argument("out")
     p.add_argument("--write", default="")
