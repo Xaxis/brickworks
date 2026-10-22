@@ -1035,6 +1035,11 @@ static func _worst(acts: Array) -> Dictionary:
 ## Frames until nothing is working and a frame takes under 50 ms, or two
 ## hundred.
 func _quiet() -> void:
+	# The last model's autosave, made on a worker (ModelStore._autosave_paced),
+	# waited out first, as one made in a frame was a slow frame waited out.
+	var began: int = Time.get_ticks_msec()
+	while _store != null and _store._autosaving and Time.get_ticks_msec() - began < 60000:
+		await process_frame
 	var calm: int = 0
 	for _n: int in 400:
 		var t0: int = Time.get_ticks_usec()

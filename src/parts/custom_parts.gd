@@ -1100,12 +1100,13 @@ static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 ## Until no worker is reading [param library] (PartLibrary.being_read, which
 ## ends early those that can be), a frame at a time and ten seconds at most:
 ## adding a part to it waits for them, and waited for in one frame, reading
-## the last model held the next one's open for seconds.
+## the last model held the next one's open for seconds. Ten seconds, not
+## frames: 8466-1's autosave, made on a worker, outlasted 600 quick frames
+## and held 10179-1's open 4.9 s in one.
 static func readers_done(library: PartLibrary) -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
-	for _n: int in 600:
-		if not library.being_read():
-			return
+	var began: int = Time.get_ticks_msec()
+	while library.being_read() and Time.get_ticks_msec() - began < 10000:
 		await tree.process_frame
 
 
