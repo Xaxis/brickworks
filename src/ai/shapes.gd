@@ -4151,9 +4151,9 @@ class Plan extends RefCounted:
 	const INVERTED: Array = [
 		["under", 4, 3, "13547", "", [0.3, 1.0, 1.8, 2.6],
 			[0.0, 0.0, 0.0, 0.02, 0.1, 0.2, 0.34, 0.56, 0.86, 1.21, 1.65, 2.21]],
-		["under", 3, 3, "4287a", "3747b", [0.0, 1.2, 2.3],
+		["under", 3, 3, "4287c", "3747b", [0.0, 1.2, 2.3],
 			[0.0, 0.0, 0.0, 0.21, 0.63, 1.04, 1.46, 1.88, 2.29]],
-		["under", 2, 3, "", "3660a", [0.0, 1.8], [0.0, 0.0, 0.0, 0.42, 1.25, 2.08]],
+		["under", 2, 3, "", "3660b", [0.0, 1.8], [0.0, 0.0, 0.0, 0.42, 1.25, 2.08]],
 	]
 
 	## The studs a windscreen stands over: no slope is fitted to them.
@@ -4671,12 +4671,35 @@ class Plan extends RefCounted:
 	## bunny at 48 studs had 276 cheese slopes 1 x 1; at 0.1, 201, and as
 	## near. At 0.1 the probe's sphere took 5 parts more than main's, at 0.15
 	## its seams bridged fell a point short of main's; at 0.12 both hold.
-	const LONGER := 0.12
+	const LONGER := 0.06
 	## What a degree between a part's surface and the model's costs, in studs
 	## of distance: shading shows the turn, as Chamfer shows the gap.
-	const TURN := 0.004
+	const TURN := 0.1
 	## The longest surface part, in studs along its fall.
 	const LONGEST := 4
+	## Fit each surface part where the model's surface leans as well as where
+	## its studs step down (_fit_near).
+	const LEAN_FIRST := true
+	## The most a part fitted to the lean alone may stand off the model's
+	## surface at any third of a stud, plates.
+	const PROUD := 1.5
+
+	## The base, in plates, that lays a part's surface ([param near], at each
+	## third of a stud) nearest the model's ([param ahead], rows of thirds)
+	## over its [param length] studs: the mean of the two's differences,
+	## rounded; -1 where the model has too little surface there.
+	static func _fitted_base(ahead: Array, near: Array, length: int) -> int:
+		var sum: float = 0.0
+		var count: int = 0
+		for n: int in length:
+			var row: PackedFloat32Array = ahead[n]
+			for t: int in 3:
+				if not is_nan(row[t]):
+					sum += row[t] - float(near[3 * n + t])
+					count += 1
+		if count < length * 2:
+			return -1
+		return roundi(sum / count)
 
 	## [method _fit] by distance, where the plan has [member fine]: at each
 	## place a slope could start, every slope, curved slope and inverted one
@@ -4719,11 +4742,14 @@ class Plan extends RefCounted:
 			for o: int in Shapes.OUT.size():
 				var out: Vector2i = Shapes.OUT[o]
 				var inner: Vector2i = cell - out
-				if not height.has(inner):
-					continue
-				var top: int = height[inner]
+				# Its high end by the stud above it where that stud stands higher;
+				# else, the lean first: where the model's own surface falls away
+				# along [param out], at the height that lays it nearest (below).
+				var stepped: bool = height.has(inner)
+				var top: int = height[inner] if stepped else int(height[cell])
 				var drop: int = (int(height[cell]) - top) if under else (top - int(height[cell]))
-				if drop < 1:
+				stepped = stepped and drop >= 1
+				if not stepped and not LEAN_FIRST:
 					continue
 				# The model's surface over each stud a part here could cover.
 				var ahead: Array = []
@@ -4740,11 +4766,33 @@ class Plan extends RefCounted:
 						continue
 					# Its high end flush with the stud above, or as far under it as
 					# it is tall: a steep slope's flat top where the stud it covers
-					# is, not where the one above it is.
-					for drop_by: int in maxi(3, tall_ + 1):
-						var base: int = (top + drop_by) if under else (top - tall_ - drop_by)
+					# is, not where the one above it is. And at the height its
+					# surface is nearest the model's, wherever that is.
+					var bases: Array[int] = []
+					if stepped:
+						for drop_by: int in maxi(3, tall_ + 1):
+							bases.append((top + drop_by) if under else (top - tall_ - drop_by))
+					var steps: int = bases.size()
+					if LEAN_FIRST:
+						var fitted: int = _fitted_base(ahead, near, length)
+						# Its high end no higher than a plate over the stud above or
+						# its own (under an overhang, no lower): its back stood proud
+						# of the model, seen from the side.
+						if fitted != -1 and height.has(inner):
+							var high: int = maxi(int(height[inner]), int(height[cell]))
+							var low: int = mini(int(height[inner]), int(height[cell]))
+							if (not under and fitted + tall_ > high + 1) or (under and fitted < low - 1):
+								fitted = -1
+						if fitted != -1 and not bases.has(fitted):
+							bases.append(fitted)
+					for b_: int in bases.size():
+						var base: int = bases[b_]
 						if base < 0:
 							continue
+						# Fitted to the lean alone, it stands on the model's surface over
+						# every stud, none of it [constant PROUD] plates off: a curved 4 x 1
+						# fitted by its mean ran its tip out past the model's edge.
+						var strict: bool = b_ >= steps
 						var fits: bool = true
 						var gap: float = 0.0
 						var stair: float = 0.0
@@ -4761,12 +4809,16 @@ class Plan extends RefCounted:
 								break
 							var row: PackedFloat32Array = ahead[n]
 							var flat: float = float(first[at_])
+							var here_count: int = 0
 							for s: int in 3:
 								var m: float = row[s]
 								var p: float = base + float(near[3 * n + s])
 								if is_nan(m):
 									was = Vector3(NAN, NAN, NAN)
 									continue
+								if strict and absf(m - p) > PROUD:
+									fits = false
+								here_count += 1
 								gap += absf(m - p)
 								stair += absf(m - flat)
 								count += 1
@@ -4777,6 +4829,10 @@ class Plan extends RefCounted:
 									stair_turn += absf(model_angle - atan((flat - was.z) * 1.2))
 									turns += 1
 								was = Vector3(m, p, flat)
+							if strict and here_count < 2:
+								fits = false
+							if not fits:
+								break
 						if not fits or count < length * 2:
 							continue
 						var mean_gap: float = gap / count
