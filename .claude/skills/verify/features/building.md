@@ -583,12 +583,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   only across an overlap, no stud's tip in either, is one pin, axle or clip
   joint, held by its pin, axle, hinge or turntable or seated, there and in a
   suggestion's "joined by": 1793-1's turntable no longer stands on 18
-  studs), and its own steps;
+  studs; a part seated in another by no stud and no named joint, 6753-1's
+  control stick in its base, is one such joint, weighed as one stud,
+  `Sections.SEATED`, and two turned covers that only touch,
+  `Stability.beside`, are joined by nothing), and its own steps;
   with its parts list,
   BrickLink wanted list and booklet (`_export_booklet` with the rest left
   out). All of it works with the assistant off. For other code:
   `Sections.graph_of` (the joint graph, static: studs, turns, pins, fixed)
-  and `break_out_parts(ids)` for parts that are no sub-assembly. Probe: `sections_probe`;
+  and `break_out_parts(ids)` for parts that are no sub-assembly. Probes:
+  `sections_probe`, and `seated_probe` for parts seated in each other,
+  only touching, or turned to each other on real sets (6753-1, 1793-1);
   in a browser, `tools/web/sections_flow.mjs`.
 - `swing on a hinge`: `J` / `Shift-J` (or the Hinge tool) turns the
   selection 15° about the joint it hangs from — a hinge's pin, a clip on a
@@ -653,7 +658,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   session's buggy (`tests/fixtures/mcpwalk/steering_buggy.json`) and turns its
   steering wheel +30, -60 and +30, back where it was built, the chassis still.
   Two parts askew to each other (`Bodies._askew`) hold by more than one stud
-  only where the studs go into sockets or holes (`Bodies._takes_stud`). A
+  only where the studs go into sockets or holes (`Bodies._takes_stud`); a
+  lone stud the turned part does not take holds nothing (6753-1's fifth
+  wheel, tipped 19° on its axle over a chassis brick's stud, turns on its
+  axle), and one it takes is a joint that turns on that stud, as a plate
+  swung on one stud does (`Stability.turned_to`; `seated_probe`). A
   joint whose line stands upright says its weight does not turn it
   (`GrabDrag.for_session`). `grab_probe -- --only=kart` (in the full run; G8,
   MECHANISMS §17): a session's kart (`steering_kart.json`) turned the same
