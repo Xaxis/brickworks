@@ -43,8 +43,9 @@
 //      for her own, nor Cy at all, and the page tells Cy why.
 //   6. The owner ends it on /admin: /challenge shows the winners, the house
 //      by hand with 2 votes and the shed with the assistant with 1, each
-//      entry's votes; Ada's designer page has Challenges won, and the
-//      house's card there and in the gallery says it won.
+//      entry's votes; Ada's designer page has the win as a pill under her
+//      numbers (the house and its 2 votes on hover), and the house's card
+//      there and in the gallery says it won.
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
@@ -522,9 +523,13 @@ try {
     const page = await visitor.newPage();
     listen(page, "Ada's page");
     await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
-    const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll(".wins li")].map((li) => li.textContent.replace(/\s+/g, " ").trim()),
+    // Her wins are pills under her numbers (api/people.js, docs/SOCIAL.md
+    // U5): what it won, the model and its votes on hover, a link to it.
+    const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll(".wins li a")].map((a) => ({
+      said: a.textContent.replace(/\s+/g, " ").trim(), title: a.title, href: a.getAttribute("href") })),
       card: [...document.querySelectorAll(`a.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
-    check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].startsWith(`Challenge House ${rand} Won “${TITLE}”, by hand · 2 votes`)
+    check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].said === `Won “${TITLE}”, by hand`
+      && won.wins[0].title === `Challenge House ${rand}: 2 votes` && won.wins[0].href === `/m/${ids.house}`
       && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
     check("...nothing sideways at 390 px", !(await sideways(page)));
     await pictures(page);
