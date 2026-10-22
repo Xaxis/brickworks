@@ -5934,28 +5934,29 @@ the way (0.24 LDU open), and the next read it closed.
    that closed all the way. Grab 22 tried this alone: 11° and -13°, back
    3.05 LDU off. With 2. alone, the second turn found the loop open by 0.24
    LDU where no turn closed it, and did not move.
-4. **The last step closes on while that converges** (`Linkage.CLOSE_FINE`,
-   0.0005 LDU, in `_close_with`): past a fifth of `CLOSE_TO`, on as long as
-   each round takes a tenth off what is left. Stopped at 0.01, 8466-1's rack
-   came back 0.011 LDU off and its column's top 0.199; first only while each
-   round halved it, 0.004 and 0.068, the rack's slide damped as a spare
-   slide is (`SLIDE_WEIGHT`).
-5. **A loop turned back to where it was built puts its spare slides back**
+4. **A loop turned back to where it was built goes back as it was built**
    (`Linkage._closes_built`): where the driver stands within 0.001 of its
    turn as built, the last step is tried first with every slide the loop has
-   to spare where it was built. Least change kept a slide the way out took:
-   5533-1's knuckle slid 2.9 LDU out on the second turn, and on the way back
-   its arm turned to make up for it, the wheel 0.28 LDU off.
+   to spare where it was built, and closed on past a fifth of `CLOSE_TO`, as
+   long as each round takes a tenth off what is left, to `CLOSE_FINE`
+   (0.0005 LDU). Least change kept a slide the way out took: 5533-1's
+   knuckle slid 2.9 LDU out on the second turn, and on the way back its arm
+   turned to make up for it, the wheel 0.28 LDU off. And closed only to a
+   fifth of `CLOSE_TO`, 8466-1's rack came back 0.011 LDU off its driver, and
+   its steering column, turning with a pinion in that rack, 0.199 LDU off at
+   its top centre. Closed on so at every step's end, the wheel loader's arm
+   took 1 ms more of its 95th drag frame (14.4 and 15.1 ms, m140's 13.0 and
+   13.9), so only there.
 
-On the scratch probe, turned +30, -60 and back:
+On the scratch probe and the sweep, turned +30, -60 and back:
 
 | | 5533-1, rack | back, LDU | 8466-1, rack | back, LDU |
 |---|---|---|---|---|
 | m140 | +4.43, -5.31 | 6.43 (#368) | +1.92, -1.98 | 10.74 (#651) |
 | 1. | | | +1.92, -1.98 | 0.199 (#1165) |
-| and 2., 3., 4. (halving) | +2.03, -2.07 | 1.106 (#370) | +1.92, -1.99 | 0.068 (#1165) |
-| and 4. (a tenth) | | 0.278 (#370) | | 0.002 |
-| and 5. | +2.03, -2.07 | 0.003 | +1.93, -1.99 | 0.005 |
+| 1., 2. and 3., every last step closed on while each round halved what is left | +2.03, -2.07 | 1.106 (#370) | +1.92, -1.99 | 0.068 (#1165) |
+| the same, while each round takes a tenth | | 0.278 (#370) | | 0.002 |
+| 1. to 4. | +2.02, -2.07 | 0.003 | +1.92, -1.99 | 0.005 |
 
 5533-1 steers less far: its loop closes to `CLOSE_TO` only that far, and
 the 4.43 LDU it went before was with a pin 0.24 LDU out of its hole.

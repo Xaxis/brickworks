@@ -176,8 +176,14 @@ var _decided: bool = false
 ## Where the last stop was met, degrees; NAN for none.
 var _wall: float = NAN
 ## A frame's room test may run this long, ms (GrabDrag sets it); past it a
-## turn is taken on trust and checked on a pause or at the release.
-var budget_ms: float = INF
+## turn is taken on trust and checked on a pause or at the release. With no
+## end (a session's move, the check after a release), a loop closes each
+## move's last step as near as it goes (Linkage.fine); a drag's frame does not.
+var budget_ms: float = INF:
+	set(value):
+		budget_ms = value
+		if linkage != null:
+			linkage.fine = value == INF
 ## A drag's frame may test a small section's way this long, ms (GrabDrag sets
 ## it where [member budget_ms] has no end); past it the turn is shown on trust
 ## and the rest of the way checked from the last step tested, the next frame,
@@ -447,6 +453,7 @@ func _chosen() -> String:
 				_capital(_named()), link.words().trim_prefix("on "), other_words,
 				loop.said()])
 		linkage = loop
+		linkage.fine = budget_ms == INF
 		_checked_kept = loop.kept_state()
 		moving_bodies = loop.moved
 		ours.clear()

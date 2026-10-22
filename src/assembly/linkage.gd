@@ -605,12 +605,15 @@ func _closes_built(at: float, from_q: PackedFloat64Array) -> bool:
 	return closed
 
 
-## Whether a close goes on to [constant CLOSE_FINE]: only back where the loop
-## was built ([method _closes_built]). Stopped at a fifth of CLOSE_TO, a turn
-## back left 8466-1's rack 0.011 LDU off its driver, and its steering column,
-## turning with a pinion in that rack, 0.2 LDU off at its top universal joint,
-## 220 LDU from the pinion's line. Asked of every drag's frame, the round more
-## it takes cost the wheel loader's arm 1 ms of its 95th frame in 14.
+## Whether each move's last step closes on to [constant CLOSE_FINE]: a
+## session's move, not a drag's frame (Grab sets it). Stopped at a fifth of
+## CLOSE_TO, a turn back left 8466-1's rack 0.011 LDU off its driver, and its
+## steering column, turning with a pinion in that rack, 0.2 LDU off at its top
+## universal joint, 220 LDU from the pinion's line. Asked of every drag's
+## frame, the round more it takes cost the wheel loader's arm 1 ms of its 95th
+## frame in 14.
+var fine: bool = false
+## And back where the loop was built, a drag's too ([method _closes_built]).
 var _fine: bool = false
 
 
@@ -1168,15 +1171,15 @@ func _close_with(held: Dictionary) -> bool:
 			where[c] = -1
 	var n: int = free.size()
 	# Closed to a fifth of the tolerance, so the last step stands well inside
-	# it; a step on the way only to within it. Back where it was built, on as
-	# long as each round takes a tenth off what is left, to [constant
-	# CLOSE_FINE] ([member _fine]).
+	# it; a step on the way only to within it. A session's, or back where it
+	# was built, on as long as each round takes a tenth off what is left, to
+	# [constant CLOSE_FINE] ([member fine], [member _fine]).
 	var aim: float = _tolerance * 0.2 if _tolerance == CLOSE_TO else _tolerance
-	var fine: float = CLOSE_FINE if _fine and _tolerance == CLOSE_TO else aim
+	var fine_to: float = CLOSE_FINE if (fine or _fine) and _tolerance == CLOSE_TO else aim
 	var gaining: bool = true
 	var at_row := PackedInt32Array()
 	var of_row := PackedFloat64Array()
-	while (now > aim or now > fine and gaining) and iterations < ITERATIONS and n > 0:
+	while (now > aim or now > fine_to and gaining) and iterations < ITERATIONS and n > 0:
 		iterations += 1
 		var jac: Array = _jacobian(q, cache)
 		# Normal equations: (JᵀJ + λ diag) dq = −Jᵀr, from each row's few
