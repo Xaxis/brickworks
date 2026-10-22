@@ -17,9 +17,13 @@
 # folder, none under a .gdignore, linked folders followed), are not the
 # list's classes at the same paths. Then it imports holding
 # .godot/import.lock, so runs started together import once: the others
-# wait for the lock and find the list made. Exits 0 when the list is the
-# scripts', 1 with the difference when it is not even after an import, and
-# 1 without importing when two scripts have one class_name.
+# wait for the lock and find the list made. A run that finds the list
+# current still waits out an import under way: Godot writes the list early
+# and goes on importing, and the second of two runs started at once found
+# it current a second in and ran its probe with half a minute of the
+# first's import to go (2026-10-22). Exits 0 when the list is the scripts',
+# 1 with the difference when it is not even after an import, and 1 without
+# importing when two scripts have one class_name.
 #   --check   say what is behind, import nothing
 set -u
 check=; [ "${1:-}" = --check ] && check=1
@@ -47,8 +51,18 @@ behind() {
     | sed -e 's/^\t/  in the class list, not in a script: /;t' -e 's/^/  not in the class list: /'
 }
 
+# Takes the import lock, shared (-s) or alone (-x), after another's import.
+hold() {
+  flock -n "$1" 9 && return
+  echo "fresh_import: another run is importing $(pwd); waiting for it"
+  flock -w 1200 "$1" 9 || { echo "fresh_import: still importing after 20 minutes; gave up" >&2; exit 1; }
+}
+
 said=$(behind)
-[ -z "$said" ] && exit 0
+if [ -z "$said" ]; then
+  if [ -z "$check" ] && [ -f .godot/import.lock ]; then exec 9<.godot/import.lock; hold -s; fi
+  exit 0
+fi
 # Two scripts of one class_name: the list keeps one, so no import ends it,
 # and Godot's import says nothing of it (tried, 2026-10-22).
 twice=$(in_scripts | awk '{ n[$1]++; at[$1] = at[$1] " " $2 }
@@ -61,12 +75,9 @@ if [ -n "$check" ]; then
 fi
 mkdir -p .godot
 exec 9>>.godot/import.lock
-if ! flock -n 9; then
-  echo "fresh_import: another run is importing $(pwd); waiting for it"
-  flock -w 1200 9 || { echo "fresh_import: still importing after 20 minutes; gave up" >&2; exit 1; }
-  said=$(behind)
-  [ -z "$said" ] && exit 0
-fi
+hold -x
+said=$(behind)  # another run's import, waited for, may have made it
+[ -z "$said" ] && exit 0
 echo "fresh_import: $(pwd)'s class list is behind its scripts, so importing first:"
 echo "$said" | head -5
 core="$HOME/.claude/claude-core/bin"
