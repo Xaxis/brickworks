@@ -5843,3 +5843,25 @@ and still not back.
   three OMR files.
 - The sweep turns 8466-1 at an end pinion free on its pin, not at either
   column.
+
+### Checked
+
+On the final code, in a window (`tools/probe.sh grab_probe`): `--only=grooved`
+6 (on 4ac4fc83 the two new checks fail: the turn back "2 parts on a pin
+without friction", the rack back to -2.09 LDU), `groups` (4), `loops` (21),
+`bigstep` (4), `hinge` (27), and the whole probe, 496 passed and none
+failed (`actuators` and `cases` within it: the wheel loader's arm 95% 13.0
+ms of the drag's own work a frame, the small actuator 13.8). `motions_probe` 92 of 92 (with the pinion held to its own rack
+alone, 10 failed: the telescope stopped at 225°), `mechanism_probe` (54) and
+`own_copies_probe` (33) pass.
+
+The steering sweep on 19 sets (the five 8448-1 files, 5533-1, 8466-1,
+42125-1, 8808-1, 8820-1, 8880-1_F1-Racer, 8841-1_Buggy, 9393-1, 42043-1,
+42024-1, 42070-1, 6753-1, 6753-1_Tow-Truck, 8054-1_Model-C;
+`sweep_grab22y`) against `sweep_hinge77`: 18 the same to the step, 16
+steering as there; 8466-1's rack back to -0.01 LDU where it stayed at
+-2.09, and its worst part 10.74 LDU off (#651) where it was 36.92 (#1165).
+The whole sweep is the lead's: from a locked snapshot of this,
+`SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run grab22
+--jobs=3`, then `table grab22 --against=hinge77`; the bar is every set that
+steers in hinge77 (77) steering, nothing lost.
