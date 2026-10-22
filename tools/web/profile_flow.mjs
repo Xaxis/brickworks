@@ -394,7 +394,8 @@ async function deployed() {
     const page = await api(`/u/${ADA}?tests=1`);
     check(`her page after: ${page.status}`, page.status === 404);
     // Her row of profile_shows, gone with her account (on delete cascade).
-    const held = remote ? await fetch(`${site}/__held/profile_shows`).then((a) => (a.ok ? a.json() : null), () => null) : null;
+    // A deployment answers /__held/ with a page, not JSON: only a relay holds rows.
+    const held = remote ? await fetch(`${site}/__held/profile_shows`).then((a) => (a.ok ? a.json() : null)).catch(() => null) : null;
     if (held) {
       console.log("  --    the relay holds profile_shows in memory: the cascade is the dry run's (tools/profile_shows_try.sql)");
     } else if (account && process.env.SUPABASE_URL) {
