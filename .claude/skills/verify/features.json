@@ -764,6 +764,14 @@
       "tests": []
     },
     {
+      "id": "cli:model page browser flow",
+      "kind": "cli",
+      "entry": "tools/web/model_page_flow.mjs",
+      "reach": "node tools/web/model_page_flow.mjs --out=shots/model_page   (no network: the stand-in's watchtower and its remix at dusk; --url=<deployment> for a preview's first gallery model)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:model view check",
       "kind": "cli",
       "entry": "tools/web/model_view_check.mjs",
@@ -1837,6 +1845,14 @@
       "tests": []
     },
     {
+      "id": "lib:more by and similar models",
+      "kind": "lib",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:motions",
       "kind": "lib",
       "entry": "src/assembly/motions.gd",
@@ -2614,14 +2630,6 @@
       "tests": []
     },
     {
-      "id": "ui:like and keep a model",
-      "kind": "ui",
-      "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Favourite, Add to a collection; signs in on the way)",
-      "area": "web",
-      "tests": []
-    },
-    {
       "id": "ui:lock parts",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
@@ -2676,6 +2684,14 @@
       "kind": "ui",
       "entry": "web/card.js",
       "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:model page action bar",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
       "area": "web",
       "tests": []
     },

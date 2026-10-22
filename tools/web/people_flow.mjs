@@ -15,8 +15,8 @@
 //      sign-in dialog, their address, Email me a code (one code sent to a
 //      Resend test address that delivers nowhere; a fresh one minted on the
 //      test side, as the tests sign in), the code, Sign in — and the like
-//      goes through, the count with it. Favourite. Add to a collection, a
-//      new one named, made and ticked.
+//      goes through, the count with it. Save: Favourites, ticked; a new
+//      collection named, made and ticked.
 //   3. /profile: their address said, no name yet; a name and a handle
 //      chosen and saved; the house in their favourites; the collection,
 //      made public, with a page of its own.
@@ -157,20 +157,26 @@ try {
   }
   await page.waitForFunction(() => document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed") === "true",
     null, { timeout: 30000 }).catch(() => {});
+  // The action bar's Like (web/model-page.js): pressed, its count beside
+  // it and in its name.
   let state = await page.evaluate(() => ({
-    like: document.querySelector('[data-mark="like"]').textContent,
+    like: document.querySelector('[data-mark="like"]').getAttribute("aria-label"),
     pressed: document.querySelector('[data-mark="like"]').getAttribute("aria-pressed"),
-    likes: document.querySelector('[data-count="likes"]').textContent,
+    likes: document.querySelector('[data-mark="like"] .n')?.textContent || "",
     dialog: Boolean(document.querySelector("dialog.sign-in")),
     kept: Boolean(JSON.parse(localStorage.getItem("brickworks.session") || "null")?.refresh_token),
   }));
-  check(`signed in, and the like went through: ${state.like}, ${state.likes}`,
-    !state.dialog && state.pressed === "true" && state.likes === "1 like" && state.kept);
-  await page.click('[data-mark="favourite"]');
-  await page.waitForFunction(() => document.querySelector('[data-mark="favourite"]')?.getAttribute("aria-pressed") === "true",
-    null, { timeout: 15000 }).catch(() => {});
-  check("kept in their favourites", (await page.textContent('[data-mark="favourite"]')) === "In your favourites");
-  await page.click("details.collect summary");
+  check(`signed in, and the like went through: ${state.like}`,
+    !state.dialog && state.pressed === "true" && state.like === "Like, 1 like" && state.likes === "1" && state.kept);
+  // Save: their lists, Favourites first (docs/SOCIAL.md D2).
+  await page.click('[data-mark="save"]');
+  await page.waitForSelector('#save-panel:not([hidden]) label[data-list="favourites"] input', { timeout: 15000 });
+  await page.check('#save-panel label[data-list="favourites"] input');
+  await page.waitForFunction(() => document.querySelector('[data-mark="save"]')?.hasAttribute("data-on")
+    && /favourites/i.test(document.querySelector(".marks-said")?.textContent || ""), null, { timeout: 15000 }).catch(() => {});
+  check(`kept in their favourites: "${await page.textContent(".marks-said")}"`,
+    await page.evaluate(() => document.querySelector('#save-panel label[data-list="favourites"] input').checked
+      && document.querySelector('[data-mark="save"]').getAttribute("aria-label") === "Saved"));
   await page.fill("form.collect-new input", LIST);
   await page.click('form.collect-new button[type="submit"]');
   await page.waitForFunction((name) => [...document.querySelectorAll(".collect-list label")]
@@ -246,7 +252,7 @@ try {
     [`/u/${ownerHandle}?tests=1`, "profile_public"]]) {
     await small.goto(site + where, { waitUntil: "load", timeout: 60000 });
     await small.waitForTimeout(1500);
-    if (name === "model") await small.click("details.collect summary").catch(() => {});
+    if (name === "model") await small.click('[data-mark="save"]').catch(() => {});
     check(`${where} at 390 px: nothing sideways`, !(await sideways(small)));
     await shot(small, `6_${name}-phone.png`);
   }

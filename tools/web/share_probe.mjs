@@ -252,9 +252,11 @@ async function main() {
   check(r.status === 200 && r.headers.get("content-type")?.startsWith("text/html"), `the link's page: 200 HTML (${r.status})`);
   check(r.text.includes('<meta property="og:title" content="Probe Tower — a Brickworks model">'), "its og:title names the model");
   check(r.text.includes(`<meta property="og:image" content="${base}/m/${id}.png">`), "its og:image is the model's picture");
-  check(r.text.includes("9 parts, by Probe Builder"), "it says the part count and who made it");
-  check(r.text.includes(`<a class="cta" href="/app?view=${id}">View in 3D</a>`) && r.text.includes('<script src="/share-page.js"')
-    && r.text.includes(`data-viewer="/app?view=${id}"`), "a person goes on to the viewer, /app?view=<id>, with View in 3D");
+  check(r.text.includes('<li class="pill">9 parts</li>') && r.text.includes("<b>Probe Builder</b>"),
+    "it says the part count and who made it");
+  check(r.text.includes(`<a class="cta" href="/app?view=${id}" `) && r.text.includes(">Build it</a>")
+    && r.text.includes('<script src="/share-page.js"') && r.text.includes(`data-viewer="/app?view=${id}"`),
+  "a person goes on to the viewer, /app?view=<id>, with Build it");
   check(/frame-ancestors 'none'/.test(r.headers.get("content-security-policy") || ""), "the page is not frameable");
 
   r = await call(`/m/${id}.png`);
@@ -937,7 +939,8 @@ async function thePeople(tokenA, tokenB) {
   r = await call("/u/nobody-has-this");
   check(r.status === 404, `a handle nobody has: 404 (${r.status})`);
   r = await call(`/m/${credited}`);
-  check(r.text.includes(`Shared by <a href="/u/${handle}">&lt;b&gt;Probe&lt;/b&gt;`), "the credited model's page links its profile");
+  check(r.text.includes(`<a class="who" href="/u/${handle}">`) && r.text.includes("<b>&lt;b&gt;Probe&lt;/b&gt;"),
+    "the credited model's page links its profile");
   r = await call(`/m/${nameless}`);
   check(!r.text.includes(`/u/${handle}`), "the one shared without a name does not");
   let l = await call(`/api/share?op=list&page=1&tests=1&q=probe%20credited`);
@@ -961,7 +964,8 @@ async function thePeople(tokenA, tokenB) {
   r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenB, body: { on: false } });
   check(r.json?.likes === 1 && r.json?.liked === false, "unliked: 1");
   r = await call(`/m/${credited}`);
-  check(r.text.includes('<span data-count="likes">1 like</span>'), "its page counts it");
+  check(r.text.includes('aria-label="Like, 1 like"') && r.text.includes('<span class="n" aria-hidden="true">1</span>'),
+    "its page counts it, on its Like");
   l = await call("/api/share?op=list&page=1&tests=1&sort=likes");
   const liked = (l.json?.models || []).map((m) => m.likes);
   check(liked.every((n, k) => k === 0 || n <= liked[k - 1]) && (l.json?.models || []).find((m) => m.id === credited)?.likes === 1,

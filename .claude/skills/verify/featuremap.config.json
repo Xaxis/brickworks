@@ -1590,9 +1590,9 @@
     },
     {
       "kind": "ui",
-      "label": "like and keep a model",
+      "label": "model page action bar",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Favourite, Add to a collection; signs in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
       "area": "web"
     },
     {
@@ -2839,6 +2839,20 @@
       "label": "component kit",
       "entry": "web/kit.js",
       "reach": "the pill, tabs, avatar, icon buttons (web/icons.svg), the toast and the more menu (site.css \"the kit\"); all at once on /_kit when the checkout is served (web/_kit.html, never published); the avatar on /profile",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "more by and similar models",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "model page browser flow",
+      "entry": "tools/web/model_page_flow.mjs",
+      "reach": "node tools/web/model_page_flow.mjs --out=shots/model_page   (no network: the stand-in's watchtower and its remix at dusk; --url=<deployment> for a preview's first gallery model)",
       "area": "web"
     }
   ]

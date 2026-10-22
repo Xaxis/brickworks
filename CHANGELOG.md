@@ -47,6 +47,18 @@ whole cycle.
 
 ### Changed
 
+- On brickworks.diy a model's page leads with its picture: on a phone the
+  picture, its name, its designer and what you can do with it are the
+  first screen, and on a laptop the column beside the picture stays in view
+  as you read down. The designer has a face, a name and handle that go to
+  their profile, and Follow beside them. Like, Save, Share, Comment, I built
+  it and More are one row of buttons, each with its count once there is
+  one. Save puts the model in your favourites or any of your collections
+  from one list, favourites first. Share copies the link, or opens your
+  phone's share sheet. More copies the code to embed the model in a page
+  of your own, and is where to report it. Build it opens it in 3D. The
+  page ends with more by the same designer and models like it, by kind and
+  tags, whenever there are three or more to show.
 - On brickworks.diy a model's card is the same on every page, and its
   picture is larger: cut 4:3 from the middle of the shared picture, so a
   model fills a card about 1.4 times wider. A model's remixes are shown as

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow -->
 
 ## Sub-features
 
@@ -551,12 +551,37 @@ plan with Claude as the client.
   photos and of photos of their models deleted, then the account, every row
   of theirs cascading; the site owner's refused). people_flow deletes its
   visitor this way.
-- `like and keep a model` (`web/model-page.js`): on `/m/<id>`, hidden
-  until the script runs: Like (aria-pressed, the count beside the views
-  updated), Favourite, Add to a collection (each list ticked or not, a new
-  one named and made with the model in it). Signed out, each opens the
-  sign-in dialog first and goes on once signed in. The page's policy lets it
+- `model page action bar` (`web/model-page.js`, `api/share.js` `actionBar`,
+  2026-10-22, docs/SOCIAL.md U4): on `/m/<id>`, `#marks.action-bar`, the
+  kit's icon buttons drawn by the server: Like (`[data-mark="like"]`,
+  aria-pressed, its count beside it and in its label, "Like, 96 likes"),
+  Save (`[data-mark="save"]`, aria-expanded: `#save-panel` opens your lists,
+  Favourites first as `label[data-list="favourites"]`, ticked when it is a
+  favourite, then each collection, and a new one named and made with the
+  model in it; `data-on` and the label "Saved" while it is in any),
+  Share (`[data-share]`: `navigator.share` with the page's address where
+  the browser has it, else the address copied and the toast "Link
+  copied"), Comment (`[data-mark="comment"]`, its count set once the
+  comments are listed, the ones everybody sees; to the comments, the box
+  focused; hidden where comments are not open), I built it
+  (`[data-mark="built"]`, the builds count; to Built by people, opening
+  the photo form) and More (`details#more.more-menu`: Copy the embed code
+  `[data-embed]`, Report it `[data-report]`, Takedown requests; for the
+  model's owner, comments off or on and their numbers instead of Report).
+  Like, Save and Comment signed out open the sign-in dialog first and go
+  on once signed in. Never a count of none. The page's policy lets it
   reach the sign-in service (`SUPABASE_URL`) as well as itself.
+- `more by and similar models` (`api/share.js` `nextOf`, 2026-10-22): the
+  end of `/m/<id>`: `#more-by` (the designer's other listed, credited
+  models, `directory_models` with `owner`, by Top builds) and `#similar`
+  (`directory_models` by its kind and by each of its first three tags,
+  ranked by tags shared, then kind, then Top builds; never what anybody
+  looked at), each a `.models.row` of cards drawn only with three, six at
+  most, and no card the page shows already (the model, its listed
+  remixes, More by's). A test model's page offers test models too. A
+  database error is no row, never a 500. No new SQL.
+- `model page browser flow` (`tools/web/model_page_flow.mjs`, preview check
+  `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser
   (`localStorage` `brickworks.session`), renewed when an access token kept for
   the tab (`sessionStorage`) has run out and put back for the app; a dialog
@@ -1086,10 +1111,15 @@ plan with Claude as the client.
   app's isolation headers and CSP are not put on them. Since the directory
   (2026-10-13) `/m/<id>` is the model's own page, a page of the site (its
   stylesheet, header and footer, `siteChrome`; `web/directory.css` for what only
-  it has): the picture (a link into the viewer), the name, "N parts, by X",
-  what it was remixed from while that is listed ("a model shared by link"
-  when not), its steps and whether they are its builder's, Technic, when it
-  was listed, its views, likes and remixes, View in 3D and Open in Brickworks;
+  it has). Since U4 (2026-10-22) the picture (a link into the viewer) leads,
+  with a column beside it on a laptop that stays on screen as the page
+  scrolls (`.side`, sticky) and under it on a phone: the name, the designer
+  (`.shared-by`: avatar, name and @handle linking to /u/, Follow), Build it
+  (the viewer, `.actions a.cta`) and Open in Brickworks, the action bar
+  (below), then facts as pills (Tested first, parts, steps and whether they
+  are its builder's, Technic, Moves, views, when it was listed, its version
+  and remixes as links), and what it was remixed from while that is listed
+  ("a model shared by link" when not); its builds, versions,
   what its owner wrote (escaped, its lines kept), its tags (each a link to
   `/gallery?tag=`), its kind (in the crumbs, a link to `/gallery?kind=`), its
   licence in words with whom to credit and the licence's own page, and its
@@ -2015,11 +2045,13 @@ heavy node tools/web/design_flow.mjs --root=<an old export> --out=…   # an old
 node tools/web/design_flow.mjs --url=<preview>                        # a deployment's pages, the API stood in
 ```
 
+```
+
 It visits home, gallery (its filters opened at 390), a model nobody has
 remixed (`/m/DesignFox1`, local only), the kit page `/_kit` with its more
 menu open (local only), a model's page (signed
-out: Report it opens the report dialog; signed in: the collect panel, the
-comment form, and I built it's photo form with its file picker), the
+out: More opened, and its Report it opens the report dialog; signed in:
+Save's lists, the comment form, and I built it's photo form with its file picker), the
 stand-in's own model signed in with Enter this month's challenge and its
 dialog (here only: a deployment has none of the stand-in's models), an older
 version, the embed card, a person, a collection, `/challenge` (an open one,
@@ -2046,6 +2078,24 @@ and api/, given as `--root=`) it fails the age question by name:
 `select#age-month … the browser's own dropdown (appearance auto)`, its
 13.33 px type, and the year box differing from it in type, corners, fill
 and height. Pictures of every state in --out.
+
+The model page (docs/SOCIAL.md U4), with no network: the stand-in's
+watchtower (More by Robin Castell, 3 cards; no Similar, 2 found) and its
+remix at dusk (Similar, 3; no More by), at 390 and 1280, light and dark,
+signed out and in. It fails on the picture, name, designer and action bar
+not all on a phone's first screen, the column not staying beside the
+picture on a laptop, the bar's six names not Like, Save, Share, Comment,
+I built it, More, a count not in its label or a count of none, Share not
+copying the link with "Link copied" (or, given a share sheet, not using
+it), Save not asking to sign in or not opening Favourites first and
+ticked, More without the embed code, Report it and Takedown requests, a
+row of fewer than three, or the old paragraph. 120 checks a theme
+(2026-10-22). Pictures of each page whole, its first screen, Save and More.
+
+```sh
+heavy node tools/web/model_page_flow.mjs --out=shots/model_page      # this checkout
+node tools/web/model_page_flow.mjs --url=<preview>                   # a deployment's first gallery model
+```
 
 The one model card, server against browser, with no network (local
 only: preview_checks.sh says why):

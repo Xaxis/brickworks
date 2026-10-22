@@ -168,7 +168,16 @@ is on the page, `hidden`, for the script to show.
   as tall as a field (`.small` 36 for a card's row), its count beside its
   icon once there is one. Its label says its name and count to a screen
   reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
-  and pressed is edged in `--accent-edge` with its icon filled.
+  and pressed is edged in `--accent-edge` with its icon filled. A button
+  that opens something rather than toggling (Save, which opens your
+  lists) is `aria-expanded`, and `data-on` while what it stands for is on
+  (the model is in one of your lists), drawn as pressed. The server's
+  pages draw the kit from the same file (`api/_kit.js`, which
+  `tools/deploy.sh` replaces with `web/kit.js` itself, as `_card.js`).
+- **Action bar**: `.action-bar`, a model's page's row of icon buttons
+  (Like, Save, Share, Comment, I built it) with the more menu at its end;
+  one row across the column on a phone. `api/share.js` `actionBar`,
+  `web/model-page.js`.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`), gone in 2.4 s.
