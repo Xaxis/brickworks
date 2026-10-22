@@ -114,10 +114,6 @@ class Options extends RefCounted:
 	## staircase of studs up, as [method build] lays it again where the
 	## build leaves a region of the model out.
 	var snot: bool = true
-	## Plates of the grid (x, plate, z) no turned cube is laid near: where a
-	## build with its sides turned held a part past its working load beside a
-	## shell, and no prop could take it ([method build] lays it again so).
-	var upright_near: Array[Vector3i] = []
 
 	func copied() -> Options:
 		var out := Options.new()
@@ -509,9 +505,6 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
 	if options.smooth and options.snot:
 		clock = Time.get_ticks_msec()
 		var cuts: Array = _cubes(grid, points, count, outward, progress, [0] + Array(CUBE_PHASES))
-		if not options.upright_near.is_empty():
-			for n: int in cuts.size():
-				cuts[n] = _cubes_away(cuts[n], 0 if n == 0 else CUBE_PHASES[n - 1], options.upright_near)
 		grid.cubes = cuts[0] if not cuts.is_empty() else {}
 		if not grid.cubes.is_empty():
 			for n: int in cuts.size() - 1:
@@ -647,23 +640,11 @@ const STEEP := 0.42
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
 const CUBE_IN := 0.5
-
-
-## [param cubes] (cut [param phase] plates up) but those within a stud and two
-## plates of any plate in [param near]: the side there stays upright.
-static func _cubes_away(cubes: Dictionary, phase: int, near: Array[Vector3i]) -> Dictionary:
-	var out: Dictionary = {}
-	for key: Variant in cubes:
-		var c: Vector3i = key
-		var low := Vector3i(c.x * CUBE_STUDS, c.y * CUBE_PLATES + phase, c.z * CUBE_STUDS)
-		var high: Vector3i = low + Vector3i(CUBE_STUDS, CUBE_PLATES, CUBE_STUDS)
-		var close: bool = false
-		for p: Vector3i in near:
-			close = close or p.x >= low.x - 1 and p.x < high.x + 1 and p.z >= low.z - 1 \
-				and p.z < high.z + 1 and p.y >= low.y - 2 and p.y < high.y + 2
-		if not close:
-			out[c] = cubes[c]
-	return out
+## How far round a joint past its working load beside a turned side the
+## model is laid again upright ([method _upright_about]): studs across and
+## along, and plates up.
+const UPRIGHT_STUDS := 2
+const UPRIGHT_PLATES := 5
 
 
 static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float,
@@ -1897,28 +1878,12 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			stand = lay_stand(model, under, why, checker, options.smooth, grid.stand_colour)
 			report = _again(mend(model, checker, progress), report)
 			balance = report.get("balance")
-	# A stud joint past its working load, propped: a pillar under what it
-	# carries, down to whatever is under that or the ground, kept only if
-	# fewer joints are past their load. A figure's arm held out on one stud,
-	# a car's bumper hung under its body.
-	report["propped"] = 0
+	# A stud joint past its working load, propped.
 	var t4: int = Time.get_ticks_msec()
 	if _stopping(progress):
 		return _stopped_run()
-	if balance != null and balance.over > 0:
-		var was: int = model.placements.size()
-		var props: int = _prop(model, checker, balance)
-		if props > 0:
-			var after: Dictionary = checker._check(model, true, true, false, false)
-			var weighed: Balance.Report = after.get("balance")
-			if weighed != null and weighed.over < balance.over \
-					and _loose(after) <= _loose(report) and bool(after.get("ok", false)) \
-					== bool(report.get("ok", false)):
-				report = _again(after, report)
-				report["propped"] = props
-				balance = weighed
-			else:
-				model.placements.resize(was)
+	report = _propped(model, checker, report)
+	balance = report.get("balance")
 	times["check.props"] = Time.get_ticks_msec() - t4
 	times["check.checks"] = int(report.get("checks", 0))
 	times["check.checks_ms"] = int(report.get("checks_ms", 0))
@@ -1943,29 +1908,34 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	var out: Dictionary = {"model": model, "report": report, "grid": grid, "trouble": trouble,
 		"ms": times}
 	# A part held past its working load beside a turned side, that no prop
-	# could take, is laid again with the cubes about it upright, and the one
-	# with fewer such parts kept, the time of both counted. Upright, a core
-	# bonds an overhang across the plates the shell took: the armadillo at 24
-	# studs hung a 1 x 2 plate on one stud of another, 40 plates over the
-	# ground, beside a shell facing out along x, where upright it had none.
+	# could take, has the cubes about it laid again upright, and the build
+	# with fewer such parts kept. Upright, a core bonds an overhang across the
+	# plates the shell took: the armadillo at 24 studs hung a 1 x 2 plate on
+	# one stud of another, 40 plates over the ground, beside a shell facing
+	# out along x, where upright it had none. Laid again there alone, not the
+	# whole model: laid whole, the figure at 48 studs took 37 s from 18.
 	var relaid: bool = false
-	if options.snot and options.smooth and options.upright_near.is_empty() and balance != null \
-			and balance.over > 0:
+	if options.snot and options.smooth and balance != null and balance.over > 0:
 		var near: Array[Vector3i] = _past_load_by_shells(model, checker, balance, lift)
-		if not near.is_empty():
-			var again: Options = options.copied()
-			again.upright_near = near
-			var other: Dictionary = build(mesh, again, checker, progress, false)
+		if not near.is_empty() and not _stopping(progress):
+			var t5: int = Time.get_ticks_msec()
+			var other: Dictionary = _upright_about(model, report, near, grid, options, checker,
+				progress, lift)
 			var weighed: Balance.Report = other.get("report", {}).get("balance")
-			var better: bool = other.has("model") and weighed != null and weighed.over < balance.over \
+			var better: bool = weighed != null and weighed.over < balance.over \
 				and float(other["report"]["coverage"]) >= float(report["coverage"]) - 0.005
-			var kept: Dictionary = other if better else out
-			var spent: Dictionary = times if better else other.get("ms", {})
-			for step: String in ["measure", "lay", "check"]:
-				kept["ms"][step] = int(kept["ms"].get(step, 0)) + int(spent.get(step, 0))
-			out = kept
-			report = out["report"]
-			relaid = better
+			times["check.upright"] = Time.get_ticks_msec() - t5
+			times["check"] = int(times["check"]) + int(times["check.upright"])
+			if better:
+				out["model"] = other["model"]
+				out["report"] = other["report"]
+				report = out["report"]
+				relaid = true
+				# Those cubes are upright now, for the bench to say where a side is
+				# turned.
+				var undone: Array = other["undone"]
+				Shapes.last["cubes_kept"] = (Shapes.last.get("cubes_kept", []) as Array).filter(
+					func(c: Variant) -> bool: return not undone.has(c))
 	# A bonded core is kept only if it keeps as much of the model. Where the
 	# bonded build leaves a region of it out, it is laid again by the colours
 	# measured and the one that fills more of the model kept, the time of both
@@ -2030,6 +2000,174 @@ static func _past_load_by_shells(model: Assistant.Model, checker: Assistant,
 		if beside:
 			out.append_array(plates)
 	return out
+
+
+## The cubes turned within a stud and two plates of [param near] (the grid's
+## plates, as [method _past_load_by_shells] gives them) laid again upright
+## in a copy of [param model], not the whole model laid again: every part
+## with a plate in those cubes, or round [param near] and over it
+## ([constant UPRIGHT_STUDS], [constant UPRIGHT_PLATES]), taken out, and the
+## plates of the model they filled laid in plates a course at a time, each
+## course the other way from the one under it. The parts round them stand on
+## the new plates or under them, as a wall is patched. Mended and propped as
+## [method build] does: {"model", "report" (with [param report]'s counts
+## carried), "undone" (the cubes, by foot plate, as Shapes.last's
+## "cubes_kept")}; {} where no cube is turned there.
+static func _upright_about(model: Assistant.Model, report: Dictionary, near: Array[Vector3i],
+		grid: Grid, options: Options, checker: Assistant, progress: Progress, lift: int) -> Dictionary:
+	var region: Dictionary = {}    ## Vector3i(x, plate as laid, z) -> true
+	var undone: Array = []
+	for raw: Variant in Shapes.last.get("cubes_kept", []):
+		var foot: Vector3i = raw
+		var low := Vector3i(foot.x * CUBE_STUDS, foot.y, foot.z * CUBE_STUDS)
+		var high: Vector3i = low + Vector3i(CUBE_STUDS, CUBE_PLATES, CUBE_STUDS)
+		var close: bool = false
+		for p: Vector3i in near:
+			close = close or p.x >= low.x - 1 and p.x < high.x + 1 and p.z >= low.z - 1 \
+				and p.z < high.z + 1 and p.y >= low.y - 2 and p.y < high.y + 2
+		if not close:
+			continue
+		undone.append(foot)
+		for x: int in range(low.x, high.x):
+			for j: int in range(low.y, high.y):
+				for z: int in range(low.z, high.z):
+					region[Vector3i(x, j + lift, z)] = true
+	if undone.is_empty():
+		return {}
+	# With what the joint's parts hang from: the plates within two studs of
+	# them and up to five plates over them. With the cube alone, the
+	# armadillo's 1 x 2 hung again, by one stud from the plate over it; within
+	# a stud and three plates, its patch came loose and 94% of it stayed in a
+	# part.
+	for p: Vector3i in near:
+		for dx: int in range(-UPRIGHT_STUDS, UPRIGHT_STUDS + 1):
+			for dz: int in range(-UPRIGHT_STUDS, UPRIGHT_STUDS + 1):
+				for dy: int in range(0, UPRIGHT_PLATES + 1):
+					region[p + Vector3i(dx, lift + dy, dz)] = true
+	var room := Laid.new(model, checker)
+	var gone: Dictionary = {}
+	for cell: Variant in region:
+		if room.owner.has(cell):
+			gone[int(room.owner[cell])] = true
+	# And what reaches into the plates they leave from beside them: the side
+	# stud of a turned tile's holder ran into every upright plate laid where
+	# the armadillo's tile had been.
+	var plate: Lbm.PartMesh = checker.library.mesh_for(ONE_PLATE)
+	for _round: int in 3:
+		var more: Dictionary = {}
+		var cells: Array = region.keys()
+		for index: Variant in gone:
+			cells.append_array(room.cells_of.get(int(index), []))
+		for cell: Vector3i in cells:
+			var at: Transform3D = checker._transform(Assistant.Placement.from_dict({"part": ONE_PLATE,
+				"color": 0, "x": cell.x, "y": cell.y, "z": cell.z, "rot": 0}), plate)
+			for id: int in room.lattice.blockers_boxes(checker.builder.boxes_for(plate, at)):
+				if not gone.has(id - 1):
+					more[id - 1] = true
+		if more.is_empty():
+			break
+		gone.merge(more)
+	# What is laid again: the model's plates those parts filled, each in the
+	# part's colour, and the cubes' own that none filled, in the model's.
+	var fill: Dictionary = {}    ## plate as laid -> {Vector2i(x, z): colour}
+	var wanted := func(cell: Vector3i, colour: int) -> void:
+		var j: int = cell.y - lift
+		if cell.x < 0 or cell.z < 0 or j < 0 or cell.x >= grid.across or cell.z >= grid.deep \
+				or j >= grid.tall or grid.state[grid.index(cell.x, j, cell.z)] != 1:
+			return
+		if colour < 0:
+			colour = grid.colour[grid.index(cell.x, j, cell.z)]
+			colour = colour if colour >= 0 else grid.dominant
+		if not fill.has(cell.y):
+			fill[cell.y] = {}
+		var course: Dictionary = fill[cell.y]
+		if not course.has(Vector2i(cell.x, cell.z)):
+			course[Vector2i(cell.x, cell.z)] = colour
+	for index: Variant in gone:
+		for cell: Vector3i in room.cells_of.get(int(index), []):
+			wanted.call(cell, model.placements[int(index)].color)
+	for cell: Variant in region:
+		if not room.owner.has(cell):
+			wanted.call(cell, -1)
+	var again := Assistant.Model.new()
+	again.name = model.name
+	for index: int in model.placements.size():
+		if not gone.has(index):
+			again.placements.append(model.placements[index])
+	var into := Laid.new(again, checker)
+	var courses: Array = fill.keys()
+	courses.sort()
+	for y: Variant in courses:
+		var course: Dictionary = fill[y]
+		# Largest first, and of two the same size the one along this course's
+		# way: along x and along z in turn, so no joint has one over it.
+		var along_x: bool = int(y) % 2 == 0
+		var tiles: Array = Shapes.CORE_PLATES.duplicate()
+		tiles.sort_custom(func(a: Array, b: Array) -> bool:
+			var area_a: int = int(a[0]) * int(a[1])
+			var area_b: int = int(b[0]) * int(b[1])
+			if area_a != area_b:
+				return area_a > area_b
+			return (int(a[0]) > int(a[1])) == along_x and (int(b[0]) > int(b[1])) != along_x)
+		var cells: Array = course.keys()
+		cells.sort()
+		for key: Variant in cells:
+			var corner: Vector2i = key
+			if not course.has(corner):
+				continue
+			var colour: int = course[corner]
+			for entry: Array in tiles:
+				var fits: bool = true
+				for a: int in int(entry[0]):
+					for b: int in int(entry[1]):
+						fits = fits and int(course.get(corner + Vector2i(a, b), -2)) == colour
+				if not fits or into.put(str(entry[2]), colour, corner.x, int(y), corner.y,
+						int(entry[3])) < 0:
+					continue
+				for a: int in int(entry[0]):
+					for b: int in int(entry[1]):
+						course.erase(corner + Vector2i(a, b))
+				break
+	var recoloured: int = made_colours(again, options, checker.library)
+	var checked: Dictionary = _propped(again, checker, mend(again, checker, progress))
+	var out: Dictionary = _again(checked, report)
+	out["propped"] = int(report.get("propped", 0)) + int(checked["propped"])
+	out["recoloured"] = int(report.get("recoloured", 0)) + recoloured
+	for key: String in ["stand", "joined", "thin"]:
+		out[key] = report[key]
+	var covered: PackedByteArray = _covered(grid, again, checker, lift)
+	var count: int = 0
+	for one: int in covered:
+		count += one
+	out["coverage"] = float(count) / float(maxi(grid.cells, 1))
+	out["lost"] = _lost(grid, covered)
+	return {"model": again, "report": out, "undone": undone}
+
+
+## Props under the stud joints [param report] has past their working load
+## (a pillar under what each carries, down to whatever is under that or the
+## ground), kept only if fewer joints are past their load and nothing more
+## is loose: the check with them in, its "propped" how many parts they took,
+## or [param report] as it was. A figure's arm held out on one stud, a car's
+## bumper hung under its body.
+static func _propped(model: Assistant.Model, checker: Assistant, report: Dictionary) -> Dictionary:
+	report["propped"] = 0
+	var balance: Balance.Report = report.get("balance")
+	if balance == null or balance.over == 0:
+		return report
+	var was: int = model.placements.size()
+	var props: int = _prop(model, checker, balance)
+	if props > 0:
+		var after: Dictionary = checker._check(model, true, true, false, false)
+		var weighed: Balance.Report = after.get("balance")
+		if weighed != null and weighed.over < balance.over \
+				and _loose(after) <= _loose(report) and bool(after.get("ok", false)) \
+				== bool(report.get("ok", false)):
+			after = _again(after, report)
+			after["propped"] = props
+			return after
+		model.placements.resize(was)
+	return report
 
 
 ## Whether [param progress] was told to stop.
