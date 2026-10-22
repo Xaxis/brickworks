@@ -143,6 +143,9 @@ import {
   feed, feedCount, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
 } from "./_follows.js";
 import { designerOf, designs } from "./_designers.js";
+// The one model card, the browser's too (web/card.js): the page needs no
+// script to show its models.
+import { cardHtml } from "./_card.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -723,45 +726,6 @@ ${siteChrome().head}
 <script src="/designs.js" type="module"></script>` : ""}`;
 }
 
-/// A model's card, as the gallery draws one, made here so the page needs
-/// no script to show its models.
-///
-/// [earned]: a designer's page's card (supabase/designers.sql), which leads
-/// with what the model earned, builds finished and remixes, then comments
-/// and likes, says its Tested mark, and never its views.
-export function cardHtml(card, { earned = false } = {}) {
-  const picture = card.thumb ? `/m/${card.id}.webp${card.thumb.includes("?v=") ? `?v=${card.thumb.split("?v=")[1]}` : ""}`
-    : card.image ? `/m/${card.id}.png` : "";
-  const parts = count(card.parts, "part");
-  const said = [];
-  if (earned) {
-    if (card.builds) said.push(count(card.builds, "built", "built"));
-    if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
-    if (card.comments) said.push(count(card.comments, "comment"));
-    if (card.likes) said.push(count(card.likes, "like"));
-  } else {
-    if (card.views) said.push(count(card.views, "view"));
-    if (card.likes) said.push(count(card.likes, "like"));
-    if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
-    if (card.builds) said.push(count(card.builds, "built", "built"));
-  }
-  const tested = earned && card.tested ? `<small class="tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</small>` : "";
-  // What it won (supabase/challenges.sql), the newest first.
-  const won = (card.won || []).map((win) => `<small class="won">${escapeHtml(wonSaid(win))}</small>`).join("");
-  return `<a class="model" href="/m/${card.id}" data-id="${card.id}"${earned
-    ? ` data-builds="${Number(card.builds) || 0}" data-remixes="${Number(card.remixes) || 0}" data-comments="${Number(card.comments) || 0}"`
-    : ""}>`
-    + `<div class="frame${picture ? "" : " none"}">${picture
-      ? `<img src="${escapeHtml(picture)}" alt="${escapeHtml(card.name)}" width="1200" height="630" loading="lazy" decoding="async">`
-      : "No picture"}</div>`
-    + `<div class="words"><b title="${escapeHtml(card.name)}">${escapeHtml(card.name)}</b>`
-    + `<span>${escapeHtml(card.author ? `${parts}, by ${card.author}` : parts)}</span>`
-    + `<small>${escapeHtml(said.join(" · "))}</small>${tested}${won}</div></a>`;
-}
-
-// What the Tested mark means, said on hover, as the gallery's card says it.
-const TESTED_SAYS = "Stands at every step · every step reachable · every part made in its colour · nothing loose";
-
 function page(origin, { title, about, url, image, robots, main, mine = false }) {
   const { header, footer } = siteChrome();
   return `<!doctype html>
@@ -789,13 +753,17 @@ function missingPage(origin, what) {
 
 const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 
+/// A count is said once there is one: never "0 likes" (docs/SOCIAL.md).
+/// Kept on the page, hidden, where web/follow.js counts it again.
+const zero = (n) => (Number(n) ? "" : " hidden");
+
 /// The band a designer's page leads with: what their models earned, each
 /// the sum of what the cards below say. Builds finished and remixes first,
 /// as the gallery's Top builds weighs them; followers last. Followers is
 /// [data-followers], which web/follow.js counts again once somebody follows.
 function earnedHtml(earned, follows) {
   const tile = (kind, n, one, many, lead = false, extra = "") =>
-    `<li class="${lead ? "lead" : ""}" data-earned="${kind}"${extra}><b>${escapeHtml(Number(n).toLocaleString("en-US"))}</b> `
+    `<li class="${lead ? "lead" : ""}" data-earned="${kind}"${extra}${zero(n)}><b>${escapeHtml(Number(n).toLocaleString("en-US"))}</b> `
     + `<span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
   return `<ul class="earned" aria-label="What their models earned">`
     + tile("builds", earned.builds, "build finished", "builds finished", true)
@@ -860,12 +828,12 @@ async function profilePage(request, response) {
   const start = earned && first && first.builds > 0 ? first : null;
   const counts = earned
     ? `${earnedHtml(earned, follows)}
-  <p class="counts"><span>${escapeHtml(count(earned.likes, "like"))}</span>${follows && follows.ready
-    ? `<span>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`
-    : `<p class="counts"><span>${escapeHtml(count(about?.models ?? 0, "model"))} in the gallery</span>
-    <span>${escapeHtml(count(about?.likes ?? 0, "like"))}</span>${follows && follows.ready
-      ? `<span data-followers>${escapeHtml(count(follows.followers, "follower"))}</span>`
-        + `<span>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`;
+  <p class="counts"><span${zero(earned.likes)}>${escapeHtml(count(earned.likes, "like"))}</span>${follows && follows.ready
+    ? `<span${zero(follows.following)}>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`
+    : `<p class="counts"><span${zero(about?.models)}>${escapeHtml(count(about?.models ?? 0, "model"))} in the gallery</span>
+    <span${zero(about?.likes)}>${escapeHtml(count(about?.likes ?? 0, "like"))}</span>${follows && follows.ready
+      ? `<span data-followers${zero(follows.followers)}>${escapeHtml(count(follows.followers, "follower"))}</span>`
+        + `<span${zero(follows.following)}>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`;
   const main = `<div class="wrap person${earned ? " designer" : ""}" data-handle="${escapeHtml(person.handle)}">
   <p class="eyebrow">${earned ? "Designer" : "Builder"}</p>
   <h1>${escapeHtml(person.name)}</h1>
@@ -927,7 +895,7 @@ async function listPage(request, response) {
   <h1>${escapeHtml(list.name)}</h1>
   <p class="handle">${escapeHtml(count(list.count, "model"))}, collected by ${by}</p>
   ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
-  ${shown.models.length ? `<div class="models">${shown.models.map(cardHtml).join("")}</div>`
+  ${shown.models.length ? `<div class="models">${shown.models.map((card) => cardHtml(card)).join("")}</div>`
     : `<p class="note">Nothing in it is in the gallery just now.</p>`}
   <p class="note report-line"><button type="button" class="link" data-report="this collection"
     data-report-collection="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>

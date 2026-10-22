@@ -28,15 +28,15 @@
    Plain blocks, no studs: our own pictures draw no brick and knob. */
 .wall { display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; justify-content: center; margin: 0 auto 34px; }
 .wall span {
-	height: 28px; border-radius: 4px; position: relative;
-	box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+	height: 28px; border-radius: var(--r-1); position: relative;
+	box-shadow: inset 0 -3px 0 var(--shade), inset 0 1px 0 var(--shine);
 }
 .wall .r { background: var(--brick-red); }
 .wall .y { background: var(--brick-yellow); }
 .wall .b { background: var(--brick-blue); }
 .wall .g { background: var(--brick-green); }
 .wall .gap { background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
-.code { font-size: 14px; font-weight: 650; letter-spacing: 0.08em; color: var(--ink-faint); margin: 0 0 8px; }
+.code { font-size: var(--t-small); font-weight: 650; letter-spacing: 0.08em; color: var(--ink-faint); margin: 0 0 8px; }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>

@@ -26,6 +26,11 @@ SURFACES = ["--bg", "--bg-soft", "--panel", "--panel-hi", "--field"]
 # What marks a state without words: a pressed toggle's edge, the keyboard's
 # focus ring.
 EDGES = ["--accent-edge", "--focus"]
+# The kit (site.css "the kit"): an avatar made from a handle, its letter on
+# one of eight tiles; the toast, the page's colours the other way round.
+# A pill, a tab, an icon button and the more menu draw with the tokens
+# above, on the surfaces above, so those pairs measure them.
+AVATARS = [f"--avatar-{n}" for n in range(1, 9)]
 
 
 def block(selector: str) -> dict[str, str]:
@@ -75,6 +80,9 @@ def pairs() -> list[tuple[str, str, str, float, float]]:
         for edge in EDGES:
             for surface in SURFACES:
                 measured.append((theme, edge, surface, ratio(colour(tokens, edge), colour(tokens, surface)), 3.0))
+        for tile in AVATARS:
+            measured.append((theme, "--on-avatar", tile, ratio(colour(tokens, "--on-avatar"), colour(tokens, tile)), 4.5))
+        measured.append((theme, "--bg", "--ink", ratio(colour(tokens, "--bg"), colour(tokens, "--ink")), 4.5))
     return measured
 
 
@@ -82,6 +90,16 @@ def test_every_word_and_edge_is_seen_in_both_themes() -> None:
     short = [f"{theme}: {fg} on {bg} is {r:.2f}:1, under {least}:1"
              for theme, fg, bg, r, least in pairs() if r < least]
     assert not short, "\n".join(short)
+
+
+def test_the_kit_is_measured_in_both_themes() -> None:
+    measured = {(theme, fg, bg) for theme, fg, bg, *_ in pairs()}
+    for theme in ("dark", "light"):
+        assert all((theme, "--on-avatar", tile, ) in measured for tile in AVATARS), theme
+        assert (theme, "--bg", "--ink") in measured, theme
+    # Eight tiles, eight colours: no two handles' colours the same tile.
+    dark = themes()["dark"]
+    assert len({colour(dark, tile).lower() for tile in AVATARS}) == 8
 
 
 def test_the_browser_bar_is_the_page_in_each_theme() -> None:

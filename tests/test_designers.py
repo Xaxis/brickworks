@@ -112,9 +112,11 @@ def test_the_page_counts_as_its_cards_do() -> None:
 
 
 def test_a_designer_card_leads_with_builds_and_never_says_views() -> None:
-    card = js_function(PEOPLE, "cardHtml")
+    # The one card (web/card.js), which the profile page draws its models with.
+    assert 'import { cardHtml } from "./_card.js";' in PEOPLE
+    card = js_function((ROOT / "web/card.js").read_text(encoding="utf-8"), "cardHtml")
     earned = card[card.index("if (earned) {"): card.index("} else {")]
-    order = [earned.index(f"card.{kind})") for kind in ("builds", "remixes", "comments", "likes")]
+    order = [earned.index(f"model.{kind},") for kind in ("builds", "remixes", "comments", "likes")]
     assert order == sorted(order), "builds, remixes, comments, likes"
     assert "views" not in earned
 

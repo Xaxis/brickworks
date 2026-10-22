@@ -151,6 +151,8 @@ import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
+// The one model card, the browser's too (web/card.js): a model's remixes.
+import { cardHtml } from "./_card.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -633,22 +635,6 @@ function describe(row) {
   return row.author ? `${parts}, by ${row.author}` : parts;
 }
 
-const PAGE_STYLE = `
-  :root { color-scheme: light dark; --ink: #1d232b; --soft: #5b6573; --card: #fff; --page: #eef0f3; --accent: #c8102e; }
-  @media (prefers-color-scheme: dark) { :root { --ink: #e8ebef; --soft: #a3adba; --card: #1f252d; --page: #13171c; } }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--page); }
-  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 40px; }
-  .card { background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-  .card img { display: block; width: 100%; height: auto; aspect-ratio: 1200 / 630; object-fit: cover; background: #d9dce1; }
-  .body { padding: 16px 20px 20px; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; overflow-wrap: anywhere; }
-  p { margin: 0 0 14px; color: var(--soft); }
-  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-  a.button { display: inline-block; padding: 10px 16px; border-radius: 9px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; }
-  footer { margin-top: 18px; font-size: .9rem; color: var(--soft); }
-  footer small { display: block; margin-top: 6px; font-size: .8rem; }`;
-
 /// What a link preview reads: the title, a sentence, the picture.
 function pageHead(origin, row, id, title, { about = "", canonical = "" } = {}) {
   const link = links(origin, id);
@@ -765,21 +751,17 @@ ${rows.join("\n")}
 `);
 }
 
-/// A small card of a model, for the remix tree.
-function smallCard(card) {
-  const picture = card.has_thumb ? `/m/${card.id}.webp` : card.has_image ? `/m/${card.id}.png` : "";
-  return `<a class="mini" href="/m/${card.id}">`
-    + (picture ? `<img src="${picture}" alt="" width="1200" height="630" loading="lazy" decoding="async">`
-      : `<span class="none">No picture</span>`)
-    + `<b>${escapeHtml(card.name)}</b><span>${escapeHtml(describe(card))}</span></a>`;
-}
+/// A count is said once there is one, as a card says it: "0 likes" reads as
+/// a page nobody visits (docs/SOCIAL.md). Kept on the page, hidden, for the
+/// page's script to show when a like makes it one.
+const zero = (n) => (Number(n) ? "" : " hidden");
 
 /// The Tested mark, for a version that passed (api/_tested.js publicMark):
 /// small, the four results on hover (its title) and on a tap (it opens),
 /// and whose finding it is. Nothing for any other version.
 function testedMark(mark) {
   if (!mark) return "";
-  return `<details class="tested-mark" data-tested="yes"><summary title="${escapeHtml(mark.line)}">`
+  return `<details class="tested-mark" data-tested="yes"><summary class="pill good" title="${escapeHtml(mark.line)}">`
     + `<span class="tick" aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
     + `<ul>${mark.said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
     + `<p class="note">Worked out by the Brickworks app ${escapeHtml(mark.app)} as it was published, `
@@ -828,7 +810,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link",
   ].filter(Boolean);
   const tags = (model.tags || []).map((tag) =>
-    `<li><a href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
+    `<li><a class="pill tag" href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
   const line = (model.from || []).map((one) => one.id
     ? `<li><a href="/m/${one.id}">${escapeHtml(one.name)}</a>${one.author ? `, by ${escapeHtml(one.author)}` : ""}</li>`
     : "<li>a model shared by link</li>").join("");
@@ -869,12 +851,12 @@ ${header}
         + `<span class="said" role="status"></span></p>` : ""}
       ${fromLine}
       ${testedMark(mark)}
-      <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join("")}</ul>
+      <ul class="facts pills">${facts.map((fact) => `<li class="pill">${fact}</li>`).join("")}</ul>
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
-      <p class="counts"><span data-count="views">${count(model.views, "view")}</span>
-        <span data-count="likes">${count(model.likes, "like")}</span>
-        <span data-count="remixes">${count(model.remixes, "remix", "remixes")}</span>
-        <a data-count="builds" href="#builds-h">${count(model.builds, "built", "built")}</a></p>
+      <p class="counts"><span data-count="views"${zero(model.views)}>${count(model.views, "view")}</span>
+        <span data-count="likes"${zero(model.likes)}>${count(model.likes, "like")}</span>
+        <span data-count="remixes"${zero(model.remixes)}>${count(model.remixes, "remix", "remixes")}</span>
+        <a data-count="builds" href="#builds-h"${zero(model.builds)}>${count(model.builds, "built", "built")}</a></p>
       <div class="actions">
         <a class="cta" href="${escapeHtml(viewer)}">View in 3D</a>
         <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
@@ -899,7 +881,7 @@ ${header}
   ${versionsSection(id, versions, version)}
   ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
-  ${tags ? `<ul class="tags" aria-label="Tags">${tags}</ul>` : ""}
+  ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
   ${commentsSection(id, version.n, newest, version.steps ?? model.steps ?? null)}
   <section class="licence" aria-labelledby="licence-h"><h2 id="licence-h">Licence</h2>
     ${licenceWords(model)}</section>
@@ -907,7 +889,7 @@ ${header}
     ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
     ${listedRemixes.length || unlisted
       ? `<h3>Made from it</h3>${listedRemixes.length
-        ? `<div class="minis">${listedRemixes.map(smallCard).join("")}</div>` : ""}`
+        ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
         + (unlisted ? `<p class="note">${listedRemixes.length ? "And " : ""}${count(unlisted, "remix", "remixes")} `
           + `shared by link, not in the gallery.</p>` : "")
       : `<p class="note">Nobody has remixed it yet. Open in Brickworks makes a copy of your own to change;
@@ -1064,21 +1046,22 @@ function embedCard(origin, id, row) {
 <html lang="en">
 <head>
 ${pageHead(origin, row, id, `${row.name} — a Brickworks model`)}
-<style>${PAGE_STYLE}
-  body { background: var(--card); }
+<link rel="stylesheet" href="/site.css">
+<style>
+  /* The site's colours, type and corners (site.css); only the card's layout here. */
+  body { background: var(--panel); }
   a.whole { display: flex; flex-direction: column; height: 100vh; color: inherit; text-decoration: none; }
-  a.whole img { flex: 1; min-height: 0; width: 100%; object-fit: cover; background: #d9dce1; }
-  .bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
-  .bar div { flex: 1; min-width: 0; }
-  .bar b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar span { color: var(--soft); font-size: .9rem; }
-  .bar em { font-style: normal; font-weight: 600; color: #fff; background: var(--accent); padding: 7px 12px; border-radius: 8px; white-space: nowrap; }
+  a.whole img { flex: 1; min-height: 0; width: 100%; object-fit: cover; background: var(--bg-soft); }
+  .embed-bar { display: flex; align-items: center; gap: var(--s-3); padding: 10px 14px; }
+  .embed-bar .words { flex: 1; min-width: 0; display: grid; }
+  .embed-bar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .embed-bar small { color: var(--ink-soft); font-size: var(--t-small); }
 </style>
 </head>
 <body>
 <a class="whole" href="${escapeHtml(link.url)}" target="_blank" rel="noopener">
   ${row.has_image ? `<img src="/m/${id}.png" alt="${escapeHtml(row.name)}">` : `<img src="/share.png" alt="">`}
-  <span class="bar"><div><b>${escapeHtml(row.name)}</b><span>${escapeHtml(describe(row))} · Brickworks</span></div><em>View in 3D</em></span>
+  <span class="embed-bar"><span class="words"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small></span><span class="cta small">View in 3D</span></span>
 </a>
 </body>
 </html>`;
@@ -1132,7 +1115,8 @@ function pageCsp() {
   return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
     + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
-const EMBED_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
+// The site's stylesheet ('self'), so the card is drawn in the site's colours.
+const EMBED_CSP = "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors *";
 
 /// What the CDN may keep, and for how long: what every visitor is shown

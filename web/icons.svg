@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+<!-- The site's icons (web/kit.js iconHtml, site.css .icon): drawn in the
+     words' colour, 24 x 24, a 1.8 line; a pressed button fills its icon.
+     None is a LEGO® element or figure (docs/TRADEMARKS.md). -->
+<symbol id="like" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></symbol>
+<symbol id="save" viewBox="0 0 24 24"><path d="M6.5 3.8h11v16.7L12 16.6l-5.5 3.9z"/></symbol>
+<symbol id="share" viewBox="0 0 24 24"><path d="M12 15.5V3.8M7.8 8 12 3.8 16.2 8"/><path d="M5.5 12.5v6.2a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-6.2" fill="none"/></symbol>
+<symbol id="comment" viewBox="0 0 24 24"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-4.2 3.3a.5.5 0 0 1-.8-.4V16.5h-.5z"/></symbol>
+<symbol id="more" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></g></symbol>
+<symbol id="build" viewBox="0 0 24 24"><path d="M3.8 11.2h16.4v8.3H3.8z"/><path d="M6.6 11.2V8.6h3.6v2.6M13.8 11.2V8.6h3.6v2.6"/></symbol>
+</svg>

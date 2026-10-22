@@ -20,7 +20,14 @@
 //   controls of one kind that differ from each other there: the fields
 //     (text boxes, dropdowns, text areas, file pickers) in type, height,
 //     corners, border or fill; the checkboxes; the buttons of one size;
-//   and a page that scrolls sideways at 390 px.
+//   a page that scrolls sideways at 390 px;
+//   a count of none shown ("0 likes", "following 0"): a count is said once
+//     there is one (docs/SOCIAL.md);
+//   and, in any stylesheet or page style the page has, a font size, a
+//     corner or a colour off the token scale (site.css :root): a size not
+//     var(--t-*), a corner not var(--r-*) (or 0, or 50%), a colour written
+//     as itself rather than a token. Each such rule is named once, with its
+//     stylesheet, however many pages have it.
 //
 // With no --url nothing leaves this machine: the pages are served from
 // --root's web/ by the browser's own routing, the pages the server makes
@@ -160,6 +167,77 @@ function audit(scope) {
   return { controls: controls.length, findings };
 }
 
+/// Every declaration in the page's own stylesheets and style attributes
+/// that is off the token scale (site.css :root defines it, and only rules
+/// for :root may hold a literal). Runs in the page; returns
+/// [[sheet, selector, declaration]].
+function offScale() {
+  const found = [];
+  const colourProps = /^(color|background(-color|-image)?|border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-color)?|outline(-color)?|box-shadow|text-shadow|fill|stroke|accent-color|caret-color|text-decoration(-color)?|column-rule(-color)?)$/;
+  // Colour words a style might use; the rest of CSS's names are as wrong.
+  const named = /\b(white|black|red|green|blue|yellow|orange|purple|pink|gray|grey|silver|gold|navy|teal|maroon|olive|lime|aqua|fuchsia|brown|tan)\b/i;
+  const literal = /#[0-9a-f]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/i;
+  // A value with its tokens taken out: var(--x) and var(--x, fallback).
+  const bare = (value) => {
+    let out = value;
+    for (let guard = 0; guard < 8 && /var\(/.test(out); guard += 1) out = out.replace(/var\([^()]*(\([^()]*\)[^()]*)*\)/g, " ");
+    return out;
+  };
+  const judge = (sheet, selector, text) => {
+    const root = /^:root\b/.test(selector.trim());
+    for (const one of text.split(/;(?=\s*[-\w]+\s*:)/)) {
+      const at = one.indexOf(":");
+      if (at < 0) continue;
+      const prop = one.slice(0, at).trim().toLowerCase();
+      const value = one.slice(at + 1).replace(/!important/i, "").trim();
+      if (!prop || !value) continue;
+      const said = `${prop}: ${value}`;
+      if (prop.startsWith("--")) {
+        // A token is made in :root and nowhere else.
+        if (!root) found.push([sheet, selector, `${said} (a token made outside :root)`]);
+        continue;
+      }
+      if (prop === "font-size" && !/^(var\(--t-[\w-]+\)|inherit)$/.test(value)) found.push([sheet, selector, said]);
+      if (prop === "font" && /(^|[\s/])\d*\.?\d+(px|em|rem|pt|%)/.test(bare(value))) found.push([sheet, selector, said]);
+      if (/radius$/.test(prop) && !value.split(/\s+\/?\s*/).every((part) => /^(var\(--(r-[\w-]+|radius|control-radius)\)|0(px)?|50%|inherit|\/)$/.test(part))) {
+        found.push([sheet, selector, said]);
+      }
+      if (colourProps.test(prop) && (literal.test(bare(value)) || named.test(bare(value).replace(/url\([^)]*\)/g, "")))) {
+        found.push([sheet, selector, said]);
+      }
+    }
+  };
+  const walk = (sheet, rules) => {
+    for (const rule of rules) {
+      if (rule.style && rule.selectorText !== undefined) judge(sheet, rule.selectorText, rule.style.cssText);
+      if (rule.cssRules && !(rule instanceof CSSKeyframesRule)) walk(sheet, rule.cssRules);
+    }
+  };
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      continue; // another site's, which this cannot read
+    }
+    const name = sheet.href ? new URL(sheet.href).pathname : `<style> of ${location.pathname}`;
+    walk(name, rules);
+  }
+  for (const el of document.querySelectorAll("[style]")) {
+    judge(`style="" of ${location.pathname}`, el.tagName.toLowerCase() + (el.id ? `#${el.id}` : ""), el.style.cssText);
+  }
+  return found;
+}
+
+/// A count of none said where a person reads it ("0 likes", "following
+/// 0"). Runs in the page, on what is shown; returns the words found.
+function zeroCounts() {
+  const words = "likes?|views?|remix(es)?|built|builds?( finished)?|comments?|followers?|favourites?|saves?|photos?|votes?";
+  const shown = document.body.innerText;
+  return [...shown.matchAll(new RegExp(`(?<![\\d.,])0\\s+(${words})\\b|\\bfollowing\\s+0(?![\\d.,])`, "gi"))]
+    .map((match) => match[0].replace(/\s+/g, " "));
+}
+
 // --- the pages, and the dialogs each opens ----------------------------------
 
 const AUTHORIZE = "/oauth/authorize?response_type=code&client_id=design-flow&redirect_uri="
@@ -253,6 +331,15 @@ const PAGES = [
   { name: "privacy", path: "/privacy" },
   { name: "takedown", path: "/takedown" },
   { name: "404", path: "/no-such-page-here" },
+  // Every component once (web/_kit.html, never published): what no page
+  // uses yet is judged as the pages are, its "more" menu open.
+  { name: "kit", path: "/_kit", local: true,
+    ready: (page) => until(page, () => document.querySelectorAll("#cards .model").length === 3),
+    open: async (page) => {
+      await page.click("#more summary");
+      const opened = await until(page, () => document.querySelector("#more[open]"));
+      return [[opened ? "more" : "more (missing)", "#more"]];
+    } },
 ];
 
 // --- run ---------------------------------------------------------------------
@@ -298,6 +385,9 @@ const browser = await launch({ signedOut: true });
 const errors = [];
 let states = 0;
 let controls = 0;
+// Each declaration off the token scale, once however many pages have it:
+// "sheet | selector | declaration" -> the first page it was seen on.
+const offScaleSeen = new Map();
 
 async function judge(page, label, what, scope, file) {
   states += 1;
@@ -313,6 +403,13 @@ async function judge(page, label, what, scope, file) {
     && await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
     said.findings.push(["the page", "scrolls sideways at 390 px"]);
   }
+  if (!scope) {
+    for (const words of await page.evaluate(zeroCounts)) said.findings.push(["the page", `shows a count of none: "${words}"`]);
+    for (const [sheet, selector, declaration] of await page.evaluate(offScale)) {
+      const key = `${sheet} | ${selector} | ${declaration}`;
+      if (!offScaleSeen.has(key)) offScaleSeen.set(key, where);
+    }
+  }
   for (const [control, why] of said.findings) fail(where, `${control}: ${why}`);
   if (!said.findings.length) {
     passed += 1;
@@ -326,7 +423,7 @@ async function judge(page, label, what, scope, file) {
 
 try {
   for (const one of PAGES) {
-    if ((only && !only.includes(one.name)) || one.skip) continue;
+    if ((only && !only.includes(one.name)) || one.skip || (remote && one.local)) continue;
     for (const signedIn of one.signedInOnly ? [true] : [false, true]) {
       for (const width of widths) {
         for (const theme of themes) {
@@ -376,6 +473,9 @@ try {
   await browser.close();
 }
 for (const error of errors) fail("script", error);
+// Off the scale: one failure a rule, named with its stylesheet.
+for (const [key, where] of offScaleSeen) fail("style", `${key}: off the token scale (first on ${where})`);
+if (!offScaleSeen.size && states) console.log("  ok    style: every font size, corner and colour on the token scale");
 // A check is a page or a dialog judged.
 console.log(`\ndesign flow: ${states} pages and dialogs, ${controls} controls; ${passed} checks passed, ${failed} failed`);
 if (failed) {
