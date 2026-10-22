@@ -8,13 +8,18 @@ for max_studs is not offered, and no set fills the answer on its own.
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import snippets  # noqa: E402
+import style  # noqa: E402
 
 
 def _entry(id: str, name: str, set_name: str, size=(2, 1, 2), kinds=(), text="",
@@ -124,3 +129,34 @@ def test_a_mirror_image_is_not_square() -> None:
     assert snippets._square([0, 0, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
     assert not snippets._square([0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, 1])
     assert not snippets._square([0, 0, 0, 0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707])
+
+
+def test_a_description_stays_with_the_parts_it_was_written_from() -> None:
+    # A cluster's id is its rank in its set. Rebuilt, cluster-2 can be
+    # other parts, and must not keep the words written about the old ones.
+    kept = _entry("1-1/cluster-1", "slope work in body", "Car")
+    kept["bom"] = [["3040b", 4, 2]]
+    moved = _entry("1-1/cluster-2", "plate work in body", "Car")
+    moved["bom"] = [["3023b", 0, 3]]
+    with tempfile.TemporaryDirectory() as folder:
+        texts = Path(folder) / "texts.jsonl"
+        texts.write_text("".join(json.dumps(row) + "\n" for row in [
+            {"id": kept["id"], "text": "two red slopes", "of": snippets.looked_at(kept)},
+            {"id": moved["id"], "text": "a white wing",
+             "of": snippets.looked_at({"bom": [["3001", 15, 1]]})}]))
+        out = Path(folder) / "index.json"
+        snippets._finish([kept, moved], out, texts, Path(folder) / "no-verdicts.jsonl")
+        said = {e["id"]: e["text"] for e in snippets.load(out)["entries"]}
+    assert said == {"1-1/cluster-1": "two red slopes", "1-1/cluster-2": ""}
+
+
+@pytest.mark.skipif(not style.CATALOGUE.exists(), reason="no catalogue.json")
+def test_a_piece_measures_what_its_parts_cover() -> None:
+    # Two 1 x 2 slopes back to back, 3 studs apart: 1 x 4 studs. With the
+    # boxes mirrored front to back each lay on the far side of its own
+    # studs, and the pair measured 1 x 6 (7745-1's track oval 209 x 161,
+    # where it is 136 x 88).
+    placed = [("3040b.dat", 4, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]),
+              ("3040b.dat", 4, [0, 0, -60, -1, 0, 0, 0, 1, 0, 0, 0, -1])]
+    _, size = snippets._standing(placed, snippets._boxes(placed, style.Parts()))
+    assert size == [1.0, 3.5, 4.0]
