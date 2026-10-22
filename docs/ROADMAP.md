@@ -1812,17 +1812,33 @@ non-commercial use only and are left out of everything built from them.
 **The index**, `tools/snippets.py build` -> `assets/knowledge/snippets.json.gz`
 (3.6 MB with its descriptions; the desktop builds carry it, the web build fetches it from beside
 itself the first time a design asks): **9,555 named sub-models of 2-60
-building parts and 3,412 clusters of craft** (three a model, round
+building parts and 3,509 clusters of craft** (three a model, round
 brackets, hinges and slopes, `omr.found_clusters`), from 1,185 sets by 76
 modellers, every one credited, CC BY 2.0 and 4.0 only. Each with its size
 in studs, its parts and colours, its kinds by `tools/style.py`, and the
-LDraw to lay it as built; 10,699 are square to the grid and can be laid
+LDraw to lay it as built; 10,795 are square to the grid and can be laid
 by `place_technique`, the rest are shown to copy. Search is lexical, BM25
 over the name, what it sits in, a description, synonyms and kinds, and
 the set; the subject's own sets first, then sets about its kind. No
 vector database: whether embeddings would earn a place is what the recall
 below is for. The app reads the index in 2.5 s the first time a design
 asks (desktop).
+
+**Rebuilt with the part boxes the right way round (2026-10-21).** Until
+`tools/style.py` was fixed (style59) every lopsided part's box lay on the
+far side of its own origin, so sizes were wrong and clusters were cut
+from the wrong neighbours: 7745's track oval read 209 x 161 studs and is
+136 x 88. Measured against every part's own LDraw mesh as placed, 10,767
+of 10,795 square pieces now come to the size the index says, against
+5,718 of 10,699 before; seven picked by hand (two track ovals, 42094's
+side, 8835's equipment, 8880's step 26, 4993's bumper, 6950's rocket
+hinge) match to the tenth of a stud. 4,388 of 9,555 named pieces changed
+size; 2,413 of 3,366 clusters found other parts under the same id, and
+143 are new. Those 2,556 were described again the way they were first
+(71 sheets of 36, Sonnet on the subscription), and each description now
+keeps the parts it was written from (`looked_at`), so a rebuild that
+changes a piece takes its old words away and the next `batches` asks
+again. Laid alone with today's checker, 6,057 of the 10,795 lay whole.
 
 **Recall, ten queries written down before the index existed**: did the
 top five hold something an expert would use? Judged on the pictures

@@ -156,7 +156,7 @@ def test_a_piece_measures_what_its_parts_cover() -> None:
     # boxes mirrored front to back each lay on the far side of its own
     # studs, and the pair measured 1 x 6 (7745-1's track oval 209 x 161,
     # where it is 136 x 88).
-    placed = [("3040b.dat", 4, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]),
-              ("3040b.dat", 4, [0, 0, -60, -1, 0, 0, 0, 1, 0, 0, 0, -1])]
+    placed = [("3040b.dat", 4, [0.0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]),
+              ("3040b.dat", 4, [0.0, 0, -60, -1, 0, 0, 0, 1, 0, 0, 0, -1])]
     _, size = snippets._standing(placed, snippets._boxes(placed, style.Parts()))
     assert size == [1.0, 3.5, 4.0]

@@ -1784,8 +1784,10 @@ fixing what it got wrong.
   about the query's subject come first, then sets about its kind (`SUBJECTS`: an
   owl, then birds and animals), at most two a set; the subject word itself counts
   0.3 in the score (`SUBJECT_WEIGHT`), so within the subject's sets the feature
-  decides ("bird beak": a parrot's beak before whole birds). 12,954 of 12,967
-  pieces are described (360 sheets, Sonnet on the subscription, ~21 s a sheet).
+  decides ("bird beak": a parrot's beak before whole birds). 13,051 of 13,064
+  pieces are described (Sonnet on the subscription, ~21 s a sheet of 36); a
+  description keeps the parts it was written from (`looked_at`), and one whose
+  piece now has other parts is dropped and asked for again by `batches`.
   Recall on ten queries written beforehand (`docs/ROADMAP.md`): 8 of 10 with
   something an expert would use on names alone, 9 with descriptions; the miss
   left is the corpus (no owl or dragon set). `find_techniques` answers with
@@ -1998,7 +2000,7 @@ fixing what it got wrong.
   built at an angle or mirrored (`square` false) are shown, not placed.
   `src/dev/snippet_verdicts.gd` lays every square piece alone the same way and
   checks it (`vendor/omr/snippet_verdicts.jsonl`, folded in as `lays`/`why`):
-  4,487 of 10,699 lay whole; search counts those 1.25 times and the answer says
+  6,057 of 10,795 lay whole; search counts those 1.25 times and the answer says
   of each whether it lays. `tools/snippets.py build --from INDEX` redoes only
   subjects, descriptions, verdicts and terms, in seconds.
   `find_parts_like` searches `assets/knowledge/part_looks.json`: the 600 part
