@@ -137,13 +137,9 @@ echo "── python ──"
 if python3 -c 'import pytest' 2>/dev/null; then
   suite=(python3 -m pytest tests/ -q)
 else
-  suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
-    tests/test_release.py tests/test_minifig.py tests/test_elements.py \
-    tests/test_merge_featuremap.py tests/test_lens.py tests/test_bench.py \
-    tests/test_snippets.py tests/test_trademarks.py tests/test_gears.py \
-    tests/test_steps_score.py tests/test_realset.py tests/test_cadtask.py \
-    tests/test_cadtask_klm.py tests/test_packed_casts.py tests/test_play.py \
-    tests/test_motions.py tests/test_site_shell.py)
+  # Every test file, not a list: a list kept by hand had missed 12 of 31,
+  # the library's and the site's contrast among them (2026-10-22).
+  suite=(python3 tools/minitest.py tests/test_*.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
