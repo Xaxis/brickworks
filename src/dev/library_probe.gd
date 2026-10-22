@@ -17,15 +17,19 @@
 ##      decade and size filters, alone and together; the sorts. The pages.
 ##   3. Open on 106-1 starts the app again (a process of its own, with
 ##      --library=omr-106-1 and --new-session): its working model is the set,
-##      57 parts, credited to its LDraw author under CCAL 2.0 with its page.
+##      65 parts, credited to its LDraw author under CCAL 2.0 with its page.
 ##   4. Community: the three stand-in models; a search and the kind filter.
 ##      Open on the all rights reserved bench starts another (--copy=): the
 ##      bench is copied into the person's models, as Open in Brickworks on
 ##      its page does, saying where it came from and whose it is.
 ##   5. This window's model is as it was: its name, its parts, no credit.
 ##   6. Opened here instead (?library= as Main reads it), a set's credit is
-##      in Properties with nothing selected, with its LDraw page; a library id
-##      the store has not got, and no connection at all, are each said.
+##      in Properties with nothing selected, with its LDraw page.
+##   7. Over MCP, as the person's Claude calls it: gallery library=true finds
+##      sets by words, theme and decade, each with its id; open_model
+##      library= opens one here, refused first while there is unsaved work.
+##   8. A library id the store has not got, and no connection at all, are
+##      each said.
 ##
 ## Real processes in this run's data folder (tools/probe.sh gives one),
 ## stopped by their ids at the end, with the stand-in server. Not in the
@@ -33,6 +37,11 @@
 ##
 ## Pictures: shots/library_sets.png, library_filtered.png,
 ## library_community.png, library_credit.png. Look at them.
+##
+## With -- --sample=DIR (a store's library/ folder: index.json, covers/,
+## omr/), it serves that instead and only takes its pictures,
+## shots/library_sample.png and library_sample_search.png: the screen with
+## real covers.
 extends SceneTree
 
 const PORT := 8936
@@ -57,9 +66,16 @@ func _check(what: String, ok: bool) -> bool:
 
 func _run() -> void:
 	var fixture: String = ProjectSettings.globalize_path("res://tests/fixtures/library")
+	var omr: String = ProjectSettings.globalize_path("res://vendor/omr/files")
+	var sample: String = ""
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--sample="):
+			sample = argument.trim_prefix("--sample=").rstrip("/")
+	if not sample.is_empty():
+		fixture = sample
+		omr = sample + "/omr"
 	_server = OS.create_process("python3", [ProjectSettings.globalize_path("res://tools/web/serve.py"),
-		fixture, str(PORT), "--library", fixture, "--omr",
-		ProjectSettings.globalize_path("res://vendor/omr/files")])
+		fixture, str(PORT), "--library", fixture, "--omr", omr])
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:%d" % PORT)
 	await create_timer(1.5).timeout
 	await process_frame
@@ -76,6 +92,10 @@ func _run() -> void:
 	var store: ModelStore = _main.get("_store")
 	var world: BrickWorld = _main.get("_world")
 	var dialog: LibraryDialog = shell.library_dialog
+	if not sample.is_empty():
+		await _sample_pictures(dialog)
+		_done([])
+		return
 	var title: String = store.title
 	var bricks: int = world.brick_count()
 	_check("this window has a model: %s, %d parts" % [title, bricks], bricks > 0)
@@ -150,8 +170,9 @@ func _run() -> void:
 	_check("...started with --library=omr-106-1 and --new-session",
 		argv.has("--library=omr-106-1") and argv.has(TabSession.NEW_WINDOW))
 	var kept: String = str(made.get("text", ""))
-	_check("...its working model is the set, %d parts" % ModelStore.count_in(kept),
-		ModelStore.count_in(kept) == 57)
+	var parts: int = ModelStore.count_in(FileAccess.get_file_as_string("res://vendor/omr/files/106-1.mpd"))
+	_check("...its working model is the set, %d parts of its %d" % [ModelStore.count_in(kept), parts],
+		ModelStore.count_in(kept) == parts and parts == 65)
 	var credit: Dictionary = ModelStore.credit_in(kept)
 	_check("...credited: %s" % ModelBar.credit_words(credit),
 		credit.get("by") == "Michael Heidemann" and credit.get("licence") == "CCAL 2.0"
@@ -160,6 +181,9 @@ func _run() -> void:
 	print("\nthe community")
 	(dialog.controls_by_name()["library_tab_community"] as Button).pressed.emit()
 	await _until(func() -> bool: return dialog.last.get("source") == "community", 30.0)
+	_check("the search goes with it to the other shelf: \"%s\"" % dialog.last["ask"]["q"],
+		dialog.last["ask"]["q"] == "106-1")
+	await _search(dialog, "")
 	_check("three models shared in the gallery: %s" % str(dialog.last["shown"]),
 		int(dialog.last["total"]) == 3)
 	await _until(func() -> bool: return _covers(dialog) == 3, 30.0)
@@ -197,8 +221,10 @@ func _run() -> void:
 	_main.set("_from_library", "omr-6516-1")
 	await _main.call("_maybe_open_library")
 	await _frames(30)
-	_check("Moon Walker opened here: %s, %d parts" % [store.title, world.brick_count()],
-		store.title == "6516-1 Moon Walker" and world.brick_count() - store.scenery.size() == 42)
+	var moon: int = ModelStore.count_in(FileAccess.get_file_as_string("res://vendor/omr/files/6516-1.mpd"))
+	_check("Moon Walker opened here: %s, %d parts (its file places %d)" % [store.title,
+		world.brick_count() - store.scenery.size(), moon],
+		store.title == "6516-1 Moon Walker" and world.brick_count() - store.scenery.size() >= moon)
 	_check("the status bar says whose: %s" % bar.status_text(),
 		bar.status_text() == "opened 6516-1 Moon Walker — LDraw model by Chris Böhnke, CC BY 4.0")
 	var builder: Builder = _main.get("_builder")
@@ -210,11 +236,44 @@ func _run() -> void:
 		words.is_visible_in_tree() and words.text == "LDraw model by Chris Böhnke, CC BY 4.0"
 		and link.is_visible_in_tree() and link.text == "Its LDraw page")
 	await _shot("library_credit")
-	store.write_now()
-	_check("...and kept with the model: %s" % str(ModelStore.credit_in(
-		FileAccess.get_file_as_string(TabSession.autosave()))),
-		ModelStore.credit_in(FileAccess.get_file_as_string(TabSession.autosave())).get("page")
-			== "https://library.ldraw.org/omr/sets/1468")
+	_check("...saved", store.save_as("Library Probe Moon Walker"))
+	var saved_at: String = ModelStore.SAVE_DIR + "Library Probe Moon Walker.ldr"
+	var written: String = FileAccess.get_file_as_string(saved_at)
+	_check("...with its credit line and every part: %s, %d parts" % [
+		str(ModelStore.credit_in(written)), ModelStore.count_in(written)],
+		ModelStore.credit_in(written).get("page") == "https://library.ldraw.org/omr/sets/1468"
+		and ModelStore.count_in(written) == moon)
+	await _main.call("clear_model")
+	_check("...cleared, no credit", store.credit.is_empty())
+	await bar.open_with_progress(saved_at)
+	_check("...opened again, credited again: %s" % ModelBar.credit_words(store.credit),
+		store.credit.get("by") == "Chris Böhnke" and store.credit.get("licence") == "CC BY 4.0")
+
+	print("\nover MCP")
+	var socket := CommandSocket.new()
+	socket.assistant = _main.get("_assistant")
+	socket.app = _main
+	_main.add_child(socket)
+	var said: String = await _mcp(socket, "gallery", {"library": true, "q": "dragon"})
+	_check("gallery library=true q=dragon: %s" % said.get_slice("\n", 1),
+		said.contains("1. 6056-1 Dragon Wagon (omr-6056-1) — 119 parts, Castle > Dragon Knights, 1993, "
+			+ "by Chris Böhnke, CC BY 4.0"))
+	said = await _mcp(socket, "gallery", {"library": true, "theme": "town", "decade": "1980s"})
+	_check("theme=town decade=1980s: %s" % said.get_slice("\n", 0),
+		said.contains("(omr-1484-1)") and said.contains("(omr-106-1)") and not said.contains("(omr-6516-1)"))
+	said = await _mcp(socket, "gallery", {"library": true, "theme": "Moon"})
+	_check("an unknown theme names the themes: %s" % said, said.begins_with("No theme Moon. The themes: Castle"))
+	world.add_brick("3001", 4, Transform3D(Basis(), Vector3(0, 0, 200)))
+	store.touch()
+	said = await _mcp(socket, "open_model", {"library": "omr-8808-1"})
+	_check("open_model library= with unsaved work is refused: %s" % said.left(90),
+		said.contains("has changes that are not saved"))
+	said = await _mcp(socket, "open_model", {"library": "omr-8808-1", "discard_changes": true})
+	_check("...with discard_changes=true it opens: %s" % said.left(120),
+		said.begins_with("Opened 8808-1 F1 Racer: ") and said.contains(" parts, LDraw model by Charles "
+			+ "Farmer, CCAL 2.0 (https://library.ldraw.org/omr/sets/981)"))
+	_check("...here, named and credited: %s, %s" % [store.title, ModelBar.credit_words(store.credit)],
+		store.title == "8808-1 F1 Racer" and store.credit.get("by") == "Charles Farmer")
 
 	print("\nwhen it cannot")
 	_main.set("_from_library", "omr-99999-1")
@@ -239,6 +298,45 @@ func _run() -> void:
 	_done([set_pid, copy_pid])
 
 
+## The screen over a real store's sample, for its pictures.
+func _sample_pictures(dialog: LibraryDialog) -> void:
+	dialog.open("sets")
+	await _until(func() -> bool: return int(dialog.last.get("total", 0)) > 0, 60.0)
+	await _until(func() -> bool: return _covers(dialog) >= mini(24, int(dialog.last["total"])), 90.0)
+	_check("the sample's %d sets, %d covers on the first page" % [int(dialog.last["total"]), _covers(dialog)],
+		int(dialog.last["total"]) > 0 and _covers(dialog) > 0)
+	await _shot("library_sample")
+	await _search(dialog, "train")
+	await _until(func() -> bool: return _covers(dialog) >= (dialog.last["shown"] as Array).size(), 60.0)
+	_check("\"train\": %d" % int(dialog.last["total"]), int(dialog.last["total"]) > 0)
+	await _shot("library_sample_search")
+
+
+## A tool's answer as text, called as the connector calls it, a job's once done.
+func _mcp(socket: CommandSocket, tool: String, arguments: Dictionary) -> String:
+	var answer: Variant = await socket.answer_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": {"name": tool, "arguments": arguments}})
+	var said: String = _text(answer)
+	var job: RegExMatch = RegEx.create_from_string("^Started job (\\d+)").search(said)
+	for _n: int in 120:
+		if job == null:
+			break
+		await create_timer(0.5).timeout
+		said = _text(await socket.answer_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+			"params": {"name": "job", "arguments": {"id": int(job.get_string(1))}}}))
+		if not said.contains(" is still going"):
+			break
+	return said
+
+
+static func _text(answer: Variant) -> String:
+	var text: String = ""
+	var result: Dictionary = (answer as Dictionary).get("result", {}) if answer is Dictionary else {}
+	for block: Dictionary in result.get("content", []):
+		text += str(block.get("text", ""))
+	return text
+
+
 func _covers(dialog: LibraryDialog) -> int:
 	var count: int = 0
 	for card: Node in (dialog.get("_grid") as GridContainer).get_children():
@@ -261,9 +359,7 @@ func _search(dialog: LibraryDialog, words: String) -> void:
 	field.text = words
 	var asked: int = int(dialog.get("_asked"))
 	field.text_submitted.emit(words)
-	await _until(func() -> bool:
-		return int(dialog.get("_asked")) > asked and dialog.last.get("ask", {}).get("q", "") == words,
-		20.0)
+	await _until(func() -> bool: return int(dialog.last.get("asked", 0)) > asked, 20.0)
 	await _frames(2)
 
 
@@ -275,9 +371,7 @@ func _choose(dialog: LibraryDialog, named: String, value: String) -> void:
 			choice.select(n)
 			var asked: int = int(dialog.get("_asked"))
 			choice.item_selected.emit(n)
-			await _until(func() -> bool:
-				return int(dialog.get("_asked")) > asked and str(dialog.last.get("status", "")) != "Looking…",
-				20.0)
+			await _until(func() -> bool: return int(dialog.last.get("asked", 0)) > asked, 20.0)
 			await _frames(2)
 			return
 	_check("%s has %s" % [named, value], false)

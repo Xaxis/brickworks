@@ -335,7 +335,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   File menu's; all eight sets with covers, newest first; "dragon" and "106-1";
   Town, Town in the 1980s, small, large by most parts, fewest first. Open on
   106-1 starts a process with `--library=omr-106-1 --new-session` whose
-  working model is the set (57 parts) with its credit line; Community shows
+  working model is the set (65 parts) with its credit line; Community shows
   three with pictures, Vehicles, "bench", and Open copies the bench in a
   process with `--copy=LibStubBch` (43 parts, REMIX and CREDIT lines, saved
   as "Stub Park Bench"). The probe's own model is unchanged. Then 6516-1
@@ -348,7 +348,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Playwright's route from `tests/fixtures/library`, so a local export and a
   deployment run the same. Tab A's File > Library… (by its keys), eight sets
   with covers, "dragon", Town typed into the theme list, Small; Open on 106-1
-  opens tab B at `?new=1&library=omr-106-1` with 57 parts, its credit and the
+  opens tab B at `?new=1&library=omr-106-1` with 65 parts, its credit and the
   Properties link; Community's three with pictures, Open on the bench opens
   tab C at `?new=1&copy=LibStubBch`, copied and credited; A unchanged.
   Pictures at 1400 x 900 and 390 x 844, dark and light.

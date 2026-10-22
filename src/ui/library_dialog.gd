@@ -73,6 +73,7 @@ var _asked: int = 0
 ## What the shelf said last, for a probe and the page.
 var last: Dictionary = {}
 
+## What Open did, for the status bar: the screen's own line says the rest.
 signal said(text: String)
 
 
@@ -112,9 +113,11 @@ func controls_by_name() -> Dictionary:
 
 func _fit() -> void:
 	var room: Vector2 = get_viewport().get_visible_rect().size
-	var margin: float = 24.0 if room.x > 640.0 else 6.0
+	# A phone's whole screen: the covers want the height more than a margin.
+	var narrow: bool = room.x < 900.0
+	var margin: float = 6.0 if narrow else 24.0
 	var wide: float = minf(WIDE, room.x - margin * 2.0)
-	var tall: float = minf(TALL, room.y - margin * 2.0)
+	var tall: float = room.y - margin * 2.0 if narrow else minf(TALL, room.y - margin * 2.0)
 	set_anchors_preset(Control.PRESET_CENTER)
 	offset_left = -wide * 0.5
 	offset_right = wide * 0.5
@@ -376,7 +379,7 @@ func _fill() -> void:
 	_next.disabled = not (_page < _pages or _more)
 	_page_words.text = ("Page %d of %d" % [_page, _pages]) if _source == "sets" else "Page %d" % _page
 	_say(str(found.get("said", "")))
-	last = {"source": _source, "ask": asking(), "total": int(found.get("total", _shown.size())),
+	last = {"asked": asked, "source": _source, "ask": asking(), "total": int(found.get("total", _shown.size())),
 		"shown": _shown.map(func(one: Dictionary) -> String: return str(one["id"])),
 		"status": _status.text}
 	_lay_cards()
@@ -584,12 +587,12 @@ func _open_card(card: Dictionary) -> void:
 		_say("Copying “%s” into your models in a new %s%s." % [card["name"], where,
 			"" if OS.has_feature("web") else ": it takes a moment to start"])
 	last["opened"] = card["id"]
+	said.emit(_status.text)
 	_tell_page()
 
 
 func _say(text: String) -> void:
 	_status.text = text
-	said.emit(text)
 
 
 ## What the screen shows, for a browser test to read: window.brickworksLibrary.

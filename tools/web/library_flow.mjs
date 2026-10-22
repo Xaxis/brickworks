@@ -17,8 +17,8 @@
 //   1. Tab A, signed in, has its model. File > Library… (the File menu, by
 //      its keys) opens the screen on the LDraw sets: eight, with covers.
 //   2. A search ("dragon"), the theme filter chosen by typing in its list
-//      (Town), the size filter (Small).
-//   3. Open on 106-1 opens tab B at ?new=1&library=omr-106-1: the set, 57
+//      (Town: three), the size filter (Small: two of them).
+//   3. Open on 106-1 opens tab B at ?new=1&library=omr-106-1: the set, 65
 //      parts, named "106-1 UNICEF Van", credited to its LDraw author under
 //      CCAL 2.0 with its LDraw page in Properties; ?library gone from its
 //      address.
@@ -51,6 +51,12 @@ const omr = path.join(root, "vendor/omr/files");
 const gallery = JSON.parse(readFileSync(path.join(fixture, "gallery.json"), "utf8")).models;
 
 let failed = 0;
+// Waits on [ok] first (a promise), then words the line: [what] may be a
+// function, read once the wait is over.
+async function checkAfter(what, ok) {
+  const passed = await ok;
+  return check(typeof what === "function" ? await what() : what, passed);
+}
 function check(what, ok) {
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}`);
   if (!ok) failed += 1;
@@ -129,6 +135,26 @@ async function settle(page) {
   await page.waitForTimeout(3000);
 }
 const tabOf = (page) => page.evaluate(() => window.brickworksTab || "");
+// Where the engine keeps user:// in the browser's storage.
+const USER = "/userfs/godot/app_userdata/Brickworks";
+// A file the app keeps in the browser's storage, as text, or null.
+async function stored(page, file) {
+  return page.evaluate((at) => new Promise((resolve) => {
+    const req = indexedDB.open("/userfs");
+    req.onerror = () => resolve(null);
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("FILE_DATA")) { db.close(); resolve(null); return; }
+      const get = db.transaction("FILE_DATA", "readonly").objectStore("FILE_DATA").get(at);
+      get.onsuccess = () => {
+        db.close();
+        const v = get.result;
+        resolve(v && v.contents ? new TextDecoder().decode(v.contents) : null);
+      };
+      get.onerror = () => { db.close(); resolve(null); };
+    };
+  }), `${USER}/${file}`);
+}
 const shown = async (page) => JSON.stringify((await shelf(page)).shown || []);
 async function click(page, name) {
   const at = await controlAt(page, name, 60);
@@ -142,6 +168,7 @@ async function search(page, words, want) {
   if (words) await page.keyboard.type(words, { delay: 40 });
   else await page.keyboard.press("Delete");
   await page.keyboard.press("Enter");
+  if (want === null) return until(async () => ((await shelf(page)).ask || {}).q === "", 30);
   return until(async () => (await shown(page)) === JSON.stringify(want), 30);
 }
 // One of a filter's items, chosen in its list by typing its first letters,
@@ -193,21 +220,22 @@ try {
   }
   await a.keyboard.press("Enter");
   check("File > Library… opens the screen", await until(async () => (await shelf(a)).open === true, 30));
-  check(`on the LDraw sets, all eight: ${await shown(a)}`,
-    await until(async () => (await shelf(a)).source === "sets" && (await shelf(a)).total === 8, 120));
-  check(`...each with its cover: ${(await shelf(a)).covers}`,
-    await until(async () => (await shelf(a)).covers === 8, 120));
+  await checkAfter(async () => `on the LDraw sets, all eight: ${await shown(a)}`,
+    until(async () => (await shelf(a)).source === "sets" && (await shelf(a)).total === 8, 120));
+  await checkAfter(async () => `...each with its cover: ${(await shelf(a)).covers}`,
+    until(async () => (await shelf(a)).covers === 8, 120));
   await a.screenshot({ path: `${out}/1_sets_1400.png` });
 
   console.log("\nsearching and filtering");
-  check(`"dragon" finds the Dragon Wagon: ${await shown(a)}`, await search(a, "dragon", ["omr-6056-1"]));
+  await checkAfter(async () => `"dragon" finds the Dragon Wagon: ${await shown(a)}`, search(a, "dragon", ["omr-6056-1"]));
   await search(a, "", null);
   await until(async () => (await shelf(a)).total === 8, 20);
-  check(`Town, chosen by typing in its list: ${await shown(a)}`,
-    await choose(a, "library_theme", "Town", "theme", "Town")
-    && await until(async () => (await shelf(a)).total === 3, 20));
-  check(`...small: ${await shown(a)}`, await choose(a, "library_size", "Small", "size", "small")
-    && await until(async () => (await shelf(a)).total === 3, 20));
+  await checkAfter(async () => `Town, chosen by typing in its list: ${await shown(a)}`,
+    (async () => await choose(a, "library_theme", "Town", "theme", "Town")
+      && await until(async () => (await shelf(a)).total === 3, 20))());
+  await checkAfter(async () => `...small: ${await shown(a)}`,
+    (async () => await choose(a, "library_size", "Small", "size", "small")
+      && await until(async () => (await shelf(a)).total === 2, 20))());
   await a.screenshot({ path: `${out}/2_filtered.png` });
   await choose(a, "library_theme", "Any", "theme", "");
   await choose(a, "library_size", "Any", "size", "");
@@ -222,13 +250,11 @@ try {
   const b = set.tab;
   await settle(b);
   check("...the set is open in it",
-    await until(async () => (await state(b)).bricks === 57 && !(await state(b)).awaited, 180));
+    await until(async () => (await state(b)).bricks === 65 && !(await state(b)).awaited, 180));
   const bState = await state(b);
-  check(`...57 parts, "${await b.title()}"`, bState.bricks === 57 && (await b.title()) === "106-1 UNICEF Van — Brickworks");
+  check(`...65 parts, "${await b.title()}"`, bState.bricks === 65 && (await b.title()) === "106-1 UNICEF Van — Brickworks");
   check(`...credited: ${JSON.stringify(bState.credit)}`, bState.credit && bState.credit.by === "Michael Heidemann"
     && bState.credit.licence === "CCAL 2.0" && bState.credit.page === "https://library.ldraw.org/omr/sets/561");
-  check(`...the status bar said whose: "${bState.status}"`,
-    String(bState.status || "").includes("LDraw model by Michael Heidemann, CCAL 2.0") || true);
   check("...its LDraw page in Properties", await until(async () =>
     Boolean(await b.evaluate(() => (window.brickworksControls || {}).prop_credit_page)), 30));
   check(`...and ?library gone from its address: ${b.url()}`, !new URL(b.url()).searchParams.has("library"));
@@ -238,9 +264,13 @@ try {
   console.log("\nthe community, in a new tab");
   await a.bringToFront();
   await click(a, "library_tab_community");
-  check(`three models shared in the gallery: ${await shown(a)}`,
-    await until(async () => (await shelf(a)).source === "community" && (await shelf(a)).total === 3, 60));
-  check(`...each with its picture: ${(await shelf(a)).covers}`, await until(async () => (await shelf(a)).covers === 3, 60));
+  await checkAfter(async () => `the search went with it to the other shelf: "${((await shelf(a)).ask || {}).q}"`,
+    until(async () => (await shelf(a)).source === "community" && ((await shelf(a)).ask || {}).q === "106-1", 60));
+  await search(a, "", null);
+  await checkAfter(async () => `three models shared in the gallery: ${await shown(a)}`,
+    until(async () => (await shelf(a)).source === "community" && (await shelf(a)).total === 3, 60));
+  await checkAfter(async () => `...each with its picture: ${(await shelf(a)).covers}`,
+    until(async () => (await shelf(a)).covers === 3, 60));
   await a.screenshot({ path: `${out}/4_community.png` });
   check("\"bench\" finds the park bench", await search(a, "bench", ["LibStubBch"]));
   const copy = await opensTab(a, "library_open_first");
@@ -250,8 +280,10 @@ try {
     Boolean(copyAt) && copyAt.searchParams.get("copy") === "LibStubBch" && copyAt.searchParams.has("new"));
   const c = copy.tab;
   await settle(c);
-  check("...the bench is copied into the person's models", await until(async () =>
-    String((await state(c)).status || "").includes("is in your models now"), 180));
+  // Saved under its own name, saying which link it is a copy of
+  // (ModelStore.REMIX_META), as Open in Brickworks on its page saves it.
+  check("...the bench is copied into the person's models, a remix of its link", await until(async () =>
+    String(await stored(c, "models/Stub Park Bench.ldr") || "").includes("0 !BRICKWORKS REMIX LibStubBch"), 180));
   const cState = await state(c);
   check(`...43 parts, credited: ${JSON.stringify(cState.credit)}`, cState.bricks === 43
     && cState.credit && cState.credit.by === "Cleo Plates" && cState.credit.licence === "All rights reserved");
