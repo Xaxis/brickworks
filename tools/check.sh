@@ -45,7 +45,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
   decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
   mcp_walk mcp_walk3 mesh_formats own_copies page_places
   parts_only print_search shapes snippets standing subject_words surface
-  unrestored update viewer_tools worker_first_run)
+  unrestored update viewer_tools worker_first_run second_design)
 # In a window, each as its own header says (tools/probe.sh: the size it
 # names, on Xvfb and the GPU, a data folder of its own), NAME or NAME:ARGS.
 # @out in ARGS is a folder of this run's: left to themselves the motions
