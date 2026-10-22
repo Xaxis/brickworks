@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
-  Your feed, at /feed: newest first, what happened that concerns you —
-  new models and new versions from people you follow, photos of real
-  builds of your models and by people you follow, comments on your models,
-  and remixes of them (supabase/follows.sql, api/_follows.js). Each row is
-  a link to the thing. Opening it clears the count on Account.
+  Your feed, at /feed: newest first, what the people you follow made —
+  new models and new versions, photos of their builds, their challenge
+  entries (supabase/follows.sql, api/_follows.js). Each row is a link to
+  the thing. Opening it clears its count. What happens to your own models
+  is Notifications, the tab beside it (supabase/notifications.sql).
 
   Signed in with the app's own sign-in in this browser (web/account.js).
   feed.js puts every word on the page as text. No inline script: the
@@ -16,7 +16,7 @@
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Your feed · Brickworks</title>
-<meta name="description" content="What is new for you on Brickworks: models from people you follow, and photos, comments and remixes of yours.">
+<meta name="description" content="What the people you follow make on Brickworks: new models, new versions and photos of their builds.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://brickworks.diy/feed">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -74,26 +74,30 @@
 </header>
 
 <main id="main">
-	<div class="wrap person feed">
-		<p class="eyebrow">Your feed</p>
-		<h1>What is new for you</h1>
+	<div class="wrap page person feed">
+		<div class="page-head">
+			<h1>Your feed</h1>
+		</div>
+		<nav class="tabs" aria-label="What is new for you">
+			<a href="/notifications">Notifications <span class="n" data-count="notifications" hidden></span></a>
+			<a href="/feed" aria-current="page">Your feed <span class="n" data-count="feed" hidden></span></a>
+		</nav>
 
 		<section id="signed-out" hidden>
-			<p class="lede">Sign in to see new models from the people you follow, and the photos,
-				comments and remixes of yours. We email you a code: no password.</p>
+			<p class="lede">Sign in to see what the people you follow make, and what happens to your
+				own models. We email you a code: no password.</p>
 			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
 		</section>
 		<p class="state" id="loading">Looking for your sign-in…</p>
 
 		<section id="signed-in" hidden>
-			<p class="note">New models and new versions from people you follow, and what they enter in the
-				<a href="/challenge">monthly challenge</a>; photos of real builds of your models and by people
-				you follow; comments on your models; remixes of them. The
-				last 90 days, newest first. Follow somebody from their profile, or from beside their
-				name on a model's page. <a href="/profile">Your profile</a> chooses what is emailed.</p>
+			<p class="note">New models and new versions from people you follow, the photos they post
+				of their builds and what they enter in the <a href="/challenge">monthly challenge</a>,
+				newest first. What happens to your own models is in
+				<a href="/notifications">Notifications</a>.</p>
 			<p class="note" id="not-yet" hidden>Following and the feed are not open on Brickworks yet.</p>
 			<ol class="feed-list" id="rows" aria-label="Your feed"></ol>
-			<p class="note" id="empty" hidden>Nothing yet. Follow somebody whose models you like, from
+			<p class="state" id="empty" hidden>Nothing yet. Follow somebody whose models you like, from
 				their profile in the <a href="/gallery">gallery</a>, and what they share comes here.</p>
 			<div class="actions"><button class="cta ghost" type="button" id="older" hidden>Older</button></div>
 			<p class="said" id="said" role="status"></p>

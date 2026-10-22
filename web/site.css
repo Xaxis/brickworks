@@ -227,8 +227,32 @@ a:focus-visible { border-radius: var(--r-1); }
 /* On Menu, over its corner: the header has no room at 390 px for more. */
 .site-head .menu summary { position: relative; }
 .site-head .menu summary .count { position: absolute; top: -7px; right: -7px; }
+/* Your account, signed in (web/follow.js, docs/SOCIAL.md U7): your avatar
+   where Sign in was, what is new for you over its corner, opening the
+   account menu (a .more-menu with the header Menu's panel): who you are,
+   your places with their counts, the theme, Sign out. On a phone Menu is
+   the avatar and holds the same, under the site's links. */
+.account-menu { margin-left: 4px; }
+.site-head .account-btn {
+	position: relative; display: inline-grid; place-items: center; padding: 0; border: 0;
+	border-radius: 50%; background: none; list-style: none; cursor: pointer;
+}
+.site-head .account-btn::-webkit-details-marker { display: none; }
+.site-head .account-btn .avatar { width: 36px; height: 36px; font-size: var(--t-body); }
+.account-menu[open] .account-btn .avatar, .menu[open] .account-btn .avatar { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-edge); }
+.site-head .account-btn .count { position: absolute; top: -5px; right: -7px; }
+.account-menu .menu-list { min-width: 240px; }
+.menu-who { display: flex; align-items: center; gap: var(--s-3); margin: 0; padding: 8px 12px 10px; }
+.menu-who span { display: grid; min-width: 0; }
+.menu-who b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-who small { color: var(--ink-faint); font-size: var(--t-tiny); overflow-wrap: anywhere; }
+.account-part nav { display: grid; }
+.account-part nav a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.account-part nav a[aria-current="page"] { color: var(--ink); background: var(--panel-hi); }
+.menu .account-part { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.menu-list > .sign-out { margin-top: 6px; border-top: 1px solid var(--line); border-radius: 0; }
 @media (max-width: 860px) {
-	.nav a:not(.cta) { display: none; }
+	.nav a:not(.cta), .nav .account-menu { display: none; }
 	.menu { display: block; }
 }
 

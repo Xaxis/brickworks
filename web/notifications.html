@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!--
+  Notifications, at /notifications (docs/SOCIAL.md U7,
+  supabase/notifications.sql, api/_notifications.js): what happened to your
+  models, one group a model with its picture, the newest group first —
+  comments, photos of builds, remixes, likes as a number a day (never
+  who), the end of a challenge you entered. Opening it clears the count on
+  your avatar; a group is marked until it is opened, or Mark all read.
+
+  Signed in with the app's own sign-in in this browser (web/account.js).
+  notifications.js puts every word on the page as text. No inline script:
+  the site's security policy allows none it has not hashed.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notifications · Brickworks</title>
+<meta name="description" content="What happens to your models on Brickworks: comments, photos of builds, remixes and likes.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://brickworks.diy/notifications">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Notifications on Brickworks">
+<meta property="og:description" content="What is new for you on Brickworks.">
+<meta property="og:url" content="https://brickworks.diy/notifications">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Notifications on Brickworks">
+<meta name="twitter:description" content="What is new for you on Brickworks.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/download">Download</a>
+			<a href="/profile" data-account>Sign in</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery">Gallery</a>
+					<a href="/download">Download</a>
+					<a href="/profile" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap page notices-page">
+		<div class="page-head notices-head">
+			<h1>Notifications</h1>
+			<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
+		</div>
+		<nav class="tabs" aria-label="What is new for you">
+			<a href="/notifications" aria-current="page">Notifications <span class="n" data-count="notifications" hidden></span></a>
+			<a href="/feed">Your feed <span class="n" data-count="feed" hidden></span></a>
+		</nav>
+
+		<section id="signed-out" hidden>
+			<p class="lede">Sign in to see what happens to your models: comments, photos of
+				people’s builds, remixes, likes and the challenges you enter. We email you a code:
+				no password.</p>
+			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
+		</section>
+		<p class="state" id="loading">Looking for your sign-in…</p>
+
+		<section id="signed-in" hidden>
+			<p class="note" id="not-yet" hidden>Notifications are not open on Brickworks yet.</p>
+			<ol class="notices" id="groups" aria-label="Notifications"></ol>
+			<div class="state" id="empty" hidden>
+				<p>Nothing yet. When somebody comments on one of your models, posts a photo of
+					their build of it, remixes it or likes it, it is here, with the model.</p>
+				<p><a href="/profile">Your models</a> · <a href="/gallery">the gallery</a> ·
+					<a href="/challenge">this month’s challenge</a></p>
+			</div>
+			<p class="said" id="said" role="status"></p>
+		</section>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+			<nav class="foot-links" aria-label="More">
+				<a href="/compare">Compare</a>
+				<a href="/faq">FAQ</a>
+				<a href="/changelog">Changelog</a>
+				<a href="https://github.com/Xaxis/brickworks">Source</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/terms">Terms</a>
+				<a href="/guidelines">Guidelines</a>
+				<a href="/takedown">Takedown</a>
+			</nav>
+			<div class="theme-choice"><span aria-hidden="true">Theme</span>
+				<div class="segmented" role="group" aria-label="Theme">
+					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+				</div>
+			</div>
+		</div>
+		<div class="legal">
+			<p>
+				Models in the gallery are made and shared by the people credited, or by
+				someone who chose not to be; Brickworks does not check them before they
+				are listed. Something that should not be there? Press Report on its
+				page, or see <a href="/takedown">takedown requests</a>.
+			</p>
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
+			</p>
+		</div>
+	</div>
+</footer>
+
+<script src="/notifications.js" type="module"></script>
+</body>
+</html>

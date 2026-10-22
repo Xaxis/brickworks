@@ -67,7 +67,13 @@
 //   POST ?op=follow_choice        (session) {shows}: show whom I follow
 //   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first;
 //                                 its first page counts as the feed opened
-//   GET  ?op=feed_count           (session) what came since it was opened
+//   GET  ?op=feed_count           (session) what is new: notifications and
+//                                 the feed, apart and together, and who the
+//                                 caller is, for the avatar in the header
+//   GET  ?op=notifications        (session) what happened to the caller's
+//                                 models, grouped by model; opening it
+//                                 clears its count (api/_notifications.js)
+//   POST ?op=notifications_read   (session) {model} or {all: true}: read
 //   GET  ?op=designs              (session) the caller's own models' last 30
 //                                 days: opens, builds finished, remixes,
 //                                 comments, and who built them; &handle=X
@@ -159,8 +165,9 @@ import {
   setCommentsOpen,
 } from "./_comments.js";
 import {
-  feed, feedCount, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
+  feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
 } from "./_follows.js";
+import { feedCount, notifications, notificationsRead } from "./_notifications.js";
 import { designerOf, designs } from "./_designers.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
@@ -1179,6 +1186,7 @@ export default async function handler(request, response) {
       if (op === "following") return await getFollowing(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
+      if (op === "notifications") return await notifications(request, response, { origin: "" });
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);
@@ -1201,6 +1209,7 @@ export default async function handler(request, response) {
       if (op === "mail") return await chooseMail(request, response);
       if (op === "follow") return await follow(request, response);
       if (op === "follow_choice") return await followChoice(request, response);
+      if (op === "notifications_read") return await notificationsRead(request, response);
       if (op === "enter") return await enter(request, response);
       if (op === "withdraw") return await withdraw(request, response);
       if (op === "vote") return await vote(request, response);
