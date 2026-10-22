@@ -507,6 +507,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		var stitched: bool = bool(pattern.get("stitch_first", false))
 		# What a sculpt's shells cut off is taken out before the stitch spends
 		# its rounds on it: a bunny at 48 studs tried 86 joins where it had 27.
+		# Joined first where they meet the core, as the stitch's first way
+		# joins, all at once: only what that leaves is taken out.
 		if not shells.is_empty():
 			last["joined_cut_off"] = plan.join_cut_off()
 			last["cut_off"] = plan.cut_off(true)
@@ -564,6 +566,16 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# truck's strip a stud wide under its flank was 29 parts in three pieces.
 	if not plan.cubes.is_empty() and not shells.is_empty():
 		last["cut_off"] = int(last.get("cut_off", 0)) + plan.cut_off() + plan.caps_apart()
+	# What a sculpt's turned sides took from the core and gave back, and what
+	# was cut off beside them, for src/dev/snot_gaps.gd to say which of the
+	# model no part fills, and why.
+	last["shelled"] = plan.shelled
+	last["given_back"] = plan.given_back
+	last["cut_cells"] = plan.cut_cells
+	last["shell_frames"] = shells.map(func(one: Dictionary) -> Dictionary:
+		return {"facing": one["facing"], "along": one["along"], "a0": one["a0"], "a1": one["a1"],
+			"face": one["face"], "top": one["top"], "rows": one["rows"],
+			"depth": one.get("depth", roundi(Plan.SHELL_DEPTH * PLATES_PER_STUD))})
 	# What each screen laid, or why it laid none; and a steep front of a raised
 	# solid said with no screen, which is how a session says a cabin.
 	said.append_array(plan.screens_said)
@@ -3033,6 +3045,11 @@ class Plan extends RefCounted:
 	var _why_not: Dictionary = {}
 	## And each cube refused, [x / 2, its foot plate, z / 2, why], for the bench.
 	var _why_at: Array = []
+	## The plates of the core's parts cut off beside a shell (cut_off,
+	## caps_apart), each by which, and the shells' plates given back to the
+	## core (_give_back): what Shapes.last tells a probe of a turned side.
+	var cut_cells: Dictionary = {}
+	var given_back: Dictionary = {}
 	## The model's side at a point (Brickify.Grid.side): with it, a cube's
 	## shell fits its slopes by distance (_fit_near) as a top's are.
 	var side_fine: Callable = Callable()
@@ -3193,6 +3210,7 @@ class Plan extends RefCounted:
 				mine.erase(plate)
 				taken.erase(plate)
 				shelled.erase(plate)
+				given_back[plate] = true
 
 	## Whether the model has a plate in cube [param c].
 	func _cube_has_model(c: Vector3i) -> bool:
@@ -3386,18 +3404,25 @@ class Plan extends RefCounted:
 			for n: int in made.size():
 				if not gone.has(n):
 					left.append(made[n])
+				else:
+					for cell: Vector2i in made[n].get("_cells", []):
+						for v: int in int(made[n].get("_h", 1)):
+							cut_cells[Vector3i(cell.x, roundi(float(made[n]["y"])) + v, cell.y)] = \
+								"wholly" if wholly else "cut"
 			made = left
 		return gone.size()
 
 	## The pieces of the core a shell cuts off, as [method cut_off] with
-	## [param wholly] finds them, each joined to the rest by a plate or brick
-	## laid again across where one of its plates meets one of the rest's side
-	## by side, the stitch's first way, for all of them in one pass. A turned
-	## cube leaves the side's surface past its shell's end, and the plates of
-	## its own rows it laid nothing in, beside the core and on nothing:
-	## taken out, a blue bunny at 20 studs lost 2.1% of itself, where the
-	## stitch, joining one piece a round, took a forty-eight-stud Bob's from
-	## 4.5 s to 11.6. How many were joined.
+	## [param wholly] finds them, joined to the rest where they meet it: a
+	## plate of one and a plate of the rest side by side laid again across
+	## (the stitch's first way), and where a brick of the rest stands beside
+	## a plate of one, that brick laid again as three plates to be paired the
+	## next pass. All at once, a few passes. A turned cube leaves the side's
+	## surface past its shell's end, and the plates of its own rows it laid
+	## nothing in, beside the core and on nothing: taken out unjoined, a blue
+	## bunny at 20 studs lost 2.1% of itself; left to the stitch, which joins
+	## one piece a round, a forty-eight-stud Bob took 11.6 s to stitch from
+	## 4.5. How many were joined.
 	func join_cut_off() -> int:
 		if cubes.is_empty() or shelled.is_empty():
 			return 0
@@ -3419,9 +3444,11 @@ class Plan extends RefCounted:
 			var plain: Dictionary = _plain_cells(main)
 			var gone: Dictionary = {}
 			var added: Array = []
+			var unpaired: Array = []
 			for piece: Array in apart:
 				var pair: Array = _pair(piece, main, plain)
 				if pair.is_empty() or gone.has(pair[0]) or gone.has(pair[1]):
+					unpaired.append(piece)
 					continue
 				var across: Array = _across(made[pair[0]], made[pair[1]])
 				if across.is_empty():
@@ -3432,7 +3459,7 @@ class Plan extends RefCounted:
 				joined += 1
 			# None side by side at one height: the rest's bricks beside a plate
 			# of one laid again as three plates each, to be paired next pass.
-			if gone.is_empty():
+			if not unpaired.is_empty():
 				var bricks: Dictionary = {}    ## Vector3i plate -> a brick of the rest
 				for m: Variant in main:
 					var two: Dictionary = made[m]
@@ -3440,7 +3467,8 @@ class Plan extends RefCounted:
 						for cell: Vector2i in two["_cells"]:
 							for h: int in 3:
 								bricks[Vector3i(cell.x, int(round(float(two["y"]))) + h, cell.y)] = m
-				for piece: Array in apart:
+				var unbricked: Dictionary = {}
+				for piece: Array in unpaired:
 					for n: int in piece:
 						var one: Dictionary = made[n]
 						if not _plain(one) or int(one["_h"]) != 1:
@@ -3449,9 +3477,11 @@ class Plan extends RefCounted:
 						for cell: Vector2i in one["_cells"]:
 							for step: Vector2i in Shapes.OUT:
 								var m: int = int(bricks.get(Vector3i(cell.x + step.x, y, cell.y + step.y), -1))
-								if m >= 0 and int((made[m] as Dictionary)["color"]) == int(one["color"]):
-									gone[m] = true
-				for m: Variant in gone:
+								if m >= 0 and not gone.has(m) \
+										and int((made[m] as Dictionary)["color"]) == int(one["color"]):
+									unbricked[m] = true
+				for m: Variant in unbricked:
+					gone[m] = true
 					var brick: Dictionary = made[m]
 					var cells: Dictionary = {}
 					for cell: Vector2i in brick["_cells"]:
@@ -3500,6 +3530,10 @@ class Plan extends RefCounted:
 			for n: int in made.size():
 				if not gone.has(n):
 					left.append(made[n])
+				else:
+					for cell: Vector2i in made[n].get("_cells", []):
+						for v: int in int(made[n].get("_h", 1)):
+							cut_cells[Vector3i(cell.x, roundi(float(made[n]["y"])) + v, cell.y)] = "caps"
 			made = left
 		return gone.size()
 
@@ -3621,10 +3655,16 @@ class Plan extends RefCounted:
 			for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
 				if j_ < 0:
 					return -1
+				# The half plate at the row's foot or head may be the shell's own
+				# air, in its own column too: a row is two and a half plates, and
+				# a side's edge three plates tall between its rows was laid by no
+				# row, its plates the shell's and no one's (1.8% of a bunny at 28
+				# studs turned from 60 degrees). It stands half a plate proud.
+				var half: bool = float(j_) < row - 0.01 or float(j_ + 1) > row + Shapes.PLATES_PER_STUD + 0.01
 				for stud: Variant in studs:
 					var key := Vector3i((stud as Vector2i).x, j_, (stud as Vector2i).y)
 					if (taken.has(key) or at(stud, j_) >= 0) and not mine.has(key) \
-							and not (beside.has(key) and stud != Vector2i(floori(p.x), floori(p.z))):
+							and not (beside.has(key) and (half or stud != Vector2i(floori(p.x), floori(p.z)))):
 						return -1
 			return int(colour_at.call(p.x, p.y, p.z))
 		# Whether a point of the shell's frame is free for a face: every plate
