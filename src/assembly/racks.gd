@@ -121,17 +121,42 @@ static func screws(entries: Array, links: Array) -> Array[Pinion]:
 
 
 ## How far [param mesh]'s pinion may go along its rack's line from where it
-## stands, against the rack standing at [param rack_at] (its part
-## [param rack_part]), and still be read in it ([method find]): Vector2(back,
-## on), LDU along [member Pinion.line]; INF both ways for a screw, or a rack
-## the table does not know.
-static func room_along(mesh: Pinion, rack_at: Transform3D, rack_part: String) -> Vector2:
-	var spec: Dictionary = spec_of(rack_part)
-	if mesh.screw or spec.is_empty():
+## stands and still be read in a rack ([method find]): its own, or another
+## its teeth run on into, end to end on one line ([param racks]: each
+## [Transform3D, part id], the racks of the body its rack is in; 3743s laid
+## end to end keep their pitch). Vector2(back, on), LDU along
+## [member Pinion.line]; INF both ways for a screw.
+static func room_along(mesh: Pinion, racks: Array) -> Vector2:
+	if mesh.screw:
 		return Vector2(-INF, INF)
-	var x: float = (rack_at.affine_inverse() * mesh.centre).x
-	var unit: float = (rack_at.basis * Vector3.RIGHT).length()
-	return Vector2(float(spec["from"]) - ALONG_SLACK - x, float(spec["to"]) + ALONG_SLACK - x) * unit
+	var spans: Array = []
+	for one: Array in racks:
+		var spec: Dictionary = spec_of(str(one[1]))
+		var at: Transform3D = one[0]
+		var fit: Array = [] if spec.is_empty() else _fit(spec, at, mesh.centre, mesh.axis, mesh.teeth)
+		if fit.is_empty():
+			continue
+		var x: float = (fit[0] as Vector3).x
+		var way: Vector3 = at.basis * Vector3.RIGHT
+		var span := Vector2(float(spec["from"]) - ALONG_SLACK - x, float(spec["to"]) + ALONG_SLACK - x) * way.length()
+		if way.dot(mesh.line) < 0.0:
+			span = Vector2(-span.y, -span.x)
+		spans.append(span)
+	# From the span the pinion stands in, on through each that meets it.
+	var room := Vector2(INF, -INF)
+	for span: Vector2 in spans:
+		if span.x <= 0.0 and span.y >= 0.0:
+			room = Vector2(minf(room.x, span.x), maxf(room.y, span.y))
+	if room.x > room.y:
+		return Vector2(-INF, INF)
+	var grew: bool = true
+	while grew:
+		grew = false
+		for span: Vector2 in spans:
+			if span.x < room.x and span.y >= room.x or span.y > room.y and span.x <= room.y:
+				room = Vector2(minf(room.x, span.x), maxf(room.y, span.y))
+				grew = true
+	return room
 
 
 ## Every pinion standing in a rack among [param entries], each [brick id,
@@ -151,45 +176,20 @@ static func find(entries: Array) -> Array[Pinion]:
 			gears.append([entry, spec])
 	if racks.is_empty() or gears.is_empty():
 		return out
-	var per_tooth: float = float(Mechanism.table().get("ldu_per_tooth", 1.25))
 	for rack: Array in racks:
 		var spec: Dictionary = spec_of(rack[1])
 		var at: Transform3D = rack[2]
-		var inverse: Transform3D = at.affine_inverse()
-		var z: Array = spec.get("z", [-10.0, 10.0])
 		for pair: Array in gears:
 			var gear: Array = pair[0]
 			var gear_spec: Dictionary = pair[1]
 			var gear_at: Transform3D = gear[2]
 			var centre: Vector3 = gear_at * (Vector3.BACK * float(gear_spec.get("plane", 0.0)))
 			var axis: Vector3 = (gear_at.basis * Vector3.BACK).normalized()
-			var local: Vector3 = inverse * centre
-			var local_axis: Vector3 = (inverse.basis * axis).normalized()
 			var teeth: int = int(gear_spec["teeth"])
-			var radius: float = per_tooth * teeth
-			# The way from the rack's teeth to the pinion's centre, in the
-			# rack's frame: up, or for a round rack (2790a, a rod ringed with
-			# teeth) straight out from its line, whichever side the pinion is.
-			var out_way := Vector3.UP
-			var off: float = 0.0
-			if bool(spec.get("round", false)):
-				var across := Vector2(local.y, local.z)
-				if across.length() < 0.001:
-					continue
-				out_way = Vector3(0.0, across.x, across.y).normalized()
-				# Square to the rod and to the way out to its centre.
-				var skew: float = sqrt(1.0 - SQUARE * SQUARE)
-				if absf(local_axis.x) > skew or absf(local_axis.dot(out_way)) > skew:
-					continue
-				off = across.length() - (float(spec["pitch_line"]) + radius)
-			else:
-				if absf(local_axis.z) < SQUARE:
-					continue
-				off = local.y - (float(spec["pitch_line"]) + radius)
-				if local.z < float(z[0]) - ACROSS_SLACK or local.z > float(z[1]) + ACROSS_SLACK:
-					continue
-			if absf(off) > PITCH_SLACK:
+			var fit: Array = _fit(spec, at, centre, axis, teeth)
+			if fit.is_empty():
 				continue
+			var local: Vector3 = fit[0]
 			if local.x < float(spec["from"]) - ALONG_SLACK or local.x > float(spec["to"]) + ALONG_SLACK:
 				continue
 			var mesh := Pinion.new()
@@ -199,12 +199,48 @@ static func find(entries: Array) -> Array[Pinion]:
 			mesh.centre = centre
 			mesh.axis = axis
 			mesh.line = (at.basis * Vector3.RIGHT).normalized()
-			mesh.off = off
+			mesh.off = fit[2]
 			# The pinion's tooth where it meets the rack, below its centre on
 			# the rack's side, goes this way as the pinion turns about its
 			# axis; the rack goes with it a tooth for a tooth.
-			var down: Vector3 = -(at.basis * out_way).normalized()
+			var down: Vector3 = -(at.basis * (fit[1] as Vector3)).normalized()
 			var sense: float = signf(mesh.line.dot(axis.cross(down)))
 			mesh.rate = sense * pitch() * float(teeth) / TAU
 			out.append(mesh)
 	return out
+
+
+## Whether a pinion of [param teeth] at [param centre] on [param axis] stands
+## in the teeth of a rack ([param spec], at [param rack_at]), wherever along
+## them: [its centre in the rack's frame, the way from the teeth to it there,
+## how far off the pitch it stands], or empty.
+static func _fit(spec: Dictionary, rack_at: Transform3D, centre: Vector3, axis: Vector3, teeth: int) -> Array:
+	var inverse: Transform3D = rack_at.affine_inverse()
+	var local: Vector3 = inverse * centre
+	var local_axis: Vector3 = (inverse.basis * axis).normalized()
+	var radius: float = float(Mechanism.table().get("ldu_per_tooth", 1.25)) * teeth
+	# The way from the rack's teeth to the pinion's centre, in the rack's
+	# frame: up, or for a round rack (2790a, a rod ringed with teeth)
+	# straight out from its line, whichever side the pinion is.
+	var out_way := Vector3.UP
+	var off: float = 0.0
+	if bool(spec.get("round", false)):
+		var across := Vector2(local.y, local.z)
+		if across.length() < 0.001:
+			return []
+		out_way = Vector3(0.0, across.x, across.y).normalized()
+		# Square to the rod and to the way out to its centre.
+		var skew: float = sqrt(1.0 - SQUARE * SQUARE)
+		if absf(local_axis.x) > skew or absf(local_axis.dot(out_way)) > skew:
+			return []
+		off = across.length() - (float(spec["pitch_line"]) + radius)
+	else:
+		if absf(local_axis.z) < SQUARE:
+			return []
+		off = local.y - (float(spec["pitch_line"]) + radius)
+		var z: Array = spec.get("z", [-10.0, 10.0])
+		if local.z < float(z[0]) - ACROSS_SLACK or local.z > float(z[1]) + ACROSS_SLACK:
+			return []
+	if absf(off) > PITCH_SLACK:
+		return []
+	return [local, out_way, off]

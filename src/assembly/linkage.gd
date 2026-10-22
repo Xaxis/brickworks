@@ -350,9 +350,12 @@ func _read(driver: Bodies.Link, child: int) -> void:
 				if _axis[n] != Vector3.ZERO:
 					turn[turn_col[n]] += _axis[n].dot(mesh.axis) * (1.0 if s == 0 else -1.0)
 		_rack_turn.append(turn)
-		var rack_brick: BrickWorld.Brick = bodies.world.get_brick(mesh.rack)
-		_rack_room.append(Racks.room_along(mesh, rack_brick.transform, rack_brick.part_id)
-			if rack_brick != null else Vector2(-INF, INF))
+		var in_body: Array = []
+		for key: int in bodies.members.get(rack, PackedInt64Array()):
+			var brick: BrickWorld.Brick = bodies.world.get_brick(key)
+			if brick != null and Racks.is_rack(brick.part_id):
+				in_body.append([brick.transform, brick.part_id])
+		_rack_room.append(Racks.room_along(mesh, in_body))
 	for coupling: Mechanism.Coupling in gear_meshes:
 		# Mechanism's equation, the teeth moving together where they meet, with
 		# each gear's turn read against the line to the other gear's axis
