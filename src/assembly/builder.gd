@@ -2962,11 +2962,16 @@ static func _stretched_boxes(part: Lbm.PartMesh, stretch: Vector3) -> Array[AABB
 ## opening 42082-1 (510 covers, 1.27 million cells). The same covers, by the
 ## same code, kept the same way: only when and where they are worked out
 ## changes. Nothing to do on a build without threads.
-func prepare_covers(placements: Array) -> void:
+##
+## With [param pace] (it is then a coroutine), set going a slice at a time:
+## 8466-1's 1,234 parts were looked over in 0.41 s of a browser's frame. Left
+## where it is when the world is cleared meanwhile.
+func prepare_covers(placements: Array, pace: Working.Job = null) -> void:
 	finish_covers()
 	if OS.get_thread_caller_id() != OS.get_main_thread_id() \
 			or (OS.has_feature("web") and not OS.has_feature("threads")):
 		return
+	var generation: int = world.generation()
 	## [stretched, key] of each cover set going, its task, and what it made.
 	var jobs: Array = []
 	var tasks: Array[int] = []
@@ -2974,6 +2979,10 @@ func prepare_covers(placements: Array) -> void:
 	var writing := Mutex.new()
 	var asked: Dictionary = {}
 	for item: Variant in placements:
+		if pace != null and pace.due():
+			await pace.next()
+			if world.generation() != generation:
+				return
 		var placement: LdrModel.Placement = item
 		var part: Lbm.PartMesh = library.mesh_for(placement.part_id)
 		if part == null:
@@ -3006,16 +3015,30 @@ func prepare_covers(placements: Array) -> void:
 			writing.lock()
 			made[n] = shape
 			writing.unlock()
-		# The first of the app's run here, before others run it at once
-		# (WorkerTasks.first_here).
-		if not WorkerTasks.first_here("a turned cover", job):
-			tasks.append(WorkerTasks.add(job, true, "a turned cover"))
+		# The first of the app's run alone, before others run it at once
+		# (WorkerTasks.first_here): on a worker too, the others waiting for it,
+		# as worked out here it held the frame for as long as it took.
+		tasks.append(WorkerTasks.add(func() -> void:
+			if not WorkerTasks.first_here("a turned cover", job):
+				job.call(), true, "a turned cover"))
 	if not jobs.is_empty():
 		_preparing = [jobs, tasks, made, writing]
 
 
 ## What [method prepare_covers] set going: [jobs, tasks, made, its lock].
 var _preparing: Array = []
+
+
+## Whether the covers [method prepare_covers] set going are all worked out,
+## so [method finish_covers] waits for none: a model laid over frames waits
+## for them a frame at a time (ModelStore._open_into).
+func covers_ready() -> bool:
+	if _preparing.is_empty():
+		return true
+	for task: int in _preparing[1]:
+		if not WorkerThreadPool.is_task_completed(task):
+			return false
+	return true
 
 
 ## Wait for the covers [method prepare_covers] set going, and keep them as

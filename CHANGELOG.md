@@ -55,6 +55,17 @@ whole cycle.
   ends with more by the same designer and models like it, by kind and tags,
   whenever there are three or more to show, and otherwise with more from
   the gallery, so there is always another model to open.
+- A big model opens without freezing the window. Its file is read, its
+  flexible parts are built and the parts it carries are made while the app
+  goes on drawing, and its parts are then put down a slice of each frame,
+  the status bar counting "Opening 8466-1… 40%". The model appears whole
+  once every part is down; until then the view still turns, and edits,
+  Save and your Claude's tools wait for it rather than see half a model.
+  Someone else's big file is written back for the autosave on a worker
+  too, so the parts that arrive after it opens no longer each hold the
+  window. 8466-1 from the library held a browser for 3.7 to 3.8 seconds at
+  once and 2 more after; its longest moment now is a third to half a
+  second. A model of under 200 parts opens in one frame, as it always has.
 
 ## [0.5.0] - 2026-10-22
 

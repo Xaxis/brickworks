@@ -4,7 +4,7 @@
 ##
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --profile [--bigmodel-out=FILE.json] PATH ...
-##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --open [--times=N] [--dump=DIR] [--profile] PATH ...
+##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --open [--paced] [--times=N] [--dump=DIR] [--profile] PATH ...
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --sweep [--profile] [--bigmodel-out=FILE.json] [PATH ...]
 ##
 ## Bare, it is the check (tools/check.sh): two models made here, of 1,000
@@ -40,10 +40,15 @@
 ## handlers and their pieces; with --dump, the world of the first open
 ## written to DIR part by part (each part's number, colour, place, sub-model
 ## path, step and lattice cover; the store's and the history's state), so
-## two builds' opens are compared with cmp.
+## two builds' opens are compared with cmp. With --paced, opened as File,
+## Open opens one, over frames (ModelStore.open_text_fetched with a job):
+## the longest frame while it opened, and the dump compared with cmp to the
+## one frame's.
 ##
 ## Bare, it also opens two real sets where the checkout has them
 ## (REAL_SETS), and holds the big one's open to near-linear in its parts.
+## Every model opened (with --open too) has its autosave's text, made on a
+## worker as someone else's file is, held to its save's, made in a frame.
 ##
 ## Measured at 5,025 parts in a browser (CADTASK.md, 2026-10-16) an
 ## orbit frame's own work was 2.7 s, select all 65 s, the undo of a Delete
@@ -77,6 +82,8 @@ var _profile: bool = false
 var _open_only: bool = false
 var _times: int = 3
 var _dump: String = ""
+## Opened over frames (--paced), as File, Open opens a file.
+var _paced: bool = false
 ## --sweep: each model opened and only the sweeps made (_sweep).
 var _sweep_only: bool = false
 ## --shots=DIR, windowed: a picture of each sweep halfway across, what the
@@ -105,6 +112,8 @@ func _run() -> void:
 			out_path = argument.trim_prefix("--bigmodel-out=")
 		elif argument == "--open":
 			_open_only = true
+		elif argument == "--paced":
+			_paced = true
 		elif argument.begins_with("--times="):
 			_times = maxi(int(argument.trim_prefix("--times=")), 1)
 		elif argument.begins_with("--dump="):
@@ -430,7 +439,21 @@ func _opened(path: String) -> Dictionary:
 		await _quiet()
 		_spent.clear()
 		var began: int = Time.get_ticks_usec()
-		var result: Dictionary = _store.open_text(text, path.get_file().get_basename())
+		var result: Dictionary
+		var frames: Dictionary = {"longest": 0, "last": Time.get_ticks_usec(), "count": 0}
+		if _paced:
+			var watch: Callable = func() -> void:
+				var now: int = Time.get_ticks_usec()
+				frames["longest"] = maxi(int(frames["longest"]), now - int(frames["last"]))
+				frames["last"] = now
+				frames["count"] = int(frames["count"]) + 1
+			process_frame.connect(watch)
+			var job: Working.Job = Working.begin("Opening…")
+			result = await _store.open_text_fetched(text, path.get_file().get_basename(), null, job)
+			job.end()
+			process_frame.disconnect(watch)
+		else:
+			result = _store.open_text(text, path.get_file().get_basename())
 		var stored: int = Time.get_ticks_usec()
 		var phases: Variant = _store.get("open_phases")
 		(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
@@ -449,9 +472,20 @@ func _opened(path: String) -> Dictionary:
 			% [row["model"], row["parts"], row["open_text_ms"], row["opened_handlers_ms"],
 			row["open_ms"]] + "settled %.0f ms" % row["open_settled_ms"])
 		print("    phases %s" % JSON.stringify(row["phases"]))
+		if _paced:
+			row["frames"] = frames["count"]
+			row["longest_frame_ms"] = int(frames["longest"]) / 1000.0
+			print("    over %d frames, the longest %.1f ms" % [frames["count"], row["longest_frame_ms"]])
 		_profiled(row, "open")
 		if n == 0 and not _dump.is_empty():
 			_dumped(_dump.path_join(path.get_file().get_basename() + ".dump"))
+		# Someone else's file, its autosave's text made on a worker
+		# (ModelStore._text_into with a pace): the save's, made in a frame.
+		if n == 0:
+			var made: Array = []
+			await _store._text_into(made, _store.title, false, {}, FramePace.new())
+			_check("%s: its autosave made on a worker is its save made in a frame, byte for byte"
+				% row["model"], made.size() == 1 and str(made[0]) == _store.to_text(_store.title))
 		if _profile and n == 0:
 			_open_sections(row)
 		if n == 0:
@@ -1001,6 +1035,11 @@ static func _worst(acts: Array) -> Dictionary:
 ## Frames until nothing is working and a frame takes under 50 ms, or two
 ## hundred.
 func _quiet() -> void:
+	# The last model's autosave, made on a worker (ModelStore._autosave_paced),
+	# waited out first, as one made in a frame was a slow frame waited out.
+	var began: int = Time.get_ticks_msec()
+	while _store != null and _store._autosaving and Time.get_ticks_msec() - began < 60000:
+		await process_frame
 	var calm: int = 0
 	for _n: int in 400:
 		var t0: int = Time.get_ticks_usec()
