@@ -234,10 +234,14 @@ func _played() -> void:
 
 	print("── Top builds, what moves, Parts I own, the front ──")
 	var offered: Array = (GalleryTool.definition()["input_schema"]["properties"]["sort"] as Dictionary)["enum"]
-	_check("the sorts offered are the gallery's: %s" % [offered], offered == ["newest", "views", "likes",
-		"remixes", "builds", "top", "owned"])
+	# And the library's own after them, for library=true (ModelLibrary.SORTS).
+	_check("the sorts offered are the gallery's, then the library's: %s" % [offered], offered == ["newest",
+		"views", "likes", "remixes", "builds", "top", "owned", "oldest", "largest", "smallest", "name"])
 	_check("and the front is offered", (GalleryTool.definition()["input_schema"]["properties"] as Dictionary).has("shelves"))
 	fake.asked.clear()
+	said = _text_of(await fake.run({"sort": "oldest"}))
+	_check("a library sort in a gallery search is refused, asking nothing: %s" % said,
+		said.contains("are library=true's") and fake.asked.is_empty())
 	said = _text_of(await fake.run({"sort": "top"}))
 	_check("Top builds, said how it weighs: %s" % said.get_slice("\n", 0), said.contains("Top builds first")
 		and str(fake.asked[0][0]).contains("sort=top") and str(fake.asked[0][1]).is_empty())

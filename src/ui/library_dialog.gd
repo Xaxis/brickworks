@@ -220,10 +220,12 @@ func _build() -> void:
 		_kind.add_item(ModelKinds.label(kind))
 		_kind.set_item_metadata(_kind.item_count - 1, kind)
 	_size = _choice(filters, "library_size", "How many parts")
-	for size: String in ModelLibrary.SIZES:
-		_size.add_item(str(ModelLibrary.SIZE_WORDS[size]).get_slice(",", 0) + " (%s)"
-			% str(ModelLibrary.SIZE_WORDS[size]).get_slice(", ", 1))
-		_size.set_item_metadata(_size.item_count - 1, size)
+	# The sizes in the gallery's own words, short: a list as wide as its
+	# longest item pushed Sort onto a line of its own.
+	for size: Array in [["small", "Under 200 parts"], ["medium", "200 to 999 parts"],
+			["large", "1,000 parts or more"]]:
+		_size.add_item(size[1])
+		_size.set_item_metadata(_size.item_count - 1, size[0])
 	_sort = OptionButton.new()
 	_sort.focus_mode = Control.FOCUS_NONE
 	_sort.add_theme_font_size_override("font_size", 12)
@@ -409,7 +411,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 		if int(entry["year"]) > 0:
 			facts.append(str(entry["year"]))
 		facts.append("%s parts" % CollectionDialog._comma(int(entry["parts"])))
-		cards.append({"id": entry["id"], "name": str(entry["name"]), "kind": "set",
+		cards.append({"id": entry["id"], "name": ModelLibrary.tidy(str(entry["name"])), "kind": "set",
 			"facts": " · ".join(facts), "theme": ModelLibrary.tidy(str(entry["theme"])),
 			"credit": _credit_line(str(entry["author"]), str(entry["licence"])),
 			"picture": entry["cover"], "entry": entry})

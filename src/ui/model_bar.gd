@@ -322,7 +322,7 @@ func model_name() -> String:
 	return text if not text.is_empty() else "Untitled"
 
 
-## What the status line says now, for the browser flows.
+## What the status line says now, for a probe.
 func status_text() -> String:
 	return _status.text
 

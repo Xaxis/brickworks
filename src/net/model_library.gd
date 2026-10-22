@@ -31,8 +31,6 @@ const SORT_WORDS: Dictionary = {"newest": "Newest sets", "oldest": "Oldest sets"
 	"largest": "Most parts", "smallest": "Fewest parts", "name": "By name"}
 ## The gallery's sizes (api/_directory.js SIZES), so the two shelves agree.
 const SIZES: Dictionary = {"small": [0, 199], "medium": [200, 999], "large": [1000, 1 << 30]}
-const SIZE_WORDS: Dictionary = {"small": "Small, under 200 parts",
-	"medium": "Medium, 200 to 999 parts", "large": "Large, 1,000 parts or more"}
 ## What the library is, said where a model from it is credited.
 const FROM := "LDraw's Official Model Repository"
 ## Most the index and a model may be: the largest repository model is ~4 MB.
@@ -238,7 +236,8 @@ static func credit_of(entry: Dictionary) -> Dictionary:
 ## "106-1 UNICEF Van": the set it is and what the LEGO Group called it.
 static func title_of(entry: Dictionary) -> String:
 	var number: String = str(entry.get("set", ""))
-	return ("%s %s" % [number, entry["name"]]) if not number.is_empty() else str(entry["name"])
+	var named: String = tidy(str(entry["name"]))
+	return ("%s %s" % [number, named]) if not number.is_empty() else named
 
 
 ## The model's file: {"text", "error"}, the error in words for a person.

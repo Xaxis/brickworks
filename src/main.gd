@@ -599,7 +599,6 @@ func _tell_page() -> void:
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,
-		"status": _bar.status_text() if _bar != null else "",
 		# What it stands on, and the plates laid as scenery, for
 		# tools/web/floor_flow.mjs.
 		"floor": _store.model_floor.to_meta().trim_prefix(ModelFloor.META),
