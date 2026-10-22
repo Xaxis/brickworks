@@ -3412,8 +3412,8 @@ class Plan extends RefCounted:
 			made = left
 		return gone.size()
 
-	## The pieces of the core a shell cuts off, as [method cut_off] with
-	## [param wholly] finds them, joined to the rest where they meet it: a
+	## The pieces of the core a shell cuts off, as [method cut_off] finds
+	## them (any part beside a shell), joined to the rest where they meet it: a
 	## plate of one and a plate of the rest side by side laid again across
 	## (the stitch's first way), and where a brick of the rest stands beside
 	## a plate of one, that brick laid again as three plates to be paired the
@@ -3422,7 +3422,9 @@ class Plan extends RefCounted:
 	## nothing in, beside the core and on nothing: taken out unjoined, a blue
 	## bunny at 20 studs lost 2.1% of itself; left to the stitch, which joins
 	## one piece a round, a forty-eight-stud Bob took 11.6 s to stitch from
-	## 4.5. How many were joined.
+	## 4.5. Joined so only where every part was beside a shell, the bunny at 48
+	## studs turned from 65 degrees still stitched 59 of them (12.3 s); any
+	## part, 22 (5.8 s). How many were joined.
 	func join_cut_off() -> int:
 		if cubes.is_empty() or shelled.is_empty():
 			return 0
@@ -3434,9 +3436,11 @@ class Plan extends RefCounted:
 				main[n] = true
 			var apart: Array = []
 			for piece: Array in found.slice(1):
-				var touches: bool = piece.size() <= CUT_OFF
+				if piece.size() > CUT_OFF:
+					continue
+				var touches: bool = false
 				for n: int in piece:
-					touches = touches and beside_shell(made[n])
+					touches = touches or beside_shell(made[n])
 				if touches:
 					apart.append(piece)
 			if apart.is_empty():
