@@ -536,6 +536,10 @@ func can(name: String) -> bool:
 		return false
 	if read_only and not name in LOOKING:
 		return false
+	# A model being laid over frames is not the model yet: the view of it
+	# turns, and nothing reads it or changes it until it is all down.
+	if store != null and store.laying and not name in WHILE_LAYING:
+		return false
 	if not assistant_shown and name in ASSISTANT_COMMANDS:
 		return false
 	return not found.can.is_valid() or bool(found.can.call())
@@ -553,6 +557,13 @@ const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
 	"website", "about"]
+
+
+## What may be done while a model is being laid (ModelStore.laying): look
+## at what is down from another side, and nothing that reads the model.
+const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
+	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
+	"ortho", "full_screen", "website", "about"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.

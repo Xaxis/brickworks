@@ -231,6 +231,9 @@ func _hear() -> void:
 
 ## Call once a frame. Writes the working model when it has settled.
 func tick() -> void:
+	# Heard once it is whole: what is down of a model being laid is not it.
+	if laying:
+		return
 	_hear()
 	if not _pending or not keeps:
 		return
@@ -293,6 +296,9 @@ var _autosaving: bool = false
 func write_now() -> String:
 	if not keeps or read_only:
 		return ""
+	# Half a model being laid is not written over the working model.
+	if laying:
+		return autosave() if FileAccess.file_exists(autosave()) else ""
 	# A change made this frame, before the watch has had its turn.
 	_hear()
 	# One being made a slice at a time is not written yet: written now, and
@@ -703,11 +709,11 @@ func open(path: String) -> int:
 
 ## [method open], once what the parts the file carries are drawn from has
 ## been fetched, where this build has not got it ([method open_text_fetched]).
-func open_fetched(path: String) -> int:
+func open_fetched(path: String, job: Working.Job = null) -> int:
 	var text: String = FileAccess.get_file_as_string(path)
 	if text.is_empty():
 		return 0
-	return _opened_from(path, await open_text_fetched(text, path.get_file()))
+	return _opened_from(path, await open_text_fetched(text, path.get_file(), null, job))
 
 
 func _opened_from(path: String, result: Dictionary) -> int:
@@ -730,12 +736,12 @@ func versions() -> Array[ModelVersions.Version]:
 ## version of: under its name, [param called] or the model on the
 ## baseplate's, so Save makes it the newest save again. How many parts
 ## landed; 0 when it could not be read, and nothing is changed.
-func open_version(path: String, called: String = "") -> int:
+func open_version(path: String, called: String = "", job: Working.Job = null) -> int:
 	var text: String = ModelVersions.read(path)
 	if text.is_empty():
 		return 0
 	var name: String = called if not called.is_empty() else title
-	var result: Dictionary = await open_text_fetched(text, name)
+	var result: Dictionary = await open_text_fetched(text, name, null, job)
 	if int(result["placed"]) <= 0 and awaited.is_empty():
 		return 0
 	# The name it is saved under, whatever its first line says.
@@ -798,15 +804,61 @@ static func title_in(text: String, file_name: String) -> String:
 ## [param parsed]: the file already parsed, as [method open_text_fetched]
 ## has it, so it is not parsed twice.
 func open_text(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
+	var out: Array = []
+	_open_into(out, text, name, parsed, null)
+	return out[0]
+
+
+## A model of this many parts or more opened over frames
+## ([method open_text_fetched]) is laid a slice at a time; one of fewer in
+## the one frame, as it always was.
+const LAID_IN_SLICES_FROM := 200
+
+## The world's generation a model is being laid in a slice at a time, or -1:
+## see [member laying].
+var _laying_in: int = -1
+## While a model opened over frames is being laid: from the world being
+## cleared for it until every part is down and the model has its name. Its
+## parts are not drawn meanwhile (BrickWorld.hold_drawing), the person's
+## edits and Claude's tools wait for it (Shell.can, CommandSocket), and the
+## autosave writes nothing ([method tick]): what is down is not the model.
+## Over when the world is cleared again, by whatever clears it.
+var laying: bool:
+	get:
+		return world != null and _laying_in >= 0 and _laying_in == world.generation()
+## How many of its parts are not down yet, while [member laying].
+var still_to_lay: int = 0
+
+
+## [method open_text], its answer put in [param out]. With [param job] (it
+## is then a coroutine) a model of [constant LAID_IN_SLICES_FROM] parts or
+## more is opened a slice at a time, the job counting it: what its text says
+## besides its parts read on a worker, then its parts laid over frames
+## ([member laying]). 8466-1 from the library held a browser's one thread
+## 3.3 to 4.2 s laying its 1,234 parts in one frame, and a desktop's 790 ms:
+## 0.65 s of that was reading its 36 MB for its meta lines and keeping it as
+## its file (SourceFile), the rest each part put down and told to the
+## lattice.
+func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
+		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	_phase("parse")
 	if model == null:
-		return {"placed": 0, "missing": 0, "error": "that is not an LDraw file"}
+		out.append({"placed": 0, "missing": 0, "error": "that is not an LDraw file"})
+		return
 	# Parts the file brought with it, made here or somewhere else, join
-	# the library before anything asks whether the library has them.
-	var carried: Dictionary = CustomParts.take_from(library, model)
+	# the library before anything asks whether the library has them: with a
+	# job, built over frames, after any worker reading the library has
+	# finished (adding to it waits for those).
+	var taken: Array = []
+	if job != null:
+		await CustomParts.readers_done(library)
+		await CustomParts.take_into(taken, library, model, job)
+	else:
+		CustomParts.take_into(taken, library, model, null)
+	var carried: Dictionary = taken[0]
 	for problem: String in carried["problems"]:
 		push_warning("could not build a part the file carries: " + problem)
 	_phase("carried")
@@ -835,8 +887,9 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 			placement.transform = placement.transform * library.moved_by(placement.part_id)
 			placement.part_id = real
 	if flattened.is_empty():
-		return {"placed": 0, "missing": 0, "waiting": 0,
-			"error": "there are no parts in that file"}
+		out.append({"placed": 0, "missing": 0, "waiting": 0,
+			"error": "there are no parts in that file"})
+		return
 
 	# Everything decided before anything is destroyed.
 	#
@@ -863,18 +916,29 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 
 	_phase("known")
 	if known.is_empty():
-		return {"placed": 0, "missing": missing.size(), "waiting": 0,
+		out.append({"placed": 0, "missing": missing.size(), "waiting": 0,
 			"missing_ids": missing,
 			"error": "none of the %d parts in that file are in the library (%s)"
-				% [missing.size(), named_counts(missing)]}
+				% [missing.size(), named_counts(missing)]})
+		return
 
+	var paced: bool = job != null and known.size() >= LAID_IN_SLICES_FROM
+	var foreign: bool = model.author.strip_edges() != "Brickworks"
 	# Someone else's file is kept, so a save writes back what nobody changed
 	# as it was (SourceFile); the app's own are written whole, as always.
 	# Made before the model is stood on the ground: the file's coordinates.
+	# With what the text says besides its parts, read from the whole of it:
+	# on a worker for a big model, the frames going on.
 	var absent: Array = flattened.filter(func(p: LdrModel.Placement) -> bool:
 		return not library.parts.has(p.part_id))
-	var source: SourceFile = SourceFile.make(text, model, known, mirrored_lines, authored,
-		absent) if model.author.strip_edges() != "Brickworks" else null
+	var reading: Callable = func() -> Dictionary:
+		return _read_text(text, model, known, mirrored_lines, authored, absent, foreign)
+	var read: Dictionary
+	if paced:
+		read = await _off_frame(reading)
+	else:
+		read = reading.call()
+	var source: SourceFile = read["source"]
 	_phase("source")
 
 	world.clear()
@@ -886,6 +950,8 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	_phase("clear")
 	_source = source
 	_opened_in = world.generation()
+	# Whatever arrives from now is put down in this model (place_awaited).
+	_awaited_in = world.generation()
 	# What the file holds that is not on the baseplate: kept in it, and said.
 	unshown = missing.duplicate()
 	if source != null and not missing.is_empty():
@@ -898,12 +964,31 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 		world.unit_steps = model.unit_steps.duplicate()
 		# And how its booklet shows them: ROTSTEP's turns and the app's own
 		# lines (BookletLooks).
-		world.step_looks = BookletLooks.read(text, model._assembly_names(),
-			LdrModel._key(model.main.name))
+		world.step_looks = read["looks"]
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
-	var up: Vector3 = lift_for(known, model.author.strip_edges() != "Brickworks")
+	var up: Vector3 = lift_for(known, foreign)
 	_phase("lift")
+	var laying_in: int = world.generation()
+	if paced:
+		_laying_in = laying_in
+		still_to_lay = known.size()
+		world.hold_drawing()
+		job.percent = true
+		job.count(0, known.size() * 2)
+		# Each part's geometry to hand first, a slice at a time: on the
+		# desktop it is read from disk when it is first asked for.
+		var asked: Dictionary = {}
+		for item: Variant in known:
+			var part_id: String = (item as LdrModel.Placement).part_id
+			if not asked.has(part_id):
+				asked[part_id] = true
+				library.mesh_for(part_id)
+			if job.due():
+				await job.next()
+				if world.generation() != laying_in:
+					_put_away(out, job)
+					return
 	# A turned part's cover is the slow half of putting it down, and depends
 	# on nothing but the part and its turn: all of them set going at once,
 	# first, and worked out while the parts are drawn.
@@ -924,14 +1009,25 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 		down.append(brick_id)
 		if brick_id == 0:
 			awaited.append(placement)
-			continue
-		world.get_brick(brick_id).group = placement.group
-		world.get_brick(brick_id).unit = placement.unit
-		world.get_brick(brick_id).step = placement.step
-		placed += 1
+		else:
+			world.get_brick(brick_id).group = placement.group
+			world.get_brick(brick_id).unit = placement.unit
+			world.get_brick(brick_id).step = placement.step
+			placed += 1
+		if paced and job.due():
+			job.count(down.size())
+			await job.next()
+			if world.generation() != laying_in:
+				_put_away(out, job)
+				return
 	_phase("draw")
 	# Then the lattice told of each, in the same order, once the covers are in.
 	if not lattice_later:
+		while paced and not builder.covers_ready():
+			await job.next()
+			if world.generation() != laying_in:
+				_put_away(out, job)
+				return
 		builder.finish_covers()
 	_phase("covered")
 	for n: int in known.size():
@@ -941,15 +1037,33 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 				_unregistered.append([down[n], placement.part_id, placement.transform])
 			else:
 				builder.register(down[n], placement.part_id, placement.transform)
-	_awaited_in = world.generation()
+		if paced and job.due():
+			job.count(known.size() + n)
+			still_to_lay = known.size() - n
+			await job.next()
+			if world.generation() != laying_in:
+				_put_away(out, job)
+				return
+	if paced:
+		_laying_in = -1
+		still_to_lay = 0
+		job.count(known.size() * 2)
+		# What arrived while the rest went down, down now: it was not
+		# put down then (place_awaited), as the model was not whole.
+		var arrived: Dictionary = {}
+		for placement: LdrModel.Placement in awaited:
+			if library.is_resident(placement.part_id):
+				arrived[placement.part_id] = true
+		for part_id: String in arrived:
+			placed += place_awaited(part_id)
 	_phase("place")
 
 	# Ask for the ones that were not to hand, and put each down as it
 	# arrives (place_awaited).
-	var asked: Dictionary = {}
+	var asked_for: Dictionary = {}
 	for placement: LdrModel.Placement in awaited:
-		if not asked.has(placement.part_id):
-			asked[placement.part_id] = true
+		if not asked_for.has(placement.part_id):
+			asked_for[placement.part_id] = true
 			library.request_mesh(placement.part_id, true)
 
 	# A model from a file: nobody emptied the baseplate.
@@ -957,18 +1071,18 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	title = _title_of(model, name)
 	if source != null:
 		source.own_title = title
-		var named: String = title_meta_in(text)
+		var named: String = read["title"]
 		if not named.is_empty():
 			title = named
-	share_id = share_in(text)
-	remixed_from = remix_in(text)
-	remixed_from_version = remix_version_in(text) if not remixed_from.is_empty() else 0
-	credit = credit_in(text)
-	var said: ModelFloor = ModelFloor.read(text)
+	share_id = read["share"]
+	remixed_from = read["remix"]
+	remixed_from_version = read["remix_version"] if not remixed_from.is_empty() else 0
+	credit = read["credit"]
+	var said: ModelFloor = read["floor"]
 	model_floor = said if said != null else ModelFloor.preferred()
-	from_set = set_in(text)
-	hidden_scheme = HiddenColours.read(text)
-	world.motions = Motions.read(text)
+	from_set = read["set"]
+	hidden_scheme = read["hidden"]
+	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
 		# here, so a door saved open is known to be open (Motions.Joint.at).
@@ -976,11 +1090,60 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 			world.motions.snapshot[brick.id] = brick.transform
 	example = false
 	_phase("meta")
+	if paced:
+		# Drawn from the end of this frame, a slice of the batches a frame
+		# (BrickWorld.rebuilds_in_slices).
+		world.release_drawing()
 	loaded.emit(title, placed)
 	_phase("loaded")
-	return {"placed": placed, "missing": missing.size(),
+	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
-		"unshown": unshown, "kept": source != null}
+		"unshown": unshown, "kept": source != null})
+
+
+## What a model's [param text] says besides its parts, and the file kept as
+## it is when it is someone else's ([param foreign]): read from the whole
+## text and from nothing else, so on any thread.
+static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lines: Dictionary,
+		authored: bool, absent: Array, foreign: bool) -> Dictionary:
+	return {
+		"source": SourceFile.make(text, model, known, mirrored_lines, authored, absent)
+			if foreign else null,
+		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
+			if authored else {},
+		"title": title_meta_in(text) if foreign else "",
+		"share": share_in(text),
+		"remix": remix_in(text),
+		"remix_version": remix_version_in(text),
+		"credit": credit_in(text),
+		"floor": ModelFloor.read(text),
+		"set": set_in(text),
+		"hidden": HiddenColours.read(text),
+		"motions": Motions.read(text),
+	}
+
+
+## [param work] done on a worker, the frames going on meanwhile: what it
+## returns.
+static func _off_frame(work: Callable) -> Variant:
+	var done: Array = [null]
+	var task: int = WorkerTasks.add(func() -> void: done[0] = work.call(), false,
+		"read a model's text")
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	while not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+	WorkerTasks.collect(task)
+	return done[0]
+
+
+## A model being laid a slice at a time put away before it was whole: the
+## world was cleared under it. What has been done of it stays undone.
+func _put_away(out: Array, job: Working.Job) -> void:
+	still_to_lay = 0
+	world.release_drawing()
+	job.count(0)
+	out.append({"placed": 0, "missing": 0, "waiting": 0,
+		"error": "it was put away before all of it was down"})
 
 
 ## The lattice told of a model's parts after it is on screen, a slice at a
@@ -1011,19 +1174,35 @@ func register_later() -> void:
 ## ships. At once, with nothing fetched or waited for, on the desktop and for
 ## a file that needs nothing.
 ## [param parsed] is [param text] already read (ModelBar.read_off_frame).
-func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
+## A big file is read on a worker and its flexible parts built on workers
+## first, and a big model laid a slice at a time ([method _open_into]),
+## counted by [param job], the work the bar shows, where there is one.
+func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = null,
+		job: Working.Job = null) -> Dictionary:
 	var began: int = Time.get_ticks_usec()
-	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
+	var model: LdrModel = parsed
+	if model == null and text.length() >= READ_OFF_FRAME_FROM:
+		model = await _off_frame(func() -> LdrModel: return LdrModel.parse(text, name))
+	elif model == null:
+		model = LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
+	if not model.generated.is_empty():
+		await CustomParts.warm_skins(library, model)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
 	began = Time.get_ticks_usec()
 	await CustomParts.fetch_sources(library, model)
 	var fetched_in: float = (Time.get_ticks_usec() - began) / 1000.0
-	var result: Dictionary = open_text(text, name, model)
+	var out: Array = []
+	await _open_into(out, text, name, model, job if job != null else Working.Job.new())
 	open_phases["parse"] = parsed_in
 	open_phases["fetch"] = fetched_in
-	return result
+	return out[0]
+
+
+## A file this long or longer is read on a worker when it is opened over
+## frames: 8466-1's 36 MB took 1.2 s of a desktop's frame to read.
+const READ_OFF_FRAME_FROM := 262144
 
 
 ## What the last [method open_text] spent, phase by phase, in ms, in order:
@@ -1215,7 +1394,7 @@ var _told_not_coming: bool = false
 ## waited for ever and nothing said so (m115's preview: a crane short its
 ## 3709b).
 func not_coming(part_id: String) -> int:
-	if _told_not_coming or awaited.is_empty() or world.generation() != _awaited_in \
+	if _told_not_coming or laying or awaited.is_empty() or world.generation() != _awaited_in \
 			or not awaited.any(func(p: LdrModel.Placement) -> bool: return p.part_id == part_id):
 		return 0
 	for placement: LdrModel.Placement in awaited:
@@ -1228,7 +1407,9 @@ func not_coming(part_id: String) -> int:
 ## Put down what was waiting for [param part_id]. Returns how many landed;
 ## none once the world has been cleared since the model opened.
 func place_awaited(part_id: String) -> int:
-	if awaited.is_empty():
+	# Not into a model still being laid: what arrived meanwhile is put down
+	# once it is whole (_open_into).
+	if awaited.is_empty() or laying:
 		return 0
 	if world.generation() != _awaited_in:
 		awaited.clear()

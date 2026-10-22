@@ -836,6 +836,15 @@ func end_reading(task: int = -1) -> void:
 
 ## Until every reader's task has finished, so what they read can be written.
 ## Main thread only.
+## Whether a worker is reading the library now: what changes it waits for
+## that to finish ([method _wait_for_readers]).
+func being_read() -> bool:
+	for task: int in _reading_tasks:
+		if not WorkerThreadPool.is_task_completed(task):
+			return true
+	return false
+
+
 func _wait_for_readers() -> void:
 	for task: int in _stops:
 		(_stops[task] as Callable).call()

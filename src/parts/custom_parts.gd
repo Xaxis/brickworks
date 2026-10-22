@@ -551,6 +551,17 @@ static func _load_later(library: PartLibrary, texts: Dictionary,
 ## the library: a file cannot redefine 3001. Returns {"added": [ids],
 ## "problems": [sentences]}.
 static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
+	var out: Array = []
+	take_into(out, library, model, null)
+	return out[0]
+
+
+## [method take_from], its answer put in [param out]. With [param pace]
+## (it is then a coroutine), the parts it builds are waited for a frame at a
+## time and added a slice at a time: 10179-1's seven bent parts, built and
+## added in the frame that opened it, were 0.3 s of a desktop's.
+static func take_into(out: Array, library: PartLibrary, model: LdrModel,
+		pace: Working.Job) -> void:
 	var added: PackedStringArray = PackedStringArray()
 	var problems: PackedStringArray = PackedStringArray()
 	# Everything a part may be drawn from: the other parts, and the subparts
@@ -574,10 +585,17 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	var texts: Dictionary = {}
 	for file_name: String in wanted:
 		texts[file_name] = model.embedded_parts[file_name]
-	var built: Dictionary = _built_at_once(texts, carried)
+	var built: Dictionary
+	if pace != null:
+		built = await _built_off_frame(texts, carried)
+	else:
+		built = _built_at_once(texts, carried)
 	for file_name: String in wanted:
 		var id: String = file_name.get_basename()
 		var text: String = model.embedded_parts[file_name]
+		if pace != null and pace.due():
+			await pace.next()
+			await readers_done(library)
 		var result: Dictionary = add(library, text, id,
 			keeps and not FileAccess.file_exists(dir + id + ".dat"), carried,
 			built.get(file_name))
@@ -593,7 +611,7 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 		else:
 			problems.append("%s: %s" % [id, _with_why(str(result["problem"]))])
 	var flexible: PackedStringArray = end_skins(library, model, skins_begun, problems)
-	return {"added": added, "problems": problems, "skins": flexible}
+	out.append({"added": added, "problems": problems, "skins": flexible})
 
 
 ## The parts [param model] carries that [method take_from] builds, by file
@@ -1051,10 +1069,25 @@ static func _add_skin(library: PartLibrary, built: PartForge.Result, text: Strin
 ## each built, and waits for none. 8466-1 carries 29: their build held a
 ## browser's frame for seconds, with the bar saying only "Opening". A skin
 ## that could not be built is left for the open, which builds it again and
-## says why.
+## says why. Each skin's text is made from its sub-model on a worker too,
+## where there are threads: made here, 8466-1's 29 were 0.95 s of a desktop's
+## frame. That reads the library and adds nothing to it; each skin is added
+## here once it is built, after any worker reading the library has finished
+## (PartLibrary.being_read), as adding waits for those.
 static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
-	var begun: Array = begin_skins(library, model, PackedStringArray())
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var begun: Array = []
+	if OS.has_feature("web") and not OS.has_feature("threads"):
+		begun = begin_skins(library, model, PackedStringArray())
+	else:
+		var made: Array = [[]]
+		var reading: int = WorkerTasks.add(func() -> void:
+			made[0] = begin_skins(library, model, PackedStringArray()), true,
+			"read a model's flexible parts")
+		while not WorkerThreadPool.is_task_completed(reading):
+			await tree.process_frame
+		WorkerTasks.collect(reading)
+		begun = made[0]
 	for entry: Dictionary in begun:
 		var task: int = int(entry["task"])
 		if task < 0:
@@ -1064,7 +1097,20 @@ static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 		WorkerThreadPool.wait_for_task_completion(task)
 		var built: PartForge.Result = (entry["built"] as Array)[0]
 		if built != null:
+			await readers_done(library)
 			_add_skin(library, built, str(entry["text"]))
+
+
+## Until no worker is reading [param library] (PartLibrary.being_read), a
+## frame at a time and ten seconds at most: adding a part to it waits for
+## them, and waited for in one frame, a weighing of the last model held the
+## next one's open for seconds.
+static func readers_done(library: PartLibrary) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	for _n: int in 600:
+		if not library.being_read():
+			return
+		await tree.process_frame
 
 
 ## The part file a sub-model's skin is: its own lines without the parts and
@@ -1195,9 +1241,31 @@ static func _is_piece(library: PartLibrary, model: LdrModel, key: String,
 ## left out (PartPrints builds it with the library), and so is everything on
 ## a build without threads.
 static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
+	var going: Array = _build_begun(texts, others)
+	if going.is_empty():
+		return {}
+	WorkerThreadPool.wait_for_group_task_completion(int(going[0]))
+	return _build_ended(going)
+
+
+## [method _built_at_once], waited for a frame at a time.
+static func _built_off_frame(texts: Dictionary, others: Dictionary) -> Dictionary:
+	var going: Array = _build_begun(texts, others)
+	if going.is_empty():
+		return {}
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	while not WorkerThreadPool.is_group_task_completed(int(going[0])):
+		await tree.process_frame
+	WorkerThreadPool.wait_for_group_task_completion(int(going[0]))
+	return _build_ended(going)
+
+
+## The builds of [method _built_at_once] set going: [its group task, the
+## file names, what each made]; [] for none.
+static func _build_begun(texts: Dictionary, others: Dictionary) -> Array:
 	if texts.size() < 2 or (OS.has_feature("web") and not OS.has_feature("threads")) \
 			or OS.get_thread_caller_id() != OS.get_main_thread_id():
-		return {}
+		return []
 	var sources: Dictionary = {}
 	for name: String in others:
 		if not others[name] is PackedByteArray:
@@ -1207,7 +1275,7 @@ static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
 		if not PartPrints.has_pictures(texts[file_name]):
 			plain.append(file_name)
 	if plain.size() < 2:
-		return {}
+		return []
 	var made: Array = []
 	made.resize(plain.size())
 	var writing := Mutex.new()
@@ -1221,7 +1289,14 @@ static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
 		made[n] = result
 		writing.unlock(),
 		plain.size(), -1, true, "carried parts")
-	WorkerThreadPool.wait_for_group_task_completion(task)
+	return [task, plain, made]
+
+
+## What the builds [method _build_begun] set going made, their meshes made
+## here: file name -> PartForge.Result.
+static func _build_ended(going: Array) -> Dictionary:
+	var plain: PackedStringArray = going[1]
+	var made: Array = going[2]
 	var out: Dictionary = {}
 	for n: int in plain.size():
 		out[plain[n]] = PartForge.with_mesh(made[n])
@@ -1240,6 +1315,10 @@ static var drawn_from: Dictionary = {}
 ## text] refers to, and those they refer to, by the name as referred to.
 static func needs(text: String, carried: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
+	# Nothing to find, so nothing read: a skin built earlier this session is
+	# asked with none, and 8466-1's 29 were 0.2 s of its open read for it.
+	if carried.is_empty():
+		return out
 	var todo: Array = [text]
 	while not todo.is_empty():
 		for raw: String in str(todo.pop_back()).split("\n"):

@@ -3018,6 +3018,18 @@ func prepare_covers(placements: Array) -> void:
 var _preparing: Array = []
 
 
+## Whether the covers [method prepare_covers] set going are all worked out,
+## so [method finish_covers] waits for none: a model laid over frames waits
+## for them a frame at a time (ModelStore._open_into).
+func covers_ready() -> bool:
+	if _preparing.is_empty():
+		return true
+	for task: int in _preparing[1]:
+		if not WorkerThreadPool.is_task_completed(task):
+			return false
+	return true
+
+
 ## Wait for the covers [method prepare_covers] set going, and keep them as
 ## [method boxes_for] keeps its own (none it found empty). Asked by
 ## [method register] too, so nothing reads a cover while one is still being

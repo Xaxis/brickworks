@@ -595,7 +595,8 @@ func _tell_page() -> void:
 		# (ModelStore.awaited): a browser check waits for none, rather than
 		# for the count to hold still between two looks, which it does
 		# between two arrivals (booklet_flow.mjs on 7636, 2026-10-16).
-		"awaited": _store.awaited.size(),
+		# And those of one being laid, not down yet (ModelStore.laying).
+		"awaited": _store.awaited.size() + (_store.still_to_lay if _store.laying else 0),
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,
@@ -3972,7 +3973,7 @@ func _build_ui() -> void:
 			_refresh_preview(at))
 	_bin.part_dropped.connect(func(let_go: Vector2) -> void:
 		var at: Vector2 = _true_point(let_go)
-		if _over_panel_at(at):
+		if _over_panel_at(at) or _store.laying:
 			return
 		_aim_at(at)
 		_builder.place()
@@ -6596,6 +6597,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _viewing.is_empty():
 		_view_input(event)
 		return
+	# A model being laid is not edited until it is all down: the camera
+	# turns it meanwhile, by its own input (CadCamera).
+	if _store.laying:
+		return
 	# The ruler, while it is out, has the left button and the pointer.
 	if _measure != null and _measure.takes(event):
 		_builder.hide_preview()
@@ -7312,6 +7317,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# held down, never put off.
 	var command: String = _shell.command_for_key(key) \
 		if _shell != null and _viewing.is_empty() and not key.echo else ""
+	# While a model is being laid, only the keys that turn or zoom the view
+	# (Shell.WHILE_LAYING): nothing reads it or changes it until it is down.
+	if _store.laying and (_shell == null or not _shell.can(command)) and _zoom_key(key) == 0:
+		return
 	if command.is_empty():
 		_key_pressed(key)
 	else:
