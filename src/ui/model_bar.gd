@@ -20,6 +20,8 @@ var menus: HBoxContainer
 var _name: LineEdit
 ## Written by say(); the status bar shows it (use_status).
 var _status: Label = Label.new()
+## How many times say() has been called: its timer clears only the last.
+var _said: int = 0
 var _saves: PopupMenu
 var _confirm: ConfirmationDialog
 var _confirm_new: ConfirmationDialog
@@ -325,11 +327,15 @@ func say(text: String) -> void:
 
 func _say(text: String) -> void:
 	_status.text = text
+	_said += 1
+	var said: int = _said
 	# Clear it after a moment; a status line that never resets stops
-	# meaning "just now".
+	# meaning "just now". Only if nothing has been said since: the same
+	# words said again were cleared by the first saying's timer, Check
+	# stability pressed twice gone a moment after the second press.
 	var timer: SceneTreeTimer = get_tree().create_timer(4.0)
 	timer.timeout.connect(func() -> void:
-		if _status.text == text:
+		if _said == said and _status.text == text:
 			_status.text = "")
 
 

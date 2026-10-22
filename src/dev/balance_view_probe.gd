@@ -70,6 +70,7 @@ func _run() -> void:
 	_check("...and the Working line is up while it weighs (%s)" % (
 		Working.current().words if Working.current() != null else "nothing"), Working.is_busy())
 	await _weighed()
+	var first_at: int = Time.get_ticks_msec()
 	var report: Balance.Report = _shell.balance_shown
 	var line: String = (_shell.status.fields() as Dictionary)["line"]
 	print("    status: %s" % line)
@@ -83,10 +84,20 @@ func _run() -> void:
 	_check("...and the joint on one stud is tinted (%d parts)" % tinted.size(),
 		report.over >= 1 and not tinted.is_empty())
 	await _shot("1_tips")
+	# Pressed again 2 s on, the same words last their own four seconds: the
+	# first saying's timer cleared them as it ran out, half a second later.
+	await create_timer(maxf(0.0, 2.0 - (Time.get_ticks_msec() - first_at) / 1000.0)).timeout
+	_shell.run("stability")
+	await _weighed()
+	await create_timer(maxf(0.1, 4.5 - (Time.get_ticks_msec() - first_at) / 1000.0)).timeout
+	var again: String = (_shell.status.fields() as Dictionary)["message"]
+	_check("pressed again 2 s on, its words last their own four seconds: \"%s\"" % again.left(40),
+		again.contains("Tips over"))
 	# The words stay while the marks do, after the message itself has gone.
 	await create_timer(4.5).timeout
 	line = (_shell.status.fields() as Dictionary)["line"]
-	_check("four seconds on, the line still reads the balance", line.begins_with("Tips over"))
+	_check("four seconds on, the message gone, the line still reads the balance",
+		str((_shell.status.fields() as Dictionary)["message"]).is_empty() and line.begins_with("Tips over"))
 
 	print("  the counterweight it asks for, put on")
 	var each: float = Stability.grams(_library.parts.get("3001"))

@@ -254,10 +254,16 @@ func _nothing_of_ai(when: String) -> void:
 	# runs it, awaited: through Shell.run a debug build stops the menu's
 	# lambda at the coroutine it hands back ("Trying to call an async
 	# function without await"), which is the same before this change.
+	# Read as the status bar shows it: the message, or once that has gone
+	# (four seconds after it was said) the balance readout, which stays
+	# while its marks are on the floor. The message alone read "" once, in
+	# the suite on 7fa2c471, and never in a run of its own.
 	await shell.call("_check_stability")
 	await _frames(10)
-	var said: String = (shell.status.message.text if shell.status != null else "")
-	_ok(not said.is_empty() and _ai.search(said) == null,
+	var said: String = str(shell.status.fields()["line"]) if shell.status != null else ""
+	var balance: Balance.Report = shell.balance_shown
+	_ok(balance != null and not balance.empty and said.contains(balance.words())
+		and _ai.search(said) == null,
 		"Check stability says what it found and nothing of AI: \"%s\"" % said.left(70))
 	shell.run("parts_list")
 	await _frames(20)
