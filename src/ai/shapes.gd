@@ -3655,16 +3655,10 @@ class Plan extends RefCounted:
 			for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
 				if j_ < 0:
 					return -1
-				# The half plate at the row's foot or head may be the shell's own
-				# air, in its own column too: a row is two and a half plates, and
-				# a side's edge three plates tall between its rows was laid by no
-				# row, its plates the shell's and no one's (1.8% of a bunny at 28
-				# studs turned from 60 degrees). It stands half a plate proud.
-				var half: bool = float(j_) < row - 0.01 or float(j_ + 1) > row + Shapes.PLATES_PER_STUD + 0.01
 				for stud: Variant in studs:
 					var key := Vector3i((stud as Vector2i).x, j_, (stud as Vector2i).y)
 					if (taken.has(key) or at(stud, j_) >= 0) and not mine.has(key) \
-							and not (beside.has(key) and (half or stud != Vector2i(floori(p.x), floori(p.z)))):
+							and not (beside.has(key) and stud != Vector2i(floori(p.x), floori(p.z))):
 						return -1
 			return int(colour_at.call(p.x, p.y, p.z))
 		# Whether a point of the shell's frame is free for a face: every plate
