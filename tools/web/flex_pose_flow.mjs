@@ -36,7 +36,12 @@ const first = args.bypass
 mkdirSync(out, { recursive: true });
 
 // The model: in LDraw's own coordinates (-Y up). Two Technic bricks with
-// their holes to the front, two 24-tooth gears above, and the crane.
+// their holes to the front, two 24-tooth gears above, and the crane. Its
+// hinge (3937 and 3938, turned about up) faces the way the arm rises: the
+// base's top edge is square on one side and rounded on the other, so the
+// top tips one way only. Faced the other way, the arm rose 6° before the
+// top met its base, and swung down 17° onto the baseplate (pose_probe's
+// crane had the same, docs/MECHANISMS.md sections 34 and 35).
 const model = path.resolve(out, "flex_pose.mpd");
 writeFileSync(model, [
   "0 FILE flex_pose.ldr",
@@ -53,13 +58,13 @@ writeFileSync(model, [
   "0 Turret",
   "0 Name: turret.ldr",
   "1 7 0 0 0 1 0 0 0 1 0 0 0 1 3679.dat",
-  "1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3937.dat",
+  "1 7 0 -24 0 -1 0 0 0 1 0 0 0 -1 3937.dat",
   "1 16 0 -24 0 1 0 0 0 1 0 0 0 1 arm.ldr",
   "0",
   "0 FILE arm.ldr",
   "0 Arm",
   "0 Name: arm.ldr",
-  "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3938.dat",
+  "1 4 0 0 0 -1 0 0 0 1 0 0 0 -1 3938.dat",
   "1 4 0 -8 -50 0 0 1 0 1 0 -1 0 0 3795.dat",
   "0",
   "",
