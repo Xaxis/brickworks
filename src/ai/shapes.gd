@@ -3023,11 +3023,6 @@ class Plan extends RefCounted:
 	## model past it in its lower plates; on Bob and the Stanford bunny at 48
 	## studs, nearly every cube refused so.
 	const CUBE_DEEP := 2
-	## The fewest plates of a cube between shells cut at other phases laid on
-	## its side as a band, a row tall: a row is two and a half plates.
-	const BAND_LEAST := 3
-	## The cubes of [member _phase] trimmed to such a band: cube -> [from, to).
-	var _trim: Dictionary = {}
 	## The most parts of a piece of the core a shell cuts off that are taken
 	## out before the check (Shapes.lay).
 	const CUT_OFF := 16
@@ -3076,7 +3071,7 @@ class Plan extends RefCounted:
 
 	## The shells of the cubes of [member _phase].
 	func _cube_shells_at(kind: String) -> Array:
-		var groups: Dictionary = {}    ## Vector4i(way x, way z, depth, band) -> cubes
+		var groups: Dictionary = {}    ## Vector3i(way x, way z, depth) -> cubes
 		var keys: Array = cubes.keys()
 		keys.sort()
 		var moved: Dictionary = {}
@@ -3097,16 +3092,6 @@ class Plan extends RefCounted:
 			if moved.has(c):
 				continue
 			moved[c] = facing
-		# Cut again a few plates up, a cube a shell before has some plates of
-		# is the band between: its plates no shell has, three or more, a
-		# shell a row tall of its own.
-		_trim = {}
-		if _phase != 0:
-			for key: Variant in moved:
-				var c: Vector3i = key
-				var span: Vector2i = _cube_free(c)
-				if span != Vector2i(c.y * CUBE_PLATES + _phase, (c.y + 1) * CUBE_PLATES + _phase):
-					_trim[c] = span
 		for key: Variant in moved:
 			var c: Vector3i = key
 			var facing: Vector2i = moved[c]
@@ -3115,14 +3100,11 @@ class Plan extends RefCounted:
 			# the two deep ([constant CUBE_DEEP]), counted from the innermost.
 			var out3 := Vector3i(facing.x, 0, facing.y)
 			var root: Vector3i = c
-			while moved.get(root - out3, Vector2i.ZERO) == facing and not _trim.has(root - out3) \
-					and not _trim.has(c):
+			while moved.get(root - out3, Vector2i.ZERO) == facing:
 				root -= out3
 			var steps: int = absi((c - root).x + (c - root).z)
 			root += out3 * (steps - steps % CUBE_DEEP)
-			var span: Vector2i = _trim.get(c, Vector2i.ZERO)
-			var group := Vector4i(facing.x, facing.y, root.x if facing.x != 0 else root.z,
-				span.x * 4096 + span.y)
+			var group := Vector3i(facing.x, facing.y, root.x if facing.x != 0 else root.z)
 			if not groups.has(group):
 				groups[group] = []
 			(groups[group] as Array).append(c)
@@ -3132,7 +3114,7 @@ class Plan extends RefCounted:
 			asked += 1
 			if asked % 8 == 0 and stop.is_valid() and bool(stop.call()):
 				return out
-			var group: Vector4i = key
+			var group: Vector3i = key
 			var facing := Vector2i(group.x, group.y)
 			var list: Array = groups[key]
 			var shell: Dictionary = {}
@@ -3222,33 +3204,11 @@ class Plan extends RefCounted:
 						return true
 		return false
 
-	## The plates of cube [param c] no shell has nor took, [from, to): its
-	## whole height, or the most of it in one run up from a shell's top or
-	## down from a shell's foot, where it has [constant BAND_LEAST] or more;
-	## Vector2i.ZERO where none.
-	func _cube_free(c: Vector3i) -> Vector2i:
-		var j0: int = c.y * CUBE_PLATES + _phase
-		var best := Vector2i.ZERO
-		var from: int = j0
-		for j: int in range(j0, j0 + CUBE_PLATES + 1):
-			var free: bool = j < j0 + CUBE_PLATES
-			if free:
-				for dx: int in CUBE_STUDS:
-					for dz: int in CUBE_STUDS:
-						var key := Vector3i(c.x * CUBE_STUDS + dx, j, c.z * CUBE_STUDS + dz)
-						free = free and not shelled.has(key) and not taken.has(key)
-			if free:
-				continue
-			if j - from > best.y - best.x:
-				best = Vector2i(from, j)
-			from = j + 1
-		return best if best.y - best.x >= BAND_LEAST else Vector2i.ZERO
-
 	## Whether any plate of [param cells] from [param j0] up a cube's height is
 	## a shell's, or taken by one.
-	func _cube_shelled(cells: Array[Vector2i], j0: int, tall_: int = CUBE_PLATES) -> bool:
+	func _cube_shelled(cells: Array[Vector2i], j0: int) -> bool:
 		for cell: Vector2i in cells:
-			for j: int in range(j0, j0 + tall_):
+			for j: int in range(j0, j0 + CUBE_PLATES):
 				var key := Vector3i(cell.x, j, cell.y)
 				if shelled.has(key) or taken.has(key):
 					return true
@@ -3280,18 +3240,8 @@ class Plan extends RefCounted:
 					cells.append(Vector2i(c.x * CUBE_STUDS + dx, c.z * CUBE_STUDS + dz))
 			var j0: int = c.y * CUBE_PLATES + _phase
 			# Cut again a few plates up, only where no shell before has any of
-			# it: half a cube on a shell's edge would be a cap of its own. Or
-			# the band of it between, a row tall (_cube_free).
-			var j1: int = j0 + CUBE_PLATES
-			if _trim.has(c):
-				var span: Vector2i = _trim[c]
-				if span == Vector2i.ZERO or _cube_shelled(cells, span.x, span.y - span.x):
-					_why_not["shelled"] = int(_why_not.get("shelled", 0)) + 1
-					_why_at.append([c.x, j0, c.z, "shelled"])
-					continue
-				j0 = span.x
-				j1 = span.y
-			elif _phase != 0 and _cube_shelled(cells, j0):
+			# it: half a cube on a shell's edge would be a cap of its own.
+			if _phase != 0 and _cube_shelled(cells, j0):
 				_why_not["shelled"] = int(_why_not.get("shelled", 0)) + 1
 				_why_at.append([c.x, j0, c.z, "shelled"])
 				continue
@@ -3314,12 +3264,12 @@ class Plan extends RefCounted:
 			if not list.has(c + Vector3i(0, 1, 0)):
 				for cell: Vector2i in cells:
 					var over: int = 0
-					while over < 3 and at(cell, j1 + over) >= 0:
+					while over < 3 and at(cell, j0 + CUBE_PLATES + over) >= 0:
 						over += 1
 					if over == 1 or over == 2:
 						var behind: Vector2i = cell - facing * (1 + _lane(cell, facing, along).y - inmost)
-						capped = capped or at(behind, j1) < 0 \
-							or at(behind, j1 - 1) < 0
+						capped = capped or at(behind, j0 + CUBE_PLATES) < 0 \
+							or at(behind, j0 + CUBE_PLATES - 1) < 0
 			if not list.has(c - Vector3i(0, 1, 0)):
 				for cell: Vector2i in cells:
 					var under: int = 0
@@ -3335,7 +3285,7 @@ class Plan extends RefCounted:
 			for cell: Vector2i in cells:
 				var past: Vector2i = cell + facing * CUBE_STUDS
 				var inner: bool = _lane(cell, facing, along).y == inmost
-				for j: int in range(j0, j1):
+				for j: int in range(j0, j0 + CUBE_PLATES):
 					var key := Vector3i(cell.x, j, cell.y)
 					if at(past, j) >= 0 and not kept.has(c + out3):
 						beyond += 1
@@ -3355,7 +3305,7 @@ class Plan extends RefCounted:
 			# The side's outermost, the core behind it, plates enough.
 			# Anything of the model further out is cut off by the shell: a sliver
 			# a stud thick past a bunny's flank stood apart.
-			if beyond > 0 or backed < CUBE_STUDS * (j1 - j0) * 6 / 10 or plates.size() < CUBE_LEAST:
+			if beyond > 0 or backed < CUBE_STUDS * CUBE_PLATES * 6 / 10 or plates.size() < CUBE_LEAST:
 				var why: String = "beyond" if beyond > 0 else ("backed" if plates.size() >= CUBE_LEAST else "few")
 				_why_not[why] = int(_why_not.get(why, 0)) + 1
 				_why_at.append([c.x, j0, c.z, why])
@@ -3368,7 +3318,7 @@ class Plan extends RefCounted:
 				var lt: Vector2i = _lane(cell, facing, along)
 				lanes = Vector2i(mini(lanes.x, lt.x), maxi(lanes.y, lt.x))
 				face = mini(face, lt.y)
-			top = maxi(top, j1)
+			top = maxi(top, j0 + CUBE_PLATES)
 			bottom = mini(bottom, j0)
 		if kept.is_empty():
 			return {}
