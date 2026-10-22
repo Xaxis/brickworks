@@ -614,9 +614,9 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 ## the probe's bunny at 28 studs fell to 96.4% in a part (bar 97%). Its sixth
 ## round joined what the shells cut off, and turned from 65 degrees: on Bob,
 ## the Stanford bunny and 3DBenchy at 48 studs 46% of the steep faces from
-## 43% at 69, 7.2% nearer the model than studs up from 6.4%, every run 98.3%
+## 43% at 69, 7.2% nearer the model than studs up from 6.4%, every run 98.2%
 ## or more in a part. From 60, 52% and 8.6%, but the probe's blue bunny at
-## 20 studs 96.6% in a part and Bob at 48 studs 1.16 times m137's parts; and
+## 20 studs 96.2% in a part and Bob at 48 studs 1.16 times m137's parts; and
 ## from 63 (sine 0.46) the blue bunny 96.6% too. Measured half a stud inside the surface, so a side within half a
 ## stud of a cube's back (no stud of the model in that cube) is the cube
 ## behind's; only where the surface in it is at least [constant CUBE_AREA]
