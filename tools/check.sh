@@ -43,7 +43,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
   "table_race:--tries=8" technic_hand ahead art_plan autosave_paths balance
   brickify_buy build_steps cabin_glass cabins carried_at_once carried_fetch
   decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
-  mcp_walk mcp_walk3 mesh_formats own_copies page_places
+  hinged_panels mcp_walk mcp_walk3 mesh_formats own_copies page_places
   parts_only print_search shapes snippets standing subject_words surface
   unrestored update viewer_tools worker_first_run second_design)
 # In a window, each as its own header says (tools/probe.sh: the size it
@@ -53,12 +53,13 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
 # bench/results.
 windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
   simulate typing slow_frames look progress render collection_ui library
-  animation balance_view outline outline_cost placing offgrid booklet_edit
-  grab "command:--judge --subjects=orthanc")
-# Not run here, each with why: it spends money, needs the relay's keys, or
-# is a bench, a measure or pictures with no verdict. A check that is merely
-# slow is still a check. One that fails on the code as it is goes here only
-# with its finding and the day it was found, as a unit to fix and bring back.
+  animation balance_view placing offgrid booklet_edit
+  "command:--judge --subjects=orthanc")
+# Not run here, each with why: it spends money, needs the relay's keys, is
+# a bench, a measure or pictures with no verdict, or needs longer than a
+# probe's ten minutes (run, below). One that fails on the code as it is goes
+# here only with its finding and the day it was found, as a unit to fix and
+# bring back.
 out=(
   bakeoff           # spends money: real designs on the API key, dollars a run
   revise            # spends money: a design on the API key
@@ -76,8 +77,10 @@ out=(
   technique_sheet   # pictures for a person, no pass or fail
   gallery           # pictures of every shipped model for a person, no pass or fail
   anim_walk         # an audit: every answer printed for a person, no pass or fail
+  grab              # 23 min in a window at load 50, 499 ok; headless (in ten) its presses land 25x off, 35 of 227 fail
   # Failing on the code as it is (2026-10-22), each a unit to fix:
-  hinged_panels     # a panel on a tilting hinge (yaw 33 pitch 40, -120/65, 200/15) and each dome shell read as colliding; 18 min headless
+  outline           # Saruman's line covers 2 of his 190 inside pixels, by his staff; the bar (1 in 200, rounded down) allows none so small
+  outline_cost      # selecting all of Orthanc: 710-830 ms on m146, 450-580 on m144 in turn at load 22-28; the bar is 500
   selection_fit     # where_to_attach offers a 49668 on Orthanc's west horn that edit_selection refuses: a collision with #8542 (24307)
 )
 # A probe in no list never ran: the lists were kept by hand, and 85 of 214
@@ -474,9 +477,7 @@ run "draws only what changed" "${cursor_screen[@]}" godot --path . --resolution 
 # hand drew the castle for 23 s with the pointer still.
 run "draws only what changed, big" "${cursor_screen[@]}" godot --path . --resolution 1280x860 \
   --script src/dev/idle_probe.gd -- --model=res://models/castle.ldr
-# And the rest, each in the window its header asks for. grab's pictures
-# and made models go to this run's folder too, not over its dated one.
-export GRAB_PROBE_OUT="$XDG_DATA_HOME/grab"
+# And the rest, each in the window its header asks for.
 for spec in "${windowed[@]}"; do
   name=${spec%%:*}; args=()
   [ "$spec" = "$name" ] || read -r -a args <<< "${spec#*:}"
