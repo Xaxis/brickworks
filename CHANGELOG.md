@@ -83,8 +83,9 @@ by 0.4.0 open in 0.5.0 unchanged.
   model fills a card about 1.4 times wider. A model's remixes are shown as
   full cards too, a profile's and a collection's cards now say what moves,
   and a model's facts, tags and Tested mark are one kind of round pill
-  throughout the site. Counts of nothing are no longer shown: no more
-  "0 likes 0 remixes" on a model's page or "0 followers" on a profile. Your
+  throughout the site. Counts of nothing are no longer shown: a model
+  nobody has liked or remixed yet, or a profile nobody follows yet, no
+  longer says so with a zero. Your
   account shows a round avatar in a colour of your own, made from your
   handle. Type sizes and corners across the site come from one short scale,
   so pages that were a little different now match.
