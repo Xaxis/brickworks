@@ -85,6 +85,10 @@ import { toast } from "/kit.js";
   let kind = "";
   let tag = "";
   let following = false;
+  // The list's own word on each of its models (whether they like it, how
+  // much of it their collection holds), for the pick, which leads the list
+  // in its place.
+  const listed = new Map();
   // A probe's own models are tests, which the list leaves out unless asked
   // (api/share.js): an address with tests=1 asks, and keeps asking.
   const tests = new URLSearchParams(location.search).get("tests") === "1";
@@ -246,7 +250,7 @@ import { toast } from "/kit.js";
     const holder = $("pick-card");
     holder.replaceChildren();
     if (pick) {
-      const picked = card(pick.model);
+      const picked = card({ ...pick.model, ...(listed.get(String(pick.model.id)) || {}) });
       picked.classList.add("pick-card");
       picked.dataset.chosen = pick.chosen ? "yes" : "no";
       const frame = picked.querySelector(".frame");
@@ -413,9 +417,12 @@ import { toast } from "/kit.js";
       // A card once: the front's pick leads, and a page that shifted
       // while it was read does not repeat one.
       const pick = !$("pick").hidden && front && front.pick && front.pick.model ? String(front.pick.model.id) : "";
+      if (fresh) listed.clear();
       for (const model of data.models || []) {
         const id = String(model && model.id);
-        if (!ID.test(id) || id === pick || grid.querySelector(`.model[data-id="${id}"]`)) continue;
+        if (!ID.test(id)) continue;
+        listed.set(id, model);
+        if (id === pick || grid.querySelector(`.model[data-id="${id}"]`)) continue;
         grid.append(card(model));
       }
       hasMore = Boolean(data.more);

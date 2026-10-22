@@ -72,6 +72,13 @@ declare -A CMD=(
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
   [design]="tools/web/design_flow.mjs --url=$P --out=$S/${TAG}_design"
+  # The gallery as a person uses it (docs/SOCIAL.md U3): at 390 the first
+  # card's picture within 330 px, at 1280 four whole cards; Top, New and
+  # Following, Top over this week, a kind and Made; a like from a card;
+  # endless three times then Show more; Back to the same card; the empty
+  # gallery; and api/share.js before and after supabase/gallery_tabs.sql.
+  # The deployment's pages, the API answered by the stand-in's crowd.
+  [gallery]="tools/web/gallery_flow.mjs --url=$P --out=$S/${TAG}_gallery"
   # local only: card_check.mjs. It compares the cards the checkout's api/
   # makes with those its web/card.js draws in a browser, both from the same
   # stand-in data; a deployment's cards come from the same file (deploy.sh
@@ -154,7 +161,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design theme download frames"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design theme gallery download frames"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)
