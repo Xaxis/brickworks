@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow -->
 
 ## Sub-features
 
@@ -526,10 +526,34 @@ plan with Claude as the client.
   owner every published one), `list_page` (`/c/<id>`, public only). HEAD as
   GET. Pages made with the site's header and footer (`siteChrome`, `_site.html`
   beside the function too), cards server-made (`cardHtml`), no script.
-- `profile and collection pages`: `/u/<handle>` — the name, @handle, since
-  when, about them, how many models in the gallery and likes, public
-  collections, and the models they listed and are credited for (never one
-  shared without a name); `/c/<id>` — a public collection's name, "N models,
+- `profile and collection pages`: `/u/<handle>` (rebuilt 2026-10-22,
+  docs/SOCIAL.md U5, `api/people.js` `profilePage`, `web/person.js`) — a
+  person-shaped page, the same for everybody it shows (the house account
+  too, no special case): a banner (`.banner`, one of their models' pictures,
+  chosen) if any; the head (`header.profile-head`: `.avatar.huge` made from
+  the handle by `web/kit.js` `avatarHtml` through `api/_kit.js`, `h1`,
+  `@handle · [data-role] Designer|Builder · since`, Follow, Share
+  `button[data-share]` (copies the link, "Link copied" toast; the share sheet
+  on a touch screen), More `details.more-menu` with Report it); the bio;
+  links (`ul.links`, https, `rel="ugc nofollow noopener"`, said as their
+  domain); one row of numbers (`ul.numbers li[data-stat]`: builds,
+  remixes, models, likes, followers `[data-followers]`, following, each
+  `hidden` at none); wins as pills; Pinned (`.pinned .models.row`, up to
+  three, their order); then `nav.tabs` Models · Builds · Collections, each
+  a page of its own (`?tab=`; the default the first with something in it),
+  a count `.n` once there is one, `.tab-panel[data-panel]`: Models 24 a page
+  (`[data-models]`, Show more `a[data-more]` appends the next page from
+  `?op=profile&page=N`, a link to `?page=N` with no script), Builds
+  (`.builds-made`, `.builds-of`, photos in `.build-grid` columns),
+  Collections (`a.list-card`, a `.mosaic` of up to four pictures); an empty
+  tab says what goes there (`.state`); whom they follow (`section.follows`)
+  only when they chose to show it, never their followers. Links, banner and
+  pins: `supabase/profile_shows.sql` (one row an account, cascades from
+  auth.users, 13+ by trust.sql's profile trigger; not applied 2026-10-22:
+  the page has none and `POST ?op=showcase` says 503 "not open yet", after
+  checking what it is sent); chosen under Settings on `/profile`
+  (`#showcase-form`, shown once `?op=me` says `showcase.ready`);
+  `/c/<id>` — a public collection's name, "N models,
   collected by <their profile>", its description and its listed models in the
   order they were put there. Every word escaped; og tags and a canonical link.
 - `your profile page` (`web/profile.html`, `web/profile.js`): `/profile`,
@@ -854,14 +878,14 @@ plan with Claude as the client.
   (30), `MINE_CACHE` (`private, no-store`, on every answer, a 401 too).
   Before the file is applied the page is as before and `?op=designs`
   answers `ready: false`.
-- `a designer's page` (`api/people.js` `profilePage`, `earnedHtml`,
+- `a designer's page` (`api/people.js` `profilePage`, `numbersHtml`,
   `stripHtml`, `cardHtml(card, {earned})`): `/u/<handle>` with a model in
-  the gallery says Designer and leads with tiles (`ul.earned`, each
-  `li[data-earned]`: builds and remixes `.lead`, then tested, comments,
-  models, followers, `[data-followers]`, which `web/follow.js` keeps large
-  when it counts again), a line of likes and following, Start with their
-  most built (`.start-with`, Build it to `/app?view=<id>`), Built by others
-  (`.builds-of`), and the cards by Top builds (`a.model[data-builds]
+  the gallery says Designer (`[data-role]`) and its numbers are what the
+  models earned (builds finished and remixes first, `[data-followers]`,
+  which `web/follow.js` counts again); on the Models tab Start with their
+  most built (`.start-with`, Build it to `/app?view=<id>`) and the cards by
+  Top builds; Built by others (`.builds-of`) on the Builds tab; the cards
+  (`a.model[data-builds]
   [data-remixes][data-comments]`, "3 built · 1 remix · 1 comment", Tested,
   never views). `?op=profile` gives `designer` and each card's `comments`.
   The page is the same bytes for everybody; `#designs-mine` is empty and
@@ -874,6 +898,8 @@ plan with Claude as the client.
   who built it with their photos). `document.documentElement.dataset.designs`
   is `ready`, `empty`, `not-yet`, `not-mine`, `signed-out` or `trouble`.
 - `designers browser flow` (`tools/web/designers_flow.mjs`): below.
+- `profile browser flow` (`tools/web/profile_flow.mjs`, preview check
+  `[profile]`): below.
 - `the monthly challenge's rules` (`supabase/challenges.sql`, 2026-10-19):
   tables `challenges` (title, brief, `starts_on`/`ends_on` whole UTC days,
   `most_parts`, `set_number`/`set_name`, `tested`, `test`, `ended_at`,
@@ -3120,6 +3146,49 @@ frame was N ms (budget 500)`, every call answered. Against the build before
 2026-10-11 it fails: a check_design was one 31 s task, a submit 43 s, and the
 look that followed came back "The Brickworks tab did not answer in time" while
 the build animation weighed the model once a step.
+
+### A person's page (/u/), and what it shows
+
+The SQL first, in a rolled-back dry run (never applied by a unit):
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/profile_shows.sql \
+  --dry --try=tools/profile_shows_try.sql --table=profile_shows
+```
+
+It passes when Ada's links, banner and pins are allowed and read back; an
+http link, three links, a password in a link, a host with no dot,
+javascript:, four pins, a pin twice, a pin or a banner not an id are each
+refused by a check; Cy (under 13) and Di (never asked) refused by the
+profile's trigger; anon and authenticated may not read; her row gone when
+her account is deleted; "rolled back, nothing kept" (2026-10-22: all so).
+
+Then the page, locally from the stand-in's people (Robin with links, a
+banner and pins; the house account; Ines with 60 models; Alex with
+nothing), and on the relay or a preview with a throwaway designer:
+
+```sh
+node tools/web/profile_flow.mjs --out=shots/profile
+node --env-file=.env tools/web/relay_server.mjs 8993 --hold=profile_shows &
+node --env-file=.env tools/web/profile_flow.mjs --url=http://127.0.0.1:8993 --out=shots/profile-relay
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/profile_flow.mjs --url=<preview> --out=shots/profile-preview
+```
+
+It passes when it ends "N passed, 0 failed" (2026-10-22: 196 locally, 82 on
+the relay): at 390 and 1280, light and dark, signed out and in, the avatar a
+tile with the initial, every shown number not 0, links https and ugc
+nofollow, the tabs one current with no count of none, at 390 the avatar,
+name, numbers and Follow above 844 px; Robin's numbers builds first (77),
+his links said as their domain, the watchtower banner loaded, his pins in
+his order, whom he follows and no follower named, Share copying the link
+and saying so, More opening Report it; the Builds and Collections tabs;
+the house's 7 models and its empty tabs' words; Ines's 60 models reached
+by Show more twice, page 3 as served 12 cards; on the relay, op=showcase's
+seven refusals, Ada's links, banner and pins kept (or "not open yet"
+before the SQL on a preview) and her page as above. `design_flow` judges
+`person`, `person-builds`, `person-lists` (More open), `person-house` and
+`person-new` for controls, the scale and zeros.
 
 ## Gotchas
 

@@ -186,6 +186,13 @@ is on the page, `hidden`, for the script to show.
   buttons (Report it, Takedown requests), opening along the row from the
   button's start (`.end`: back from its end, at a row's end). It opens with no script;
   `web/kit.js` closes it on a click elsewhere and on Escape.
+- **A person's page** (`/u/<handle>`, `web/directory.css`, docs/SOCIAL.md
+  U5): the head (`.profile-head`: a `.huge` avatar, the name, the handle,
+  Follow, Share and More), `.numbers` (one row of counts, each `<b>` and
+  its word, hidden at none), `.pinned` (a `.models.row`), the `.tabs`, and
+  two cards of its own: `.list-card` (a collection, a `.mosaic` of up to
+  four pictures kept wide) and `.build-grid` (photos of builds in columns,
+  any shape).
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
   with "_") shows every component once, drawn by `web/kit.js` and

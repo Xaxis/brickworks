@@ -311,3 +311,85 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.earned b { font-size: var(--t-h3); }
 	.earned li.lead b { font-size: var(--t-h2); }
 }
+
+/* A person's page, /u/<handle> (api/people.js profilePage, docs/SOCIAL.md
+   U5): one of their models' pictures across the top if they chose one,
+   then their avatar, name and handle with Follow, Share and More; their
+   words, links and one row of numbers; the models they pinned; then the
+   tabs, Models · Builds · Collections, each a page of its own. */
+.person.profile { padding-top: var(--s-6); }
+.profile .banner {
+	aspect-ratio: 3 / 1; margin: 0 0 var(--s-3); border-radius: var(--radius); overflow: hidden;
+	border: 1px solid var(--line); background: var(--bg-soft);
+}
+.profile .banner img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; }
+.profile-head {
+	display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-3) var(--s-5);
+	margin: 0 0 var(--s-4);
+}
+/* Under a banner the avatar sits over its foot, ringed in the page's colour. */
+.bannered .profile-head { align-items: end; padding-left: var(--s-5); }
+.bannered .profile-head .avatar { margin-top: -64px; box-shadow: 0 0 0 4px var(--bg); }
+.profile-head h1 { margin: 0 0 2px; overflow-wrap: anywhere; }
+.profile-head .handle { margin: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.profile-head .acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.profile-head .follow-line { margin: 0; min-height: 0; justify-content: flex-end; }
+.profile-head .follow-line .said:empty { display: none; }
+.profile .bio { margin: 0 0 var(--s-3); }
+.profile .links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin: 0 0 var(--s-3); padding: 0; list-style: none; }
+.profile .links a { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.profile .links a:hover { color: var(--ink); }
+/* One row of numbers, one kind of number: each said once there is one. */
+.numbers { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-5); margin: 0 0 var(--s-4); padding: 0; list-style: none; }
+.numbers b { color: var(--ink); font-size: var(--t-h3); font-weight: 700; font-variant-numeric: tabular-nums; }
+.numbers span { color: var(--ink-soft); font-size: var(--t-small); }
+.profile .wins { margin: 0 0 var(--s-4); }
+.profile .pinned { margin-top: var(--s-6); }
+.profile .pinned h2, .profile .follows h2, .profile .tab-panel h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
+.profile .work { margin-top: var(--s-6); }
+.profile .tab-panel > section:first-child { margin-top: 0; }
+.profile .paging { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); margin: var(--s-5) 0 0; }
+.profile .paging a:not(.cta) { color: var(--ink-soft); }
+.profile .follows { margin-top: var(--s-7); }
+.profile .follows .pill .avatar { margin-left: -6px; }
+@media (max-width: 640px) {
+	.profile .banner { aspect-ratio: 2 / 1; }
+	.profile-head { grid-template-columns: auto minmax(0, 1fr); }
+	.profile-head .avatar.huge { width: 80px; height: 80px; font-size: var(--t-h2); }
+	.bannered .profile-head { padding-left: var(--s-3); }
+	.bannered .profile-head .avatar { margin-top: -48px; }
+	.profile-head .acts { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* Photos of real builds in a tab of their own: any shape, so in columns. */
+.build-grid { columns: 3 220px; column-gap: 12px; }
+.build-grid .build {
+	display: inline-block; width: 100%; margin: 0 0 12px; break-inside: avoid;
+	background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-3); overflow: hidden;
+}
+.build-grid .build img { display: block; width: 100%; height: auto; background: var(--line); }
+.build-grid figcaption { padding: 8px 10px 10px; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
+.build-grid figcaption q { display: block; color: var(--ink); margin-bottom: 4px; }
+.build-grid figcaption a { color: var(--ink); }
+
+/* A public collection as a card: up to four of its pictures, its name. */
+.list-cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.list-card {
+	display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: inherit;
+	border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); box-shadow: var(--shadow);
+}
+.list-card:hover { border-color: var(--ink-faint); }
+.list-card:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
+.list-card .mosaic {
+	aspect-ratio: 4 / 3; display: grid; gap: 2px; background: var(--bg-soft);
+	grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+}
+.list-card .mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; }
+.list-card .mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; }
+/* Kept wide, as the pictures are: two one above the other, three a wide
+   one over two. */
+.list-card .mosaic.n2 img, .list-card .mosaic.n3 img:first-child { grid-column: 1 / -1; }
+.list-card .mosaic.n0 { place-items: center; grid-template-columns: 1fr; grid-template-rows: 1fr; color: var(--ink-faint); font-size: var(--t-small); }
+.list-card .words { display: grid; gap: 2px; padding: 12px 16px 14px; }
+.list-card b { font-weight: 640; overflow-wrap: anywhere; }
+.list-card span { color: var(--ink-soft); font-size: var(--t-small); }

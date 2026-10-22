@@ -6,8 +6,17 @@
 //   POST ?op=profile              (session) {handle, name, bio?}: made, or
 //                                 changed
 //   GET  ?op=profile&handle=X     a profile as anyone sees it, with its first
-//                                 page of models (&page=N for more)
-//   GET  ?op=page&handle=X        /u/X: the profile's page
+//                                 page of models (&page=N for more), its
+//                                 links, banner and pinned models
+//   GET  ?op=page&handle=X        /u/X: the profile's page; &tab=builds or
+//                                 &tab=collections for those tabs, &page=N
+//                                 for the models' page N
+//   POST ?op=showcase             (session) {links?, banner?, pins?}: what
+//                                 the caller's profile shows besides its
+//                                 name: one or two https links, one of
+//                                 their models' pictures across the top,
+//                                 up to three of their models pinned
+//                                 (supabase/profile_shows.sql)
 //   GET  ?op=marks&id=X           (session) whether the caller likes and
 //                                 keeps model X, and which of their lists
 //                                 have it
@@ -115,6 +124,16 @@
 // and their counts unless asked for with tests=1, as the gallery's are; such
 // an answer is never kept by the CDN (supabase/test_models.sql).
 //
+// The profile's page (2026-10-22, docs/SOCIAL.md U5, supabase/profile_shows.sql):
+// a person-shaped page, the same for everybody it shows, the site's house
+// account too. Their avatar (made from the handle, web/card.js avatarHtml),
+// name, handle, words and links, one row of numbers (each said once there
+// is one), Follow, Share and More; the models they pinned; then tabs, each a
+// page of its own: Models (every one, page by page), Builds (photos of real
+// builds, theirs and of their models) and Collections (each a card with its
+// pictures). Never a list of who follows them. Until profile_shows.sql is
+// applied it has no links, banner or pins, and is otherwise the same.
+//
 // A profile is by a name its owner chooses, never one made from their
 // address, and lists only the models they listed and chose to be credited
 // for: a model shared without a name is not tied to anybody here. Likes
@@ -145,7 +164,10 @@ import {
 import { designerOf, designs } from "./_designers.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
-import { cardHtml } from "./_card.js";
+import { cardHtml, pictureOf } from "./_card.js";
+// The kit (web/kit.js): an avatar made from a handle, the icons and an icon
+// button, drawn as a browser draws them.
+import { avatarHtml, iconButtonHtml, iconHtml } from "./_kit.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -158,7 +180,11 @@ export const MOST_IN_A_LIST = 500;
 export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
-  collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300] };
+  collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300],
+  showcase: [20, 60] };
+// What a profile shows besides its name (supabase/profile_shows.sql).
+export const MOST_LINKS = 2;
+export const MOST_PINS = 3;
 const REASONS = new Set(["spam", "offensive", "sexual", "violent", "copied", "trademark", "personal", "other"]);
 
 class Refusal extends Error {
@@ -244,16 +270,146 @@ async function models(origin, asked, page) {
 }
 
 // ---------------------------------------------------------------------------
+// What a profile shows besides its name (supabase/profile_shows.sql).
+
+const NOT_THERE = /: 404$/;
+export const SHOWCASE_NOT_YET = "Links, a banner and pinned models are not open on Brickworks yet.";
+// A link as profile_shows keeps one: https, a host with a dot, no password.
+const LINK = /^https:\/\/[^/?#@\s]+\.[^/?#@\s]+([/?#]\S*)?$/;
+
+/// What [account]'s profile shows: {ready, links, banner, pins}, as kept;
+/// ready false, and nothing, before profile_shows.sql is applied.
+async function showsOf(account) {
+  try {
+    const row = (await db(`profile_shows?account=eq.${account}&select=links,banner,pins`))[0] || {};
+    return { ready: true, links: (Array.isArray(row.links) ? row.links : []).filter((one) => LINK.test(String(one))),
+      banner: ID.test(String(row.banner || "")) ? row.banner : null,
+      pins: (Array.isArray(row.pins) ? row.pins : []).filter((one) => ID.test(String(one))) };
+  } catch (trouble) {
+    if (NOT_THERE.test(String(trouble?.message || ""))) return { ready: false, links: [], banner: null, pins: [] };
+    throw trouble;
+  }
+}
+
+/// A link as a profile shows it: its domain and path, "flickr.com/photos/robin".
+export function linkSaid(href) {
+  const url = new URL(href);
+  const said = `${url.hostname.replace(/^www\./, "")}${`${url.pathname}${url.search}`.replace(/\/$/, "")}`;
+  return said.length > 48 ? `${said.slice(0, 47)}…` : said;
+}
+
+/// A link somebody typed, as kept: https, with "https://" put first when
+/// they left it off; or a refusal in words.
+export function cleanLink(given) {
+  if (typeof given !== "string") throw new Refusal("a link is text");
+  const text = given.trim();
+  let url;
+  try {
+    url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`);
+  } catch {
+    throw new Refusal(`“${text.slice(0, 60)}” is not a web address`);
+  }
+  if (url.protocol !== "https:") throw new Refusal("a link is a web address starting https://");
+  if (url.username || url.password) throw new Refusal("a link carries no name or password");
+  url.hash = "";
+  const href = url.href;
+  if (href.length > 200) throw new Refusal("a link is at most 200 characters");
+  if (!LINK.test(href)) throw new Refusal(`“${text.slice(0, 60)}” is not a web address`);
+  return href;
+}
+
+/// Of [ids], those that are [account]'s own and may be on their profile:
+/// published, listed, credited to them, not taken out, and a test model's
+/// only when [tests]. id -> {id, has_image}.
+async function ownShown(account, ids, tests = false) {
+  const wanted = [...new Set(ids.filter((id) => ID.test(String(id))))];
+  if (!wanted.length) return new Map();
+  const rows = await db(`shared_models?id=in.(${wanted.join(",")})&owner=eq.${account}&published=is.true`
+    + "&listed=is.true&barred=is.false&author=not.is.null&select=id,has_image,test");
+  return new Map(rows.filter((row) => tests || !row.test).map((row) => [row.id, row]));
+}
+
+/// What [person]'s page shows of what they chose: {links: [{href, said}],
+/// banner: id of a model of theirs with a picture, or null, pins: cards},
+/// each only while it may be shown.
+async function showcaseOf(origin, person, shows, tests) {
+  const shown = await ownShown(person.account, [...shows.pins, ...(shows.banner ? [shows.banner] : [])], tests);
+  const pins = (await Promise.all(shows.pins.filter((id) => shown.has(id)).map((id) =>
+    db("rpc/directory_model", { method: "POST", body: { model_id: id } }).catch(() => null))))
+    .filter((row) => row && ID.test(String(row.id))).map((row) => cardOf(origin, row));
+  return { links: shows.links.map((href) => ({ href, said: linkSaid(href) })),
+    banner: shows.banner && shown.get(shows.banner)?.has_image ? shows.banner : null,
+    pins: await withWins(pins, tests) };
+}
+
+/// POST ?op=showcase: what the caller's profile shows besides its name.
+/// Each of links, banner and pins is changed when given and kept when not.
+async function saveShowcase(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const changed = {};
+  if (body.links !== undefined) {
+    if (!Array.isArray(body.links)) throw new Refusal("links is a list of web addresses");
+    const links = body.links.filter((one) => typeof one !== "string" || one.trim()).map(cleanLink);
+    if (links.length > MOST_LINKS) throw new Refusal(`a profile shows at most ${MOST_LINKS} links`);
+    checkNames({ "A link": [links.map(linkSaid), "words"] });
+    changed.links = [...new Set(links)];
+  }
+  if (body.pins !== undefined) {
+    if (!Array.isArray(body.pins) || body.pins.some((id) => !ID.test(String(id)))) {
+      throw new Refusal("pins is a list of your models' ids");
+    }
+    const pins = [...new Set(body.pins.map(String))];
+    if (pins.length > MOST_PINS) throw new Refusal(`pin at most ${MOST_PINS} models`);
+    changed.pins = pins;
+  }
+  if (body.banner !== undefined) {
+    if (body.banner !== null && body.banner !== "" && !ID.test(String(body.banner))) {
+      throw new Refusal("the banner is one of your models, by its id, or none");
+    }
+    changed.banner = body.banner ? String(body.banner) : null;
+  }
+  const chosen = [...(changed.pins || []), ...(changed.banner ? [changed.banner] : [])];
+  // Their own, in the gallery with their name: a test account's own test
+  // models too, which only a page asked with tests=1 shows.
+  const theirs = await ownShown(account, chosen, true);
+  const notTheirs = chosen.find((id) => !theirs.has(id));
+  if (notTheirs) throw new Refusal("pin and choose only your own models in the gallery, shown with your name", 422);
+  if (changed.banner && !theirs.get(changed.banner).has_image) throw new Refusal("that model has no picture to show", 422);
+  const person = (await db(`people?account=eq.${account}&select=handle`))[0];
+  if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
+  const young = await publicTrouble(account, { profile: true });
+  if (young) throw new Refusal(young, 422);
+  await counted(account, "showcase");
+  try {
+    await db("profile_shows?on_conflict=account", { method: "POST",
+      body: { account, ...changed, updated_at: new Date().toISOString() }, prefer: "resolution=merge-duplicates" });
+  } catch (trouble) {
+    if (NOT_THERE.test(String(trouble?.message || ""))) throw new Unacceptable(SHOWCASE_NOT_YET, 503);
+    throw trouble;
+  }
+  const shows = await showsOf(account);
+  return response.status(200).json({ links: shows.links, banner: shows.banner, pins: shows.pins,
+    url: `${originOf(request)}/u/${person.handle}` });
+}
+
+// ---------------------------------------------------------------------------
 // Profiles.
 
 async function me(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signedIn(request);
-  const [people, lists, mail, follows] = await Promise.all([
+  const [people, lists, mail, follows, shows, theirs] = await Promise.all([
     db(`people?account=eq.${account}&select=handle,name,bio,created_at`),
     db(`model_collections?owner=eq.${account}&select=id,name,description,public,updated_at&order=updated_at.desc`),
     mailChoice(account),
     followChoiceOf(account),
+    showsOf(account),
+    // What they may pin or put across the top: their models in the gallery
+    // with their name, newest first.
+    db(`shared_models?owner=eq.${account}&published=is.true&listed=is.true&barred=is.false&author=not.is.null`
+      + "&select=id,name,has_image&order=listed_at.desc&limit=200"),
   ]);
   const counts = await Promise.all(lists.map((list) =>
     db("rpc/collection_count", { method: "POST", body: { list: list.id, private: true } })));
@@ -265,6 +421,10 @@ async function me(request, response) {
     mail,
     // Whether their profile shows whom they follow (supabase/follows.sql).
     follows,
+    // What their profile shows besides its name (supabase/profile_shows.sql),
+    // and the models they may choose from for it.
+    showcase: { ...shows, models: theirs.filter((one) => ID.test(String(one.id)))
+      .map((one) => ({ id: one.id, name: one.name, picture: one.has_image === true })) },
   });
 }
 
@@ -307,24 +467,29 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built, follows, designer] = await Promise.all([
+  const [page, about, built, follows, designer, shows] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
     followsOf(handle),
     designerOf(originOf(request), handle, tests),
+    showsOf(person.account),
   ]);
   // What their models earned (supabase/designers.sql), and each card's
-  // comments beside its builds and remixes.
+  // comments beside its builds and remixes, and what it won: the same
+  // cards as the page's, for its Show more.
   const earned = designer && designer.ready ? designer : null;
-  const cards = page.models.map((card) => (earned ? { ...card, comments: earned.cards[card.id]?.comments ?? 0 } : card));
+  const cards = (await withWins(page.models, tests))
+    .map((card) => (earned ? { ...card, comments: earned.cards[card.id]?.comments ?? 0 } : card));
+  const showcase = await showcaseOf(origin, person, shows, tests);
   return response.status(200).json({ handle: person.handle, name: person.name, bio: person.bio,
     since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
     followers: follows?.followers ?? 0, following: follows?.following ?? 0,
     designer: earned ? { models: earned.models, builds: earned.builds, remixes: earned.remixes,
       comments: earned.comments, tested: earned.tested, likes: earned.likes, builders: earned.builders,
       followers: follows?.followers ?? 0, photos: earned.photos } : null,
-    collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`, ...page, models: cards });
+    collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`,
+    links: showcase.links, banner: showcase.banner, pins: showcase.pins, ...page, models: cards });
 }
 
 // ---------------------------------------------------------------------------
@@ -723,7 +888,8 @@ ${siteChrome().head}
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
 <script src="/follow.js" type="module"></script>${mine ? `
-<script src="/designs.js" type="module"></script>` : ""}`;
+<script src="/designs.js" type="module"></script>
+<script src="/person.js" type="module"></script>` : ""}`;
 }
 
 function page(origin, { title, about, url, image, robots, main, mine = false }) {
@@ -757,26 +923,28 @@ const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric",
 /// Kept on the page, hidden, where web/follow.js counts it again.
 const zero = (n) => (Number(n) ? "" : " hidden");
 
-/// The band a designer's page leads with: what their models earned, each
-/// the sum of what the cards below say. Builds finished and remixes first,
-/// as the gallery's Top builds weighs them; followers last. Followers is
+/// The row of numbers under a person's name: what their work earned and who
+/// follows them, one kind of number, each said once there is one. Builds
+/// finished of their models and remixes first, as the gallery's Top builds
+/// weighs them. Each is the sum of what the cards say. Followers is
 /// [data-followers], which web/follow.js counts again once somebody follows.
-function earnedHtml(earned, follows) {
-  const tile = (kind, n, one, many, lead = false, extra = "") =>
-    `<li class="${lead ? "lead" : ""}" data-earned="${kind}"${extra}${zero(n)}><b>${escapeHtml(Number(n).toLocaleString("en-US"))}</b> `
-    + `<span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
-  return `<ul class="earned" aria-label="What their models earned">`
-    + tile("builds", earned.builds, "build finished", "builds finished", true)
-    + tile("remixes", earned.remixes, "remix", "remixes", true)
-    + tile("tested", earned.tested, "Tested", "Tested")
-    + tile("comments", earned.comments, "comment", "comments")
-    + tile("models", earned.models, "model in the gallery", "models in the gallery")
-    + (follows && follows.ready ? tile("followers", follows.followers, "follower", "followers", false, " data-followers") : "")
+function numbersHtml(earned, about, follows) {
+  const stat = (kind, n, one, many, extra = "") => `<li data-stat="${kind}"${extra}${zero(n)}>`
+    + `<b>${escapeHtml((Number(n) || 0).toLocaleString("en-US"))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
+  const ready = follows && follows.ready;
+  return `<ul class="numbers" aria-label="Their numbers">`
+    + stat("builds", earned?.builds, "build finished", "builds finished")
+    + stat("remixes", earned?.remixes, "remix", "remixes")
+    + stat("models", earned ? earned.models : about?.models, "model", "models")
+    + stat("likes", earned ? earned.likes : about?.likes, "like", "likes")
+    + (ready ? stat("followers", follows.followers, "follower", "followers", " data-followers") : "")
+    + (ready ? stat("following", follows.following, "following", "following") : "")
     + "</ul>";
 }
 
-/// A strip of photos of real builds: [photos] each with its model's name;
-/// [by] says who built each, for the photos of a designer's models.
+/// A set of photos of real builds: [photos] each with its model's name;
+/// [by] says who built each, for the photos of a designer's models. Any
+/// shape, so in columns (docs/SOCIAL.md D4).
 function stripHtml(photos, { by = false } = {}) {
   return photos.map((one) => `<figure class="build" id="photo-${one.id}"><a href="/m/${one.model}#photo-${one.id}">`
     + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(`A build of ${one.model_name}`)}" `
@@ -786,95 +954,169 @@ function stripHtml(photos, { by = false } = {}) {
     + "</figcaption></figure>").join("");
 }
 
-/// /u/X: a person's profile. Their name, what they said, since when, the
-/// models they listed and are credited for, and their public lists. With a
-/// model in the gallery it is a designer's page (supabase/designers.sql):
-/// what those models earned leads, then the photos other people posted of
-/// their builds, then the models by Top builds. The designer's own numbers
-/// are not in it: web/designs.js asks for them with their sign-in and puts
-/// them in #designs-mine, so this page, which the CDN keeps, is the same
-/// for everybody.
+/// A profile's tabs, each a page of its own (?tab=): its work, its builds,
+/// its lists, each with its count once there is one.
+const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Collections"]];
+
+/// The pictures on each public list's card: up to four of its models in
+/// the gallery, the newest put in first. id -> [picture].
+async function coversOf(lists, tests) {
+  const shown = lists.filter((list) => ID.test(String(list.id))).slice(0, 24);
+  const items = await Promise.all(shown.map((list) =>
+    db(`model_collection_items?collection=eq.${list.id}&select=model&order=at.desc&limit=12`).catch(() => [])));
+  const ids = [...new Set(items.flat().map((row) => row.model).filter((id) => ID.test(String(id))))];
+  const rows = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&published=is.true&listed=is.true`
+    + "&barred=is.false&select=id,has_image,has_thumb,updated_at,test") : [];
+  const pictures = new Map(rows.filter((row) => tests || !row.test)
+    .map((row) => [row.id, pictureOf({ id: row.id, thumb: row.has_thumb ? `?v=${(Date.parse(row.updated_at || "") || 0).toString(36)}` : null,
+      image: row.has_image })]));
+  return new Map(shown.map((list, at) => [list.id, items[at].map((row) => pictures.get(row.model)).filter(Boolean).slice(0, 4)]));
+}
+
+/// A public list as a card: its pictures, its name, how many.
+function listCardHtml(list, covers) {
+  const pictures = covers.get(list.id) || [];
+  return `<a class="list-card" href="/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
+    + `<div class="mosaic n${pictures.length}">${pictures.length ? pictures.map((src) =>
+      `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" loading="lazy" decoding="async">`).join("")
+      : "<span>No pictures yet</span>"}</div>`
+    + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(count(list.count, "model"))}</span></div></a>`;
+}
+
+/// /u/X: a person's page, the same for everybody it shows, the house's
+/// too. Their avatar, name, handle, words, links and numbers, Follow, Share
+/// and More; the models they pinned; then a tab: Models (every one, page by
+/// page, by Top builds), Builds (photos of their real builds, and other
+/// people's of their models) or Collections (their public lists), the first
+/// that has something unless one is asked for. Whom they follow, when they
+/// chose to show it; never who follows them. The designer's own numbers are
+/// not in it: web/designs.js asks for them with their sign-in and puts them
+/// in #designs-mine, so this page, which the CDN keeps, is the same for
+/// everybody.
 async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
   const tests = testsAsked(request.query);
   const person = await personOf(handle);
   if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
-  const [shown, about, built, follows, following, designer, wins] = await Promise.all([
-    models(origin, { owner: person.account, tests, sort: "top" }, 1),
+  const asked = TABS.some(([id]) => id === request.query?.tab) ? String(request.query.tab) : "";
+  const number = Number(request.query?.page ?? 1);
+  const at = Number.isInteger(number) && number >= 1 && number <= MOST_PAGES ? number : 1;
+  const [shown, about, built, follows, following, designer, wins, shows] = await Promise.all([
+    models(origin, { owner: person.account, tests, sort: "top" }, asked === "models" || !asked ? at : 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
     followsOf(handle),
     followingOf(handle),
     designerOf(origin, handle, tests),
     winsBy(person.account, tests).catch(() => []),
+    showsOf(person.account),
   ]);
+  const showcase = await showcaseOf(origin, person, shows, tests);
   const url = `${origin}/u/${person.handle}`;
   const earned = designer && designer.ready && designer.models > 0 ? designer : null;
-  const cards = (await withWins(shown.models, tests)).map((card) => ({ ...card,
-    comments: earned?.cards[card.id]?.comments ?? 0 }));
-  // What their models won in the monthly challenges (supabase/challenges.sql).
-  const won = wins.map((win) => `<li data-won="${escapeHtml(win.model)}"><a href="/m/${escapeHtml(win.model)}">${escapeHtml(win.name)}</a> `
-    + `<span>${escapeHtml(`${wonSaid(win)} · ${count(win.votes, "vote")}`)}</span></li>`).join("");
-  // What they built of other people's models (and their own), from photos.
-  const builds = stripHtml(built);
-  // What other people built of theirs.
-  const theirs = earned ? stripHtml(earned.photos, { by: true }) : "";
-  const lists = (about?.collections || []).map((list) =>
-    `<li><a href="/c/${list.id}">${escapeHtml(list.name)}</a> <span>${escapeHtml(count(list.count, "model"))}</span></li>`).join("");
+  const lists = (about?.collections || []).filter((list) => ID.test(String(list.id)));
+  const theirs = earned ? earned.photos : [];
+  const counts = { models: Number(about?.models) || 0, builds: built.length + theirs.length, collections: lists.length };
+  // The tab asked for; else the first with something in it.
+  const tab = asked || TABS.map(([id]) => id).find((id) => counts[id] > 0) || "models";
+  const query = (more) => {
+    const said = new URLSearchParams(more);
+    if (tests) said.set("tests", "1");
+    const text = said.toString();
+    return text ? `?${text}` : "";
+  };
+  const name = escapeHtml(person.name);
   const since = Date.parse(person.created_at || "");
-  const first = shown.models[0];
-  // The model to start with: the first by Top builds, once somebody built it.
-  const start = earned && first && first.builds > 0 ? first : null;
-  const counts = earned
-    ? `${earnedHtml(earned, follows)}
-  <p class="counts"><span${zero(earned.likes)}>${escapeHtml(count(earned.likes, "like"))}</span>${follows && follows.ready
-    ? `<span${zero(follows.following)}>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`
-    : `<p class="counts"><span${zero(about?.models)}>${escapeHtml(count(about?.models ?? 0, "model"))} in the gallery</span>
-    <span${zero(about?.likes)}>${escapeHtml(count(about?.likes ?? 0, "like"))}</span>${follows && follows.ready
-      ? `<span data-followers${zero(follows.followers)}>${escapeHtml(count(follows.followers, "follower"))}</span>`
-        + `<span${zero(follows.following)}>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>`;
-  const main = `<div class="wrap person${earned ? " designer" : ""}" data-handle="${escapeHtml(person.handle)}">
-  <p class="eyebrow">${earned ? "Designer" : "Builder"}</p>
-  <h1>${escapeHtml(person.name)}</h1>
-  <p class="handle">@${escapeHtml(person.handle)}${Number.isFinite(since) ? ` · building here since ${SINCE.format(since)}` : ""}</p>
+
+  // The head: who they are, what they said, where else they are, their
+  // numbers, and what can be done here.
+  const won = wins.map((win) => `<li data-won="${escapeHtml(win.model)}"><a class="pill new" href="/m/${escapeHtml(win.model)}"`
+    + ` title="${escapeHtml(`${win.name}: ${count(win.votes, "vote")}`)}">${escapeHtml(wonSaid(win))}</a></li>`).join("");
+  const links = showcase.links.map((link) => `<li><a href="${escapeHtml(link.href)}" rel="ugc nofollow noopener" target="_blank">`
+    + `${escapeHtml(link.said)}</a></li>`).join("");
+  const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More">${iconHtml("more")}</summary>`
+    + `<div class="menu-list"><button type="button" data-report="this profile" data-report-handle="${escapeHtml(person.handle)}" hidden>`
+    + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
+  const head = `${showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.png" alt="" width="1200" height="630" decoding="async"></div>` : ""}
+  <header class="profile-head">
+    ${avatarHtml({ handle: person.handle, name: person.name }, { size: "huge" })}
+    <div class="who">
+      <h1>${name}</h1>
+      <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? "Designer" : "Builder"}</span>${Number.isFinite(since)
+        ? ` · building here since ${SINCE.format(since)}` : ""}</p>
+    </div>
+    <div class="acts">
+      ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
+        data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>` : ""}
+      ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
+      ${more}
+    </div>
+  </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
-  ${counts}
-  ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
-    data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>` : ""}
-  ${start ? `<p class="start-with">Start with their most built:
-    <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
-    <a class="cta small" href="/app?view=${start.id}">Build it</a></p>` : ""}
+  ${links ? `<ul class="links" aria-label="Elsewhere">${links}</ul>` : ""}
+  ${numbersHtml(earned, about, follows)}
+  ${won ? `<ul class="pills wins" aria-label="Challenges won">${won}</ul>` : ""}`;
+
+  // Pinned: up to three of their models, in the order they chose.
+  const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">Pinned</h2>
+    <div class="models row">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
+      { earned: Boolean(earned) })).join("")}</div></section>` : "";
+
+  // The tab.
+  let panel = "";
+  if (tab === "models") {
+    const cards = (await withWins(shown.models, tests)).map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
+    const first = shown.page === 1 ? cards[0] : null;
+    // The model to start with: the first by Top builds, once somebody built it.
+    const start = earned && first && first.builds > 0 ? first : null;
+    panel = cards.length ? `${start ? `<p class="start-with">Start with their most built:
+      <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
+      <a class="cta small" href="/app?view=${start.id}">Build it</a></p>` : ""}
+    ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
+    <div class="models" data-models data-page="${shown.page}">${cards.map((card) => cardHtml(card, { earned: Boolean(earned) })).join("")}</div>
+    ${shown.more || shown.page > 1 ? `<p class="paging">${shown.more ? `<a class="cta ghost" data-more="${shown.page + 1}"
+      href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "models", page: shown.page + 1 }))}">Show more</a>` : ""}${shown.page > 1
+      ? ` <a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "models" }))}">Back to the first</a>` : ""}</p>` : ""}`
+      : `<p class="state">Nothing in the gallery yet. The models ${name} shares in the gallery with their name show here.</p>`;
+  } else if (tab === "builds") {
+    panel = counts.builds ? `${built.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">Built by ${name}</h2>
+      <p class="note">Photos of their real builds of models in the gallery.</p>
+      <div class="build-grid">${stripHtml(built)}</div></section>` : ""}
+    ${theirs.length ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">Built by others</h2>
+      <p class="note">${escapeHtml(earned.builders === 1 ? "One person" : `${earned.builders.toLocaleString("en-US")} people`)} posted photos of their real builds of ${name}’s models.</p>
+      <div class="build-grid">${stripHtml(theirs, { by: true })}</div></section>` : ""}`
+      : `<p class="state">No builds yet. Photos of real builds show here: the ones ${name} posts of what they built, and the ones other people post of ${name}’s models.</p>`;
+  } else {
+    const covers = lists.length ? await coversOf(lists, tests) : new Map();
+    panel = lists.length ? `<div class="list-cards">${lists.map((list) => listCardHtml(list, covers)).join("")}</div>`
+      : `<p class="state">No collections yet. The lists of models ${name} makes public show here.</p>`;
+  }
+  const tabs = `<nav class="tabs" aria-label="${name}’s work">${TABS.map(([id, label]) =>
+    `<a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
+    + `${label}${counts[id] ? ` <span class="n">${escapeHtml(counts[id].toLocaleString("en-US"))}</span>` : ""}</a>`).join("")}</nav>`;
+
+  const main = `<div class="wrap person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
+  ${head}
   <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
-  ${won ? `<section class="wins" aria-labelledby="wins-h"><h2 id="wins-h">Challenges won</h2>
-    <p class="note">Voted the best of a <a href="/challenge">monthly challenge</a>.</p>
-    <ul class="lists">${won}</ul></section>` : ""}
-  ${theirs ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">Built by others</h2>
-    <p class="note">${escapeHtml(earned.builders === 1 ? "One person" : `${earned.builders.toLocaleString("en-US")} people`)} posted photos of their real builds of ${escapeHtml(person.name)}’s models.</p>
-    <div class="build-strip">${theirs}</div></section>` : ""}
-  <section aria-labelledby="models-h"><h2 id="models-h">Models</h2>
-  ${earned && shown.models.length > 1 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
-  ${shown.models.length ? `<div class="models">${cards.map((card) => cardHtml(card, { earned: Boolean(earned) })).join("")}</div>`
-    : `<p class="note">Nothing in the gallery yet.</p>`}
-  ${shown.more ? `<p class="note"><a href="/gallery?q=${encodeURIComponent(person.name)}">More in the gallery</a></p>` : ""}
-  </section>
-  ${builds ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">Built</h2>
-    <p class="note">Photos of their real builds of models in the gallery.</p>
-    <div class="build-strip">${builds}</div></section>` : ""}
-  ${following.length ? `<section aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
-    <p class="note">${escapeHtml(person.name)} chose to show whom they follow.</p>
-    <ul class="lists">${following.map((one) => `<li><a href="/u/${escapeHtml(one.handle)}">${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
-  ${lists ? `<section aria-labelledby="lists-h"><h2 id="lists-h">Collections</h2><ul class="lists">${lists}</ul></section>` : ""}
-  <p class="note report-line"><button type="button" class="link" data-report="this profile"
-    data-report-handle="${escapeHtml(person.handle)}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
+  ${pinned}
+  <div class="work" id="work">
+  ${tabs}
+  <div class="tab-panel" data-panel="${tab}">${panel}</div>
+  </div>
+  ${following.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
+    <p class="note">${name} chose to show whom they follow.</p>
+    <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
+      + `${avatarHtml({ handle: one.handle, name: one.name }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
 </div>`;
   const told = earned
     ? `${count(earned.models, "model")} by ${person.name}, ${count(earned.builds, "build")} finished and ${count(earned.remixes, "remix", "remixes")}: designed in Brickworks.`
     : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`;
+  const picture = showcase.banner ? `${origin}/m/${showcase.banner}.png` : shown.models[0]?.image || "";
   return html(response, 200, page(origin, {
     title: `${person.name} (@${person.handle}) — ${earned ? "a designer in" : "models built in"} Brickworks`,
     about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160) : told,
-    url, image: first && first.image ? first.image : "", main, mine: true,
+    url, image: picture, main, mine: true,
   }), { tests });
 }
 
@@ -944,6 +1186,7 @@ export default async function handler(request, response) {
       if (op === "photo") return await photoKeep(request, response);
       if (op === "photo_hide") return await photoHide(request, response);
       if (op === "profile") return await saveProfile(request, response);
+      if (op === "showcase") return await saveShowcase(request, response);
       if (op === "like") return await toggle(request, response, "model_likes");
       if (op === "favourite") return await toggle(request, response, "model_favourites");
       if (op === "collection") return await saveList(request, response);

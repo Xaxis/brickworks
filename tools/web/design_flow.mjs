@@ -303,6 +303,20 @@ const PAGES = [
   { name: "model-quiet", path: "/m/DesignFox1", local: true },
   { name: "embed", path: `/m/${stand.MODEL_ID}/embed` },
   { name: "person", path: `/u/${stand.HANDLE}` },
+  // A person's other tabs (api/people.js profilePage, docs/SOCIAL.md U5):
+  // photos of real builds in columns, and collections as cards; the house
+  // account, credited "Brickworks" as the live gallery's models are, and
+  // somebody with nothing yet, whose tabs say what goes there. Its More
+  // menu open. Here only: the stand-in's people.
+  { name: "person-builds", path: `/u/${stand.HANDLE}?tab=builds`, local: true },
+  { name: "person-lists", path: `/u/${stand.HANDLE}?tab=collections`, local: true,
+    open: async (page) => {
+      await page.click(".profile-head .more-menu summary");
+      const opened = await until(page, () => document.querySelector(".profile-head .more-menu[open]"));
+      return [[opened ? "more" : "more (missing)", ".profile-head .more-menu"]];
+    } },
+  { name: "person-house", path: "/u/brickworks?tests=1", local: true },
+  { name: "person-new", path: "/u/new-here", local: true },
   { name: "collection", path: `/c/${stand.LIST_ID}` },
   { name: "challenge", path: "/challenge",
     ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },

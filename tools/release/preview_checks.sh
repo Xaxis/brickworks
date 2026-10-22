@@ -114,6 +114,13 @@ declare -A CMD=(
   # tabpair above holds the same rules with scripted chats. Run it by hand
   # after a change to the relay's tabs or the connector (its header says how).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
+  # A person's page (/u/<handle>, docs/SOCIAL.md U5): a throwaway designer
+  # lists two models and chooses links, a banner and pins (op=showcase, its
+  # refusals whether or not supabase/profile_shows.sql is applied, "not open
+  # yet" until it is); her page at 390 and 1280, light and dark, signed out
+  # and in: avatar, numbers with no count of none, links ugc nofollow,
+  # pins, tabs. The account deleted after, and its row of profile_shows.
+  [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"

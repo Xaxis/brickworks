@@ -47,6 +47,17 @@ whole cycle.
 
 ### Changed
 
+- A person's page on brickworks.diy (/u/ and their handle) looks like a
+  person's: their avatar, name and handle, what they say about themselves,
+  up to two links of theirs elsewhere, one row of numbers (builds finished
+  of their models, remixes, models, likes, followers) and Follow, Share and
+  More beside their name. Up to three of their models can be pinned above
+  the rest, and one of their models' pictures can run across the top. Their
+  work is in tabs: Models, every one of them page by page (a profile used to
+  stop at the first 24), Builds, the photos of real builds, and Collections,
+  each a card with its pictures. A tab with nothing in it says what goes
+  there. Links, the banner and the pins are chosen under Settings on your
+  account. Nobody's followers are listed, as before.
 - On brickworks.diy a model's page leads with its picture: on a phone the
   picture, its name, its designer and what you can do with it are the
   first screen, and on a laptop the column beside the picture stays in view
