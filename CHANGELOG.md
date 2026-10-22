@@ -27,6 +27,11 @@ whole cycle.
   one piece, and every step of its booklet stands. A part on its side that
   rested on the model held by no stud, once a part beside it was taken out,
   now goes with it.
+- Brickify turns a side that leans out as one piece of work. Where a side
+  leaned out down one of those blocks, the block past it was turned and the
+  block itself, with the model past it, stayed upright. The two are now laid
+  on their side together, two blocks deep: 44% of the steep faces of the
+  same three models at 48 studs, from 42%, in 2% more parts.
 
 ### Fixed
 

@@ -103,7 +103,10 @@ studs, against a greedy stack of standard bricks and legolization:
    and over them all 4.1% less, short of 30%. 2026-10-21, its fourth round:
    the cubes cut again at every plate's phase and a thin cap held by the
    core, 42% of the steep faces turned on three models at 48 studs from
-   27%, in 4% more parts, still short of 80%; nothing faces down yet.*
+   27%, in 4% more parts, still short of 80%; nothing faces down yet. Its
+   fifth round: a side two cubes deep where it leans out, 44%; from 60
+   degrees and the bands between phases 58%, but those leave the model out
+   and are not in.*
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
@@ -150,7 +153,7 @@ with a price and a booklet attached (section 4, "The target").
 | **Blender voxel add-ons** (a free brick generator, Legolizer, LegoIT) [lego-gen] | Free or paid | Voxels for a render | No | No | No | Texture | No | Mesh |
 | **AI stylisers** (Tripo "Stylize", Neural4D) [tripo-node] | Paid | A mesh styled as bricks, voxels or Minecraft blocks [tripo-node] | No | No | No | Texture | No | GLB |
 | **Small open repositories** [img2lego] [brickalize] [brickr-qt] [cv2ldr] | Mostly no licence, 0–48 stars | Bricks (img2lego claims slopes, wedges, curved slopes) | Rarely | No | Connectivity at most | Some | Some write a BrickLink wanted list | LDraw or images |
-| **Brickworks Brickify** ([brickify.gd](../src/assembly/brickify.gd)) | Free, browser and desktop | Parts on the plate grid: bricks inside, plates at the surface | Straight, curved and inverted slopes, wedges, corner rounds, tiles | In four directions: steep sides laid as plates, slopes and tiles on their sides, every one held by a side stud (87087, 11211, 30414) and checked; 42% of the steep faces of Bob, the Stanford bunny and 3DBenchy at 48 studs (section 10); none facing down | Checked as a design is (overlaps, support, one piece; not weighed), then mended: what fails is taken out | Oklab match to 41 current solid colours | The booklet; a BrickLink wanted list and Rebrickable CSV of any model | LDraw, `.io`, glTF, OBJ, STL. In: OBJ, STL, glTF, GLB, PLY, 3MF, VOX, FBX |
+| **Brickworks Brickify** ([brickify.gd](../src/assembly/brickify.gd)) | Free, browser and desktop | Parts on the plate grid: bricks inside, plates at the surface | Straight, curved and inverted slopes, wedges, corner rounds, tiles | In four directions: steep sides laid as plates, slopes and tiles on their sides, every one held by a side stud (87087, 11211, 30414) and checked; 44% of the steep faces of Bob, the Stanford bunny and 3DBenchy at 48 studs (section 10's fifth round); none facing down | Checked as a design is (overlaps, support, one piece; not weighed), then mended: what fails is taken out | Oklab match to 41 current solid colours | The booklet; a BrickLink wanted list and Rebrickable CSV of any model | LDraw, `.io`, glTF, OBJ, STL. In: OBJ, STL, glTF, GLB, PLY, 3MF, VOX, FBX |
 
 Not found anywhere: a mesh converter inside Mecabricks, LeoCAD, LDCad or
 Bricksmith; the LEGO Group's own is a photo mosaic of 1x1 plates [mosaic40179].
@@ -2615,7 +2618,137 @@ error than studs up; every run one piece and passing; parts at most 1.15
 times m137's; time at 48 at most 1.5 times. On the three here: 42%, 5.6%,
 6 of 6 (one with a joint past its load), 1.04 times and 1.31 times.
 
+### Fifth round: a side two cubes deep (2026-10-21)
+
+Asked again on m137, the fourth round's bar unchanged, with what that round
+left: the bands one to four plates tall between shells cut at different
+phases, 3DBenchy's thin walls, and faces that look down. Branch `snot84`,
+from `snot82` (`401e5af2`). The three models at 24 and 48 studs.
+
+**In short.** Not met, and nothing here is ready. Three changes turned
+more of the steep faces at 48 studs than the fourth round's 42%: cubes
+facing out from 60 degrees (51%), with shells two cubes deep (54%), and
+with the bands between phases (58%), the steep faces 6.8% to 8.4% nearer
+the model than the studs-up build's (the fourth round 5.6%; the bar 80%
+and 30%). Each leaves more of the model in no part, and `brickify_probe`
+fails it: its low-poly bunny at 28 studs 96.4%, 95.7% and 95.5% in a part,
+held to 97%. The branch keeps the shells two deep alone, which on the three
+models holds the rest of the bar (one piece, the check, Balance, no joint
+past its load, 3DBenchy's at 48 gone; parts 1.06 times m137's at 48 and
+1.08 at 24; time 1.27 times m137's at 48 laid side by side, the bunny's
+1.42) and turns 44% at 48 studs, 6.3% nearer than studs up, 32% and
+4.5% at 24; but the probe's blue bunny at 20 studs, one colour, has 4 parts
+mended out and 96.6% of it in a part. Nothing here lays studs down, and
+3DBenchy's walls are as they were.
+
+**Where the steep faces were left upright**, on Bob and the Stanford bunny
+at 48 studs (each smooth arm's `cubes_why`, the first cut's reasons, laid
+with cubes facing out from 60 degrees): of the steep faces in a cube left upright, 38%
+and 28% were in a cube with the model past it at the same height (`beyond`),
+and in 137 of Bob's 143 such cubes and 223 of the bunny's 234 the cube past
+it faced out too. A side that leans out down a cube's height is one cube
+for its upper plates and the one past it for its lower ones; each depth was
+its own shell, so the outer cube turned and the inner one, the model past
+it, stayed upright. The faces between 60 and 69 degrees, which no cube
+turns, were a quarter of the steep surface of each (28%, 25%), turned 11%
+and 32%, and 46 degrees from the model.
+
+**What changed** ([shapes.gd](../src/ai/shapes.gd)):
+
+1. **A shell two cubes deep** (`CUBE_DEEP`, `Plan._cube_shells_at`,
+   `_cube_shell`). A cube facing out and the one past it at the same height
+   facing the same way are one shell, counted out from the innermost in
+   twos. The cube past it is decided first; the inner one is no longer
+   refused for the model past it where that cube is kept. The shell's own
+   plan runs as deep as its cubes (`"depth"` in the shell, five plates on
+   their sides a cube), and its parts stack out from the core's side studs
+   as before.
+2. **The probe's bound is the bench's bar** (`brickify_probe`, `_sideways`).
+   The sphere and the forty-stud bunny laid with their sides turned are
+   held to 1.15 times m137's parts (1,948 and 2,143), where the bunny was
+   held to 15% more than itself upright when m137's turned sides were the
+   first; it is now 15.8% more, 1.05 times m137's.
+
+**Tried and taken out**, the three at 48 studs and at 24, and the probe's
+low-poly bunny at 28 studs, which `brickify_probe` holds to 97% of it in a
+part:
+
+| Run | Turned at 48 | Nearer than studs up, 48 | Turned at 24 | Parts at 48 | The probe's bunny in a part |
+|---|---|---|---|---|---|
+| m137 | 27% | 3.9% | 13% | 1 | 98.7% |
+| The fourth round (`401e5af2`) | 42% | 5.6% | 33% | 1.04 | over 97% |
+| Cubes facing out from 60 degrees, not 69 (A) | 51% | 6.8% | | 1.07 | 96.4% |
+| A, two deep | 54% | 8.4% | 31% | 1.10 | 95.7% |
+| A, two deep, and the bands (B) | 58% | 8.3% | 43% | 1.12 | 95.5% |
+| A, two deep, a cube kept only where 80% covered | | | | | 97.0% short |
+| Two deep (the branch) | 44% | 6.3% | 32% | 1.06 | 98.0%; the blue bunny at 20 studs 96.6% |
+
+- *From 60 degrees*: every cube whose surface leans up to 30 degrees from
+  level faces out, every face the bench calls steep. The faces between 60
+  and 69 were turned 43% and 45% on Bob and the bunny where they had been
+  11% and 32%, and 3DBenchy's joint past its load went; but on the probe's
+  bunny at 28 studs 3.6% of the model was in no part. More shells leave
+  more out: a cube is kept where its parts cover 60% of its plates, and
+  what they leave in a lane and row the shell has a part in is no one's.
+  Kept only where 80% covered, the bunny was still 96.99%.
+- *The bands* (`_cube_free`): a cube of a later cut that a shell before has
+  some plates of was trimmed to the run of three or more plates no shell
+  has, and those cubes in one band at one depth laid as a shell a row tall.
+  A row on its side is two and a half plates, so a band leaves half a plate
+  of the model in no part all along it: Bob and the bunny at 24 studs a
+  point and a half less in a part, the side views standing 0.1 studs
+  further off (Hausdorff95 0.66 against 0.56), and four inverted slopes
+  4287a laid in white, which is not sold.
+
+**The bench again** (smooth, the three; the studs-up build is m137's laid
+with `Options.snot` false; time against m137 laid beside it in one batch):
+
+| Model | Studs | Turned, m137 → after | Steep faces (°), m137 → after (studs up) | Parts | Seconds | Holds |
+|---|---|---|---|---|---|---|
+| Bob | 24 | 15% → 47% | 42.1 → 40.5 (43.7) | 880 → 983 | 2.1 → 2.7 | one piece, stands |
+| Bob | 48 | 28% → 54% | 40.6 → 38.5 (42.7) | 3,737 → 4,052 | 12.4 → 12.8 | one piece, stands |
+| Stanford bunny | 24 | 22% → 44% | 41.5 → 39.9 (42.4) | 1,183 → 1,286 | 3.7 → 3.9 | one piece, stands; 4 mended |
+| Stanford bunny | 48 | 40% → 59% | 37.7 → 36.9 (40.0) | 5,959 → 6,237 | 17.9 → 25.4 | one piece, stands |
+| 3DBenchy | 24 | 3% → 4% | 38.1 → 38.2 (38.1) | 608 → 620 | 3.0 → 3.7 | one piece, stands |
+| 3DBenchy | 48 | 14% → 19% | 33.9 → 34.0 (34.1) | 2,904 → 3,019 | 11.9 → 15.2 | one piece, stands, no joint past its load; 3 mended |
+
+Likeness is the fourth round's: seen from the four sides, Hausdorff95
+within 0.02 studs of it on each run, and of each model 98.0% to 99.7% in a
+part, within 0.3 points of it (the bunny at 24 studs 98.0%, Bob 98.1%).
+
+**Pictures.** The three at 24 and 48 studs from every side and from under,
+m137 beside the branch (`pictures --views corner,front,back,left,right,under`),
+and each at 48 drawn with its parts coloured by which way they face (not
+committed). Bob's flank is one band of plates on their sides where the
+fourth round had it in patches; the bunny's flank the same; 3DBenchy as
+before. Nothing hangs loose, and from under, the undersides are upright
+plates as before: nothing faces down.
+
+![Bob at 48 studs, its parts on their sides in orange: m137, then the fifth round](brickify/unit5-bob-48-fifth.jpg)
+
 ### Proof
+
+The fifth round's runs (`snot84`, 2026-10-21, `7ca53c1e`), on the branch's last code:
+
+- `brickify_probe` (headless): 83 of 84. The blue bunny at 20 studs, one
+  colour, has 96.6% of it in a part, 4 parts mended out (m137 98.7%, none
+  mended): FAIL. The sphere has 499 parts on their sides (upright 44), 166
+  of 168 steep cubes turned, 1,986 parts (+25.0% on upright, 1.02 times
+  m137's 1,948); the forty-stud bunny 445 (53), 156 of 173, 2,250 (+15.8%,
+  1.05 times m137's 2,143); each 98.6% or more in a part; the bunny at 28
+  studs 98.0%. The same probe on m137, the same night: 84 of 84.
+- `brickify_buy_probe` (headless): all pass; the bunny 43 steps from 45
+  courses, 11 panels built on the side. With `--steps-only` on Bob, the
+  Stanford bunny and 3DBenchy at 48 studs: 58, 110 and 68 steps, 79, 136
+  and 18 panels built on the side, every partial build standing (the fourth
+  round 57, 111 and 77; 59, 131 and 16).
+- `snot_probe` (11), `shapes_probe` (78), `balance_probe` (46) and
+  `stability_probe` (9): all pass.
+- Not run, the branch not being ready: `brickify_ui_probe` on the GPU and
+  the `brickify`, `brickify_fox` and `mesh_formats` browser flows. The
+  change is in the shells' plan only; the fourth round ran them on the
+  code before it.
+- `featuremap affected --since 401e5af2` names `lib:brickify`.
 
 The fourth round's runs (`snot82`, 2026-10-21), on the branch's last code:
 
@@ -2680,6 +2813,24 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the fifth round, by what each would turn:
+
+- **What a shell leaves out.** Turning from 60 degrees is ready but for it:
+  51% at 48 studs and 6.8% nearer, held back by the probe's bunny at 28
+  studs, 96.4% in a part. Where a shell's parts cover 60% to 99% of its
+  plates, the rest is no one's; laid by the core where that cannot run into
+  the shell's studs, or by the shell's own plan again, it would take this
+  step and the bands with it (58%).
+- **The bands** need a part a row tall that ends on a plate: a 1 x 2 jumper
+  turned on its side, or a headlight brick's half-plate offset.
+- **3DBenchy's walls** (19%): 59% of its steep faces lie in no cube facing
+  out, two in five of those in a cube whose two faces cancel (a wall two
+  studs thick or less), and where its cubes do face out, most are refused
+  for having no core three studs behind them (`backed`). A wall laid on its
+  side from SNOT bricks with studs both ways (47905) on its middle line is
+  what would reach them.
+- **Studs down**, as the fourth round left it.
 
 After the fourth round:
 
@@ -2801,7 +2952,8 @@ and 17, at a load of 25 to 45; section 9's, `d55251d` and the branch on
 2026-10-17, at a load of 2 to 24; section 10's, `d24d4d6` and the branch on
 2026-10-17, at a load of 10 to 35; section 11's, `d5ca5e9` and the branch on
 2026-10-17, at a load of 35 to 65; section 10's fourth round, `85bd1c4a`
-(m137) and the branch on 2026-10-21, at a load of 10 to 35.
+(m137) and the branch on 2026-10-21, at a load of 10 to 35; its fifth round,
+m137 and `snot84` side by side on 2026-10-21, at a load of 3 to 10.
 
 ## 11. Unit 7, done: buy it, or build it from what you own (2026-10-17)
 

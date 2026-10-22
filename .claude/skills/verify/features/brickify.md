@@ -86,7 +86,9 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   (`CUBE_PHASES`, `Grid.cube_phases`, `Plan._phase`), each later cut tried only
   where no shell has any of the cube (`_cube_shelled`);
   the cubes facing one way at one depth one shell (`Plan._cube_shells`,
-  `_cube_shell`), each cube the side's outermost with the core three studs
+  `_cube_shell`), and a cube with the one past it at the same height facing
+  out too, the two one shell two cubes deep (`CUBE_DEEP`, the shell's
+  `"depth"`), each cube the side's outermost with the core three studs
   behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it unless the
   cap runs on back over the core behind the cube, on the core there, laid as a design's
   curved side is (`lay_shell`, its up turned out) and held by bricks with side
@@ -347,7 +349,13 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   fourth round (cubes at every phase, caps held by the core): 84 ok; sphere 386 on
 #   their sides (44), 1,832 parts (1,589, +15.3% of 25%); forty-stud bunny 420 (53),
 #   2,205 (1,943, +13.5% of 15%): near its bound, so a change that turns more must
-#   weigh the parts it costs.
+#   weigh the parts it costs. 2026-10-21, the fifth round (shells two cubes deep): the
+#   bound is now the bench's bar, 1.15 times m137's parts (sphere 1,948, bunny 2,143,
+#   laid on m137 the same night); sphere 499 on their sides, 1,986 parts (+25.0%),
+#   bunny 445, 2,250 (+15.8%, 1.05 times m137's), each 98.6% or more in a part; 83 of
+#   84: the blue bunny at 20 studs 96.6% in a part, 4 mended (m137 98.7%). Cubes facing
+#   out from 60 degrees fail the bunny at 28 studs (96.4%), and so do the bands
+#   between phases (95.5%): the check that holds what a shell leaves out.
 XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd \
     [-- --models=FILE@STUDS@UP,... --out=DIR]
 #   unit 7, buy it or build it from what you own (docs/BRICKIFY.md section 11): the
