@@ -187,7 +187,7 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.profile, null, { timeout: 30000 }).catch(() => {});
   state = await page.evaluate(() => ({ ready: document.documentElement.dataset.profile,
     who: document.getElementById("who").textContent, name: document.getElementById("name").value,
-    favourites: [...document.querySelectorAll("#favourites a.model")].map((a) => a.dataset.id),
+    favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id),
     lists: [...document.querySelectorAll("#lists .list-mine input:not([type=checkbox])")].map((i) => i.value) }));
   check(`signed in there too, its address said and no name made from it (${state.who.slice(0, 50)}, "${state.name}")`,
     state.ready === "ready" && state.who.includes(visitorEmail) && state.name === "");
@@ -219,13 +219,13 @@ try {
   listen(look, "stranger");
   await look.goto(`${site}/c/${listId}?tests=1`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ title: document.querySelector("h1")?.textContent,
-    by: document.querySelector(".handle")?.textContent, cards: [...document.querySelectorAll("a.model")].map((a) => a.dataset.id) }));
+    by: document.querySelector(".handle")?.textContent, cards: [...document.querySelectorAll(".model")].map((a) => a.dataset.id) }));
   check(`/c/${listId}: "${state.title}", ${state.by}, the house in it`, state.title === LIST && state.cards.includes(modelId)
     && /Flow Visitor/.test(state.by || ""));
   await shot(look, "4_collection-laptop.png");
   await look.goto(`${site}/u/${ownerHandle}?tests=1`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ title: document.querySelector("h1")?.textContent,
-    cards: [...document.querySelectorAll("a.model")].map((a) => a.dataset.id) }));
+    cards: [...document.querySelectorAll(".model")].map((a) => a.dataset.id) }));
   check(`/u/${ownerHandle}: "${state.title}", the house credited to them`, state.title === "Flow Owner" && state.cards.includes(modelId));
   await shot(look, "5_profile_public-laptop.png");
   await look.goto(`${site}/u/${visitorHandle}`, { waitUntil: "load", timeout: 60000 });
@@ -262,7 +262,7 @@ try {
     following: document.getElementById("following-said").textContent,
     owned: document.getElementById("owned-said").textContent,
     claude: document.getElementById("claude-said").textContent,
-    favourites: [...document.querySelectorAll("#favourites a.model")].map((a) => a.dataset.id),
+    favourites: [...document.querySelectorAll("#favourites .model")].map((a) => a.dataset.id),
     nav: document.querySelector(".site-head .nav a[data-account]")?.firstChild?.textContent.trim() || "" }));
   check(`one page that is theirs: "${state.title}", ${state.page}, ${state.rail.join(" · ")}`,
     state.title === "Flow Visitor" && state.page === `/u/${visitorHandle}` && state.rail.length === 7);

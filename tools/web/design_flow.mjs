@@ -254,8 +254,8 @@ const PAGES = [
   { name: "home", path: "/" },
   { name: "gallery", path: "/gallery",
     ready: (page) => until(page, () => document.querySelectorAll("#models .model").length > 0),
-    open: async (page, { width }) => {
-      if (width > 600) return [];
+    // Filters, a sheet over the cards at every width (docs/SOCIAL.md U3).
+    open: async (page) => {
       await page.click("#filters summary");
       return [["filters", "#filters"]];
     } },

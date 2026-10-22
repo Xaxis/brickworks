@@ -422,8 +422,11 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px;
 }
 .models.row .model { scroll-snap-align: start; }
-/* Beside a rail or in a narrower column: more to a row. */
+/* Beside a rail or in a narrower column: more to a row. Cards that each
+   carry a button under them (a challenge's entries): fewer, one to a row
+   on a phone, so the button's words fit. */
 .models.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+.models.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 .model {
 	position: relative; display: flex; flex-direction: column; color: inherit; min-width: 0;
 	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);

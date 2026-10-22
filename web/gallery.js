@@ -43,6 +43,8 @@
 //
 // Each card is web/card.js's, the one every page of the site draws.
 import { counted, iconButtonHtml, modelCard } from "/card.js";
+// The toast, and Filters closing on a click elsewhere as a "more" menu does.
+import { toast } from "/kit.js";
 
 (function () {
   "use strict";
@@ -289,7 +291,8 @@ import { counted, iconButtonHtml, modelCard } from "/card.js";
       said.textContent += ` ${counted(pool.unknown, "set")} of yours ${pool.unknown === 1 ? "has" : "have"} no `
         + "parts list here, so what is in them is not counted.";
     }
-    shelves.hidden = $("small").hidden && $("ready").hidden;
+    // Nothing listed at all: the empty gallery says so, with no shelf.
+    shelves.hidden = ($("small").hidden && $("ready").hidden) || grid.children.length === 0;
     feed.dataset.front = !shown ? "" : pick ? "pick" : "plain";
   }
 
@@ -297,7 +300,7 @@ import { counted, iconButtonHtml, modelCard } from "/card.js";
   function sayScore() {
     const line = $("score-said");
     const w = weights;
-    line.hidden = !(w && order() === "top");
+    line.hidden = !(w && order() === "top" && grid.children.length);
     if (w) {
       line.textContent = `Top builds: a build finished counts ${w.builds}, a remix ${w.remixes} and the `
         + `Tested mark ${w.tested}. Views count for nothing.`;
@@ -503,7 +506,6 @@ import { counted, iconButtonHtml, modelCard } from "/card.js";
       return;
     }
     drawLike(id, was, count);
-    const { toast } = await import("/kit.js");
     toast(answer.body && answer.body.error ? String(answer.body.error) : "That did not work just now. Try again.");
   }
 
@@ -623,7 +625,9 @@ import { counted, iconButtonHtml, modelCard } from "/card.js";
       // The pick and the shelves move the cards after them: drawn first.
       if (atFront()) await shelvesAsked;
       const card = document.querySelector(`#feed .model[data-id="${back.card}"]`);
-      if (card) scrollTo(0, Math.max(0, scrollY + card.getBoundingClientRect().top - (Number(back.top) || 0)));
+      // At once, not the page's smooth scroll (site.css), which a person
+      // coming back would watch run down the list.
+      if (card) scrollTo({ top: Math.max(0, scrollY + card.getBoundingClientRect().top - (Number(back.top) || 0)), behavior: "instant" });
       document.documentElement.dataset.back = card ? back.card : "lost";
     }
     nearEnd();

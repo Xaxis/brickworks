@@ -153,7 +153,7 @@ async function until(page, test, what, seconds = 30, arg = null) {
 
 /// The pictures [selector] finds, each scrolled to as a person would and
 /// waited for: they load lazily, when near the screen.
-async function pictures(page, selector = "a.model img") {
+async function pictures(page, selector = ".model img") {
   const count = await page.locator(selector).count();
   for (let at = 0; at < count; at++) await page.locator(selector).nth(at).scrollIntoViewIfNeeded().catch(() => {});
   await until(page, (wanted) => [...document.querySelectorAll(wanted)].every((img) => img.complete && img.naturalWidth > 0),
@@ -173,7 +173,7 @@ const drawn = (page) => page.evaluate(() => ({
   groups: Object.fromEntries([...document.querySelectorAll("#groups section")].map((s) => [s.id.replace("group-", ""), {
     heading: s.querySelector("h2")?.textContent || "", note: s.querySelector(".note")?.textContent || "",
     entries: [...s.querySelectorAll(".kept")].map((k) => ({ id: k.dataset.entry,
-      card: Boolean(k.querySelector("a.model .frame") && k.querySelector("a.model b")),
+      card: Boolean(k.querySelector(".model .frame") && k.querySelector(".model b")),
       lines: [...k.querySelectorAll(".challenge-said")].map((x) => x.textContent),
       button: k.querySelector("button")?.textContent || "", disabled: Boolean(k.querySelector("button")?.disabled) })) }])),
   winners: [...document.querySelectorAll("#winner-cards .kept")].map((k) => ({ id: k.dataset.entry,
@@ -523,7 +523,7 @@ try {
     listen(page, "Ada's page");
     await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
     const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll(".wins li")].map((li) => li.textContent.replace(/\s+/g, " ").trim()),
-      card: [...document.querySelectorAll(`a.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
+      card: [...document.querySelectorAll(`.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
     check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].startsWith(`Challenge House ${rand} Won “${TITLE}”, by hand · 2 votes`)
       && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
     check("...nothing sideways at 390 px", !(await sideways(page)));

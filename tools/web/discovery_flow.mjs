@@ -283,7 +283,7 @@ try {
         await shot(page, `3_small_shelf_${tag}.png`);
       }
       if (who === "signed out" && width === 1280) {
-        await page.click("#pick-card a.model");
+        await page.click("#pick-card .model a.open");
         await page.waitForURL(`**/m/${ids.tower}`, { timeout: 20000 });
         check(`the pick is a link: it opened ${new URL(page.url()).pathname}`, new URL(page.url()).pathname === `/m/${ids.tower}`);
       }

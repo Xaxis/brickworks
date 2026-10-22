@@ -135,7 +135,7 @@ function draw() {
         : `${counted(n, "entry", "entries")}, the first entered first. Votes are counted when it ends.`;
     section.append(head, note);
     const grid = document.createElement("div");
-    grid.className = "models";
+    grid.className = "models wide";
     for (const entry of (group.entries || []).filter((one) => ID.test(String(one.id)))) {
       const lines = [];
       if (entry.winner) lines.push("Winner");

@@ -396,9 +396,11 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
   await page.waitForFunction(() => document.documentElement.dataset.gallery, null, { timeout: 20000 }).catch(() => {});
   const look = () => page.evaluate(() => ({
     state: document.documentElement.dataset.gallery || "",
-    cards: [...document.querySelectorAll("#models a.model")].map((a) => ({
-      href: a.getAttribute("href"), name: a.querySelector("b").textContent,
-      about: a.querySelector("span").textContent, img: (a.querySelector("img") || {}).src || "" })),
+    // A card's size and its designer, said as one line ("86 parts, by Builder 2").
+    cards: [...document.querySelectorAll("#models .model")].map((a) => ({
+      href: a.querySelector("a.open").getAttribute("href"), name: a.querySelector("b").textContent,
+      about: [a.querySelector(".parts")?.textContent, a.querySelector(".who")?.textContent].filter(Boolean).join(", by "),
+      img: (a.querySelector("img") || {}).src || "" })),
     more: !document.getElementById("more").hidden,
     empty: !document.getElementById("empty").hidden,
     stray: document.querySelectorAll('#models img[src="x"], #models img:not([src*="/m/"])').length,
@@ -417,7 +419,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     if ((seen.cards[1] || {}).img) fail("a model with no picture was given one");
     if ((seen.cards[2] || {}).about !== "86 parts, by Builder 2") fail(`a credit reads "${(seen.cards[2] || {}).about}"`);
     await page.click("#more");
-    await page.waitForFunction(() => document.querySelectorAll("#models a.model").length > 24, null, { timeout: 10000 }).catch(() => {});
+    await page.waitForFunction(() => document.querySelectorAll("#models .model").length > 24, null, { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(300);
     seen = await look();
     if (seen.cards.length !== 26 || seen.more) fail(`after Show more, ${seen.cards.length} cards, Show more ${seen.more ? "still shown" : "gone"}`);
@@ -439,7 +441,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
         || !asked.cards.every((c) => c.name.includes("model 2"))) {
       fail(`typing "model 2": ${asked.where}, ${asked.cards.length} cards`);
     }
-    await page.selectOption("#kind", "space");
+    await page.click('#kinds [data-kind="space"]');
     asked = await answered("/gallery?q=model+2&kind=space");
     if (asked.where !== "/gallery?q=model+2&kind=space" || asked.cards.length !== 5) {
       fail(`then Space: ${asked.where}, ${asked.cards.length} cards`);
@@ -463,7 +465,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     }
     await page.goto(`${galleryTarget}?kind=castle`, { waitUntil: "load" });
     asked = await answered("/gallery?kind=castle");
-    const picked = await page.evaluate(() => document.getElementById("kind").value);
+    const picked = await page.evaluate(() => document.querySelector('#kinds [aria-pressed="true"]')?.dataset.kind);
     if (picked !== "castle" || asked.cards.length !== 13) fail(`?kind=castle: ${picked}, ${asked.cards.length} cards`);
   } else if (!seen.cards.length && !seen.empty) {
     fail("neither cards nor the empty gallery's words");

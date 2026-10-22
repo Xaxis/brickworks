@@ -1208,7 +1208,8 @@ function share(method, params, who, state = {}) {
     if (!APPLIED && (query.days || query.made || query.following)) {
       return answer(400, { error: "Following, Made and Top's time windows are not here yet: they come with the gallery's next update." });
     }
-    const rows = listModels(query);
+    // A gallery with nothing in it yet (state.empty): the cold start.
+    const rows = state.empty ? [] : listModels(query);
     const models = rows.slice(0, PER_PAGE).map(apiCard)
       .map((one) => (mine ? { ...one, liked: likes(state, one.id), likes: likeCount(state, one.id) } : one));
     return answer(200, { ...said, per_page: PER_PAGE, more: rows.length > PER_PAGE, models,
@@ -1222,10 +1223,11 @@ function share(method, params, who, state = {}) {
     const own = mine ? { pool: ME } : {};
     // Signed in, whether Sam likes each, as on the list.
     const shown = (row) => (mine ? { ...apiCard(row), liked: likes(state, row.id), likes: likeCount(state, row.id) } : apiCard(row));
-    const small = listModels({ most: SIZES.small.most, sort: "top", size: SHELF + 1, ...own });
-    const ready = mine ? listModels({ pool: ME, buildable: true, sort: "top", size: SHELF + 1 }) : [];
+    const small = state.empty ? [] : listModels({ most: SIZES.small.most, sort: "top", size: SHELF + 1, ...own });
+    const ready = mine && !state.empty ? listModels({ pool: ME, buildable: true, sort: "top", size: SHELF + 1 }) : [];
     return answer(200, { ...(mine ? { ...pool, ready: { models: ready.slice(0, SHELF).map(shown), more: ready.length > SHELF } } : {}),
-      pick: { chosen: false, until: null, week: PICK.week, model: shown(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
+      pick: state.empty ? null : { chosen: false, until: null, week: PICK.week,
+        model: shown(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
       small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(shown),
         more: small.length > SHELF }, score: SCORE,
       challenge: { id: CHALLENGE.id, title: CHALLENGE.title, state: CHALLENGE.state, starts_on: CHALLENGE.starts_on,
