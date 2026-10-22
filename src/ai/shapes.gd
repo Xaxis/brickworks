@@ -129,6 +129,8 @@ static var _screens: Dictionary = {}
 ## What the last shape laid came to, for a probe to read: its mirror axis
 ## and the sum a stud and its mirror add up to, its columns and plates.
 static var last: Dictionary = {}
+## TRY: screen flags, taken out before landing.
+static var TRY: String = OS.get_environment("SNOT_TRY")
 
 ## What the shapes laid since Patterns.expand began say to the design: a
 ## part they could not join, a shape standing on nothing. Read into the
@@ -3070,7 +3072,7 @@ class Plan extends RefCounted:
 	## and every cut's shell its own trial. First-tier connections only: a
 	## side stud into a plate's underside, nothing wedged.
 	func _cube_shells(kind: String) -> Array:
-		var groups: Dictionary = {}    ## Vector3i(way x, way z, depth) -> [[cube, phase]]
+		var groups: Dictionary = {}    ## Vector4i(way x, way z, depth, 0) -> [[cube, phase]]
 		var order: Array = []
 		for cut: Array in [[0, cubes]] + cube_phases:
 			_group_cut(int(cut[0]), cut[1], groups, order)
@@ -3080,7 +3082,7 @@ class Plan extends RefCounted:
 			asked += 1
 			if asked % 8 == 0 and stop.is_valid() and bool(stop.call()):
 				break
-			var group: Vector3i = key
+			var group: Vector4i = key
 			var facing := Vector2i(group.x, group.y)
 			var list: Array = groups[key]
 			var shell: Dictionary = {}
@@ -3097,7 +3099,7 @@ class Plan extends RefCounted:
 					for p: Vector3i in _cube_plates(member[0], member[1]):
 						if mine.has(p):
 							n += Vector2i(1, 1 if covered.has(p) else 0)
-					if n.x > 0 and float(n.y) >= CUBE_KEEPS * n.x:
+					if n.x > 0 and float(n.y) >= (0.8 if Shapes.TRY.contains("keeps8") else CUBE_KEEPS) * n.x:
 						kept.append(member)
 				if kept.size() == (shell["cubes"] as Array).size():
 					break
@@ -3177,7 +3179,8 @@ class Plan extends RefCounted:
 				root -= out3
 			var steps: int = absi((c - root).x + (c - root).z)
 			root += out3 * (steps - steps % CUBE_DEEP)
-			var group := Vector3i(facing.x, facing.y, root.x if facing.x != 0 else root.z)
+			var group := Vector4i(facing.x, facing.y, root.x if facing.x != 0 else root.z,
+				phase if Shapes.TRY.contains("phased") else 0)
 			if not groups.has(group):
 				groups[group] = []
 				order.append(group)
@@ -4934,7 +4937,7 @@ class Plan extends RefCounted:
 									stair_turn += absf(model_angle - atan((flat - was.z) * 1.2))
 									turns += 1
 								was = Vector3(m, p, flat)
-							if strict and here_count < 2:
+							if strict and here_count < (3 if Shapes.TRY.contains("full") else 2):
 								fits = false
 							if not fits:
 								break
