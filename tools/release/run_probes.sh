@@ -12,6 +12,9 @@
 # Logs: OUT_PREFIX_NAME.log.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
+# The probes run in the checkout this script is in, not the caller's: main's
+# copy called from a release worktree probed main (2026-10-22). Said first.
+echo "run_probes: in $(pwd) at $(git log --oneline -1 | cut -c1-60)"
 prefix="$1"; shift
 bad=0
 for spec in "$@"; do
