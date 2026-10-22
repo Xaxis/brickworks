@@ -65,8 +65,15 @@ function startTabs(nav) {
   let queued = false;
   const mark = (key) => {
     for (const link of links) {
-      if (link.dataset.tab === key) link.setAttribute("aria-current", "true");
-      else link.removeAttribute("aria-current");
+      if (link.dataset.tab !== key) {
+        link.removeAttribute("aria-current");
+        continue;
+      }
+      link.setAttribute("aria-current", "true");
+      // On a phone the row scrolls inside itself: the marked tab in view.
+      if (link.offsetLeft < nav.scrollLeft || link.offsetLeft + link.offsetWidth > nav.scrollLeft + nav.clientWidth) {
+        nav.scrollLeft = Math.max(0, link.offsetLeft - 16);
+      }
     }
   };
   const stuckAt = parseFloat(getComputedStyle(nav).top) || 0;
@@ -76,7 +83,9 @@ function startTabs(nav) {
     // the picture, it would cut across the picture's shadow.
     nav.classList.toggle("loose", nav.getBoundingClientRect().top > stuckAt + 1);
     if (held) return mark(held);
-    const line = nav.getBoundingClientRect().bottom + 16;
+    // The part read is the one across the top third of what shows under the tabs.
+    const under = nav.getBoundingClientRect().bottom;
+    const line = under + Math.max(16, (innerHeight - under) / 3);
     let key = links[0]?.dataset.tab || "";
     for (const link of links) {
       const part = document.getElementById(link.dataset.tab);

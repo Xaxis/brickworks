@@ -67,9 +67,15 @@ whole cycle.
   one. Save puts the model in your favourites or any of your collections
   from one list, favourites first. Share copies the link, or opens your
   phone's share sheet. More copies the code to embed the model in a page
-  of your own, and is where to report it. Build it opens it in 3D. The
-  page ends with more by the same designer and models like it, by kind and
-  tags, whenever there are three or more to show.
+  of your own, and is where to report it. Build it opens it in 3D. Under
+  the picture, a strip of its other pictures: its designer's own photos of
+  it, added from the page, then photos of real builds; choose one to see it
+  large. Below, tabs that stay in view, About, Comments, Builds, Remixes
+  and Versions, each with its count. Where nobody has commented, built or
+  remixed it yet, the page says so in a line, with the way to be first. It
+  ends with more by the same designer and models like it, by kind and tags,
+  whenever there are three or more to show, and otherwise with more from
+  the gallery, so there is always another model to open.
 - On brickworks.diy a model's card is the same on every page, and its
   picture is larger: cut 4:3 from the middle of the shared picture, so a
   model fills a card about 1.4 times wider. A model's remixes are shown as

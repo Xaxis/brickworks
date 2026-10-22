@@ -77,6 +77,16 @@ const check = (what, ok) => {
   else failed += 1;
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}`);
 };
+/// Until the page stops scrolling (the site scrolls smoothly to a part).
+async function settled(page) {
+  let last = -1;
+  for (let at = 0; at < 30; at++) {
+    await page.waitForTimeout(120);
+    const y = await page.evaluate(() => scrollY);
+    if (y === last) return;
+    last = y;
+  }
+}
 const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { timeout: ms }).then(() => true, () => false);
 
 // The pages visited, and what each must lead on to: the number of cards in
@@ -329,7 +339,7 @@ try {
             // screen under the header, it marked; the page scrolled on, the
             // tabs still there.
             await page.click('#page-tabs a[data-tab="comments"]');
-            await page.waitForTimeout(250);
+            await settled(page);
             const went = await page.evaluate(() => {
               const tabs = document.getElementById("page-tabs").getBoundingClientRect();
               const head = document.querySelector(".site-head").getBoundingClientRect();
@@ -342,7 +352,7 @@ try {
               went.current === "comments" && Math.abs(went.tabsTop - went.head) <= 2
               && (went.end || (went.part >= went.tabsBottom - 1 && went.part <= went.tabsBottom + 40)));
             await page.mouse.wheel(0, 500);
-            await page.waitForTimeout(300);
+            await settled(page);
             const later = await page.evaluate(() => ({ top: document.getElementById("page-tabs").getBoundingClientRect().top,
               head: document.querySelector(".site-head").getBoundingClientRect().bottom,
               rest: document.querySelector(".model-page .rest").getBoundingClientRect().bottom,

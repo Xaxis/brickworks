@@ -173,11 +173,18 @@ is on the page, `hidden`, for the script to show.
   lists) is `aria-expanded`, and `data-on` while what it stands for is on
   (the model is in one of your lists), drawn as pressed. The server's
   pages draw the kit from the same file (`api/_kit.js`, which
-  `tools/deploy.sh` replaces with `web/kit.js` itself, as `_card.js`).
+  `tools/deploy.sh` replaces with `web/kit.js` itself, `web/card.js`
+  beside it).
 - **Action bar**: `.action-bar`, a model's page's row of icon buttons
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
   one row across the column on a phone. `api/share.js` `actionBar`,
   `web/model-page.js`.
+- **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
+  `.media`, the picture and under it `.media-strip`, a row of thumbnails
+  that scrolls inside itself, the one shown large `aria-current` and edged
+  in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
+  and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
+  sticky under the header, with a ground of its own only once stuck.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`), gone in 2.4 s.

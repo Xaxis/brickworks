@@ -45,7 +45,9 @@
       "entry": "api/account.js",
       "reach": "curl -s https://brickworks.diy/api/account",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "api:GET /api/admin",
@@ -77,7 +79,9 @@
       "entry": "api/account.js",
       "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "api:POST /api/mcp",
@@ -767,7 +771,7 @@
       "id": "cli:model page browser flow",
       "kind": "cli",
       "entry": "tools/web/model_page_flow.mjs",
-      "reach": "node tools/web/model_page_flow.mjs --out=shots/model_page   (no network: the stand-in's watchtower and its remix at dusk; --url=<deployment> for a preview's first gallery model)",
+      "reach": "node tools/web/model_page_flow.mjs --out=shots/model_page   (no network: the stand-in's watchtower, its remix at dusk and Sam's bakery that nobody has built; --url=<deployment> for a preview's first gallery model)",
       "area": "web",
       "tests": []
     },
@@ -1486,7 +1490,9 @@
       "entry": "src/account/account.gd",
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "lib:add a minifig",
@@ -1856,7 +1862,7 @@
       "id": "lib:more by and similar models",
       "kind": "lib",
       "entry": "api/share.js",
-      "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most)",
+      "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": []
     },
@@ -2066,7 +2072,9 @@
       "entry": "web/account.js",
       "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "lib:stability",
@@ -2699,6 +2707,14 @@
       "kind": "ui",
       "entry": "web/model-page.js",
       "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:model page pictures and tabs",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs About, Comments, Builds, Remixes, Versions, kept on screen)",
       "area": "web",
       "tests": []
     },
