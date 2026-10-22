@@ -33,6 +33,9 @@ const CLOSE_TO := 0.05
 ## this, LDU: near enough the loop to start the next step from, which is all
 ## it is for.
 const ON_THE_WAY := 0.5
+## Turned back to where it was built, the last step closes on towards this
+## while each round takes a tenth off what is left ([method _close_with]).
+const CLOSE_FINE := 0.0005
 ## A step turns no coordinate further than this, radians (29°), as far as
 ## the last step's slope says: what a small actuator's screw drives turns 2
 ## radians for each LDU its rod goes.
@@ -145,12 +148,13 @@ var last_residual := PackedFloat64Array()
 ## steering arm on two balls turns on the line through both (its kingpin,
 ## Grab._kingpin).
 static func read(from: Bodies, driver: Bodies.Link, child: int, couplings: Array = [],
-		driver_line: Vector3 = Vector3.ZERO) -> Linkage:
+		driver_line: Vector3 = Vector3.ZERO, built: Dictionary = {}) -> Linkage:
 	var out := Linkage.new()
 	out.bodies = from
 	out._offered = couplings
 	out._driver_line = driver_line
 	out._read(driver, child)
+	out._from_built(built)
 	return out
 
 
@@ -507,6 +511,150 @@ func _read(driver: Bodies.Link, child: int) -> void:
 		_centre[body] = sum / maxf(weight, 0.000001)
 
 
+## Each closing joint's far half, and each rack's pinion, measured from where
+## the two parts were built ([param built]: brick id -> Transform3D, where a
+## grab first moved each; Grab._built_at). Read where the parts stand, a joint
+## a move left open read as closed: 5533-1's first turn ended with a pin 0.24
+## LDU out of its hole, the next took that for closed, and on the way back
+## its left arm stayed turned 7.6° while a steering arm slid out 5.3 LDU. A
+## gap as built is nought, so a model built with a pin a little off its hole
+## starts no move with one to close. Where the two stand further from how
+## they were built than [constant FROM_BUILT_MOST], they were rebuilt, not
+## left open, and are read as they stand.
+func _from_built(built: Dictionary) -> void:
+	_far_half.clear()
+	_rack_built.clear()
+	for loop: Bodies.Link in closing:
+		var far: Array = [loop.point, loop.axis]
+		var change: Variant = _since_built(loop.pairs[0] as Array, loop.a, built)
+		if change != null:
+			var point: Vector3 = (change as Transform3D) * loop.point
+			var axis: Vector3 = ((change as Transform3D).basis * loop.axis).normalized() \
+				if loop.axis != Vector3.ZERO else Vector3.ZERO
+			var gap: Vector3 = point - loop.point
+			if _slides(loop):
+				gap -= loop.axis.normalized() * gap.dot(loop.axis.normalized())
+			if gap.length() <= FROM_BUILT_MOST and (loop.axis == Vector3.ZERO
+					or loop.axis.normalized().cross(axis).length() * AXIS_SCALE <= FROM_BUILT_MOST):
+				far = [point, axis]
+		_far_half.append(far)
+	for mesh: Racks.Pinion in racks:
+		var off: float = 0.0
+		var change: Variant = _since_built([mesh.gear, mesh.rack], int(bodies.body_of.get(mesh.gear, -1)), built)
+		if change != null and mesh.rate != 0.0:
+			# Along the rack since built, and the pinion's turn against it,
+			# unwrapped to the turn that goes with that.
+			var along: float = mesh.line.dot(mesh.centre - (change as Transform3D) * mesh.centre)
+			var back: Quaternion = (change as Transform3D).affine_inverse().basis.orthonormalized().get_rotation_quaternion()
+			var turn: float = 2.0 * atan2(Vector3(back.x, back.y, back.z).dot(mesh.axis), back.w)
+			turn += TAU * roundf((-along / mesh.rate - turn) / TAU)
+			off = along + mesh.rate * turn
+			if absf(off) > FROM_BUILT_MOST:
+				off = 0.0
+		_rack_built.append(off)
+	# Where each slide the loop has to spare stood as built, against where it
+	# stands: the coordinate that puts it back.
+	_slide_built.clear()
+	for n: int in links.size():
+		var c: int = slide_col[n]
+		if c < 0 or not _sliding.has(c) or c == driver_col:
+			continue
+		var change: Variant = _since_built(links[n].pairs[0] as Array, child_of[n], built)
+		var since: float = 0.0
+		if change != null:
+			since = _axis[n].dot(_point[n] - (change as Transform3D) * _point[n])
+		if absf(since) <= FROM_BUILT_MOST * 10.0:
+			_slide_built[c] = -since
+	# And where the driver stood as built: its turn (or slide) back there.
+	_driver_built = NAN
+	var driven: Variant = _since_built(links[0].pairs[0] as Array, child_of[0], built) if not links.is_empty() else null
+	if driven != null:
+		var back: Transform3D = driven
+		if driver_col == slide_col[0]:
+			_driver_built = _axis[0].dot(back * _point[0] - _point[0])
+		elif _axis[0] != Vector3.ZERO:
+			var turn: Quaternion = back.basis.orthonormalized().get_rotation_quaternion()
+			_driver_built = 2.0 * atan2(Vector3(turn.x, turn.y, turn.z).dot(_axis[0]), turn.w)
+			_driver_built = wrapf(_driver_built, -PI, PI)
+
+
+## Whether the loops close with the driver at [param at], where it was
+## built, and each slide they have to spare back where it was built too
+## ([member _slide_built]), from [param from_q]. A slide the loop took on the
+## way out is kept by least change on the way back, where turning would close
+## it as well: 5533-1's steering knuckle slid 2.9 LDU out along its axle, and
+## came back with its arm turned to make up for it, its wheel 0.28 LDU off.
+func _closes_built(at: float, from_q: PackedFloat64Array) -> bool:
+	if _slide_built.is_empty() or is_nan(_driver_built) or absf(at - _driver_built) > BACK_AT_BUILT:
+		return false
+	var start: PackedFloat64Array = from_q.duplicate()
+	start[driver_col] = at
+	var apart: bool = false
+	for c: int in _slide_built:
+		var to: float = float(_slide_built[c])
+		if _bounded.has(c):
+			to = clampf(to, (_limits[c] as Vector2).x, (_limits[c] as Vector2).y)
+		apart = apart or absf(start[c] - to) > CLOSE_FINE
+		start[c] = to
+	if not apart:
+		return false
+	q = start
+	_fine = true
+	var closed: bool = _close() and _within()
+	_fine = false
+	return closed
+
+
+## Whether each move's last step closes on to [constant CLOSE_FINE]: a
+## session's move, not a drag's frame (Grab sets it). Stopped at a fifth of
+## CLOSE_TO, a turn back left 8466-1's rack 0.011 LDU off its driver, and its
+## steering column, turning with a pinion in that rack, 0.2 LDU off at its top
+## universal joint, 220 LDU from the pinion's line. Asked of every drag's
+## frame, the round more it takes cost the wheel loader's arm 1 ms of its 95th
+## frame in 14.
+var fine: bool = false
+## And back where the loop was built, a drag's too ([method _closes_built]).
+var _fine: bool = false
+
+
+## [param pair]'s two parts as they stand against each other, from how they
+## stood as built: the move that takes the one in [param body_one] from where
+## it stands to where it would stand had it kept to the other as built. Null
+## where neither has moved since it was built.
+func _since_built(pair: Array, body_one: int, built: Dictionary) -> Variant:
+	var one: int = int(pair[0])
+	var other: int = int(pair[1])
+	if int(bodies.body_of.get(one, -1)) != body_one:
+		one = int(pair[1])
+		other = int(pair[0])
+	if not built.has(one) and not built.has(other):
+		return null
+	var a: BrickWorld.Brick = bodies.world.get_brick(one)
+	var b: BrickWorld.Brick = bodies.world.get_brick(other)
+	if a == null or b == null:
+		return null
+	var a0: Transform3D = built.get(one, a.transform)
+	var b0: Transform3D = built.get(other, b.transform)
+	return b.transform * b0.affine_inverse() * a0 * a.transform.affine_inverse()
+
+
+## A driver this near where it was built, radians or LDU, is back there.
+const BACK_AT_BUILT := 0.001
+## How far a joint's halves may stand from how they were built, LDU (and its
+## lines, over [constant AXIS_SCALE]), and be read as a gap a move left: past
+## [constant ON_THE_WAY], what a step along the way closes to.
+const FROM_BUILT_MOST := 1.0
+## Each closing joint's far half: [its point, its line] where they stand,
+## to meet the near half's ([method _from_built]).
+var _far_half: Array = []
+## Each rack's teeth off its pinion's since built, LDU ([method _from_built]).
+var _rack_built := PackedFloat64Array()
+## Each spare slide's coordinate as built: column -> value ([method _from_built]).
+var _slide_built: Dictionary = {}
+## The driver's coordinate as built, or NAN where it has not moved since.
+var _driver_built: float = NAN
+
+
 ## The loop joints on the way from the anchor to [param body].
 func _joints_on(body: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
@@ -645,10 +793,11 @@ func _residual(at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
 		var loop: Bodies.Link = closing[k]
 		var wa: Transform3D = _place(loop.a, at, cache)
 		var wb: Transform3D = _place(loop.b, at, cache)
-		var gap: Vector3 = wa * loop.point - wb * loop.point
+		var far: Array = _far_half[k]
+		var gap: Vector3 = wa * loop.point - wb * (far[0] as Vector3)
 		if loop.axis != Vector3.ZERO:
 			var ua: Vector3 = (wa.basis * loop.axis).normalized()
-			var ub: Vector3 = (wb.basis * loop.axis).normalized()
+			var ub: Vector3 = (wb.basis * (far[1] as Vector3)).normalized()
 			if _slides(loop):
 				gap -= ua * gap.dot(ua)
 			out.append_array([gap.x, gap.y, gap.z])
@@ -716,7 +865,7 @@ func _rack_residual(k: int, at: PackedFloat64Array, cache: Dictionary) -> float:
 	for c: int in cols:
 		if coefficients[c] != 0.0:
 			turn += coefficients[c] * at[c]
-	return mesh.line.dot(seen - mesh.centre) + mesh.rate * turn
+	return mesh.line.dot(seen - mesh.centre) + mesh.rate * turn + float(_rack_built[k])
 
 
 static func _slides(loop: Bodies.Link) -> bool:
@@ -751,13 +900,14 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 		var loop: Bodies.Link = closing[k]
 		var wa: Transform3D = _place(loop.a, at, cache)
 		var wb: Transform3D = _place(loop.b, at, cache)
+		var far: Array = _far_half[k]
 		var pa: Vector3 = wa * loop.point
-		var pb: Vector3 = wb * loop.point
+		var pb: Vector3 = wb * (far[0] as Vector3)
 		var ua := Vector3.ZERO
 		var ub := Vector3.ZERO
 		if loop.axis != Vector3.ZERO:
 			ua = (wa.basis * loop.axis).normalized()
-			ub = (wb.basis * loop.axis).normalized()
+			ub = (wb.basis * (far[1] as Vector3)).normalized()
 		# Columns: d(gap) and d(ua × ub) for each coordinate.
 		var gaps: Array[Vector3] = []
 		var turns: Array[Vector3] = []
@@ -1021,11 +1171,15 @@ func _close_with(held: Dictionary) -> bool:
 			where[c] = -1
 	var n: int = free.size()
 	# Closed to a fifth of the tolerance, so the last step stands well inside
-	# it; a step on the way only to within it.
+	# it; a step on the way only to within it. A session's, or back where it
+	# was built, on as long as each round takes a tenth off what is left, to
+	# [constant CLOSE_FINE] ([member fine], [member _fine]).
 	var aim: float = _tolerance * 0.2 if _tolerance == CLOSE_TO else _tolerance
+	var fine_to: float = CLOSE_FINE if (fine or _fine) and _tolerance == CLOSE_TO else aim
+	var gaining: bool = true
 	var at_row := PackedInt32Array()
 	var of_row := PackedFloat64Array()
-	while now > aim and iterations < ITERATIONS and n > 0:
+	while (now > aim or now > fine_to and gaining) and iterations < ITERATIONS and n > 0:
 		iterations += 1
 		var jac: Array = _jacobian(q, cache)
 		# Normal equations: (JᵀJ + λ diag) dq = −Jᵀr, from each row's few
@@ -1100,6 +1254,7 @@ func _close_with(held: Dictionary) -> bool:
 			var tr: PackedFloat64Array = _residual(trial, trial_cache)
 			var then: float = _worst(tr)
 			if then < now:
+				gaining = then < now * 0.9
 				q = trial
 				r = tr
 				now = then
@@ -1234,10 +1389,15 @@ func _reach(value: float) -> float:
 		_gear_kept = _gear_at_keep.duplicate(true)
 	var good: float = from
 	var good_q: PackedFloat64Array = q.duplicate()
+	# The furthest step closed all the way, to CLOSE_TO, where those on the
+	# way closed only to ON_THE_WAY; and the gears' turns there.
+	var sure: float = from
+	var sure_q: PackedFloat64Array = q.duplicate()
+	var sure_gears: Array = _gear_kept.duplicate(true)
 	for n: int in range(1, count + 1):
 		var at: float = lerpf(from, value, float(n) / float(count))
 		_tolerance = CLOSE_TO if n == count else ON_THE_WAY
-		var closed: bool = _closes_at(at, good, good_q)
+		var closed: bool = n == count and _closes_built(at, good_q) or _closes_at(at, good, good_q)
 		_tolerance = CLOSE_TO
 		if closed:
 			_follow_slope(at, good, good_q)
@@ -1246,10 +1406,15 @@ func _reach(value: float) -> float:
 			# The gears' turns unwrapped against this step's, not the first's:
 			# a worm turns many times over in one drag.
 			_keep_gear_turns(q)
+			if residual <= CLOSE_TO:
+				sure = at
+				sure_q = good_q
+				sure_gears = _gear_kept.duplicate(true)
 			continue
 		# Short of it: the furthest that closes between the last good and here.
 		var low: float = good
 		var high: float = at
+		var closed_past: bool = false
 		for _round: int in 7:
 			var middle: float = (low + high) * 0.5
 			if _closes_at(middle, low, good_q):
@@ -1257,8 +1422,32 @@ func _reach(value: float) -> float:
 				low = middle
 				good_q = q.duplicate()
 				_keep_gear_turns(q)
+				closed_past = true
 			else:
 				high = middle
+		if not closed_past and low != sure:
+			# Kept where a step on the way left it, the loop stays open there,
+			# and the next move starts with the gap ([method _from_built]):
+			# 5533-1's steering turned 25° with a pin 0.24 LDU out of its
+			# rack's hole, and from there no turn closed. Closed all the way
+			# there, or back to the furthest step that was (Grab 22's).
+			if _closes_at(low, low, good_q):
+				good_q = q.duplicate()
+				_keep_gear_turns(q)
+			else:
+				low = sure
+				good_q = sure_q
+				_gear_kept = sure_gears.duplicate(true)
+				high = good
+				for _round: int in 7:
+					var middle: float = (low + high) * 0.5
+					if _closes_at(middle, low, good_q):
+						_follow_slope(middle, low, good_q)
+						low = middle
+						good_q = q.duplicate()
+						_keep_gear_turns(q)
+					else:
+						high = middle
 		q = good_q
 		return low
 	q = good_q

@@ -176,8 +176,14 @@ var _decided: bool = false
 ## Where the last stop was met, degrees; NAN for none.
 var _wall: float = NAN
 ## A frame's room test may run this long, ms (GrabDrag sets it); past it a
-## turn is taken on trust and checked on a pause or at the release.
-var budget_ms: float = INF
+## turn is taken on trust and checked on a pause or at the release. With no
+## end (a session's move, the check after a release), a loop closes each
+## move's last step as near as it goes (Linkage.fine); a drag's frame does not.
+var budget_ms: float = INF:
+	set(value):
+		budget_ms = value
+		if linkage != null:
+			linkage.fine = value == INF
 ## A drag's frame may test a small section's way this long, ms (GrabDrag sets
 ## it where [member budget_ms] has no end); past it the turn is shown on trust
 ## and the rest of the way checked from the last step tested, the next frame,
@@ -401,11 +407,11 @@ func _chosen() -> String:
 			if _kingpin == Vector3.ZERO:
 				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 					+ "of a part on one of the loop's turning joints (its crank).") % bodies.named([body]))
-		loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+		loop = Linkage.read(bodies, link, body, couplings, _kingpin, _built_now())
 		if from_rack and not loop.why.is_empty():
 			# Too big with the train: the loop as it was, the train left still.
 			couplings = []
-			loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+			loop = Linkage.read(bodies, link, body, couplings, _kingpin, _built_now())
 		# A gear the loop moves turns the gears it meshes, and they theirs: a
 		# telescope's cradle, tilted by its extension wheel's rack, is held by
 		# the tilt wheel's chain it meshes. Their meshes hold the loop too, by
@@ -418,7 +424,7 @@ func _chosen() -> String:
 			var more: Array = _meshes_moved(loop, couplings)
 			if more.is_empty():
 				break
-			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin)
+			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin, _built_now())
 			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size() \
 					or wider.links.size() <= loop.links.size() or not _only_bearings(loop, wider):
 				break
@@ -447,6 +453,7 @@ func _chosen() -> String:
 				_capital(_named()), link.words().trim_prefix("on "), other_words,
 				loop.said()])
 		linkage = loop
+		linkage.fine = budget_ms == INF
 		_checked_kept = loop.kept_state()
 		moving_bodies = loop.moved
 		ours.clear()
@@ -1507,7 +1514,9 @@ func _meeting_pairs() -> void:
 			for key: int in [one, other]:
 				if _thin_on(key, joined.point, line) or _round_on(key, joined.point, line):
 					turns_in_place = true
-			if turns_in_place:
+			# A universal joint drawn whole is posed as its cross, and its ends
+			# stand off its shafts as it bends: its shafts are in its ends.
+			if turns_in_place or bodies.whole_crosses.has(one) or bodies.whole_crosses.has(other):
 				continue
 			var reach_a: Vector2 = Grab._reach_along(a.transform, mesh_a.bounds, line)
 			var reach_b: Vector2 = Grab._reach_along(b.transform, mesh_b.bounds, line)
@@ -2391,6 +2400,13 @@ func _touched_as_built(key: int, other: int) -> bool:
 		return false
 	var touched: Dictionary = _built_touching.get("%d:%s" % [other, them.part_id], {})
 	return touched.has(key) and brick.part_id == str(touched[key])
+
+
+## [member _built_at] for this world: where each part a grab has moved stood
+## before the first did.
+func _built_now() -> Dictionary:
+	_built_for_world()
+	return _built_at
 
 
 ## Starts the record again for another world, or where parts were added or
