@@ -344,7 +344,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   connection are each said, as is a store with no library in it. Pictures `shots/library_*.png`. Not in the
   suite (two more copies of the app). `-- --sample=DIR` serves a store's own
   `library/` (libdata's sample) and only takes `library_sample*.png`.
-  Passed 47 checks, 0 failures (2026-10-22, 3ffad545).
+  Passed 47 checks, 0 failures (2026-10-22, 3ffad545). `-- --live` uses no
+  stand-in: the real deployment and its store, all 1,575 models with covers,
+  and 8466-1 (36 MB, the biggest) found and opened in the probe's window,
+  timed: 13.9 s from the press, 1,234 parts, credited (dcf6e538).
 - `library browser flow`: `tools/web/library_flow.mjs`, wired into
   `preview_checks.sh` as `library`. The library and the gallery are played by
   Playwright's route from `tests/fixtures/library`, so a local export and a
@@ -356,7 +359,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Pictures at 1400 x 900 and 390 x 844, dark and light (the app has one
   look; only the page around it follows the scheme). Passed 26 checks on a
   local export through `relay_server.mjs --static` (2026-10-22, 3ffad545);
-  not yet run against a deployment.
+  not yet run against a deployment. `--live` routes nothing: the store's
+  whole library (1,575), and 8466-1 opened in a new tab, its download
+  counted in MB on the status bar, read on a worker, its 29 hoses built on
+  workers (`CustomParts.warm_skins`), and the tab's longest stall measured by
+  an interval timer: 3.3 s, the layout's own frame, where it was 11.6 s
+  before the hoses were built ahead (local export, real store, dcf6e538).
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and

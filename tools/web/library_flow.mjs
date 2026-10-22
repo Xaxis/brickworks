@@ -38,7 +38,8 @@
 // a new tab. That tab's longest stall is measured from the page itself (an
 // interval timer's longest gap: the engine's frame and the page share one
 // thread), with what its status bar said while the file came and was read,
-// and how long it all took. Pictures live_1_sets.png, live_2_8466.png.
+// and how long it all took. Then the real gallery on the Community shelf.
+// Pictures live_1_sets.png, live_2_8466.png, live_3_community.png.
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -87,7 +88,7 @@ if (!live) await context.route(/\/library\/(index\.json|covers\/[^/?]+|omr\/[^/?
   const type = rest.endsWith(".json") ? "application/json" : rest.endsWith(".webp") ? "image/webp" : "text/plain";
   return route.fulfill({ status: 200, headers: { ...open, "content-type": type }, body: readFileSync(file) });
 });
-await context.route(/\/api\/share\?/, async (route) => {
+if (!live) await context.route(/\/api\/share\?/, async (route) => {
   const at = new URL(route.request().url());
   const q = at.searchParams;
   if (q.get("op") === "list") {
@@ -248,6 +249,14 @@ async function liveFlow(a, aTitle, aBricks) {
   const aNow = await state(a);
   check(`A is as it was: "${await a.title()}", ${aNow.bricks} parts`,
     (await a.title()) === aTitle && aNow.bricks === aBricks);
+  await a.bringToFront();
+  await search(a, "", null);
+  await click(a, "library_tab_community");
+  await checkAfter(async () => `the real gallery: ${(await shelf(a)).total} models, ${(await shelf(a)).covers} pictures`,
+    until(async () => (await shelf(a)).source === "community" && (await shelf(a)).total > 0
+      && (await shelf(a)).covers > 0, 120));
+  await a.waitForTimeout(5000);
+  await a.screenshot({ path: `${out}/live_3_community.png` });
 }
 
 try {

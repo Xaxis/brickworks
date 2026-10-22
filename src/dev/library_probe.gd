@@ -204,6 +204,12 @@ func _run() -> void:
 	await _choose(dialog, "_kind", "vehicle")
 	_check("Vehicles: %s" % str(dialog.last["shown"]), dialog.last["shown"] == ["LibStubKrt"])
 	await _choose(dialog, "_kind", "")
+	(dialog.controls_by_name()["library_tab_sets"] as Button).pressed.emit()
+	await _until(func() -> bool: return dialog.last.get("source") == "sets", 30.0)
+	await _search(dialog, "dragon")
+	_check("back on the sets, \"dragon\": %s" % str(dialog.last["shown"]), dialog.last["shown"] == ["omr-6056-1"])
+	(dialog.controls_by_name()["library_tab_community"] as Button).pressed.emit()
+	await _until(func() -> bool: return dialog.last.get("source") == "community", 30.0)
 	await _search(dialog, "bench")
 	_check("\"bench\": %s" % str(dialog.last["shown"]), dialog.last["shown"] == ["LibStubBch"])
 	before = _sessions()
@@ -333,6 +339,13 @@ func _live(dialog: LibraryDialog, store: ModelStore, world: BrickWorld) -> void:
 	await _search(dialog, "8466-1")
 	_check("\"8466-1\" finds the biggest: %s" % str(dialog.last["shown"]),
 		(dialog.last["shown"] as Array).has("omr-8466-1"))
+	await _search(dialog, "")
+	(dialog.controls_by_name()["library_tab_community"] as Button).pressed.emit()
+	await _until(func() -> bool: return dialog.last.get("source") == "community", 60.0)
+	await _until(func() -> bool: return _covers(dialog) >= mini(12, int(dialog.last.get("total", 0))), 60.0)
+	_check("the real gallery: %d models on its first page, %d pictures" % [int(dialog.last.get("total", 0)),
+		_covers(dialog)], int(dialog.last.get("total", 0)) > 0 and _covers(dialog) > 0)
+	await _shot("library_live_community")
 	dialog.close()
 	print("\n8466-1 (36 MB) opened here")
 	var frames: Dictionary = {"longest": 0, "last": Time.get_ticks_msec(), "count": 0}
