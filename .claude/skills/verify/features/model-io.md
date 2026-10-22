@@ -366,7 +366,16 @@ Whether what you built is still there tomorrow, and still means the same thing.
   an interval timer: 3.3 and 4.2 s in two runs, the layout's own frame (said
   first, "Opening 8466-1…"), where it was 11.6 s
   before the hoses were built ahead; then the real gallery's shelf, 7 models
-  with their pictures (local export, real store, e62d9c76).
+  with their pictures (local export, real store, e62d9c76). Now `--live` also
+  holds the open to `--open-ms` (500) of the app's own work, its longest
+  frame less its WebGL from tab B's controls until the model is whole and
+  drawn, and lists the six longest with what the bar said: base 3,806 and
+  3,677 ms (the one frame laying it, then 2.1-2.4 s autosaves after), open110
+  333 and 562 ms (A/B by `tools/release/timing_ab.sh`, each build served with
+  `serve.py --parts-url "$PARTS_URL"`, 2026-10-22). The interval's gaps still
+  read 1-3.4 s after the bar on SwiftShader: the page waiting on its drawing
+  of the whole model, not the app's work. The real gallery's check fails on a
+  local export (no /api/share there).
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and

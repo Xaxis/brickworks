@@ -53,9 +53,11 @@ whole cycle.
   the status bar counting "Opening 8466-1… 40%". The model appears whole
   once every part is down; until then the view still turns, and edits,
   Save and your Claude's tools wait for it rather than see half a model.
-  8466-1 from the library held a browser for 3 to 4 seconds and a desktop
-  for most of a second; File, Open of a big file held the desktop for up to
-  five. A model of under 200 parts opens in one frame, as it always has.
+  Someone else's big file is written back for the autosave on a worker
+  too, so the parts that arrive after it opens no longer each hold the
+  window. 8466-1 from the library held a browser for 3.7 to 3.8 seconds at
+  once and 2 more after; its longest moment now is a third to half a
+  second. A model of under 200 parts opens in one frame, as it always has.
 
 - On brickworks.diy a model's card is the same on every page, and its
   picture is larger: cut 4:3 from the middle of the shared picture, so a

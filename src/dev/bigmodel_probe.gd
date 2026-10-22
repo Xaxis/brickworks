@@ -47,6 +47,8 @@
 ##
 ## Bare, it also opens two real sets where the checkout has them
 ## (REAL_SETS), and holds the big one's open to near-linear in its parts.
+## Every model opened (with --open too) has its autosave's text, made on a
+## worker as someone else's file is, held to its save's, made in a frame.
 ##
 ## Measured at 5,025 parts in a browser (CADTASK.md, 2026-10-16) an
 ## orbit frame's own work was 2.7 s, select all 65 s, the undo of a Delete
@@ -477,6 +479,13 @@ func _opened(path: String) -> Dictionary:
 		_profiled(row, "open")
 		if n == 0 and not _dump.is_empty():
 			_dumped(_dump.path_join(path.get_file().get_basename() + ".dump"))
+		# Someone else's file, its autosave's text made on a worker
+		# (ModelStore._text_into with a pace): the save's, made in a frame.
+		if n == 0:
+			var made: Array = []
+			await _store._text_into(made, _store.title, false, {}, FramePace.new())
+			_check("%s: its autosave made on a worker is its save made in a frame, byte for byte"
+				% row["model"], made.size() == 1 and str(made[0]) == _store.to_text(_store.title))
 		if _profile and n == 0:
 			_open_sections(row)
 		if n == 0:
