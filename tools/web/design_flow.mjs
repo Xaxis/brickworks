@@ -261,9 +261,13 @@ const PAGES = [
     } },
   { name: "model", path: `/m/${stand.MODEL_ID}`,
     // The comments listed (Comment's count), and signed out Report it made
-    // live in More.
+    // live in More. On a deployment the page is its own model, whose
+    // comments the stand-in answering the API has none of: there, the
+    // comments asked and either listed or said why not.
     ready: (page, { signedIn }) => until(page, signedIn
-      ? () => !document.getElementById("comments")?.hidden
+      ? (remote ? () => !document.getElementById("comments")?.hidden
+        || Boolean(document.querySelector("#comments .comments-said")?.textContent)
+        : () => !document.getElementById("comments")?.hidden)
       : () => !document.querySelector('[data-report="this model"]')?.hidden),
     open: async (page, { signedIn }) => {
       if (!signedIn) {
