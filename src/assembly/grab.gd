@@ -401,11 +401,11 @@ func _chosen() -> String:
 			if _kingpin == Vector3.ZERO:
 				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 					+ "of a part on one of the loop's turning joints (its crank).") % bodies.named([body]))
-		loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+		loop = Linkage.read(bodies, link, body, couplings, _kingpin, _built_now())
 		if from_rack and not loop.why.is_empty():
 			# Too big with the train: the loop as it was, the train left still.
 			couplings = []
-			loop = Linkage.read(bodies, link, body, couplings, _kingpin)
+			loop = Linkage.read(bodies, link, body, couplings, _kingpin, _built_now())
 		# A gear the loop moves turns the gears it meshes, and they theirs: a
 		# telescope's cradle, tilted by its extension wheel's rack, is held by
 		# the tilt wheel's chain it meshes. Their meshes hold the loop too, by
@@ -418,7 +418,7 @@ func _chosen() -> String:
 			var more: Array = _meshes_moved(loop, couplings)
 			if more.is_empty():
 				break
-			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin)
+			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin, _built_now())
 			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size() \
 					or wider.links.size() <= loop.links.size() or not _only_bearings(loop, wider):
 				break
@@ -2393,6 +2393,13 @@ func _touched_as_built(key: int, other: int) -> bool:
 		return false
 	var touched: Dictionary = _built_touching.get("%d:%s" % [other, them.part_id], {})
 	return touched.has(key) and brick.part_id == str(touched[key])
+
+
+## [member _built_at] for this world: where each part a grab has moved stood
+## before the first did.
+func _built_now() -> Dictionary:
+	_built_for_world()
+	return _built_at
 
 
 ## Starts the record again for another world, or where parts were added or
