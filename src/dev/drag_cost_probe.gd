@@ -63,6 +63,16 @@ func _run() -> void:
 		if info != null and info.name.contains("Steering Wheel") and bodies.body_of.has(brick.id):
 			wheel = brick.id
 			break
+	# The view eases to the model as it opens: until it stands still, the
+	# first drag's pointer reads other angles than the next.
+	var was: Transform3D = _camera.global_transform
+	var still: int = 0
+	for _n: int in 600:
+		await process_frame
+		still = still + 1 if _camera.global_transform.is_equal_approx(was) else 0
+		was = _camera.global_transform
+		if still >= 10:
+			break
 	var body: int = int(bodies.body_of[wheel])
 	var link: Bodies.Link = bodies.parent_link[body]
 	var worst_frames := PackedFloat64Array()

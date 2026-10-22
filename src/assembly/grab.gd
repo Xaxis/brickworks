@@ -2491,14 +2491,34 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 	# line, and its turned box's lines.
 	var now := Vector2(NAN, NAN)
 	var square: Array = []
+	# Its box as box_depth carries it: its middle and half edges.
+	var a_mid: Vector3 = to * mesh.bounds.get_center()
+	var a0: Vector3 = to.basis[0] * (mesh.bounds.size.x * 0.5)
+	var a1: Vector3 = to.basis[1] * (mesh.bounds.size.y * 0.5)
+	var a2: Vector3 = to.basis[2] * (mesh.bounds.size.z * 0.5)
 	for other: int in _near(box, key):
 		if _pair_forgiven(key, other, mesh, to):
 			continue
-		var them: BrickWorld.Brick = world.get_brick(other)
-		var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
-		if their_mesh == null:
+		var theirs: Array = _their_box(other)
+		if theirs.is_empty():
 			return true
-		if Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= TOUCHING:
+		# Apart along one of their box's own three edges, as box_depth
+		# measures it there, and box_depth, the least over fifteen lines, is
+		# no more: its other twelve lines (nine of them crossed and made unit
+		# afresh for every pair) are not asked. Most of what a moving part
+		# comes near stands square beside it.
+		var apart: bool = false
+		for k: int in 3:
+			var way: Vector3 = theirs[2 + k]
+			var a_at_way: float = a_mid.dot(way)
+			var a_reach: float = absf(a0.dot(way)) + absf(a1.dot(way)) + absf(a2.dot(way))
+			var b_at_way: float = theirs[5 + k * 2]
+			var b_reach: float = theirs[6 + k * 2]
+			if minf(a_at_way + a_reach, b_at_way + b_reach) - maxf(a_at_way - a_reach, b_at_way - b_reach) \
+					<= TOUCHING:
+				apart = true
+				break
+		if apart or Grab.box_depth(to, mesh.bounds, theirs[0], theirs[1]) <= TOUCHING:
 			continue
 		if is_nan(now.x) and axis != Vector3.ZERO:
 			now = Grab._reach_along(to, mesh.bounds, axis)
@@ -2508,6 +2528,41 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 			_near_part = other
 			return true
 	return false
+
+
+## [param other]'s box, which stays where it is while the grab lasts, as
+## [method box_depth] reads it: [its transform, its bounds, its three edges
+## made unit, then along each its middle's place and its reach], or [] where
+## it has no geometry yet. Kept for the grab once it has.
+func _their_box(other: int) -> Array:
+	if _their_for != world.revision:
+		_their_for = world.revision
+		_theirs.clear()
+	var kept: Array = _theirs.get(other, [])
+	if not kept.is_empty():
+		return kept
+	var them: BrickWorld.Brick = world.get_brick(other)
+	var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+	if their_mesh == null:
+		return []
+	var b_at: Transform3D = them.transform
+	var b_box: AABB = their_mesh.bounds
+	var b_mid: Vector3 = b_at * b_box.get_center()
+	var b0: Vector3 = b_at.basis[0] * (b_box.size.x * 0.5)
+	var b1: Vector3 = b_at.basis[1] * (b_box.size.y * 0.5)
+	var b2: Vector3 = b_at.basis[2] * (b_box.size.z * 0.5)
+	kept = [b_at, b_box, b_at.basis[0].normalized(), b_at.basis[1].normalized(),
+		b_at.basis[2].normalized()]
+	for k: int in 3:
+		var way: Vector3 = kept[2 + k]
+		kept.append(b_mid.dot(way))
+		kept.append(absf(b0.dot(way)) + absf(b1.dot(way)) + absf(b2.dot(way)))
+	_theirs[other] = kept
+	return kept
+
+
+var _theirs: Dictionary = {}
+var _their_for: int = -1
 
 
 ## Whether the part [param mesh] at [param to], its world box [param box], is
