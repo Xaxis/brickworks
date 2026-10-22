@@ -96,7 +96,7 @@ func _run() -> void:
 		var shape: Dictionary = Shapes.part(_library, id)
 		_check("%s falls %s, %s studs along it, %s tall" % [id, shape.get("turn", "?"),
 			shape.get("d", "?"), shape.get("h", "?")], not shape.is_empty())
-	for id: String in ["3665a", "4287a", "3660a"]:
+	for id: String in ["3665a", "4287c", "3660b"]:
 		var shape: Dictionary = Shapes.part(_library, id, true)
 		_check("%s, inverted, falls %s, %s studs along it" % [id, shape.get("turn", "?"),
 			shape.get("d", "?")], not shape.is_empty())
@@ -160,7 +160,7 @@ func _run() -> void:
 			if kinds.contains("c"):
 				curved += 1
 			if placement.part in ["3040b", "3039", "4286", "3298", "60477", "30363", "54200",
-					"85984", "3665a", "3660a", "4287a", "3747b", "13547", "11477", "15068",
+					"85984", "3665a", "3660b", "4287c", "3747b", "13547", "11477", "15068",
 					"50950", "24309", "61678", "93606", "24201", "32803"]:
 				sloped += 1
 			if placement.part in ["87079", "26603", "3068b", "2431", "63864", "3069b", "3070b"]:

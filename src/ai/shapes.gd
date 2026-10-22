@@ -1914,7 +1914,7 @@ class Plan extends RefCounted:
 	## A design's bands keep the colour above, as they always have.
 	var colour_shown: bool = false
 	## With colours here, a slope the LEGO Group sells in none of them (by Rebrickable's
-	## elements) is not laid: the inverted 2 x 2 slope Brickify laid under
+	## elements) is not laid: the inverted 2 x 2 slope Brickify once laid under
 	## overhangs, 3660a, has no element in any colour, so no colour of it can
 	## be bought.
 	var sold_in := PackedInt32Array()
@@ -4147,13 +4147,16 @@ class Plan extends RefCounted:
 	## (24201, 32803) are not read as slopes off their meshes, so neither is
 	## here. A two-stud run under an overhang takes the 2 x 2 or nothing.
 	## Each read off its mesh as SLOPES are, its deep end's hollow under it
-	## taken as its foot.
+	## taken as its foot. Each in the mould the LEGO Group sells now: the
+	## older 4287a is sold in 7 of Brickify's colours and 3660a in none, so
+	## 259 places under Bob's yellow overhangs fitted one and got nothing.
+	## 4287c's underside is 3747b's, a little higher than 4287a's.
 	const INVERTED: Array = [
 		["under", 4, 3, "13547", "", [0.3, 1.0, 1.8, 2.6],
 			[0.0, 0.0, 0.0, 0.02, 0.1, 0.2, 0.34, 0.56, 0.86, 1.21, 1.65, 2.21]],
-		["under", 3, 3, "4287a", "3747b", [0.0, 1.2, 2.3],
-			[0.0, 0.0, 0.0, 0.21, 0.63, 1.04, 1.46, 1.88, 2.29]],
-		["under", 2, 3, "", "3660a", [0.0, 1.8], [0.0, 0.0, 0.0, 0.42, 1.25, 2.08]],
+		["under", 3, 3, "4287c", "3747b", [0.0, 1.2, 2.3],
+			[0.0, 0.0, 0.0, 0.22, 0.66, 1.09, 1.53, 1.97, 2.41]],
+		["under", 2, 3, "", "3660b", [0.0, 1.8], [0.0, 0.0, 0.0, 0.42, 1.25, 2.08]],
 	]
 
 	## The studs a windscreen stands over: no slope is fitted to them.
