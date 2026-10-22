@@ -150,6 +150,16 @@ try {
   listen(desk, "admin");
   await desk.goto(`${site}/admin#report-${reportId}`, { waitUntil: "load", timeout: 60000 });
   await desk.waitForSelector(`#report-${reportId}`, { timeout: 30000 }).catch(() => {});
+  // The page scrolls to the row smoothly (site.css: scroll-behavior), so it
+  // is still on its way the moment it appears: on m144's preview it was 140 px
+  // short then and centred half a second later. Read it once it has arrived,
+  // or when the ten seconds the page keeps it in view are up.
+  const t0 = Date.now();
+  await desk.waitForFunction((n) => {
+    const box = document.getElementById(`report-${n}`)?.getBoundingClientRect();
+    return Boolean(box) && box.top >= 0 && box.bottom <= innerHeight;
+  }, reportId, { timeout: 10000 }).catch(() => {});
+  const took = Date.now() - t0;
   const row = await desk.evaluate((n) => {
     const tr = document.getElementById(`report-${n}`);
     if (!tr) return null;
@@ -157,7 +167,7 @@ try {
     return { asked: tr.classList.contains("asked"), text: tr.innerText, inView: box.top >= 0 && box.bottom <= innerHeight };
   }, reportId);
   check(`the admin page shows that report, marked and in view (${row ? `${row.asked ? "marked" : "NOT marked"}, `
-    + `${row.inView ? "in view" : "NOT in view"}: ` + row.text.replace(/\s+/g, " ").slice(0, 60) : "no row"})`,
+    + `${row.inView ? `in view after ${took} ms` : `NOT in view in ${took} ms`}: ` + row.text.replace(/\s+/g, " ").slice(0, 60) : "no row"})`,
     Boolean(row?.asked && row?.inView && /copied/.test(row.text)));
   await shot(desk, "2_admin_at_the_link.png");
   await admin.close();
