@@ -2749,7 +2749,9 @@ plain one. Joined now in one pass, with sides turned from 65 degrees (from
 studs are turned (the fifth round 44%, m137 27%), 7.2% nearer the model than
 the studs-up build (6.3%), and at 24 studs 34% and 5.4%. Every run is one
 piece, passes, stands with no joint past its load, and is 98.2% or more in
-a part (the fifth round 98.0%); parts 1.08 times m137's at 48 and 1.09 at
+a part (the fifth round 98.0%); the armadillo at 24 studs, which the fourth
+and fifth rounds left with a joint past its load that no prop could reach,
+is laid again with the side about that joint upright, and has none; parts 1.08 times m137's at 48 and 1.09 at
 24; time 1.01 times m137's at 48, laid side by side (1.27). The bar's 80%
 and 30% are not met. The fifth round's bands, laid on this, hold 97% in a
 part now and turn 51%, but no nearer the model, and Bob at 24 studs takes
@@ -2811,6 +2813,24 @@ shell: where two shells meet at a corner, a column a stud wide between them.
    `given_back`, `cut_cells`, `shell_frames`), for `snot_gaps.gd`, which also
    draws the cells round one (`GAPS_AT`), says why the cubes there stayed
    upright (`GAPS_WHY`) and lays it as `Brickify.build` does (`GAPS_BUILD`).
+5. **A joint the props cannot take, laid again upright about it**
+   (`Brickify._past_load_by_shells`, `Options.upright_near`,
+   `_cubes_away`). The fourth and fifth rounds left the armadillo at 24
+   studs with one stud joint past its working load, and so does this
+   branch: a 1 x 2 plate (3023b) hung on one stud of another, 20.7 g, 1.24
+   times its load. Laid with its sides upright it has none. Turned, it had
+   five; the prop pass propped the piece round them under its centre of
+   mass, took four, and was kept. The fifth was inside that piece, and the
+   pass marks every part of a piece it propped as done, so it was never
+   tried; tried, no pillar reaches it: it hangs 40 plates over the ground,
+   and a pillar stops at 24 (to the floor, a figure's arm stood a stud and
+   more off the figure). Upright, the core bonds that overhang across the
+   plates the shell beside it took. Now a joint past its load left after
+   the props, with a part of it beside a shell's plates, has the model laid
+   again with no cube turned within a stud and two plates of either part,
+   and the build with fewer joints past their load is kept, the time of
+   both counted. The armadillo at 24 studs: none past its load, one cube
+   fewer turned (32 of 33), the same 98.1% in a part, 7.0 s from 4.9.
 
 **Tried**, the probe's bunnies (held to 97% in a part) and the three at 48
 studs (turned, nearer than studs up, parts and time against m137):
@@ -2891,37 +2911,56 @@ the wall), both asked: the round went to the root cause and to what it let
 in, and neither was started. 3DBenchy is 23% turned at 48 studs, faces
 looking down 2%.
 
-**The fourteen, handed over.** As the fourth round's: m137 (`85bd1c4a`) lays
-`jobs-before-a.json` and `-b.json` in `bench/results/brickify8-2026-10-21`,
-whose arms are `smooth` and `upright`; `upright` is m137's own smooth build
-with `Options.snot` false (`brickify_bench.gd` sets it for that arm), the
-studs-up build the steep faces are measured against. The branch lays
-`jobs-after-a.json` and `-b.json`, smooth alone. For a fair time, each half
-of m137 runs beside the same half of the branch:
+**The fourteen, handed over.** In `bench/results/brickify8-2026-10-21`
+(`R` below). The studs-up build the steep faces are measured against is the
+`upright` arm (`brickify_bench.gd`: smooth with `Options.snot` false), which
+lays as m137's on any branch since: none of this round's or the fifth's
+changes reach a build with nothing turned. The fifth round's jobs files lay
+it into `$R/before` beside m137's smooth there. For a fair time, m137's
+smooth is laid again in the same batch as the branch's, each half of the
+models a process beside the same half:
 
 ```sh
-R=<the main checkout>/bench/results/brickify8-2026-10-21; PY=<a venv with numpy scipy trimesh embreex pillow>
-B=<a checkout of 85bd1c4a>; W=<a checkout of this branch>; O=<an empty folder>
+R=<the main checkout>/bench/results/brickify8-2026-10-21; O=$R/after6; PY=<a venv with numpy scipy trimesh embreex pillow>
+J=<the fifth round's scratch>/snot84    # jobs-upright-a.json and -b.json: the 14, arm "upright"
+B=<a checkout of m137, 85bd1c4a>; W=<a checkout of this branch>
+# the studs-up arm into $R/before, once (m137's smooth is there already):
+cd $W && XDG_DATA_HOME=$R/data-g heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $J/jobs-upright-a.json $R/before
+cd $W && XDG_DATA_HOME=$R/data-h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $J/jobs-upright-b.json $R/before
+# the branch's smooth, each half beside m137's smooth laid again for the time:
 for h in a b; do
-  (cd $B && XDG_DATA_HOME=$O/data-before-$h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $R/jobs-before-$h.json $O/before) &
-  (cd $W && XDG_DATA_HOME=$O/data-after-$h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $R/jobs-after-$h.json $O/after) &
+  (cd $W && XDG_DATA_HOME=$R/data-e-$h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $R/jobs-after-$h.json $O) &
+  (cd $B && XDG_DATA_HOME=$R/data-t-$h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $R/jobs-after-$h.json $R/m137-timed) &
   wait
 done
-cd $W && heavy $PY -I tools/bench/brickify_bench.py faces $O/before && heavy $PY -I tools/bench/brickify_bench.py faces $O/after
-python3 $R/bar.py $O/after $O/before    # each model and size, then the means at 24 and 48
+cd $W && heavy $PY -I tools/bench/brickify_bench.py faces $R/before && heavy $PY -I tools/bench/brickify_bench.py faces $O
+heavy $PY -I tools/bench/brickify_bench.py measure $O
+python3 $R/bar-timed.py $O $R/before $O $R/m137-timed    # bar.py, with parts and time from the pair laid together
 ```
 
 Each half is about 40 minutes on a quiet box. Every model must hold the
 guardrails: one piece, its check passing, no stud joint past its working
 load (`over 0`), 97% or more in a part (`lost` at most 0.03 on `bar.py`'s
 line), parts at most 1.15 times m137's, and time at 48 studs at most 1.5
-times. The fourth round missed two of these, the armadillo at 24 studs and
-the bunny at 48's time; turning from 65 degrees is new to the eleven models
-not run here, which is what this run would show.
+times. The fourth round missed two of these, the armadillo at 24 studs (its
+joint, taken above) and the bunny at 48's time (1.10 times here, beside
+m137); turning from 65 degrees is new to the eleven models not run here,
+which is what this run would show.
 
 ### Proof
 
-The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`), on the branch's last code:
+The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
+armadillo's joint at `95d179ba`):
+
+- At `95d179ba`: `brickify_probe` 84 of 84 (the blue bunny 97.8% in a part),
+  `brickify_buy_probe` 25 and `--steps-only` at 48 studs 6 (58, 115 and 77
+  steps, every partial build standing), `brickify_ui_probe` on the GPU 21,
+  and the three browser flows on a local export 14, 14 and 17: all pass. Bob,
+  the Stanford bunny and 3DBenchy at 24 and 48 studs lay the same parts as at
+  `f209a60a` (no joint past its load, so nothing is laid again); the
+  armadillo at 24 studs has none past its load (above). `snot_probe`,
+  `shapes_probe`, `balance_probe` and `stability_probe` do not lay through
+  `Brickify.build` and were not run again.
 
 - `brickify_probe` (headless): all 84 pass. The blue bunny at 20 studs, one
   colour, 97.8% in a part (the fifth round 96.6%, m137 98.7%), 548 parts, 4
