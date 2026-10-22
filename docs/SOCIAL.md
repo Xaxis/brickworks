@@ -67,7 +67,8 @@ collections and follows as bare text links.
 The light theme exists, but only by the computer's setting: there is no
 choice on the site, and the browser's bar stays dark in light mode
 (`theme-color` is `#0e1013` on all 14 static pages; the server's pages
-have none).
+have none), and in light a pressed button's yellow edge, the only sign it
+is pressed, is 1.33:1 against the page.
 
 The plan: a foundation (tokens, a theme choice, a small component kit and
 one card), then the gallery and the model page, the profile and your
@@ -268,8 +269,19 @@ set, measured at 4.5:1 or better. Missing:
 5. **`theme-color` per theme**, and the 404's brick colours, the legal
    pages' `#c9a227` and /admin's yellow as tokens.
 6. **Pictures in both.** Model renders sit on a light grey backdrop; in
-   the dark theme they are bright tiles. Acceptable now; a backdrop that sits in
-   both is an app change at publish, later (U15).
+   the dark theme they are bright tiles. Acceptable now; a backdrop that
+   sits in both is an app change at publish, later (U15).
+7. **An edge colour that shows in light.** Every text token passes in both
+   themes (measured: the faintest, `--ink-faint`, is 5.04:1 in dark and
+   5.30:1 in light at worst), but the yellow accent is 1.33:1 on the light
+   surfaces, and it is the only mark of a pressed toggle
+   (`.cta.ghost[aria-pressed="true"]`: Following, a liked Like), the New
+   pill, the older-version box and the designer's leading tiles. WCAG
+   1.4.11 asks 3:1 for a control's state. A `--accent-edge` token: the
+   yellow in dark, `#a67c00` in light (3.28:1 on `--bg-soft`, 3.82:1 on
+   `--panel`). Buttons that are yellow keep the yellow; their words are
+   11.96:1 on it. (`standin-model_1280_light_in_pressed-top.png`: "In
+   your favourites" is pressed, and only just looks it.)
 
 ## 4. Decisions
 
@@ -370,8 +382,9 @@ reload; a reload and a new tab keep it; a probe reading `body`'s
 background at first paint finds the chosen theme, never the other (no
 flash); signed in on a fresh browser profile, the account's choice applies
 on the first page after sign-in; the browser bar's colour follows; every
-text token measures 4.5:1 or more on each surface it sits on, in both
-themes (a script, not by eye); deleting the account removes the choice.
+text token measures 4.5:1 or more on each surface it sits on, and a
+pressed toggle's edge 3:1 or more, in both themes (a script, not by
+eye); deleting the account removes the choice.
 *Supabase:* `alter table public.profiles add column if not exists theme
 text check (theme in ('system','light','dark'))`.
 
@@ -632,7 +645,8 @@ Latest for everybody, U9; (10) first steps and the house profile, U10.
   footer, Menu and Settings on all 19 kinds of page at 390 and 1280; no
   flash (first-paint background is the chosen theme on every page); kept
   across reload, tab and, signed in, a new browser; every text token at
-  4.5:1 or more in both themes by script; `theme-color` follows;
+  4.5:1 or more and a pressed edge 3:1 or more in both themes, by
+  script (the yellow edge is 1.33:1 in light today); `theme-color` follows;
   `design_flow` passes; account deletion removes the choice.
 - **U2, Component kit and one card.** Bar: one card renderer (server and
   browser markup equal by test), one pill, avatar, tabs, icon buttons;
