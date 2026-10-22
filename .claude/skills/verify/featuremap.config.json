@@ -2101,6 +2101,13 @@
     },
     {
       "kind": "cli",
+      "label": "the builder's frames after a change",
+      "entry": "src/dev/ahead_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/ahead_probe.gd -- --most-ms=50   (tools/probe.sh ahead_probe: a part turned by move_part, Ctrl+Z, a part placed by a click, on the Ducati a session designed, 8808-1 and 42004-1, each followed 4 s while the joints are read and the model weighed on workers; then a press while the joints are read takes the worker's reading, and one while a session moves a part says so)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
       "label": "big models stay fast",
       "entry": "src/dev/bigmodel_probe.gd",
       "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened, or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
