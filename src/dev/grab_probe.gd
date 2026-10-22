@@ -292,6 +292,8 @@ func _run() -> void:
 	if only.is_empty() or only == "grooved":
 		for one: Array in GROOVED:
 			await _grooved_check(str(one[0]), float(one[1]))
+		for one: String in KEPT_IN_RACK:
+			await _kept_in_rack_check(one)
 	if only.is_empty() or only == "kingpin":
 		await _kingpin_check("res://vendor/omr/files/9392-1.mpd", "6571")
 	if only.is_empty() or only == "swept":
@@ -5507,6 +5509,11 @@ const GROOVED: Array = [
 	["res://vendor/omr/files/8448-1_Racer.mpd", 1.0],
 	["res://vendor/omr/files/5533-1.mpd", 1.0],
 ]
+## A pinion at its rack's last tooth stays in the rack (Grab 22): turned
+## -23°, 8466-1's steering carried its end pinion 4.09 LDU past the last
+## tooth, the next turn read it out of the rack and turned it alone on its
+## pin, and the rack stayed 2.09 LDU off. Turned where the sweep turns it.
+const KEPT_IN_RACK: Array = ["res://vendor/omr/files/8466-1.mpd"]
 
 
 func _steer_set(path: String) -> void:
@@ -5711,6 +5718,26 @@ func _grooved_check(path: String, least: float) -> void:
 	var back: float = float((steps[1] as Dictionary).get("rack_ldu", went)) if steps.size() > 1 else went
 	_check("%s: turned -60 after, the rack comes back along its groove, from %+.2f to %+.2f LDU" % [name, went,
 		back], absf(went) >= least and (back - went) * signf(went) < -0.5)
+	_builder.forget_history()
+
+
+## A pinion at its rack's last tooth stays in it ([constant KEPT_IN_RACK]):
+## turned +30, -60 and back as the sweep turns it, the turn back still moves
+## the loop, and the rack comes back to where it stood.
+func _kept_in_rack_check(path: String) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\n%s's pinion stays in its rack" % name)
+	var row: Dictionary = await _sweep_one(path)
+	var steps: Array = row.get("steps", [])
+	var back: Dictionary = steps[2] if steps.size() > 2 else {}
+	var said: String = str(back.get("said", ""))
+	_check("%s: turned back at its %s %s, the loop is still held by its rack (%s)" % [name,
+		str(row.get("kind", "")), str(row.get("driver", "")), said.get_slice(" (", 0).left(120)],
+		said.contains("in a loop of") and said.contains("pinion in rack"))
+	var rack: float = float(back.get("rack_ldu", INF))
+	_check("%s: the rack comes back to %+.2f LDU of where it stood, from %s and %s" % [name, rack,
+		str((steps[0] as Dictionary).get("rack_ldu", "")) if steps.size() > 0 else "",
+		str((steps[1] as Dictionary).get("rack_ldu", "")) if steps.size() > 1 else ""], absf(rack) <= 0.05)
 	_builder.forget_history()
 
 

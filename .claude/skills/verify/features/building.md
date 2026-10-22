@@ -696,7 +696,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   steering wheel through its column's two 4L universal joints, and 5533-1,
   at its pinion: the rack with holes (32185, 6630) slides on the studs
   standing in its groove and comes back on the next turn
-  (`Bodies._grooves_by_shape`; Grab 19, MECHANISMS §30). `-- --only=kingpin` (in the full run):
+  (`Bodies._grooves_by_shape`; Grab 19, MECHANISMS §30); and 8466-1, turned
+  at the pinion at its rack's end +30, -60 and back as the sweep turns it:
+  the turn back still turns the loop, and the rack comes back within 0.05
+  LDU (a loop carries no pinion off its rack, `Linkage._within`; Grab 22,
+  MECHANISMS §36). `-- --only=kingpin` (in the full run):
   9392-1's steering arm on two balls turns on the line through them
   (`Grab._kingpin`).
   `-- --only=swept` (in the full run): 41999-1 (a pinion lodged where no hole

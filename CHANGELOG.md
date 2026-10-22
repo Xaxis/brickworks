@@ -15,6 +15,12 @@ whole cycle.
 
 ### Fixed
 
+- A steering no longer loses the rack it is turned by. A pinion standing at
+  the end of its rack could be carried past the rack's last tooth by a
+  turn, and the next turn found it out of the rack and turned it alone, the
+  steering left where it was: the 4x4 off-roader's (8466-1), turned one way
+  and back, left its rack 2 LDU over. A steering now stops where a pinion
+  it is turned by would leave its rack, and turns back from there.
 - Claude is told the real size of the pieces it finds in real sets. Every
   part whose shape is lopsided was measured on the wrong side of itself,
   so 4,388 of the 9,555 named pieces had the wrong size: 7745's track oval

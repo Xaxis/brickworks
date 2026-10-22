@@ -5737,3 +5737,104 @@ The full sweep is the lead's: from a locked snapshot of this,
 `SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run hinge77
 --jobs=3`, then `table hinge77 --against=joins72`; the bar is every set
 that steers in joins72 (77) steering, nothing lost.
+
+## 36. A pinion at its rack's end, and a loop kept open (Grab 22)
+
+Grab 20 left two sets of the steering sweep coming back wrong (section 31):
+8466-1 37 LDU off at a universal joint's centre (#1165), 5533-1 6.43 LDU
+off at a wheel (#368). Each was measured on main (4ac4fc83) by a scratch
+probe calling `move_part` as the sweep does (+30, -60, then back by the
+turn measured), reading the loop's coordinates at every step.
+
+### 8466-1: a pinion carried off its rack
+
+8466-1's track rod is a rack 1 x 10 (6592, #723) sliding on an axle, with
+four 8 tooth pinions under it: two on the steering's columns (#735, #736),
+and one free on an axle pin at each end (#734, #739), each 70 LDU from the
+rack's middle, where its last tooth's middle is 68. A pinion is read in a
+rack while it stands within `Racks.ALONG_SLACK` (4 LDU) past the last
+tooth, and the loop is held by all four. The sweep turns the first pinion
+it finds: #734, at the end.
+
+| turn | rack, LDU | #734 past the last tooth | read after it |
+|---|---|---|---|
+| as built | 0 | 2.00 | 4 pinions in the rack |
+| +30, stopped at 11° | +1.92 | 0.08 | 4 |
+| -60, stopped at -23° | -2.09 | 4.09 | 3: #734 is out |
+| back, +11.7° | -2.09 | 4.09 | 3 |
+
+So the turn back found #734 a gear free on its pin, "1 body move
+together", and turned it and its pin alone: the rack and the 64 parts the
+loop had moved stayed where the second turn left them. #1165 had not turned
+with the pinion, as section 31 read it: it went round with the loop, 33.96
+LDU off after the first turn and 36.92 after the second, and the third did
+not move it.
+
+1. **A loop carries no pinion past where it is read in its rack**
+   (`Linkage._within`, `Racks.room_along`): each pinion the loop is held by
+   stays within its rack's teeth and `ALONG_SLACK`, as read where the move
+   began, and a move that would carry it further stops there, as at a
+   stop. 8466-1's second turn stops at -22° with the rack at -1.98 (the
+   pinion 3.98 LDU past the last tooth), and the turn back turns the loop:
+   the rack comes back to -0.01 LDU.
+
+8466-1 still does not come back: the worst part is now #651, a universal
+joint drawn as one part (9244, "Complete Assembly Shortcut"), 10.74 LDU
+off. As built it is one body with the axle in its near end (#653); after
+the first turn the steered wheel's half-shaft (#658) lines up with its far
+end, and it is read one body with that hub (#644), which the second turn
+turns 5.6°; after the second it is read one body with the frame, and the
+turn back leaves it there. A universal joint read as one rigid part is
+joined to whichever shaft lines up with it where the model stands.
+
+### 5533-1: a loop kept open
+
+5533-1's track rod is the rack (6630, #38) in its groove, pinned at each end
+(3749 in its hole) to an arm (32068) on a kingpin; each kingpin is on a
+steering arm (32069) read on one pin in a round hole, free to turn about it
+and to slide out along it 10 LDU, and not in. Turned, an arm's pin goes
+round a circle 40 LDU about its kingpin while the rack's hole goes along a
+line: they part by 40(1 − cos θ), 0.05 LDU at 2.9°, 0.24 at 6.3°. The loop
+closes exactly only by sliding a steering arm out along its pin, which
+each side can do one way of the two.
+
+| turn | rack, LDU | left arm | its steering arm slid, LDU | left pin out of its hole, LDU | right arm | its steering arm slid | right pin out |
+|---|---|---|---|---|---|---|---|
+| +30, to 25° | +4.43 | 3.4° | 2.05 | 0.07 | 6.3° | 0 | 0.24 |
+| -60, to -30° | -5.31 | 7.6° the other way | 0.01 | 0.35 | 3.1° | 7.44 | 0.06 |
+| back | +0.03 | 7.6° | 5.33 | 0.35 | 3.1° | 2.16 | 0.06 |
+
+"Out of its hole" is the pin against the hole as built, each carried as its
+own part moved. Two things together:
+
+- **A move keeps a loop open.** The first turn's steps closed on the way
+  (`Linkage.ON_THE_WAY`, 0.5 LDU) with the right pin 0.01, 0.04, 0.09, 0.15
+  and 0.24 LDU out; the last did not close to `CLOSE_TO` (0.05), nothing
+  between closed to it either, and `Linkage._reach` kept the step before,
+  0.24 LDU open.
+- **The next move reads it closed.** A closing joint's two halves are read
+  at one point, where the parts stand, so a gap a move left is forgotten.
+  Turned back, the left arm closes its real gap but reads as opening one;
+  its steering arm slides out instead, and the arm stays turned 7.6°.
+
+Tried and not kept: the last step kept only where it closes to `CLOSE_TO`,
+else back to the furthest step that did. Each move then leaves 0.05 LDU at
+most; the steering turns 11° and -13° (the rack +2.02 and -2.53) and comes
+back 3.05 LDU off (#368): a steering arm slid out on one turn has nothing
+to bring it back on the next, which turns the arm instead. Less steering,
+and still not back.
+
+### Left
+
+- **5533-1**: read a closing joint where each half has it (the pin's line in
+  one part, the hole's in the other), so a gap one move leaves is closed by
+  the next, not taken as closed. The way back then closes the real gaps; but
+  a model built with a pin off its hole's middle (as Joints allows, within
+  `Mechanism.LINE_SLACK`) would begin every move with a gap to close, so it
+  wants the whole sweep first. The steering arms' one way slides would still
+  be freedom the loop takes.
+- **8466-1**: read a 9244 as a universal joint, its two ends turning against
+  each other, as `Bodies.universals` reads a cross in two ends. It is in
+  three OMR files.
+- The sweep turns 8466-1 at an end pinion free on its pin, not at either
+  column.
