@@ -39,7 +39,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
   features creative rooms style figure_joints armature turned detail chat
   sketch project example_name minifig print sticker mould brickify claude_undo
   design_undo first_design_undo undo_ids read_only collection share_pages
-  tested new_window best_of_two selection_fit swing_bound
+  tested new_window best_of_two swing_bound
   "table_race:--tries=8" technic_hand ahead art_plan autosave_paths balance
   brickify_buy build_steps cabin_glass cabins carried_at_once carried_fetch
   decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
@@ -55,8 +55,10 @@ windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor sha
   simulate typing slow_frames look progress render collection_ui library
   animation balance_view outline outline_cost placing offgrid booklet_edit
   "command:--judge --subjects=orthanc")
-# Not run here, each with why. A probe goes here only for one of these
-# reasons; a check that is merely slow or failing is still a check.
+# Not run here, each with why: it spends money, needs the relay's keys, or
+# is a bench, a measure or pictures with no verdict. A check that is merely
+# slow is still a check. One that fails on the code as it is goes here only
+# with its finding and the day it was found, as a unit to fix and bring back.
 out=(
   bakeoff           # spends money: real designs on the API key, dollars a run
   revise            # spends money: a design on the API key
@@ -74,6 +76,8 @@ out=(
   technique_sheet   # pictures for a person, no pass or fail
   gallery           # pictures of every shipped model for a person, no pass or fail
   anim_walk         # an audit: every answer printed for a person, no pass or fail
+  # Failing on the code as it is (2026-10-22), each a unit to fix:
+  selection_fit     # where_to_attach offers a 49668 on Orthanc's west horn that edit_selection refuses: a collision with #8542 (24307)
 )
 # A probe in no list never ran: the lists were kept by hand, and 85 of 214
 # were in none, two of them failing on main for days with nothing said
@@ -246,6 +250,9 @@ else
 fi
 
 echo "── godot probes ──"
+# grab's made models and timings, which otherwise go over a dated folder
+# in the main checkout's bench/results.
+export GRAB_PROBE_OUT="$XDG_DATA_HOME/grab"
 for spec in "${headless[@]}"; do
   name=${spec%%:*}; args=()
   [ "$spec" = "$name" ] || read -r -a args <<< "${spec#*:}"
