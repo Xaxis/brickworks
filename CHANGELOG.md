@@ -225,7 +225,10 @@ whole cycle.
   as standing on pins and axles 20 to 150 LDU away that turn in those
   bricks, and held them still. Such a part takes a stud now only where it
   reaches it and takes it, by a socket or a hole. On 45 real sets 20 move
-  otherwise, most a pin or an axle turning in its hole again. Of 20 sets
+  otherwise, most a pin or an axle turning in its hole again. 7191-1's
+  X-wing's four wings are geared to their worm, as built: a plate's studs
+  44 LDU from the gear's axle held it, and with it one wing, to the
+  fuselage. Grabbed, a wing now says to turn the worm's axle. Of 20 sets
   with a steering the same 17 steer, and 6753-1's, which would not move,
   turns both ways.
 

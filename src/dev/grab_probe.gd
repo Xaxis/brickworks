@@ -7496,28 +7496,44 @@ func _big() -> void:
 	tried.sort_custom(func(x: Array, y: Array) -> bool: return x[0] > y[0])
 	_frame_on(PackedInt64Array())
 	await _frames(10)
-	var press: Dictionary = {}
-	var child: int = -1
+	# A section a worm drives is held, as built: 7191-1's four wings open on
+	# a worm through a 24 tooth gear and bevels, and grabbed, each says to
+	# turn the worm's axle. The next biggest is the one dragged.
+	var before: Dictionary = _snapshot()
+	var pressed_any: bool = false
+	var screen := Vector2.ZERO
+	var grabbed_ms: float = 0.0
+	var grab: Grab = null
 	for entry: Array in tried.slice(0, 12):
-		press = _press_point(bodies.members[int(entry[1])], bodies)
-		if not press.is_empty():
-			child = int(entry[1])
+		var press: Dictionary = _press_point(bodies.members[int(entry[1])], bodies)
+		if press.is_empty():
+			continue
+		pressed_any = true
+		screen = press["screen"]
+		await _move(screen, 0)
+		await _button(screen, true)
+		var began: int = Time.get_ticks_usec()
+		await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+		grabbed_ms = float(Time.get_ticks_usec() - began) / 1000.0
+		grab = _grab.grab
+		if grab != null and grab.state == "moves":
 			break
-	if press.is_empty():
+		var words: String = _grab.last_words
+		await _button(screen, false)
+		await _frames(2)
+		if not words.begins_with("Held by a worm"):
+			_check("the big model's section is grabbed (%s)" % words, false)
+			return
+		print("    %d parts beyond, held by a worm: %s" % [int(entry[0]), words.left(160)])
+		grab = null
+	if not pressed_any:
 		_check("a section of the big model is under the pointer somewhere", false)
 		return
-	var screen: Vector2 = press["screen"]
-	var before: Dictionary = _snapshot()
-	await _move(screen, 0)
-	await _button(screen, true)
-	var began: int = Time.get_ticks_usec()
-	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
-	var grabbed_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
-	var grab: Grab = _grab.grab
-	if grab == null or grab.state != "moves":
-		_check("the big model's section is grabbed (%s)" % _grab.last_words, false)
-		await _button(screen, false)
+	if grab == null:
+		_check("the big model's section is grabbed (every section tried is held by a worm)", false)
 		return
+	_check("...and what it tried and let go changed nothing (%s)" % _differs(before),
+		_differs(before) == "none differs")
 	var frame_worst: float = 0.0
 	var frame_total: float = 0.0
 	for n: int in 60:
