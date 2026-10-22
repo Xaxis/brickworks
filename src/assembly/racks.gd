@@ -120,6 +120,20 @@ static func screws(entries: Array, links: Array) -> Array[Pinion]:
 	return out
 
 
+## How far [param mesh]'s pinion may go along its rack's line from where it
+## stands, against the rack standing at [param rack_at] (its part
+## [param rack_part]), and still be read in it ([method find]): Vector2(back,
+## on), LDU along [member Pinion.line]; INF both ways for a screw, or a rack
+## the table does not know.
+static func room_along(mesh: Pinion, rack_at: Transform3D, rack_part: String) -> Vector2:
+	var spec: Dictionary = spec_of(rack_part)
+	if mesh.screw or spec.is_empty():
+		return Vector2(-INF, INF)
+	var x: float = (rack_at.affine_inverse() * mesh.centre).x
+	var unit: float = (rack_at.basis * Vector3.RIGHT).length()
+	return Vector2(float(spec["from"]) - ALONG_SLACK - x, float(spec["to"]) + ALONG_SLACK - x) * unit
+
+
 ## Every pinion standing in a rack among [param entries], each [brick id,
 ## part id, Transform3D].
 static func find(entries: Array) -> Array[Pinion]:

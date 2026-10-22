@@ -82,6 +82,9 @@ var racks: Array[Racks.Pinion] = []
 var _rack_ends: Array = []    ## [pinion body, rack body]
 var _rack_sides: Array = []   ## [PackedInt32Array, PackedInt32Array]
 var _rack_turn: Array = []    ## PackedFloat64Array, a coefficient a column
+## How far each pinion may go along its rack from where it stood and still be
+## read in it (Racks.room_along): Vector2(back, on), LDU.
+var _rack_room: Array = []
 ## Gears meshing gears the loops are held by too (Mechanism.Coupling): a
 ## steering wheel that turns its pinion through a pair of bevels. Each is one
 ## more equation, linear, as Mechanism has it: the two gears' teeth move
@@ -347,6 +350,9 @@ func _read(driver: Bodies.Link, child: int) -> void:
 				if _axis[n] != Vector3.ZERO:
 					turn[turn_col[n]] += _axis[n].dot(mesh.axis) * (1.0 if s == 0 else -1.0)
 		_rack_turn.append(turn)
+		var rack_brick: BrickWorld.Brick = bodies.world.get_brick(mesh.rack)
+		_rack_room.append(Racks.room_along(mesh, rack_brick.transform, rack_brick.part_id)
+			if rack_brick != null else Vector2(-INF, INF))
 	for coupling: Mechanism.Coupling in gear_meshes:
 		# Mechanism's equation, the teeth moving together where they meet, with
 		# each gear's turn read against the line to the other gear's axis
@@ -1579,6 +1585,24 @@ func _within() -> bool:
 		var span: Vector2 = _limits[c]
 		if q[c] < span.x - 0.01 or q[c] > span.y + 0.01:
 			return false
+	# Nor a pinion carried past its rack's last tooth, where the next move's
+	# reading would find it out of the rack (Racks.find) and the loop no
+	# longer held by it: 8466-1's steering, turned -23°, carried its end
+	# pinion 4.09 LDU past the last tooth, and the turn back turned that
+	# pinion alone on its pin, leaving the rest where it was.
+	if not _rack_room.is_empty():
+		var cache: Dictionary = {}
+		for k: int in racks.size():
+			var room: Vector2 = _rack_room[k]
+			if is_inf(room.x) and is_inf(room.y):
+				continue
+			var ends: Array = _rack_ends[k]
+			var mesh: Racks.Pinion = racks[k]
+			var seen: Vector3 = _place(int(ends[1]), q, cache).affine_inverse() \
+				* (_place(int(ends[0]), q, cache) * mesh.centre)
+			var went: float = mesh.line.dot(seen - mesh.centre)
+			if went < minf(room.x + 0.01, 0.0) or went > maxf(room.y - 0.01, 0.0):
+				return false
 	return true
 
 
