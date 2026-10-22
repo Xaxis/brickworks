@@ -2034,7 +2034,11 @@ corners, border or fill; buttons of one size), a page wider than 390
 with anything open, a count of none shown ("0 remixes", "following 0"),
 and, once each however many pages have it, any rule in a page's
 stylesheets, `<style>` or `style=""` with a font size, corner or colour off
-the token scale (`style: <sheet> | <selector> | <declaration>`). It proves it when it ends `design flow: N pages and
+the token scale (`style: <sheet> | <selector> | <declaration>`).
+2026-10-22 (U2): 236 pages and dialogs, 2,418 controls, 236 passed, 0
+failed, and `ok style: every font size, corner and colour on the token
+scale`; the same flow on theme01's web/ and api/ (`--root=`) names 178
+rules off the scale and "0 remixes" on `/m/DesignFox1` in all 8 states. It proves it when it ends `design flow: N pages and
 dialogs, M controls; P checks passed, 0 failed` (2026-10-19: 188, 1,264,
 188, 0; with the challenge's page and dialog and /admin's date dropdowns,
 204, 1,464, 204, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
@@ -2042,6 +2046,21 @@ and api/, given as `--root=`) it fails the age question by name:
 `select#age-month … the browser's own dropdown (appearance auto)`, its
 13.33 px type, and the year box differing from it in type, corners, fill
 and height. Pictures of every state in --out.
+
+The one model card, server against browser, with no network (local
+only: preview_checks.sh says why):
+
+```sh
+heavy node tools/web/card_check.mjs              # this checkout
+```
+
+It makes `/c/<id>` with the checkout's `api/people.js` (the stand-in's
+collection), parses its cards in Chromium, and compares each with the card
+the browser's `/card.js` draws from the same handler's `?op=collection`
+JSON; then four sample cards (owned, won, moves and motions, Tested, no
+picture, markup and quotes in a name, a designer's earned card) by the
+module the server imports (`api/_card.js`) and by `/card.js`. It proves it
+when it ends `card check: 7 cards compared, 0 failed` (2026-10-22).
 
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every

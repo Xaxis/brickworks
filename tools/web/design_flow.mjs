@@ -341,7 +341,15 @@ const PAGES = [
     open: async (page) => {
       await page.click("#more summary");
       const opened = await until(page, () => document.querySelector("#more[open]"));
-      return [[opened ? "more" : "more (missing)", "#more"]];
+      const states = [[opened ? "more" : "more (missing)", "#more"]];
+      // Copy link says so in the toast (web/kit.js), judged and pictured
+      // with the menu still open.
+      if (opened) {
+        await page.click("#copy");
+        const said = await until(page, () => document.querySelector("body > .toast.shown")?.textContent === "Link copied");
+        states.push([said ? "toast" : "toast (missing)", "body > .toast"]);
+      }
+      return states;
     } },
 ];
 

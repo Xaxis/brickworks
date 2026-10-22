@@ -102,6 +102,26 @@ def test_the_kit_is_measured_in_both_themes() -> None:
     assert len({colour(dark, tile).lower() for tile in AVATARS}) == 8
 
 
+def unclosed(css: str) -> str:
+    """What is wrong with [css]'s braces, or ""."""
+    depth = 0
+    for at, ch in enumerate(re.sub(r"/\*.*?\*/", "", css, flags=re.S)):
+        depth += {"{": 1, "}": -1}.get(ch, 0)
+        if depth < 0:
+            return f"a }} closes nothing, near character {at}"
+    return f"{depth} {{ never closed" if depth else ""
+
+
+def test_every_stylesheet_closes_what_it_opens() -> None:
+    """A stray brace makes the browser drop the rule after it, silently: three
+    were left in web/directory.css by a cut (2026-10-22), and a model's facts
+    lost their margin with no check failing."""
+    for path in [ROOT / "web/site.css", ROOT / "web/directory.css", *sorted((ROOT / "web").glob("*.html"))]:
+        text = path.read_text(encoding="utf-8")
+        for css in [text] if path.suffix == ".css" else re.findall(r"<style[^>]*>(.*?)</style>", text, re.S):
+            assert not unclosed(css), f"{path.name}: {unclosed(css)}"
+
+
 def test_the_browser_bar_is_the_page_in_each_theme() -> None:
     sets = themes()
     page = {theme: colour(tokens, "--bg").lower() for theme, tokens in sets.items()}

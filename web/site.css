@@ -468,6 +468,7 @@ summary.pill { width: fit-content; list-style: none; }
 summary.pill::-webkit-details-marker { display: none; }
 .pill.good { color: var(--green); border-color: var(--green); font-weight: 600; }
 .pill.new { color: var(--ink); border-color: var(--accent-edge); }
+.pill.tag { gap: 0; }
 .pill.tag::before { content: "#"; color: var(--ink-faint); }
 /* Its quieter part: a handle after a name. */
 .pill small { color: var(--ink-faint); font-size: inherit; }
@@ -544,7 +545,10 @@ summary.pill::-webkit-details-marker { display: none; }
    A <details>, so it opens with no script; web/kit.js closes it on a click
    elsewhere or Escape. */
 .more-menu { position: relative; display: inline-block; }
-.more-menu .menu-list { z-index: 30; }
+/* It opens from its button's start, along the row; .end at a row's end
+   opens back from the button's end, so it never runs off the page. */
+.more-menu .menu-list { z-index: 30; left: 0; right: auto; }
+.more-menu.end .menu-list { left: auto; right: 0; }
 .menu-list > button {
 	justify-content: flex-start; min-height: 0; padding: 10px 12px; border: 0; border-radius: var(--r-1);
 	background: none; color: var(--ink-soft); font-size: var(--t-body); font-weight: 400; text-align: left;

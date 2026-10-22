@@ -34,7 +34,6 @@
 .model-page .by { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-body); overflow-wrap: anywhere; }
 .model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .from a { color: var(--ink); }
-}
 .model-page .facts { margin: 0 0 12px; }
 .model-page .counts { margin: 0 0 16px; color: var(--ink-soft); font-size: var(--t-small); display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .model-page .counts span { font-variant-numeric: tabular-nums; }
@@ -185,7 +184,6 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comment.asked { outline: 2px solid var(--accent-edge); outline-offset: 2px; }
 .model-page .comment-head { margin: 0 0 4px; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .comment-head a, .model-page .comment-head b { color: var(--ink); font-weight: 600; }
-}
 .model-page .comment-head .where { color: var(--ink-soft); }
 .model-page .comment-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
 .model-page .comment .note { margin: 6px 0 0; }
@@ -217,7 +215,6 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .feed-row .what b { font-weight: 600; }
 .feed-row q { display: block; margin: 4px 0 0; color: var(--ink-soft); }
 .feed-row small { display: block; margin-top: 4px; color: var(--ink-faint); font-size: var(--t-tiny); }
-}
 
 
 /* A designer's page (api/people.js earnedHtml, supabase/designers.sql): what

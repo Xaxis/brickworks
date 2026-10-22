@@ -174,7 +174,8 @@ is on the page, `hidden`, for the script to show.
   (`role="status"`), gone in 2.4 s.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
-  buttons (Report it, Takedown requests). It opens with no script;
+  buttons (Report it, Takedown requests), opening along the row from the
+  button's start (`.end`: back from its end, at a row's end). It opens with no script;
   `web/kit.js` closes it on a click elsewhere and on Escape.
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
@@ -196,7 +197,8 @@ buttons of one size), a page that scrolls sideways on a phone, a count of
 none shown ("0 likes"), and any rule in the page's stylesheets, its own
 style or a `style=""` with a font size, corner or colour off the scale
 (named once, with its stylesheet). Against the site before the kit
-(2026-10-22) it named 178 such rules and the model page's "0 likes".
+(2026-10-22) it named 178 such rules (123 sizes, 43 corners, 12 colours or
+fonts) and a quiet model's "0 remixes"; after, none.
 
     node tools/web/design_flow.mjs --out=shots/design
 
