@@ -403,8 +403,9 @@ async function deployed() {
       const secret = process.env.SUPABASE_SECRET_KEY || "";
       const rows = await fetch(`${base}/rest/v1/profile_shows?account=eq.${account}&select=account`,
         { headers: { apikey: secret, authorization: `Bearer ${secret}` } });
-      check(`her row of profile_shows after: ${rows.status === 404 ? "no table yet" : `${(await rows.json()).length} rows`}`,
-        rows.status === 404 || (rows.ok && (await rows.clone().json().catch(() => [])).length === 0));
+      const left = rows.ok ? await rows.json().catch(() => null) : null;
+      check(`her row of profile_shows after: ${rows.status === 404 ? "no table yet" : `${left?.length ?? `HTTP ${rows.status}`} rows`}`,
+        rows.status === 404 || (Array.isArray(left) && left.length === 0));
     }
   }
 }
