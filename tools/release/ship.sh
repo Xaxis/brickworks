@@ -27,7 +27,7 @@ done
 # this worktree is, and where the release's logs go.
 R=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
 HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
-S=${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}; mkdir -p "$S"
+S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p "$S"
 export BOX_HEAVY_PRIORITY=1
 # Every check named reported, and passed. A battery that never ran writes
 # no results, and "no failed line" read as a pass: m31 went on to deploy
