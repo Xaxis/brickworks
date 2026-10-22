@@ -588,22 +588,43 @@ func _hinged() -> void:
 		{"part": "4589", "color": 0, "x": 0, "y": 6, "z": 0, "section": "spire"}]}
 	# The tilting hinge opens one way about each line: by the parts' real
 	# shapes (ExactCheck) the other way folds its top into its base, which the
-	# lattice forgave as the joint.
-	for case: Array in [["x", 15.0], ["x", 20.0], ["z", -25.0], ["z", -10.0]]:
+	# lattice forgave as the joint. So the app lays it facing the way the
+	# section leans, turned round for the other sign, as a builder turns it:
+	# a pair of wings leaning apart holds as well as one.
+	for case: Array in [["x", 15.0], ["x", 20.0], ["x", -20.0], ["z", -25.0], ["z", -10.0],
+			["z", 25.0]]:
 		var args: Dictionary = spire.duplicate(true)
 		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0,
 			"axis": case[0], "degrees": case[1], "hinge": true}]
 		var model: Assistant.Model = _assistant._read_model(args)
 		var verdict: Dictionary = _assistant._check(model, true)
-		_check("a spire leaning %d degrees about %s on hinge: true holds: %s"
-			% [int(case[1]), case[0], verdict["summary"]], bool(verdict["ok"]))
-	for case: Array in [["x", -20.0], ["z", 25.0]]:
+		_check("a spire leaning %d degrees about %s on hinge: true holds, its hinge at rot %d: %s"
+			% [int(case[1]), case[0], (model.sections["spire"] as Assistant.Section).base_rot,
+				verdict["summary"]], bool(verdict["ok"]))
+	# Said by a pitch or a roll the same: a pitch of 20 folded it as -20
+	# degrees about x did.
+	for case: Array in [["pitch", 20.0], ["pitch", -20.0], ["roll", 20.0], ["roll", -20.0]]:
 		var args: Dictionary = spire.duplicate(true)
-		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0,
-			"axis": case[0], "degrees": case[1], "hinge": true}]
-		var verdict: Dictionary = _assistant._check(_assistant._read_model(args), true)
-		_check("...and %d degrees about %s, folded into its base, is refused as the hinge: %s"
-			% [int(case[1]), case[0], verdict["summary"]],
+		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0, case[0]: case[1],
+			"hinge": true}]
+		var model: Assistant.Model = _assistant._read_model(args)
+		var verdict: Dictionary = _assistant._check(model, true)
+		_check("...and at a %s of %d, its hinge at rot %d: %s" % [case[0], int(case[1]),
+			(model.sections["spire"] as Assistant.Section).base_rot, verdict["summary"]],
+			bool(verdict["ok"]))
+	# Laid by hand the way it does not open, it is refused as the hinge still.
+	for rot: int in [0, 2]:
+		var by_hand: Dictionary = {"bricks": [
+			{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0},
+			{"part": "3937", "color": 0, "x": 0, "y": 3, "z": 0, "rot": rot},
+			{"part": "3938", "color": 0, "x": 0, "y": -0.75, "z": -0.5, "rot": rot,
+				"section": "spire"},
+			{"part": "3062b", "color": 0, "x": 0, "y": 1.25, "z": -0.5, "section": "spire"}],
+			"sections": [{"name": "spire", "x": 0, "y": 4.75, "z": 0.5, "axis": "x",
+				"degrees": -20.0 if rot == 0 else 20.0}]}
+		var verdict: Dictionary = _assistant._check(_assistant._read_model(by_hand), true)
+		_check("...and a hinge laid by hand at rot %d, folded into its base, is refused as the hinge: %s"
+			% [rot, verdict["summary"]],
 			not bool(verdict["ok"]) and str(verdict["feedback"]).contains("hinge"))
 	# The halves are put in: the base standing where the section says, the
 	# top in the section.

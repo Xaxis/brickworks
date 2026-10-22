@@ -329,8 +329,12 @@ can occupy the same millimetre.
   0,0,0 is the top's studs, and it turns about the pin read off 3937's flat
   bore — 1.75 plates up and half a stud in, the studs 1.25 above it. A repeat
   gives each copy its own base; an edit moving the section moves its base
-  (`_rehinge`). `section_probe` ("a section on a hinge"): leans of -20 to 25
-  degrees about x and z hold, closed it stacks exactly where a brick would.
+  (`_rehinge`). The hinge brick's top tips one way only, so the app lays it
+  turned round for the other sign (`Section.hinge_rot`, from degrees, pitch
+  or roll). `section_probe` ("a section on a hinge"): leans of -20 to 25
+  degrees about x and z, and pitches and rolls of either sign, hold; a hinge
+  laid by hand folded into its base is refused; closed it stacks exactly
+  where a brick would.
 
 - `flexible parts along a path` (`src/assembly/flex.gd`, pure): a bent hose is
   the real part's LDraw segments along the bend, as every tool that bends one
