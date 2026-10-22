@@ -3054,6 +3054,7 @@ func _stop(ok: bool, summary: String) -> void:
 ## What a tool hands back, and what it did for the feature being worked, if
 ## one is (see [method _feature_brief]).
 func _run_tool(block: Dictionary) -> Variant:
+	follow_renumbering()
 	var before: int = world.brick_count() if world != null else 0
 	var answer: Variant = await _tool_answer(block)
 	if str(block.get("name", "")) == "find_techniques":
@@ -16857,6 +16858,38 @@ func forget_conversation() -> void:
 	_messages.clear()
 	_pending = null
 	_edited = false
+
+
+## The parts it put down, read through the numbers they stand by now. One
+## taken off by an Undo and put back by a Redo comes back as another number
+## (Builder._live), and every id held here went stale with it: a design
+## submitted after an Undo and a Redo of the last was laid beside it, not
+## in its place, its sections and names were forgotten, and settle_feature
+## found no piece of the app's standing for a feature.
+func follow_renumbering() -> void:
+	if builder == null or builder._renumbered.size() == _followed:
+		return
+	_followed = builder._renumbered.size()
+	for k: int in _placed_ids.size():
+		_placed_ids[k] = builder._live(_placed_ids[k])
+	for k: int in _sketched_ids.size():
+		_sketched_ids[k] = builder._live(_sketched_ids[k])
+	for by_id: Dictionary in [_section_of, _local_of, _given_names, _nudged]:
+		for brick_id: int in by_id.keys():
+			var now: int = builder._live(brick_id)
+			if now != brick_id:
+				by_id[now] = by_id[brick_id]
+				by_id.erase(brick_id)
+	# And a feature's piece, which settle_feature found gone.
+	if _feature_pass != null:
+		for one: FeaturePass.Proposal in _feature_pass.proposals.values():
+			for k: int in one.ids.size():
+				one.ids[k] = builder._live(one.ids[k])
+
+
+## How many renumberings the builder had when [method follow_renumbering]
+## last read the ids through them.
+var _followed: int = 0
 
 
 ## Stop claiming any of it, without touching the world.

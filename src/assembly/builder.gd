@@ -1399,11 +1399,16 @@ func renumber(old_id: int, new_id: int) -> void:
 
 
 ## Keep [param steps] as one step of the history, called [param words]:
-## what a tool did that the builder did not (a hose laid, a pose).
-func record(steps: Array, words: String) -> void:
+## what a tool did that the builder did not (a hose laid, a pose). Newest,
+## or [param at] steps deep when it came before the steps kept since.
+func record(steps: Array, words: String, at: int = -1) -> void:
 	if steps.is_empty():
 		return
-	_history.append({"undo": "group", "steps": steps, "words": words})
+	var step: Dictionary = {"undo": "group", "steps": steps, "words": words}
+	if at < 0 or at >= _history.size():
+		_history.append(step)
+	else:
+		_history.insert(at, step)
 	_redo.clear()
 
 

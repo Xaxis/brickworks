@@ -26,11 +26,12 @@ static func mark(builder: Builder, world: BrickWorld, scenery: Dictionary,
 
 
 ## What changed since [param from] and has no step yet, kept as one step
-## called as [param from] says ("Claude's design (12 put down)"). Nothing
-## when nothing did, or when the model was replaced since (an Open, Brick Art
-## laid): its history went with it. True when a step was kept.
+## called as [param from] says ("Claude's design (12 put down)"), newest or
+## [param at] steps deep (Builder.record). Nothing when nothing did, or when
+## the model was replaced since (an Open, Brick Art laid): its history went
+## with it. True when a step was kept.
 static func record(builder: Builder, world: BrickWorld, scenery: Dictionary,
-		from: Dictionary) -> bool:
+		from: Dictionary, at: int = -1) -> bool:
 	if from.is_empty() or builder == null or world == null \
 			or world.generation() != int(from["generation"]):
 		return false
@@ -74,7 +75,7 @@ static func record(builder: Builder, world: BrickWorld, scenery: Dictionary,
 	steps = off.values() + steps + gone
 	if steps.is_empty():
 		return false
-	builder.record(steps, "%s (%s)" % [from["words"], SelectionScope.words_for(steps)])
+	builder.record(steps, "%s (%s)" % [from["words"], SelectionScope.words_for(steps)], at)
 	return true
 
 

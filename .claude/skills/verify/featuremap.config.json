@@ -1933,6 +1933,13 @@
     },
     {
       "kind": "cli",
+      "label": "first design undo probe",
+      "entry": "src/dev/first_design_undo_probe.gd",
+      "reach": "tools/probe.sh first_design_undo_probe",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
       "label": "design undo probe",
       "entry": "src/dev/design_undo_probe.gd",
       "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
