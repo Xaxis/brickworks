@@ -2504,8 +2504,8 @@ the file, with them before (`6_feed-1280-dark.png`); Bob's like making 11
 and the group unread again; Mark all read kept across a reload
 (`7_notifications_read-1280-light.png`); Bob's empty page
 (`7_empty-1280-light.png`); signed out at 1280 dark and 390 light and dark
-(`7_signed_out-*.png`); Sign out from her menu. 40 checks before the file
-and 41 held, all ok, 2026-10-22, about a minute each; the throwaway
+(`7_signed_out-*.png`); Sign out from her menu. 38 checks before the file
+and 39 held, all ok, 2026-10-22, about a minute each; the throwaway
 accounts deleted.
 
 Discovery (2026-10-19): Top builds, this week's pick, small builds, and
