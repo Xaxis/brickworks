@@ -211,6 +211,21 @@ try {
     await new Promise((done) => setTimeout(done, 300));
   }
   const counts = { tower: await built(ids.tower, 2), wall: await built(ids.wall, 3), hall: await built(ids.hall, 1) };
+  // Other flows list test models in the same project, and one run by
+  // another agent is not this battery's to keep apart: designers_flow's
+  // castle, built three times and Tested (16 this week), took the pick and
+  // the top of You can build now mid-flow on m146's preview. As
+  // gallery_order.mjs judges a place, these judge ours: this flow's models
+  // in their order among the rest, and a pick not ours only when the rule
+  // puts it above Tower's 11 this week.
+  const ours = (list) => list.filter((id) => Object.values(ids).includes(id));
+  const named = (id) => Object.keys(ids).find((key) => ids[key] === id) || id;
+  const outscored = async (id) => {
+    if (!id || Object.values(ids).includes(id)) return null;
+    const pick = (await api("/api/share?op=shelves&tests=1")).body.pick;
+    return pick?.model?.id === id && pick.chosen === false && Number(pick.week?.score) > 11 ? pick : null;
+  };
+  const another = (pick) => (pick ? `, another run's ${pick.model.name}, ${pick.week.score} this week over Tower's 11` : "");
   check(`builds finished, each on its own device: Tower ${counts.tower}, Wall ${counts.wall}, Hall ${counts.hall}`,
     counts.tower === 2 && counts.wall === 3 && counts.hall === 1);
 
@@ -247,12 +262,14 @@ try {
   // --- 3. The front: this week's pick and small builds --------------------------
   console.log("the gallery's front");
   const front = await api("/api/share?op=shelves&tests=1");
-  check(`the pick, worked out: ${Object.keys(ids).find((key) => ids[key] === front.body.pick?.model?.id) || front.body.pick?.model?.name}, `
-    + `${JSON.stringify(front.body.pick?.week)}`, front.status === 200 && front.body.pick?.model?.id === ids.tower
+  const frontAbove = await outscored(front.body.pick?.model?.id);
+  check(`the pick, worked out: ${named(front.body.pick?.model?.id)}, `
+    + `${JSON.stringify(front.body.pick?.week)}${another(frontAbove)}`, front.status === 200 && (Boolean(frontAbove)
+    || (front.body.pick?.model?.id === ids.tower
     && front.body.pick?.chosen === false && front.body.pick?.week?.builds === 2 && front.body.pick?.week?.tested === true
-    && front.body.pick?.week?.score === 11);
-  const small = (front.body.small?.models || []).map((one) => one.id);
-  check(`small builds: under ${front.body.small?.most + 1} parts, Tower then Wall first, and not Hall (${small.length} on the shelf)`,
+    && front.body.pick?.week?.score === 11)));
+  const small = ours((front.body.small?.models || []).map((one) => one.id));
+  check(`small builds: under ${front.body.small?.most + 1} parts, Tower then Wall first of ours, and not Hall (${(front.body.small?.models || []).length} on the shelf)`,
     small[0] === ids.tower && small[1] === ids.wall && !small.includes(ids.hall)
       && (front.body.small?.models || []).every((one) => one.parts <= 199));
   for (const [who, as] of [["signed out", null], ["signed in", bob]]) {
@@ -264,11 +281,13 @@ try {
       await until(page, () => document.documentElement.dataset.gallery === "ready" && document.documentElement.dataset.shelves === "ready", `the front, ${who}, ${width} px`);
       await page.waitForTimeout(400);
       drawn = await frontDrawn(page);
+      drawn.small = ours(drawn.small);
+      const drawnAbove = await outscored(drawn.pick);
       check(`${who} at ${width} px: ${who === "signed out" ? "no You can build now, no shares" : `You can build now asks for his collection: "${drawn.readySaid.slice(0, 60)}…"`}`,
         who === "signed out" ? !drawn.ready && drawn.owned === 0
           : drawn.ready && /Tell Brickworks what you own/.test(drawn.readySaid) && drawn.readyModels.length === 0);
-      check(`${who} at ${width} px: the pick is Tower, "${drawn.why}"; small builds start ${drawn.small.slice(0, 2).map((id) => Object.keys(ids).find((key) => ids[key] === id) || id).join(", ")}; nothing sideways`,
-        drawn.shelves && drawn.pick === ids.tower && drawn.why === "Built twice this week" && drawn.chosen === "no"
+      check(`${who} at ${width} px: the pick is Tower, "${drawn.why}"${another(drawnAbove)}; small builds start ${drawn.small.slice(0, 2).map(named).join(", ")}; nothing sideways`,
+        drawn.shelves && (Boolean(drawnAbove) || (drawn.pick === ids.tower && drawn.why === "Built twice this week")) && drawn.chosen === "no"
           && drawn.small[0] === ids.tower && drawn.small[1] === ids.wall && !drawn.small.includes(ids.hall)
           && !(await sideways(page)));
       const tag = `${who === "signed out" ? "out" : "in"}-${width}`;
@@ -285,8 +304,8 @@ try {
       }
       if (who === "signed out" && width === 1280) {
         await page.click("#pick-card .model a.open");
-        await page.waitForURL(`**/m/${ids.tower}`, { timeout: 20000 });
-        check(`the pick is a link: it opened ${new URL(page.url()).pathname}`, new URL(page.url()).pathname === `/m/${ids.tower}`);
+        await page.waitForURL(`**/m/${drawn.pick}`, { timeout: 20000 });
+        check(`the pick is a link: it opened ${new URL(page.url()).pathname}`, new URL(page.url()).pathname === `/m/${drawn.pick}`);
       }
       await made.close();
     }
@@ -340,8 +359,9 @@ try {
   await until(admin, (id) => !document.querySelector(`#choices tr[data-model="${id}"]`), "the choice ended", 30, ids.shed);
   chosen.length = 0;
   const after = await api("/api/share?op=shelves&tests=1");
-  check(`ended: the pick is Tower again, worked out (${after.body.pick?.chosen === false ? "worked out" : "chosen"})`,
-    after.body.pick?.model?.id === ids.tower && after.body.pick?.chosen === false);
+  const afterAbove = await outscored(after.body.pick?.model?.id);
+  check(`ended: the pick is Tower again, worked out (${after.body.pick?.chosen === false ? "worked out" : "chosen"}${another(afterAbove)})`,
+    (Boolean(afterAbove) || after.body.pick?.model?.id === ids.tower) && after.body.pick?.chosen === false);
   await adminContext.close();
 
   // --- 5. Build with what I own -----------------------------------------------
@@ -379,8 +399,9 @@ try {
     + `a list without mine=1 has no shares (${(plain.body.models || []).filter((m) => m.owned).length})`,
     nobody.status === 401 && signedOut.status === 401 && (plain.body.models || []).every((m) => !m.owned));
   const shelf = await api("/api/share?op=shelves&tests=1&mine=1", { token: bob.access_token });
-  check(`You can build now, by Top builds: ${(shelf.body.ready?.models || []).map((one) => Object.keys(ids).find((key) => ids[key] === one.id) || one.id).slice(0, 2).join(", ")}`,
-    (shelf.body.ready?.models || [])[0]?.id === ids.tower && (shelf.body.ready?.models || [])[1]?.id === ids.shed);
+  const readyOurs = ours((shelf.body.ready?.models || []).map((one) => one.id));
+  check(`You can build now, by Top builds: ${readyOurs.slice(0, 2).map(named).join(", ")} first of ours (${(shelf.body.ready?.models || []).length} on the shelf)`,
+    readyOurs[0] === ids.tower && readyOurs[1] === ids.shed);
   for (const [width, height, phone] of [[1280, 900, false], [390, 844, true]]) {
     const made = await context({ as: bob, width, height, phone });
     const page = await made.newPage();
@@ -389,7 +410,8 @@ try {
     await until(page, () => document.documentElement.dataset.gallery === "ready" && document.documentElement.dataset.shelves === "ready", `Bob's front, ${width} px`);
     await page.waitForTimeout(400);
     drawn = await frontDrawn(page);
-    check(`Bob at ${width} px: You can build now has ${drawn.readyModels.slice(0, 2).map((id) => Object.keys(ids).find((key) => ids[key] === id) || id).join(", ")}; "${drawn.readySaid.slice(0, 70)}…"; Tower's card "${(drawn.shares[ids.tower] || "").split(" ").slice(1).join(" ")}"; Parts I own under Sort; nothing sideways`,
+    drawn.readyModels = ours(drawn.readyModels);
+    check(`Bob at ${width} px: You can build now has ${drawn.readyModels.slice(0, 2).map(named).join(", ")}; "${drawn.readySaid.slice(0, 70)}…"; Tower's card "${(drawn.shares[ids.tower] || "").split(" ").slice(1).join(" ")}"; Parts I own under Sort; nothing sideways`,
       drawn.ready && drawn.readyModels[0] === ids.tower && drawn.readyModels[1] === ids.shed
         && /Every part of these is in your collection/.test(drawn.readySaid) && /1 set of yours has no parts list/.test(drawn.readySaid)
         && /You have every part/.test(drawn.shares[ids.tower] || "") && drawn.sorts.includes("owned") && !(await sideways(page)));
