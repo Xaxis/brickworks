@@ -2586,8 +2586,8 @@ under 13 refused; `/challenge` signed out (`5_challenge_visitor-*`), the
 gallery's line (`6_gallery_line-1280.png`), Ed's two votes
 (`7_challenge_ed-*`), Bob's vote, second vote and own refused, Cy told why
 (`8_challenge_cy-390.png`); ended on `/admin`, the winners 2 and 1 votes
-(`9_challenge_winners-*`), Ada's Challenges won and the card
-(`10_designer_won-390.png`), the gallery card's `won`; no page errors.
+(`9_challenge_winners-*`), Ada's win as a pill under her numbers (the
+house and its 2 votes in its title) and the card (`10_designer_won-390.png`), the gallery card's `won`; no page errors.
 A visitor's answer is `public, max-age=0` on a deployment (Vercel's CDN
 keeps `s-maxage` for itself), so there the CDN answering the same question
 again (`x-vercel-cache: HIT`) is the proof; locally, `s-maxage=30`. 50
