@@ -77,7 +77,11 @@ var _started_ms: int = 0
 var _first: Dictionary = {}
 var _second: Dictionary = {}
 var _deadline_ms: int = 0
+var _stop_asked: bool = false
 var _stop_asked_ms: int = 0
+## Set once the second app is known to have ended: asked again, the
+## system says it never had such a child.
+var _gone: bool = false
 var _beat_ms: int = 0
 var _deciding: bool = false
 var _shot: ModelShot = null
@@ -144,7 +148,10 @@ func start(text: String, first: ClaudeCode, after_port: int) -> bool:
 
 ## Whether the second app is still running.
 func second_running() -> bool:
-	return _pid > 0 and OS.is_process_running(_pid)
+	if _pid <= 0 or _gone:
+		return false
+	_gone = not OS.is_process_running(_pid)
+	return not _gone
 
 
 func _process(_delta: float) -> void:
@@ -162,7 +169,8 @@ func _process(_delta: float) -> void:
 	if not second_running():
 		_second_ended()
 	elif _deadline_ms > 0 and now > _deadline_ms:
-		if _stop_asked_ms == 0:
+		if not _stop_asked:
+			_stop_asked = true
 			_stop_asked_ms = now
 			_ask_to_stop()
 		elif now - _stop_asked_ms > int(STOP_GRACE_S * 1000.0):
@@ -195,6 +203,7 @@ func _end_second() -> void:
 	if session > 0:
 		OS.kill(session)
 	OS.kill(_pid)
+	_gone = true
 
 
 func _draw(asked: String) -> void:
@@ -212,13 +221,13 @@ func _first_ended(ok: bool, summary: String) -> void:
 
 
 func _second_ended() -> void:
-	var said: Variant = JSON.parse_string(FileAccess.get_file_as_string(
-		_dir.path_join("result.json")))
+	var written: String = FileAccess.get_file_as_string(_dir.path_join("result.json"))
+	var said: Variant = JSON.parse_string(written) if not written.is_empty() else null
 	var result: Dictionary = said if said is Dictionary else {}
-	_second = {"ok": bool(result.get("ok", false)) and _stop_asked_ms == 0,
+	_second = {"ok": bool(result.get("ok", false)) and not _stop_asked,
 		"summary": str(result.get("summary", "")), "title": str(result.get("title", "")),
 		"seconds": (Time.get_ticks_msec() - _started_ms) / 1000.0,
-		"parts": int(result.get("parts", 0)), "stopped": _stop_asked_ms > 0}
+		"parts": int(result.get("parts", 0)), "stopped": _stop_asked}
 	record["second"] = _second
 	_maybe_decide()
 
@@ -433,8 +442,8 @@ func _write_record() -> void:
 
 ## In the second app: stop [param session] when the app that started it
 ## asks, or has not said it is there for [constant ORPHANED_S].
-static func watch_from_second(owner: Node, session: ClaudeCode) -> void:
-	var dir: String = second_of()
+static func watch_from_second(owner: Node, session: ClaudeCode,
+		dir: String = second_of()) -> void:
 	var pid: FileAccess = FileAccess.open(dir.path_join("session.pid"), FileAccess.WRITE)
 	if pid != null:
 		pid.store_string(str(session._pid))

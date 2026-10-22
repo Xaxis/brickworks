@@ -15,6 +15,17 @@ extends SceneTree
 
 
 ## The pick's answer given, not asked.
+## A session that is busy until it is stopped, and says so.
+class Stoppable extends ClaudeCode:
+	var stopped: int = 0
+
+	func busy() -> bool:
+		return stopped == 0
+
+	func stop() -> void:
+		stopped += 1
+
+
 class Picked extends BestOfTwo:
 	var answer: Dictionary = {}
 	var asked: int = 0
@@ -107,6 +118,10 @@ func _run() -> void:
 		"a first of one minute gives it %.0f s, not 18" % given)
 	timed.world.queue_free()
 	timed.free()
+
+	print("")
+	print("a second that runs too long")
+	await _stop_check()
 
 	print("")
 	print("the panel's card")
@@ -225,6 +240,70 @@ func _undo_check(text: String) -> void:
 	pair.queue_free()
 	world.queue_free()
 	builder.queue_free()
+
+
+func _stop_check() -> void:
+	var dir: String = OS.get_user_data_dir().path_join("best_of_two_stop")
+	DirAccess.make_dir_recursive_absolute(dir)
+	# In the second: its session stopped when asked, and when the app that
+	# started it has said nothing for a minute.
+	var holder := Node.new()
+	get_root().add_child(holder)
+	var session := Stoppable.new()
+	session._pid = 4242
+	BestOfTwo.watch_from_second(holder, session, dir)
+	_check(FileAccess.get_file_as_string(dir.path_join("session.pid")) == "4242",
+		"the second says which process its session is")
+	var beat: FileAccess = FileAccess.open(dir.path_join("beat"), FileAccess.WRITE)
+	beat.store_string("now")
+	beat.close()
+	await create_timer(2.5).timeout
+	_check(session.stopped == 0, "a second told the app is there goes on")
+	FileAccess.open(dir.path_join("stop"), FileAccess.WRITE).close()
+	await create_timer(2.5).timeout
+	_check(session.stopped == 1, "...and stops its session when asked")
+	DirAccess.remove_absolute(dir.path_join("stop"))
+	var quiet := Stoppable.new()
+	BestOfTwo.watch_from_second(holder, quiet, dir)
+	OS.execute("touch", ["-d", "2 minutes ago", dir.path_join("beat")])
+	await create_timer(2.5).timeout
+	_check(quiet.stopped == 1, "...and when the app that started it has been quiet a minute")
+	holder.free()
+	session.free()
+	quiet.free()
+
+	# In the app: past its time and its grace, the second and its session
+	# are ended, the session first, and it is not kept.
+	var pair := Picked.new()
+	pair.world = _world()
+	pair.store = _store(pair.world, null)
+	pair._dir = dir
+	var child: int = OS.create_process("sleep", ["300"])
+	var grandchild: int = OS.create_process("sleep", ["300"])
+	var file: FileAccess = FileAccess.open(dir.path_join("session.pid"), FileAccess.WRITE)
+	file.store_string(str(grandchild))
+	file.close()
+	pair._pid = child
+	pair._first = {"ok": true, "summary": "", "seconds": 100.0, "parts": 1}
+	pair._deciding = true
+	pair._deadline_ms = Time.get_ticks_msec() - 1
+	pair._process(0.0)
+	_check(pair._stop_asked_ms > 0 and FileAccess.file_exists(dir.path_join("stop")),
+		"past its time, the second is asked to stop")
+	pair._stop_asked_ms = Time.get_ticks_msec() - int(BestOfTwo.STOP_GRACE_S * 1000.0) - 1
+	pair._process(0.0)
+	await create_timer(0.5).timeout
+	_check(not DirAccess.dir_exists_absolute("/proc/%d" % child)
+		or FileAccess.get_file_as_string("/proc/%d/stat" % child).contains(") Z"),
+		"past its grace, it is ended")
+	_check(not DirAccess.dir_exists_absolute("/proc/%d" % grandchild)
+		or FileAccess.get_file_as_string("/proc/%d/stat" % grandchild).contains(") Z"),
+		"...and its session with it")
+	pair._process(0.0)
+	_check(not pair._second.is_empty() and not bool(pair._second["ok"])
+		and bool(pair._second["stopped"]), "...and what it built is not kept: %s" % str(pair._second))
+	pair.world.queue_free()
+	pair.free()
 
 
 func _panel_check() -> void:

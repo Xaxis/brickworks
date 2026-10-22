@@ -200,6 +200,8 @@ class Drawer extends RefCounted:
 
 	## The oldest request waiting in [param dir], or "".
 	static func next(dir: String) -> String:
+		if not DirAccess.dir_exists_absolute(dir):
+			return ""
 		var waiting: PackedStringArray = PackedStringArray()
 		for name: String in DirAccess.get_files_at(dir):
 			if name.ends_with(".asked"):
