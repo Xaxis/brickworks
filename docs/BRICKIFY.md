@@ -3163,6 +3163,123 @@ lean between two axes, the wedges and corner slopes that face that way
 (43710 and 43711, 6564 and 6565, wedge plates on a diagonal edge) would
 need their own fit. Neither is a tuning of the cubes.
 
+### A side turned by its nearest axis: the lean passes, the guardrails fail (2026-10-22)
+
+Lean97's change (`3bf21553`) again, with the sides it left upright turned and
+the parts it pushed past their room kept in; screened beside `main`, both from
+locked checkouts laid at the same time. Scripts, runs and pictures in
+`bench/results/brickify8-2026-10-21/snot99`; the code screened is `cab8395e`.
+
+**Where Spot's lean was lost.** Each of Spot's leaning faces at 48 studs
+(10 to 40 degrees from every axis) on lean97's build, by whether a turned cube
+holds it (`incube.py`). 74% of them are on its sides; of those:
+
+| Spot 48, leaning side faces | share | matched | error |
+|---|---|---|---|
+| Leaning along one axis, in a turned cube | 39% | 35% | 25.9° |
+| Leaning along one axis, in no turned cube | 23% | 1.4% | 42.8° |
+| Leaning between two axes (both 10° or more), any | 37% | 0.3% | 40.5° |
+
+Of the 23% in no cube, 43% were never asked to turn: most lean 20 to 40
+degrees toward up or down, a side 50 to 70 degrees steep, under the cube
+rule's 65. Upright nothing matches them: a slope stands on two studs with a
+flat stud at its high end, so a side falling four or five plates a stud is a
+staircase whatever is fitted. A further 36% were refused as a band between
+phases (`shelled`), 10% for no core behind (`backed`).
+
+**Between two axes, no part matches.** Every slope, curved slope and wedge
+turned any of 24 ways has its faces in a plane of two axes. Read off their
+meshes, the parts named for it have no face that leans 10 to 40 degrees
+off those planes: 13548's corner leans 55 degrees from every axis, 43710 and
+43711 have one face 12 degrees off a plane at a 44 degree lean, 6564 and 6565
+lean in a plane. Only domes and curved corners (88293, 49612) turn through
+those directions, and only at their own radius. That is 37% of Spot's
+leaning side faces and 51% of Bob's: no part rule reaches them.
+
+**What was screened** (`cab8395e`), on lean97's change:
+
+1. **Sides by their nearest axis.** A cube faces out where its surface leans
+   under 37 degrees from level (`Brickify.STEEP`, sine 0.6, from 0.42): a
+   side steeper than 53 degrees, not only 65. At sine 0.71 (every side whose
+   nearest axis is level) Bob at 48 took 1.18 times `main`'s parts and 7 were
+   mended out, for no more matched.
+2. **Nothing past a part's own room.** A slope fitted to the lean stood up to
+   a plate over its stud, in whatever was there: on Bob at 48 a curved 4 x 1
+   of a shell stood past its box into a cheese slope of the side beside it, and
+   a curved 3 x 1 in free air the core then laid a cheese slope in. Now every
+   plate a surface part stands in past its stud's top is free, and in a shell
+   its own (`Plan.room`, `_stands_at`), and a straight slope's stud on its
+   high end stands in nothing of another side's. Bob's parts mended out went
+   from 3 to 0.
+3. **No lean-fitted curved 4 x 1s, and held within a plate.** Their tips were
+   the farthest of anything seen from the side (lean97); fitted to the lean,
+   the curved four-long ones are left to the steps alone, and every part is
+   held within a plate of the model at each third of a stud (`PROUD` 1.0).
+
+**The screen**, each against `main` (7fa2c471) laid at the same time:
+
+| | matched | error over every face | distance | sides95 (studs) | parts | time |
+|---|---|---|---|---|---|---|
+| Bob 48 | 8.3% to **22.2%** | 39.6° to 34.4° (**13.3% lower**) | 4.0% nearer | 0.58 to 0.57 | **1.12x** | 1.14x |
+| Spot 48 | 9.2% to **20.2%** | 36.3° to 33.9° (**6.4% lower**) | 0.2% further | 0.52 to **0.56** | 1.08x | 1.23x |
+| 3DBenchy 48 | 4.1% to 15.6% | 33.1° to 30.9° (6.5%) | 2.4% nearer | 0.57 to **0.59** | **1.12x** | **1.37x** |
+| Bob 24 | 4.8% to 11.7% | 41.1° to 38.8° (5.6%) | **4.9% further** | 0.53 to **0.74** | 0.98x | 1.01x |
+| Spot 24 | 5.4% to 14.5% | 36.2° to 34.4° (5.0%) | 0.8% further | 0.48 to **0.54** | 1.01x | **2.11x** |
+| 3DBenchy 24 | 0.8% to 6.8% | 37.7° to 35.9° (5.0%) | 0.0% | 0.56 to **0.58** | **1.11x** | 0.92x |
+
+All six are one piece, pass the check and have no joint past its load. A
+part was mended out of 3DBenchy at 48 and of Spot at 24 (`main` none), and
+Bob at 24 kept 96.4% of itself in a part (`main` 98.2%), Spot at 24 97.5%
+(99.1%). **It fails.** For the first time both lean bars pass at 48 studs:
+Bob and Spot each over 20% matched and 5% lower in error, and every one of
+the six is nearer the model in its shading. But the side views stand further
+off on five of the six, three take more than 1.10 times the parts, two more
+than 1.30 times the time, and two lost a part. Nothing went on to the
+fourteen or the probes. The code is reverted on the branch.
+
+**The pictures** (`pics/`, `main` then the branch). Seen from the side and
+from a corner, Spot's flank and Bob's ring read smoother: turned plates where
+`main` has a staircase. The outline is no nearer.
+
+**The tries on the way** (Bob and Spot at 48, `tries/`): lean97 alone 22.3%
+and 16.2% matched, Spot 2.7% lower in error, Spot's sides 0.56; with sides
+turned from 53 degrees 24.5% and 20.4%, 12.9% and 5.9% lower, 3 parts mended
+out of Bob, Spot's sides 0.58; from 45 degrees 25.2% and 20.0%, Bob 1.18
+times the parts and 7 mended out; with nothing past its room 24.6% and 20.3%,
+Bob 2 mended out; held within a plate 24.9% and 20.5%, Bob's sides 0.57 and
+Spot's 0.59. Leaving the curved four-long ones out took Bob back to 22.2%.
+
+**What holds it.** The lean is laid once the sides that are 53 to 65
+degrees steep are turned, so the lean is in reach. What fails is what comes
+with turning more of a side as cubes:
+
+- *The side views.* Seen from the side the turned parts stand about as far
+  off as `main`'s (95% within 0.49 studs on Spot at 48, `main` 0.47; 0.56 and
+  0.51 on Bob at 24); the upright parts left among them do not (0.63 from
+  0.54 on Spot, 0.84 from 0.54 on Bob at 24; `proud2.py`). Among the upright
+  parts over half a stud out the new ones are side-stud bricks (30414, 87087,
+  11211), the plain 1 x 4s laid where a shell let go of its side studs
+  (3010, 0.9% of Bob's side points at 24), and slopes fitted upright between
+  the shells (13547 under Spot's flank; 11477, 24309, 50950 on Bob).
+- *Parts and time.* More cubes turned is more shells, each laid on trial and
+  held by its own side-stud bricks: Spot's shells took 11.7 s at 48 from 6.2,
+  Spot at 24 2.1 times `main`'s time, and Bob and 3DBenchy at 48 1.12 times
+  its parts.
+- *What is lost at 24 studs.* A shell takes the cube's plates out of the core
+  and keeps what its side studs hold: at 24 studs a cube is most of a thin
+  part, and Bob's ring lost 1.8 points of itself.
+
+All three are the cube: the side's surface cut into 2 x 5 x 2 boxes, each
+turned or not. So the next step is the one lean97 named, and this round
+supports it with numbers: a side cut into patches by its nearest axis and
+lean, each a shell as large as its patch (one set of anchors, no corners
+upright at its seams), laid where the core can hold it. And it is a larger
+unit than one time-box: the shell, its anchors, its give-back and the cut-off
+pieces all take a cube's box as given (`_cube_shell`, `_anchored`,
+`_give_back`, `cut_off`). Two pieces of this round carry over as they are:
+nothing laid past its own room (it removed every overlap the lean-fitted
+slopes made), and leaving the curved four-long ones to the steps.
+
 ### Proof
 
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
