@@ -169,9 +169,12 @@ async function digestsOf(owner, ids) {
 /// (api/people.js earnedHtml), so it is read as a person reads it.
 const followersOn = (html) => (/data-followers[^>]*>([\s\S]*?)<\/(?:li|span)>/.exec(html)?.[1] || "")
   .replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+/// One of a profile's numbers as served (api/people.js numbersHtml): "1 following".
+const statOn = (html, kind) => (new RegExp(`<li data-stat="${kind}"[^>]*>([\\s\\S]*?)</li>`).exec(html)?.[1] || "")
+  .replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 /// Whom a profile's page lists under Follows, as served: the handles.
 const followsListed = (html) => {
-  const section = /<section aria-labelledby="follows-h">([\s\S]*?)<\/section>/.exec(html)?.[1] || "";
+  const section = /<section[^>]*aria-labelledby="follows-h"[^>]*>([\s\S]*?)<\/section>/.exec(html)?.[1] || "";
   return [...section.matchAll(/href="\/u\/([a-z0-9-]+)"/g)].map((one) => one[1]);
 };
 
@@ -410,7 +413,7 @@ try {
   // Ada is on his page as the builder of his barn (Built by others), which
   // is not whom he follows: only the Follows list says that.
   check("his profile does not list whom he follows, until he chooses", followsListed(bobsPage).length === 0
-    && !bobsPage.includes('id="follows-h"') && /following 1/.test(bobsPage));
+    && !bobsPage.includes('id="follows-h"') && statOn(bobsPage, "following") === "1 following");
   await bobPage.goto(`${site}/profile`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.profile === "ready", "Bob's /profile");
   const boxes = await bobPage.evaluate(() => ({
