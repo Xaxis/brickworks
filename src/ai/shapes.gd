@@ -2709,9 +2709,11 @@ class Plan extends RefCounted:
 	## shell does not reach into them.
 	var shelled: Dictionary = {}
 	## For a shell's own plan, whether a plate of its frame (lane, plates
-	## out, row, at its middle) is free in the model: the shell's, or
-	## nobody's (lay_shell's room).
+	## out, row, at its middle) is the shell's own, its plates or the air
+	## of its box ([member room]); or free in the model, the shell's or
+	## nobody's ([member air]), where a stud may stand.
 	var room: Callable = Callable()
+	var air: Callable = Callable()
 
 	## A curved side laid on its side, as a set's flank is: where the shape
 	## bulges out of a face of its core — an owl's breast, the shoulder of a
@@ -3682,6 +3684,18 @@ class Plan extends RefCounted:
 						and not beside.has(key):
 					return false
 			return true
+		# And whether it is the shell's own: its plates or the air of its box,
+		# which it keeps clear. Free air past the box is no one's yet, and the
+		# core's surface is laid there after: on Bob a curved 3 x 1 of a shell
+		# stood in the air over a stud where the core then laid a cheese slope.
+		var own := func(x: float, j: float, z: float) -> bool:
+			var p: Vector3 = to_world.call(x, j, z)
+			var row: float = p.y + Shapes.PLATES_PER_STUD * (z - floorf(z) - 1.0)
+			for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+				var key := Vector3i(floori(p.x), j_, floori(p.z))
+				if j_ < 0 or not mine.has(key) and not beside.has(key):
+					return false
+			return true
 		# Held where an anchor the core kept reaches: one in a column the
 		# core's own pruning let go holds nothing.
 		# Tried before the core is laid, every side stud it was given.
@@ -3739,7 +3753,8 @@ class Plan extends RefCounted:
 			sub.colour_at = local_colour
 			sub.sample = func(x: float, j: float, z: float) -> bool:
 				return int(local_colour.call(x, j, z)) >= 0
-			sub.room = room
+			sub.room = own
+			sub.air = room
 			sub.held = held_here
 			# A sculpt's colours and the colours it may lay go with it on its side.
 			sub.colour_shown = colour_shown
@@ -4687,7 +4702,7 @@ class Plan extends RefCounted:
 	const LEAN_FIRST := true
 	## The most a part fitted to the lean alone may stand off the model's
 	## surface at any third of a stud, plates.
-	const PROUD := 1.5
+	const PROUD := 1.0
 
 	## The base, in plates, that lays a part's surface ([param near], at each
 	## third of a stud) nearest the model's ([param ahead], rows of thirds)
@@ -4778,7 +4793,9 @@ class Plan extends RefCounted:
 						for drop_by: int in maxi(3, tall_ + 1):
 							bases.append((top + drop_by) if under else (top - tall_ - drop_by))
 					var steps: int = bases.size()
-					if LEAN_FIRST:
+					# Not the curved four-long ones: fitted to the lean their tips ran
+					# past the model's edge, the farthest of anything seen from the side.
+					if LEAN_FIRST and not (length == LONGEST and entry[0] != "straight"):
 						var fitted: int = _fitted_base(ahead, near, length)
 						# Its high end no higher than a plate over the stud above or
 						# its own (under an overhang, no lower): its back stood proud
@@ -4810,6 +4827,13 @@ class Plan extends RefCounted:
 							var at_: Vector2i = cell + out * n
 							if not height.has(at_) or used.has(at_) \
 									or not _stands_at(at_, int(height[at_]), base, tall_, under):
+								fits = false
+								break
+							# On its side, a straight slope's stud on its high end stands
+							# in nothing of another side's: at a corner of Bob two shells
+							# met, and one's stud stood in the other's curved slope.
+							if n == 0 and air.is_valid() and not under and entry[0] == "straight" \
+									and not bool(air.call(at_.x + 0.5, base + tall_ + 0.5, at_.y + 0.5)):
 								fits = false
 								break
 							var row: PackedFloat32Array = ahead[n]
