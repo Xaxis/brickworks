@@ -73,6 +73,7 @@ class Plan extends RefCounted:
 	var later: int = 0
 	## Parts nothing holds at any step, by the graph read here: in the last.
 	var unheld: int = 0
+	var unheld_at := PackedInt32Array()
 	## The least margin of any partial build kept, in studs.
 	var least_margin: float = INF
 	## And the whole build, weighed as it stands: its stud joints past their
@@ -295,6 +296,7 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 	for index: int in count:
 		if dist[index] == NEVER:
 			plan.unheld += 1
+			plan.unheld_at.append(index)
 			dist[index] = last
 		elif plan.panel[index] < 0 and dist[index] > earliest[index]:
 			plan.later += 1

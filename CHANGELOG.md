@@ -13,6 +13,18 @@ whole cycle.
 
 ## [Unreleased]
 
+### Changed
+
+- Brickify lays more of a model's steep sides on their sides. A side was
+  turned only where it fell in one of a fixed set of blocks two studs by
+  five plates; at a side's top or foot such a block also held the top or
+  the underside it turned into, or a thin cap over it, and the whole block
+  stayed upright. The blocks are now tried at each height a plate apart, and
+  a thin cap that runs back over the model's core is held by it. On a
+  rubber duck, the Stanford bunny and 3DBenchy at 48 studs, 42% of the
+  steep faces are laid by parts turned to face them, from 27%, in 4% more
+  parts; every build is still checked as one piece.
+
 ### Fixed
 
 - A hinge turns only as far as its parts let it. The two halves of the

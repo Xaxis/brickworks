@@ -3656,6 +3656,7 @@ class Plan extends RefCounted:
 				if one.has("_holds"):
 					for cell: Vector2i in one["_cells"]:
 						stud_tops[Vector3i(cell.x, int(one["y"]) + int(one["_h"]), cell.y)] = true
+			var laid_here: int = sub.made.size()
 			sub.made = sub.made.filter(func(one: Dictionary) -> bool:
 				for cell: Vector2i in one.get("_cells", []):
 					for v: int in int(one.get("_h", 1)):
@@ -3665,6 +3666,17 @@ class Plan extends RefCounted:
 							if stud_tops.has(Vector3i(floori(p.x), j_, floori(p.z))):
 								return false
 				return true)
+			# What a part taken out held goes too: pruned again from the side
+			# studs. Left, a cube's four parts on the Stanford bunny's flank
+			# rested on its core held by no stud, and the steps put them last.
+			if sub.made.size() < laid_here and faces.is_empty():
+				var foot: bool = false
+				for one: Dictionary in sub.made:
+					foot = foot or roundi(float(one["y"])) == 0
+				if foot:
+					sub.prune()
+				else:
+					sub.made = []
 		_close_side_studs(shell, sub, held_here, masked, local_colour)
 		# How much of each shell its side studs kept, for a probe to say.
 		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),

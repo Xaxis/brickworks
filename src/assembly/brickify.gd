@@ -504,10 +504,11 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
 	grid.ms["stance"] = Time.get_ticks_msec() - clock
 	if options.smooth and options.snot:
 		clock = Time.get_ticks_msec()
-		grid.cubes = _cubes(grid, points, count, outward, progress)
+		var cuts: Array = _cubes(grid, points, count, outward, progress, [0] + Array(CUBE_PHASES))
+		grid.cubes = cuts[0] if not cuts.is_empty() else {}
 		if not grid.cubes.is_empty():
-			for phase: int in CUBE_PHASES:
-				grid.cube_phases.append([phase, _cubes(grid, points, count, outward, progress, phase)])
+			for n: int in cuts.size() - 1:
+				grid.cube_phases.append([CUBE_PHASES[n], cuts[n + 1]])
 			grid.side_rows = ceili(grid.tall / PLATES * FINE)
 			grid.spans_x = _side_spans(grid, points, count, outward, true, progress)
 			grid.spans_z = _side_spans(grid, points, count, outward, false, progress)
@@ -632,13 +633,15 @@ const CUBE_IN := 0.5
 
 
 static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float,
-		progress: Progress = null, phase: int = 0) -> Dictionary:
-	var sums: Dictionary = {}    ## Vector3i -> Vector3, area times the way out, square studs
-	var areas: Dictionary = {}   ## Vector3i -> float
+		progress: Progress = null, phases: Array = [0]) -> Array:
+	# Summed a plate at a time first, so each cut's cubes are the sums of five
+	# plates: one pass over the model for every phase.
+	var sums: Dictionary = {}    ## Vector3i(x / 2, plate, z / 2) -> Vector3, area times the way out
+	var areas: Dictionary = {}   ## the same -> float, square studs
 	var iso := Vector3(1.0, 1.0 / PLATES, 1.0)
 	for t: int in count:
 		if t % 4096 == 0 and _stopping(progress):
-			return {}
+			return []
 		var a: Vector3 = points[3 * t]
 		var b: Vector3 = points[3 * t + 1]
 		var c: Vector3 = points[3 * t + 2]
@@ -662,23 +665,32 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 					var v: float = (m + (1.0 if flip == 0 else 2.0) / 3.0) / k
 					var p: Vector3 = a + (b - a) * u + (c - a) * v
 					p += Vector3(inward.x, inward.y * PLATES, inward.z)
-					var key := Vector3i(floori(p.x / CUBE_STUDS), floori((p.y - phase) / CUBE_PLATES),
-						floori(p.z / CUBE_STUDS))
+					var key := Vector3i(floori(p.x / CUBE_STUDS), floori(p.y), floori(p.z / CUBE_STUDS))
 					sums[key] = (sums.get(key, Vector3.ZERO) as Vector3) + share
 					areas[key] = float(areas.get(key, 0.0)) + each
-	var out: Dictionary = {}
-	var keys: Array = sums.keys()
-	keys.sort()
-	for key: Variant in keys:
-		var sum: Vector3 = sums[key]
-		var area: float = areas[key]
-		if area < CUBE_AREA or sum.length() < CUBE_AGREES * area:
-			continue
-		var way: Vector3 = sum.normalized()
-		if absf(way.y) >= STEEP:
-			continue
-		out[key] = Vector2i(1 if way.x > 0.0 else -1, 0) if absf(way.x) >= absf(way.z) \
-			else Vector2i(0, 1 if way.z > 0.0 else -1)
+	var out: Array = []
+	for phase: int in phases:
+		var cube_sums: Dictionary = {}
+		var cube_areas: Dictionary = {}
+		for key: Variant in sums:
+			var bin: Vector3i = key
+			var cube := Vector3i(bin.x, floori(float(bin.y - phase) / CUBE_PLATES), bin.z)
+			cube_sums[cube] = (cube_sums.get(cube, Vector3.ZERO) as Vector3) + (sums[bin] as Vector3)
+			cube_areas[cube] = float(cube_areas.get(cube, 0.0)) + float(areas[bin])
+		var cubes: Dictionary = {}
+		var keys: Array = cube_sums.keys()
+		keys.sort()
+		for key: Variant in keys:
+			var sum: Vector3 = cube_sums[key]
+			var area: float = cube_areas[key]
+			if area < CUBE_AREA or sum.length() < CUBE_AGREES * area:
+				continue
+			var way: Vector3 = sum.normalized()
+			if absf(way.y) >= STEEP:
+				continue
+			cubes[key] = Vector2i(1 if way.x > 0.0 else -1, 0) if absf(way.x) >= absf(way.z) \
+				else Vector2i(0, 1 if way.z > 0.0 else -1)
+		out.append(cubes)
 	return out
 
 
