@@ -299,7 +299,8 @@ async function local() {
   // With no script: each page a page of its own.
   const third = await stand.serverPage(path.join(root, "api"), "/u/ines-many?tab=models&page=3&tests=1");
   const grid = /<div class="models" data-models[^>]*>([\s\S]*?)<\/div>\s*<p class="paging">/.exec(third.html)?.[1] || "";
-  const cards = [...grid.matchAll(/class="model" href="\/m\/(InesMod\d{3})"/g)].map((one) => one[1]);
+  // A card is an article, its id its own (web/card.js).
+  const cards = [...grid.matchAll(/<article class="model" data-id="(InesMod\d{3})"/g)].map((one) => one[1]);
   check(`page 3 as served: ${cards.length} cards (${cards[0]}…${cards[cards.length - 1]}), no Show more, back to the first`,
     third.status === 200 && cards.length === 12 && !third.html.includes("data-more") && third.html.includes("Back to the first"));
   const nobody = await stand.serverPage(path.join(root, "api"), "/u/nobody-here");

@@ -531,7 +531,7 @@ plan with Claude as the client.
   person-shaped page, the same for everybody it shows (the house account
   too, no special case): a banner (`.banner`, one of their models' pictures,
   chosen) if any; the head (`header.profile-head`: `.avatar.huge` made from
-  the handle by `web/kit.js` `avatarHtml` through `api/_kit.js`, `h1`,
+  the handle by `web/card.js` `avatarHtml` through `api/_card.js`, `h1`,
   `@handle · [data-role] Designer|Builder · since`, Follow, Share
   `button[data-share]` (copies the link, "Link copied" toast; the share sheet
   on a touch screen), More `details.more-menu` with Report it); the bio;
