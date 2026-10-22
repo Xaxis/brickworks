@@ -61,7 +61,7 @@
 /* Versions (api/share.js versionsSection): what changed in the one shown,
    its owner's words, and the others; an older one marked as older. */
 .model-page .old-version {
-	margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent);
+	margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent-edge);
 	background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); overflow-wrap: anywhere;
 }
 .model-page .old-version a { color: var(--ink); font-weight: 600; }
@@ -203,9 +203,9 @@ dialog.report legend { font-size: 14.5px; color: var(--ink-soft); margin-bottom:
 .model-page .comment {
 	border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--panel);
 }
-.model-page .comment.by-owner { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.model-page .comment.by-owner { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
 .model-page .comment.hidden-one { opacity: 0.7; border-style: dashed; }
-.model-page .comment.asked { outline: 2px solid var(--accent); outline-offset: 2px; }
+.model-page .comment.asked { outline: 2px solid var(--accent-edge); outline-offset: 2px; }
 .model-page .comment-head { margin: 0 0 4px; font-size: 14px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .comment-head a, .model-page .comment-head b { color: var(--ink); font-weight: 600; }
 .model-page .comment-head .tag {
@@ -237,13 +237,13 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	border-radius: 10px; padding: 10px 14px; background: var(--panel); overflow-wrap: anywhere;
 }
 .feed-row a:hover { border-color: var(--ink-faint); }
-.feed-row.new a { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.feed-row.new a { border-color: color-mix(in srgb, var(--accent-edge) 55%, var(--line)); }
 .feed-row .what { margin: 0; }
 .feed-row .what b { font-weight: 600; }
 .feed-row q { display: block; margin: 4px 0 0; color: var(--ink-soft); }
 .feed-row small { display: block; margin-top: 4px; color: var(--ink-faint); font-size: 13px; }
 .feed-row .tag {
-	font-size: 12px; border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--ink);
+	font-size: 12px; border: 1px solid var(--accent-edge); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--ink);
 }
 
 
@@ -260,7 +260,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	display: grid; align-content: start; gap: 0; padding: 11px 14px 12px; border-radius: 12px;
 	background: var(--panel); border: 1px solid var(--line);
 }
-.earned li.lead { border-top: 3px solid var(--accent); padding-top: 9px; }
+.earned li.lead { border-top: 3px solid var(--accent-edge); padding-top: 9px; }
 .earned b { font-size: 26px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
 .earned li.lead b { font-size: 32px; }
 .earned span { color: var(--ink-soft); font-size: 14px; line-height: 1.35; }

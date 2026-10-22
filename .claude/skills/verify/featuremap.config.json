@@ -2647,6 +2647,20 @@
     },
     {
       "kind": "ui",
+      "label": "theme choice",
+      "entry": "web/theme.js",
+      "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "theme browser flow",
+      "entry": "tools/web/theme_flow.mjs",
+      "reach": "node tools/web/theme_flow.mjs   (no network: the checkout's pages served as design_flow serves them; --url=<deployment> for a preview, --account there once supabase/theme.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "a lighter look where frames are slow",
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",

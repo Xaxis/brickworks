@@ -31,7 +31,7 @@
 // Pictures of every page and dialog in --out, named page_width_theme_who.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,7 +52,6 @@ const themes = String(args.themes || "light,dark").split(",");
 const only = args.only ? String(args.only).split(",") : null;
 const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 const headers = remote && bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
-const PICTURE = readFileSync(path.join(here, "../../web/share.png"));
 
 let passed = 0;
 let failed = 0;
@@ -65,74 +64,11 @@ const fail = (where, what) => {
 
 // --- the site, served from --root (or the deployment's, with --url) -------
 
-const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml",
-  ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" };
-
-/// A file of web/ at the address deploy.sh serves it: bare names, / for
-/// the landing page, /oauth/authorize for the connector's sign-in, and the
-/// 404 page for anything else.
-function staticFile(pathname) {
-  const named = { "/": "index.html", "/oauth/authorize": "authorize.html" }[pathname.replace(/\/$/, "") || "/"];
-  const candidates = named ? [named] : [pathname.slice(1), `${pathname.slice(1).replace(/\/$/, "")}.html`];
-  for (const name of candidates) {
-    if (!name || name.includes("..")) continue;
-    const file = path.join(web, name);
-    if (existsSync(file) && !file.endsWith(path.sep)) {
-      try {
-        return { status: 200, body: readFileSync(file), type: TYPES[path.extname(file)] || "application/octet-stream" };
-      } catch { /* a directory: the next one */ }
-    }
-  }
-  return { status: 404, body: readFileSync(path.join(web, "404.html")), type: TYPES[".html"] };
-}
-
 // The Supabase project a deployment names (/api/account), standing for the
 // stand-in's DB in what the browser is told and keeps.
 let remoteDb = "";
 const asProject = (text) => (remoteDb ? text.split(stand.DB).join(remoteDb) : text);
-
-const isPicture = (url) => /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.(png|webp)$/.test(url.pathname)
-  || (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file");
-
-async function serve(context, state) {
-  await context.route(/.*/, async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    // A deployment's pages may reach only its own Supabase project (their
-    // policy), so there the stand-in answers as that project.
-    const db = url.origin === stand.DB || url.origin === remoteDb;
-    const ours = url.origin === stand.ORIGIN || db || (remote && url.origin === new URL(remote).origin);
-    // Anything else to whatever else answers it (browser.mjs quiets the
-    // visit counter); nothing else is fetched from here.
-    if (!ours) return route.fallback();
-    if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
-    if (db || url.pathname.startsWith("/api/")) {
-      let body;
-      try {
-        body = request.postData() ? JSON.parse(request.postData()) : undefined;
-      } catch {
-        body = undefined;
-      }
-      const signedIn = Boolean(request.headers().authorization);
-      // Asked as of the stand-in's own site and project, whichever answered.
-      const asked = new URL(url.pathname + url.search, db ? stand.DB : stand.ORIGIN);
-      const said = stand.apiAnswer({ url: asked, method: request.method(), body, state: { ...state, signedIn } });
-      if (!said) return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
-      return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
-    }
-    if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c)\//.test(url.pathname)) {
-      const made = await stand.serverPage(api, url.pathname);
-      // With the security policy the server sends with it.
-      const policy = made.headers?.["content-security-policy"];
-      return route.fulfill({ status: made.status, contentType: "text/html; charset=utf-8", body: made.html,
-        headers: policy ? { "content-security-policy": policy } : {} });
-    }
-    const file = staticFile(url.pathname);
-    return route.fulfill({ status: file.status, contentType: file.type, body: file.body });
-  });
-}
+const serve = (context, state) => stand.serveSite(context, { web, api, remote, headers, remoteDb, state });
 
 // --- what a person would notice, read in the page ---------------------------
 

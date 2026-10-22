@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow -->
 
 ## Sub-features
 
@@ -653,6 +653,33 @@ plan with Claude as the client.
   `.settings`/`.setting` and `.danger`.
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
   `[design]`): every page and dialog, below.
+- `theme choice` (2026-10-22, docs/SOCIAL.md U1): System, Light or Dark,
+  a `.segmented` row of three buttons, the chosen one `aria-pressed` and
+  edged in `--accent-edge` (the yellow in dark, `#a67c00` in light: the
+  yellow was 1.33:1 there). In the footer of every page, on Menu at a
+  phone's width (inside `details.menu`, under the links; the header keeps
+  its four things) and in Settings on /profile (`#theme-part`). The light
+  set in `web/site.css` is keyed on `<html data-theme="light">` and, with
+  no choice, on `prefers-color-scheme: light`; the two copies must be equal
+  (`tests/test_site_contrast.py`, which also measures every text token on
+  every surface at 4.5:1 and the edges at 3:1, in both themes, and that the
+  browser bar's colours are the page's). `web/theme.js`, a plain script in
+  every page's `<head>` before `site.css` (static pages by
+  `tools/site_shell.py` from `web/_shell.html`, the server's by
+  `siteChrome().head`), sets `data-theme` and the two `theme-color` lines
+  from `localStorage["brickworks.theme"]` before the first paint, follows
+  another tab's choice (`storage`), and handles any `[data-theme-choice]`
+  button. Signed in it loads `web/theme-account.js`: once a tab it asks
+  `GET /api/account?op=theme` (`{theme, chosen, ready}`) and applies the
+  account's; an account with none takes the browser's; each choice goes
+  `POST /api/account?op=theme {theme}` (`{theme, kept}`). Column
+  `profiles.theme` (`supabase/theme.sql`, **not applied to the live
+  project** until the lead applies it): before it, GET answers `system`,
+  `ready: false` and POST `kept: false`, never an error. Deleted with the
+  account (profiles cascades). /m/<id>/embed keeps following the system:
+  it sits in somebody else's page and runs no script.
+- `theme browser flow` (`tools/web/theme_flow.mjs`, preview checks
+  `[theme]` and `[theme_account]`): below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
   `api/people.js`, 2026-10-18; **not applied to the live project**: the
   owner applies it at release, after `trust.sql` and before the deploy;
@@ -1925,6 +1952,31 @@ BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://12
 never reach the database's own triggers, which refuse the profile, the
 public list and the listing (three 502s, 2026-10-18); without it, 42 checks
 all ok the same evening.
+
+The theme, with no network (the checkout's pages served as design_flow
+serves them, every API call answered by the stand-in):
+
+```sh
+heavy node tools/web/theme_flow.mjs --out=shots/theme                 # this checkout
+node tools/web/theme_flow.mjs --url=<preview>                         # a deployment, signed out
+node tools/web/theme_flow.mjs --url=<preview> --account --only=home   # and its account (theme.sql applied; .env)
+```
+
+Every kind of page (the 16 static ones, a model's, a person's, a
+collection's) at 390 and 1280, the computer set to light: Dark, System and
+Light pressed in the footer (Menu at 390; another tab for /admin and
+/oauth/authorize) each change the page with no reload (background,
+`data-theme`, the pressed button, the bar's colour), System follows the
+computer when it changes, a reload and a new tab keep the choice, and every
+frame of each load (read in `requestAnimationFrame`) is the chosen theme's,
+never the other's. A control page whose theme comes after load must be
+caught as a flash. Locally it also calls `api/account.js ?op=theme` in-process
+against a stand-in database before and after the column, and, signed in,
+chooses Dark in Settings, then opens a fresh browser profile that must follow
+the account on its first page; an account with none takes the browser's
+Light. With `--account` the same on the deployment with a throwaway account,
+deleted after, and its `profiles` row checked gone. 2026-10-22: 0 failures
+locally (numbers in the unit's report).
 
 The design system, with no network and no account (pages from the
 checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
