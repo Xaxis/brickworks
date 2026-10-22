@@ -342,8 +342,8 @@ static func written() -> Array:
 			"why": "A real tree is a trunk and a canopy of leaf pieces at more than one height. As the LEGO Group built it in 4956 House: 13 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3022", "color": 2, "x": 1, "y": 9, "z": 1, "rot": 0},
-				{"part": "3660a", "color": 2, "x": 2, "y": 10, "z": 1, "rot": 1},
-				{"part": "3660a", "color": 2, "x": 0, "y": 10, "z": 1, "rot": 3},
+				{"part": "3660b", "color": 2, "x": 2, "y": 10, "z": 1, "rot": 1},
+				{"part": "3660b", "color": 2, "x": 0, "y": 10, "z": 1, "rot": 3},
 				{"part": "3001", "color": 2, "x": 1, "y": 13, "z": 0, "rot": 3},
 				{"part": "3004", "color": 27, "x": 0, "y": 13, "z": 1, "rot": 3},
 				{"part": "3004", "color": 27, "x": 3, "y": 13, "z": 1, "rot": 3},
@@ -566,11 +566,11 @@ static func written() -> Array:
 			"when": "an upper storey, a tower top or a gallery that stands out past the wall below",
 			"why": "Inverted 2 x 2 slopes (3660) under the course above step the upper wall out over the lower one, with a band of reddish brown plates at the floor line. The shadow under the oversail is what makes a tower top read as a separate stage. As the LEGO Group built it in 10176 Royal King's Castle: 5 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
-				{"part": "3660a", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 2},
+				{"part": "3660b", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 2},
 				{"part": "3023b", "color": 70, "x": 0, "y": 3, "z": 3, "rot": 0},
-				{"part": "3660a", "color": 71, "x": 0, "y": 3, "z": 1, "rot": 2},
+				{"part": "3660b", "color": 71, "x": 0, "y": 3, "z": 1, "rot": 2},
 				{"part": "3023b", "color": 70, "x": 0, "y": 6, "z": 2, "rot": 0},
-				{"part": "3660a", "color": 71, "x": 0, "y": 6, "z": 0, "rot": 2},
+				{"part": "3660b", "color": 71, "x": 0, "y": 6, "z": 0, "rot": 2},
 			],
 		},
 		{

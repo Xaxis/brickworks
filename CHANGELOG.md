@@ -60,6 +60,16 @@ whole cycle.
   the steep faces of the same three models at 48 studs, from 44%, the steep
   faces 7.2% nearer the model than laid with their studs up, every build in
   8% more parts than before any were turned and in the same time.
+- Brickify lays the undersides of overhangs in inverted slopes you can buy.
+  It knew the inverted 3 x 1 and 2 x 2 slopes by older moulds, sold in a few
+  of its colours and in none, and it lays a part only in a colour that is
+  sold, so it laid neither of them, or the 3 x 2 they pair into. It now lays
+  the moulds sold today, in 22 and 33 of its colours. At 48 studs, Bob's
+  leaning faces laid by a part leaning the same way rise from 8.3% to 10.5%
+  and the error over all its faces falls 3.5%; Spot, the Stanford bunny and
+  3DBenchy come out the same or a little nearer. Each build is one piece, in
+  under 1% more parts. A collection's older moulds still count as the same
+  slope.
 
 ### Fixed
 

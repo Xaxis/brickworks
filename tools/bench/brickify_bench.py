@@ -42,7 +42,9 @@ build's own LDU (src/dev/brickify_bench.gd writes the frame):
 out, out, down and out, down) and gives each arm's normal error and distance for each: where
 the error is, and what a surface part can reach. The steep ("out") faces are split again by
 whether the nearest part of the build lies on its side; and seen from the four sides alone,
-the Hausdorff95 of the model's points and the build's ("sides").
+the Hausdorff95 of the model's points and the build's ("sides"). Of the points leaning 10 to
+40 degrees from all six axes, the share whose nearest part face is within 10 degrees of the
+model's ("matched": the lean laid); and the error and distance over every face ("every").
 
 **pictures** draws the model and each build from the same corner, lit the
 same, and lays them side by side, one file a model and size.
@@ -774,13 +776,18 @@ FACES = (("up", 0.966, 1.01), ("up and out", 0.5, 0.966), ("out", -0.5, 0.5),
          ("down and out", -0.966, -0.5), ("down", -1.01, -0.966))
 # The views from the four sides, of view_dirs(): +x, -x, +z, -z.
 SIDE_VIEWS = (0, 1, 4, 5)
+# A face leaning this far from all six axes (degrees) is one a slope's lean can match, and is
+# matched when the build's face nearest it is within MATCHED_DEG of it.
+LEAN_FROM, LEAN_TO, MATCHED_DEG = 10.0, 40.0, 10.0
 
 
 def do_faces(args: argparse.Namespace) -> int:
     """Where the normal error and the distance are: the model's visible points sorted by which way
     their surface faces (the up part of its outward normal: up, up and out, out within 30 degrees of
     level, down and out, down), and each arm's mean normal error and mean distance from the model to
-    the build for each. Into OUT/faces.json, and printed."""
+    the build for each; of the faces leaning 10 to 40 degrees from every axis, the share the build
+    matches within 10 degrees ("matched"); and over every face ("every"). Into OUT/faces.json, and
+    printed."""
     np = _np()
     from scipy.spatial import cKDTree
 
@@ -861,6 +868,17 @@ def do_faces(args: argparse.Namespace) -> int:
                         "normal_deg": float(err[m].mean()) if m.any() else None,
                         "there_deg": float(err[m & facing_part].mean()) if (m & facing_part).any() else None,
                         "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
+                # The lean (docs/BRICKIFY.md, "Where the error is: the lean"): of everything seen that
+                # leans 10 to 40 degrees from the nearest of the six ways a part can face, the share
+                # whose nearest part face is within 10 degrees of it ("matched"); and every face's
+                # error and distance together ("every").
+                lean = np.degrees(np.arccos(np.clip(np.abs(nrm).max(axis=1), 0, 1)))
+                leaning = (lean >= LEAN_FROM) & (lean < LEAN_TO)
+                row[arm_name]["matched"] = {
+                    "seen": float(leaning.mean()),
+                    "share": float((leaning & (err < MATCHED_DEG)).sum() / max(1, leaning.sum())),
+                    "normal_deg": float(err[leaning].mean()) if leaning.any() else None}
+                row[arm_name]["every"] = {"normal_deg": float(err.mean()), "lost_studs": float(dist.mean() / STUD)}
                 row[arm_name]["sides"] = {
                     "hausdorff95_studs": float(max(np.percentile(d_mb, 95), np.percentile(d_bm, 95)) / STUD),
                     "lost95_studs": float(np.percentile(d_mb, 95) / STUD),
@@ -877,7 +895,10 @@ def do_faces(args: argparse.Namespace) -> int:
                         f" {row[arm_name]['out_on_side']['normal_deg'] or 0:.1f}°"
                         f"| turned {row[arm_name]['turned']['share']:.0%}"
                         f" (out {row[arm_name]['turned_out']['share']:.0%},"
-                        f" down {row[arm_name]['turned_down']['share']:.0%})", flush=True)
+                        f" down {row[arm_name]['turned_down']['share']:.0%})"
+                        f" | matched {row[arm_name]['matched']['share']:.1%}"
+                        f" | every {row[arm_name]['every']['normal_deg']:.1f}° {row[arm_name]['every']['lost_studs']:.3f}",
+                        flush=True)
             target.write_text(json.dumps(results, indent=1))
     return 0
 

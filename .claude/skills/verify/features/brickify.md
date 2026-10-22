@@ -156,7 +156,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   (`Shapes.current`, from the catalogue's stubs: 3023 is laid as 3023b), in a
   colour it is made in: no slope sold in none of the palette's colours
   (`sold_in`, `Plan._sold`, by Rebrickable's elements: the inverted 2 x 2
-  3660a has no element at all, so it is never laid), and any part with no
+  3660a has no element at all and the 3 x 1 4287a is in 7 of the palette's
+  colours, so `Plan.INVERTED` lays the moulds sold now, 3660b and 4287c;
+  `shapes_probe` checks each is sold in white, black, both greys, red and
+  yellow), and any part with no
   element in its colour laid in the nearest colour by CIEDE2000 it has one
   in (`Brickify.made_colours`, after laying and again after the mend; one
   colour asked for is kept). A stand

@@ -173,10 +173,10 @@ static func needs_of_ldraw(text: String, library: PartLibrary = null) -> Diction
 
 ## Another moulding of one part, written as one more letter on its number:
 ## 3794a and 3794b are the jumper plate without and with its groove, 3660a
-## the inverted slope before its stopper ring. Either builds the model, so
-## one stands in for the other before anything is called short. A number
-## with more after the letter (3626bp01, 973pr1234c01) is a print or an
-## assembly, and is only ever itself.
+## and 3660b the inverted slope before and after its stopper ring. Either
+## builds the model, so one stands in for the other before anything is
+## called short. A number with more after the letter (3626bp01,
+## 973pr1234c01) is a print or an assembly, and is only ever itself.
 const _MOULD := "^([ux]?\\d+)[a-z]$"
 static var _mould: RegEx = RegEx.create_from_string(_MOULD)
 
