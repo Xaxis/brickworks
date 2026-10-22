@@ -850,7 +850,7 @@ func _hose_made() -> void:
 			% ["back" if way < 0.0 else "on", pull.angle, reach, still.length])
 		_check("hoses: it stops where the tube is pulled to its length (%.2f of %.2f LDU)" % [reach,
 			still.length], reach <= still.reach + FlexFollow.SLACK and reach > still.reach - 3.0)
-		var tell: String = str(_grab.call("for_session", {"part": "#%d" % arm, "degrees": way * 170.0}))
+		var tell: String = await _grab.for_session({"part": "#%d" % arm, "degrees": way * 170.0})
 		print("    move_part: %s" % tell.replace("\n", " | "))
 		_check("hoses: move_part names the tube that holds it", tell.contains("pneumatic tube from"))
 		while _builder.history_depth() > 0:
