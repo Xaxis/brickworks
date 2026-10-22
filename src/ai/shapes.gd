@@ -508,6 +508,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		# What a sculpt's shells cut off is taken out before the stitch spends
 		# its rounds on it: a bunny at 48 studs tried 86 joins where it had 27.
 		if not shells.is_empty():
+			last["joined_cut_off"] = plan.join_cut_off()
 			last["cut_off"] = plan.cut_off(true)
 		if stitched:
 			plan.stitch()
@@ -3388,6 +3389,86 @@ class Plan extends RefCounted:
 			made = left
 		return gone.size()
 
+	## The pieces of the core a shell cuts off, as [method cut_off] with
+	## [param wholly] finds them, each joined to the rest by a plate or brick
+	## laid again across where one of its plates meets one of the rest's side
+	## by side, the stitch's first way, for all of them in one pass. A turned
+	## cube leaves the side's surface past its shell's end, and the plates of
+	## its own rows it laid nothing in, beside the core and on nothing:
+	## taken out, a blue bunny at 20 studs lost 2.1% of itself, where the
+	## stitch, joining one piece a round, took a forty-eight-stud Bob's from
+	## 4.5 s to 11.6. How many were joined.
+	func join_cut_off() -> int:
+		if cubes.is_empty() or shelled.is_empty():
+			return 0
+		var joined: int = 0
+		for _pass: int in 4:
+			var found: Array = pieces()
+			var main: Dictionary = {}
+			for n: int in (found[0] if not found.is_empty() else []):
+				main[n] = true
+			var apart: Array = []
+			for piece: Array in found.slice(1):
+				var touches: bool = piece.size() <= CUT_OFF
+				for n: int in piece:
+					touches = touches and beside_shell(made[n])
+				if touches:
+					apart.append(piece)
+			if apart.is_empty():
+				break
+			var plain: Dictionary = _plain_cells(main)
+			var gone: Dictionary = {}
+			var added: Array = []
+			for piece: Array in apart:
+				var pair: Array = _pair(piece, main, plain)
+				if pair.is_empty() or gone.has(pair[0]) or gone.has(pair[1]):
+					continue
+				var across: Array = _across(made[pair[0]], made[pair[1]])
+				if across.is_empty():
+					continue
+				gone[pair[0]] = true
+				gone[pair[1]] = true
+				added.append_array(across)
+				joined += 1
+			# None side by side at one height: the rest's bricks beside a plate
+			# of one laid again as three plates each, to be paired next pass.
+			if gone.is_empty():
+				var bricks: Dictionary = {}    ## Vector3i plate -> a brick of the rest
+				for m: Variant in main:
+					var two: Dictionary = made[m]
+					if _plain(two) and int(two["_h"]) == 3:
+						for cell: Vector2i in two["_cells"]:
+							for h: int in 3:
+								bricks[Vector3i(cell.x, int(round(float(two["y"]))) + h, cell.y)] = m
+				for piece: Array in apart:
+					for n: int in piece:
+						var one: Dictionary = made[n]
+						if not _plain(one) or int(one["_h"]) != 1:
+							continue
+						var y: int = int(round(float(one["y"])))
+						for cell: Vector2i in one["_cells"]:
+							for step: Vector2i in Shapes.OUT:
+								var m: int = int(bricks.get(Vector3i(cell.x + step.x, y, cell.y + step.y), -1))
+								if m >= 0 and int((made[m] as Dictionary)["color"]) == int(one["color"]):
+									gone[m] = true
+				for m: Variant in gone:
+					var brick: Dictionary = made[m]
+					var cells: Dictionary = {}
+					for cell: Vector2i in brick["_cells"]:
+						cells[cell] = true
+					for h: int in 3:
+						for part: Dictionary in _tile(cells.duplicate(), int(round(float(brick["y"]))) + h,
+								int(brick["color"]), Shapes.CORE_PLATES, {}, -1):
+							added.append(_annotated(part, Shapes.CORE_PLATES, 1, true))
+			if gone.is_empty():
+				break
+			var kept: Array = []
+			for n: int in made.size():
+				if not gone.has(n):
+					kept.append(made[n])
+			made = kept + added
+		return joined
+
 	## The pieces of the core apart from the rest of three parts or fewer, each
 	## at the core's top (nothing of it, or a shell, over any of its parts), that
 	## the stitch could not join: taken out of [member made]. Left to the mend,
@@ -5791,10 +5872,13 @@ class Plan extends RefCounted:
 		return []
 
 	## A plate, a brick or a top tile: what can be laid again over the same
-	## studs as other plates, bricks or tiles. Not a slope or a wedge.
+	## studs as other plates, bricks or tiles. Not a slope or a wedge, nor a
+	## brick with studs on its side a shell hangs from: laid again across a
+	## piece the shells cut off, a bunny's 1 x 2 with studs on its side came
+	## back plain, and its shell lost 7 of its 10 parts.
 	func _plain(one: Dictionary) -> bool:
 		if not one.has("_cells") or (one["_cells"] as Array).is_empty() or bool(one.get("_slope", false)) \
-				or bool(one.get("_fixed", false)):
+				or bool(one.get("_fixed", false)) or one.has("_holds"):
 			return false
 		var studs: int = (one["_studs"] as Array).size()
 		return studs == (one["_cells"] as Array).size() or (studs == 0 and bool(one.get("_top", false)))
