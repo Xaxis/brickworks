@@ -1192,6 +1192,11 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
 	began = Time.get_ticks_usec()
 	await CustomParts.fetch_sources(library, model)
+	# And the skins that waited for a file fetched just now, built the same
+	# way: built by the open, each was waited for in its frame (8466-1's
+	# zdampedshock1 spring, 1.5 s of a browser's).
+	if not model.generated.is_empty():
+		await CustomParts.warm_skins(library, model)
 	var fetched_in: float = (Time.get_ticks_usec() - began) / 1000.0
 	var out: Array = []
 	await _open_into(out, text, name, model, job if job != null else Working.Job.new())

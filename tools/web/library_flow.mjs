@@ -208,12 +208,15 @@ async function opensTab(page, control) {
 
 // The longest the page's own thread went without running an interval timer
 // set at 50 ms, in every page from its start: window.__stall.
+// And each gap over 250 ms, with when it ended: window.__gaps.
 await context.addInitScript(() => {
   let last = performance.now();
   window.__stall = { longest: 0, at: 0 };
+  window.__gaps = [];
   setInterval(() => {
     const now = performance.now();
     if (now - last > window.__stall.longest) window.__stall = { longest: now - last, at: now };
+    if (now - last > 250) window.__gaps.push({ gap: now - last, at: now });
     last = now;
   }, 50);
 });
@@ -232,7 +235,7 @@ async function liveFlow(a, aTitle, aBricks) {
   const b = set.tab;
   await controlAt(b, "model_name");
   // The stall of the page's start (the engine's own) is not the open's.
-  await b.evaluate(() => { window.__stall = { longest: 0, at: 0 }; });
+  await b.evaluate(() => { window.__stall = { longest: 0, at: 0 }; window.__gaps = []; });
   const opened = await until(async () => (await state(b)).bricks >= 1200 && !(await state(b)).awaited, 900);
   const took = Math.round((Date.now() - began) / 1000);
   const bState = await state(b);
@@ -243,6 +246,26 @@ async function liveFlow(a, aTitle, aBricks) {
     said.some((w) => /^Fetching 8466-1 .* \d+ MB/.test(w)) && said.some((w) => /^Reading 8466-1 /.test(w)));
   const stall = await b.evaluate(() => window.__stall);
   console.log(`  the page's longest stall while it opened: ${Math.round(stall.longest)} ms`);
+  // Each stall over 250 ms, and what the status bar was saying as it ended;
+  // and the longest while it said "Opening": the open's own, apart from the
+  // frames that draw the model as its parts arrive, which on a browser
+  // drawing in software are each about a second at 8466-1 on any build.
+  const stalls = await b.evaluate(() => {
+    const work = (window.brickworksWork || []).filter((w) => w.ended);
+    const opening = work.filter((w) => /^Opening /.test(w.what));
+    const from = opening.length ? Math.min(...opening.map((w) => w.at - w.ms)) : 0;
+    const to = opening.length ? Math.max(...opening.map((w) => w.at)) : 0;
+    let longest = 0;
+    const list = (window.__gaps || []).map((g) => {
+      if (opening.length && g.at - g.gap < to && g.at > from) longest = Math.max(longest, g.gap);
+      const doing = work.filter((w) => w.at - w.ms <= g.at && w.at >= g.at - g.gap).map((w) => w.what);
+      return `${Math.round(g.gap)} ms (${doing.join(", ") || "after the bar"})`;
+    });
+    return { list, opening: Math.round(longest), laid: Math.round(to - from) };
+  });
+  console.log(`  ...its stalls over 250 ms: ${stalls.list.length ? stalls.list.join(" | ") : "none"}`);
+  console.log(`  the longest while it said Opening: ${stalls.opening ? `${stalls.opening} ms` : "under 250 ms"}, over ${stalls.laid} ms`);
+  console.log(`  ...the open's phases: ${JSON.stringify(bState.open_phases || {})}`);
   check(`...credited: ${JSON.stringify(bState.credit)}`, bState.credit && String(bState.credit.page || "")
     .startsWith("https://library.ldraw.org/omr/sets/"));
   await b.screenshot({ path: `${out}/live_2_8466.png` });

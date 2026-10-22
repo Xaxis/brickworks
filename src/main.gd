@@ -597,6 +597,9 @@ func _tell_page() -> void:
 		# between two arrivals (booklet_flow.mjs on 7636, 2026-10-16).
 		# And those of one being laid, not down yet (ModelStore.laying).
 		"awaited": _store.awaited.size() + (_store.still_to_lay if _store.laying else 0),
+		# What the last open cost, phase by phase, in ms (ModelStore.open_phases):
+		# tools/web/library_flow.mjs says it.
+		"open_phases": _store.open_phases,
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,

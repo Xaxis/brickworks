@@ -975,6 +975,9 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 			continue
 		var made_of: Dictionary = model.skin_texts[body] if model.skin_texts.has(body) \
 			else _skin_text(library, model, sub, body, pieces)
+		# Kept with the model, so what it reaches for is not made again from
+		# its sub-model before the open (unreached_by): 8466-1's are 36 MB.
+		model.skin_texts[body] = made_of
 		if made_of.is_empty():
 			_skins_of_body[body] = ["", ""]
 			continue
@@ -990,6 +993,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 			# Found already where the web looked before it opened (unreached_by).
 			var unreached: PackedStringArray = made_of["unreached"] if made_of.has("unreached") \
 				else PartForge.unreached(text, sources)
+			made_of["unreached"] = unreached
 			if not unreached.is_empty():
 				problems.append(_with_why("%s (flexible): it uses files this build does not have: %s"
 					% [sub.name, ", ".join(unreached)]))
