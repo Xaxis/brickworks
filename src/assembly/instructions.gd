@@ -659,7 +659,9 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	job.say("Finding the joints between %s parts…" % count)
 	job.count(0, 0)
 	await job.next()
-	_find_joints(nodes, world, library)
+	await _joints_of(nodes, world, library, job)
+	if job.due():
+		await job.next()
 	_tidy_needs(nodes)
 	lap.call("joints")
 	await job.next()
@@ -839,8 +841,20 @@ static func _most_common(values: Array) -> String:
 ## into.
 static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 		library: PartLibrary, frame: Transform3D = Transform3D.IDENTITY) -> void:
+	_joints_of(nodes, world, library, null, frame)
+
+
+## [method _find_joints], a slice at a time with a [param job]. In one go it
+## was Timeline's longest frame on Orthanc's 9,541 parts in a browser drawing
+## in software: 151 to 262 ms of the app's own work, against the 250 the
+## progress check holds Timeline to, and that check failed one run in three
+## (2026-10-22).
+static func _joints_of(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
+		job: Working.Job, frame: Transform3D = Transform3D.IDENTITY) -> void:
 	var entries: Array = []
 	for node: Node2 in nodes:
+		if job != null and job.due():
+			await job.next()
 		var brick: BrickWorld.Brick = world.get_brick(node.id)
 		if brick == null:
 			continue
@@ -853,8 +867,13 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 	var by_id: Dictionary = {}
 	for node: Node2 in nodes:
 		by_id[node.id] = node
+	if job != null and job.due():
+		await job.next()
+	var found: Array = Joints.pairs(entries)
+	if job != null and job.due():
+		await job.next()
 	var sockets_of: Dictionary = {}   ## plug id -> the parts it goes into
-	for pair: Array in Joints.pairs(entries):
+	for pair: Array in found:
 		var plug: Node2 = by_id.get(pair[0])
 		var socket: Node2 = by_id.get(pair[1])
 		if plug == null or socket == null:
@@ -880,7 +899,11 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 	# between two beams already there, where no picture can show it: 1,296
 	# Technic parts the booklet's view could not see in 100 real sets,
 	# against 431 in their authors' steps (docs/INSTRUCTIONS.md).
+	if job != null and job.due():
+		await job.next()
 	var reach: Dictionary = _reach(nodes, by_id, sockets_of)
+	if job != null and job.due():
+		await job.next()
 	var lowest := func(a: Node2, b: Node2) -> bool:
 		if absf(a.box.position.y - b.box.position.y) > 0.5:
 			return a.box.position.y < b.box.position.y
@@ -907,6 +930,8 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 	var base: Dictionary = {}       ## id -> its needs before the joints
 	for node: Node2 in nodes:
 		base[node.id] = node.needs.duplicate()
+	if job != null and job.due():
+		await job.next()
 	var chosen: Dictionary = {}     ## plug id -> what it goes into first
 	var low: Dictionary = {}        ## ...and the lowest of them
 	for plug_id: int in sockets_of:
@@ -919,6 +944,8 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 	# of the parts it joins: then the lowest, as before.
 	for _attempt: int in 3:
 		_pin(nodes, by_id, base, sockets_of, chosen)
+		if job != null and job.due():
+			await job.next()
 		var differ: Array = chosen.keys().filter(func(id: int) -> bool:
 			return chosen[id] != low[id])
 		if differ.is_empty():

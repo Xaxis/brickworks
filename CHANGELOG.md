@@ -89,6 +89,9 @@ whole cycle.
   another with no stud, a control stick in its socket, is joined to it in
   Suggest sections and Evaluate the section, and two plates side by side
   that only touch are not.
+- Timeline on a big model finds how its parts join a slice at a time:
+  on Orthanc's 9,541 parts in a browser that was one pause of up to a
+  quarter of a second, with the bar unable to move.
 
 ## [0.5.0] - 2026-10-22
 
