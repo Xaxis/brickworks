@@ -165,9 +165,6 @@ function signOutButton() {
   button.textContent = "Sign out";
   button.addEventListener("click", () => {
     signOut();
-    try {
-      sessionStorage.removeItem(KEPT);
-    } catch {}
     location.reload();
   });
   return button;

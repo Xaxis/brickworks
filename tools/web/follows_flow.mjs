@@ -31,8 +31,10 @@
 //   3. Ada shares a castle in the gallery, then its version 2: both are in
 //      Bob's /feed, each a link to the thing, newest first. Opened.
 //   4. Ada posts a photo of her build of Bob's barn and comments on it:
-//      Account says 2 on the site (and on Menu at 390 px) and in the app,
-//      and leads to /feed; opened there, both marked new, the count gone.
+//      his avatar says 2 on the site (and Menu at 390 px) and Account in
+//      the app; opened from the avatar's menu, both marked new, the count
+//      gone. Since supabase/notifications.sql they are his Notifications,
+//      not his feed (docs/SOCIAL.md U7); before it, his feed.
 //      The comment sent Bob's day's email, a dry run, telling of the
 //      comment and of the feed: the castle, its version 2 and the photo.
 //   5. A model's page: Follow beside its designer, Following for Bob.
@@ -187,13 +189,13 @@ const followDrawn = (page) => page.evaluate(() => {
     followers: document.querySelector("[data-followers]")?.textContent || "" };
 });
 
-/// The header's Account, as drawn: its count and where it leads, on the nav
-/// and behind Menu.
+/// The header's account, as drawn: the count on the avatar (signed in,
+/// docs/SOCIAL.md U7) on the nav and on Menu, the avatar itself on a phone.
 const accountDrawn = (page) => page.evaluate(() => {
-  const nav = document.querySelector(".site-head .nav a[data-account]");
+  const avatar = document.querySelector(".site-head .nav .account-menu summary");
   const menu = document.querySelector(".site-head .menu summary");
-  return { href: nav?.getAttribute("href") || "", count: nav?.querySelector(".count")?.textContent || "",
-    visible: Boolean(nav && nav.offsetParent), menu: menu?.querySelector(".count")?.textContent || "" };
+  return { count: avatar?.querySelector(".count")?.textContent || "", visible: Boolean(avatar && avatar.offsetParent),
+    menu: menu?.querySelector(".count")?.textContent || "" };
 });
 
 /// The feed as drawn: [{kind, text, href, new}].
@@ -318,11 +320,17 @@ try {
   check(`her comment: ${comment.status}, and Bob told at once, a dry run (${JSON.stringify(comment.body.told)})`,
     comment.status === 201 && comment.body.told?.state === "dry" && Boolean(comment.body.told?.id));
   const counted = await api("/api/people?op=feed_count", { token: bob.access_token });
-  check(`Bob's count, since he opened the feed: ${counted.body.count}`, counted.body.count === 2);
+  // Since supabase/notifications.sql, what happened to his own barn is
+  // his notifications, apart from the feed (docs/SOCIAL.md U7); the count
+  // on his avatar is the two together, as the app's Account says it.
+  const split = typeof counted.body.notifications === "number";
+  check(`Bob's count, since he opened the feed: ${counted.body.count}${split
+    ? ` (notifications ${counted.body.notifications}, feed ${counted.body.feed})` : ""}`,
+  counted.body.count === 2 && (!split || (counted.body.notifications === 2 && counted.body.feed === 0)));
   await bobPage.goto(`${site}/gallery`, { waitUntil: "load" });
-  await until(bobPage, () => document.querySelector(".site-head .nav a[data-account] .count"), "Account's count");
+  await until(bobPage, () => document.querySelector(".site-head .account-menu summary .count"), "the avatar's count");
   let account = await accountDrawn(bobPage);
-  check(`the site's header: Account ${account.count}, leading to ${account.href}`, account.count === "2" && account.href === "/feed");
+  check(`the site's header: his avatar says ${account.count}`, account.count === "2" && account.visible);
   await shot(bobPage, "4_account_count.png");
   const bobPhone = await context({ as: bob, width: 390, height: 844, phone: true });
   const phonePage = await bobPhone.newPage();
@@ -336,21 +344,34 @@ try {
 
   if (withApp) await theApp("before", 2);
 
-  await bobPage.click(".site-head .nav a[data-account]");
-  await bobPage.waitForURL("**/feed", { timeout: 20000 });
-  await until(bobPage, () => document.documentElement.dataset.feed === "ready", "the feed again");
-  rows = await feedDrawn(bobPage);
+  // Opened from his avatar's menu, where his barn's news is.
+  const where = split ? "notifications" : "feed";
+  await bobPage.click(".site-head .account-menu summary");
+  await bobPage.click(`.site-head .account-menu a[data-place="${where}"]`);
+  await bobPage.waitForURL(`**/${where}`, { timeout: 20000 });
+  if (split) {
+    await until(bobPage, () => document.documentElement.dataset.notifications === "ready", "his notifications");
+    rows = await bobPage.evaluate(() => [...document.querySelectorAll("#groups .notice .lines li")].map((li) => ({
+      kind: li.dataset.kind, text: (li.querySelector(".what")?.textContent || "").replace(/\s+/g, " ").trim(),
+      href: li.querySelector("a")?.getAttribute("href") || "", new: /New/.test(li.textContent),
+      model: li.closest(".notice").dataset.model })));
+  } else {
+    await until(bobPage, () => document.documentElement.dataset.feed === "ready", "the feed again");
+    rows = await feedDrawn(bobPage);
+  }
   const fresh = rows.filter((one) => one.new).map((one) => one.kind);
-  check(`opened from Account: new are ${fresh.join(", ")}`, fresh.length === 2 && fresh.includes("comment") && fresh.includes("photo"));
+  check(`opened from his avatar's ${where}: new are ${fresh.join(", ")}`, fresh.length === 2 && fresh.includes("comment") && fresh.includes("photo"));
   const photoRow = rows.find((one) => one.kind === "photo");
   const commentRow = rows.find((one) => one.kind === "comment");
-  check(`"${photoRow?.text}" → ${photoRow?.href}`, /Ada Follows posted a photo of their build of your model “Follows Flow Barn”/.test(photoRow?.text || "")
+  check(`"${photoRow?.text}" → ${photoRow?.href}`, (split ? /Ada Follows posted a photo of their build/.test(photoRow?.text || "")
+    && photoRow?.model === barn.body.id : /Ada Follows posted a photo of their build of your model “Follows Flow Barn”/.test(photoRow?.text || ""))
     && /rainy Sunday/.test(photoRow?.text || "") && photoRow?.href === `/m/${barn.body.id}#photo-${kept.body.id}`);
-  check(`"${commentRow?.text}" → ${commentRow?.href}`, /Ada Follows commented on your model “Follows Flow Barn”/.test(commentRow?.text || "")
+  check(`"${commentRow?.text}" → ${commentRow?.href}`, (split ? /Ada Follows commented/.test(commentRow?.text || "")
+    : /Ada Follows commented on your model “Follows Flow Barn”/.test(commentRow?.text || ""))
     && /swings both ways/.test(commentRow?.text || "") && new RegExp(`^/m/${barn.body.id}#comment-\\d+$`).test(commentRow?.href || ""));
-  check("the older two are not new now", rows.filter((one) => !one.new).length === 2);
+  if (!split) check("the older two are not new now", rows.filter((one) => !one.new).length === 2);
   account = await accountDrawn(bobPage);
-  check(`on /feed, Account has no count (${account.count || "none"})`, account.count === "");
+  check(`on /${where}, his avatar has no count (${account.count || "none"})`, account.count === "");
   await shot(bobPage, "6_feed_opened.png", true);
   const cleared = await api("/api/people?op=feed_count", { token: bob.access_token });
   check(`the count cleared: ${cleared.body.count}`, cleared.body.count === 0);
@@ -359,13 +380,13 @@ try {
   const whole = (await api("/api/people?op=feed", { token: bob.access_token })).body.rows || [];
   const older = await api(`/api/people?op=feed&before=${encodeURIComponent(whole[1]?.at || "")}`, { token: bob.access_token });
   check(`older than the second row: ${(older.body.rows || []).map((one) => one.kind).join(", ")}`,
-    whole.length === 4 && JSON.stringify((older.body.rows || []).map((one) => one.link)) === JSON.stringify(whole.slice(2).map((one) => one.link)));
+    whole.length === (split ? 2 : 4) && JSON.stringify((older.body.rows || []).map((one) => one.link)) === JSON.stringify(whole.slice(2).map((one) => one.link)));
   const badly = await api("/api/people?op=feed&before=yesterday", { token: bob.access_token });
   check(`a time that is not one: ${badly.status}`, badly.status === 400);
   await bobPage.goto(`${site}/gallery`, { waitUntil: "load" });
   await bobPage.waitForTimeout(1500);
   account = await accountDrawn(bobPage);
-  check(`back in the gallery: Account ${account.count || "with no count"}, to ${account.href}`, account.count === "" && account.href === "/profile");
+  check(`back in the gallery: his avatar ${account.count || "with no count"}`, account.count === "" && account.visible);
   if (withApp) await theApp("after", 0);
 
   // The day's email: Ada's comment sent it (the first after a quiet day),

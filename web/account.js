@@ -140,6 +140,8 @@ export function signOut() {
   try {
     localStorage.removeItem(KEY);
     sessionStorage.removeItem(ACCESS);
+    // Who the header's avatar was (web/follow.js).
+    sessionStorage.removeItem("brickworks.me");
   } catch {
     // Nothing kept, nothing to forget.
   }
