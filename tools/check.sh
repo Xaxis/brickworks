@@ -22,36 +22,36 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-# The probes run headless, in this order. The MCP first of all: it is the
+# The probes run headless, in this order, each NAME or NAME:ARGS for what
+# it is given after its `--`. The MCP first of all: it is the
 # app's AI interface, and it falls behind with nothing failing — a tool
 # list four tools stale, a menu command no session can reach (mcp_sync);
 # and the window's commands as tools, each read back off the model
 # (app_tools).
-headless=(mcp_sync app_tools element_files element modify part_tool dimensions
-  snap stability history restore store versions empty_save instructions
-  playback responsive search inventory mosaic world_view controls snot technic
-  joints exact by_connector joint_check flex clutch mechanism axle variety
-  repeat usage kinds rules angled section sections scale bigmodel quit edit
-  selection mirror scanner attach import lxf io mesh_export select reader
-  camera brain keeping glyph fetch fetch_retry busy dropped vocab reference
-  search_quality moved availability holds pieces mcp claude_code techniques
-  patterns face features creative rooms style figure_joints armature turned
-  detail chat sketch project example_name minifig print sticker mould brickify
-  claude_undo design_undo first_design_undo undo_ids read_only collection
-  share_pages tested new_window best_of_two selection_fit swing_bound
-  table_race technic_hand ahead art_plan autosave_paths balance brickify_buy
-  build_steps cabin_glass cabins carried_at_once carried_fetch decor
-  design_memory dome dress exact_cost fidelity flex_skin gear_ratio
+headless=(mcp_sync app_tools element_files element modify part_tool dimensions snap
+  stability history restore store versions empty_save instructions playback
+  responsive search inventory mosaic world_view controls snot technic joints
+  exact by_connector joint_check flex clutch mechanism axle variety repeat
+  usage kinds rules angled section sections scale bigmodel quit edit selection
+  mirror scanner attach import lxf io mesh_export select reader camera brain
+  keeping glyph fetch fetch_retry busy dropped vocab reference search_quality
+  moved availability holds pieces mcp claude_code techniques patterns face
+  features creative rooms style figure_joints armature turned detail chat
+  sketch project example_name minifig print sticker mould brickify claude_undo
+  design_undo first_design_undo undo_ids read_only collection share_pages
+  tested new_window best_of_two selection_fit swing_bound
+  "table_race:--tries=8" technic_hand ahead art_plan autosave_paths balance
+  brickify_buy build_steps cabin_glass cabins carried_at_once carried_fetch
+  decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
   hinged_panels mcp_walk mcp_walk3 mesh_formats own_copies page_places
   parts_only print_search shapes snippets standing subject_words surface
-  unrestored update viewer_tools worker_first_run)
+  unrestored update viewer_tools worker_first_run grab)
 # In a window, each as its own header says (tools/probe.sh: the size it
-# names, on Xvfb and the GPU, a data folder of its own). NAME, or
-# NAME:ARGS for what the probe is given after its `--`.
-windowed=(motions motions_panel motions_render telescope floor share_view
-  share_play simulate grab typing slow_frames look progress render
-  collection_ui library animation balance_view outline outline_cost placing
-  offgrid booklet_edit "command:--judge")
+# names, on Xvfb and the GPU, a data folder of its own), NAME or NAME:ARGS.
+windowed=(motions motions_panel motions_render telescope floor share_view share_play
+  simulate typing slow_frames look progress render collection_ui library
+  animation balance_view outline outline_cost placing offgrid booklet_edit
+  "command:--judge")
 # Not run here, each with why. A probe goes here only for one of these
 # reasons; a check that is merely slow or failing is still a check.
 out=(
@@ -77,7 +77,7 @@ out=(
 # (claude_undo, surface; 2026-10-22). So the run stops here, before it
 # starts, naming each. And a name in a list with no probe of that name.
 probes=$(ls src/dev/*_probe.gd | sed 's#^src/dev/##; s#_probe\.gd$##' | sort)
-listed=$({ printf '%s\n' "${headless[@]}" "${windowed[@]%%:*}" "${out[@]}"
+listed=$({ printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" "${out[@]}"
   # and those run by hand below, each by its script
   grep -v '^\s*#' tools/check.sh | grep -oE 'src/dev/[a-z0-9_]+_probe\.gd' \
     | sed 's#^src/dev/##; s#_probe\.gd$##'
@@ -129,7 +129,7 @@ unproven=0
 
 run() {
   local label="$1"; shift
-  local output status
+  local output status took started=$SECONDS
   # Once, not twice. This used to run each probe a second time to read
   # its exit code, which doubled the slowest part of the suite to save
   # a variable.
@@ -138,8 +138,11 @@ run() {
   # on a busy machine, and the suite sat at "on screen" until somebody
   # noticed. The windowed probes also starve on a machine shared with
   # other projects' suites — above about load twelve they wait for frames
-  # that never come — and that is not a pass either.
-  output=$(timeout "${PROBE_SECONDS:-420}" "$@" 2>&1); status=$?
+  # that never come — and that is not a pass either. Ten minutes: a probe
+  # that needs longer on a calm box is not in the suite (out, above).
+  output=$(timeout "${PROBE_SECONDS:-600}" "$@" 2>&1); status=$?
+  # Each line says how long, so a probe growing toward the bound is seen.
+  took="($((SECONDS - started))s)"
   # Godot exits 0 when a script fails to parse. So a probe with a typo
   # in it reported as passing, and did so for as long as it took
   # somebody to read the file — the stability probe had not run since
@@ -156,13 +159,13 @@ run() {
   if [ "$status" = 124 ]; then
     # Not a pass and not a failure: nothing was proven either way, and
     # saying "ok" or "FAIL" would both be claims nobody can stand up.
-    printf '  ----  %s TIMED OUT after %ss\n' "$label" "${PROBE_SECONDS:-420}"
+    printf '  ----  %s TIMED OUT after %ss\n' "$label" "${PROBE_SECONDS:-600}"
     printf '          nothing was proven. Check the load: these starve above about 12\n'
     unproven=$((unproven + 1))
   elif [ "$status" = 0 ]; then
-    printf '  ok    %s\n' "$label"
+    printf '  ok    %s  %s\n' "$label" "$took"
   else
-    printf '  FAIL  %s (exit %s)\n' "$label" "$status"
+    printf '  FAIL  %s (exit %s)  %s\n' "$label" "$status" "$took"
     # Godot says a crash and a script error in capitals, which this filter
     # once missed: bigmodel failed m87's suite with nothing said under it,
     # and passed alone (2026-10-19). Every probe ends on the same leak
@@ -175,8 +178,10 @@ run() {
   fi
 }
 
+# probe NAME [ARGS...]: headless, ARGS given after the probe's `--`.
 probe() {
-  run "$1" godot --headless --path . --script "src/dev/$1_probe.gd"
+  local name=$1; shift
+  run "$name" godot --headless --path . --script "src/dev/${name}_probe.gd" ${1:+-- "$@"}
 }
 
 echo "── the project parses ──"
@@ -236,8 +241,10 @@ else
 fi
 
 echo "── godot probes ──"
-for name in "${headless[@]}"; do
-  probe "$name"
+for spec in "${headless[@]}"; do
+  name=${spec%%:*}; args=()
+  [ "$spec" = "$name" ] || read -r -a args <<< "${spec#*:}"
+  probe "$name" "${args[@]}"
 done
 
 # Needs a real window: the previews are drawn by a SubViewport, and a

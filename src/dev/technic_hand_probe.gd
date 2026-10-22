@@ -265,7 +265,9 @@ func _a_clip_on_a_bar() -> void:
 	_ok(not _room("30374", beside), "the same bar 2 LDU off the stud's line is refused by hand")
 	_builder.put_part("30374", 0, beside)
 	said = _design_says()
-	_ok(said.contains("overlap"), "...and by check_design: %s" % said)
+	# The check seats a part a few LDU off its joint onto it (since
+	# 2026-10-14), which is not passing it where it was put either.
+	_ok(said.contains("overlap") or said.contains("Seated"), "...and by check_design: %s" % said)
 
 
 ## A clip on a plate's handle. 2540's bar runs beside the plate between
@@ -325,7 +327,8 @@ func _a_clip_on_a_handle() -> void:
 	_ok(not _room("4085c", beside), "the same clip 2 LDU off the bar's line is refused by hand")
 	_builder.put_part("4085c", 0, beside)
 	said = _design_says()
-	_ok(said.contains("overlap"), "...and by check_design: %s" % said)
+	# Refused, or seated on the bar it missed: not passed where it was put.
+	_ok(said.contains("overlap") or said.contains("Seated"), "...and by check_design: %s" % said)
 
 
 ## A bar aimed at a clip: through it, joined.
