@@ -92,6 +92,11 @@ whole cycle.
 
 ### Fixed
 
+- A dome or a ball of hinged panels that Claude lays as one shell builds
+  again. Its crown, a big inverted dish, was set down on a disc of plates:
+  the studs ran into its rim and nothing held it, so the check refused
+  every such shell. The dish is now held by round plates up into the 2 x 2
+  under its middle, as a builder holds one, with tiles under its rim.
 - A part Claude hangs on a hinge brick (3937) now tips whichever way it is
   asked. The hinge brick's top tips one way only, and the app laid it facing
   the same way whatever the angle, so a wing, a flap or a lid tipped the

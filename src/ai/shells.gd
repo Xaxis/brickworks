@@ -71,8 +71,8 @@ const RINGS: Array = [
 ## The dishes a crown is made of, [part, radius in studs, plates from its
 ## rim up to the 2 x 2 under its middle], smallest first. Each is hollow
 ## out to its rim, and that 2 x 2 is all that holds it: set down on studs,
-## its rim sits on them and nothing joins it. The 4 x 4 (3960) is solid
-## underneath but for one hole at its middle, off the column's studs.
+## its rim sits on them and nothing joins it. The 4 x 4 (3960) is not one:
+## what joins it is a hole at its rim for one stud at its middle.
 const CROWNS: Array = [["44375b", 3.0, 1], ["3961", 4.0, 2], ["50990b", 5.0, 2]]
 
 ## Runs of plates, bricks and tiles a stud wide, by length in studs.

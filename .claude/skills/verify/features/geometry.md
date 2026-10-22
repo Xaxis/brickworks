@@ -139,12 +139,18 @@ can occupy the same millimetre.
   floating. Plate runs never end in a stud-long piece (`_lay_run`). Where the
   strips would crowd, the crown: discs of plates in the panels' colour from
   the top band's high ends, stepping in as the sphere does, under the dish
-  that covers the last (`Plan._crown`). Every other strip stopping there and
-  the rest going on a step up was tried and taken out: those had to be
-  fourteen studs wide, stood out like wings, and a real session said so and
-  built a stepped fill instead; one flat disc read as a lid on a cone.
-  `hinged_panels_probe` (`-- --shells` for these alone) lays a dome 24 and 32
-  and a ball 28, checks each buildable with every hinge's halves joined,
+  that covers the last (`Plan._crown`). A dish is hollow out to its rim and
+  held only by the 2 x 2 under its middle, two plates up inside (`CROWNS`):
+  round plates go up into that, and the last disc is tiles wherever a stud
+  would reach under the dish. Set on the disc's studs, every shell's dish
+  was held by nothing with a ring of studs in its rim. Every other strip
+  stopping there and the rest going on a step up was tried and taken out:
+  those had to be fourteen studs wide, stood out like wings, and a real
+  session said so and built a stepped fill instead; one flat disc read as a
+  lid on a cone.
+  `hinged_panels_probe` (`-- --shells` for these alone) lays a dome 24, 29
+  (the one size crowned by the 8 x 8 dish) and 32 and a ball 28, checks each
+  buildable with every hinge's halves joined,
   refuses a ball 16 (pointing at skins), a dome 16 (at the smooth dome) and
   a dome 40, and casts a ray from the centre every quarter degree to measure the widest see-through gap within
   a band and between bands, and how open it is every five degrees up. Half a
@@ -153,7 +159,7 @@ can occupy the same millimetre.
   and `MOST_GAP` (24 LDU) and `MOST_OPEN` (3%) hold them there.
   `-- --measure=DESIGN.json,X,Y,Z,R` measures another build's design
   (4042e8f's dome: 150.7 LDU, 19.9% open on the catalogue with true covers).
-  `-- --dome_ldr= --big_ldr= --ball_ldr= --band_ldr=` write them out to look at
+  `-- --dome_ldr= --dome29_ldr= --big_ldr= --ball_ldr= --band_ldr=` write them out to look at
   (`bench_views.gd --views=corner,front,right,back,left,top`).
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
