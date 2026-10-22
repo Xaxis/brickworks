@@ -9,9 +9,9 @@
 ## DIR/<id>.webp or DIR/<id>.failed is not there yet is opened and drawn; a
 ## model with no picture gets the .failed, saying why, so a second run does
 ## not try it again. It leaves after N models (all of them by default), or
-## after the model it is on when another job waits for the GPU, and the
-## builder starts it again on a fresh lease: a lease is held for a model at a
-## time, never for the whole library.
+## once it has held the GPU for HOLD_MS when another job waits for it, and the
+## builder starts it again on a fresh lease: a lease is held for seconds,
+## never for the whole library.
 extends SceneTree
 
 const COVER := Vector2i(512, 384)
@@ -21,6 +21,11 @@ const MARGIN := 0.06
 ## is what a picture's empty rows and columns are.
 const GROUND := Color(0.93, 0.94, 0.96)
 const QUALITY := 0.82
+## How long a drawer keeps the lease when another job waits for it: about
+## what starting one costs, and a model is drawn in 0.1 to 6 s. Leaving
+## after every model when the GPU was busy drew one model a lease, each
+## behind the queue again (2026-10-22).
+const HOLD_MS := 20000
 
 
 func _initialize() -> void:
@@ -75,6 +80,7 @@ func _run() -> void:
 
 	var drawn: int = 0
 	var failed: int = 0
+	var since: int = Time.get_ticks_msec()
 	for line: String in FileAccess.get_file_as_string(list).split("\n", false):
 		var bits: PackedStringArray = line.split("\t")
 		if bits.size() < 2:
@@ -85,7 +91,7 @@ func _run() -> void:
 		var fail: String = out.path_join(id + ".failed")
 		if FileAccess.file_exists(webp) or FileAccess.file_exists(fail):
 			continue
-		if drawn + failed >= most or (drawn + failed > 0 and _others_wait()):
+		if drawn + failed >= most or (Time.get_ticks_msec() - since > HOLD_MS and _others_wait()):
 			print("library_covers: leaving the GPU after %d" % (drawn + failed))
 			break
 		print("library_covers: opening %s" % id)

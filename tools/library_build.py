@@ -13,6 +13,9 @@ it, beside the parts:
     tools/library_build.py sample --to DIR [--count 30]
                                   a few models and their covers from DIR, for
                                   working on the library's screen without the store
+    tools/library_build.py sheet  [--count 60]
+                                  contact sheets of that many covers, spread over
+                                  the library, to look through by eye
 
 DIR is bench/results/library-2026-10-22 unless said. Nothing is uploaded here:
 tools/storage_library.py sends DIR/library/ to the store.
@@ -38,9 +41,10 @@ says it is the B model; otherwise each of a set's models is one of its own
 asks (rule 1); a set's name says only which set a model is of (rule 6).
 
 Covers are drawn by src/dev/library_covers.gd, the app's own ModelShot, in a
-window on the GPU's lease. One drawer takes up to --most models and leaves
-early when another job waits for the GPU, so the lease is never held long
-against anyone; the next drawer queues for it again.
+window on the GPU's lease. One drawer takes up to --most models, and leaves
+after twenty seconds when another job waits for the GPU, so the lease is never
+held long against anyone; the next drawer queues for it again. A model draws
+in 0.1 to 6 s; starting a drawer is the slow part.
 """
 from __future__ import annotations
 
@@ -349,6 +353,31 @@ def sample(source: Path, to: Path, count: int) -> int:
     return 0
 
 
+def sheet(out: Path, count: int) -> int:
+    """Contact sheets of [count] covers taken evenly through the index, thirty
+    a sheet, each with its id under it, in DIR/sheets/."""
+    from PIL import Image, ImageDraw
+
+    models = json.loads((out / "library" / "index.json").read_text())["models"]
+    step = max(1, len(models) // max(1, count))
+    picked = models[::step][:count]
+    across, tile, label = 6, (256, 192), 16
+    (out / "sheets").mkdir(exist_ok=True)
+    for page in range(0, len(picked), 30):
+        some = picked[page:page + 30]
+        rows = (len(some) + across - 1) // across
+        board = Image.new("RGB", (across * tile[0], rows * (tile[1] + label)), "white")
+        draw = ImageDraw.Draw(board)
+        for n, m in enumerate(some):
+            x, y = (n % across) * tile[0], (n // across) * (tile[1] + label)
+            board.paste(Image.open(out / m["cover"]).convert("RGB").resize(tile), (x, y))
+            draw.text((x + 4, y + tile[1] + 2), f"{m['id'][4:]} {m['parts']}", fill="black")
+        where = out / "sheets" / f"sheet-{page // 30 + 1}.png"
+        board.save(where)
+        print(f"sheet: {where} ({len(some)} covers)")
+    return 0
+
+
 def check(out: Path) -> int:
     index = json.loads((out / "library" / "index.json").read_text())
     wrong = problems(index, out)
@@ -361,7 +390,7 @@ def check(out: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("what", choices=["stage", "covers", "check", "sample"])
+    parser.add_argument("what", choices=["stage", "covers", "check", "sample", "sheet"])
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--to", type=Path, help="sample: where to write it")
     parser.add_argument("--count", type=int, default=30)
@@ -377,6 +406,8 @@ def main() -> int:
         return covers(out, args.most, args.run_timeout)
     if args.what == "check":
         return check(out)
+    if args.what == "sheet":
+        return sheet(out, args.count)
     if not args.to:
         parser.error("sample needs --to")
     return sample(out, args.to.resolve(), args.count)
