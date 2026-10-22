@@ -390,8 +390,8 @@ static func pair_of(a: int, b: int) -> int:
 ## it, and a builder turns it so (Sections reads it as a joint that turns).
 ##
 ## A "seated" pair is seated where some box of one part's own cover goes
-## into the other's ([method _seated_in]); one that only touches, two turned
-## covers side by side, is "beside" too. Asked only [param everywhere].
+## into the other's; one that only touches, two turned covers side by side,
+## is "beside" too, once [method beside] is asked.
 ##
 ## [param everywhere] false reads a stud's tip only where the lift cannot
 ## tell: on a part the lift reaches across an overlap, and for a stud not
@@ -567,23 +567,35 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			beside[key] = true
 	for key: int in studs:
 		seated.erase(key)
-	# A pair the lift reaches only where the two already overlap is seated
-	# where one part's own boxes go into the other's; where they only touch,
-	# it is two turned covers side by side, joined by nothing. Not asked of
-	# the status bar's check, which weighs what rests on what and no joint.
-	for key: int in seated:
-		if beside.has(key) or not everywhere:
-			continue
-		if placed.is_empty():
-			for brick: BrickWorld.Brick in contacts.get("bricks", []):
-				placed[brick.id] = brick
-		var one: BrickWorld.Brick = placed.get(key >> 32)
-		var other: BrickWorld.Brick = placed.get(key & 0xFFFFFFFF)
-		if one != null and other != null and not _seated_in(one, other, library):
-			beside[key] = true
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
 		"seated": seated, "overlapped": overlapped, "pivots": pivots, "beside": beside}
 	contacts[kept] = out
+	return out
+
+
+## Of [param contacts]' seated pairs ([method stud_joints]' "seated"), those
+## that only touch, joined by nothing: its "beside", and each seated pair
+## whose own boxes do not go one into the other ([method _seated_in]): two
+## turned covers side by side. What joins a section asks it; Balance, which
+## weighs what rests on what, does not, and stud_joints stays as quick as it
+## was: read with it, 8466-1's 589 seated pairs took 28 ms to 93-184.
+## Worked out once and kept with the joints.
+static func beside(contacts: Dictionary, library: PartLibrary, lattice: BrickLattice) -> Dictionary:
+	var joints: Dictionary = stud_joints(contacts, library, lattice)
+	if joints.has("beside read"):
+		return joints["beside"]
+	var out: Dictionary = joints["beside"]
+	var placed: Dictionary = {}
+	for brick: BrickWorld.Brick in contacts.get("bricks", []):
+		placed[brick.id] = brick
+	for key: int in joints["seated"]:
+		if out.has(key):
+			continue
+		var one: BrickWorld.Brick = placed.get(key >> 32)
+		var other: BrickWorld.Brick = placed.get(key & 0xFFFFFFFF)
+		if one != null and other != null and not _seated_in(one, other, library):
+			out[key] = true
+	joints["beside read"] = true
 	return out
 
 
@@ -647,6 +659,12 @@ static func _seated_in(one: BrickWorld.Brick, other: BrickWorld.Brick, library: 
 		for c: int in 3:
 			if absf(at.basis[c].length() - 1.0) > 0.01:
 				return true
+	# Two parts square to the lattice and on it have covers to the cell: what
+	# they share is plastic in plastic. Only a turned cover is rounded out.
+	if BrickLattice.is_square_to_grid(one.transform.basis) and BrickLattice.is_square_to_grid(other.transform.basis) \
+			and not BrickLattice.is_off_lattice(one.transform.origin) \
+			and not BrickLattice.is_off_lattice(other.transform.origin):
+		return true
 	# The other's boxes in one's own frame.
 	var between: Transform3D = one.transform.orthonormalized().affine_inverse() \
 		* other.transform.orthonormalized()
@@ -659,6 +677,10 @@ static func _seated_in(one: BrickWorld.Brick, other: BrickWorld.Brick, library: 
 		var reach := Vector3.ZERO
 		for c: int in 3:
 			reach += (axes[c] * b_half[c]).abs()
+		var near: Vector3 = a_mesh.bounds.size * 0.5 + Vector3.ONE * a_cell + reach \
+			- (b_mid - a_mesh.bounds.get_center()).abs()
+		if near[near.min_axis_index()] <= SEAT_DEPTH:
+			continue
 		for a_box: AABB in a_mesh.boxes:
 			var a_half: Vector3 = a_box.size * a_cell * 0.5
 			var gap: Vector3 = b_mid - (a_box.position * a_cell + a_half)

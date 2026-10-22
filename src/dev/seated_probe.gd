@@ -109,11 +109,17 @@ func _bricks() -> Array:
 	return out
 
 
+## The shared reading of [param bricks], with what only touches read too
+## (Stability.beside, as what joins a section reads it).
 func _joints(bricks: Array) -> Dictionary:
 	var judge := Stability.new()
 	judge.library = _library
 	judge.lattice = _builder.lattice
-	return Stability.stud_joints(judge.contacts(bricks), _library, _builder.lattice)
+	var contacts: Dictionary = judge.contacts(bricks)
+	var joints: Dictionary = Stability.stud_joints(contacts, _library, _builder.lattice)
+	if judge.has_method("beside"):
+		judge.call("beside", contacts, _library, _builder.lattice)
+	return joints
 
 
 func _of(part_id: String) -> Array:
@@ -270,12 +276,27 @@ func _survey(path: String) -> void:
 	if not await _open(path):
 		return
 	var bricks: Array = _bricks()
-	var joints: Dictionary = _joints(bricks)
+	var judge := Stability.new()
+	judge.library = _library
+	judge.lattice = _builder.lattice
+	var contacts: Dictionary = judge.contacts(bricks)
+	# What Balance pays for the reading, best of three.
+	var least: int = 1 << 30
+	for _n: int in 3:
+		contacts.erase("joints")
+		var began: int = Time.get_ticks_usec()
+		Stability.stud_joints(contacts, _library, _builder.lattice)
+		least = mini(least, Time.get_ticks_usec() - began)
+	var joints: Dictionary = contacts["joints"]
+	var began: int = Time.get_ticks_usec()
+	if judge.has_method("beside"):
+		judge.call("beside", contacts, _library, _builder.lattice)
+	var told: float = (Time.get_ticks_usec() - began) / 1000.0
 	var beside: Dictionary = joints.get("beside", {})
 	var pivots: Dictionary = joints.get("pivots", {})
-	print("%s: %d parts, %d stud pairs, %d seated (%d beside), %d pivots" % [path.get_file(), bricks.size(),
-		(joints["studs"] as Dictionary).size(), (joints["seated"] as Dictionary).size(), beside.size(),
-		pivots.size()])
+	print("%s: %d parts, %d stud pairs, %d seated (%d beside), %d pivots, read in %.1f ms, beside in %.1f" % [
+		path.get_file(), bricks.size(), (joints["studs"] as Dictionary).size(),
+		(joints["seated"] as Dictionary).size(), beside.size(), pivots.size(), least / 1000.0, told])
 	for key: int in joints["seated"]:
 		if not beside.has(key):
 			print("  seated: %s in %s" % [_name(key >> 32), _name(key & 0xFFFFFFFF)])

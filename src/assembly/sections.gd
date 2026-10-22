@@ -252,7 +252,9 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = lattice
-	var joints: Dictionary = Stability.stud_joints(judge.contacts(bricks), library, lattice)
+	var contacts: Dictionary = judge.contacts(bricks)
+	var joints: Dictionary = Stability.stud_joints(contacts, library, lattice)
+	var beside: Dictionary = Stability.beside(contacts, library, lattice)
 	var studs: Dictionary = joints["studs"]
 	var under: Dictionary = joints["under"]
 	var entries: Array = []
@@ -269,8 +271,7 @@ static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice)
 		overlapped.merge(joints["pivots"])
 	var seated: Dictionary = {}
 	for key: int in joints["seated"]:
-		if not (joints["beside"] as Dictionary).has(key) and own.has(key >> 32) \
-				and own.has(key & 0xFFFFFFFF):
+		if not beside.has(key) and own.has(key >> 32) and own.has(key & 0xFFFFFFFF):
 			seated[key] = 1
 	var out: Dictionary = {"studs": studs, "under": under, "overlapped": overlapped,
 		"seated": seated, "links": seated.duplicate()}
@@ -1456,7 +1457,9 @@ func joins(ids: Dictionary) -> Dictionary:
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = lattice
-	var joints: Dictionary = Stability.stud_joints(judge.contacts(bricks), library, lattice)
+	var contacts: Dictionary = judge.contacts(bricks)
+	var joints: Dictionary = Stability.stud_joints(contacts, library, lattice)
+	var touching: Dictionary = Stability.beside(contacts, library, lattice)
 	var under: Dictionary = joints["under"]
 	var on: Dictionary = {}
 	var carries: Dictionary = {}
@@ -1476,7 +1479,7 @@ func joins(ids: Dictionary) -> Dictionary:
 		into[theirs] = int(into.get(theirs, 0)) + count
 		studs += count
 	for key: int in joints["seated"]:
-		if not (joints["beside"] as Dictionary).has(key) and ids.has(key >> 32) != ids.has(key & 0xFFFFFFFF):
+		if not touching.has(key) and ids.has(key >> 32) != ids.has(key & 0xFFFFFFFF):
 			overlapped.append(key)
 	# Pins, axles and clips, between it and what is near it.
 	var box: AABB = bounds_of(ids.keys()).grow(BrickLattice.STUD)
