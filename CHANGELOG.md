@@ -32,9 +32,20 @@ whole cycle.
   block itself, with the model past it, stayed upright. The two are now laid
   on their side together, two blocks deep: 44% of the steep faces of the
   same three models at 48 studs, from 42%, in 2% more parts.
+- Brickify turns a side on its side from 65 degrees, where it was 69: 46% of
+  the steep faces of the same three models at 48 studs, from 44%, the steep
+  faces 7.2% nearer the model than laid with their studs up, every build in
+  8% more parts than before any were turned and in the same time.
 
 ### Fixed
 
+- Brickify no longer leaves out the model beside a side it turned. Where a
+  side laid on its side ended, the model past it, a stud wide, was held to
+  the rest only side by side and was taken out before anything could join
+  it: a small bunny lost 2% of itself. It is now joined to the rest first.
+  A brick with studs on its side that such a side hangs from is no longer
+  laid again as a plain brick while pieces are being joined, which had let
+  most of the side fall away.
 - A hinge turns only as far as its parts let it. The two halves of the
   joint being turned were never tested against each other, so a hinge
   brick's top swung through its base either way, though the base's square

@@ -106,7 +106,10 @@ studs, against a greedy stack of standard bricks and legolization:
    27%, in 4% more parts, still short of 80%; nothing faces down yet. Its
    fifth round: a side two cubes deep where it leans out, 44%; from 60
    degrees and the bands between phases 58%, but those leave the model out
-   and are not in.*
+   and are not in. Its sixth round found why: the core beside a shell, cut
+   off before the stitch could join it. Joined, and turned from 65 degrees,
+   46% and 7.2% nearer the model than studs up, every run 98% or more in a
+   part, in 8% more parts and m137's time.*
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
@@ -153,7 +156,7 @@ with a price and a booklet attached (section 4, "The target").
 | **Blender voxel add-ons** (a free brick generator, Legolizer, LegoIT) [lego-gen] | Free or paid | Voxels for a render | No | No | No | Texture | No | Mesh |
 | **AI stylisers** (Tripo "Stylize", Neural4D) [tripo-node] | Paid | A mesh styled as bricks, voxels or Minecraft blocks [tripo-node] | No | No | No | Texture | No | GLB |
 | **Small open repositories** [img2lego] [brickalize] [brickr-qt] [cv2ldr] | Mostly no licence, 0–48 stars | Bricks (img2lego claims slopes, wedges, curved slopes) | Rarely | No | Connectivity at most | Some | Some write a BrickLink wanted list | LDraw or images |
-| **Brickworks Brickify** ([brickify.gd](../src/assembly/brickify.gd)) | Free, browser and desktop | Parts on the plate grid: bricks inside, plates at the surface | Straight, curved and inverted slopes, wedges, corner rounds, tiles | In four directions: steep sides laid as plates, slopes and tiles on their sides, every one held by a side stud (87087, 11211, 30414) and checked; 44% of the steep faces of Bob, the Stanford bunny and 3DBenchy at 48 studs (section 10's fifth round); none facing down | Checked as a design is (overlaps, support, one piece; not weighed), then mended: what fails is taken out | Oklab match to 41 current solid colours | The booklet; a BrickLink wanted list and Rebrickable CSV of any model | LDraw, `.io`, glTF, OBJ, STL. In: OBJ, STL, glTF, GLB, PLY, 3MF, VOX, FBX |
+| **Brickworks Brickify** ([brickify.gd](../src/assembly/brickify.gd)) | Free, browser and desktop | Parts on the plate grid: bricks inside, plates at the surface | Straight, curved and inverted slopes, wedges, corner rounds, tiles | In four directions: steep sides laid as plates, slopes and tiles on their sides, every one held by a side stud (87087, 11211, 30414) and checked; 46% of the steep faces of Bob, the Stanford bunny and 3DBenchy at 48 studs, from 65 degrees, each 98% or more of it in a part (section 10's sixth round); none facing down | Checked as a design is (overlaps, support, one piece; not weighed), then mended: what fails is taken out | Oklab match to 41 current solid colours | The booklet; a BrickLink wanted list and Rebrickable CSV of any model | LDraw, `.io`, glTF, OBJ, STL. In: OBJ, STL, glTF, GLB, PLY, 3MF, VOX, FBX |
 
 Not found anywhere: a mesh converter inside Mecabricks, LeoCAD, LDCad or
 Bricksmith; the LEGO Group's own is a photo mosaic of 1x1 plates [mosaic40179].
@@ -2726,6 +2729,187 @@ plates as before: nothing faces down.
 
 ![Bob at 48 studs, its parts on their sides in orange: m137, then the fifth round](brickify/unit5-bob-48-fifth.jpg)
 
+### Sixth round: what a turned side leaves out (2026-10-21)
+
+Asked again on m137, the bar unchanged: first find why a cube turned into a
+shell leaves some of the model it should cover in no part, which held back
+the fifth round's cubes from 60 degrees (51% turned), its shells two deep
+(54%) and its bands (58%), and fix it at the root, so a turned cube covers
+at least what the upright one did; then bring those back where 97% of each
+model stays in a part. Branch `snot85`, from `snot84` (`44fde7cd`). The
+three models at 24 and 48 studs.
+
+**In short.** The root is found and fixed: what a turned side lost was
+mostly the core beside it, not the shell. Slivers of the side's surface past
+a shell's end, and the plates of its own rows it laid nothing in, met the
+core only side by side and were cut off before the stitch could join them;
+and the stitch, left to join them, laid a shell's side-stud brick again as a
+plain one. Joined now in one pass, with sides turned from 65 degrees (from
+60 the probe's blue bunny is still under 97%): 46% of the steep faces at 48
+studs are turned (the fifth round 44%, m137 27%), 7.2% nearer the model than
+the studs-up build (6.3%), and at 24 studs 34% and 5.4%. Every run is one
+piece, passes, stands with no joint past its load, and is 98.2% or more in
+a part (the fifth round 98.0%); parts 1.08 times m137's at 48 and 1.09 at
+24; time 1.01 times m137's at 48, laid side by side (1.27). The bar's 80%
+and 30% are not met. The bands were not tried again, and nothing here lays
+studs down or reaches 3DBenchy's walls.
+
+**Where the model went** (`src/dev/snot_gaps.gd`, new: each model cell no
+part fills with the sides turned that the build with them upright fills,
+told by why). The blue bunny at 20 studs, on the fifth round's branch: 70
+cells of 2,072 in no part where the upright build leaves 10.
+
+| Why, the blue bunny at 20 studs, fifth round | Cells | Of the model |
+|---|---|---|
+| A piece of the core cut off beside a shell before the stitch (`cut_off`, every part beside a shell) | 43 | 2.08% |
+| of them, past a shell's end, a stud on | 23 | 1.11% |
+| of them, a shell's own plate given back to the core (`_give_back`) | 10 | 0.48% |
+| of them, over, under or off a corner of a shell | 10 | 0.48% |
+| A shell's plate no part of it fills | 9 | 0.43% |
+| Taken out by the mend | 9 | 0.43% |
+| The upright build misses it too | 9 | 0.43% |
+
+Every piece cut off was face to face with the core (the core's cells beside
+the shells are one region), so the core could hold it; it was a column of
+1 x 1 plates, bricks and a tile or slope a stud wide beside a shell, meeting
+the core only side by side, where no part crossed. The cut before the stitch
+(the first round's, so the stitch would not spend its rounds on them) took
+them out unjoined. Left to the stitch, two more things showed. The stitch's
+first way pairs a plate of a piece with one of the rest beside it and lays
+the two again across; it took a shell's brick with studs on its side for a
+plain brick and laid it again plain, and that shell lost 7 of its 10 parts.
+And it joins one piece a round: Bob at 48 studs stitched in 11.6 s where it
+had taken 4.5, and the Stanford bunny at 48 ran out of its 96 rounds.
+
+From 60 degrees, the shells' own plates were most of it: on the bunny at 28
+studs 101 cells (1.8%), none within half a stud of a part of the shell. A
+row on its side is two and a half plates and is laid only where every plate
+it reaches is the shell's: a side's edge three plates tall between two rows
+was laid by neither. What was left on the blue bunny from 60 was slivers
+past a shell's end beside other slivers, or beside only a tile under another
+shell: where two shells meet at a corner, a column a stud wide between them.
+
+**What changed** ([shapes.gd](../src/ai/shapes.gd),
+[brickify.gd](../src/assembly/brickify.gd)):
+
+1. **The slivers joined, all at once** (`Plan.join_cut_off`). Before the cut,
+   each piece of the core of 16 parts or fewer that touches a shell (what
+   `cut_off` takes out) is joined to the rest where one of its plates meets
+   one of the rest's side by side, the two laid again across (the stitch's
+   first way, `_pair`, `_across`); where a brick of the rest stands beside a
+   plate of one, that brick is laid again as three plates and paired on the
+   next pass. Four passes at most, each one map of the pieces; only what is
+   left is cut. Joined only where every part was beside a shell, the bunny at
+   48 studs from 65 degrees left the stitch 59 pieces (12.3 s of stitching);
+   any part, 22 (5.8 s).
+2. **A brick with studs on its side is not plain** (`Plan._plain`): the
+   stitch no longer lays a shell's side-stud brick again as a plain one.
+3. **From 65 degrees** (`Brickify.STEEP`, the sine 0.42 from 0.36).
+4. **What a turned side left, told** (`Shapes.last`: `shelled`,
+   `given_back`, `cut_cells`, `shell_frames`), for `snot_gaps.gd`, which also
+   draws the cells round one (`GAPS_AT`), says why the cubes there stayed
+   upright (`GAPS_WHY`) and lays it as `Brickify.build` does (`GAPS_BUILD`).
+
+**Tried**, the probe's bunnies (held to 97% in a part) and the three at 48
+studs (turned, nearer than studs up, parts and time against m137):
+
+| Run | Blue bunny at 20 | Bunny at 28 | Bunny at 40 | The three at 48 |
+|---|---|---|---|---|
+| The fifth round (`44fde7cd`) | 96.6% | 98.0% | 98.6% | 44%, 6.3%, 1.06, 1.27 |
+| No cut before the stitch, side-stud bricks not plain | 98.1% | 98.6% | | Bob's stitch 11.6 s from 4.5; the bunny's runs out of rounds |
+| From 69, joined where every part is beside a shell | 97.3% | 98.6% | 98.8% | 43%, 6.4%, 1.07, 1.31 |
+| That, a row half a plate proud | 97.2% | 98.6% | 98.9% | 42%; 3DBenchy at 48 a 1 x 2 on one stud, 8.4 times its load |
+| From 60, joined | 96.2% | 97.1% | 98.4% | 52%, 8.6%, 1.12 (Bob 1.16), 1.26 |
+| From 60, joined, half a plate proud | 96.3% | 98.4% | | |
+| From 60, joined, a shell taking what it cuts off past its end | 96.4% | 97.1% | | |
+| From 63 (sine 0.46) | 96.6% | 97.7% | | 50%, 7.9%, 1.11 |
+| From 65, joined where every part is beside a shell | 97.6% | 98.1% | 98.7% | 46%, 7.2%, 1.09; the bunny's stitch 59 tries |
+| From 65, joined where any part is (kept) | 97.8% | 98.3% | 98.8% | 46%, 7.2%, 1.08, 1.01 |
+
+- *Half a plate proud*: a row's half plate at its foot or head may be the
+  shell's own air. From 60 degrees it took the bunny at 28 studs from 97.1%
+  to 98.4% (its shells' own plates 101 cells to 27); from 69 it moved the
+  bunnies a tenth of a point, and 3DBenchy's core at 48 studs, laid round the
+  new rows, hung a 1 x 2 brick on one stud of a 1 x 4, 54 g, 8.4 times its
+  working load. Out.
+- *A shell taking what it cuts off*: a piece left after the join whose every
+  plate is in a shell's rows and depth, in its lanes or the lane past either
+  end, given to that shell and the shell tried again with it. 3 cells of the
+  blue bunny's 77 lost. Out.
+- *From 60 and 63 degrees*: the blue bunny stays under 97%, and from 60 Bob
+  at 48 studs is 1.16 times m137's parts. Out; 65 holds every check here.
+  The blue bunny at 20 studs is the narrowest: 97.6% from 65, 96.6% from 63.
+- *The bands* were not tried again: a row on its side is two and a half
+  plates, so a band of three or four leaves half a plate to a plate and a
+  half of the model in no part all along it, which the fifth round measured
+  (Bob and the bunny at 24 studs a point and a half less in a part); joining
+  what the core is cut into does not reach that.
+
+**The bench again** (smooth, the three; the studs-up build is m137's laid
+with `Options.snot` false; m137 and the branch at `f209a60a` laid side by
+side in one batch, at a load of 14):
+
+| Model | Studs | Turned, m137 → after | Steep faces (°), m137 → after (studs up) | In a part | Parts | Seconds | Holds |
+|---|---|---|---|---|---|---|---|
+| Bob | 24 | 15% → 49% | 42.1 → 40.1 (43.7) | 98.2% | 880 → 978 | 2.9 → 3.5 | one piece, stands |
+| Bob | 48 | 28% → 56% | 40.6 → 38.4 (42.7) | 99.3% | 3,737 → 4,029 | 14.7 → 14.6 | one piece, stands |
+| Stanford bunny | 24 | 22% → 48% | 41.5 → 39.2 (42.4) | 98.4% | 1,183 → 1,310 | 4.5 → 4.9 | one piece, stands; 4 mended |
+| Stanford bunny | 48 | 40% → 59% | 37.7 → 36.4 (40.0) | 99.3% | 5,959 → 6,494 | 23.8 → 26.1 | one piece, stands |
+| 3DBenchy | 24 | 3% → 6% | 38.1 → 38.2 (38.1) | 99.5% | 608 → 615 | 3.9 → 3.2 | one piece, stands |
+| 3DBenchy | 48 | 14% → 23% | 33.9 → 33.5 (34.1) | 99.6% | 2,904 → 3,126 | 12.4 → 10.5 | one piece, stands |
+
+| Studs | Turned | Out and down turned | Steep faces (°) | Against studs up | Parts | Time |
+|---|---|---|---|---|---|---|
+| 24, m137 → after | 13% → 34% | 9% → 23% | 40.5 → 39.2 | −5.4% (the fifth round −4.5%) | 1.09 times | 1.03 times |
+| 48, m137 → after | 27% → 46% | 18% → 30% | 37.4 → 36.1 | −7.2% (−6.3%) | 1.08 times | 1.01 times |
+| the bar | 80% | | | −30% | 1.15 times | 1.5 times at 48 |
+
+No run has a stud joint past its working load. "In a part" is 1 less the
+bench's `lost_share`; the fifth round's was 98.0% to 99.7%. The time is a
+ratio of two runs side by side at a load of 14, where the fifth round's was
+at 3 to 10: the bunny at 48 studs stitches 22 pieces now, from 59 with the
+first join alone, which is most of what it saved. Seen from the four sides
+the builds stand where the fifth round's did (Hausdorff95 0.52 to 0.58 studs,
+against the studs-up build's 0.50 to 0.59).
+
+**Pictures.** The three at 24 and 48 studs from every side and from under,
+m137 beside the branch (`pictures --views corner,front,back,left,right,under`,
+not committed). PICTURES_NOTE
+
+**Not done.** Studs down (inverted brackets 99780 and 99781, 2436 hung
+under a shell, held to the core above) and 3DBenchy's walls (47905 through
+the wall), both asked: the round went to the root cause and to what it let
+in, and neither was started. 3DBenchy is 23% turned at 48 studs, faces
+looking down 2%.
+
+**The fourteen, handed over.** As the fourth round's: m137 (`85bd1c4a`) lays
+`jobs-before-a.json` and `-b.json` in `bench/results/brickify8-2026-10-21`,
+whose arms are `smooth` and `upright`; `upright` is m137's own smooth build
+with `Options.snot` false (`brickify_bench.gd` sets it for that arm), the
+studs-up build the steep faces are measured against. The branch lays
+`jobs-after-a.json` and `-b.json`, smooth alone. For a fair time, each half
+of m137 runs beside the same half of the branch:
+
+```sh
+R=<the main checkout>/bench/results/brickify8-2026-10-21; PY=<a venv with numpy scipy trimesh embreex pillow>
+B=<a checkout of 85bd1c4a>; W=<a checkout of this branch>; O=<an empty folder>
+for h in a b; do
+  (cd $B && XDG_DATA_HOME=$O/data-before-$h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $R/jobs-before-$h.json $O/before) &
+  (cd $W && XDG_DATA_HOME=$O/data-after-$h heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $R/jobs-after-$h.json $O/after) &
+  wait
+done
+cd $W && heavy $PY -I tools/bench/brickify_bench.py faces $O/before && heavy $PY -I tools/bench/brickify_bench.py faces $O/after
+python3 $R/bar.py $O/after $O/before    # each model and size, then the means at 24 and 48
+```
+
+Each half is about 40 minutes on a quiet box. Every model must hold the
+guardrails: one piece, its check passing, no stud joint past its working
+load (`over 0`), 97% or more in a part (`lost` at most 0.03 on `bar.py`'s
+line), parts at most 1.15 times m137's, and time at 48 studs at most 1.5
+times. The fourth round missed two of these, the armadillo at 24 studs and
+the bunny at 48's time; turning from 65 degrees is new to the eleven models
+not run here, which is what this run would show.
+
 ### Proof
 
 The fifth round's runs (`snot84`, 2026-10-21, `7ca53c1e`), on the branch's last code:
@@ -2813,6 +2997,22 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the sixth round:
+
+- **The bar, by far**: 46% of the steep faces turned at 48 studs against 80%,
+  7.2% nearer than studs up against 30%. From 60 degrees, 52% and 8.6%; what
+  holds it back is the blue bunny at 20 studs (96.2% in a part) and Bob at 48
+  studs (1.16 times m137's parts). The blue bunny's loss from 60 is where two
+  shells meet at a corner: a column a stud wide between them, beside nothing
+  of the core but a tile under one, which no plate across can join and which
+  neither shell's frame holds. A shell that runs on round the corner, its
+  lanes turning with the side, would take it.
+- **Its margin is narrow**: the blue bunny at 20 studs is 97.8% in a part from
+  65 degrees, 96.6% from 63. `snot_gaps.gd` says where any model's is lost.
+- **The bands**, **3DBenchy's walls** and **studs down**, as the fifth round
+  left them: a part a row tall that ends on a plate; 47905 on a wall's middle
+  line; brackets two turns from the core.
 
 After the fifth round, by what each would turn:
 
@@ -2941,6 +3141,11 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/after --onl
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/after
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/after --into $S/pictures \
     --arms smooth --before $S/main --views corner,front,back,left,right,under
+# unit 5's sixth round: which of a model no part fills with its sides turned, and why, against the
+# build with them upright, laid step by step (GAPS_AT=x,j,z draws the cells round one, GAPS_WHY=1
+# says why the cubes there stayed upright, GAPS_BUILD=1 lays it as Brickify.build does as well):
+XDG_DATA_HOME=$W/.scratch-data heavy godot --headless --path $W --script src/dev/snot_gaps.gd -- \
+    bunny:20:one bunny:28 $S/prepared/bob/bob_tri.obj:48:+Y
 ```
 
 The run behind sections 3 and 4 used the app at `7a55e86` (main), on
@@ -2953,7 +3158,8 @@ and 17, at a load of 25 to 45; section 9's, `d55251d` and the branch on
 2026-10-17, at a load of 10 to 35; section 11's, `d5ca5e9` and the branch on
 2026-10-17, at a load of 35 to 65; section 10's fourth round, `85bd1c4a`
 (m137) and the branch on 2026-10-21, at a load of 10 to 35; its fifth round,
-m137 and `snot84` side by side on 2026-10-21, at a load of 3 to 10.
+m137 and `snot84` side by side on 2026-10-21, at a load of 3 to 10; its sixth
+round, m137 and `snot85` side by side the same night, at a load of 2 to 19.
 
 ## 11. Unit 7, done: buy it, or build it from what you own (2026-10-17)
 

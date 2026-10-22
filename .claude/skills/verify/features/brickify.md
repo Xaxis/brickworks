@@ -81,7 +81,7 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   panels on a flat side; steep sides on their sides (`Options.snot`,
   Shapes' `cubes`): the model's surface summed by area and the way it faces
   into cubes two studs by five plates by two studs (`Brickify._cubes`,
-  Lambrecht's), a cube steeper than about 69 degrees facing out along x or z,
+  Lambrecht's), a cube steeper than about 65 degrees (`STEEP`) facing out along x or z,
   and cut again with its courses started 2, 4, 1 and 3 plates up
   (`CUBE_PHASES`, `Grid.cube_phases`, `Plan._phase`), each later cut tried only
   where no shell has any of the cube (`_cube_shelled`);
@@ -98,8 +98,14 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   face only where a side stud grips it; a cube its shell covers under
   `CUBE_KEEPS` given back to the core and the shell cut again; laid once (the
   trial kept where the core kept its side studs); a piece of the core of 16
-  parts or fewer a shell cuts off taken out before the check (`Plan.cut_off`,
-  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`);
+  parts or fewer a shell cuts off joined to the rest first, a plate of it and
+  one of the rest side by side laid again across, a brick beside it laid again
+  as plates (`Plan.join_cut_off`, `Shapes.last["joined_cut_off"]`), and what
+  that leaves taken out before the check (`Plan.cut_off`,
+  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`;
+  what the shells took, gave back and cut off in `Shapes.last["shelled"]`,
+  `"given_back"`, `"cut_cells"`, `"shell_frames"`); a side-stud brick never
+  plain to the stitch (`Plan._plain`);
   the rays across cast only through cubes facing that way; a build that
   leaves a region out laid again unbonded and by the flag with its sides
   upright, two lays at most as on `main`; one colour asked for keeps its
@@ -389,6 +395,14 @@ godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:U
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
 #   what one check costs alone and weighed. Run main's beside the branch's in
 #   one heavy job: on a shared box only the ratio means anything.
+XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/snot_gaps.gd -- bunny:20:one bunny:28 [FILE:STUDS:UP ...]
+#   unit 5's sixth round (docs/BRICKIFY.md section 10): which of a model no part fills with
+#   its sides turned that the build with them upright fills, laid step by step, by why (cut
+#   off beside a shell and where against it, a shell's plate no part fills, the mend, both
+#   miss it), before and after the mend. GAPS_AT=x,j,z draws the cells round one, GAPS_WHY=1
+#   says why the cubes there stayed upright, GAPS_BUILD=1 lays it with Brickify.build too.
+#   2026-10-21 on the fifth round's code, the blue bunny at 20 studs: 70 cells of 2,072 lost
+#   against upright's 10, 43 of them cut off before the stitch. On snot85: 46 lost.
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
 #   clicked: one sub-assembly "bunny" holding every part (its side panels inside it),
