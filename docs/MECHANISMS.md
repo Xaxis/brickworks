@@ -5944,9 +5944,13 @@ the way (0.24 LDU open), and the next read it closed.
    turned to make up for it, the wheel 0.28 LDU off. And closed only to a
    fifth of `CLOSE_TO`, 8466-1's rack came back 0.011 LDU off its driver, and
    its steering column, turning with a pinion in that rack, 0.199 LDU off at
-   its top centre. Closed on so at every step's end, the wheel loader's arm
-   took 1 ms more of its 95th drag frame (14.4 and 15.1 ms, m140's 13.0 and
-   13.9), so only there.
+   its top centre.
+5. **A session's move closes its last step on too** (`Linkage.fine`, set
+   where `Grab.budget_ms` has no end: a session's move and the check after a
+   release, not a drag's frame). Closed on only back where built, 42024-1 and
+   8880-1_F1-Racer came back 0.012 and 0.019 LDU off, near the sweep's 0.02.
+   Closed on at every drag frame's end, the wheel loader's arm took 1 ms more
+   of its 95th frame (14.4 and 15.1 ms, m140's 13.0 and 13.9).
 
 On the scratch probe and the sweep, turned +30, -60 and back:
 
@@ -5957,8 +5961,62 @@ On the scratch probe and the sweep, turned +30, -60 and back:
 | 1., 2. and 3., every last step closed on while each round halved what is left | +2.03, -2.07 | 1.106 (#370) | +1.92, -1.99 | 0.068 (#1165) |
 | the same, while each round takes a tenth | | 0.278 (#370) | | 0.002 |
 | 1. to 4. | +2.02, -2.07 | 0.003 | +1.92, -1.99 | 0.005 |
+| 1. to 5. | +2.02, -2.07 | 0.0034 | +1.93, -1.99 | 0.0053 |
 
 5533-1 steers less far: its loop closes to `CLOSE_TO` only that far, and
 the 4.43 LDU it went before was with a pin 0.24 LDU out of its hole.
 
 ### Checked
+
+On the final code, in a window (`tools/probe.sh grab_probe`): the whole
+probe, 499 passed and none failed, three of them new in `--only=grooved`
+(9): 5533-1 and 8466-1, turned as the sweep turns them, come back within
+0.003 and 0.005 LDU, and 8466-1's four 9244s are each a cross on two hinges
+square to each other. `groups` (4), `loops` (21), `bigstep` (4), `hinge`
+(27) and `cases` (72) pass alone too. `mechanism_probe` (54),
+`own_copies_probe` (33), `motions_probe` (92) and `telescope_probe` (32)
+pass.
+
+A drag's frame, `--only=actuators` alternated with m140 (4c747508), the
+drag's own work a frame, 95th:
+
+| | m140 | this |
+|---|---|---|
+| the wheel loader's arm | 14.6, 14.9 ms | 14.0, 14.1 |
+| the small actuator | 15.6, 15.1 | 14.0, 13.9 |
+| the forest machine's crane | 16.7, 17.8 | 18.0, 17.3 |
+
+38 checks each; in two earlier rounds, one of each side, 42024-1's rod was
+not found under the pointer from any of three views (section 30's pick).
+
+The steering sweep on 20 sets (`sweep_g23u`: 5533-1, 8466-1,
+5533-1_Tractor-Pulling, the five 8448-1 files, 41999-1, 42070-1, 8848-1,
+8854-1, 8862-1, 8880-1_F1-Racer, 42125-1, 8808-1, 8820-1, 8841-1_Buggy,
+42024-1, 9393-1; twelve with a universal joint drawn whole), against
+`sweep_grab22`: all 20 steer, where 17 did. 5533-1 comes back 0.0034 LDU
+off, 8466-1 0.0053 and 5533-1_Tractor-Pulling 0.0157 (0.090 before); every
+other set comes back as near as before or nearer, 42070-1 0.0002 where it
+was 0.0199 (its rack +8.02 and -8.02, where it was +1.98 and -14.12).
+
+### Left
+
+- **5533-1 steers less far**: +2.02 and -2.07 LDU where it went +4.43 and
+  -5.31 with a pin 0.24 LDU out of its hole. Its loop closes to `CLOSE_TO`
+  only that far; a real set's pins have play this does not.
+- **How each part was built is kept for the session** (`Grab._built_at`,
+  started again when parts are added or taken away): a model saved with a
+  gap a move left and opened again reads the gap as built.
+- **Back where it was built** is the driver within 0.001 radian of its
+  turn as built: a drag passes it only by chance, and a slide its loop has
+  to spare stays where least change left it.
+- **A universal joint drawn whole is posed as its cross**: its drawn ends
+  stand off its shafts by the bend, and its shape is not tested against
+  theirs.
+- **8466-1's steering column** hangs on its lower universal joint only: the
+  top joint's far end (#999, 3712) stands 4.7 LDU off the centre in the
+  file, past `SAME_LINE`, so the column swings with its pinion's column,
+  34 LDU at its top for an 11° turn.
+- The whole sweep is the lead's: from a locked snapshot of this,
+  `SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run grab23
+  --jobs=3`, then `table grab23 --against=grab22`; the bar is every set that
+  steers in grab22 (77) steering, and 5533-1 and 8466-1 with them.
