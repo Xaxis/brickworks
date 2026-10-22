@@ -2970,6 +2970,115 @@ joint, taken above) and the bunny at 48's time (1.10 times here, beside
 m137); turning from 65 degrees is new to the eleven models not run here,
 which is what this run would show.
 
+### Where SNOT stands, and the next approach (2026-10-22)
+
+A study, not a round: each steep face of the fourteen as `main` lays them
+(r7), seen from `faces`' views, followed to its cube at every phase and why
+that cube was refused (`cubes_why`), against m137's studs-up build (r6). The
+cube rule run again from the mesh agrees with each run's record on 94% to 99%
+of its steep faces. Scripts and output in
+`bench/results/brickify8-2026-10-21/study`.
+
+**In short.** The cube approach is near its end. At 48 studs 40% of the steep
+faces are turned, 5.6% nearer the model than studs up; with every refusal a
+better rule could win, about 64% and 13%; with every steep face turned, 23%.
+Neither 80% nor 30% is in reach, and the turned share is the wrong bar: a
+surface turned to the nearest of six axes scores 100% and comes no nearer the
+model. The error is in how a leaning surface is laid, whichever way its parts
+face; the next approach lays that lean first.
+
+**The seventh round on the fourteen, not shipped.** snot88 turned 37% at 48
+studs and 22% at 24 (r7: 40% and 23%), 5.6% and 5.1% nearer than studs up
+(5.6% and 4.6%), and missed two guardrails: the avocado at 48 studs took 1.16
+times m137's parts, the Utah teapot at 48 1.55 times its time.
+
+**Where the steep faces are** (the mean of the fourteen):
+
+| What holds a steep face | 48 studs | 24 studs | At 48, now / studs up (°, every face alike) | |
+|---|---|---|---|---|
+| Turned | 39.7% | 23.0% | 24.3 / 31.1 | |
+| Laid again whole, sides upright (temple, Bell X-1; fox at 24) | 13.0% | 21.0% | 39.2 / 38.8 | rule |
+| In a turned cube, nearest an upright part: a shell's end | 5.2% | 4.3% | 47.3 / 38.4 | rule |
+| In no cube facing out: it leans too far (rims, 60 to 65 degrees) | 4.2% | 2.3% | 43.9 / 43.5 | rule |
+| Refused: the model past it (`beyond`, `moved`) | 6.4% | 4.2% | 42.0 / 42.0 | rule |
+| Refused: its shell's cover or anchor, a cap, too little model | 4.7% | 4.7% | 44.1 / 43.7 | rule |
+| In no cube facing out: its faces cancel (thinner than a cube) | 9.4% | 23.2% | 36.4 / 36.5 | inherent |
+| In no cube facing out: under a square stud of surface | 1.6% | 1.5% | 47.8 / 46.5 | inherent |
+| Refused: no core three studs behind (`backed`, thin walls) | 11.4% | 12.2% | 32.4 / 32.0 | inherent |
+| Refused: a band between phases (`shelled`) | 4.5% | 3.6% | 40.3 / 40.2 | inherent |
+
+Inherent to cubes: a cube faces one way or none, so anything under two studs
+thick cancels; a shell hangs from the core behind it; a row on its side is
+two and a half plates, so a band of one to four plates between two phases'
+shells is laid by neither. That is 27% of the steep faces at 48 studs, 40% at
+24. The largest rule loss is the fallback: a turned side that leaves a region
+out throws every turned side away, where a patch about the region would do
+(as `_upright_about` does for a joint). The faces by a shell's end stand 9°
+further off than studs up, 0.4° over every steep face at 48 studs: the most
+any cause makes the build worse.
+
+**The ceilings.** *Turned:* 80% of the steep faces at 48 studs lie in a cube
+facing out at some phase (85% from 60 degrees), and 88% of a turned cube's
+faces are turned: 70% to 75% with every such cube turned, about 64% with the
+inherent causes left (73% of the faces are free of them). At 24 studs, 54% to
+56% and about 50%. *Error:* turned faces stand 28.8° from the model at 48
+studs and a top leaning as far from its studs 26.0° (the fourteen's mean; at
+24, 34.3° and 34.2°): a shell lays a side as well as the core lays a top, and
+a face turned to its nearest axis keeps its lean from that axis.
+
+| Steep faces at 48 studs, by lean from the nearest axis | 0-10° | 10-20° | 20-30° | 30-40° | 40-55° |
+|---|---|---|---|---|---|
+| Share of the steep faces | 32% | 17% | 23% | 16% | 11% |
+| Turned now, and there (°) | 57%, 10.5 | 47%, 28.0 | 36%, 33.9 | 33%, 39.3 | 30%, 43.9 |
+| Studs up (°) | 19.9 | 36.3 | 41.8 | 46.6 | 48.4 |
+| A top leaning as far (°) | 13.1 | 27.9 | 32.0 | 39.2 | 42.4 |
+
+Every rule cause won, turned as the turned are now: 12.7% nearer than studs up
+at 48 studs, 14.9% at 24. Every steep face turned, as a top of its lean: 23.1%
+and 16.1%. 30% is beyond any rule inside the cubes.
+
+**The others, by our measure.** A face counts as turned when the part nearest
+it has its up within 60 degrees of the face's way out, and every direction is
+within 54.7 degrees of one of six axes: a surface turned to its nearest axis
+scores 100%. So do Lambrecht's 1 x 1 plates, "in any of the principle
+Cartesian directions", which "may be poorly connected" [lambrecht], and
+NiemanSculpt's "six directions" at "98.5% to 99.7% connectivity in SNOT mode"
+[nieman-guide], its torus and apple studs out every way, the apple's slopes
+and curves on their sides too [nieman]; its error cannot be measured here
+(Windows and macOS). legolization turns tiles on free-standing wall columns
+only [lz]. A staircase turned is no nearer the model (the first round). So 80%
+turned rewards what two tools do already. The bar should be the error and
+distance over every face against the studs-up build, held by the side views
+(which the line moved the wrong way: Hausdorff95 0.88 studs against 0.84 at
+48, further on 7 of 14) and a blind look at the pictures; to say it beats
+NiemanSculpt, the same look against its build of our CC0 models, which the
+owner can make.
+
+**Where the error is: the lean.** 66% of everything seen leans 10 degrees or
+more from all six ways a part can face, at both sizes, and 0% to 7% of it is
+within 10 degrees of the part face nearest it (studs-up tops leaning 10 to 40
+degrees, 13% to 22%): there 6° off the model, elsewhere 36° to 50°. From 20
+degrees on, a diagonal lean stands 3° to 10° further off than one along an
+axis. Matched as well as those are, each 10 points of the matched share at 10
+to 40 degrees is about 5% of the error over every face: 35% matched, 15% lower;
+50%, 23%. The SNOT line moved it 2.6%.
+
+**The next approach: lay the lean, surface first.** In every frame at once,
+studs up and the four turned: the surface cut into patches by its nearest axis
+and its lean from it, each laid first as runs of the slope or curved slope
+whose face matches that lean, fitted to the mesh by angle as well as distance
+(corner slopes where it leans diagonally), then the core and its side-stud
+anchors behind them; today the core's plan decides where a slope may go. The
+cubes stay as the turned frames' anchors. Expected: the matched share from
+about 6% toward 35%, 15% off the error over every face. The screen: Bob, Spot
+and 3DBenchy at 24 and 48 studs beside `main` (all CC0; 3DBenchy's square
+walls the control), by the matched share (new in `faces`), the error and
+distance over every face, the side views, a blind look, and the guardrails as
+now. On to the fourteen only if Bob and Spot at 48 studs reach 20% matched
+(about 9% now) and 5% lower error over every face; else stop, and write down
+what held it. The rule wins left in the cubes, 7 to 10 points of steep-face
+error at most, are not the next unit.
+
 ### Proof
 
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
