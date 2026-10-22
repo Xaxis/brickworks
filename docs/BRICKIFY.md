@@ -2814,8 +2814,7 @@ shell: where two shells meet at a corner, a column a stud wide between them.
    draws the cells round one (`GAPS_AT`), says why the cubes there stayed
    upright (`GAPS_WHY`) and lays it as `Brickify.build` does (`GAPS_BUILD`).
 5. **A joint the props cannot take, laid again upright about it**
-   (`Brickify._past_load_by_shells`, `Options.upright_near`,
-   `_cubes_away`). The fourth and fifth rounds left the armadillo at 24
+   (`Brickify._past_load_by_shells`, `_upright_about`). The fourth and fifth rounds left the armadillo at 24
    studs with one stud joint past its working load, and so does this
    branch: a 1 x 2 plate (3023b) hung on one stud of another, 20.7 g, 1.24
    times its load. Laid with its sides upright it has none. Turned, it had
@@ -2826,11 +2825,35 @@ shell: where two shells meet at a corner, a column a stud wide between them.
    and a pillar stops at 24 (to the floor, a figure's arm stood a stud and
    more off the figure). Upright, the core bonds that overhang across the
    plates the shell beside it took. Now a joint past its load left after
-   the props, with a part of it beside a shell's plates, has the model laid
-   again with no cube turned within a stud and two plates of either part,
-   and the build with fewer joints past their load is kept, the time of
-   both counted. The armadillo at 24 studs: none past its load, one cube
-   fewer turned (32 of 33), the same 98.1% in a part, 7.0 s from 4.9.
+   the props, with a part of it beside a shell's plates, has the cubes
+   turned within a stud and two plates of either part laid again upright,
+   and the build with fewer joints past their load is kept.
+
+   At first (`95d179ba`) the whole model was laid again with those cubes
+   upright. The fourteen showed what that cost: the figure at 48 studs
+   (`character`) took 38.4 s against m137's 17.7, 2.17 times where the bar
+   is 1.5, and the armadillo at 24 studs 6.7 s from 3.1. Timed, the second
+   lay cost as much as the first (the figure 18.2 s of 36.8, the armadillo
+   3.5 of 6.8), and the figure had one joint past its load as well: a 1 x 4
+   brick hung on two studs of a 2 x 2 plate, 189 g, 9.7 times its load.
+   Now only that place is laid again (`_upright_about`), on the build
+   itself, as a wall is patched: every part with a plate in those cubes, or
+   within two studs of the joint's parts and up to five plates over them
+   (`UPRIGHT_STUDS`, `UPRIGHT_PLATES`: what they hang from), is taken out,
+   and with it whatever reaches into the plates they leave (a turned tile's
+   holder, whose side stud ran into every upright plate laid there); the
+   model's plates those parts filled are laid again in plates, largest
+   first, a course at a time, each course the other way from the one under
+   it, in the colours they had; then mended and propped as the build is.
+   With the cube alone the armadillo's 1 x 2 hung again, a plate higher, on
+   one stud; within a stud and three plates its patch came loose and 94.4%
+   of it stayed in a part. The patch costs 0.4 s on the armadillo at 24
+   studs and 3.0 s on the figure at 48, beside m137 laid at once: the figure
+   21.4 s against 17.7 (1.21 times), none past its load, 98.7% in a part
+   (laid whole again 98.65%), 2,689 parts (2,650), 24.3% of its steep faces
+   turned (24.8%); the armadillo at 24 studs 3.8 s against 3.0, none past
+   its load, 98.3% in a part (98.1%), 732 parts (733), 22.3% turned
+   (23.0%). The armadillo at 48 has nothing to patch, and lays as before.
 
 **Tried**, the probe's bunnies (held to 97% in a part) and the three at 48
 studs (turned, nearer than studs up, parts and time against m137):
@@ -2952,6 +2975,13 @@ which is what this run would show.
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
 armadillo's joint at `95d179ba`):
 
+- With the patch (`snot86`, 2026-10-22): `brickify_probe` 84 of 84 and
+  `brickify_buy_probe` 25, all pass. Bob, the Stanford bunny and 3DBenchy at
+  24 and 48 studs lay the same parts, in the same share of the model, as at
+  `95d179ba` (nothing past its load, nothing patched), and laid beside m137
+  at once take 0.99 to 1.20 times its time (Bob at 48 0.99, the bunny at 48
+  1.11, 3DBenchy at 48 0.85). The figure at 48 studs and the armadillo at
+  24 and 48, above.
 - At `95d179ba`: `brickify_probe` 84 of 84 (the blue bunny 97.8% in a part),
   `brickify_buy_probe` 25 and `--steps-only` at 48 studs 6 (58, 115 and 77
   steps, every partial build standing), `brickify_ui_probe` on the GPU 21,

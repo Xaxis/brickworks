@@ -47,9 +47,10 @@ whole cycle.
   laid again as a plain brick while pieces are being joined, which had let
   most of the side fall away.
 - Brickify no longer leaves a part hanging past what its studs hold beside
-  a side it turned. Where nothing can prop it, the model is laid again with
-  the side about it upright, as a builder would bond that overhang, and the
-  build that holds better is kept.
+  a side it turned. Where nothing can prop it, the side about it is laid
+  again upright, as a builder would bond that overhang, and the build that
+  holds better is kept. Only that place is laid again, so it costs a second
+  or two rather than the whole model's time over.
 - A hinge turns only as far as its parts let it. The two halves of the
   joint being turned were never tested against each other, so a hinge
   brick's top swung through its base either way, though the base's square

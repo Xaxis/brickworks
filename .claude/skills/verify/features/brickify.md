@@ -106,9 +106,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   what the shells took, gave back and cut off in `Shapes.last["shelled"]`,
   `"given_back"`, `"cut_cells"`, `"shell_frames"`); a side-stud brick never
   plain to the stitch (`Plan._plain`); a stud joint past its working load
-  left after the props, beside a shell, laid again with no cube turned about
-  it (`_past_load_by_shells`, `Options.upright_near`, `_cubes_away`) and the
-  build with fewer such joints kept;
+  left after the props, beside a shell, has the cubes about it and what it
+  hangs from laid again upright in the build itself, as a wall is patched
+  (`_past_load_by_shells`, `_upright_about`), and the build with fewer such
+  joints kept;
   the rays across cast only through cubes facing that way; a build that
   leaves a region out laid again unbonded and by the flag with its sides
   upright, two lays at most as on `main`; one colour asked for keeps its
