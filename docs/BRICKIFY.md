@@ -3155,6 +3155,45 @@ but the new moulds' studs on top read over every row (4287c's over all
 three), which changes what the check counts as held. It needs the probes
 run before it ships.
 
+**Shipped** (`slopes98`, 2026-10-22). Before the swap, each id was checked
+against the library and Rebrickable's elements. 4287a is sold in 7 of
+Brickify's 41 colours, none of white, black, the greys, red or yellow;
+3660a in none. 4287c is sold in 22 and 3660b in 33, and both are the
+numbers Rebrickable's 3660 and 4287 elements are filed under. Read with
+`Shapes.part(..., true)`, each falls the same way, as deep and as tall
+(turn 0; 3 and 2 studs; 3 plates), and grips from below on the same rows.
+3660b's collision boxes are 3660a's. Under 4287c is 3747b's underside
+exactly, 0.1 to 1 LDU higher than 4287a's, so the 3 x 1 row's thirds are
+4287c's now (0.22 to 2.41 plates, from 0.21 to 2.29); 3660b's are 3660a's
+to the hundredth. Their studs on top read over every row, where 4287a's and
+3660a's read over the first only: a part over the slope is held by each.
+
+On `main` (`7fa2c471`) not one 4287a, 3660a or 3747b went down in the four
+models below: a slope is fitted only where its one-wide part is sold in
+the colour (`Plan._slope_id`), so no 3 x 1 was, and the 3 x 2 is laid only
+where two fitted 3 x 1s stand side by side. With the moulds sold now, Bob lays 48
+4287c, 24 3747b and 11 3660b, nearly all yellow; 3DBenchy 14 4287c; every
+one sold in its colour. Laid beside `main` at the same time from locked
+checkouts, at 48 studs (`brickify_bench.py faces`):
+
+| | matched | error over every face | distance | sides95 (studs) | parts |
+|---|---|---|---|---|---|
+| Bob | 8.3% to **10.5%** | 39.6° to 38.2° (**3.5% lower**) | 0.152 to 0.150 | 0.58 to 0.57 | 1.010x |
+| Spot | 9.2% to **10.0%** | 36.3° to 35.8° (1.4%) | 0.168 to 0.167 | 0.52 to 0.52 | 1.009x |
+| Stanford bunny | 7.0% to 7.2% | 37.8° to 37.5° (0.8%) | 0.169 to 0.168 | 0.55 to 0.55 | 1.007x |
+| 3DBenchy | 4.1% to 4.1% | 33.1° to 33.0° (0.3%) | 0.183 to 0.184 | 0.57 to 0.57 | 0.998x |
+
+Faces leaning down and out gain most: Bob's error there falls from 48.5° to
+42.8°, Spot's from 48.6° to 45.7°. All eight builds are one piece, buildable,
+with nothing mended. The worked constructions that laid 3660a (the tree,
+the oversail) lay 3660b, and in a collection 3660a, 3660c (what set
+inventories give) and 4287a stand in for both (`Collection.family_of`).
+`brickify_probe` 84 of 84, `brickify_buy_probe` 25, `brickify_ui_probe`
+21, `snot_probe` 11, `shapes_probe` 82 (its new check, each inverted slope
+sold in white, black, both greys, red and yellow, fails on `main` for
+4287a and 3660a), `techniques_probe` 116 and `collection_probe` 70 pass.
+The runs are in `bench/results/brickify8-2026-10-21/slopes98`.
+
 **What next for the lean.** It cannot get further while the turned
 shells' cubes decide where a run of slopes may lie. A side has to be laid
 as the tops now are: cut into patches by its lean, each a run as long as

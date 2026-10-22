@@ -160,6 +160,14 @@ func _shortfall(_library: PartLibrary) -> void:
 		"3794b stands in for 3794a, after the model's own 3794b is counted (%s)" % str(jumpers))
 	_ok(Collection.family_of("3626bp01") == "3626bp01" and Collection.family_of("3069b") == "3069",
 		"a print is only itself; a moulding letter is not")
+	# Brickify lays its inverted slopes in the moulds sold now, 3660b and
+	# 4287c; the older moulds a person has, and the 3660c sets' inventories
+	# give, are each one of them.
+	var inverted: Dictionary = {"3660b/14": 2, "4287c/14": 2}
+	var older: Dictionary = {"3660a/14": 1, "3660c/14": 1, "4287a/14": 2}
+	var covered: Dictionary = Collection.coverage(inverted, older)
+	_ok(Collection.shortfall(inverted, older).is_empty() and int(covered["owned"]) == 4,
+		"3660a, 3660c and 4287a stand in for Brickify's 3660b and 4287c (%s)" % str(covered))
 	var everything: Dictionary = Collection.coverage(_needs(), {"3001/4": 9, "3001/1": 9,
 		"3010/4": 9, "3005/14": 9})
 	_ok(is_equal_approx(float(everything["exact"]), 1.0) and int(everything["missing"]) == 0,

@@ -100,6 +100,18 @@ func _run() -> void:
 		var shape: Dictionary = Shapes.part(_library, id, true)
 		_check("%s, inverted, falls %s, %s studs along it" % [id, shape.get("turn", "?"),
 			shape.get("d", "?")], not shape.is_empty())
+	# Each inverted slope in a mould sold in the commonest colours: 4287a,
+	# laid until 2026-10-22, is sold in none of these, and 3660a in nothing.
+	for entry: Array in Shapes.Plan.INVERTED:
+		for id: Variant in [entry[3], entry[4]]:
+			if str(id).is_empty():
+				continue
+			var unsold: Array = []
+			for colour: int in [15, 0, 71, 72, 4, 14]:
+				if _library.element_for(str(id), colour).is_empty():
+					unsold.append(colour)
+			_check("%s is sold in white, black, both greys, red and yellow: not in %s"
+				% [id, unsold], unsold.is_empty())
 	# 3040b's high stud is at its low z, so it falls towards +z unturned, as
 	# the rock pattern has always laid it.
 	_check("a 45 degree slope needs no turn to fall towards +z",

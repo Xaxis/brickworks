@@ -148,7 +148,8 @@ Proves it when:
   numbers); 6020-1 is the Magic Shop's 47 pieces in 33 lots, a made-up set is named not guessed, two shops,
   Orthanc with spares and loose bricks sum exactly; 4073 compares as 6141 and a
   rubber tyre as black; the hand-made shortfall (12 pieces, 5 owned, 7 short;
-  5/12 exact, 9/12 in any colour); 3794b standing in for 3794a; white 2 x 4s
+  5/12 exact, 9/12 in any colour); 3794b standing in for 3794a, and 3660a,
+  3660c and 4287a for the 3660b and 4287c Brickify lays; white 2 x 4s
   for red and blue, two 1 x 2s for a 1 x 4 twice with one left, three spares
   offered three times not four; the wanted list asking for 2 of 3001 and 3 of
   3010; three official models counting the same opened as listed; owning a set
