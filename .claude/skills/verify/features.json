@@ -645,7 +645,7 @@
       "id": "cli:library browser flow",
       "kind": "cli",
       "entry": "tools/web/library_flow.mjs",
-      "reach": "node tools/web/relay_server.mjs 8937 --static=build/web, then node tools/web/library_flow.mjs --url=http://127.0.0.1:8937/app --out=shots/library   (with .env sourced; the library and gallery played from tests/fixtures/library)",
+      "reach": "node tools/web/relay_server.mjs 8902 --static=build/web, then node tools/web/library_flow.mjs --url=http://127.0.0.1:8902/app --out=shots/library   (with .env sourced; the library and gallery played from tests/fixtures/library)",
       "area": "model-io",
       "tests": []
     },
@@ -653,7 +653,7 @@
       "id": "cli:library probe",
       "kind": "cli",
       "entry": "src/dev/library_probe.gd",
-      "reach": "tools/probe.sh library_probe   (a window; starts tools/web/serve.py --library tests/fixtures/library on 8936 and two more copies of the app, and stops them)",
+      "reach": "tools/probe.sh library_probe   (a window; starts tools/web/serve.py --library tests/fixtures/library on 8901 and two more copies of the app, and stops them)",
       "area": "model-io",
       "tests": []
     },

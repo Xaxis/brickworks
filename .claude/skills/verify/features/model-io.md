@@ -329,7 +329,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   back to `vendor/omr/files`. Over MCP: `gallery library=true` searches the
   sets, `open_model library=<id>` opens one in the session's tab.
 - `library probe`: `tools/probe.sh library_probe` (a window, 1400 x 900). Starts
-  `tools/web/serve.py tests/fixtures/library 8936 --library
+  `tools/web/serve.py tests/fixtures/library 8901 --library
   tests/fixtures/library` (eight sets, three gallery models, one all rights
   reserved) and points `BRICKWORKS_API` at it. The Open list's row and the
   File menu's; all eight sets with covers, newest first; "dragon" and "106-1";

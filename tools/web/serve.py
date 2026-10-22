@@ -51,7 +51,7 @@ in their names and authors, kind and size kept to), /api/share?id= each
 model's file with its author and licence, and /m/<id>.webp its cover from
 DIR/covers/. tests/fixtures/library is one (src/dev/library_probe.gd):
 
-    tools/web/serve.py tests/fixtures/library 8931 --library tests/fixtures/library
+    tools/web/serve.py tests/fixtures/library 8901 --library tests/fixtures/library
 """
 
 from __future__ import annotations

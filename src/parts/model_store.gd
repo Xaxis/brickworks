@@ -1010,9 +1010,10 @@ func register_later() -> void:
 ## (CustomParts.fetch_sources): on the web, the subparts and parts no build
 ## ships. At once, with nothing fetched or waited for, on the desktop and for
 ## a file that needs nothing.
-func open_text_fetched(text: String, name: String = "model") -> Dictionary:
+## [param parsed] is [param text] already read (ModelBar.read_off_frame).
+func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
 	var began: int = Time.get_ticks_usec()
-	var model: LdrModel = LdrModel.parse(text, name)
+	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0

@@ -2,8 +2,8 @@
 // model the community shared, opened in a tab of its own.
 //
 //   set -a; . ./.env; set +a
-//   node tools/web/relay_server.mjs 8937 --static=build/web &
-//   node tools/web/library_flow.mjs --url=http://127.0.0.1:8937/app --out=shots/library
+//   node tools/web/relay_server.mjs 8902 --static=build/web &
+//   node tools/web/library_flow.mjs --url=http://127.0.0.1:8902/app --out=shots/library
 //   BW_BYPASS=… node tools/web/library_flow.mjs --url=<a preview>/app --out=…
 //
 // The owner asked for exactly this: within the app, open a model from a
@@ -32,6 +32,13 @@
 // Pictures in OUT: 1_sets_1400.png, 2_filtered.png, 3_tab_set.png,
 // 4_community.png, 5_tab_copy.png, 6_sets_390_dark.png, 7_sets_390_light.png,
 // 8_community_390_dark.png, 9_sets_1400_light.png.
+//
+// --live plays nothing: the deployment's own parts store, its whole library
+// (1,575 models), and its biggest model, 8466-1 (36 MB), found and opened in
+// a new tab. That tab's longest stall is measured from the page itself (an
+// interval timer's longest gap: the engine's frame and the page share one
+// thread), with what its status bar said while the file came and was read,
+// and how long it all took. Pictures live_1_sets.png, live_2_8466.png.
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -40,9 +47,10 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const url = String(args.url || "http://127.0.0.1:8937/app");
+const url = String(args.url || "http://127.0.0.1:8902/app");
 const out = args.out || "shots/library";
 const bypass = args.bypass || process.env.BW_BYPASS || "";
+const live = Boolean(args.live);
 mkdirSync(out, { recursive: true });
 const here = path.dirname(new URL(import.meta.url).pathname);
 const root = path.resolve(here, "../..");
@@ -70,7 +78,7 @@ const served = [];
 
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
-await context.route(/\/library\/(index\.json|covers\/[^/?]+|omr\/[^/?]+)(\?|$)/, async (route) => {
+if (!live) await context.route(/\/library\/(index\.json|covers\/[^/?]+|omr\/[^/?]+)(\?|$)/, async (route) => {
   const at = new URL(route.request().url());
   const rest = decodeURIComponent(at.pathname.slice(at.pathname.lastIndexOf("/library/") + 9));
   const file = rest.startsWith("omr/") ? path.join(omr, rest.slice(4)) : path.join(fixture, rest);
@@ -197,6 +205,51 @@ async function opensTab(page, control) {
   return { tab, asked };
 }
 
+// The longest the page's own thread went without running an interval timer
+// set at 50 ms, in every page from its start: window.__stall.
+await context.addInitScript(() => {
+  let last = performance.now();
+  window.__stall = { longest: 0, at: 0 };
+  setInterval(() => {
+    const now = performance.now();
+    if (now - last > window.__stall.longest) window.__stall = { longest: now - last, at: now };
+    last = now;
+  }, 50);
+});
+
+// The live library: every model, and the biggest opened in a tab of its own.
+async function liveFlow(a, aTitle, aBricks) {
+  await checkAfter(async () => `the live library, every model: ${(await shelf(a)).total} (${(await shelf(a)).status})`,
+    until(async () => (await shelf(a)).source === "sets" && (await shelf(a)).total >= 1500, 180));
+  await checkAfter(async () => `...the first page's covers: ${(await shelf(a)).covers}`,
+    until(async () => (await shelf(a)).covers >= 24, 180));
+  await a.screenshot({ path: `${out}/live_1_sets.png` });
+  check("\"8466-1\" finds the biggest, 36 MB", await search(a, "8466-1", ["omr-8466-1"]));
+  const began = Date.now();
+  const set = await opensTab(a, "library_open_first");
+  if (!check("Open opens a tab", Boolean(set.tab))) throw new Error("no tab for 8466-1");
+  const b = set.tab;
+  await controlAt(b, "model_name");
+  // The stall of the page's start (the engine's own) is not the open's.
+  await b.evaluate(() => { window.__stall = { longest: 0, at: 0 }; });
+  const opened = await until(async () => (await state(b)).bricks >= 1200 && !(await state(b)).awaited, 900);
+  const took = Math.round((Date.now() - began) / 1000);
+  const bState = await state(b);
+  check(`8466-1 open in ${took} s: ${bState.bricks} parts, "${await b.title()}"`,
+    opened && (await b.title()).startsWith("8466-1 "));
+  const said = await b.evaluate(() => (window.brickworksWork || []).map((w) => `${w.what} (${Math.round(w.ms)} ms)`));
+  check(`...its status bar said the file coming and being read: ${said.filter((w) => /8466/.test(w)).join(" | ")}`,
+    said.some((w) => /^Fetching 8466-1 .* \d+ MB/.test(w)) && said.some((w) => /^Reading 8466-1 /.test(w)));
+  const stall = await b.evaluate(() => window.__stall);
+  console.log(`  the page's longest stall while it opened: ${Math.round(stall.longest)} ms`);
+  check(`...credited: ${JSON.stringify(bState.credit)}`, bState.credit && String(bState.credit.page || "")
+    .startsWith("https://library.ldraw.org/omr/sets/"));
+  await b.screenshot({ path: `${out}/live_2_8466.png` });
+  const aNow = await state(a);
+  check(`A is as it was: "${await a.title()}", ${aNow.bricks} parts`,
+    (await a.title()) === aTitle && aNow.bricks === aBricks);
+}
+
 try {
   console.log("\ntab A, and the library");
   const a = await context.newPage();
@@ -220,6 +273,10 @@ try {
   }
   await a.keyboard.press("Enter");
   check("File > Library… opens the screen", await until(async () => (await shelf(a)).open === true, 30));
+  if (live) {
+    await liveFlow(a, aTitle, aBricks);
+    throw new Error("done");
+  }
   await checkAfter(async () => `on the LDraw sets, all eight: ${await shown(a)}`,
     until(async () => (await shelf(a)).source === "sets" && (await shelf(a)).total === 8, 120));
   await checkAfter(async () => `...each with its cover: ${(await shelf(a)).covers}`,
@@ -327,7 +384,7 @@ try {
   await a.waitForTimeout(3000);
   await a.screenshot({ path: `${out}/9_sets_1400_light.png` });
 } catch (trouble) {
-  check(`the flow ran to its end: ${trouble.message}`, false);
+  if (trouble.message !== "done") check(`the flow ran to its end: ${trouble.message}`, false);
 } finally {
   if (problems.length) console.log(`  page errors: ${problems.slice(0, 5).join(" | ")}`);
   console.log(`  served: ${served.length} (${[...new Set(served.map((s) => s.split("/")[0].split(" ")[0]))].join(", ")})`);

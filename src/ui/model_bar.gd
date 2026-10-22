@@ -467,22 +467,75 @@ func open_with_progress(path: String) -> int:
 
 
 ## A model's text opened and called [param name], said first as
-## [method open_with_progress] says it: how many parts landed, 0 when it
-## could not be read. Called that whatever the file calls itself: a set's
-## file from the library calls its model "main" (ModelLibrary).
-func open_text_with_progress(text: String, name: String) -> int:
-	var job: Working.Job = Working.begin("Opening %s…" % name)
+## [method open_with_progress] says it: open_text_fetched's answer, with
+## "placed" 0 when it could not be read. Called that whatever the file calls
+## itself: a set's file from the library calls its model "main"
+## (ModelLibrary).
+##
+## Read on a worker first, and its flexible parts built on workers, the bar
+## saying so: the library's biggest file, 8466-1 at 36 MB, took 2.1 s of a
+## desktop's frame to read and 2.6 s more to build its 29 hoses, and a
+## browser drawing in software is several times slower. Laying it out is
+## still one long frame, said before it begins.
+func open_text_with_progress(text: String, name: String) -> Dictionary:
+	var job: Working.Job = Working.begin("Reading %s (%s)…" % [name, ModelLibrary.size_words(text.length())])
 	await job.shown()
-	var result: Dictionary = await store.open_text_fetched(text, name)
+	var parsed: LdrModel = await read_off_frame(text, name)
+	if parsed != null and not parsed.generated.is_empty():
+		job.say("Building the flexible parts of %s…" % name)
+		await CustomParts.warm_skins(store.library, parsed)
+	job.end()
+	job = Working.begin("Opening %s…" % name)
+	await job.shown()
+	var result: Dictionary = await store.open_text_fetched(text, name, parsed)
 	job.end()
 	if not str(result["error"]).is_empty():
-		return 0
+		result["placed"] = 0
+		return result
 	if store.title != name:
 		store.title = name
 		_name.text = name
 		model_named.emit(name)
 		store.touch()
-	return int(result["placed"])
+	return result
+
+
+## [param text] read as LDraw on a worker, the frames going on meanwhile:
+## LdrModel.parse touches nothing but what it makes.
+static func read_off_frame(text: String, name: String) -> LdrModel:
+	var out: Array = [null]
+	var task: int = WorkerThreadPool.add_task(func() -> void: out[0] = LdrModel.parse(text, name),
+		false, "read a model")
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	while not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+	return out[0]
+
+
+## What an open left out or is still waiting for, as File, Open from a file
+## says it: " — 3 not in the library, left out (3001pr1, …)"; "" for nothing.
+## Parts still on their way are put down as each arrives: [param again]
+## says so as the file picker always has, asking for the file again; the
+## library's open says nothing of them.
+static func left_out_words(result: Dictionary, again: bool = true) -> String:
+	var note: String = ""
+	if int(result.get("missing", 0)) > 0:
+		# Named, as an LDD model's are: a Studio model can use a part
+		# Studio made, which nothing else has.
+		# Kept in the file when it is someone else's (SourceFile): a save
+		# writes them back. A flexible part is named once, by the sub-model
+		# it is, not by the pieces it is drawn with.
+		var missing: Dictionary = result.get("unshown", result.get("missing_ids", {}))
+		var count: int = 0
+		for id: String in missing:
+			count += int(missing[id])
+		note += (" — %d not shown, kept in the file (%s)" if bool(result.get("kept"))
+			else " — %d not in the library, left out (%s)") % [count,
+			ModelStore.named_counts(missing)]
+	if again and int(result.get("waiting", 0)) > 0:
+		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
+	return note
 
 
 ## Who made a model and on what terms, in a line: "LDraw model by Roland
@@ -543,23 +596,7 @@ func _import() -> void:
 				_say(str(result["error"]))
 				return
 			opened.emit(int(result["placed"]))
-			var note: String = "opened %d parts" % int(result["placed"])
-			if int(result["missing"]) > 0:
-				# Named, as an LDD model's are: a Studio model can use a part
-				# Studio made, which nothing else has.
-				# Kept in the file when it is someone else's (SourceFile): a
-				# save writes them back. A flexible part is named once, by
-				# the sub-model it is, not by the pieces it is drawn with.
-				var missing: Dictionary = result.get("unshown", result.get("missing_ids", {}))
-				var count: int = 0
-				for id: String in missing:
-					count += int(missing[id])
-				note += (" — %d not shown, kept in the file (%s)" if bool(result.get("kept"))
-					else " — %d not in the library, left out (%s)") % [count,
-					ModelStore.named_counts(missing)]
-			if int(result.get("waiting", 0)) > 0:
-				note += " — %d are still arriving, open it again in a moment" \
-					% int(result["waiting"])
+			var note: String = "opened %d parts" % int(result["placed"]) + left_out_words(result)
 			if not _picker.notes.is_empty():
 				note += " — " + _picker.notes
 			_say(note))

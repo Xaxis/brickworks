@@ -2918,10 +2918,8 @@ func _maybe_open_library() -> void:
 		_bar.say("could not open it: %s" % _model_library.trouble)
 		return
 	var title: String = ModelLibrary.title_of(entry)
-	job.end()
-	job = Working.begin("Fetching %s from the library…" % title)
-	await job.shown()
-	var got: Dictionary = await _model_library.model_text(entry)
+	job.say("Fetching %s from the library…" % title)
+	var got: Dictionary = await _model_library.model_text(entry, job)
 	job.end()
 	_set_address("")
 	if not str(got["error"]).is_empty():
@@ -2932,14 +2930,16 @@ func _maybe_open_library() -> void:
 		return
 	if _assistant != null:
 		_assistant.forget_built()
-	var placed: int = await _bar.open_text_with_progress(str(got["text"]), title)
+	var result: Dictionary = await _bar.open_text_with_progress(str(got["text"]), title)
+	var placed: int = int(result["placed"])
 	if placed <= 0 and _store.awaited.is_empty():
 		_bar.say("could not open %s: it could not be read" % title)
 		return
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
 	_bar.opened.emit(placed)
-	_bar.say("opened %s — %s" % [title, ModelBar.credit_words(_store.credit)])
+	_bar.say("opened %s — %s%s" % [title, ModelBar.credit_words(_store.credit),
+		ModelBar.left_out_words(result, false)])
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
