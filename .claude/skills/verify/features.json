@@ -544,6 +544,14 @@
       "tests": []
     },
     {
+      "id": "cli:first design undo probe",
+      "kind": "cli",
+      "entry": "src/dev/first_design_undo_probe.gd",
+      "reach": "tools/probe.sh first_design_undo_probe",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:flex skin probe",
       "kind": "cli",
       "entry": "src/dev/flex_skin_probe.gd",

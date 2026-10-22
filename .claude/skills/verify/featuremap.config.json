@@ -2756,6 +2756,13 @@
       "entry": "src/dev/motions_render_probe.gd",
       "reach": "tools/probe.sh motions_render_probe [OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh motions_render_probe OUT_DIR pictures   (windowed, on the GPU: File, Render's Animation pressed as a person does on 1484-1's doors and 4096-1's boom, as I see it and framed on what moves: every frame, frames that differ where parts move, the boom filling the frame, files named after the model and the motion and numbered, All in order, Cancel; the same frames pixel for pixel as the Motions panel's Render animation and render_motion; pictures of the dialog)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "first design undo probe",
+      "entry": "src/dev/first_design_undo_probe.gd",
+      "reach": "tools/probe.sh first_design_undo_probe",
+      "area": "mcp"
     }
   ]
 }

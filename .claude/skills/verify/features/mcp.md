@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:first design undo probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -476,6 +476,7 @@ godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queu
 godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, the guide, the menus in step
 godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that looks changes nothing
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
+tools/probe.sh first_design_undo_probe                              # a first design's floor and parts one step, undone and redone whole
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
@@ -755,6 +756,29 @@ All of these are in `tools/check.sh`.
   before 2026-10-19 a minifigure Claude stood up was lost on reload, and a
   clear_model went unsaved (the probe calls through the app's own connector
   socket, and fails both without it).
+  `first_design_undo_probe`: a call that keeps steps of its own and changes
+  the model past them too is both, one step. A session's first submit_design
+  lays its parts with no step, then the floor it chose is kept
+  (`FloorLayer.choose`, and `adopt` for a baseplate part of the build); only
+  the floor's was folded until 2026-10-22, so Undo left the parts. Now
+  `_one_step` keeps what the call's own steps do not name
+  (`ClaudeStep.record`, named by those steps alone, not the redo they
+  cleared) below them, as it came first: kept newest, it was redone before
+  the floor, which was laid round nothing, and a baseplate part of the build
+  came back as scenery. Twice from the bare baseplate the person places a
+  part and a session works: a first design on a tan baseplate part of the
+  build, review_model, settle_feature (reject), edit_model, place_technique
+  and set_floor on that baseplate; then a design on no floor and one on the
+  baseplate. Each is one step that the person's Undo takes back exactly and
+  Redo puts back (part, colour and place of every part, the floor's words,
+  whether the model has its own plate); the session's undo of its steps
+  leaves the person's part, and Undo pressed until nothing is left leaves
+  the bare baseplate, Redo every part. set_floor's Undo puts the plates
+  back where they lay (`FloorLayer.put` keeps them with the step): laid round
+  the model as it stood, the model's own baseplate came back as the floor.
+  And the second design stands in the first's place after the first was
+  undone and redone: `Assistant.follow_renumbering` reads its ids through
+  `Builder._live`. Fails 8 checks on 4c747508.
 - **A tool waits for geometry; it never says "not arrived".** On the web a
   part's geometry comes from the parts bucket the first time it is asked for.
   attachment_points answered "has not arrived yet" for 32523 and 87559, both

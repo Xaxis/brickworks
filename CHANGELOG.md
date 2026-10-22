@@ -67,6 +67,16 @@ whole cycle.
   off-roader (8466-1), turned one way and back, left one 10.7 LDU off. It
   is now its own cross, turning on a pin to the shaft in each end, as a
   universal joint built of its three parts does.
+- Undo takes back all of a Claude session's first design. The first design
+  a session submits chooses what the model stands on, and only that change
+  of floor was kept for Undo: the parts it laid were in no step, so undoing
+  everything after two small designs left 55 and 8 parts on the baseplate.
+  A call's parts and its floor are now one step, which Undo takes back and
+  Redo puts back whole, a baseplate that is part of the build too. Undoing
+  a change of colour to a model's own baseplate left the old one as the
+  floor, no longer part of the model; it comes back as it was. And a design
+  undone and redone stays Claude's: the next one submitted is laid in its
+  place, where it was laid beside it.
 - A steering no longer loses the rack it is turned by. A pinion standing at
   the end of its rack could be carried past the rack's last tooth by a
   turn, and the next turn found it out of the rack and turned it alone, the

@@ -781,6 +781,10 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 	var holding: ToolJobs.Entry = jobs.running()
 	if holding != null:
 		return [jobs.busy(holding), true]
+	# A review or a save reads Claude's parts before any tool of the
+	# assistant's runs (Assistant._run_tool follows them too).
+	if assistant != null:
+		assistant.follow_renumbering()
 	_doing = ""
 	if assistant != null and not assistant.progress.is_connected(_heard):
 		assistant.progress.connect(_heard)
@@ -857,20 +861,33 @@ func _before_change(name: String) -> Dictionary:
 	var last: Dictionary = builder.last_step()
 	return {"depth": builder.history_depth(), "last": last,
 		"size": (last.get("steps", []) as Array).size(),
-		"was": SelectionScope.snapshot(assistant.world, assistant.scenery)}
+		"was": SelectionScope.snapshot(assistant.world, assistant.scenery),
+		"kept": builder.steps_now()[0], "generation": assistant.world.generation()}
 
 
 ## Whatever a call from outside changed, as one step of the history, named
 ## as Claude's. An edit_model from a session went into no history at all, so
 ## the person's Undo after it took back their own last part and left
 ## Claude's edit standing. A call that keeps its own history (the window's
-## commands, an edit about a selection) has its steps folded into one; any
-## other has the difference made one step.
+## commands, an edit about a selection) has its steps folded into one, with
+## whatever it changed that they do not name; any other has the difference
+## made one step.
 func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 	if before.is_empty():
 		return
 	var builder: Builder = assistant.builder
 	if builder.history_depth() > int(before["depth"]):
+		# A session's first design lays its parts with no step and then keeps
+		# the floor it chose as one: only the floor's was folded, so undoing
+		# everything after two small designs left 55 and 8 parts on the bare
+		# baseplate. Named by the call's own steps only, not by the redo they
+		# cleared, which names a design laid again part for part. Kept below
+		# them, as it came first: redone after the floor, the floor was laid
+		# round nothing, and a baseplate part of the build came back scenery.
+		ClaudeStep.record(builder, assistant.world, assistant.scenery, {"was": before["was"],
+			"steps": [before["kept"], builder.steps_now()[1]],
+			"generation": before["generation"], "words": "Claude's %s" % name.replace("_", " ")},
+			int(before["depth"]))
 		builder.fold_since(int(before["depth"]))
 		_mark(builder, chat)
 		return

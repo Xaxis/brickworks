@@ -159,14 +159,18 @@ func has_own_plate() -> bool:
 
 
 ## Put the model's floor down under [param model], the bounds of what is
-## built: plates centred on it, as many as cover it, or the grid round it.
-## What is built never moves.
-func lay(model: AABB) -> void:
+## built: plates centred on it, as many as cover it, or the grid round it;
+## or [param plates] (as [method _plates_for] gives them) covering [param
+## at], where they were laid before. What is built never moves.
+func lay(model: AABB, plates: Array = [], at: AABB = AABB()) -> void:
 	_model = model
 	var chosen: ModelFloor = store.model_floor
 	var own: Array[int] = own_plates()
 	var wanted: Array = []
-	if chosen.is_plate() and own.is_empty():
+	if chosen.is_plate() and own.is_empty() and not plates.is_empty():
+		wanted = plates
+		area = at
+	elif chosen.is_plate() and own.is_empty():
 		wanted = _plates_for(chosen, model)
 	_put_plates(wanted)
 	if not own.is_empty():
@@ -217,14 +221,33 @@ func state() -> String:
 
 
 ## Put this floor down and return the one it replaced: Builder.floor_hook,
-## what an undo of a change of floor calls.
-func put(words: Variant) -> Variant:
-	var was: String = state()
-	var chosen: ModelFloor = ModelFloor.parse(str(words))
+## what an undo of a change of floor calls. The one replaced is its words
+## with the plates laid for it, where they lay, and put back they go back
+## there, the same bricks to the history (renumber). Laid round the model as
+## it stands instead, a baseplate of the model's own made the floor to take
+## a new colour (AppTools set_floor) came back elsewhere: the step making it
+## part of the model again found no plate, and it stayed the floor.
+func put(to: Variant) -> Variant:
+	var was: Array = [state(), _laid(), area]
+	var exact: Array = to as Array if to is Array else [to, [], AABB()]
+	var chosen: ModelFloor = ModelFloor.parse(str(exact[0]))
 	if chosen != null:
 		store.model_floor = chosen
-	lay(_now())
+	lay(_now(), exact[1], exact[2])
 	return was
+
+
+## The plates laid for the floor, as [method _plates_for] gives them; none
+## while some wait for their geometry, and the floor is laid afresh.
+func _laid() -> Array:
+	var out: Array = []
+	if not _waiting.is_empty():
+		return out
+	for brick_id: int in store.scenery:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			out.append([brick.part_id, brick.color_code, brick.transform])
+	return out
 
 
 ## What is built now, or what it was when last laid when nobody says.
