@@ -47,6 +47,16 @@ whole cycle.
 
 ### Changed
 
+- A big model opens without freezing the window. Its file is read, its
+  flexible parts are built and the parts it carries are made while the app
+  goes on drawing, and its parts are then put down a slice of each frame,
+  the status bar counting "Opening 8466-1… 40%". The model appears whole
+  once every part is down; until then the view still turns, and edits,
+  Save and your Claude's tools wait for it rather than see half a model.
+  8466-1 from the library held a browser for 3 to 4 seconds and a desktop
+  for most of a second; File, Open of a big file held the desktop for up to
+  five. A model of under 200 parts opens in one frame, as it always has.
+
 - On brickworks.diy a model's card is the same on every page, and its
   picture is larger: cut 4:3 from the middle of the shared picture, so a
   model fills a card about 1.4 times wider. A model's remixes are shown as

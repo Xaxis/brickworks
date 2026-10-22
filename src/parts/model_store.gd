@@ -813,6 +813,8 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 ## ([method open_text_fetched]) is laid a slice at a time; one of fewer in
 ## the one frame, as it always was.
 const LAID_IN_SLICES_FROM := 200
+## The least each slice of laying it is.
+const LAID_SLICE_US := 40000
 
 ## The world's generation a model is being laid in a slice at a time, or -1:
 ## see [member laying].
@@ -974,6 +976,11 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		_laying_in = laying_in
 		still_to_lay = known.size()
 		world.hold_drawing()
+		# Nothing of it is drawn meanwhile, only the bar: long slices, as
+		# each frame given back costs its own drawing (8466-1 in a browser
+		# drawing in software was laid in 7.4 s of short slices where its
+		# one frame took 6.1 s).
+		job.slices_of(LAID_SLICE_US)
 		job.percent = true
 		job.count(0, known.size() * 2)
 		# Each part's geometry to hand first, a slice at a time: on the

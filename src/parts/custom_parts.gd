@@ -1105,10 +1105,10 @@ static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 			_add_skin(library, built, str(entry["text"]))
 
 
-## Until no worker is reading [param library] (PartLibrary.being_read), a
-## frame at a time and ten seconds at most: adding a part to it waits for
-## them, and waited for in one frame, a weighing of the last model held the
-## next one's open for seconds.
+## Until no worker is reading [param library] (PartLibrary.being_read, which
+## ends early those that can be), a frame at a time and ten seconds at most:
+## adding a part to it waits for them, and waited for in one frame, reading
+## the last model held the next one's open for seconds.
 static func readers_done(library: PartLibrary) -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	for _n: int in 600:

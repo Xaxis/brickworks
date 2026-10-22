@@ -102,6 +102,10 @@ class Job extends RefCounted:
 			_pace = FramePace.new()
 		await _pace.next()
 
+	## Slices of at least [param least_us] from now on (FramePace).
+	func slices_of(least_us: int) -> void:
+		_pace = FramePace.new(least_us)
+
 	var _pace: FramePace = null
 
 	func cancel() -> void:
