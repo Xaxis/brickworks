@@ -33,9 +33,10 @@ const SORT_WORDS: Dictionary = {"newest": "Newest sets", "oldest": "Oldest sets"
 const SIZES: Dictionary = {"small": [0, 199], "medium": [200, 999], "large": [1000, 1 << 30]}
 ## What the library is, said where a model from it is credited.
 const FROM := "LDraw's Official Model Repository"
-## Most the index and a model may be: the largest repository model is ~4 MB.
+## Most the index and a model may be: the largest repository model is
+## 8466-1's, 36 MB (its parts carried in the file), the index ~0.5 MB.
 const MOST_INDEX := 16 * 1024 * 1024
-const MOST_MODEL := 24 * 1024 * 1024
+const MOST_MODEL := 64 * 1024 * 1024
 const MOST_COVER := 512 * 1024
 
 var parts: PartLibrary
@@ -241,15 +242,23 @@ static func title_of(entry: Dictionary) -> String:
 
 
 ## The model's file: {"text", "error"}, the error in words for a person.
-func model_text(entry: Dictionary) -> Dictionary:
+## [param job], when given, counts the download in it.
+func model_text(entry: Dictionary, job: Working.Job = null) -> Dictionary:
 	var file: String = str(entry["file"])
-	var got: Dictionary = await _kept_or_fetched(file, MOST_MODEL, false)
+	var got: Dictionary = await _kept_or_fetched(file, MOST_MODEL, false, job)
 	if int(got["code"]) == 200 and not (got["bytes"] as PackedByteArray).is_empty():
 		return {"text": (got["bytes"] as PackedByteArray).get_string_from_utf8(), "error": ""}
 	# A dev checkout has the repository's files themselves.
 	if not OS.has_feature("web") and FileAccess.file_exists(VENDOR + file.get_file()):
 		return {"text": FileAccess.get_file_as_string(VENDOR + file.get_file()), "error": ""}
 	return {"text": "", "error": _unreached(got, title_of(entry))}
+
+
+## How big a file is, as a person says it: "36 MB", "512 KB".
+static func size_words(bytes: int) -> String:
+	if bytes >= 1024 * 1024:
+		return "%s MB" % String.num(bytes / 1048576.0, 0 if bytes >= 10 * 1048576 else 1)
+	return "%d KB" % maxi(1, roundi(bytes / 1024.0))
 
 
 ## A model's cover, or null.
@@ -287,7 +296,7 @@ static func _unreached(got: Dictionary, what: String) -> String:
 ## [param path] under the store: {code, bytes}. The desktop keeps what came
 ## and reads it back first, or, with [param fresh], only when the store
 ## cannot be reached.
-func _kept_or_fetched(path: String, most: int, fresh: bool) -> Dictionary:
+func _kept_or_fetched(path: String, most: int, fresh: bool, job: Working.Job = null) -> Dictionary:
 	var kept: String = KEPT + path.trim_prefix(ROOT)
 	var desk: bool = not OS.has_feature("web")
 	if desk and not fresh and FileAccess.file_exists(kept):
@@ -295,7 +304,7 @@ func _kept_or_fetched(path: String, most: int, fresh: bool) -> Dictionary:
 	var base: String = await root()
 	var got: Dictionary = {"code": 0, "bytes": PackedByteArray()}
 	if not base.is_empty():
-		got = await fetch(base + path, most)
+		got = await fetch(base + path, most, job)
 	if int(got["code"]) == 200:
 		if desk:
 			DirAccess.make_dir_recursive_absolute(kept.get_base_dir())
@@ -310,17 +319,29 @@ func _kept_or_fetched(path: String, most: int, fresh: bool) -> Dictionary:
 
 
 ## One request: {code, bytes}, code 0 when nothing came back. Asked again
-## twice when nothing did, as SharedModels.fetch does.
-func fetch(url: String, most: int) -> Dictionary:
+## twice when nothing did, as SharedModels.fetch does. [param job], when
+## given, says how much has come: "… 12 of 36 MB".
+func fetch(url: String, most: int, job: Working.Job = null) -> Dictionary:
+	var words: String = job.words.trim_suffix("…") if job != null else ""
 	for attempt: int in 3:
 		var request := HTTPRequest.new()
 		request.body_size_limit = most
-		request.timeout = 60.0
+		# 36 MB on a slow line is minutes; the index and a cover are not.
+		request.timeout = 600.0 if most > MOST_COVER else 60.0
 		add_child(request)
 		if request.request(url) != OK:
 			request.queue_free()
 			return {"code": 0, "bytes": PackedByteArray()}
-		var got: Array = await request.request_completed
+		var got: Array = []
+		request.request_completed.connect(func(result: int, code: int, headers: PackedStringArray,
+				body: PackedByteArray) -> void: got.append_array([result, code, headers, body]),
+			CONNECT_ONE_SHOT)
+		while got.is_empty():
+			await get_tree().process_frame
+			if job != null and request.get_downloaded_bytes() > 0:
+				var size: int = request.get_body_size()
+				job.say("%s… %s%s" % [words, size_words(request.get_downloaded_bytes()),
+					" of " + size_words(size) if size > 0 else ""])
 		request.queue_free()
 		if int(got[0]) == HTTPRequest.RESULT_SUCCESS and int(got[1]) != 0:
 			return {"code": int(got[1]), "bytes": got[3] as PackedByteArray}

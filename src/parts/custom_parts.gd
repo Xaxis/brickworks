@@ -1011,15 +1011,10 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 		var text: String = entry["text"]
 		var built: PartForge.Result = (entry["built"] as Array)[0]
 		if built != null:
-			built = PartForge.with_mesh(built)
-			if not built.problem.is_empty():
-				problems.append("%s (flexible): %s" % [sub.name, built.problem])
+			var problem: String = _add_skin(library, built, text)
+			if not problem.is_empty():
+				problems.append("%s (flexible): %s" % [sub.name, problem])
 				continue
-			var info: PartLibrary.PartInfo = info_for(built)
-			info.category = SKIN_CATEGORY
-			info.reachable = false
-			info.keywords = PackedStringArray(["flexible", "ldcad"])
-			library.add_custom(info, built.mesh, text)
 		var key: String = entry["key"]
 		skins[id] = key
 		if not drawn_from.has(id) or not (entry["sources"] as Dictionary).is_empty():
@@ -1035,6 +1030,41 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 		sub.placements = kept
 		made.append(id)
 	return made
+
+
+## A skin built (PartForge.build_skin) put in the library as a part no bin
+## shows; why not, or "".
+static func _add_skin(library: PartLibrary, built: PartForge.Result, text: String) -> String:
+	built = PartForge.with_mesh(built)
+	if not built.problem.is_empty():
+		return built.problem
+	var info: PartLibrary.PartInfo = info_for(built)
+	info.category = SKIN_CATEGORY
+	info.reachable = false
+	info.keywords = PackedStringArray(["flexible", "ldcad"])
+	library.add_custom(info, built.mesh, text)
+	return ""
+
+
+## The flexible parts' skins [param model] carries, built on workers while
+## the frames go on, and put in the library: its open (take_from) then finds
+## each built, and waits for none. 8466-1 carries 29: their build held a
+## browser's frame for seconds, with the bar saying only "Opening". A skin
+## that could not be built is left for the open, which builds it again and
+## says why.
+static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
+	var begun: Array = begin_skins(library, model, PackedStringArray())
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	for entry: Dictionary in begun:
+		var task: int = int(entry["task"])
+		if task < 0:
+			continue
+		while not WorkerThreadPool.is_task_completed(task):
+			await tree.process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+		var built: PartForge.Result = (entry["built"] as Array)[0]
+		if built != null:
+			_add_skin(library, built, str(entry["text"]))
 
 
 ## The part file a sub-model's skin is: its own lines without the parts and

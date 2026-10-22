@@ -2399,7 +2399,8 @@ func _open_library(id: String, discard: bool) -> String:
 		return "Could not open %s: %s" % [title, got["error"]]
 	if assistant != null:
 		assistant.forget_built()
-	var placed: int = await bar.open_text_with_progress(str(got["text"]), title)
+	var result: Dictionary = await bar.open_text_with_progress(str(got["text"]), title)
+	var placed: int = int(result["placed"])
 	if placed <= 0 and store.awaited.is_empty():
 		return "Could not read %s." % title
 	store.credit = ModelLibrary.credit_of(entry)
@@ -2408,11 +2409,11 @@ func _open_library(id: String, discard: bool) -> String:
 	var since: int = Time.get_ticks_msec()
 	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
 		await app.get_tree().create_timer(0.3).timeout
-	return ("Opened %s: %d parts, %s (%s). It is LDraw's model of the real set: credit %s and keep "
+	return ("Opened %s: %d parts%s, %s (%s). It is LDraw's model of the real set: credit %s and keep "
 		+ "to its licence in anything made from it. Not saved: save_model keeps it in the person's "
 		+ "models. look_at_model to see it.") % [title,
 		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(),
-		ModelBar.credit_words(store.credit), entry["page"],
+		ModelBar.left_out_words(result, false), ModelBar.credit_words(store.credit), entry["page"],
 		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] + _opened_motions()
 
 

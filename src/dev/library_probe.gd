@@ -5,7 +5,7 @@
 ##
 ## The owner asked for exactly this: within the app, open a model from a
 ## library of every model there is. A stand-in store and gallery
-## (tools/web/serve.py --library tests/fixtures/library, on port 8936) play
+## (tools/web/serve.py --library tests/fixtures/library, on port 8901) play
 ## the parts store's library/ (eight sets, their covers, the files from
 ## vendor/omr/files) and three gallery models, one of them all rights
 ## reserved; BRICKWORKS_API points this app and the windows it starts at it.
@@ -42,9 +42,15 @@
 ## omr/), it serves that instead and only takes its pictures,
 ## shots/library_sample.png and library_sample_search.png: the screen with
 ## real covers.
+##
+## With -- --live, no stand-in at all: the real deployment and its parts
+## store, as the app ships. The whole library (1,575 models) with its covers,
+## and the biggest, 8466-1 (36 MB), found and opened here: how long it took,
+## its frames' longest, and its parts and credit. shots/library_live.png and
+## library_live_8466.png.
 extends SceneTree
 
-const PORT := 8936
+const PORT := 8901
 ## How long a copy of the app has to come up and open what it was given.
 const PATIENCE_S := 240.0
 
@@ -68,16 +74,18 @@ func _run() -> void:
 	var fixture: String = ProjectSettings.globalize_path("res://tests/fixtures/library")
 	var omr: String = ProjectSettings.globalize_path("res://vendor/omr/files")
 	var sample: String = ""
+	var live: bool = OS.get_cmdline_user_args().has("--live")
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--sample="):
 			sample = argument.trim_prefix("--sample=").rstrip("/")
 	if not sample.is_empty():
 		fixture = sample
 		omr = sample + "/omr"
-	_server = OS.create_process("python3", [ProjectSettings.globalize_path("res://tools/web/serve.py"),
-		fixture, str(PORT), "--library", fixture, "--omr", omr])
-	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:%d" % PORT)
-	await create_timer(1.5).timeout
+	if not live:
+		_server = OS.create_process("python3", [ProjectSettings.globalize_path("res://tools/web/serve.py"),
+			fixture, str(PORT), "--library", fixture, "--omr", omr])
+		OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:%d" % PORT)
+		await create_timer(1.5).timeout
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	_main = load("res://src/main.tscn").instantiate()
@@ -94,6 +102,10 @@ func _run() -> void:
 	var dialog: LibraryDialog = shell.library_dialog
 	if not sample.is_empty():
 		await _sample_pictures(dialog)
+		_done([])
+		return
+	if live:
+		await _live(dialog, store, world)
 		_done([])
 		return
 	var title: String = store.title
@@ -192,6 +204,12 @@ func _run() -> void:
 	await _choose(dialog, "_kind", "vehicle")
 	_check("Vehicles: %s" % str(dialog.last["shown"]), dialog.last["shown"] == ["LibStubKrt"])
 	await _choose(dialog, "_kind", "")
+	(dialog.controls_by_name()["library_tab_sets"] as Button).pressed.emit()
+	await _until(func() -> bool: return dialog.last.get("source") == "sets", 30.0)
+	await _search(dialog, "dragon")
+	_check("back on the sets, \"dragon\": %s" % str(dialog.last["shown"]), dialog.last["shown"] == ["omr-6056-1"])
+	(dialog.controls_by_name()["library_tab_community"] as Button).pressed.emit()
+	await _until(func() -> bool: return dialog.last.get("source") == "community", 30.0)
 	await _search(dialog, "bench")
 	_check("\"bench\": %s" % str(dialog.last["shown"]), dialog.last["shown"] == ["LibStubBch"])
 	before = _sessions()
@@ -304,6 +322,54 @@ func _run() -> void:
 	_check("the community shelf says so: %s" % dialog.last.get("status", ""),
 		dialog.last.get("status") == "Could not reach Brickworks. Check the connection and try again.")
 	_done([set_pid, copy_pid])
+
+
+## The real library, and its biggest model opened here.
+func _live(dialog: LibraryDialog, store: ModelStore, world: BrickWorld) -> void:
+	print("\nthe live library")
+	dialog.open("sets")
+	await _until(func() -> bool:
+		return int(dialog.last.get("total", 0)) > 0 or str(dialog.last.get("status", "")).begins_with("Could not"),
+		120.0)
+	_check("every model of it: %d (%s)" % [int(dialog.last.get("total", 0)), dialog.last.get("status", "")],
+		int(dialog.last.get("total", 0)) >= 1500)
+	await _until(func() -> bool: return _covers(dialog) >= 24, 120.0)
+	_check("the first page's 24 covers: %d" % _covers(dialog), _covers(dialog) >= 24)
+	await _shot("library_live")
+	await _search(dialog, "8466-1")
+	_check("\"8466-1\" finds the biggest: %s" % str(dialog.last["shown"]),
+		(dialog.last["shown"] as Array).has("omr-8466-1"))
+	await _search(dialog, "")
+	(dialog.controls_by_name()["library_tab_community"] as Button).pressed.emit()
+	await _until(func() -> bool: return dialog.last.get("source") == "community", 60.0)
+	await _until(func() -> bool: return _covers(dialog) >= mini(12, int(dialog.last.get("total", 0))), 60.0)
+	_check("the real gallery: %d models on its first page, %d pictures" % [int(dialog.last.get("total", 0)),
+		_covers(dialog)], int(dialog.last.get("total", 0)) > 0 and _covers(dialog) > 0)
+	await _shot("library_live_community")
+	dialog.close()
+	print("\n8466-1 (36 MB) opened here")
+	var frames: Dictionary = {"longest": 0, "last": Time.get_ticks_msec(), "count": 0}
+	var watch: Callable = func() -> void:
+		var now: int = Time.get_ticks_msec()
+		frames["longest"] = maxi(int(frames["longest"]), now - int(frames["last"]))
+		frames["last"] = now
+		frames["count"] = int(frames["count"]) + 1
+	process_frame.connect(watch)
+	var began: int = Time.get_ticks_msec()
+	_main.set("_from_library", "omr-8466-1")
+	await _main.call("_maybe_open_library")
+	var opened_ms: int = Time.get_ticks_msec() - began
+	await _until(func() -> bool: return store.awaited.is_empty(), 120.0)
+	process_frame.disconnect(watch)
+	var parts: int = world.brick_count() - store.scenery.size()
+	_check("opened in %.1f s over %d frames, the longest %d ms: %s, %d parts" % [opened_ms / 1000.0,
+		int(frames["count"]), int(frames["longest"]), store.title, parts],
+		store.title.begins_with("8466-1 ") and parts >= 1200)
+	print("    phases %s" % JSON.stringify(store.open_phases))
+	_check("credited: %s" % ModelBar.credit_words(store.credit), not str(store.credit.get("by", "")).is_empty()
+		and str(store.credit.get("page", "")).begins_with("https://library.ldraw.org/omr/sets/"))
+	await _frames(30)
+	await _shot("library_live_8466")
 
 
 ## The screen over a real store's sample, for its pictures.

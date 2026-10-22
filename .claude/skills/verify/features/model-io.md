@@ -329,7 +329,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   back to `vendor/omr/files`. Over MCP: `gallery library=true` searches the
   sets, `open_model library=<id>` opens one in the session's tab.
 - `library probe`: `tools/probe.sh library_probe` (a window, 1400 x 900). Starts
-  `tools/web/serve.py tests/fixtures/library 8936 --library
+  `tools/web/serve.py tests/fixtures/library 8901 --library
   tests/fixtures/library` (eight sets, three gallery models, one all rights
   reserved) and points `BRICKWORKS_API` at it. The Open list's row and the
   File menu's; all eight sets with covers, newest first; "dragon" and "106-1";
@@ -344,7 +344,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   connection are each said, as is a store with no library in it. Pictures `shots/library_*.png`. Not in the
   suite (two more copies of the app). `-- --sample=DIR` serves a store's own
   `library/` (libdata's sample) and only takes `library_sample*.png`.
-  Passed 47 checks, 0 failures (2026-10-22, 3ffad545).
+  Passed 47 checks, 0 failures (2026-10-22, 3ffad545). `-- --live` uses no
+  stand-in: the real deployment and its store, all 1,575 models with covers,
+  and 8466-1 (36 MB, the biggest) found and opened in the probe's window,
+  timed: 13.9 s from the press, 1,234 parts, credited (dcf6e538).
 - `library browser flow`: `tools/web/library_flow.mjs`, wired into
   `preview_checks.sh` as `library`. The library and the gallery are played by
   Playwright's route from `tests/fixtures/library`, so a local export and a
@@ -356,7 +359,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Pictures at 1400 x 900 and 390 x 844, dark and light (the app has one
   look; only the page around it follows the scheme). Passed 26 checks on a
   local export through `relay_server.mjs --static` (2026-10-22, 3ffad545);
-  not yet run against a deployment.
+  not yet run against a deployment. `--live` routes nothing: the store's
+  whole library (1,575), and 8466-1 opened in a new tab, its download
+  counted in MB on the status bar, read on a worker, its 29 hoses built on
+  workers (`CustomParts.warm_skins`), and the tab's longest stall measured by
+  an interval timer: 3.3 and 4.2 s in two runs, the layout's own frame (said
+  first, "Opening 8466-1…"), where it was 11.6 s
+  before the hoses were built ahead; then the real gallery's shelf, 7 models
+  with their pictures (local export, real store, e62d9c76).
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and
