@@ -604,6 +604,14 @@
       "tests": []
     },
     {
+      "id": "cli:gallery browser flow",
+      "kind": "cli",
+      "entry": "tools/web/gallery_flow.mjs",
+      "reach": "node tools/web/gallery_flow.mjs --out=DIR   (this checkout's web/ and api/, the API answered by the stand-in and a crowd of 130, nothing leaves the machine); BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=DIR   (the deployment's pages, the API still the stand-in's)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:gallery tool probe",
       "kind": "cli",
       "entry": "src/dev/gallery_tool_probe.gd",
@@ -1540,7 +1548,9 @@
       "entry": "src/assembly/brickify.gd",
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
       "area": "brickify",
-      "tests": []
+      "tests": [
+        "tests/test_gallery_tabs.py"
+      ]
     },
     {
       "id": "lib:brickify from a collection",
@@ -2590,9 +2600,10 @@
       "id": "ui:gallery page",
       "kind": "ui",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=views   (gallery.js reads /api/share?op=list with the search, filters and sort; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (Top, New, Following signed in; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; gallery.js reads /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -3205,6 +3216,7 @@
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/test_site_shell.py"
       ]
     },

@@ -201,7 +201,7 @@ const pageDrawn = (page) => page.evaluate(() => {
   // The profile's one row of numbers (api/people.js numbersHtml).
   const tiles = Object.fromEntries([...document.querySelectorAll(".profile .numbers li")].map((li) => [li.dataset.stat,
     { n: li.querySelector("b")?.textContent || "", text: li.textContent.replace(/\s+/g, " ").trim(), shown: !li.hidden }]));
-  const cards = [...document.querySelectorAll(".models a.model")].map((a) => ({ id: a.dataset.id,
+  const cards = [...document.querySelectorAll(".models .model")].map((a) => ({ id: a.dataset.id,
     builds: Number(a.dataset.builds), remixes: Number(a.dataset.remixes), comments: Number(a.dataset.comments),
     said: a.querySelector("small")?.textContent || "", tested: Boolean(a.querySelector(".tested")) }));
   const mine = document.getElementById("designs-mine");
@@ -215,7 +215,7 @@ const pageDrawn = (page) => page.evaluate(() => {
     build: document.querySelector(".start-with a.cta")?.getAttribute("href") || "",
     mineShown: Boolean(mine && !mine.hidden), mineText: mine?.textContent || "",
     designs: document.documentElement.dataset.designs || "",
-    views: /\bviews?\b/.test([...document.querySelectorAll(".models a.model small")].map((s) => s.textContent).join(" ")),
+    views: /\bviews?\b/.test([...document.querySelectorAll(".models .model small")].map((s) => s.textContent).join(" ")),
   };
 });
 

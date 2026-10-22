@@ -400,9 +400,9 @@ try {
   await until(visitor, () => document.documentElement.dataset.gallery === "ready", "the gallery", 60);
   const card = await visitor.evaluate((one) => {
     // The list's cards, not the front's shelves above it (the pick, small builds).
-    const mine = document.querySelector(`#models a.model[data-id="${one}"]`);
-    return { cards: [...document.querySelectorAll("#models a.model")].map((a) => ({ id: a.dataset.id, builds: a.dataset.builds })),
-      said: mine?.querySelector("small")?.textContent || "",
+    const mine = document.querySelector(`#models .model[data-id="${one}"]`);
+    return { cards: [...document.querySelectorAll("#models .model")].map((a) => ({ id: a.dataset.id, builds: a.dataset.builds })),
+      said: mine?.querySelector("small.acts")?.textContent || "",
       sorts: [...document.querySelectorAll("#sort option")].map((o) => o.textContent) };
   }, id);
   const listed = new Map((await Promise.all(answers)).flatMap((one) => one.models || [])

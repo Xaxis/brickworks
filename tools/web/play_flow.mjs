@@ -217,26 +217,26 @@ async function galleryCards(size, shape) {
       body: readFileSync(file) });
   });
   await page.goto(`${site}/gallery`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.waitForSelector('a.model[data-id="Pl4yCard03"]', { timeout: 30000 });
-  const said = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll("a.model")].map((a) =>
+  await page.waitForSelector('.model[data-id="Pl4yCard03"]', { timeout: 30000 });
+  const said = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll(".model")].map((a) =>
     [a.dataset.id, (a.querySelector("small.moves") || {}).textContent || ""])));
   check(`${size}: the racer's card says "${said.Pl4yCard01}", the house's "${said.Pl4yCard02}", the hut's nothing`,
     said.Pl4yCard01 === "Moves: steering" && said.Pl4yCard02 === "Moves: doors" && said.Pl4yCard03 === "");
   check(`${size}: a card with motions of its own says them: "${said.Pl4yCard04}"`,
     said.Pl4yCard04 === "Moves: open the dome, extend the telescope, open the back wall panels and 1 more");
   const box = await page.evaluate(() => {
-    const line = document.querySelector('a.model[data-id="Pl4yCard01"] small.moves');
+    const line = document.querySelector('.model[data-id="Pl4yCard01"] small.moves');
     const r = line ? line.getBoundingClientRect() : null;
     return r ? { x: r.x, y: r.y, w: r.width, h: r.height, page: document.documentElement.clientWidth } : null;
   });
   check(`${size}: it shows inside the page (${box ? `${Math.round(box.x)}, ${Math.round(box.y)}, ${Math.round(box.w)} wide` : "not shown"})`,
     Boolean(box) && box.w > 0 && box.x >= 0 && box.x + box.w <= box.page + 1);
-  await page.evaluate(() => document.querySelector('a.model[data-id="Pl4yCard01"]').scrollIntoView({ block: "center" }));
+  await page.evaluate(() => document.querySelector('.model[data-id="Pl4yCard01"]').scrollIntoView({ block: "center" }));
   await page.waitForTimeout(400);
   await shot(page, `${size}_5_gallery.png`);
   // Dark, on the card with motions of its own.
   await page.emulateMedia({ colorScheme: "dark" });
-  await page.evaluate(() => document.querySelector('a.model[data-id="Pl4yCard04"]').scrollIntoView({ block: "center" }));
+  await page.evaluate(() => document.querySelector('.model[data-id="Pl4yCard04"]').scrollIntoView({ block: "center" }));
   await page.waitForTimeout(300);
   await shot(page, `${size}_5_gallery_dark.png`);
   await page.emulateMedia({ colorScheme: "light" });
@@ -245,7 +245,7 @@ async function galleryCards(size, shape) {
   await page.locator("#technic").check({ force: true });
   await page.waitForTimeout(1500);
   const technicAsked = asked.some((q) => /op=list/.test(q) && /technic=1/.test(q));
-  const shown = await page.evaluate(() => [...document.querySelectorAll("a.model")].map((a) => a.dataset.id));
+  const shown = await page.evaluate(() => [...document.querySelectorAll(".model")].map((a) => a.dataset.id));
   check(`${size}: Technic or mechanism asks the list with technic=1, and shows ${shown.join(", ")}`,
     technicAsked && shown.includes("Pl4yCard01") && !shown.includes("Pl4yCard02"));
   await context.close();

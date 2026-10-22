@@ -173,7 +173,8 @@ const frontDrawn = (page) => page.evaluate(() => ({
   readySaid: document.getElementById("ready-said").textContent,
   readyModels: [...document.querySelectorAll("#ready-models .model")].map((a) => a.dataset.id),
   owned: document.querySelectorAll(".model small.owned").length,
-  shares: Object.fromEntries([...document.querySelectorAll("#models .model[data-owned]")].map((a) => [a.dataset.id,
+  // The list's cards and the pick that leads them (gallery.js drawShelves).
+  shares: Object.fromEntries([...document.querySelectorAll("#feed .model[data-owned]")].map((a) => [a.dataset.id,
     `${a.dataset.owned} ${a.querySelector("small.owned")?.textContent || ""}`])),
   sorts: [...document.querySelectorAll("#sort option")].map((o) => o.value),
 }));
@@ -283,7 +284,7 @@ try {
         await shot(page, `3_small_shelf_${tag}.png`);
       }
       if (who === "signed out" && width === 1280) {
-        await page.click("#pick-card a.model");
+        await page.click("#pick-card .model a.open");
         await page.waitForURL(`**/m/${ids.tower}`, { timeout: 20000 });
         check(`the pick is a link: it opened ${new URL(page.url()).pathname}`, new URL(page.url()).pathname === `/m/${ids.tower}`);
       }

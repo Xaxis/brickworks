@@ -14,9 +14,10 @@
 //     browser draws itself with /card.js from the same handler's JSON
 //     (?op=collection&id=), card by card;
 //   and a set of cards with everything a card can say (owned, won, moves,
-//     motions, Tested, no picture, a name with markup and quotes in it, a
-//     designer's earned card), drawn by the module the server imports and
-//     by the browser's /card.js.
+//     motions, Tested, made with the assistant, its designer's avatar and
+//     link, comments, a like that is a button and pressed, no picture, a
+//     name with markup and quotes in it, a designer's earned card), drawn by
+//     the module the server imports and by the browser's /card.js.
 //
 // Fails on any card that differs, or when no card was compared. Needs no
 // network: the site is served from --root's web/ and api/ as
@@ -53,9 +54,14 @@ const SAMPLES = [
     owned: { pieces: 187, have: 187 }, moves: ["steering"] }, {}],
   [{ id: "CardAbcde4", name: "Designer's own", parts: 640, author: "Dana", thumb: "/m/CardAbcde4.webp",
     views: 90, likes: 5, remixes: 1, builds: 7, comments: 3, tested: true }, { earned: true }],
+  [{ id: "CardAbcde5", name: "Liked, from the gallery", parts: 412, author: "Robin Castell", thumb: "/m/CardAbcde5.webp",
+    likes: 97, liked: true, builds: 37, comments: 3, tags: ["castle", "ai-designed"],
+    by: { handle: "robin-castell", name: "Robin <Castell>" } }, { like: true }],
+  [{ id: "CardAbcde6", name: "A handle that is not one", parts: 9, author: "Eve", by: { handle: "../admin", name: "Eve" },
+    tags: ["brickify"] }, { like: true }],
 ];
 
-const cardsOf = (html) => [...html.matchAll(/<a class="model"[\s\S]*?<\/a>/g)].map((m) => m[0]);
+const cardsOf = (html) => [...html.matchAll(/<article class="model"[\s\S]*?<\/article>/g)].map((m) => m[0]);
 
 console.log(`card check: ${root}`);
 const browser = await launch({ signedOut: true });
@@ -100,12 +106,16 @@ try {
     compared += 1;
     const [server] = await parsed(cardHtml(model, options));
     const [browserMade] = await drawn([model], options);
-    check(server === browserMade, `sample ${model.id}${options.earned ? " (earned)" : ""}: the same markup`
+    check(server === browserMade, `sample ${model.id}${options.earned ? " (earned)" : options.like ? " (a like button)" : ""}: the same markup`
       + (server === browserMade ? "" : `\n        server:  ${server}\n        browser: ${browserMade}`));
   }
   // Words stay words: a name's markup is text on the card.
   const [risky] = await drawn([SAMPLES[0][0]], {});
   check(!/<b>Tower<\/b>|<i>C<\/i>/.test(risky) && /&lt;b&gt;Tower/.test(risky), "a name's markup is shown as words");
+  // A designer's link only from a handle that is one; their name as words.
+  const [linked, odd] = await drawn([SAMPLES[4][0], SAMPLES[5][0]], { like: true });
+  check(/href="\/u\/robin-castell"/.test(linked) && /Robin &lt;Castell&gt;/.test(linked) && /aria-pressed="true"/.test(linked)
+    && !/href="\/u\//.test(odd) && /Brickify/.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
   check(!errors.length, `no script errors${errors.length ? `: ${errors.join("; ")}` : ""}`);
 } finally {
   await browser.close();

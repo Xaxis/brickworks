@@ -15,6 +15,17 @@ whole cycle.
 
 ### Changed
 
+- The gallery on brickworks.diy puts the models first: on a phone the
+  first cards are on the first screen, two to a row, and a laptop shows
+  four. Top, New and, signed in, Following are tabs, with Top over this
+  week, this month or all time; the kinds are a row of pills, and the
+  rest (the order, the size, instructions, Technic, Tested, and hand-built
+  or made with the assistant) is under Filters. A card says who designed
+  it, with their avatar and a link to their page, marks a model made with
+  the assistant or Brickify, and shows its likes, builds and comments.
+  Like a model from its card. The next page comes as you scroll, three
+  times, then Show more; the address says how far you went, and Back from
+  a model returns you to its card.
 - A person's page on brickworks.diy (/u/ and their handle) looks like a
   person's: their avatar, name and handle, what they say about themselves,
   up to two links of theirs elsewhere, one row of numbers (builds finished

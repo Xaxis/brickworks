@@ -254,16 +254,20 @@ const PAGES = [
   { name: "home", path: "/" },
   { name: "gallery", path: "/gallery",
     ready: (page) => until(page, () => document.querySelectorAll("#models .model").length > 0),
-    open: async (page, { width }) => {
-      if (width > 600) return [];
+    // Filters, a sheet over the cards at every width (docs/SOCIAL.md U3).
+    open: async (page) => {
       await page.click("#filters summary");
       return [["filters", "#filters"]];
     } },
   { name: "model", path: `/m/${stand.MODEL_ID}`,
     // The comments listed (Comment's count), and signed out Report it made
-    // live in More.
+    // live in More. On a deployment the page is its own model, whose
+    // comments the stand-in answering the API has none of: there, the
+    // comments asked and either listed or said why not.
     ready: (page, { signedIn }) => until(page, signedIn
-      ? () => !document.getElementById("comments")?.hidden
+      ? (remote ? () => !document.getElementById("comments")?.hidden
+        || Boolean(document.querySelector("#comments .comments-said")?.textContent)
+        : () => !document.getElementById("comments")?.hidden)
       : () => !document.querySelector('[data-report="this model"]')?.hidden),
     open: async (page, { signedIn }) => {
       if (!signedIn) {

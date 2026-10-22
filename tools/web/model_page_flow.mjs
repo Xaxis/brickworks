@@ -127,7 +127,7 @@ function read() {
     box: box(b), pressed: b.getAttribute("aria-pressed"),
   }));
   const rows = Object.fromEntries(["more-by", "similar", "from-gallery"].map((key) => [key,
-    document.getElementById(key) ? document.querySelectorAll(`#${key} a.model`).length : 0]));
+    document.getElementById(key) ? document.querySelectorAll(`#${key} .model`).length : 0]));
   const zeros = [...document.querySelectorAll("#marks .n, .facts .pill, #page-tabs .n")]
     .filter((el) => el.getClientRects().length && /^0\b|(^|\s)0 \w/.test(el.textContent.trim()))
     .map((el) => el.textContent.trim());
@@ -154,7 +154,7 @@ function read() {
     // The page's last cards, and any count of none said in words.
     lastCards: (() => {
       const rows = [...document.querySelectorAll("main .next")];
-      return rows.length ? rows[rows.length - 1].querySelectorAll("a.model").length : 0;
+      return rows.length ? rows[rows.length - 1].querySelectorAll(".model").length : 0;
     })(),
     noneSaid: (document.querySelector("main")?.innerText.match(/(^|[^\d,])0 (comments?|builds?|built|remix(es)?|likes?|views?|photos?)\b/g) || []),
     empties: {

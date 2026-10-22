@@ -115,10 +115,13 @@ def test_a_designer_card_leads_with_builds_and_never_says_views() -> None:
     # The one card (web/card.js), which the profile page draws its models with.
     assert re.search(r'import \{ cardHtml\b[^}]*\} from "\./_card\.js";', PEOPLE)
     card = js_function((ROOT / "web/card.js").read_text(encoding="utf-8"), "cardHtml")
-    earned = card[card.index("if (earned) {"): card.index("} else {")]
+    start = card.index("if (earned) {")
+    earned = card[start: card.index("\n  }", start)]
     order = [earned.index(f"model.{kind},") for kind in ("builds", "remixes", "comments", "likes")]
     assert order == sorted(order), "builds, remixes, comments, likes"
     assert "views" not in earned
+    # Nor does any other card (docs/SOCIAL.md D6).
+    assert "model.views" not in card
 
 
 def test_the_numbers_lead_with_builds_and_remixes() -> None:

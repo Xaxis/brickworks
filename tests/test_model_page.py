@@ -60,7 +60,8 @@ def row(html: str, key: str) -> list[str] | None:
     """The ids of the cards in the page's row [key] ("more-by", "similar"),
     or None for no row."""
     found = re.search(rf'<section class="next" id="{key}"[\s\S]*?</section>', html)
-    return re.findall(r'<a class="model" href="/m/([A-Za-z0-9]{10})"', found.group(0)) if found else None
+    # A card is an article, its id its own (web/card.js).
+    return re.findall(r'<article class="model" data-id="([A-Za-z0-9]{10})"', found.group(0)) if found else None
 
 
 def labels(html: str) -> list[str]:

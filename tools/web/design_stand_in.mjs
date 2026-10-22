@@ -294,6 +294,37 @@ const WEEK = [
   { model: "MikaRobot1", week: { builds: 3, remixes: 0, tested: false, score: 9 } },
 ];
 
+// The past 30 days, as Top over this month weighs them: the week's, and
+// what was built or remixed earlier in the month.
+const MONTH = [
+  ...WEEK,
+  { model: "DesignGea1", week: { builds: 6, remixes: 0, tested: true, score: 23 } },
+  { model: "DesignRmx1", week: { builds: 2, remixes: 0, tested: false, score: 6 } },
+];
+
+// A crowd of plain models behind the fixtures' (crowd(N), for
+// gallery_flow.mjs): enough for the gallery to page and page again. None
+// unless asked, so every other check draws the pages it always did.
+let CROWD = [];
+const CROWD_OWNERS = [ROBIN, MIKA, JO, PRIYA];
+const CROWD_KINDS = ["castle", "space", "vehicle", "town", "robot", "nature"];
+export function crowd(n) {
+  CROWD = Array.from({ length: n }, (_, at) => model({ id: `Crowd${String(at + 1).padStart(5, "0")}`,
+    owner: CROWD_OWNERS[at % CROWD_OWNERS.length], name: `Crowd model ${at + 1}`,
+    author: personOf(CROWD_OWNERS[at % CROWD_OWNERS.length]).name, parts: 40 + at * 7, steps: 4,
+    kind: CROWD_KINDS[at % CROWD_KINDS.length], tags: at % 5 === 0 ? ["ai-designed"] : [],
+    listed_at: new Date(Date.parse("2026-06-01T12:00:00Z") - at * 3600 * 1000).toISOString(),
+    updated_at: "2026-06-01T12:00:00Z" }));
+}
+
+// Whether supabase/gallery_tabs.sql is applied (applied(false): as before
+// it is): gallery_models answers, and the list offers Top's windows, Made
+// and Following.
+let APPLIED = true;
+export function applied(yes) {
+  APPLIED = Boolean(yes);
+}
+
 // Sam's feed, as feed_of keeps its rows, newest first, and when it was last opened.
 const FEED = [
   { kind: "comment", at: "2026-10-16T09:30:00Z", by: PRIYA, model: "SamModel01", name: "Harbour Tram", step: 2,
@@ -357,7 +388,7 @@ const ADMIN = {
 const ID = /^[A-Za-z0-9]{10}$/;
 const personOf = (account) => PEOPLE.find((one) => one.account === account) || null;
 const personNamed = (handle) => PEOPLE.find((one) => one.handle === String(handle || "").toLowerCase()) || null;
-const modelOf = (id) => MODELS.find((one) => one.id === id) || null;
+const modelOf = (id) => MODELS.find((one) => one.id === id) || CROWD.find((one) => one.id === id) || null;
 const shownModel = (id) => {
   const found = modelOf(id);
   return found && found.published && !found.barred ? found : null;
@@ -384,8 +415,16 @@ function card(m) {
     listed_at: m.listed_at, updated_at: m.updated_at, kind: m.kind, tags: m.tags, licence: m.licence,
     steps: m.steps, own_steps: m.own_steps, technic: m.technic, views, likes, builds,
     remixes: remixesOf(m.id).length, by: m.author !== null && owner ? { handle: owner.handle, name: owner.name } : null,
-    tested: TESTED.has(m.id) };
+    tested: TESTED.has(m.id), ...(APPLIED ? { comments: commentsOn(m.id) } : {}) };
 }
+
+/// How many comments a visitor may read on [id]'s page (gallery_tabs.sql
+/// directory_card): not removed, not hidden, by nobody taken out.
+const commentsOn = (id) => COMMENTS.filter((one) => one.model === id && !one.removed_at && !one.hidden_at
+  && !ADMIN.barred.some((barred) => barred.account === one.author)).length;
+
+/// How a model was made, as its tags say (web/card.js madeWith).
+const madeOf = (m) => ((m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify") ? "assistant" : "hand");
 
 /// directory_model: a model's page, with the line it came from and its listed remixes.
 function modelPage(id) {
@@ -412,7 +451,7 @@ function listModels(query = {}) {
   let rows;
   if (query.collection) rows = (listOf(query.collection)?.models || []).map(modelOf);
   else if (query.favourites) rows = FAVOURITES.filter(([who]) => who === query.favourites).map(([, id]) => modelOf(id));
-  else rows = MODELS.filter((one) => !query.owner || (one.owner === query.owner && one.author !== null));
+  else rows = [...MODELS, ...CROWD].filter((one) => !query.owner || (one.owner === query.owner && one.author !== null));
   rows = rows.filter((one) => one && one.published && !one.barred && (one.listed || hidden) && (!one.test || query.tests));
   const words = String(query.words || "").split("&").map((one) => one.trim().replace(/:\*$/, "")).filter(Boolean);
   if (words.length) rows = rows.filter((one) => wordsMatch(one, words));
@@ -425,7 +464,20 @@ function listModels(query = {}) {
   if (query.tag) rows = rows.filter((one) => (one.tags || []).includes(query.tag));
   const owned = (one) => ({ pieces: one.parts, have: Math.min(OWNED[one.id] || 0, one.parts) });
   if (query.buildable) rows = rows.filter((one) => owned(one).have >= one.parts);
+  if (query.made) rows = rows.filter((one) => madeOf(one) === query.made);
+  if (query.following) {
+    const followed = new Set(FOLLOWS.filter((one) => one.follower === query.following).map((one) => one.followed));
+    rows = rows.filter((one) => followed.has(one.owner) && one.author !== null);
+  }
   const sort = query.sort || "newest";
+  // Top over a time: what the week's or the month's builds and remixes
+  // say, the rest left out (gallery_tabs.sql gallery_models).
+  if (query.days && sort === "top") {
+    const span = new Map((query.days <= 7 ? WEEK : MONTH).map((one) => [one.model, one.week.score]));
+    rows = rows.filter((one) => span.has(one.id)).sort((a, b) => span.get(b.id) - span.get(a.id));
+    const skip = Number(query.skip) || 0;
+    return rows.slice(skip, skip + (Number(query.size) || 25)).map((one) => ({ ...card(one), ...(query.pool ? { owned: owned(one) } : {}) }));
+  }
   const counted = { views: 0, likes: 1, builds: 2 };
   if (sort === "newest") rows.sort(byTime("listed_at"));
   else if (sort in counted) rows.sort((a, b) => statsOf(b.id)[counted[sort]] - statsOf(a.id)[counted[sort]]);
@@ -544,6 +596,7 @@ const TABLES = {
 const RPC = {
   directory_model: ({ model_id }) => modelPage(model_id),
   directory_models: ({ query }) => listModels(query || {}),
+  gallery_models: ({ query }) => listModels(query || {}),
   profile_page: ({ wanted, tests }) => profilePage(wanted, tests === true),
   collection_page: ({ list }) => collectionPage(list),
   collection_count: ({ list, private: hidden }) => collectionCount(list, hidden === true),
@@ -645,7 +698,7 @@ function rest(where, init) {
   const method = String(init.method || "GET").toUpperCase();
   if (path.startsWith("rpc/")) {
     const run = RPC[path.slice(4)];
-    if (!run) return notHere(path);
+    if (!run || (path === "rpc/gallery_models" && !APPLIED)) return notHere(path);
     let body = {};
     try {
       body = init.body ? JSON.parse(init.body) : {};
@@ -830,6 +883,8 @@ const SIZES = { small: { most: 199, label: "Small, under 200 parts" },
 const SORTS = { newest: "Newest", views: "Most viewed", likes: "Most liked", remixes: "Most remixed", builds: "Most built",
   top: "Top builds" };
 const MINE_SORTS = { owned: "Parts I own" };
+const WINDOWS = { week: { days: 7, label: "This week" }, month: { days: 30, label: "This month" } };
+const MADES = { hand: "Hand-built", assistant: "With the assistant" };
 const SCORE = { builds: 3, remixes: 2, tested: 5 };
 const SHELF = 8;
 const PER_PAGE = 24;
@@ -855,7 +910,7 @@ function apiCard(row) {
   return { id: row.id, name: row.name, author: row.author, parts: row.parts, listed_at: row.listed_at, kind: row.kind ?? null,
     tags: row.tags || [], licence: row.licence ?? null, steps: row.steps ?? null, own_steps: row.own_steps === true,
     technic: row.technic === true, tested: row.tested === true, views: row.views, likes: row.likes, remixes: row.remixes,
-    builds: row.builds, by: row.by, url, image: row.has_image ? `${url}.png` : null,
+    builds: row.builds, comments: Number(row.comments) || 0, by: row.by, url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version}` : null,
     ...(row.owned ? { owned: { ...row.owned, share: row.owned.pieces ? row.owned.have / row.owned.pieces : null } } : {}) };
 }
@@ -1030,6 +1085,12 @@ function collection(id, who, page) {
 
 const MAIL = { comments: true, models: true, versions: false, photos: true, remixes: false };
 
+/// Whether Sam likes [id]: as the fixtures say, or as a like pressed in
+/// this browser left it (state.likes, a Map a flow gives to keep them).
+const likes = (state, id) => (state.likes?.has(id) ? state.likes.get(id) : likedBy(ME, id));
+/// [id]'s likes, counting what was pressed here.
+const likeCount = (state, id) => statsOf(id)[1] + (likes(state, id) === likedBy(ME, id) ? 0 : likes(state, id) ? 1 : -1);
+
 /// /api/people.
 function people(method, params, body, who, state) {
   const op = params.get("op") || "";
@@ -1059,7 +1120,7 @@ function people(method, params, body, who, state) {
     if (op === "profile") return profile(params.get("handle"), page, asked(params.get("tests")));
     if (op === "marks") {
       if (!ID.test(id)) return answer(400, { error: "name a link: ?id=<ten characters>" });
-      return answer(200, { liked: likedBy(ME, id), favourite: keptBy(ME, id),
+      return answer(200, { liked: likes(state, id), favourite: keptBy(ME, id),
         collections: LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at"))
           .map((list) => ({ id: list.id, name: list.name, public: list.public, has: list.models.includes(id) })) });
     }
@@ -1104,13 +1165,21 @@ function people(method, params, body, who, state) {
     }
     return answer(400, { error: `unknown op ${op}` });
   }
-  // A write: the check presses nothing that writes, so it went.
+  // A like, kept in state.likes when the flow gave one, as api/people.js
+  // answers it: liked or not, and the count.
+  if (op === "like") {
+    if (!ID.test(id) || !shownModel(id)) return answer(404, { error: "there is no shared model at that link" });
+    if (typeof body?.on !== "boolean") return answer(400, { error: "say on: true or on: false" });
+    state.likes?.set(id, body.on);
+    return answer(200, { id, liked: body.on, likes: state.likes ? likeCount(state, id) : statsOf(id)[1] });
+  }
+  // Any other write: the check presses nothing that writes, so it went.
   return answer(200, { ok: true });
 }
 
 /// The gallery's question, checked as api/_directory.js listQuery checks
 /// it: {asked, said}, or the refusal.
-function galleryQuery(params, mine) {
+function galleryQuery(params, mine, who) {
   const page = Number(params.get("page") ?? 1);
   if (!Number.isInteger(page) || page < 1 || page > 400) return { refused: answer(400, { error: "page is a whole number from 1 to 400" }) };
   const said = { page };
@@ -1137,12 +1206,29 @@ function galleryQuery(params, mine) {
   }
   const tag = String(params.get("tag") ?? "").toLowerCase().trim();
   if (tag) said.tag = query.tag = tag;
+  const made = params.get("made") || "";
+  if (made) {
+    if (!["hand", "assistant"].includes(made)) return { refused: answer(400, { error: "made is one of hand, assistant" }) };
+    said.made = query.made = made;
+  }
+  if (asked(params.get("following"))) {
+    if (!who || !mine) return { refused: answer(401, { error: "sign in, and ask with mine=1, to see the models of the people you follow" }) };
+    said.following = true;
+    query.following = who;
+  }
   const sort = params.get("sort") || "newest";
   if (!(sort in SORTS) && !(mine && sort in MINE_SORTS)) {
     return { refused: sort in MINE_SORTS ? answer(401, { error: "sign in, and ask with mine=1, to sort by what you own" })
       : answer(400, { error: `sort is one of ${Object.keys(SORTS).join(", ")}` }) };
   }
   said.sort = query.sort = sort;
+  const span = params.get("window") || "";
+  if (span) {
+    if (!WINDOWS[span]) return { refused: answer(400, { error: "window is one of week, month" }) };
+    if (sort !== "top") return { refused: answer(400, { error: "a window is Top's: ask it with sort=top" }) };
+    said.window = span;
+    query.days = WINDOWS[span].days;
+  }
   if (asked(params.get("ready"))) {
     if (!mine) return { refused: answer(401, { error: "sign in, and ask with mine=1, to see what you can build now" }) };
     said.ready = query.buildable = true;
@@ -1153,7 +1239,7 @@ function galleryQuery(params, mine) {
 }
 
 /// /api/share: the gallery's list and front, and a model's own page's asks.
-function share(method, params, who) {
+function share(method, params, who, state = {}) {
   const op = params.get("op") || "";
   const id = params.get("id") || "";
   const mine = asked(params.get("mine"));
@@ -1162,21 +1248,33 @@ function share(method, params, who) {
   if (method === "POST") return answer(200, { counted: true });
   const pool = mine ? { mine: POOL } : {};
   if (op === "list") {
-    const { query, said, refused } = galleryQuery(params, mine);
+    const { query, said, refused } = galleryQuery(params, mine, who);
     if (refused) return refused;
-    const rows = listModels(query);
-    return answer(200, { ...said, per_page: PER_PAGE, more: rows.length > PER_PAGE, models: rows.slice(0, PER_PAGE).map(apiCard),
+    // Before gallery_tabs.sql: none of its words (api/share.js gallery).
+    if (!APPLIED && (query.days || query.made || query.following)) {
+      return answer(400, { error: "Following, Made and Top's time windows are not here yet: they come with the gallery's next update." });
+    }
+    // A gallery with nothing in it yet (state.empty): the cold start.
+    const rows = state.empty ? [] : listModels(query);
+    const models = rows.slice(0, PER_PAGE).map(apiCard)
+      .map((one) => (mine ? { ...one, liked: likes(state, one.id), likes: likeCount(state, one.id) } : one));
+    return answer(200, { ...said, per_page: PER_PAGE, more: rows.length > PER_PAGE, models,
       kinds: KINDS, sizes: Object.entries(SIZES).map(([key, one]) => ({ id: key, label: one.label })),
       sorts: Object.entries({ ...SORTS, ...(mine ? MINE_SORTS : {}) }).map(([key, label]) => ({ id: key, label })),
+      ...(APPLIED ? { windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
+        mades: Object.entries(MADES).map(([id, label]) => ({ id, label })), following: Boolean(mine) } : {}),
       score: SCORE, ...pool });
   }
   if (op === "shelves") {
     const own = mine ? { pool: ME } : {};
-    const small = listModels({ most: SIZES.small.most, sort: "top", size: SHELF + 1, ...own });
-    const ready = mine ? listModels({ pool: ME, buildable: true, sort: "top", size: SHELF + 1 }) : [];
-    return answer(200, { ...(mine ? { ...pool, ready: { models: ready.slice(0, SHELF).map(apiCard), more: ready.length > SHELF } } : {}),
-      pick: { chosen: false, until: null, week: PICK.week, model: apiCard(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
-      small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(apiCard),
+    // Signed in, whether Sam likes each, as on the list.
+    const shown = (row) => (mine ? { ...apiCard(row), liked: likes(state, row.id), likes: likeCount(state, row.id) } : apiCard(row));
+    const small = state.empty ? [] : listModels({ most: SIZES.small.most, sort: "top", size: SHELF + 1, ...own });
+    const ready = mine && !state.empty ? listModels({ pool: ME, buildable: true, sort: "top", size: SHELF + 1 }) : [];
+    return answer(200, { ...(mine ? { ...pool, ready: { models: ready.slice(0, SHELF).map(shown), more: ready.length > SHELF } } : {}),
+      pick: state.empty ? null : { chosen: false, until: null, week: PICK.week,
+        model: shown(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
+      small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(shown),
         more: small.length > SHELF }, score: SCORE,
       challenge: { id: CHALLENGE.id, title: CHALLENGE.title, state: CHALLENGE.state, starts_on: CHALLENGE.starts_on,
         ends_on: CHALLENGE.ends_on } });
@@ -1326,7 +1424,7 @@ export function apiAnswer({ url, method = "GET", body, state = {} }) {
         : answer(422, { error: "That is not an email address." });
     }
     case "people": return people(verb, params, body, who, state);
-    case "share": return share(verb, params, who);
+    case "share": return share(verb, params, who, state);
     case "admin": return admin(verb, params, who, state);
     case "oauth": return oauth(verb, params, body, who);
     // What you own (api/collection.js): the sets and loose parts.

@@ -165,9 +165,9 @@ import { designerOf, designs } from "./_designers.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
 import { cardHtml, pictureOf } from "./_card.js";
-// The kit (web/kit.js): an avatar made from a handle, the icons and an icon
-// button, drawn as a browser draws them.
-import { avatarHtml, iconButtonHtml, iconHtml } from "./_kit.js";
+// The kit, made in the card's file: an avatar made from a handle, the
+// icons and an icon button, drawn as a browser draws them.
+import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
