@@ -682,9 +682,8 @@ func _build_with(name: String, bricks: Array, sections: Array) -> void:
 	assistant._busy = false
 	world.clear()
 	builder.lattice.clear()
-	# As the app's Clear does: the fixture before is not this one's subject.
-	# Without it the owl head made the house roof after it an owl.
-	assistant.forget_built()
+	# Not forgotten, as a session submitting one design after another does
+	# not: each fixture is a design of its own subject (second_design_probe).
 	var args: Dictionary = {"name": name, "description": "a fixture", "bricks": bricks,
 		"features": []}
 	if not sections.is_empty():
