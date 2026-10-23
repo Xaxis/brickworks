@@ -13153,6 +13153,27 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		members.append(index)
 		pieces[root[index]] = members
 	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	# Which pieces that stand come away in the hand. One the parts round it
+	# catch stays (ExactCheck.caught), unless what catches it comes away too:
+	# asked again until nothing more does, what falls and what comes away
+	# catching nothing.
+	var stands: Dictionary = {}    ## root -> it rests
+	var gone: Dictionary = {}      ## item -> true
+	for key: Variant in pieces:
+		stands[key] = exact.rests(pieces[key])
+		if not stands[key]:
+			for index: Variant in pieces[key]:
+				gone[int(index)] = true
+	var away: Dictionary = {}      ## root -> true
+	var more: bool = true
+	while more:
+		more = false
+		for key: Variant in pieces:
+			if stands[key] and not away.has(key) and exact.comes_away(pieces[key], gone):
+				away[key] = true
+				more = true
+				for index: Variant in pieces[key]:
+					gone[int(index)] = true
 	var set_down: Array = []
 	for key: Variant in pieces:
 		# Standing square on what is under it, clear of everything, it stays
@@ -13163,8 +13184,8 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		# plates' rims did, which the check passed while BrickNet counted each
 		# a piece of its own; advice otherwise, as a brick stood on a tile or a
 		# log in the groove of two below it are set down on purpose.
-		if exact.rests(pieces[key]):
-			if not exact.comes_away(pieces[key]):
+		if stands[key]:
+			if not away.has(key):
 				continue
 			for index: Variant in pieces[key]:
 				apart[int(index)] = true

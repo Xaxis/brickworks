@@ -446,7 +446,7 @@ func rests(members: Array) -> bool:
 ## it held together. A 4 x 4 dish over a round plate's four studs is held:
 ## its centre tube stands between them as a 2 x 2 brick's tube does, though
 ## BrickNet reads only the tube's own middle, which takes one stud.
-func comes_away(members: Array) -> bool:
+func comes_away(members: Array, gone: Dictionary = {}) -> bool:
 	var mine: Dictionary = {}
 	for i: Variant in members:
 		mine[int(i)] = true
@@ -457,7 +457,78 @@ func comes_away(members: Array) -> bool:
 				continue
 			if _tube_grips(items[j], item) or _tube_grips(item, items[j]):
 				return false
+	return not caught(members, gone)
+
+
+## Whether a piece of [param members] is caught where it is: slid out any of
+## the six ways along the axes, its exact shapes run into another part's
+## before it is clear of them. The parts in [param gone] (those of pieces that
+## come away themselves) stop nothing. The orrery's planet rings are each a
+## piece BrickNet joins to nothing, as no connector it knows turns a ring
+## round a core; each stands on the ring below, the gears in mesh with its
+## teeth stop it every way across, and the frame over the top ring stops the
+## stack lifting off, so picked up, the model keeps them. A tile resting on a
+## plate slides up off it, and comes away.
+func caught(members: Array, gone: Dictionary = {}) -> bool:
+	var mine: Dictionary = {}
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null or not item.shape.has_pieces():
+			return false
+		mine[int(i)] = true
+		lo = lo.min(item.lo)
+		hi = hi.max(item.hi)
+	for way: Vector3 in [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT,
+			Vector3.FORWARD, Vector3.BACK]:
+		# What it could run into that way: whatever is across the path of its
+		# box, and how far it goes before its box is past all of them.
+		var path_lo: Vector3 = lo.min(lo + way * INF_REACH)
+		var path_hi: Vector3 = hi.max(hi + way * INF_REACH)
+		var across: Array[int] = []
+		var far: float = 0.0
+		for j: int in items.size():
+			var other: Exact.Item = items[j]
+			if other == null or mine.has(j) or gone.has(j) or not other.shape.has_pieces() \
+					or other.lo.x > path_hi.x or path_lo.x > other.hi.x \
+					or other.lo.y > path_hi.y or path_lo.y > other.hi.y \
+					or other.lo.z > path_hi.z or path_lo.z > other.hi.z:
+				continue
+			across.append(j)
+			var axis: int = way.abs().max_axis_index()
+			far = maxf(far, other.hi[axis] - lo[axis] if way[axis] > 0.0 else hi[axis] - other.lo[axis])
+		if not _runs_into(members, across, way, far):
+			return false
 	return true
+
+
+## How far a piece is slid at a time when asked whether it is caught, in LDU:
+## under a plate's height, so no plate is passed through between two steps.
+const SLIDE := 4.0
+## How far a caught piece's path is looked along for what it runs into, in
+## LDU: past any model built here.
+const INF_REACH := 100000.0
+
+
+## Whether [param members], slid along [param way] a step at a time up to
+## [param far], meet any of [param across] by more than TAU.
+func _runs_into(members: Array, across: Array[int], way: Vector3, far: float) -> bool:
+	var t: float = SLIDE
+	while t <= far + SLIDE:
+		for i: Variant in members:
+			var item: Exact.Item = items[int(i)]
+			var moved := Exact.Item.new(item.shape, Transform3D(item.at.basis, item.at.origin + way * t))
+			for j: int in across:
+				var other: Exact.Item = items[j]
+				if other.lo.x > moved.hi.x or moved.lo.x > other.hi.x \
+						or other.lo.y > moved.hi.y or moved.lo.y > other.hi.y \
+						or other.lo.z > moved.hi.z or moved.lo.z > other.hi.z:
+					continue
+				if not Exact.clash(moved, other).is_empty():
+					return true
+		t += SLIDE
+	return false
 
 
 ## Whether a tube of [param b] stands between studs of [param a], as a 2 x 2
