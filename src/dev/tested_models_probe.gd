@@ -20,10 +20,11 @@ const SHIPPED: Array[String] = ["res://models/kart.ldr", "res://models/castle.ld
 	"res://models/orrery.ldr"]
 ## Orthanc as models175 measured it (models/orthanc.ldr at rel-m155), kept
 ## here: orthanc177 mends the shipped one.
-## Shipped models whose steps build a sub-model in the hand that is not one
-## piece there, so they fail the steps test as they did before the exact
-## check: the orrery builds each planet's ring and the beams over it in one
-## sub-model, and the beams are pinned to the ring above, not to it.
+## Shipped models whose steps put parts down before what holds them, so they
+## fail the steps test as they did before the exact check: the orrery's frame
+## top goes up before the posts that carry it, and some gears go in after the
+## parts that hide them (its planets' spine of beams and pins now goes in on
+## the model, between the planets, where they hold).
 const BUILT_IN_PIECES: Array[String] = ["res://models/orrery.ldr"]
 const ORTHANC := "res://src/dev/fixtures/orthanc_models175.ldr.gz"
 const BENCH := "res://src/dev/fixtures/bench/"

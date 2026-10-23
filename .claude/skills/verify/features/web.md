@@ -3369,9 +3369,9 @@ when it ends "a model is Tested when it goes together, and one that does not
 says why": a tile on two bricks is Tested and a brick resting on the tile is
 not ("Brick 1 x 2 rests on Tile 1 x 2"); a cheese slope on a round plate's
 rim is not ("where it has no stud"); the kart and castle in models/ are
-Tested, and the orrery passes the whole test but not steps (each planet's
-sub-model is built in the hand with beams pinned to the ring above, not to
-its own); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
+Tested, and the orrery passes the whole test but not steps (its frame top
+goes up before the posts that carry it, and some gears go in after what
+hides them); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
 the whole test, and are Tested where their other three pass (one, model-043:
 the rest fail steps or parts); Orthanc as models175 found it
 (`src/dev/fixtures/orthanc_models175.ldr.gz`) is not, its whole test saying
