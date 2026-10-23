@@ -10,23 +10,9 @@
 // escapes its own.
 import { askToSignIn, call, signOut, signedIn, token } from "/account.js";
 import { showFeedCount, showTabCounts } from "/follow.js";
-import { avatarHtml, iconHtml } from "/kit.js";
+import { ago, avatarHtml, iconHtml } from "/kit.js";
 
 const $ = (id) => document.getElementById(id);
-const AGO = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-
-/// "5 minutes ago", "yesterday", "3 Oct".
-function when(iso) {
-  const at = Date.parse(String(iso || ""));
-  if (!Number.isFinite(at)) return "";
-  const minutes = Math.round((at - Date.now()) / 60000);
-  if (minutes > -1) return "just now";
-  if (minutes > -60) return AGO.format(minutes, "minute");
-  if (minutes > -24 * 60) return AGO.format(Math.round(minutes / 60), "hour");
-  if (minutes > -7 * 24 * 60) return AGO.format(Math.round(minutes / 1440), "day");
-  return DATE.format(at);
-}
 
 /// Only the site's own addresses: what the server made from ids.
 function here(link) {
@@ -93,7 +79,7 @@ function line(one) {
   }
   const at = document.createElement("time");
   at.dateTime = String(one.at || "");
-  at.textContent = when(one.at);
+  at.textContent = ago(one.at);
   words.append(at);
   link.append(words);
   item.append(link);

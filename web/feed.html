@@ -2,9 +2,13 @@
 <!--
   Your feed, at /feed: newest first, what the people you follow made —
   new models and new versions, photos of their builds, their challenge
-  entries (supabase/follows.sql, api/_follows.js). Each row is a link to
-  the thing. Opening it clears its count. What happens to your own models
-  is Notifications, the tab beside it (supabase/notifications.sql).
+  entries (supabase/follows.sql, api/_follows.js) — each as a post with
+  its picture: who did it, then the model's card or the photo
+  (docs/SOCIAL.md U9). Opening it clears its count. What happens to your
+  own models is Notifications, the tab beside it
+  (supabase/notifications.sql). Signed out, following nobody, or with
+  nothing new: Latest on Brickworks, the newest models and photos of
+  builds; and beside it designers to follow, by Top builds.
 
   Signed in with the app's own sign-in in this browser (web/account.js).
   feed.js puts every word on the page as text. No inline script: the
@@ -74,7 +78,7 @@
 </header>
 
 <main id="main">
-	<div class="wrap page person feed">
+	<div class="wrap page feed-page">
 		<div class="page-head">
 			<h1>Your feed</h1>
 		</div>
@@ -82,26 +86,36 @@
 			<a href="/notifications">Notifications <span class="n" data-count="notifications" hidden></span></a>
 			<a href="/feed" aria-current="page">Your feed <span class="n" data-count="feed" hidden></span></a>
 		</nav>
-
-		<section id="signed-out" hidden>
-			<p class="lede">Sign in to see what the people you follow make, and what happens to your
-				own models. We email you a code: no password.</p>
-			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
-		</section>
 		<p class="state" id="loading">Looking for your sign-in…</p>
 
-		<section id="signed-in" hidden>
-			<p class="note">New models and new versions from people you follow, the photos they post
-				of their builds and what they enter in the <a href="/challenge">monthly challenge</a>,
-				newest first. What happens to your own models is in
-				<a href="/notifications">Notifications</a>.</p>
-			<p class="note" id="not-yet" hidden>Following and the feed are not open on Brickworks yet.</p>
-			<ol class="feed-list" id="rows" aria-label="Your feed"></ol>
-			<p class="state" id="empty" hidden>Nothing yet. Follow somebody whose models you like, from
-				their profile in the <a href="/gallery">gallery</a>, and what they share comes here.</p>
-			<div class="actions"><button class="cta ghost" type="button" id="older" hidden>Older</button></div>
-			<p class="said" id="said" role="status"></p>
-		</section>
+		<div class="feed-layout" id="layout" hidden>
+			<div class="feed-main">
+				<div class="state feed-ask" id="signed-out" hidden>
+					<p>Sign in and follow the designers whose models you like: what they make comes here.</p>
+					<button class="cta small" id="sign-in" type="button">Sign in</button>
+				</div>
+				<p class="state" id="nobody" hidden>You follow nobody yet. Follow a designer and their new
+					models, new versions and photos of their builds come here.</p>
+				<p class="state" id="quiet" hidden>Nothing new from the people you follow in the last 90 days.</p>
+				<p class="state" id="not-yet" hidden>Following and the feed are not open on Brickworks yet.</p>
+				<ol class="feed-list" id="rows" aria-label="Your feed"></ol>
+				<div class="actions" id="older-line" hidden><button class="cta ghost" type="button" id="older">Older</button></div>
+				<p class="said" id="said" role="status"></p>
+			</div>
+			<aside class="feed-rail" id="designers" hidden aria-labelledby="designers-title">
+				<h2 id="designers-title">Designers to follow</h2>
+				<ul class="people-list" id="people"></ul>
+			</aside>
+			<section class="latest" id="latest" hidden aria-labelledby="latest-title">
+				<div class="section-head">
+					<h2 id="latest-title">Latest on Brickworks</h2>
+					<a href="/gallery?sort=newest">The gallery</a>
+				</div>
+				<div class="models" id="latest-models"></div>
+				<h3 id="photos-title" hidden>Photos of real builds</h3>
+				<div class="build-grid" id="latest-photos" hidden></div>
+			</section>
+		</div>
 	</div>
 </main>
 

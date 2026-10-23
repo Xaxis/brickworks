@@ -264,23 +264,81 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
 
 /* Follow (web/follow.js): on a profile, under its counts, and beside a
-   model's designer. And the feed (/feed, web/feed.js): one row a thing,
-   each a link to it, the new ones marked. */
+   model's designer. */
 .person .counts { margin-bottom: 12px; }
 .follow-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 26px; min-height: 1em; }
 .follow-line .said, .shared-by .said { margin: 0; font-size: var(--t-small); }
 button.follow[aria-pressed="true"] { color: var(--ink-soft); }
-.feed-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 10px; max-width: 72ch; }
-.feed-row a {
-	display: block; text-decoration: none; color: var(--ink); border: 1px solid var(--line);
-	border-radius: var(--r-2); padding: 10px 14px; background: var(--panel); overflow-wrap: anywhere;
+
+/* Your feed (/feed, web/feed.js, docs/SOCIAL.md U9): a column of posts,
+   each who did what (their avatar, the words, when) over the thing itself,
+   the gallery's card or the photo of a build. Designers to follow beside
+   it on a laptop and under it on a phone; with nothing of its own, Latest
+   on Brickworks after them, the gallery's cards. */
+.feed-layout { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "rail" "latest"; }
+.feed-main { grid-area: main; display: grid; gap: var(--s-4); align-content: start; min-width: 0; }
+.feed-main .said:empty, .feed-list:empty { display: none; }
+.feed-main .actions { margin: 0; }
+.feed-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-4); }
+.feed-ask p { margin: 0; flex: 1 1 260px; }
+.feed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-6); max-width: 600px; }
+.feed-row { display: grid; gap: var(--s-3); min-width: 0; }
+.feed-row .post-head { display: flex; align-items: flex-start; gap: var(--s-3); }
+.feed-row .face, .person-row .face { flex: none; text-decoration: none; }
+.feed-row .words { min-width: 0; padding-top: 1px; }
+.feed-row .what { margin: 0; line-height: 1.45; overflow-wrap: anywhere; }
+.feed-row .what b { font-weight: 650; }
+.feed-row .what a { color: var(--ink); text-decoration: none; }
+.feed-row .what .go { font-weight: 650; }
+.feed-row .what a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.feed-row .what .pill { margin-left: 2px; vertical-align: 1px; }
+.feed-row time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
+.feed-row > q { display: block; margin: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.feed-photo {
+	margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
-.feed-row a:hover { border-color: var(--ink-faint); }
-.feed-row.new a { border-color: color-mix(in srgb, var(--accent-edge) 55%, var(--line)); }
-.feed-row .what { margin: 0; }
-.feed-row .what b { font-weight: 600; }
-.feed-row q { display: block; margin: 4px 0 0; color: var(--ink-soft); }
-.feed-row small { display: block; margin-top: 4px; color: var(--ink-faint); font-size: var(--t-tiny); }
+.feed-photo img { display: block; width: 100%; height: auto; max-height: 640px; object-fit: cover; background: var(--bg-soft); }
+.feed-photo figcaption { padding: 10px 12px 12px; color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.feed-photo figcaption a { color: var(--ink); font-weight: 650; }
+.feed-rail {
+	grid-area: rail; min-width: 0; align-self: start; padding: var(--s-4) var(--s-4) var(--s-2);
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.feed-rail h2 { margin: 0 0 var(--s-2); font-size: var(--t-h3); }
+.people-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.person-row {
+	display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-1) var(--s-3);
+	padding: var(--s-2) 0;
+}
+.person-row + .person-row { border-top: 1px solid var(--line); }
+.person-row .names { display: grid; min-width: 0; line-height: 1.35; }
+.person-row .names a { color: var(--ink); text-decoration: none; }
+.person-row .names a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.person-row .names b, .person-row .names small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-row .names b { font-weight: 650; }
+.person-row .names small { color: var(--ink-soft); font-size: var(--t-small); }
+.person-row .said { grid-column: 2 / -1; color: var(--ink-soft); font-size: var(--t-small); }
+.person-row .said:empty { display: none; }
+.feed-page .latest { grid-area: latest; min-width: 0; margin: 0; }
+.feed-page .section-head {
+	display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4);
+	margin-bottom: var(--s-3);
+}
+.feed-page .section-head h2 { margin: 0; }
+.feed-page .section-head a { color: var(--ink-soft); font-size: var(--t-small); }
+.feed-page .latest h3 { margin: var(--s-6) 0 var(--s-3); font-size: var(--t-h3); }
+.feed-page .latest .build-grid { columns: 2 150px; }
+@media (min-width: 700px) { .feed-page .latest .build-grid { columns: 3 180px; } }
+@media (min-width: 1100px) {
+	.feed-layout.with-rail {
+		grid-template-columns: minmax(0, 1fr) 320px; column-gap: var(--s-7);
+		grid-template-areas: "main rail" "latest rail";
+	}
+	/* Posts are a column of their own width: the rail stays beside them. */
+	.feed-layout.with-rail.posts { max-width: 1000px; }
+	.feed-layout.with-rail .feed-rail { position: sticky; top: 84px; }
+	.feed-layout.with-rail .latest .models { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 /* Notifications (/notifications, web/notifications.js, docs/SOCIAL.md U7):
    one group a model, its picture and name, then each thing that happened

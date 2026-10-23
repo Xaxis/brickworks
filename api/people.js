@@ -65,8 +65,12 @@
 //   POST ?op=follow               (session) {handle, on}: follow, or let go
 //   GET  ?op=following&handle=X   whom X follows, when they chose to show it
 //   POST ?op=follow_choice        (session) {shows}: show whom I follow
-//   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first;
-//                                 its first page counts as the feed opened
+//   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first,
+//                                 each row with its model's card; its first
+//                                 page counts as the feed opened
+//   GET  ?op=latest               the newest models, photos of builds and
+//                                 designers to follow, for a feed with
+//                                 nothing of its own (api/_follows.js)
 //   GET  ?op=feed_count           (session) what is new: notifications and
 //                                 the feed, apart and together, and who the
 //                                 caller is, for the avatar in the header
@@ -165,7 +169,7 @@ import {
   setCommentsOpen,
 } from "./_comments.js";
 import {
-  feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
+  feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
 import { feedCount, notifications, notificationsRead } from "./_notifications.js";
 import { designerOf, designs } from "./_designers.js";
@@ -1185,6 +1189,7 @@ export default async function handler(request, response) {
       if (op === "follows") return await getFollows(request, response);
       if (op === "following") return await getFollowing(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
+      if (op === "latest") return await latest(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
       if (op === "notifications") return await notifications(request, response, { origin: "" });
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
