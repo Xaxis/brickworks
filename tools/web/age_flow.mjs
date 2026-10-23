@@ -226,8 +226,19 @@ try {
   await adultPage.selectOption("#age-month", "3");
   await adultPage.selectOption("#age-year", String(thisYear - 30));
   await adultPage.click("#age-go");
+  // 13 or over: First steps next (docs/SOCIAL.md U10), every one skippable;
+  // tools/web/first_steps_flow.mjs is about them. Skipped here, to the page.
+  const steps = await adultPage.waitForSelector("dialog.first-steps[open]", { timeout: 30000 }).then(() => true).catch(() => false);
+  check("then First steps, nothing about age in them", steps && !/13|born/.test(await adultPage.textContent("dialog.first-steps")));
+  for (const step of ["profile", "kinds"]) {
+    await adultPage.waitForFunction((want) => document.querySelector("dialog.first-steps")?.dataset.step === want, step, { timeout: 30000 })
+      .catch(() => {});
+    if (await adultPage.isVisible("#first-skip")) await adultPage.click("#first-skip");
+  }
+  await adultPage.waitForSelector("#first-done", { timeout: 30000 }).then(() => adultPage.click("#first-done")).catch(() => {});
   await adultPage.waitForFunction(() => document.documentElement.dataset.profile === "ready", null, { timeout: 30000 });
   check("let straight on: no dialog, the profile form on", !(await adultPage.isVisible("dialog.age"))
+    && !(await adultPage.isVisible("dialog.first-steps"))
     && !(await adultPage.isVisible("#young")) && !(await adultPage.isDisabled("#save")));
   await adultPage.fill("#name", "Grown Builder");
   await adultPage.fill("#handle", `grown-${rand}`);

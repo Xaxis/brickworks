@@ -633,7 +633,7 @@ for (const button of document.querySelectorAll("[data-share-page]")) button.addE
   }
 });
 $("sign-in").addEventListener("click", async () => {
-  if (await askToSignIn("Sign in with your email address: we send you a code, no password.")) {
+  if (await askToSignIn()) {
     showFeedCount().catch(() => null);
     load();
   }

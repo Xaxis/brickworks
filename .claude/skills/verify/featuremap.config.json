@@ -2959,6 +2959,27 @@
       "entry": "src/dev/step_link_probe.gd",
       "reach": "tools/probe.sh step_link_probe   (windowed: godot --path . --resolution 1280x800 --script src/dev/step_link_probe.gd)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "first steps after a first sign-in",
+      "entry": "web/first-steps.js",
+      "reach": "https://brickworks.diy/feed signed out: Sign in, a new address, its code, the age question answered 13 or over: First steps (Make your profile, What do you build?, designers and models to start with, each skippable; See your feed)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the house's profile",
+      "entry": "supabase/house.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/house.sql --dry --again=supabase/house.sql --try=tools/house_try.sql --table=people   (.env sourced; rolled back; the lead applies it without --dry; then https://brickworks.diy/u/brickworks)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "first steps browser flow",
+      "entry": "tools/web/first_steps_flow.mjs",
+      "reach": "node tools/web/first_steps_flow.mjs --out=DIR   (the stand-in, the live gallery and the house profile in memory); node --env-file=.env tools/web/first_steps_flow.mjs --url=http://127.0.0.1:8870 --out=DIR   (a local relay_server.mjs 8870; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>)",
+      "area": "web"
     }
   ]
 }

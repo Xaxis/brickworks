@@ -56,6 +56,13 @@ declare -A CMD=(
   # at 390 and 1280, light and dark; latest kept by the CDN, never with
   # tests=1. Throwaway accounts, deleted after with their models.
   [feed]="tools/web/feed_flow.mjs --url=$P --out=$S/${TAG}_feed"
+  # First steps (docs/SOCIAL.md U10): a first visit at 390 and 1280 meets a
+  # designer to follow; a first sign-in from the feed's dialog answers the
+  # age question, makes a profile in First steps (the handle made from the
+  # name), chooses a kind, follows the designer and lands on a filled feed;
+  # one signed in elsewhere meets them on /profile and reaches a filled feed
+  # in four taps. Throwaway accounts, deleted after with their model.
+  [first_steps]="tools/web/first_steps_flow.mjs --url=$P --out=$S/${TAG}_first_steps"
   # Top builds, this week's pick and small builds, and the owner's choice of
   # the pick on /admin: API routes only, with the bypass (supabase/discovery.sql).
   [discovery]="tools/web/discovery_flow.mjs --url=$P --out=$S/${TAG}_discovery"

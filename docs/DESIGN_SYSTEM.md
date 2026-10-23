@@ -259,6 +259,17 @@ is on the page, `hidden`, for the script to show.
   `.build-grid`) after it when the feed has nothing of its own, its empty
   state a `.state` saying why (signed out, with Sign in; following nobody;
   nothing in 90 days).
+- **A person to follow**: `.person-row` in a `.people-list` (`site.css`,
+  so any page's dialog has it): the avatar (`.face`), the name and their
+  best models (`.names`), Follow as `.cta.ghost.small`, and what Follow
+  said under them (`.said`). The feed's designers and First steps.
+- **First steps** (`web/first-steps.js`, docs/SOCIAL.md U10): after a
+  first sign-in, the site's `dialog` made wider (`dialog.first-steps`),
+  its step counted in the `.eyebrow`, one step at a time: the profile's
+  two fields under a `.big` avatar made from the handle (`.face-row`),
+  the gallery's kinds as button pills, then a `.people-list` and six
+  cards (three to a row, two on a phone). The primary button first, Skip
+  as a secondary one.
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
   with "_") shows every component once, drawn by `web/kit.js` and

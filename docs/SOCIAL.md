@@ -548,6 +548,19 @@ filled feed in four taps or fewer; every live model links to a profile;
 the label is on every assistant-made card. Needs nothing from the owner
 but, if that account is theirs, a profile shown in the house's name: the
 lead's call, made once.
+*Built (2026-10-22):* the lead's call: the account that shared the seven
+(the studio's, at a brickworks.diy address) gets `/u/brickworks`, said as
+the studio's own account (drawn as every person's page is, its name the
+studio's and its words saying its models were made with the assistant, Claude in the app;
+the castle as banner, three pinned), by `supabase/house.sql`, which the
+lead applies: idempotent, additive, no model changed, so the cards credit
+it through `directory_card`'s `by`. First steps (`web/first-steps.js`)
+open after the age question is answered 13 or over; the kinds chosen only
+order step 3 and are kept nowhere (D13). The Assistant mark is read from
+tags, which the house's seven did not have (their descriptions say
+"Designed by Claude"): the script's second step, apart and the lead's
+call, appends ai-designed to those seven, so the mark is on every one and
+With the assistant finds them.
 
 ### Phase 6: depth (after the first five, in this order)
 

@@ -392,6 +392,31 @@ const PAGES = [
       const opened = await until(page, () => document.querySelector("dialog.age[open]"));
       return [[opened ? "age" : "age (missing)", "dialog.age"]];
     } },
+  // First steps after a first sign-in (docs/SOCIAL.md U10, web/first-steps.js):
+  // a new account answers the age question on /profile, and each of the
+  // three steps is judged, skipped to the next.
+  { name: "first-steps", path: "/profile", fresh: true, signedInOnly: true, dialogOnly: true, local: true,
+    open: async (page) => {
+      if (!(await until(page, () => document.querySelector("dialog.age[open]")))) return [["age (missing)", "dialog.age"]];
+      await page.selectOption("#age-month", "3");
+      await page.selectOption("#age-year", String(new Date().getUTCFullYear() - 30));
+      await page.click("#age-go");
+      // The first two judged here, before each is skipped; the last as any
+      // page's open state is.
+      const width = page.viewportSize().width;
+      const theme = await page.evaluate(() => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+      for (const step of ["profile", "kinds", "start"]) {
+        const shown = await page.waitForFunction((want) => document.querySelector("dialog.first-steps[open]")?.dataset.step === want
+          && (want !== "start" || document.querySelectorAll("dialog.first-steps .model").length > 0), step, { timeout: 8000 })
+          .then(() => true, () => false);
+        if (!shown) return [[`${step} (missing)`, "dialog.first-steps"]];
+        if (step === "start") return [[step, "dialog.first-steps"]];
+        await page.waitForTimeout(200);
+        await judge(page, `first-steps ${width} ${theme} in`, step, "dialog.first-steps", `first-steps_${width}_${theme}_in_${step}.png`);
+        await page.click("#first-skip");
+      }
+      return [];
+    } },
   { name: "admin", path: "/admin", admin: true,
     ready: (page, { signedIn }) => (signedIn ? until(page, () => !document.querySelector("#view")?.classList.contains("hide")) : true) },
   { name: "authorize", path: AUTHORIZE,
@@ -516,7 +541,8 @@ try {
           const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 },
             colorScheme: theme, extraHTTPHeaders: headers,
             ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
-          await serve(context, { askAge: Boolean(one.askAge), admin: Boolean(one.admin), nobody: Boolean(one.nobody) });
+          await serve(context, { askAge: Boolean(one.askAge), admin: Boolean(one.admin), nobody: Boolean(one.nobody),
+            ...(one.fresh ? { fresh: { aged: false, profile: null, follows: new Set() } } : {}) });
           if (signedIn) {
             const kept = JSON.parse(asProject(JSON.stringify(stand.signedInStorage())));
             await context.addInitScript(([session, access]) => {
