@@ -33,7 +33,7 @@ R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 [ "$BRANCH" != HEAD ] || { echo "UNIT: $W is on no branch"; exit 1; }
 case "$BRANCH" in main|rel-*) echo "UNIT: $BRANCH is a release's, not a unit's"; exit 1;; esac
-TAG=${BRANCH}_unit
+TAG=${BRANCH//\//-}_unit
 SHA=$(git rev-parse --short HEAD)
 # What the unit changed: since where it left main, or the release branch it
 # was made from when that is later. A unit made from rel-m147 before m147

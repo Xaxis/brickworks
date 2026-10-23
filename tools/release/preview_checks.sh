@@ -199,7 +199,7 @@ NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and
 # deletes it after (session.mjs's deleteAccount, or the admin API's users),
-# and all it does as that account between. Two runs' at once collided on
+# and all it does as that account between. Two runs at once collided on
 # 2026-10-22: 429s in profile, and another run's model took discovery's
 # pick. So each takes one lock for the whole machine, whichever battery it
 # is in (a release's, a unit's unit_preview.sh): a file in the repository's
