@@ -21493,15 +21493,17 @@ func _tools() -> Array:
 				+ "\"work\" (the process: silhouette, features, detail), \"rules\", "
 				+ "\"shapes\" (the patterns that lay a wall, a dome, a tower, a "
 				+ "hull or a car body), \"figures\" (a figure, a creature or a "
-				+ "character: its head and limbs on joints), \"subject\" (what each "
+				+ "character: its head and limbs on joints), \"outline\" (the parts a "
+				+ "rounded body's outline is made of, by role), \"subject\" (what each "
 				+ "kind of subject needs), \"angle\", \"pins\", \"colour\", \"creative\" "
 				+ "and more. Read \"shapes\" before saying a shape, \"figures\" before "
-				+ "building a figure or a creature."),
+				+ "building a figure or a creature, \"outline\" before laying a rounded "
+				+ "or organic body."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"section": {"type": "string", "description":
-						"work, rules, shapes, figures, subject, real, colour, angle, "
+						"work, rules, shapes, figures, outline, subject, real, colour, angle, "
 						+ "coordinates, sideways, pins, big, look, good, beautiful, creative, "
 						+ "changing, kind or art"},
 				},
