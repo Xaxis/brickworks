@@ -3397,10 +3397,10 @@ against"); 6680-1's figures and stretcher are builds of their own, and
 without the one 1 x 2 plate its file draws inside a 1 x 6 it is Tested
 ("4 builds"); 620-1 and 6511-1, a vehicle and a figure, pass the whole test
 as "2 builds"; a cheese slope on a round plate's
-rim is not ("where it has no stud"); the kart and castle in models/ are
-Tested, and the orrery passes the whole test but not steps (its frame top
-goes up before the posts that carry it, and some gears go in after what
-hides them); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
+rim is not ("where it has no stud"); the kart, castle and orrery in models/
+are Tested (the orrery's steps are its own, `0 !BRICKWORKS AUTHORED_STEPS`:
+its lower and upper decks, crank, planets and Sun built in the hand, each
+drive gear in before the ring round it); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
 the whole test, and are Tested where their other three pass (one, model-043:
 the rest fail steps or parts); Orthanc as models175 found it
 (`src/dev/fixtures/orthanc_models175.ldr.gz`) is not, its whole test saying

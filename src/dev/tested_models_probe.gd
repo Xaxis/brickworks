@@ -7,9 +7,12 @@
 ## models175 found the whole test held a part whenever it touched a held one
 ## and never asked about collisions, so Orthanc (145 pairs through each other,
 ## 72 pieces by the exact check, as it was at rel-m155) could have been marked. Here: Orthanc is not
-## Tested and says both; the kart and the castle the app ships are Tested;
-## two bricks stacked with a tile on top are, and the same with a brick only
-## resting on the tile are not, saying what it rests on; two stacks apart are
+## Tested and says both; the kart, the castle and the orrery the app ships
+## are Tested (the orrery's steps are its own since orrery190: worked out,
+## its top deck went up before the spine that carries it, and twelve gears
+## went in behind what hides them); two bricks stacked with a tile on top
+## are, and the same with a brick only resting on the tile are not, saying
+## what it rests on; two stacks apart are
 ## two builds, and Tested, and a part left on the floor against one is not;
 ## 6680-1's figures and stretcher are builds of their own, and without the
 ## one plate its file draws inside another, it is Tested; a 1 x 1
@@ -21,14 +24,6 @@ extends SceneTree
 
 const SHIPPED: Array[String] = ["res://models/kart.ldr", "res://models/castle.ldr",
 	"res://models/orrery.ldr"]
-## Orthanc as models175 measured it (models/orthanc.ldr at rel-m155), kept
-## here: orthanc177 mends the shipped one.
-## Shipped models whose steps put parts down before what holds them, so they
-## fail the steps test as they did before the exact check: the orrery's frame
-## top goes up before the posts that carry it, and some gears go in after the
-## parts that hide them (its planets' spine of beams and pins now goes in on
-## the model, between the planets, where they hold).
-const BUILT_IN_PIECES: Array[String] = ["res://models/orrery.ldr"]
 ## A real set whose figures and stretcher stand beside its ambulance, and
 ## whose file draws one 1 x 2 plate inside a 1 x 6 at the same height (the
 ## exact check finds it, and its steps hide it): without it, it builds.
@@ -36,6 +31,8 @@ const AMBULANCE := "res://vendor/omr/files/6680-1.mpd"
 const MISPLACED := "1 16 30 -16 150 0 0 1 0 1 0 -1 0 0 3023.dat"
 ## Real sets of a vehicle with a figure standing beside it.
 const TWO_BUILDS: Array[String] = ["res://vendor/omr/files/620-1.mpd", "res://vendor/omr/files/6511-1.mpd"]
+## Orthanc as models175 measured it (models/orthanc.ldr at rel-m155), kept
+## here: orthanc177 mends the shipped one.
 const ORTHANC := "res://src/dev/fixtures/orthanc_models175.ldr.gz"
 const BENCH := "res://src/dev/fixtures/bench/"
 
@@ -125,7 +122,7 @@ func _run() -> void:
 		print("  %s" % _said(found))
 		_ok(_passes(found, "whole"), "%s has every part held, none in another: %s" % [
 			path.get_file(), _why(found, "whole")])
-		_ok(Tested.passed(found) or path in BUILT_IN_PIECES,
+		_ok(Tested.passed(found),
 			"%s is %sTested: %s" % [path.get_file(), "" if Tested.passed(found) else "not ",
 			Tested.words(found)])
 
