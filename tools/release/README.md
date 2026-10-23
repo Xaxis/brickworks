@@ -29,6 +29,15 @@ What each one guards against, all learned the hard way on 2026-10-13:
   the merge it re-imports, so new `class_name`s resolve, then runs the
   parse gate, then rewrites the tool list when `src/net` or `src/ai`
   changed.
+- A new probe goes on a line of its own in `tools/suite/headless.txt`,
+  `windowed.txt` or `out.txt` (with why after its `#`), never in
+  `tools/check.sh`. The suite's lists were arrays there, every unit appended
+  to the same last line, and four merges on 2026-10-22 were that conflict
+  settled by hand. The files merge as a union (`.gitattributes`), so git
+  keeps both sides' lines. `merge_unit.sh` then runs `tools/check.sh
+  --lists`, which fails a merge that leaves a probe in no list, or one a
+  union brought back (a name twice, or out and run both).
+  `tools/check.sh --dry-run` prints every command the suite would run.
 - `parse_gate.sh` parses every GDScript file the merge changed. Two units
   each added a `"dome"` key to one dictionary, git merged both without a
   conflict, and Godot could not parse `assistant.gd`. The tool-list probe

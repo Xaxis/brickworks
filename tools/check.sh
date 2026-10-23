@@ -15,75 +15,28 @@
 # whether a part is the size it claims. And a parse check, which catches
 # the class of mistake that makes every other check fail at once.
 #
-# Every probe in src/dev is run here, or named in `out` below with why not
-# (anything that spends money, among others), and the run stops before it
-# starts when one is in neither.
+# Every probe in src/dev is run here, or named in tools/suite/out.txt with
+# why not (anything that spends money, among others), and the run stops
+# before it starts when one is in neither. A new probe goes on a line of its
+# own in tools/suite/headless.txt, windowed.txt or out.txt.
 set -uo pipefail
 # Guarded: a cd that fails leaves the script running against
 # whatever directory it was started from, which for a deploy means
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-# The probes run headless, in this order, each NAME or NAME:ARGS for what
-# it is given after its `--`. The MCP first of all: it is the
-# app's AI interface, and it falls behind with nothing failing — a tool
-# list four tools stale, a menu command no session can reach (mcp_sync);
-# and the window's commands as tools, each read back off the model
-# (app_tools).
-headless=(mcp_sync app_tools element_files element modify part_tool dimensions snap
-  stability history restore store versions empty_save instructions playback
-  responsive search inventory mosaic world_view controls snot technic joints
-  exact by_connector joint_check flex clutch mechanism axle variety repeat
-  usage kinds rules angled section sections scale bigmodel quit edit selection
-  mirror scanner attach import lxf io mesh_export select reader camera brain
-  keeping glyph fetch fetch_retry busy dropped vocab reference search_quality
-  moved availability holds pieces mcp claude_code techniques patterns face
-  features creative rooms style figure_joints armature turned detail chat
-  sketch project example_name minifig print sticker mould brickify claude_undo
-  design_undo first_design_undo undo_ids read_only collection share_pages
-  tested new_window best_of_two selection_fit swing_bound
-  "table_race:--tries=8" technic_hand ahead art_plan autosave_paths balance
-  brickify_buy build_steps cabin_glass cabins carried_at_once carried_fetch
-  decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
-  hinged_panels turned_tips mcp_walk mcp_walk3 mesh_formats own_copies page_places
-  parts_only print_search shapes snippets standing subject_words surface
-  unrestored update viewer_tools worker_first_run second_design
-  drag_cost seated shaping_search stress)
-# In a window, each as its own header says (tools/probe.sh: the size it
-# names, on Xvfb and the GPU, a data folder of its own), NAME or NAME:ARGS.
-# @out in ARGS is a folder of this run's: left to themselves the motions
-# probes write their pictures over a dated folder in the main checkout's
-# bench/results.
-windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
-  simulate typing slow_frames look progress render collection_ui library
-  animation balance_view placing offgrid booklet_edit outline outline_cost
-  "command:--judge --subjects=orthanc" step_link stress_view)
-# Not run here, each with why: it spends money, needs the relay's keys, is
-# a bench, a measure or pictures with no verdict, judges only a time the
-# box's load decides, or needs longer than a probe's ten minutes (run,
-# below). One that fails on the code as it is goes here only with its
-# finding and the day it was found, as a unit to fix and bring back.
-out=(
-  bakeoff           # spends money: real designs on the API key, dollars a run
-  revise            # spends money: a design on the API key
-  sideways          # spends money: a design on the API key
-  stream            # spends money: a request on the API key
-  best_of_two_walk  # spends two designs and a pick of the subscription; best_of_two is its offline half
-  account           # needs the relay with .env's keys, and makes accounts in production Supabase
-  connector         # needs the relay with .env's keys, and makes accounts in production Supabase
-  tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
-  tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
-  harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
-  roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
-  candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench
-  daylight          # a measuring tool for one file and box; patterns runs its functions here
-  technique_sheet   # pictures for a person, no pass or fail
-  gallery           # pictures of every shipped model for a person, no pass or fail
-  anim_walk         # an audit: every answer printed for a person, no pass or fail
-  new_parts         # needs the numbers of the parts a library update added: tools/update_parts.py prints them, then tools/probe.sh new_parts_probe N N N
-  grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
-  # Failing on the code as it is (2026-10-22), each a unit to fix:
-)
+# The lists, one probe a line: NAME, or NAME:ARGS for what it is given after
+# its `--`, and from a # to the line's end a comment.
+#   tools/suite/headless.txt   run headless, in that order
+#   tools/suite/windowed.txt   run in a window by tools/probe.sh, in that order
+#   tools/suite/out.txt        not run, each with why
+# Files and not arrays here, which every unit adding a probe appended to on
+# one line, so that any two of them conflicted: four were settled by hand on
+# 2026-10-22. The files merge as a union (.gitattributes), keeping both sides.
+suite_list() { sed -E 's/(^|[[:space:]])#.*//; s/^[[:space:]]+//; s/[[:space:]]+$//; /^$/d' "tools/suite/$1.txt"; }
+mapfile -t headless < <(suite_list headless)
+mapfile -t windowed < <(suite_list windowed)
+mapfile -t out < <(suite_list out)
 # A probe in no list never ran: the lists were kept by hand, and 85 of 214
 # were in none, two of them failing on main for days with nothing said
 # (claude_undo, surface; 2026-10-22). So the run stops here, before it
@@ -97,10 +50,21 @@ listed=$({ printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" "${out[@]}"
 } | sort -u)
 unlisted=$(comm -23 <(echo "$probes") <(echo "$listed"))
 unknown=$(comm -13 <(echo "$probes") <(echo "$listed"))
-if [ -n "$unlisted$unknown" ]; then
-  [ -z "$unlisted" ] || echo "check: in no list here, so never run:" $unlisted
-  [ -z "$unknown" ] || echo "check: listed here, but no src/dev/NAME_probe.gd:" $unknown
-  echo "  put each probe in the suite (headless, windowed), or in out with why it is not"
+# A union keeps a line one side took out when the other added a line beside
+# it: a probe one unit moved from out.txt to headless.txt can come out of the
+# merge in both. So a name twice in one list, or out and run both, stops the
+# run as well.
+twice=$({ printf '%s\n' "${headless[@]%%:*}" | sort | uniq -d
+  printf '%s\n' "${windowed[@]%%:*}" | sort | uniq -d
+  printf '%s\n' "${out[@]}" | sort | uniq -d
+  comm -12 <(printf '%s\n' "${out[@]}" | sort -u) \
+    <(printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" | sort -u)
+} | sort -u)
+if [ -n "$unlisted$unknown$twice" ]; then
+  [ -z "$unlisted" ] || echo "check: in no list in tools/suite, so never run:" $unlisted
+  [ -z "$unknown" ] || echo "check: listed in tools/suite, but no src/dev/NAME_probe.gd:" $unknown
+  [ -z "$twice" ] || echo "check: twice in a list in tools/suite, or both out and run:" $twice
+  echo "  put each probe on one line of tools/suite/headless.txt or windowed.txt, or of out.txt with why it is not"
   exit 1
 fi
 # --lists: only that, which a merge can ask in a second.

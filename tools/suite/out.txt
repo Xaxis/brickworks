@@ -1,0 +1,26 @@
+# The probes tools/check.sh does not run, one a line, each with why after
+# its #: it spends money, needs the relay's keys, is a bench, a measure or
+# pictures with no verdict, judges only a time the box's load decides, or
+# needs longer than a probe's ten minutes (run, in check.sh). One that fails
+# on the code as it is goes here only with its finding and the day it was
+# found, as a unit to fix and bring back, under the last heading. A new one
+# goes on a line of its own (merged as a union, as headless.txt).
+bakeoff           # spends money: real designs on the API key, dollars a run
+revise            # spends money: a design on the API key
+sideways          # spends money: a design on the API key
+stream            # spends money: a request on the API key
+best_of_two_walk  # spends two designs and a pick of the subscription; best_of_two is its offline half
+account           # needs the relay with .env's keys, and makes accounts in production Supabase
+connector         # needs the relay with .env's keys, and makes accounts in production Supabase
+tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
+tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
+harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
+roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
+candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench
+daylight          # a measuring tool for one file and box; patterns runs its functions here
+technique_sheet   # pictures for a person, no pass or fail
+gallery           # pictures of every shipped model for a person, no pass or fail
+anim_walk         # an audit: every answer printed for a person, no pass or fail
+new_parts         # needs the numbers of the parts a library update added: tools/update_parts.py prints them, then tools/probe.sh new_parts_probe N N N
+grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
+# Failing on the code as it is (2026-10-22), each a unit to fix:
