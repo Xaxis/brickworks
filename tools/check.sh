@@ -54,7 +54,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
 # bench/results.
 windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
   simulate typing slow_frames look progress render collection_ui library
-  animation balance_view placing offgrid booklet_edit
+  animation balance_view placing offgrid booklet_edit outline outline_cost
   "command:--judge --subjects=orthanc")
 # Not run here, each with why: it spends money, needs the relay's keys, is
 # a bench, a measure or pictures with no verdict, judges only a time the
@@ -78,10 +78,8 @@ out=(
   technique_sheet   # pictures for a person, no pass or fail
   gallery           # pictures of every shipped model for a person, no pass or fail
   anim_walk         # an audit: every answer printed for a person, no pass or fail
-  outline_cost      # only timings: selecting all of Orthanc read 430 and 850 ms on one build at load 12 and 30, the bar 500
   grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
   # Failing on the code as it is (2026-10-22), each a unit to fix:
-  outline           # Saruman's line covers 2 of his 190 inside pixels, by his staff; the bar (1 in 200, rounded down) allows none so small
   selection_fit     # where_to_attach offers a 49668 on Orthanc's west horn that edit_selection refuses: a collision with #8542 (24307)
 )
 # A probe in no list never ran: the lists were kept by hand, and 85 of 214

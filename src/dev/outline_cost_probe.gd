@@ -15,7 +15,14 @@
 ## nothing selected, within a twentieth (it cost a tenth more: 6,090 ms of
 ## the processor against 5,532 in software on the desktop); a frame where the
 ## view turned, within a tenth, the line put away until the view is still and
-## back once it is; and taking the selection, well under a second.
+## back once it is; and taking the selection, under 400 ms of the main
+## thread's, the worst of five times. That is about twice what it takes: the
+## worst of five was 159 to 213 ms in six runs at a load of 22 to 34
+## (2026-10-22). So selecting all made a quarter of a second dearer fails,
+## and the box's load does not: the time is the main thread's alone, the
+## clock less what it waited for a core. Timed by the whole process it was
+## 430 to 1,010 ms, most of it the app's workers busy with the model just
+## opened, which are now waited out first.
 extends SceneTree
 
 var _failures: int = 0
@@ -61,6 +68,11 @@ func _run() -> void:
 	_world.rebuilds_in_slices = false
 	_world.call("_flush")
 	await _frames(4)
+	# The app's workers busy with the model it opened, a core each for 2 to
+	# 4 s: counted in the process's time, they were most of the first
+	# rounds' frames and of selecting all (selcost147, 2026-10-22).
+	var waited: float = await _workers_quiet()
+	print("    the workers quiet %.1f s after Orthanc opened" % waited)
 
 	# Taken in turns, with and without, five times over, and the middle of
 	# each kept.
@@ -68,7 +80,7 @@ func _run() -> void:
 	var bare_turning: Array = []
 	var still: Array = []
 	var turning: Array = []
-	var took_all: float = 0.0
+	var took: Array = []
 	var count: int = 0
 	## The fewest pixels of the line seen once the view came to rest.
 	var back: int = 1 << 30
@@ -78,9 +90,9 @@ func _run() -> void:
 		bare_still.append(await _frame_ms(4))
 		bare_turning.append(await _turning_ms(4))
 		await _still()
-		var began: int = _cpu_ticks()
+		var began: PackedInt64Array = _main_clock()
 		_verbs.select_by("all")
-		took_all = maxf(took_all, float(_cpu_ticks() - began) * 10.0)
+		took.append(_held_ms(began))
 		count = _builder.selection.size()
 		await _frames(3)
 		still.append(await _frame_ms(4))
@@ -90,6 +102,7 @@ func _run() -> void:
 		back = mini(back, _yellow(await _picture()))
 	_builder.clear_selection()
 	await _frames(4)
+	var took_all: float = took.max()
 	var bare: float = _middle(bare_still)
 	var outlined: float = _middle(still)
 	var bare_turn: float = _middle(bare_turning)
@@ -110,9 +123,9 @@ func _run() -> void:
 			break
 	_builder.select_brick(one, false)
 	await _frames(2)
-	var began_colour: int = _cpu_ticks()
+	var began_colour: PackedInt64Array = _main_clock()
 	_verbs.select_by("colour")
-	var took_colour: float = float(_cpu_ticks() - began_colour) * 10.0
+	var took_colour: float = _held_ms(began_colour)
 	var by_colour: int = _builder.selection.size()
 	await _frames(2)
 	var colour_frame: float = await _frame_ms(4)
@@ -122,16 +135,17 @@ func _run() -> void:
 		% [bare, outlined, count, _ms(bare_still), _ms(still)])
 	print("    ...view turning: %.0f ms bare, %.0f ms outlined (of %s and %s)" % [
 		bare_turn, outlined_turning, _ms(bare_turning), _ms(turning)])
-	print("    selecting all: %.0f ms; every part of colour %d (%d parts): %.0f ms, then %.0f ms a frame"
-		% [took_all, most, by_colour, took_colour, colour_frame])
+	print("    the main thread's time selecting all: %.0f ms at the most (of %s); every part of "
+		% [took_all, _ms(took)] + "colour %d (%d parts): %.0f ms, then %.0f ms a frame"
+		% [most, by_colour, took_colour, colour_frame])
 	_check("a frame with all %d outlined and the view still costs %.0f ms against %.0f bare"
 		% [count, outlined, bare], outlined <= bare * 1.05 + 30.0)
 	_check("...and turning, %.0f ms against %.0f bare: a selection this big is put away "
 		% [outlined_turning, bare_turn] + "while the view moves", outlined_turning <= bare_turn * 1.1 + 30.0)
 	_check("...and its line is back each time the view comes to rest (%d pixels at the least)"
 		% back, back > 200)
-	_check("selecting all of it takes %.0f ms, every part of one colour %.0f ms"
-		% [took_all, took_colour], took_all < 500.0 and took_colour < 500.0)
+	_check("selecting all of it holds the main thread %.0f ms, every part of one colour %.0f ms"
+		% [took_all, took_colour], took_all < 400.0 and took_colour < 400.0)
 	print("")
 	if _failures == 0:
 		print("outline cost: a big selection outlined costs a frame no more than the model "
@@ -199,6 +213,55 @@ static func _cpu_ticks() -> int:
 	var line: String = file.get_line()
 	var fields: PackedStringArray = line.substr(line.rfind(")") + 2).split(" ")
 	return fields[11].to_int() + fields[12].to_int() if fields.size() > 12 else -1
+
+
+## The clock, and the main thread's time on a core and waiting for one, in
+## nanoseconds.
+static func _main_clock() -> PackedInt64Array:
+	var pid: int = OS.get_process_id()
+	var file: FileAccess = FileAccess.open("/proc/%d/task/%d/schedstat" % [pid, pid],
+		FileAccess.READ)
+	var fields: PackedStringArray = file.get_line().split(" ") if file != null else ["-1", "-1"]
+	return PackedInt64Array([Time.get_ticks_usec() * 1000, fields[0].to_int(), fields[1].to_int()])
+
+
+## How long the main thread was held since [param began], in milliseconds:
+## the clock's time less what it waited for a core. Selecting is the main
+## thread's alone, so the other threads' time is not counted, nor the box's
+## load; and anything it waited on is.
+static func _held_ms(began: PackedInt64Array) -> float:
+	var now: PackedInt64Array = _main_clock()
+	return (now[0] - began[0] - (now[2] - began[2])) / 1.0e6
+
+
+## Until the pool's workers have spent under a twentieth of a core for half
+## a second, 30 s at the most: how long that took, in seconds.
+func _workers_quiet() -> float:
+	var began: int = Time.get_ticks_msec()
+	var was: int = _workers_ticks()
+	while Time.get_ticks_msec() - began < 30000:
+		await create_timer(0.5).timeout
+		var now: int = _workers_ticks()
+		if now - was <= 2:
+			break
+		was = now
+	return (Time.get_ticks_msec() - began) / 1000.0
+
+
+## The WorkerThreadPool's threads' time on the processor, in hundredths of
+## a second.
+static func _workers_ticks() -> int:
+	var pid: int = OS.get_process_id()
+	var sum: int = 0
+	for tid: String in DirAccess.get_directories_at("/proc/%d/task" % pid):
+		var file: FileAccess = FileAccess.open("/proc/%d/task/%s/stat" % [pid, tid], FileAccess.READ)
+		if file == null:
+			continue
+		var line: String = file.get_line()
+		if line.contains("(WorkerThread"):
+			var fields: PackedStringArray = line.substr(line.rfind(")") + 2).split(" ")
+			sum += fields[11].to_int() + fields[12].to_int()
+	return sum
 
 
 func _still() -> void:

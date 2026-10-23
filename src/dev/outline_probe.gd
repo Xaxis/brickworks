@@ -296,6 +296,18 @@ func _orthanc() -> void:
 ## [param whole] for parts nothing hides, whose outline must also keep to
 ## their silhouette all the way round.
 func _judge(name: String, ids: Array, other: int, whole: bool) -> void:
+	# Judged with the view's smoothing off, so a pixel is a part's or not,
+	# as the outline's mask draws it. Anti-aliasing and glow smear a part's
+	# colour a pixel past its edge, which recolouring it changes too: a gap
+	# narrower than that between two selected parts, which the line rightly
+	# fills, read as inside them. Saruman's hand on his staff, 1 to 2 px
+	# from his robe, was 2 of his 190 pixels "inside" outlined, and the
+	# chain's links 41 of 18,340; with it off, none (2026-10-22).
+	var environment: Environment = root.find_world_3d().environment
+	var smoothing: Array = [root.msaa_3d, root.screen_space_aa, environment.glow_enabled]
+	root.msaa_3d = Viewport.MSAA_DISABLED
+	root.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	environment.glow_enabled = false
 	_builder.clear_selection()
 	await _frames(6)
 	var none: Image = await _picture()
@@ -313,6 +325,9 @@ func _judge(name: String, ids: Array, other: int, whole: bool) -> void:
 	_builder.selection_changed.emit(_builder.selection.size())
 	await _frames(6)
 	var chosen: Image = await _picture()
+	root.msaa_3d = smoothing[0]
+	root.screen_space_aa = smoothing[1]
+	environment.glow_enabled = smoothing[2]
 	_save(none, name + "_none")
 	_save(chosen, name)
 
