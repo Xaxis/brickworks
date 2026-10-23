@@ -548,6 +548,14 @@
       "tests": []
     },
     {
+      "id": "cli:feed browser flow",
+      "kind": "cli",
+      "entry": "tools/web/feed_flow.mjs",
+      "reach": "node --env-file=.env tools/web/feed_flow.mjs --url=http://127.0.0.1:8840 --out=DIR   (a local relay_server.mjs 8840, nothing held; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:fidelity probe",
       "kind": "cli",
       "entry": "src/dev/fidelity_probe.gd",
@@ -1806,6 +1814,14 @@
       "entry": "src/assembly/pose_animation.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:latest on Brickworks and designers to follow",
+      "kind": "lib",
+      "entry": "api/_follows.js",
+      "reach": "curl -s 'http://127.0.0.1:8840/api/people?op=latest'   (a local relay_server.mjs 8840: {models, photos, designers}, s-maxage=30; &tests=1 test models too, no-store; then the feed browser flow)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3388,7 +3404,7 @@
       "id": "ui:your feed page",
       "kind": "ui",
       "entry": "web/feed.html",
-      "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each row a link; opening it clears its count; Notifications a tab beside it)",
+      "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
       "tests": []
     },

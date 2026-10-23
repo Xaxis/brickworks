@@ -358,7 +358,7 @@ try {
     await until(page, () => document.querySelector('.feed-row[data-kind="challenge"]'), "the entry in Ed's feed");
     const rows = await page.evaluate(() => [...document.querySelectorAll('.feed-row[data-kind="challenge"]')].map((row) => ({
       text: row.querySelector(".what")?.textContent.replace(/\s+/g, " ").replace(/New$/, "").trim(),
-      href: row.querySelector("a")?.getAttribute("href") })));
+      href: row.querySelector("a.go")?.getAttribute("href") })));
     check(`Ed's feed at ${width} px: ${JSON.stringify(rows)}`, rows.length === 1 && rows[0].text === entered
       && rows[0].href === `/m/${ids.house}` && !(await sideways(page)));
     await page.evaluate(() => document.querySelector('.feed-row[data-kind="challenge"]')?.scrollIntoView({ block: "center" }));

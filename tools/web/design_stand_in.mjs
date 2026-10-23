@@ -49,6 +49,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // What a notification says and how they are grouped (docs/SOCIAL.md U7):
 // pure, so the stand-in answers as the API does.
 import { noticeGroups } from "../../api/_notifications.js";
+// Designers to follow, read from Top builds' cards as the API reads them
+// (docs/SOCIAL.md U9): pure too.
+import { LATEST, designersFrom } from "../../api/_follows.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -332,6 +335,8 @@ export function applied(yes) {
 const FEED = [
   { kind: "comment", at: "2026-10-16T09:30:00Z", by: PRIYA, model: "SamModel01", name: "Harbour Tram", step: 2,
     comment: 105, said: "The pantograph is a clever trick." },
+  { kind: "photo", at: "2026-10-16T20:10:00Z", by: PRIYA, model: MODEL_ID, name: "Riverside Watchtower", photo: "PhotoBbb02",
+    words: "Two evenings, and the portcullis really opens.", yours: false },
   { kind: "model", at: "2026-10-16T07:00:00Z", by: PRIYA, model: "PriyaSpc01", name: "Lunar Rover" },
   { kind: "challenge", at: "2026-10-15T08:00:00Z", by: PRIYA, model: "PriyaSpc01", name: "Lunar Rover",
     title: "Off-world October", way: "assistant" },
@@ -1119,7 +1124,7 @@ function people(method, params, body, who, state) {
   const id = params.get("id") || "";
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
-    "feed_count", "page", "list_page", "challenge"] : ["report", "digest"];
+    "feed_count", "page", "list_page", "challenge", "latest"] : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
       : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : SIGN_IN });
@@ -1167,9 +1172,29 @@ function people(method, params, body, who, state) {
       return said ? answer(200, { handle: params.get("handle"), following: said.people }) : answer(404, { error: "Nobody here has that handle." });
     }
     if (op === "feed") {
-      // One page: asked again for an older one, there is none.
-      const rows = params.get("before") ? [] : FEED.map(feedRow);
-      return answer(200, { ready: true, rows, more: false, seen_at: FEED_SEEN });
+      // One page, of what the people Sam follows made (follow_page), each
+      // with its card and a photo's picture: asked again for an older one,
+      // there is none. state.nobody: Sam follows nobody.
+      const followed = state.nobody ? [] : FOLLOWS.filter((one) => one.follower === ME);
+      const rows = params.get("before") || state.nobody ? [] : FEED
+        .filter((row) => ["model", "version", "challenge"].includes(row.kind) || (row.kind === "photo" && !row.yours))
+        .map((row) => {
+          const photo = row.kind === "photo" ? PHOTOS.find((one) => one.id === row.photo) : null;
+          return { ...feedRow(row), card: apiCard(card(modelOf(row.model))),
+            ...(photo ? { photo: { id: photo.id, url: `${ORIGIN}/api/people?op=photo_file&id=${photo.id}`,
+              width: photo.width, height: photo.height } } : {}) };
+        });
+      return answer(200, { ready: true, rows, more: false, seen_at: FEED_SEEN,
+        ...(params.get("before") ? {} : { following: followed.map((one) => personOf(one.followed)?.handle).filter(Boolean) }) });
+    }
+    if (op === "latest") {
+      // api/_follows.js latest: the newest models, the newest photos of
+      // builds of models in the gallery, designers by Top builds.
+      const tests = asked(params.get("tests"));
+      const photos = photosWhere((one) => shownModel(one.model)?.listed && (tests || !modelOf(one.model).test))
+        .slice(0, LATEST.photos).map((one) => ({ ...photoSaid(one), model_name: modelOf(one.model).name }));
+      return answer(200, { models: listModels({ sort: "newest", size: LATEST.models, tests }).map(apiCard), photos,
+        designers: designersFrom(listModels({ sort: "top", size: 49, tests }).map(apiCard)) });
     }
     if (op === "feed_count") {
       if (!who) return answer(200, { count: 0, signed_in: false });

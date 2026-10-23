@@ -8,6 +8,22 @@
 // here, so a page asks the kit for the whole kit.
 export { ICONS, avatarHtml, avatarTone, iconButtonHtml, iconHtml } from "./card.js";
 
+const AGO = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+
+/// When something happened, as a feed or a notification says it: "just
+/// now", "5 minutes ago", "yesterday", "3 Oct"; "" for no time.
+export function ago(iso) {
+  const at = Date.parse(String(iso || ""));
+  if (!Number.isFinite(at)) return "";
+  const minutes = Math.round((at - Date.now()) / 60000);
+  if (minutes > -1) return "just now";
+  if (minutes > -60) return AGO.format(minutes, "minute");
+  if (minutes > -24 * 60) return AGO.format(Math.round(minutes / 60), "hour");
+  if (minutes > -7 * 24 * 60) return AGO.format(Math.round(minutes / 1440), "day");
+  return DATE.format(at);
+}
+
 /// Says [words] in the toast at the foot of the screen ("Link copied"),
 /// read out by a screen reader, and takes it away after a moment.
 export function toast(words) {

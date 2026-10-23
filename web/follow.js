@@ -26,8 +26,10 @@ import { avatarHtml } from "/kit.js";
 
 const plural = (n, one, many = `${one}s`) => `${Number(n).toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
-/// One Follow button, made live.
-async function followButton(button) {
+/// One Follow button, made live: drawn from [known] when the page already
+/// knows how it stands (the feed's designers to follow, none of whom you
+/// follow yet), else as the server says.
+export async function followButton(button, known = null) {
   const handle = button.dataset.follow;
   const said = button.parentElement?.querySelector(".said") || null;
   const say = (words) => {
@@ -64,7 +66,12 @@ async function followButton(button) {
     draw();
     return true;
   };
-  if (!(await ask())) return;
+  if (known) {
+    state = { followers: 0, ...known };
+    draw();
+  } else if (!(await ask())) {
+    return;
+  }
   button.addEventListener("click", async () => {
     say("");
     if (!state.signed_in) {
