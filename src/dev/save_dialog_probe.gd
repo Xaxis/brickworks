@@ -81,7 +81,7 @@ func _run() -> void:
 			break
 	if _world == null or _world.brick_count() <= 1:
 		print("  save dialog probe: SKIPPED — no model came up on the baseplate")
-		quit(0)
+		_quit(0)
 		return
 	var playback: Variant = _main.get("_playback")
 	if playback is BuildPlayback:
@@ -106,7 +106,16 @@ func _run() -> void:
 		print("save dialog probe: %d check(s) FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
-	quit(1 if _failures > 0 else 0)
+	_quit(1 if _failures > 0 else 0)
+
+
+## A class's static Callable still holding this script's lambda when the
+## engine shuts down corrupts the heap on 4.7.2 (malloc_consolidate, core
+## dumped, after every check had passed), so the system's own go back first.
+func _quit(code: int) -> void:
+	SaveTo.open_with = Callable(OS, "shell_open")
+	SaveTo.show_with = Callable(OS, "shell_show_in_file_manager")
+	quit(code)
 
 
 ## LDraw: the first dialog, in Documents, named after the model.
@@ -378,14 +387,15 @@ func _instructions() -> void:
 	await _shot("06_instructions_dialog")
 	var path: String = _out.path_join("tug booklet.html")
 	await _answer(dialog, path)
-	var said: String = await _said(["wrote", "could not", "stopped", "nothing"], 400.0)
+	var said: String = await _said(["no browser", "the booklet", "wrote", "could not",
+		"stopped", "nothing"], 400.0)
 	_check("the booklet is where it was put", FileAccess.get_file_as_string(path)
 		.contains("section class=\"page steps\""))
 	_check("...and the browser was asked to open it (%s)" % str(_opened),
 		_opened.size() == 1 and str(_opened[0]) == "file://" + path)
-	_check("...and with none to open it, the line says where the file is (%s)" % said,
-		said.begins_with("wrote %s" % path) and said.ends_with(
-			"no browser opened it: Show in folder finds it"))
+	_check("...and with none to open it, the line says so, and where the file is (%s)" % said,
+		said.begins_with("no browser could open the booklet: it is saved in %s, " % path)
+		and said.ends_with(" steps"))
 	await _frames(3)
 	_check("...with Show in folder beside it", _shell.status.show_folder.is_visible_in_tree())
 	await _shot("07_status_no_browser")
@@ -404,10 +414,11 @@ func _instructions() -> void:
 		dialog.current_dir.trim_suffix("/") == _out)
 	path = _out.path_join("tug booklet 2.html")
 	await _answer(dialog, path)
-	said = await _said(["wrote", "could not", "stopped", "nothing"], 400.0)
+	said = await _said(["no browser", "the booklet", "wrote", "could not", "stopped",
+		"nothing"], 400.0)
 	_check("the booklet opens in the browser, said (%s)" % said,
-		_opened == ["file://" + path] and said.ends_with("opened in your browser")
-		and said.contains(path))
+		_opened == ["file://" + path] and said.begins_with("the booklet is open in your browser")
+		and said.ends_with(path))
 	await _frames(3)
 	await _shot("08_status_opened")
 

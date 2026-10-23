@@ -4926,7 +4926,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 			SaveTo.wrote(to)
 			note = "wrote %s, %d steps" % [to, steps]
 			if not given and BookletMaker.open_when_written:
-				note += " — " + _open_booklet(to)
+				note = _open_booklet(to, steps)
 	elif BookletMaker.fill_tab(html):
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
@@ -4936,15 +4936,15 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	return note
 
 
-## The booklet at [param path] open in the person's browser: what to add to
-## the line saying it was written. A browser that cannot be opened is said,
-## and the line names the file with Show in folder beside it either way
-## (StatusBar): walk180 pressed Instructions three times on a desktop with no
-## browser, and nothing happened (2026-10-23).
-func _open_booklet(path: String) -> String:
+## The booklet written to [param path] open in the person's browser, and the
+## line to say: whether it opened, first, as a long path can run off the
+## bar's end; then the file, with Show in folder beside it (StatusBar).
+## walk180 pressed Instructions three times on a desktop with no browser,
+## and nothing happened (2026-10-23).
+func _open_booklet(path: String, steps: int) -> String:
 	if SaveTo.open(path):
-		return "opened in your browser"
-	return "no browser opened it: Show in folder finds it"
+		return "the booklet is open in your browser, %d steps: %s" % [steps, path]
+	return "no browser could open the booklet: it is saved in %s, %d steps" % [path, steps]
 
 
 ## Every brick but those in the sub-assembly at [param path]: what a list or a

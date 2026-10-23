@@ -722,6 +722,20 @@
     },
     {
       "kind": "ui",
+      "label": "save dialog on the desktop",
+      "entry": "src/ui/save_to.gd",
+      "reach": "godot --path .  (File, Export, any of them; Instructions; File, Save as; the parts list's CSV)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "save dialog probe",
+      "entry": "src/dev/save_dialog_probe.gd",
+      "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
       "label": "open a studio model",
       "entry": "src/parts/studio_io.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Import, then BrickLink Studio model, or Open, then From a file on this computer, and choose an .io)",
