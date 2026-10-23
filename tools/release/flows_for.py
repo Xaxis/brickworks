@@ -16,7 +16,11 @@ every page that loads it, following imports between scripts. An API file is
 its route and the addresses tools/deploy.sh sends to it (/m/ to share.js).
 A helper (api/_x.js) is the routes of the API files that import it. Then
 every flow in tools/web that names one of those addresses, and the
-preview_checks.sh names that run it. Godot files are left to the feature map.
+preview_checks.sh names that run it. A changed flow is its own checks, and a
+changed module in tools/web the checks of every flow that imports it: a flow
+fixed on its own branch was first run on the release preview, and four
+release previews held on checks on 2026-10-22. Godot files are left to the
+feature map.
 """
 
 from __future__ import annotations
@@ -94,6 +98,20 @@ def addresses(path: str) -> set[str]:
     return set()
 
 
+def importers(name: str, seen: set[str]) -> set[str]:
+    """tools/web/[name] and every module there that imports it, directly or
+    through another that does."""
+    if name in seen:
+        return set()
+    seen.add(name)
+    found = {name}
+    pattern = re.compile(rf"""(?:from\s+|import\(\s*)["']\./{re.escape(name)}["']""")
+    for module in FLOWS.glob("*.mjs"):
+        if module.name != name and pattern.search(module.read_text(errors="ignore")):
+            found |= importers(module.name, seen)
+    return found
+
+
 def checks() -> dict[str, list[str]]:
     """Flow file name -> the preview_checks.sh names that run it."""
     text = (ROOT / "tools" / "release" / "preview_checks.sh").read_text(errors="ignore")
@@ -124,8 +142,9 @@ def main() -> int:
     for path in files:
         for address in addresses(path):
             wanted.setdefault(address, set()).add(path)
-    if not wanted:
-        print("no page or API route changed: nothing for the browser flows here")
+    modules = [p for p in files if Path(p).parent == Path("tools/web") and p.endswith(".mjs")]
+    if not wanted and not modules:
+        print("no page, API route or browser flow changed: nothing for the browser flows here")
         return 0
     named = checks()
     found: dict[str, set[str]] = {}
@@ -139,12 +158,20 @@ def main() -> int:
             unchecked.add(flow.name)
             continue
         for name in names:
-            found.setdefault(name, set()).update(hits)
+            found.setdefault(name, set()).update(f"{a} ({', '.join(sorted(wanted[a]))})" for a in hits)
+    orphans: set[str] = set()
+    for path in modules:
+        runs = [(flow, name) for flow in sorted(importers(Path(path).name, set())) for name in named.get(flow, [])]
+        if not runs:
+            orphans.add(Path(path).name)
+        for flow, name in runs:
+            found.setdefault(name, set()).add(f"{path} ({'its flow' if flow == Path(path).name else 'imported'})")
     for name in sorted(found):
-        why = ", ".join(f"{a} ({', '.join(sorted(wanted[a]))})" for a in sorted(found[name]))
-        print(f"{name:16} {why}")
+        print(f"{name:16} {', '.join(sorted(found[name]))}")
     if unchecked:
         print(f"also visit them, with no preview check: {', '.join(sorted(unchecked))}")
+    if orphans:
+        print(f"changed, and no preview check runs them: {', '.join(sorted(orphans))}")
     # site and frames run on every ship (tools/release/ship.sh) whatever is named.
     print("checks: " + (" ".join(sorted(found)) or "none named; site and frames run on every ship"))
     return 0

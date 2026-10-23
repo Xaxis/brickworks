@@ -12,6 +12,12 @@ tools/release/merge_finish.sh <worktree> "Merge …"
 tools/release/ship.sh <worktree> <tag> site io …       # preview, its checks, then production
 ```
 
+And before a unit says ready, from its own worktree:
+
+```sh
+RELEASE_OUT=<its scratch>/out tools/release/unit_preview.sh <worktree> [check…]
+```
+
 What each one guards against, all learned the hard way on 2026-10-13:
 
 - `merge_unit.sh` merges with `--no-commit` as the user. It takes either
@@ -98,6 +104,39 @@ What each one guards against, all learned the hard way on 2026-10-13:
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
+
+- `unit_preview.sh <worktree> [check…]` is how a unit proves its site
+  change before it says ready. It deploys the worktree unpromoted
+  (`tools/deploy.sh` without `--prod`, which Vercel makes as
+  `--prod --skip-domain`: no domain points at it), then runs the checks
+  `flows_for.py` names for what the unit changed since the commit it was
+  made from (the later of its merge base with main and with a `rel-*`
+  branch), or the checks named, and `site` always. One `pass` or `FAIL`
+  line a check, and it exits 0 only when every one reported and passed.
+  Its files are `$RELEASE_OUT/<branch>_unit_*`; `UNIT_REUSE=1` runs the
+  checks again on the preview it last made from the same commit. It runs
+  no merge gate, takes no release priority and never touches main. Its
+  deploy and checks are ship.sh's own (`preview_lib.sh`). Four release
+  previews held on 2026-10-22, about an hour each, and every time on a
+  check: digest, moderation, share_flow, builds, share_probe and challenges
+  read markup a unit had changed, and a smooth scroll was read mid-way.
+- `flows_for.py` also names a changed flow's own checks, and the checks of
+  every flow that imports a changed module in `tools/web` (`session.mjs`
+  is nearly all of them).
+- The checks that write the live database, every flow that makes a
+  throwaway account and deletes it after, run one at a time across the
+  machine: `preview_checks.sh` holds `.git/live-db.lock` in the main
+  checkout for each one's run, whichever battery it is in, and
+  `.git/live-db.log` says who took it, after how long, and when they left.
+  Two runs at once on 2026-10-22 got 429s in profile, and another run's
+  model took discovery's pick. In a battery a slot takes a live check only
+  when the other slot is not running one, and the next check as soon as it
+  is free, not when its pair's longer half ends. On the times each check
+  took, m146's paired checks take 31 minutes so (37 in its pairs), m145's
+  2.6 (4.2), and m144's, more of them live, 44 (38): the live checks one
+  after another are the floor. Between batteries a live check waits for
+  the one another battery is running; `LIVE_WAIT` (an hour) bounds that,
+  then the check fails.
 
 `tools/release/clean_worktrees.sh [--dry-run]` removes finished worktrees
 and nothing else: never a locked one (the harness locks an agent's while it

@@ -13,7 +13,9 @@ description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAsse
   It follows imports, so it never lists a browser flow that visits a changed
   page by its address: for any change to `web/` or `api/`, also run
   `tools/release/flows_for.py --since <base>` and run the preview checks it
-  names (three flows broke on Discovery's gallery that way and held m84).
+  names (three flows broke on Discovery's gallery that way and held m84):
+  `tools/release/unit_preview.sh <worktree>` deploys a preview of the
+  branch and runs them there, for a change to `web/`, `api/` or `tools/web/`.
   Every feature it lists is in scope.
 - **Keeping it current:** when you add, rename, move or remove a feature, run
   `$FM generate --write`, update the matching `features/<area>.md`, and confirm
