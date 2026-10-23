@@ -1828,6 +1828,29 @@ func bricks_at(cell: Vector3i, ignore: int = 0) -> PackedInt64Array:
 	return out
 
 
+## The first brick but [param own] whose cover has [param cell], 0 for none:
+## what a stud's tip is in, as [method brick_at] names it past the stud's own
+## part. A turned part's cover keeps every cell its boxes touch, its own
+## studs' tips among them, and named first it hid the part on them: a 1 x 1
+## tile on a wedge plate's stud, in a ball's strip turned 210 degrees, was
+## held by nothing and refused.
+func brick_but(cell: Vector3i, own: int) -> int:
+	var here: Variant = _bucket.get(Vector3i(
+		_floor_div(cell.x, BUCKET), _floor_div(cell.y, BUCKET),
+		_floor_div(cell.z, BUCKET)))
+	if here == null:
+		return 0
+	for brick_id: int in here:
+		var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
+		if brick_id == own or bound.is_empty() or cell.x < bound[0] or cell.x >= bound[3] \
+				or cell.y < bound[1] or cell.y >= bound[4] \
+				or cell.z < bound[2] or cell.z >= bound[5]:
+			continue
+		if _has_cell(brick_id, cell):
+			return brick_id
+	return 0
+
+
 ## Whether [param cell], inside [param brick_id]'s bound, is in its boxes.
 func _has_cell(brick_id: int, cell: Vector3i) -> bool:
 	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())

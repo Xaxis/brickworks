@@ -14845,8 +14845,8 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 				continue
 			var tip: Vector3 = at * (connector.position
 				+ connector.axis.normalized() * 5.0)
-			var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
-			if reached != 0 and reached - 1 != index and joined.has(reached - 1):
+			var reached: int = lattice.brick_but(BrickLattice.to_cell(tip), index + 1)
+			if reached != 0 and joined.has(reached - 1):
 				joined[index].append(reached - 1)
 				joined[reached - 1].append(index)
 
@@ -14911,9 +14911,10 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 		entries.append([index, _joined_at(placement, part, model), part])
 	# The rule is Joints', which the booklet reads support by too.
 	return Joints.studs_in(entries, func(tip: Vector3, index: Variant) -> Variant:
-		# brick_at returns index + 1, since zero means empty.
-		var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
-		return reached - 1 if reached != 0 and reached - 1 != int(index) else null)
+		# brick_but returns index + 1, since zero means empty; past the stud's
+		# own part, whose turned cover may hold its tip too.
+		var reached: int = lattice.brick_but(BrickLattice.to_cell(tip), int(index) + 1)
+		return reached - 1 if reached != 0 else null)
 
 
 ## Each placement as [Joints] wants it, to ask which are held by something
