@@ -5927,6 +5927,25 @@ func _figure_call(design: Model, kind: String) -> String:
 ## Whether a character's unjointed first submission has been sent back.
 var _joints_refused: bool = false
 
+## The parts a rounded body's outline is made of (THE OUTLINE OF A ROUNDED
+## BODY): corner rounds, corner rounds with a curved or domed top, the ovoid
+## and the domes, inverted curved slopes. Not whole round bricks: a stack of
+## them is a drum.
+const OUTLINE_PARTS: Array = ["3063a", "3063b", "85080", "5152", "2577", "48092", "79491",
+	"30357", "30565", "6003", "25269", "27925", "79393", "27507", "5906", "65617", "5651",
+	"76797", "88293", "49612", "24947", "3262", "30367c", "24201", "13547", "32803"]
+## How many of them make a body laid from its outline rather than stacked.
+const OUTLINED_FROM := 8
+
+
+## Whether [param design]'s body is laid from its outline's parts.
+func _outlined(design: Model) -> bool:
+	var count: int = 0
+	for placement: Placement in design.placements:
+		if OUTLINE_PARTS.has(placement.part):
+			count += 1
+	return count >= OUTLINED_FROM
+
 
 ## A figure or a creature submitted with nothing on a joint is sent back once,
 ## with the one entry that lays it on joints. Told of the joints in every
@@ -5934,8 +5953,14 @@ var _joints_refused: bool = false
 ## "figures on joints"): a submission that is built is a choice made, and the
 ## advice under it came after. Sent back, the choice is still open. Once:
 ## submitted again as it was, it is built. "" to go on and check it.
+##
+## Nor a body laid from its outline's parts (_outlined): its outline is what
+## keeps it from being a statue, and sending it back points it at the figure
+## pattern's plain stack, the box the outline was chosen against. outline161's
+## pig was sent back so and spent a round trip submitting it again.
 func _unjointed_refusal(design: Model) -> String:
-	if _joints_refused or design.placements.size() < JOINTS_FROM or _posed(design):
+	if _joints_refused or design.placements.size() < JOINTS_FROM or _posed(design) \
+			or _outlined(design):
 		return ""
 	var kind: String = Style.character_of(_subject_of(design))
 	var call: String = _figure_call(design, kind)
@@ -17525,14 +17550,18 @@ meets it (a balloon's segment, a snowman, a bead, a paw, a knuckle).
 2x3, 41769a and 41770a 2x4; 2450 a cut corner.
     spikes, tufts    22388, a 1x1 slope falling four ways (spiky hair, fur, \
 a leafy crown); 1x1 cones.
-  3. Round it in every view, not only from above. Corner rounds on straight \
-sides make a drum, and are read as one. Let the courses swell and narrow — \
-rings 4, 6 and 8 studs across on each other, a stud in at each step — with \
-rounded tops and curved slopes over each step above the widest course, and \
-inverted curved slopes under each step below it. An egg is 6, 8, 8, 6, 4 \
-across; a pear 8, 8, 6, 4; a fat belly 8 over legs 6 apart. The round \
-pattern lays such a stack in one entry, a "diameter" on each band of its \
-"stack".
+  3. Round it in every view, not only from above: corner rounds on \
+straight sides make a drum, and are read as one. The cheap way is one \
+entry of the round pattern, its bands' "diameter" (2, 4, 6, 8) swelling \
+and narrowing: a pear {"pattern": "round", "at": {"x", "y", "z"}, \
+"diameter": 8, "stack": [{"plates": 9}, {"diameter": 6, \
+"plates": 6}, {"diameter": 4, "plates": 3}, {"nose": "dome"}]}; an egg 6, \
+8, 8, 6, 4 under a dome; a fat belly 8 between hips and a chest of 6; a \
+body lying down the same with "axis": "x" on its legs, the nose its head \
+end. It lays the corner rounds, round bricks and round plates, each turned \
+right. Then by hand only what no pattern lays: rounded tops on the step \
+above the widest band, inverted curved slopes under the step below it, a \
+ball's two domes, the corner rounds of a body that is not round in plan.
   4. A part curves in the plane of its studs. Studs up, a corner round \
 rounds what is seen from above and a slope what is seen from the side. \
 Where the outline seen most is a face — a potato or a pear from the front, \
@@ -17540,16 +17569,17 @@ a fish or a car from the side — build that face as layers stacked toward \
 the viewer: a section turned out (pitch -90, its yaw the side it faces) \
 on a core with studs out, each layer's outline its corner rounds, the \
 layers narrower toward the front (show_technique "sideways skins").
-  5. Search them before you submit: search_parts for each role at its size \
-("brick corner round 4 x 4", "corner round curved top", "dome inverted", \
-"slope curved inverted"); then submit the body with them on it, the \
-outline parts the outermost stud of every course and its top and bottom, \
-the core plain bricks, staggered. A character's body is its outline too: \
-a fat, round or egg-shaped one is built so, its limbs and head put on it \
-by the figure pattern's joints (show_technique "ball shoulder", "limb on \
-a clip", "head on a neck"). A small body (under about 16 studs) said as a \
-shape, a fill or an ellipsoid comes out a barrel or a block; so does one \
-of 1x1 plates, or square bricks with curved slopes only on top.
+  5. Search the hand-laid ones before you submit, at their size ("corner \
+round curved top 4 x 4", "dome inverted", "slope curved inverted 2 x 1"), \
+and lay each by its turn below, not tried in a row first. The outline \
+parts are the outermost stud of every course and its top and bottom; the \
+core is plain bricks, staggered. A creature or a character whose body is \
+its shape (fat, round, an egg, a pear) is laid so first, its head and \
+limbs then put on it by joints (place_technique "ball shoulder", "limb on \
+a clip", "head on a neck", "tail on a bar"): the figure pattern's body is \
+a plain stack, for a plain figure. A small body (under about 16 studs) \
+said as a shape, a fill or an ellipsoid comes out a barrel or a block; so \
+does one of 1x1 plates, or square bricks with curved slopes only on top.
   Turned: at rot 0 a slope falls toward +z, at rot 1 +x, 2 -z, 3 -x; a \
 corner round's curve faces +x and +z at rot 0, +x -z at 1, -x -z at 2, -x \
 +z at 3, so a ring's four go rot 2, 1, 0, 3 at its corners from low x low \
