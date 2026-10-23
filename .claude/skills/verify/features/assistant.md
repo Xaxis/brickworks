@@ -47,6 +47,20 @@ fixing what it got wrong.
   within a stud of its widest (taper165's measure, `src/dev/side_profile.gd`);
   a hat said on an egg is held; a run kept to a list lays none off it.
   `tools/probe.sh sculpt_probe [OUTDIR]` (OUTDIR gets each body's .ldr).
+  The first of each sculpt is laid on a worker before the design is read
+  (`Assistant._sculpt_ready`): its parts loaded or fetched, Brickify's tables
+  filled a slice a frame (`Brickify.warm`, the panel's too), the Working bar
+  saying "Laying a sculpt…"; the read then finds it laid. One model is laid off
+  the main thread at a time, the panel's or a sculpt, and any design is read
+  only once none is (`Brickify.begin_laying`, `Brickify.laid`): Shapes' tables
+  are not locked. On the main thread it held the window 0.3 to 1.4 s on the
+  desktop and up to 5 s in a browser. `sculpt_worker_probe` (windowed, in the
+  app's scene): sculpt_probe's six bodies and the bench sessions' own
+  (`src/dev/fixtures/sculpt_designs.json`, the potato and the fat rabbit among
+  them) laid on the worker byte for byte as on the main thread; those sessions'
+  calls through the connector, 20 and more sculpts back to back with edits
+  between, no frame's own work over 100 ms; the Brickify panel laying a model
+  at the same time as a sculpt, both whole.
 - `best of two`: `src/ai/best_of_two.gd`. A new brief sent with My Claude on
   a bare baseplate (main's `design_locally`, `_second_design`) is designed
   twice: the person's session in the window, and a second started at once as
@@ -2170,6 +2184,7 @@ Runtime, all free — these are the ones to run after changing the loop:
 ```sh
 godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and what it is told
 godot --headless --path . --script src/dev/sculpt_probe.gd      # a rounded body said as solids, laid by Brickify
+godot --path . --resolution 1400x900 --script src/dev/sculpt_worker_probe.gd  # ...laid on a worker, the window drawing
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it

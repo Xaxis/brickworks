@@ -1852,10 +1852,12 @@ static func warm(library: PartLibrary, job: Working.Job = null) -> void:
 static var _laying: Object = null
 
 
-## Wait, a frame at a time, until nothing else is laying a model, then
-## [param by] is: a coroutine. Something freed while it laid holds nothing.
+## Wait, a frame at a time, until nothing is laying a model, then [param by]
+## is: a coroutine. Not even [param by] lays two at once (a session's call
+## and the app's own loop, both asking one assistant). Something freed while
+## it laid holds nothing.
 static func begin_laying(by: Object) -> void:
-	await laid(by)
+	await laid()
 	_laying = by
 
 
@@ -1864,10 +1866,10 @@ static func end_laying(by: Object) -> void:
 		_laying = null
 
 
-## Wait, a frame at a time, until nothing but [param by] is laying a model:
-## a coroutine, returning at once when nothing is.
-static func laid(by: Object = null) -> void:
-	while _laying != null and _laying != by and is_instance_valid(_laying):
+## Wait, a frame at a time, until nothing is laying a model: a coroutine,
+## returning at once when nothing is.
+static func laid() -> void:
+	while _laying != null and is_instance_valid(_laying):
 		await (Engine.get_main_loop() as SceneTree).process_frame
 
 

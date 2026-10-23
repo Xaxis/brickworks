@@ -11494,9 +11494,12 @@ func _sculpt_ready(args: Dictionary) -> void:
 				# Its own copies: the worker reads them while this frame goes on.
 				var own: Dictionary = raw.duplicate(true)
 				var standing: Dictionary = feet.duplicate(true)
-				var laid: Dictionary = await WorkerTasks.awaited(func() -> Variant:
+				var laid: Variant = await WorkerTasks.awaited(func() -> Variant:
 					return _lay_sculpt(own, standing, checker), "lay a sculpt", library)
-				_keep_sculpt(_sculpt_key(raw, feet), laid)
+				# A worker that failed leaves nothing: laid in the read instead,
+				# slow, but an answer (as _checked does).
+				if laid is Dictionary and not (laid as Dictionary).is_empty():
+					_keep_sculpt(_sculpt_key(raw, feet), laid)
 			Brickify.end_laying(self)
 			job.end()
 	await Brickify.laid()
