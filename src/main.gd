@@ -4467,6 +4467,8 @@ func _build_ui() -> void:
 	_verbs.say = _bar.say
 	_verbs.edited = _on_model_edited
 	_verbs.aim_again = _hover_again
+	_verbs.reopen = _bar.reopen
+	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
 	add_child(_verbs)
@@ -7024,13 +7026,13 @@ func _on_touch_tool(what: String) -> void:
 			if _builder.undo():
 				_refresh_preview()
 				_on_model_edited()
-			else:
+			elif not await _bar.reopen():
 				_bar.say("nothing to undo")
 		"redo":
 			if _builder.redo():
 				_refresh_preview()
 				_on_model_edited()
-			else:
+			elif not await _bar.reopen(true):
 				_bar.say("nothing to redo")
 
 

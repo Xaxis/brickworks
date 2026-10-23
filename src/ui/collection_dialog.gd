@@ -723,6 +723,9 @@ func _build_row(candidate: Dictionary) -> Control:
 
 
 func _open_candidate(candidate: Dictionary) -> void:
+	if bar != null and not await bar.ask_to_replace("“%s”" % candidate.get("name",
+			str(candidate.get("path", "")).get_file().get_basename())):
+		return
 	var placed: int = 0
 	if candidate.has("path"):
 		placed = await models.open_fetched(str(candidate["path"]))

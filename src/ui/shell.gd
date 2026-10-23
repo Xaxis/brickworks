@@ -703,10 +703,13 @@ func _define() -> void:
 	_add("quit", "Quit", CTRL | KEY_Q, func() -> void: app.get_tree().quit(),
 		func() -> bool: return not OS.has_feature("web"))
 	# Edit
+	# An open is the oldest step: Undo past every change since brings back
+	# the model it took off (ModelStore.reopen).
 	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.press("undo"),
-		func() -> bool: return builder.history_depth() > 0, "Take back the last change")
+		func() -> bool: return builder.history_depth() > 0 or store.can_reopen(),
+		"Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: await verbs.press("redo"),
-		func() -> bool: return not builder._redo.is_empty(), "Put it back")
+		func() -> bool: return not builder._redo.is_empty() or store.can_reopen(true), "Put it back")
 	# Not "cut": that is the cut-away (K), defined under View, and a second
 	# command of one name replaced the first, so Edit, Cut sliced the model
 	# open instead of taking the selection off it.
@@ -1240,6 +1243,8 @@ func _fill_recent(menu: PopupMenu) -> void:
 func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	if id < 0 or id >= _recent.size():
 		return
+	if not await bar.ask_to_replace("“%s”" % _recent[id].name):
+		return
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
@@ -1248,11 +1253,17 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 func _fill_history(menu: PopupMenu) -> void:
 	menu.clear()
 	var said: PackedStringArray = builder.history_words(25)
-	if said.is_empty():
+	# And under them the open they followed, the step before the oldest:
+	# going back to before it brings back the model it took off.
+	var opened: String = store.reopen_words() if store != null else ""
+	if said.is_empty() and opened.is_empty():
 		menu.add_item("nothing to go back to yet")
 		menu.set_item_disabled(0, true)
 	for n: int in said.size():
 		menu.add_item("Undo %s" % said[n] if n == 0 else "Back to before: %s" % said[n], n)
+	if not opened.is_empty():
+		menu.add_item(("Undo %s" if said.is_empty() else "Back to before: %s") % opened,
+			builder.history_depth())
 
 
 # -- what only the shell does ---------------------------------------------------

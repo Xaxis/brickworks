@@ -157,3 +157,4 @@ seated
 shaping_search
 stress
 sculpt
+unsaved_open

@@ -169,7 +169,8 @@ is held with what it stands on; a frame held by nothing the parts record \
 is held still when named Frame.
  - undo: takes the last change back, or several; redo=true puts it back.
  - open_model: lists the person's saved models and the examples, and \
-opens one. It cannot be undone: save_model first. Each save is kept, the \
+opens one. Over changes not saved it is refused unless discard_changes=true, \
+and undo brings back what it replaced. Each save is kept, the \
 last 20: name= with versions=true lists a model's, version=N opens one. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
@@ -581,8 +582,9 @@ func definitions() -> Array:
 				+ "copy of it saved in the person's models, as Open in Brickworks on its page "
 				+ "does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's "
 				+ "model of that real set, credited to whoever made it, as File, Library… does. "
-				+ "Opening cannot be undone, so it is refused while "
-				+ "the model has changes not saved, unless discard_changes=true."),
+				+ "The person's work is never lost: while the model on the baseplate has "
+				+ "changes not saved, opening is refused unless discard_changes=true, and an "
+				+ "open is undone like any change (undo brings back the model it replaced)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
@@ -2211,9 +2213,13 @@ func _undo(input: Dictionary) -> String:
 	var count: int = clampi(int(input.get("steps", 1)), 1, 25)
 	var done := PackedStringArray()
 	var others: String = ""
+	var store: ModelStore = app.get("_store")
 	for _n: int in count:
 		var words: String = builder.redo_words() if again else (
 			builder.history_words(1)[0] if builder.history_depth() > 0 else "")
+		# Past every change, the open they followed (ModelStore.reopen).
+		if words.is_empty() and (not again or builder._redo.is_empty()):
+			words = store.reopen_words(again)
 		if words.is_empty():
 			break
 		# Another Claude chat's change, in a tab two chats work in: not this
@@ -2234,10 +2240,12 @@ func _undo(input: Dictionary) -> String:
 				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", others]
 	if done.is_empty():
 		return "Nothing to %s." % ("redo" if again else "undo")
-	var left: String = ("Next to undo: %s." % builder.history_words(1)[0]) \
-		if builder.history_depth() > 0 else "Nothing more to undo."
-	if builder._redo.size() > 0:
-		left += " undo {\"redo\": true} puts back %s." % builder.redo_words()
+	var next: String = builder.history_words(1)[0] if builder.history_depth() > 0 \
+		else store.reopen_words()
+	var left: String = ("Next to undo: %s." % next) if not next.is_empty() else "Nothing more to undo."
+	var back: String = builder.redo_words() if builder._redo.size() > 0 else store.reopen_words(true)
+	if not back.is_empty():
+		left += " undo {\"redo\": true} puts back %s." % back
 	return "%s %s. %s" % ["Redid" if again else "Undid", "; ".join(done), left]
 
 
@@ -2293,9 +2301,10 @@ func _open(input: Dictionary) -> String:
 		return ("%s has %d versions: version is 1 (the newest) to %d. versions=true lists them."
 			% [chosen.name, kept.size(), kept.size()]) if not kept.is_empty() \
 			else "No saves of %s are kept as versions yet." % chosen.name
-	if store.has_unsaved_work() and not bool(input.get("discard_changes", false)):
-		return ("The model on the baseplate, %s, has changes that are not saved, and opening "
-			% store.title + "cannot be undone. save_model first, or give discard_changes=true.")
+	var unsaved: bool = store.has_unsaved_work()
+	var was: String = store.title
+	if unsaved and not bool(input.get("discard_changes", false)):
+		return _unsaved_refusal(store)
 	if assistant != null:
 		assistant.forget_built()
 	if version >= 1:
@@ -2304,13 +2313,32 @@ func _open(input: Dictionary) -> String:
 			return "Could not open that version of %s: %s. The model on the baseplate, %s, is as it was." % [
 				chosen.name, store.not_opened, store.title]
 		return ("Opened %s as saved %s: %d parts. look_at_model to see it. The person's Save "
-			+ "makes it the newest save.") % [chosen.name, kept[version - 1].when(), landed] + _opened_motions()
+			+ "makes it the newest save.") % [chosen.name, kept[version - 1].when(), landed] \
+			+ _replaced_words(store, unsaved, was) + _opened_motions()
 	var placed: int = await bar.open_with_progress(chosen.path)
 	if placed < 0:
 		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
 			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] + _opened_motions()
+	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
+		+ _replaced_words(store, unsaved, was) + _opened_motions()
+
+
+## Why an open is refused: the person's changes would go, and a session
+## does not discard them unasked.
+static func _unsaved_refusal(store: ModelStore) -> String:
+	return ("Not opened: the model on the baseplate, %s, has changes that are not saved, "
+		+ "and they are the person's. save_model first, or ask the person and give "
+		+ "discard_changes=true: undo then brings their model back.") % store.title
+
+
+## What an open that took a model off the baseplate says of it: " The model
+## it replaced, X, was not saved: undo brings it back."; "" when there was
+## none, or it was saved as it stood.
+static func _replaced_words(store: ModelStore, unsaved: bool, replaced: String) -> String:
+	if not unsaved or not store.can_reopen():
+		return ""
+	return " The model it replaced, %s, was not saved: undo brings it back." % replaced
 
 
 ## What a model just opened can play, by name, for play_motion: its own
@@ -2340,9 +2368,10 @@ func _open_link(link: String, discard: bool) -> String:
 	var shared: SharedModels = app.get("_shared")
 	if shared == null:
 		return "This app cannot reach the gallery."
-	if store.has_unsaved_work() and not discard:
-		return ("The model on the baseplate, %s, has changes that are not saved, and opening "
-			% store.title + "cannot be undone. save_model first, or give discard_changes=true.")
+	var unsaved: bool = store.has_unsaved_work()
+	var was: String = store.title
+	if unsaved and not discard:
+		return _unsaved_refusal(store)
 	var answer: Dictionary = await shared.fetch(id)
 	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
 		return "Could not open %s: %s." % [id, SharedModels.trouble(answer, "the gallery did not answer")]
@@ -2377,7 +2406,8 @@ func _open_link(link: String, discard: bool) -> String:
 		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
 		+ "it. Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
-		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms] + _opened_motions()
+		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms] \
+		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
 
 ## open_model library=: LDraw's model of a real set, from the library File,
@@ -2393,9 +2423,10 @@ func _open_library(id: String, discard: bool) -> String:
 		return "This app has no library."
 	if not ModelLibrary.is_id(id):
 		return "library is an id from gallery library=true, like omr-10179-1."
-	if store.has_unsaved_work() and not discard:
-		return ("The model on the baseplate, %s, has changes that are not saved, and opening "
-			% store.title + "cannot be undone. save_model first, or give discard_changes=true.")
+	var unsaved: bool = store.has_unsaved_work()
+	var was: String = store.title
+	if unsaved and not discard:
+		return _unsaved_refusal(store)
 	var entry: Dictionary = await books.find(id)
 	if entry.is_empty():
 		return books.trouble + " gallery library=true q= finds a set."
@@ -2421,7 +2452,8 @@ func _open_library(id: String, discard: bool) -> String:
 		+ "models. look_at_model to see it.") % [title,
 		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(),
 		ModelBar.left_out_words(result, false), ModelBar.credit_words(store.credit), entry["page"],
-		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] + _opened_motions()
+		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] \
+		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
 
 # -- the parts list and the collection ------------------------------------------------
