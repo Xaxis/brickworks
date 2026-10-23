@@ -113,7 +113,8 @@ async function api(pathname, { method = "GET", token, body, extra = {} } = {}) {
   if (token) sent.authorization = `Bearer ${token}`;
   if (body !== undefined) sent["content-type"] = "application/json";
   const reply = await fetch(`${site}${pathname}`, { method, headers: sent, body: body === undefined ? undefined : JSON.stringify(body) });
-  return { status: reply.status, cache: reply.headers.get("cache-control") || "", body: await reply.json().catch(() => ({})) };
+  return { status: reply.status, cache: reply.headers.get("cache-control") || "", cdn: reply.headers.get("x-vercel-cache") || "",
+    body: await reply.json().catch(() => ({})) };
 }
 
 async function until(page, test, what, seconds = 30, arg = null) {
@@ -292,11 +293,16 @@ try {
   await wide.close();
 
   // --- 5. the API -------------------------------------------------------------
+  // Vercel's CDN keeps s-maxage for itself and hands a browser what is left
+  // (public, max-age=0): on a deployment the CDN answering again is the proof,
+  // as challenges_flow and share_probe have it.
+  const local = /127\.0\.0\.1|localhost/.test(site);
   const open = await api("/api/people?op=latest");
+  const again = local ? null : await api("/api/people?op=latest");
   const asked = await api("/api/people?op=latest&tests=1");
-  check(`latest: ${open.status} kept by the CDN ("${open.cache}"); with tests=1 never ("${asked.cache}"), her tower in it `
+  check(`latest: ${open.status} kept by the CDN ("${open.cache}"${local ? "" : `; asked again: ${again.cdn || "none"}`}); with tests=1 never ("${asked.cache}"), her tower in it `
     + `${(asked.body.models || []).some((one) => one.id === id)} and not without (${(open.body.models || []).some((one) => one.id === id)})`,
-  open.status === 200 && /s-maxage=30/.test(open.cache) && /no-store/.test(asked.cache)
+  open.status === 200 && (local ? /s-maxage=30/.test(open.cache) : /HIT|STALE/.test(again.cdn)) && /no-store/.test(asked.cache)
     && (asked.body.models || []).some((one) => one.id === id) && !(open.body.models || []).some((one) => one.id === id)
     && Array.isArray(open.body.designers) && Array.isArray(open.body.photos));
   const theirs = (asked.body.designers || []).find((one) => one.handle === ADA);
