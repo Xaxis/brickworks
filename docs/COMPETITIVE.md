@@ -550,6 +550,34 @@ and off), `src/ui/status_bar.gd`.
 **Proof:** a probe builds a column of 1x1s carrying a 2x10 plate as a
 cantilever. The plate's root reads red, and a column of 2x2s reads plain.
 
+**Done, 2026-10-22** (`src/ui/stress_view.gd`; the recipe is "stress view"
+in `.claude/skills/verify/features/view.md`). As specified, with what
+building it showed:
+- The margins are Balance's, not a second weighing. A stud joint that alone
+  holds what is past it is levered about the edge it would turn on, against
+  its studs' 1 N each there. A joint that shares its load, as a bonded
+  wall's does, is not weighed, so it is never libelled. The weight pressing
+  on a stud, which Check stability's list weighs, holds whatever presses it.
+- A bare 2x10 on one stud is not red: the stud holds it 4.8 times over. Red
+  needs the cantilever loaded, 8 g of 2x2s at its tip (margin 0.7), and so
+  the probe loads it. Then every 1x1 under it reads red too, and on 2x2s the
+  root holds 6.2 times over.
+- On eight OMR sets that stand (75969-1, 7191-1, 10262-1, 70816-1, 10270-1,
+  10264-1, 75060-1, 21318-1; 925 to 2,993 parts) one part reads red. It is
+  21318-1's branch of leaves, 9 g on a 6L bar in a 1x1 brick's side stud, at
+  0.74 of the stud's working load (2.2 times short of where it lets go).
+  10264-1's Technic axle through a cross block read red until a contact on a
+  part with no studs stopped counting as a stud joint. The eight shipped
+  models read none. Orthanc, a session's design, reads 31: three inner cores
+  of up to 496 parts, each on a column of 1x1 round bricks, leaning on the
+  walls with no joint to them.
+- Off, it costs nothing. On, turning it on is one 26 ms frame on 75969-1
+  and the tint comes 0.6 s later; orbit, select all and a step are as
+  before. Each change's weighing, on its worker, grows by 10% to 150%
+  (75969-1, 602 to 734 ms; the castle, 155 to 380).
+- Not weighed: a part's joint to the floor or the baseplate, which Balance
+  stands it on (a tower's foot), and pins, axles, clips and hinges.
+
 ### 7. Export the model as a 3D file: glTF/GLB, OBJ and STL
 
 *Trails Studio (`.dae`) [st-export], Mecabricks (OBJ, DAE, STL) [mb-farm],

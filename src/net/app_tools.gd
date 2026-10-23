@@ -60,7 +60,9 @@ const COMMANDS: Dictionary = {
 	"parts_list": "parts_list", "collection": "parts_list", "collection_need": "parts_list",
 	"collection_build": "parts_list",
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
-	"stability": "review_model", "ask_claude": "selection",
+	"stability": "review_model", "ask_claude": "selection", "brace": "selection",
+	# View, Stress's margins are Balance's, which check_design reports joint by joint.
+	"stress": "check_design",
 	"brickify": "brickify", "import_mesh": "brickify", "print_part": "print_part",
 	"sticker": "print_part", "printed_versions": "print_part",
 	"make_unique": "make_unique",
