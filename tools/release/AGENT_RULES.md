@@ -29,7 +29,8 @@ date says when.
   five hours with nothing committed (2026-10-19). Committing changes no file,
   so a running sweep is unaffected.
 - Never push, never touch main or a rel-* branch, never deploy production. A
-  preview deploy only where the brief says. The lead merges and ships.
+  preview deploy only by unit_preview.sh (below) or where the brief says.
+  The lead merges and ships.
 - When told main moved under you, `git merge main` and resolve; take main's
   side of anything main fixed (two units fixed the same check twice,
   2026-10-19).
@@ -90,6 +91,12 @@ date says when.
   deployment before ready. Two flows proven only against the local server
   held a release three times on a real deployment (2026-10-19). ship.sh holds
   a release with an unwired new flow.
+- **A unit that changes web/, api/ or tools/web/ runs
+  `tools/release/unit_preview.sh <its worktree>` on its branch before
+  ready** (with `RELEASE_OUT` in its scratch folder), and puts its
+  `pass`/`FAIL` lines in its report. It deploys a preview, never
+  production. Four release previews held on 2026-10-22, about an hour
+  each, every time on a check that read markup a unit had changed.
 - A feature that runs every frame or on a timer: prove a big model's step,
   orbit and select-all cost unchanged (cad_frames.mjs --gate).
 - Add, rename or remove a feature: update .claude/skills/verify/

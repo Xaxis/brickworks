@@ -211,15 +211,38 @@ declare -A CMD=(
 )
 ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design theme model_page gallery download frames"
 NAMES="${*:-$ORDER}"
+# The checks that write the live database, which every preview and the
+# relay share with production: each flow that makes a throwaway account and
+# deletes it after (session.mjs's deleteAccount, or the admin API's users),
+# and all it does as that account between. Two runs at once collided on
+# 2026-10-22: 429s in profile, and another run's model took discovery's
+# pick. So each takes one lock for the whole machine, whichever battery it
+# is in (a release's, a unit's unit_preview.sh): a file in the repository's
+# git folder, which every worktree shares. live-db.log beside it says who
+# took it and left it, and when.
+LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
+live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
 run() {
-  local name="$1" t0=$(date +%s)
+  local name="$1" t0=$(date +%s) lock
   # A name not in the map ran bare node, which exits 0 at once: technic
   # "passed" in 0 s without running (2026-10-13).
   if [ -z "${CMD[$name]:-}" ]; then echo "$name exit=127 fails=1 0s :: FAIL no such check" >> "$S/$TAG.out"; return; fi
+  # Held for the check's run only, and never by what it starts: a browser
+  # left behind would hold the database from every other run.
+  exec {lock}>>"$LIVE_DB.lock"
+  if live "$name"; then
+    if ! flock -w "${LIVE_WAIT:-3600}" "$lock"; then
+      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, an hour): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
+      exec {lock}>&-; return
+    fi
+    echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s" >> "$LIVE_DB.log"
+  fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
-  "$H" timeout 2700 node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
+  "$H" timeout 2700 node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
   local code=$?
+  live "$name" && echo "$(date '+%F %T') left $TAG $name exit=$code" >> "$LIVE_DB.log"
+  exec {lock}>&-
   echo "$name exit=$code fails=$(grep -c 'FAIL' "$S/${TAG}_$name.log") $(( $(date +%s) - t0 ))s :: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-200)" >> "$S/$TAG.out"
 }
 : > "$S/$TAG.out"
@@ -237,11 +260,26 @@ run() {
 SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
-set -- $PAIRED
-while [ $# -gt 0 ]; do
-  run "$1" & shift
-  if [ $# -gt 0 ]; then run "$1" & shift; fi
-  wait
+# Two at a time, a slot taking the next check as soon as it is free. Two
+# live checks side by side would take turns at the lock while the other
+# slot sat idle, so a slot takes a live one only when the other is not
+# running one, or nothing else is left. The live checks, one after
+# another, then set the phase's length. On the times m146's checks took:
+# 31 minutes, against the 37 its pairs took, each waiting for its longer
+# half; on m144's, which had more live ones, 44 against 38.
+wet=(); dry=(); declare -A slot=()
+for n in $PAIRED; do if live "$n"; then wet+=("$n"); else dry+=("$n"); fi; done
+while :; do
+  while [ ${#slot[@]} -lt 2 ]; do
+    busy=""; for p in "${!slot[@]}"; do live "${slot[$p]}" && busy=1; done
+    if [ ${#wet[@]} -gt 0 ] && { [ -z "$busy" ] || [ ${#dry[@]} -eq 0 ]; }; then n=${wet[0]}; wet=("${wet[@]:1}")
+    elif [ ${#dry[@]} -gt 0 ]; then n=${dry[0]}; dry=("${dry[@]:1}")
+    else break; fi
+    run "$n" & slot[$!]=$n
+  done
+  [ ${#slot[@]} -gt 0 ] || break
+  ended=""; wait -n -p ended; [ -n "$ended" ] || break
+  unset "slot[$ended]"
 done
 # Timing checks measure the app's own work, which still slows when the box is
 # busy: m87's play and m98's grab held at load 20-42 and passed alone at 3-10
