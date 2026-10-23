@@ -88,8 +88,11 @@ static func _body(kind: String) -> bool:
 
 
 static func _near(rel: Transform3D, pose: Array) -> bool:
-	var place: float = _table["place"]
-	var turn: float = _table["turn"]
+	# With what the scan rounds a pose to (a hundredth of an LDU, a thousandth
+	# of a turn) over: 894-1's dish 11 LDU over its round brick was learned
+	# with one 10 over, exactly a place apart as the scan wrote them.
+	var place: float = float(_table["place"]) + 0.01
+	var turn: float = float(_table["turn"]) + 0.001
 	var off: Vector3 = (rel.origin - (pose[0] as Vector3)).abs()
 	if off.x > place or off.y > place or off.z > place:
 		return false

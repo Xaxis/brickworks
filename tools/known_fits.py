@@ -118,9 +118,9 @@ def inverse(rel: list[float]) -> list[float]:
     """b's place in a's frame -> a's in b's ([origin, the basis's columns])."""
     o = rel[:3]
     cols = [rel[3:6], rel[6:9], rel[9:12]]
-    # R transposed: its columns are R's rows.
+    # R transposed: its columns are R's rows, and its rows R's columns.
     rows = [[cols[0][i], cols[1][i], cols[2][i]] for i in range(3)]
-    origin = [-sum(rows[i][k] * o[k] for k in range(3)) for i in range(3)]
+    origin = [-sum(cols[i][k] * o[k] for k in range(3)) for i in range(3)]
     return origin + rows[0] + rows[1] + rows[2]
 
 
@@ -184,7 +184,7 @@ def learn(rows: list[dict], needed: int = SETS_NEEDED, tail: float = TAIL) -> li
                 fit["at"] = [round(v, 3) for v in cluster["at"]]
             fit["depth"] = round(reached + MARGIN, 2)
             fit["seen"] = len(deepest)
-            fit["sets"] = [number for number, depth in deepest if depth <= reached][:10]
+            fit["sets"] = [number for number, _ in deepest[:12]]
             fits.append(fit)
     return fits
 
@@ -265,18 +265,62 @@ def build(out: Path, write: Path) -> int:
 
 # -- report ------------------------------------------------------------------
 
+## Why a pair the table does not forgive is left, said in the report.
+CAUSES = {
+    "twice": "one part drawn twice in one place: the file's slip",
+    "alone": "two parts not a minifigure's, met so by this set alone: a part drawn into "
+             "another, or BrickNet's convex pieces filling what is hollow",
+    "deeper": "deeper than the sets that meet so",
+    "figure alone": "a minifigure's part against something no other set has it against",
+}
+
+
+def cause(fits: dict, plain: dict, ka: str, kb: str, pose, twice: bool) -> str:
+    if twice:
+        return "twice"
+    if pose is None:
+        return "deeper" if (ka, kb) in plain else "figure alone"
+    return "deeper" if any(same_pose(pose, at, ka == kb) for at, _ in fits.get((ka, kb), [])) else "alone"
+
+
 def report(out: Path, table: Path) -> int:
     found = rows(out)
     fits = json.loads(table.read_text())["fits"]
     forgives = allowed(fits)
+    plain = {(f["a"], f["b"]): f["depth"] for f in fits if "at" not in f}
+    posed: dict[tuple, list] = defaultdict(list)
+    for f in fits:
+        if "at" in f:
+            posed[(f["a"], f["b"])].append((f["at"], f["depth"]))
     before = sum(1 for row in found if not row["pairs"])
     still: dict[str, list] = {}
+    figures = figures_pass = 0
     for row in found:
-        left = [m for m in met([row]) if not forgives(m[0], m[1], m[2], m[3], m[6])]
+        every = list(met([row]))
+        left = [m for m in every if not forgives(m[0], m[1], m[2], m[3], m[6])]
         if left:
             still[row["file"]] = left
+        theirs = [m for m in every if m[2] is None]
+        if theirs:
+            figures += 1
+            figures_pass += not [m for m in left if m[2] is None]
+    passed = len(found) - len(still)
     print(f"{len(found)} files: {before} pass the collision part before ({100 * before / len(found):.1f}%), "
-          f"{len(found) - len(still)} with the table ({100 * (len(found) - len(still)) / len(found):.1f}%)")
+          f"{passed} with the table ({100 * passed / len(found):.1f}%)")
+    print(f"{figures} files have a minifigure's part in a colliding pair; every such pair is "
+          f"forgiven in {figures_pass} ({100 * figures_pass / max(1, figures):.1f}%)")
+    files: dict[str, set] = defaultdict(set)
+    pairs: dict[str, int] = defaultdict(int)
+    for file, left in still.items():
+        for ka, kb, pose, _depth, _set, _file, twice in left:
+            why = cause(posed, plain, ka, kb, pose, twice)
+            files[why].add(file)
+            pairs[why] += 1
+    print(f"the {len(still)} that still fail, by what is left in them (a file can have several):")
+    for why, said in CAUSES.items():
+        only = sum(1 for f in files[why] if all(cause(posed, plain, m[0], m[1], m[2], m[6]) == why
+                                               for m in still[f]))
+        print(f"  {len(files[why]):5d} files ({only} by this alone), {pairs[why]:6d} pairs: {said}")
     return 0
 
 
