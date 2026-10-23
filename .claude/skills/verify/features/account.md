@@ -316,9 +316,9 @@ addresses, deleted and checked gone):
 node tools/web/signup_check.mjs --url=https://brickworks.diy
 ```
 
-Proves it when it ends "all ok" (13 checks, 15 with `--url`): the public
+Proves it when it ends "all ok" (14 checks, 16 with `--url`): the public
 settings say sign-up off, confirmation on, no way in but email; a password
-sign-up, the public `/otp` asked to make an account and an anonymous sign-in
+sign-up, the public `/otp` asked to make an account, an anonymous and a wallet sign-in
 each refused with no account left; and still a first sign-in by a minted code
 (taken as signed in and asked its age), a returning one reaching the same
 account, and an admin-made account signing in by its password.

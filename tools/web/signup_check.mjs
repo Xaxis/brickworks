@@ -27,8 +27,8 @@
 //
 // This reads the public settings, then plays the stranger at Resend test
 // addresses, which deliver nowhere: a sign-up with a password, the public
-// /otp asked to make an account, an anonymous sign-in. Each must be
-// refused, with no account left behind. Then the ways in that must still
+// /otp asked to make an account, an anonymous sign-in, a wallet's. Each
+// must be refused, with no account left behind. Then the ways in that must still
 // work: a first sign-in by a code minted as api/otp.js mints one, a
 // returning one, and an account made by the admin API signed in by its
 // password, as the test sessions are. With --url, the site's /api/account
@@ -109,6 +109,15 @@ try {
   const anonymous = await auth("/signup", { body: {} });
   if (anonymous.body.user?.id) await auth(`/admin/users/${anonymous.body.user.id}`, { method: "DELETE", headers: admin });
   check(anonymous.status >= 400 && !anonymous.body.access_token, `an anonymous sign-in is refused (${said(anonymous)})`);
+
+  // Not in the public settings, so asked: a wallet's signature is a way in
+  // with no address at all.
+  const wallets = [];
+  for (const chain of ["solana", "ethereum"]) {
+    wallets.push(await auth("/token?grant_type=web3", { body: { chain, message: "x", signature: "x" } }));
+  }
+  check(wallets.every((w) => w.body.error_code === "web3_provider_disabled"),
+    `a wallet sign-in is off (${wallets.map(said).join(", ")})`);
 
   console.log("the ways in");
   const person = fresh("first");
