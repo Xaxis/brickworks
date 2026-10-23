@@ -17488,6 +17488,73 @@ panel wider than its share of the round at either end, the next strip's \
 over its edges, a lip over each seam. show_technique("hinged panels") is \
 one strip, built and checked.
 
+THE OUTLINE OF A ROUNDED BODY
+The outline is read before anything on it. A body that should be round, \
+plump, swelling or pinched and comes out a box, a slab, a drum or a barrel \
+loses whatever is built on it. A designer chooses the parts that make the \
+outline before laying a brick, and lays the body from them: nothing \
+smooths a box afterwards. For every rounded or organic mass (an animal's \
+body or head, a fruit, a belly, a car's bonnet and roof), before \
+submit_design:
+  1. See it in three views, front, side and from above, and say what each \
+edge of its outline does: a corner that rounds; a shoulder or a crown that \
+falls away; an underside that curves in (a belly, a chin, a bilge); a \
+swell and a pinch (a waist, a neck, a pear's middle, a balloon's twist); a \
+taper to a point; a cap.
+  2. Give each edge its part, by its role and at the size of its curve (the \
+largest corner that fits is half the mass's width):
+    round corner     corner round bricks 3063b 2x2, 5152 3x3, 2577 4x4 \
+(48092 a 4x4 ring); plates 79491 2x2, 30357 3x3, 30565 4x4, 6003 6x6; \
+tiles over them 25269 1x1, 27925 2x2, 79393 3x3, 27507 4x4. Four of one \
+size, each turned out, round a box twice as wide.
+    rounded top      corner rounds whose top curves too, so they round both \
+ways at once: 5906 2x2, 65617 3x3, 5651 4x4, and domed 88293 3x3, 49612 \
+4x4. The crown of a head or a back, a fruit's shoulder, a bonnet's corner.
+    whole round      round bricks 3941 2x2, 87081 4x4; round plates 4032a \
+2x2, 60474 4x4, 11213 6x6, 74611 8x8.
+    shoulder         curved slopes 11477 1x2, 15068 2x2, 50950 1x3, 61678 \
+1x4, 24309 2x3, 93606 2x4, 42022 1x6; 93273 falls both ways.
+    underside        inverted curved slopes 24201 1x2, 13547 1x4, 32803 2x2, \
+under any course wider than the one below it.
+    ball, segment    24947, an ovoid dome, under a domed cylinder 3262: a \
+ball two studs across that tapers both ways, so the next pinches where it \
+meets it (a balloon's segment, a snowman, a bead, a paw, a knuckle).
+    cap or point     domes 30367c and 3262; dishes 4740 2x2, 3960 4x4; cones \
+4589 1x1, 3942c 2x2.
+    taper in plan    wedge plates in left and right pairs, 43722a and 43723a \
+2x3, 41769a and 41770a 2x4; 2450 a cut corner.
+    spikes, tufts    22388, a 1x1 slope falling four ways (spiky hair, fur, \
+a leafy crown); 1x1 cones.
+  3. Round it in every view, not only from above. Corner rounds on straight \
+sides make a drum, and are read as one. Let the courses swell and narrow — \
+rings 4, 6 and 8 studs across on each other, a stud in at each step — with \
+rounded tops and curved slopes over each step above the widest course, and \
+inverted curved slopes under each step below it. An egg is 6, 8, 8, 6, 4 \
+across; a pear 8, 8, 6, 4; a fat belly 8 over legs 6 apart. The round \
+pattern lays such a stack in one entry, a "diameter" on each band of its \
+"stack".
+  4. A part curves in the plane of its studs. Studs up, a corner round \
+rounds what is seen from above and a slope what is seen from the side. \
+Where the outline seen most is a face — a potato or a pear from the front, \
+a fish or a car from the side — build that face as layers stacked toward \
+the viewer: a section turned out (pitch -90, its yaw the side it faces) \
+on a core with studs out, each layer's outline its corner rounds, the \
+layers narrower toward the front (show_technique "sideways skins").
+  5. Search them before you submit: search_parts for each role at its size \
+("brick corner round 4 x 4", "corner round curved top", "dome inverted", \
+"slope curved inverted"); then submit the body with them on it, the \
+outline parts the outermost stud of every course and its top and bottom, \
+the core plain bricks, staggered. A character's body is its outline too: \
+a fat, round or egg-shaped one is built so, its limbs and head put on it \
+by the figure pattern's joints (show_technique "ball shoulder", "limb on \
+a clip", "head on a neck"). A small body (under about 16 studs) said as a \
+shape, a fill or an ellipsoid comes out a barrel or a block; so does one \
+of 1x1 plates, or square bricks with curved slopes only on top.
+  Turned: at rot 0 a slope falls toward +z, at rot 1 +x, 2 -z, 3 -x; a \
+corner round's curve faces +x and +z at rot 0, +x -z at 1, -x -z at 2, -x \
++z at 3, so a ring's four go rot 2, 1, 0, 3 at its corners from low x low \
+z round to low x high z.
+
 FIGURES, CREATURES AND SMALL MODELS
 A figure, a creature, a character, or anything a hand closes round, is not \
 a small hull. The shape, fill, round and shell patterns fill a volume with \
@@ -17527,9 +17594,10 @@ studs tall, a cartoon's head a third of it or more.
 dish (4740, 3960) for a face or a cap, a cone (3942c) for a hat; eyes \
 printed round tiles (98138p07, 14769p01) or 1 x 1 round plates; a beak, a \
 snout or a muzzle a curved or cheese slope on a jumper
-    a body   round bricks and round corner bricks (85080, 48092), curved \
-slopes (15068, 11477, 93606) on bricks with side studs (87087, 11211), a \
-dish for a belly, slopes falling for a robe
+    a body   its outline parts, chosen and searched before it is laid \
+(read_guide "outline"): corner rounds and round bricks, curved slopes over \
+and inverted ones under, on bricks with side studs (87087, 11211), a dish \
+for a belly, slopes falling for a robe
     a limb   turned to its pose on a joint, never butted on: a section on \
 hinge "clip" (a bar in a clip: an arm, a wing, a tail, a lance), "click" \
 or "tilting" (read_guide "angle"); a ball in a socket (22890 in 14418) for \
@@ -18192,8 +18260,9 @@ real sets have them.
   Mechanical — legs, arms, a crane jib, a frame, struts: Technic beams \
 pinned to Technic bricks (a round's "technic" course pins beams on in \
 one line); grille tiles, round plates, levers and pipes for machinery.
-  Organic — rock, a tree: the rock pattern; curved slopes and wedges for \
-a body; hinged sections for wings and limbs.
+  Organic — rock, a tree: the rock pattern; a rounded body, a fruit, a \
+plump animal: its outline parts by role, chosen before it is laid \
+(read_guide "outline"); hinged sections for wings and limbs.
   A face — an animal's, a figure's, a robot's, a vehicle's front: \
 features, each a part a designer chose, not a panel. Eyes are round \
 plates with a printed pupil and its highlight (show_technique "eye with \
@@ -18425,14 +18494,14 @@ with where it goes (x, y, z, facing).
  3. review_model: the silhouette and proportions against real sets. Fix \
 the masses before any detail.
  4. Each feature in turn: the app lays the best real set's piece where it \
-goes; settle_feature accepts it, asks for the next, rejects it with a \
-reason, or says you built it. A feature is parts with depth, never a \
+goes; settle_feature accepts it, asks for the next, rejects it, or \
+says you built it. A feature is parts with depth, never a \
 painted tile.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
  6. The surface pass: review_model {"surface": true} — the app tiles open \
-studs, slopes staircases, rounds hard edges, skins flanks and textures \
-walls; settle each with settle_surface (accept, reject or keep).
+studs, slopes staircases, rounds hard edges; settle each with \
+settle_surface.
  7. Last, the creative pass: review_model {"creative": true} — three \
 touches, the best one or two added; where the brief lists the scene, on \
 what it names. Then save_model.
@@ -18447,9 +18516,9 @@ the x, y, z attachment_points gives the hole, never by its corner. Gears \
 mesh 1.25 LDU a tooth apart: an 8 and a 24, 2 studs. A ratio no two gears \
 give: search_gear_ratio.
 
-A CURVED SURFACE (a dome, a sphere, a round body): read_guide "round" \
-first: hinged panels turned by yaw and pitch, or skins built sideways — \
-never plates stepped in.
+A ROUNDED BODY (an animal, a fruit, a figure's belly, a curved car): \
+read_guide "outline" first, and search_parts its outline parts before you \
+lay it. A dome or a sphere: read_guide "round". Never plates stepped in.
 
 ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
@@ -18459,7 +18528,7 @@ SKETCH FIRST, when asked: submit_design with "sketch": true three times \
 (each a different idea, under 150 parts), then choose_sketch one and design \
 from it.
 
-read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
+read_guide sections: "work", "rules", "outline", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "figures", "subject" \
 (what each kind of subject needs), "real", "colour", "angle", "round", \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
@@ -18472,6 +18541,8 @@ about every 10 s until it gives the answer."""
 
 ## The section on figures and creatures, which the head sends a session to.
 const FIGURES := "FIGURES, CREATURES AND SMALL MODELS"
+## The section on choosing the parts a rounded body's outline is made of.
+const OUTLINE := "THE OUTLINE OF A ROUNDED BODY"
 
 ## Names a session may ask read_guide for, beside the headings' own words.
 const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK",
@@ -18481,6 +18552,8 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"figures": FIGURES, "figure": FIGURES, "character": FIGURES, "characters": FIGURES,
 	"creature": FIGURES, "creatures": FIGURES, "animal": FIGURES, "small": FIGURES,
 	"vignette": FIGURES, "scope": FIGURES,
+	"outline": OUTLINE, "outlines": OUTLINE, "outline parts": OUTLINE, "organic": OUTLINE,
+	"rounded": OUTLINE, "rounded body": OUTLINE, "silhouette": OUTLINE,
 	"cabin": "SAY THE SHAPE, DO NOT COUNT IT OUT", "canopy": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"screen": "SAY THE SHAPE, DO NOT COUNT IT OUT", "windscreen": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"coupling": "WHAT THE SUBJECT NEEDS", "couplings": "WHAT THE SUBJECT NEEDS",
@@ -18527,16 +18600,37 @@ func read_guide(section: String) -> String:
 	return text.substr(at[n], end - at[n]).strip_edges()
 
 
+## Words of a brief that say its body is rounded, swelling or pinched.
+const ROUNDED_WORDS: Array = ["rounded", "curved", "curving", "curvy", "domed", "oval", "egg",
+	"ball", "sphere", "spherical", "plump", "chubby", "fat", "tubby", "rotund", "portly",
+	"belly", "potato", "pear", "apple", "fruit", "vegetable", "balloon", "bubble", "blob",
+	"bulbous", "swelling", "pinch", "pinched", "puffy", "fluffy", "organic"]
+## The sections a session reads before it lays a body, which a rounded one's
+## outline leads.
+const OUTLINE_LEADS: Array = ["SAY THE SHAPE, DO NOT COUNT IT OUT", FIGURES,
+	"ROUND BODIES AND DOMES", "WHAT THE SUBJECT NEEDS"]
+
+
 ## The guide's shapes section, led for a figure, a creature or a character by
 ## what it is built of instead. Eight of the attach round's ten guide reads
 ## were "shapes", every character session that read it submitted a shape on
 ## its next call, and the figure line at its top was one sentence of 16,000
 ## characters.
+##
+## And for a rounded body, the shapes, figures and round sections led by how
+## its outline's parts are chosen. Every session of the search round
+## (bench160) read one of those first and laid its body on its next call,
+## before any search: none asked for a corner round, a rounded top or an
+## ovoid, and the judge read their bodies as boxes, barrels and drums.
 func _for_the_subject(section: String, text: String) -> String:
-	if str(GUIDE_NAMES.get(section.strip_edges().to_lower(), "")) != "SAY THE SHAPE, DO NOT COUNT IT OUT":
-		return text
+	var heading: String = text.get_slice("\n", 0).strip_edges()
+	var led: String = text
+	if OUTLINE_LEADS.has(heading) and _rounded_subject():
+		led = read_guide(OUTLINE) + "\n\n" + text
+	if heading != "SAY THE SHAPE, DO NOT COUNT IT OUT":
+		return led
 	if Style.character_of(_subject_of()).is_empty():
-		return text
+		return led
 	return ("This subject is a figure, a creature or a character, which is not a shape: "
 		+ "a shape or a fill of one is a statue of stacked bricks, and every one built here "
 		+ "was judged so. Its pattern is the figure pattern, which lays it on joints in one "
@@ -18547,7 +18641,15 @@ func _for_the_subject(section: String, text: String) -> String:
 		+ "named for your own to attach to (read_guide \"figures\"). Single joints are "
 		+ "place_technique calls: \"head on a neck\", \"limb on a clip\", \"ball shoulder\", "
 		+ "\"tail on a bar\", \"hinged wing\". The patterns below are for what it stands on, "
-		+ "and for a body that is a hull, a whale's.\n\n" + text)
+		+ "and for a body that is a hull, a whale's.\n\n" + led)
+
+
+## Whether what is being designed has a body whose outline is rounded: a
+## figure, a creature or a character, or a brief that says it is round.
+func _rounded_subject() -> bool:
+	var about: String = _subject_of()
+	return not Style.character_of(about).is_empty() \
+		or not SubjectWords.first_named(about, ROUNDED_WORDS).is_empty()
 
 
 ## How a construction is actually made, in parts and coordinates.
