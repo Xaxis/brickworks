@@ -108,7 +108,16 @@ fixing what it got wrong.
   its heels, a can lying on one line of its facets); a part
   up to a plate off a stud, hole, hinge or bar is seated on it first (a nudge keeps
   the LDU past the lattice cell). Without the `exact/` folder the check is the
-  lattice alone, as it was. Recipe under How to check it, "The check by real shapes".
+  lattice alone, as it was. Fits the LEGO Group's own sets are built with are
+  forgiven (`ExactCheck.known_fit`, `src/ai/known_fits.gd`): a minifigure's part
+  against another's (hair on a torso, a backpack on a head), a thing it holds or
+  sits on, or any other part ("brick": legs in a seat, a hand round a wheel, a
+  helmet under a roof), up to the depth three in four official sets that meet so
+  reach, and two parts no figure's only where two or more sets put them in the
+  same pose; never in a run kept to BrickBench's parts. The table,
+  `assets/ldraw/known_fits.json`, is learned from the OMR by `tools/known_fits.py`
+  (`src/dev/known_fits_scan.gd`). Recipe under How to check it, "The check by real
+  shapes".
 - `figures told of their joints`: `Style.character_of` (src/ai/style.gd) reads a
   subject as a figure (people's words and he or she), a creature (the living
   things that are not plants) or a thing with a face (eyes, brows, a grin), a
@@ -2507,6 +2516,8 @@ godot --headless --path . --script src/dev/exact_cost_probe.gd   # station (535)
 godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd B.mpd   # pairs and pieces, to set beside verify.py
 godot --headless --path . --script src/dev/pieces_agree.gd -- A.ldr B.ldr   # the check's verdict and count of pieces, beside BrickNet's; ends "agree on N of M"
 godot --headless --path . --script src/dev/joint_check_probe.gd  # real sets' joints pass, joints turned too far and folded hinges do not
+godot --headless --path . --script src/dev/known_fits_probe.gd   # official sets' figure fits forgiven; a brick 2 LDU into a brick and a torso 6 LDU into a wall are not
+python3 tools/known_fits.py scan --out DIR && python3 tools/known_fits.py build --out DIR && python3 tools/known_fits.py report --out DIR   # learn the table from every OMR set (about 30 min, 3 shards under heavy)
 godot --headless --path . --script src/dev/joint_collisions.gd -- --out=F.jsonl [--shard=K/N] [SET.mpd ...]   # real sets' jointed pairs the shapes collide, and which the check holds to be the joint
 godot --headless --path . --script src/dev/replay_calls.gd -- --calls=F.jsonl [--only=21,30]   # a session's design calls made again on this checkout's check
 ```
@@ -2528,6 +2539,22 @@ collides by its shapes, which the check refused before: the whale's Joint-8 ball
 (docs/DESIGN_SCORES.md, "Technique: joints held by their real shapes"); and
 `replay_calls` on a session's calls (one {n, name, input} line each, taken from its
 transcript) repeats the refusals that session met, on the code it ran.
+
+**Known fits** (`ExactCheck.known_fit`, `KnownFits`): what official sets do is
+forgiven, learned from them, not loosened by hand. Proves it when:
+`known_fits_probe` ends "official sets' fits are forgiven, and nothing else" (six
+small sets that failed only on their figures pass, and fail kept to BrickBench's
+parts; 3001 2 LDU into 3001 from above and beside, and a torso 6 LDU into a wall,
+collide; a long beard through a plastic cape collides, Gandalf as 71200-1 dresses
+him does not); and `tools/known_fits.py report` over a scan of the OMR (2026-10-23,
+1,576 files): 639 pass the collision part without the table (40.5%), 754 with it
+(47.8%), and of the 252 files with a figure's part in a colliding pair, 178 have
+every such pair forgiven, against 1 before. What still fails is said by cause: 783
+files hold two parts no figure's met so by that set alone (a part drawn into
+another, or BrickNet's convex pieces filling what is hollow), 96 a part drawn twice
+in one place. A rescan with `--fits` through the real check agrees with the
+report's count of pairs left on 167 of 167 files. After a rebuild of the table,
+run `scan --fits` on a few files to see it agree.
 
 Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md);
 without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as

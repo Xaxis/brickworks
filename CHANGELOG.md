@@ -24,6 +24,12 @@ whole cycle.
   Studio seats one, wherever the frame is pointed at; it stood beside the
   frame or on its studs. A window's shutter and its pane go on the window's
   hinge the same way, and swing on it as a door does.
+- A real set's figures no longer count as parts passing into each other
+  where official sets build them so: a helmet under a roof, a backpack
+  against a head, legs in a seat, a hand on a door. The check learns
+  these fits, and how deep each goes, from the official sets themselves;
+  a brick pushed into a brick, or a figure pushed through a wall, is still
+  refused.
 - A big model no longer holds the window a quarter of a second after it
   opens: the shapes of its parts are read for dragging on a worker.
 - A part a design stands on a shape's top, a coupling's plate among them, is

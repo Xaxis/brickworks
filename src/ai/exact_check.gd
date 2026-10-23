@@ -203,11 +203,32 @@ func at_joint(i: int, j: int) -> String:
 
 
 ## Whether items [param i] and [param j], which collide, meet as real sets
-## are built: a wheel spun on its axle, or a joint's own parts inside the
-## joint. The check forgives these (Assistant._exact_collisions), and so does
-## where_to_attach in what it offers (OpenPoints), by this one rule.
+## are built: as the LEGO Group's own sets meet those two parts
+## ([method known_fit]), a wheel spun on its axle, or a joint's own parts
+## inside the joint. The check forgives these (Assistant._exact_collisions),
+## and so does where_to_attach in what it offers (OpenPoints), by this one
+## rule.
 func forgiven(i: int, j: int) -> bool:
-	return turned_on_axle(i, j) or not at_joint(i, j).is_empty()
+	return known_fit(i, j) or turned_on_axle(i, j) or not at_joint(i, j).is_empty()
+
+
+## Whether items [param i] and [param j], which collide, meet no deeper than
+## official sets meet those two kinds of part (KnownFits): a beard through a
+## figure's hair or cape, hips in a seat, a hand round a steering wheel. Every
+## pair of their pieces that overlap is within it. Not in a run kept to
+## BrickBench's parts (PartsOnly), whose verify.py forgives none of it.
+func known_fit(i: int, j: int) -> bool:
+	if not _shaped(i) or not _shaped(j) or PartsOnly.active():
+		return false
+	var a: Exact.Item = items[i]
+	var b: Exact.Item = items[j]
+	var most: float = KnownFits.reach(parts[i], parts[j], a.at.affine_inverse() * b.at)
+	if most <= Exact.TAU:
+		return false
+	for hit: Array in Exact.overlaps(a, b):
+		if float(hit[0]) > most:
+			return false
+	return true
 
 
 ## For each pair of pieces of items [param i] and [param j] that overlap:
