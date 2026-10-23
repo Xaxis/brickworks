@@ -1361,8 +1361,8 @@ func _ready() -> void:
 		placed = _build_stress(stress.to_int())
 	elif not wanted.is_empty():
 		placed = _open(wanted)
-		if placed == 0:
-			push_error("could not open %s" % wanted)
+		if not _store.not_opened.is_empty():
+			push_error("could not open %s: %s" % [wanted, _store.not_opened])
 	else:
 		# Whatever was on screen last time comes back first; the sample
 		# model is only for a first visit. Not for a probe, which starts
@@ -2947,8 +2947,10 @@ func _maybe_open_library() -> void:
 		_assistant.forget_built()
 	var result: Dictionary = await _bar.open_text_with_progress(str(got["text"]), title)
 	var placed: int = int(result["placed"])
-	if placed <= 0 and _store.awaited.is_empty():
-		_bar.say("could not open %s: it could not be read" % title)
+	# Not by the parts placed or on their way: a model of none opens, and
+	# those on their way may be the last model's.
+	if not str(result["error"]).is_empty():
+		_bar.say("could not open %s: %s" % [title, result["error"]])
 		return
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
@@ -4549,7 +4551,9 @@ func _build_ui() -> void:
 	_reload_offer.store = _store
 	_reload_offer.say = _bar.say
 	_reload_offer.reopen = func(path: String) -> void:
-		_bar.opened.emit(await _bar.open_with_progress(path))
+		var placed: int = await _bar.open_with_progress(path)
+		if placed >= 0:
+			_bar.opened.emit(placed)
 	_reload_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_reload_offer)
 	_bar.opened.connect(func(_bricks: int) -> void: _reload_offer.dismiss())
@@ -5672,8 +5676,6 @@ func _tell_bin_selection() -> void:
 ## Open a model through the store, the one way models open: stood on the
 ## ground, and parts not yet fetched put down as they arrive (_on_part_fetched).
 func _open(path: String) -> int:
-	if not FileAccess.file_exists(path):
-		return 0
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
 		_bar.say("%d bricks — fetching %d more…" % [placed, _store.awaited.size()])

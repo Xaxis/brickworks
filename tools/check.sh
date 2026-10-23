@@ -29,7 +29,7 @@ cd "$(dirname "$0")/.." || exit 1
 # and the window's commands as tools, each read back off the model
 # (app_tools).
 headless=(mcp_sync app_tools element_files element modify part_tool dimensions snap
-  stability history restore store versions empty_save instructions playback
+  stability history restore store versions empty_save empty_open instructions playback
   responsive search inventory mosaic world_view controls snot technic joints
   exact by_connector joint_check flex clutch mechanism axle variety repeat
   usage kinds rules angled section sections scale bigmodel quit edit selection

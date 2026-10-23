@@ -1863,6 +1863,13 @@
     },
     {
       "kind": "cli",
+      "label": "empty open probe",
+      "entry": "src/dev/empty_open_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/empty_open_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "autosave paths probe",
       "entry": "src/dev/autosave_paths_probe.gd",
       "reach": "godot --headless --path . --script src/dev/autosave_paths_probe.gd",

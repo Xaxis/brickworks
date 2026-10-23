@@ -701,7 +701,7 @@ func delete(path: String) -> bool:
 ## Which is to say: it quietly deleted parts of somebody's model and
 ## then made that permanent.
 func open(path: String) -> int:
-	var text: String = FileAccess.get_file_as_string(path)
+	var text: String = _file_text(path)
 	if text.is_empty():
 		return 0
 	return _opened_from(path, open_text(text, path.get_file()))
@@ -710,14 +710,35 @@ func open(path: String) -> int:
 ## [method open], once what the parts the file carries are drawn from has
 ## been fetched, where this build has not got it ([method open_text_fetched]).
 func open_fetched(path: String, job: Working.Job = null) -> int:
-	var text: String = FileAccess.get_file_as_string(path)
+	var text: String = _file_text(path)
 	if text.is_empty():
 		return 0
 	return _opened_from(path, await open_text_fetched(text, path.get_file(), null, job))
 
 
+## Why the last open left the model on the baseplate as it was, in words
+## ("it is empty", "there are no parts in that file"), or "" when it opened.
+## A model of no parts opens too: its parts placed are 0 either way, and a
+## caller that took 0 for "not opened" said "Opened … 0 parts" of a model it
+## had not opened, with the last one still there to be saved under its name
+## (desktop060, 2026-10-23).
+var not_opened: String = ""
+
+
+## The text of the file at [param path]; "" with [member not_opened] saying
+## why when there is none to open.
+func _file_text(path: String) -> String:
+	var text: String = FileAccess.get_file_as_string(path)
+	if not text.strip_edges().is_empty():
+		return text
+	not_opened = ("there is no such file" if not FileAccess.file_exists(path)
+		else "it could not be read" if FileAccess.get_open_error() != OK
+		else "it is empty")
+	return ""
+
+
 func _opened_from(path: String, result: Dictionary) -> int:
-	if int(result["placed"]) > 0:
+	if str(result["error"]).is_empty():
 		example = path.begins_with(EXAMPLE_DIR)
 		if path.begins_with(SAVE_DIR):
 			know(path)
@@ -735,14 +756,18 @@ func versions() -> Array[ModelVersions.Version]:
 ## Open the version at [param path] on the baseplate, as the model it is a
 ## version of: under its name, [param called] or the model on the
 ## baseplate's, so Save makes it the newest save again. How many parts
-## landed; 0 when it could not be read, and nothing is changed.
+## landed; 0 with [member not_opened] saying why when it could not be read,
+## and nothing is changed.
 func open_version(path: String, called: String = "", job: Working.Job = null) -> int:
 	var text: String = ModelVersions.read(path)
-	if text.is_empty():
+	if text.strip_edges().is_empty():
+		not_opened = "it could not be read"
 		return 0
 	var name: String = called if not called.is_empty() else title
 	var result: Dictionary = await open_text_fetched(text, name, null, job)
-	if int(result["placed"]) <= 0 and awaited.is_empty():
+	# Not by the parts placed or on their way: those on their way may be the
+	# last model's, and that model was renamed for the one that did not open.
+	if not str(result["error"]).is_empty():
 		return 0
 	# The name it is saved under, whatever its first line says.
 	if title != name:
@@ -806,6 +831,7 @@ static func title_in(text: String, file_name: String) -> String:
 func open_text(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
 	var out: Array = []
 	_open_into(out, text, name, parsed, null)
+	not_opened = str(out[0]["error"])
 	return out[0]
 
 
@@ -888,10 +914,14 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		if real != placement.part_id:
 			placement.transform = placement.transform * library.moved_by(placement.part_id)
 			placement.part_id = real
+	# A model saved with no parts opens as that: an empty model under its
+	# name. It was refused as "no parts", and the model before it was left
+	# on the baseplate for a save to write under this one's name.
 	if flattened.is_empty():
-		out.append({"placed": 0, "missing": 0, "waiting": 0,
-			"error": "there are no parts in that file"})
-		return
+		var why: String = _why_not_a_model(text)
+		if not why.is_empty():
+			out.append({"placed": 0, "missing": 0, "waiting": 0, "error": why})
+			return
 
 	# Everything decided before anything is destroyed.
 	#
@@ -917,7 +947,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			known.append(placement)
 
 	_phase("known")
-	if known.is_empty():
+	if known.is_empty() and not flattened.is_empty():
 		out.append({"placed": 0, "missing": missing.size(), "waiting": 0,
 			"missing_ids": missing,
 			"error": "none of the %d parts in that file are in the library (%s)"
@@ -1104,8 +1134,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			asked_for[placement.part_id] = true
 			library.request_mesh(placement.part_id, true)
 
-	# A model from a file: nobody emptied the baseplate.
-	emptied = false
+	# A model from a file: nobody emptied the baseplate. Unless the file
+	# itself is empty: then it is kept so, as one begun empty is (begin).
+	emptied = flattened.is_empty()
 	title = _title_of(model, name)
 	if source != null:
 		source.own_title = title
@@ -1137,6 +1168,27 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null})
+
+
+## Why [param text], which places no part, is not a model to open: "" for
+## an LDraw model with nothing in it, every line of it a comment or a meta
+## line as a model saved empty is, here or by any LDraw tool. A file of
+## anything else places nothing because it is not a model, and opening it
+## would put an empty baseplate where the person's model was.
+static func _why_not_a_model(text: String) -> String:
+	var lines: int = 0
+	var drawn: bool = false
+	for raw: String in text.trim_prefix("\ufeff").split("\n"):
+		var line: String = raw.strip_edges()
+		if line.is_empty():
+			continue
+		lines += 1
+		if line[0] not in "012345" or (line.length() > 1 and line[1] not in " \t"):
+			return "that is not an LDraw file"
+		drawn = drawn or line[0] != "0"
+	if lines == 0:
+		return "it is empty"
+	return "there are no parts in that file" if drawn else ""
 
 
 ## What a model's [param text] says besides its parts, and the file kept as
@@ -1242,6 +1294,7 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		await _open_into(out, text, name, model, job)
 	else:
 		_open_into(out, text, name, model, null)
+	not_opened = str(out[0]["error"])
 	open_phases["parse"] = parsed_in
 	open_phases["fetch"] = fetched_in
 	return out[0]

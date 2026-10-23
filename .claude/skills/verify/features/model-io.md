@@ -777,6 +777,7 @@ tools/windows_check.py      # two windows of the desktop app, a model each
 # versions, the browser asked to keep the models, the one warning, over MCP too
 godot --headless --path . --script src/dev/versions_probe.gd
 godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
+godot --headless --path . --script src/dev/empty_open_probe.gd   # every way to open: what the file holds, or the model kept under its name
 godot --headless --path . --script src/dev/autosave_paths_probe.gd   # a figure stood up by any path survives a reload
 godot --headless --path . --script src/dev/unrestored_probe.gd   # a working model that cannot open is kept, and said
 # real sets' files round-tripped, judged, REPORT.md (run bare: it uses heavy itself; ~20 min)
@@ -791,7 +792,11 @@ browser's answer while it is open: it was read once as the panel opened, up to
 400 ms old, and keep_flow's granted half read the unanswered words); `empty_save_probe` when it
 ends "no save of no parts goes over a model with parts unless the person
 emptied it" (on main both its empty checks fail: the autosave and Save wrote
-the empty model); `autosave_paths_probe` when it ends "whatever path changed
+the empty model); `empty_open_probe` when it ends "every open puts down what the
+file holds, or leaves the model there under its name and says why" (on c239c362,
+0.6.0, 68 checks fail: a model saved empty is "Opened … 0 parts" and the last
+model stays, saved under its name, and a failed File › Open says nothing);
+`autosave_paths_probe` when it ends "whatever path changed
 the model, a reload brings it back" (on f78934bc the in-app assistant's
 minifigure did not come back, 1 of 11 parts, nor a sub-model named past the
 store); `unrestored_probe` when it ends "a working model that cannot

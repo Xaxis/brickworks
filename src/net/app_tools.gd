@@ -2300,11 +2300,15 @@ func _open(input: Dictionary) -> String:
 		assistant.forget_built()
 	if version >= 1:
 		var landed: int = await bar.open_version(kept[version - 1], chosen.name)
-		if landed <= 0 and store.awaited.is_empty():
-			return "Could not read that version of %s." % chosen.name
+		if landed < 0:
+			return "Could not open that version of %s: %s. The model on the baseplate, %s, is as it was." % [
+				chosen.name, store.not_opened, store.title]
 		return ("Opened %s as saved %s: %d parts. look_at_model to see it. The person's Save "
 			+ "makes it the newest save.") % [chosen.name, kept[version - 1].when(), landed] + _opened_motions()
 	var placed: int = await bar.open_with_progress(chosen.path)
+	if placed < 0:
+		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
+			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
 	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] + _opened_motions()
 
@@ -2403,8 +2407,9 @@ func _open_library(id: String, discard: bool) -> String:
 		assistant.forget_built()
 	var result: Dictionary = await bar.open_text_with_progress(str(got["text"]), title)
 	var placed: int = int(result["placed"])
-	if placed <= 0 and store.awaited.is_empty():
-		return "Could not read %s." % title
+	if not str(result["error"]).is_empty():
+		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
+			title, result["error"], store.title]
 	store.credit = ModelLibrary.credit_of(entry)
 	store.touch()
 	bar.opened.emit(placed)

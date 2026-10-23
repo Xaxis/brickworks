@@ -97,9 +97,8 @@ func _open_version(n: int) -> void:
 		return
 	var version: ModelVersions.Version = _shown[n]
 	hide()
-	var placed: int = await bar.open_version(version)
-	if placed <= 0:
-		bar.say("could not open that version of “%s”" % store.title)
+	# Said in the status bar either way, opened or not.
+	await bar.open_version(version)
 
 
 ## What a browser check presses: each row's Open, numbered from 1, newest
