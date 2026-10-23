@@ -1120,6 +1120,13 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "stress view",
+      "entry": "src/ui/stress_view.gd",
+      "reach": "tools/probe.sh stress_probe && tools/probe.sh stress_view_probe   (by hand: View, Stress; point at a part; right-click a red one, Ask Claude to brace this)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "see inside in a browser",
       "entry": "tools/web/see_inside_flow.mjs",

@@ -24,6 +24,11 @@
 ## Not --out: the scene this loads reads that as "export the model there and
 ## quit" (Main's --model/--out), which it did, and timed nothing.
 ##
+## --stress: View, Stress turned on once each model is open, and left on
+## through every act: its own frames (stress_on: the model drawn faded, and
+## then tinted when the weighing it asks for comes in, how long that took,
+## and how many parts read red and amber) and every act's frames with it on.
+##
 ## Nothing is judged here: tools/bench/cadtask.py reads the numbers. They
 ## are this machine's frames, on whatever draws for xvfb (software here).
 ## Not in the suite.
@@ -35,6 +40,7 @@ var _builder: Builder
 var _store: ModelStore
 var _view: Rect2
 var _last_us: int = 0
+var _stress: bool = false
 
 
 func _initialize() -> void:
@@ -50,6 +56,8 @@ func _run() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--frames-out="):
 			out_path = argument.trim_prefix("--frames-out=")
+		elif argument == "--stress":
+			_stress = true
 		else:
 			paths.append(argument)
 	if out_path.is_empty() or paths.is_empty():
@@ -97,6 +105,8 @@ func _one(path: String) -> Dictionary:
 	await _frames(60)
 	_view = ((_main.call("model_cover") as Dictionary)["view"] as Rect2)
 	row["idle"] = await _timed(30, func(_n: int) -> void: pass)
+	if _stress:
+		row["stress_on"] = await _stress_on()
 
 	# orbit: right-drag across the middle of the view.
 	var middle: Vector2 = _view.get_center()
@@ -194,6 +204,29 @@ func _one(path: String) -> Dictionary:
 	await _frames(10)
 	print("  %s: %s" % [path.get_file(), JSON.stringify(_said(row))])
 	return row
+
+
+## View, Stress turned on: the frames that draw the model faded, and then
+## the wait for the weighing that tints it, and the frames after.
+func _stress_on() -> Dictionary:
+	var shell: Shell = _main.get("_shell")
+	var asked_at: int = Time.get_ticks_usec()
+	var out: Dictionary = await _timed(20, func(n: int) -> void:
+		if n == 0:
+			shell.run("stress"))
+	for _n: int in 3000:
+		if shell.stress.report != null:
+			break
+		await process_frame
+	out["tinted_after_ms"] = (Time.get_ticks_usec() - asked_at) / 1000.0
+	var red: int = 0
+	for id: int in _world.stressed_ids():
+		if _world.stressed_ids()[id] == StressView.RED:
+			red += 1
+	out["red"] = red
+	out["amber"] = _world.stressed_ids().size() - red
+	out["after"] = await _timed(20, func(_n: int) -> void: pass)
+	return out
 
 
 ## [frames] frames, calling [act] with the frame's number before each, and
