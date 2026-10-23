@@ -1,13 +1,12 @@
-// The admin page's half: renew the app's session in this browser, ask
-// /api/admin with it, and draw what comes back. See admin.html.
+// The admin page's half: the app's session in this browser (web/account.js),
+// /api/admin asked with it, and what comes back drawn. See admin.html.
 //
 // Everything is put on the page as text, never as markup: the list is of
 // addresses people typed, and an address is not something to let a
 // browser interpret.
+import { signedIn, token as tabToken } from "/account.js";
 
 const $ = (id) => document.getElementById(id);
-// Where the app keeps its session (src/account/account.gd).
-const KEY = "brickworks.session";
 
 function say(where, text, bad = false) {
   const el = $(where);
@@ -15,35 +14,15 @@ function say(where, text, bad = false) {
   el.classList.toggle("bad", bad);
 }
 
-/// A fresh access token from the app's kept session, with the renewed
-/// session put back where the app will look for it: renewing replaces the
-/// refresh token, and the app's next start must find the new one.
+/// An access token for the app's kept session: the tab's, as every page
+/// has it (web/account.js), renewed once an hour and not on every call. A
+/// renewal for each call took three of Supabase's renewals for one End it
+/// now, and the page said the sign-in had ended when one was refused.
 async function accessToken() {
-  let kept;
-  try {
-    kept = JSON.parse(localStorage.getItem(KEY) || "null");
-  } catch {
-    kept = null;
-  }
-  if (!kept || !kept.refresh_token || !kept.url || !kept.key) {
-    throw new Error("You are not signed in to Brickworks in this browser.");
-  }
-  const reply = await fetch(`${kept.url}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: { apikey: kept.key, "content-type": "application/json" },
-    body: JSON.stringify({ refresh_token: kept.refresh_token }),
-  });
-  const body = await reply.json().catch(() => ({}));
-  if (!reply.ok || !body.access_token) {
-    throw new Error("Your sign-in has ended. Sign in to Brickworks again.");
-  }
-  localStorage.setItem(KEY, JSON.stringify({
-    ...kept,
-    refresh_token: body.refresh_token,
-    email: body.user?.email || kept.email,
-    user_id: body.user?.id || kept.user_id,
-  }));
-  return body.access_token;
+  if (!signedIn()) throw new Error("You are not signed in to Brickworks in this browser.");
+  const access = await tabToken();
+  if (!access) throw new Error("Your sign-in has ended. Sign in to Brickworks again.");
+  return access;
 }
 
 // /admin?tests=1: the flows' test challenges too (supabase/challenges.sql),

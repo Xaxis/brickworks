@@ -654,7 +654,10 @@ plan with Claude as the client.
   `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser
   (`localStorage` `brickworks.session`), renewed when an access token kept for
-  the tab (`sessionStorage`) has run out and put back for the app; a dialog
+  the tab (`sessionStorage`) has run out and put back for the app, once a
+  page however many scripts ask (the header, the theme, the page; `/admin`
+  too), and asked again after a wait when Supabase refuses it for the rate
+  (429) or a 5xx; `challenges browser flow` counts each page's renewals; a dialog
   asking for an address, sending a code (`/api/otp`), and redeeming it with
   Supabase — so signing in on the site signs the app in, as
   `web/authorize.js` does; `call()` for the site's API with the token.
