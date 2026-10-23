@@ -25,6 +25,10 @@ var _said: int = 0
 var _saves: PopupMenu
 var _confirm: ConfirmationDialog
 var _confirm_new: ConfirmationDialog
+var _confirm_open: ConfirmationDialog
+var _dont_save_button: Button
+## What the person answered _confirm_open: "save", "discard" or "cancel".
+signal _replace_answered(answer: String)
 var _account: Button
 var _claude_tab: HBoxContainer
 var _claude_dot: ColorRect
@@ -184,6 +188,19 @@ func _build() -> void:
 			attend.call("save_new", _save_then_new))
 	add_child(_confirm_new)
 
+	# Every open over a model with changes not saved asks this first
+	# (ask_to_replace), as New does, and as Studio, LeoCAD and LDCad ask.
+	_confirm_open = ConfirmationDialog.new()
+	_confirm_open.ok_button_text = "Save"
+	_confirm_open.confirmed.connect(func() -> void: _replace_answered.emit("save"))
+	_confirm_open.canceled.connect(func() -> void: _replace_answered.emit("cancel"))
+	_dont_save_button = _confirm_open.add_button("Don't save", false, "discard")
+	_confirm_open.custom_action.connect(func(action: StringName) -> void:
+		if action == &"discard":
+			_confirm_open.hide()
+			_replace_answered.emit("discard"))
+	add_child(_confirm_open)
+
 	_saves = PopupMenu.new()
 	_saves.id_pressed.connect(_on_pick)
 	add_child(_saves)
@@ -283,6 +300,11 @@ func controls_by_name() -> Dictionary:
 	if _confirm_new.visible:
 		out["new_save"] = _save_then_new_button
 		out["new_discard"] = _confirm_new.get_ok_button()
+	# And an open's.
+	if _confirm_open.visible:
+		out["replace_save"] = _confirm_open.get_ok_button()
+		out["replace_discard"] = _dont_save_button
+		out["replace_cancel"] = _confirm_open.get_cancel_button()
 	return out
 
 
@@ -458,6 +480,8 @@ func _on_pick(id: int) -> void:
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
+	if not await ask_to_replace("“%s”" % entry.name):
+		return
 	var placed: int = await open_with_progress(entry.path)
 	if placed >= 0:
 		opened.emit(placed)
@@ -602,6 +626,10 @@ func _import() -> void:
 		_picker.library = store.library
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
+			# Asked once the file is chosen: the browser opens its picker
+			# only in the click itself.
+			if not await ask_to_replace("“%s”" % file_name.get_file()):
+				return
 			# The status bar says so first (Working), and has been drawn
 			# before it begins; a big file is read and laid over frames,
 			# counted there (see open_with_progress).
@@ -653,6 +681,55 @@ func export_now(into: String = "") -> String:
 	if await store.export_paced(path, model_name()):
 		return "wrote %s" % path
 	return "could not write %s" % path
+
+
+## Whether to go on with an open that puts [param opening] (its name in
+## words: "“Car”") in place of the model on the baseplate: at once when
+## nothing of it would be lost; otherwise the person is asked to save it
+## first (Save, Don't save, Cancel), and true unless they cancel or the
+## save is not made. Whichever, the open keeps what it takes off, and Undo
+## brings it back (ModelStore.opened_over). Every way a person opens a
+## model over this one asks this: File › Open, the examples, Open recent, a
+## file from the computer, Collection › Open and Versions.
+func ask_to_replace(opening: String) -> bool:
+	# One question at once: a second open while it is asked waits for none.
+	if _confirm_open.visible:
+		return false
+	# Half a model being laid is nothing of anybody's.
+	if store == null or store.laying or not store.has_unsaved_work():
+		return true
+	var name: String = model_name()
+	_confirm_open.title = "Save changes to “%s”?" % name
+	_confirm_open.dialog_text = ("“%s” is not saved as it is now. Opening %s replaces it on the "
+		+ "baseplate; Undo brings it back.") % [name, opening]
+	_confirm_open.popup_centered()
+	var answer: String = await _replace_answered
+	match answer:
+		"save":
+			return await _on_save()
+		"discard":
+			return true
+	_say("kept “%s” — nothing opened" % name)
+	return false
+
+
+## Edit › Undo with nothing left to undo but an open: what the open took off
+## the baseplate put back as it stood (ModelStore.reopen); Redo's with
+## [param again]. True when it was, said either way.
+func reopen(again: bool = false) -> bool:
+	if store == null or not store.can_reopen(again):
+		return false
+	var words: String = store.reopen_words(again)
+	var job: Working.Job = Working.begin("Taking back: %s…" % words if not again else "Again: %s…" % words)
+	await job.shown()
+	var placed: int = await store.reopen(again, job)
+	job.end()
+	if placed < 0:
+		_say("could not %s %s: %s" % ["redo" if again else "take back", words, store.not_opened])
+		return false
+	opened.emit(placed)
+	_say("%s: %s" % ["redid" if again else "undid", words])
+	return true
 
 
 ## New, asking first only when there is something it would lose.

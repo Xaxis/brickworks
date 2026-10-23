@@ -14,6 +14,12 @@ whole cycle.
 ## [Unreleased]
 
 ### Fixed
+- Opening a model over one with changes not saved asks first, as New does:
+  Save, Don't save or Cancel. File › Open and its examples, Open recent, a
+  file from the computer, Collection › Open and Versions all ask, and an
+  open can be undone: Edit › Undo, or History, brings back the model it
+  replaced as it stood. Before, the model went with no question and Undo
+  had nothing to undo.
 - A big model no longer holds the window a quarter of a second after it
   opens: the shapes of its parts are read for dragging on a worker.
 - A part a design stands on a shape's top, a coupling's plate among them, is

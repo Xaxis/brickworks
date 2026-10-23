@@ -1862,6 +1862,20 @@
       "area": "model-io"
     },
     {
+      "kind": "ui",
+      "label": "open over unsaved work",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (change the model, then File, Open and a model: Save changes to it? Save, Don't save, Cancel; after Don't save, Edit, Undo brings it back)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "unsaved open probe",
+      "entry": "src/dev/unsaved_open_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unsaved_open_probe.gd",
+      "area": "model-io"
+    },
+    {
       "kind": "cli",
       "label": "empty open probe",
       "entry": "src/dev/empty_open_probe.gd",

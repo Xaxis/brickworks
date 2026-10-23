@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
 
 ## Sub-features
 
@@ -240,6 +240,22 @@ Whether what you built is still there tomorrow, and still means the same thing.
   with the reason in the bar (`refused`, `saved_by_another`), and the offer
   comes up; Keep mine takes the other's save as seen, and saving then replaces
   it, as the person chose.
+- `open over unsaved work` (2026-10-23, walk180 D6 and A11): every way a
+  person opens a model in place of one with changes not saved asks first, as
+  New does (`ModelBar.ask_to_replace`): "Save changes to “X”?" with **Save**
+  (saved first, then opened), **Don't save** and **Cancel** (nothing opened,
+  the model and its undo as they were). File › Open and its examples, Open
+  recent, a file from the computer (asked once it is picked: a browser opens
+  its picker only in the click), Collection › Open and Versions. The reload
+  offer asks nothing (Reload is the answer to a question), the library and a
+  shared link open in a new tab, and Claude's `open_model` is refused over
+  the person's changes unless `discard_changes=true`. Whichever, every open
+  keeps what it takes off (`ModelStore.opened_over`, copies in the tab's own
+  folder, the last 10): an open is the oldest step of the history, so Edit ›
+  Undo past every change since, History's last row, or a session's `undo`
+  brings the model back as it stood, and Redo the other again. New and Clear
+  end that. On 0.6.0 each open replaced the model with no question, Undo
+  greyed. `unsaved_open_probe`.
 - `tabs browser flow`: `tools/web/tabs_flow.mjs`, three pages of one browser
   context (one IndexedDB, one account): the house, the kart and the tree, each
   renamed by typing and with a part clicked and deleted; three ids, and each
@@ -779,6 +795,7 @@ godot --headless --path . --script src/dev/versions_probe.gd
 godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
 godot --headless --path . --script src/dev/empty_open_probe.gd   # an open never leaves another model under its name: every open path, empty, unreadable and unknown-parts files
 godot --headless --path . --script src/dev/empty_open_probe.gd   # every way to open: what the file holds, or the model kept under its name
+godot --headless --path . --script src/dev/unsaved_open_probe.gd   # every way to open over changes not saved asks, and Undo brings back what it replaced
 godot --headless --path . --script src/dev/autosave_paths_probe.gd   # a figure stood up by any path survives a reload
 godot --headless --path . --script src/dev/unrestored_probe.gd   # a working model that cannot open is kept, and said
 # real sets' files round-tripped, judged, REPORT.md (run bare: it uses heavy itself; ~20 min)
@@ -797,7 +814,10 @@ the empty model); `empty_open_probe` when it ends "every open puts down what the
 file holds, or leaves the model there under its name and says why" (on c239c362,
 0.6.0, 68 checks fail: a model saved empty is "Opened … 0 parts" and the last
 model stays, saved under its name, and a failed File › Open says nothing);
-`autosave_paths_probe` when it ends "whatever path changed
+`unsaved_open_probe` when it ends "no open loses the changes not saved: each
+asks, Cancel keeps them, Save saves them, and Undo brings back what Don't save
+replaced" (on 25312917, rel-m155, 57 checks fail: no way asks, and Undo has
+nothing to undo); `autosave_paths_probe` when it ends "whatever path changed
 the model, a reload brings it back" (on f78934bc the in-app assistant's
 minifigure did not come back, 1 of 11 parts, nor a sub-model named past the
 store); `unrestored_probe` when it ends "a working model that cannot
