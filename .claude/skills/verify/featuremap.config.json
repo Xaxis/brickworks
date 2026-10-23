@@ -2481,7 +2481,35 @@
       "kind": "cli",
       "label": "comments browser flow",
       "entry": "tools/web/comments_flow.mjs",
-      "reach": "node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=DIR   (.env sourced, MASTER_EMAIL; --site leaves the app out)",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 8830 --static=build/web --hold=replies & node --env-file=.env tools/web/comments_flow.mjs --url=http://127.0.0.1:8830 --out=DIR   (MASTER_EMAIL; --site leaves the app out; --hold=replies until supabase/replies.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "replies to a comment",
+      "entry": "supabase/replies.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/replies.sql --dry --try=tools/replies_try.sql --table=model_comments   (.env sourced; then the comments browser flow, and tools/web/replies_stand_in.mjs holds it for a local run)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comment threads on a model page",
+      "entry": "web/model-page.js",
+      "reach": "/m/<id> (Comments: the newest thread first, Reply under each; the box for everybody); the model page browser flow on the stand-in",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "open a shared model at a step",
+      "entry": "src/main.gd",
+      "reach": "/app?view=<id>&step=<n> (a comment's step pill on /m/<id>): the step player at page n",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "step link probe",
+      "entry": "src/dev/step_link_probe.gd",
+      "reach": "tools/probe.sh step_link_probe   (windowed: godot --path . --resolution 1280x800 --script src/dev/step_link_probe.gd)",
       "area": "web"
     },
     {

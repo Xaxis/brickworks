@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
 
 ## Sub-features
 
@@ -840,7 +840,39 @@ plan with Claude as the client.
   `comment_can_write`, `comment_pill`; controls `view_comments`,
   `build_comments`, `*_comment_box`, `*_comment_send`, `*_comment_sign_in`.
   Proved by `share_view_probe` (no network: FakeShared) and the flow.
-- `comments browser flow` (`tools/web/comments_flow.mjs`): below.
+- `comments browser flow` (`tools/web/comments_flow.mjs`): below. Since
+  2026-10-22 it proves replies too (once the list says `replies: true`; on
+  a deployment without `replies.sql`, that nobody is offered Reply and the
+  API says not open yet): locally on a relay with `--hold=replies` over the
+  live project, throwaway accounts deleted at the end.
+- `replies to a comment` (`supabase/replies.sql`, 2026-10-22, docs/SOCIAL.md
+  U8; **not applied**: apply after comments, follows, challenges,
+  designers, gallery_tabs and notifications, whose functions it replaces,
+  each marked REPLACED LATER and guarded in `tools/apply_sql.mjs`).
+  `model_comments.parent` (nullable, cascades with its comment), `add_reply`
+  (a reply to a reply joins its thread; on the comment's version and step;
+  a comment's rules and limits), and `comment_parent_shown`, the one rule:
+  a reply is shown only where its comment is (page, cards' counts, a
+  designer's numbers, the day's email, notifications). `notification_rows`
+  tells a comment's author of each reply, and whoever replied in the
+  thread of each reply after theirs (kind `reply`, `yours`), on any model.
+  `POST /api/people?op=reply {id, body}`; the list says `parent` on each
+  and `replies: true`. Proved by `tools/replies_try.sql` in a rolled-back
+  dry run (the command in the feature map), and the comments flow.
+- `comment threads on a model page` (`web/model-page.js` `startComments`,
+  `web/directory.css`): the newest thread first, its replies oldest first
+  under a line; each with its writer's avatar (`avatarHtml`), Designer on
+  the model's owner's, a step comment's step as `a.pill.step` to
+  `/app?view=<id>[&v=<n>]&step=<n>`; Reply under each comment opens
+  `form.reply-new`; the box is shown signed out ("Sign in and add it"),
+  sending asks to sign in and keeps the words. Hiding or removing a
+  comment hides its replies. `model_page_flow` checks it on the stand-in's
+  watchtower at 390 and 1280, light and dark, in and out
+  (`*_comments.png`).
+- `open a shared model at a step` (`src/main.gd` `_viewing_step`, from
+  `--step=<n>`): taken up as Build it pressed while the steps were being
+  worked out (`_build_wanted`), so the step player opens at page n.
+  `step_link_probe` proves it (no network: a stand-in for the link).
 - `follows and the feed` (`api/_follows.js`): `supabase/follows.sql`,
   2026-10-18. `GET ?op=follows&handle=X` (counts, and with a session
   whether the caller follows and may, why not in words), `POST ?op=follow`

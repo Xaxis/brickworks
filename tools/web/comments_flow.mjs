@@ -418,7 +418,8 @@ try {
     check(`a visitor may report a reply too (${now.items.find((c) => c.reply)?.acts.join(", ")})`,
       now.items.some((c) => c.reply) && now.items.filter((c) => c.reply).every((c) => c.acts.includes("Report it")));
   }
-  await page.locator("#comments .comment").filter({ hasText: ON_STEP }).locator("button", { hasText: "Report it" }).click();
+  await page.locator("#comments .comment-list > li.comment").filter({ hasText: ON_STEP })
+    .locator(":scope > .comment-main > .comment-acts button", { hasText: "Report it" }).click();
   await page.waitForSelector("dialog.report[open]");
   check(`the report dialog is for "${await page.textContent("dialog.report h2")}"`, /Report this comment/.test(await page.textContent("dialog.report h2")));
   await page.check('dialog.report input[value="offensive"]');

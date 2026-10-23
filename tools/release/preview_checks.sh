@@ -28,6 +28,13 @@ declare -A CMD=(
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [versions]="tools/web/versions_flow.mjs --url=$P --out=$S/${TAG}_versions"
   [age]="tools/web/age_flow.mjs --url=$P --out=$S/${TAG}_age"
+  # Comments and their replies (docs/SOCIAL.md U8): threads newest first,
+  # the step pill into the viewer, the box for a visitor (sending signs in),
+  # under 13 and comments off refused; a reply under its comment, its
+  # writer told in Notifications, hidden with its comment, gone with it when
+  # the site's owner removes it; then the app's step player. Throwaway
+  # accounts, deleted after; before supabase/replies.sql, that nobody is
+  # offered Reply (it reads which from the answer).
   [comments]="tools/web/comments_flow.mjs --url=$P --out=$S/${TAG}_comments"
   [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
