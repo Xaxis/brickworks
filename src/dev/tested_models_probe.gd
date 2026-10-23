@@ -71,8 +71,9 @@ func _run() -> void:
 	print("  %s" % _said(resting))
 	_ok(not Tested.passed(resting) and _why(resting, "whole").contains("Brick 1 x 2 rests on Tile 1 x 2"),
 		"...a 1 x 2 brick resting on the tile is not, and says what it rests on: %s" % _why(resting, "whole"))
-	var rim: Dictionary = await _test(_model("rim", [[["11213", 15, Vector3(0, 0, 0)]],
-		[["54200", 15, Vector3(30, 0, 50)]]]))
+	# As exact_probe stands it, outline161 model-078's.
+	var rim: Dictionary = await _test(_model("rim", [[["11213", 71, Vector3(80, -8, -100)]],
+		[["54200", 71, Vector3(50, -8, -150)]]]))
 	print("  %s" % _said(rim))
 	_ok(not Tested.passed(rim) and _why(rim, "whole").contains("where it has no stud"),
 		"a cheese slope on a 6 x 6 round plate's rim, where it has no stud, is not: %s" % _why(rim, "whole"))
