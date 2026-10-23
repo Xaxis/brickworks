@@ -1724,6 +1724,14 @@ wide as its body, which is how a BrickHeadz brief is built: the real-set test's
 three characters never laid the pattern in either arm (docs/DESIGN_SCORES.md),
 so faces cannot reach them until it can say one.
 
+## 2026-10-22: m147 against BrickAgent, and where the gap is
+
+In progress. The release about to go live (rel-m147, `9379fbb1`) on the six
+character prompts of the 10-16 rounds, one design each, beside that round's
+figfaces designs and BrickAgent's builds
+(`bench/results/brickbench-2026-10-22-m147`). All six designed on the
+subscription, kept to BrickNet's parts, and valid by verify.py.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
