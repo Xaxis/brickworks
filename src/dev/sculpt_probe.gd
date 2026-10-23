@@ -80,6 +80,8 @@ func _run() -> void:
 		_library.mesh_for(library_part)
 	for body: Array in BODIES:
 		await _body(str(body[0]), body[1], out)
+	await _in_a_design()
+	_kept_to_a_list()
 	print("")
 	print("sculpt_probe: %s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures > 0 else 0)
@@ -143,6 +145,74 @@ func _body(name: String, raw: Dictionary, out: String) -> void:
 	_world.clear()
 	_builder.lattice.clear()
 	_checker.forget_built()
+
+
+## A sculpt said in a design, as a session says it: laid into the design's
+## bricks, with a hat said in the same design standing on its crown, which
+## keeps its studs there to hold it.
+func _in_a_design() -> void:
+	print("")
+	print("  in a design")
+	var egg: Dictionary = BODIES[0][1]
+	var bare: Assistant.Model = _checker._read_model({"name": "egg", "patterns": [egg],
+		"bricks": []})
+	var top: int = 0
+	for placement: Assistant.Placement in bare.placements:
+		if roundi(placement.x) <= 5 and roundi(placement.z) <= 5:
+			top = maxi(top, roundi(placement.y))
+	var crown: Dictionary = {}
+	for placement: Assistant.Placement in bare.placements:
+		var info: PartLibrary.PartInfo = _library.parts.get(placement.part)
+		var tall: int = roundi(info.size.y / 8.0) if info != null else 1
+		for x: int in [5, 6]:
+			for z: int in [5, 6]:
+				if roundi(placement.x) == x and roundi(placement.z) == z:
+					crown[Vector2i(x, z)] = maxi(int(crown.get(Vector2i(x, z), 0)),
+						roundi(placement.y) + maxi(1, tall))
+	var hat_at: int = 0
+	for cell: Variant in crown:
+		hat_at = maxi(hat_at, int(crown[cell]))
+	var model: Assistant.Model = _checker._read_model({"name": "egg in a hat",
+		"patterns": [egg], "bricks": [{"part": "3941", "color": 0, "x": 5, "y": hat_at, "z": 5}]})
+	var report: Dictionary = _checker._check(model, true, true, true)
+	_check("an egg and a 2 x 2 round brick on its crown at y %d, %d parts: %s" % [hat_at,
+		model.placements.size(), _faults(report)],
+		bool(report.get("ok", false)) and int(report.get("pieces", 0)) <= 1)
+	var said: bool = false
+	for one: Variant in report.get("advice", []):
+		said = said or str(one).contains("The sculpt is")
+	_check("the check says what the sculpt came to", said)
+
+
+## A run kept to BrickNet's list (BrickBench's, --parts-only) lays a sculpt in
+## parts on it: BrickNet lists the 2 x 3 and 2 x 4 wings by their old numbers,
+## and a body laid with 41769a was refused whole.
+func _kept_to_a_list() -> void:
+	print("")
+	print("  kept to a list")
+	var listed := PackedStringArray()
+	for id: String in Brickify.parts_needed(_library):
+		if not id in ["41769a", "41770a", "43722a", "43723a"]:
+			listed.append(id)
+	PartsOnly.use(listed, "the probe's list")
+	Patterns._wedge_shapes.clear()
+	Patterns._wedge_prints.clear()
+	Shapes._edge_parts.clear()
+	var trouble: Array = []
+	var pear: Dictionary = BODIES.filter(func(body: Array) -> bool:
+		return body[0] == "pear")[0][1]
+	var laid: Dictionary = Sculpt.lay(pear, _checker, trouble)
+	var off: Dictionary = {}
+	for brick: Dictionary in laid.get("bricks", []):
+		if not PartsOnly.allows(str(brick["part"]), _library):
+			off[str(brick["part"])] = true
+	_check("the pear laid, %d parts, none off the list%s" % [int(laid.get("parts", 0)),
+		"" if off.is_empty() else ": " + ", ".join(PackedStringArray(off.keys()))],
+		not laid.is_empty() and off.is_empty())
+	PartsOnly.use(PackedStringArray())
+	Patterns._wedge_shapes.clear()
+	Patterns._wedge_prints.clear()
+	Shapes._edge_parts.clear()
 
 
 ## The body's share of its height at full width, seen across (axis 0) or deep

@@ -37,6 +37,9 @@ const POWER := 3.0
 ## few round parts, not a sculpt.
 const LEAST := Brickify.LEAST_STUDS
 const MOST := 40
+## Studs along its longest side from which its steep sides are laid on their
+## sides on side studs (Brickify.Options.snot).
+const SNOT_FROM := 20
 
 
 ## The solids [param raw] says, each {"kind", "centre" (studs, plates,
@@ -272,6 +275,10 @@ static func lay(raw: Dictionary, checker: Assistant, trouble: Array,
 	var options := Brickify.Options.new()
 	options.studs = studs
 	options.stand = false
+	# Its steep sides on their sides only on a body big enough for them: under
+	# SNOT_FROM a turned side is a few side studs and tiles that stand out of
+	# the curve, and a tenth to a third more parts than the same body upright.
+	options.snot = studs >= SNOT_FROM
 	for key: Variant in feet:
 		var stud: Vector2i = key
 		var cell := Vector2i(stud.x - roundi(offset.x), stud.y - roundi(offset.z))

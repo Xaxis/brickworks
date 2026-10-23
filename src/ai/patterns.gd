@@ -1091,11 +1091,16 @@ static func _inside(shape: String, x: int, z: int, low_x: int, low_z: int,
 	return u * u + v * v <= 1.0
 
 
-## Every wedge shape, in every quarter turn, worked out once.
+## Every wedge shape, in every quarter turn, worked out once. Not one a run
+## kept to a list of parts may not use (PartsOnly): BrickNet lists the 2 x 3
+## and 2 x 4 wings by their old numbers, and a sculpt's flank laid in them
+## was refused whole.
 static func wedge_shapes(library: PartLibrary) -> Dictionary:
 	if not _wedge_shapes.is_empty():
 		return _wedge_shapes
 	for part: Variant in WEDGES:
+		if not PartsOnly.allows(str(part), library):
+			continue
 		var base: Array = _studs_of(library, str(part))
 		if base.is_empty():
 			continue
