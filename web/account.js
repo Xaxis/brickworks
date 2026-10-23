@@ -78,8 +78,15 @@ export function email() {
   return (kept() || {}).email || "";
 }
 
+// The renewal under way, which every script on the page that asks shares.
+let renewing = null;
+
 /// An access token for the kept sign-in: this tab's while it lasts,
-/// renewed when not. Null when there is no sign-in or it has ended.
+/// renewed when not, once however many of the page's scripts ask at once
+/// (the header, the theme and the page's own). Supabase renews only so
+/// many sessions from one address (150 in five minutes, 30 at once), and
+/// a page asked for three or four renewals at every load. Null when there
+/// is no sign-in or it has ended.
 export async function token() {
   try {
     const held = JSON.parse(sessionStorage.getItem(ACCESS) || "null");
@@ -89,16 +96,32 @@ export async function token() {
   }
   const was = kept();
   if (!was || !was.refresh_token) return null;
-  await where();
-  const reply = await fetch(`${project.url}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: { apikey: project.key, "content-type": "application/json" },
-    body: JSON.stringify({ refresh_token: was.refresh_token }),
+  renewing ||= renew(was).finally(() => {
+    renewing = null;
   });
-  const body = await json(reply);
-  if (!reply.ok || !body.access_token) return null;
-  keep(body, was.email);
-  return body.access_token;
+  return renewing;
+}
+
+/// The kept sign-in renewed. Refused for the rate (429) or a moment's
+/// trouble (5xx), it is asked again after a wait, twice: that is not the
+/// sign-in ending, and the page is not to be drawn signed out for it.
+async function renew(was) {
+  await where();
+  for (const wait of [1500, 3000, 0]) {
+    const reply = await fetch(`${project.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { apikey: project.key, "content-type": "application/json" },
+      body: JSON.stringify({ refresh_token: was.refresh_token }),
+    });
+    const body = await json(reply);
+    if (reply.ok && body.access_token) {
+      keep(body, was.email);
+      return body.access_token;
+    }
+    if (!wait || (reply.status !== 429 && reply.status < 500)) return null;
+    await new Promise((done) => setTimeout(done, wait));
+  }
+  return null;
 }
 
 /// Send a code to [address]. Says why not, in words, when it cannot.

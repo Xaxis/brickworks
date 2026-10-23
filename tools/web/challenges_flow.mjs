@@ -105,10 +105,25 @@ const finding = (text, count) => ({ v: 1, app: "0.3.0", model: modelHash(text), 
 
 const browser = await launch({ signedOut: true });
 
+// Every renewal of a session the pages asked Supabase for, by page, with its
+// answer. Supabase renews only so many sessions from one address (150 in
+// five minutes, 30 at once), shared by every flow on this machine; each
+// signed-in page renewed three or four times over (the header, the theme,
+// the page's own, and the admin page at every call), 34 in one run, and
+// m145's and m146's ran out: End it now, and Cy's page, drawn signed out.
+const renewals = new Map();
+const labels = new WeakMap();
+
 async function context({ as = null, width = 1280, height = 900, phone = false, dark = false } = {}) {
   const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers,
     colorScheme: dark ? "dark" : "light",
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+  made.on("response", (reply) => {
+    if (!/\/auth\/v1\/token\?grant_type=refresh_token/.test(reply.url())) return;
+    const page = reply.request().frame()?.page();
+    const who = (page && labels.get(page)) || "a page";
+    renewals.set(who, [...(renewals.get(who) || []), reply.status()]);
+  });
   if (as) {
     await made.addInitScript(([name, value]) => {
       try { if (!localStorage.getItem(name)) localStorage.setItem(name, value); } catch {}
@@ -118,6 +133,7 @@ async function context({ as = null, width = 1280, height = 900, phone = false, d
 }
 
 function listen(page, who) {
+  labels.set(page, who);
   page.on("pageerror", (e) => errors.push(`${who}: ${String(e).slice(0, 200)}`));
   page.on("console", (m) => {
     if (/SCRIPT ERROR|Parse Error|Content Security Policy|Refused to/.test(m.text())) errors.push(`${who}: ${m.text().slice(0, 220)}`);
@@ -195,7 +211,7 @@ try {
   for (const one of (before.body.challenges || []).filter((c) => c.test && c.state !== "ended")) {
     await api(`/api/admin?op=end_challenge&challenge=${one.id}&tests=1`, { method: "POST", token: master.access_token });
   }
-  check(`the admin page's challenges are open here (${before.status}, ${Array.isArray(before.body.challenges) ? "listed" : "not open"})`,
+  check(`the admin page's challenges are open here (${before.status}, ${Array.isArray(before.body.challenges) ? "listed" : `not open: "${before.body.error}"`})`,
     before.status === 200 && Array.isArray(before.body.challenges));
 
   // --- 1. The owner sets it ------------------------------------------------
@@ -472,8 +488,9 @@ try {
     await cyPage.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(cyPage, () => document.documentElement.dataset.challenge === "open", "the challenge for Cy");
     const c = await drawn(cyPage);
-    check(`Cy, under 13: no vote buttons, and once "${c.why[0]}"`, c.why.length === 1 && /13 and over/.test(c.why[0])
-      && c.groups.hand.entries.every((one) => !one.button));
+    const buttons = Object.values(c.groups).flatMap((g) => g.entries.map((one) => one.button)).filter(Boolean);
+    check(`Cy, under 13: no vote buttons${buttons.length ? ` (${JSON.stringify(buttons)}: drawn as for a visitor)` : ""}, and once "${c.why[0]}"`, c.why.length === 1 && /13 and over/.test(c.why[0])
+      && !buttons.length);
     await pictures(cyPage);
     await shot(cyPage, "8_challenge_cy-390.png");
     await cyc.close();
@@ -496,9 +513,13 @@ try {
     admin.on("dialog", (dialog) => dialog.accept());
     await admin.goto(`${site}/admin?tests=1`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
+    const pressed = Date.now();
     await admin.click(`#challenges tr[data-challenge="${ids.challenge}"] button`);
-    await until(admin, (id) => document.querySelector(`#challenges tr[data-challenge="${id}"]`)?.dataset.state === "ended",
-      "the challenge ended", 30, ids.challenge);
+    // What the owner sees: the row ended, or the page's words for why not.
+    const ended = await until(admin, (id) => document.querySelector(`#challenges tr[data-challenge="${id}"]`)?.dataset.state === "ended"
+      || document.querySelector("#challenge-note.bad, #gate-note.bad")?.textContent, "the challenge ended", 30, ids.challenge);
+    if (ended !== true) throw new Error(`the challenge ended: the page said "${ended}"`);
+    check(`End it now: ended, shown in ${((Date.now() - pressed) / 1000).toFixed(1)} s`, true);
     await adminContext.close();
   }
   for (const [width, height, phone, dark] of [[1280, 900, false, false], [390, 844, true, true]]) {
@@ -563,6 +584,17 @@ try {
 }
 for (const error of errors) console.log(`  page: ${error}`);
 check("no page errors", errors.length === 0);
+{
+  // Once a page; one refused for the rate and asked again is the site's
+  // answer to a busy address, said here and not held against it.
+  const all = [...renewals.values()].flat();
+  const many = [...renewals].filter(([, said]) => said.filter((status) => status === 200).length > 1)
+    .map(([who, said]) => `${who} ${said.length}`);
+  const refused = all.filter((status) => status !== 200);
+  check(`each signed-in page renewed its session once: ${all.filter((status) => status === 200).length} for ${renewals.size} pages`
+    + `${many.length ? `; more than once: ${many.join(", ")}` : ""}${refused.length ? `; refused, then asked again: ${refused.join(", ")}` : ""}`,
+  !many.length);
+}
 console.log(failed ? `${failed} FAILED, ${passed} ok`
   : `challenges: set, entered, voted and won, every rule checked on the stored model (${passed} checks, all ok)`);
 process.exit(failed ? 1 : 0);

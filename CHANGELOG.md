@@ -78,6 +78,10 @@ whole cycle.
 
 ### Fixed
 
+- A page on brickworks.diy renews your sign-in once, however many of its
+  parts ask, and asks again after a moment when the sign-in service is busy.
+  A page asked three or four times, and when one was refused it showed you
+  signed out until you loaded it again.
 - A part laid at an angle is held by the studs it sits on, and not by one
   it only leans on. The tow truck's (6753-1) steering plate, laid at 30
   degrees on two hinges, was weighed as standing on a stud of each hinge's
