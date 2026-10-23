@@ -6033,3 +6033,74 @@ was 0.0199 (its rack +8.02 and -8.02, where it was +1.98 and -14.12).
   `SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run grab23
   --jobs=3`, then `table grab23 --against=grab22`; the bar is every set that
   steers in grab22 (77) steering, and 5533-1 and 8466-1 with them.
+
+## 38. Gears put in mesh by hand (gears186)
+
+walk180 (2026-10-23, item 3) built two 24s on axles three studs apart in the
+web app. Each went on its axle wherever the pointer was along it, and they
+stood a stud apart in depth. Sliding one towards the other moved the whole
+axle through its brick until the axle's end reached the hole ("2 parts on
+its axle: not moved"). Turning one did not turn the other, and nothing said
+why. Studio and LDCad put a gear on the Technic hole grid, so a pair lines
+up.
+
+### Why
+
+- **Where a gear goes on an axle** was the pointer's alone
+  (`JointSnap.ways`: a hole on an axle anywhere along it, in whole LDU). The
+  gear beside it was never asked.
+- **The slide** moved the grabbed part's whole body. A gear keyed on its
+  axle is one body with it, so the axle slid in its round hole, as far as
+  it stays in the hole, and then no further.
+- **Meshing** was right all along: `Mechanism` meshes two gears whose
+  planes are within 6 LDU. These were 20.75 apart.
+
+### What was done
+
+- **A gear in hand on an axle seats in mesh** (`Builder._into_mesh`, from
+  `GearMesh.shifts`). For each gear beside the axle, it finds where along
+  the axle the gear in hand meshes it: parallel, at right angles (bevels,
+  double bevels, a crown and a spur) and with a worm. Each place is checked
+  by `Mechanism.couple`, the coupling test `_find_couplings` now shares, so
+  a seat here is a mesh there. Within `GearMesh.CAPTURE` (30 LDU) of the
+  pointer, and with room, the gear goes there. The status line says "in
+  mesh with the 24 beside it (24 teeth to 24)", or why not.
+- **A bevel's teeth face where the axles cross.** Which face is read from
+  the part's box: 6589's crossing is on its -z (app axes) in all 319 pairs
+  of two in the OMR's sets, 4143's and 87407's on +z, a crown's on -z.
+- **Where only the other gear stands wrong** (a bevel's partner too far
+  from where the axles cross, a worm's gear out of its plane), the gear in
+  hand seats for its own half and says what the other needs: "meshing the
+  12 bevel beside it, once it is slid along its axle: it stands 22 LDU
+  from where the axles cross, and meshes this one at 17".
+- **A gear goes on by the hole in its middle** (`Builder._on_its_middle`).
+  The 36 went on by a hole a stud from its middle. The 16's hole is drawn
+  0.28 LDU off its middle, so two 16s turned each other 1:1.02. Real sets
+  stand a gear's middle on its axle.
+- **A gear dragged along its axle slides on it** (`Grab._slide_on_axle`).
+  The gear and what is fixed to it move, and the axle stays. It goes as far
+  as its hole stays on the axle and the parts on the axle let it. It stops
+  in mesh within `GearMesh.SNAP` (4 LDU), and a gear it slides into mesh
+  with is not in its way.
+- **Why two gears beside each other do not mesh is said** as one goes
+  down and as the other is turned (`Grab.mesh_words`): "their axles are 80
+  LDU apart where a 24 and a 24 mesh at 60, 20 LDU too far"; "its axle is
+  square to this one's, and gears like these mesh only on parallel axles";
+  "...meshes it where the Technic Bush with Two Flanges is in the way".
+
+### Checked
+
+`tools/probe.sh gear_mesh_probe` builds each pair by pointing and turns the
+first 30° with Grab. Spurs 8/24, 24/24, 16/16, 12/20, a 36 and a 12 double
+bevel, and 40/8 turn by their teeth to 0.001°, the other way. Bevels 12/12,
+20/12 and double 12/20 at right angles mesh once the first is dragged into
+mesh. A worm turns a 24 1/24 as far. A 24 on an axle in a crossblock's pin
+hole turns its partner 1:1. All 40 checks pass; on 8c0cc501 34 of 42 fail.
+
+### Left
+
+- **The first gear of a pair at right angles** has nothing to mesh when it
+  goes down, so it goes where the pointer is. The second seats for its own
+  half and says how far to slide the first.
+- **A gear on an axle held rigidly** (in an axle hole of the frame) cannot
+  be grabbed at all, so it cannot be slid either.

@@ -3050,6 +3050,13 @@
       "entry": "tools/update_parts.py",
       "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
       "area": "pipeline"
+    },
+    {
+      "kind": "ui",
+      "label": "gears put in mesh by hand",
+      "entry": "src/assembly/gear_mesh.gd",
+      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
+      "area": "building"
     }
   ]
 }

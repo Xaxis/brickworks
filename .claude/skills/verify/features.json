@@ -2744,6 +2744,14 @@
       ]
     },
     {
+      "id": "ui:gears put in mesh by hand",
+      "kind": "ui",
+      "entry": "src/assembly/gear_mesh.gd",
+      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:grab and move on a joint",
       "kind": "ui",
       "entry": "src/ui/grab_drag.gd",

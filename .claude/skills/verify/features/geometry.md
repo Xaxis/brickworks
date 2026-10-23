@@ -488,6 +488,7 @@ python3 tools/connection_audit.py report --before DIR --write docs/CONNECTIONS.m
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
 godot --headless --path . --script src/dev/axle_probe.gd         # axles through holes, gears in mesh, a crank's train at 1:3
+godot --headless --path . --script src/dev/gear_mesh_probe.gd    # gears pointed onto axles seat in mesh and turn by their teeth
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
@@ -694,6 +695,30 @@ the train is drawn turning, 16 frames read back off the renderer's copy with the
 arm a third of the crank's step the other way to 0.01°, into `shots/axles/`. A
 catalogue without 3648's centre axle hole (before mech1's connector fix) fails
 the train: see `pipeline.md`.
+
+Gears put in mesh by hand (`src/assembly/gear_mesh.gd`, `Builder._into_mesh`,
+`Grab._slide_on_axle`; docs/MECHANISMS.md section 38): `tools/probe.sh
+gear_mesh_probe` ends on "gear_mesh: all N checks passed". Each pair is built in
+the editor's placing path (`Builder.update_preview` then `place`, a ray at the
+point aimed at): a locked frame, each axle pointed into its hole, each gear onto its
+axle, the second aimed half a stud or more off where it meshes and seated there (its
+status line "in mesh with the 24 beside it (24 teeth to 24)"). Grab turns the first
+30° and the second must turn by the teeth to 0.05°, the other way for a spur pair:
+8/24, 24/24 three studs apart (walk180's), 16/16, 12/20, a 36 and a 12 double bevel,
+40/8; bevels 12/12, 20/12 and double 12/20 at right angles, where the second seats
+for its half, says the first "stands 22 LDU from where the axles cross, and meshes
+this one at 17", and the first dragged along its axle stops in mesh; a worm and a 24
+at 1:24 (the worm turned); a 24 on an axle in a crossblock's pin hole. Then the words:
+two 24s four studs apart ("80 LDU apart where a 24 and a 24 mesh at 60, 20 LDU too
+far", as it goes down and as the first is turned), two 24s square ("mesh only on
+parallel axles"), a bush where the second would mesh ("is in the way"), and a 24
+aimed 2.6 studs off ("meshing nothing here: it meshes the 24 beside it 2.6 studs
+along the axle") dragged along its axle: the gear slides, the axle stays, it stops in
+mesh, and then turns 1:1. On 8c0cc501, before this, 34 of 42 checks fail. Windowed
+(`godot --path . --resolution 1400x900 --script src/dev/gear_mesh_probe.gd`, in the
+app itself) each pair is pictured built and turned in `GEAR_MESH_OUT`
+(bench/results/gears186 by default); `-- only=worm` runs the pairs whose name holds
+it, `only=why`, `only=slide`.
 `simulate mechanism` (`src/ui/simulate_panel.gd` over `src/assembly/simulation.gd`,
 docs/MECHANISMS.md phases P1b and P1c's readout): Tools, Simulate mechanism…, beside
 Check stability because both read the model and change none of it (Pose is under
