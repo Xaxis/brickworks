@@ -7,9 +7,10 @@
 ## models175 found the whole test held a part whenever it touched a held one
 ## and never asked about collisions, so Orthanc (145 pairs through each other,
 ## 72 pieces by the exact check, as it was at rel-m155) could have been marked. Here: Orthanc is not
-## Tested and says both; the kart, the castle and the orrery the app ships are
-## Tested; three bricks stacked with a tile on top are, and the same with a
-## brick only resting on the tile are not, saying what it rests on; a 1 x 1
+## Tested and says both; the kart and the castle the app ships are Tested;
+## two bricks stacked with a tile on top are, and the same with a brick only
+## resting on the tile are not, saying what it rests on; two stacks apart are
+## two builds, and Tested, and a part left on the floor against one is not; a 1 x 1
 ## cheese slope on a round plate's rim where it has no stud (the outline161
 ## rabbit's fault) is not; and the bench's six sculpt170 designs, each one
 ## piece by verify.py and by the design check, pass the whole test, and are
@@ -72,6 +73,16 @@ func _run() -> void:
 	print("  %s" % _said(resting))
 	_ok(not Tested.passed(resting) and _why(resting, "whole").contains("Brick 1 x 2 rests on Tile 1 x 2"),
 		"...a 1 x 2 brick resting on the tile is not, and says what it rests on: %s" % _why(resting, "whole"))
+	var two: Dictionary = await _test(_model("two", stack.slice(0, 2)
+		+ [[["3001", 4, Vector3(200, 0, 0)]], [["3001", 1, Vector3(200, -24, 0)]]]))
+	print("  %s" % _said(two))
+	_ok(Tested.passed(two) and _why(two, "whole").begins_with("2 builds"),
+		"two stacks apart are two builds, each standing on its own, and Tested: %s" % _why(two, "whole"))
+	var leant: Dictionary = await _test(_model("against", stack.slice(0, 2)
+		+ [[["4073", 14, Vector3(50, 16, 0)]]]))
+	print("  %s" % _said(leant))
+	_ok(not Tested.passed(leant) and _why(leant, "whole").contains("Plate 1 x 1 Round stands against Brick 2 x 4"),
+		"...a round plate left on the floor against the stack is not: %s" % _why(leant, "whole"))
 	# As exact_probe stands it, outline161 model-078's.
 	var rim: Dictionary = await _test(_model("rim", [[["11213", 71, Vector3(80, -8, -100)]],
 		[["54200", 71, Vector3(50, -8, -150)]]]))
@@ -83,7 +94,7 @@ func _run() -> void:
 	for path: String in SHIPPED:
 		var found: Dictionary = await _test(FileAccess.get_file_as_string(path))
 		print("  %s" % _said(found))
-		_ok(_passes(found, "whole"), "%s is one piece, every part held, none in another: %s" % [
+		_ok(_passes(found, "whole"), "%s has every part held, none in another: %s" % [
 			path.get_file(), _why(found, "whole")])
 		_ok(Tested.passed(found) or path in BUILT_IN_PIECES,
 			"%s is %sTested: %s" % [path.get_file(), "" if Tested.passed(found) else "not ",
@@ -101,7 +112,7 @@ func _run() -> void:
 		marked += 1 if Tested.passed(found) else 0
 		var others: bool = stands and _passes(found, "steps") and _passes(found, "parts")
 		_ok(_passes(found, "whole") and Tested.passed(found) == others,
-			"%s is one piece, every part held, none in another, and %s" % [file,
+			"%s has every part held, none in another, and is %s" % [file,
 			"Tested" if Tested.passed(found) else "not Tested, for its other tests: %s" % Tested.words(found)])
 	_ok(designs.size() == 6 and marked >= 1, "%d of %d designs stand, and %d are Tested" % [
 		stood, designs.size(), marked])
@@ -113,7 +124,7 @@ func _run() -> void:
 	print("  %s" % _said(orthanc))
 	var whole: String = _why(orthanc, "whole")
 	_ok(not Tested.passed(orthanc) and orthanc.has("tests") and not _passes(orthanc, "whole")
-		and whole.contains("pass into each other") and whole.contains("pieces, not one"),
+		and whole.contains("pass into each other") and whole.contains("pieces are held by nothing"),
 		"Orthanc is not Tested, and says why: %s" % whole)
 	_ok(whole.length() <= Tested.MOST_WHY, "...in the %d characters the site keeps (%d)" % [
 		Tested.MOST_WHY, whole.length()])

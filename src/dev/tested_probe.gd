@@ -7,7 +7,7 @@
 ##   godot --headless --path . --script src/dev/tested_probe.gd -- --write IN OUT [IN OUT...]
 ##
 ## A real set from vendor/omr, whose own steps stand (stands, parts), and
-## whose figures stand beside its car (whole: not one piece);
+## whose figures stand beside its car as builds of their own (whole);
 ## three bricks stacked in order, and the same with the top one put in a step
 ## before what holds it (steps: in the air); a closed box with a brick put in
 ## it after its roof (steps: hidden); an arm that tips its base over (stands);
@@ -81,10 +81,13 @@ func _run() -> void:
 	print("  %s" % _said(real))
 	_ok(_passes(real, "stands"), "6680-1 stands at every one of its own steps: %s" % _why(real, "stands"))
 	_ok(_passes(real, "parts"), "...every part of it is made in its colour: %s" % _why(real, "parts"))
-	# Its two figures stand beside the car, each a piece of its own: one piece
-	# is the whole test's since the exact check (tested_models_probe).
-	_ok(not _passes(real, "whole") and _why(real, "whole").contains("stands apart"),
-		"...and it is not one piece, its figures standing apart: %s" % _why(real, "whole"))
+	# Its two figures and its stretcher stand beside the ambulance, builds of
+	# their own. The file puts a 1 x 2 plate inside a 1 x 6 one (6680 -
+	# main.ldr, 3023 at 30 -16 150 in the 3666 at 30 -16 110), which the exact
+	# check finds, and which is the plate its steps hide.
+	_ok(_why(real, "whole") == "1 pair of parts passes into each other: Plate 1 x 6 into Plate 1 x 2 by 4 LDU",
+		"...its figures and stretcher are builds of their own, and the whole test names only the plate the file puts in another: %s"
+		% _why(real, "whole"))
 
 	print("\nthe order of the steps")
 	var stacked: Dictionary = await _test(_model("stacked", [
@@ -126,8 +129,8 @@ func _run() -> void:
 	var loose: Dictionary = await _test(_model("loose", [
 		[["3001", 4, Vector3(0, 0, 0)]], [["3001", 1, Vector3(0, -24, 0)]], [["3005", 14, Vector3(200, -120, 0)]]]))
 	print("  %s" % _said(loose))
-	_ok(not _passes(loose, "whole") and _why(loose, "whole").contains("2 pieces, not one")
-		and _why(loose, "whole").contains("Brick 1 x 1 is held by nothing"),
+	_ok(not _passes(loose, "whole") and _why(loose, "whole").contains("1 piece is held by nothing")
+		and _why(loose, "whole").contains("Brick 1 x 1 falls"),
 		"a brick held by nothing fails whole, naming it: %s" % _why(loose, "whole"))
 	_ok(_passes(loose, "steps"), "...and is not held against its step too: %s" % _why(loose, "steps"))
 	_ok(Tested.words(loose).begins_with("Not marked Tested") and Tested.words(stacked).begins_with("Marked Tested"),

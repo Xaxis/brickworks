@@ -26,10 +26,12 @@ whole cycle.
   planet rings are caught round its core, is no longer said to come away in
   the hand.
 - The Tested mark means a person can build it: a shared model is marked only
-  when it is one piece, every part held by a stud or a joint or caught where
-  it is, and no two parts pass into each other, by the parts' real shapes as
-  the design check reads them. Before, a part touching a held part counted as
-  held and collisions were never asked about. A model that is not marked says
+  when every part is held by a stud or a joint or caught where it is, and no
+  two parts pass into each other, by the parts' real shapes as the design
+  check reads them. A figure or a second build standing on its own beside
+  the model is fine; a part left resting on, against or inside another is
+  not. Before, a part touching a held part counted as held and collisions
+  were never asked about. A model that is not marked says
   why on its page, to its owner; one too big to build to its last step in the
   time a share takes still says what it failed.
 

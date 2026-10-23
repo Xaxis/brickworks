@@ -27,16 +27,20 @@
 ##           colour it was never made in, none made here, none in a colour
 ##           typed in rather than one parts are made in. A part the catalogue
 ##           has no colours for is not held against it, and is counted.
-##   whole   it is one piece, every part held, none through another, by the
-##           parts' exact shapes as the design check reads them (ExactCheck):
+##   whole   every part held, none through another, by the parts' exact
+##           shapes as the design check reads them (ExactCheck):
 ##           no two parts' real shapes overlap by more than 1 LDU, past what
 ##           a joint's own parts do and gears in mesh (ExactCheck.forgiven);
 ##           each part is joined to the rest by BrickNet's connections (a
 ##           stud in its hole, a pin, an axle, a clip, a hinge, a ball), by
 ##           glue, magnets or being one flexible thing (Joints.held_otherwise),
 ##           or, standing where it is, caught there so it cannot slide out
-##           (ExactCheck.comes_away). A part with no exact shape is held as
-##           the joints and what rests on what hold it, as before.
+##           (ExactCheck.comes_away). A piece on the floor that stands by
+##           itself and touches no bigger piece is a build of its own (a
+##           set's figures beside its car); one that leans, or stands
+##           against or inside a bigger one, is not held. A part with no
+##           exact shape is held as the joints and what rests on what hold
+##           it, as before.
 ##           models175 found the test before this held a part whenever it
 ##           touched a held one and never asked about collisions: Orthanc,
 ##           145 pairs through each other and 72 pieces, could have passed.
@@ -541,20 +545,24 @@ const ON_GROUND := ExactCheck.ON_GROUND
 ## What [method _exactly] finds, on a worker: {"into": [[a, b, depth], ...]
 ## the pairs whose real shapes pass into each other by more than 1 LDU, the
 ## deepest first, past what a joint's own parts do and gears in mesh
-## (ExactCheck.forgiven, as the design check forgives them); "pieces": how
-## many it is in; "apart": [{kind, part, on, size}, ...] each piece but the
-## model, the biggest first, kind "falls" (held by nothing, it does not stand
-## where it is), "away" (it stands, and comes away in the hand), "missed"
-## (that, on another part's stud grid where it has no stud) or "apart" (on
-## the floor beside the model)}. Numbers are [param parts]'.
+## (ExactCheck.forgiven, as the design check forgives them); "builds": how
+## many builds it is, each standing on its own; "apart": [{kind, part, on,
+## size}, ...] each piece held by nothing, the biggest first, kind "falls"
+## (it does not stand where it is), "away" (it stands, and comes away in the
+## hand), "missed" (that, on another part's stud grid where it has no stud),
+## "against" (on the floor, touching a bigger piece) or "leans" (on the
+## floor, and it does not stand by itself)}. Numbers are [param parts]'.
 ##
 ## Two parts are joined by BrickNet's connections, by [param glued], and by
 ## [param joints] where either has no exact shape. The piece with the most
-## parts on the floor is the model. Another that stands where it is and is
-## caught there stays with it, as the orrery's planet rings do (connect166,
-## models175: ExactCheck.comes_away), unless what catches it comes away
-## itself; and so does one with a part of no exact shape that [param resting]
-## holds, as the design check holds such a part by the lattice.
+## parts on the floor is the model; another on the floor that stands by
+## itself and touches no bigger piece is a build of its own, as a set's
+## figures beside its car are. Any other piece that stands where it is and is caught
+## there stays, as the orrery's planet rings do (connect166, models175:
+## ExactCheck.comes_away), unless what catches it comes away itself; and so
+## does one with a part of no exact shape that [param resting] holds, as the
+## design check holds such a part by the lattice. BrickBench's one piece is
+## the design check's count (Assistant._pieces_of), not this.
 static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints: Array,
 		resting: Dictionary) -> Dictionary:
 	var count: int = parts.size()
@@ -603,12 +611,44 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 	for key: int in on_floor:
 		if model < 0 or (members[key] as Array).size() > (members[model] as Array).size():
 			model = key
+	# A piece on the floor beside the model is a build of its own, as a set's
+	# figures and its stretcher stand beside its ambulance (6680-1), when it
+	# stands there by itself (ExactCheck.tips, on a bare floor) and touches no
+	# bigger piece. One that leans to stand, or stands against or inside a
+	# bigger one (a part left against a wall, a dish in a ring of bricks), is
+	# a part held by nothing. The model is turned any way: its outline is no
+	# guide, what touches what is.
+	var outline: Dictionary = {}       ## root -> [lo, hi]
+	for n: int in count:
+		var item: Exact.Item = exact.items[n]
+		var box: AABB = (parts[n][1] as Transform3D) * (parts[n][2] as Lbm.PartMesh).bounds
+		var lo: Vector3 = item.lo if item != null else box.position
+		var hi: Vector3 = item.hi if item != null else box.end
+		var was: Array = outline.get(root[n], [lo, hi])
+		outline[root[n]] = [(was[0] as Vector3).min(lo), (was[1] as Vector3).max(hi)]
+	var bulk := func(key: int) -> float:
+		var size: Vector3 = (outline[key][1] as Vector3) - (outline[key][0] as Vector3)
+		return size.x * size.y * size.z
+	var builds: Dictionary = {}        ## root -> true: a build of its own
+	var against: Dictionary = {}       ## root -> the part of a bigger piece it touches
+	var leans: Dictionary = {}         ## root -> true
+	for key: int in on_floor:
+		if key == model or by_covers.has(key):
+			continue
+		if not exact.tips(members[key]).is_empty():
+			leans[key] = true
+			continue
+		var touched: int = _touches(exact, members[key], root)
+		if touched >= 0 and float(bulk.call(root[touched])) >= float(bulk.call(key)):
+			against[key] = touched
+		else:
+			builds[key] = true
 	# What stands where it is and is caught there stays; what falls, and what
 	# comes away, catches nothing, asked again until nothing more comes away.
 	var stands: Dictionary = {}
 	var gone: Dictionary = {}
 	for key: int in members:
-		if key == model or by_covers.has(key):
+		if key == model or by_covers.has(key) or builds.has(key):
 			continue
 		stands[key] = not on_floor.has(key) and exact.rests(members[key])
 		if not stands[key]:
@@ -628,37 +668,65 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 	for key: int in stands:
 		if stands[key] and not away.has(key):
 			continue
-		apart.append({"kind": "apart" if on_floor.has(key) else "away" if away.has(key) else "falls",
-			"part": (members[key] as Array)[0], "on": -1, "size": (members[key] as Array).size(),
-			"key": key})
+		var kind: String = "leans" if leans.has(key) else "against" if against.has(key) \
+			else "away" if away.has(key) else "falls"
+		apart.append({"kind": kind, "part": (members[key] as Array)[0], "on": -1,
+			"size": (members[key] as Array).size(), "key": key})
 	apart.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return int(x["size"]) > int(y["size"]))
-	# Those named, by the part that rests on something not of its piece.
+	# Those named, by the part that rests on something not of its piece, or
+	# the part of the piece it stands in that it stands under or by.
 	for one: Dictionary in apart.slice(0, NAMED):
 		var them: Array = members[one["key"]]
-		for n: int in them:
-			var under: int = exact.under(n)
-			if under >= 0 and not them.has(under):
-				one["part"] = n
-				one["on"] = under
-				break
+		if one["kind"] == "against":
+			one["on"] = against[one["key"]]
+		else:
+			for n: int in them:
+				var under: int = exact.under(n)
+				if under >= 0 and not them.has(under):
+					one["part"] = n
+					one["on"] = under
+					break
 		if one["kind"] == "away":
 			var missed: int = exact.on_missing_stud(them)
 			if missed >= 0:
 				one["kind"] = "missed"
 				one["on"] = missed
 		one.erase("key")
-	return {"into": into, "pieces": 1 + apart.size(), "apart": apart}
+	return {"into": into, "builds": 1 + builds.size(), "apart": apart}
 
 
-## The whole test, said: one piece, every part held and none in another, or
-## what is not, in a person's words.
+## A part of another piece that one of [param members] touches, by their
+## exact shapes within ExactCheck.TOUCH, the first found; -1 for none.
+## [param root] says which piece each part is in.
+static func _touches(exact: ExactCheck, members: Array, root: PackedInt32Array) -> int:
+	var mine: int = root[int(members[0])]
+	var around: PackedInt32Array = exact._around(members)
+	var points := PackedVector3Array()
+	for i: Variant in members:
+		var item: Exact.Item = exact.items[int(i)]
+		if item == null:
+			continue
+		for j: int in Exact._near(exact.items, int(i), around, ExactCheck.TOUCH + Exact.TAU):
+			if root[j] == mine or exact.items[j] == null:
+				continue
+			points.clear()
+			ExactCheck._touching(item, exact.items[j], points)
+			if not points.is_empty():
+				return j
+	return -1
+
+
+## The whole test, said: every part held and none in another, or what is
+## not, in a person's words.
 static func _whole_said(whole: Dictionary, bricks: Array, library: PartLibrary) -> Dictionary:
 	var name := func(n: int) -> String: return _named((bricks[n] as BrickWorld.Brick).part_id, library)
 	var into: Array = whole.get("into", [])
 	var apart: Array = whole.get("apart", [])
 	if into.is_empty() and apart.is_empty():
-		return {"ok": true, "why": "One piece: every part is held by a stud or a joint, or caught "
-			+ "where it is, and none passes into another"}
+		var builds: int = int(whole.get("builds", 1))
+		return {"ok": true, "why": ("One piece" if builds == 1 else "%d builds, each standing on its own"
+			% builds) + ": every part is held by a stud or a joint, or caught where it is, and none "
+			+ "passes into another"}
 	var pairs: Array = into.map(func(one: Array) -> String:
 		return "%s into %s by %s LDU" % [name.call(int(one[0])), name.call(int(one[1])),
 			ExactCheck._n(snappedf(float(one[2]), 0.1))])
@@ -669,23 +737,23 @@ static func _whole_said(whole: Dictionary, bricks: Array, library: PartLibrary) 
 			who += " and %s with it" % _counted(rest, "part")
 		var on: String = name.call(int(one["on"])) if int(one["on"]) >= 0 else ""
 		match str(one["kind"]):
-			"apart":
-				return "%s stands apart" % who
+			"against":
+				return "%s stands against %s" % [who, on]
+			"leans":
+				return "%s leans on the rest to stand" % who
 			"missed":
 				return "%s stands on %s where it has no stud" % [who, on]
 			"away":
-				return ("%s rests on %s with nothing holding it" % [who, on]) if not on.is_empty() \
-					else "%s rests with nothing holding it" % who
-		return ("%s rests on %s, held by nothing, and falls off" % [who, on]) if not on.is_empty() \
-			else "%s is held by nothing and falls" % who)
+				return ("%s rests on %s" % [who, on]) if not on.is_empty() else "%s rests where it is" % who
+		return ("%s falls off %s" % [who, on]) if not on.is_empty() else "%s falls" % who)
 	var heads := PackedStringArray()
 	if not into.is_empty():
 		heads.append("%s %s into each other: " % [_counted(into.size(), "pair"),
 			"of parts passes" if into.size() == 1 else "of parts pass"])
 	if not apart.is_empty():
-		heads.append("%s in %s, not one, so it comes apart when it is lifted: " % [
-			"and it is" if not into.is_empty() else "It is",
-			_counted(int(whole.get("pieces", 1 + apart.size())), "piece")])
+		heads.append("%s%s %s held by nothing, and come%s away when the model is lifted: " % [
+			"and " if not into.is_empty() else "", _counted(apart.size(), "piece"),
+			"is" if apart.size() == 1 else "are", "s" if apart.size() == 1 else ""])
 	# The site keeps MOST_WHY characters of it (api/_tested.js): each list
 	# names what fits in its share, after the heads and its "and N more".
 	var room: int = maxi(40, (MOST_WHY - "".join(heads).length() - 2) / heads.size() - 24)
@@ -731,7 +799,7 @@ static func words(found: Dictionary) -> String:
 		return "Not tested: its steps could not be worked out to test."
 	if passed(found):
 		return "Marked Tested: it stands at every step, every step can be reached, every part " \
-			+ "is made in its colour, and it is one piece, every part held and none in another."
+			+ "is made in its colour, and every part is held, none in another."
 	var tests: Dictionary = found["tests"]
 	var said := PackedStringArray()
 	for name: String in failed(found):
