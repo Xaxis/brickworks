@@ -78,8 +78,13 @@ func _run() -> void:
 					members.append(i)
 					var p: Assistant.Placement = model.placements[i]
 					var on: int = exact.under(i)
-					print("  apart: %s at LDU %s, on %s" % [p.part, (exact.items[i] as Exact.Item).at.origin,
+					print("  apart: %s %s, on %s" % [p.part, _where(exact, model, i),
 						model.placements[on].part if on >= 0 and on < model.placements.size() else "-"])
+			# A part with no exact shape (a car's tyre) is a piece of its own
+			# that nothing here can judge.
+			members = members.filter(func(i: int) -> bool: return exact.items[i] != null)
+			if members.is_empty():
+				continue
 			print("    rests %s, comes away %s, on a missing stud %s" % [exact.rests(members),
 				exact.comes_away(members), exact.on_missing_stud(members)])
 			for m: int in members:
@@ -94,7 +99,7 @@ func _run() -> void:
 		lattice_pieces.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
 		for piece: Array in lattice_pieces.slice(1):
 			print("  lattice apart: %s" % ", ".join(PackedStringArray(piece.map(func(i: int) -> String:
-				return "%s at LDU %s" % [model.placements[i].part, (exact.items[i] as Exact.Item).at.origin]))))
+				return "%s %s" % [model.placements[i].part, _where(exact, model, i)]))))
 		for sentence: Variant in found.get("not held", []):
 			print("  not held: %s" % str(sentence).left(300))
 		for line: Variant in report.get("advice", []):
@@ -102,3 +107,13 @@ func _run() -> void:
 			if s.contains("held by nothing") or s.contains("picked up") or s.contains("grips"):
 				print("  advice: %s" % s.left(300))
 	quit(0)
+
+
+## Where part [param i] is: in LDU, or as placed when it has no exact shape,
+## which is a piece apart of its own (the car's wheels stopped the run).
+func _where(exact: ExactCheck, model: Assistant.Model, i: int) -> String:
+	var item: Exact.Item = exact.items[i]
+	if item != null:
+		return "at LDU %s" % item.at.origin
+	var p: Assistant.Placement = model.placements[i]
+	return "at x %s y %s z %s, no exact shape" % [p.x, p.y, p.z]

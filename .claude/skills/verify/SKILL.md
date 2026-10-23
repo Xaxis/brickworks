@@ -48,8 +48,12 @@ Known, and not a regression:
   brings them back. The suite says so on the `ok pipeline` line.
 - **There is no pytest, pip or ensurepip on this machine** and `apt` wants a
   password, so `tools/check.sh` falls back to `tools/minitest.py`, which
-  implements the four pytest features the suite uses and raises by name on
-  anything else. If you add a test that needs `pytest.raises`, add it there too.
+  implements the pytest features the suite uses (approx, fixture,
+  mark.parametrize, mark.skipif, the tmp_path and capsys fixtures) and raises by
+  name on anything else. If you add a test that needs `pytest.raises`, add it
+  there too. Real pytest is in uv's cache: `uvx --offline --with numpy --with
+  scipy pytest tests/ -q` (916 passed, 1 skipped, 108 s on 2026-10-23); a test
+  must pass under both.
 - **7 probes never run in the suite.** Four spend money (`bakeoff revise sideways
   stream`); `gallery` renders every shipped model for a person to look at and has
   no pass or fail, and so does `technique_sheet`, a contact sheet of the worked

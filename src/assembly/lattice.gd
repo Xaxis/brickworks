@@ -1102,7 +1102,12 @@ static func _line_run(middle: Vector3, axes: Array[Vector3], reaches: PackedFloa
 		var k: float = middle.dot(axis) - px * axis.x - py * axis.y
 		var r: float = reaches[n]
 		if absf(axis.z) < 0.000001:
-			if absf(k) > r:
+			# The same for every cell of the line. Within RUN_UNSURE of
+			# touching the exact test says, as boxes_for_turned leaves it
+			# to: k rounds otherwise than the test's own sum, and with
+			# u9109 turned a few hundredths of a degree a cell 2e-7 inside
+			# was out by k and in by the test (turned_probe).
+			if absf(k) > r + RUN_UNSURE:
 				return Vector2i(0, -1)
 			continue
 		var a: float = (k - r) / axis.z

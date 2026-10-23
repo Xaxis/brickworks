@@ -443,7 +443,8 @@ static func known(library: PartLibrary, part_id: String) -> bool:
 
 
 ## The shapes for these parts, id -> Shape (absent where there is none), for a
-## check on any thread to read. Main thread.
+## check on any thread to read. On the main thread in a browser, where a
+## worker reads none it has not got ([method shape_for]); any thread elsewhere.
 static func shapes_for(library: PartLibrary, part_ids: Array) -> Dictionary:
 	var out: Dictionary = {}
 	for part_id: Variant in part_ids:

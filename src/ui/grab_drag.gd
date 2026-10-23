@@ -940,13 +940,18 @@ func for_session(input: Dictionary) -> String:
 		await _ready_for_session()
 	if input.has("to"):
 		return _chain_for_session(int(ids[0]), input["to"])
-	# The parts' exact shapes read here, as for a reading on a worker: off
+	# The parts' exact shapes read first, as for a reading on a worker: off
 	# the main thread one not read yet is taken for one with joints
-	# (Bodies._unknown_shape).
+	# (Bodies._unknown_shape). On a worker but in a browser, as there.
 	var part_ids: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		part_ids[brick.part_id] = true
-	Exact.shapes_for(library, part_ids.keys())
+	var shaped: Array = part_ids.keys()
+	if OS.has_feature("web"):
+		Exact.shapes_for(library, shaped)
+	else:
+		await WorkerTasks.awaited(func() -> Variant: return Exact.shapes_for(library, shaped),
+			"read the parts' shapes", library)
 	_session_moving = true
 	var said: String = await _move_for_session(ids, input)
 	_session_moving = false
@@ -1720,14 +1725,20 @@ func _reading_done(keep: bool, wait: bool = false) -> bool:
 func _read_off_thread() -> void:
 	var started: int = Time.get_ticks_msec()
 	_ready_for = world.revision
-	# The parts' exact shapes, read here: a worker reads only those already
-	# read, and Bodies takes a stud in one of their holes (a train's buffer
-	# beam's) and lodges a part with none by them (G13).
+	# The parts' exact shapes, read first: a worker takes a shape not read
+	# yet for one with joints (Bodies._unknown_shape), and Bodies takes a stud
+	# in one of their holes (a train's buffer beam's) and lodges a part with
+	# none by them (G13). Read on the worker, which can but in a browser:
+	# read here, Orthanc's 104 parts held a frame 223 ms a quarter of a second
+	# after it opened, the bar down (command_probe, 2026-10-23).
 	var part_ids: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		part_ids[brick.part_id] = true
-	Exact.shapes_for(library, part_ids.keys())
-	_reading_unread = _unknown_shapes(part_ids.keys())
+	var ids: Array = part_ids.keys()
+	var read_here: bool = OS.has_feature("web")
+	if read_here:
+		Exact.shapes_for(library, ids)
+	_reading_unread = _unknown_shapes(ids)
 	_still = world.copy_for_reading()
 	_still_lattice = builder.lattice.copy_for_reading()
 	var floor_ids: Dictionary = scenery.duplicate()
@@ -1739,6 +1750,8 @@ func _read_off_thread() -> void:
 	var parts: PartLibrary = library
 	library.begin_reading()
 	_readying = WorkerTasks.add(func() -> void:
+		if not read_here:
+			Exact.shapes_for(parts, ids)
 		var read: Array = GrabDrag._read_all(still, parts, cells, floor_ids, held)
 		out[0] = read[0]
 		out[1] = read[1]
