@@ -44,32 +44,37 @@ def main() -> int:
         return 1
 
     document = json.loads(path.read_text())
-    changed, redirects = refresh_headers(document, Library(LDRAW))
+    for line in refresh(document, GENERATED, LDRAW):
+        print(line)
+    path.write_text(json.dumps(document, separators=(",", ":")))
+    return 0
 
-    colors, joined = write_colors(GENERATED, Palette.from_file(LDRAW / "LDConfig.ldr"))
+
+def refresh(document: dict, out: Path, ldraw: Path) -> list[str]:
+    """Everything above the geometry, refreshed in ``document``: its
+    headers from the library in ``ldraw``, and the Rebrickable joins.
+    Writes colors.json and elements.json into ``out``, leaves writing the
+    catalogue to the caller (tools/update_parts.py writes it atomically),
+    and returns the lines saying what changed."""
+    changed, redirects = refresh_headers(document, Library(ldraw))
+
+    colors, joined = write_colors(out, Palette.from_file(ldraw / "LDConfig.ldr"))
 
     made = _availability(document, colors)
-    ordered = _elements(document, colors)
+    ordered = _elements(document, colors, out)
     normal = _set_norms(document)
     used = _usage(document)
     builds = _kinds(document, colors)
 
     document["generated"] = int(time.time())
-    path.write_text(json.dumps(document, separators=(",", ":")))
 
     from collections import Counter
     buckets = Counter(c["finish"] for c in colors)
-    print(f"catalogue: {len(document['parts']):,} parts, {changed:,} updated, "
-          f"{redirects:,} redirects marked")
-    print(f"colours: {len(colors)} — " +
-          ", ".join(f"{k} {v}" for k, v in buckets.most_common()))
-    print(joined)
-    print(made)
-    print(ordered)
-    print(normal)
-    print(used)
-    print(builds)
-    return 0
+    return [f"catalogue: {len(document['parts']):,} parts, {changed:,} updated, "
+            f"{redirects:,} redirects marked",
+            f"colours: {len(colors)} — " +
+            ", ".join(f"{k} {v}" for k, v in buckets.most_common()),
+            joined, made, ordered, normal, used, builds]
 
 
 def refresh_headers(document: dict, library: Library) -> tuple[int, int]:
@@ -224,14 +229,14 @@ def _set_norms(document: dict) -> str:
                middle.get("most_of_one", 0)))
 
 
-def _elements(document: dict, colors: list[dict]) -> str:
+def _elements(document: dict, colors: list[dict], out: Path) -> str:
     """Write the part-and-colour to LEGO element number index.
 
     Kept out of the catalogue and in its own file: it is 0.8 MB that only
     a parts list needs, and the catalogue is loaded at start-up by
     everything.
     """
-    path = GENERATED / "elements.json"
+    path = out / "elements.json"
     try:
         import rebrickable
     except ImportError:

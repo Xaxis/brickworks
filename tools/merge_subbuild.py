@@ -34,7 +34,8 @@ def bare(entry: dict) -> dict:
     return {k: v for k, v in entry.items() if k not in LATER}
 
 
-def carry_exact(before: dict[str, str], after: dict[str, str]) -> tuple[int, list[str]]:
+def carry_exact(before: dict[str, str], after: dict[str, str],
+                exact: Path = GENERATED / "exact") -> tuple[int, list[str]]:
     """Each part's exact shape under its new mesh hash: (copied, still lacking).
 
     before and after are part id -> mesh hash. An exact shape is BrickNet's,
@@ -43,7 +44,6 @@ def carry_exact(before: dict[str, str], after: dict[str, str]) -> tuple[int, lis
     the shape is lost: merging covers2 left 942 parts without one, and the
     joint check skipped, which reads as a pass (2026-10-19).
     """
-    exact = GENERATED / "exact"
     copied, lacking = 0, []
     for part_id, mesh in after.items():
         old = before.get(part_id)
