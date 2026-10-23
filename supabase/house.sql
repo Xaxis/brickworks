@@ -8,9 +8,10 @@
 -- it one, at https://brickworks.diy/u/brickworks: the studio's name, words
 -- that say plainly whose account it is and that its models were made with
 -- the assistant, the castle's picture across the top and three models
--- pinned. Nothing about it is a person's: the page says Studio where a
--- person's says Designer (api/people.js), and its avatar is the letter
--- made from the handle (web/card.js avatarHtml).
+-- pinned. Nothing about it pretends to be a person: its name is the
+-- studio's, its words say whose account it is, and its avatar is the
+-- letter made from the handle (web/card.js avatarHtml). Its page is drawn
+-- as every person's is (tests/test_profile.py holds that).
 --
 -- The handle is kept for Brickworks itself: the API refuses it to anybody
 -- (api/_names.js RESERVED), so only this file gives it, and only to the

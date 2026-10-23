@@ -183,9 +183,6 @@ import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, won
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
-// The studio's own account (supabase/house.sql): the handle the API gives
-// nobody (api/_names.js RESERVED), so its page says Studio, not Designer.
-const HOUSE = "brickworks";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 export const PER_PAGE = 24;
 const MOST_PAGES = 400;
@@ -1057,7 +1054,7 @@ async function profilePage(request, response) {
     ${avatarHtml({ handle: person.handle, name: person.name }, { size: "huge" })}
     <div class="who">
       <h1>${name}</h1>
-      <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${person.handle === HOUSE ? "Studio" : earned ? "Designer" : "Builder"}</span>${Number.isFinite(since)
+      <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? "Designer" : "Builder"}</span>${Number.isFinite(since)
         ? ` · building here since ${SINCE.format(since)}` : ""}</p>
     </div>
     <div class="acts">

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
 
 ## Sub-features
 
@@ -940,6 +940,30 @@ plan with Claude as the client.
   `following`, the handles the caller follows (`follow_list_mine`).
 - `feed browser flow` (`tools/web/feed_flow.mjs`, preview check
   `[feed]`): below.
+- `first steps after a first sign-in` (`web/first-steps.js`, docs/SOCIAL.md
+  U10): `web/account.js` `askAgeIfAsked`, once the age question is
+  answered 13 or over (a first sign-in, from the dialog or a page that asks
+  on load), imports it and opens `dialog.first-steps` before the page goes
+  on: `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
+  name until typed in, the `.face-row` avatar from it, `#first-make` posts
+  `?op=profile`; left out with a profile already), `kinds` (the gallery's
+  kinds from `?op=list&sort=top` as `button.pill[data-kind]`,
+  `aria-pressed`; `#first-next`), `start` (`ul.people-list` of up to three
+  `li.person-row[data-handle]` from `?op=latest`'s designers, those with
+  most models of the kinds chosen first, each Follow `followButton`; six
+  cards, the kinds chosen first); `#first-skip` on the first two;
+  `#first-feed` See your feed (`/feed`, `?tests=1` kept) unless the sign-in
+  was asked for something on the page (`askToSignIn(why)`: then only
+  `#first-done`, and the like or follow goes on after). Escape closes it.
+  Nothing of the kinds is kept. The page's own Sign in is `askToSignIn()`.
+- `the house's profile` (`supabase/house.sql`): the studio's account, the
+  one whose listed models are credited "Brickworks" at a brickworks.diy
+  address, given its age answer, `people` (`brickworks`, Brickworks, words
+  saying its models were made with the assistant) and `profile_shows` (the
+  castle as banner, three pins), each only if not there; no model changed.
+  `/u/brickworks` is drawn as every person's page is. The lead applies it.
+- `first steps browser flow` (`tools/web/first_steps_flow.mjs`, preview
+  check `[first_steps]`): below.
 - `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
   `src/ui/model_bar.gd` `show_feed_count`. "Account · N" on the bar, "N new
   in your feed since you last opened it." and Open your feed (control
@@ -2575,6 +2599,55 @@ Ada's score 3; the feed itself 401 signed out; no script errors.
 that read the feed's markup, run with it: `follows_flow --site` (the
 post's `.what`, `q` and `a.go`), `notifications_flow`, `challenges_flow`
 (50 checks; the entry's post at 390 and 1280).
+
+First steps and the house (2026-10-22, docs/SOCIAL.md U10). The house's
+profile is a script the lead applies; tried first, run twice and rolled
+back on the live project, it reads back one profile (`brickworks`, its
+words 210 characters, 13 or over), its banner and three pins, all seven
+house models' cards credited to it with no model row changed, may be
+followed, 7 models on its page, all 7 of Top builds' cards credited to it
+(so the feed's designers to follow have it), and its page in the sitemap:
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/house.sql \
+  --dry --again=supabase/house.sql --try=tools/house_try.sql --table=people
+node tools/web/first_steps_flow.mjs --out=shots/first-steps
+node tools/web/design_flow.mjs --only=first-steps,feed,feed-nobody,person-house,account,age --out=shots/design-first
+node --env-file=.env tools/web/relay_server.mjs 8870 &
+node --env-file=.env tools/web/first_steps_flow.mjs --url=http://127.0.0.1:8870 --out=shots/first-steps-live
+```
+
+With no `--url` the flow is the stand-in with the live gallery and the
+house's profile held in memory (`liveCommunity(true)`; `state.fresh` a new
+account): a first visit at 390 light and 1280 dark, the feed suggests
+Brickworks and its seven Latest cards link to `/u/brickworks`, the
+gallery's seven cards each with its avatar and link, and `/u/brickworks`
+has its words (the studio's own account, made with the assistant), the castle across the top, three pinned
+(`1_{feed,gallery,house}-*.png`); a first sign-in at 390 dark and 1280
+light from the feed's Sign in: the code, the age question, First steps
+1 of 3, the handle `sam-okafor` made from "Sam Okafor" and the avatar "S",
+Make my profile, 2 of 3 with 11 kinds, Castles chosen, 3 of 3 with
+Brickworks to follow and six models castles first, Following, See your
+feed: 7 posts by Brickworks with their cards, no Latest
+(`2_{profile,kinds,start,followed,feed}-*.png`); Skip, Skip, Follow, See
+your feed: 4 taps to a filled feed (`3_feed-390-*.png`); signed in from
+Follow on `/u/brickworks`: First steps end with Done only, and the follow
+goes on after (`4_start_pending-*.png`). It ends "first steps: a first
+visit meets a designer to follow, a first sign-in makes a profile and
+fills the feed: ok". With `--url`, throwaway Ada (a listed castle, one
+build) is suggested at 390 and 1280; Bob signs in through the dialog,
+makes `bob-<rand>` on the live project, follows Ada from step 3 and his
+feed is her castle; Cy, signed in elsewhere, meets the age question and
+First steps on `/profile` and reaches the filled feed in 4 taps; every
+throwaway deleted. 32 checks on the stand-in and 16 on the live project
+through a relay, all ok, 2026-10-22. `design_flow --only=first-steps`
+judges each of the three steps at 390 and 1280, light and dark (with the
+feed, the house's page, the account and the age question: 104 checks, all
+ok). The flows that answer the
+age question on the site were taught First steps: `age_flow` (13 or over
+on /profile: skipped to the page) and `people_flow` (signed in from Like:
+Done only, then the like).
 
 Discovery (2026-10-19): Top builds, this week's pick, small builds, and
 build with what I own. The SQL first, after the live files, in one

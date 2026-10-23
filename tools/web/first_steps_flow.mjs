@@ -12,8 +12,8 @@
 //
 //   1. A first visit: the feed suggests the house to follow and shows its
 //      models as Latest; every card in the feed and the gallery links to
-//      /u/brickworks; that page says Studio, says its models were made with
-//      the assistant, and has its banner and three pinned.
+//      /u/brickworks; that page says whose account it is and that its
+//      models were made with the assistant, and has its banner and three pinned.
 //   2. A first sign-in from the feed's Sign in: the code, the age question,
 //      then First steps: Make your profile (the handle made from the name as
 //      it is typed, the avatar from the handle), What do you build? (a kind
@@ -247,9 +247,9 @@ try {
         banner: document.querySelector(".banner img")?.getAttribute("src") || "",
         models: document.querySelectorAll('[data-panel="models"] .model').length,
         follow: Boolean(document.querySelector(".profile-head button[data-follow]")) }));
-      check(`/u/${HOUSE} at ${width}: "${house.name}", ${house.role}, its words say the assistant made its models, `
+      check(`/u/${HOUSE} at ${width}: "${house.name}" (${house.role}), its words say whose it is and that the assistant made its models, `
         + `the castle across the top, ${house.pinned.length} pinned, ${house.models} models`,
-      house.name === "Brickworks" && house.role === "Studio" && /designed with the assistant/.test(house.bio)
+      house.name === "Brickworks" && /studio's own account/.test(house.bio) && /designed with the assistant/.test(house.bio)
         && house.banner === "/m/kfpYMjke5U.png" && house.pinned.join() === "EzEXhtXE2C,8eb6GRvnSV,cGHqpHnEFZ" && house.models === 7
         && house.follow && !(await sideways(page)));
       await shots(page, `1_house-${width}`, theme);
