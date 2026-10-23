@@ -2201,6 +2201,7 @@ func _will_it_hold() -> String:
 	# carrying nothing.
 	judge.lattice = builder.lattice
 	judge.floor_ids = scenery
+	judge.with_margins = true
 	var report: Stability.Report = judge.check(world)
 	if report.is_stable():
 		return "It holds together: %s." % report.summary()
@@ -20530,6 +20531,7 @@ func _focus_stability() -> String:
 	judge.library = library
 	judge.lattice = builder.lattice
 	judge.floor_ids = scenery
+	judge.with_margins = true
 	var report: Stability.Report = judge.check(world)
 	var near := PackedStringArray()
 	for risk: Stability.Risk in report.risks:

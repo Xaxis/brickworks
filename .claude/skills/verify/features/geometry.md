@@ -172,8 +172,13 @@ can occupy the same millimetre.
   on ("tips", from Balance's support polygon), which its levels never could on
   a baseplate: the plate is under every cut, as wide as the ground. Masses
   count the tubes under a part; every one of seven bricks is within 6% of
-  BrickLink's weight (a 2x4 2.46 g against 2.32). Load is handed down and
-  weighed against studs as Balance, Tested and Sections read them
+  BrickLink's weight (a 2x4 2.46 g against 2.32). With `with_margins` (the
+  status bar's verdict, View, Stress, `weakest_joints`, the assistant's own
+  checks) a stud joint Balance weighs past its working load is a weak joint
+  ("levered"), and a piece on touches alone with its weight past them is one
+  ("rests on a touch"). The weight pressing down on studs is not weighed (it
+  was, at 80 g a stud, and flagged only 75060-1's 1x1 plate pressed by
+  160 g). What holds what is read as Balance, Tested and Sections read it
   (`Stability.stud_joints`, each joint one stud at least): two parts whose
   covers overlap (a pin in a beam, a cone on an antenna, turned plates side
   by side) are seated, joined by no stud, a pair the lift reads across an
@@ -187,7 +192,12 @@ can occupy the same millimetre.
   none taken, the pair only touches ("seated" and "beside"); one, it is a
   "pivot". With every tip read, a pair turned to each other that the lift
   alone stood one on the other only touches too: 6753-1's steering plate,
-  laid at 30° on two hinges' tops, stands on no stud of their bases.
+  laid at 30° on two hinges' tops, stands on no stud of their bases. And a
+  pair the lift alone stood one on the other with no stud of either in the
+  other (tip in its cover, or in a hollow, `Stability._stud_between`) is a
+  face on a face: "seated", "beside" and "resting" (the part under). walk180's
+  tug ladder stood on its deck so, 8 cells, and the lift had made it a stud
+  (2026-10-23); 21318-1 has 711 such pairs.
   `Stability.beside` (asked by what joins a section, not by Balance) tells
   seated pairs that only touch from those seated in each other. The
   check reads a stud's tip only where the lift cannot
@@ -208,6 +218,17 @@ can occupy the same millimetre.
   the edge they would turn on against M = Σ F·dᵢ at 1 N a stud (working) and
   3 N (lets go), and the pull on a part hung under another. Joints in bonded
   walls share load statics cannot split and are left to Stability's levels.
+  A touch (`stud_joints`' "beside": a face on a face, turned covers side by
+  side) holds nothing: it carries weight straight down into what is under it
+  and nothing hangs from it or levers on it (`Balance._stand_on_touches`). It
+  joins the graph only where what it would carry stands on it, its centre of
+  mass over where the touches below meet what is under them: a piece no
+  joint reaches (a tower on a tile, held "rests"), or everything past one
+  joint, which then carries none of it. Otherwise the joint carries it all:
+  walk180's tug bow, 66 g on 4 studs, reads 0.86 of their working load with
+  its ladder's foot on the deck as without it. A piece held by studs alone on
+  touches past them falls off ("tips off", `Report.tipping`); one with a bar,
+  pin, clip or hinge the graph may not read is "nothing", as before.
   Counterweight advice is the least w at the best place (within 4 studs of
   the far edge, or the middle of the base when poses tip more than one way)
   that brings every pose half a stud inside, found by bisection, or the

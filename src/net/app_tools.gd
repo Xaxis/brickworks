@@ -61,8 +61,7 @@ const COMMANDS: Dictionary = {
 	"collection_build": "parts_list",
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
 	"stability": "review_model", "ask_claude": "selection", "brace": "selection",
-	# View, Stress's margins are Balance's, which check_design reports joint by joint.
-	"stress": "check_design",
+	"stress": "weakest_joints",
 	"brickify": "brickify", "import_mesh": "brickify", "print_part": "print_part",
 	"sticker": "print_part", "printed_versions": "print_part",
 	"make_unique": "make_unique",
@@ -208,6 +207,10 @@ written with them back in place.
 whether it holds together (the build check on it alone) and stands \
 (Balance), what joins it to the rest and what that carries, and its own \
 steps.
+ - weakest_joints: what gives first in the whole model as it stands, \
+read-only, as View, Stress weighs it: each joint that alone holds what is \
+past it, weakest first, with its margin against its studs' working load. \
+Ask it what breaks first, rather than rebuilding the model in check_design.
  - colour_hidden_parts: the parts nobody sees in the finished model, \
 coloured by section, build stage or side as big sets are inside, so a \
 builder finds their place; measured from every side, so nothing seen \
@@ -813,6 +816,26 @@ func definitions() -> Array:
 				"suggestion": {"type": "integer"},
 			}},
 		},
+		{
+			"name": "weakest_joints",
+			"description": ("What gives first in the model as it stands, as View, Stress "
+				+ "weighs it and the status bar's verdict says: every joint that alone holds "
+				+ "what is past it (a cantilever's root, a part hung under another, a tower's "
+				+ "foot), levered about the edge it would turn on, weakest first, each with the "
+				+ "part that would come off, what it hangs from or stands on, its studs, the "
+				+ "weight past it and its margin against the studs' working load (1 N a stud: "
+				+ "under 1 is past it, under 2 within twice it; it lets go at about three "
+				+ "times). A touch, one face resting on another with no stud between, carries "
+				+ "only what stands on it, so it never shares a joint's load; a piece standing "
+				+ "on touches alone past where it touches is said too. Read this instead of "
+				+ "rebuilding the model in check_design to weigh it. part= one part's number "
+				+ "(look_at_model) for what holds it; count= how many joints (8). Changes "
+				+ "nothing."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"part": {"type": "integer"},
+				"count": {"type": "integer"},
+			}},
+		},
 		GalleryTool.definition(),
 	]
 
@@ -887,6 +910,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return _break_out_section(input)
 		"evaluate_section":
 			return await _evaluate_section(input)
+		"weakest_joints":
+			return await _weakest_joints(input)
 		"colour_hidden_parts":
 			var panel: HiddenColoursPanel = app.get("_hidden_colours")
 			if panel == null:
@@ -947,7 +972,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not bool(input.get("record", false))
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
-		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions":
+		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
 			return true
 	return false
 
@@ -3075,6 +3100,26 @@ func _evaluate_section(input: Dictionary) -> String:
 		lines.append("Its parts: " + "; ".join(listed) + (" …and %d more lots." % (lots.size() - 40)
 			if lots.size() > 40 else "."))
 	return "\n".join(lines)
+
+
+# -- the weakest joints ---------------------------------------------------------------
+
+
+## View, Stress's numbers, from the weighing it draws (Main.weigh_joints):
+## walk180's session, asked what breaks first, rebuilt the tug in
+## check_design four times over 7 minutes to weigh one joint (2026-10-23).
+func _weakest_joints(input: Dictionary) -> String:
+	if not app.has_method("weigh_joints"):
+		return "This app cannot weigh its joints."
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	if world.brick_count() <= store.scenery.size():
+		return "There is nothing on the baseplate to weigh."
+	var report: Stability.Report = await app.call("weigh_joints")
+	if report == null:
+		return "The parts' shapes were still coming in; ask again in a moment."
+	return StressView.said(report, world, app.get("_library"), store.scenery,
+		clampi(int(input.get("count", 8)), 1, 40), int(input.get("part", 0)))
 
 
 # -- making a copy unique ---------------------------------------------------------------

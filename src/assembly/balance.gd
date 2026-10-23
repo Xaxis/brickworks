@@ -46,7 +46,9 @@
 ## to Stability's levels. The graph is the studs (Stability.stud_joints) and the
 ## pins, axles, clips, hinges and turntables (Joints), so an arm on a pin is
 ## carried by the stud joint under its pin; but only stud joints are checked,
-## since a pin's friction torque has not been measured.
+## since a pin's friction torque has not been measured. A part that only
+## touches another holds nothing: a touch is in the graph only where what it
+## would carry stands on it ([method _stand_on_touches]).
 ##
 ## Poses
 ## -----
@@ -168,9 +170,15 @@ class Report extends RefCounted:
 	var adrift: int = 0
 	## How each part no bridge stud joint holds is held, as View, Stress says
 	## it (StressView): id -> "floor" for a part standing on the floor, "other"
-	## for one a pin, an axle, a clip or a hinge alone holds, and "nothing" for
-	## one adrift. A part held more than one way is in none of them.
+	## for one a pin, an axle, a clip or a hinge alone holds, "rests" for one
+	## standing on a touch alone, its weight over it, "tips off" for one on
+	## touches alone with its weight past them, and "nothing" for one adrift.
+	## A part held more than one way is in none of them.
 	var held: Dictionary = {}
+	## The pieces held by no joint that stand on touches alone, their weight
+	## past where they touch, heaviest first: {"ids", "grams", "past" (studs;
+	## a million for touches that make no area), "on" (the part under)}.
+	var tipping: Array = []
 	## Nothing in it touches anything: an empty model.
 	var empty: bool = true
 
@@ -414,6 +422,20 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 			report.held[_ids[n]] = "nothing"
 	for n: Variant in _held_otherwise:
 		report.held[_ids[int(n)]] = "other"
+	for n: Variant in _held_resting:
+		report.held[_ids[int(n)]] = "rests"
+	for one: Array in _tipping:
+		var ids: Array = []
+		var grams: float = 0.0
+		for n: int in one[0]:
+			ids.append(_ids[n])
+			grams += _mass[n]
+			report.held[_ids[n]] = "tips off"
+		report.tipping.append({"ids": ids, "grams": grams,
+			"past": float(one[1]) / BrickLattice.STUD if is_finite(float(one[1])) else 1000000.0,
+			"on": _ids[int(one[2])] if int(one[2]) >= 0 else 0})
+	report.tipping.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["grams"]) > float(b["grams"]))
 	# The floor, too, is joined to what stands on it by no stud joint.
 	for n: Variant in _grounded:
 		report.held[_ids[int(n)]] = "floor"
@@ -454,9 +476,11 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 	if _hull.size() < 3:
 		return false
 	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)
+	Stability.beside(graph, library, lattice)
 	_sideways = joints["sideways"]
 	_join(joints, links if links != null else _links())
 	_grow()
+	_stand_on_touches(boxes)
 	_find_bridges(boxes)
 	return true
 
@@ -623,11 +647,24 @@ func _join(joints: Dictionary, links: Array) -> void:
 			var by_studs: bool = not overlapped.has(key) and _studded[lower] == 1
 			_add_edge(seen, count, int(_index_of[one]), int(_index_of[other]), by_studs,
 				lower if by_studs else -1)
+	# A pair that only touches (joints' "beside": a face on a face, turned
+	# covers side by side) holds nothing: kept aside, for what stands on it
+	# ([method _stand_on_touches]).
+	var touching: Dictionary = joints["beside"]
+	var resting: Dictionary = joints.get("resting", {})
+	_touches.clear()
+	_touch_seen = seen
 	for key: int in joints["seated"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
-		if _index_of.has(one) and _index_of.has(other):
-			_add_edge(seen, count, int(_index_of[one]), int(_index_of[other]), false, -1)
+		if not _index_of.has(one) or not _index_of.has(other):
+			continue
+		if touching.has(key):
+			var low: int = int(resting.get(key, -1))
+			_touches.append([int(_index_of[one]), int(_index_of[other]),
+				int(_index_of[low]) if _index_of.has(low) else -1])
+			continue
+		_add_edge(seen, count, int(_index_of[one]), int(_index_of[other]), false, -1)
 	for pair: Array in links:
 		if _index_of.has(int(pair[0])) and _index_of.has(int(pair[1])):
 			_add_edge(seen, count, int(_index_of[int(pair[0])]), int(_index_of[int(pair[1])]), false, -1)
@@ -715,15 +752,286 @@ func _grow() -> void:
 					_bridge_edges[by_edge[v]] = v
 
 
+## Pairs that only touch ([method _join]): [one, other, the one under or -1],
+## as nodes; the edges made of those that carry what stands on them; the
+## graph's seen pairs, for making them; and the pieces left standing on
+## touches past where they touch: [nodes, how far past, LDU, the node under].
+var _touches: Array = []
+var _touch_edges: Dictionary = {}
+var _touch_seen: Dictionary = {}
+var _tipping: Array = []
+
+
+## Let a touch carry what stands on it, and nothing else.
+##
+## A touch is one face on another, joined by nothing (Stability.stud_joints'
+## "beside"). It carries weight straight down into what is under it, and only
+## that: nothing hangs from it, and nothing levers on it, so it holds what
+## would stand on it alone. So a touch joins the graph where what it would
+## carry stands on it: a piece the joints do not reach from the floor (a
+## brick on a tile, a tower on a tile), or everything past one joint (the
+## bridges [method _grow] found), whose centre of mass is over where its
+## touches below it meet what is under them. Then the joint carries none of
+## it, as before touches were told apart. Where the centre is not over them,
+## the touch would only be a fulcrum, and the joint carries it all: walk180's
+## tug hung its 66 g forecastle on four studs of a 2x8 plate, and the ladder's
+## foot on the deck, short of the forecastle's centre of mass, had shared
+## that joint's load, so the bow read safe at 0.85 of its working load
+## (2026-10-23). Each touch let in can let in more, so it goes round until
+## none is. A piece the joints do not reach that stands on touches past them
+## falls off them ([member Report.tipping]).
+func _stand_on_touches(boxes: Dictionary) -> void:
+	_touch_edges.clear()
+	_tipping.clear()
+	if _touches.is_empty():
+		return
+	var count: int = _ids.size()
+	# Each touch that something could stand on: [upper, lower, where they
+	# meet, worked out when asked: two turned covers' boxes against each other
+	# were 3.5 s of 21318-1's 2,002 touches, most of which carry nothing].
+	_boxes_of = boxes
+	var under: Array = []
+	var lowest: Dictionary = {}          ## node -> its lowest cell
+	for touch: Array in _touches:
+		var a: int = touch[0]
+		var b: int = touch[1]
+		var low: int = touch[2]
+		if not boxes.has(_ids[a]) or not boxes.has(_ids[b]):
+			continue
+		if low < 0:
+			for n: int in [a, b]:
+				if not lowest.has(n):
+					lowest[n] = _lowest(boxes[_ids[n]])
+			low = a if int(lowest[a]) < int(lowest[b]) else b
+		under.append([b if low == a else a, low, null])
+	var weighted: Array[Vector2] = []
+	for n: int in count:
+		var middle: Vector3 = _rest[n] * _middle[n]
+		weighted.append(Vector2(middle.x, middle.z) * _mass[n])
+	for _round: int in 16:
+		# What is past each part in the tree, and where, as it stands; and
+		# where each part comes in the tree's order, its own past it after it.
+		var mass := PackedFloat64Array()
+		mass.resize(count + 1)
+		var at: Array[Vector2] = []
+		at.resize(count + 1)
+		at.fill(Vector2.ZERO)
+		var size := PackedInt32Array()
+		size.resize(count + 1)
+		size.fill(1)
+		var pos := PackedInt32Array()
+		pos.resize(count + 1)
+		pos.fill(-1)
+		for n: int in count:
+			mass[n] = _mass[n]
+			at[n] = weighted[n]
+		for k: int in _reached.size():
+			pos[_reached[k]] = k
+		for k: int in range(_reached.size() - 1, -1, -1):
+			var v: int = _reached[k]
+			var p: int = _parent[v]
+			if p >= 0 and p < count:
+				mass[p] += mass[v]
+				at[p] += at[v]
+				size[p] += size[v]
+		# Each touch, from the part on it up the tree's joints to the first
+		# whose far side has the part under it too: the joints between are
+		# those whose far side it could carry. Asked of every joint for every
+		# touch, 21318-1's 393 joints and 2,002 touches took 3.5 s.
+		var past_joint: Dictionary = {}  ## node whose way to the floor is a joint -> true
+		for e: Variant in _bridge_edges:
+			past_joint[_bridge_edges[e]] = true
+		var nearest := PackedInt32Array()  ## the first such node at or over each, or -1
+		nearest.resize(count + 1)
+		nearest.fill(-1)
+		for v: int in _reached:
+			var p: int = _parent[v]
+			nearest[v] = v if past_joint.has(v) else (nearest[p] if p >= 0 and p < count else -1)
+		var carries: Dictionary = {}     ## such node -> the touches under its far side
+		for t: int in under.size():
+			var high: int = under[t][0]
+			var low: int = under[t][1]
+			if pos[high] < 0 or pos[low] < 0:
+				continue
+			var child: int = nearest[high]
+			while child >= 0 and (pos[low] < pos[child] or pos[low] >= pos[child] + size[child]):
+				if not carries.has(child):
+					carries[child] = []
+				(carries[child] as Array).append(t)
+				var p: int = _parent[child]
+				child = nearest[p] if p >= 0 and p < count else -1
+		var taken: Dictionary = {}       ## index in under -> true
+		for child: int in carries:
+			var corners := PackedVector2Array()
+			for t: int in carries[child]:
+				corners.append_array(_patch(under[t]))
+			if mass[child] > 0.0 and _over(corners, at[child] / mass[child]) >= -1.0:
+				for t: int in carries[child]:
+					taken[t] = true
+		# And each piece the tree does not reach from the floor.
+		for piece: Array in _unreached():
+			var standing: Array = _standing_on(piece, under, weighted)
+			if not (standing[0] as Array).is_empty() and float(standing[1]) >= -1.0:
+				for t: int in standing[0]:
+					taken[t] = true
+		if taken.is_empty():
+			break
+		var left: Array = []
+		for t: int in under.size():
+			var one: Array = under[t]
+			if not taken.has(t):
+				left.append(one)
+				continue
+			var before: int = _edge_a.size()
+			_add_edge(_touch_seen, count, int(one[0]), int(one[1]), false, -1)
+			if _edge_a.size() > before:
+				_touch_edges[before] = true
+		under = left
+		_grow()
+	# What is left on touches past them falls off them, unless something the
+	# graph does not read holds it: a bar, a clip, a pin or a hinge. 21318-1's
+	# leaves on clips, 10264-1's container door on its hinge and 10270-1's
+	# flowers on bars read as falling off what they touch. So only a piece
+	# whose every part joins others by studs alone is said to; any other is
+	# held where it touches, by the joint nothing reads, as it was before
+	# touches were told apart. 21318-1's branch of leaves clips onto a bar by
+	# a clip no connector names, and so that bar's side stud carries it, at
+	# 1.35 times its working load, and not the bar alone at 0.13.
+	var held_there: Dictionary = {}      ## node -> true
+	for piece: Array in _unreached():
+		if not piece.all(_studs_only):
+			for n: int in piece:
+				held_there[n] = true
+			continue
+		var standing: Array = _standing_on(piece, under, weighted)
+		if not (standing[0] as Array).is_empty():
+			_tipping.append([piece, -float(standing[1]), standing[2]])
+	if held_there.is_empty():
+		return
+	for touch: Array in _touches:
+		if held_there.has(int(touch[0])) or held_there.has(int(touch[1])):
+			_add_edge(_touch_seen, count, int(touch[0]), int(touch[1]), false, -1)
+	_grow()
+
+
+## Whether part [param n] joins others only by studs and what takes them: no
+## bar, pin, axle, clip or hinge the graph might not read, and some studs.
+func _studs_only(n: int) -> bool:
+	var connectors: Array[Lbm.Connector] = _meshes[n].connectors
+	if connectors.is_empty():
+		return false
+	for connector: Lbm.Connector in connectors:
+		if connector.kind != "stud" and connector.kind != "tube":
+			return false
+	return true
+
+
+## What [param piece] (nodes) stands on of [param under]'s touches: [the
+## touches' indices, how far its centre of mass is inside where they meet,
+## LDU (negative past it), the node under the largest].
+func _standing_on(piece: Array, under: Array, weighted: Array[Vector2]) -> Array:
+	var members: Dictionary = {}
+	var grams: float = 0.0
+	var centre := Vector2.ZERO
+	for n: int in piece:
+		members[n] = true
+		grams += _mass[n]
+		centre += weighted[n]
+	var used: Array = []
+	var corners := PackedVector2Array()
+	var most: int = -1
+	var widest: float = -1.0
+	for t: int in under.size():
+		var one: Array = under[t]
+		if not members.has(int(one[0])) or members.has(int(one[1])):
+			continue
+		var patch: PackedVector2Array = _patch(one)
+		if patch.is_empty():
+			continue
+		used.append(t)
+		corners.append_array(patch)
+		var area: float = (patch[2] - patch[0]).x * (patch[2] - patch[0]).y
+		if area > widest:
+			widest = area
+			most = int(one[1])
+	if used.is_empty() or grams <= 0.0:
+		return [[], -INF, -1]
+	return [used, _over(corners, centre / grams), most]
+
+
+## Where a touch of [method _stand_on_touches] meets, x and z in LDU round
+## it: the cells the part under, lifted one, shares with the part on it;
+## empty when none. Kept in the touch once asked.
+var _boxes_of: Dictionary = {}
+
+
+func _patch(touch: Array) -> PackedVector2Array:
+	if touch[2] == null:
+		var met: Array = Balance._overlap(_boxes_of[_ids[int(touch[1])]], _boxes_of[_ids[int(touch[0])]])
+		var lo: Vector3i = met[0]
+		var hi: Vector3i = met[1]
+		touch[2] = PackedVector2Array() if lo.x == 0x7FFFFFFF else PackedVector2Array([
+			Vector2(lo.x, lo.z) * BrickLattice.CELL, Vector2(hi.x, lo.z) * BrickLattice.CELL,
+			Vector2(hi.x, hi.z) * BrickLattice.CELL, Vector2(lo.x, hi.z) * BrickLattice.CELL])
+	return touch[2]
+
+
+## How far [param point] is inside the hull of [param corners], LDU: negative
+## past it, and -INF when they make no area to stand on.
+func _over(corners: PackedVector2Array, point: Vector2) -> float:
+	var hull: PackedVector2Array = Geometry2D.convex_hull(corners)
+	if hull.size() > 1 and hull[0].is_equal_approx(hull[hull.size() - 1]):
+		hull.resize(hull.size() - 1)
+	if hull.size() < 3:
+		return -INF
+	return float(Balance.margin_in(hull, point)["margin"])
+
+
+## The pieces of the graph the floor does not reach, each its nodes.
+func _unreached() -> Array:
+	var count: int = _ids.size()
+	var seen: Dictionary = {}
+	var out: Array = []
+	for n: int in count:
+		if _parent[n] != -2 or seen.has(n):
+			continue
+		var piece: Array = [n]
+		seen[n] = true
+		var k: int = 0
+		while k < piece.size():
+			var v: int = piece[k]
+			k += 1
+			for e: Variant in _adjacent[v]:
+				var w: int = _edge_b[int(e)] if _edge_a[int(e)] == v else _edge_a[int(e)]
+				if w < count and not seen.has(w):
+					seen[w] = true
+					piece.append(w)
+		out.append(piece)
+	return out
+
+
+static func _lowest(boxes: PackedInt32Array) -> int:
+	var lowest: int = 0x7FFFFFFF
+	for at: int in range(0, boxes.size(), 6):
+		lowest = mini(lowest, boxes[at + 1])
+	return lowest
+
+
 ## Each bridge that is a stud joint, with where its studs are; and the parts
 ## past each that is not, held by what it is.
 var _held_otherwise: Dictionary = {}
+## ...and of those, the parts past a touch that carries what stands on it.
+var _held_resting: Dictionary = {}
 
 
 func _find_bridges(boxes: Dictionary) -> void:
 	_bridges.clear()
 	_held_otherwise.clear()
+	_held_resting.clear()
 	for e: Variant in _bridge_edges:
+		if _touch_edges.has(int(e)):
+			_held_resting[_bridge_edges[e]] = true
+			continue
 		if _edge_stud[int(e)] == 0:
 			_held_otherwise[_bridge_edges[e]] = true
 			continue

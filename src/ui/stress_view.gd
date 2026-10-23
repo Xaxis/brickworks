@@ -11,7 +11,9 @@
 ## times over. The part past a joint under 1 is red, under 2 amber, and every
 ## other part is drawn in its own colour, faded. A joint that shares its load
 ## with others, as a bonded wall's do, is never the one that gives first, and
-## is left plain.
+## is left plain. A touch shares nothing: a part that only touches another
+## carries weight straight down into it and nothing else (Balance), and one
+## standing on touches alone with its weight past them is red.
 ##
 ## Pointing at a part says on the status bar what it carries and on what:
 ## "carries 12 g on 1 stud, margin 0.4". A weak one's menu offers Ask Claude
@@ -74,6 +76,10 @@ func show_report(weighed: Stability.Report) -> void:
 		var margin: float = margin_of(id)
 		if margin < CLOSE:
 			tints[id] = RED if margin < WEAK else AMBER
+	# And what stands on a touch alone with its weight past it: it falls.
+	for id: Variant in weighed.held:
+		if weighed.held[id] == "tips off" and not scenery.has(int(id)):
+			tints[int(id)] = RED
 	world.set_stress(true, tints)
 
 
@@ -111,22 +117,33 @@ func line() -> String:
 
 ## What [param id] carries and on what, as the person reads it.
 func words(id: int) -> String:
+	return part_words(report, world, library, scenery, id)
+
+
+## What part [param id] of [param world] carries and on what, as [param
+## weighed] has it: what pointing at it says, and a session's weakest_joints.
+static func part_words(weighed: Stability.Report, world: BrickWorld, library: PartLibrary,
+		scenery: Dictionary, id: int) -> String:
 	var brick: BrickWorld.Brick = world.get_brick(id)
-	if brick == null or report == null or scenery.has(id):
+	if brick == null or weighed == null or scenery.has(id):
 		return ""
-	var name: String = _name(brick.part_id)
-	var one: Balance.JointLoad = report.margins.get(id)
+	var name: String = _named(library, brick.part_id)
+	var one: Balance.JointLoad = weighed.margins.get(id)
 	if one != null:
 		return "%s: carries %s g %s %d stud%s, margin %s" % [name, Balance.tidy(one.grams),
 			"hanging from" if one.hangs else "on", one.studs, "" if one.studs == 1 else "s",
-			margin_words(margin_of(id))]
-	match str(report.held.get(id, "")):
+			margin_words(1.0 / maxf(one.ratio, 0.000001))]
+	match str(weighed.held.get(id, "")):
 		"floor":
 			return "%s: stands on the %s" % [name, "baseplate" if not scenery.is_empty() else "ground"]
 		"other":
 			return "%s: held by a pin, an axle, a clip or a hinge, which are not weighed" % name
 		"nothing":
 			return "%s: held by nothing that can be weighed" % name
+		"rests":
+			return "%s: stands on what is under it, its weight over where they touch" % name
+		"tips off":
+			return "%s: stands on a touch alone, its weight past where it touches" % name
 	return "%s: held more than one way, so no one joint carries it" % name
 
 
@@ -151,5 +168,77 @@ static func margin_words(margin: float) -> String:
 
 
 func _name(part_id: String) -> String:
+	return _named(library, part_id)
+
+
+static func _named(library: PartLibrary, part_id: String) -> String:
 	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
 	return Inventory._tidy(info.name) if info != null else part_id
+
+
+## What a session reads of the view (AppTools' weakest_joints), from the
+## weighing the view draws (Main.weigh_joints): the verdict; the [param
+## count] joints that alone hold what is past them, weakest first, each with
+## what it carries, on what, and its margin; any piece standing on a touch
+## alone, past where it touches; and how the parts no one joint holds are
+## held. [param part] > 0 says what holds that one part instead.
+static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibrary,
+		scenery: Dictionary, count: int = 8, part: int = 0) -> String:
+	var lines := PackedStringArray(["As View, Stress weighs it: %s." % weighed.summary()])
+	for risk: Stability.Risk in weighed.risks:
+		if risk.kind in ["leaning", "top-heavy", "tips"]:
+			lines.append("  It %s: %s." % ["tips over" if risk.kind == "tips" else "is " + risk.kind,
+				risk.message])
+	if part > 0:
+		var about: String = part_words(weighed, world, library, scenery, part)
+		lines.append("#%d %s." % [part, about] if not about.is_empty()
+			else "There is no part #%d in the model." % part)
+		return "\n".join(lines)
+	var joints: Array = []
+	for id: Variant in weighed.margins:
+		if not scenery.has(int(id)) and world.get_brick(int(id)) != null:
+			joints.append(weighed.margins[id])
+	joints.sort_custom(func(a: Balance.JointLoad, b: Balance.JointLoad) -> bool:
+		return a.ratio > b.ratio)
+	if joints.is_empty():
+		lines.append("No joint alone holds what is past it: every part is held more than one way.")
+	else:
+		lines.append(("%d joint%s each hold alone what is past them, levered about the edge "
+			+ "each would turn on (1 N a stud working, about 3 N lets go); the weakest:") % [
+			joints.size(), "" if joints.size() == 1 else "s"])
+	for one: Balance.JointLoad in joints.slice(0, count):
+		var margin: float = 1.0 / maxf(one.ratio, 0.000001)
+		var how: String
+		if margin < WEAK:
+			how = "past its studs' working load, red"
+		elif margin < CLOSE:
+			how = "within twice its working load, amber"
+		elif margin >= 100.0:
+			how = "pressed straight down, nothing levers it"
+		else:
+			how = "holds it %s times over" % Balance.studs(margin)
+		lines.append("  #%d %s %s #%d %s on %d stud%s, %s g past it: margin %s (%sx its working load), %s%s" % [
+			one.beyond, _named(library, one.beyond_part), "hangs from" if one.hangs else "stands on",
+			one.held_by, _named(library, one.held_part), one.studs, "" if one.studs == 1 else "s",
+			Balance.tidy(one.grams), margin_words(margin), Balance.tidy(one.ratio), how,
+			"; it lets go at about %s times this load" % Balance.tidy(3.0 * margin)
+				if margin < 100.0 else ""])
+	for risk: Stability.Risk in weighed.risks:
+		if risk.kind == "rests on a touch":
+			lines.append("  #%d and what is with it: %s, red." % [risk.brick_id, risk.message])
+	var held: Dictionary = {}
+	for id: Variant in weighed.held:
+		if not scenery.has(int(id)):
+			held[weighed.held[id]] = int(held.get(weighed.held[id], 0)) + 1
+	var rest := PackedStringArray()
+	for pair: Array in [["floor", "standing on the %s" % ("baseplate" if not scenery.is_empty()
+			else "ground")], ["rests", "standing on what is under them by touch, their weight over it"],
+			["other", "held by a pin, an axle, a clip or a hinge, not weighed"],
+			["nothing", "held by nothing the weighing reads"]]:
+		if int(held.get(pair[0], 0)) > 0:
+			rest.append("%d %s" % [int(held[pair[0]]), pair[1]])
+	if not rest.is_empty():
+		lines.append("Held otherwise: " + "; ".join(rest) + ".")
+	lines.append("A touch (one face on another, no stud between) carries only what stands on it, "
+		+ "and never shares a joint's load. part= says what holds one part.")
+	return "\n".join(lines)
