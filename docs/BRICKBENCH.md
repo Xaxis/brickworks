@@ -2353,6 +2353,152 @@ The 22 verdicts lost to BrickAgent, by what their reasons hold against it:
   piece by verify.py.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-23, before dawn: the sculpt, kept in two builds of six
+
+sculpt170 (`55eee104`) is rel-m151 (`89c069e3`, with connect166's check of what
+holds together) and one lever: a `sculpt` pattern. A design says a rounded body
+as one to four solids (an ellipsoid, an egg, a capsule, a superellipsoid) and
+Brickify lays them as one connected piece. The outline guide asks for it for any
+rounded mass bigger than a ball 8 studs across, and moulded parts below that. It
+does not carry taper165's lever. It designed the same six prompts, one design
+each, in the m147 round's folder. Its builds were drawn on the GPU by the same
+renderer and judged against m147's, outline161's and BrickAgent's, every pair
+both orders twice: 72 new verdicts, with the other three pairs' 72 read back
+(`compare-sculpt170.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every log,
+`55eee104` in every `design.json`. Every build is one piece, by verify.py's graph
+and by our check (`src/dev/pieces_agree.gd` on main, `c07144d2`;
+`pieces-sculpt170.txt`): the first of our arms on these six with no build that
+comes apart.
+
+| build | parts | pieces, verify.py | pieces, ours | the sculpt in it |
+|---|---|---|---|---|
+| potato (042) | 203 | 1 | 1 | its body, an egg 10 across and 28 plates tall: 184 parts laid by Brickify |
+| balloon dog (043) | 111 | 1 | 1 | none: ten capsules at its first submit, then laid again by hand |
+| toilet (044) | 203 | 1 | 1 | none: its head an egg 7 across, then laid again by hand |
+| statue (049) | 128 | 1 | 1 | none: the whole seated man in 13 solids, then laid again by hand |
+| rabbit (078) | 320 | 1 | 1 | its body, belly and head, three solids: 278 parts laid by Brickify |
+| boy (080) | 186 | 1 | 1 | none: never laid |
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| sculpt170 | 7.2 (5.2-12.8) | 2.33 (15.06 for six) | 35 | 195 |
+| outline161 | 9.5 (7.5-12.0) | 2.59 (16.90) | 31 | 122 |
+| m147 | 12.7 (8.1-14.2) | 3.14 (19.18) | 50 | 202 |
+
+sculpt170 costs 10% less a design than outline161 (11% over the six) and 26% less
+than m147 (21% over the six), and is the quickest arm yet. The unit's 40% less on
+its held-out briefs is not seen here. Its builds are as large as m147's. They are
+69% stacked and 26% shaped, where m147's, outline161's and BrickAgent's are
+50-54% stacked and 36-47% shaped: what Brickify lays is mostly plates and
+bricks.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| sculpt170 vs m147 | 13 of 24 (54%) | 35-72% | 3 / 1 / 2 |
+| sculpt170 vs outline161 | 17 of 24 (71%) | 51-85% | 4 / 1 / 1 |
+| sculpt170 vs BrickAgent | 4 of 24 (17%) | 7-36% | 1 / 0 / 5 |
+| taper165 vs m147 (the taper round's verdicts) | 14 of 24 (58%) | 39-76% | 2 / 4 / 0 |
+| m147 vs BrickAgent (the m147 round's verdicts) | 2 of 24 (8%) | 2-26% | 0 / 1 / 5 |
+
+| dimension | sculpt170 ELO (95%) | m147 ELO (95%) | outline161 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|---|
+| likeness | 966 (772-1212) | 932 (683-1084) | 836 (639-932) | 1266 (1176-1464) |
+| surface | 916 (719-1046) | 954 (646-1161) | 999 (839-1107) | 1132 (978-1516) |
+| colour | 936 (737-1118) | 928 (728-1092) | 967 (812-1093) | 1170 (1043-1369) |
+| technique | 907 (709-1063) | 1006 (757-1219) | 946 (805-1028) | 1141 (1022-1362) |
+| creativity | 1046 (888-1276) | 875 (709-984) | 962 (733-1135) | 1117 (978-1335) |
+| buildability | 1051 (904-1183) | 971 (829-1089) | 949 (766-1142) | 1029 (878-1197) |
+| **overall** | **974 (783-1212)** | **907 (655-1082)** | **855 (690-956)** | **1265 (1168-1457)** |
+
+Overall sculpt170 is the best of our arms by 67 ELO, well inside the intervals,
+and about 290 behind BrickAgent, from about 360 for m147 here. Against m147 it has
+likeness 13 of 24, technique 10 and surface 11.
+
+| prompt | vs m147 | vs outline161 | vs BrickAgent | what the judge said of sculpt170's |
+|---|---|---|---|---|
+| potato (042) | 1-3 | 4-0 | 0-4 | "actually looks like a potato" beside outline161's can; m147's "smooth oval" beat it 3-1; against BrickAgent "a blocky octagonal brown lump with no arms", "stepped, angular", in 4 of 4 |
+| balloon dog (043) | 4-0 | 4-0 | 0-4 | "pinched rounded segments" beat m147's "blocky dog" and outline161's "plate yokes"; BrickAgent's beat "a gangly H", its legs and neck stretched tall, the tail straight up, a thin slab for a plinth |
+| toilet (044) | 4-0 | 4-0 | 4-0 | the long neck the brief asks for, one piece, a raised lid and a plunger; BrickAgent's has "a short stubby neck" and a loose part |
+| statue (049) | 0-4 | 0-4 | 0-4 | "an upright block of bricks", "a slab-like brown block with a cylinder for a head", not a seated man |
+| rabbit (078) | 0-4 | 1-3 | 0-4 | arms that "stick straight out like a T-shaped frame", a face of black slopes with no teeth; "messier blocky build" than m147's |
+| boy (080) | 4-0 | 4-0 | 0-4 | the grin, the shark-jaw chest and the colour beat both of ours; BrickAgent's hair spikes, its torso turns, its fin is large, where ours has "a flat cap topped with cones" |
+
+**The bar is missed.** Against m147, 54% where it asked 60%, two verdicts short,
+with the statue and the rabbit lost every time. Against BrickAgent, 4 of 24
+where it asked 6, as many as search156 had and the most any arm has. The potato
+and the balloon dog were lost 4 of 4 again. Six of six valid is met. 13 of 24 is
+not told apart from an even match (35-72%). Against outline161, 17 of 24 (51-85%)
+is the one clear win.
+
+### What the sessions did with the sculpt
+
+Five sessions of six laid a sculpt in a `check_design` or `submit_design`; the
+boy's never did (`scripts/sculpt_calls.py` on the transcripts in Claude Code's
+project folder for the sculpt170-bench worktree; `sculpt-calls-sculpt170.txt`).
+**Two kept it.** Three looked at what Brickify laid and laid that mass again by
+hand:
+
+- **The balloon dog** sculpted ten capsules 3 studs across, under the guide's
+  6-stud floor for a sculpt, 239 parts. Then it said "I'll rebuild the dog by
+  hand from round parts so each segment really pinches", and laid ten 24947 on ten
+  3262 with round bricks between, "in place of the blocky sculpt": outline161's
+  parts, at 111 parts. The judge named the segments in all eight wins over m147
+  and outline161.
+- **The toilet** sculpted its head as an egg 7 across (109 parts), then took it
+  off "to replace the blocky sculpted head", and laid a square head by hand. Its
+  wins are the neck, the plunger and being one piece where BrickAgent's is two.
+- **The statue** sculpted the whole seated man, block and all, in 13 solids
+  (291 parts), then laid it again as a fill and bricks, 96 parts, because "the
+  generated figure couldn't put the right elbow across onto the opposite knee".
+
+The two that kept it both lost to m147 for a blockier body. The potato's egg is
+round from the side, and no verdict calls it a can, a column or a drum: it beat
+outline161's can 4-0. But at 10 studs across its skin is 1 x 1 plates,
+cut-corner plates (26601) and cheese slopes (54200), and the judge reads it as
+faceted ("octagonal", "stepped"), where m147's, of 1 x 1 plates, reads as "a
+smooth oval". The rabbit lost to m147's "smooth round body" 4-0; against
+BrickAgent its reasons are not its body but its arms, on a frame out to the
+sides, and its face. Of the three prompts won every time over m147, the balloon
+dog's segments are outline161's lever, the toilet's win is a neck and one
+piece, and the boy laid no sculpt.
+
+### What the judge holds against it now
+
+The 20 verdicts lost to BrickAgent, by what their reasons hold against it:
+
+1. **A pose or proportions the brief does not give. 16 of 20.** The statue
+   reads as no seated man (4), the rabbit's arms jut out in a T (4), the boy's
+   torso does not turn and his hair is a flat block (4), the balloon dog is
+   stretched tall with its tail straight up (4). Taper165's round put 4 of 22
+   here, the statue's lump.
+2. **The face. 8 of 20**, all within the 16: the rabbit's black-slope eyes and
+   no teeth, the boy's square head and flat hair.
+3. **A sculpted skin read as stepped and faceted. 4 of 20**, the potato, each
+   with "no arms".
+4. **A straight side: none** (10 of 22 for taper165). **Loose parts: none** (6
+   of 22).
+
+So the outline is no longer what loses. The sculpt rounded the potato from the
+side, the balloon dog went back to outline161's segments, and connect166's check
+kept every build in one piece. What is left is how a figure stands.
+
+### The next lever: the pose the brief gives
+
+- **What changes.** The posture words of a brief (arms hanging, a fist forward,
+  seated and hunched with an elbow on a knee, a torso turned against the hips, a
+  tail angled back) are read into the figure as where each limb goes, and the
+  check says when the build has them elsewhere: "the arms stand out level; the
+  brief has them hanging at its sides". It is bench155's "after it", now first.
+- **Apart from the lever:** a small sculpt (the potato's, 10 across) is skinned
+  in curved slopes and tiles over its steps, so it reads as smooth as m147's.
+- **Proof in the unit** (minutes): the statue, the rabbit and the boy briefs in a
+  short design each. The statue reads as a seated man with an elbow on a knee,
+  the rabbit's arms hang, the boy's torso is turned; each build is one piece by
+  verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -2449,6 +2595,18 @@ run headless in its checkout with the round's folder and the arms. Its outputs
 are `taper-said-taper165.txt`, `taper-final.txt` and `pieces-taper165.txt` (rel-m151's
 `src/dev/pieces_agree.gd` on the two loose builds), with the sheets in
 `sheets-taper165/`.
+
+The sculpt round (2026-10-23, before dawn) is the taper round's commands with
+`--arm sculpt170` and `--app` a locked `release_wt.sh sculpt170-bench 55eee104`
+worktree (imported; retired after), views drawn from an imported worktree of main
+(`c07144d2`), `pairs --arms sculpt170,m147,outline161`, and `compare --arms
+sculpt170,m147,outline161 --runs 1 --out .../compare-sculpt170.md`, the m147
+round's `compare.md` copied aside first and put back. The verdicts a prompt are
+`scripts/by_prompt.py BATCH sculpt170-run1 m147-run1 outline161-run1 opus55`,
+each session's submits and the sculpts in them `scripts/sculpt_calls.py`, a
+session's words and calls `scripts/said_calls.py`, and the pieces main's
+`src/dev/pieces_agree.gd` on the six `design.ldr` (`pieces-sculpt170.txt`), with
+the sheets in `sheets-sculpt170/`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
