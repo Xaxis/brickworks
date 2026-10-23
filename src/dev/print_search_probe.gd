@@ -123,17 +123,29 @@ func _run() -> void:
 		print("  ok    %-22s %s at %d, %s" % [asked, hit, searched.find(hit) + 1,
 			library.parts[hit].name.strip_edges().substr(0, 50)])
 
+	# The bin keeps to the parts with every word, in the order names alone
+	# give. search_parts ranks every part by the words it has (PartSearch)
+	# and lists the plain parts before their prints and stickers, so past its
+	# first answer it is not that order: it is held to the same first answer,
+	# and to no print or sticker ahead of a plain part.
 	print("")
 	print("  plain parts asked for plainly do not move")
 	for row: Array in PLAIN:
 		var asked: String = row[0]
-		var searched: Array = _ids(library.search(asked, 8))
+		var found: Array[PartLibrary.PartInfo] = library.search(asked, 8)
+		var searched: Array = _ids(found)
 		var binned: Array = _ids(bin._find(asked, "All").slice(0, 8))
 		var by_name: Array = _ids(_by_name_alone(library, asked).slice(0, 8))
 		var led: String = searched[0] if not searched.is_empty() else "nothing"
-		if led != row[1] or searched != by_name or binned != by_name:
-			_fail("%s -> %s (the bin %s), wanted %s first and what names alone give, %s"
-				% [asked, str(searched), str(binned), row[1], str(by_name)])
+		var crowded: bool = false
+		var after_a_print: bool = false
+		for info: PartLibrary.PartInfo in found:
+			after_a_print = after_a_print or _decorated(info)
+			crowded = crowded or (after_a_print and not _decorated(info))
+		if led != row[1] or binned != by_name or crowded:
+			_fail("%s -> %s (the bin %s), wanted %s first, the bin what names alone give, %s%s"
+				% [asked, str(searched), str(binned), row[1], str(by_name),
+				", and no print before a plain part" if crowded else ""])
 			continue
 		print("  ok    %-22s %s" % [asked, ", ".join(PackedStringArray(searched.slice(0, 5)))])
 

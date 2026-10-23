@@ -5540,6 +5540,12 @@ func _search(query: String, limit: int) -> String:
 			told = _prints_named(info)
 	if not told.is_empty():
 		lines.append(told)
+	# A word no part has no longer hides the parts with the others, so say
+	# which it was: the list is not every word's answer.
+	var unknown: PackedStringArray = library.unknown_words(query)
+	if not unknown.is_empty():
+		lines.append("No part's name has %s; these have the other words." % " or ".join(
+			Array(unknown).map(func(word: String) -> String: return "\"%s\"" % word)))
 	if barred > 0:
 		lines.append("Not listed: %d more that match, which this run may not use (it uses "
 			% barred + "only %s; a print or another part is refused too unless it is "
@@ -18700,7 +18706,7 @@ func _find_parts_like(query: String) -> String:
 ## shape, and a design told only of shapes builds a control panel out of
 ## round tiles when the LEGO Group printed one on a 2 x 2 slope.
 func _printed_with(query: String) -> String:
-	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4)
+	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4, true)
 	var named := PackedStringArray()
 	for info: PartLibrary.PartInfo in found:
 		if PartsOnly.allows(info.id):
