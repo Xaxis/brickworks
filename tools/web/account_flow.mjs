@@ -96,7 +96,25 @@ try {
   const offered = Object.keys(await controls());
   check(offered.length > 0 && offered.every((name) => name.startsWith("signin_")),
     `nothing but the sign-in form can be pressed: ${offered.join(", ")}`);
+  check(offered.includes("signin_orangecheck"), "Sign in with orangecheck is offered beside the email");
   await shot("1_first_visit");
+
+  // Sign in with orangecheck goes to the site's sign-in, which says it
+  // brings the person back (web/profile.js): the app's page cannot hear
+  // orangecheck's window. Looked at in a page of its own.
+  {
+    const other = await context.newPage();
+    await other.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await until((s) => s.state === "signed_out" && s.gated, "showed the sign-in screen again", 300, other);
+    for (let i = 0; i < 60 && !(await controls(other)).signin_orangecheck; i++) await other.waitForTimeout(500);
+    await click("signin_orangecheck", other);
+    await other.waitForURL(/\/profile\?then=%2Fapp/, { timeout: 60000 }).catch(() => null);
+    const there = await other.locator("dialog.sign-in #oc-sign-in").waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false);
+    check(there && /\/profile\?then=%2Fapp/.test(other.url()),
+      `...which opens the site's sign-in, with Sign in with orangecheck, to come back to the app: ${other.url().replace(/[?&]x-vercel[^&]*/g, "")}`);
+    await shot("1b_orangecheck_on_the_site", other);
+    await other.close();
+  }
 
   // The builder behind it cannot be used: a click where the model is, and
   // the keys that would change it.

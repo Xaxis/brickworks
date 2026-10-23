@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow -->
 
 ## Sub-features
 
@@ -215,6 +215,39 @@ they have. A Claude connector belongs to the account that switched it on.
   sign-in screen like anyone's. Mints the code with the admin API (needs
   `.env`), redeems it as the app does, keeps it where the app keeps its own.
 
+- `sign in with orangecheck` (2026-10-23; `api/orangecheck.js` POST
+  `?op=signin`, `api/_oc.js`, `web/account.js` `signInWithOrangecheck`,
+  `supabase/orangecheck.sql`): the site's sign-in dialog has **Sign in with
+  orangecheck** under the email code ("A Bitcoin wallet, email, Google or
+  GitHub. Brickworks gets an id for you, not your address."). Its window is
+  orangecheck's own (`web/oc-popup.mjs`, served from here, made by
+  `tools/web/vendor_orangecheck.sh` with the server's checks in
+  `api/_orangecheck.js`); the token it hands back is checked (audience from configuration:
+  brickworks.diy or the deployment's own `VERCEL_URL`, or a loopback
+  `OC_AUDIENCE` on this machine; `rh` required; the project's rule; the list of ended
+  sessions, which must be readable), spent once (`oc_spend`), and exchanged
+  for a Supabase session minted with the admin API, bound to the token's `rh`,
+  `aud` and `iat` (`oc_sessions`) before it is handed out; the token is then
+  ended at orangecheck. A new did is a new account, address 32 random hex
+  `@oc.brickworks.diy` (never derived from the did), `app_metadata.orangecheck`
+  true, keyed in `oc_identities`. That address gets no code (`/api/otp` 422)
+  and no digest (`_comments.js`), is never shown (`/settings` says "Signed in
+  with orangecheck", hides the email choices), and the account is deleted
+  with a fresh orangecheck sign-in as itself instead of the typed address.
+  Needs `OC_PROJECT_KEY` and `OC_SIGNING_SECRET` (Vercel: the secret in
+  Production alone); without either nobody signs in with orangecheck. Step 1
+  of orangecheck's brief: linking from `/settings` and ending sessions on
+  "Sign out everywhere" come with steps 2-3 (branch oc188). In the web
+  app the sign-in screen has **Sign in with orangecheck** too
+  (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
+  `/profile?then=/app…`, which opens the dialog by itself and, signed in,
+  goes back (`web/profile.js`; only ever to `/app`). Where the deployment
+  has no signing secret (Vercel's Preview has the key at most) the button is
+  drawn and a sign-in says it is unavailable; `deploy.sh --prod` refuses to
+  deploy without both in Production. Site pages send
+  `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
+  answer; `/app` and `/b/` keep `same-origin`.
+
 Decisions, so they can be changed: the gate is a client gate (the desktop is
 open source and runs on the person's machine); the server enforces accounts
 where it serves something — the relay. `/api/account`'s `parts_url` stays open
@@ -265,6 +298,35 @@ forgotten, the sixth code in a row refused). `gate_probe -- live` types the
 address, presses Email me a code, types a wrong code then the minted one, signs
 in, opens Account and signs out, with pictures `shots/signin/1_form.png` to
 `6_signed_out.png`. `connector_probe` covers the relay's half.
+
+Sign in with orangecheck, the server against the real database with only
+orangecheck stood in for (tokens signed here with a key served as ochk.io's;
+its rule and list answered here; every account it makes deleted after; about
+40 s; Supabase limits redemptions per address, so give it five minutes
+between runs):
+
+```sh
+set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
+BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
+```
+
+`orangecheck_check` ends "N passed, 0 failed" (39: a first sign-in is a new
+account at a random address whose session `/api/account` takes; the token
+ended at orangecheck and never in the answer; refused a second time, here and
+on another instance; the same did is the same account; no `rh`, another
+audience, none, another key, another issuer, expired, no or a malformed did,
+nothing, junk and `alg: none` all refused in words; a session ended
+everywhere refused, one started after the cutoff let in; no list, no rule, no
+secret or no audience: nobody signs in; a backed-only rule refuses an unbacked
+account with `back_url`; two first sign-ins at once make one account and
+leave none over; three at once all get in; an orangecheck account is not
+deleted by its made-up address or somebody else's sign-in, is by a fresh one of
+its own, which is then spent, and signing in again makes a new one; twenty
+tries from one address, the next 429). `oc_flow` (a preview check, `oc`) needs
+no orangecheck account: the dialog at 390 and 1280 in both themes, the window
+opened at me.ochk.io and closed, a blocked one said in words, the headers,
+the server's refusals. A finished sign-in through orangecheck's real window
+runs only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
 
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
 refusal (same server; a throwaway account, deleted at the end; about 90 s, 31 of

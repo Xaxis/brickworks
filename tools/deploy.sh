@@ -317,6 +317,13 @@ csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${in
 # window that opened it, which Cross-Origin-Opener-Policy would.
 authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signin_origin}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
+# The site's other pages may open a window that answers them: orangecheck's
+# sign-in window hands the page its token through window.opener, which
+# Cross-Origin-Opener-Policy: same-origin cuts (2026-10-23,
+# api/orangecheck.js). So they send same-origin-allow-popups, and only the
+# app keeps same-origin (/app and the build under /b/): cross-origin
+# isolation, which its threads need, asks for exactly that.
+
 # Addresses that are not pages, said once each. An unknown one used to be
 # redirected to the landing page, which told a mistyped link nothing and
 # told a search engine every typo was the home page. It gets the 404 page,
@@ -361,13 +368,16 @@ cat > .vercel/output/config.json <<EOF
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/(.*)",
       "headers": {
-        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
         "Cross-Origin-Embedder-Policy": "require-corp",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "Content-Security-Policy": "$csp"
       },
+      "continue": true },
+    { "src": "/(app|b/.*)",
+      "headers": { "Cross-Origin-Opener-Policy": "same-origin" },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",
       "headers": { "Cache-Control": "public, max-age=31536000, immutable",
@@ -399,6 +409,20 @@ if [ ! -f .vercel/project.json ]; then
   echo "deploy FAILED: no .vercel/project.json — run:"
   echo "  npx vercel@48 link --yes --project brickworks --token \$VERCEL_TOKEN"
   exit 1
+fi
+
+# Production signs people in with orangecheck (api/orangecheck.js), which
+# must hear when somebody ends every session there: that takes the
+# project's key and signing secret, in Production's environment alone (a
+# preview has the key at most). Without both it does not go out, since it
+# would start sessions nobody could end. Names only are read, never values.
+if [ "$prod" = 1 ]; then
+  names="$(npx --yes vercel@48 env ls production --token "$VERCEL_TOKEN" 2>/dev/null | awk '{print $1}')"
+  for name in OC_PROJECT_KEY OC_SIGNING_SECRET; do
+    if ! printf '%s\n' "$names" | grep -qx "$name"; then
+      echo "deploy FAILED: $name is not set for Production on Vercel; orangecheck sign-in needs it"; exit 1
+    fi
+  done
 fi
 
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"

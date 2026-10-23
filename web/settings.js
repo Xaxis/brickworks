@@ -8,7 +8,7 @@
 // Signed in with the app's own sign-in in this browser (account.js). Every
 // word goes on the page as text, never as markup. Each part asks for its
 // own and draws what came, so one that cannot be read leaves the others.
-import { age, askAgeIfAsked, askToSignIn, call, email, signOut, signedIn } from "/account.js";
+import { age, askAgeIfAsked, askToSignIn, call, email, madeUp, orangecheckToken, signOut, signedIn } from "/account.js";
 import { showFeedCount } from "/follow.js";
 
 const $ = (id) => document.getElementById(id);
@@ -76,8 +76,16 @@ async function load() {
   }
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
-  $("who").textContent = `Signed in as ${email()}. Only you see the address; the gallery shows your profile’s name.`;
-  $("delete-confirm").placeholder = email();
+  // An orangecheck account has no address: Brickworks has an id for it, and
+  // mails it nothing. It is deleted by signing in with orangecheck again.
+  const orangecheck = madeUp(email());
+  $("who").textContent = orangecheck
+    ? "Signed in with orangecheck. Brickworks has an id for you, not an email address, so it emails you nothing."
+    : `Signed in as ${email()}. Only you see the address; the gallery shows your profile’s name.`;
+  $("delete-confirm").placeholder = orangecheck ? "" : email();
+  $("delete-confirm").required = !orangecheck;
+  $("delete-confirm").closest("label").hidden = orangecheck;
+  $("delete-go").textContent = orangecheck ? "Sign in with orangecheck to delete" : "Delete my account";
   // The age question, if this account has not answered it; and under 13,
   // no public profile here (the server refuses one too).
   const answered = await askAgeIfAsked().catch(() => null);
@@ -103,7 +111,7 @@ async function load() {
   // once a day, off until chosen. Not there before comments.sql. And the
   // feed's kinds, one choice each, since follows.sql.
   const mail = answer.body.mail;
-  $("mail").hidden = !(mail && mail.ready !== false);
+  $("mail").hidden = orangecheck || !(mail && mail.ready !== false);
   $("mail-comments").checked = Boolean(mail && mail.comments);
   $("mail-kinds").hidden = !(mail && mail.kinds === true);
   for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
@@ -197,14 +205,33 @@ $("sign-out").addEventListener("click", () => {
 });
 $("delete-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const typed = $("delete-confirm").value.trim();
-  if (typed.toLowerCase() !== email().toLowerCase()) {
-    $("delete-said").textContent = "That is not the address this account signs in with.";
-    return;
+  let body;
+  if (madeUp(email())) {
+    // The window first, while the click still counts: one opened after a
+    // question is blocked.
+    $("delete-go").disabled = true;
+    $("delete-said").textContent = "Signing in with orangecheck, in its own window.";
+    try {
+      body = { orangecheck: await orangecheckToken() };
+    } catch (trouble) {
+      $("delete-said").textContent = trouble.message;
+      return;
+    } finally {
+      $("delete-go").disabled = false;
+    }
+    $("delete-said").textContent = "";
+    if (!body.orangecheck) return;
+  } else {
+    const typed = $("delete-confirm").value.trim();
+    if (typed.toLowerCase() !== email().toLowerCase()) {
+      $("delete-said").textContent = "That is not the address this account signs in with.";
+      return;
+    }
+    body = { confirm: typed };
   }
   if (!confirm("Delete this account and everything in it, for good?")) return;
   $("delete-go").disabled = true;
-  const answer = await call("/api/account?op=delete", { method: "POST", body: { confirm: typed } });
+  const answer = await call("/api/account?op=delete", { method: "POST", body });
   $("delete-go").disabled = false;
   if (answer.status !== 200) {
     $("delete-said").textContent = answer.body.error || "That did not work just now.";

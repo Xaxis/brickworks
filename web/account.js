@@ -10,6 +10,11 @@
 // is kept for this tab until it runs out, so a page renews once, not on
 // every click.
 //
+// Or with orangecheck (2026-10-23): its own sign-in window (web/oc-popup.mjs,
+// orangecheck's, served from here), whose token /api/orangecheck exchanges
+// for the same kind of session, kept the same way. A Bitcoin wallet, email,
+// Google or GitHub, at orangecheck; Brickworks gets an id, never the address.
+//
 // Nothing here is shown as markup: the pages that import it put every
 // word on the page as text.
 //
@@ -161,6 +166,59 @@ export async function redeem(address, code) {
   return body.access_token;
 }
 
+// orangecheck's sign-in window, fetched once a page offers it, so that a
+// click opens it at once: a window opened long after the click is blocked.
+let popup = null;
+function popupCode() {
+  popup ||= import("/oc-popup.mjs").catch((trouble) => {
+    popup = null;
+    throw trouble;
+  });
+  return popup;
+}
+
+/// Whether an address is an orangecheck account's, made up by the server
+/// (api/orangecheck.js): nobody's inbox, never to be shown as theirs.
+export function madeUp(address) {
+  return /@oc\.brickworks\.diy$/i.test(String(address || ""));
+}
+
+/// orangecheck's window, from a click: the token it hands back, for this
+/// site only, or null when the person closed it. Says why not, in words,
+/// when it cannot. Never kept: it goes straight to the server.
+export async function orangecheckToken() {
+  let code;
+  try {
+    code = await popupCode();
+  } catch {
+    throw new Error("The orangecheck sign-in could not be loaded. Check your connection and try again.");
+  }
+  const outcome = await code.signInWithOcOutcome();
+  if (outcome.status === "blocked") {
+    throw new Error(`Your browser blocked the sign-in window. Allow pop-ups for ${location.hostname} and try again.`);
+  }
+  if (outcome.status === "failed") throw new Error("The orangecheck window did not answer. Try again.");
+  return outcome.status === "signed_in" && outcome.token ? outcome.token : null;
+}
+
+/// Sign in with orangecheck, from a click: its window, then the token it
+/// hands back exchanged for a session, kept for the app too. Resolves true
+/// once signed in, false when the window was closed; says why not, in
+/// words, when it cannot.
+export async function signInWithOrangecheck() {
+  const token = await orangecheckToken();
+  if (!token) return false;
+  await where();
+  const reply = await fetch("/api/orangecheck?op=signin", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token }),
+  });
+  const body = await json(reply);
+  if (!reply.ok || !body.access_token) throw new Error(body.error || `Could not sign in just now (${reply.status}).`);
+  keep(body, body.user?.email);
+  dispatchEvent(new Event("brickworks:signed-in"));
+  return true;
+}
+
 export function signOut() {
   try {
     localStorage.removeItem(KEY);
@@ -205,7 +263,8 @@ export function askToSignIn(why) {
     field.type = "email";
     field.autocomplete = "email";
     field.required = true;
-    field.value = email();
+    // Never an orangecheck account's made-up address: it takes no code.
+    field.value = madeUp(email()) ? "" : email();
     label.append(field);
     const note = document.createElement("p");
     note.className = "said";
@@ -222,7 +281,20 @@ export function askToSignIn(why) {
     row.className = "actions";
     row.append(go, close);
     form.append(label, row, note);
-    dialog.append(title, said, form);
+    // Or orangecheck, under the email: its own window, so its own button.
+    const other = document.createElement("div");
+    other.className = "elsewhere";
+    const oc = document.createElement("button");
+    oc.className = "cta ghost";
+    oc.type = "button";
+    oc.id = "oc-sign-in";
+    oc.textContent = "Sign in with orangecheck";
+    const ocSaid = document.createElement("p");
+    ocSaid.className = "note";
+    ocSaid.textContent = "A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.";
+    other.append(oc, ocSaid);
+    popupCode().catch(() => null);
+    dialog.append(title, said, form, other);
     document.body.append(dialog);
     let address = "";
     let finished = false;
@@ -235,6 +307,27 @@ export function askToSignIn(why) {
     };
     close.addEventListener("click", () => end(false));
     dialog.addEventListener("cancel", () => end(false));
+    oc.addEventListener("click", async () => {
+      oc.disabled = true;
+      go.disabled = true;
+      note.textContent = "Signing in with orangecheck, in its own window.";
+      try {
+        if (await signInWithOrangecheck()) {
+          finished = true;
+          dialog.close();
+          dialog.remove();
+          await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
+          done(true);
+          return;
+        }
+        note.textContent = "";
+      } catch (trouble) {
+        note.textContent = trouble.message;
+      } finally {
+        oc.disabled = false;
+        go.disabled = false;
+      }
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       go.disabled = true;
@@ -248,6 +341,7 @@ export function askToSignIn(why) {
           field.autocomplete = "one-time-code";
           field.value = "";
           go.textContent = "Sign in";
+          other.hidden = true;
           field.focus();
         } else {
           await redeem(address, field.value);

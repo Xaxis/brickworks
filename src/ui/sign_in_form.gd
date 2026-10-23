@@ -27,6 +27,8 @@ var _verify: Button
 var _again: LinkButton
 var _resend: LinkButton
 var _note: Label
+var _orangecheck: Button
+var _orangecheck_why: Label
 var _step: int = Step.ADDRESS
 var _busy: bool = false
 
@@ -94,6 +96,26 @@ func setup(with_account: Account) -> void:
 		_email.grab_focus())
 	links.add_child(_again)
 
+	# On the web, orangecheck too (2026-10-23, api/orangecheck.js). Its
+	# window cannot answer this page, which keeps the isolation the engine's
+	# threads need, so the button takes the person to the site's sign-in,
+	# which brings them back here signed in (web/profile.js). The desktop
+	# keeps a sign-in of its own, which a browser's cannot give it.
+	if OS.has_feature("web"):
+		_orangecheck = Button.new()
+		_orangecheck.text = "Sign in with orangecheck"
+		_orangecheck.custom_minimum_size = Vector2(0, 36)
+		_orangecheck.focus_mode = Control.FOCUS_NONE
+		_orangecheck.pressed.connect(_to_orangecheck)
+		add_child(_orangecheck)
+		_orangecheck_why = Label.new()
+		_orangecheck_why.text = ("A Bitcoin wallet, email, Google or GitHub. "
+			+ "Brickworks gets an id for you, not your address.")
+		_orangecheck_why.add_theme_font_size_override("font_size", 12)
+		_orangecheck_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_orangecheck_why.modulate = Color(1, 1, 1, 0.75)
+		add_child(_orangecheck_why)
+
 	_show(Step.ADDRESS)
 
 
@@ -106,8 +128,11 @@ func focus_first() -> void:
 
 ## The form's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
-	return {"signin_email": _email, "signin_send": _send,
+	var named := {"signin_email": _email, "signin_send": _send,
 		"signin_code": _code, "signin_go": _verify}
+	if _orangecheck != null:
+		named["signin_orangecheck"] = _orangecheck
+	return named
 
 
 func _show(step: int) -> void:
@@ -119,6 +144,9 @@ func _show(step: int) -> void:
 	_verify.visible = not asking
 	_again.visible = not asking
 	_resend.visible = not asking
+	if _orangecheck != null:
+		_orangecheck.visible = asking
+		_orangecheck_why.visible = asking
 	_why.text = ("Your email address is your account. We email you a code "
 		+ "to type here — there is no password, and nothing else to make."
 		if asking else
@@ -178,6 +206,12 @@ func _redeem() -> void:
 		return
 	_say(problem, false)
 	_code.grab_focus()
+
+
+## To the site's sign-in, which comes back to this very address.
+func _to_orangecheck() -> void:
+	JavaScriptBridge.eval("location.assign('/profile?then=' "
+		+ "+ encodeURIComponent(location.pathname + location.search))", true)
 
 
 func _set_busy(busy: bool) -> void:

@@ -28,7 +28,9 @@
 //   POST ?op=delete, with a token and {confirm: <the account's address>}:
 //   the account deleted, and everything of it (2026-10-20). The address
 //   typed again is the confirmation, so a stray click or a stolen page
-//   cannot do it. The files of the build photos it posted, of those
+//   cannot do it. An orangecheck account, whose address is made up
+//   (api/orangecheck.js), sends {orangecheck: <a token>} instead: a fresh
+//   sign-in with orangecheck, as the same person (2026-10-23). The files of the build photos it posted, of those
 //   posted of its models, and of its own picture as its avatar
 //   (supabase/avatars.sql), are deleted from storage first, by name, since
 //   storage keeps no link to the account; then the account itself, and
@@ -266,9 +268,37 @@ async function deleteAccount(request, response) {
     }
   }
   const address = String(claims.email || "").trim().toLowerCase();
-  const typed = String(body?.confirm || "").trim().toLowerCase();
-  if (!address || typed !== address) {
-    return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
+  if (/@oc\.brickworks\.diy$/.test(address)) {
+    // An orangecheck account (api/orangecheck.js) has no address of its own
+    // to type: it signs in with orangecheck again, as itself, and that
+    // sign-in is spent here. Loaded only here, so the route every start of
+    // the app asks does not carry orangecheck's code.
+    const { checkToken, endToken, spendToken } = await import("./_oc.js");
+    const checked = await checkToken(body?.orangecheck);
+    if (!checked.session) return response.status(checked.status).json({ error: checked.error });
+    let whose = null;
+    try {
+      whose = await db("rpc/oc_account_of", { method: "POST", body: { did: checked.session.did_oc } });
+    } catch (trouble) {
+      console.error(`account: whose orangecheck id: ${String(trouble?.message || trouble).slice(0, 120)}`);
+      return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+    }
+    if (whose !== claims.sub) {
+      return response.status(403).json({ error: "That orangecheck sign-in is not this account's. Sign in with the one you use here." });
+    }
+    try {
+      if (!(await spendToken(checked.session.jti, checked.session.exp))) {
+        return response.status(409).json({ error: "That sign-in was used already. Sign in with orangecheck again." });
+      }
+    } catch {
+      return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+    }
+    await endToken(String(body.orangecheck).trim());
+  } else {
+    const typed = String(body?.confirm || "").trim().toLowerCase();
+    if (!address || typed !== address) {
+      return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
+    }
   }
   if (isMaster(claims)) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });

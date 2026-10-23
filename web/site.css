@@ -288,7 +288,9 @@ a:focus-visible { border-radius: var(--r-1); }
 }
 .cta:hover { filter: brightness(1.07); }
 .cta.ghost, :where(button) { background: transparent; color: var(--ink); border-color: var(--line); }
-.cta.ghost:hover, :where(button):hover { background: var(--panel); filter: none; }
+/* Not a primary button's: :where(button):hover weighs as much as .cta, and
+   came after it, so a yellow button went white under the pointer. */
+.cta.ghost:hover, :where(button:not(.cta)):hover { background: var(--panel); filter: none; }
 .cta.ghost[aria-pressed="true"] { border-color: var(--accent-edge); }
 .cta.small { min-height: 36px; padding: 5px 12px; font-size: var(--t-small); }
 .cta.big { min-height: 52px; padding: 13px 26px; font-size: var(--t-h3); border-radius: var(--control-radius); }
@@ -386,6 +388,9 @@ dialog h2 { font-size: var(--t-h3); margin: 0 0 6px; }
 dialog p { color: var(--ink-soft); margin: 0 0 14px; }
 dialog form label { margin-bottom: 14px; }
 dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
+/* Sign in's other way, orangecheck, under the email and apart from it. */
+dialog .elsewhere { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+dialog .elsewhere .note { margin: 8px 0 0; }
 /* The age question's month and year, side by side. */
 dialog .when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
 /* First steps after a first sign-in (first-steps.js): wider, for a row of

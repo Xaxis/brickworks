@@ -217,6 +217,11 @@ export default async function handler(request, response) {
   if (!EMAIL.test(email) || email.length > 320) {
     return response.status(422).json({ error: "That is not an email address." });
   }
+  // Where orangecheck accounts' made-up addresses are (api/orangecheck.js):
+  // no mail is delivered there, and a code is never the way into one.
+  if (/@oc\.brickworks\.diy$/.test(email)) {
+    return response.status(422).json({ error: "That address takes no email. Sign in with orangecheck instead." });
+  }
 
   const ip =
     (request.headers["x-forwarded-for"] || "").split(",")[0].trim() ||

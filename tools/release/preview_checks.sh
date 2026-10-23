@@ -28,6 +28,18 @@ declare -A CMD=(
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [versions]="tools/web/versions_flow.mjs --url=$P --out=$S/${TAG}_versions"
   [age]="tools/web/age_flow.mjs --url=$P --out=$S/${TAG}_age"
+  # Sign in with orangecheck (2026-10-23), making nobody an orangecheck
+  # account: the button and its words in the sign-in dialog at 390 and 1280,
+  # light and dark; orangecheck's window opened from the click and closed,
+  # a blocked one said in words; the site's pages able to hear the window
+  # and /app still isolated; the server refusing nothing, junk and a GET.
+  # A finished sign-in is tools/web/oc_live_flow.mjs, on brickworks.diy.
+  [oc]="tools/web/oc_flow.mjs --url=$P --out=$S/${TAG}_oc"
+  # local only: oc_live_flow.mjs. It signs in with a new throwaway Bitcoin
+  # key through orangecheck's real window, which makes a real orangecheck
+  # account each run (the lead purges them), and orangecheck vouches for
+  # sessions only on the verified domain: it runs on brickworks.diy after a
+  # release, never on a preview.
   # Comments and their replies (docs/SOCIAL.md U8): threads newest first,
   # the step pill into the viewer, the box for a visitor (sending signs in),
   # under 13 and comments off refused; a reply under its comment, its
