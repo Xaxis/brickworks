@@ -516,6 +516,14 @@
       "tests": []
     },
     {
+      "id": "cli:empty open probe",
+      "kind": "cli",
+      "entry": "src/dev/empty_open_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/empty_open_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:empty save probe",
       "kind": "cli",
       "entry": "src/dev/empty_save_probe.gd",

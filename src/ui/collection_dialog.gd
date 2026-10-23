@@ -729,6 +729,10 @@ func _open_candidate(candidate: Dictionary) -> void:
 	else:
 		var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/" + str(candidate["file"]))
 		placed = int((await models.open_text_fetched(text, str(candidate["name"])))["placed"])
+	if not models.not_opened.is_empty():
+		_say("could not open %s: %s" % [candidate.get("name", str(candidate.get("path", "")).get_file()),
+			models.not_opened])
+		return
 	if bar != null:
 		bar.opened.emit(placed)
 	open("need")

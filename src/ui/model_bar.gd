@@ -240,7 +240,11 @@ func _button(row: Container, text: String, action: Callable,
 
 func bind(to: ModelStore) -> void:
 	store = to
+	# The name it was saved under, in the field too: a link's copy is saved
+	# under a name of its own, and Save then wrote the field's, the shared
+	# model's name, over the person's own model of that name.
 	store.saved.connect(func(name: String) -> void:
+		_name.text = name
 		model_named.emit(name)
 		_say_when_stored(name))
 	store.loaded.connect(func(name: String, bricks: int) -> void:
@@ -454,11 +458,15 @@ func _on_pick(id: int) -> void:
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
-	opened.emit(await open_with_progress(entry.path))
+	var placed: int = await open_with_progress(entry.path)
+	if placed >= 0:
+		opened.emit(placed)
 
 
 ## Open a saved model or an example, the status bar saying so first
-## (Working) and drawn before the open. How many parts landed.
+## (Working) and drawn before the open. How many parts landed, 0 for a model
+## of none; -1 when it did not open, said in the status bar, the model on
+## the baseplate as it was.
 ##
 ## A big model is laid a slice at a time, counted on the bar, with nothing
 ## of it drawn until it is all down (ModelStore._open_into): drawn as it went
@@ -469,6 +477,9 @@ func open_with_progress(path: String) -> int:
 	await job.shown()
 	var placed: int = await store.open_fetched(path, job)
 	job.end()
+	if not store.not_opened.is_empty():
+		_say("could not open %s: %s" % [path.get_file(), store.not_opened])
+		return -1
 	return placed
 
 
@@ -561,8 +572,8 @@ static func credit_words(credit: Dictionary) -> String:
 ## A save of a model kept as a version (File, Versions…; open_model over
 ## MCP), opened in place of what is on the baseplate as Open opens a model,
 ## under the name it is a save of: [param name], or the model on the
-## baseplate's. How many parts landed: 0 when it could not be read, and then
-## nothing on the baseplate has changed.
+## baseplate's. How many parts landed: -1 when it could not be read, said,
+## and then nothing on the baseplate has changed.
 func open_version(version: ModelVersions.Version, name: String = "") -> int:
 	if name.is_empty():
 		name = store.title
@@ -570,8 +581,9 @@ func open_version(version: ModelVersions.Version, name: String = "") -> int:
 	await job.shown()
 	var placed: int = await store.open_version(version.path, name, job)
 	job.end()
-	if placed <= 0 and store.awaited.is_empty():
-		return 0
+	if not store.not_opened.is_empty():
+		_say("could not open “%s” as saved %s: %s" % [name, version.when(), store.not_opened])
+		return -1
 	opened.emit(placed)
 	_say("opened “%s” as saved %s, %d parts — Save makes it the newest save"
 		% [name, version.when(), version.parts])

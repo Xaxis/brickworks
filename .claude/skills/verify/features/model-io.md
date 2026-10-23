@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe -->
 
 ## Sub-features
 
@@ -777,6 +777,8 @@ tools/windows_check.py      # two windows of the desktop app, a model each
 # versions, the browser asked to keep the models, the one warning, over MCP too
 godot --headless --path . --script src/dev/versions_probe.gd
 godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
+godot --headless --path . --script src/dev/empty_open_probe.gd   # an open never leaves another model under its name: every open path, empty, unreadable and unknown-parts files
+godot --headless --path . --script src/dev/empty_open_probe.gd   # every way to open: what the file holds, or the model kept under its name
 godot --headless --path . --script src/dev/autosave_paths_probe.gd   # a figure stood up by any path survives a reload
 godot --headless --path . --script src/dev/unrestored_probe.gd   # a working model that cannot open is kept, and said
 # real sets' files round-tripped, judged, REPORT.md (run bare: it uses heavy itself; ~20 min)
@@ -791,7 +793,11 @@ browser's answer while it is open: it was read once as the panel opened, up to
 400 ms old, and keep_flow's granted half read the unanswered words); `empty_save_probe` when it
 ends "no save of no parts goes over a model with parts unless the person
 emptied it" (on main both its empty checks fail: the autosave and Save wrote
-the empty model); `autosave_paths_probe` when it ends "whatever path changed
+the empty model); `empty_open_probe` when it ends "every open puts down what the
+file holds, or leaves the model there under its name and says why" (on c239c362,
+0.6.0, 68 checks fail: a model saved empty is "Opened … 0 parts" and the last
+model stays, saved under its name, and a failed File › Open says nothing);
+`autosave_paths_probe` when it ends "whatever path changed
 the model, a reload brings it back" (on f78934bc the in-app assistant's
 minifigure did not come back, 1 of 11 parts, nor a sub-model named past the
 store); `unrestored_probe` when it ends "a working model that cannot

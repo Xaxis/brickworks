@@ -1240,7 +1240,9 @@ func _fill_recent(menu: PopupMenu) -> void:
 func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	if id < 0 or id >= _recent.size():
 		return
-	bar.opened.emit(await bar.open_with_progress(_recent[id].path))
+	var placed: int = await bar.open_with_progress(_recent[id].path)
+	if placed >= 0:
+		bar.opened.emit(placed)
 
 
 func _fill_history(menu: PopupMenu) -> void:

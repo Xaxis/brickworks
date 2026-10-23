@@ -23,6 +23,7 @@ restore
 store
 versions
 empty_save
+empty_open
 instructions
 playback
 responsive
