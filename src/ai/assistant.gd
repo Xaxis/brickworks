@@ -11393,10 +11393,32 @@ func _with_sculpts(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 				_sculpts_laid.erase(_sculpts_laid.keys()[0])
 			_sculpts_laid[key] = laid
 		bricks.append_array((laid["bricks"] as Array).duplicate(true))
-		said.append(str(laid["said"]))
+		said.append(str(laid["said"]) + _sculpt_on_nothing(laid, args.get("bricks", [])))
 		_sculpted_body = true
 	out["bricks"] = bricks
 	return out
+
+
+## What a sculpt raised off the ground with nothing of the design under it is
+## told, or "": the pig's first check of its body alone, raised for its legs,
+## came back 285 parts floating.
+func _sculpt_on_nothing(laid: Dictionary, design: Variant) -> String:
+	var lowest: int = roundi((laid["box"] as AABB).position.y)
+	if lowest <= 0 or not design is Array:
+		return ""
+	var tops: Dictionary = {}
+	for raw: Variant in design:
+		for cell: Vector3i in Patterns._foot_cells(raw, library, true):
+			tops[cell] = true
+	for raw: Dictionary in laid["bricks"]:
+		if roundi(float(raw["y"])) != lowest:
+			continue
+		for cell: Vector3i in Patterns._foot_cells(raw, library, false):
+			if tops.has(cell):
+				return ""
+	return (" Its underside is at y=%d and nothing of the design has its top there " % lowest
+		+ "under it, so it floats: say what it stands on in the same design (legs, feet, a "
+		+ "stand), their tops at y=%d under its lowest course, or bring it down to y=0." % lowest)
 
 
 ## Sculpts laid, by what was said of them and where the design stands on
@@ -11462,7 +11484,8 @@ const SMALL_ROUND := ("The %s %s studs across is laid as bricks and plates, "
 	+ "instead, {\"pattern\": \"sculpt\", \"color\", \"solids\": [{\"ellipsoid\": "
 	+ "{\"centre\": [x, y, z], \"size\": [across, plates, deep]}}]}, is the same "
 	+ "solid laid by Brickify, round from the side as well as from above "
-	+ "(read_guide \"outline\").")
+	+ "(read_guide \"outline\"). A figure's or a creature's head or body is built "
+	+ "so, its limbs and features put on it after (read_guide \"figures\").")
 
 
 static func _round_by_panels(patterns: Array) -> Array:
@@ -17713,7 +17736,13 @@ make them (find_techniques, find_parts_like).
   4. A body too small to sculpt (under 6 studs: a head, a paw, a \
 fruit on a stalk) is a few moulded parts, each chosen by the edge it \
 makes, at the size of its curve (the largest corner that fits is half the \
-mass's width). The same parts detail a sculpt:
+mass's width). So is a ball or a dome 8 studs across, round in plan, \
+which they make smoother than a sculpt that small can: four domed corners \
+49612 over a ring of four 2577 (or 48092), on an 8 x 8 round plate 74611, \
+a 6 across of 65617 over 5152 (a snowman's ball, a pear's or a bun's \
+bottom, a cartoon head). A body longer than it is wide, egg-shaped, \
+bigger, or round in no plan (a pig, a potato, a whale, a fat rabbit, a \
+bird, a fish) is the sculpt. The same parts detail a sculpt:
     round corner     corner round bricks 3063b 2x2, 5152 3x3, 2577 4x4 \
 (48092 a 4x4 ring); plates 79491 2x2, 30357 3x3, 30565 4x4, 6003 6x6; \
 tiles over them 25269 1x1, 27925 2x2, 79393 3x3, 27507 4x4. Four of one \

@@ -216,29 +216,41 @@ func _kept_to_a_list() -> void:
 
 
 ## The body's share of its height at full width, seen across (axis 0) or deep
-## (1): [widest, courses within a stud of it, courses, widths by sixths]. The
-## body is the tallest run of courses that continue one another.
+## (1): [widest, courses within a stud of it or wider, courses, widths by
+## sixths]. The
+## body is the courses about its largest that continue it and keep a quarter
+## of its studs or more: not the legs under it, a stand, a stalk or a hat.
 static func full_width_share(rows: Array, axis: int) -> Array:
-	var best := Vector2i(0, -1)
-	var start: int = 0
-	for n: int in range(1, rows.size() + 1):
-		if n == rows.size() or not Side._continues(rows[n - 1], rows[n]):
-			if n - start > best.y - best.x + 1:
-				best = Vector2i(start, n - 1)
-			start = n
-	if best.y < best.x:
+	if rows.is_empty():
 		return [0, 0, 0, ""]
+	var largest: int = 0
+	for n: int in rows.size():
+		if (rows[n][5] as Dictionary).size() > (rows[largest][5] as Dictionary).size():
+			largest = n
+	var most: int = (rows[largest][5] as Dictionary).size()
+	var low: int = largest
+	while low > 0 and Side._continues(rows[low - 1], rows[low]) \
+			and (rows[low - 1][5] as Dictionary).size() * 4 >= most:
+		low -= 1
+	var high: int = largest
+	while high < rows.size() - 1 and Side._continues(rows[high], rows[high + 1]) \
+			and (rows[high + 1][5] as Dictionary).size() * 4 >= most:
+		high += 1
 	var held: Array = Side.held_widths(rows, axis)
-	var widest: int = 0
-	for n: int in range(best.x, best.y + 1):
-		widest = maxi(widest, int(held[n]))
+	# Its widest is what a tenth of its courses reach, two at least: one course
+	# an ear or a flipper widens is not the body's width.
+	var widths: Array = held.slice(low, high + 1)
+	widths.sort()
+	widths.reverse()
+	var widest: int = int(widths[mini(widths.size() - 1, maxi(1, ceili(widths.size() * 0.1) - 1))])
 	var full: int = 0
-	for n: int in range(best.x, best.y + 1):
+	for n: int in range(low, high + 1):
 		if int(held[n]) >= widest - 1:
 			full += 1
-	var sixths: Array = Side.widths_by_sixths(held, best.x, best.y)
-	return [widest, full, best.y - best.x + 1, "by sixths %s" % ", ".join(PackedStringArray(
-		sixths.map(func(v: Variant) -> String: return str(v))))]
+	var sixths: Array = Side.widths_by_sixths(held, low, high)
+	return [widest, full, high - low + 1, "plates %d to %d, by sixths %s" % [int(rows[low][0]),
+		int(rows[high][0]), ", ".join(PackedStringArray(sixths.map(func(v: Variant) -> String:
+			return str(v))))]]
 
 
 func _faults(report: Dictionary) -> String:

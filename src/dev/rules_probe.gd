@@ -439,6 +439,8 @@ func _run() -> void:
 	_check_text("an ellipsoid 8 studs across is told of round bricks, domes and dishes",
 		"\n".join(small), "round brick")
 	_check_text("...and sent to the figures section", "\n".join(small), "read_guide \"figures\"")
+	_check_text("...and told the same solid is laid round as a sculpt", "\n".join(small),
+		"\"pattern\": \"sculpt\"")
 	var big: Array = Assistant._round_by_panels([{"pattern": "shape", "solids": [
 		{"ellipsoid": {"centre": [10, 10, 10], "radii": [10, 10, 10]}}]}])
 	_check_text("one 20 across is still told of hinged panels, not of a figure",
@@ -466,6 +468,8 @@ func _run() -> void:
 	_check_text("...a rounded top that rounds both ways", outline, "49612")
 	_check_text("...the ovoid under a dome for a pinched segment", outline, "24947")
 	_check_text("...and how each is turned", outline, "rot 2, 1, 0, 3")
+	_check_text("...and lays the body itself as a sculpt of joined solids", outline,
+		"{\"pattern\": \"sculpt\"")
 	_check_text("the instructions' head sends a rounded body there", Assistant.GUIDE_HEAD,
 		"read_guide \"outline\"")
 	assistant.heard("A ripe yellow-green pear stands upright, swelling to a round bottom.", true)
@@ -508,6 +512,14 @@ func _run() -> void:
 		"kept" if assistant._unjointed_refusal(rounded).is_empty() else "sent back", "kept")
 	_check_text("...one of square bricks is", assistant._unjointed_refusal(square),
 		"Not applied, this once")
+	# Nor a body laid as a sculpt (Sculpt), which is round from every side.
+	assistant.set("_joints_refused", false)
+	assistant.set("_sculpted_body", true)
+	_check_text("...nor one laid as a sculpt",
+		"kept" if assistant._unjointed_refusal(square).is_empty() else "sent back", "kept")
+	_check_text("...which is told nothing of joints",
+		"quiet" if assistant._on_joints_said(square).is_empty() else "told", "quiet")
+	assistant.set("_sculpted_body", false)
 
 	print("")
 	if _failures == 0:

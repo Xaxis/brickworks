@@ -31,6 +31,22 @@ fixing what it got wrong.
   sent back for joints (`_outlined`). Checked by `rules_probe` ("a small round
   body", "choosing a scale", "a rounded body's outline"), `floor_probe` (the
   garden's 16 x 8) and `mcp_sync_probe` (the head under 3,500).
+  That section lays such a body as a sculpt: `{"pattern": "sculpt", "color",
+  "solids": [{"egg": {"centre", "size", "point"}}, ...]}` on submit_design and
+  check_design (so MCP and the in-app loop both), an ellipsoid, egg, capsule or
+  superellipsoid, or several joined, 6 to 40 studs. `Sculpt` (`src/ai/sculpt.gd`)
+  makes their surface as a mesh and `Brickify.build` lays it, mended into one
+  piece; `Assistant._with_sculpts` puts its bricks in the design before it is
+  read (a separate checker, its result kept by what was said), keeping studs
+  where the design's own bricks stand on its top (`Brickify.Options.carried`).
+  A sculpted body is `_outlined` (never sent to the figure pattern) and is told
+  nothing of joints. Under a parts list the wings BrickNet lists by old numbers
+  are not laid (`Patterns.wedge_shapes`, `Shapes.edge_parts`). `sculpt_probe`
+  lays six held-out bodies: each one piece, passing the check with nothing only
+  resting, where its solids are, and seen from the side under 75% of its height
+  within a stud of its widest (taper165's measure, `src/dev/side_profile.gd`);
+  a hat said on an egg is held; a run kept to a list lays none off it.
+  `tools/probe.sh sculpt_probe [OUTDIR]` (OUTDIR gets each body's .ldr).
 - `best of two`: `src/ai/best_of_two.gd`. A new brief sent with My Claude on
   a bare baseplate (main's `design_locally`, `_second_design`) is designed
   twice: the person's session in the window, and a second started at once as
@@ -2153,6 +2169,7 @@ Runtime, all free — these are the ones to run after changing the loop:
 
 ```sh
 godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and what it is told
+godot --headless --path . --script src/dev/sculpt_probe.gd      # a rounded body said as solids, laid by Brickify
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
