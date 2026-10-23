@@ -1974,6 +1974,135 @@ first, or in what lays the body for it.
   short design each, whose builds have corner-round tiles and a 24947.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-22, night: the outline parts laid, as drums
+
+outline161 (`71f25bdb`) is search156's search with a new guide section, THE
+OUTLINE OF A ROUNDED BODY (`read_guide "outline"`, and in what `figures`
+returns). It names a part for each edge of a rounded body: corner rounds,
+rounded tops, inverted curved slopes, 24947 on 3262 for a pinched segment,
+22388 for spikes. It asks for the body whole in one submit, and a body laid
+from those parts is no longer sent back for joints. It also carries what main
+merged since search156 (offered placements that are never refused, studs on a
+turned part). It designed the same six prompts, one design each, in the m147
+round's folder. Its builds were drawn on the GPU by the same renderer and
+judged against m147's and BrickAgent's, every pair both orders twice: 72
+verdicts. The 24 between m147 and BrickAgent are the m147 round's, read back
+(`compare-outline161.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every log,
+`71f25bdb` in every `design.json`. Two builds come apart, which verify.py passes
+and the judge held against them. The potato is two pieces: the dish on top of
+its hat is loose. The rabbit is 13 pieces: twelve 1 x 1 slopes (54200) round
+its head and shoulders that BrickNet's connection graph joins to nothing. The
+app's check told that session "it holds together" (`scripts/loose.py` names
+them).
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| outline161 | 9.5 (7.5-12.0) | 2.59 (16.90 for six) | 31 | 122 |
+| search156 | 8.0 (5.2-9.9) | 2.30 (14.02) | 32 | 128 |
+| m147 | 12.7 (8.1-14.2) | 3.14 (19.18) | 50 | 202 |
+
+Minutes are each `design.json`'s `design_seconds`, dollars the log's `api_usd`
+(`scripts/cost.py`). On that measure search156's median is 8.0, not the 8.2 of
+its section, which counted the whole run. outline161 costs 13% more a design
+than search156 (21% more over the six) and 18% less than m147. The unit's +43%
+on its held-out briefs is not seen here.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| outline161 vs m147 | 11 of 24 (46%) | 28-65% | 1 / 3 / 2 |
+| outline161 vs BrickAgent | 2 of 24 (8%) | 2-26% | 0 / 1 / 5 |
+| search156 vs m147 (the search round) | 9 of 24 (38%) | 21-57% | 1 / 3 / 2 |
+| m147 vs BrickAgent (the m147 round's verdicts) | 2 of 24 (8%) | 2-26% | 0 / 1 / 5 |
+
+| dimension | outline161 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|
+| likeness | 815 (643-914) | 915 (706-1053) | 1269 (1183-1540) |
+| surface | 990 (834-1048) | 931 (557-1090) | 1079 (920-1572) |
+| colour | 957 (776-1020) | 905 (614-1039) | 1138 (971-1551) |
+| technique | 931 (782-1029) | 990 (759-1152) | 1079 (917-1341) |
+| creativity | 946 (706-1086) | 903 (706-981) | 1151 (1019-1536) |
+| buildability | 962 (782-1127) | 1000 (875-1112) | 1038 (909-1199) |
+| **overall** | **855 (691-940)** | **879 (657-1027)** | **1266 (1181-1545)** |
+
+Against m147, outline161 wins surface (15 of 24) and loses likeness (8 of 24).
+
+| prompt | vs m147 | vs BrickAgent | outline parts in it | what the judge said of outline161's |
+|---|---|---|---|---|
+| potato (042) | 0-4 | 0-4 | 55 corner rounds (2577, 48092, 79491, 30565) | a cylinder or a can in 8 of 8, "a straight-sided brown cylinder that looks more like a can than a potato", against m147's "tapered egg"; two pieces |
+| balloon dog (043) | 3-1 | 0-4 | 10 of 24947 on 10 of 3262 | "pinched balloon segments" beat m147's "slab-and-cylinder build"; against BrickAgent, "flat plate hip frames", "two separate H-shapes", a tail straight up |
+| toilet (044) | 3-1 | 0-4 | 40 corner-round bricks, 26 of them in the head | one piece and a rounder head beat m147's loose part; BrickAgent's "rounded bowl" beat a "boxy bowl" under "an oversized barrel head" |
+| statue (049) | 1-3 | 2-2 | none | its finish won 2 of 4 against BrickAgent; "sits upright", no chin on a fist, in all 5 it lost |
+| rabbit (078) | 0-4 | 0-4 | 28 corner rounds (5152, 48092, 30565) | "a narrow stacked cylinder", "a stack of drums", a pig's snout, 13 pieces (8 of 8) |
+| boy (080) | 4-0 | 0-4 | 16 of 22388 for hair | spiky hair, colour, the fin and the punch beat m147; BrickAgent's hair, buck-toothed grin and shark-mouth chest beat "a flat crop" and "a slot mouth" |
+
+**The bar is missed.** Against m147, 46% where it asked 60%, and two prompts
+lost every time (the potato and the rabbit). Against BrickAgent, 2 of 24 where
+it asked 6. The potato and the balloon dog were lost 4 of 4 again, though both
+now have the parts the bar asked for: 55 corner rounds in the potato, ten
+24947 in the balloon dog. Six of six valid is the one part met. 11 of 24 is not
+told apart from an even match (28-65%).
+
+### What the sessions did with the outline
+
+Every session had the section before its first submit: four read `outline`
+first, and the statue and the boy got it inside `figures`. Every rounded body
+used its parts (`scripts/outline_parts.py`; m147's and search156's builds had
+corner rounds only in the rabbit and four in m147's toilet, and no 24947). The
+potato and the toilet searched for corner rounds, the balloon dog for 24947
+and 3262 by number and by name. So the lever reached the sessions. The parts
+it reached them with did not make the shape.
+
+**Round in plan, straight in elevation.** The potato's first two submits were
+the round pattern with bands that swell and narrow (diameters 8, 6, 6, 8, 4).
+Its third followed the section's step 4, which names a potato: "build that
+face as layers stacked toward the viewer". It laid the body behind that face by
+hand, as rings of 2577 and 48092 of one size, 10 studs across, bottom to top.
+view_model told it "plates 0-5 10 across x 11 deep ... plates 30-35 10 across x
+9 deep", and the session said "the potato reads well". The rabbit also began
+with the round pattern (8, 6, 8, 6, 4, 6, 4), then replaced it with 73 parts by
+hand: a body 8 studs deep from plate 0 to 17 and a head 6 across, where the
+brief says enormously fat. The toilet put 26 of its corner rounds in the
+head, which the judge read as a barrel over a boxy bowl. Step 3 of the section
+says exactly this: "corner rounds on straight sides make a drum, and are read
+as one". Nothing in the check measured it, and m147's potato of 1 x 1 plates
+had the egg's taper that the corner rounds lost.
+
+**The balloon dog is the lever working.** Its segments are the ones BrickAgent
+built, and the judge named them in all three of its wins over m147. It lost to
+BrickAgent on what lies between them: plate frames for hips, no body balloon,
+a tail straight up.
+
+### Where the gap is now
+
+The 22 verdicts lost to BrickAgent, by what their reasons hold against it:
+
+1. **An outline round from above and straight from the side: a can, a stack of
+   drums, a barrel head. 12 of 22** (the potato, the rabbit and the toilet, 4
+   each). It was 21 of 22 for m147, said then of boxes, slabs and drums.
+2. **Loose parts. 6 of 22** (the rabbit 4, the potato 2), all within the 12.
+   The rabbit's twelve slopes are where the app's check and BrickNet's graph
+   disagree: the session was told the build held.
+3. **The posture, and the body between the parts. 6 of 22** (the balloon dog 4,
+   the statue 2).
+4. **The face. 4 of 22**, the boy's hair and mouth.
+
+### The next lever: an outline that narrows, and is measured
+
+- **What changes.** The check measures a body that is said to be round, fat,
+  an egg or a pear course by course. When its footprint stays the same from
+  bottom to top, the check says so on submit and in review_model, as it does
+  for a stepped edge: "a drum, 10 across from plate 0 to 35; an egg is narrower
+  at both ends". And a body faced by hand keeps the round pattern's bands:
+  each ring at its band's diameter, not one size throughout.
+- **Apart from the lever:** find why the app's check held the rabbit's twelve
+  54200 and BrickNet's graph does not. It is a validity risk on any build.
+- **Proof in the unit** (minutes): the potato and the rabbit briefs in a short
+  design each. Each body's widest course is at least 2 studs wider than its top
+  and bottom courses, and each build is one piece by verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -2038,6 +2167,24 @@ reads the m147 round's verdicts back), and `compare --arms search156,m147 --runs
 back. The searches each session made are `scripts/searches.py`, a session's
 words `scripts/said.py`, and the same queries through both apps
 `scripts/search_check_bench160.gd`.
+
+The outline round (2026-10-22, night) is the search round's commands with
+`--arm outline161` and `--app` a locked `release_wt.sh outline161-bench
+71f25bdb` worktree (imported), then `compare --arms outline161,m147 --runs 1
+--out .../compare-outline161.md`, the m147 round's `compare.md` copied aside
+first and put back. Three things it ran into. `BRICKNET_DATA` must be an
+absolute path: verify.py runs in each submission's folder, so a relative one
+writes a NOT valid `verification.json` for want of colliders, and a run with
+`--arm` then skips that design until the file is deleted. Views drawn from a
+checkout whose `.godot` class cache is stale fail with "no world": the main
+checkout's lacked BestOfTwo and ModelLibrary. They were drawn from an imported
+worktree of `41e09513`, whose tool and renderer are main's; results land in the
+main checkout's folder whichever worktree runs the tool. Export, verify,
+views and pairs were run two prompts at a time as the designs finished, then
+`pairs` once over all six, which asked nothing new. The scripts are `cost.py`,
+`outline_parts.py`, `loose.py` (in the venv, `-I`, a submission folder) and
+`calls.py` (a session's calls in order), with the sheets in
+`sheets-outline161/`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
