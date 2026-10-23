@@ -237,9 +237,13 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
     + `${lines.join("")}</div></article>`;
 }
 
-/// The card for [model] as an element, in a browser: cardHtml's markup.
+/// The card for [model] as an element, in a browser: cardHtml's markup,
+/// made this page's own. A template's content belongs to a document of its
+/// own with no window, where a picture never loads and decode() refuses:
+/// the landing page's strip waited on its cards' pictures before showing,
+/// and stayed hidden with all seven refused (walk180, 2026-10-23).
 export function modelCard(model, options) {
   const made = document.createElement("template");
   made.innerHTML = cardHtml(model, options);
-  return made.content.firstElementChild;
+  return document.importNode(made.content.firstElementChild, true);
 }

@@ -178,7 +178,7 @@ func setup() -> void:
 	_credit.toggled.connect(func(on: bool) -> void:
 		_author.visible = on
 		if on and _author.text.is_empty():
-			_author.text = _suggested_author())
+			_suggest_author())
 	form.add_child(_credit)
 	_author = LineEdit.new()
 	_author.placeholder_text = "The name to credit"
@@ -432,11 +432,23 @@ func _words_from(row: Dictionary) -> void:
 	_set_licence(str(row["licence"]) if row.get("licence") is String else "cc-by-4.0")
 
 
-## The part of the account's address before the @, as a first guess at a
-## name to credit. Only ever shown in the box, never sent unless ticked.
-func _suggested_author() -> String:
-	var email: String = account.email if account != null else ""
-	return email.get_slice("@", 0).replace(".", " ").capitalize() if "@" in email else ""
+## The account's profile, by its name, in the box: what a credit is, as
+## the server keeps it (api/share.js ?op=mine credit). Nothing with no
+## profile shown in public, and never a name made from the address the
+## account signs in with: "Delivered+walk 180 Web" was offered from it, and
+## published (walk180, 2026-10-23). Put in only while the box is ticked and
+## still empty, so it never takes the place of what was typed meanwhile.
+func _suggest_author() -> void:
+	if account == null:
+		return
+	var token: String = await account.access_token()
+	if token.is_empty():
+		return
+	var answer: Dictionary = await shared.mine(token)
+	var body: Variant = answer.get("body")
+	var credit: Variant = (body as Dictionary).get("credit") if body is Dictionary else null
+	if credit is Dictionary and _credit.button_pressed and _author.text.strip_edges().is_empty():
+		_author.text = str((credit as Dictionary).get("name", ""))
 
 
 func open() -> void:
@@ -607,8 +619,11 @@ func publish() -> void:
 	store.share_id = str(said.get("id", ""))
 	# Kept with the model, so the next Publish updates this link.
 	store.touch()
-	# What was said stays in the boxes, as the link now has it.
+	# What was said stays in the boxes, as the link now has it: the credit
+	# as the server kept it, which is the profile's name where there is one.
 	_words_for = "%s|%s" % [store.share_id, str(named.call())]
+	if said.get("author") is String and body.has("author"):
+		_author.text = str(said["author"])
 	state = "published"
 	_show_link(store.share_id)
 	url = str(said.get("url", url))
