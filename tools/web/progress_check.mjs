@@ -16,10 +16,21 @@
 //
 // For every press it measures, against the press's own time in the page:
 //
-//   heard    how long before the bar was drawn: the end of the engine frame
-//            it was first drawn in. A build without the bar is read by its
-//            page state instead (the status line, the timeline's buttons, the
-//            parts), polled every quarter second, and marked ~;
+//   said     the app's own work from the press until it put the bar up:
+//            every engine frame and input handler from the press to the one
+//            the bar was begun in (its first drawing less the app's own
+//            ms from begin to drawn, which it tells the page), that one
+//            whole, each less the time it spent inside WebGL calls. What is
+//            judged: a long act that says nothing until it is done does its
+//            work there, and one that begins the bar and works on in the
+//            same frame does it in the frame counted whole;
+//   heard    how long before the bar was drawn, by the page's clock: the end
+//            of the engine frame it was first drawn in. A build without the
+//            bar is read by its page state instead (the status line, the
+//            timeline's buttons, the parts), polled every quarter second,
+//            and marked ~. Said, not judged: on SwiftShader that frame waits
+//            on the software drawing of the frames before it, or is held for
+//            a picture read back (GpuFence), as long as the box's load says;
 //   own      the longest of the app's own work from the press to the end,
 //            which is what is judged: an engine frame less the time it
 //            spent inside WebGL calls, or one of its input handlers, timed
@@ -44,8 +55,9 @@
 // without saving, with --only=new. The commands after Timeline are the ones
 // src/dev/command_probe.gd found holding the window longest.
 //
-// Fails when a press that is meant to show the bar (EXPECT) does not within
-// --heard ms (150), when one of the four that must stay alive (ALIVE) has
+// Fails when a press that is meant to show the bar (EXPECT) does not, or
+// does --said ms (150) of its own work first, when one of the four that
+// must stay alive (ALIVE) has
 // work of its own over --budget ms (250) in one go, or when the bar is still
 // up at the end.
 // --report-only prints the table and passes, for a build from before.
@@ -66,7 +78,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const out = args.out || "shots/progress";
 mkdirSync(out, { recursive: true });
 const budget = Number(args.budget || 250);
-const heardBudget = Number(args.heard || 150);
+const saidBudget = Number(args.said || 150);
 const reportOnly = Boolean(args["report-only"]);
 const only = args.only ? String(args.only).split(",") : null;
 const wanted = (name) => !only || only.includes(name);
@@ -307,7 +319,16 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
     const shown = work.find((e) => e.shown);
     // The frame the bar was first drawn in ends after it said so.
     const frameOf = shown ? p.frames.find(([t0, d]) => t0 <= shown.at && shown.at <= t0 + d + 1) : null;
+    // The frame or handler the bar was begun in: its first drawing less
+    // the app's own ms from then. One begun outside them (a file's bytes
+    // handed over by a callback) has the ones before it.
+    const setAt = shown ? Math.max(press, shown.at - (shown.ms || 0)) : -1;
+    const setIn = shown ? p.frames.find(([t0, d]) => t0 - 1 <= setAt && setAt <= t0 + d + 1) : null;
+    const until = setIn ? setIn[0] : setAt;
+    const before = p.frames.filter(([t0]) => t0 >= press && t0 <= until);
     return { press, shownAt: shown ? (frameOf ? frameOf[0] + frameOf[1] : shown.at) : null,
+      setAt: shown ? setAt - press : null,
+      before: before.map(([t0, d, kind, g]) => [Math.round(t0 - press), Math.round(d), kind, Math.round(g)]),
       what: shown ? shown.what : "", frames: p.frames.filter(([t0]) => t0 >= press),
       stalls: p.stalls.filter(([t0]) => t0 >= press - 20) };
   }, [from]);
@@ -329,12 +350,15 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
     : (heardAt !== null ? heardAt - facts.press : null);
   const row = {
     name, heard: heardMs === null ? null : Math.round(heardMs), byBar: facts.shownAt !== null,
+    ownBefore: facts.shownAt === null ? null : facts.before.reduce((a, [, d, , g]) => a + d - g, 0),
+    setAt: facts.setAt === null ? null : Math.round(facts.setAt), before: facts.before,
     own: Math.round(own), longest: Math.round(longest), stall: Math.round(stall), total: doneAt === null ? null : Math.round(doneAt - facts.press),
     gone, frames: during.length, what: facts.what, said: String(last.said || "").slice(0, 80),
   };
   const problems = [];
   if (doneAt === null) problems.push("never finished");
-  if (EXPECT.has(name) && !(row.byBar && row.heard <= heardBudget)) problems.push(`heard after ${row.heard} ms`);
+  if (EXPECT.has(name) && !row.byBar) problems.push("no bar");
+  else if (EXPECT.has(name) && row.ownBefore > saidBudget) problems.push(`${row.ownBefore} ms of its own before the bar`);
   if (ALIVE.has(name) && row.own > budget) problems.push(`a ${row.own} ms frame of its own`);
   if (!gone) problems.push("the bar is still up");
   row.problems = problems;
@@ -342,7 +366,9 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
   const failed = problems.length > 0 && !reportOnly;
   if (failed) failures += 1;
   const heardText = row.heard === null ? "never" : `${row.byBar ? "" : "~"}${row.heard} ms`;
-  console.log(`${failed ? "FAIL" : "ok  "}  ${name.padEnd(10)} heard ${heardText.padStart(9)}  own ${String(row.own).padStart(6)} ms`
+  const saidText = row.ownBefore === null ? "—" : `${row.ownBefore} ms`;
+  console.log(`${failed ? "FAIL" : "ok  "}  ${name.padEnd(10)} said ${saidText.padStart(7)}  heard ${heardText.padStart(9)}`
+    + `  own ${String(row.own).padStart(6)} ms`
     + `  frame ${String(row.longest).padStart(6)} ms  page held ${String(row.stall).padStart(6)} ms`
     + `  total ${row.total === null ? "    —" : String(row.total).padStart(7) + " ms"}  ${gone ? "gone" : "STILL UP"}`
     + `  ${row.what || row.said}${problems.length ? "  [" + problems.join("; ") + "]" : ""}`);
@@ -638,7 +664,7 @@ try {
   failures += 1;
 } finally {
   for (const e of errors.slice(0, 8)) console.log(`  error: ${e}`);
-  writeFileSync(`${out}/progress.json`, JSON.stringify({ url, budget, heardBudget, rows }, null, 1));
+  writeFileSync(`${out}/progress.json`, JSON.stringify({ url, budget, saidBudget, rows }, null, 1));
   await browser.close().catch(() => {});
   if (server) server.kill();
 }
