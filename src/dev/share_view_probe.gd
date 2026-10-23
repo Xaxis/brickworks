@@ -334,7 +334,20 @@ func _run() -> void:
 		"the BrickLink wanted list (%d bytes)" % wanted.length())
 	_ok(listed.begins_with("Part,Color,Quantity") or listed.contains(","),
 		"the Rebrickable list (%d bytes)" % listed.length())
-	inventory.hide_list()
+	# A row shows where its parts are in the model, picked out and framed, as
+	# in the builder; Escape lets go of them, the viewer having no other way.
+	var picker: Builder = _main.get("_builder")
+	var first_row: Control = inventory.controls_by_name()["parts_row"]
+	var first_lot: Inventory.Lot = inventory._made[0][0]
+	await _press(first_row)
+	await _settle()
+	var found_box: AABB = _main.call("_selection_bounds")
+	_ok(not inventory.is_showing() and picker.selection.size() == first_lot.count
+		and camera._target_focus.distance_to(found_box.get_center()) < 1.0,
+		"a row selects its %d in the model and frames them" % first_lot.count)
+	await _key(KEY_ESCAPE, false)
+	await _settle()
+	_ok(picker.selection.is_empty(), "...and Escape lets go of them")
 
 	print("\nthe booklet")
 	var said_booklet: String = await _main.call("_export_booklet", OUT_DIR + "booklet.html")

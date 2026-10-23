@@ -145,6 +145,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
   across its stud axis), the opposite, all, none. The baseplate is never taken.
+  And a part by what it is called: Part number or name… opens the parts list
+  with its find to type into (`SelectBy.wanted`: "3004", "3023" for 3023b,
+  "brick 1x2" with every word as the parts bin searches, a colour of the
+  model's by name, or both, "blue 1x2 brick"); Enter selects every row it
+  kept. In the list each row shows its part's picture in its colour
+  (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
+  every piece (a hose's every segment), frames them and says how many, with I
+  for a buried one; the list opens again where it was. Escape over the list
+  closes it before it clears a selection under it. In a shared model's viewer
+  a row does the same, and Escape then lets go of them (`share_view_probe`). The MCP's twin is
+  look_at_model's `part=` and `color=`, which list where each one is: no
+  session tool sets the person's selection (`AppTools.WINDOW_ONLY`).
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
   tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
   selected) shows all, and the status line names those keys. Hidden parts are not
@@ -1509,6 +1521,12 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/tooltip_probe.gd
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
+# a part found in the Boutique Hotel: the list's pictures, a row clicked (57
+# selected, framed, said), Select by, Part number or name… typed key by key
+# ("blue 1x2 brick", "3004"), Escape, look_at_model part=; then Orthanc's
+# 1,074-piece row against Select all, longest frame (-- --no-time, --time-only,
+# --rounds=N; on a base checkout only Select all). shots/findpart_*.png
+tools/probe.sh find_part_probe
 # the selection's outline round its silhouette, never over it, for one brick,
 # a chain and Orthanc, through the cut and x-ray, and the hover's; its targets
 # let go of at once when nothing is outlined, with no frame drawn; at 1x and

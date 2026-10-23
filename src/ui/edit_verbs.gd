@@ -527,10 +527,12 @@ func select_by(kind: String) -> int:
 		"none":
 			builder.clear_selection()
 			return 0
-	return _select_found(found)
+	return select_found(found)
 
 
-func _select_found(found: Array) -> int:
+## Select these bricks, leaving out the hidden and the locked: how many
+## that was.
+func select_found(found: Array) -> int:
 	builder.selection.clear()
 	for brick_id: int in found:
 		if not builder.lattice.unseen.has(brick_id) and not builder.is_locked(brick_id):
@@ -557,7 +559,7 @@ func select_connected() -> int:
 	if job.cancelled:
 		say.call("stopped looking for what is joined to it")
 		return 0
-	return _select_found(found)
+	return select_found(found)
 
 
 # -- hiding -------------------------------------------------------------------

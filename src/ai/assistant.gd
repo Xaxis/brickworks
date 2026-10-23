@@ -5330,6 +5330,16 @@ func _describe_world(args: Dictionary = {}) -> String:
 	var where: Dictionary = args.get("where", {}) if typeof(
 		args.get("where")) == TYPE_DICTIONARY else {}
 	var skip: int = maxi(int(args.get("skip", 0)), 0)
+	# part= and color=: where a part is, as Edit, Select by, Part number or
+	# name finds it for the person (SelectBy.wanted).
+	var wanted: SelectBy.Wanted = null
+	if not str(args.get("part", "")).strip_edges().is_empty() or args.has("color"):
+		var colours: Dictionary = {}
+		for brick: BrickWorld.Brick in world.bricks():
+			colours[brick.color_code] = true
+		wanted = SelectBy.wanted(library, str(args.get("part", "")), colours)
+		if args.has("color"):
+			wanted.colour = int(args["color"])
 
 	for brick: BrickWorld.Brick in world.bricks():
 		# The baseplate is a brick like any other and is 32 studs
@@ -5362,7 +5372,8 @@ func _describe_world(args: Dictionary = {}) -> String:
 		# describe the whole model however narrow the question — a
 		# section listed as though it were everything is how a model
 		# rebuilds something it already has.
-		if not _inside(at, where):
+		if not _inside(at, where) \
+				or (wanted != null and not wanted.takes(brick.part_id, brick.color_code)):
 			continue
 		matched += 1
 		if matched <= skip:
@@ -5385,9 +5396,10 @@ func _describe_world(args: Dictionary = {}) -> String:
 
 	var lines := PackedStringArray()
 	lines.append("%d parts are on the baseplate." % counted)
-	if not where.is_empty() or skip > 0:
-		lines.append("%d of them are in the part you asked about%s."
-			% [matched, "" if skip == 0 else ", of which %d skipped" % skip])
+	if not where.is_empty() or skip > 0 or wanted != null:
+		lines.append("%d of them are %s you asked about%s."
+			% [matched, "in the part" if wanted == null else "the parts",
+				"" if skip == 0 else ", of which %d skipped" % skip])
 	lines.append("They span x %s..%s, z %s..%s studs, and stand y %s..%s plates."
 		% [Placement._num(low.x), Placement._num(high.x),
 			Placement._num(low.z), Placement._num(high.z),
@@ -5402,20 +5414,22 @@ func _describe_world(args: Dictionary = {}) -> String:
 		lines.append("  %d x %s in colour %s" % [int(tally[key]), bits[0], bits[1]])
 
 	lines.append("")
-	if counted > rows.size():
+	# Of those asked about: a section or a part listed whole said "the first
+	# 5 of 3,164" and "0 more here".
+	var unlisted: int = matched - skip - rows.size()
+	if unlisted > 0:
 		lines.append("Where the first %d of them are (of %d):"
-			% [rows.size(), counted])
+			% [rows.size(), matched - skip])
 	else:
 		lines.append("Where they are:")
 	lines.append_array(rows)
-	if counted > rows.size():
+	if unlisted > 0:
 		# And how to see them, which is the whole difference between a
 		# model that can be finished and one that cannot. A set-sized
 		# build never fits in one listing, so the way through is to ask
 		# for one section at a time rather than to give up on the rest.
-		var left: int = matched - skip - rows.size()
 		lines.append("  … %d more here, not listed. Ask again with "
-			% left + "skip=%d to go on, or with where={x_from,x_to,"
+			% unlisted + "skip=%d to go on, or with where={x_from,x_to,"
 			% (skip + rows.size())
 			+ "z_from,z_to,y_from,y_to} in studs and plates to work on "
 			+ "one section at a time.")
@@ -22429,10 +22443,11 @@ func _tools() -> Array:
 				+ "adding to it, changing part of it, matching its "
 				+ "colours or its height. You cannot see the model "
 				+ "otherwise.\n\nA large model will not fit in one "
-				+ "reply. Give where= to list one section, or skip= to "
-				+ "carry on from where the last listing stopped. The "
-				+ "totals and the overall span are always for the whole "
-				+ "model, whatever you ask for."),
+				+ "reply. Give where= to list one section, part= to "
+				+ "find where a part is, or skip= to carry on from where "
+				+ "the last listing stopped. The totals and the overall "
+				+ "span are always for the whole model, whatever you ask "
+				+ "for."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -22456,6 +22471,18 @@ func _tools() -> Array:
 						"description": ("How many matching bricks to "
 							+ "pass over before listing, for walking "
 							+ "through a model a section at a time."),
+					},
+					"part": {
+						"type": "string",
+						"description": ("Only this part: its number "
+							+ "(\"3004\"; \"3023\" takes 3023b), or its "
+							+ "name in search_parts' words (\"brick 1 x "
+							+ "2\"), with a colour's name if you like "
+							+ "(\"blue 1x2 brick\")."),
+					},
+					"color": {
+						"type": "integer",
+						"description": "Only this LDraw colour code.",
 					},
 				},
 				"additionalProperties": false,
