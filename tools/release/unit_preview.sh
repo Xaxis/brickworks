@@ -46,10 +46,14 @@ for ref in $(git for-each-ref --format='%(refname:short)' 'refs/heads/rel-*'); d
   [ "$mb" = "$(git rev-parse HEAD)" ] && continue
   if [ "$mb" != "$BASE" ] && git merge-base --is-ancestor "$BASE" "$mb"; then BASE=$mb; FROM=$ref; fi
 done
+# What is deployed is the working tree, and what is checked is the commit.
+dirty=$(git status --porcelain --untracked-files=no; git status --porcelain -- web api tools/web ':!tools/web/node_modules')
+[ -z "$dirty" ] || { echo "UNIT: commit first, a preview proves a commit:"; echo "$dirty" | sort -u | head -5; exit 1; }
 echo "UNIT: $BRANCH at $SHA, changed since $(git rev-parse --short "$BASE") ($FROM): $(git diff --name-only "$BASE" HEAD | wc -l) files"
 if [ $# -eq 0 ]; then
-  python3 tools/release/flows_for.py --since "$BASE" | sed 's/^/  /'
-  set -- $(python3 tools/release/flows_for.py --since "$BASE" | sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p')
+  flows=$(python3 tools/release/flows_for.py --since "$BASE") || exit 1
+  echo "$flows" | sed 's/^/  /'
+  set -- $(echo "$flows" | sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p')
 fi
 case " $* " in *" site "*) ;; *) set -- "$@" site;; esac
 set -- $(printf '%s\n' "$@" | awk '!seen[$0]++')
