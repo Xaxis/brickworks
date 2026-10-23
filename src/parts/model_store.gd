@@ -729,7 +729,7 @@ var not_opened: String = ""
 ## why when there is none to open.
 func _file_text(path: String) -> String:
 	var text: String = FileAccess.get_file_as_string(path)
-	if not text.strip_edges().is_empty():
+	if not text.is_empty():
 		return text
 	not_opened = ("there is no such file" if not FileAccess.file_exists(path)
 		else "it could not be read" if FileAccess.get_open_error() != OK
@@ -760,7 +760,7 @@ func versions() -> Array[ModelVersions.Version]:
 ## and nothing is changed.
 func open_version(path: String, called: String = "", job: Working.Job = null) -> int:
 	var text: String = ModelVersions.read(path)
-	if text.strip_edges().is_empty():
+	if text.is_empty():
 		not_opened = "it could not be read"
 		return 0
 	var name: String = called if not called.is_empty() else title

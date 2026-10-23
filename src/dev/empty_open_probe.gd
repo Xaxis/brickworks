@@ -21,8 +21,14 @@
 ## And with a part of the house still on its way (the web fetches most), a
 ## file that did not open must not take the house's place under its own name:
 ## the version and library opens counted parts in flight as the new model's.
-## On 0.6.0 (c239c362) the empty file leaves the house by every way, and a
-## failed File › Open says nothing.
+## And Orthanc, laid a slice at a time as a big model is, with another model
+## opened or New pressed before it is all down: that is what the baseplate
+## holds, under its name, and Orthanc's open says it did not open.
+##
+## On 0.6.0 (c239c362) 68 checks fail: the empty file leaves the house by
+## every way, a failed File › Open says nothing, and a version or library
+## model that did not open renamed the house, or credited it, while a part
+## of it was on its way.
 extends SceneTree
 
 const HOUSE := "Empty Open Probe House"
@@ -116,9 +122,8 @@ func _run() -> void:
 	print("  the empty model's file: %d lines, %d parts" % [
 		(_texts[EMPTY] as String).split("\n", false).size(), ModelStore.count_in(_texts[EMPTY])])
 
-	# Every way a model is opened, each given the file and its name; the
-	# second of each pair is where it can be asked of a model whose parts
-	# are still arriving (the web).
+	# Every way a model is opened, each given which file to open; three of
+	# them asked again while a part of the house is still on its way.
 	var ways: Array = [
 		["File › Open (a saved model)", _by_open_menu],
 		["File › Open recent", _by_recent],
