@@ -202,6 +202,7 @@ async function dontSave(before) {
   for (let n = 0; n < 40; n++) {
     const asked = (await controls()).replace_discard;
     if (asked) {
+      console.log("        asked to save the model first: Don't save");
       await page.mouse.click(asked.x, asked.y);
       return;
     }
