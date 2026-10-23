@@ -12,7 +12,8 @@
 // One line a check, then "orangecheck_check: N passed, M failed". Every
 // account it makes is deleted at the end, whatever happened.
 
-import { generateKeyPairSync, randomBytes, sign } from "node:crypto";
+import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
+import { deleteAccount, mintSession } from "./session.mjs";
 
 const AUD = "http://127.0.0.1:8841";
 process.env.OC_AUDIENCE = AUD;
@@ -40,6 +41,10 @@ const ochk = {
 };
 
 const made = new Set();
+// Two email accounts, at Resend's test addresses, which reach nobody.
+const tag = randomBytes(4).toString("hex");
+const adaEmail = `delivered+bw-oc-ada-${tag}@resend.dev`;
+const bobEmail = `delivered+bw-oc-bob-${tag}@resend.dev`;
 const real = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input?.url || input);
@@ -116,6 +121,15 @@ function check(name, ok, said = "") {
   if (ok) passed += 1;
   else failed += 1;
   console.log(`${ok ? "pass" : "FAIL"} ${name}${said ? `: ${said}` : ""}`);
+}
+
+/// A session renewed, as a page does: a new access token, which carries the
+/// account as it is now.
+async function refreshed(refreshToken) {
+  const reply = await real(`${SB}/auth/v1/token?grant_type=refresh_token`, { method: "POST",
+    headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }) });
+  return (await reply.json()).access_token;
 }
 
 async function adminUser(id) {
@@ -257,6 +271,125 @@ try {
   check("signing in again afterwards is a new account", back.status === 200 && back.body.orangecheck?.new_account === true
     && back.body.user?.id !== signedUp.body.user?.id, `${back.status}`);
 
+  // Linking orangecheck to an account that has its own email.
+  const route2 = async (handlerOf, { method = "GET", op = "", access, body, query = {} } = {}) => {
+    let status = 0;
+    let answer = null;
+    const response = { setHeader() { return this; }, status(code) { status = code; return this; }, json(value) { answer = value; return this; } };
+    const headers = { "x-forwarded-for": anywhere(), ...(access ? { authorization: `Bearer ${access}` } : {}) };
+    await handlerOf({ method, query: { op, ...query }, headers, body }, response);
+    return { status, body: answer || {} };
+  };
+  const ocRoute = (options) => route2(signInRoute, options);
+  const ada = await mintSession(adaEmail, { age: true });
+  const bob = await mintSession(bobEmail, { age: true });
+  let st = await ocRoute({ op: "status", access: ada.access_token });
+  check("an email account: nothing linked, and a code just now counts as fresh", st.status === 200 && st.body.did === null
+    && st.body.only === false && st.body.fresh === true, JSON.stringify(st.body));
+  const linkDid = `did:oc:${randomBytes(16).toString("hex")}`;
+  let linked = await ocRoute({ method: "POST", op: "link", access: ada.access_token, body: { token: token({ did_oc: linkDid }).jwt } });
+  check("it links orangecheck, and its address is told", linked.status === 200 && linked.body.did === linkDid && linked.body.told === "dry",
+    `${linked.status} ${linked.body.error || JSON.stringify(linked.body)}`);
+  const marked = (await adminUser(ada.kept.user_id)).body;
+  check("the account is marked as having orangecheck, and keeps what else it had", marked.app_metadata?.orangecheck === true
+    && marked.app_metadata?.provider === "email", JSON.stringify(marked.app_metadata));
+  const twice = await ocRoute({ method: "POST", op: "link", access: ada.access_token, body: { token: token().jwt } });
+  check("a second orangecheck id for it is refused", twice.status === 409, `${twice.status} ${twice.body.error || ""}`);
+  const taken = await ocRoute({ method: "POST", op: "link", access: bob.access_token, body: { token: token({ did_oc: linkDid }).jwt } });
+  check("an id another account has is refused", taken.status === 409 && /another/.test(taken.body.error || ""), `${taken.status} ${taken.body.error || ""}`);
+  const noSignIn = await ocRoute({ method: "POST", op: "link", access: "not.a.token", body: { token: token().jwt } });
+  check("linking without a sign-in is refused", noSignIn.status === 401, `${noSignIn.status}`);
+
+  // Signing in with the linked id: Ada's own account, a session bound to it.
+  const viaOc = await call(handler, { token: token({ did_oc: linkDid }).jwt });
+  check("the linked id signs in to that same account", viaOc.status === 200 && viaOc.body.user?.id === ada.kept.user_id
+    && viaOc.body.orangecheck?.new_account === false, `${viaOc.status} ${viaOc.body.error || ""}`);
+  const ocAccess = viaOc.body.access_token;
+  const ocStatus = await ocRoute({ op: "status", access: ocAccess });
+  check("a session orangecheck started is never fresh enough to link or unlink", ocStatus.body.fresh === false, JSON.stringify(ocStatus.body));
+  const ocUnlink = await ocRoute({ method: "POST", op: "unlink", access: ocAccess });
+  check("so it cannot unlink", ocUnlink.status === 403, `${ocUnlink.status} ${ocUnlink.body.error || ""}`);
+
+  // Sign out everywhere on orangecheck: the session it started is ended, the emailed code's is not.
+  const theme = (access) => route2(account, { method: "POST", op: "theme", access, body: { theme: "dark" } });
+  const ocClaims = JSON.parse(Buffer.from(ocAccess.split(".")[1], "base64url").toString());
+  check("the session orangecheck started works", (await whoIs(ocAccess)).body?.signed_in === true && (await theme(ocAccess)).status === 200);
+  const bound = await real(`${SB}/rest/v1/rpc/oc_session_of`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
+    body: JSON.stringify({ session: ocClaims.session_id }) }).then((r) => r.json());
+  check("its rh, aud and iat were kept with it", bound.bound === true && bound.aud === AUD && typeof bound.rh === "string", JSON.stringify(bound));
+  // The list unreadable: it reads, it does not write; the email session of the same account does both.
+  ochk.listStatus = 503;
+  forgetForTests();
+  const adaFresh = await refreshed(ada.kept.refresh_token);
+  const ocRead = await whoIs(ocAccess);
+  const ocWrite = await theme(ocAccess);
+  check("while orangecheck's list cannot be read, its session reads", ocRead.body?.signed_in === true, JSON.stringify(ocRead.body).slice(0, 120));
+  check("and does not write, in words", ocWrite.status === 503 && /orangecheck/.test(ocWrite.body.error || ""), `${ocWrite.status} ${ocWrite.body.error || ""}`);
+  check("an emailed code's session of the same account writes all the same", (await theme(adaFresh)).status === 200);
+  ochk.listStatus = 200;
+  ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: { [bound.rh]: Math.floor(Date.now() / 1000) } });
+  forgetForTests();
+  const endedRead = await whoIs(ocAccess);
+  check("ended everywhere on orangecheck, its session is refused", endedRead.body?.signed_in === false && /orangecheck/.test(endedRead.body.reason || ""),
+    JSON.stringify(endedRead.body).slice(0, 160));
+  const renewed = await fetch(`${SB}/auth/v1/token?grant_type=refresh_token`, { method: "POST",
+    headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },
+    body: JSON.stringify({ refresh_token: viaOc.body.refresh_token }) });
+  check("and cannot be renewed", !renewed.ok, String(renewed.status));
+  check("while the emailed code's session goes on", (await whoIs(adaFresh)).body?.signed_in === true && (await theme(adaFresh)).status === 200);
+  ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} });
+  forgetForTests();
+
+  // Unlinking, with a fresh code: the sessions the id started end.
+  const again2 = await call(handler, { token: token({ did_oc: linkDid }).jwt });
+  const unlinked = await ocRoute({ method: "POST", op: "unlink", access: adaFresh });
+  check("unlinked with a fresh code, its address told", unlinked.status === 200 && unlinked.body.did === linkDid && unlinked.body.ended >= 1
+    && unlinked.body.told === "dry", `${unlinked.status} ${unlinked.body.error || JSON.stringify(unlinked.body)}`);
+  forgetForTests();
+  check("and the sign-in that id started there is ended", (await whoIs(again2.body.access_token)).body?.signed_in === false);
+  check("the emailed code's sign-in is not", (await whoIs(adaFresh)).body?.signed_in === true);
+  const afterUnlink = await call(handler, { token: token({ did_oc: linkDid }).jwt });
+  check("the id then signs in to an account of its own, never Ada's", afterUnlink.status === 200
+    && afterUnlink.body.user?.id !== ada.kept.user_id && afterUnlink.body.orangecheck?.new_account === true, `${afterUnlink.status}`);
+  const onlyStatus = await ocRoute({ op: "status", access: afterUnlink.body.access_token });
+  check("an orangecheck account says so, and cannot link or unlink", onlyStatus.body.only === true
+    && (await ocRoute({ method: "POST", op: "link", access: afterUnlink.body.access_token, body: { token: token().jwt } })).status === 409
+    && (await ocRoute({ method: "POST", op: "unlink", access: afterUnlink.body.access_token })).status === 409, JSON.stringify(onlyStatus.body));
+
+  // A Claude connection approved while signed in with orangecheck ends with that sign-in.
+  {
+    const oauth = (await import("../../api/oauth.js")).default;
+    const { grantOf } = await import("../../api/_oauth.js");
+    const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+    const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+    const resource = "https://brickworks.diy/api/mcp";
+    const verifier = randomBytes(32).toString("base64url");
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const access = afterUnlink.body.access_token;
+    const approved = await route2(oauth, { method: "POST", op: "approve", access, body: { response_type: "code", client_id: CLAUDE,
+      redirect_uri: CALLBACK, code_challenge: challenge, code_challenge_method: "S256", state: "s", resource, scope: "build" } });
+    const code = approved.body.redirect ? new URL(approved.body.redirect).searchParams.get("code") : null;
+    const issued = await route2(oauth, { method: "POST", op: "token", body: { grant_type: "authorization_code", code,
+      redirect_uri: CALLBACK, client_id: CLAUDE, code_verifier: verifier, resource } });
+    const connected = issued.body.access_token ? await grantOf(issued.body.access_token, resource) : null;
+    check("an orangecheck sign-in connects Claude", Boolean(connected) && !connected.unsure, `${approved.status} ${issued.status}`);
+    const ocSession = await real(`${SB}/rest/v1/rpc/oc_session_of`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
+      body: JSON.stringify({ session: JSON.parse(Buffer.from(access.split(".")[1], "base64url").toString()).session_id }) }).then((r) => r.json());
+    ochk.listStatus = 503;
+    forgetForTests();
+    const unsure = await grantOf(issued.body.access_token, resource);
+    check("while orangecheck's list cannot be read, the connection waits rather than ends", unsure?.unsure === true);
+    ochk.listStatus = 200;
+    ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: { [ocSession.rh]: Math.floor(Date.now() / 1000) } });
+    forgetForTests();
+    check("ended everywhere on orangecheck, the connection it approved is ended too", (await grantOf(issued.body.access_token, resource)) === null);
+    const renew = await route2(oauth, { method: "POST", op: "token", body: { grant_type: "refresh_token",
+      refresh_token: issued.body.refresh_token, client_id: CLAUDE } });
+    check("and its refresh token is no good", renew.status === 400, `${renew.status} ${JSON.stringify(renew.body).slice(0, 100)}`);
+    ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} });
+    forgetForTests();
+  }
+
   // Without the project's key or secret, nobody signs in with orangecheck.
   const key = process.env.OC_SIGNING_SECRET;
   delete process.env.OC_SIGNING_SECRET;
@@ -281,6 +414,7 @@ try {
 } catch (trouble) {
   check("the run finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {
+  for (const email of [adaEmail, bobEmail]) await deleteAccount(email).catch(() => false);
   let gone = 0;
   for (const id of made) {
     const reply = await real(`${SB}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: ADMIN });

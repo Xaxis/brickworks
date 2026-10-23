@@ -1520,7 +1520,7 @@ async function whoseOwn(request, origin) {
   if (!["1", "true", "yes", "on"].includes(value)) throw new Unacceptable("mine is 1 or left out");
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (trouble) {
     throw new Unacceptable(trouble?.message || "sign in to see what you own", trouble?.status || 401);
   }
@@ -1661,7 +1661,7 @@ async function built(request, response) {
 }
 
 async function signedIn(request) {
-  const claims = await verify(bearer(request));
+  const claims = await verify(bearer(request), request);
   return claims.sub;
 }
 
@@ -1734,7 +1734,7 @@ function saidAbout(body) {
 }
 
 async function publish(request, response) {
-  const claims = await verify(bearer(request));
+  const claims = await verify(bearer(request), request);
   const owner = claims.sub;
   const body = request.body && typeof request.body === "object" ? request.body : {};
 

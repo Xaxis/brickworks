@@ -30,9 +30,26 @@ delete from auth.sessions where id = '00000000-0000-4000-8000-0000000000e2';
 select (select count(*) from public.oc_sessions where account = '00000000-0000-4000-8000-0000000000d2') as bob_session_rows_after_signout;
 delete from auth.users where id = '00000000-0000-4000-8000-0000000000d1';
 select (select count(*) from public.oc_identities where account = '00000000-0000-4000-8000-0000000000d1') as ada_ids_after_delete, (select count(*) from public.oc_sessions where account = '00000000-0000-4000-8000-0000000000d1') as ada_sessions_after_delete;
+-- Linking: Carl, an email account with a session of his own and one orangecheck started; a did Bob has is refused; a second did for Carl too; the same did again changes nothing.
+insert into auth.users (id, instance_id, aud, role, email) values ('00000000-0000-4000-8000-0000000000d3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oc-try-carl@resend.dev');
+insert into auth.sessions (id, user_id, created_at, updated_at) values ('00000000-0000-4000-8000-0000000000e3', '00000000-0000-4000-8000-0000000000d3', now(), now()), ('00000000-0000-4000-8000-0000000000e4', '00000000-0000-4000-8000-0000000000d3', now(), now());
+select public.oc_claim('did:oc:' || repeat('b', 32), '00000000-0000-4000-8000-0000000000d2') is not null as bob_has_b;
+select public.oc_link('did:oc:' || repeat('b', 32), '00000000-0000-4000-8000-0000000000d3') as bobs_did, public.oc_link('did:oc:' || repeat('c', 32), '00000000-0000-4000-8000-0000000000d3') as first_link;
+select public.oc_link('did:oc:' || repeat('e', 32), '00000000-0000-4000-8000-0000000000d3') as second_did, public.oc_link('did:oc:' || repeat('c', 32), '00000000-0000-4000-8000-0000000000d3') as same_again, public.oc_did_of('00000000-0000-4000-8000-0000000000d3') = 'did:oc:' || repeat('c', 32) as did_of;
+select public.oc_bind_session('00000000-0000-4000-8000-0000000000e4', '00000000-0000-4000-8000-0000000000d3', 'did:oc:' || repeat('c', 32), 'rh-carl', 'https://brickworks.diy', 1792780000);
+select public.oc_session_of('00000000-0000-4000-8000-0000000000e3') as email_session, public.oc_session_of('00000000-0000-4000-8000-0000000000e4') as oc_session, public.oc_session_of('00000000-0000-4000-8000-0000000000ff') as no_session;
+-- Two Claude connections of Carl's: one approved while signed in with orangecheck, one not.
+insert into public.oauth_clients (client_id, client_name, redirect_uris) select 'oc-try-client-0000000', 'Try', array['https://example.com/cb'] where not exists (select 1 from public.oauth_clients where client_id = 'oc-try-client-0000000');
+insert into public.oauth_grants (owner, client_id, resource, oc_did, oc_rh, oc_aud, oc_iat) values ('00000000-0000-4000-8000-0000000000d3', 'oc-try-client-0000000', 'https://brickworks.diy/api/mcp', 'did:oc:' || repeat('c', 32), 'rh-carl', 'https://brickworks.diy', 1792780000), ('00000000-0000-4000-8000-0000000000d3', 'oc-try-client-0000000', 'https://brickworks.diy/api/mcp', null, null, null, null);
+-- Unlinking ends the session orangecheck started and the connection it approved, never the email one's.
+select public.oc_unlink('00000000-0000-4000-8000-0000000000d3') as unlinked;
+select (select count(*) from public.oauth_grants where owner = '00000000-0000-4000-8000-0000000000d3') as connections_left;
+select (select count(*) from auth.sessions where id = '00000000-0000-4000-8000-0000000000e3') as email_session_left, (select count(*) from auth.sessions where id = '00000000-0000-4000-8000-0000000000e4') as oc_session_left, public.oc_did_of('00000000-0000-4000-8000-0000000000d3') is null as no_did, public.oc_unlink('00000000-0000-4000-8000-0000000000d3') is null as nothing_to_unlink;
+-- Ending one session.
+select public.oc_end_session('00000000-0000-4000-8000-0000000000e3') as ended, public.oc_end_session('00000000-0000-4000-8000-0000000000e3') as again;
 -- No key a page has reaches the tables or the functions.
 set local role anon;
-select pg_temp.tries('select * from public.oc_identities') as anon_reads_ids, pg_temp.tries($q$select public.oc_account_of('did:oc:' || repeat('a', 32))$q$) as anon_asks, pg_temp.tries($q$select public.oc_spend('x', now())$q$) as anon_spends;
+select pg_temp.tries('select * from public.oc_identities') as anon_reads_ids, pg_temp.tries($q$select public.oc_account_of('did:oc:' || repeat('a', 32))$q$) as anon_asks, pg_temp.tries($q$select public.oc_spend('x', now())$q$) as anon_spends, pg_temp.tries($q$select public.oc_end_session('00000000-0000-4000-8000-0000000000e1')$q$) as anon_ends, pg_temp.tries($q$select public.oc_unlink('00000000-0000-4000-8000-0000000000d3')$q$) as anon_unlinks;
 reset role;
 set local role authenticated;
 select pg_temp.tries('select * from public.oc_sessions') as user_reads_sessions, pg_temp.tries($q$select public.oc_claim('did:oc:' || repeat('d', 32), '00000000-0000-4000-8000-0000000000d2')$q$) as user_claims;

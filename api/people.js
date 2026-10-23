@@ -250,7 +250,7 @@ function cleanLines(given, limit, what) {
 }
 
 async function signedIn(request) {
-  const claims = await verify(bearer(request));
+  const claims = await verify(bearer(request), request);
   return claims.sub;
 }
 

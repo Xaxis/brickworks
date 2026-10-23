@@ -19,13 +19,23 @@
 --   oc_attempts    the rate of sign-ins from one address, as otp_requests
 --                  is for codes (schema.sql may_ask_for_code).
 --
+-- An account made with an email address links orangecheck from /settings,
+-- after a fresh emailed code (oc_link), and unlinks it the same way
+-- (oc_unlink), which ends every session the orangecheck id started there.
+-- Each authenticated request of an account that has orangecheck asks
+-- oc_session_of about its session (api/_auth.js): whether it still exists,
+-- and if orangecheck started it, its rh, aud and iat, so a session somebody
+-- ended everywhere is ended here too (oc_end_session).
+--
 -- Who may touch what: only the server, through the functions here, each
 -- security definer and granted to the service role alone. No key a page
 -- has, and not the service role itself, reads or writes the tables
 -- directly.
 --
--- Only additions: four new tables and new functions. Applying it again
--- changes nothing.
+-- Only additions: four new tables, four empty columns on each of
+-- oauth_codes and oauth_grants, and new functions. Applying it again
+-- changes nothing. Sessions are ended by deleting Supabase's own row
+-- (auth.sessions), which takes its refresh tokens and its binding with it.
 
 create table if not exists public.oc_identities (
     did_oc    text primary key constraint oc_identities_did check (did_oc ~ '^did:oc:[0-9a-f]{32}$'),
@@ -56,6 +66,19 @@ create table if not exists public.oc_attempts (
     at timestamptz not null default now()
 );
 create index if not exists oc_attempts_recent on public.oc_attempts (ip, at desc);
+
+-- A Claude connection approved while signed in with orangecheck (oauth.sql)
+-- carries that sign-in's id, rh, aud and iat from its code to the
+-- connection, so it ends when that sign-in is ended everywhere on
+-- orangecheck, or the id is unlinked. Empty for every other connection.
+alter table public.oauth_codes add column if not exists oc_did text;
+alter table public.oauth_codes add column if not exists oc_rh text;
+alter table public.oauth_codes add column if not exists oc_aud text;
+alter table public.oauth_codes add column if not exists oc_iat bigint;
+alter table public.oauth_grants add column if not exists oc_did text;
+alter table public.oauth_grants add column if not exists oc_rh text;
+alter table public.oauth_grants add column if not exists oc_aud text;
+alter table public.oauth_grants add column if not exists oc_iat bigint;
 
 alter table public.oc_identities enable row level security;
 alter table public.oc_spent enable row level security;
@@ -149,6 +172,115 @@ as $$
             oc_bind_session.rh, oc_bind_session.aud, oc_bind_session.iat)
 $$;
 
+-- What a request needs to know of session [session]: {exists, bound, did,
+-- rh, aud, iat}. exists is false once Supabase's session is gone (signed
+-- out, unlinked, ended); bound, when orangecheck started it.
+create or replace function public.oc_session_of(session uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select jsonb_build_object(
+        'exists', exists (select 1 from auth.sessions s where s.id = oc_session_of.session),
+        'bound', b.session_id is not null, 'did', b.did_oc, 'rh', b.rh, 'aud', b.aud, 'iat', b.iat)
+      from (select 1) one
+      left join public.oc_sessions b on b.session_id = oc_session_of.session
+$$;
+
+-- Session [session] ended: Supabase's row deleted, and with it its refresh
+-- tokens and its binding. True when there was one.
+create or replace function public.oc_end_session(session uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    delete from auth.sessions s where s.id = oc_end_session.session;
+    return found;
+end;
+$$;
+
+-- The orangecheck id [account] has, or null.
+create or replace function public.oc_did_of(account uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select i.did_oc from public.oc_identities i where i.account = oc_did_of.account
+$$;
+
+-- [did] linked to [account], an account with its own sign-in: 'linked', or
+-- why not: 'taken' (another account has that id) or 'has_one' (this account
+-- has another). Linking the same id again changes nothing.
+create or replace function public.oc_link(did text, account uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    whose uuid;
+begin
+    select i.account into whose from public.oc_identities i where i.did_oc = oc_link.did;
+    if whose = oc_link.account then
+        return 'linked';
+    end if;
+    if whose is not null then
+        return 'taken';
+    end if;
+    if exists (select 1 from public.oc_identities i where i.account = oc_link.account) then
+        return 'has_one';
+    end if;
+    insert into public.oc_identities (did_oc, account) values (oc_link.did, oc_link.account);
+    return 'linked';
+exception when unique_violation then
+    return 'taken';
+end;
+$$;
+
+-- The orangecheck id on [account] unlinked, and every session it started
+-- there ended, and every Claude connection it approved: {did, ended,
+-- connections}, or null when none was linked.
+create or replace function public.oc_unlink(account uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    gone text;
+    ended integer;
+    connections integer;
+begin
+    delete from public.oc_identities i where i.account = oc_unlink.account returning i.did_oc into gone;
+    if gone is null then
+        return null;
+    end if;
+    delete from auth.sessions s
+     where s.id in (select b.session_id from public.oc_sessions b
+                     where b.account = oc_unlink.account and b.did_oc = gone);
+    get diagnostics ended = row_count;
+    delete from public.oauth_grants g where g.owner = oc_unlink.account and g.oc_did = gone;
+    get diagnostics connections = row_count;
+    return jsonb_build_object('did', gone, 'ended', ended, 'connections', connections);
+end;
+$$;
+
+revoke all on function public.oc_session_of(uuid) from public, anon, authenticated;
+revoke all on function public.oc_end_session(uuid) from public, anon, authenticated;
+revoke all on function public.oc_did_of(uuid) from public, anon, authenticated;
+revoke all on function public.oc_link(text, uuid) from public, anon, authenticated;
+revoke all on function public.oc_unlink(uuid) from public, anon, authenticated;
+grant execute on function public.oc_session_of(uuid) to service_role;
+grant execute on function public.oc_end_session(uuid) to service_role;
+grant execute on function public.oc_did_of(uuid) to service_role;
+grant execute on function public.oc_link(text, uuid) to service_role;
+grant execute on function public.oc_unlink(uuid) to service_role;
 revoke all on function public.oc_may_try(text, integer, integer) from public, anon, authenticated;
 revoke all on function public.oc_spend(text, timestamptz) from public, anon, authenticated;
 revoke all on function public.oc_account_of(text) from public, anon, authenticated;

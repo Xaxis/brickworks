@@ -108,7 +108,7 @@ const notYet = () => {
 };
 
 async function account(request) {
-  return (await verify(bearer(request))).sub;
+  return (await verify(bearer(request), request)).sub;
 }
 
 // ---------------------------------------------------------------------------

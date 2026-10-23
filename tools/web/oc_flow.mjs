@@ -21,11 +21,18 @@
 //      no other site may read its answer. Where the deployment has no
 //      signing secret, sign-in with orangecheck said to be unavailable. An orangecheck account's made-up
 //      address is refused a sign-in code.
+//   6. /settings for an email account (a throwaway at a Resend test
+//      address, deleted after) offers Link orangecheck with its words, at
+//      390 and 1280 in light and dark; with the code just redeemed, the
+//      button opens orangecheck's window from the click. Linking without a
+//      sign-in is refused.
 // A finished orangecheck sign-in needs a wallet and orangecheck's list of
 // ended sessions for the domain, which a preview's address is not:
 // tools/web/oc_live_flow.mjs does that on brickworks.diy.
 import { launch } from "./browser.mjs";
+import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -71,6 +78,7 @@ async function api(pathname, { method = "GET", body, raw } = {}) {
 }
 
 const browser = await launch({ signedOut: true });
+const person = `delivered+bw-oc-flow-${randomBytes(4).toString("hex")}@resend.dev`;
 
 async function context(width, theme, { blockWindows = false } = {}) {
   const made = await browser.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: theme });
@@ -220,7 +228,8 @@ try {
   // A deployment without the project's signing secret (Vercel's Preview
   // environment has the key at most) takes no token, and says so; the
   // button is drawn all the same (above).
-  if (none.status === 503 && /unavailable here/.test(none.json?.error || "")) {
+  const available = !(none.status === 503 && /unavailable here/.test(none.json?.error || ""));
+  if (!available) {
     console.log("  --    no signing secret here: orangecheck sign-in is unavailable on this deployment");
     check("without the signing secret, sign-in with orangecheck is said to be unavailable, with email offered",
       /Sign in with your email/.test(none.json.error) && junk.status === 503 && junk.json?.error === none.json.error, none.json.error);
@@ -240,10 +249,56 @@ try {
   check("an orangecheck account's made-up address gets no code", madeUp.status === 422 && /orangecheck/.test(madeUp.json?.error || ""),
     `${madeUp.status} ${madeUp.json?.error || ""}`);
 
+  // 6. /settings, for an account with its own email.
+  const unsigned = await api("/api/orangecheck?op=link", { method: "POST", body: { token: "not.a.token" } });
+  check("linking without a sign-in: refused", unsigned.status === 401, `${unsigned.status}`);
+  // Settings offer orangecheck only where it signs people in.
+  const session = available ? await mintSession(person, { age: true }) : null;
+  for (const width of available ? [390, 1280] : []) {
+    for (const theme of ["light", "dark"]) {
+      // The account keeps the theme too (web/theme-account.js), and a
+      // signed-in page follows it: set it to the one looked at.
+      await fetch(`${site}/api/account?op=theme`, { method: "POST",
+        headers: { ...headers, authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
+        body: JSON.stringify({ theme }) });
+      const made = await context(width, theme);
+      await made.addInitScript(([name, value]) => {
+        try {
+          if (!localStorage.getItem(name)) localStorage.setItem(name, value);
+        } catch { /* none */ }
+      }, [STORAGE_KEY, JSON.stringify(session.kept)]);
+      const page = await made.newPage();
+      listen(page, `settings ${width} ${theme}`);
+      await page.goto(`${site}/settings`, { waitUntil: "domcontentloaded", timeout: 120000 });
+      await page.locator("#oc-part").waitFor({ state: "visible", timeout: 60000 }).catch(() => null);
+      const said = await page.locator("#oc-said").textContent().catch(() => "");
+      check(`settings ${width} ${theme}: Link orangecheck, with its words`, await page.locator("#oc-go").isVisible()
+        && (await page.locator("#oc-go").textContent()) === "Link orangecheck" && /^Link orangecheck to sign in with it/.test(said), said);
+      check(`settings ${width} ${theme}: nothing sideways, drawn ${theme}`, !(await sideways(page))
+        && await page.evaluate((wanted) => document.documentElement.getAttribute("data-theme") === wanted, theme));
+      await page.locator("#oc-part").scrollIntoViewIfNeeded();
+      await shot(page, `settings_${width}_${theme}.png`);
+      if (width === 1280 && theme === "light") {
+        const [popup] = await Promise.all([
+          page.waitForEvent("popup", { timeout: 30000 }),
+          page.locator("#oc-go").click(),
+        ]);
+        check("with a code just redeemed, Link orangecheck opens orangecheck's window", new URL(popup.url()).origin === "https://me.ochk.io",
+          popup.url());
+        await popup.close();
+        await page.waitForFunction(() => !document.querySelector("#oc-go")?.disabled, null, { timeout: 15000 }).catch(() => null);
+        check("closed, nothing is linked and nothing said", (await page.locator("#oc-status").textContent()) === ""
+          && (await page.locator("#oc-go").textContent()) === "Link orangecheck");
+      }
+      await made.close();
+    }
+  }
+  check("no refusal from the page's security policy, no error, on /settings either", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (trouble) {
   check("the flow finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {
   await browser.close();
+  await deleteAccount(person).catch(() => false);
 }
 console.log(`oc_flow: ${failed ? `${failed} failed` : "all passed"} (pictures in ${out})`);
 process.exit(failed ? 1 : 0);

@@ -8,6 +8,17 @@
 //   the app is signed in too. The answer is that session, as Supabase's own
 //   verify answers.
 //
+//   With a sign-in (/settings, web/settings.js):
+//   GET ?op=status       {did, only, fresh}: the orangecheck id linked, if
+//                        any; whether the account signs in only with it;
+//                        whether this session is an emailed code of the
+//                        last five minutes, which linking and unlinking ask.
+//   POST ?op=link        {token}: orangecheck linked to an account that has
+//                        its own email, after a fresh code, and only an id
+//                        no other account has. The address is told.
+//   POST ?op=unlink      the same fresh code: the id unlinked, and every
+//                        session it started on the account ended. Told too.
+//
 // The token is never kept, here or in the page. What is (supabase/
 // orangecheck.sql): which account the person's orangecheck id signs in to,
 // the token's id until it expires so it signs in once, and the token's rh,
@@ -22,8 +33,13 @@
 // Rate limited per address in the database, as codes are.
 
 import { randomBytes } from "node:crypto";
+import { AuthError, bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
-import { checkToken, endToken, ocConfigured, spendToken } from "./_oc.js";
+import { checkToken, endToken, madeUp, ocConfigured, spendToken } from "./_oc.js";
+
+// How recent an emailed code must be for linking or unlinking: the person
+// has just proved the inbox, not merely that a tab of theirs was open.
+const FRESH_SECONDS = 300;
 
 function supabase() {
   return String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -206,11 +222,135 @@ async function signIn(request, response) {
   });
 }
 
+/// The account asking, from its sign-in: {claims, did, only, fresh}.
+/// Throws AuthError when there is none.
+async function asking(request) {
+  const claims = await verify(bearer(request), request);
+  const [session, did] = await Promise.all([
+    db("rpc/oc_session_of", { method: "POST", body: { session: claims.session_id || null } }),
+    db("rpc/oc_did_of", { method: "POST", body: { account: claims.sub } }),
+  ]);
+  const code = (Array.isArray(claims.amr) ? claims.amr : []).find((one) => one?.method === "otp");
+  // A session orangecheck started says "otp" too (it is minted from a
+  // one-time link), so it is told apart by its binding, never by that.
+  const fresh = Boolean(code && session && session.exists && !session.bound
+    && Date.now() / 1000 - Number(code.timestamp) <= FRESH_SECONDS);
+  return { claims, did: did || null, only: madeUp(claims.email), fresh };
+}
+
+/// orangecheck's mark on the account (app_metadata.orangecheck), which is
+/// what has its sessions asked after on every request (api/_auth.js).
+async function mark(account, on) {
+  const reply = await fetch(`${supabase()}/auth/v1/admin/users/${account}`, {
+    method: "PUT", headers: admin(), signal: AbortSignal.timeout(10000),
+    body: JSON.stringify({ app_metadata: { orangecheck: on } }) });
+  if (!reply.ok) throw new Error(`auth: the account was not marked: ${reply.status}`);
+}
+
+const SENDER = "Brickworks <noreply@brickworks.diy>";
+
+/// The account's own address told of a change to how it signs in: "sent",
+/// "dry" for a test address (Resend's, which reaches nobody), or "failed".
+async function tell(email, subject, text) {
+  if (/@resend\.dev$/i.test(email)) return "dry";
+  const key = process.env.RESEND_API_KEY;
+  if (!key || !email || madeUp(email)) return "failed";
+  try {
+    const reply = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject, text }),
+      signal: AbortSignal.timeout(10000) });
+    if (!reply.ok) console.error(`orangecheck: Resend refused a notice: ${reply.status}`);
+    return reply.ok ? "sent" : "failed";
+  } catch (trouble) {
+    console.error(`orangecheck: a notice did not go: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return "failed";
+  }
+}
+
+const AFTER = "If this was not you, sign in to Brickworks with an emailed code and change it in Settings: "
+  + "https://brickworks.diy/settings";
+
+async function signedInAs(request, response) {
+  try {
+    return await asking(request);
+  } catch (trouble) {
+    if (trouble instanceof AuthError) say(response, trouble.status, trouble.message);
+    else {
+      console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`);
+      say(response, 502, "Brickworks could not read your account just now. Try again in a minute.");
+    }
+    return null;
+  }
+}
+
+async function status(request, response) {
+  const who = await signedInAs(request, response);
+  if (!who) return;
+  return response.status(200).json({ did: who.did, only: who.only, fresh: who.fresh, ready: ocConfigured() });
+}
+
+async function link(request, response) {
+  if (!ocConfigured()) return say(response, 503, "Signing in with orangecheck is not set up here.");
+  const who = await signedInAs(request, response);
+  if (!who) return;
+  if (who.only) return say(response, 409, "This account signs in with orangecheck already.");
+  if (who.did) return say(response, 409, "This account has orangecheck linked already. Unlink it first.");
+  if (!who.fresh) return say(response, 403, "Confirm it is you first, with a code we email you.", { fresh: false });
+  const body = bodyOf(request);
+  const token = typeof body?.token === "string" ? body.token.trim() : "";
+  const checked = await checkToken(token);
+  if (!checked.session) return say(response, checked.status, checked.error, checked.more);
+  const { did_oc: did, jti, exp } = checked.session;
+  try {
+    if (!(await spendToken(jti, exp))) return say(response, 409, "That sign-in was used already. Sign in with orangecheck again.");
+    // Marked first: an account that has orangecheck is never one whose
+    // sessions go unasked.
+    await mark(who.claims.sub, true);
+    const said = await db("rpc/oc_link", { method: "POST", body: { did, account: who.claims.sub } });
+    if (said === "taken") return say(response, 409, "That orangecheck account already signs in to another Brickworks account.");
+    if (said === "has_one") return say(response, 409, "This account has orangecheck linked already. Unlink it first.");
+    if (said !== "linked") throw new Error(`oc_link said ${said}`);
+  } catch (trouble) {
+    console.error(`orangecheck: not linked: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return say(response, 502, "Brickworks could not link orangecheck just now. Try again in a minute.");
+  }
+  await endToken(token);
+  const told = await tell(who.claims.email, "orangecheck now signs you in to Brickworks",
+    `orangecheck (${did}) was linked to your Brickworks account just now, so it can sign you in too. ${AFTER}`);
+  return response.status(200).json({ did, told });
+}
+
+async function unlink(request, response) {
+  const who = await signedInAs(request, response);
+  if (!who) return;
+  if (who.only) return say(response, 409, "This account signs in only with orangecheck, so it keeps it.");
+  if (!who.did) return say(response, 404, "orangecheck is not linked to this account.");
+  if (!who.fresh) return say(response, 403, "Confirm it is you first, with a code we email you.", { fresh: false });
+  let gone;
+  try {
+    gone = await db("rpc/oc_unlink", { method: "POST", body: { account: who.claims.sub } });
+  } catch (trouble) {
+    console.error(`orangecheck: not unlinked: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return say(response, 502, "Brickworks could not unlink orangecheck just now. Try again in a minute.");
+  }
+  if (!gone) return say(response, 404, "orangecheck is not linked to this account.");
+  // Unmarked after: until then its sessions are still asked after, which
+  // costs a read and nothing else.
+  await mark(who.claims.sub, false).catch((trouble) => console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  const told = await tell(who.claims.email, "orangecheck no longer signs you in to Brickworks",
+    `orangecheck (${gone.did}) was unlinked from your Brickworks account just now, and the sign-ins it started were ended. ${AFTER}`);
+  return response.status(200).json({ did: gone.did, ended: gone.ended, told });
+}
+
 export default async function handler(request, response) {
   // Asked only by the site's own pages: no cross-origin answer, and nothing
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
   const op = String(request.query?.op || "");
   if (request.method === "POST" && op === "signin") return signIn(request, response);
-  return say(response, 405, "POST ?op=signin");
+  if (request.method === "GET" && op === "status") return status(request, response);
+  if (request.method === "POST" && op === "link") return link(request, response);
+  if (request.method === "POST" && op === "unlink") return unlink(request, response);
+  return say(response, 405, "POST ?op=signin, ?op=link or ?op=unlink, or GET ?op=status");
 }

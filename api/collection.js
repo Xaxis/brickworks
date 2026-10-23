@@ -377,7 +377,7 @@ export default async function handler(request, response) {
     if (!authConfigured() || !dbConfigured()) throw new Refusal(503, "accounts are not configured here");
     let claims;
     try {
-      claims = await verify(bearer(request));
+      claims = await verify(bearer(request), request);
     } catch (error) {
       throw new Refusal(error instanceof AuthError ? error.status : 401, error.message);
     }

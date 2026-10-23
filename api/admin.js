@@ -125,7 +125,7 @@ export default async function handler(request, response) {
 
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });

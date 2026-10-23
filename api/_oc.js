@@ -1,6 +1,9 @@
 // An orangecheck token, checked (2026-10-23): what signing in with
 // orangecheck (api/orangecheck.js) and deleting an orangecheck account
 // (api/account.js) both ask of the token orangecheck's window hands a page.
+// And a session orangecheck started, asked after on each request
+// (sessionStanding, from api/_auth.js), so "Sign out everywhere" on
+// orangecheck ends it here within about two minutes.
 //
 // From orangecheck's public docs (ochk.io/docs/me/quickstart and /me/sdk),
 // with its own code for the checks (api/_orangecheck.js, made by
@@ -116,6 +119,7 @@ async function whoMaySignIn() {
 export function forgetForTests() {
   rule = { at: 0, tried: 0, value: undefined };
   ended = null;
+  standings.clear();
 }
 
 /// [token] checked: {session} with its claims (did_oc, jti, rh, aud, iat,
@@ -175,3 +179,73 @@ export async function endToken(token) {
   }
 }
 
+// What a session was found to be, for a few seconds an instance: a page
+// asks several routes at once, and an ended session must still be refused
+// within seconds of being found ended.
+const standings = new Map();
+const HELD_MS = 5000;
+const READS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+async function sessionOf(id) {
+  const held = standings.get(id);
+  if (held && Date.now() - held.at < HELD_MS) return held.value;
+  const value = await db("rpc/oc_session_of", { method: "POST", body: { session: id } });
+  if (standings.size > 2000) standings.clear();
+  standings.set(id, { at: Date.now(), value });
+  return value;
+}
+
+/// Whether the session behind [claims], an account that has orangecheck,
+/// may go on with a request of [method]: {} when it may, or {refused,
+/// status} in words. A session that is gone (signed out, unlinked, ended)
+/// is refused. One orangecheck started is refused once the person ended
+/// every session on orangecheck, and ended here too; while that cannot be
+/// known (the list, or this session's binding, cannot be read), it reads
+/// but does not write. An emailed code's session of the same account is
+/// asked only whether it is still there.
+export async function sessionStanding(claims, method) {
+  const write = !READS.has(String(method || "POST").toUpperCase());
+  const unsure = write
+    ? { refused: "Brickworks could not check your orangecheck sign-in just now. Try again in a minute.", status: 503 }
+    : {};
+  if (!claims.session_id) return unsure;
+  let session;
+  try {
+    session = await sessionOf(claims.session_id);
+  } catch (trouble) {
+    console.error(`orangecheck: a session was not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return unsure;
+  }
+  if (!session || session.exists === false) return { refused: "You were signed out. Sign in again.", status: 401 };
+  if (!session.bound) return {};
+  if (!(process.env.OC_PROJECT_KEY && process.env.OC_SIGNING_SECRET)) return unsure;
+  let state;
+  try {
+    state = await endedSessions().status({ rh: session.rh, aud: session.aud, iat: Number(session.iat) });
+  } catch {
+    state = "unverified";
+  }
+  if (state === "revoked") {
+    try {
+      await db("rpc/oc_end_session", { method: "POST", body: { session: claims.session_id } });
+    } catch (trouble) {
+      console.error(`orangecheck: an ended session was not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
+    standings.set(claims.session_id, { at: Date.now(), value: { ...session, exists: false } });
+    return { refused: "You signed out of orangecheck everywhere, so this sign-in has ended. Sign in again.", status: 401 };
+  }
+  return state === "live" ? {} : unsure;
+}
+
+/// Whether a Claude connection approved while signed in with orangecheck
+/// (its oc_rh, oc_aud and oc_iat) still stands: "live", "revoked" once the
+/// person ended every session on orangecheck, or "unverified" while that
+/// cannot be known.
+export async function grantStanding(grant) {
+  if (!(process.env.OC_PROJECT_KEY && process.env.OC_SIGNING_SECRET)) return "unverified";
+  try {
+    return await endedSessions().status({ rh: grant.oc_rh, aud: grant.oc_aud, iat: Number(grant.oc_iat) });
+  } catch {
+    return "unverified";
+  }
+}

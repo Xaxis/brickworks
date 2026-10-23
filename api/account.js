@@ -114,7 +114,7 @@ export default async function handler(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   let claims;
   try {
-    claims = await verify(token);
+    claims = await verify(token, request);
   } catch (error) {
     // Not an error the app should show. A token that has aged out is
     // the ordinary way a session ends, and the app renews it with
@@ -156,7 +156,7 @@ async function takeAge(request, response) {
   }
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
@@ -194,7 +194,7 @@ async function theme(request, response) {
   if (!authConfigured()) return response.status(503).json({ error: "Accounts are not configured here." });
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
@@ -254,7 +254,7 @@ async function deleteAccount(request, response) {
   }
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });

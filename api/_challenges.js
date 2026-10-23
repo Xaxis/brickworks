@@ -117,7 +117,7 @@ export function brokenSaid(check) {
 
 /// The caller, from their sign-in: {account, test}.
 async function caller(request) {
-  const claims = await verify(bearer(request));
+  const claims = await verify(bearer(request), request);
   return { account: claims.sub, test: isTestAccount(claims) };
 }
 

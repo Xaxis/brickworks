@@ -82,7 +82,11 @@ const ALGORITHMS = {
 /// Check a bearer token and return its claims. Throws AuthError with a
 /// reason the caller can show, never a bare false — "your session ran
 /// out" and "that is not a token" want different words on screen.
-export async function verify(token) {
+///
+/// [request], when given, is what the token came with: its method says
+/// whether it reads or writes, which matters to an account that has
+/// orangecheck (below).
+export async function verify(token, request = null) {
   if (!token) throw new AuthError("sign in to Brickworks first");
 
   const parts = token.split(".");
@@ -131,6 +135,17 @@ export async function verify(token) {
   const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!audience.includes("authenticated")) throw new AuthError("that sign-in is not for a person");
   if (!claims.sub) throw new AuthError("that sign-in names nobody");
+
+  // An account that has orangecheck (2026-10-23, api/orangecheck.js) has
+  // its session asked after: still there, and if orangecheck started it,
+  // not ended everywhere on orangecheck. Everybody else's never is, so
+  // nothing about orangecheck, working or not, touches them; and its code
+  // is loaded only for those who have it.
+  if (claims.app_metadata?.orangecheck === true) {
+    const { sessionStanding } = await import("./_oc.js");
+    const standing = await sessionStanding(claims, request?.method);
+    if (standing.refused) throw new AuthError(standing.refused, standing.status);
+  }
 
   return claims;
 }

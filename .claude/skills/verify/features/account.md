@@ -235,16 +235,22 @@ they have. A Claude connector belongs to the account that switched it on.
   with orangecheck", hides the email choices), and the account is deleted
   with a fresh orangecheck sign-in as itself instead of the typed address.
   Needs `OC_PROJECT_KEY` and `OC_SIGNING_SECRET` (Vercel: the secret in
-  Production alone); without either nobody signs in with orangecheck. Step 1
-  of orangecheck's brief: linking from `/settings` and ending sessions on
-  "Sign out everywhere" come with steps 2-3 (branch oc188). In the web
+  Production alone); without either nobody signs in with orangecheck, and
+  the button is drawn and a sign-in says it is unavailable; `deploy.sh
+  --prod` refuses to deploy without both in Production. In the web
   app the sign-in screen has **Sign in with orangecheck** too
   (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
   `/profile?then=/app…`, which opens the dialog by itself and, signed in,
-  goes back (`web/profile.js`; only ever to `/app`). Where the deployment
-  has no signing secret (Vercel's Preview has the key at most) the button is
-  drawn and a sign-in says it is unavailable; `deploy.sh --prod` refuses to
-  deploy without both in Production. Site pages send
+  goes back (`web/profile.js`; only ever to `/app`). Linking from
+  `/settings` (`GET ?op=status`, `POST ?op=link`, `?op=unlink`) asks for a
+  code emailed in the last five minutes, never a session orangecheck
+  started; the address is told; unlinking ends that id's sessions and the
+  Claude connections it approved. Each authenticated request of an account
+  marked `app_metadata.orangecheck` asks `oc_session_of` (held 5 s): a gone
+  session is refused, and one orangecheck started is refused and deleted
+  once ended everywhere, and reads but does not write while orangecheck
+  cannot be asked (`api/_auth.js` → `api/_oc.js` `sessionStanding`); a
+  connection approved in one carries its `rh` (`oauth_grants.oc_*`). Site pages send
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
   answer; `/app` and `/b/` keep `same-origin`.
 
@@ -310,7 +316,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (39: a first sign-in is a new
+`orangecheck_check` ends "N passed, 0 failed" (65: a first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
 ended at orangecheck and never in the answer; refused a second time, here and
 on another instance; the same did is the same account; no `rh`, another
@@ -321,8 +327,14 @@ secret or no audience: nobody signs in; a backed-only rule refuses an unbacked
 account with `back_url`; two first sign-ins at once make one account and
 leave none over; three at once all get in; an orangecheck account is not
 deleted by its made-up address or somebody else's sign-in, is by a fresh one of
-its own, which is then spent, and signing in again makes a new one; twenty
-tries from one address, the next 429). `oc_flow` (a preview check, `oc`) needs
+its own, which is then spent, and signing in again makes a new one; linking
+from an email account (told, marked, a second id or another's refused), the
+linked id signing in to it, a session orangecheck started never fresh enough
+to unlink, reading but not writing while the list is down, ended everywhere
+and not renewable while the email session goes on, unlinking ending what the
+id started, an orangecheck account unable to link or unlink, a Claude
+connection it approved waiting while the list is down and ended with it;
+twenty tries from one address, the next 429). `oc_flow` (a preview check, `oc`) needs
 no orangecheck account: the dialog at 390 and 1280 in both themes, the window
 opened at me.ochk.io and closed, a blocked one said in words, the headers,
 the server's refusals. A finished sign-in through orangecheck's real window
