@@ -16,13 +16,15 @@
 ## the processor against 5,532 in software on the desktop); a frame where the
 ## view turned, within a tenth, the line put away until the view is still and
 ## back once it is; and taking the selection, under 400 ms of the main
-## thread's, the worst of five times. That is about twice what it takes: the
-## worst of five was 159 to 213 ms in six runs at a load of 22 to 34
-## (2026-10-22). So selecting all made a quarter of a second dearer fails,
-## and the box's load does not: the time is the main thread's alone, the
-## clock less what it waited for a core. Timed by the whole process it was
-## 430 to 1,010 ms, most of it the app's workers busy with the model just
-## opened, which are now waited out first.
+## thread's, the worst of five times. The time is the main thread's alone,
+## the clock less what it waited for a core, so the box's load is not
+## counted; what shares its core still moves it: 159 to 278 ms in twelve
+## runs at a load of 15 to 34 (2026-10-22). 400 is half as much again as
+## the most, and less than the least with a quarter of a second added, so
+## selecting all made that much dearer fails (it read 443 and 518 ms, the
+## quarter second spent and slept). Timed by the whole process it was 430 to
+## 1,010 ms, most of it the app's workers busy with the model just opened,
+## which are now waited out first.
 extends SceneTree
 
 var _failures: int = 0
