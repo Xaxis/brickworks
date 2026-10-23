@@ -13,93 +13,83 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-23
+
+A release about big models and what holds them. View > Stress tints every
+part by how near its weakest joint is to letting go, and flags only a joint
+that really is weak: on eight real sets that stand, one part reads red, a
+9 g branch on one stud. A big model opens without freezing the window, and
+Timeline on one no longer pauses. Turning a model's moving parts by hand is
+lighter, most of all on a phone. A part laid at an angle is held by the
+studs it sits on, so the tow truck's fifth wheel turns on its axle. Claude
+finds a part by the words a builder uses for it, and never offers a place
+for a part that it then refuses. On brickworks.diy the gallery, model pages
+and profiles are new, with a feed, comments in threads and notifications.
+Models saved by 0.5.0 open in 0.6.0 unchanged.
+
+### Added
+
+- View, Stress tints every part by how near its weakest joint is to letting
+  go: red past its studs' working load, amber within twice it, and every
+  other part faded in its own colour. Only a joint that alone holds what is
+  past it is weighed, such as a cantilever's root or a part hung under
+  another, so a bonded wall is never flagged. On eight sets from the Library
+  that stand, of 925 to 2,993 parts, one part reads red: 21318-1's branch of
+  leaves, 9 g on one side stud. Point at a part and the status bar says what
+  it carries: "carries 11 g on 1 stud, margin 0.7". Right-click a red or
+  amber part for Ask Claude to brace this, which writes the request with the
+  joint's numbers. Stress only draws: the model, its colours and its history
+  are untouched, and turned off it costs nothing. Claude reads the same
+  margins with check_design. A part's joint to the floor or a baseplate, and
+  pins, axles, clips and hinges, are not weighed yet.
+
 ### Changed
 
-- The gallery on brickworks.diy puts the models first: on a phone the
-  first cards are on the first screen, two to a row, and a laptop shows
-  four. Top, New and, signed in, Following are tabs, with Top over this
-  week, this month or all time; the kinds are a row of pills, and the
-  rest (the order, the size, instructions, Technic, Tested, and hand-built
-  or made with the assistant) is under Filters. A card says who designed
-  it, with their avatar and a link to their page, marks a model made with
-  the assistant or Brickify, and shows its likes, builds and comments.
-  Like a model from its card. The next page comes as you scroll, three
-  times, then Show more; the address says how far you went, and Back from
-  a model returns you to its card.
-- A person's page on brickworks.diy (/u/ and their handle) looks like a
-  person's: their avatar, name and handle, what they say about themselves,
-  up to two links of theirs elsewhere, one row of numbers (builds finished
-  of their models, remixes, models, likes, followers) and Follow, Share and
-  More beside their name. Up to three of their models can be pinned above
-  the rest, and one of their models' pictures can run across the top. Their
-  work is in tabs: Models, every one of them page by page (a profile used to
-  stop at the first 24), Builds, the photos of real builds, and Collections,
-  each a card with its pictures. A tab with nothing in it says what goes
-  there. Links, the banner and the pins are chosen under Settings on your
-  account. Nobody's followers are listed, as before.
-- On brickworks.diy a model's page leads with its picture: on a phone the
-  picture, its name, its designer and what you can do with it are the
-  first screen, and on a laptop the column beside the picture stays in view
-  as you read down. The designer has a face, a name and handle that go to
-  their profile, and Follow beside them. Like, Save, Share, Comment, I built
-  it and More are one row of buttons, each with its count once there is
-  one. Save puts the model in your favourites or any of your collections
-  from one list, favourites first. Share copies the link, or opens your
-  phone's share sheet. More copies the code to embed the model in a page
-  of your own, and is where to report it. Build it opens it in 3D. Under
-  the picture, a strip of its other pictures: its designer's own photos of
-  it, added from the page, then photos of real builds; choose one to see it
-  large. Below, tabs that stay in view, About, Comments, Builds, Remixes
-  and Versions, each with its count. Where nobody has commented, built or
-  remixed it yet, the page says so in a line, with the way to be first. It
-  ends with more by the same designer and models like it, by kind and tags,
-  whenever there are three or more to show, and otherwise with more from
-  the gallery, so there is always another model to open.
-- A big model opens without freezing the window. Its file is read, its
-  flexible parts are built and the parts it carries are made while the app
-  goes on drawing, and its parts are then put down a slice of each frame,
-  the status bar counting "Opening 8466-1… 40%". The model appears whole
-  once every part is down; until then the view still turns, and edits,
-  Save and your Claude's tools wait for it rather than see half a model.
-  Someone else's big file is written back for the autosave on a worker
-  too, so the parts that arrive after it opens no longer each hold the
-  window. 8466-1 from the library held a browser for 3.7 to 3.8 seconds at
-  once and 2 more after; its longest moment now is a third to half a
-  second. A model of under 200 parts opens in one frame, as it always has.
-- Turning a model's moving parts by hand is lighter on a phone. Each frame
-  of the drag looks at the parts near each moving part once, not twice,
-  keeps what it learned of them for the rest of the drag, and asks only the
-  moving parts which of them a nearby part was built against. Turning
-  8808-1's steering wheel with a finger on a phone slowed four times, the
-  app's own work in the drag's slowest frame was 25 to 29 ms in five tries
-  (27 typical), where it had been 21 to 72 ms (33 typical), over the 33 ms
-  a smooth frame allows three times in five. Where the steering stops, and
-  what it meets, are unchanged.
+- A big model opens without freezing the window. File > Open, the Library
+  and Versions read it on a worker and lay its parts a slice of each frame,
+  the status bar counting "Opening 8466-1… 40%". The view still turns, and
+  edits, Save and Claude's tools wait until the model is whole. 8466-1 from
+  the Library held a browser for 3.7 to 3.8 seconds at once and 2 more
+  after; its longest moment now is a third to half a second. A model of
+  under 200 parts opens in one frame, as before.
+- Turning a model's moving parts by hand is lighter. Each frame of the drag
+  looks at the parts near each moving part once, not twice, and keeps what
+  it learned for the rest of the drag. Turning 8808-1's steering wheel with
+  a finger on a phone, the app's own work in the slowest frame is 25 to
+  29 ms, where it was 21 to 72 ms and over the 33 ms a smooth frame allows
+  three times in five. Where the steering stops is unchanged.
+- Claude's search_parts finds the part a builder means, in a builder's
+  words. Parts are ranked by how many of the words they have, whole words
+  only, plain parts before their prints, and builders' shape words and the
+  names set inventories use are read as LDraw's. One word the catalogue
+  does not use no longer hides a part: 42 builders' searches find their
+  part in the first five, where 17 did, in a third of the time.
+- [brickworks.diy](https://brickworks.diy), on the same account as the app,
+  has a new gallery, model pages and profiles, your own picture as your
+  avatar, a feed, comments in threads with replies, and notifications. A
+  busy moment there no longer signs you out.
 
 ### Fixed
 
-- A part on the stud of a part turned at an angle, where either has no
-  exact shape, is held: the check read the stud as reaching into nothing,
-  and refused a 1 x 1 tile on a chamfered 2 x 4 wing in a ball of hinged
-  panels as not held.
-- A page on brickworks.diy renews your sign-in once, however many of its
-  parts ask, and asks again after a moment when the sign-in service is busy.
-  A page asked three or four times, and when one was refused it showed you
-  signed out until you loaded it again.
 - A part laid at an angle is held by the studs it sits on, and not by one
-  it only leans on. The tow truck's (6753-1) steering plate, laid at 30
-  degrees on two hinges, was weighed as standing on a stud of each hinge's
-  base as well as on their tops, and its fifth wheel, tipped on its axle,
-  was held by a stud of the brick under it, so a drag would not turn it: it
-  turns on its axle now. A part turned on one stud, as the convertible's
-  (5767-1) windscreen sides hold the plates with a handle at their ends,
-  turns on that stud, where it was held as if square. And a part seated in
-  another with no stud, a control stick in its socket, is joined to it in
-  Suggest sections and Evaluate the section, and two plates side by side
-  that only touch are not.
-- Timeline on a big model finds how its parts join a slice at a time:
-  on Orthanc's 9,541 parts in a browser that was one pause of up to a
-  quarter of a second, with the bar unable to move.
+  it only leans on. The tow truck's (6753-1) fifth wheel, tipped on its
+  axle, was held by a stud of the brick under it, so a drag would not turn
+  it: it turns on its axle now. A part turned on one stud, as the
+  convertible's (5767-1) windscreen sides are, turns on that stud. A part
+  seated in another with no stud, a control stick in its socket, joins it
+  in Suggest sections and Evaluate the section, and two plates that only
+  touch do not.
+- A part on the stud of a turned part is held where either has no exact
+  shape. A 1 x 1 tile on a chamfered 2 x 4 wing, in a ball of hinged
+  panels, was refused as held by nothing, and Brickify, mending a design,
+  took such a part out as loose.
+- Claude's where_to_attach offers only places edit_selection takes. It
+  judged by shapes with their studs cut away, so a part's tooth pushed into
+  the next stud looked clear. On four shipped models, 166 of its 649 offers
+  were refused; now none of 401 are.
+- Timeline on a big model no longer pauses as it finds how the parts join:
+  on Orthanc's 9,541 parts in a browser, that was up to a quarter of a
+  second with the bar unable to move.
 
 ## [0.5.0] - 2026-10-22
 
