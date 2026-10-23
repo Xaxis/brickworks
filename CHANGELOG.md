@@ -34,6 +34,11 @@ whole cycle.
   were never asked about. A model that is not marked says
   why on its page, to its owner; one too big to build to its last step in the
   time a share takes still says what it failed.
+- The Wizard's Tower is one piece a person can pick up: its columns stand on
+  studs and are tied to its core, and its guards hold their shields by the
+  handle.
+- A beard worn round a figure's neck under its head is held, as it is in the
+  hand; the check had called it held by nothing.
 
 ## [0.6.0] - 2026-10-23
 
