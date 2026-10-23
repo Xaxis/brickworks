@@ -14,10 +14,14 @@
 ## triangle: one closed volume per part, facing out, at real size in
 ## millimetres standing on Z.
 ##
-## With --orthanc, the 9,429-part tower too: the GLB whole, within the time
-## and the frame it may hold, its 101 shapes written once each; the STL, which
+## With --orthanc, the 10,092-part tower too: the GLB whole, within the time
+## and the frame it may hold, each of its shapes written once; the STL, which
 ## is under its cap; and the OBJ, which is over its and is refused saying so.
 extends SceneTree
+
+## How many parts models/orthanc.ldr has, every one of which it opens.
+## Change it with the model: it said 9,429 long after the tower had 9,541.
+const ORTHANC_PARTS := 10092
 
 var _failures: int = 0
 var _main: Node
@@ -548,7 +552,7 @@ func _orthanc() -> void:
 		print("  %s in %d ms, %s triangles" % [said.left(40), Time.get_ticks_msec() - began,
 			Working.comma(_triangles())])
 		if model == "Orthanc":
-			_check("Orthanc opens whole: %d parts" % parts, parts == 9429)
+			_check("Orthanc opens whole: %d parts" % parts, parts == ORTHANC_PARTS)
 		# OBJ last: past its cap it is 273 MB, and the STL's one 123 MB buffer
 		# taken just after it was freed once held the frame 709 ms (170 ms
 		# otherwise), which is not what anyone exporting meets.
@@ -571,7 +575,7 @@ func _orthanc() -> void:
 			match format:
 				"glb":
 					_check("Orthanc's GLB whole: %.1f s, %.1f MB" % [took / 1000.0, size / 1048576.0],
-						said.contains("9,429 parts"))
+						said.contains(Working.comma(ORTHANC_PARTS) + " parts"))
 					var document := GLTFDocument.new()
 					var state := GLTFState.new()
 					var read: Error = document.append_from_file(path, state)
@@ -579,12 +583,12 @@ func _orthanc() -> void:
 					var meshes: int = scene.find_children("*", "MeshInstance3D", true, false).size() \
 						if scene != null else -1
 					_check("...read back by GLTFDocument: %d mesh nodes, from %d meshes" % [meshes,
-						state.get_meshes().size()], meshes == 9429)
+						state.get_meshes().size()], meshes == ORTHANC_PARTS)
 					if scene != null:
 						scene.free()
 				"stl":
 					_check("Orthanc's STL: %.1f s, %.1f MB, every triangle" % [took / 1000.0,
-						size / 1048576.0], said.contains("9,429 parts") and size == 84 + 50 * _triangles())
+						size / 1048576.0], said.contains(Working.comma(ORTHANC_PARTS) + " parts") and size == 84 + 50 * _triangles())
 	MeshExport.most_triangles = caps
 	var said: String = await _say("export_model", {"format": "obj"})
 	_check("under its cap, Orthanc's OBJ is refused, pointing at GLB: %s" % said.left(140),
