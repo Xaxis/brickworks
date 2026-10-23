@@ -153,7 +153,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
   every piece (a hose's every segment), frames them and says how many, with I
   for a buried one; the list opens again where it was. Escape over the list
-  closes it before it clears a selection under it. The MCP's twin is
+  closes it before it clears a selection under it. In a shared model's viewer
+  a row does the same, and Escape then lets go of them (`share_view_probe`). The MCP's twin is
   look_at_model's `part=` and `color=`, which list where each one is: no
   session tool sets the person's selection (`AppTools.WINDOW_ONLY`).
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan

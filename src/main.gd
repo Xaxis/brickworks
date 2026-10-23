@@ -3697,8 +3697,12 @@ func _looking_key(key: InputEventKey) -> bool:
 			_toggle_parts()
 			return false
 		KEY_ESCAPE:
+			# The list, then the parts a row of it picked out: a viewer
+			# selects nothing else, and has nothing else to let go of them.
 			if _inventory.is_showing():
 				_inventory.hide_list()
+			elif not _builder.selection.is_empty():
+				_builder.clear_selection()
 			return false
 		KEY_F, KEY_HOME, KEY_END, KEY_SPACE, KEY_LEFT, KEY_RIGHT, \
 				KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, \
