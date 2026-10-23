@@ -1,0 +1,34 @@
+# The probes tools/check.sh runs in a window, each as its own header says
+# (tools/probe.sh: the size it names, on Xvfb and the GPU, a data folder of
+# its own), in this order, one a line: NAME, or NAME:ARGS. From a # to the
+# line's end is a comment. A new probe goes on a line of its own, at the end
+# (merged as a union, as headless.txt).
+#
+# @out in ARGS is a folder of this run's: left to themselves the motions
+# probes write their pictures over a dated folder in the main checkout's
+# bench/results.
+motions
+motions_panel:@out
+motions_render:@out
+telescope
+floor
+share_view
+share_play
+simulate
+typing
+slow_frames
+look
+progress
+render
+collection_ui
+library
+animation
+balance_view
+placing
+offgrid
+booklet_edit
+outline
+outline_cost
+command:--judge --subjects=orthanc
+step_link
+stress_view

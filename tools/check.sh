@@ -3,6 +3,8 @@
 #
 #   tools/check.sh              the offline suite
 #   tools/check.sh --network    also the checks that need the internet
+#   tools/check.sh --lists      only whether every probe is in a list, in a second
+#   tools/check.sh --dry-run    each check's command in the order it runs, none run
 #
 # Three layers, because they fail in different ways.
 #
@@ -13,75 +15,28 @@
 # whether a part is the size it claims. And a parse check, which catches
 # the class of mistake that makes every other check fail at once.
 #
-# Every probe in src/dev is run here, or named in `out` below with why not
-# (anything that spends money, among others), and the run stops before it
-# starts when one is in neither.
+# Every probe in src/dev is run here, or named in tools/suite/out.txt with
+# why not (anything that spends money, among others), and the run stops
+# before it starts when one is in neither. A new probe goes on a line of its
+# own in tools/suite/headless.txt, windowed.txt or out.txt.
 set -uo pipefail
 # Guarded: a cd that fails leaves the script running against
 # whatever directory it was started from, which for a deploy means
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-# The probes run headless, in this order, each NAME or NAME:ARGS for what
-# it is given after its `--`. The MCP first of all: it is the
-# app's AI interface, and it falls behind with nothing failing — a tool
-# list four tools stale, a menu command no session can reach (mcp_sync);
-# and the window's commands as tools, each read back off the model
-# (app_tools).
-headless=(mcp_sync app_tools element_files element modify part_tool dimensions snap
-  stability history restore store versions empty_save instructions playback
-  responsive search inventory mosaic world_view controls snot technic joints
-  exact by_connector joint_check flex clutch mechanism axle variety repeat
-  usage kinds rules angled section sections scale bigmodel quit edit selection
-  mirror scanner attach import lxf io mesh_export select reader camera brain
-  keeping glyph fetch fetch_retry busy dropped vocab reference search_quality
-  moved availability holds pieces mcp claude_code techniques patterns face
-  features creative rooms style figure_joints armature turned detail chat
-  sketch project example_name minifig print sticker mould brickify claude_undo
-  design_undo first_design_undo undo_ids read_only collection share_pages
-  tested new_window best_of_two selection_fit swing_bound
-  "table_race:--tries=8" technic_hand ahead art_plan autosave_paths balance
-  brickify_buy build_steps cabin_glass cabins carried_at_once carried_fetch
-  decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
-  hinged_panels turned_tips mcp_walk mcp_walk3 mesh_formats own_copies page_places
-  parts_only print_search shapes snippets standing subject_words surface
-  unrestored update viewer_tools worker_first_run second_design
-  drag_cost seated shaping_search stress)
-# In a window, each as its own header says (tools/probe.sh: the size it
-# names, on Xvfb and the GPU, a data folder of its own), NAME or NAME:ARGS.
-# @out in ARGS is a folder of this run's: left to themselves the motions
-# probes write their pictures over a dated folder in the main checkout's
-# bench/results.
-windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
-  simulate typing slow_frames look progress render collection_ui library
-  animation balance_view placing offgrid booklet_edit outline outline_cost
-  "command:--judge --subjects=orthanc" step_link stress_view)
-# Not run here, each with why: it spends money, needs the relay's keys, is
-# a bench, a measure or pictures with no verdict, judges only a time the
-# box's load decides, or needs longer than a probe's ten minutes (run,
-# below). One that fails on the code as it is goes here only with its
-# finding and the day it was found, as a unit to fix and bring back.
-out=(
-  bakeoff           # spends money: real designs on the API key, dollars a run
-  revise            # spends money: a design on the API key
-  sideways          # spends money: a design on the API key
-  stream            # spends money: a request on the API key
-  best_of_two_walk  # spends two designs and a pick of the subscription; best_of_two is its offline half
-  account           # needs the relay with .env's keys, and makes accounts in production Supabase
-  connector         # needs the relay with .env's keys, and makes accounts in production Supabase
-  tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
-  tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
-  harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
-  roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
-  candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench
-  daylight          # a measuring tool for one file and box; patterns runs its functions here
-  technique_sheet   # pictures for a person, no pass or fail
-  gallery           # pictures of every shipped model for a person, no pass or fail
-  anim_walk         # an audit: every answer printed for a person, no pass or fail
-  new_parts         # needs the numbers of the parts a library update added: tools/update_parts.py prints them, then tools/probe.sh new_parts_probe N N N
-  grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
-  # Failing on the code as it is (2026-10-22), each a unit to fix:
-)
+# The lists, one probe a line: NAME, or NAME:ARGS for what it is given after
+# its `--`, and from a # to the line's end a comment.
+#   tools/suite/headless.txt   run headless, in that order
+#   tools/suite/windowed.txt   run in a window by tools/probe.sh, in that order
+#   tools/suite/out.txt        not run, each with why
+# Files and not arrays here, which every unit adding a probe appended to on
+# one line, so that any two of them conflicted: four were settled by hand on
+# 2026-10-22. The files merge as a union (.gitattributes), keeping both sides.
+suite_list() { sed -E 's/(^|[[:space:]])#.*//; s/^[[:space:]]+//; s/[[:space:]]+$//; /^$/d' "tools/suite/$1.txt"; }
+mapfile -t headless < <(suite_list headless)
+mapfile -t windowed < <(suite_list windowed)
+mapfile -t out < <(suite_list out)
 # A probe in no list never ran: the lists were kept by hand, and 85 of 214
 # were in none, two of them failing on main for days with nothing said
 # (claude_undo, surface; 2026-10-22). So the run stops here, before it
@@ -95,14 +50,33 @@ listed=$({ printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" "${out[@]}"
 } | sort -u)
 unlisted=$(comm -23 <(echo "$probes") <(echo "$listed"))
 unknown=$(comm -13 <(echo "$probes") <(echo "$listed"))
-if [ -n "$unlisted$unknown" ]; then
-  [ -z "$unlisted" ] || echo "check: in no list here, so never run:" $unlisted
-  [ -z "$unknown" ] || echo "check: listed here, but no src/dev/NAME_probe.gd:" $unknown
-  echo "  put each probe in the suite (headless, windowed), or in out with why it is not"
+# A union keeps a line one side took out when the other added a line beside
+# it: a probe one unit moved from out.txt to headless.txt can come out of the
+# merge in both. So a name twice in one list, or out and run both, stops the
+# run as well.
+twice=$({ printf '%s\n' "${headless[@]%%:*}" | sort | uniq -d
+  printf '%s\n' "${windowed[@]%%:*}" | sort | uniq -d
+  printf '%s\n' "${out[@]}" | sort | uniq -d
+  comm -12 <(printf '%s\n' "${out[@]}" | sort -u) \
+    <(printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" | sort -u)
+} | sort -u)
+if [ -n "$unlisted$unknown$twice" ]; then
+  [ -z "$unlisted" ] || echo "check: in no list in tools/suite, so never run:" $unlisted
+  [ -z "$unknown" ] || echo "check: listed in tools/suite, but no src/dev/NAME_probe.gd:" $unknown
+  [ -z "$twice" ] || echo "check: twice in a list in tools/suite, or both out and run:" $twice
+  echo "  put each probe on one line of tools/suite/headless.txt or windowed.txt, or of out.txt with why it is not"
   exit 1
 fi
 # --lists: only that, which a merge can ask in a second.
 case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list"; exit 0 ;; esac
+network=0 dry=0
+for argument in "$@"; do
+  case "$argument" in
+    --network) network=1 ;;
+    --dry-run) dry=1 ;;
+    *) echo "check: unknown option $argument"; exit 2 ;;
+  esac
+done
 # Never the person's own app data (~/.local/share/godot/app_userdata/
 # Brickworks, their models and settings): a Godot left to the default
 # XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
@@ -119,17 +93,9 @@ fi
 # about twelve: run beside another project's encode, the suite measures
 # the encode. `heavy` waits for a slot and runs at batch priority.
 heavy="$HOME/.claude/claude-core/bin/heavy"
-if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$heavy" ]; then
+if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$heavy" ] && [ "$dry" = 0 ]; then
   exec "$heavy" "$PWD/tools/check.sh" "$@"
 fi
-
-network=0
-for argument in "$@"; do
-  case "$argument" in
-    --network) network=1 ;;
-    *) echo "check: unknown option $argument"; exit 2 ;;
-  esac
-done
 
 fail=0
 # Checks that ran but left something out, which is neither a pass nor a
@@ -141,6 +107,8 @@ unproven=0
 
 run() {
   local label="$1"; shift
+  # --dry-run: the command, each argument as the shell would read it back.
+  if [ "$dry" = 1 ]; then printf '  dry   %s:' "$label"; printf ' %q' "$@"; echo; return; fi
   local output status took started=$SECONDS
   # Once, not twice. This used to run each probe a second time to read
   # its exit code, which doubled the slowest part of the suite to save
@@ -196,60 +164,63 @@ probe() {
   run "$name" godot --headless --path . --script "src/dev/${name}_probe.gd" ${1:+-- "$@"}
 }
 
-echo "── the project parses ──"
-# The class list in .godot is made from the tree, and a checkout that
-# reached its commit by a merge or a fast-forward keeps the old one. Main
-# at 2789cd0 "failed to parse" on five class names the last merges had
-# added (2026-10-16): the cache was stale, not the code. So it is brought
-# up to date first, and the parse reads the code.
-timeout 900 godot --headless --path . --import >/dev/null 2>&1
-# A parse error takes every probe down with it, and the message from a
-# probe that could not load says nothing about which file is wrong.
-parse=$(godot --headless --path . --quit 2>&1)
-if echo "$parse" | grep -qE 'SCRIPT ERROR|Parse Error'; then
-  echo "$parse" | grep -E 'SCRIPT ERROR|Parse Error|at:' | head -10 | sed 's/^/  /'
-  echo "  FAIL  the project does not parse — nothing below would mean anything"
-  exit 1
-fi
-echo "  ok    no script errors"
-
-echo "── the version ──"
-# One version, read from three places: VERSION, project.godot (which the
-# macOS and Windows packages take theirs from) and CHANGELOG.md. A release
-# with two of them disagreeing says one thing on the page and another in
-# the app.
-if ! python3 tools/release.py version; then
-  fail=1
-fi
-
-echo "── python ──"
-# A machine with no pytest still runs the file. Ubuntu 24.04 ships no pip
-# and no ensurepip, and apt wants a password, so "install pytest" is not
-# something a check script can do on its own: tools/minitest.py runs the
-# same file instead. Tests that need numpy skip by name.
-if python3 -c 'import pytest' 2>/dev/null; then
-  suite=(python3 -m pytest tests/ -q)
-else
-  # Every test file, not a list: a list kept by hand had missed 12 of 31,
-  # the library's and the site's contrast among them (2026-10-22).
-  suite=(python3 tools/minitest.py tests/test_*.py)
-fi
-pyout=$("${suite[@]}" 2>&1); pystatus=$?
-# The verdict is printed either way, because a check that silently skipped
-# twenty-five measurements reads exactly like one that made them.
-verdict=$(echo "$pyout" | grep -oE '[0-9]+ passed[^(]*' | tail -1 | sed 's/ *$//')
-[ -n "$verdict" ] || verdict="no verdict line — read the output"
-if [ "$pystatus" = 0 ]; then
-  printf '  ok    pipeline — %s\n' "$verdict"
-  if echo "$verdict" | grep -q skipped; then
-    skipped=$((skipped + 1))
-    echo "$pyout" | grep '^SKIP' | sed 's/^SKIP  //;s/ —.*//' | sort -u \
-      | head -3 | sed 's/^/          skipped: /'
+# Not probes, and the parse alone takes minutes: none of it in a dry run.
+if [ "$dry" = 0 ]; then
+  echo "── the project parses ──"
+  # The class list in .godot is made from the tree, and a checkout that
+  # reached its commit by a merge or a fast-forward keeps the old one. Main
+  # at 2789cd0 "failed to parse" on five class names the last merges had
+  # added (2026-10-16): the cache was stale, not the code. So it is brought
+  # up to date first, and the parse reads the code.
+  timeout 900 godot --headless --path . --import >/dev/null 2>&1
+  # A parse error takes every probe down with it, and the message from a
+  # probe that could not load says nothing about which file is wrong.
+  parse=$(godot --headless --path . --quit 2>&1)
+  if echo "$parse" | grep -qE 'SCRIPT ERROR|Parse Error'; then
+    echo "$parse" | grep -E 'SCRIPT ERROR|Parse Error|at:' | head -10 | sed 's/^/  /'
+    echo "  FAIL  the project does not parse — nothing below would mean anything"
+    exit 1
   fi
-else
-  printf '  FAIL  pipeline — %s\n' "$verdict"
-  echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/          /'
-  fail=1
+  echo "  ok    no script errors"
+
+  echo "── the version ──"
+  # One version, read from three places: VERSION, project.godot (which the
+  # macOS and Windows packages take theirs from) and CHANGELOG.md. A release
+  # with two of them disagreeing says one thing on the page and another in
+  # the app.
+  if ! python3 tools/release.py version; then
+    fail=1
+  fi
+
+  echo "── python ──"
+  # A machine with no pytest still runs the file. Ubuntu 24.04 ships no pip
+  # and no ensurepip, and apt wants a password, so "install pytest" is not
+  # something a check script can do on its own: tools/minitest.py runs the
+  # same file instead. Tests that need numpy skip by name.
+  if python3 -c 'import pytest' 2>/dev/null; then
+    suite=(python3 -m pytest tests/ -q)
+  else
+    # Every test file, not a list: a list kept by hand had missed 12 of 31,
+    # the library's and the site's contrast among them (2026-10-22).
+    suite=(python3 tools/minitest.py tests/test_*.py)
+  fi
+  pyout=$("${suite[@]}" 2>&1); pystatus=$?
+  # The verdict is printed either way, because a check that silently skipped
+  # twenty-five measurements reads exactly like one that made them.
+  verdict=$(echo "$pyout" | grep -oE '[0-9]+ passed[^(]*' | tail -1 | sed 's/ *$//')
+  [ -n "$verdict" ] || verdict="no verdict line — read the output"
+  if [ "$pystatus" = 0 ]; then
+    printf '  ok    pipeline — %s\n' "$verdict"
+    if echo "$verdict" | grep -q skipped; then
+      skipped=$((skipped + 1))
+      echo "$pyout" | grep '^SKIP' | sed 's/^SKIP  //;s/ —.*//' | sort -u \
+        | head -3 | sed 's/^/          skipped: /'
+    fi
+  else
+    printf '  FAIL  pipeline — %s\n' "$verdict"
+    echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/          /'
+    fail=1
+  fi
 fi
 
 echo "── godot probes ──"
@@ -504,6 +475,7 @@ if [ "$network" = 1 ]; then
   probe gallery_tool
 fi
 
+[ "$dry" = 0 ] || exit 0
 echo ""
 if [ "$unproven" != 0 ]; then
   # Said first and counted as a failure of the run, because "everything

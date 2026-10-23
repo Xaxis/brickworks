@@ -52,7 +52,7 @@ echo "imported"
 # A probe the merge brings in that no suite list names fails the merge here,
 # not hours later in a full suite (drag_cost and seated, then step_link).
 if grep -q -- '--lists' tools/check.sh 2>/dev/null && ! tools/check.sh --lists >/dev/null 2>&1; then
-  tools/check.sh --lists 2>&1 | tail -2; echo "merge_unit: name it in tools/check.sh"; exit 4
+  tools/check.sh --lists 2>&1 | tail -2; echo "merge_unit: name it once in tools/suite (headless.txt, windowed.txt or out.txt)"; exit 4
 fi
 # MERGE_GATES=ship: the parse gate and the tool list are left to ship.sh,
 # which runs them once for every unit merged, under the release's priority.
