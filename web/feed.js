@@ -252,7 +252,7 @@ async function page(mine) {
     const skip = new Set([...(following || []), ...(state?.me?.handle ? [state.me.handle] : [])]);
     await suggest(mine, { withLatest: empty, skip });
   }
-  document.documentElement.dataset.feed = "ready";
+  if (mine === run) document.documentElement.dataset.feed = "ready";
 }
 
 async function load() {

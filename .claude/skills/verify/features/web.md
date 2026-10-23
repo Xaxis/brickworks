@@ -2570,7 +2570,11 @@ Latest, Ada no longer suggested, nothing sideways
 (`4_posts-{390,1280}-{light,dark}.png`); the version's name opens it;
 latest kept by the CDN and never with tests=1, her tower only with it,
 Ada's score 3; the feed itself 401 signed out; no script errors.
-FEED_RESULT
+33 checks, all ok, on the live project through a relay with nothing held,
+2026-10-22; the throwaway accounts and their models deleted. The flows
+that read the feed's markup, run with it: `follows_flow --site` (the
+post's `.what`, `q` and `a.go`), `notifications_flow`, `challenges_flow`
+(50 checks; the entry's post at 390 and 1280).
 
 Discovery (2026-10-19): Top builds, this week's pick, small builds, and
 build with what I own. The SQL first, after the live files, in one
