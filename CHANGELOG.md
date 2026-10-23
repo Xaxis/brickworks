@@ -13,6 +13,13 @@ whole cycle.
 
 ## [Unreleased]
 
+### Fixed
+- A big model no longer holds the window a quarter of a second after it
+  opens: the shapes of its parts are read for dragging on a worker.
+- A part a design stands on a shape's top, a coupling's plate among them, is
+  held by the studs the shape keeps for it, not set down on tiles.
+- The house's and the lighthouse's leaves and lamp sit on their studs.
+
 ## [0.6.0] - 2026-10-23
 
 A release about big models and what holds them. View > Stress tints every
