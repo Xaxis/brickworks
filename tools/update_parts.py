@@ -108,7 +108,7 @@ def fetch(ldraw: Path, downloads: Path) -> list[Path]:
         # update since 1998 would be "newer". fetch_data.sh --force first.
         raise SystemExit(f"{ldraw}/models has no release notes (NoteYYRRCA.txt), "
                          "so which updates it lacks is unknown: tools/fetch_data.sh --force")
-    with urllib.request.urlopen(UPDATES_PAGE, timeout=60) as reply:
+    with urllib.request.urlopen(_asked(UPDATES_PAGE), timeout=60) as reply:
         page = reply.read().decode("utf-8", "replace")
     releases = sorted({m for m in re.findall(r"lcad(\d{4})\.zip", page)
                        if release_number(m) > have}, key=release_number)
@@ -119,10 +119,16 @@ def fetch(ldraw: Path, downloads: Path) -> list[Path]:
     return zips
 
 
+def _asked(url: str) -> urllib.request.Request:
+    # ldraw.org answers Python's own User-Agent with 403 Forbidden: the first
+    # fetch on production failed so (2026-10-23); a tool says who it is.
+    return urllib.request.Request(url, headers={"User-Agent": "Brickworks-update-parts/1 (+https://brickworks.diy)"})
+
+
 def _download(url: str, target: Path) -> Path:
     print(f"fetch {url}")
     partial = target.with_name(target.name + ".part")
-    with urllib.request.urlopen(url, timeout=600) as reply, partial.open("wb") as out:
+    with urllib.request.urlopen(_asked(url), timeout=600) as reply, partial.open("wb") as out:
         while chunk := reply.read(1 << 20):
             out.write(chunk)
             if out.tell() > ZIP_LIMIT:
