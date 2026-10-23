@@ -84,6 +84,16 @@ func follow(world: BrickWorld) -> void:
 				_bricks.erase(brick_id)
 
 
+## The bricks of [param part_ids] (part id -> true) measured again at the
+## next [method follow], though they have not changed: what is kept with them
+## has (a part's exact shape, come in a browser after it was put down).
+func remeasure(part_ids: Dictionary) -> void:
+	for brick_id: int in _kept.keys():
+		if part_ids.has(_kept[brick_id][0]):
+			_forget(brick_id)
+	_revision = -1
+
+
 ## What was kept with [param brick_id] when it was measured.
 func kept_with(brick_id: int) -> Variant:
 	var was: Variant = _kept.get(brick_id)

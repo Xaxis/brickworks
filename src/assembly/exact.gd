@@ -1056,6 +1056,25 @@ static func meets(items: Array, one: Array, other: Array) -> bool:
 	return true
 
 
+## The hinge BrickNet's labels name between two parts where they stand:
+## [where, its line], or empty. Two hinge connectors of one subtype and
+## opposite halves, within POS_THR and on one line ([method meets]): a
+## door's and its frame's, a shutter's and its window's.
+static func hinge_between(a: Item, b: Item) -> Array:
+	if not a.shape.kind.has(HINGE) or not b.shape.kind.has(HINGE):
+		return []
+	var items: Array = [a, b]
+	for one: Array in a.world():
+		if a.shape.kind[int(one[0])] != HINGE:
+			continue
+		for other: Array in b.world():
+			if b.shape.kind[int(other[0])] != HINGE:
+				continue
+			if meets(items, [0, one[0], one[1], one[2], one[3]], [1, other[0], other[1], other[2], other[3]]):
+				return [one[1], one[2]]
+	return []
+
+
 ## BrickNet's connections between [param items]: [item, connector, item,
 ## connector] each, the first item the lower. Studs, holes, hinges, balls and
 ## fixed joints within POS_THR; axles along their lines, between parts whose
