@@ -1237,6 +1237,14 @@
       "tests": []
     },
     {
+      "id": "cli:signup check",
+      "kind": "cli",
+      "entry": "tools/web/signup_check.mjs",
+      "reach": "node tools/web/signup_check.mjs --url=https://brickworks.diy   (.env sourced)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
