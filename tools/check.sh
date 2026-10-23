@@ -55,7 +55,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
 windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
   simulate typing slow_frames look progress render collection_ui library
   animation balance_view placing offgrid booklet_edit outline outline_cost
-  "command:--judge --subjects=orthanc")
+  "command:--judge --subjects=orthanc" step_link)
 # Not run here, each with why: it spends money, needs the relay's keys, is
 # a bench, a measure or pictures with no verdict, judges only a time the
 # box's load decides, or needs longer than a probe's ten minutes (run,
