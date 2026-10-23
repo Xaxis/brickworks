@@ -182,6 +182,17 @@ func _in_a_design() -> void:
 	for one: Variant in report.get("advice", []):
 		said = said or str(one).contains("The sculpt is")
 	_check("the check says what the sculpt came to", said)
+	# A body raised for its legs, said before them: told what holds it, not only
+	# that every part of it floats.
+	var raised: Assistant.Model = _checker._read_model({"name": "pig", "bricks": [],
+		"patterns": [{"pattern": "sculpt", "color": 29, "solids": [
+			{"ellipsoid": {"centre": [6, 14, 5], "size": [11, 16, 8]}}]}]})
+	var told: String = ""
+	for one: Variant in _checker._check(raised, true).get("advice", []):
+		if str(one).contains("The sculpt is"):
+			told = str(one)
+	_check("a sculpt raised over nothing is told to say what it stands on: %s" % told.right(120),
+		told.contains("say what it stands on"))
 
 
 ## A run kept to BrickNet's list (BrickBench's, --parts-only) lays a sculpt in
