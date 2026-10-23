@@ -3,6 +3,8 @@
 #
 #   tools/check.sh              the offline suite
 #   tools/check.sh --network    also the checks that need the internet
+#   tools/check.sh --lists      only whether every probe is in a list, in a second
+#   tools/check.sh --dry-run    each check's command in the order it runs, none run
 #
 # Three layers, because they fail in different ways.
 #
@@ -103,6 +105,14 @@ if [ -n "$unlisted$unknown" ]; then
 fi
 # --lists: only that, which a merge can ask in a second.
 case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list"; exit 0 ;; esac
+network=0 dry=0
+for argument in "$@"; do
+  case "$argument" in
+    --network) network=1 ;;
+    --dry-run) dry=1 ;;
+    *) echo "check: unknown option $argument"; exit 2 ;;
+  esac
+done
 # Never the person's own app data (~/.local/share/godot/app_userdata/
 # Brickworks, their models and settings): a Godot left to the default
 # XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
@@ -119,17 +129,9 @@ fi
 # about twelve: run beside another project's encode, the suite measures
 # the encode. `heavy` waits for a slot and runs at batch priority.
 heavy="$HOME/.claude/claude-core/bin/heavy"
-if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$heavy" ]; then
+if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$heavy" ] && [ "$dry" = 0 ]; then
   exec "$heavy" "$PWD/tools/check.sh" "$@"
 fi
-
-network=0
-for argument in "$@"; do
-  case "$argument" in
-    --network) network=1 ;;
-    *) echo "check: unknown option $argument"; exit 2 ;;
-  esac
-done
 
 fail=0
 # Checks that ran but left something out, which is neither a pass nor a
@@ -141,6 +143,8 @@ unproven=0
 
 run() {
   local label="$1"; shift
+  # --dry-run: the command, each argument as the shell would read it back.
+  if [ "$dry" = 1 ]; then printf '  dry   %s:' "$label"; printf ' %q' "$@"; echo; return; fi
   local output status took started=$SECONDS
   # Once, not twice. This used to run each probe a second time to read
   # its exit code, which doubled the slowest part of the suite to save
@@ -196,60 +200,63 @@ probe() {
   run "$name" godot --headless --path . --script "src/dev/${name}_probe.gd" ${1:+-- "$@"}
 }
 
-echo "── the project parses ──"
-# The class list in .godot is made from the tree, and a checkout that
-# reached its commit by a merge or a fast-forward keeps the old one. Main
-# at 2789cd0 "failed to parse" on five class names the last merges had
-# added (2026-10-16): the cache was stale, not the code. So it is brought
-# up to date first, and the parse reads the code.
-timeout 900 godot --headless --path . --import >/dev/null 2>&1
-# A parse error takes every probe down with it, and the message from a
-# probe that could not load says nothing about which file is wrong.
-parse=$(godot --headless --path . --quit 2>&1)
-if echo "$parse" | grep -qE 'SCRIPT ERROR|Parse Error'; then
-  echo "$parse" | grep -E 'SCRIPT ERROR|Parse Error|at:' | head -10 | sed 's/^/  /'
-  echo "  FAIL  the project does not parse — nothing below would mean anything"
-  exit 1
-fi
-echo "  ok    no script errors"
-
-echo "── the version ──"
-# One version, read from three places: VERSION, project.godot (which the
-# macOS and Windows packages take theirs from) and CHANGELOG.md. A release
-# with two of them disagreeing says one thing on the page and another in
-# the app.
-if ! python3 tools/release.py version; then
-  fail=1
-fi
-
-echo "── python ──"
-# A machine with no pytest still runs the file. Ubuntu 24.04 ships no pip
-# and no ensurepip, and apt wants a password, so "install pytest" is not
-# something a check script can do on its own: tools/minitest.py runs the
-# same file instead. Tests that need numpy skip by name.
-if python3 -c 'import pytest' 2>/dev/null; then
-  suite=(python3 -m pytest tests/ -q)
-else
-  # Every test file, not a list: a list kept by hand had missed 12 of 31,
-  # the library's and the site's contrast among them (2026-10-22).
-  suite=(python3 tools/minitest.py tests/test_*.py)
-fi
-pyout=$("${suite[@]}" 2>&1); pystatus=$?
-# The verdict is printed either way, because a check that silently skipped
-# twenty-five measurements reads exactly like one that made them.
-verdict=$(echo "$pyout" | grep -oE '[0-9]+ passed[^(]*' | tail -1 | sed 's/ *$//')
-[ -n "$verdict" ] || verdict="no verdict line — read the output"
-if [ "$pystatus" = 0 ]; then
-  printf '  ok    pipeline — %s\n' "$verdict"
-  if echo "$verdict" | grep -q skipped; then
-    skipped=$((skipped + 1))
-    echo "$pyout" | grep '^SKIP' | sed 's/^SKIP  //;s/ —.*//' | sort -u \
-      | head -3 | sed 's/^/          skipped: /'
+# Not probes, and the parse alone takes minutes: none of it in a dry run.
+if [ "$dry" = 0 ]; then
+  echo "── the project parses ──"
+  # The class list in .godot is made from the tree, and a checkout that
+  # reached its commit by a merge or a fast-forward keeps the old one. Main
+  # at 2789cd0 "failed to parse" on five class names the last merges had
+  # added (2026-10-16): the cache was stale, not the code. So it is brought
+  # up to date first, and the parse reads the code.
+  timeout 900 godot --headless --path . --import >/dev/null 2>&1
+  # A parse error takes every probe down with it, and the message from a
+  # probe that could not load says nothing about which file is wrong.
+  parse=$(godot --headless --path . --quit 2>&1)
+  if echo "$parse" | grep -qE 'SCRIPT ERROR|Parse Error'; then
+    echo "$parse" | grep -E 'SCRIPT ERROR|Parse Error|at:' | head -10 | sed 's/^/  /'
+    echo "  FAIL  the project does not parse — nothing below would mean anything"
+    exit 1
   fi
-else
-  printf '  FAIL  pipeline — %s\n' "$verdict"
-  echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/          /'
-  fail=1
+  echo "  ok    no script errors"
+
+  echo "── the version ──"
+  # One version, read from three places: VERSION, project.godot (which the
+  # macOS and Windows packages take theirs from) and CHANGELOG.md. A release
+  # with two of them disagreeing says one thing on the page and another in
+  # the app.
+  if ! python3 tools/release.py version; then
+    fail=1
+  fi
+
+  echo "── python ──"
+  # A machine with no pytest still runs the file. Ubuntu 24.04 ships no pip
+  # and no ensurepip, and apt wants a password, so "install pytest" is not
+  # something a check script can do on its own: tools/minitest.py runs the
+  # same file instead. Tests that need numpy skip by name.
+  if python3 -c 'import pytest' 2>/dev/null; then
+    suite=(python3 -m pytest tests/ -q)
+  else
+    # Every test file, not a list: a list kept by hand had missed 12 of 31,
+    # the library's and the site's contrast among them (2026-10-22).
+    suite=(python3 tools/minitest.py tests/test_*.py)
+  fi
+  pyout=$("${suite[@]}" 2>&1); pystatus=$?
+  # The verdict is printed either way, because a check that silently skipped
+  # twenty-five measurements reads exactly like one that made them.
+  verdict=$(echo "$pyout" | grep -oE '[0-9]+ passed[^(]*' | tail -1 | sed 's/ *$//')
+  [ -n "$verdict" ] || verdict="no verdict line — read the output"
+  if [ "$pystatus" = 0 ]; then
+    printf '  ok    pipeline — %s\n' "$verdict"
+    if echo "$verdict" | grep -q skipped; then
+      skipped=$((skipped + 1))
+      echo "$pyout" | grep '^SKIP' | sed 's/^SKIP  //;s/ —.*//' | sort -u \
+        | head -3 | sed 's/^/          skipped: /'
+    fi
+  else
+    printf '  FAIL  pipeline — %s\n' "$verdict"
+    echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/          /'
+    fail=1
+  fi
 fi
 
 echo "── godot probes ──"
@@ -504,6 +511,7 @@ if [ "$network" = 1 ]; then
   probe gallery_tool
 fi
 
+[ "$dry" = 0 ] || exit 0
 echo ""
 if [ "$unproven" != 0 ]; then
   # Said first and counted as a failure of the run, because "everything
