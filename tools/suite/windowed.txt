@@ -32,3 +32,4 @@ outline_cost
 command:--judge --subjects=orthanc
 step_link
 stress_view
+sculpt_worker
