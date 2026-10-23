@@ -425,8 +425,10 @@ func _open_dialog(made: Dictionary) -> void:
 		column.add_child(_report)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		var parts_list: Callable = func() -> void: shell.bar.say(write_list("parts"))
-		var wanted_list: Callable = func() -> void: shell.bar.say(write_list("bricklink"))
+		var parts_list: Callable = func() -> void:
+			shell.bar.say(await write_list("parts", true))
+		var wanted_list: Callable = func() -> void:
+			shell.bar.say(await write_list("bricklink", true))
 		var its_booklet: Callable = func() -> void:
 			_dialog.hide()
 			await booklet()
@@ -463,22 +465,26 @@ func _rest() -> Dictionary:
 
 
 ## The section's parts list ("parts") or BrickLink wanted list
-## ("bricklink"), written where Export writes.
-func write_list(kind: String) -> String:
+## ("bricklink"), written where Export writes: where the person chooses on
+## the desktop when [param asking] (SaveTo); "" when they cancel.
+func write_list(kind: String, asking: bool = false) -> String:
 	if _evaluated.is_empty():
 		return "evaluate a section first"
 	var stock: Inventory = Inventory.of(shell.world, shell.library, _rest())
 	if stock.lots.is_empty():
 		return "nothing to list"
 	var exports: Exports = shell.app.get("_exports")
-	var folder: String = exports.folder if exports != null else ""
 	var base: String = (shell.bar.model_name() + " " + _evaluated_name).to_snake_case()
+	var to: String = await exports._where(
+		base + ("_bricklink.xml" if kind == "bricklink" else "_parts.txt"), asking)
+	if to.is_empty():
+		return ""
 	if kind == "bricklink":
 		var made: Dictionary = ShopLists.bricklink_xml(stock, shell.library)
-		return Exports._give(str(made["text"]), base + "_bricklink.xml", "application/xml",
-			folder)
-	return Exports._give(stock.to_text(_evaluated_name), base + "_parts.txt", "text/plain",
-		folder)
+		return Exports._give(str(made["text"]), to.get_file(), "application/xml",
+			to.get_base_dir())
+	return Exports._give(stock.to_text(_evaluated_name), to.get_file(), "text/plain",
+		to.get_base_dir())
 
 
 ## The section's own booklet: its steps, built on its own.

@@ -57,6 +57,8 @@ signal chosen(ids: PackedInt64Array, what: String)
 signal need_wanted
 ## A shop's list was asked for: "bricklink" or "rebrickable".
 signal shop_wanted(shop: String)
+## Where the CSV went, for the status bar too, with its Show in folder.
+signal said(line: String)
 
 
 func _header_button(header: Container, words: String, tip: String) -> Button:
@@ -377,4 +379,7 @@ func _on_csv() -> void:
 	if _stock == null:
 		return
 	var file_name: String = _title.to_snake_case() + "_parts.csv"
-	_heading.text = Download.give(_stock.to_csv(), file_name, "text/csv")
+	var line: String = await Download.save(_stock.to_csv(), file_name, "text/csv")
+	tell(line)
+	if not line.is_empty():
+		said.emit(line)

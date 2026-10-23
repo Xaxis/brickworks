@@ -3057,6 +3057,20 @@
       "entry": "src/assembly/gear_mesh.gd",
       "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "save dialog on the desktop",
+      "entry": "src/ui/save_to.gd",
+      "reach": "godot --path .  (File, Export, any of them; Instructions; File, Save as; the parts list's CSV)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "save dialog probe",
+      "entry": "src/dev/save_dialog_probe.gd",
+      "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
+      "area": "model-io"
     }
   ]
 }

@@ -4366,7 +4366,7 @@ func _build_ui() -> void:
 			and _shell.collection.store != null else {}
 	_brickify.booklet_wanted.connect(_brickify_booklet)
 	_brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
-		_brickify.tell(_exports.shop_list(shop, _outside_of(path))))
+		_brickify.tell(await _exports.shop_list(shop, _outside_of(path), true)))
 	_brickify.need_wanted.connect(func() -> void:
 		if _shell != null and _shell.collection != null:
 			_shell.collection.open("need"))
@@ -4598,7 +4598,7 @@ func _build_ui() -> void:
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
 	_storage_offer = StorageOffer.new()
-	_storage_offer.download_all = func() -> void: _exports.all_models()
+	_storage_offer.download_all = func() -> void: await _exports.all_models()
 	_storage_offer.download_io = func() -> void: await _exports.studio_io()
 	_storage_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_storage_offer)
@@ -4792,7 +4792,8 @@ func _build_ui() -> void:
 
 	# The parts list's own BrickLink and Rebrickable buttons.
 	_inventory.shop_wanted.connect(func(shop: String) -> void:
-		_inventory.tell(_exports.shop_list(shop)))
+		_inventory.tell(await _exports.shop_list(shop, {}, true)))
+	_inventory.said.connect(_bar.say)
 	# Its rows' pictures, and a row clicked: those parts, in the model.
 	_inventory.thumbnails = _thumbnails
 	_inventory.chosen.connect(_show_found)
@@ -4862,13 +4863,28 @@ func _turn_model(quarter_turns: int) -> void:
 ## The booklet: drawn off screen by BookletMaker, then handed over.
 ##
 ## [param to] writes it to a file and says so, which is how the command
-## line and the checks ask for one. Otherwise it goes where people are: on
-## the web into the tab [method _booklet_wanted] opened as the button was
-## pressed (a browser only lets a page open a tab in answer to a click,
-## and the pictures take longer than that), and on the desktop into the
-## Downloads folder and open in the browser, ready to print.
+## line, a session and the checks ask for one. Otherwise it goes where
+## people are: on the web into the tab [method _booklet_wanted] opened as the
+## button was pressed (a browser only lets a page open a tab in answer to a
+## click, and the pictures take longer than that); on the desktop where the
+## person chooses, asked before the pictures are drawn (SaveTo), and then
+## open in their browser, ready to print. The app has no page viewer of its
+## own (the booklet is a web page, and Godot draws none), so the browser it
+## is, and the line says where the file is whether or not one opened.
 func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = null,
 		called: String = "") -> String:
+	var title: String = called if not called.is_empty() else _bar.model_name()
+	var given: bool = not to.is_empty()
+	if not given and not OS.has_feature("web"):
+		var leave: Dictionary = skip if skip is Dictionary else _store.scenery
+		if not _world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
+				return not leave.has(brick.id)):
+			_bar.say("nothing to write instructions for")
+			return "nothing to write instructions for"
+		to = await SaveTo.ask(title.to_snake_case() + "_instructions.html", "",
+			"Save the instructions")
+		if to.is_empty():
+			return ""
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -4888,11 +4904,10 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	maker.progress.connect(func(_said: String) -> void:
 		BookletMaker.tell_tab(job.line()))
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
-	var title: String = called if not called.is_empty() else _bar.model_name()
 	var html: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
-	if not to.is_empty():
+	if given:
 		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:
 			return "%s %.1f s" % [lap[0], float(lap[1]) / 1000.0])))
 	maker.queue_free()
@@ -4915,16 +4930,28 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		else:
 			file.store_string(html)
 			file.close()
+			SaveTo.wrote(to)
 			note = "wrote %s, %d steps" % [to, steps]
-	elif OS.has_feature("web") and BookletMaker.fill_tab(html):
+			if not given and BookletMaker.open_when_written:
+				note = _open_booklet(to, steps)
+	elif BookletMaker.fill_tab(html):
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
 		note = Download.give(html, file_name, "text/html")
-		if note.begins_with("wrote ") and BookletMaker.open_when_written:
-			OS.shell_open("file://" + note.trim_prefix("wrote "))
 	job.end()
 	_bar.say(note)
 	return note
+
+
+## The booklet written to [param path] open in the person's browser, and the
+## line to say: whether it opened, first, as a long path can run off the
+## bar's end; then the file, with Show in folder beside it (StatusBar).
+## walk180 pressed Instructions three times on a desktop with no browser,
+## and nothing happened (2026-10-23).
+func _open_booklet(path: String, steps: int) -> String:
+	if SaveTo.open(path):
+		return "the booklet is open in your browser, %d steps: %s" % [steps, path]
+	return "no browser could open the booklet: it is saved in %s, %d steps" % [path, steps]
 
 
 ## Every brick but those in the sub-assembly at [param path]: what a list or a

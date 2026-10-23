@@ -1112,6 +1112,14 @@
       "tests": []
     },
     {
+      "id": "cli:save dialog probe",
+      "kind": "cli",
+      "entry": "src/dev/save_dialog_probe.gd",
+      "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:say which build this is",
       "kind": "cli",
       "entry": "src/main.gd",
@@ -3178,6 +3186,14 @@
       "kind": "ui",
       "entry": "src/ui/exports.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:save dialog on the desktop",
+      "kind": "ui",
+      "entry": "src/ui/save_to.gd",
+      "reach": "godot --path .  (File, Export, any of them; Instructions; File, Save as; the parts list's CSV)",
       "area": "model-io",
       "tests": []
     },

@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
 
 ## Sub-features
 
@@ -464,8 +464,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   every shipped model as a first visit does and checks its lowest occupied cell
   is on the ground; `open_probe` (network) opens them all over the wire.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
-  is also the shortest round-trip proof there is. Export, the booklet and the
-  parts list are written to Downloads under the model's name, which a design
+  is also the shortest round-trip proof there is. A session's export, the
+  booklet and the parts list are written to Downloads under the model's name
+  (a person's press asks where: `save dialog on the desktop`), which a design
   sets, so only the name's last part is used (`Download.give`, `ModelBar`): a
   title with "../" in it wrote outside the folder. `store_probe` names a download
   to climb out and checks it lands inside.
@@ -533,7 +534,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   1"` from its inflater: expected in `io_probe`'s refusals, not a failure.
 - `save as a studio model` (`src/ui/exports.gd` `studio_io`, `StudioIo.pack`):
   File, Export → BrickLink Studio model (.io) writes `<name>.io` (downloaded in
-  a browser, to Downloads on the desktop): `model.ldr` (the model's LDraw with
+  a browser, where the person chooses on the desktop: `SaveTo`): `model.ldr` (the model's LDraw with
   its build order, CRLF), `.info` (`total_parts`, and the version of the older
   Studio read, 2.2.1), `errorPartList.err` and an 800 x 600 thumbnail drawn by
   `Picture` (none in a headless run), deflated, not locked, as Studio 2.25
@@ -574,7 +575,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Ns); STL is binary (a fifth of text's size), one mesh of every part's
   triangles. In a browser it is a download, an OBJ and its MTL as one zip
   deflated a slice at a time (`MeshExport.zip`, `StudioIo.zip` taking a
-  member already deflated); on the desktop it goes to Downloads. A part with
+  member already deflated); on the desktop it goes where the person chooses
+  (`SaveTo`), an OBJ's MTL beside it under its name. A part with
   no shape here (on the web, one still arriving) is left out and named. Caps
   (`MeshExport.most_triangles`), as OBJ and STL cannot share a shape: OBJ
   1,000,000 triangles (about 106 bytes a triangle, held twice over while a
@@ -619,7 +621,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   — from the view's direction, framed to
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
   the same world with a copy of the scene's environment that clears instead of
-  drawing the sky. Downloaded in a browser, written to Downloads on the desktop.
+  drawing the sky. Downloaded in a browser, written where the person chooses
+  on the desktop (`SaveTo`).
   Framed on what is drawn (`Picture._frame`): every part's box corners, seen
   from an eye as far back as a ball round the model needs, and the lens
   shifted and narrowed so they sit in the middle and fill 90% of the narrower
@@ -638,6 +641,39 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`PartLibrary.shop_part`, `Inventory.Lot.bricklink_id` / `rebrickable_id`:
   3069b is BrickLink's 3069, 3711 Rebrickable's 3711a), else LDraw's, less a
   formed shape's `-f1`.
+- `save dialog on the desktop` (`src/ui/save_to.gd` `SaveTo.ask`; 2026-10-23,
+  walk180 found .io and Instructions written straight into ~/Downloads with no
+  dialog): on the desktop every File, Export (LDraw, Studio .io, 3D, picture,
+  both shop lists, All my models), Instructions (the toolbar's, Build's, a
+  section's, Brickify's), the parts list's CSV, the collection's wanted lists,
+  a section's lists and File, Save as open the platform's Save dialog
+  (`FileDialog.use_native_dialog`: the desktop portal's on Linux, NSSavePanel
+  on macOS, IFileSaveDialog on Windows; Godot's own where there is no portal)
+  in the folder the last file went to (`ShellPrefs` `save_folder`) or
+  Documents, with the model's name; each asks before writing over a file.
+  Then the status bar says `wrote <path>` with Show in folder beside it, held
+  20 s (`StatusBar.show_folder`, `SaveTo.wrote`). Cancel writes and says
+  nothing. Instructions asks before it draws, then opens the page in the
+  browser (`SaveTo.open`) and says so, or says "no browser could open the
+  booklet: it is saved in <path>". Save as names the model after the file,
+  saves it here as Save does and writes the file; Save then writes it again
+  while the name is the file's (`ModelBar.on_disk`). A session's
+  `export_model` and every probe that sets `Download.folder` or
+  `Exports.folder` write there without a dialog, as before; the web keeps
+  its downloads. `save_dialog_probe` (windowed, in tools/suite/windowed.txt)
+  presses each from the menus as a person does, answers Godot's own dialog
+  (`SaveTo.native` off: the portal's would open on the desktop beside Xvfb),
+  checks the file where it was put, the overwrite question (No keeps the
+  file), Cancel, the folder remembered, Save as then Save, and Instructions
+  with and without a browser (`SaveTo.open_with` handed in); `-- --shots=DIR`
+  pictures the dialogs and the status line. The platform's own on Linux was
+  driven once by hand (2026-10-23): an Xvfb and a D-Bus session of their own
+  running xdg-desktop-portal with its GTK backend, keys sent by XTest. The
+  app reported the native dialog, the portal's opened with `car.io` and the
+  .io filter in the folder asked for, the path typed was written, and over
+  that file the write waited on the portal's question until Replace. The
+  macOS and Windows dialogs are Godot's (NSSavePanel, IFileSaveDialog) and
+  have not been run here.
 - `flexible parts counted as sold` (`Inventory.of`): a sub-model whose bricks
   are all one swept kind's segments (`Flex.items_in` — as the flex tool lays
   one and as Studio and LDCad write one) is one lot of the kind's straight part

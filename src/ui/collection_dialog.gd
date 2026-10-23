@@ -625,10 +625,12 @@ func _export(shop: String) -> void:
 	var line: String
 	if shop == "bricklink":
 		made = ShopLists.bricklink_xml(short, library)
-		line = Download.give(str(made["text"]), title + "_wanted.xml", "application/xml")
+		line = await Download.save(str(made["text"]), title + "_wanted.xml", "application/xml")
 	else:
 		made = ShopLists.rebrickable_csv(short)
-		line = Download.give(str(made["text"]), title + "_wanted.csv", "text/csv")
+		line = await Download.save(str(made["text"]), title + "_wanted.csv", "text/csv")
+	if line.is_empty():
+		return
 	if int(made["left_out"]) > 0:
 		line += " — %d lots left off: %s" % [int(made["left_out"]),
 			ShopLists.why_left_off(made, shop)]

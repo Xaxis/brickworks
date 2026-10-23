@@ -95,8 +95,9 @@ func take(size: Vector2i = SIZE) -> Image:
 	return image
 
 
-## Save it where a person will find it: the browser's downloads, or the
-## Downloads folder. Returns a line to tell them.
+## Save it where a person will find it: the browser's downloads, or
+## [param into] (the folder they chose, or Downloads). Returns a line to
+## tell them.
 static func keep(image: Image, file_name: String, into: String = "") -> String:
 	var bytes: PackedByteArray = image.save_png_to_buffer()
 	if OS.has_feature("web"):
@@ -109,6 +110,7 @@ static func keep(image: Image, file_name: String, into: String = "") -> String:
 		return "could not write %s" % file_name
 	file.store_buffer(bytes)
 	file.close()
+	SaveTo.wrote(path)
 	return "wrote %s" % path
 
 
