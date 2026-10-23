@@ -35,7 +35,7 @@ WHO=SHIP
 cd "$W" || exit 1
 if [ -e "$(git rev-parse --git-dir)/merging" ]; then echo "SHIP: a merge in $W is still running its gates"; exit 1; fi
 SHA=$(git rev-parse --short HEAD)
-git -C $R merge-base --is-ancestor main HEAD || { echo "SHIP: $SHA does not contain main"; exit 1; }
+git -C $R merge-base --is-ancestor main "$SHA" || { echo "SHIP: $SHA does not contain main"; exit 1; }
 unwired=$(unwired_flows main)
 [ -z "$unwired" ] || { echo "SHIP: held, a new flow no check runs:$unwired (name it in preview_checks.sh, or mark it there '# local only: NAME')"; exit 1; }
 set -a; . $R/.env; set +a
