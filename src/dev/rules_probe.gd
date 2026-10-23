@@ -429,6 +429,18 @@ func _run() -> void:
 		"" if person.contains("Build a part of it") else "no part of it", "no part of it")
 	var huge: String = assistant._plan_scale({"subject": "a continent", "longest_metres": 4000000.0})
 	_check_text("something far too big still builds a part of it", huge, "Build a part of it")
+	# Real minifigure-scale sets shorten what is long: a 20 m tug was told 60
+	# studs, where City's are 30 to 40, and a session laid a hull of 312 parts.
+	var scale_studs := RegEx.create_from_string("At minifigure scale, [^\\n]*? is ([\\d.]+) studs")
+	for scale_asked: Array in [["a harbour tug", 20.0, 28.0, 40.0], ["a family car", 4.5, 11.0, 15.0],
+			["a cottage", 10.0, 18.0, 24.0], ["a fire engine", 10.0, 18.0, 24.0]]:
+		var scale_said: String = assistant._plan_scale({"subject": scale_asked[0], "longest_metres": scale_asked[1]})
+		var scale_read: RegExMatch = scale_studs.search(scale_said)
+		var scale_long: float = float(scale_read.get_string(1)) if scale_read != null else -1.0
+		_check_text("%s of %s m is %s studs at minifigure scale, as sets of it are (%s to %s)"
+			% [scale_asked[0], scale_asked[1], scale_long, scale_asked[2], scale_asked[3]],
+			"in range" if scale_long >= float(scale_asked[2]) and scale_long <= float(scale_asked[3]) else scale_said.left(300),
+			"in range")
 
 	print("")
 	print("  a small round body said as a shape")

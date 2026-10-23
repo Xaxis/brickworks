@@ -288,6 +288,43 @@ static func is_subject(word: String) -> bool:
 	return _subject_of.has(word)
 
 
+## The subjects [param word] names, by the index's own table: "cottage" is
+## a house, "tug" a boat. Empty for a word it does not know as one.
+static func subjects_of(word: String) -> Array:
+	document()
+	return _subject_of.get(stem(word), [])
+
+
+## [param word] (stemmed) and the words the index takes as the same thing
+## (its synonyms table): a hand is a claw or a gripper, a window a pane.
+static func kin(word: String) -> PackedStringArray:
+	var out := PackedStringArray([stem(word)])
+	for row: Variant in document().get("synonyms", []):
+		var group: PackedStringArray = words(str(row))
+		if group.has(out[0]):
+			for one: String in group:
+				if not out.has(one):
+					out.append(one)
+	return out
+
+
+## What a piece is, as stemmed words: its description up to the colon
+## ("tugboat funnel or smokestack: a column of ...", the how after it), and
+## of that what comes before a "with" or an "on": a word anywhere else in it
+## is how it was built, what it carries or where it came from. A column of
+## round bricks that is a tugboat's funnel is not its fenders, nor its
+## windows, and "a robot on a base with control panel" is not a chest panel.
+## Not its name, which is its modeller's: "4wd-locker" is a differential lock.
+static func what_it_is(entry: Dictionary) -> PackedStringArray:
+	var head: String = str(entry.get("text", "")).get_slice(":", 0)
+	var cut: RegExMatch = _CARRIES.search(head)
+	return words(head.left(cut.get_start()) if cut != null and cut.get_start() > 0 else head)
+
+
+static var _CARRIES := RegEx.create_from_string(
+	"(?i)\\b(with|on|for|holding|carrying|over|under|beside|behind|inside|atop)\\b")
+
+
 static func entry(id: String) -> Dictionary:
 	document()
 	return _by_id.get(id.strip_edges(), {})

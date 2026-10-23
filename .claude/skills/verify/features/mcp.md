@@ -87,7 +87,9 @@ asking for an API key.
   other call still going after `after_s` (20 s) becomes a job where it stands
   (timed on Orthanc in software: the first `view_model` over 75 s,
   `check_design` of the Falcon over it 43 s). The `job` tool waits up to
-  `wait_s` (10 s) for it to end, then says how far it has got ("12 of 36"),
+  `wait_s` (45 s; 10 s until 2026-10-23, when a picture held in the GPU's
+  queue cost a design eleven calls) for it to end, answering the moment it
+  does, else says how far it has got ("12 of 36"),
   gives the answer (picture and all) once done, or that it was cancelled or
   failed; `cancel=true` stops it where it can be stopped. The job **is** the
   `Working` job the person sees along the foot of the window — its words, its
