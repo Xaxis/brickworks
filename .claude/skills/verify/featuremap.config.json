@@ -3008,6 +3008,13 @@
       "entry": "tools/web/first_steps_flow.mjs",
       "reach": "node tools/web/first_steps_flow.mjs --out=DIR   (the stand-in, the live gallery and the house profile in memory); node --env-file=.env tools/web/first_steps_flow.mjs --url=http://127.0.0.1:8870 --out=DIR   (a local relay_server.mjs 8870; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "update the parts",
+      "entry": "tools/update_parts.py",
+      "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
+      "area": "pipeline"
     }
   ]
 }

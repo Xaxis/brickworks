@@ -124,6 +124,31 @@ class LDrawFile:
         return "physical_colour" in self.part_type.lower()
 
 
+def search_roots(root: Path, extra: Sequence[Path] = ()) -> list[tuple[str, Path]]:
+    """Where a reference is looked for, first to last: (key prefix, folder).
+
+    A file in a folder is found as the prefix plus its lower-cased name,
+    and the first folder holding a name wins. tools/update_parts.py reads
+    this too, to know which of two files a reference reaches.
+    """
+    unofficial = root / "unofficial"
+    return [
+        *(("", directory) for directory in extra),
+        ("", root / "parts"),
+        ("s/", root / "parts" / "s"),
+        ("", root / "p"),
+        ("48/", root / "p" / "48"),
+        ("8/", root / "p" / "8"),
+        ("", root / "models"),
+        # Unofficial parts mirror the same layout and are additive.
+        ("", unofficial / "parts"),
+        ("s/", unofficial / "parts" / "s"),
+        ("", unofficial / "p"),
+        ("48/", unofficial / "p" / "48"),
+        ("8/", unofficial / "p" / "8"),
+    ]
+
+
 class Library:
     """An LDraw installation, with a parse cache.
 
@@ -161,27 +186,7 @@ class Library:
         from the hot path.  Later roots do not overwrite earlier ones, so
         search-order precedence is preserved.
         """
-        search_roots: list[tuple[str, Path]] = [
-            *(("", directory) for directory in self.extra),
-            ("", self.root / "parts"),
-            ("s/", self.root / "parts" / "s"),
-            ("", self.root / "p"),
-            ("48/", self.root / "p" / "48"),
-            ("8/", self.root / "p" / "8"),
-            ("", self.root / "models"),
-        ]
-        # Unofficial parts mirror the same layout and are additive.
-        unofficial = self.root / "unofficial"
-        if unofficial.is_dir():
-            search_roots += [
-                ("", unofficial / "parts"),
-                ("s/", unofficial / "parts" / "s"),
-                ("", unofficial / "p"),
-                ("48/", unofficial / "p" / "48"),
-                ("8/", unofficial / "p" / "8"),
-            ]
-
-        for prefix, directory in search_roots:
+        for prefix, directory in search_roots(self.root, self.extra):
             if not directory.is_dir():
                 continue
             for entry in directory.iterdir():

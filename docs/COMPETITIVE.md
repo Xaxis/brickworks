@@ -897,6 +897,18 @@ size setting (nothing in `src/ui`).
 *Studio added about 790 parts across 2.26.1 to 2.26.4 [st-rn], and the LDraw
 library and its unofficial tracker grow every month.*
 
+**Done, 2026-10-22** (`tools/update_parts.py`; the recipe is "update the
+parts" in `.claude/skills/verify/features/pipeline.md`). As specified, with
+two changes. It compares with the library rather than the catalogue: the
+catalogue keeps no source hashes, and the library on disk is what it was
+built from, which the tool keeps true by changing both together. And it
+uploads nothing: `tools/storage_parts.py` and `tools/storage_ldraw.py` do,
+and every deploy runs the first anyway. Today's unofficial zip took 194 s
+for 205 parts (81 new), the 2026-09 update on a library one release behind
+723 s for 462, each part byte for byte the full build's. The proof is
+`src/dev/new_parts_probe.gd`, which finds three new parts in the bin and
+places them, in a window rather than a browser.
+
 Brickworks already carries 4,735 unofficial parts (`catalogue.json`). But
 refreshing them means the full mesh build: about 90 minutes, then
 `refresh_catalogue`. So new sets' parts arrive late.

@@ -19,6 +19,15 @@ Everything below is `tools/release.py`; `--help` lists its commands.
 - **Only from a commit that is on `main`, pushed, and already deployed to the
   web**, so the desktop never ships something the site has not run. The
   build refuses a commit that is not pushed.
+- **New parts once a month**, before that month's release, in the main
+  checkout with nothing else building or measuring (every worktree reads
+  its library and catalogue): `heavy tools/update_parts.py`. It fetches
+  LDraw's newer official updates and the unofficial zip and builds only
+  the parts they add or change, a few minutes where the full mesh build is
+  ninety. Then `tools/storage_parts.py` and `tools/storage_ldraw.py` put
+  the new meshes and LDraw files in the bucket, the next web deploy and
+  release carry the catalogue, and the "N new parts" line it prints goes
+  in `CHANGELOG.md`. By hand, not a cron job: uploads cost money.
 
 Versions are [Semantic Versioning](https://semver.org/) on `0.y.z` until the
 owner calls it 1.0: the minor number for a release with new features, the

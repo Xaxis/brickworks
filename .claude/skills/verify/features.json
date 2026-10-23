@@ -1397,6 +1397,14 @@
       "tests": []
     },
     {
+      "id": "cli:update the parts",
+      "kind": "cli",
+      "entry": "tools/update_parts.py",
+      "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
       "id": "cli:upload parts to storage",
       "kind": "cli",
       "entry": "tools/storage_parts.py",
