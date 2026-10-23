@@ -48,8 +48,13 @@ reused_preview() {
 }
 
 # The import a worktree needs before it can export the web build.
+# fresh_import.sh imports only when the class list is behind the scripts,
+# waits out an import already running, and fails when it cannot finish. The
+# bare `timeout 900 heavy godot --import` this was spent its time waiting for
+# a slot at load, said nothing, and m155's gate then read a class list
+# without the sculpt: "the tool list is not the app's" (2026-10-23).
 import_here() {
-  ~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
+  tools/fresh_import.sh
 }
 
 # deploy_preview NAME SHA: this worktree on Vercel, unpromoted (tools/deploy.sh

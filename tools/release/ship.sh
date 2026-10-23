@@ -47,7 +47,7 @@ set -a; . $R/.env; set +a
 URL=""
 [ -n "${SHIP_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
 if [ -z "$URL" ]; then
-  import_here
+  import_here || { echo "SHIP: held, the import did not finish (tools/fresh_import.sh)"; exit 1; }
   # The merge gates, here under the release's priority: every GDScript file
   # changed since main parses, and the tool list is the app's. Run per merge
   # without priority, each waited 30 to 70 minutes for a slot at load 50 on

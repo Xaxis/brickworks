@@ -12,9 +12,9 @@
 ## the check's verdict, what it said of parts held by nothing, and the pieces
 ## by the exact shapes' connections (Exact.connections, BrickNet's rules),
 ## each part apart from the largest with where it is. Last, a verdict a
-## build: BrickNet's pieces (a dish held by its tube between four studs
-## joined, as connect166 judged it) against whether the check holds it
-## together, and how many of the builds agree.
+## build: BrickNet's pieces, and those that stay on in the hand (a dish held
+## by its tube between four studs, a part caught where it is) against whether
+## the check holds it together, and how many of the builds agree.
 extends SceneTree
 
 var _agreed: int = 0
@@ -101,9 +101,10 @@ func _run() -> void:
 						print("    studs of %s at %s grip a tube of %s" % [model.placements[j].part, (exact.items[j] as Exact.Item).at.origin, model.placements[m].part])
 					if ExactCheck._tube_grips(exact.items[m], exact.items[j]):
 						print("    studs of %s grip a tube of %s at %s" % [model.placements[m].part, model.placements[j].part, (exact.items[j] as Exact.Item).at.origin])
-		# BrickNet's pieces as connect166 judged them: a dish whose tube stands
-		# between four studs is held, and a part with no exact shape is the
-		# lattice's to judge (a car's tyre on its wheel).
+		# BrickNet's pieces as they hold in the hand: a dish whose tube stands
+		# between four studs (connect166) and a part caught where it is, as the
+		# orrery's rings are (models175), stay on, and a part with no exact
+		# shape is the lattice's to judge (a car's tyre on its wheel).
 		var bricknet: int = 1
 		for k: int in order.slice(1):
 			var those: Array = []
@@ -130,8 +131,8 @@ func _run() -> void:
 		var agree: bool = (bricknet == 1) == holds
 		_agreed += 1 if agree else 0
 		_asked += 1
-		print("  verdict: BrickNet %d piece%s; the check %s; %s" % [bricknet,
-			"" if bricknet == 1 else "s", "holds it together" if holds else "does not (%s)"
+		print("  verdict: BrickNet %d piece%s, %d in the hand; the check %s; %s" % [order.size(),
+			"" if order.size() == 1 else "s", bricknet, "holds it together" if holds else "does not (%s)"
 				% ", ".join(why), "agree" if agree else "DISAGREE"])
 		var lattice_pieces: Array = report.get("each_piece", [])
 		lattice_pieces.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())

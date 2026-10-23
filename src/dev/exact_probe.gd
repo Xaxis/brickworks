@@ -167,6 +167,18 @@ const CLEAN: Array = [
 	["a cheese slope on a round plate's stud",
 		["1 71 80 -8 -100 1 0 0 0 1 0 0 0 1 11213.dat",
 		"1 71 70 -8 -150 1 0 0 0 1 0 0 0 1 54200.dat"]],
+	# Nothing joins the upper tile, and it cannot come out: walls round it and
+	# a plate over it, as the orrery's planet rings are caught round its core
+	# (ExactCheck.caught).
+	["a tile resting on a tile, walled in and roofed over",
+		["1 15 0 -8 0 1 0 0 0 1 0 0 0 1 3958.dat",
+		"1 4 0 -16 0 1 0 0 0 1 0 0 0 1 3068b.dat",
+		"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3068b.dat",
+		"1 15 0 -32 -30 1 0 0 0 1 0 0 0 1 3010.dat",
+		"1 15 0 -32 30 1 0 0 0 1 0 0 0 1 3010.dat",
+		"1 15 -30 -32 0 0 0 -1 0 1 0 1 0 0 3004.dat",
+		"1 15 30 -32 0 0 0 -1 0 1 0 1 0 0 3004.dat",
+		"1 15 0 -40 0 1 0 0 0 1 0 0 0 1 3031.dat"]],
 	["the potato's shoes and legs with its body over its feet",
 		["1 1 160 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
 		"1 1 240 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",

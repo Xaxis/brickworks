@@ -928,7 +928,9 @@ plan with Claude as the client.
   are, then hidden for your avatar (below), which carries the count.
 - `the account menu` (`web/follow.js` `showFeedCount`, 2026-10-22,
   docs/SOCIAL.md U7, D10): signed in, `details.more-menu.end.account-menu`
-  after the hidden `a[data-account]` in `.nav`: its summary `.account-btn`
+  after the hidden `a[data-account]`, the last thing in `.nav`, after Open
+  the app at the far right (2026-10-23; `design_flow.mjs` fails another
+  order, and `keyboard_flow.mjs` the Tab to it): its summary `.account-btn`
   is your avatar (`avatarHtml`, 36 px) with `.count` over its corner (what
   is new: notifications and the feed together, as `?op=feed_count`'s
   `count`), labelled "Your account, N new"; its `.menu-list` holds
@@ -1862,7 +1864,9 @@ plan with Claude as the client.
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
   in both schemes), a skip link, a sticky bar with a `<details>` menu under 860
-  px (no script: the CSP runs none inline), and one footer: the header and
+  px (no script: the CSP runs none inline) whose last item keeps the 16 px
+  gutter at every phone width (under 390 px the mark is the cube alone, its
+  name still Brickworks), and one footer: the header and
   footer are `web/_shell.html`, written into every page by `tools/site_shell.py`
   (`tests/test_site_shell.py` fails on a page that differs). Pictures are WebP at
   the widths a laptop and a phone need (the landing page's six at 400, 720 and
@@ -2328,7 +2332,9 @@ own way (a `menulist` dropdown, a checkbox in its own colour, 13.33 px type),
 controls of one kind on a page that differ (fields in type, height,
 corners, border or fill; buttons of one size), a page wider than 390
 with anything open, a count of none shown ("0 remixes", "following 0"),
-and, once each however many pages have it, any rule in a page's
+a header whose last item is closer than the page's 16 px gutter to the
+screen's right edge (on a phone at 320, 360 and 390 px, the page resized
+and put back), and, once each however many pages have it, any rule in a page's
 stylesheets, `<style>` or `style=""` with a font size, corner or colour off
 the token scale (`style: <sheet> | <selector> | <declaration>`).
 2026-10-22 (U2): 236 pages and dialogs, 2,418 controls, 236 passed, 0

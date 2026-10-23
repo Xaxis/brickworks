@@ -13372,19 +13372,41 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
 	var mover: Callable = func(item: int, move: Vector3) -> String:
 		return _moved_where(model, item, move)
+	# Which pieces that stand come away in the hand. One the parts round it
+	# catch stays (ExactCheck.caught), unless what catches it comes away too:
+	# asked again until nothing more does, what falls and what comes away
+	# catching nothing.
+	var stands: Dictionary = {}    ## root -> it rests
+	var gone: Dictionary = {}      ## item -> true
+	for key: Variant in pieces:
+		stands[key] = exact.rests(pieces[key])
+		if not stands[key]:
+			for index: Variant in pieces[key]:
+				gone[int(index)] = true
+	var away: Dictionary = {}      ## root -> true
+	var more: bool = true
+	while more:
+		more = false
+		for key: Variant in pieces:
+			if stands[key] and not away.has(key) and exact.comes_away(pieces[key], gone):
+				away[key] = true
+				more = true
+				for index: Variant in pieces[key]:
+					gone[int(index)] = true
 	var set_down: Array = []
 	for key: Variant in pieces:
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
-		# it. Unless a stud holds it, it comes away in the hand, and that is a
-		# fault: the outline161 rabbit's twelve cheese slopes on round plates'
-		# rims, and the pose174 toilet's roll a stud off the studs at the edge
-		# of its tank, each passed while BrickNet counted it a piece of its own.
+		# it. Unless a stud holds it or the parts round it catch it, it comes
+		# away in the hand, and that is a fault: the outline161 rabbit's twelve
+		# cheese slopes on round plates' rims, and the pose174 toilet's roll a
+		# stud off the studs at the edge of its tank, each passed while BrickNet
+		# counted it a piece of its own.
 		# Only a tile set down on a face with no stud is advice, as sets lay a
 		# loose printed tile on a table (ExactCheck.set_down), and every
 		# edit's reply says it (resting).
-		if exact.rests(pieces[key]):
-			if not exact.comes_away(pieces[key]):
+		if stands[key]:
+			if not away.has(key):
 				continue
 			for index: Variant in pieces[key]:
 				apart[int(index)] = true

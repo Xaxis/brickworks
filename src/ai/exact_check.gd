@@ -54,7 +54,7 @@ var ground: float = 0.0
 var _asked: Dictionary = {}
 ## What asking it has cost this check, in microseconds: the report says it.
 var spent_usec: int = 0
-## And by what it was spent on: seat, collisions, pieces, cleared, place.
+## And by what it was spent on: seat, collisions, pieces, cleared, place, caught.
 var spent_on: Dictionary = {}
 
 
@@ -446,7 +446,7 @@ func rests(members: Array) -> bool:
 ## it held together. A 4 x 4 dish over a round plate's four studs is held:
 ## its centre tube stands between them as a 2 x 2 brick's tube does, though
 ## BrickNet reads only the tube's own middle, which takes one stud.
-func comes_away(members: Array) -> bool:
+func comes_away(members: Array, gone: Dictionary = {}) -> bool:
 	var mine: Dictionary = {}
 	for i: Variant in members:
 		mine[int(i)] = true
@@ -457,7 +457,90 @@ func comes_away(members: Array) -> bool:
 				continue
 			if _tube_grips(items[j], item) or _tube_grips(item, items[j]):
 				return false
+	return not caught(members, gone)
+
+
+## Whether a piece of [param members] is caught where it is: slid out any of
+## the six ways along the axes, its exact shapes run into another part's
+## before it is clear of them. The parts in [param gone] (those of pieces that
+## come away themselves) stop nothing. The orrery's planet rings are each a
+## piece BrickNet joins to nothing, as no connector it knows turns a ring
+## round a core; each stands on the ring below, the gears in mesh with its
+## teeth stop it every way across, and the frame over the top ring stops the
+## stack lifting off, so picked up, the model keeps them. A tile resting on a
+## plate slides up off it, and comes away.
+func caught(members: Array, gone: Dictionary = {}) -> bool:
+	var began: int = Time.get_ticks_usec()
+	var held: bool = _caught(members, gone)
+	_spent("caught", began)
+	return held
+
+
+func _caught(members: Array, gone: Dictionary) -> bool:
+	var mine: Dictionary = {}
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null or not item.shape.has_pieces():
+			return false
+		mine[int(i)] = true
+		lo = lo.min(item.lo)
+		hi = hi.max(item.hi)
+	# What it could run into each way: whatever is across the path of its box.
+	var across: Array = [[], [], [], [], [], []]
+	for j: int in items.size():
+		var other: Exact.Item = items[j]
+		if other == null or mine.has(j) or gone.has(j) or not other.shape.has_pieces():
+			continue
+		var over := Vector3i(int(other.lo.x <= hi.x and lo.x <= other.hi.x),
+			int(other.lo.y <= hi.y and lo.y <= other.hi.y), int(other.lo.z <= hi.z and lo.z <= other.hi.z))
+		for axis: int in 3:
+			if over[(axis + 1) % 3] == 0 or over[(axis + 2) % 3] == 0:
+				continue
+			if other.hi[axis] > lo[axis]:
+				(across[axis * 2] as Array).append(j)
+			if other.lo[axis] < hi[axis]:
+				(across[axis * 2 + 1] as Array).append(j)
+	for way: int in 6:
+		if not _runs_into(members, across[way], way / 2, 1.0 if way % 2 == 0 else -1.0):
+			return false
 	return true
+
+
+## How far a piece is slid at a time when asked whether it is caught, in LDU:
+## under a plate's height, so no plate is passed through between two steps.
+const SLIDE := 4.0
+
+
+## Whether [param members], slid along [param axis] the way [param sign] says
+## a step at a time, meet any of [param across] by more than TAU: each pair
+## asked only at the steps where their boxes overlap, the pair whose boxes
+## meet soonest first, as it is the likeliest to stop it.
+func _runs_into(members: Array, across: Array, axis: int, sign: float) -> bool:
+	var pairs: Array = []    ## [first step, last step, member, other]
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		for j: Variant in across:
+			var other: Exact.Item = items[int(j)]
+			if other.lo[(axis + 1) % 3] > item.hi[(axis + 1) % 3] or item.lo[(axis + 1) % 3] > other.hi[(axis + 1) % 3] \
+					or other.lo[(axis + 2) % 3] > item.hi[(axis + 2) % 3] or item.lo[(axis + 2) % 3] > other.hi[(axis + 2) % 3]:
+				continue
+			var from: float = other.lo[axis] - item.hi[axis] if sign > 0.0 else item.lo[axis] - other.hi[axis]
+			var to: float = other.hi[axis] - item.lo[axis] if sign > 0.0 else item.hi[axis] - other.lo[axis]
+			if to >= SLIDE:
+				pairs.append([maxi(1, ceili(from / SLIDE)), floori(to / SLIDE), int(i), int(j)])
+	pairs.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var way := Vector3.ZERO
+	way[axis] = sign
+	for pair: Array in pairs:
+		var item: Exact.Item = items[pair[2]]
+		for step: int in range(pair[0], pair[1] + 1):
+			var moved := Exact.Item.new(item.shape,
+				Transform3D(item.at.basis, item.at.origin + way * SLIDE * float(step)))
+			if not Exact.clash(moved, items[pair[3]]).is_empty():
+				return true
+	return false
 
 
 ## Whether a tube of [param b] stands between studs of [param a], as a 2 x 2

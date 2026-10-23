@@ -63,7 +63,7 @@ set -a; . "$R/.env"; set +a
 URL=""
 [ -n "${UNIT_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
 if [ -z "$URL" ]; then
-  import_here
+  import_here || { echo "unit_preview: the import did not finish (tools/fresh_import.sh)"; exit 1; }
   deploy_preview "$TAG" "$SHA" || exit 1
 fi
 echo "UNIT: checks on $URL: $*"
