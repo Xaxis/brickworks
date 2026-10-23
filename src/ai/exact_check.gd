@@ -392,6 +392,7 @@ func rests(members: Array) -> bool:
 	var mass: float = 0.0
 	var middle := Vector3.ZERO
 	var touching := PackedVector3Array()
+	var around: PackedInt32Array = _around(members)
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		if item == null or not item.shape.has_pieces():
@@ -402,7 +403,7 @@ func rests(members: Array) -> bool:
 			var weight: float = maxf(size.x * size.y * size.z, 0.001)
 			mass += weight
 			middle += ((box[0] as Vector3) + (box[1] as Vector3)) * 0.5 * weight
-		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+		for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
 			if mine.has(j) or items[j] == null:
 				continue
 			var found: Variant = between(int(i), j)
@@ -436,6 +437,33 @@ func rests(members: Array) -> bool:
 	return true
 
 
+## The items whose boxes come within TOUCH of [param members]' box, its own
+## among them: what any of them can touch, found in one pass over the model
+## rather than one a member. A wall column of 225 parts was 2.1 million boxes
+## asked, a second, and Orthanc has forty (Tested, 2026-10-23). Never empty
+## for members with a shape, so never [method Exact._near]'s "every item".
+func _around(members: Array) -> PackedInt32Array:
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item != null:
+			lo = lo.min(item.lo)
+			hi = hi.max(item.hi)
+	var out := PackedInt32Array()
+	if lo == Vector3.INF:
+		return out
+	var reach: float = TOUCH + Exact.TAU
+	for j: int in items.size():
+		var other: Exact.Item = items[j]
+		if other == null or other.lo.x - reach > hi.x or lo.x - reach > other.hi.x \
+				or other.lo.y - reach > hi.y or lo.y - reach > other.hi.y \
+				or other.lo.z - reach > hi.z or lo.z - reach > other.hi.z:
+			continue
+		out.append(j)
+	return out
+
+
 ## Whether a piece of [param members] that nothing joins and that stands
 ## where it is ([method rests]) comes away in the hand: no tube of it stands
 ## between another part's studs, nor one of another's between its studs. BrickNet's
@@ -450,9 +478,10 @@ func comes_away(members: Array, gone: Dictionary = {}) -> bool:
 	var mine: Dictionary = {}
 	for i: Variant in members:
 		mine[int(i)] = true
+	var around: PackedInt32Array = _around(members)
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
-		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+		for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
 			if mine.has(j) or items[j] == null:
 				continue
 			if _tube_grips(items[j], item) or _tube_grips(item, items[j]):
@@ -579,13 +608,14 @@ func on_missing_stud(members: Array) -> int:
 	var mine: Dictionary = {}
 	for i: Variant in members:
 		mine[int(i)] = true
+	var around: PackedInt32Array = _around(members)
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		for one: Array in item.world():
 			if item.shape.kind[one[0]] != Exact.HOLE or (one[2] as Vector3).dot(Vector3.UP) < Exact.AXIS_THR:
 				continue
 			var at: Vector3 = one[1]
-			for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+			for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
 				var other: Exact.Item = items[j]
 				if mine.has(j) or other == null or at.x < other.lo.x or at.x > other.hi.x \
 						or at.z < other.lo.z or at.z > other.hi.z:
@@ -636,11 +666,12 @@ func on_studded(members: Array) -> int:
 	var mine: Dictionary = {}
 	for i: Variant in members:
 		mine[int(i)] = true
+	var around: PackedInt32Array = _around(members)
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		if item == null:
 			continue
-		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+		for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
 			var other: Exact.Item = items[j]
 			if mine.has(j) or other == null:
 				continue
@@ -1012,22 +1043,45 @@ const SEAT_ASK := 40.0
 static func _touching(a: Exact.Item, b: Exact.Item, out: PackedVector3Array) -> void:
 	var to_a: Transform3D = a.at.affine_inverse()
 	var to_b: Transform3D = b.at.affine_inverse()
-	for pa: Exact.Piece in a.shape.pieces:
-		var box_a: Array = Exact.box_in(pa.lo, pa.hi, a.at)
-		for pb: Exact.Piece in b.shape.pieces:
-			var box_b: Array = Exact.box_in(pb.lo, pb.hi, b.at)
+	var of_b: Array = _pieces_near(b, a)
+	for one: Array in _pieces_near(a, b):
+		var pa: Exact.Piece = one[0]
+		var box_a: Array = one[1]
+		for other: Array in of_b:
+			var pb: Exact.Piece = other[0]
+			var box_b: Array = other[1]
 			var lo: Vector3 = (box_a[0] as Vector3).max(box_b[0])
 			var hi: Vector3 = (box_a[1] as Vector3).min(box_b[1])
 			if hi.x - lo.x < -TOUCH or hi.y - lo.y < -TOUCH or hi.z - lo.z < -TOUCH:
 				continue
-			for v: Vector3 in pb.verts:
-				var w: Vector3 = b.at * v
+			for w: Vector3 in (other[2] as PackedVector3Array):
 				if _over(box_a, w) and _outside(pa, to_a * w) <= TOUCH:
 					out.append(w)
-			for v: Vector3 in pa.verts:
-				var w: Vector3 = a.at * v
+			for w: Vector3 in (one[2] as PackedVector3Array):
 				if _over(box_b, w) and _outside(pb, to_b * w) <= TOUCH:
 					out.append(w)
+
+
+## The pieces of [param item] within TOUCH of [param other]'s box, each [the
+## piece, its box in the world, its corners in the world], worked out once for
+## [method _touching]: only these can touch a piece of it, and a gear or a
+## quarter ring is a hundred pieces, every one of them asked against every one
+## of the other's. The orrery's planet rings took 6 s each to ask whether they
+## stand (Tested, 2026-10-23).
+static func _pieces_near(item: Exact.Item, other: Exact.Item) -> Array:
+	var out: Array = []
+	for p: Exact.Piece in item.shape.pieces:
+		var box: Array = Exact.box_in(p.lo, p.hi, item.at)
+		var lo: Vector3 = (box[0] as Vector3).max(other.lo)
+		var hi: Vector3 = (box[1] as Vector3).min(other.hi)
+		if hi.x - lo.x < -TOUCH or hi.y - lo.y < -TOUCH or hi.z - lo.z < -TOUCH:
+			continue
+		var corners := PackedVector3Array()
+		corners.resize(p.verts.size())
+		for k: int in p.verts.size():
+			corners[k] = item.at * p.verts[k]
+		out.append([p, box, corners])
+	return out
 
 
 ## Whether point [param w] is over or under the box [lo, hi], seen from above.

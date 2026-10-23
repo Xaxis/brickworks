@@ -4,7 +4,9 @@
 // and the part library are (src/assembly/tested.gd): it stands at every one
 // of the steps the share carries; no part of a step is put down in the air
 // or hidden behind what is already built; every part is made in its colour;
-// nothing is loose. This server cannot run any of them: it has no library,
+// it is one piece, every part held and none in another, by the parts' exact
+// shapes (since 2026-10-23: before, nothing was loose by touch). This server
+// cannot run any of them: it has no library,
 // no geometry and no physics. So it keeps what the app says, marked as the
 // app's own finding with the version of the app that made it, and never
 // more than that:
@@ -44,12 +46,15 @@ export const SAID = {
   parts: "every part made in its colour",
   whole: "nothing loose",
 };
-/// And what each failure is called, to its owner.
+/// And what each failure is called, to its owner, before the app's reason.
+/// A model too big to build to its last step in the time a share takes is
+/// not shown to stand, nor every step reachable, when it fails another test
+/// (Tested._unfinished): those say so, and are named so they read true.
 const FAILED = {
-  stands: "It does not stand at every step",
-  steps: "A step is not reachable",
+  stands: "Not shown to stand at every step",
+  steps: "Not every step shown reachable",
   parts: "A part is not made in its colour",
-  whole: "Something is loose",
+  whole: "It does not go together",
 };
 
 const isCount = (n) => Number.isInteger(n) && n >= 1 && n <= 200000;
