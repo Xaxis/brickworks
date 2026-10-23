@@ -246,6 +246,14 @@ try {
   await type(ownerPage, "share_name", NAME);
   await shown("name", NAME);
   await press(ownerPage, "share_credit");
+  // Ticked, it offers the profile's name, and with none (this owner has
+  // none), nothing: never a name made from the address, as it offered
+  // "Delivered+walk 180 Web" (walk180, 2026-10-23). Given the time the
+  // server's answer takes to come back and fill it.
+  await ownerPage.waitForTimeout(3000);
+  const offered = String(((await state(ownerPage)).panel || {}).author || "");
+  check(`ticked Show who made it, with no profile: no name offered, nothing made from the address ("${offered}")`,
+    offered === "");
   await type(ownerPage, "share_author", AUTHOR);
   await shown("author", AUTHOR);
   await type(ownerPage, "share_tags", "car, flow test");

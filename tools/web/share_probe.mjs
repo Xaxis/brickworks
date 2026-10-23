@@ -963,7 +963,7 @@ async function thePeople(tokenA, tokenB) {
   const local = emailG.split("@")[0];
   const fromAddress = local.replace(/[-_.]/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase());
   const leaks = (text) => [local, fromAddress, "Delivered+bw", "delivered+bw", emailG].filter((one) => text.includes(one));
-  r = await call("/api/share", { method: "POST", token: tokenG, body: { model: SMALL, name: "Probe From Address", author: fromAddress } });
+  r = await call("/api/share", { method: "POST", token: tokenG, body: { model: SMALL, name: "Probe From Address", author: fromAddress, licence: "cc-by-4.0" } });
   const addressed = r.json?.id || "";
   if (addressed) published.add(addressed);
   check([200, 201].includes(r.status) && r.json?.author === NAME,

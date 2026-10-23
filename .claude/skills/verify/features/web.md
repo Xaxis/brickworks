@@ -396,7 +396,15 @@ plan with Claude as the client.
   the row stays, unpublished, and both files are deleted. `GET ?id=` is the
   viewer's one request (name, author, parts and the `.mpd`, `no-store`); 410
   `unpublished: true` once taken down, 404 for a link that never was. `GET
-  ?op=mine` (session): the account's links. `/m/<id>` (`op=page`) is the
+  ?op=mine` (session): the account's links, and `credit`, whom Show who made
+  it credits (`{name, handle}` of their profile shown in public, or null),
+  which the app's Share panel offers. A credit is the profile: published by
+  an account with one, `author` is kept as the profile's name whatever was
+  sent; with none, a name made from the sign-in address (the app before
+  m157 offered "Delivered+walk 180 Web") is refused 422. Every page and
+  answer says the credit by the profile's current name (`creditName`): the
+  licence line with its `@handle` link, the description, the JSON-LD author
+  with the profile's url, the embed card and the viewer's `author`. `/m/<id>` (`op=page`) is the
   link's page: og/twitter tags (title, the part count and author, the picture),
   the picture and the way in, and `web/share-page.js` sends a person straight
   on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
@@ -1858,7 +1866,14 @@ plan with Claude as the client.
   `#made`, a strip from the live gallery (`landing.js`: Top builds from
   `/api/share?op=list&sort=top`, asked as it nears the screen, a card put in
   only once its picture has decoded and the strip shown only once three are,
-  so it can never show a dead card; `data-strip` on `<html>` says how many);
+  so it can never show a dead card; `data-strip` on `<html>` says how many,
+  `none` when hidden). Its cards come from `card.js` `modelCard`, which must
+  give an element of the page's own document: made in a `<template>` they
+  never loaded a picture, `decode()` refused all seven and the strip never
+  showed (walk180, 2026-10-23). `tools/web/landing_check.mjs` (run by every
+  deploy) scrolls to it at 390 and 1280, light and dark: shown with every
+  card's picture drawn when the gallery has three with pictures, else
+  hidden; `--out=DIR` keeps `strip_<width>_<theme>.png`);
   `#assistant` last, short, off until you turn it on. Claim only what ships:
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
