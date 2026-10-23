@@ -92,6 +92,15 @@ function design(size) {
   return { name: `${falcon.name} (${bricks.length})`, description: "a large design", bricks };
 }
 
+// A frame that drew, cleared or copied into the window's own picture. One
+// that drew only off screen leaves the window as it was: Render's set made
+// ready once nobody has used the window for 3 s (StudioRender.warm_up) draws
+// viewports eight pixels square, alone, the window's own drawing left out
+// (since 2026-10-20). Counted as the model's frames, those few draws read as
+// a model of 0 or 1 instances arriving after it, and failed m145's preview
+// once and m146's four times of six (2026-10-22).
+const inWindow = ([, , , , , , , window]) => window;
+
 // In the page before anything else runs: every engine frame timed, with the
 // instances it asked WebGL to draw; long tasks; and a gate on the browser's
 // frames for a tab out of view.
@@ -113,15 +122,16 @@ function instrument() {
   // engine hands it is timed, once however many hands it passes through.
   const timed = (callback) => (time) => {
     if (perf.cur) { callback(time); return; }
-    const frame = { t0: performance.now(), instances: 0, draws: 0, gl: 0, worst: 0, worstCall: "", each: [] };
+    const frame = { t0: performance.now(), instances: 0, draws: 0, gl: 0, worst: 0, worstCall: "", each: [], window: false };
     perf.cur = frame;
     try { callback(time); } finally {
       perf.cur = null;
       const ms = performance.now() - frame.t0;
       // [start, length, the engine's own part of it, instances, draws, the
-      // slowest WebGL call and how long it took]
+      // slowest WebGL call and how long it took, whether any of it reached
+      // the window]
       perf.frames.push([frame.t0, ms, ms - frame.gl, frame.instances, frame.draws,
-        frame.worstCall, frame.worst]);
+        frame.worstCall, frame.worst, frame.window]);
       // And, when what is drawn changed, each instanced draw's count: which
       // draws a change was in.
       const each = frame.each.join(",");
@@ -139,12 +149,18 @@ function instrument() {
   // inside these calls for a second or more a frame however little the app
   // did; on a graphics card that is a few milliseconds.
   const gl = WebGL2RenderingContext.prototype;
+  // Whether a call goes into the window's own picture rather than a
+  // viewport's off screen (outline_check.mjs): asked of the WebGL the page
+  // had before any of it was wrapped.
+  const getParameter = gl.getParameter;
+  const toWindow = (context) => getParameter.call(context, context.DRAW_FRAMEBUFFER_BINDING) === null;
   for (const name of Object.getOwnPropertyNames(gl)) {
     const d = Object.getOwnPropertyDescriptor(gl, name);
     if (!d || typeof d.value !== "function" || name === "constructor") continue;
     const was = d.value;
     const instanced = name === "drawElementsInstanced" || name === "drawArraysInstanced";
     const draw = instanced || name === "drawElements" || name === "drawArrays";
+    const shows = draw || name === "clear" || name === "blitFramebuffer";
     gl[name] = function (...a) {
       const f = perf.cur;
       if (!f) return was.apply(this, a);
@@ -153,7 +169,10 @@ function instrument() {
         if (instanced) { f.instances += a[a.length - 1]; f.each.push(a[a.length - 1]); }
       }
       const t0 = performance.now();
-      try { return was.apply(this, a); } finally {
+      try {
+        if (shows && !f.window && toWindow(this)) f.window = true;
+        return was.apply(this, a);
+      } finally {
         const took = performance.now() - t0;
         f.gl += took;
         if (took > f.worst) { f.worst = took; f.worstCall = name; }
@@ -249,9 +268,10 @@ async function runCase(size, mode) {
   // them. A case waited past the moment, 90 s after the last call, when the
   // assistant panel closes Claude's card; what was drawn changed a little
   // then, and read as the model arriving.
-  // A frame that draws nothing (draws 0) shows what the last one drew: the
-  // app draws only when something changed (IdleDraw, 2026-10-11), so a page
-  // standing still draws nothing at all, and that is settled too.
+  // A frame that puts nothing in the window shows what the last one did
+  // (see inWindow): the app draws only when something changed (IdleDraw,
+  // 2026-10-11), so a page standing still draws nothing at all, and that is
+  // settled too.
   async function settle(from, until) {
     while (Date.now() < until) {
       await page.waitForTimeout(1000);
@@ -261,7 +281,7 @@ async function runCase(size, mode) {
       let recent = f.filter(([t]) => t >= end - quiet);
       if (recent.length < 3) recent = f.slice(-3);
       if (end - from < quiet || recent.length < 3) continue;
-      const drew = recent.filter(([, , , , draws]) => draws > 0);
+      const drew = recent.filter(inWindow);
       const same = drew.every(([, , , n]) => n === drew[0][3]);
       const calm = recent.every(([, , own]) => own <= 100);
       const playing = await page.evaluate(() => !!(window.brickworksState || {}).playing);
@@ -327,13 +347,13 @@ async function runCase(size, mode) {
 
   const f = await frames(checkedAt);
   const after = f.filter(([t0]) => t0 >= shownAt);
-  // What is on the screen: what the last frame that drew anything drew. A
-  // frame that draws nothing leaves the last one's picture up, and the app
-  // draws only what changed (IdleDraw), so a tab in view all along may draw
-  // nothing more once shown: what it drew before is what is on the screen.
-  const drew = ([, , , , draws]) => draws > 0;
-  const drawing = after.filter(drew);
-  const before = f.filter(([t0]) => t0 < shownAt).filter(drew);
+  // What is on the screen: what the last frame that put anything in the
+  // window drew. A frame that draws nothing leaves the last one's picture
+  // up, and the app draws only what changed (IdleDraw), so a tab in view all
+  // along may draw nothing more once shown: what it drew before is what is
+  // on the screen.
+  const drawing = after.filter(inWindow);
+  const before = f.filter(([t0]) => t0 < shownAt).filter(inWindow);
   const onScreen = before.length ? before[before.length - 1] : null;
   const final = drawing.length ? drawing[drawing.length - 1][3] : (onScreen ? onScreen[3] : 0);
   // Drawn: the first frame in view from which every frame that draws draws

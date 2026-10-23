@@ -1596,10 +1596,14 @@ plan with Claude as the client.
   (SwiftShader) the page waits a second or more a frame on the rasteriser,
   inside those calls. It counts the instances each frame asks WebGL to draw.
   - `drawn`: the first frame in view from which every frame that draws
-    draws what the last one did, to within 1%. A frame that draws nothing
-    shows what the last drew: the app draws only what changed (`IdleDraw`,
-    2026-10-11), and a page standing still draws nothing, which `settle`
-    counts as settled too.
+    into the window draws what the last one did, to within 1%. A frame that
+    draws nothing shows what the last drew: the app draws only what changed
+    (`IdleDraw`, 2026-10-11), and a page standing still draws nothing, which
+    `settle` counts as settled too. So does a frame that drew only off
+    screen (no draw, clear or blit with the canvas's own framebuffer bound):
+    Render's set made ready once the window has been idle 3 s
+    (`StudioRender.warm_up`) draws 8-pixel viewports alone, and read as
+    frames of the model they were 0 or 1 instances after it (m145, m146).
   - `idle`: the last frame in view with over 100 ms of the engine's own work.
 
   It also prints the slowest own frame, long task and evaluate round trip in
