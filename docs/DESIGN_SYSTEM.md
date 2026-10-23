@@ -240,6 +240,19 @@ is on the page, `hidden`, for the script to show.
   `--accent-edge` with a `.dot`. The page's head is `.notices-head` (the
   title and Mark all read); `/notifications` and `/feed` share one `.tabs`
   row, each tab's count in `.n`, hidden at none.
+- **The feed** (`/feed`, `web/directory.css`, docs/SOCIAL.md U9): a
+  column of posts (`.feed-list`, 600 px at most), each a `.feed-row`: its
+  `.post-head` (the avatar, `.what` the sentence with who and the thing's
+  name as links and a New `.pill`, then the `time`), what they said as a
+  `q`, then the thing: the model's card (`.model`, the one renderer) or
+  `.feed-photo`, the photo of a build in a panel with its model under it.
+  `.feed-rail`, a panel of designers to follow (`.people-list`, each a
+  `.person-row`: avatar, name and their best models, Follow as
+  `.cta.ghost.small`), beside the posts from 1100 px and under them on a
+  phone; Latest on Brickworks (`.latest`: the gallery's `.models` and a
+  `.build-grid`) after it when the feed has nothing of its own, its empty
+  state a `.state` saying why (signed out, with Sign in; following nobody;
+  nothing in 90 days).
 - **The kit page**: `web/_kit.html` (at `/_kit` when the checkout is
   served, never published: `tools/site.py` leaves out a name that starts
   with "_") shows every component once, drawn by `web/kit.js` and

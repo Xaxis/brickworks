@@ -41,6 +41,14 @@ declare -A CMD=(
   # both widths. Throwaway accounts, deleted after; before and after
   # supabase/notifications.sql (it reads which from the answer).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
+  # nobody shows Latest on Brickworks (the newest models as the gallery's
+  # cards, every picture drawn) and designers to follow by Top builds; a
+  # follow from the suggestions, and the next load is the designer's new
+  # model, version and photo of a build as posts, each with its picture,
+  # at 390 and 1280, light and dark; latest kept by the CDN, never with
+  # tests=1. Throwaway accounts, deleted after with their models.
+  [feed]="tools/web/feed_flow.mjs --url=$P --out=$S/${TAG}_feed"
   # Top builds, this week's pick and small builds, and the owner's choice of
   # the pick on /admin: API routes only, with the bypass (supabase/discovery.sql).
   [discovery]="tools/web/discovery_flow.mjs --url=$P --out=$S/${TAG}_discovery"
