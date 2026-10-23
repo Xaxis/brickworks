@@ -13,8 +13,9 @@ This runs the file instead.
 
 Real pytest wins wherever it exists; tools/check.sh only falls back here.
 The shim implements exactly what the suite uses — approx, fixture,
-mark.parametrize, mark.skipif — and raises on anything else by name, so it
-can never quietly skip a test it did not understand.
+mark.parametrize, mark.skipif, and the tmp_path and capsys fixtures — and
+raises on anything else by name, so it can never quietly skip a test it did
+not understand.
 
     tools/minitest.py tests/test_ldraw.py
 """
@@ -23,12 +24,16 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import io
 import math
 import re
+import shutil
 import sys
+import tempfile
 import time
 import traceback
 import types
+from collections import namedtuple
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -122,6 +127,28 @@ class Mark:
             "or install real pytest." % name)
 
 
+CaptureResult = namedtuple("CaptureResult", "out err")
+
+
+class CaptureFixture:
+    """pytest's capsys: what the test printed since it began or last asked."""
+
+    def __init__(self) -> None:
+        self._saved = sys.stdout, sys.stderr
+        self._out, self._err = io.StringIO(), io.StringIO()
+        sys.stdout, sys.stderr = self._out, self._err
+
+    def readouterr(self) -> CaptureResult:
+        said = CaptureResult(self._out.getvalue(), self._err.getvalue())
+        for stream in (self._out, self._err):
+            stream.seek(0)
+            stream.truncate()
+        return said
+
+    def close(self) -> None:
+        sys.stdout, sys.stderr = self._saved
+
+
 def fixture(fn=None, *, scope: str = "function"):
     def mark(f):
         f.__fixture__ = scope
@@ -200,17 +227,35 @@ def run(path: Path) -> tuple[int, int, int]:
         if callable(value) and hasattr(value, "__fixture__")
     }
     cached: dict[str, object] = {}
+    temp = Path(tempfile.mkdtemp(prefix="minitest-"))
 
-    def resolve(name: str):
-        if name in cached:
-            return cached[name]
-        if name not in fixtures:
+    def capture(closers: list) -> CaptureFixture:
+        capsys = CaptureFixture()
+        closers.append(capsys.close)
+        return capsys
+
+    # pytest's own fixtures, the ones the suite asks for.
+    builtin = {
+        "tmp_path": lambda closers: Path(tempfile.mkdtemp(dir=temp)),
+        "capsys": capture,
+    }
+
+    def resolve(name: str, test: dict[str, object], closers: list):
+        # A function-scoped fixture is made once per test, as pytest makes
+        # it: a fixture and the test that both ask for tmp_path get the
+        # same folder.
+        for made in (cached, test):
+            if name in made:
+                return made[name]
+        if name in fixtures:
+            maker = fixtures[name]
+            wants = {p: resolve(p, test, closers) for p in inspect.signature(maker).parameters}
+            value, scope = maker(**wants), getattr(maker, "__fixture__")
+        elif name in builtin:
+            value, scope = builtin[name](closers), "function"
+        else:
             raise LookupError("no fixture named %r for this test" % name)
-        maker = fixtures[name]
-        wants = {p: resolve(p) for p in inspect.signature(maker).parameters}
-        value = maker(**wants)
-        if getattr(maker, "__fixture__") in ("session", "module", "package"):
-            cached[name] = value
+        (cached if scope in ("session", "module", "package") else test)[name] = value
         return value
 
     module_skips = getattr(module, "pytestmark", [])
@@ -231,20 +276,31 @@ def run(path: Path) -> tuple[int, int, int]:
                 sys.stdout.write("s")
                 sys.stdout.flush()
                 continue
-            wants = {p: row[p] if p in row else resolve(p) for p in inspect.signature(fn).parameters}
+            test: dict[str, object] = {}
+            closers: list = []
+            # Fixtures are made inside the try, so one a test cannot have
+            # fails that test, not the run: a missing one ended the run
+            # with the verdict of the files before it (2026-10-23).
             try:
+                wants = {p: row[p] if p in row else resolve(p, test, closers)
+                         for p in inspect.signature(fn).parameters}
                 fn(**wants)
             except Skipped as skip:
                 skipped.append((label, skip.reason))
-                sys.stdout.write("s")
+                mark = "s"
             except BaseException as error:  # noqa: BLE001 - a test may raise anything
                 failures.append((label, error))
-                sys.stdout.write("F")
+                mark = "F"
             else:
                 passed += 1
-                sys.stdout.write(".")
+                mark = "."
+            finally:
+                for close in reversed(closers):
+                    close()
+            sys.stdout.write(mark)
             sys.stdout.flush()
 
+    shutil.rmtree(temp, ignore_errors=True)
     print("")
     for label, error in failures:
         print("")
