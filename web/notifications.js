@@ -170,6 +170,7 @@ $("sign-in").addEventListener("click", async () => {
   if (await askToSignIn()) load();
 });
 $("all-read").addEventListener("click", async () => {
+  const focused = document.activeElement === $("all-read");
   $("all-read").disabled = true;
   const answer = await call("/api/people?op=notifications_read", { method: "POST", body: { all: true } }).catch(() => null);
   $("all-read").disabled = false;
@@ -182,7 +183,15 @@ $("all-read").addEventListener("click", async () => {
     one.querySelector(".dot")?.remove();
     for (const row of one.querySelectorAll(".unread")) row.classList.remove("unread");
   }
+  // The button goes with what it did: said, and the keyboard's focus on
+  // the page's title rather than lost with it.
+  const title = document.querySelector(".notices-head h1");
+  if (title && focused) {
+    title.tabIndex = -1;
+    title.focus();
+  }
   allRead();
+  $("said").textContent = "All read.";
   showTabCounts(await showFeedCount().catch(() => null));
 });
 // Back to the list from a model: what was opened is shown read.

@@ -42,7 +42,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { counted, iconButtonHtml, modelCard } from "/card.js";
+import { counted, iconButtonHtml, likeName, modelCard } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 
@@ -483,7 +483,8 @@ import { toast } from "/kit.js";
   function drawLike(id, liked, likes) {
     for (const button of document.querySelectorAll(`[data-like="${id}"]`)) {
       const made = document.createElement("template");
-      made.innerHTML = iconButtonHtml({ icon: "like", name: "Like", count: likes, one: "like", pressed: liked,
+      const name = button.closest(".model")?.querySelector("a.open")?.textContent || "";
+      made.innerHTML = iconButtonHtml({ icon: "like", name: likeName(name), count: likes, one: "like", pressed: liked,
         small: true, attrs: `data-like="${id}"` });
       const fresh = made.content.firstElementChild;
       button.setAttribute("aria-pressed", fresh.getAttribute("aria-pressed"));

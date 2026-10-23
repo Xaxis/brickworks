@@ -116,6 +116,14 @@
       "tests": []
     },
     {
+      "id": "cli:accessibility browser flow",
+      "kind": "cli",
+      "entry": "tools/web/a11y_flow.mjs",
+      "reach": "node tools/web/a11y_flow.mjs --out=shots/a11y   (axe-core from tools/web/axe-core on every page and state of tools/web/site_pages.mjs, and the accessibility tree's names; no network: the stand-in answers the API; --url=<deployment> for a preview)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:account browser flow",
       "kind": "cli",
       "entry": "tools/web/account_flow.mjs",
@@ -707,6 +715,14 @@
       "entry": "src/dev/mcp_sync_probe.gd",
       "reach": "godot --headless --path . --script src/dev/mcp_sync_probe.gd   (-- --write writes tools/mcp_tools.json again from the app)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:keyboard browser flow",
+      "kind": "cli",
+      "entry": "tools/web/keyboard_flow.mjs",
+      "reach": "node tools/web/keyboard_flow.mjs --out=shots/keyboard   (the site's journeys by Tab, Enter and Escape alone; no network: the stand-in answers the API; --url=<deployment> for a preview's pages and scripts)",
+      "area": "web",
       "tests": []
     },
     {

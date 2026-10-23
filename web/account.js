@@ -193,6 +193,9 @@ export function askToSignIn(why) {
     dialog.className = "sign-in";
     const title = document.createElement("h2");
     title.textContent = "Sign in to Brickworks";
+    // Named by its title, as a screen reader says it opens.
+    title.id = "sign-in-title";
+    dialog.setAttribute("aria-labelledby", title.id);
     const said = document.createElement("p");
     said.textContent = why || "Sign in with your email address: we send you a code, no password.";
     const form = document.createElement("form");
@@ -303,6 +306,8 @@ function askAge() {
     dialog.className = "sign-in age";
     const title = document.createElement("h2");
     title.textContent = "One question first";
+    title.id = "age-title";
+    dialog.setAttribute("aria-labelledby", title.id);
     const said = document.createElement("p");
     said.textContent = "When were you born?";
     const form = document.createElement("form");

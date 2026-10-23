@@ -83,6 +83,9 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
     + `${iconHtml(icon)}${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
 }
 
+/// A card's like, as a screen reader says it: "Like Watchtower".
+export const likeName = (name) => `Like ${String(name || "").trim() || "it"}`;
+
 /// A count as a card shows it: its icon and its number, with its words for
 /// a screen reader and on hover ("4 built"); "" at none, never "0".
 function tallyHtml(icon, n, one, many) {
@@ -219,7 +222,8 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
   // device (supabase/builds.sql), and comments. Views are never shown or
   // ranked (docs/SOCIAL.md D6).
   if (!earned) {
-    const liked = like ? iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like",
+    // Named with the model: twenty cards' "Like" in a row say which they like.
+    const liked = like ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
       pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : tallyHtml("like", model.likes, "like");
     const acts = liked + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
     if (acts) lines.push(`<small class="acts">${acts}</small>`);

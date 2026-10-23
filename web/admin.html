@@ -46,7 +46,10 @@
           border-radius: var(--r-2); padding: 14px 16px; }
   .stat b { display: block; font-size: var(--t-h2); letter-spacing: -0.02em; }
   .stat span { font-size: var(--t-micro); color: var(--ink-faint); }
-  .scroller { overflow-x: auto; }
+  /* A table wider than a phone scrolls inside its card; positioned, so a
+     header's words for a screen reader (.visually-hidden) scroll with it
+     rather than push the page sideways. */
+  .scroller { overflow-x: auto; position: relative; }
   table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
   th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: var(--t-micro);
        text-transform: uppercase; letter-spacing: .05em;
@@ -84,7 +87,7 @@
 #challenge-form .row { margin-top: 0; flex-wrap: wrap; }
 </style>
 
-<div class="wrap">
+<main class="wrap">
   <h1>Accounts</h1>
   <p class="sub">Everyone who uses Brickworks signs in with their email
      address. This is who has, and whose Claude connectors there are.</p>
@@ -106,7 +109,7 @@
       <b>Sign-in codes are going out under a borrowed sender.</b>
       <div id="email-detail" class="note" style="margin-top:6px"></div>
     </div>
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Who has signed in" style="padding:4px 4px 0">
       <table>
         <thead><tr>
           <th>Email</th><th>Joined</th><th>Last signed in</th>
@@ -128,11 +131,11 @@
        the account takes every model of it out and keeps it out; a report
        about a comment says what it said and Remove the comment takes it
        off its page; Let it go closes the report.</p>
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Reported" style="padding:4px 4px 0">
       <table class="queue">
         <thead><tr>
           <th>When</th><th>About</th><th>Why</th><th>Said</th><th>Reach them</th>
-          <th>Account</th><th></th>
+          <th>Account</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="reports"></tbody>
       </table>
@@ -145,10 +148,10 @@
        good: it is kept, shown to nobody, and what was reported about it is
        settled. Its author and the model's builder can no longer bring it
        back.</p>
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Comments" style="padding:4px 4px 0">
       <table class="queue">
         <thead><tr>
-          <th>When</th><th>On</th><th>Said</th><th>By</th><th>State</th><th></th>
+          <th>When</th><th>On</th><th>Said</th><th>By</th><th>State</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="comments"></tbody>
       </table>
@@ -159,9 +162,9 @@
     <p class="note">None of their models can be listed, and they have no
        profile or public collection. Let back in lets them list again; what
        was taken out stays out until listed again by hand.</p>
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Accounts taken out" style="padding:4px 4px 0">
       <table>
-        <thead><tr><th>Account</th><th>Since</th><th>Why</th><th></th></tr></thead>
+        <thead><tr><th>Account</th><th>Since</th><th>Why</th><th><span class="visually-hidden">What to do</span></th></tr></thead>
         <tbody id="barred"></tbody>
       </table>
     </div>
@@ -174,19 +177,19 @@
        model in the gallery below, puts one there for a week instead; End
        goes back to the one worked out.</p>
     <div class="card" id="pick-now"><span class="note">—</span></div>
-    <div class="card scroller" style="padding:4px 4px 0; margin-top:12px">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Picks chosen" style="padding:4px 4px 0; margin-top:12px">
       <table>
         <thead><tr>
-          <th>Chosen</th><th>From</th><th>Until</th><th>Shown to visitors</th><th></th>
+          <th>Chosen</th><th>From</th><th>Until</th><th>Shown to visitors</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="choices"></tbody>
       </table>
     </div>
-    <div class="card scroller" style="padding:4px 4px 0; margin-top:12px">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Worked out this week" style="padding:4px 4px 0; margin-top:12px">
       <table>
         <thead><tr>
           <th>Worked out this week</th><th class="n">Built</th><th class="n">Remixed</th>
-          <th>Tested</th><th class="n">Score</th><th></th>
+          <th>Tested</th><th class="n">Score</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="week"></tbody>
       </table>
@@ -200,11 +203,11 @@
        built by hand or with the assistant, judged apart; people 13 and over
        vote once in each group, and when it ends the most voted in each wins.
        End it now closes it today.</p>
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Challenges" style="padding:4px 4px 0">
       <table>
         <thead><tr>
           <th>Challenge</th><th>Days</th><th>Rules</th><th>State</th>
-          <th class="n">By hand</th><th class="n">Assistant</th><th>Winners</th><th></th>
+          <th class="n">By hand</th><th class="n">Assistant</th><th>Winners</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="challenges"></tbody>
       </table>
@@ -240,11 +243,11 @@
     <p class="note">What anyone can see at <a href="/gallery">/gallery</a>.
        Take out takes a model out of it for good: its link goes on
        working, and its owner cannot list it again.
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="In the gallery" style="padding:4px 4px 0">
       <table>
         <thead><tr>
           <th>Model</th><th>Credited to</th><th>Account</th>
-          <th class="n">Parts</th><th>Listed</th><th></th>
+          <th class="n">Parts</th><th>Listed</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="gallery"></tbody>
       </table>
@@ -257,11 +260,11 @@
        reached, every part is made in its colour, nothing is loose. The app's
        finding, which the server cannot check. Clear the mark takes it off
        that version everywhere.</p>
-    <div class="card scroller" style="padding:4px 4px 0">
+    <div class="card scroller" tabindex="0" role="region" aria-label="Marked Tested" style="padding:4px 4px 0">
       <table>
         <thead><tr>
           <th>Model</th><th class="n">Version</th><th>App</th>
-          <th class="n">Parts</th><th class="n">Steps</th><th>Tested</th><th></th>
+          <th class="n">Parts</th><th class="n">Steps</th><th>Tested</th><th><span class="visually-hidden">What to do</span></th>
         </tr></thead>
         <tbody id="tested"></tbody>
       </table>
@@ -273,7 +276,7 @@
     <a href="/">Brickworks</a> · this page is not indexed and shows nothing
     to anyone but the owner's account.
   </p>
-</div>
+</main>
 
 <script type="module" src="/admin.js"></script>
 </html>

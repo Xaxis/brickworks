@@ -110,7 +110,11 @@ is on the page, `hidden`, for the script to show.
   `<summary>` that opens something is `summary.cta.ghost`.
 - **Dialog**: the `dialog` element (sign in and the age question in
   `web/account.js`, report it in `web/report.js`): a `--panel` card, its
-  title an h2, the form, the buttons last with the primary first.
+  title an h2 that names it (`aria-labelledby`), the form, the buttons
+  last with the primary first. Opened with `showModal()`; `web/kit.js`
+  keeps the keyboard in it (Tab from the last control comes round to the
+  first) and, closed, gives the focus back to what opened it, or to the
+  More menu's button when what opened it was folded away with the menu.
 - **Card**: `.card`, a panel of words.
 - **Command**: `code.cmd`, a line to type in a terminal, in a box of its
   own that wraps, so a long one (a checksum check) never runs past the
@@ -210,7 +214,9 @@ is on the page, `hidden`, for the script to show.
   `.cta.ghost.small` Cancel) under the thread.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
-  (`role="status"`), gone in 2.4 s.
+  (`role="status"`, on the page empty from its load, since a screen
+  reader reads a region's change and not a region that arrives already
+  speaking), gone in 2.4 s.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the
@@ -281,9 +287,54 @@ is on the page, `hidden`, for the script to show.
   with "_") shows every component once, drawn by `web/kit.js` and
   `web/card.js`, so `design_flow.mjs` judges what no page uses yet.
 - **Settings**: `.settings`, a panel of `.setting` rows, what a setting is
-  (an `h3` and a line) and its control beside it, under it on a phone;
+  (an `h2` under the page's `h1`, and a line) and its control beside it, under it on a phone;
   `.wide` takes the whole row. What cannot be undone is `.setting.danger`
   and its button `.cta.ghost.danger`, in `--bad`.
+
+## Accessibility
+
+Every page is for a person on the keyboard alone and a person with a
+screen reader too (docs/COMPETITIVE.md item 14, 2026-10-23). What the kit
+does for every page, so a page need not:
+
+- **Focus is never lost.** A button disabled while what it asked is done
+  (Like, Follow, Send) loses the keyboard's focus to the page's body in
+  the browser; `web/kit.js` gives it back once it is enabled again. What a
+  press redraws (a comment's thread, your lists under Save) puts the focus
+  back on the same control, and what a press takes away (Cancel a reply,
+  Mark all read) puts it on what is left: Reply, the page's title.
+- **Escape closes** a More menu, your lists under Save and a reply's box,
+  back on the button that opened them, as it closes a dialog.
+- **Names**: an icon button says its name and count; a card's like says
+  which model ("Like Riverside Watchtower, 96 likes"); a comment's Reply
+  says whose ("Reply to Jo Lindqvist"). A table that scrolls sideways is a
+  named region the keyboard can reach and scroll.
+- **Targets**: every link and button 24 px at least (a card's name too).
+- **Reduced motion**: the toast does not slide, and the page does not
+  scroll smoothly; nothing else on the site moves.
+
+`tools/web/a11y_flow.mjs` (preview check `[a11y]`) runs axe-core
+(`tools/web/axe-core`, vendored) on every page and state `[design]`
+visits (`tools/web/site_pages.mjs`, one list for both) and fails on a
+serious or critical finding; and it reads every control's name from the
+browser's accessibility tree, failing on one that says nothing (none, a
+bare number, a picture's file) and on a key page whose controls are not
+there by name. `tools/web/keyboard_flow.mjs` (`[keyboard]`) does what
+people come for with Tab, Enter and Escape alone, judging every stop's
+focus ring.
+
+What is left. Before this, axe made 246 serious findings on 58 of the
+356 pages and states: 240 a card's name, a 20 px target on a phone; 2
+/admin's tables, out of the keyboard's reach; and 4 a button under the
+pointer, whose brighter hover axe cannot read (the check now moves the
+pointer away). After, none; and of the moderate ones:
+
+- **The embed** (`/m/<id>/embed`) has no `h1`, axe's one moderate
+  finding: it is a card inside somebody else's page, one link, and their
+  page has the heading.
+- **The app** (`/app`) draws its controls on a canvas: a screen reader
+  reaches it only through the engine's own accessibility (Godot's
+  AccessKit), which is item 14's other half and not the site's.
 
 ## The check
 
