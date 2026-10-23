@@ -955,6 +955,46 @@ async function thePeople(tokenA, tokenB) {
   check(card.by?.handle === handle && (l.json?.models || []).find((m) => m.id === nameless)?.by == null,
     "a card says who shared it, by handle, only when credited");
 
+  // A credit is the profile (walk180, 2026-10-23): an app before m157
+  // offered a name made from the address ("Delivered+walk 180 Web"), and
+  // the page credited it under a head saying the profile. Sent so, it
+  // credits the profile's name and handle everywhere it is said, and no
+  // part of the address is anywhere a visitor reads.
+  const local = emailG.split("@")[0];
+  const fromAddress = local.replace(/[-_.]/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  const leaks = (text) => [local, fromAddress, "Delivered+bw", "delivered+bw", emailG].filter((one) => text.includes(one));
+  r = await call("/api/share", { method: "POST", token: tokenG, body: { model: SMALL, name: "Probe From Address", author: fromAddress } });
+  const addressed = r.json?.id || "";
+  if (addressed) published.add(addressed);
+  check([200, 201].includes(r.status) && r.json?.author === NAME,
+    `published with a credit made from its address ("${fromAddress}"), it credits the profile's name (${r.status}, ${r.json?.author})`);
+  r = await call(`/api/share?id=${addressed}`);
+  check(r.json?.author === NAME && !leaks(r.text).length, `the viewer's answer says the profile's name, nothing of the address (${r.json?.author}; ${leaks(r.text)})`);
+  r = await call(`/m/${addressed}`);
+  const ld = JSON.parse((r.text.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/) || [])[1] || "{}");
+  const escapedName = "&lt;b&gt;Probe&lt;/b&gt; &amp; &quot;Maker&quot;";
+  check(r.status === 200 && r.text.includes(`they credit ${escapedName} (<a href="/u/${handle}">@${handle}</a>)`)
+    && r.text.includes(`<meta name="description" content="1 part, by ${escapedName}.`)
+    && ld.author?.name === NAME && ld.author?.url === `${base}/u/${handle}` && !leaks(r.text).length,
+    `its page's licence credits the profile's name and @handle, as its head, description and data do; nothing of the address (${leaks(r.text)})`);
+  r = await call(`/m/${addressed}/embed`);
+  check(r.status === 200 && r.text.includes(`by ${escapedName} · Brickworks`) && !leaks(r.text).length,
+    `its card for a blog credits the profile's name (${r.status}; ${leaks(r.text)})`);
+  r = await call("/api/share?op=mine", { token: tokenG });
+  check(r.json?.credit?.name === NAME && r.json?.credit?.handle === handle,
+    `the app is told whom Show who made it credits: the profile (${JSON.stringify(r.json?.credit)})`);
+  // With no profile, a name made from the address is refused in words.
+  r = await call("/api/people?op=me", { token: tokenA });
+  const bare = r.json?.profile === null;
+  const localA = emailA.split("@")[0];
+  r = await call("/api/share", { method: "POST", token: tokenA, body: { model: SMALL, name: "Probe Addressed",
+    author: localA.replace(/[-_.]/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase()) } });
+  if (r.json?.id) published.add(r.json.id);
+  check(bare && r.status === 422 && /address you sign in with/.test(r.json?.error || ""),
+    `no profile, and a credit made from the address: 422 (${bare ? "no profile" : "a profile"}, ${r.status}) "${r.json?.error}"`);
+  r = await call("/api/share?op=mine", { token: tokenA });
+  check(r.status === 200 && r.json?.credit === null, `with no profile, the app is offered nobody to credit (${JSON.stringify(r.json?.credit)})`);
+
   // Likes.
   r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", body: { on: true } });
   check(r.status === 401, `a like, signed out: 401 (${r.status})`);
