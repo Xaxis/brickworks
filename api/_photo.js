@@ -41,6 +41,15 @@ export const LONG_SIDE = 1600;
 export const QUALITY = 85;
 export const TYPES = { "image/jpeg": "jpeg", "image/png": "png", "image/webp": "webp" };
 
+// How long the site's CDN may keep a picture a person sent (a build photo,
+// their own avatar) at its address: one taken out on /admin, hidden, or
+// taken off by its owner may be seen for this many seconds after, and no
+// longer. Never served stale: kept as the pages are (api/share.js
+// SHARED_CACHE, 30 s and served stale 30 s more), a picture taken out was
+// still served 33 s after its file was deleted (m149's preview, 2026-10-22).
+export const PICTURE_KEPT = 10;
+export const PICTURE_CACHE = `public, max-age=0, s-maxage=${PICTURE_KEPT}`;
+
 export class PhotoTrouble extends Error {
   constructor(message, status = 415) {
     super(message);

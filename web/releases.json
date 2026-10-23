@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.5.0",
+ "latest": "0.6.0",
  "releases": [
+  {
+   "version": "0.6.0",
+   "tag": "v0.6.0",
+   "date": "2026-10-23",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.6.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.6.0/CHANGELOG.md",
+   "summary": "A release about big models and what holds them. View > Stress tints every part by how near its weakest joint is to letting go, and flags only a joint that really is weak: on eight real sets that stand, one part reads red, a 9 g branch on one stud. A big model opens without freezing the window, and Timeline on one no longer pauses. Turning a model's moving parts by hand is lighter, most of all on a phone. A part laid at an angle is held by the studs it sits on, so the tow truck's fifth wheel turns on its axle. Claude finds a part by the words a builder uses for it, and never offers a place for a part that it then refuses. On brickworks.diy the gallery, model pages and profiles are new, with a feed, comments in threads and notifications. Models saved by 0.5.0 open in 0.6.0 unchanged.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.6.0-linux-x86_64.AppImage",
+     "size": 570808824,
+     "sha256": "da49d4834ea9ef20800274ae6af14f08077c62fc4503c55682e4f93513551c49",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.6.0/Brickworks-0.6.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.6.0-linux-x86_64.tar.xz",
+     "size": 421806660,
+     "sha256": "d835483c9770155ff729f3dbb765e6174d9d09fc43c4f96f00f8c10fef925fce",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.6.0/Brickworks-0.6.0-linux-x86_64.tar.xz",
+     "unpacked": 1481357496,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.6.0-macos-universal.zip",
+     "size": 750492338,
+     "sha256": "a0b80a430ac5eee0f7fcc16c3b42e69675621f7f9158ea861741aa83570019ea",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.6.0/Brickworks-0.6.0-macos-universal.zip",
+     "unpacked": 1578111962,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.6.0-windows-x86_64.zip",
+     "size": 728855517,
+     "sha256": "0f5ad98b635d1ce05da4af516a32b46119082c1404969aeca3df3e382c8ed235",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.6.0/Brickworks-0.6.0-windows-x86_64.zip",
+     "unpacked": 1517060376,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.5.0",
    "tag": "v0.5.0",
