@@ -78,6 +78,10 @@ whole cycle.
 
 ### Fixed
 
+- A part on the stud of a part turned at an angle, where either has no
+  exact shape, is held: the check read the stud as reaching into nothing,
+  and refused a 1 x 1 tile on a chamfered 2 x 4 wing in a ball of hinged
+  panels as not held.
 - A page on brickworks.diy renews your sign-in once, however many of its
   parts ask, and asks again after a moment when the sign-in service is busy.
   A page asked three or four times, and when one was refused it showed you
