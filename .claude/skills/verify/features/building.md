@@ -841,10 +841,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   round rack 2790a is loose in its holder; a socket drawn as plain rounds a
   ball's size holds a ball (`Joints.balls`). G14b (MECHANISMS §24): a
   pinion lodged in a piece whose rack it stands in turns on its own axis
-  (`Bodies._driving_pinion`); a door, a hatch or a lid held by nothing hangs
-  on the part it is lodged in, where that part is in its piece's biggest
-  body and BrickNet's labels name a hinge between the two
-  (`Bodies._labelled_hinge`, `Bodies._stays`).
+  (`Bodies._driving_pinion`); a door, a hatch, a lid, a shutter or a
+  window's pane held by nothing hangs on the part it is lodged in, where
+  that part is in its piece's biggest body and BrickNet's labels name a
+  hinge between the two (`Bodies._labelled_hinge`, `Exact.hinge_between`,
+  `Bodies._stays`; door184 added shutters and panes, which were lodged).
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket; never a tyre), else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's
@@ -1208,10 +1209,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   where the two meet inside the round — and, on a joint, not below the
   ground. The same rule now decides the ordinary ghost too. The status
   bar says what it is on ("Placing Technic Pin on the pin hole of Technic
-  Brick 1 x 2 with Hole") and what R and T do there. Probe:
-  `technic_hand_probe`; `placing_probe -- only=wheels` puts 8643-1's tyres
+  Brick 1 x 2 with Hole") and what R and T do there. A door, a shutter or a
+  window's pane goes on its holder's hinge (door184, 2026-10-23: walk180's
+  door stood beside its frame or on its studs): the halves are BrickNet's
+  labels from the exact shapes (`JointSnap.hinges_of`; the catalogue's
+  connectors have none, a door's pins being drawn as bumps), one half on
+  the other of its subtype, laid frame on frame as `Attach.pose` lays them,
+  hung shut over the holder's middle (`JointSnap._shut`), R swinging it
+  open about the hinge. Aimed at the hinge's line within 12 LDU, or
+  anywhere through the holder's box, its hinges nearest where the line
+  enters first, the first one with room some way (`JointSnap.framed`,
+  `Builder._has_room_on`: a shutter over 3853's middle goes on the hinge
+  outside, not a pane's inside). A hinge's halves are let into each other's
+  covers where their exact shapes are clear (`Builder._hinged_clear`). In a
+  browser a shape that comes after its part was put down measures that
+  part again (`Builder._on_exact_fetched`, `BrickGrid.remeasure`). Probe:
+  `technic_hand_probe`; `door_probe` (seven doors, shutters and panes on
+  their holders, shut where real sets have them, held, and swung by Grab);
+  `placing_probe -- only=wheels` puts 8643-1's tyres
   on their rims where the file has them, and wheels with their tyres on a
-  wheel pin and an axle. In a browser: `tools/web/technic_flow.mjs`, which
+  wheel pin and an axle; `-- only=doors` the doors and a shutter by the
+  pointer, pictures in shots/placing/door_ghost_*.png. In a browser: `tools/web/technic_flow.mjs`, which
   aims each part at the connector where the page says it is
   (`brickworksState.joints`, with `on_joint` and `can_place`).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
@@ -1538,6 +1556,9 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 # its ghost. Pictures in shots/placing/ (-- only=edge|parts|balance)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/placing_probe.gd
+# a door, a shutter and a pane each pointed onto its holder's hinge, shut where
+# real sets have it, held by check_design and swung by Grab (seven pairs)
+godot --headless --path . --script src/dev/door_probe.gd
 # every part the CAD task's three sets have off the grid (39) put where the
 # file has it through the interface: aimed and clicked, Hinge or X, Y, Z
 # typed in Properties where the pointer cannot say it (-- only=5762|8643|8841)

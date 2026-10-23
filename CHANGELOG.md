@@ -20,6 +20,10 @@ whole cycle.
   open can be undone: Edit › Undo, or History, brings back the model it
   replaced as it stood. Before, the model went with no question and Undo
   had nothing to undo.
+- A door held over its frame goes into it on the frame's hinge, shut, as
+  Studio seats one, wherever the frame is pointed at; it stood beside the
+  frame or on its studs. A window's shutter and its pane go on the window's
+  hinge the same way, and swing on it as a door does.
 - A big model no longer holds the window a quarter of a second after it
   opens: the shapes of its parts are read for dragging on a worker.
 - A part a design stands on a shape's top, a coupling's plate among them, is

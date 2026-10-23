@@ -1963,25 +1963,57 @@ func joint_sites() -> Array:
 func _joint_grid() -> BrickGrid:
 	if _site_grid == null:
 		_site_grid = JointSnap.site_grid(library)
+		if not library.exact_fetched.is_connected(_on_exact_fetched):
+			library.exact_fetched.connect(_on_exact_fetched)
 	_site_grid.follow(world)
 	return _site_grid
 
 
+## A part's exact shape come in a browser after its parts were put down: they
+## are measured again for their hinge halves (JointSnap.hinges_of), so a door
+## goes into a frame put down before the frame's shape was there.
+func _on_exact_fetched(part_id: String) -> void:
+	if _site_grid == null or world == null:
+		return
+	var shape: Exact.Shape = Exact.shape_for(library, part_id)
+	if shape == null or not shape.kind.has(Exact.HINGE):
+		return
+	var parts: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		var info: PartLibrary.PartInfo = library.shaped_as(brick.part_id)
+		if info != null and info.id == part_id:
+			parts[brick.part_id] = true
+	_site_grid.remeasure(parts)
+	_sites_at = -1
+	_joint_last = ""
+
+
 ## Put the ghost on the joint the pointer is aimed at, if the part in hand
 ## has an end for one there. False, leaving the ghost to the studs, when
-## it is not aimed at one or the part has no ends.
+## it is not aimed at one or the part has no ends. Aimed only at a part a
+## hinge is on (JointSnap.framed), on the first of its hinges, nearest
+## first, the part has room on some way: a shutter over its window's middle
+## on the hinge outside it, not a pane's inside it; and a second door held
+## over a frame with one in it on the frame's studs.
 func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		hit: BrickLattice.Hit) -> bool:
 	_joint_site = null
-	var held: Array = JointSnap.ends_of(part)
+	var held: Array = JointSnap.ends_for(library, held_part)
 	if held.is_empty() or world == null:
 		return false
 	# A little past what the line met: a hole's middle is inside the part
 	# whose face was struck. Only the ends near the line are asked.
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
-	var site: JointSnap.End = JointSnap.aimed_at(
-		JointSnap.near(_joint_grid(), origin, direction, before), held, origin, direction,
-		before, lattice.unseen)
+	var near: Array = JointSnap.near(_joint_grid(), origin, direction, before)
+	var site: JointSnap.End = JointSnap.aimed_at(near, held, origin, direction, before,
+		lattice.unseen)
+	if site != null and site.is_hinge() and not JointSnap.within_reach(site, origin, direction):
+		var framed: Array = JointSnap.framed(near, held, origin, direction, before, lattice.unseen)
+		site = null
+		for other: JointSnap.End in framed.slice(0, _FRAMED_TRIES):
+			if _has_room_on(other, held, origin, direction):
+				site = other
+				break
 	if site == null:
 		return false
 	var options: Array = JointSnap.choices(held, site, origin, direction)
@@ -2021,6 +2053,40 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	return true
 
 
+## How many of the hinges of a part pointed at are tried for room, nearest
+## first ([method _onto_a_joint]): 3853 has six of one kind, a pane's two on
+## each face inside it and a shutter's two outside, nearest last.
+const _FRAMED_TRIES := 8
+## Whether the part in hand has room on a hinge some way, by the hinge, for
+## the model, part and turn [member _hinge_room_at] says.
+var _hinge_room: Dictionary = {}
+var _hinge_room_at: String = ""
+
+
+## Whether the part in hand has room some way on [param site], a hinge's
+## half: either way along it, at any quarter turn about it.
+func _has_room_on(site: JointSnap.End, held: Array, origin: Vector3, direction: Vector3) -> bool:
+	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
+	var stamp: String = "%d|%s|%s" % [world.revision, held_part, basis]
+	if stamp != _hinge_room_at:
+		_hinge_room.clear()
+		_hinge_room_at = stamp
+	var key: String = "%d|%s|%s" % [site.brick, site.at, site.axis]
+	if _hinge_room.has(key):
+		return _hinge_room[key]
+	var fits: bool = false
+	for option: Array in JointSnap.choices(held, site, origin, direction):
+		for q: int in 4:
+			if room_for(held_part, JointSnap.pose(option[0], site, int(option[1]),
+					float(option[2]), q * 90.0, basis), true, true):
+				fits = true
+				break
+		if fits:
+			break
+	_hinge_room[key] = fits
+	return fits
+
+
 ## Everything the pose on a joint is worked out from, in one string: the
 ## joint, the model as it stands, the part and how it is held, what R and
 ## T have chosen, the turn step, and the first way on (which says which
@@ -2051,7 +2117,8 @@ func _joint_pose(options: Array, way: int, roll: int, site: JointSnap.End,
 func _closings(options: Array, way: int, site: JointSnap.End, basis: Basis) -> Array:
 	var out: Array = []
 	var held_end: JointSnap.End = options[way][0]
-	if held_end.is_round() or JointSnap.step_of(held_end, site, 0.0) == JointSnap.CROSS_STEP:
+	if held_end.is_round() or held_end.is_hinge() \
+			or JointSnap.step_of(held_end, site, 0.0) == JointSnap.CROSS_STEP:
 		return out
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
 	if part == null:
@@ -2247,6 +2314,12 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		if Assistant._seated_in(mine, at, theirs, there) \
 				or Assistant._seated_in(theirs, there, mine, at):
 			continue
+		# A hinge's two halves, which BrickNet's labels pair (a door and its
+		# frame), meet inside each other's covers at the pins: where both have
+		# exact shapes, the shapes say, as check_design's do. 60621 shut in
+		# 60596 had no room, nor did any door swung open on its frame's hinge.
+		if _hinged_clear(mine, at, theirs, there):
+			continue
 		if turning.has(other):
 			var square: bool = BrickLattice.is_square_to_grid(at.basis) \
 				and BrickLattice.is_square_to_grid(there.basis)
@@ -2263,6 +2336,19 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 			continue
 		return false
 	return true
+
+
+## Whether two parts are a hinge's two halves by BrickNet's labels
+## (Exact.hinge_between) and their exact shapes are clear of each other.
+func _hinged_clear(mine: String, at: Transform3D, theirs: String, there: Transform3D) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	if one == null or other == null or not one.kind.has(Exact.HINGE) \
+			or not other.kind.has(Exact.HINGE):
+		return false
+	var a := Exact.Item.new(one, at)
+	var b := Exact.Item.new(other, there)
+	return not Exact.hinge_between(a, b).is_empty() and Exact.clash(a, b, true).is_empty()
 
 
 ## [param ids] less the floor's own bricks.
