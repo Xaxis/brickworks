@@ -228,11 +228,13 @@ a:focus-visible { border-radius: var(--r-1); }
 .site-head .menu summary { position: relative; }
 .site-head .menu summary .count { position: absolute; top: -7px; right: -7px; }
 /* Your account, signed in (web/follow.js, docs/SOCIAL.md U7): your avatar
-   where Sign in was, what is new for you over its corner, opening the
-   account menu (a .more-menu with the header Menu's panel): who you are,
-   your places with their counts, the theme, Sign out. On a phone Menu is
-   the avatar and holds the same, under the site's links. */
-.account-menu { margin-left: 4px; }
+   where Sign in was, last at the far right after Open the app, what is
+   new for you over its corner, opening the account menu (a .more-menu
+   with the header Menu's panel): who you are, your places with their
+   counts, the theme, Sign out. On a phone Menu is the avatar and holds
+   the same, under the site's links. 12 px from Open the app with the
+   nav's gap, as Menu is on a phone (.bar's gap). */
+.account-menu { margin-left: 10px; }
 .site-head .account-btn {
 	position: relative; display: inline-grid; place-items: center; padding: 0; border: 0;
 	border-radius: 50%; background: none; list-style: none; cursor: pointer;
@@ -256,6 +258,19 @@ a:focus-visible { border-radius: var(--r-1); }
 @media (max-width: 860px) {
 	.nav a:not(.cta), .nav .account-menu { display: none; }
 	.menu { display: block; }
+}
+/* On a phone the mark, Open the app and Menu fill the bar, and the last
+   keeps the page's 16 px gutter (design_flow.mjs fails it closer): Open
+   the app drops the margin that set it apart from the links Menu now
+   holds, and it and Menu give 2 px a side. Under 390 px there is no room
+   for the word as well, so the mark is the cube alone, a 44 px square
+   whose name is still "Brickworks", the word cut off by its box. */
+@media (max-width: 480px) {
+	.site-head .nav .cta { margin-left: 0; padding-inline: 12px; }
+	.site-head .menu summary:not(.account-btn) { padding-inline: 10px; }
+}
+@media (max-width: 389px) {
+	.site-head .mark { flex: none; width: 44px; height: 44px; padding: 0 9px; overflow: hidden; }
 }
 
 /* -- buttons ------------------------------------------------------- */

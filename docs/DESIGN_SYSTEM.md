@@ -26,9 +26,14 @@ sized its own titles, from 26 to 74 px. Now:
   differs, or the header has more than four things. The server's pages
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
-  copy. The header: Gallery · Download · Account (Sign in until you are,
-  then your avatar: the account menu, below) · **Open the app**; on a
-  phone the mark, the way in and Menu (your avatar, once signed in). The footer: the mark and a row of links (Compare, FAQ, Changelog,
+  copy. The header: Gallery · Download · **Open the app** · Account (Sign
+  in until you are, then your avatar: the account menu, below), the
+  account last at the far right (the owner, 2026-10-23: "an obvious
+  pattern"; design_flow.mjs fails a header in another order); on a
+  phone the mark, the way in and Menu (your avatar, once signed in),
+  the last 16 px from the edge as the page's words are, down to 320 px:
+  under 390 px the mark is the cube alone (design_flow.mjs fails a
+  header that runs into the gutter at 320, 360 or 390 px). The footer: the mark and a row of links (Compare, FAQ, Changelog,
   Source, Privacy, Terms, Guidelines, Takedown), then every notice
   docs/TRADEMARKS.md asks for, small and quiet.
 - **One type scale** (`--t-display`, `--t-h1`, `--t-h2`, `--t-h3`,
