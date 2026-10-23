@@ -145,11 +145,14 @@ const FURNITURE: Dictionary = {
 		"tones": {320: [320, 378, 19, 72]}},
 	# Its feet are its front posts and two headlight bricks on their sides,
 	# all along its foot, which take no stud: on the ground the ground held
-	# it, and on a floor it tipped back off them. Two plates under its
-	# frame's middle give it a footing there, hidden under the bed.
+	# it, and on a floor it tipped back off them. A plate under its frame's
+	# middle gives it a footing there, hidden under the bed, on two jumpers:
+	# the bed stands half a stud off the floor's grid, and a plate laid there
+	# straight on the floor rested off its studs and lifted off with the bed.
 	"four-poster bed": {"technique": "four-poster bed", "front": "+x",
 		"wall": true, "tones": {191: [191, 320, 272, 378, 1]}, "footing": [
-		{"part": "3021", "color": 70, "x": 2.5, "y": 0, "z": 1, "rot": 0},
+		{"part": "15573", "color": 70, "x": 2, "y": 0, "z": 1, "rot": 0},
+		{"part": "15573", "color": 70, "x": 4, "y": 0, "z": 1, "rot": 0},
 		{"part": "3021", "color": 70, "x": 2.5, "y": 1, "z": 1, "rot": 0},
 	]},
 	"bed": {"technique": "bed", "front": "+z", "wall": true,
@@ -157,8 +160,14 @@ const FURNITURE: Dictionary = {
 	"log pile": {"technique": "log pile", "front": "-x", "wall": true},
 	"table": {"technique": "table", "front": "+x", "wall": false},
 	"bench": {"technique": "bench", "front": "+z", "wall": true},
+	# Its seat is a turntable's top (3679), which takes no stud without its
+	# base: laid on a floor's studs it rested, and lifted off with the room.
+	# The base (3680) under it, at its own origin, is held by the floor and
+	# turns it, a swivel chair.
 	"armchair": {"technique": "armchair", "front": "+x", "wall": true,
-		"tones": {70: [70, 320, 272, 288]}},
+		"tones": {70: [70, 320, 272, 288]}, "footing": [
+		{"part": "3680", "color": 0, "x": 1, "y": 0, "z": 1, "rot": 1},
+	]},
 	"wall lantern": {"technique": "wall lantern", "front": "+z", "wall": true},
 	"bedside lamp": {"technique": "bedside lamp", "front": "+z", "wall": true,
 		"tones": {15: [15, 19, 70]}},

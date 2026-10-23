@@ -408,20 +408,23 @@ func _run() -> void:
 func _resting() -> void:
 	print("")
 	print("  a part left resting")
+	# A side table of its own, named, so it stands apart from the wall.
 	var laid: String = _text_of(await _ask("edit_model", {"add": [
 		{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 30, "rot": 0},
 		{"part": "87079", "color": 15, "x": 0, "y": 1, "z": 30, "rot": 0},
-		{"part": "3068b", "color": 14, "x": 0, "y": 2, "z": 30, "rot": 0}]}))
+		{"part": "3068b", "color": 14, "x": 0, "y": 2, "z": 30, "rot": 0}],
+		"assemblies": [{"name": "side table", "x_from": 0, "x_to": 4, "z_from": 30, "z_to": 32}]}))
 	var line: String = ""
 	for one: String in laid.split("\n"):
 		if one.begins_with("Resting"):
 			line = one
-	_check("an edit that leaves a tile set down on a tile says so in one line: %s" % line,
-		laid.begins_with("Done.") and line.contains("3068b") and line.contains("seated"))
+	_check("an edit that leaves a tile set down on a tile says so in one line: %s"
+			% (line if not line.is_empty() else laid.left(600)),
+		laid.begins_with("Done.") and line.contains("3068b") and line.contains("seat it"))
 	var refused: String = _text_of(await _ask("edit_model", {"add": [
 		{"part": "3003", "color": 4, "x": 2, "y": 2, "z": 30, "rot": 0}]}))
 	_check("...and one that stands a brick on it is refused, said with how to seat it: %s"
-		% refused.get_slice("\n", 0),
+		% refused.left(900).replace("\n", " / "),
 		refused.begins_with("Not applied") and refused.contains("3003")
 		and refused.contains("falls off when the model is picked up") and refused.contains("Seat it"))
 

@@ -287,7 +287,7 @@ func _expect(name: String, report: Dictionary, wanted: Dictionary) -> void:
 		for sentence: Variant in said:
 			if str(sentence).contains(str((wanted["not held"] as Array)[0])):
 				hit = str(sentence)
-		_say(not hit.is_empty() and hit.contains(str(wanted.get("seat", ""))),
+		_say(not hit.is_empty() and (not wanted.has("seat") or hit.contains(str(wanted["seat"]))),
 			"%s: said not held: %s" % [name, hit],
 			"%s: not said to be unheld%s (said: %s; summary: %s)" % [name,
 				", with \"%s\"" % wanted["seat"] if wanted.has("seat") else "", said,

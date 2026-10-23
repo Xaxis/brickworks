@@ -685,9 +685,9 @@ func resting_said(members: Array, name: Callable, moved: Callable = Callable()) 
 	var first: int = _resting_one(members)
 	var on: int = under(first)
 	var at: String = _seat_at(members, name, moved)
-	return "%s on %s, %s" % [name.call(first), name.call(on) if on >= 0 and not members.has(on)
-		else "what is under it", "seated at %s" % at if not at.is_empty()
-		else "seated on a stud (a plate under it) or held in a clip"]
+	return "%s on %s (%s)" % [name.call(first), name.call(on) if on >= 0 and not members.has(on)
+		else "what is under it", "seat it at %s" % at if not at.is_empty()
+		else "seat it on a stud, with a plate under it, or hold it in a clip"]
 
 
 ## Where [method seat_for] would seat a piece, as a placement and whose studs
