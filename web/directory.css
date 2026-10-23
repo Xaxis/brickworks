@@ -239,22 +239,40 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .hidden-builds { margin-top: 10px; }
 .person .builds-made .build-strip { margin-top: 6px; }
 
-/* Comments on a model and on its steps (web/model-page.js): plain words,
-   each saying where it was said; a stranger's text kept as typed. */
+/* Comments on a model and on its steps (web/model-page.js), as threads
+   (docs/SOCIAL.md U8): each comment a card with its writer's avatar beside
+   it, its replies under it on a line of their own, a reply's avatar the
+   small one. A stranger's text kept as typed. */
 .model-page .comments { max-width: 72ch; }
 .model-page .comment-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
 .model-page .comment {
-	border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 14px; background: var(--panel);
+	display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start;
+	border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px 14px; background: var(--panel);
 }
-.model-page .comment.by-owner { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
+.model-page .comment.by-owner:not(.reply) { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
 .model-page .comment.hidden-one { opacity: 0.7; border-style: dashed; }
 .model-page .comment.asked { outline: 2px solid var(--accent-edge); outline-offset: 2px; }
-.model-page .comment-head { margin: 0 0 4px; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
-.model-page .comment-head a, .model-page .comment-head b { color: var(--ink); font-weight: 600; }
+.model-page .comment-main { min-width: 0; }
+.model-page .comment-head {
+	margin: 0 0 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+	font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere;
+}
+.model-page .comment-head a:not(.pill), .model-page .comment-head b { color: var(--ink); font-weight: 600; }
 .model-page .comment-head .where { color: var(--ink-soft); }
 .model-page .comment-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
 .model-page .comment .note { margin: 6px 0 0; }
 .model-page .comment-acts { margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--t-small); }
+.model-page .comment-acts:empty { display: none; }
+/* Replies: under their comment, a line down their left, no card of their own. */
+.model-page .replies {
+	list-style: none; margin: 10px 0 0; padding: 0 0 0 12px; display: grid; gap: 12px;
+	border-left: 2px solid var(--line);
+}
+.model-page .comment.reply { border: 0; border-radius: 0; padding: 0; background: none; gap: 8px; }
+.model-page .comment.reply.hidden-one { border: 0; }
+.model-page .reply-new { margin-top: 10px; display: grid; gap: 8px; }
+.model-page .reply-new textarea { width: 100%; }
+.model-page .reply-new .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .model-page .comment-list .none { padding: 0; }
 .model-page .comment-new { margin-top: 14px; display: grid; gap: 8px; }
 .model-page .comment-on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -262,6 +280,10 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .model-page .comment-new .note, .model-page .comment-why .note { margin: 0; }
 .model-page .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+@media (max-width: 520px) {
+	.model-page .comment { gap: 10px; padding: 10px 12px; }
+	.model-page .replies { padding-left: 10px; }
+}
 
 /* Follow (web/follow.js): on a profile, under its counts, and beside a
    model's designer. */

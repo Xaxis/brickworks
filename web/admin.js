@@ -260,8 +260,8 @@ function draw(data) {
     const link = document.createElement("a");
     link.href = `/m/${encodeURIComponent(one.model)}#comment-${encodeURIComponent(one.id)}`;
     link.textContent = one.name ?? one.model;
-    on.append(link, document.createTextNode(one.step ? `, step ${one.step} of version ${one.version}`
-      : `, version ${one.version}`));
+    on.append(link, document.createTextNode(`${one.step ? `, step ${one.step} of version ${one.version}`
+      : `, version ${one.version}`}${one.parent ? ", a reply" : ""}`));
     row.append(on);
     cell(row, one.body, "said");
     cell(row, one.handle ? `@${one.handle}` : one.email ?? "—", one.handle || one.email ? "" : "faint");

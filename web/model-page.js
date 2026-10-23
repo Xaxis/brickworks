@@ -7,16 +7,20 @@
 //
 // Every name shown here (a collection's) is put on the page as text.
 //
-// And its comments (2026-10-18, api/_comments.js): the list, oldest first,
-// each saying its step and version ("on step 7 of version 2", and when it
-// is an older version); a box to add one, with a step picker, for somebody
-// who may write, and why not, politely, for anybody who may not; Report on
-// each; Remove on one's own; Hide and Show on each, and comments off or on,
-// for the model's builder. What a stranger wrote is set as text, never as
-// markup, and a link in it stays words.
+// And its comments (2026-10-18, api/_comments.js), as threads (2026-10-22,
+// docs/SOCIAL.md U8): the newest comment first and its replies under it,
+// oldest first; each with its writer's avatar, Designer on the model's
+// owner's, and its step as a pill that opens the viewer there (an older
+// version's step, that version's viewer). The box is everybody's, with a
+// step picker: a visitor signs in as they send, and what they wrote is
+// kept; somebody who may not write is told why, politely. Reply under each
+// comment, Report on each, Remove on one's own, Hide and Show on each and
+// comments off or on for the model's owner, replies as comments. What a
+// stranger wrote is set as text, never as markup, and a link in it stays
+// words.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
-import { toast } from "/kit.js";
+import { avatarHtml, toast } from "/kit.js";
 
 // The comments' own loader, once they are listed (startComments), for
 // Comment in the action bar to list them again after signing in.
@@ -114,6 +118,7 @@ function startTabs(nav) {
 function startComments(section) {
   const model = section.dataset.id;
   const version = Number(section.dataset.version) || 1;
+  const newest = Number(section.dataset.newest) || version;
   const list = section.querySelector(".comment-list");
   const form = section.querySelector("form.comment-new");
   const step = form.querySelector("#comment-step");
@@ -123,6 +128,9 @@ function startComments(section) {
   const why = section.querySelector(".comment-why");
   const said = section.querySelector(".comments-said");
   let state = null;
+  // The thread whose reply box is open, and what was typed in it, kept
+  // across a sign-in and a redraw.
+  let replying = null;
   const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   const say = (text) => { said.textContent = text; };
 
@@ -158,58 +166,111 @@ function startComments(section) {
     return made;
   }
 
-  function draw() {
-    list.replaceChildren();
-    for (const one of state.comments || []) {
-      const item = document.createElement("li");
-      item.className = `comment${one.hidden ? " hidden-one" : ""}${one.by_owner ? " by-owner" : ""}`;
-      item.id = `comment-${one.id}`;
-      item.dataset.step = one.step ?? "";
-      const head = document.createElement("p");
-      head.className = "comment-head";
-      const who = one.handle ? document.createElement("a") : document.createElement("b");
-      if (one.handle) who.href = `/u/${encodeURIComponent(one.handle)}`;
-      who.textContent = one.by || "A builder";
-      head.append(who);
-      if (one.by_owner) {
-        const tag = document.createElement("span");
-        tag.className = "pill";
-        tag.textContent = "its builder";
-        head.append(" ", tag);
-      }
+  /// The viewer at [at], a step of version [of]: Build it, opened there.
+  const viewerAt = (of, at) => `/app?view=${model}${of === newest ? "" : `&v=${of}`}&step=${at}`;
+
+  /// Somebody signed out may say something: the box is everybody's, and
+  /// sending signs them in first. Whether they may then is the server's.
+  const mayTry = () => state.you?.may_write || (!state.you?.signed_in && state.open);
+
+  /// One comment or reply: the avatar, who (a link to their page), the
+  /// Designer pill on the model's owner's, the step as a pill that opens
+  /// the viewer there, when, the words, and what the reader may do.
+  function item(one, reply, replies) {
+    const made = document.createElement("li");
+    made.className = `comment${reply ? " reply" : ""}${one.hidden ? " hidden-one" : ""}${one.by_owner ? " by-owner" : ""}`;
+    made.id = `comment-${one.id}`;
+    made.dataset.step = one.step ?? "";
+    const face = document.createElement("template");
+    face.innerHTML = avatarHtml({ handle: one.handle || "", name: one.by || "A builder" }, { size: reply ? "small" : "" });
+    const main = document.createElement("div");
+    main.className = "comment-main";
+    const head = document.createElement("p");
+    head.className = "comment-head";
+    const who = one.handle ? document.createElement("a") : document.createElement("b");
+    if (one.handle) who.href = `/u/${encodeURIComponent(one.handle)}`;
+    who.textContent = one.by || "A builder";
+    head.append(who);
+    if (one.by_owner) {
+      const tag = document.createElement("span");
+      tag.className = "pill designer";
+      tag.textContent = "Designer";
+      head.append(" ", tag);
+    }
+    // A reply is on its comment's step: said once, on the comment.
+    if (one.step && !reply) {
+      const pill = document.createElement("a");
+      pill.className = "pill step";
+      const here = one.on_step !== null && one.on_step !== undefined;
+      pill.href = here ? viewerAt(version, one.on_step) : viewerAt(one.version, one.step);
+      pill.textContent = here ? `Step ${one.on_step}` : `Step ${one.step} of version ${one.version}`;
+      pill.title = `Open it at this step: said ${one.said}`;
+      head.append(" ", pill);
+    }
+    const time = document.createElement("time");
+    const at = Date.parse(one.at || "");
+    if (Number.isFinite(at)) {
+      time.dateTime = new Date(at).toISOString();
+      time.textContent = `${DAY.format(at)}${one.edited_at ? " · edited" : ""}`;
+    }
+    head.append(" ", time);
+    // Said on an older version than the one shown, and not by its step.
+    if (!reply && one.older && !(one.step && one.on_step === null)) {
       const where = document.createElement("span");
       where.className = "where";
-      where.textContent = ` ${one.said}`;
-      const at = Date.parse(one.at || "");
-      const time = document.createElement("time");
-      if (Number.isFinite(at)) {
-        time.dateTime = new Date(at).toISOString();
-        time.textContent = ` · ${DAY.format(at)}${one.edited_at ? " · edited" : ""}`;
-      }
-      head.append(where, time);
-      const words = document.createElement("p");
-      words.className = "comment-body";
-      words.textContent = one.body;
-      item.append(head, words);
-      if (one.hidden) {
-        const note = document.createElement("p");
-        note.className = "note";
-        note.textContent = state.you?.owner ? "Hidden: only you and its author see it."
-          : "Its builder hid this comment: only you and they see it.";
-        item.append(note);
-      }
-      const acts = document.createElement("p");
-      acts.className = "comment-acts";
-      if (state.you?.owner) {
-        acts.append(button(one.hidden ? "Show it" : "Hide it", () => change(one, one.hidden ? "show" : "hide")));
-      }
-      if (one.mine) acts.append(button("Remove it", () => confirm("Remove your comment?") && change(one, "remove")));
-      if (!one.mine) acts.append(button("Report it", () => openReport({ comment: one.id }, "this comment")));
-      item.append(acts);
-      list.append(item);
+      where.textContent = ` · ${one.said}`;
+      head.append(where);
     }
-    // None yet: one line, and the way in (the box, or Sign in to comment).
-    const empty = !(state.comments || []).length;
+    const words = document.createElement("p");
+    words.className = "comment-body";
+    words.textContent = one.body;
+    main.append(head, words);
+    if (one.hidden) {
+      const note = document.createElement("p");
+      note.className = "note";
+      const what = reply ? "reply" : replies.length ? "comment and its replies" : "comment";
+      note.textContent = state.you?.owner ? `Hidden: only you and its author see this ${what}.`
+        : `Its designer hid this ${what}: only you and they see it.`;
+      main.append(note);
+    }
+    const acts = document.createElement("p");
+    acts.className = "comment-acts";
+    if (!reply && state.replies && state.open && !one.hidden && mayTry()) {
+      acts.append(button("Reply", () => openReply(one.id)));
+    }
+    if (state.you?.owner) {
+      acts.append(button(one.hidden ? "Show it" : "Hide it", () => change(one, one.hidden ? "show" : "hide")));
+    }
+    if (one.mine) {
+      const ask = reply ? "Remove your reply?" : replies.length ? "Remove your comment? Its replies go with it." : "Remove your comment?";
+      acts.append(button("Remove it", () => confirm(ask) && change(one, "remove")));
+    }
+    if (!one.mine) acts.append(button("Report it", () => openReport({ comment: one.id }, reply ? "this reply" : "this comment")));
+    main.append(acts);
+    if (!reply) {
+      const under = document.createElement("ol");
+      under.className = "replies";
+      under.hidden = replies.length === 0;
+      for (const answer of replies) under.append(item(answer, true, []));
+      main.append(under);
+    }
+    made.append(face.content.firstElementChild, main);
+    return made;
+  }
+
+  function draw() {
+    // Each thread a comment and its replies: the newest thread first, its
+    // replies oldest first, as the conversation went.
+    const all = state.comments || [];
+    const under = new Map();
+    for (const one of all) {
+      if (one.parent) under.set(one.parent, [...(under.get(one.parent) || []), one]);
+    }
+    const order = (a, b) => (Date.parse(a.at) - Date.parse(b.at)) || (a.id - b.id);
+    const threads = all.filter((one) => !one.parent).sort((a, b) => order(b, a));
+    list.replaceChildren(...threads.map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
+    // None yet: one line, and the box under it.
+    const empty = threads.length === 0;
     section.querySelector(".comments-lede").hidden = empty;
     if (empty) {
       const none = document.createElement("li");
@@ -218,19 +279,22 @@ function startComments(section) {
       list.append(none);
     }
     const you = state.you || {};
-    form.hidden = !you.may_write;
-    why.hidden = Boolean(you.may_write);
+    form.hidden = !mayTry();
+    send.textContent = you.signed_in ? "Add the comment" : "Sign in and add it";
     why.replaceChildren();
-    if (!you.may_write) {
+    why.hidden = !you.signed_in || Boolean(you.may_write);
+    if (you.signed_in && !you.may_write) {
       const words = document.createElement("p");
       words.className = "note";
       words.textContent = you.why_not || "";
-      if (you.signed_in || !empty) why.append(words);
-      if (!you.signed_in) {
-        why.append(button("Sign in to comment", async () => {
-          if (await askToSignIn("Sign in to add a comment: we email you a code, no password.")) await load();
-        }, "cta ghost small"));
-      }
+      why.append(words);
+    }
+    if (!you.signed_in && !state.open) {
+      const words = document.createElement("p");
+      words.className = "note";
+      words.textContent = "Comments are off for this model.";
+      why.hidden = false;
+      why.append(words);
     }
     if (you.owner) {
       const line = document.createElement("p");
@@ -240,13 +304,89 @@ function startComments(section) {
       why.hidden = false;
       why.append(line);
     }
-    // Opened at a comment (an email's link, the admin page's): marked.
+    if (replying) openReply(replying.id, replying.text, false);
+    // Opened at a comment (an email's link, a notification's, the admin
+    // page's): marked.
     const named = /^#comment-\d+$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
     if (named && !draw.shown) {
       draw.shown = true;
       named.classList.add("asked");
       named.scrollIntoView({ block: "center" });
     }
+  }
+
+  /// Signed in, or signed in now from the box: whether to go on sending.
+  async function signInFirst(words) {
+    if (signedIn()) return true;
+    if (!(await askToSignIn(words))) return false;
+    await load();
+    if (state.you?.may_write) return true;
+    say(state.you?.why_not || "That did not go just now. Try again in a minute.");
+    return false;
+  }
+
+  /// The reply box under thread [to], with [text] in it.
+  function openReply(to, text = "", focus = true) {
+    const thread = document.getElementById(`comment-${to}`);
+    if (!thread || thread.classList.contains("reply")) {
+      replying = null;
+      return;
+    }
+    for (const open of list.querySelectorAll("form.reply-new")) if (open.dataset.to !== String(to)) open.remove();
+    let made = thread.querySelector("form.reply-new");
+    if (!made) {
+      made = document.createElement("form");
+      made.className = "reply-new";
+      made.dataset.to = String(to);
+      const label = document.createElement("label");
+      label.className = "visually-hidden";
+      label.htmlFor = `reply-${to}`;
+      label.textContent = "Your reply";
+      const field = document.createElement("textarea");
+      field.id = `reply-${to}`;
+      field.maxLength = 1000;
+      field.rows = 2;
+      field.placeholder = `Reply to ${thread.querySelector(".comment-head a, .comment-head b")?.textContent || "them"}`;
+      const go = document.createElement("div");
+      go.className = "actions";
+      const post = document.createElement("button");
+      post.type = "submit";
+      post.className = "cta small";
+      post.textContent = signedIn() ? "Reply" : "Sign in and reply";
+      go.append(post, button("Cancel", () => {
+        replying = null;
+        made.remove();
+      }, "cta ghost small"));
+      made.append(label, field, go);
+      field.addEventListener("input", () => {
+        replying = { id: to, text: field.value };
+      });
+      made.addEventListener("submit", (event) => {
+        event.preventDefault();
+        sendReply(to, field, post);
+      });
+      thread.querySelector(".comment-main").append(made);
+    }
+    const field = made.querySelector("textarea");
+    if (text && !field.value) field.value = text;
+    replying = { id: to, text: field.value };
+    if (focus) field.focus();
+  }
+
+  async function sendReply(to, field, post) {
+    const text = field.value.trim();
+    if (!text) return say("Say something first.");
+    replying = { id: to, text: field.value };
+    if (!(await signInFirst("Sign in to add your reply: we email you a code, no password. What you wrote is kept."))) return;
+    post.disabled = true;
+    say("Adding it…");
+    const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: text } });
+    post.disabled = false;
+    if (answer.status !== 201) return say(answer.body.error || "That did not go just now. Try again in a minute.");
+    replying = null;
+    say("Replied.");
+    await load();
+    document.getElementById(`comment-${answer.body.comment?.id}`)?.scrollIntoView({ block: "nearest" });
   }
 
   async function change(one, what) {
@@ -272,6 +412,7 @@ function startComments(section) {
     event.preventDefault();
     const text = box.value.trim();
     if (!text) return say("Say something first.");
+    if (!(await signInFirst("Sign in to add your comment: we email you a code, no password. What you wrote is kept."))) return;
     send.disabled = true;
     say("Adding it…");
     const at = step.value === "" ? null : Number(step.value);
@@ -733,12 +874,10 @@ function start() {
     toast(done ? "Embed code copied: paste it into a page" : "The embed code did not copy just now");
   });
 
-  comment.addEventListener("click", async () => {
+  // The box is everybody's: sending it signs a visitor in.
+  comment.addEventListener("click", () => {
     const section = document.getElementById("comments");
     if (!section) return;
-    if (!signedIn() && !section.hidden && await askToSignIn("Sign in to add a comment: we email you a code, no password.")) {
-      await commentsLoaded?.reload();
-    }
     section.scrollIntoView({ block: "start" });
     const box = document.getElementById("comment-body");
     if (box && !box.closest("form").hidden) box.focus({ preventScroll: true });
@@ -762,7 +901,9 @@ function commentsSaid(state, setOpen) {
   const comment = marks && marks.querySelector('[data-mark="comment"]');
   if (!comment) return;
   comment.hidden = state.ready === false;
-  const shown = (state.comments || []).filter((one) => !one.hidden).length;
+  // What everybody sees: not hidden, and not under a comment that is.
+  const hidden = new Set((state.comments || []).filter((one) => one.hidden).map((one) => one.id));
+  const shown = (state.comments || []).filter((one) => !one.hidden && !hidden.has(one.parent)).length;
   setCount(comment, shown, "Comment", "comment");
   const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
   if (tab) {

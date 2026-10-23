@@ -500,6 +500,9 @@ $$;
 -- [{digest, owner, email, test, more, comments: [{id, model, name,
 -- version, step, body, at, by}], feed: [{kind, at, ...}], feed_more}], up
 -- to 50 emails, 50 comments and 50 feed rows each; empty when none is due.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.claim_comment_digest(for_owner uuid default null)
 returns jsonb
 language plpgsql

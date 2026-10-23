@@ -78,7 +78,12 @@ def test_it_replaces_no_function_another_file_defines() -> None:
     }
     mine = defined(SQL)
     assert set(mine) == {"model_opens_count", "designer_said", "designer_page", "designer_mine"}
-    assert not set(mine) & others, f"replaces {set(mine) & others}"
+    # designer_said is replaced by a later file (replies.sql, which counts no
+    # reply under a comment no longer shown), said so beside it here.
+    later = {"designer_said"}
+    assert "REPLACED LATER: replies.sql" in SQL
+    assert "designer_said" in defined((ROOT / "supabase/replies.sql").read_text())
+    assert not (set(mine) - later) & others, f"replaces {(set(mine) - later) & others}"
 
 
 def test_only_the_server_reads_anything() -> None:

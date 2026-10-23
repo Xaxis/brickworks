@@ -159,7 +159,7 @@ is on the page, `hidden`, for the script to show.
   `div.pills`; `.pills.row` keeps them on one line that scrolls inside
   itself (the gallery's kinds), and a chosen button pill is
   `aria-pressed="true"`, edged in `--accent-edge`. The one pill: a model's facts and tags, its Tested mark,
-  the gallery's tag filter, a comment's "its builder", the feed's New,
+  the gallery's tag filter, a comment's Designer and its step, the feed's New,
   whom you follow on your account. There were seven copies.
 - **Tabs**: `.tabs`, a row of links or buttons, the one shown
   `aria-current="page"` (or `aria-selected` in a tablist), underlined in
@@ -195,7 +195,13 @@ is on the page, `hidden`, for the script to show.
   that scrolls inside itself, the one shown large `aria-current` and edged
   in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
   and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
-  sticky under the header, with a ground of its own only once stuck.
+  sticky under the header, with a ground of its own only once stuck. Its
+  comments (docs/SOCIAL.md U8) are threads: each comment a `--panel` card
+  with its writer's 40 px avatar beside it, Designer (`.pill`) on the
+  owner's and its step as `a.pill`, then `.replies` under a 2 px `--line`
+  rule, each reply with the `.small` avatar and no card of its own, and a
+  reply's box (`form.reply-new`, a field and `.cta.small` with
+  `.cta.ghost.small` Cancel) under the thread.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`), gone in 2.4 s.

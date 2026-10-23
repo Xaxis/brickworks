@@ -466,7 +466,7 @@ try {
   const week = await ask({ sort: "top", window: "week" });
   const said = (list.body.models || []).find((one) => one.id === stand.MODEL_ID);
   check(list.status === 200 && (list.body.windows || []).map((one) => one.id).join(",") === "week,month"
-      && (list.body.mades || []).length === 2 && said?.comments === 3 && week.status === 200 && week.body.window === "week",
+      && (list.body.mades || []).length === 2 && said?.comments === 6 && week.status === 200 && week.body.window === "week",
     `api/share.js after: windows ${(list.body.windows || []).map((one) => one.label).join(", ")}, Made, the Watchtower's ${said?.comments} comments; this week ${week.status}`);
   const nobody = await ask({ following: "1" });
   check(nobody.status === 401, `api/share.js: Following asked signed out is ${nobody.status}`);

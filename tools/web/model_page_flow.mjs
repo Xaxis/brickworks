@@ -46,6 +46,14 @@
 //      and shows no count of none anywhere.
 //  11. The last screen always has another model to open: with neither row,
 //      the gallery's own (More in the gallery).
+//  12. Comments that talk (docs/SOCIAL.md U8), on the stand-in's
+//      watchtower: the newest thread first and its replies oldest first
+//      under it; an avatar on every one; Designer on Robin's (the
+//      model's owner's); a step comment's pill a link to the viewer at
+//      that step (an older version's changed step, that version's
+//      viewer); the box shown to everybody, and Reply on each comment
+//      opening a box under its thread; signed out, sending asks to sign
+//      in and keeps what was typed; signed in, the reply goes.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
 // Save's lists and More open.
@@ -94,7 +102,7 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Comments 3", "Builds 37", "Remixes 3", "Versions 2"], thumbs: 3 },
+    tabs: ["About", "Comments 6", "Builds 37", "Remixes 3", "Versions 2"], thumbs: 3, threads: true },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
     tabs: ["About", "Comments 1", "Builds 3", "Remixes", "Versions"].slice(0, 4), thumbs: 0 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
@@ -278,8 +286,8 @@ try {
               counted.every((b) => b.label.includes(` ${b.n} `)) && seen.named.every((b) => b.n === "" || b.label.includes(",")));
             check(`${label}: no count of none (${seen.zeros.join(", ") || "none"})`, !seen.zeros.length && seen.named.every((b) => b.n !== "0"));
             if (!remote && one.name === "watchtower") {
-              check(`${label}: its counts are the stand-in's (96 likes, 37 builds, 3 comments)`,
-                labels.includes("Like, 96 likes") && labels.includes("I built it, 37 builds") && labels.includes("Comment, 3 comments"));
+              check(`${label}: its counts are the stand-in's (96 likes, 37 builds, 6 comments and replies)`,
+                labels.includes("Like, 96 likes") && labels.includes("I built it, 37 builds") && labels.includes("Comment, 6 comments"));
             }
             check(`${label}: the paragraph explaining the buttons is gone`, !seen.paragraph);
 
@@ -372,6 +380,57 @@ try {
             check(`${label}: scrolled on, the tabs stay under the header (${Math.round(later.top)} px), marking ${later.current}`,
               Boolean(later.current) && (Math.abs(later.top - later.head) <= 2 || later.rest < later.head + 120));
             if (out) await page.screenshot({ path: path.join(out, `${stem}_tabs.png`) });
+
+            // 12. Comments that talk.
+            if (one.threads) {
+              const t = await page.evaluate(() => {
+                const top = [...document.querySelectorAll("#comments .comment-list > li.comment")];
+                const pill = (li) => li.querySelector(":scope > .comment-main > .comment-head a.pill.step");
+                return {
+                  threads: top.map((li) => li.id),
+                  replies: Object.fromEntries(top.map((li) => [li.id,
+                    [...li.querySelectorAll(":scope > .comment-main > .replies > li.comment.reply")].map((r) => r.id)])),
+                  avatars: [...document.querySelectorAll("#comments li.comment")].every((li) => li.querySelector(":scope > .avatar")),
+                  all: document.querySelectorAll("#comments li.comment").length,
+                  designer: [...document.querySelectorAll("#comments li.comment")].filter((li) => li.querySelector(
+                    ":scope > .comment-main > .comment-head .pill.designer")?.textContent === "Designer").map((li) => li.id),
+                  steps: Object.fromEntries(top.filter(pill).map((li) => [li.id, [pill(li).textContent, pill(li).getAttribute("href")]])),
+                  box: !document.querySelector("#comments form.comment-new").hidden,
+                  send: document.querySelector("#comments form.comment-new button[type=submit]").textContent,
+                  replyButtons: [...document.querySelectorAll("#comments .comment-acts button")].filter((b) => b.textContent === "Reply").length,
+                  wide: document.documentElement.scrollWidth > innerWidth + 1,
+                };
+              });
+              check(`${label}: the newest thread first (${t.threads.join(", ")}) and replies oldest first under it (${t.replies["comment-103"]?.join(", ")})`,
+                JSON.stringify(t.threads) === JSON.stringify(["comment-103", "comment-102", "comment-101"])
+                && JSON.stringify(t.replies["comment-103"]) === JSON.stringify(["comment-109", "comment-110"])
+                && JSON.stringify(t.replies["comment-101"]) === JSON.stringify(["comment-108"]));
+              check(`${label}: an avatar on each of the ${t.all}, Designer on Robin's (${t.designer.join(", ")})`,
+                t.avatars && t.all === 6 && JSON.stringify(t.designer.sort()) === JSON.stringify(["comment-102", "comment-108", "comment-109"]));
+              check(`${label}: a step is a pill to the viewer there: ${Object.entries(t.steps).map(([k, [w, h]]) => `${k} ${w} ${h}`).join("; ")}`,
+                t.steps["comment-103"]?.[0] === "Step 5" && t.steps["comment-103"]?.[1] === `/app?view=${stand.MODEL_ID}&step=5`
+                && /^Step 3/.test(t.steps["comment-101"]?.[0] || "") && /[?&]step=3$/.test(t.steps["comment-101"]?.[1] || "")
+                && !t.steps["comment-102"]);
+              check(`${label}: the box is shown (${t.send}), Reply on each of the 3 comments (${t.replyButtons}), nothing wider than the screen`,
+                t.box && t.send === (signedIn ? "Add the comment" : "Sign in and add it") && t.replyButtons === 3 && !t.wide);
+              await page.click("#comment-103 > .comment-main > .comment-acts button:text-is('Reply')");
+              const boxed = await until(page, () => document.activeElement?.closest?.("#comment-103 form.reply-new"), null, 4000);
+              check(`${label}: Reply opens a box under Priya's thread, ready to type`, boxed);
+              await page.fill("#comment-103 form.reply-new textarea", "Thank you: under, then it clicks.");
+              if (out) await page.locator("#comments").screenshot({ path: path.join(out, `${stem}_comments.png`) }).catch(() => {});
+              await page.click("#comment-103 form.reply-new button[type=submit]");
+              if (!signedIn) {
+                const asked = await until(page, () => document.querySelector("dialog.sign-in[open]"), null, 6000);
+                check(`${label}: signed out, Reply asks to sign in first`, asked);
+                await page.keyboard.press("Escape");
+                const kept = await page.evaluate(() => document.querySelector("#comment-103 form.reply-new textarea")?.value);
+                check(`${label}: and what was typed is kept ("${kept}")`, kept === "Thank you: under, then it clicks.");
+              } else {
+                const went = await until(page, () => document.querySelector("#comments .comments-said")?.textContent === "Replied."
+                  && !document.querySelector("#comments form.reply-new"), null, 6000);
+                check(`${label}: signed in, the reply goes ("Replied.") and its box closes`, went);
+              }
+            }
             await page.evaluate(() => window.scrollTo(0, 0));
             await page.waitForTimeout(150);
             if (out) await page.screenshot({ path: path.join(out, `${stem}.png`), fullPage: true, timeout: 60000 }).catch(() => {});

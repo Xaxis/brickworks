@@ -411,7 +411,7 @@
       "id": "cli:comments browser flow",
       "kind": "cli",
       "entry": "tools/web/comments_flow.mjs",
-      "reach": "node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=DIR   (.env sourced, MASTER_EMAIL; --site leaves the app out)",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 8830 --static=build/web --hold=replies & node --env-file=.env tools/web/comments_flow.mjs --url=http://127.0.0.1:8830 --out=DIR   (MASTER_EMAIL; --site leaves the app out; --hold=replies until supabase/replies.sql is applied)",
       "area": "web",
       "tests": []
     },
@@ -1210,6 +1210,14 @@
       "entry": "tools/release.py",
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:step link probe",
+      "kind": "cli",
+      "entry": "src/dev/step_link_probe.gd",
+      "reach": "tools/probe.sh step_link_probe   (windowed: godot --path . --resolution 1280x800 --script src/dev/step_link_probe.gd)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2061,6 +2069,14 @@
       "tests": []
     },
     {
+      "id": "lib:replies to a comment",
+      "kind": "lib",
+      "entry": "supabase/replies.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/replies.sql --dry --try=tools/replies_try.sql --table=model_comments   (.env sourced; then the comments browser flow, and tools/web/replies_stand_in.mjs holds it for a local run)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:rigid bodies and joints",
       "kind": "lib",
       "entry": "src/assembly/bodies.gd",
@@ -2515,6 +2531,14 @@
       "tests": []
     },
     {
+      "id": "ui:comment threads on a model page",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "/m/<id> (Comments: the newest thread first, Reply under each; the box for everybody); the model page browser flow on the stand-in",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:comments on a step",
       "kind": "ui",
       "entry": "src/ui/step_comments.gd",
@@ -2854,6 +2878,14 @@
       "kind": "ui",
       "entry": "web/notifications.html",
       "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first; opening it clears the avatar's count; a group read once opened; Mark all read)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:open a shared model at a step",
+      "kind": "ui",
+      "entry": "src/main.gd",
+      "reach": "/app?view=<id>&step=<n> (a comment's step pill on /m/<id>): the step player at page n",
       "area": "web",
       "tests": []
     },
