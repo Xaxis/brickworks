@@ -92,7 +92,9 @@ fixing what it got wrong.
   before: MECHANISMS §23); a piece of the
   design no connection holds is a fault unless it stands square (`rests`), and one
   that stands but comes away in the hand (`comes_away`: no tube of it stands
-  between another part's studs, as a dish's does on a round plate) is a fault,
+  between another part's studs, as a dish's does on a round plate, and the parts
+  round it do not catch it every way it could slide out, `caught`, as the orrery's
+  rings are caught) is a fault,
   said with where to seat it (`seat_for`: the shortest move that puts its
   anti-studs on free studs), unless it is a tile laid right way up on a face with
   no stud (`set_down`), which is advice and one line in every edit's reply
@@ -2531,8 +2533,9 @@ Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md
 without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as
 it is since 2026-10-15 (each collider group the vertices its faces use, shared
 or not): built before, 679 of 3033's 785 pieces lost corners and a flame 1.27 LDU
-into a tipped lid read as clear. Proves it when: `exact_probe` ends "39
-passed, 0 failed" (its toilet roll a stud off the studs beside it, said not held
+into a tipped lid read as clear. Proves it when: `exact_probe` ends "40
+passed, 0 failed" (a tile walled in and roofed over is caught, `caught`, and says
+nothing; its toilet roll a stud off the studs beside it, said not held
 with where to seat it, is advice on 3cff0d3c, and its tile set down on a tile is
 advice said in the edit's one line, `resting`; its 54200 on a round plate's rim, said not held and counted
 two pieces, fails both on d05a59be, 33 passed and 2 failed; on the code before
