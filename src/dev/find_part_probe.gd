@@ -7,14 +7,18 @@
 ## clicked with the pointer selects every one of that part in that colour,
 ## frames them and says how many; Edit, Select by has Same part and Part
 ## number or name…, which opens the list's find, and "blue 1x2 brick" typed
-## into it key by key (none of them taken by the app's own keys) and Enter
-## selects the hotel's one blue 1 x 2 brick; "3004" every 1 x 2 brick. The
-## MCP's look_at_model finds the same brick by part= and color=.
+## into it key by key (none of them taken by the app's own keys) keeps the
+## blue bricks 1 x 2, the hotel's one among them, and Enter selects them;
+## "3004" every 1 x 2 brick; Escape closes the list over a selection. The
+## MCP's look_at_model finds the blue one by part= and color=.
 ##
-## Then Orthanc (9,429 parts): the longest frame after a click on the row of
-## its 1,074 black 1 x 4 tiles against the longest after Select all, each
-## three times. --no-time leaves that out. On a checkout without the
-## clickable rows (a base to compare with) only Select all is timed.
+## Then Orthanc (10,094 parts): the longest frame after a click on the row
+## of its 1,074 black 1 x 1 bricks with a stud on one side against the
+## longest after Select all, each three times (--rounds=N). --no-time
+## leaves that out, --time-only the hotel. On a checkout without the
+## clickable rows (a base to compare with) only Select all is timed: there
+## Select all's longest frame was 138 to 211 ms over eleven, and here a row
+## of 1,074 was 45 to 86 (2026-10-23, the RX 6700 XT at load 9 to 27).
 ##
 ## Pictures: shots/findpart_list.png, findpart_row.png, findpart_find.png
 ## and findpart_found.png. Look at them.
@@ -29,7 +33,9 @@ var _bar: ModelBar
 var _world: BrickWorld
 var _builder: Builder
 var _camera: CadCamera
-var _list: InventoryPanel
+## Untyped: a base checkout's list has none of the find's members, and the
+## probe runs there to time Select all alone.
+var _list: Variant
 var _pointer := Vector2.ZERO
 
 
@@ -61,7 +67,7 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_list = _main.get("_inventory")
 	var timing_only: bool = not _list.has_signal("chosen")
-	if not timing_only:
+	if not timing_only and not OS.get_cmdline_user_args().has("--time-only"):
 		await _hotel()
 	if not OS.get_cmdline_user_args().has("--no-time"):
 		await _time_on_orthanc(timing_only)
@@ -240,7 +246,11 @@ func _time_on_orthanc(timing_only: bool) -> void:
 	var verbs: EditVerbs = _main.get("_verbs")
 	var all_frames: Array = []
 	var row_frames: Array = []
-	for round: int in 3:
+	var rounds: int = 3
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--rounds="):
+			rounds = int(argument.get_slice("=", 1))
+	for round: int in rounds:
 		all_frames.append(await _longest(func() -> void: _shell.run("select_all")))
 		verbs.select_by("none")
 		await _frames(30)

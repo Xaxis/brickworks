@@ -1835,10 +1835,18 @@
       "readOnlyHint": true,
       "title": "List what is built"
     },
-    "description": "See what is already on the baseplate, in the same stud and plate coordinates you use. Call this first whenever the request is about what is there — adding to it, changing part of it, matching its colours or its height. You cannot see the model otherwise.\n\nA large model will not fit in one reply. Give where= to list one section, or skip= to carry on from where the last listing stopped. The totals and the overall span are always for the whole model, whatever you ask for.",
+    "description": "See what is already on the baseplate, in the same stud and plate coordinates you use. Call this first whenever the request is about what is there — adding to it, changing part of it, matching its colours or its height. You cannot see the model otherwise.\n\nA large model will not fit in one reply. Give where= to list one section, part= to find where a part is, or skip= to carry on from where the last listing stopped. The totals and the overall span are always for the whole model, whatever you ask for.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "color": {
+          "description": "Only this LDraw colour code.",
+          "type": "integer"
+        },
+        "part": {
+          "description": "Only this part: its number (\"3004\"; \"3023\" takes 3023b), or its name in search_parts' words (\"brick 1 x 2\"), with a colour's name if you like (\"blue 1x2 brick\").",
+          "type": "string"
+        },
         "skip": {
           "description": "How many matching bricks to pass over before listing, for walking through a model a section at a time.",
           "type": "integer"

@@ -79,8 +79,13 @@ func tell(line: String) -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	return {"parts_need": _need, "parts_csv": _csv, "parts_bricklink": _bricklink,
-		"parts_rebrickable": _rebrickable, "parts_done": _done, "parts_find": _find}
+	var named: Dictionary = {"parts_need": _need, "parts_csv": _csv,
+		"parts_bricklink": _bricklink, "parts_rebrickable": _rebrickable, "parts_done": _done,
+		"parts_find": _find}
+	# The first row shown, which a click selects in the model.
+	if _rows.get_child_count() > 0:
+		named["parts_row"] = _rows.get_child(0)
+	return named
 
 
 func _ready() -> void:
