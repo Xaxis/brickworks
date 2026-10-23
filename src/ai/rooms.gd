@@ -160,14 +160,8 @@ const FURNITURE: Dictionary = {
 	"log pile": {"technique": "log pile", "front": "-x", "wall": true},
 	"table": {"technique": "table", "front": "+x", "wall": false},
 	"bench": {"technique": "bench", "front": "+z", "wall": true},
-	# Its seat is a turntable's top (3679), which takes no stud without its
-	# base: laid on a floor's studs it rested, and lifted off with the room.
-	# The base (3680) under it, at its own origin, is held by the floor and
-	# turns it, a swivel chair.
 	"armchair": {"technique": "armchair", "front": "+x", "wall": true,
-		"tones": {70: [70, 320, 272, 288]}, "footing": [
-		{"part": "3680", "color": 0, "x": 1, "y": 0, "z": 1, "rot": 1},
-	]},
+		"tones": {70: [70, 320, 272, 288]}},
 	"wall lantern": {"technique": "wall lantern", "front": "+z", "wall": true},
 	"bedside lamp": {"technique": "bedside lamp", "front": "+z", "wall": true,
 		"tones": {15: [15, 19, 70]}},
