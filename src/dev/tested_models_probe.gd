@@ -10,7 +10,9 @@
 ## Tested and says both; the kart and the castle the app ships are Tested;
 ## two bricks stacked with a tile on top are, and the same with a brick only
 ## resting on the tile are not, saying what it rests on; two stacks apart are
-## two builds, and Tested, and a part left on the floor against one is not; a 1 x 1
+## two builds, and Tested, and a part left on the floor against one is not;
+## 6680-1's figures and stretcher are builds of their own, and without the
+## one plate its file draws inside another, it is Tested; a 1 x 1
 ## cheese slope on a round plate's rim where it has no stud (the outline161
 ## rabbit's fault) is not; and the bench's six sculpt170 designs, each one
 ## piece by verify.py and by the design check, pass the whole test, and are
@@ -27,6 +29,13 @@ const SHIPPED: Array[String] = ["res://models/kart.ldr", "res://models/castle.ld
 ## parts that hide them (its planets' spine of beams and pins now goes in on
 ## the model, between the planets, where they hold).
 const BUILT_IN_PIECES: Array[String] = ["res://models/orrery.ldr"]
+## A real set whose figures and stretcher stand beside its ambulance, and
+## whose file draws one 1 x 2 plate inside a 1 x 6 at the same height (the
+## exact check finds it, and its steps hide it): without it, it builds.
+const AMBULANCE := "res://vendor/omr/files/6680-1.mpd"
+const MISPLACED := "1 16 30 -16 150 0 0 1 0 1 0 -1 0 0 3023.dat"
+## Real sets of a vehicle with a figure standing beside it.
+const TWO_BUILDS: Array[String] = ["res://vendor/omr/files/620-1.mpd", "res://vendor/omr/files/6511-1.mpd"]
 const ORTHANC := "res://src/dev/fixtures/orthanc_models175.ldr.gz"
 const BENCH := "res://src/dev/fixtures/bench/"
 
@@ -89,6 +98,26 @@ func _run() -> void:
 	print("  %s" % _said(rim))
 	_ok(not Tested.passed(rim) and _why(rim, "whole").contains("where it has no stud"),
 		"a cheese slope on a 6 x 6 round plate's rim, where it has no stud, is not: %s" % _why(rim, "whole"))
+
+	print("\na real set, its figures and stretcher beside it")
+	var filed: String = FileAccess.get_file_as_string(AMBULANCE)
+	var ambulance: Dictionary = await _test(filed)
+	print("  %s" % _said(ambulance))
+	_ok(_why(ambulance, "whole") == "1 pair of parts passes into each other: Plate 1 x 6 into Plate 1 x 2 by 4 LDU",
+		"6680-1's figures and stretcher are builds of their own; its file puts a 1 x 2 plate inside a 1 x 6 one: %s"
+		% _why(ambulance, "whole"))
+	_ok(filed.contains(MISPLACED), "...the plate's line is in the file as filed")
+	var mended: Dictionary = await _test(filed.replace(MISPLACED, "0 // " + MISPLACED))
+	print("  %s" % _said(mended))
+	_ok(Tested.passed(mended) and _why(mended, "whole").begins_with("4 builds"),
+		"...without that plate, which its steps hide too, the ambulance, its figures and its stretcher are Tested: %s"
+		% Tested.words(mended))
+	for path: String in TWO_BUILDS:
+		var found: Dictionary = await _test(FileAccess.get_file_as_string(path))
+		print("  %s: %s" % [path.get_file(), _said(found)])
+		_ok(_passes(found, "whole") and _why(found, "whole").begins_with("2 builds"),
+			"%s, a vehicle and a figure beside it, passes the whole test as two builds: %s" % [
+			path.get_file(), _why(found, "whole")])
 
 	print("\nthe models the app ships")
 	for path: String in SHIPPED:
