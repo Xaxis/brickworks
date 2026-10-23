@@ -310,8 +310,13 @@ try {
   list = await listDrawn(adaPage);
   check(`and still read on a reload (${!list[0]?.unread})`, list[0] && !list[0].unread);
   if (kept) {
-    const wrong = await api("/api/people?op=notifications_read", { method: "POST", token: bob.access_token, body: { model: tower.body.id } });
-    check(`Bob may not read Ada's: ${wrong.status}`, wrong.status === 404);
+    // Since U8 a commenter hears of replies on the model, so Bob, who
+    // commented, may mark his own read there (replies.sql's notification_read);
+    // one who only liked it has nothing of it to mark.
+    const his = await api("/api/people?op=notifications_read", { method: "POST", token: bob.access_token, body: { model: tower.body.id } });
+    check(`Bob, who commented, may mark his own read on Ada's: ${his.status}`, his.status === 200);
+    const wrong = await api("/api/people?op=notifications_read", { method: "POST", token: likers[0].access_token, body: { model: tower.body.id } });
+    check(`one who only liked it may not: ${wrong.status}`, wrong.status === 404);
   }
   const nobody = await api("/api/people?op=notifications");
   const badly = await api("/api/people?op=notifications_read", { method: "POST", token: ada.access_token, body: { model: "nope" } });

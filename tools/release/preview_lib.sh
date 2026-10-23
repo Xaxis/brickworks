@@ -27,13 +27,24 @@ unwired_flows() {
   done
 }
 
-# reused_preview NAME SHA: the preview NAME made, if it was made from this
-# very commit, in URL.
+# reused_preview NAME SHA: the preview NAME made, in URL, if it was made
+# from this very commit, or from one before it when all that changed since is
+# the browser checks or the release tools, which the deploy never reads. A
+# fixed check otherwise cost a new preview and every check again: m145's
+# profile, m148's feed and notifications checks, all on 2026-10-22.
 reused_preview() {
   URL=""
-  [ "$(cat "$S/${1}_preview.sha" 2>/dev/null)" = "$2" ] || return 1
+  local made; made=$(cat "$S/${1}_preview.sha" 2>/dev/null)
+  [ -n "$made" ] || return 1
+  local since=""
+  if [ "$made" != "$2" ]; then
+    git merge-base --is-ancestor "$made" "$2" 2>/dev/null || return 1
+    since=$(git diff --name-only "$made" "$2")
+    [ -n "$since" ] || return 1
+    ! printf '%s\n' "$since" | grep -qvE '^tools/web/[a-z0-9_]+_(flow|check|probe)\.mjs$|^tools/release/' || return 1
+  fi
   URL=$(grep -oE "deploy done https://[^ ]+" "$S/${1}_preview.log" | cut -d' ' -f3)
-  [ -n "$URL" ] && echo "$WHO: reusing preview $URL, made from $2"
+  [ -n "$URL" ] && echo "$WHO: reusing preview $URL, made from $made${since:+ (since then only checks and release tools: $(printf '%s\n' "$since" | tr '\n' ' '))}"
 }
 
 # The import a worktree needs before it can export the web build.
