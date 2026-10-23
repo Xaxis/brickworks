@@ -789,11 +789,18 @@ func _find_gears() -> void:
 
 
 func _gear(piece: Piece, spec: Dictionary) -> Gear:
+	var gear: Gear = Mechanism.gear_of(piece, spec)
+	gear.body = body_of(piece.key)
+	return gear
+
+
+## A gear of [param piece] where it stands, from one of its table entries
+## [param spec], on no body: GearMesh asks one in hand where it would mesh.
+static func gear_of(piece: Piece, spec: Dictionary) -> Gear:
 	var at: Transform3D = piece.at
 	var gear := Gear.new()
 	gear.key = piece.key
 	gear.part = piece.part
-	gear.body = body_of(piece.key)
 	gear.kind = str(spec.get("kind", "spur"))
 	var local_axis: Vector3 = _axis_of(spec.get("axis", "z"))
 	gear.axis = (at.basis * local_axis).normalized()
@@ -839,16 +846,26 @@ func _find_couplings() -> void:
 			var other: Gear = gears[j]
 			if one.body == other.body:
 				continue
-			var found: Coupling = null
-			if one.kind == "worm" or other.kind == "worm":
-				found = _worm_mesh(one, other) if one.kind == "worm" else _worm_mesh(other, one)
-			elif one.kind == "ring" or other.kind == "ring":
-				found = _ring_mesh(one, other) if one.kind == "ring" else _ring_mesh(other, one)
-			else:
-				found = _gear_mesh(one, other)
+			var found: Coupling = _couple(one, other)
 			if found != null:
 				couplings.append(found)
 	_find_chains()
+
+
+## The mesh between two gears where they stand, null where their teeth do
+## not meet.
+func _couple(one: Gear, other: Gear) -> Coupling:
+	if one.kind == "worm" or other.kind == "worm":
+		return _worm_mesh(one, other) if one.kind == "worm" else _worm_mesh(other, one)
+	if one.kind == "ring" or other.kind == "ring":
+		return _ring_mesh(one, other) if one.kind == "ring" else _ring_mesh(other, one)
+	return _gear_mesh(one, other)
+
+
+## [method _couple] for two gears on no model: whether a gear in hand meshes
+## one already down (GearMesh).
+static func couple(one: Gear, other: Gear) -> Coupling:
+	return Mechanism.new()._couple(one, other)
 
 
 func _gear_mesh(one: Gear, other: Gear) -> Coupling:

@@ -1233,6 +1233,13 @@
     },
     {
       "kind": "ui",
+      "label": "gears put in mesh by hand",
+      "entry": "src/assembly/gear_mesh.gd",
+      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain…, click two pin holes or two gears; Edit, Reshape the hose or chain)",
