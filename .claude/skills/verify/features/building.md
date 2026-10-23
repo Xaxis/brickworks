@@ -57,7 +57,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   twice the bare one, nothing drawn standing still; then nothing selected, the
   window-sized targets let go of at once and no frame drawn for it after), a
   guard cut through and in x-ray, and the hover — what selecting changed must lie round the parts, not
-  over them, and go all the way round. Run it at `--resolution 2800x1800 --
+  over them, and go all the way round. It finds the parts' inside with the
+  view's anti-aliasing and glow off: they smear a part's colour into a gap
+  between two selected parts that the line rightly fills (Saruman's hand at
+  his robe read as 2 of his 190 pixels inside outlined). Run it at `--resolution 2800x1800 --
   --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
   picture at 1x and 2x, and its frames of the window standing still (what is
   drawn off screen alone counted apart); before the picture it
@@ -77,9 +80,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   batch of the world's whose every part is selected goes into the mask as the
   world's own MultiMesh (`BrickWorld.drawn_as`), not copied a part at a time.
   `outline_cost_probe` times it by the processor (a busy machine stretches
-  the clock, not that): with all of Orthanc selected a frame with the view
-  still within a twentieth of the bare one and turning within a tenth, and
-  the line back each time the view rests. Measured under heavy on llvmpipe:
+  the clock, not that), once the app's workers have gone quiet after Orthanc
+  opens (a core each for about 4 s): with all of Orthanc selected a frame with
+  the view still within a twentieth of the bare one and turning within a
+  tenth, and the line back each time the view rests. Selecting all of it, and
+  every part of one colour, is timed by the main thread alone (the clock less
+  its wait for a core), under 400 ms: the worst of five 159 to 278 ms at
+  load 15 to 34. Timed by the whole process it counted the workers too, 430
+  to 1,010 ms. Measured under heavy on llvmpipe:
   still 6,090 ms against 5,532 bare before, 5,832 against 5,600 after;
   turning 6,098 against 5,498 before, 5,925 against 5,735 after. In Chromium
   on SwiftShader the browser's processor time for a frame where only the
@@ -1495,7 +1503,8 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 2800x1800x24" godot --path . \
 # input and drawn round, and standing still drawing nothing
 node tools/web/outline_check.mjs --dir=build/web   # after tools/export.sh web, .env sourced
 # what the outline costs a frame with all of Orthanc selected, still and turning,
-# by the processor's time, against the same frames with nothing selected
+# by the processor's time, against the same frames with nothing selected; and
+# selecting all of it, by the main thread's time
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/outline_cost_probe.gd
 # what the model stands on: each floor saved and read back, one undo each, the

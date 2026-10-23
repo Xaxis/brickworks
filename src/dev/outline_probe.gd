@@ -296,18 +296,28 @@ func _orthanc() -> void:
 ## [param whole] for parts nothing hides, whose outline must also keep to
 ## their silhouette all the way round.
 func _judge(name: String, ids: Array, other: int, whole: bool) -> void:
+	# Their inside found with the view's smoothing off, so a pixel is a
+	# part's or not, as the outline's mask draws it. Anti-aliasing and glow
+	# smear a part's colour a pixel past its edge, which recolouring it
+	# changes too: a gap narrower than that between two selected parts,
+	# which the line rightly fills, read as inside them. Saruman's hand on
+	# his staff, 1 to 2 px from his robe, was 2 of his 190 pixels "inside"
+	# outlined, and the chain's links 41 of 18,340; with it off, none
+	# (2026-10-22). Their edge is found as a person sees it, smoothed.
+	var environment: Environment = root.find_world_3d().environment
+	var smoothing: Array = [root.msaa_3d, root.screen_space_aa, environment.glow_enabled]
+	root.msaa_3d = Viewport.MSAA_DISABLED
+	root.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	environment.glow_enabled = false
 	_builder.clear_selection()
 	await _frames(6)
-	var none: Image = await _picture()
-	var was: Dictionary = {}
-	for brick_id: int in ids:
-		was[brick_id] = _world.get_brick(brick_id).color_code
-		_world.recolor_brick(brick_id, other)
-	await _drawn_now()
-	var tinted: Image = await _picture()
-	for brick_id: int in ids:
-		_world.recolor_brick(brick_id, int(was[brick_id]))
-	await _drawn_now()
+	var flat: Array = await _tinted(ids, other)
+	root.msaa_3d = smoothing[0]
+	root.screen_space_aa = smoothing[1]
+	environment.glow_enabled = smoothing[2]
+	await _frames(6)
+	var seen: Array = await _tinted(ids, other)
+	var none: Image = seen[0]
 	for brick_id: int in ids:
 		_builder.selection[brick_id] = true
 	_builder.selection_changed.emit(_builder.selection.size())
@@ -317,11 +327,11 @@ func _judge(name: String, ids: Array, other: int, whole: bool) -> void:
 	_save(chosen, name)
 
 	var region: Rect2i = _region(ids)
-	var drawn: PackedByteArray = _differs(none, tinted, region)
+	var drawn: PackedByteArray = _differs(none, seen[1], region)
 	var outline: PackedByteArray = _differs(none, chosen, region)
 	var w: int = region.size.x
 	var h: int = region.size.y
-	var inner: PackedByteArray = _eroded(drawn, w, h, 2)
+	var inner: PackedByteArray = _eroded(_differs(flat[0], flat[1], region), w, h, 2)
 	var to_drawn: PackedFloat32Array = _distance(drawn, w, h)
 	var to_outline: PackedFloat32Array = _distance(outline, w, h)
 	var drawn_n: int = 0
@@ -362,6 +372,22 @@ func _judge(name: String, ids: Array, other: int, whole: bool) -> void:
 			% [name, stray, outline_n, reach], stray <= outline_n / 50)
 		_check("%s: ...all the way round (%d of %d edge pixels)" % [name, edge_met, edge_n],
 			edge_n > 0 and edge_met >= edge_n * 9 / 10)
+
+
+## Pictures of the view as it is and with [param ids] drawn in [param other]
+## colour, their colours given back after.
+func _tinted(ids: Array, other: int) -> Array:
+	var none: Image = await _picture()
+	var was: Dictionary = {}
+	for brick_id: int in ids:
+		was[brick_id] = _world.get_brick(brick_id).color_code
+		_world.recolor_brick(brick_id, other)
+	await _drawn_now()
+	var tinted: Image = await _picture()
+	for brick_id: int in ids:
+		_world.recolor_brick(brick_id, int(was[brick_id]))
+	await _drawn_now()
+	return [none, tinted]
 
 
 ## The selected parts' rectangle on screen, grown for the outline and clipped
