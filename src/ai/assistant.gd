@@ -11365,11 +11365,14 @@ const TWO_WAYS_FROM := 10.0
 ## domes and dishes; four of our own owl's nine judgements call its body
 ## stacked bricks.
 const SMALL_ROUND := ("The %s %s studs across is laid as bricks and plates, "
-	+ "and a round body that small is a few moulded parts in a set: a 4 x 4 or "
-	+ "2 x 2 round brick (87081, 3941), a dome (30367c) or a dish (3960, 4740), "
-	+ "round corner bricks (85080, 48092) round a core, curved slopes on side "
-	+ "studs. A figure's or a creature's head or body is built so, as a "
-	+ "sub-assembly, its limbs on joints (read_guide \"figures\").")
+	+ "and a round body that small is a few moulded parts in a set, chosen by the "
+	+ "edge each makes (read_guide \"outline\"): a 4 x 4 or 2 x 2 round brick (87081, "
+	+ "3941), a dome (30367c) or a dish (3960, 4740), corner rounds (3063b, 5152, "
+	+ "2577) and ones with a rounded top (5651, 49612) round a core, curved slopes "
+	+ "over and inverted ones under. The round pattern lays one that swells and "
+	+ "narrows in one entry, a \"diameter\" on each band. A figure's or a "
+	+ "creature's head or body is built so, as a sub-assembly, its limbs on "
+	+ "joints (read_guide \"figures\").")
 
 
 static func _round_by_panels(patterns: Array) -> Array:

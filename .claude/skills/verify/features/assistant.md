@@ -20,9 +20,17 @@ fixing what it got wrong.
   animal-sized subject as a figure; a small round body said as a shape is told of
   round bricks, domes and dishes (`SMALL_ROUND`); the creative pass keeps to what
   the brief names when it lists the scene; a design's baseplate is the least in
-  eights each way. Checked by `rules_probe` ("a small round body", "choosing a
-  scale"), `floor_probe` (the garden's 16 x 8) and `mcp_sync_probe` (the head
-  under 3,500).
+  eights each way. A rounded or organic body (a creature, a character, or a
+  brief that says plump, egg, pear, curved and the like) is sent to THE OUTLINE
+  OF A ROUNDED BODY (read_guide "outline", named in the head and in
+  read_guide's own text, and leading the shapes, figures and round sections
+  for such a subject): its outline's parts chosen by role (round corner,
+  rounded top, whole round, shoulder, underside, ball, cap, taper, spikes)
+  before it is laid, the round pattern's bands swelling and narrowing, and how
+  each part is turned; a character's body laid from 8 or more of them is not
+  sent back for joints (`_outlined`). Checked by `rules_probe` ("a small round
+  body", "choosing a scale", "a rounded body's outline"), `floor_probe` (the
+  garden's 16 x 8) and `mcp_sync_probe` (the head under 3,500).
 - `best of two`: `src/ai/best_of_two.gd`. A new brief sent with My Claude on
   a bare baseplate (main's `design_locally`, `_second_design`) is designed
   twice: the person's session in the window, and a second started at once as

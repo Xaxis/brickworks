@@ -456,6 +456,60 @@ func _run() -> void:
 		"FIGURES, CREATURES AND SMALL MODELS")
 
 	print("")
+	print("  a rounded body's outline, chosen before it is laid")
+	# Every session of the search round laid its body before its first
+	# search and never asked for a corner round, a rounded top or an ovoid.
+	var outline: String = assistant.read_guide("outline")
+	_check_text("read_guide \"outline\" serves its section", outline,
+		"THE OUTLINE OF A ROUNDED BODY")
+	_check_text("...which names a corner round by its role", outline, "round corner")
+	_check_text("...a rounded top that rounds both ways", outline, "49612")
+	_check_text("...the ovoid under a dome for a pinched segment", outline, "24947")
+	_check_text("...and how each is turned", outline, "rot 2, 1, 0, 3")
+	_check_text("the instructions' head sends a rounded body there", Assistant.GUIDE_HEAD,
+		"read_guide \"outline\"")
+	assistant.heard("A ripe yellow-green pear stands upright, swelling to a round bottom.", true)
+	_check_text("a pear's read of the shapes guide is led by its outline",
+		assistant._for_the_subject("shapes", assistant.read_guide("shapes")).left(40),
+		"THE OUTLINE OF A ROUNDED BODY")
+	assistant.heard("A chubby pink pig stands on four short legs.", true)
+	_check_text("...and a creature's of the figures guide",
+		assistant._for_the_subject("figures", assistant.read_guide("figures")).left(40),
+		"THE OUTLINE OF A ROUNDED BODY")
+	assistant.heard("A medieval stone castle with four towers.", true)
+	var castle: String = assistant._for_the_subject("shapes", assistant.read_guide("shapes"))
+	_check_text("...but not a castle's", "" if castle.contains("THE OUTLINE OF") else "led by shapes",
+		"led by shapes")
+	# A creature's body laid from its outline's parts is not sent back to be
+	# laid again as the figure pattern's plain stack; one of square bricks is.
+	assistant.heard("A chubby pink pig stands on four short legs.", true)
+	var rounded := Assistant.Model.new()
+	var square := Assistant.Model.new()
+	for course: int in 4:
+		for n: int in 4:
+			var quarter := Assistant.Placement.new()
+			quarter.part = "5152"
+			quarter.color = 29
+			quarter.x = [0.0, 3.0, 3.0, 0.0][n]
+			quarter.y = 3.0 * course
+			quarter.z = [0.0, 0.0, 3.0, 3.0][n]
+			quarter.rot = Rounds.QUARTER_TURNS[n]
+			rounded.placements.append(quarter)
+			var brick := Assistant.Placement.new()
+			brick.part = "3003"
+			brick.color = 29
+			brick.x = [0.0, 2.0, 2.0, 0.0][n]
+			brick.y = 3.0 * course
+			brick.z = [0.0, 0.0, 2.0, 2.0][n]
+			square.placements.append(brick)
+	rounded.name = "Chubby pig"
+	square.name = "Chubby pig"
+	_check_text("a pig's body of corner rounds is not sent back for joints",
+		"kept" if assistant._unjointed_refusal(rounded).is_empty() else "sent back", "kept")
+	_check_text("...one of square bricks is", assistant._unjointed_refusal(square),
+		"Not applied, this once")
+
+	print("")
 	if _failures == 0:
 		print("the rules hold, and a refusal says enough to act on")
 	else:
