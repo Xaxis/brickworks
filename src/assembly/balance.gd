@@ -93,6 +93,12 @@ var floor_ids: Dictionary = {}
 ## at every step. Comparing the two parts' boxes was most of a weighing:
 ## 2.6 s of 2.65 for 75060's 2,014 parts, many of them turned.
 var overlaps: Dictionary = {}
+## What each brick is, by id ([part id, grams, the middle of its shape, its
+## mesh, its sub-model's path, whether it has studs], or [] for one with no
+## part to weigh): kept from one weighing to the next when a caller hands the
+## same dictionary to each, as Tested does. Read afresh each step it was a
+## quarter of weighing the castle's 2,497 parts at its 400 steps (2026-10-23).
+var known: Dictionary = {}
 
 
 ## One stud joint and what it carries.
@@ -323,6 +329,8 @@ var _rest: Array[Transform3D] = []
 var _meshes: Array[Lbm.PartMesh] = []
 ## The sub-model each is in (Assemblies.path_of), for what holds it otherwise.
 var _paths: Array[String] = []
+## Whether each has studs: 1 or 0.
+var _studded := PackedByteArray()
 var _index_of: Dictionary = {}
 ## The graph: node per part and one for the floor, edges both ways.
 var _edge_a := PackedInt32Array()
@@ -494,24 +502,31 @@ func _read(bricks: Array) -> void:
 	_meshes.clear()
 	_paths.clear()
 	_index_of.clear()
+	_studded = PackedByteArray()
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		if floor_ids.has(brick.id) or _index_of.has(brick.id):
 			continue
-		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if info == null or part == null:
-			continue
+		var it: Array = known.get(brick.id, [])
+		if it.is_empty() or it[0] != brick.part_id:
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if info == null or part == null:
+				continue
+			# Weighed at the middle of its shape, as Stability does: LDraw
+			# puts a part's origin on top of its body.
+			it = [brick.part_id, Stability.grams(info), part.bounds.get_center(), part,
+				Assemblies.path_of(brick), info.stud_count > 0]
+			known[brick.id] = it
 		_index_of[brick.id] = _ids.size()
 		_ids.append(brick.id)
 		_parts.append(brick.part_id)
-		_mass.append(Stability.grams(info))
-		# Weighed at the middle of its shape, as Stability does: LDraw puts
-		# a part's origin on top of its body.
-		_middle.append(part.bounds.get_center())
+		_mass.append(float(it[1]))
+		_middle.append(it[2])
 		_rest.append(brick.transform)
-		_meshes.append(part)
-		_paths.append(Assemblies.path_of(brick))
+		_meshes.append(it[3])
+		_paths.append(it[4])
+		_studded.append(1 if it[5] else 0)
 
 
 ## Where it touches the floor: every box within ON_FLOOR of the lowest cell
@@ -595,49 +610,52 @@ func _join(joints: Dictionary, links: Array) -> void:
 	for _n: int in count + 1:
 		_adjacent.append([])
 	var seen: Dictionary = {}
-	var add := func(a: int, b: int, stud: bool, lower: int) -> void:
-		if a == b:
-			return
-		var key: int = mini(a, b) * (count + 1) + maxi(a, b)
-		if seen.has(key):
-			var e: int = seen[key]
-			if stud and _edge_stud[e] == 0:
-				_edge_stud[e] = 1
-				_edge_lower[e] = lower
-			return
-		var e: int = _edge_a.size()
-		seen[key] = e
-		_edge_a.append(a)
-		_edge_b.append(b)
-		_edge_stud.append(1 if stud else 0)
-		_edge_lower.append(lower if stud else -1)
-		(_adjacent[a] as Array).append(e)
-		(_adjacent[b] as Array).append(e)
 	var under: Dictionary = joints["under"]
 	var overlapped: Dictionary = joints["overlapped"]
 	# And so is a pair whose part under has no studs: the lift stood one on
 	# the other, and no stud grips. 10264-1's Technic axle through a cross block
 	# was weighed as 7.4 g on one stud, past its working load (2026-10-22).
-	var studded := func(id: int) -> bool:
-		var info: PartLibrary.PartInfo = library.parts.get(_parts[int(_index_of[id])])
-		return info != null and info.stud_count > 0
 	for key: int in joints["studs"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if _index_of.has(one) and _index_of.has(other):
-			var by_studs: bool = not overlapped.has(key) and bool(studded.call(int(under[key])))
-			add.call(int(_index_of[one]), int(_index_of[other]), by_studs,
-				int(_index_of[int(under[key])]) if by_studs else -1)
+			var lower: int = _index_of[int(under[key])]
+			var by_studs: bool = not overlapped.has(key) and _studded[lower] == 1
+			_add_edge(seen, count, int(_index_of[one]), int(_index_of[other]), by_studs,
+				lower if by_studs else -1)
 	for key: int in joints["seated"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if _index_of.has(one) and _index_of.has(other):
-			add.call(int(_index_of[one]), int(_index_of[other]), false, -1)
+			_add_edge(seen, count, int(_index_of[one]), int(_index_of[other]), false, -1)
 	for pair: Array in links:
 		if _index_of.has(int(pair[0])) and _index_of.has(int(pair[1])):
-			add.call(int(_index_of[int(pair[0])]), int(_index_of[int(pair[1])]), false, -1)
+			_add_edge(seen, count, int(_index_of[int(pair[0])]), int(_index_of[int(pair[1])]), false, -1)
 	for n: Variant in _grounded:
-		add.call(int(n), count, false, -1)
+		_add_edge(seen, count, int(n), count, false, -1)
+
+
+## The edge between nodes [param a] and [param b] of the graph [method _join]
+## builds, once ([param seen]: the pair's key -> its edge), a stud joint when
+## either time says so.
+func _add_edge(seen: Dictionary, count: int, a: int, b: int, stud: bool, lower: int) -> void:
+	if a == b:
+		return
+	var key: int = mini(a, b) * (count + 1) + maxi(a, b)
+	if seen.has(key):
+		var e: int = seen[key]
+		if stud and _edge_stud[e] == 0:
+			_edge_stud[e] = 1
+			_edge_lower[e] = lower
+		return
+	var e: int = _edge_a.size()
+	seen[key] = e
+	_edge_a.append(a)
+	_edge_b.append(b)
+	_edge_stud.append(1 if stud else 0)
+	_edge_lower.append(lower if stud else -1)
+	(_adjacent[a] as Array).append(e)
+	(_adjacent[b] as Array).append(e)
 
 
 ## Depth first from the floor, without recursion: each node's parent and
