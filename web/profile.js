@@ -1,8 +1,11 @@
 // Your profile, /profile (profile.html): your page as everybody sees it at
 // /u/<handle>, with Edit profile, and the tabs only you see beside its
-// own (docs/SOCIAL.md U6, D9). Models and Builds as everybody sees them;
-// Saved (favourites, collections, whom you follow), Sets (what you own and
-// what it builds) and Insights (how your models are doing, designs.js).
+// own (docs/SOCIAL.md U6, D9). Models and Builds as everybody sees them,
+// and Likes when you chose to show them (Settings); Saved (favourites,
+// collections, whom you follow), Sets (what you own and what it builds) and
+// Insights (how your models are doing, designs.js). Edit profile also puts
+// a picture of your own in your avatar's place, cropped to a circle here
+// (picture.js), or takes it off again.
 // Signed in with no profile yet, a name and a handle to make one. The
 // settings are at /settings (settings.js).
 //
@@ -34,7 +37,7 @@ const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const TABS = ["models", "builds", "saved", "sets", "insights"];
+const TABS = ["models", "builds", "likes", "saved", "sets", "insights"];
 // Models are shown a row at a time on a laptop (two on a phone), so the
 // page is your profile and its work, not a wall of cards (docs/SOCIAL.md
 // U6: under 2,000 px at 1280): Show more for the rest, two rows a press.
@@ -55,6 +58,7 @@ let young = false;
 // Each tab is drawn once, when first opened, and again after a change.
 const drawnTabs = new Set();
 let models = { queue: [], page: 0, more: false };
+let liked = { page: 0, more: false };
 
 /// An element, its class, and what is in it: text or elements.
 function make(tag, className = "", ...inside) {
@@ -65,6 +69,10 @@ function make(tag, className = "", ...inside) {
 }
 
 const handleOf = () => (mine && mine.profile && HANDLE.test(String(mine.profile.handle)) ? String(mine.profile.handle) : "");
+/// Your own picture as your avatar, if you put one there (supabase/avatars.sql).
+const pictureOf = () => String(mine?.avatar?.picture || "");
+/// Whether your profile shows the models you liked (Settings, Privacy).
+const likesShown = () => Boolean(shown && shown.liked_count !== null && shown.liked_count !== undefined);
 
 /// A model's card with a button under it, for something to do with it here.
 function kept(model, action) {
@@ -104,7 +112,7 @@ function drawHead() {
   const body = shown || {};
   const name = String(body.name || person.name || "");
   $("title").textContent = name;
-  $("avatar").outerHTML = avatarHtml({ handle, name }, { size: "huge", id: "avatar" });
+  $("avatar").outerHTML = avatarHtml({ handle, name, picture: pictureOf() }, { size: "huge", id: "avatar" });
   const designer = body.designer && Number(body.designer.models) > 0;
   const since = Date.parse(body.since || person.created_at || "");
   const line = $("handle-line");
@@ -147,7 +155,8 @@ function drawHead() {
   $("edit").disabled = young;
   // The tabs' counts, once there is one.
   const counts = { models: Number(body.models_count) || 0,
-    builds: (Array.isArray(body.built) ? body.built.length : 0) + (designer ? (body.designer.photos || []).length : 0) };
+    builds: (Array.isArray(body.built) ? body.built.length : 0) + (designer ? (body.designer.photos || []).length : 0),
+    likes: Number(body.liked_count) || 0 };
   for (const [tab, n] of Object.entries(counts)) {
     const said = document.querySelector(`#tabs [data-tab="${tab}"] .n`);
     said.textContent = n.toLocaleString("en-US");
@@ -246,6 +255,32 @@ function drawBuilds() {
       + "of their real builds of your models.";
   }
   $("builds-said").hidden = built.length + theirs.length > 0;
+}
+
+/// The models you liked, as your profile shows them: a page at a time.
+async function drawLikes() {
+  $("my-likes").replaceChildren();
+  liked = { page: 0, more: true };
+  await moreLikes();
+  $("no-likes").hidden = $("my-likes").children.length > 0;
+}
+
+async function moreLikes({ focus = false } = {}) {
+  const handle = handleOf();
+  const answer = await call(`/api/people?op=likes&handle=${encodeURIComponent(handle)}&tests=1&page=${liked.page + 1}`)
+    .catch(() => null);
+  if (!answer || answer.status !== 200) {
+    if (liked.page > 0) toast("That did not load just now. Try again in a minute.");
+    liked.more = false;
+    $("likes-paging").hidden = true;
+    return;
+  }
+  liked.page += 1;
+  liked.more = Boolean(answer.body.more);
+  const next = (answer.body.models || []).filter((one) => ID.test(String(one.id))).map((model) => modelCard(model));
+  $("my-likes").append(...next);
+  $("likes-paging").hidden = !liked.more;
+  if (focus) next[0]?.querySelector("a.open")?.focus({ preventScroll: true });
 }
 
 async function favourites() {
@@ -357,7 +392,7 @@ async function following() {
   for (const one of people.filter((p) => HANDLE.test(String(p.handle)))) {
     const to = make("a", "pill", String(one.name || one.handle), make("small", "", `@${one.handle}`));
     to.href = `/u/${one.handle}`;
-    to.insertAdjacentHTML("afterbegin", avatarHtml({ handle: one.handle, name: one.name }, { size: "small" }));
+    to.insertAdjacentHTML("afterbegin", avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" }));
     list.append(make("li", "", to));
   }
   $("following-said").textContent = people.length
@@ -407,11 +442,13 @@ async function drawSets() {
   $("owned-more").hidden = false;
 }
 
-const DRAW = { models: drawModels, builds: drawBuilds, saved: drawSaved, sets: drawSets,
+const DRAW = { models: drawModels, builds: drawBuilds, likes: drawLikes, saved: drawSaved, sets: drawSets,
   insights: () => showDesigns($("designs")) };
 
-/// The tabs there are: Models and Builds only with a profile.
-const tabsNow = () => TABS.filter((tab) => handleOf() || !["models", "builds"].includes(tab));
+/// The tabs there are: Models and Builds only with a profile, Likes only
+/// when it shows them.
+const tabsNow = () => TABS.filter((tab) => (handleOf() || !["models", "builds", "likes"].includes(tab))
+  && (tab !== "likes" || likesShown()));
 
 /// The tab a bare /profile opens: as /u/<handle> does, the first of Models
 /// and Builds with something in it; else Saved.
@@ -454,6 +491,7 @@ addEventListener("popstate", () => {
   if (signedIn() && mine) choose(new URLSearchParams(location.search).get("tab") || "");
 });
 $("models-more").addEventListener("click", () => showModels({ focus: true }));
+$("likes-more").addEventListener("click", () => moreLikes({ focus: true }));
 
 // ---------------------------------------------------------------------------
 // Making your profile, and Edit profile.
@@ -480,7 +518,7 @@ function fillForm() {
   $("handle").value = person.handle ? String(person.handle) : "";
   $("bio").value = person.bio ? String(person.bio) : "";
   $("handle-shown").textContent = $("handle").value || "your-handle";
-  $("avatar-edit").outerHTML = avatarHtml({ handle: $("handle").value, name: $("name").value || "?" }, { size: "big", id: "avatar-edit" });
+  drawPicture();
   const showcase = mine.showcase || {};
   const choices = (showcase.models || []).filter((one) => ID.test(String(one.id)));
   const fill = (select, chosen, pictured) => {
@@ -501,6 +539,78 @@ function fillForm() {
   filled = showcaseFields();
   $("profile-said").textContent = "";
 }
+
+// ---------------------------------------------------------------------------
+// Your own picture as your avatar (picture.js, api/_avatars.js).
+
+/// The avatar in Edit profile, and what can be done with it.
+function drawPicture() {
+  const picture = pictureOf();
+  $("avatar-edit").outerHTML = avatarHtml({ handle: $("handle").value, name: $("name").value || "?", picture },
+    { size: "big", id: "avatar-edit" });
+  const ready = Boolean(mine?.avatar?.ready) && !young;
+  $("avatar-acts").hidden = !ready;
+  $("avatar-remove").hidden = !picture;
+  $("avatar-choose").textContent = picture ? "Choose another" : "Choose a picture";
+  $("avatar-said").textContent = picture
+    ? "Your picture, in a circle, wherever your name is: your profile, your cards, your comments."
+    : mine?.avatar?.removed ? "Your picture was taken out by Brickworks, as against the guidelines: your avatar is "
+      + "made from your handle again. You may choose another."
+      : ready ? "Your avatar is made from your handle: its colour and your name’s first letter. Or choose a picture "
+        + "of your own: a JPEG, a PNG or a WebP, at most 8 MB, cropped to a circle."
+        : "Your avatar is made from your handle: its colour and your name’s first letter.";
+}
+
+/// After the picture changed: your page, your header, Edit profile.
+function pictureChanged(said) {
+  mine.avatar = { ready: true, picture: said.picture || null, removed: false };
+  if (shown) shown.picture = said.picture || undefined;
+  drawPicture();
+  if (handleOf()) drawHead();
+  showFeedCount().catch(() => null);
+}
+
+$("avatar-choose").addEventListener("click", () => $("avatar-file").click());
+$("avatar-file").addEventListener("change", async () => {
+  const file = $("avatar-file").files[0];
+  $("avatar-file").value = "";
+  if (!file) return;
+  const note = $("avatar-note");
+  note.textContent = "";
+  const { base64Of, cropPicture } = await import("/picture.js");
+  let made;
+  try {
+    made = await cropPicture(file, $("crop-dialog"));
+  } catch (trouble) {
+    note.textContent = String(trouble?.message || "That picture would not do: try another.");
+    return;
+  }
+  if (!made) return;
+  $("avatar-choose").disabled = true;
+  note.textContent = "Saving your picture…";
+  const answer = await call("/api/people?op=avatar", { method: "POST",
+    body: { picture: await base64Of(made.blob), type: "image/jpeg" } }).catch(() => null);
+  $("avatar-choose").disabled = false;
+  if (!answer || answer.status !== 200) {
+    note.textContent = (answer && answer.body && answer.body.error) || "That did not work just now. Try again in a minute.";
+    return;
+  }
+  note.textContent = "";
+  pictureChanged(answer.body);
+  toast("Your picture is your avatar now");
+});
+$("avatar-remove").addEventListener("click", async () => {
+  if (!confirm("Take your picture off? Your avatar is made from your handle again.")) return;
+  $("avatar-remove").disabled = true;
+  const answer = await call("/api/people?op=avatar_remove", { method: "POST", body: {} }).catch(() => null);
+  $("avatar-remove").disabled = false;
+  if (!answer || answer.status !== 200) {
+    $("avatar-note").textContent = (answer && answer.body && answer.body.error) || "That did not work just now.";
+    return;
+  }
+  pictureChanged(answer.body);
+  toast("Your picture is off: your avatar is made from your handle");
+});
 
 function showcaseFields() {
   return { links: [$("link-1").value, $("link-2").value].map((one) => one.trim()).filter(Boolean),
@@ -561,7 +671,7 @@ async function refresh() {
   if (answer.status === 200) mine = answer.body;
   await readShown();
   draw();
-  for (const tab of ["models", "builds"]) drawnTabs.delete(tab);
+  for (const tab of ["models", "builds", "likes"]) drawnTabs.delete(tab);
   await choose(new URLSearchParams(location.search).get("tab") || "");
 }
 

@@ -430,7 +430,9 @@ export function cardOf(origin, row) {
     // Its own motions, by name, read from the text published
     // (supabase/motions.sql); none before.
     motions: motionsOf(row.motions),
-    by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
+    by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name,
+      // Their own picture, once api/_faces.js gave it (supabase/avatars.sql).
+      ...(typeof row.by.picture === "string" ? { picture: row.by.picture } : {}) } : null,
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,
   };

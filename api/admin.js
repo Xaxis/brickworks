@@ -45,6 +45,12 @@
 //                                        (supabase/builds.sql)
 //   GET  /api/admin?op=photo&photo=P     photo P, hidden or not, to look at
 //                                        before taking it out
+//   POST /api/admin?op=remove_avatar&handle=H  take the picture profile H
+//                                        shows as its avatar out: its file
+//                                        deleted, the avatar made from the
+//                                        handle shown again, the reports
+//                                        about the profile settled
+//                                        (supabase/avatars.sql)
 //   POST /api/admin?op=pick&id=X&days=N  make model X this week's pick for N
 //                                        days (7 without days, 1 to 31), in
 //                                        place of the one worked out
@@ -76,6 +82,8 @@ import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js"
 import { db } from "./_db.js";
 import { modelHash } from "./_directory.js";
 import { BuildRefusal, photoFileForAdmin, photosReported, removePhoto } from "./_builds.js";
+import { AvatarRefusal, removeAvatar } from "./_avatars.js";
+import { facesOf, pictureAt } from "./_faces.js";
 import { keyed, readShard, shardOf } from "./_owned.js";
 import { originOf } from "./_oauth.js";
 
@@ -129,19 +137,20 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut, pick, unpick,
-    challenge: setChallenge, end_challenge: endChallenge };
+  const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
+    remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
     } catch (error) {
-      return response.status(error instanceof AuthError || error instanceof BuildRefusal ? error.status : 502)
+      return response.status(error instanceof AuthError || error instanceof BuildRefusal
+        || error instanceof AvatarRefusal ? error.status : 502)
         .json({ error: error.message });
     }
   }
   if (request.method !== "GET") {
     return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "pick, unpick, challenge or end_challenge" });
+      + "remove_avatar, pick, unpick, challenge or end_challenge" });
   }
   if (op === "photo") {
     const file = await photoFileForAdmin(String(request.query?.photo || "")).catch(() => null);
@@ -303,6 +312,19 @@ async function takePhotoOut(request, response) {
   const why = String(request.query?.why || request.body?.why || "").replace(/[\u0000-\u001f\u007f]+/g, " ")
     .trim().slice(0, 200) || "Taken out by Brickworks";
   return response.status(200).json(await removePhoto(photo, why));
+}
+
+/// The picture a profile shows as its avatar taken out (supabase/avatars.sql):
+/// its file deleted, the row kept to say so, the avatar made from the
+/// handle shown again, and what was reported about the profile settled.
+async function takeAvatarOut(request, response) {
+  const handle = String(request.query?.handle || "").toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/.test(handle)) return response.status(400).json({ error: "name a profile: ?handle=<handle>" });
+  const person = (await db(`people?handle=eq.${handle}&select=account`))[0];
+  if (!person) return response.status(404).json({ error: "nobody has that handle" });
+  const why = String(request.query?.why || request.body?.why || "").replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .trim().slice(0, 200) || "Taken out by Brickworks";
+  return response.status(200).json({ handle, ...(await removeAvatar(person.account, why)) });
 }
 
 /// Model X this week's pick for N days, in place of the one worked out
@@ -511,6 +533,8 @@ async function report(tests = false) {
   const commentsById = new Map(comments.map((one) => [one.id, one]));
   // Which reports are about a photo of a build, and that photo.
   const photos = await photosReported(reports.map((one) => one.id)).catch(() => new Map());
+  // The picture each reported profile shows as its avatar, if one of its own.
+  const faces = await facesOf(reports.map((one) => one.handle).filter(Boolean));
 
   // Whose connectors, and when each was last heard from.
   const connectors = new Map();
@@ -561,6 +585,7 @@ async function report(tests = false) {
       photo: photos.has(report.id) ? (({ id, words, at, hidden_at: hidden, removed_at: removed, account }) => ({
         id, words, at, hidden: Boolean(hidden), removed: Boolean(removed), email: emails.get(account) || null,
       }))(photos.get(report.id)) : null,
+      picture: report.handle && faces.has(report.handle) ? pictureAt(faces.get(report.handle)) : null,
     })),
     // The newest comments and the reported ones, newest first; who wrote
     // each, for the owner of this page alone.

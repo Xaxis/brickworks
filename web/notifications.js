@@ -56,7 +56,9 @@ function line(one) {
   if (one.unread) item.classList.add("unread");
   const link = document.createElement("a");
   link.href = here(one.link);
-  if (one.by && one.by.handle) link.append(parsed(avatarHtml({ handle: one.by.handle, name: one.by.name }, { size: "small" })));
+  if (one.by && one.by.handle) {
+    link.append(parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture }, { size: "small" })));
+  }
   else link.append(parsed(iconHtml(one.kind === "result" ? "award" : one.kind === "likes" ? "like" : "comment")));
   const words = document.createElement("span");
   words.className = "what";

@@ -182,7 +182,8 @@ function startComments(section) {
     made.id = `comment-${one.id}`;
     made.dataset.step = one.step ?? "";
     const face = document.createElement("template");
-    face.innerHTML = avatarHtml({ handle: one.handle || "", name: one.by || "A builder" }, { size: reply ? "small" : "" });
+    face.innerHTML = avatarHtml({ handle: one.handle || "", name: one.by || "A builder", picture: one.picture },
+      { size: reply ? "small" : "" });
     const main = document.createElement("div");
     main.className = "comment-main";
     const head = document.createElement("p");

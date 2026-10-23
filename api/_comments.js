@@ -56,6 +56,7 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { withFaces } from "./_faces.js";
 import { Unacceptable, count } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
@@ -215,8 +216,8 @@ export async function listComments(request, response) {
   const asked = given ? Number(given) : newest;
   if (!versions.some((one) => one.n === asked)) throw refused("no_version");
   const comments = (on.comments || []).map((one) => commentSaid(one, asked, newest, versions));
-  return response.status(200).json({ model: id, ready: true, version: asked, newest, open: on.open === true,
-    replies: on.threads === true, count: comments.length, comments, you: await youOn(id, who, on.owner === true) });
+  return response.status(200).json(await withFaces({ model: id, ready: true, version: asked, newest, open: on.open === true,
+    replies: on.threads === true, count: comments.length, comments, you: await youOn(id, who, on.owner === true) }));
 }
 
 /// A new comment. Its model's owner, if they asked to be emailed and no

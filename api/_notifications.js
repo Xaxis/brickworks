@@ -30,6 +30,7 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { withFaces } from "./_faces.js";
 import { Unacceptable } from "./_directory.js";
 import { pictureOf } from "./_card.js";
 
@@ -191,8 +192,8 @@ export async function notifications(request, response, { origin }) {
   const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
   const read = page && page.missing ? await listBefore(asker, true) : page;
   if (!read) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
-  return response.status(200).json({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,
-    ...noticeGroups(read, origin) });
+  return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,
+    ...noticeGroups(read, origin) }));
 }
 
 export async function notificationsRead(request, response) {
@@ -232,6 +233,7 @@ export async function feedCount(request, response) {
   const [counts, people] = await Promise.all([newCounts(asker),
     db(`people?account=eq.${asker}&select=handle,name`).catch(() => [])]);
   const person = people[0] || null;
-  return response.status(200).json({ ...counts, signed_in: true,
-    me: person ? { handle: person.handle, name: person.name } : null });
+  // Their own picture, for the avatar in the header (api/_faces.js).
+  return response.status(200).json(await withFaces({ ...counts, signed_in: true,
+    me: person ? { handle: person.handle, name: person.name } : null }));
 }

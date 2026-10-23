@@ -320,6 +320,9 @@ const PAGES = [
       return [[opened ? "more" : "more (missing)", ".profile-head .more-menu"]];
     } },
   { name: "person-house", path: "/u/brickworks?tests=1", local: true },
+  // The models Robin liked, which Robin chose to show (supabase/avatars.sql):
+  // a Likes tab of their cards, and Robin's own picture as the avatar.
+  { name: "person-likes", path: `/u/${stand.HANDLE}?tab=likes`, local: true },
   { name: "person-new", path: "/u/new-here", local: true },
   { name: "collection", path: `/c/${stand.LIST_ID}` },
   { name: "challenge", path: "/challenge",
@@ -366,6 +369,19 @@ const PAGES = [
       const coded = await until(page, () => /code sent/.test(document.querySelector("dialog.sign-in label")?.textContent || ""));
       states.push([coded ? "sign-in code" : "sign-in code (missing)", "dialog.sign-in"]);
       return states;
+    } },
+  // A picture of your own as your avatar (web/picture.js): one chosen in
+  // Edit profile opens the circle to crop it to. Here only: the picture is
+  // made here, and sent nowhere.
+  { name: "account-picture", path: "/profile", signedInOnly: true, local: true,
+    ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready"),
+    open: async (page) => {
+      await page.click("#edit");
+      if (!(await until(page, () => document.querySelector("dialog#edit-dialog[open]")))) return [["edit (missing)", "dialog#edit-dialog"]];
+      await page.setInputFiles("#avatar-file", { name: "me.jpg", mimeType: "image/jpeg", buffer: stand.PORTRAIT });
+      const opened = await until(page, () => document.querySelector("dialog#crop-dialog[open]")
+        && document.querySelector("#crop")?.dataset.zoom);
+      return [[opened ? "crop" : "crop (missing)", "dialog#crop-dialog"]];
     } },
   { name: "account-saved", path: "/profile?tab=saved", signedInOnly: true,
     ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready"

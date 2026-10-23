@@ -160,6 +160,8 @@ import { cardHtml } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
+// Whose picture to show beside their name (supabase/avatars.sql).
+import { withFaces } from "./_faces.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -1330,6 +1332,8 @@ async function read(request, response) {
     // then the builds of everybody else, newest first.
     const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
       .sort((a, b) => Number(b.own) - Number(a.own));
+    // Each person on it with their own picture, where they have one.
+    await withFaces([page, ordered, next]);
     return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next));
   }
 
@@ -1463,6 +1467,7 @@ async function gallery(request, response, origin) {
   }
   const models = await withWins(rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)), Boolean(said.tests));
   if (mine) await withLiked(models, mine.account);
+  await withFaces(models);
   // Kept briefly by the CDN, like the pages: the same question asked by
   // a hundred phones is one call to the database. Never with test models,
   // nor anybody's own shares.
@@ -1614,6 +1619,7 @@ async function shelves(request, response, origin) {
     small: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
   };
   if (mine) await withLiked([...cards.ready, ...(cards.pick ? [cards.pick] : []), ...cards.small], mine.account);
+  await withFaces(cards);
   response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
     ...(mine ? { mine: mine.pool, ready: { models: cards.ready, more: (ready || []).length > SHELF } } : {}),

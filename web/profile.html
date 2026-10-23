@@ -78,6 +78,9 @@
 .edit-dialog .profile-form { gap: 0; max-width: none; margin: 0; }
 .edit-dialog .avatar-row { display: flex; align-items: center; gap: var(--s-4); margin: 0 0 var(--s-4); }
 .edit-dialog .avatar-row p { margin: 0; font-size: var(--t-small); }
+.edit-dialog .avatar-words { display: grid; gap: var(--s-2); min-width: 0; }
+.edit-dialog .avatar-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-4); }
+.edit-dialog .avatar-words .said:empty { display: none; }
 .edit-dialog .actions { margin-top: var(--s-2); }
 /* Two links side by side, three pins in a row, from a laptop's width. */
 .edit-dialog .pair, .edit-dialog .pins { display: grid; gap: 0 var(--s-3); }
@@ -185,6 +188,7 @@
 				<nav class="tabs" id="tabs" aria-label="Your profile">
 					<a href="/profile?tab=models" data-tab="models" data-public>Models <span class="n" hidden></span></a>
 					<a href="/profile?tab=builds" data-tab="builds" data-public>Builds <span class="n" hidden></span></a>
+					<a href="/profile?tab=likes" data-tab="likes" data-public hidden>Likes <span class="n" hidden></span></a>
 					<a href="/profile?tab=saved" data-tab="saved">Saved</a>
 					<a href="/profile?tab=sets" data-tab="sets">Sets</a>
 					<a href="/profile?tab=insights" data-tab="insights">Insights</a>
@@ -210,6 +214,15 @@
 					</section>
 					<p class="state" id="builds-said" hidden>No builds yet. Built one for real? Press <b>I built it</b> on its page
 						to add a photo; photos other people post of your models show here too.</p>
+				</div>
+
+				<div class="tab-panel" data-panel="likes" hidden>
+					<p class="lead">The models you liked, newest first: your profile shows them, as you chose in
+						<a href="/settings#privacy-part">Settings</a>.</p>
+					<div class="models" id="my-likes"></div>
+					<p class="paging" id="likes-paging" hidden><button class="cta ghost" type="button" id="likes-more">Show more</button></p>
+					<p class="state" id="no-likes" hidden>No likes yet. Press the heart on a model you like, in the gallery
+						or on its page, and it shows here.</p>
 				</div>
 
 				<div class="tab-panel" data-panel="saved" hidden>
@@ -263,7 +276,15 @@
 				<form class="profile-form" id="profile-form">
 					<div class="avatar-row" data-more>
 						<span class="avatar big" id="avatar-edit" aria-hidden="true"></span>
-						<p>Your avatar is made from your handle: its colour and your name’s first letter.</p>
+						<div class="avatar-words">
+							<p id="avatar-said">Your avatar is made from your handle: its colour and your name’s first letter.</p>
+							<div class="avatar-acts" id="avatar-acts" hidden>
+								<button class="cta ghost small" type="button" id="avatar-choose">Choose a picture</button>
+								<button class="link" type="button" id="avatar-remove" hidden>Remove the picture</button>
+							</div>
+							<input id="avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+							<p class="said" id="avatar-note" role="status"></p>
+						</div>
 					</div>
 					<label>Name <input id="name" maxlength="40" autocomplete="nickname" required
 						placeholder="What you like to be called here"></label>
@@ -297,6 +318,25 @@
 					</div>
 					<p class="said" id="profile-said" role="status"></p>
 				</form>
+			</dialog>
+
+			<!-- Your own picture, cropped to a circle before it is sent (web/picture.js). -->
+			<dialog class="crop-dialog" id="crop-dialog" aria-labelledby="crop-h">
+				<h2 id="crop-h">Your picture</h2>
+				<p>Drag it to place it in the circle, and zoom to fit. Only the circle is kept: everything else
+					of the file stays on this device.</p>
+				<div class="cropper">
+					<canvas id="crop" width="640" height="640" tabindex="0" role="img"
+						aria-label="Your picture in the circle: drag, or use the arrow keys, to move it; + and − to zoom"></canvas>
+					<div class="zoom" role="group" aria-label="Zoom">
+						<button type="button" class="icon-btn" data-zoom="out" aria-label="Zoom out"><svg class="icon" aria-hidden="true"><use href="/icons.svg#zoom-out"></use></svg></button>
+						<button type="button" class="icon-btn" data-zoom="in" aria-label="Zoom in"><svg class="icon" aria-hidden="true"><use href="/icons.svg#zoom-in"></use></svg></button>
+					</div>
+				</div>
+				<div class="actions">
+					<button class="cta" type="button" data-crop="use">Use this picture</button>
+					<button class="cta ghost" type="button" data-crop="cancel">Cancel</button>
+				</div>
 			</dialog>
 		</div>
 	</div>

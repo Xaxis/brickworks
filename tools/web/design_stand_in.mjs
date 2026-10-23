@@ -54,6 +54,10 @@ import { noticeGroups } from "../../api/_notifications.js";
 import { LATEST, designersFrom } from "../../api/_follows.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
+// Whose picture is beside their name (supabase/avatars.sql), given as the
+// API gives it; and the pictures themselves, made here.
+import { facesOn, pictureAt } from "../../api/_faces.js";
+import { encode as encodeJpeg } from "../../api/_jpeg.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -284,7 +288,58 @@ const LISTS = [
   { id: "SamListBb2", owner: SAM, name: "Ideas for later", public: false, updated_at: "2026-10-10T10:00:00Z",
     description: null, models: ["PriyaSpc01", "MikaTram01"] },
 ];
-const LIKES = [[SAM, "DesignGea1"], [SAM, "PriyaSpc01"], [JO, MODEL_ID], [PRIYA, MODEL_ID]];
+const LIKES = [[SAM, "DesignGea1"], [SAM, "PriyaSpc01"], [JO, MODEL_ID], [PRIYA, MODEL_ID],
+  // Robin shows on their profile which models they liked (CHOICES).
+  [ROBIN, "PriyaSpc01"], [ROBIN, "MikaRobot1"], [ROBIN, "DesignPar1"]];
+// When each was liked, newest last: the Likes tab is newest first.
+const LIKED_AT = (at) => `2026-10-${String(10 + at).padStart(2, "0")}T12:00:00Z`;
+
+// Pictures of their own as their avatars (supabase/avatars.sql): Robin and
+// Priya chose one; everybody else's is made from their handle. Each a JPEG
+// made here, a face-sized pattern of its own.
+const AVATARS = [
+  { account: ROBIN, id: "FaceRobin1", side: 200, colours: [[196, 78, 42], [242, 205, 55]] },
+  { account: PRIYA, id: "FacePriya1", side: 200, colours: [[24, 96, 160], [87, 201, 126]] },
+].map((one) => ({ ...one, bytes: Buffer.from(avatarPicture(one.side, one.colours)), was: "jpeg",
+  at: "2026-10-20T10:00:00Z", removed_at: null, removed_why: null }));
+// Who chose to show the models they liked.
+const CHOICES = [{ account: ROBIN, shows_likes: true, updated_at: "2026-10-20T10:00:00Z" }];
+
+/// A round head on a ground of two colours: what a person's picture of
+/// themselves looks like at 24 px, enough to tell from the tile.
+function avatarPicture(side, [ground, face]) {
+  const data = new Uint8Array(side * side * 4);
+  for (let y = 0; y < side; y++) {
+    for (let x = 0; x < side; x++) {
+      const at = (y * side + x) * 4;
+      const head = Math.hypot(x - side / 2, y - side * 0.42) < side * 0.2;
+      const shoulders = y > side * 0.68 && Math.hypot(x - side / 2, y - side * 1.05) < side * 0.42;
+      const shade = 0.75 + 0.25 * (y / side);
+      const [r, g, b] = head || shoulders ? face : ground.map((c) => Math.round(c * shade));
+      data.set([r, g, b, 255], at);
+    }
+  }
+  return encodeJpeg({ data, width: side, height: side }, 90).data;
+}
+/// A picture somebody might choose for their avatar: wider than it is tall,
+/// a person a little off its middle, for the circle to be placed on.
+export const PORTRAIT = (() => {
+  const [w, h] = [720, 540];
+  const data = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const head = Math.hypot(x - w * 0.58, y - h * 0.4) < h * 0.17;
+      const body = y > h * 0.62 && Math.hypot(x - w * 0.58, y - h * 1.08) < h * 0.4;
+      const sky = [70 + (x / w) * 60, 120 + (y / h) * 60, 190];
+      data.set([...(head ? [233, 190, 160] : body ? [40, 60, 90] : sky.map(Math.round)), 255], (y * w + x) * 4);
+    }
+  }
+  return Buffer.from(encodeJpeg({ data, width: w, height: h }, 90).data);
+})();
+
+/// handle -> avatar id, of those shown in public.
+const facesNow = () => new Map(AVATARS.filter((one) => !one.removed_at && !ADMIN.barred.some((b) => b.account === one.account))
+  .map((one) => [personOf(one.account)?.handle, one.id]).filter(([handle]) => handle));
 const FAVOURITES = [[SAM, MODEL_ID], [SAM, "DesignGea1"], [SAM, "PriyaSpc01"]];
 
 // What Sam's collection holds of each model, part for part ("Build with what
@@ -480,6 +535,10 @@ const statsOf = (id) => STATS[id] || [0, 0, 0];
 const newestOf = (id) => Math.max(1, ...VERSIONS.filter((one) => one.model === id).map((one) => one.n));
 const scoreOf = (m) => statsOf(m.id)[2] * 3 + remixesOf(m.id).length * 2 + (TESTED.has(m.id) ? 5 : 0);
 const likedBy = (account, id) => LIKES.some(([who, what]) => who === account && what === id);
+/// The models [account] liked that the gallery shows, newest like first.
+const likedOf = (account, tests = false) => LIKES.map(([who, id], at) => ({ who, m: modelOf(id), at: LIKED_AT(at) }))
+  .filter(({ who, m }) => who === account && m && m.published && m.listed && !m.barred && (tests || !m.test))
+  .sort(byTime("at")).map(({ m }) => m);
 const keptBy = (account, id) => FAVOURITES.some(([who, what]) => who === account && what === id);
 const listOf = (id) => LISTS.find((one) => one.id === id) || null;
 const byTime = (key) => (a, b) => String(b[key]).localeCompare(String(a[key]));
@@ -668,6 +727,8 @@ const TABLES = {
   barred_models: () => [],
   barred_accounts: () => ADMIN.barred,
   profile_shows: () => SHOWS,
+  profile_avatars: () => AVATARS.map(({ bytes: file, colours, ...row }) => ({ ...row, bytes: file.length })),
+  profile_choices: () => CHOICES,
 };
 
 // The functions the handlers call (rpc/<name>), each with what it was sent.
@@ -685,6 +746,11 @@ const RPC = {
   shown_publicly: ({ account }) => !ADMIN.barred.some((one) => one.account === account),
   is_barred: ({ account }) => ADMIN.barred.some((one) => one.account === account),
   model_tested: ({ model_id }) => TESTED.has(model_id),
+  // supabase/avatars.sql
+  avatars_of: ({ handles }) => [...facesNow()].filter(([handle]) => (handles || []).includes(handle))
+    .map(([handle, avatar]) => ({ handle, avatar })),
+  profile_likes: ({ whose, size = 25, skip = 0, tests = false }) => likedOf(whose, tests).slice(skip, skip + size).map(card),
+  profile_likes_count: ({ whose, tests = false }) => likedOf(whose, tests).length,
   age_of: () => ({ ask: false, over_13: true, asked_at: "2026-10-18T10:00:00Z" }),
   may_act: () => true,
   may_publish: () => true,
@@ -810,6 +876,12 @@ const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 
 
 function storage(where, init) {
   const method = String(init.method || "GET").toUpperCase();
+  const face = /^\/storage\/v1\/object\/avatars\/([A-Za-z0-9]{10})\.jpg$/.exec(where.pathname);
+  if (face) {
+    const one = AVATARS.find((row) => row.id === face[1] && !row.removed_at);
+    return method === "GET" && one ? new Response(one.bytes, { status: 200, headers: { "content-type": "image/jpeg" } })
+      : reply(400, { error: "not_found", message: "Object not found" });
+  }
   const found = /^\/storage\/v1\/object\/([a-z-]+)\/([A-Za-z0-9]{10})(?:\.v\d+)?\.(png|webp|mpd)$/.exec(where.pathname);
   if (method !== "GET" || !found || !modelOf(found[2])?.published) return reply(400, { error: "not_found", message: "Object not found" });
   const [, , id, kind] = found;
@@ -1148,7 +1220,14 @@ function profile(handle, page = 1, tests = false) {
       photos: earned.photos.map((one) => ({ ...one, url: `${ORIGIN}/api/people?op=photo_file&id=${one.id}`,
         page: `${ORIGIN}/m/${one.model}#photo-${one.id}` })) } : null,
     collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...cards,
+    liked_count: CHOICES.some((one) => one.account === person.account && one.shows_likes) ? likedOf(person.account, tests).length : null,
     models: cards.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
+}
+
+/// What [account] is told of their own picture (api/_avatars.js avatarSaid).
+function avatarSaid(account) {
+  const one = AVATARS.find((row) => row.account === account);
+  return { ready: true, picture: one && !one.removed_at ? pictureAt(one.id) : null, removed: Boolean(one?.removed_at) };
 }
 
 /// A list as the asker may see it: public, or theirs.
@@ -1176,7 +1255,7 @@ function people(method, params, body, who, state) {
   const id = params.get("id") || "";
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
-    "feed_count", "page", "list_page", "challenge", "latest"] : ["report", "digest"];
+    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar"] : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
       : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : SIGN_IN });
@@ -1187,7 +1266,7 @@ function people(method, params, body, who, state) {
   }
   if (method === "GET") {
     // A picture, and the pages the server makes (serverPage): not JSON.
-    if (["photo_file", "page", "list_page"].includes(op)) return null;
+    if (["photo_file", "avatar", "page", "list_page"].includes(op)) return null;
     if (op === "me") {
       const me = personOf(ME);
       return answer(200, { profile: { handle: me.handle, name: me.name, bio: me.bio, created_at: me.created_at },
@@ -1197,9 +1276,23 @@ function people(method, params, body, who, state) {
         // What their profile shows (supabase/profile_shows.sql): nothing chosen
         // yet, and the models they may choose from.
         showcase: { ready: true, links: [], banner: null, pins: [],
-          models: listModels({ owner: ME, size: 200 }).map((one) => ({ id: one.id, name: one.name, picture: one.has_image })) } });
+          models: listModels({ owner: ME, size: 200 }).map((one) => ({ id: one.id, name: one.name, picture: one.has_image })) },
+        // Their own picture (none yet: the avatar made from the handle), and
+        // whether they show the models they liked (supabase/avatars.sql).
+        avatar: avatarSaid(ME), likes: { ready: true, shows_likes: CHOICES.some((one) => one.account === ME && one.shows_likes) } });
     }
     if (op === "profile") return profile(params.get("handle"), page, asked(params.get("tests")));
+    if (op === "likes") {
+      const person = personNamed(params.get("handle"));
+      const tests = asked(params.get("tests"));
+      if (!person) return answer(404, { error: "nobody has that handle" });
+      if (!CHOICES.some((one) => one.account === person.account && one.shows_likes)) {
+        return answer(404, { error: "they do not show the models they liked" });
+      }
+      const all = likedOf(person.account, tests);
+      return answer(200, { handle: person.handle, page, per_page: PER_PAGE, more: all.length > page * PER_PAGE,
+        models: all.slice((page - 1) * PER_PAGE, page * PER_PAGE).map((m) => apiCard(card(m))) });
+    }
     if (op === "marks") {
       if (!ID.test(id)) return answer(400, { error: "name a link: ?id=<ten characters>" });
       return answer(200, { liked: likes(state, id), favourite: keptBy(ME, id),
@@ -1314,7 +1407,8 @@ function freshPeople(method, op, params, body, fresh) {
   const theirs = () => [...fresh.follows].map(personNamed).filter(Boolean);
   if (method === "GET" && op === "me") {
     return answer(200, { profile: fresh.profile, collections: [], mail: { ...MAIL, ready: true, kinds: true },
-      follows: { ready: true, shows_follows: false }, showcase: { ready: true, links: [], banner: null, pins: [], models: [] } });
+      follows: { ready: true, shows_follows: false }, showcase: { ready: true, links: [], banner: null, pins: [], models: [] },
+      avatar: { ready: true, picture: null, removed: false }, likes: { ready: true, shows_likes: false } });
   }
   if (method === "GET" && op === "feed_count") {
     return answer(200, { count: 0, notifications: 0, feed: 0, signed_in: true, ready: true, me: mine() });
@@ -1598,7 +1692,14 @@ function supabase(url, method) {
 
 /// One browser request, answered as the deployment would: {status, json},
 /// or null for what is not answered here (a picture, a page, the app's own).
-export function apiAnswer({ url, method = "GET", body, state = {} }) {
+export function apiAnswer(asked) {
+  const said = answered(asked);
+  // Each person in it with their own picture, as api/_faces.js gives it.
+  if (said && said.json && typeof said.json === "object") facesOn(said.json, facesNow());
+  return said;
+}
+
+function answered({ url, method = "GET", body, state = {} }) {
   const where = url instanceof URL ? url : new URL(String(url));
   const verb = String(method || "GET").toUpperCase();
   if (where.origin === DB) return supabase(where, verb, body);
@@ -1652,6 +1753,14 @@ function staticFile(web, pathname) {
   return { status: 404, body: readFileSync(path.join(web, "404.html")), type: TYPES[".html"] };
 }
 
+/// A person's own picture (api/people.js ?op=avatar): its bytes, null for
+/// one that may not be shown, undefined for a request that is not one.
+function avatarFile(url) {
+  if (url.pathname !== "/api/people" || url.searchParams.get("op") !== "avatar") return undefined;
+  const id = url.searchParams.get("id");
+  return [...facesNow().values()].includes(id) ? AVATARS.find((one) => one.id === id).bytes : null;
+}
+
 const isPicture = (url) => /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.(png|webp)$/.test(url.pathname)
   || (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file");
 
@@ -1674,6 +1783,11 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     // visit counter); nothing else is fetched from here.
     if (!ours) return route.fallback();
     if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
+    const face = avatarFile(url);
+    if (face !== undefined) {
+      return face ? route.fulfill({ status: 200, contentType: "image/jpeg", body: face })
+        : route.fulfill({ status: 404, contentType: "text/plain", body: "" });
+    }
     if (db || url.pathname.startsWith("/api/")) {
       let body;
       try {

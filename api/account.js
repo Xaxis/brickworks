@@ -28,8 +28,9 @@
 //   POST ?op=delete, with a token and {confirm: <the account's address>}:
 //   the account deleted, and everything of it (2026-10-20). The address
 //   typed again is the confirmation, so a stray click or a stolen page
-//   cannot do it. The files of the build photos it posted, and of those
-//   posted of its models, are deleted from storage first, by name, since
+//   cannot do it. The files of the build photos it posted, of those
+//   posted of its models, and of its own picture as its avatar
+//   (supabase/avatars.sql), are deleted from storage first, by name, since
 //   storage keeps no link to the account; then the account itself, and
 //   with it every row that names it (each table's owner column cascades:
 //   its models, versions, comments, favourites,
@@ -298,10 +299,23 @@ async function deleteAccount(request, response) {
         signal: AbortSignal.timeout(20000) });
       if (!files.ok) throw new Error(`storage DELETE build-photos: ${files.status}`);
     }
+    // Its own picture as its avatar (api/_avatars.js AVATARS), by name too.
+    let avatars = [];
+    try {
+      avatars = await db(`profile_avatars?account=eq.${account}&select=id`);
+    } catch (trouble) {
+      if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
+    }
+    if (avatars.length) {
+      const files = await fetch(`${base}/storage/v1/object/avatars`, {
+        method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify({ prefixes: avatars.map((one) => `${one.id}.jpg`) }), signal: AbortSignal.timeout(20000) });
+      if (!files.ok) throw new Error(`storage DELETE avatars: ${files.status}`);
+    }
     const gone = await fetch(`${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
-    return response.status(200).json({ deleted: true, photos: photos.length });
+    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });

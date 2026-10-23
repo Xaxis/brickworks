@@ -119,7 +119,7 @@ function storageHeaders(extra = {}) {
   return { apikey: key, authorization: `Bearer ${key}`, ...extra };
 }
 
-async function getFile(bucket, name) {
+export async function getFile(bucket, name) {
   const answer = await fetch(`${project()}/storage/v1/object/${bucket}/${name}`, {
     headers: storageHeaders(), signal: AbortSignal.timeout(30000) });
   if (answer.status === 400 || answer.status === 404) return null;
@@ -127,7 +127,7 @@ async function getFile(bucket, name) {
   return Buffer.from(await answer.arrayBuffer());
 }
 
-async function putFile(bucket, name, body, type) {
+export async function putFile(bucket, name, body, type) {
   const answer = await fetch(`${project()}/storage/v1/object/${bucket}/${name}`, {
     method: "POST", headers: storageHeaders({ "content-type": type, "x-upsert": "true", "cache-control": "no-store" }),
     body, signal: AbortSignal.timeout(30000) });
