@@ -403,30 +403,40 @@ func _run() -> void:
 ## The pose174 arm's toilet (brickbench-2026-10-22-m147) ended in two pieces:
 ## its last edit stood a toilet roll on the tank a stud off the studs, the
 ## check called it set down on purpose, and the edit's reply said nothing.
-## Now only a tile laid on a smooth face is let stand, and the edit says it in
-## one line, with where to seat it; a brick laid so is refused.
+## Now a part that only rests is refused unless it is a tile laid on a face
+## with no stud (said in one line when the edit lands: exact_probe), and the
+## refusal says which part and where to seat it. The design's own tiles under
+## a part are laid again as plates (standing_probe), so here the outline161
+## rabbit's cheese slope on a round plate's rim, where it has no stud.
 func _resting() -> void:
 	print("")
 	print("  a part left resting")
-	# A side table of its own, named, so it stands apart from the wall.
-	var laid: String = _text_of(await _ask("edit_model", {"add": [
-		{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 30, "rot": 0},
-		{"part": "87079", "color": 15, "x": 0, "y": 1, "z": 30, "rot": 0},
-		{"part": "3068b", "color": 14, "x": 0, "y": 2, "z": 30, "rot": 0}],
-		"assemblies": [{"name": "side table", "x_from": 0, "x_to": 4, "z_from": 30, "z_to": 32}]}))
-	var line: String = ""
-	for one: String in laid.split("\n"):
-		if one.begins_with("Resting"):
-			line = one
-	_check("an edit that leaves a tile set down on a tile says so in one line: %s"
-			% (line if not line.is_empty() else laid.left(600)),
-		laid.begins_with("Done.") and line.contains("3068b") and line.contains("seat it"))
 	var refused: String = _text_of(await _ask("edit_model", {"add": [
-		{"part": "3003", "color": 4, "x": 2, "y": 2, "z": 30, "rot": 0}]}))
-	_check("...and one that stands a brick on it is refused, said with how to seat it: %s"
-		% refused.left(900).replace("\n", " / "),
-		refused.begins_with("Not applied") and refused.contains("3003")
-		and refused.contains("falls off when the model is picked up") and refused.contains("Seat it"))
+		{"part": "11213", "color": 71, "x": 1, "y": 0, "z": 32, "rot": 0},
+		{"part": "54200", "color": 71, "x": 2, "y": 1, "z": 37, "rot": 0}],
+		"assemblies": [{"name": "dish", "x_from": 1, "x_to": 7, "z_from": 32, "z_to": 38}]}))
+	var line: String = ""
+	for one: String in refused.split("\n"):
+		if one.contains("54200") and one.contains("Seat it at"):
+			line = one.strip_edges()
+	_check("an edit that leaves a cheese slope resting off a round plate's studs is refused, "
+			+ "and says which part and where to seat it: %s" % (line if not line.is_empty()
+				else refused.left(900).replace("\n", " / ")),
+		refused.begins_with("Not applied") and not line.is_empty()
+		and line.contains("falls off when the model is picked up"))
+	var seat: String = line.get_slice("Seat it at ", 1).get_slice(",", 0) + "," \
+		+ line.get_slice("Seat it at ", 1).get_slice(",", 1) + "," \
+		+ line.get_slice("Seat it at ", 1).get_slice(",", 2)
+	var at: PackedStringArray = seat.split(",")
+	var seated: String = _text_of(await _ask("edit_model", {"add": [
+		{"part": "11213", "color": 71, "x": 1, "y": 0, "z": 32, "rot": 0},
+		{"part": "54200", "color": 71, "x": float(at[0]) if at.size() == 3 else 2.0,
+			"y": float(at[1]) if at.size() == 3 else 1.0,
+			"z": float(at[2]) if at.size() == 3 else 37.0, "rot": 0}],
+		"assemblies": [{"name": "dish", "x_from": 1, "x_to": 7, "z_from": 32, "z_to": 38}]}))
+	_check("...and seated where it says, %s, the edit lands with nothing said resting: %s"
+			% [seat, seated.get_slice("\n", 0)],
+		seated.begins_with("Done.") and not seated.contains("Resting"))
 
 
 ## Does the app do one call at a time?
