@@ -355,10 +355,11 @@ const LIVE_MODELS = [
   ["8eb6GRvnSV", "Orrery of the Sun and eight planets", "mechanism", ["orrery", "gears", "planets", "crank"], 494, 27, "2026-10-14T06:27:39Z",
     "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own. A Claude session built it in Brickworks."],
 ].map(([id, name, kind, tags, parts, steps, at, description]) => model({ id, owner: HOUSE, name, author: "Brickworks", parts, steps,
-  kind, tags, listed_at: at, updated_at: at, description }));
+  // house.sql's step 2: ai-designed on the end of each one's tags.
+  kind, tags: [...tags, "ai-designed"], listed_at: at, updated_at: at, description }));
 const LIVE_IDS = new Set(LIVE_MODELS.map((one) => one.id));
 // What supabase/house.sql gives the house: its words, the castle across
-// the top, three pinned.
+// the top, three pinned; and each of the seven tagged ai-designed.
 const HOUSE_SAYS = { bio: "The Brickworks studio's own account. Every model here was designed with the assistant, "
   + "Claude working in the app, and each one's description says how. Open one to build it step by step, or remix it as your own.",
 banner: "kfpYMjke5U", pins: ["EzEXhtXE2C", "8eb6GRvnSV", "cGHqpHnEFZ"] };

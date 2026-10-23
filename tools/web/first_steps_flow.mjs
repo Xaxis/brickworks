@@ -12,7 +12,8 @@
 //
 //   1. A first visit: the feed suggests the house to follow and shows its
 //      models as Latest; every card in the feed and the gallery links to
-//      /u/brickworks; that page says whose account it is and that its
+//      /u/brickworks and carries the Assistant mark (house.sql's tag);
+//      that page says whose account it is and that its
 //      models were made with the assistant, and has its banner and three pinned.
 //   2. A first sign-in from the feed's Sign in: the code, the age question,
 //      then First steps: Make your profile (the handle made from the name as
@@ -235,9 +236,12 @@ try {
       await page.goto(`${site}/gallery`, { waitUntil: "load" });
       await until(page, () => document.querySelectorAll("#models .model").length >= 7, "the gallery's cards");
       const cards = await page.evaluate(() => [...document.querySelectorAll("#models .model")].map((card) => ({ id: card.dataset.id,
-        who: card.querySelector("a.who")?.getAttribute("href") || "", face: Boolean(card.querySelector(".who .avatar")) })));
+        who: card.querySelector("a.who")?.getAttribute("href") || "", face: Boolean(card.querySelector(".who .avatar")),
+        made: card.dataset.made || "", mark: card.querySelector(".marks .pill.made")?.textContent || "" })));
       check(`gallery at ${width}: every card links to a profile, with its avatar (${cards.filter((one) => one.who === `/u/${HOUSE}` && one.face).length} of ${cards.length})`,
         cards.length === 7 && cards.every((one) => one.who === `/u/${HOUSE}` && one.face));
+      check(`...and every card says it was made with the assistant (${cards.filter((one) => one.made === "assistant" && one.mark === "Assistant").length} of ${cards.length})`,
+        cards.every((one) => one.made === "assistant" && one.mark === "Assistant"));
       await shots(page, `1_gallery-${width}`, theme);
       await page.goto(`${site}/u/${HOUSE}`, { waitUntil: "load" });
       const house = await page.evaluate(() => ({ name: document.querySelector(".profile-head h1")?.textContent || "",

@@ -550,8 +550,10 @@ lead applies: idempotent, additive, no model changed, so the cards credit
 it through `directory_card`'s `by`. First steps (`web/first-steps.js`)
 open after the age question is answered 13 or over; the kinds chosen only
 order step 3 and are kept nowhere (D13). The Assistant mark is read from
-tags, which the house's models do not have; their descriptions say
-"Designed by Claude". A tag on them, or U16, would add the mark.
+tags, which the house's seven did not have (their descriptions say
+"Designed by Claude"): the script's second step, apart and the lead's
+call, appends ai-designed to those seven, so the mark is on every one and
+With the assistant finds them.
 
 ### Phase 6: depth (after the first five, in this order)
 

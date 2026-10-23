@@ -28,11 +28,19 @@
 --   profile_shows the banner and the pins: only models of the house's,
 --                 published and listed
 --
--- No model is changed: not a name, a credit, a tag, a word. No row of
+-- And a second step, apart (the lead's call, 2026-10-22): the tag
+-- ai-designed added to the house's seven models, so their cards carry the
+-- Assistant mark and the gallery's With the assistant filter finds them
+-- (docs/SOCIAL.md D7; web/card.js ASSISTANT_TAGS, gallery_tabs.sql made).
+-- Their descriptions already say Claude designed them. Appended to each
+-- model's tags only where it is not there; nothing else on those rows is
+-- written (the search words, a generated column, follow their tags).
+--
+-- Otherwise no model is changed: not a name, a credit, a word. No row of
 -- anybody else's is read or written. Nothing is dropped or replaced. To
 -- take it back: delete the house's rows from profile_shows and people
--- (its models are untouched either way, and go back to a credit with no
--- link).
+-- (its models go back to a credit with no link), and take ai-designed off
+-- the seven's tags.
 --
 -- Applied after trust.sql, people.sql and profile_shows.sql, by the lead:
 --
@@ -94,5 +102,29 @@ begin
     insert into public.profile_shows (account, banner, pins)
     values (house, banner, coalesce(pins, '{}'))
     on conflict (account) do nothing;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Step 2, apart: the Assistant mark on the house's seven models.
+--
+-- Named one by one, so running this again never tags anything the house
+-- shares later: those are its to tag. Each must still be the house's (the
+-- profile step 1 gave it) and credited "Brickworks"; the tag goes on the
+-- end, once.
+
+do $$
+declare
+    seven constant text[] := array['o3dLMc5A3Z', 'cGHqpHnEFZ', 'B6FhDpMowd', 'uoRqCfPWYJ', 'kfpYMjke5U',
+                                   'EzEXhtXE2C', '8eb6GRvnSV'];
+    house uuid := (select p.account from public.people p where p.handle = 'brickworks');
+begin
+    if house is null then
+        raise exception 'brickworks: the house has no profile: step 1 first';
+    end if;
+    update public.shared_models m
+       set tags = m.tags || array['ai-designed']
+     where m.id = any(seven) and m.owner = house and m.author = 'Brickworks'
+       and not ('ai-designed' = any(m.tags));
 end
 $$;

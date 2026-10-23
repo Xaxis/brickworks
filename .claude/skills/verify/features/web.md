@@ -960,8 +960,11 @@ plan with Claude as the client.
   one whose listed models are credited "Brickworks" at a brickworks.diy
   address, given its age answer, `people` (`brickworks`, Brickworks, words
   saying its models were made with the assistant) and `profile_shows` (the
-  castle as banner, three pins), each only if not there; no model changed.
-  `/u/brickworks` is drawn as every person's page is. The lead applies it.
+  castle as banner, three pins), each only if not there; then, a step
+  apart, `ai-designed` appended to the seven house models' tags (named by
+  id, once), so their cards carry the Assistant mark; nothing else on any
+  model. `/u/brickworks` is drawn as every person's page is. The lead
+  applies it.
 - `first steps browser flow` (`tools/web/first_steps_flow.mjs`, preview
   check `[first_steps]`): below.
 - `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
@@ -2606,7 +2609,11 @@ back on the live project, it reads back one profile (`brickworks`, its
 words 210 characters, 13 or over), its banner and three pins, all seven
 house models' cards credited to it with no model row changed, may be
 followed, 7 models on its page, all 7 of Top builds' cards credited to it
-(so the feed's designers to follow have it), and its page in the sitemap:
+(so the feed's designers to follow have it), its page in the sitemap, and
+step 2: each of the seven tagged ai-designed once, its other tags and its
+`updated_at` as they were, With the assistant finding all seven and
+Hand-built none (the one trigger on `shared_models`, `trust_guard_model`,
+only refuses):
 
 ```sh
 set -a; . ./.env; set +a
@@ -2622,7 +2629,8 @@ With no `--url` the flow is the stand-in with the live gallery and the
 house's profile held in memory (`liveCommunity(true)`; `state.fresh` a new
 account): a first visit at 390 light and 1280 dark, the feed suggests
 Brickworks and its seven Latest cards link to `/u/brickworks`, the
-gallery's seven cards each with its avatar and link, and `/u/brickworks`
+gallery's seven cards each with its avatar and link and the Assistant
+mark, and `/u/brickworks`
 has its words (the studio's own account, made with the assistant), the castle across the top, three pinned
 (`1_{feed,gallery,house}-*.png`); a first sign-in at 390 dark and 1280
 light from the feed's Sign in: the code, the age question, First steps
@@ -2640,7 +2648,7 @@ build) is suggested at 390 and 1280; Bob signs in through the dialog,
 makes `bob-<rand>` on the live project, follows Ada from step 3 and his
 feed is her castle; Cy, signed in elsewhere, meets the age question and
 First steps on `/profile` and reaches the filled feed in 4 taps; every
-throwaway deleted. 32 checks on the stand-in and 16 on the live project
+throwaway deleted. 34 checks on the stand-in and 16 on the live project
 through a relay, all ok, 2026-10-22. `design_flow --only=first-steps`
 judges each of the three steps at 390 and 1280, light and dark (with the
 feed, the house's page, the account and the age question: 104 checks, all

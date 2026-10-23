@@ -22,3 +22,9 @@ select (public.profile_page('brickworks'))->>'models' as models, (public.profile
 select count(*) as "top cards", count(*) filter (where card->'by'->>'handle' = 'brickworks') as "credited to the house" from public.gallery_models('{"sort": "top", "size": 49, "skip": 0}'::jsonb) as card;
 -- In the sitemap.
 select count(*) as "the house's page in the sitemap" from public.sitemap_pages() as page where page::text like '%/u/brickworks%' or page::text like '%"brickworks"%';
+-- Step 2: the seven tagged ai-designed once each, their other tags as they were, the time each was last changed as it was.
+select m.id, m.tags, m.updated_at, (select count(*) from unnest(m.tags) t where t = 'ai-designed') as "ai-designed times" from public.shared_models m join public.people p on p.account = m.owner where p.handle = 'brickworks' order by m.listed_at;
+-- The gallery's With the assistant filter finds all seven, and its Hand-built none of them.
+select (select count(*) from public.gallery_models('{"made": "assistant", "sort": "newest", "size": 49, "skip": 0}'::jsonb) as card where card->'by'->>'handle' = 'brickworks') as "with the assistant", (select count(*) from public.gallery_models('{"made": "hand", "sort": "newest", "size": 49, "skip": 0}'::jsonb) as card where card->'by'->>'handle' = 'brickworks') as "hand-built";
+-- What fires on an update of shared_models (none may change a row's other columns).
+select t.tgname, p.proname from pg_trigger t join pg_proc p on p.oid = t.tgfoid where t.tgrelid = 'public.shared_models'::regclass and not t.tgisinternal order by t.tgname;
