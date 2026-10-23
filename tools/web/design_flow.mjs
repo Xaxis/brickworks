@@ -28,6 +28,8 @@
 //     Open the app, then Menu (your avatar signed in). The owner,
 //     2026-10-23: "the user account circle obviously is the item that goes
 //     to the far right with the 'Open the app' button to the left of it";
+//   a header whose last item is closer than the page's 16 px gutter to the
+//     screen's right edge, on a phone at 320, 360 and 390 px;
 //   and, in any stylesheet or page style the page has, a font size, a
 //     corner or a colour off the token scale (site.css :root): a size not
 //     var(--t-*), a corner not var(--r-*) (or 0, or 50%), a colour written
@@ -257,7 +259,7 @@ function headerItems() {
       const avatar = el.matches(".account-menu") || Boolean(el.querySelector(":scope > summary.account-btn"));
       return { word: avatar ? "avatar" : el.matches(".menu") ? "Menu" : el.textContent.trim(), left: box.left, right: box.right };
     });
-  return { items, edge };
+  return { items, edge, screen: document.documentElement.clientWidth };
 }
 
 /// What is wrong with the header's order on this page, as [what, why].
@@ -278,6 +280,29 @@ async function headerOrder(page, signedIn) {
   if (last && said.edge - last.right > 1) {
     findings.push(["the header", `ends with ${last.word} ${Math.round(said.edge - last.right)} px short of its right edge`]);
   }
+  return findings;
+}
+
+/// What is wrong with where the header ends, as [what, why]: its last
+/// item keeps the page's gutter (.wrap's 16 px) from the screen's right
+/// edge. On a phone at 320, 360 and 390 px as well as the width visited,
+/// the page made that width and then put back: at 390 signed out the
+/// mark, Open the app and Menu ran Menu 8 px from the edge (2026-10-23).
+const GUTTER = 16;
+const PHONES = [320, 360, 390];
+async function headerGutter(page) {
+  const { width, height } = page.viewportSize();
+  const widths = width < 600 ? [...new Set([...PHONES, width])] : [width];
+  const findings = [];
+  for (const one of widths) {
+    if (one !== page.viewportSize().width) await page.setViewportSize({ width: one, height });
+    const said = await page.evaluate(headerItems);
+    const last = said?.items.at(-1);
+    if (last && said.screen - last.right < GUTTER - 0.5) {
+      findings.push(["the header", `ends with ${last.word} ${Math.round(said.screen - last.right)} px from the right edge at ${one} px, inside the page's ${GUTTER} px gutter`]);
+    }
+  }
+  if (page.viewportSize().width !== width) await page.setViewportSize({ width, height });
   return findings;
 }
 
@@ -349,7 +374,9 @@ try {
             await page.goto(base + one.path, { waitUntil: "load", timeout: 60000 });
             if (one.ready && !(await one.ready(page, { width, signedIn }))) fail(label, "did not finish drawing");
             await page.waitForTimeout(300);
-            if (!one.dialogOnly) await judge(page, label, "page", null, `${stem}.png`, await headerOrder(page, signedIn));
+            if (!one.dialogOnly) {
+              await judge(page, label, "page", null, `${stem}.png`, [...await headerOrder(page, signedIn), ...await headerGutter(page)]);
+            }
             // A state that does not last is judged as it is shown.
             const now = (what, scope) => judge(page, label, what, scope, `${stem}_${what.replace(/\W+/g, "-")}.png`);
             for (const [what, scope] of one.open ? await one.open(page, { width, signedIn, judge: now }) : []) {

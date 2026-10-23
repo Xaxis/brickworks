@@ -259,6 +259,19 @@ a:focus-visible { border-radius: var(--r-1); }
 	.nav a:not(.cta), .nav .account-menu { display: none; }
 	.menu { display: block; }
 }
+/* On a phone the mark, Open the app and Menu fill the bar, and the last
+   keeps the page's 16 px gutter (design_flow.mjs fails it closer): Open
+   the app drops the margin that set it apart from the links Menu now
+   holds, and it and Menu give 2 px a side. Under 390 px there is no room
+   for the word as well, so the mark is the cube alone, a 44 px square
+   whose name is still "Brickworks", the word cut off by its box. */
+@media (max-width: 480px) {
+	.site-head .nav .cta { margin-left: 0; padding-inline: 12px; }
+	.site-head .menu summary:not(.account-btn) { padding-inline: 10px; }
+}
+@media (max-width: 389px) {
+	.site-head .mark { flex: none; width: 44px; height: 44px; padding: 0 9px; overflow: hidden; }
+}
 
 /* -- buttons ------------------------------------------------------- */
 
