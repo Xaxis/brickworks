@@ -87,8 +87,9 @@ async function open(pathname, { width = 1280, theme = "light", session = null, l
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
     extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
-  if (route) await route(context);
   if (!remote) await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api") });
+  // After the stand-in's: the route made last is asked first.
+  if (route) await route(context);
   if (session) {
     await context.addInitScript(([key, value, access]) => {
       try {

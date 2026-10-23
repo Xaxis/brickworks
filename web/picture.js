@@ -115,7 +115,11 @@ export async function cropPicture(file, dialog) {
   const down = new Map();
   let pinch = null;
   const onDown = (event) => {
-    canvas.setPointerCapture(event.pointerId);
+    // Kept while it moves off the canvas; a pointer the browser no longer
+    // counts as down cannot be, and moves it all the same.
+    try {
+      canvas.setPointerCapture(event.pointerId);
+    } catch { /* not captured */ }
     down.set(event.pointerId, inCanvas(event));
     if (down.size === 2) {
       const [a, b] = [...down.values()];
