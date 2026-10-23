@@ -12,7 +12,8 @@
 // sign-ins:
 //
 //   the head: an avatar made from the handle (a coloured tile and the
-//     initial, never a picture of a figure), the name, @handle, the words
+//     initial, never a picture of a figure), or the picture its owner chose
+//     (Robin's, here: supabase/avatars.sql), the name, @handle, the words
 //     and links (https, rel="ugc nofollow"), one row of numbers with no
 //     count of none, Follow, Share and More; at 390 px the avatar, the
 //     name, the numbers and Follow on the first screen;
@@ -100,6 +101,7 @@ const drawn = (page) => page.evaluate(() => {
     name: document.querySelector(".profile-head h1")?.textContent || "",
     handle: document.querySelector(".profile-head .handle")?.textContent.replace(/\s+/g, " ").trim() || "",
     avatar: avatar ? { letter: avatar.textContent, picture: Boolean(avatar.querySelector("img")),
+      loaded: Boolean(avatar.querySelector("img")?.naturalWidth),
       tile: [...avatar.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(avatar).bottom } : null,
     nameBottom: box(document.querySelector(".profile-head h1"))?.bottom ?? 1e9,
     numbersBottom: firstNumber ? box(firstNumber).bottom : null,
@@ -128,10 +130,17 @@ const drawn = (page) => page.evaluate(() => {
 });
 
 /// What every person's page holds, whoever they are.
-function headHolds(said, label, { name, handle, phone }) {
+function headHolds(said, label, { name, handle, phone, pictured = false }) {
   check(`${label}: "${said.name}", ${said.handle.split(" · ")[0]}`, said.name === name && said.handle.startsWith(`@${handle}`));
-  check(`${label}: an avatar made from the handle ("${said.avatar?.letter}" on a coloured tile, no picture)`,
-    Boolean(said.avatar && said.avatar.tile && !said.avatar.picture && said.avatar.letter === [...name][0].toUpperCase()));
+  // Their own picture, where they chose one (supabase/avatars.sql: Robin,
+  // in the stand-in), on its tile until it loads; else the tile's letter.
+  if (pictured) {
+    check(`${label}: their own picture as the avatar, loaded, over its tile`,
+      Boolean(said.avatar && said.avatar.tile && said.avatar.picture && said.avatar.loaded));
+  } else {
+    check(`${label}: an avatar made from the handle ("${said.avatar?.letter}" on a coloured tile, no picture)`,
+      Boolean(said.avatar && said.avatar.tile && !said.avatar.picture && said.avatar.letter === [...name][0].toUpperCase()));
+  }
   const zeros = said.numbers.filter((one) => one.shown && (!one.n || one.n === "0"));
   check(`${label}: numbers ${said.numbers.filter((one) => one.shown).map((one) => one.text).join(" · ") || "(none yet)"}, no count of none`,
     zeros.length === 0);
@@ -198,7 +207,7 @@ async function local() {
         const { page, context } = await open(`/u/${stand.HANDLE}`, { width, theme, label, signedIn: who === "in" ? standSession() : null });
         if (who === "in") await until(page, () => !document.querySelector("button[data-follow]")?.hidden);
         const said = await drawn(page);
-        headHolds(said, label, { name: "Robin Castell", handle: stand.HANDLE, phone: width < 600 });
+        headHolds(said, label, { name: "Robin Castell", handle: stand.HANDLE, phone: width < 600, pictured: true });
         const kinds = said.numbers.filter((one) => one.shown).map((one) => one.kind).join(",");
         check(`${label}: builds finished and remixes first (${kinds}); 77 builds, the sum of the cards`,
           kinds === "builds,remixes,models,likes,followers,following" && said.numbers[0].n === "77");

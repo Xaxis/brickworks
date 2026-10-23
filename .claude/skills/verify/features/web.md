@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
 
 ## Sub-features
 
@@ -1084,6 +1084,28 @@ plan with Claude as the client.
 - `designers browser flow` (`tools/web/designers_flow.mjs`): below.
 - `profile browser flow` (`tools/web/profile_flow.mjs`, preview check
   `[profile]`): below.
+- `your own picture as your avatar` (`web/picture.js`, `api/_avatars.js`,
+  `api/_faces.js`, `supabase/avatars.sql`, 2026-10-22): Edit profile's
+  Choose a picture opens `dialog#crop-dialog` (`.cropper`: a 640 px canvas,
+  `#crop[data-zoom]`, the zoom's `[data-zoom=in|out]`, `[data-crop=use]`);
+  the square sent as `{picture: base64, type}` to POST `?op=avatar` (at most
+  2 MB; 401 signed out, 409 no profile, 413, 415, 422 under 120 px, 503
+  before the file), kept as `avatars/<id>.jpg` at most 400 px, served by GET
+  `?op=avatar&id=` while it may be shown (404 else). `withFaces` gives every
+  `{handle}` in an answer or page `picture`; `avatarHtml` draws only this
+  site's `/api/people?op=avatar&id=` (`.avatar.pictured`), else the tile.
+  POST `?op=avatar_remove` takes it off; `/admin` shows it on a report about
+  the profile (`tr[data-picture]`, `img.reported-avatar`) and
+  `?op=remove_avatar&handle=` takes it out; deleting the account deletes
+  its file (`deleted.avatars`).
+- `likes on a profile` (`supabase/avatars.sql` `profile_choices`,
+  `profile_likes`, `profile_likes_count`): `/settings` `#shows-likes`
+  (POST `?op=likes_choice {shows}`, off by default); then a Likes tab
+  (`data-tab="likes"`) on `/u/<handle>` and `/profile`, and GET
+  `?op=likes&handle=X&page=N` (404 while not shown). `?op=profile` says
+  `liked_count`, null while not shown.
+- `avatar browser flow` (`tools/web/avatar_flow.mjs`, preview check
+  `[avatar]`): below.
 - `the monthly challenge's rules` (`supabase/challenges.sql`, 2026-10-19):
   tables `challenges` (title, brief, `starts_on`/`ends_on` whole UTC days,
   `most_parts`, `set_number`/`set_name`, `tested`, `test`, `ended_at`,
@@ -3601,6 +3623,36 @@ her page and models 404, and no row of hers in people, profile_shows,
 model_collections or model_favourites. `design_flow` judges `account`
 (Edit open), `account-saved`, `account-sets`, `account-insights` and
 `settings` (Delete open).
+
+### Your own picture as your avatar, and your likes on your profile
+
+docs/SOCIAL.md D11, U5, U6; `supabase/avatars.sql`. Locally with the
+stand-in's people (Robin and Priya chose pictures, Robin shows their
+likes), then on a relay that holds the file's tables, or on a preview:
+
+```sh
+node tools/web/avatar_flow.mjs --out=shots/avatar
+node --env-file=.env tools/web/relay_server.mjs 8871 --hold=profile_avatars,profile_choices &
+node --env-file=.env tools/web/avatar_flow.mjs --url=http://127.0.0.1:8871 --out=shots/avatar-relay
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/avatar_flow.mjs --url=<preview> --out=shots/avatar-preview
+```
+
+It passes when it ends "PASS: N passed, 0 failed". Locally: Robin's
+picture loaded and round on their head, their cards, the model page's
+byline and comments, the feed; Mika's, Jo's and Sam's the tiles; Robin's
+Likes tab counted 3, newest first; Sam has none; Sam's crop sends a square
+JPEG of 120 to 400 px whose middle is the face dragged into the circle; 9
+MB and a text file refused in words. On a relay: the refusals, Ada's
+picture in Edit profile, her head and header with no reload, on her page,
+card, model, comment and Bob's feed at both widths and themes; her Likes
+shown from Settings and hidden again; the owner takes it out on /admin
+(MASTER_EMAIL) and its file 404s; a third replaces a second (its file
+404s); Remove the picture; deleting the account deletes its file. On a
+deployment before the file: every avatar the tile, no Choose a picture,
+and a picture or Likes 503 "not open yet". `design_flow` judges
+`account-picture` (the crop dialog) and `person-likes`. The SQL's own
+refusals and cascade: `tools/avatars_try.sql` in the dry run
+(`tools/apply_sql.mjs supabase/avatars.sql --dry --try=tools/avatars_try.sql`).
 
 ### The gallery (/gallery), as a person uses it
 

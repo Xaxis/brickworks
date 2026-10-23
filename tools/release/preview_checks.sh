@@ -168,6 +168,16 @@ declare -A CMD=(
   # from Settings and every row of hers goes. 390 and 1280 px, light and
   # dark, signed in and out; the throwaway accounts deleted after.
   [account_page]="tools/web/account_page_flow.mjs --url=$P --out=$S/${TAG}_account_page"
+  # Your own picture as your avatar, and your likes on your profile
+  # (docs/SOCIAL.md D11, U5, U6; supabase/avatars.sql): throwaway Ada and
+  # Bob. Before the file, every avatar the tile, Edit profile offering no
+  # picture, and a picture or Likes "not open yet"; once applied, Ada crops
+  # a picture to a circle in Edit profile and it is on her page, her card,
+  # her model, her comment, Bob's feed and her header; the refusals; her
+  # Likes tab shown and hidden from Settings; the owner takes it out on
+  # /admin; she takes another off herself; deleting her account deletes its
+  # file. 390 and 1280 px, light and dark; the accounts deleted after.
+  [avatar]="tools/web/avatar_flow.mjs --url=$P --out=$S/${TAG}_avatar"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"

@@ -204,6 +204,14 @@
       "tests": []
     },
     {
+      "id": "cli:avatar browser flow",
+      "kind": "cli",
+      "entry": "tools/web/avatar_flow.mjs",
+      "reach": "node tools/web/avatar_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); node --env-file=.env tools/web/relay_server.mjs 8871 --hold=profile_avatars,profile_choices &  node --env-file=.env tools/web/avatar_flow.mjs --url=http://127.0.0.1:8871 --out=DIR   (throwaway accounts, deleted after; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>, which says not open yet until supabase/avatars.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:best of two probe",
       "kind": "cli",
       "entry": "src/dev/best_of_two_probe.gd",
@@ -2744,6 +2752,14 @@
       "tests": []
     },
     {
+      "id": "ui:likes on a profile",
+      "kind": "ui",
+      "entry": "api/_avatars.js",
+      "reach": "https://brickworks.diy/settings, Privacy, Show on my profile the models I liked   (off by default; then /u/<handle>?tab=likes and /profile?tab=likes, the cards newest like first, GET /api/people?op=likes&handle=X)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:lock parts",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
@@ -3473,6 +3489,14 @@
       "tests": [
         "tests/test_designers.py"
       ]
+    },
+    {
+      "id": "ui:your own picture as your avatar",
+      "kind": "ui",
+      "entry": "web/picture.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Choose a picture   (a JPEG, PNG or WebP up to 8 MB, cropped to a circle in the page: dragged, zoomed by the buttons, wheel or two fingers; Use this picture sends the square to POST /api/people?op=avatar, api/_avatars.js makes its own JPEG; Remove the picture; shown wherever the person is by api/_faces.js; taken out on /admin from a report about the profile)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:your profile page",

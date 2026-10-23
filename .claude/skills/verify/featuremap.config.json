@@ -2892,6 +2892,27 @@
     },
     {
       "kind": "ui",
+      "label": "your own picture as your avatar",
+      "entry": "web/picture.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Choose a picture   (a JPEG, PNG or WebP up to 8 MB, cropped to a circle in the page: dragged, zoomed by the buttons, wheel or two fingers; Use this picture sends the square to POST /api/people?op=avatar, api/_avatars.js makes its own JPEG; Remove the picture; shown wherever the person is by api/_faces.js; taken out on /admin from a report about the profile)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "likes on a profile",
+      "entry": "api/_avatars.js",
+      "reach": "https://brickworks.diy/settings, Privacy, Show on my profile the models I liked   (off by default; then /u/<handle>?tab=likes and /profile?tab=likes, the cards newest like first, GET /api/people?op=likes&handle=X)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "avatar browser flow",
+      "entry": "tools/web/avatar_flow.mjs",
+      "reach": "node tools/web/avatar_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); node --env-file=.env tools/web/relay_server.mjs 8871 --hold=profile_avatars,profile_choices &  node --env-file=.env tools/web/avatar_flow.mjs --url=http://127.0.0.1:8871 --out=DIR   (throwaway accounts, deleted after; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>, which says not open yet until supabase/avatars.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "the account menu",
       "entry": "web/follow.js",
       "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",

@@ -57,6 +57,12 @@ const SAMPLES = [
   [{ id: "CardAbcde5", name: "Liked, from the gallery", parts: 412, author: "Robin Castell", thumb: "/m/CardAbcde5.webp",
     likes: 97, liked: true, builds: 37, comments: 3, tags: ["castle", "ai-designed"],
     by: { handle: "robin-castell", name: "Robin <Castell>" } }, { like: true }],
+  // Its designer's own picture (supabase/avatars.sql), and one from
+  // anywhere else, which is never drawn: the tile is.
+  [{ id: "CardAbcde7", name: "With a face", parts: 88, author: "Robin Castell", thumb: "/m/CardAbcde7.webp",
+    by: { handle: "robin-castell", name: "Robin Castell", picture: "/api/people?op=avatar&id=FaceRobin1" } }, {}],
+  [{ id: "CardAbcde8", name: "A face from elsewhere", parts: 88, author: "Mallory", thumb: "/m/CardAbcde8.webp",
+    by: { handle: "mallory-m", name: "Mallory", picture: "https://tracker.example/pixel.png" } }, {}],
   [{ id: "CardAbcde6", name: "A handle that is not one", parts: 9, author: "Eve", by: { handle: "../admin", name: "Eve" },
     tags: ["brickify"] }, { like: true }],
 ];
