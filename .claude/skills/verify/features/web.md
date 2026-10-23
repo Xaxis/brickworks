@@ -304,17 +304,21 @@ plan with Claude as the client.
   minifigure Claude stood up lost on reload (`CommandSocket.model_changed`).
 - `progress check` (`tools/web/progress_check.mjs`, 2026-10-12): presses each
   slow thing in Chromium on SwiftShader and times it against the press's own
-  time in the page — how long before the status bar's bar (`Working`) was
-  drawn (`window.brickworksWork`; a build without it is read by its page
-  state, polled, and marked ~); the app's own longest piece of work, which is
-  what is judged (an engine frame less the time it spent inside WebGL calls,
-  or one of its input handlers, timed in the page — a press can be handled
-  outside a frame, and Timeline's was — or its slowest frame by its own
-  clock, `brickworksState.slow`, labelled with what `Working` said); the
+  time in the page. Judged, as the app's own work on a CPU (each engine
+  frame and input handler's `tdur` in Chrome's trace, found by a stamp of
+  the page's clock; 2026-10-22, since by the page's clock m145 and m146
+  both failed at load 26-52): `said`, its work from the press through the
+  frame the status bar's bar (`Working`) was begun in (`window.brickworksWork`'s
+  first drawing less its `ms`), and `own`, its longest piece of work in one
+  go (a press can be handled outside a frame, and Timeline's was). Said and
+  not judged: `heard`, how long before the bar was drawn by the page's clock
+  (a build without the bar is read by its page state, polled, and marked ~;
+  on a busy box that frame waits seconds on the software drawing before it),
+  `own`'s page-clock figure less WebGL or the slowest frame by the app's own
+  clock (`brickworksState.slow`, labelled with what `Working` said), the
   longest engine frame callback (as `render_open_check` times them, WebGL
-  calls included) and the longest the page ran no timer, both said and not
-  judged, since on SwiftShader on a busy box a WebGL call waits for the
-  software drawing of the frame before; the total; and that the bar is gone.
+  calls included) and the longest the page ran no timer; the total; and that
+  the bar is gone.
   That last is why the bar is not redrawn until the card has drawn its last
   change (`GpuFence`): every 250 ms regardless, as first written, Orthanc's
   timeline took 77 s instead of 8, software drawings of the whole tower
@@ -341,9 +345,14 @@ plan with Claude as the client.
   owner's freeze, 2026-10-13; a build without that control is not
   measured, and plain New is then, as `--only=new` asks). The commands after
   Timeline are the ones `src/dev/command_probe.gd` found holding the window
-  longest. Fails when one that should show the bar does not
-  within `--heard` ms (150), when Timeline, the booklet, Art or Brickify has
-  work of its own over `--budget` ms (250) in one go, or a bar is left up.
+  longest. Fails when one that should show the bar does not, or does over
+  `--said` ms (150, `Working.SAY_FIRST_MS`) of its own work first, when
+  Timeline, the booklet, Art or Brickify has work of its own over `--budget`
+  ms (300) in one go, or a bar is left up. Six runs of m145's and m146's
+  builds at load 26-52 did at most 82 ms before a bar and 241 ms in one go;
+  CPU time stops growing with the load once all 24 threads are busy. An
+  Export that worked out its file before beginning its bar failed with
+  6,970 ms before it.
   `--model=FILE --parts=N` opens FILE (N parts) where Orthanc is opened:
   with `--only=timeline` and a model whose author's steps are taken out, the
   timeline's total is the planner's time in the browser
