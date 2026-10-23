@@ -4789,6 +4789,9 @@ func _build_ui() -> void:
 	# The parts list's own BrickLink and Rebrickable buttons.
 	_inventory.shop_wanted.connect(func(shop: String) -> void:
 		_inventory.tell(_exports.shop_list(shop)))
+	# Its rows' pictures, and a row clicked: those parts, in the model.
+	_inventory.thumbnails = _thumbnails
+	_inventory.chosen.connect(_show_found)
 
 	# Over everything else, so it is added last: nothing in the builder can
 	# be used until someone is signed in. Not over a shared model's viewer,
@@ -5427,6 +5430,31 @@ func _toggle_parts() -> void:
 		return
 	if not _inventory.show_for(_world, _library, _store.scenery, _bar.model_name()):
 		_bar.say("nothing to list yet")
+
+
+## The parts list with its find to type into: Edit, Select by, Part number
+## or name.
+func _find_parts() -> void:
+	if not _inventory.show_finding(_world, _library, _store.scenery, _bar.model_name()):
+		_bar.say("nothing to find yet")
+
+
+## The parts the parts list was asked for, selected and in view
+## (InventoryPanel.chosen): where they are in the model. [param what] says
+## what they are.
+func _show_found(ids: PackedInt64Array, what: String) -> void:
+	var count: int = _verbs.select_found(Array(ids))
+	var left: int = ids.size() - count
+	if count == 0:
+		_bar.say("%s: %s hidden or locked — Alt-H shows everything, Shift-L unlocks it" % [
+			what, "it is" if left == 1 else "all %d are" % left])
+		return
+	_camera.frame(_selection_bounds())
+	# One part buried in a building is selected and still out of sight:
+	# x-ray is the way to see it.
+	_bar.say("selected %d: %s%s — I sees through to %s" % [count, what,
+		"" if left == 0 else " (%d more hidden or locked)" % left,
+		"it" if count == 1 else "them"])
 
 
 ## Start or leave the booklet. Editing while playback is on would place
@@ -7631,6 +7659,12 @@ func _key_pressed(key: InputEventKey) -> void:
 			if _elements != null and _elements.visible:
 				_elements.visible = false
 				return
+			# The parts list is over the model as these are, and goes with
+			# them: below the selection, Escape took the selection the list
+			# hides away and left the list up.
+			if _inventory.is_showing():
+				_inventory.hide_list()
+				return
 			# Back to Select with nothing in hand, from placing or any
 			# other tool — and on down the ladder in the same press, so
 			# one Escape is always enough to be back at rest.
@@ -7647,9 +7681,6 @@ func _key_pressed(key: InputEventKey) -> void:
 			if resting and _verbs != null and _verbs.assemblies != null \
 					and not _verbs.assemblies.entered.is_empty():
 				_verbs.leave_assembly()
-				return
-			if _inventory.is_showing():
-				_inventory.hide_list()
 				return
 			if _steps.is_playing_back():
 				_steps.stop()

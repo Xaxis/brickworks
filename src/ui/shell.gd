@@ -120,8 +120,8 @@ const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable", "-", "export_all"],
-	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
-		"select_submodel", "select_inverse"],
+	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
+		"select_connected", "select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 	"steps": ["step_close", "-", "step_prev", "step_next", "step_new", "-", "step_earlier",
 		"step_later",
@@ -457,7 +457,8 @@ const SLOW_FROM: Dictionary = {
 	# Everything connected walks the model from the part: 464 ms on the
 	# 536-part station, unsaid on a device that had not timed it before.
 	"stability": 300, "select_connected": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
-	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "reseat": 2000,
+	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "select_find": 2000,
+	"reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
 	"new": 2000,
@@ -490,6 +491,7 @@ const DOING: Dictionary = {
 	"select_all": "Selecting everything…", "select_none": "Selecting nothing…",
 	"select_colour": "Selecting the same colour…", "select_part": "Selecting the same part…",
 	"select_alike": "Selecting the same part and colour…",
+	"select_find": "Listing the parts…",
 	"select_connected": "Selecting everything connected…",
 	"select_submodel": "Selecting the sub-model…", "select_inverse": "Selecting the opposite…",
 	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
@@ -730,6 +732,10 @@ func _define() -> void:
 	_add("select_part", "Same part", 0, func() -> void: verbs.select_by("part"), selected)
 	_add("select_alike", "Same part and colour", 0, func() -> void: verbs.select_by("alike"),
 		selected)
+	# The parts list with its find: a part's number, name or colour, and
+	# Enter selects every one of them.
+	_add("select_find", "Part number or name…", 0, func() -> void: app.call("_find_parts"),
+		something, "Find a part in the model by its number, its name or its colour")
 	_add("select_connected", "Everything connected", 0,
 		func() -> void: await verbs.select_connected(), selected)
 	_add("select_submodel", "Same sub-model", 0, func() -> void: verbs.select_by("submodel"),

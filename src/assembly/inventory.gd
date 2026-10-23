@@ -52,6 +52,9 @@ class Lot extends RefCounted:
 	## are not always LDraw's (PartLibrary.shop_part).
 	var bricklink_id: String = ""
 	var rebrickable_id: String = ""
+	## The bricks counted in it, by id: a hose's every piece, for a lot that
+	## is one. What the parts list selects when its row is clicked.
+	var bricks: PackedInt64Array = []
 
 	func total_grams() -> float:
 		return each_grams * count
@@ -90,10 +93,11 @@ static func of(world: BrickWorld, library: PartLibrary,
 	var whole: Dictionary = _sold_whole(world, library, skip)
 	for path: String in whole:
 		var item: Dictionary = whole[path]
-		inventory.items[path] = inventory._add(by_key, library, str(item["part"]),
-			int(item["color"]))
+		var lot: Lot = inventory._add(by_key, library, str(item["part"]), int(item["color"]))
+		inventory.items[path] = lot
 		var first: int = -1
 		for brick: BrickWorld.Brick in item["bricks"]:
+			lot.bricks.append(brick.id)
 			inventory.whole_of[brick.id] = path
 			if first < 0 or brick.id < first:
 				first = brick.id
@@ -101,7 +105,7 @@ static func of(world: BrickWorld, library: PartLibrary,
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id) or inventory.whole_of.has(brick.id):
 			continue
-		inventory._add(by_key, library, brick.part_id, brick.color_code)
+		inventory._add(by_key, library, brick.part_id, brick.color_code).bricks.append(brick.id)
 
 	# Grouped by part, and the parts ordered by how many of them there
 	# are altogether.
