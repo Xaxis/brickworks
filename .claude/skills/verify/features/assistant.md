@@ -1894,7 +1894,14 @@ fixing what it got wrong.
   app does the retrieval itself (`FeaturePass.propose`): `candidates_for`
   searches the index for the subject word and the feature (`_subject_words`,
   "owl eyes"), then the feature alone, and keeps up to six pieces that lay
-  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model);
+  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model)
+  and are that feature: what the piece is (`RealSnippets.what_it_is`, its
+  description up to the colon) names the feature's noun (`nouns_of`, the
+  last word of each thing it lists) or a word of the index's synonyms
+  (`RealSnippets.kin`), ranked by how much of the feature it says
+  (`names_it`), and none when no piece is it (walk180's tug was offered a
+  tugboat's funnel for its fenders, windows, bitts and mast: "harbour tug
+  boat" ran together as "tugboat" in the search);
   `spot_for` takes the design's spot or reads one off the name (`WHERE`:
   eyes high on the front, wheels low on the side, ear tufts on top, tails at
   the back) on the model's surface at that height, not its box; `fit` tries
@@ -1916,7 +1923,10 @@ fixing what it got wrong.
   `recolor` first: the same piece laid again in one edit with taking the
   old off, so a refusal leaves it), `next` (taken off, the next candidate
   laid), `reject` (a reason of three words or more; taken off), `built` (a
-  reason, or an edit put down to the feature; the app's piece is taken off). In the loop a settle ends the
+  reason, or an edit put down to the feature; the app's piece is taken off),
+  `skip` (left out, taken off; saving does not wait for it). `built`,
+  `reject` and `skip` take several features at once, comma-separated, or
+  "all" for every one not settled (`_features_in`). In the loop a settle ends the
   feature's turn (`_feature_closed`) and the next comes; turns run out with
   the piece standing and it is "kept". From outside: the build's answer says
   so (step 2), the whole review hands the first feature with its piece laid,
@@ -1939,7 +1949,10 @@ fixing what it got wrong.
   refused with both open and the eyes laid as a mirrored pair, "next" laying
   the next-best, accept with a move laying it a stud back and handing the
   beak, a reason-less rejection refused, the last settle naming the next
-  step, save going ahead, the whole review's record. Windowed (`xvfb-run -a
+  step, save going ahead, the whole review's record; then "beak, ear tufts"
+  skipped and "all" built in two calls with save going ahead, and the
+  walk180 tug's features each offered only pieces that name them (none for
+  its towing bitts). Windowed (`xvfb-run -a
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.
   Needs the index; SKIP without.

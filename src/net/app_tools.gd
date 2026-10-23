@@ -225,8 +225,8 @@ its builder and keep to its licence in anything made from it.
 rendering, render_motion, export_model's studio, picture and instructions, make_art, \
 brickify) \
 answers at once with a job number while it works in the app. job {"id": N} \
-waits up to 10 s for it to end, then says how far it has got, or gives its \
-answer once done; call it about every 10 s until then. cancel=true stops \
+waits up to 45 s for it to end, then says how far it has got, or gives its \
+answer the moment it is done; call it again until then. cancel=true stops \
 it. Nothing else can be done in the app while a job runs."""
 
 

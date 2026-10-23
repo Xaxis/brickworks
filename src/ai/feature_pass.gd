@@ -22,9 +22,10 @@ extends RefCounted
 
 const STUD := 20.0
 const PLATE := 8.0
-## Pieces looked at for a feature, before those that do not lay whole are
-## left out, and the most parts one may have to be laid as a proposal.
-const LOOKED_AT := 40
+## Pieces looked at for a feature, before those that do not lay whole or
+## are not the feature are left out, and the most parts one may have to be
+## laid as a proposal.
+const LOOKED_AT := 80
 const MOST_PARTS := 40
 ## Pieces kept as candidates for a feature, in the index's order.
 const CANDIDATES := 6
@@ -82,7 +83,7 @@ class Proposal extends RefCounted:
 	## Pieces that fit nowhere near, by id.
 	var missed: PackedStringArray = PackedStringArray()
 	## "" until the design settles it: "accepted", "adjusted", "rejected",
-	## "built"; "kept" when a loop's turns ran out with it standing.
+	## "built", "skipped"; "kept" when a loop's turns ran out with it standing.
 	var verdict: String = ""
 	var reason: String = ""
 
@@ -210,15 +211,26 @@ func spot_for(name: String) -> Dictionary:
 		"z": snappedf(at.z / STUD, 0.5), "facing": facing, "guessed": true}
 
 
-## The real pieces for a feature that lay whole, best first: the subject's
-## own sets first (RealSnippets.search), then any.
+## The real pieces for a feature that lay whole and are that feature, best
+## first: the subject's own sets first (RealSnippets.search), then any.
+##
+## A piece is the feature when what it is (RealSnippets.what_it_is) names
+## the feature's own noun or a word the index takes as the same: the
+## fenders of "tyre fenders", the hands of "claw hands" (a claw, a
+## gripper). Matched on the whole description, the subject's words decided
+## it: "harbour tug boat" ran together as "tugboat", the rarest word in the
+## query, and a tugboat's funnel came first for its fenders, its windows,
+## its bitts and its mast (walk180, 2026-10-23). A feature no piece is
+## gets none, and the design builds it.
 func candidates_for(name: String) -> Array:
 	var subject: String = Assistant._subject_words(assistant._asked_as())
 	var query: String = ("%s %s" % [subject, name]).strip_edges()
 	var box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
 	var widest: float = maxf(box.size.x, box.size.z) / STUD
 	var most: float = maxf(4.0, widest * 0.6)
-	var out: Array = []
+	var said: PackedStringArray = RealSnippets.words(name)
+	var nouns: Array = nouns_of(name)
+	var found: Array = []
 	var seen: Dictionary = {}
 	for asked: String in [query, name]:
 		for row: Variant in RealSnippets.search(asked, most, [], LOOKED_AT, 2):
@@ -228,10 +240,63 @@ func candidates_for(name: String) -> Array:
 					or int(entry.get("parts", 0)) > MOST_PARTS:
 				continue
 			seen[entry["id"]] = true
-			out.append(entry)
-			if out.size() >= CANDIDATES:
-				return out
+			var named: int = names_it(entry, said, nouns)
+			if named > 0:
+				found.append([named, found.size(), entry])
+	# Those that say more of it first, then in the search's order: the
+	# subject's own sets, then the best scored.
+	found.sort_custom(func(one: Array, other: Array) -> bool:
+		return one[0] > other[0] if one[0] != other[0] else one[1] < other[1])
+	var out: Array = []
+	for row: Array in found.slice(0, CANDIDATES):
+		out.append(row[2])
 	return out
+
+
+## The nouns a feature is named by, each with the words the index takes as
+## the same: the last word of each thing it lists ("mast and navigation
+## lights" is a mast and lights).
+static func nouns_of(name: String) -> Array:
+	var out: Array = []
+	var parts: PackedStringArray = RegEx.create_from_string(
+		"(?i)\\s*(?:,|&|\\band\\b|\\bwith\\b|\\bon\\b|\\bat\\b|\\bfor\\b|\\bplus\\b)\\s*").sub(
+		name, "|", true).split("|", false)
+	for part: String in parts:
+		var said: PackedStringArray = RealSnippets.words(part)
+		if said.is_empty():
+			continue
+		out.append(RealSnippets.kin(said[-1]))
+	return out
+
+
+## How well what [param entry] is says a feature, given as its words
+## ([param said]) and its nouns ([method nouns_of]): 0 when it names none of
+## its nouns, nor a word the index takes as the same; otherwise two for each
+## of the feature's words it says as they are, and one for a noun it says
+## another way. The front door before a hatch, the arm's claw before a
+## chameleon's hand for "claw hands".
+static func names_it(entry: Dictionary, said: PackedStringArray, nouns: Array) -> int:
+	var what: PackedStringArray = RealSnippets.what_it_is(entry)
+	var named: bool = false
+	for kin: PackedStringArray in nouns:
+		for word: String in kin:
+			if what.has(word):
+				named = true
+	if not named:
+		return 0
+	var score: int = 0
+	var heads: Dictionary = {}
+	for kin: PackedStringArray in nouns:
+		heads[kin[0]] = kin
+	for word: String in said:
+		if what.has(word):
+			score += 2
+		elif heads.has(word):
+			for other: String in heads[word]:
+				if what.has(other):
+					score += 1
+					break
+	return maxi(score, 1)
 
 
 ## Lay the best piece that fits for a feature, as its proposal, unless one
@@ -581,4 +646,7 @@ func said(name: String) -> String:
 				else "")
 		"rejected":
 			return "the app's piece rejected: %s" % one.reason
+		"skipped":
+			return "left out by the design%s" % (": " + one.reason if not one.reason.is_empty()
+				else "")
 	return one.verdict

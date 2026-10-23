@@ -221,6 +221,71 @@ func _run() -> void:
 		"beak: built by the design: the face key"),
 		"the whole review lists what each feature came to")
 
+	print("\nseveral settled in one call, and a feature skipped does not hold the save")
+	world.clear()
+	builder.lattice.clear()
+	assistant._joints_refused = true
+	await assistant.use_tool("submit_design", _owl(["eyes", "beak", "ear tufts"]))
+	var listed: String = _blocks_text(await assistant.review(""))
+	_ok(listed.contains("beak: not worked yet — real sets have ")
+		and listed.contains("ear tufts: not worked yet — real sets have "),
+		"the whole review names the real piece each feature would be laid: %s"
+		% _around(listed, "beak: not worked yet"))
+	var skipped: String = _blocks_text(await assistant.use_tool("settle_feature", {
+		"feature": "beak, ear tufts", "verdict": "skip",
+		"reason": "the face key has both already"}))
+	_ok(assistant._feature_said("beak").begins_with("left out by the design")
+		and assistant._feature_said("ear tufts").begins_with("left out by the design"),
+		"\"beak, ear tufts\" skipped in one call: %s" % skipped.substr(0, 120))
+	var all_built: String = _blocks_text(await assistant.use_tool("settle_feature", {
+		"feature": "all", "verdict": "built", "reason": "white dishes with black studs"}))
+	_ok(assistant._feature_said("eyes").begins_with("built by the design")
+		and all_built.contains("Every feature is settled"),
+		"\"all\" settles the one left, and says every feature is settled")
+	var saved_now: Variant = await socket._run_own("save_model", {"name": "owl.ldr"})
+	_ok(_blocks_text(saved_now) == "This app cannot do that from outside.",
+		"...and saving goes ahead with two features skipped")
+	# Looked at whole and changed, a change's answer says to save: a fire
+	# engine session went from its surface pass to its figure and answered
+	# with nothing saved.
+	var touched: String = _blocks_text(await assistant.use_tool("edit_model", {"add": [
+		{"part": "3024", "color": 15, "x": 4, "y": 13, "z": 6}]}))
+	_ok(touched.ends_with("Not saved yet: save_model keeps it. The design is not kept until "
+		+ "it is saved."), "after the whole review, a change's answer says to save: %s"
+		% touched.right(90))
+
+	print("\neach feature is offered a piece that is that feature, or none")
+	# The walk180 tug: its features were offered a tugboat's funnel, every one,
+	# because "harbour tug boat" ran together as "tugboat" in the search.
+	world.clear()
+	builder.lattice.clear()
+	for x: int in [0, 8, 16, 24]:
+		for z: int in [0, 10]:
+			await assistant.use_tool("edit_model", {"add": [{"part": "3034", "color": 4,
+				"x": x, "y": 0, "z": z, "rot": 0}]})
+	assistant._brief = ""
+	assistant._named_as = ("Harbour Tug. A small harbour tugboat with tyre fenders, a "
+		+ "wheelhouse and a funnel. Floor none: a boat is picked up and played with.")
+	var firsts: Dictionary = {}
+	for feature: String in ["tyre fenders", "wheelhouse windows", "funnel", "towing bitts",
+			"mast and navigation lights", "claw hands", "front door"]:
+		var offered: Array = assistant.feature_pass().candidates_for(feature)
+		var nouns: Array = FeaturePass.nouns_of(feature)
+		var all_fit: bool = true
+		for entry: Variant in offered:
+			if FeaturePass.names_it(entry, RealSnippets.words(feature), nouns) == 0:
+				all_fit = false
+		var offered_first: String = str((offered[0] as Dictionary)["text"]).get_slice(":", 0) \
+			if not offered.is_empty() else "none"
+		print("    %s: %s" % [feature, offered_first])
+		if not offered.is_empty():
+			firsts[str((offered[0] as Dictionary)["id"])] = true
+		_ok(all_fit, "%s: each of the %d offered names it" % [feature, offered.size()])
+	_ok(assistant.feature_pass().candidates_for("towing bitts").is_empty(),
+		"towing bitts: no real piece is a bitt, so none is offered")
+	_ok(firsts.size() >= 6, "the first offers are %d different pieces, not one for all"
+		% firsts.size())
+
 	print("")
 	if _failures == 0:
 		print("OK features_probe")
@@ -313,3 +378,9 @@ func _ok(passed: bool, said: String) -> void:
 	print("  %s  %s" % ["ok  " if passed else "FAIL", said])
 	if not passed:
 		_failures += 1
+
+
+## A line of [param text] from [param start], for a check's words.
+func _around(text: String, start: String) -> String:
+	var at: int = text.find(start)
+	return text.substr(at, 140).get_slice("\n", 0) if at >= 0 else text.left(140)

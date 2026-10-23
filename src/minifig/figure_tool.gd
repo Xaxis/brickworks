@@ -217,7 +217,7 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 				% [_n(x), _n(z), _n(resting_plates)]
 				+ "and five plates and a head tall; it needs that clear "
 				+ "above its feet, and its arms and what it holds a stud "
-				+ "either side.")}
+				+ "either side.") + _in_the_way(parts, at, Vector2(x, z), library, world, builder)}
 	var ids: PackedInt64Array = builder.put_figure(parts, figure.name, at)
 	var group: String = world.get_brick(ids[0]).group if not ids.is_empty() else figure.name
 	figure.name = group
@@ -237,6 +237,61 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	if not unmatched.is_empty():
 		said += " Nothing matched %s, so those are plain." % ", ".join(unmatched)
 	return {"ok": true, "ids": ids, "box": box, "text": said}
+
+
+## What a refused figure runs into, by part, and what would stand: the same
+## figure without its headwear, or the nearest spot a stud or two away. A
+## session told only "something is in the way" looked a captain into a
+## wheelhouse five times, with a probe figure and an undo, to find the roof
+## plate over his hat (walk180, 2026-10-23).
+static func _in_the_way(parts: Array[Dictionary], at: Transform3D, spot: Vector2,
+		library: PartLibrary, world: BrickWorld, builder: Builder) -> String:
+	var hit: Dictionary = {}
+	var by_slot: Dictionary = {}
+	for item: Dictionary in parts:
+		var where: Transform3D = at * (item["at"] as Transform3D)
+		var boxes: PackedInt32Array = builder.boxes_for(library.mesh_for(str(item["part"])), where)
+		for other: int in builder.lattice.blockers_boxes(boxes):
+			hit[other] = true
+			var slots: Array = by_slot.get(other, [])
+			if not slots.has(str(item["slot"])):
+				slots.append(str(item["slot"]))
+			by_slot[other] = slots
+	if hit.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for other: int in hit.keys().slice(0, 4):
+		var brick: BrickWorld.Brick = world.get_brick(other)
+		if brick == null:
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var low: float = (brick.transform * mesh.bounds).abs().position.y if mesh != null \
+			else brick.transform.origin.y
+		named.append("#%d %s%s from y %s (its %s)" % [other, brick.part_id,
+			" " + " ".join(info.name.split(" ", false)) if info != null else "",
+			_n(snappedf(low / PLATE, 0.25)),
+			" and ".join(PackedStringArray(by_slot[other]))])
+	var said: String = " In the way: %s%s." % ["; ".join(named),
+		" and %d more" % (hit.size() - named.size()) if hit.size() > named.size() else ""]
+	var bare: Array[Dictionary] = []
+	for item: Dictionary in parts:
+		if not str(item["slot"]) in ["headwear", "hat_extra"]:
+			bare.append(item)
+	if bare.size() < parts.size() and builder.figure_fits(bare, at):
+		return said + " Without headwear it stands there (headwear \"none\")."
+	var nearest: Vector3 = Vector3.INF
+	for dx: int in range(-2, 3):
+		for dz: int in range(-2, 3):
+			var by := Vector3(dx * STUD, 0.0, dz * STUD)
+			if by == Vector3.ZERO or by.length() >= nearest.length():
+				continue
+			if builder.figure_fits(parts, at.translated(by)):
+				nearest = by
+	if nearest != Vector3.INF:
+		return said + " The nearest spot it stands is x %s, z %s." % [
+			_n(spot.x + nearest.x / STUD), _n(spot.y + nearest.z / STUD)]
+	return said
 
 
 ## What each slot's part sits on, by its connectors: a hat on the head's stud,

@@ -72,6 +72,16 @@ func _initialize() -> void:
 			or _has_colour(space[0], 71),
 		"and a spaceship is white or grey")
 
+	print("\na subject no set is named by, read as the plainer kind it is")
+	var tug: String = str(assistant._how_real_sets_build_this("tugboat")["content"])
+	_ok(tug.begins_with("Sets are not named \"tugboat\"; read as a boat")
+		and tug.contains("BOAT — measured"), "a tugboat is read as a boat: %s" % tug.left(60))
+	var cottage: String = str(assistant._how_real_sets_build_this("a country cottage")["content"])
+	_ok(cottage.contains("HOUSE — measured"), "a cottage as a house: %s" % cottage.left(70))
+	var worship: String = str(assistant._how_real_sets_build_this("worship")["content"])
+	_ok(worship.begins_with("No kind of real set matches"),
+		"and \"worship\" is no ship: %s" % worship.left(50))
+
 	print("\nwhat it is built from, and what it carries")
 	var pirate: Array = library.kinds_for("pirate")
 	_ok(not (pirate[0].get("props", []) as Array).is_empty(),

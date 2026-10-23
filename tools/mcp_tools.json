@@ -966,12 +966,12 @@
       "readOnlyHint": false,
       "title": "Settle a feature's piece"
     },
-    "description": "Say what a feature is to be, once the app has laid a real set's piece for it where it goes (the whole review, each settle and saving hand the next feature with its piece laid and a picture): accept it — moved, turned or recoloured first if it needs it — ask for the next-best piece instead, reject it with a reason, or say you built it yourself. Saving waits until every feature listed in submit_design is settled.",
+    "description": "Say what a feature is to be, once the app has laid a real set's piece for it where it goes (the whole review, each settle and saving hand the next feature with its piece laid and a picture): accept it — moved, turned or recoloured first if it needs it — ask for the next-best piece instead, reject it with a reason, say you built it yourself, or skip it. Saving waits until every feature listed in submit_design is settled.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "feature": {
-          "description": "the feature, as listed in submit_design's features",
+          "description": "the feature, as listed in submit_design's features; for built, reject or skip, several comma-separated, or \"all\" for every one not settled",
           "type": "string"
         },
         "move": {
@@ -991,7 +991,7 @@
           "type": "object"
         },
         "reason": {
-          "description": "a sentence: what is wrong with the piece here (to reject), or how you built it (built)",
+          "description": "a sentence: what is wrong with the piece here (to reject), how you built it (built), or why it is left out (skip)",
           "type": "string"
         },
         "recolor": {
@@ -1006,12 +1006,13 @@
           "type": "integer"
         },
         "verdict": {
-          "description": "accept: keep the app's piece (adjusted by move, turn or recolor first, if given); next: take it off and lay the next-best piece; reject: take it off, with a reason, and build it your own way or leave it out; built: you built it yourself, and the app's piece comes off (accept keeps it)",
+          "description": "accept: keep the app's piece (adjusted by move, turn or recolor first, if given); next: take it off and lay the next-best piece; reject: take it off, with a reason, and build it your own way; built: you built it yourself, and the app's piece comes off (accept keeps it); skip: leave it out, the app's piece taken off",
           "enum": [
             "accept",
             "next",
             "reject",
-            "built"
+            "built",
+            "skip"
           ],
           "type": "string"
         }
@@ -5470,7 +5471,7 @@
       "readOnlyHint": true,
       "title": "Follow a long job"
     },
-    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, a mechanism's recording, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
+    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, a mechanism's recording, or any call still going after 20 s). It waits up to 45 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
