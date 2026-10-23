@@ -5975,6 +5975,11 @@ class Plan extends RefCounted:
 				for cell: Vector2i in other.get("_base", []):
 					if (one["_cells"] as Array).has(cell) or (two["_cells"] as Array).has(cell):
 						smooth_top = false
+			# Nor where the plan keeps studs ([member studded]) for what stands
+			# there that is not its own: an engine's magnet coupling, its plate
+			# on the last two rows, stood on the tiles this laid, held by nothing.
+			for cell: Vector2i in (one["_cells"] as Array) + (two["_cells"] as Array):
+				smooth_top = smooth_top and not studded.has(cell)
 			if smooth_top:
 				tiles = Shapes.TOPS
 		var cells: Dictionary = {}
