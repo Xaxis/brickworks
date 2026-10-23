@@ -2744,6 +2744,11 @@ static func mend(model: Assistant.Model, checker: Assistant,
 		for index: Variant in report.get("floating", []) + report.get("unheld", []):
 			floating[int(index)] = true
 		var apart: Dictionary = _apart(model, checker) if int(report.get("pieces", 0)) > 1 else {}
+		# And what only rests where it is, joined by nothing, which the lattice
+		# here has joined to what it rests on: the forty-stud bunny laid upright
+		# stood a 1 x 1 brick so, a piece of its own in the check's count.
+		for index: Variant in report.get("come_away", []):
+			apart[int(index)] = true
 		for index: Variant in floating:
 			apart.erase(index)
 		if floating.is_empty() and apart.is_empty():

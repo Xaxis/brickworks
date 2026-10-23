@@ -350,8 +350,9 @@ func collisions(of: Dictionary) -> Array:
 
 ## BrickNet's pieces over everything with a shape (only the items in [param
 ## among], when given), joined as well by [param extra] ([a, b] item pairs:
-## what holds a part with no shape).
-func pieces(extra: Array, among: Dictionary = {}) -> PackedInt32Array:
+## what holds a part with no shape). Its connections, [a, _, b, _] each, are
+## added to [param edges].
+func pieces(extra: Array, among: Dictionary = {}, edges_out: Array = []) -> PackedInt32Array:
 	var began: int = Time.get_ticks_usec()
 	var these: Array = items
 	if not among.is_empty():
@@ -360,6 +361,7 @@ func pieces(extra: Array, among: Dictionary = {}) -> PackedInt32Array:
 		for i: Variant in among:
 			these[int(i)] = items[int(i)]
 	var edges: Array = Exact.connections(these)
+	edges_out.append_array(edges)
 	for pair: Array in extra:
 		if among.is_empty() or (among.has(int(pair[0])) and among.has(int(pair[1]))):
 			edges.append([int(pair[0]), 0, int(pair[1]), 0])
@@ -432,6 +434,119 @@ func rests(members: Array) -> bool:
 		if Geometry2D.get_closest_point_to_segment(over, hull[k], hull[k + 1]).distance_to(over) < STEADY:
 			return false
 	return true
+
+
+## Whether a piece of [param members] that nothing joins and that stands
+## where it is ([method rests]) comes away in the hand: no tube of it stands
+## between another part's studs, nor one of another's between its studs. BrickNet's
+## graph counts it a piece of its own, and BrickBench's two seconds of gravity
+## leave it standing; picked up, the model drops it. The outline161 arm's
+## rabbit (brickbench-2026-10-22-m147) stood twelve 1 x 1 cheese slopes on
+## round plates where the plates have no stud, their rims, and the check said
+## it held together. A 4 x 4 dish over a round plate's four studs is held:
+## its centre tube stands between them as a 2 x 2 brick's tube does, though
+## BrickNet reads only the tube's own middle, which takes one stud.
+func comes_away(members: Array) -> bool:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+			if mine.has(j) or items[j] == null:
+				continue
+			if _tube_grips(items[j], item) or _tube_grips(item, items[j]):
+				return false
+	return true
+
+
+## Whether a tube of [param b] stands between studs of [param a], as a 2 x 2
+## brick's tube stands between the four studs under it and holds them: two or
+## more of a's studs on the tube's face, each half a stud's diagonal from it
+## and pointing the way it does. BrickNet mates a stud only with the tube's own
+## middle, where it takes one stud, so a dish over four studs is a piece of its
+## own in its graph and held in the hand.
+static func _tube_grips(a: Exact.Item, b: Exact.Item) -> bool:
+	for tube: Array in b.world():
+		var k: int = tube[0]
+		if b.shape.kind[k] != Exact.HOLE or b.shape.sub[k] != Exact.S_TUBE:
+			continue
+		var at: Vector3 = tube[1]
+		var way: Vector3 = tube[2]
+		var touching: int = 0
+		for one: Array in a.world():
+			if a.shape.kind[one[0]] != Exact.STUD or (one[2] as Vector3).dot(way) < Exact.AXIS_THR:
+				continue
+			var d: Vector3 = (one[1] as Vector3) - at
+			var along: float = d.dot(way)
+			if absf(along) <= 1.0 and absf((d - way * along).length() - DIAGONAL) <= 1.0:
+				touching += 1
+		if touching >= 2:
+			return true
+	return false
+
+
+## The part a piece of [param members] stands on by an anti-stud set on that
+## part's own stud grid, a whole number of studs from one of its studs, where
+## the part has no stud: a 1 x 1 cheese slope on a round plate's rim, which a
+## round plate leaves without studs. A part laid so was meant to be on studs and
+## missed them. -1 for none: a brick on a tile, a dish on its rim over a plate
+## (its anti-studs above the studs), a plate on its edge, each set down so.
+func on_missing_stud(members: Array) -> int:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		for one: Array in item.world():
+			if item.shape.kind[one[0]] != Exact.HOLE or (one[2] as Vector3).dot(Vector3.UP) < Exact.AXIS_THR:
+				continue
+			var at: Vector3 = one[1]
+			for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+				var other: Exact.Item = items[j]
+				if mine.has(j) or other == null or at.x < other.lo.x or at.x > other.hi.x \
+						or at.z < other.lo.z or at.z > other.hi.z:
+					continue
+				var to_other: Basis = other.at.basis.inverse()
+				for stud: Array in other.world():
+					if other.shape.kind[stud[0]] != Exact.STUD \
+							or (stud[2] as Vector3).dot(Vector3.UP) < Exact.AXIS_THR:
+						continue
+					var d: Vector3 = at - (stud[1] as Vector3)
+					if absf(d.y) > 1.0:
+						continue
+					var local: Vector3 = to_other * d
+					if absf(local.x - snappedf(local.x, PITCH)) <= 1.0 \
+							and absf(local.z - snappedf(local.z, PITCH)) <= 1.0 \
+							and Vector2(local.x, local.z).length() > Exact.POS_THR:
+						return j
+	return -1
+
+
+## A piece that stands but comes away in the hand ([method comes_away]),
+## said: what it rests on, and how to fix it.
+func comes_away_said(members: Array, name: Callable) -> String:
+	var first: int = members[0]
+	var on: int = -1
+	for i: Variant in members:
+		on = under(int(i))
+		if on >= 0 and not members.has(on):
+			first = int(i)
+			break
+		on = -1
+	var missed: int = on_missing_stud(members)
+	var rest: int = members.size() - 1
+	var who: String = name.call(first)
+	if rest > 0:
+		who += " and %d part%s joined to it" % [rest, "" if rest == 1 else "s"]
+	var where: String = "rests on %s" % name.call(on) if on >= 0 else "stands where it is"
+	if missed >= 0:
+		where = "stands on %s where it has no stud to take its anti-stud" % name.call(missed)
+	return ("%s %s, and nothing joins it to the rest: it stands while the model stands, and "
+		% [who, where] + "falls off when the model is picked up (BrickNet's connection graph, "
+		+ "which BrickBench counts pieces by, has it as a piece of its own). Move it onto a "
+		+ "stud, put a part under it that has a stud where it sits, or hold it in a clip; "
+		+ "attachment_points lists where a part joins.")
 
 
 ## Whether a piece of [param members] that only the floor holds stands on a
@@ -629,6 +744,11 @@ const STEADY := 1.0
 ## above what it would rest on drops onto it, which BrickBench's simulation
 ## lets pass as long as nothing moves more than 3 LDU.
 const TOUCH := 2.5
+## Half a stud's diagonal, LDU: how far a tube's middle is from each of the
+## four studs it stands between.
+const DIAGONAL := 14.142
+## A stud's pitch, LDU.
+const PITCH := 20.0
 
 
 ## The points where items [param a] and [param b] touch, into [param out]:

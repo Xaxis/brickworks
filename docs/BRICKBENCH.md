@@ -2103,6 +2103,105 @@ The 22 verdicts lost to BrickAgent, by what their reasons hold against it:
   and bottom courses, and each build is one piece by verify.py.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-23: what holds together, by our check and by BrickNet's graph
+
+verify.py records how many pieces a build is (`connected_components`, from
+BrickNet's connection graph), though it judges validity without it. On the
+outline161 arm the rabbit was 13 pieces by that graph, and the app's check had
+told its session it held together. connect166 found which of the two was right
+from the parts' own geometry, and ran both judgements over every build in
+`brickbench-2026-10-22-m147/` (four arms and BrickAgent's six).
+
+**The rabbit's twelve 54200s: BrickNet is right.** Each is a 1 x 1 cheese slope
+whose only connector is one anti-stud in the middle of its underside (54200.dat
+has its origin at its bottom face). Four stand on an 11213, a 6 x 6 round plate
+whose studs are a 4 x 4 block in the middle and two at the middle of each side
+(`stug-4x4`, `stug-2x1`, `stug-1x2` in 11213.dat): the slopes are at (±30, ±50)
+from its middle, on its stud grid where the plate has no stud. Eight stand on a
+74611, an 8 x 8 round plate whose outer rows have studs only nearer the middle
+(rows ±30 and ±50 to x ±50, rows ±70 at x ±10 only): the slopes are at (±70,
+±30) and (±30, ±70), again on its grid with no stud. No stud is within 20 LDU of
+any of their anti-studs. In plastic each just rests on the plate's flat top:
+the model stands, and the slopes fall off when it is picked up. BrickBench's two
+seconds of gravity leave them standing, so verify.py passed the build.
+
+**Why our check held them.** Our exact check's own connections
+(`Exact.connections`, BrickNet's rules) found the same 13 pieces. Three things
+then hid it. A piece nothing joins that stands square (`ExactCheck.rests`) was
+let pass, on the promise in its comment that the lattice's loose advice says it
+comes away in the hand; that advice speaks only of a part resting on a part with
+no stud anywhere (`_note_loose`), and a round plate has studs. And the check's
+count of pieces (`_pieces_of`) joins any part to what it sits on, so it said one
+piece.
+
+**The fix** (`ExactCheck.comes_away`, `on_missing_stud`; `_exact_unheld`,
+`_pieces_of`). A piece that stands but that no stud holds comes away in the
+hand. It is a fault ("not held") when its anti-stud stands on another part's
+stud grid, a whole number of studs from one of its studs, where that part has no
+stud: the rabbit's case, a part meant to be on studs that missed them. It is
+advice when it was set down so on purpose: a brick on a tile, a plate on its
+edge, a log in a groove. Either way the check counts it as a piece of its own,
+and it counts pieces by the exact shapes' connections as well as the lattice's,
+as verify.py does. A tube between four studs holds, as every 2 x 2 brick's tube
+does (`_tube_grips`).
+
+**Agreement, all 30 builds** (pieces by verify.py's graph, `scripts/loose.py`;
+by our check on d05a59be; by our check now, `src/dev/pieces_agree.gd`):
+
+| build | verify.py | ours, before | ours, now | what it is |
+|---|---|---|---|---|
+| outline161 model-078, the rabbit | 13 | 1 | 13 | twelve 54200s on round plates' rims: now 12 faults |
+| search156 model-080 | 2 | 1 | 2 | four 1 x 1 tooth plates under a 1 x 4 tile, their anti-studs 12 LDU above the studs of the plate under them: advice |
+| m147 model-044 | 2 | 1 | 2 | a 2 x 6 plate standing on its edge: advice |
+| BrickAgent's model-044 | 2 | 1 | 2 | a 1 x 8 plate and a tile on it, resting unjoined: advice |
+| figfaces model-043 | 1 | 3 | 1 | a dome's stud in the middle tube of a 2 x 2 round brick laid on its side, twice: the 2 LDU lattice missed it |
+| outline161 model-044 | 1 | 3 | 1 | a side stud (87087) in a 2 x 2 round plate's middle tube, twice: the same |
+| BrickAgent's model-043 | 1 | 2 | 1 | an open stud in a headlight brick's side hole (65578 in 4070): the same |
+| figfaces model-042 | 2 | 1 | 1 | **disagree**: the potato's 4 x 4 dish on a 2 x 2 round plate |
+| outline161 model-042 | 2 | 1 | 1 | **disagree**: the potato's 4 x 4 dish on a 2 x 2 plate |
+| the other 21 | | | | agree, before and now |
+
+28 of 30 agree, from 21 of 30. On all 30 our exact shapes' own connections
+found exactly verify.py's pieces; what differed was what the check did with
+them.
+
+**The two that disagree: the potato's hat, where BrickNet is wrong.** The hat's
+top is a 3960, a 4 x 4 inverted dish, on a 2 x 2 plate (outline161) or a 2 x 2
+round plate (figfaces). Under its middle the dish has a tube (`stud4a`, inner
+radius 6, outer 8 LDU, at its bottom face: dish-local y 12 to 16), the same
+tube a 2 x 2 brick has. The plate's four studs stand round it, each 14.14 LDU
+from its middle, so 0.14 LDU off the tube's outside in LDraw's nominal
+geometry and pressing on it in plastic: the dish is clutched as any 2 x 2 brick
+on a 2 x 2 plate is. BrickNet labels 3960's underside with that one tube and nothing else,
+and a tube mates only with a stud at its own middle (`("stud", "tube")` within
+3 LDU), where it takes a single stud; a 2 x 2 plate is labelled with four holes
+as well as its tube, which is why it joins and the dish does not. So its graph
+has the dish as a piece of its own. The designer is not changed for it: a dish
+on one stud (a 1 x 1 round plate under its tube, which BrickNet reads) turns
+where four studs hold it still, so it would be a worse build, and verify.py's
+validity does not read the graph.
+
+**What else it found in the app's own builders.** The round pattern laid its
+6 x 6 and 8 x 8 dishes (44375b, 3961) straight on the round: each is hollow out
+to its rim, and its 2 x 2 of anti-studs is a plate and two plates above the
+round's studs, so it rested, held by nothing (`patterns_probe` counted its round
+bodies and the Falcon Heavy two pieces). They now stand on 2 x 2 round plates
+under their middles (`Rounds.DISH_RISE`), as the crowns in `shells.gd` already
+did. Brickify's forty-stud bunny laid upright had a 1 x 1 brick that rests
+where nothing joins it; its mend now takes out what comes away (the check's
+`come_away`) as it takes out what floats, and it is one piece again. add_rooms'
+furniture has pieces that rest unjoined (a turntable top, 3679, laid straight
+on a plate with what stands on it); they are set down, so they are advice, as a
+brick on a tile is (`clutch_probe`).
+
+Proved by `exact_probe`: a 54200 on an 11213's rim is said not held and counted
+two pieces (both fail on d05a59be: 33 passed, 2 failed; 35 passed now), the
+same slope on one of its studs and the potato's dish say nothing and count one.
+`src/dev/pieces_agree.gd` prints both counts for any LDraw files. The check's
+cost is unchanged (`exact_cost_probe`, three runs each on d05a59be and now, on
+the 9,541-part Orthanc): an edit 4.4-5.0 s and 4.2-5.6 s, of it the exact check
+82-102 ms and 74-85 ms; a whole new design 31.9-39.0 s and 27.5-35.2 s.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is

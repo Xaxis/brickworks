@@ -60,7 +60,13 @@ fixing what it got wrong.
   pieces near each other found through each shape's tree of its pieces' boxes,
   built as it is read, `Exact._tree_of`, and asked in the order every pair was
   before: MECHANISMS §23); a piece of the
-  design no connection holds is a fault unless it stands square (`rests`); a piece
+  design no connection holds is a fault unless it stands square (`rests`), and one
+  that stands but comes away in the hand (`comes_away`: no tube of it stands
+  between another part's studs, as a dish's does on a round plate) is a fault when
+  it sits on its anti-studs where no stud is (`on_anti_studs`: a 1 x 1 cheese slope
+  on a round plate's rim) and advice when it lies so on purpose (a plate on its
+  edge); the check counts pieces by BrickNet's connections as well as the
+  lattice's (`_pieces_of`), as verify.py counts them; a piece
   only the floor holds, on a bare floor (floor "none" or "grid", or no baseplate
   laid: `Assistant._on_bare_floor`), is "tips over" unless its centre of mass is
   over where it touches the floor by a hundredth of its height (`tips`: a body over
@@ -2462,6 +2468,7 @@ names a drawer `godot --script res://src/dev/draw_shots.gd`.
 godot --headless --path . --script src/dev/exact_probe.gd        # one case a pair kind BrickBench refused, and builds that are right
 godot --headless --path . --script src/dev/exact_cost_probe.gd   # station (535) and Orthanc (9,427): as standing, an edit, a whole design
 godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd B.mpd   # pairs and pieces, to set beside verify.py
+godot --headless --path . --script src/dev/pieces_agree.gd -- A.ldr B.ldr   # the check's verdict and count of pieces, beside BrickNet's
 godot --headless --path . --script src/dev/joint_check_probe.gd  # real sets' joints pass, joints turned too far and folded hinges do not
 godot --headless --path . --script src/dev/joint_collisions.gd -- --out=F.jsonl [--shard=K/N] [SET.mpd ...]   # real sets' jointed pairs the shapes collide, and which the check holds to be the joint
 godot --headless --path . --script src/dev/replay_calls.gd -- --calls=F.jsonl [--only=21,30]   # a session's design calls made again on this checkout's check
@@ -2489,8 +2496,10 @@ Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md
 without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as
 it is since 2026-10-15 (each collider group the vertices its faces use, shared
 or not): built before, 679 of 3033's 785 pieces lost corners and a flame 1.27 LDU
-into a tipped lid read as clear. Proves it when: `exact_probe` ends "29
-passed, 0 failed" (on the code before it, fb64132, 4 of its first 21 passed and 17
+into a tipped lid read as clear. Proves it when: `exact_probe` ends "35
+passed, 0 failed" (its 54200 on a round plate's rim, said not held and counted
+two pieces, fails both on d05a59be, 33 passed and 2 failed; on the code before
+it, fb64132, 4 of its first 21 passed and 17
 failed: every pair kind came back "buildable"; the 22nd is model-010's head in a
 breastplate; the 23rd to 25th are the attach round's three that our check let
 through and verify.py refused — a body over its shoes' heels that tips, a can lying
