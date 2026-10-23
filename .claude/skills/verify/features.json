@@ -3248,6 +3248,14 @@
       "tests": []
     },
     {
+      "id": "ui:stress view",
+      "kind": "ui",
+      "entry": "src/ui/stress_view.gd",
+      "reach": "tools/probe.sh stress_probe && tools/probe.sh stress_view_probe   (by hand: View, Stress; point at a part; right-click a red one, Ask Claude to brace this)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:stud grid",
       "kind": "ui",
       "entry": "src/ui/stud_grid.gd",

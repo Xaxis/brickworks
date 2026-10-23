@@ -94,6 +94,15 @@ class Report extends RefCounted:
 	var total_grams: float = 0.0
 	var joints: int = 0
 	var weakest: Risk = null
+	## With [member Stability.with_margins]: every stud joint that alone
+	## holds what is past it, weighed as Balance weighs it, by the part past
+	## it — the brick above it, or the one hung under it: id ->
+	## Balance.JointLoad, whose margin is 1 / ratio. A joint that shares
+	## its load with others is in none: statics alone cannot say what it
+	## carries, and it is never the one that gives first.
+	var margins: Dictionary = {}
+	## ...and how each part none of them holds is held (Balance.Report.held).
+	var held: Dictionary = {}
 
 	func is_stable() -> bool:
 		return risks.is_empty()
@@ -114,6 +123,10 @@ var floor_ids: Dictionary = {}
 ## Set on the main thread to end a [method check] on a worker early, which
 ## then returns null (Main._weigh, PartLibrary.reading_in).
 var stopped: bool = false
+## Set to have [method check] weigh every stud joint's margin as well
+## ([member Report.margins]), from the contacts it reads anyway: View,
+## Stress (StressView) shows them.
+var with_margins: bool = false
 
 
 ## Check a model. Returns the joints that would fail, weakest first.
@@ -202,12 +215,32 @@ func check(world: BrickWorld) -> Report:
 	if stopped:
 		return null
 	_check_tipping(bricks, mass, boxes_of, report)
+	if with_margins:
+		_weigh_margins(bricks, graph, report)
+		if stopped:
+			return null
 
 	report.risks.sort_custom(func(a: Risk, b: Risk) -> bool:
 		return a.margin < b.margin)
 	if not report.risks.is_empty():
 		report.weakest = report.risks[0]
 	return report
+
+
+## Every stud joint's margin, as Balance weighs it with the model as it
+## stands: the moment about the edge it would turn on, against what its studs
+## hold there. Not the weight on a joint's studs, which [method _assess]
+## weighs: a stud pressed on holds whatever presses it, and a joint fails by
+## being levered or pulled off.
+func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
+	var weigher := Balance.new()
+	weigher.library = library
+	weigher.lattice = lattice
+	weigher.floor_ids = floor_ids
+	var weighed: Balance.Report = weigher.measure(bricks, [], null, graph)
+	for one: Balance.JointLoad in weighed.joints:
+		report.margins[one.beyond] = one
+	report.held = weighed.held
 
 
 ## Whether the whole tips over on what it stands on: its centre of mass

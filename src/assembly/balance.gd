@@ -160,6 +160,11 @@ class Report extends RefCounted:
 	## Parts the graph does not reach from the floor (held by something it
 	## does not read): weighed, but in no joint.
 	var adrift: int = 0
+	## How each part no bridge stud joint holds is held, as View, Stress says
+	## it (StressView): id -> "floor" for a part standing on the floor, "other"
+	## for one a pin, an axle, a clip or a hinge alone holds, and "nothing" for
+	## one adrift. A part held more than one way is in none of them.
+	var held: Dictionary = {}
 	## Nothing in it touches anything: an empty model.
 	var empty: bool = true
 
@@ -398,6 +403,12 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 	for n: int in _ids.size():
 		if _parent[n] == -2:
 			report.adrift += 1
+			report.held[_ids[n]] = "nothing"
+	for n: Variant in _held_otherwise:
+		report.held[_ids[int(n)]] = "other"
+	# The floor, too, is joined to what stands on it by no stud joint.
+	for n: Variant in _grounded:
+		report.held[_ids[int(n)]] = "floor"
 
 	if report.margin < SPARE:
 		_advise(report, weighed, worst)
@@ -604,11 +615,17 @@ func _join(joints: Dictionary, links: Array) -> void:
 		(_adjacent[b] as Array).append(e)
 	var under: Dictionary = joints["under"]
 	var overlapped: Dictionary = joints["overlapped"]
+	# And so is a pair whose part under has no studs: the lift stood one on
+	# the other, and no stud grips. 10264-1's Technic axle through a cross block
+	# was weighed as 7.4 g on one stud, past its working load (2026-10-22).
+	var studded := func(id: int) -> bool:
+		var info: PartLibrary.PartInfo = library.parts.get(_parts[int(_index_of[id])])
+		return info != null and info.stud_count > 0
 	for key: int in joints["studs"]:
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if _index_of.has(one) and _index_of.has(other):
-			var by_studs: bool = not overlapped.has(key)
+			var by_studs: bool = not overlapped.has(key) and bool(studded.call(int(under[key])))
 			add.call(int(_index_of[one]), int(_index_of[other]), by_studs,
 				int(_index_of[int(under[key])]) if by_studs else -1)
 	for key: int in joints["seated"]:
@@ -680,11 +697,17 @@ func _grow() -> void:
 					_bridge_edges[by_edge[v]] = v
 
 
-## Each bridge that is a stud joint, with where its studs are.
+## Each bridge that is a stud joint, with where its studs are; and the parts
+## past each that is not, held by what it is.
+var _held_otherwise: Dictionary = {}
+
+
 func _find_bridges(boxes: Dictionary) -> void:
 	_bridges.clear()
+	_held_otherwise.clear()
 	for e: Variant in _bridge_edges:
 		if _edge_stud[int(e)] == 0:
+			_held_otherwise[_bridge_edges[e]] = true
 			continue
 		var child: int = _bridge_edges[e]
 		var lower: int = _edge_lower[int(e)]

@@ -46,7 +46,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
   hinged_panels turned_tips mcp_walk mcp_walk3 mesh_formats own_copies page_places
   parts_only print_search shapes snippets standing subject_words surface
   unrestored update viewer_tools worker_first_run second_design
-  drag_cost seated shaping_search)
+  drag_cost seated shaping_search stress)
 # In a window, each as its own header says (tools/probe.sh: the size it
 # names, on Xvfb and the GPU, a data folder of its own), NAME or NAME:ARGS.
 # @out in ARGS is a folder of this run's: left to themselves the motions
@@ -55,7 +55,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
 windowed=(motions "motions_panel:@out" "motions_render:@out" telescope floor share_view share_play
   simulate typing slow_frames look progress render collection_ui library
   animation balance_view placing offgrid booklet_edit outline outline_cost
-  "command:--judge --subjects=orthanc" step_link)
+  "command:--judge --subjects=orthanc" step_link stress_view)
 # Not run here, each with why: it spends money, needs the relay's keys, is
 # a bench, a measure or pictures with no verdict, judges only a time the
 # box's load decides, or needs longer than a probe's ten minutes (run,

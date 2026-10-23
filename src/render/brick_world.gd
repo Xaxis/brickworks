@@ -461,6 +461,7 @@ func clear() -> void:
 	_xray.clear()
 	_faded.clear()
 	_tinted.clear()
+	_stressed.clear()
 	_spans.clear()
 	_drawn.clear()
 	_next_id = 1
@@ -984,8 +985,13 @@ func _brick_colour(brick: Brick, surface_color: int) -> PartLibrary.BrickColor:
 	return library.color(brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color)
 
 
-## ...as it is drawn now: faded, tinted, or as it is.
+## ...as it is drawn now: faded, tinted, or as it is. View, Stress draws
+## over the other two while it is on.
 func _shown_colour(brick: Brick, color: PartLibrary.BrickColor) -> Color:
+	if _stress_on:
+		var tint: Variant = _stressed.get(brick.id)
+		return faded(color.shown) if tint == null \
+			else Color(color.shown.lerp(tint, STRESSING), color.shown.a)
 	var shown: Color = faded(color.shown) if _faded.has(brick.id) else color.shown
 	if _tinted.has(brick.id):
 		shown = Color(shown.lerp(_tinted[brick.id], TINTING), shown.a)
@@ -1753,6 +1759,51 @@ func set_tinted(ids: Dictionary) -> void:
 
 func tinted_ids() -> Dictionary:
 	return _tinted
+
+
+## View, Stress (StressView): while it is on, every brick drawn in its own
+## colour faded, but those it names (id -> Color), tinted towards that
+## colour: red or amber, by how near its weakest joint is to letting go. For
+## the picture only, as x-ray's ghosts are: a brick keeps its paint, the
+## history no step and [member revision] its count.
+var _stress_on: bool = false
+var _stressed: Dictionary = {}
+const STRESSING := 0.85
+
+
+## Turn the stress view on or off, and say which bricks it tints. Turned on
+## or off, every batch is written again, once, at the end of the frame; with
+## it on, only the batches of the bricks whose tint changed.
+func set_stress(on: bool, tints: Dictionary = {}) -> void:
+	var changed: Dictionary = {}
+	if on != _stress_on:
+		changed = _bricks
+	else:
+		for brick_id: int in _stressed:
+			if not tints.has(brick_id) or tints[brick_id] != _stressed[brick_id]:
+				changed[brick_id] = true
+		for brick_id: int in tints:
+			if not _stressed.has(brick_id):
+				changed[brick_id] = true
+	_stress_on = on
+	_stressed = tints.duplicate() if on else {}
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func is_stressed() -> bool:
+	return _stress_on
+
+
+func stressed_ids() -> Dictionary:
+	return _stressed
 
 
 ## Bricks drawn somewhere other than where they stand: id -> Transform3D.

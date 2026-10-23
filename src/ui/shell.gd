@@ -39,6 +39,8 @@ var collection: CollectionDialog
 var library_dialog: LibraryDialog
 ## The cut-away and x-ray: src/ui/see_inside.gd.
 var see_inside: SeeInside
+## View, Stress: src/ui/stress_view.gd.
+var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
 
@@ -87,7 +89,8 @@ const MENUS: Array = [
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "explode", "-", "turn_left",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "explode", "-",
+		"turn_left",
 		"turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
@@ -108,7 +111,7 @@ const SUBMENU_ID := 10000
 
 ## The assistant's commands: in no menu, and never run, while it is off
 ## (Settings, Assistant (AI): ShellPrefs.assistant_shown).
-const ASSISTANT_COMMANDS: Array[String] = ["ask_claude", "panel_assistant", "connector"]
+const ASSISTANT_COMMANDS: Array[String] = ["ask_claude", "brace", "panel_assistant", "connector"]
 
 ## Whether the assistant is in the window: [method set_assistant].
 var assistant_shown: bool = true
@@ -173,6 +176,12 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	see_inside.say = bar.say
 	see_inside.bounds_of_model = func() -> AABB: return app.call("_built_bounds")
 	add_child(see_inside)
+	stress = StressView.new()
+	stress.world = world
+	stress.library = library
+	stress.scenery = store.scenery
+	stress.say = bar.say
+	add_child(stress)
 	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
 	sections = SectionsUi.new()
 	sections.shell = self
@@ -500,6 +509,7 @@ const DOING: Dictionary = {
 	"stability": "Checking stability…", "reseat": "Seating parts on their studs…",
 	"simulate": "Reading the mechanism…",
 	"cut": "Cutting away…", "xray": "Seeing through…", "grid": "Laying the stud grid…",
+	"stress": "Weighing every joint…",
 	"step_close": "Making a step…", "step_new": "Making a step…",
 	"step_earlier": "Moving the step…",
 	"step_later": "Moving the step…", "step_merge": "Merging the steps…",
@@ -760,6 +770,11 @@ func _define() -> void:
 	_add("ask_claude", "Ask Claude about this…", CTRL | KEY_K,
 		func() -> void: app.call("ask_about_selection"), selected,
 		"Ask Claude to change the selected parts, and only them, or ask about them")
+	# On a part View, Stress shows weak: the part and what holds it, asked
+	# about with the joint's numbers.
+	_add("brace", "Ask Claude to brace this…", 0, _brace,
+		func() -> bool: return stress.weakest_of(builder.selection) != 0,
+		"Ask Claude to make this joint hold: what it carries, on what, and its margin, asked for you")
 	# The author's steps: src/assembly/author_steps.gd. The selection, then
 	# the step the timeline is on.
 	_add("step_prev", "Move to previous step", SHIFT | KEY_BRACKETLEFT,
@@ -863,6 +878,11 @@ func _define() -> void:
 			or not assemblies.entered.is_empty()),
 		"Everything but the selection, or the sub-assembly being edited, see-through")
 	_ticked("xray", func() -> bool: return see_inside.seeing_through)
+	_add("stress", "Stress", 0, func() -> void: stress.set_on(not stress.on),
+		func() -> bool: return stress.on or world.brick_count() > store.scenery.size(),
+		"Every part tinted by how near its weakest joint is to letting go: red past its "
+		+ "studs' working load, amber within twice it")
+	_ticked("stress", func() -> bool: return stress.on)
 	# Shift: Q alone takes the last part back into hand (Tools, Place).
 	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
 		func() -> void: app.call("_turn_model", -1), something)
@@ -1022,9 +1042,10 @@ func _define() -> void:
 ## What a right click on a part offers: the verbs a person reaches for,
 ## each the command Edit or Build has, greyed where it would do nothing.
 ## A right click on a part did nothing (brickworks.diy, 2026-10-12).
-const ON_A_PART: Array = ["ask_claude", "-", "select_connected", "-", "hide", "isolate", "-", "paint",
+const ON_A_PART: Array = ["ask_claude", "brace", "-", "select_connected", "-", "hide", "isolate", "-", "paint",
 	"printed_versions", "copy", "delete", "-", "make_submodel", "-", "show_properties"]
 var context: PopupMenu
+var _brace_id: int = -1
 
 
 ## The menu for a part, at a point on the screen, for the selection the
@@ -1036,7 +1057,18 @@ func open_context(at: Vector2) -> void:
 		context.set_item_text(item_index(context, "select_connected"),
 			"Select everything joined to it")
 		context.id_pressed.connect(_on_id)
+		var brace_at: int = item_index(context, "brace")
+		_brace_id = context.get_item_id(brace_at) if brace_at != -1 else -1
 		add_child(context)
+	# Ask Claude to brace this is on the menu only while View, Stress shows
+	# the part weak, under Ask Claude about this….
+	var bracing: int = item_index(context, "brace")
+	if can("brace") and bracing == -1 and _brace_id != -1:
+		context.add_item((_commands["brace"] as Command).words, _brace_id)
+		context.set_item_tooltip(context.item_count - 1, (_commands["brace"] as Command).tip)
+		context.set_item_index(context.item_count - 1, item_index(context, "ask_claude") + 1)
+	elif not can("brace") and bracing != -1:
+		context.remove_item(bracing)
 	_refresh(context)
 	# Painting is with the colour in hand: which one, said.
 	context.set_item_text(item_index(context, "paint"),
@@ -1366,6 +1398,22 @@ func _tints(report: Balance.Report) -> Dictionary:
 		tints[one.beyond] = BalanceMark.CLOSE.lerp(BalanceMark.TIPS,
 			clampf((one.ratio - 0.5) * 2.0, 0.0, 1.0))
 	return tints
+
+
+## Ask Claude to brace this: the part on the weakest joint selected with
+## what holds it, and the assistant asked about them with the joint's
+## numbers.
+func _brace() -> void:
+	var weakest: int = stress.weakest_of(builder.selection)
+	var one: Balance.JointLoad = stress.report.margins.get(weakest) if weakest != 0 else null
+	if one == null:
+		return
+	builder.selection.clear()
+	for id: int in [one.beyond, one.held_by]:
+		if world.get_brick(id) != null and not store.scenery.has(id):
+			builder.selection[id] = true
+	builder.selection_changed.emit(builder.selection.size())
+	app.call("ask_about_selection", stress.brace_words(weakest))
 
 
 func _reseat() -> void:

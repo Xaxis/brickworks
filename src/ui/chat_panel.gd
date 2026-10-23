@@ -415,8 +415,9 @@ var _room_card: PanelContainer = null
 
 ## Ask about these parts (Edit, Ask Claude about this…, or the menu on a
 ## part): the next request is about them, and Claude may change only them
-## and the room round them.
-func ask_about(selected: Array) -> void:
+## and the room round them. [param words] are the request, written in for
+## the person to send (Ask Claude to brace this).
+func ask_about(selected: Array, words: String = "") -> void:
 	if assistant == null:
 		return
 	# Not the room of a request still being worked on.
@@ -428,6 +429,8 @@ func ask_about(selected: Array) -> void:
 		return
 	_show_chip()
 	_input.placeholder_text = ABOUT_PLACEHOLDER
+	if not words.is_empty():
+		_input.text = words
 	# With no key, the Claude on this machine is the way to ask that works.
 	if not OwnKey.has_key() and claude_code_here and _use_claude_code != null \
 			and not _use_claude_code.button_pressed:

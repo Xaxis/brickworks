@@ -1951,13 +1951,14 @@ func _select_inside(box: String) -> int:
 
 
 ## Edit, Ask Claude about this… (and the menu on a part): the assistant's
-## panel, its next request about what is selected.
-func ask_about_selection() -> void:
+## panel, its next request about what is selected, with [param words]
+## written in for it when they are given (Ask Claude to brace this).
+func ask_about_selection(words: String = "") -> void:
 	if not _shell.assistant_shown:
 		return
 	_builder.hide_preview()
 	_chat_dock.set_open(true)
-	_chat.ask_about(_builder.selection.keys())
+	_chat.ask_about(_builder.selection.keys(), words)
 
 
 ## Empty the baseplate, as starting a design does, and begin a new model.
@@ -4483,6 +4484,12 @@ func _build_ui() -> void:
 	_shell.assistant_shown = ShellPrefs.assistant_shown()
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	# View, Stress: weighed with the status bar's check, at once when it is
+	# turned on, and the part under the pointer said.
+	_shell.stress.hovered = func() -> int: return _hovered
+	_shell.stress.wanted.connect(func() -> void:
+		_stability_revision = -1
+		_stability_at = 0)
 	# Claude's change to a selection made in one copy of a sub-assembly is
 	# followed by the others, as a change by hand is.
 	_assistant.assemblies = _shell.assemblies
@@ -6027,15 +6034,20 @@ func _weigh() -> void:
 		_stability_text = ""
 		return
 	var report: Stability.Report
+	# Every joint's margin too, while View, Stress shows them.
+	var stress: StressView = _shell.stress if _shell != null else null
+	var margins: bool = stress != null and stress.on
 	# The baseplate is the floor, not the model: whether it tips is asked
 	# of what stands on it.
 	_stability.floor_ids = scenery
 	if OS.has_feature("nothreads"):
+		_stability.with_margins = margins
 		report = _stability.check(_world)
 	else:
 		_weighing = true
 		var judge := Stability.new()
 		judge.library = _library
+		judge.with_margins = margins
 		judge.floor_ids = scenery.duplicate()
 		judge.lattice = _builder.lattice.copy_for_reading()
 		var still: BrickWorld = _world.copy_for_reading()
@@ -6063,6 +6075,8 @@ func _weigh() -> void:
 		if info != null:
 			report.total_grams -= Stability.grams(info)
 	_stability_text = report.summary()
+	if margins:
+		stress.show_report(report)
 
 
 ## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -430,6 +430,30 @@ picture the assistant is shown.
   to put a part. The timeline hides what is to come from both the solid and the
   see-through; the build animation draws the model whole and splits it again
   when it ends.
+- `stress view` (`src/ui/stress_view.gd`, `BrickWorld.set_stress`): View →
+  Stress (under X-ray) tints each part by the one stud joint that alone holds
+  it, as Balance weighs it as the model stands (`Stability.check` with
+  `with_margins`, on the status bar's own worker weighing, `Main._weigh`):
+  red under a margin of 1 (past the studs' working load, 1 N a stud), amber
+  under 2, every other part its own colour faded; the baseplate faded too. A
+  joint that shares its load with others (a bonded wall) is never weighed and
+  never tinted, and a contact on a part with no studs (an axle through a
+  cross block) is not a stud joint. Pointing at a part (Select in hand) puts on
+  the status bar's left what it carries: "Plate 2 x 10: carries 11 g on 1
+  stud, margin 0.7", or how it is held when no one joint holds it. A red or
+  amber part's right-click menu has Ask Claude to brace this under Ask Claude
+  about this… (only then, and never with the assistant off): it selects the
+  part and what holds it and writes the request with the joint's numbers into
+  the assistant. Drawn only: no paint, no history step, no revision. Off, it
+  costs nothing; on, each change's weighing takes longer (1 s after turning it
+  on for 75969-1's 925 parts, 3 s for Orthanc's 9,541, on the GPU box).
+  Known gaps: a part standing on the floor or a baseplate is held by the
+  floor, so a tower's foot is not weighed; a pin, axle, clip or hinge is not
+  weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
+  wall, the shipped models none red) and `stress_view_probe` (the menu, the
+  tint, the hover, the brace offer, two OMR sets and Orthanc pictured in
+  shots/stress/); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
+  amber on any sets.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
   `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
   line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
@@ -1610,6 +1634,12 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 #   inside a sub-assembly; clicks reaching it through both; the timeline with
 #   both on; the booklet made with both on = made with both off; Orthanc timed.
 #   Leaves shots/see_inside/*.png — look at the cut faces and the ghosts
+# View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
+# bare one and a bonded wall not red; nothing painted; the shipped models none
+# red. Then in the window: the menu, the tint, what pointing says, Ask Claude
+# to brace this only on a weak part, 75969-1 and 21318-1 (one part red at most)
+# and Orthanc pictured in shots/stress/ — look at what reads red.
+tools/probe.sh stress_probe && tools/probe.sh stress_view_probe
 # In a browser, on a preview (with .env sourced): an .lxf through Open > From
 # a file, Orthanc cut from the toolbar and its slider clicked to just over
 # Saruman's head, a double-click on him through the cut, I, K off, and a click

@@ -109,9 +109,12 @@ func _process(_delta: float) -> void:
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
 	var said: String = message.text
-	# Or, while Check stability's marks are on the floor, its readout.
+	# Or, while Check stability's marks are on the floor, its readout; or,
+	# while View, Stress is on, what the part pointed at carries.
 	if said.is_empty():
 		said = shell.balance_line()
+	if said.is_empty() and shell.stress != null:
+		said = shell.stress.line()
 	var line: String = said if not said.is_empty() else shell.verbs.hint()
 	if _hint.text != line:
 		_hint.text = line
