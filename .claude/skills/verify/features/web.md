@@ -3372,7 +3372,10 @@ ends "a model is Tested when it goes together, and one that does not says
 why": a tile on two bricks is Tested and a brick resting on the tile is not
 ("Brick 1 x 2 rests on Tile 1 x 2"); two stacks apart are "2 builds" and
 Tested, a round plate left on the floor against one is not ("stands
-against"); a cheese slope on a round plate's
+against"); 6680-1's figures and stretcher are builds of their own, and
+without the one 1 x 2 plate its file draws inside a 1 x 6 it is Tested
+("4 builds"); 620-1 and 6511-1, a vehicle and a figure, pass the whole test
+as "2 builds"; a cheese slope on a round plate's
 rim is not ("where it has no stud"); the kart and castle in models/ are
 Tested, and the orrery passes the whole test but not steps (its frame top
 goes up before the posts that carry it, and some gears go in after what
