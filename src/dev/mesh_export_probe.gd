@@ -14,14 +14,14 @@
 ## triangle: one closed volume per part, facing out, at real size in
 ## millimetres standing on Z.
 ##
-## With --orthanc, the 10,092-part tower too: the GLB whole, within the time
+## With --orthanc, the 10,093-part tower too: the GLB whole, within the time
 ## and the frame it may hold, each of its shapes written once; the STL, which
 ## is under its cap; and the OBJ, which is over its and is refused saying so.
 extends SceneTree
 
 ## How many parts models/orthanc.ldr has, every one of which it opens.
 ## Change it with the model: it said 9,429 long after the tower had 9,541.
-const ORTHANC_PARTS := 10092
+const ORTHANC_PARTS := 10093
 
 var _failures: int = 0
 var _main: Node
