@@ -13149,6 +13149,7 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		members.append(index)
 		pieces[root[index]] = members
 	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	var set_down: Array = []
 	for key: Variant in pieces:
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
@@ -13168,7 +13169,7 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 				for index: Variant in pieces[key]:
 					unheld[int(index)] = true
 			else:
-				advice.append(exact.comes_away_said(pieces[key], namer))
+				set_down.append(exact.comes_away_said(pieces[key], namer))
 			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
 		# By index too, for what mends a design (Brickify.mend) to join or
@@ -13176,6 +13177,11 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		for index: Variant in pieces[key]:
 			unheld[int(index)] = true
 			apart[int(index)] = true
+	if not set_down.is_empty():
+		var said: String = "\n".join(PackedStringArray(set_down.slice(0, WORTH_SAYING)))
+		if set_down.size() > WORTH_SAYING:
+			said += "\n  ...and %d more like that." % (set_down.size() - WORTH_SAYING)
+		advice.append(said)
 	# And what the floor alone holds, on a bare floor: it stands while it
 	# balances. On a baseplate its studs hold it, as they do in the hand.
 	if _ground_only or not _on_bare_floor(model):
