@@ -666,7 +666,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   checks the file where it was put, the overwrite question (No keeps the
   file), Cancel, the folder remembered, Save as then Save, and Instructions
   with and without a browser (`SaveTo.open_with` handed in); `-- --shots=DIR`
-  pictures the dialogs and the status line.
+  pictures the dialogs and the status line. The platform's own on Linux was
+  driven once by hand (2026-10-23): an Xvfb and a D-Bus session of their own
+  running xdg-desktop-portal with its GTK backend, keys sent by XTest. The
+  app reported the native dialog, the portal's opened with `car.io` and the
+  .io filter in the folder asked for, the path typed was written, and over
+  that file the write waited on the portal's question until Replace. The
+  macOS and Windows dialogs are Godot's (NSSavePanel, IFileSaveDialog) and
+  have not been run here.
 - `flexible parts counted as sold` (`Inventory.of`): a sub-model whose bricks
   are all one swept kind's segments (`Flex.items_in` — as the flex tool lays
   one and as Studio and LDCad write one) is one lot of the kind's straight part

@@ -54,7 +54,9 @@ static func ask(file_name: String, into: String = "", title: String = "Export") 
 		return folder.path_join(name)
 	# One at a time: a second export while one is asked waits for none.
 	if showing != null:
-		showing.grab_focus()
+		# Godot's own is a window here; the platform's is the desktop's.
+		if showing.visible:
+			showing.grab_focus()
 		return ""
 	var dialog := FileDialog.new()
 	dialog.use_native_dialog = native
