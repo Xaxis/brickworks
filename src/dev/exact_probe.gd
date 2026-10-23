@@ -120,6 +120,27 @@ const CASES: Array = [
 		["1 71 80 -8 -100 1 0 0 0 1 0 0 0 1 11213.dat",
 		"1 71 50 -8 -150 1 0 0 0 1 0 0 0 1 54200.dat"],
 		{"not held": ["54200"], "pieces": 2}],
+	# A round brick and its round tile stood on smooth tiles a stud off the
+	# studs beside them, as the pose174 arm's toilet roll (3941 under 15535)
+	# stood on its tank's top a stud off the 30414 at its edge
+	# (brickbench-2026-10-22-m147). It stands, and falls off when the model is
+	# lifted: the check called it set down on purpose, advice, and the edit
+	# that put it there said nothing. Now a fault, with where to seat it.
+	["a toilet roll a stud off the studs beside it (3941 under 15535, pose174 model-044)",
+		["1 15 0 -8 0 1 0 0 0 1 0 0 0 1 3031.dat",
+		"1 15 0 -16 30 1 0 0 0 1 0 0 0 1 2431.dat",
+		"1 15 0 -16 10 1 0 0 0 1 0 0 0 1 2431.dat",
+		"1 15 0 -16 -10 1 0 0 0 1 0 0 0 1 3710.dat",
+		"1 15 0 -40 20 1 0 0 0 1 0 0 0 1 3941.dat",
+		"1 15 0 -48 20 1 0 0 0 1 0 0 0 1 15535.dat"],
+		{"not held": ["3941"], "seat": "Seat it at", "pieces": 2}],
+	# A tile laid on a tile, as sets lay a loose printed tile on a table: it
+	# comes away too, but nobody lifts a model by it, so it is advice, said.
+	["a tile set down on a tile (3068b on 87079)",
+		["1 4 0 -8 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"1 15 0 -16 0 1 0 0 0 1 0 0 0 1 87079.dat",
+		"1 14 -20 -24 0 1 0 0 0 1 0 0 0 1 3068b.dat"],
+		{"resting": ["3068b"], "pieces": 2}],
 ]
 
 ## Built right, these must say nothing: [name, lines].
@@ -278,8 +299,19 @@ func _expect(name: String, report: Dictionary, wanted: Dictionary) -> void:
 		for sentence: Variant in said:
 			if str(sentence).contains(str((wanted["not held"] as Array)[0])):
 				hit = str(sentence)
-		_say(not hit.is_empty(), "%s: said not held: %s" % [name, hit],
-			"%s: not said to be unheld (summary: %s)" % [name, report.get("summary", "")])
+		_say(not hit.is_empty() and (not wanted.has("seat") or hit.contains(str(wanted["seat"]))),
+			"%s: said not held: %s" % [name, hit],
+			"%s: not said to be unheld%s (said: %s; summary: %s)" % [name,
+				", with \"%s\"" % wanted["seat"] if wanted.has("seat") else "", said,
+				report.get("summary", "")])
+	if wanted.has("resting"):
+		var part: String = str((wanted["resting"] as Array)[0])
+		var clauses: Array = report.get("resting", [])
+		var line: String = Assistant._resting_line(report)
+		_say(_exact_said(report).is_empty() and line.contains(part),
+			"%s: advice, and an edit says it in one line: %s" % [name, line],
+			"%s: not advice in one line (said: %s; resting: %s)" % [name,
+				"; ".join(PackedStringArray(_exact_said(report))), clauses])
 	if wanted.has("pieces"):
 		_say(int(report.get("pieces", 0)) == int(wanted["pieces"]),
 			"%s: in %d pieces, as BrickNet counts it" % [name, int(wanted["pieces"])],

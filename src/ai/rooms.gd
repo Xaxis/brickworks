@@ -145,11 +145,14 @@ const FURNITURE: Dictionary = {
 		"tones": {320: [320, 378, 19, 72]}},
 	# Its feet are its front posts and two headlight bricks on their sides,
 	# all along its foot, which take no stud: on the ground the ground held
-	# it, and on a floor it tipped back off them. Two plates under its
-	# frame's middle give it a footing there, hidden under the bed.
+	# it, and on a floor it tipped back off them. A plate under its frame's
+	# middle gives it a footing there, hidden under the bed, on two jumpers:
+	# the bed stands half a stud off the floor's grid, and a plate laid there
+	# straight on the floor rested off its studs and lifted off with the bed.
 	"four-poster bed": {"technique": "four-poster bed", "front": "+x",
 		"wall": true, "tones": {191: [191, 320, 272, 378, 1]}, "footing": [
-		{"part": "3021", "color": 70, "x": 2.5, "y": 0, "z": 1, "rot": 0},
+		{"part": "15573", "color": 70, "x": 2, "y": 0, "z": 1, "rot": 0},
+		{"part": "15573", "color": 70, "x": 4, "y": 0, "z": 1, "rot": 0},
 		{"part": "3021", "color": 70, "x": 2.5, "y": 1, "z": 1, "rot": 0},
 	]},
 	"bed": {"technique": "bed", "front": "+z", "wall": true,
