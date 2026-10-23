@@ -84,6 +84,9 @@ revoke all on public.notification_reads from public, anon, authenticated, servic
 -- photos and remixes as feed_rows reads them; likes a row a model a day
 -- (UTC), its time the newest like's, never who; a challenge's end a row
 -- for each of their entries once it is settled.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.notification_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, model text, item jsonb)
 language sql
@@ -211,6 +214,9 @@ $$;
 -- [viewer] read what is about [model] (one of theirs), up to now; with no
 -- model, everything (Mark all read), which also clears the count. {read}
 -- true, or {refused: nobody} for a model not theirs.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.notification_read(viewer uuid, model text default null)
 returns jsonb
 language plpgsql

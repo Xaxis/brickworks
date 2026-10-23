@@ -52,6 +52,9 @@
 -- ---------------------------------------------------------------------------
 -- The card, as motions.sql made it, and its comments.
 
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.directory_card(m public.shared_models)
 returns jsonb
 language sql

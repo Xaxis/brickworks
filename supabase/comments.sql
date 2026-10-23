@@ -201,6 +201,9 @@ $$;
 
 -- The refusals, whatever writes: a comment needs an author who may go
 -- public and is not barred, on a model open to comments.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.comments_guard()
 returns trigger
 language plpgsql
@@ -237,6 +240,9 @@ revoke all on function public.comments_guard() from public, anon, authenticated;
 -- account, only the name and handle of their profile if they have one,
 -- whether it is theirs, whether it is the model's owner's, and whether it
 -- is hidden (which only its author and the model's owner are shown).
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.comment_as(c public.model_comments, asker uuid, owner uuid)
 returns jsonb
 language sql
@@ -259,6 +265,9 @@ $$;
 -- comments oldest first, at most the newest 500. Hidden ones only to
 -- their author and the model's owner; removed ones, and those of an
 -- account barred or under 13, to nobody. Null for a model not published.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.comments_on(model_id text, asker uuid default null)
 returns jsonb
 language plpgsql
@@ -443,6 +452,9 @@ $$;
 -- Comments for the admin page: those named, or the newest 200, removed
 -- ones too (marked), with their model's name and their author's account
 -- and handle.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.admin_comments(wanted bigint[] default null)
 returns jsonb
 language sql

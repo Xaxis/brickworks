@@ -113,6 +113,9 @@ insert into public.model_opens (model, day, opens)
 -- anew), shown there to a visitor (not hidden, not removed, by an account
 -- shown in public), and not by its owner. [recent] is those since [since].
 -- One place for the rule, which both functions below count by.
+-- REPLACED LATER: replies.sql replaces this function (replies to a comment,
+-- shown only under it). Apply replies.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/replies.sql.
 create or replace function public.designer_said(model_ids text[], since timestamptz default null)
 returns table (model text, comments bigint, recent bigint)
 language sql

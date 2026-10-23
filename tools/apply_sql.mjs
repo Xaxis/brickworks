@@ -50,6 +50,16 @@ const again = (process.argv.find((a) => a.startsWith("--again=")) || "").slice(8
 // later file, words only the later one's body has].
 const LATER = [
   ["follows.sql", "feed_rows", "challenges.sql", "'challenge'::text"],
+  ["comments.sql", "comments_on", "replies.sql", "'threads', true"],
+  ["comments.sql", "comment_as", "replies.sql", "'parent', c.parent"],
+  ["comments.sql", "admin_comments", "replies.sql", "'parent', c.parent"],
+  ["comments.sql", "comments_guard", "replies.sql", "comments:parent"],
+  ["comments.sql", "claim_comment_digest", "replies.sql", "comment_parent_shown"],
+  ["follows.sql", "claim_comment_digest", "replies.sql", "comment_parent_shown"],
+  ["notifications.sql", "notification_rows", "replies.sql", "'reply'::text"],
+  ["notifications.sql", "notification_read", "replies.sql", "k.author = viewer"],
+  ["designers.sql", "designer_said", "replies.sql", "comment_parent_shown"],
+  ["gallery_tabs.sql", "directory_card", "replies.sql", "comment_parent_shown"],
 ];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");
