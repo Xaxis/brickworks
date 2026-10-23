@@ -2521,6 +2521,58 @@ kept every build in one piece. What is left is how a figure stands.
   verify.py.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-23, morning: a beard on its neck, where BrickNet joins none
+
+The Wizard's Tower (`models/orthanc.ldr`, the Example and the gallery's house
+model) was made one piece a person can pick up by orthanc177 and orthanc182.
+Its last two loose parts were the wizards' beards (60750). BrickNet's graph
+will never join them, and our check now holds them, judged from the shapes.
+
+**BrickNet's labels turn every beard a quarter.** A neck joint is `fixed`
+subtype `1`: every torso has it "in" at its neck with frames pitch 90, roll 0,
+yaw 90 and 270, and a cape (4524) has it "on" the same way, so a cape joins.
+60750 has it "on" with pitch 0, roll -90 and 90, yaw 0. The axis, the shoulder
+line, is the same; the frames are a quarter turn apart about it, so the trace
+`_find_pairs` asks of a fixed joint is 1, where it needs 2.99. Every beard in
+v1 is labelled so (10052, 15501, 60749, 60750, 6132, 93069, 93223), and so
+are 19 other parts worn at a figure's neck (a moustache, a bandana, a folded
+hood, wings, shoulder pads). No torso's "in" is turned to meet them. The only pose that joins
+a beard puts it straight out behind the neck, so on a figure that is worn as
+it is in plastic, BrickNet's graph, and `connected_components`, count each
+beard a piece of its own. In plastic the beard's ring goes over the neck post
+and the head's socket comes down on it: it is clamped between head and torso.
+
+**Our check holds it from the shapes** (`ExactCheck.clamped`, asked in
+`Assistant._exact_unheld` of what nothing joins and does not stand square). A
+part drawn round another part's post is held there when it cannot come off: its
+origin is on the post's line (BrickNet's pin, which a head's socket takes)
+within 1 LDU, and slid the six ways along the axes (`caught`) and along the
+post both ways, up to 24 LDU, it runs into a part that stays. It is then joined
+to the post's part when the check counts pieces. `Exact.connections`, BrickNet's
+data and its rules are unchanged, so `src/dev/pieces_agree.gd`'s "exact pieces"
+is still BrickNet's graph: on the tower it reads 6, two beards and three parts
+with no exact shape, where the check reads one piece with nothing loose, not held
+or colliding. An upright figure's beard rests square and was already held as caught.
+The clamp is for one that does not: in `exact_probe` a figure leaning 20° with
+its beard under its head is now one piece with nothing said; with the head off
+the beard is still not held; and a beard set beside the neck is on no post (41
+passed; without the clamp, 39 and the leaning figure "not held").
+
+**What it means for a bench build.** verify.py's validity does not read the
+graph, so a design with a beard stays valid; its `connected_components` counts
+the beard apart, as it counts the potato's dish and the orrery's rings. Nothing
+in the designer is changed for it.
+
+**Worn as a builder wears it.** Each beard is where LDraw draws a neck
+accessory, the head 3 LDU up for its collar (`MinifigData.NECK_LIFT`). Two
+parts had to give way, by their shapes: the grey wizard's cape (60750's long
+back hangs 3.96 LDU through 4524's, so a builder wears one or the other; the
+cape is the torso's colour), and the white wizard's long hair (40251 runs 4.9
+LDU through the beard's sides; Obi-Wan's swept-back hair, 61196, clears it).
+The staffs turn 20° about the grip, clear of the raised arm, and the guards'
+shields turn on their grip so the hand holds the handle, face out at the side.
+Scripts, pictures and probe output: `bench/results/orthanc182-2026-10-23/`.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is

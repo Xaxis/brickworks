@@ -2528,8 +2528,10 @@ Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md
 without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as
 it is since 2026-10-15 (each collider group the vertices its faces use, shared
 or not): built before, 679 of 3033's 785 pieces lost corners and a flame 1.27 LDU
-into a tipped lid read as clear. Proves it when: `exact_probe` ends "35
-passed, 0 failed" (its 54200 on a round plate's rim, said not held and counted
+into a tipped lid read as clear. Proves it when: `exact_probe` ends "41
+passed, 0 failed" (a figure leaning with its beard under its head, clamped
+on the neck, says nothing and is one piece: without `ExactCheck.clamped`, 39
+passed and 2 failed; its 54200 on a round plate's rim, said not held and counted
 two pieces, fails both on d05a59be, 33 passed and 2 failed; on the code before
 it, fb64132, 4 of its first 21 passed and 17
 failed: every pair kind came back "buildable"; the 22nd is model-010's head in a
