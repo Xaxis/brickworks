@@ -325,7 +325,7 @@ def report(out: Path, table: Path) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[1])
     sub = parser.add_subparsers(dest="command", required=True)
     one = sub.add_parser("scan")
     one.add_argument("--shards", type=int, default=3)
