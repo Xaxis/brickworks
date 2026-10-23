@@ -761,7 +761,9 @@ func brickify(job: Working.Job = null) -> void:
 	_checker.builder = builder
 	_checker.world = world
 	job.say("Brickifying %s: getting its shapes ready…" % _mesh.name)
-	await _warm(job)
+	# One model laid at a time: a design's sculpt may be (Brickify.begin_laying).
+	await Brickify.begin_laying(self)
+	await Brickify.warm(library, job)
 	var progress := Brickify.Progress.new()
 	_progress = progress
 	if _stopped:
@@ -793,6 +795,7 @@ func brickify(job: Working.Job = null) -> void:
 		WorkerTasks.collect(task)
 		_task = -1
 		library.end_reading(task)
+	Brickify.end_laying(self)
 	_progress = null
 	if _stopped:
 		_busy = false
@@ -902,48 +905,6 @@ func _fetch_parts() -> PackedStringArray:
 			library.request_mesh(id, true)
 			out.append(id)
 	return out
-
-
-## The tables filled on first use, filled here rather than by the worker.
-## A part that had not arrived when one was filled is not in it, and would
-## never be laid: those are filled again now it may be here.
-##
-## A frame given back between each table and each part: filled in one go,
-## on a browser's first Brickify, they held the page for two seconds
-## before anything else happened.
-func _warm(job: Working.Job = null) -> void:
-	for key: Variant in Shapes._parts.keys():
-		if (Shapes._parts[key] as Dictionary).is_empty():
-			Shapes._parts.erase(key)
-	for key: Variant in Shapes._plans.keys():
-		if str(Shapes._plans[key]).is_empty():
-			Shapes._plans.erase(key)
-	if Patterns._wedge_shapes.size() < 4 * Patterns.WEDGES.size():
-		Patterns._wedge_shapes.clear()
-		Patterns._wedge_prints.clear()
-	Shapes._edge_parts.clear()
-	Style.norms()
-	if job != null:
-		await job.next()
-	Patterns.wedge_shapes(library)
-	if job != null:
-		await job.next()
-	Shapes.edge_parts(library, 1)
-	if job != null:
-		await job.next()
-	Shapes.edge_parts(library, 3)
-	for table: Array in [Shapes.Plan.SLOPES, Shapes.Plan.INVERTED]:
-		for entry: Array in table:
-			for id: Variant in [entry[3], entry[4]]:
-				if job != null and job.due():
-					await job.next()
-				if not str(id).is_empty():
-					Shapes.part(library, str(id), table == Shapes.Plan.INVERTED)
-	for id: String in Brickify.parts_needed(library):
-		Minifig.slot_for(library.parts.get(id))
-	# The element list, read on first asking: here, not on the worker, which
-	# asks it which colours each part is made in (Brickify.made_colours).
-	library.element_for(Brickify.ONE_BRICK, Brickify.STAND_COLOUR)
 
 
 ## Into the world as one sub-assembly, beside what is there already, as one

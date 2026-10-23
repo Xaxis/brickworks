@@ -203,7 +203,8 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   Hollow, A stand where it needs one (on by default), Surface (smooth, or plain
   bricks and plates), Colour (its own, one, or its own cut to at most N; a stand
   is black, or the one colour, or the darkest kept). Brickify works on a worker
-  (the web's page keeps drawing). Cancel, closing the panel, quitting, or the
+  (the web's page keeps drawing), one model at a time: it waits for a design's
+  sculpt being laid, and a sculpt for it (`Brickify.begin_laying`). Cancel, closing the panel, quitting, or the
   library having to add a part (a file opened meanwhile) tell the run to stop
   (`BrickifyDialog._stop`, `Brickify.Progress.stop`): it ends at its next step,
   between laying's steps too, and nothing is put down (`quit_probe`'s brickify

@@ -1679,6 +1679,9 @@ static func edge_parts(library: PartLibrary, height: int) -> Dictionary:
 	var round_ones: Array = ROUND_PLATES if height == 1 else ROUND_BRICKS
 	var others: Array = (EDGE_PLATES + Patterns.WEDGES) if height == 1 else EDGE_BRICKS
 	for part: Variant in round_ones + others:
+		# Not one a run kept to a list of parts may not use (Patterns.wedge_shapes).
+		if not PartsOnly.allows(str(part), library):
+			continue
 		var base: Array = _covers(library, str(part))
 		if base.is_empty():
 			continue

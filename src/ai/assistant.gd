@@ -1024,6 +1024,13 @@ func _ready() -> void:
 	add_child(_http)
 
 
+func _notification(what: int) -> void:
+	# Never in the tree, so freed with this one.
+	if what == NOTIFICATION_PREDELETE and _sculpt_checker != null:
+		_sculpt_checker.free()
+		_sculpt_checker = null
+
+
 func is_busy() -> bool:
 	return _busy
 
@@ -1169,6 +1176,7 @@ func _sketch_opening() -> Array:
 ## the app's own loop is sketching): read, checked, measured and pictured on
 ## a world of its own, and held. Nothing is put on the baseplate.
 func _hold_sketch(args: Dictionary) -> Variant:
+	await _sculpt_ready(args)
 	var model: Model = _read_model(args)
 	_say_shorthand_trouble()
 	var parts: int = model.placements.size()
@@ -3161,6 +3169,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("looking up \"%s\"" % query)
 			return _search(query, int(args.get("limit", 15)))
 		"check_design":
+			await _sculpt_ready(args)
 			var trial: Model = _read_model(args)
 			# Fetch what the check will need first. Without this the web
 			# build tells the model that real catalogue parts do not
@@ -3474,6 +3483,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				_held_sketches = []
 				sketch_chosen.emit(0)
 			_last_submitted = args
+			await _sculpt_ready(args)
 			_pending = _read_model(args)
 			_subject_submitted(_pending)
 			progress.emit("submitted %d bricks%s"
@@ -5726,7 +5736,7 @@ func _style(model: Model) -> String:
 	if submitted is Array:
 		for raw: Variant in submitted:
 			shaped = shaped or (raw is Dictionary
-				and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape")
+				and str((raw as Dictionary).get("pattern", "")).to_lower() in ["shape", "sculpt"])
 	return Style.advice(Style.measure(parts), Style.group_for(about), about, shaped)
 
 
@@ -5830,7 +5840,7 @@ static func _posed(model: Model) -> bool:
 ## of them read, and the only figure line in those replies was the tail of a
 ## hint about small ellipsoids. "" when it is not one, or is posed.
 func _on_joints_said(model: Model) -> String:
-	if model.placements.size() < JOINTS_FROM:
+	if model.placements.size() < JOINTS_FROM or _sculpted_body:
 		return ""
 	var kind: String = Style.character_of(_subject_of(model))
 	if kind.is_empty() or _posed(model):
@@ -5938,8 +5948,11 @@ const OUTLINE_PARTS: Array = ["3063a", "3063b", "85080", "5152", "2577", "48092"
 const OUTLINED_FROM := 8
 
 
-## Whether [param design]'s body is laid from its outline's parts.
+## Whether [param design]'s body is laid from its outline's parts, or as a
+## sculpt.
 func _outlined(design: Model) -> bool:
+	if _sculpted_body:
+		return true
 	var count: int = 0
 	for placement: Placement in design.placements:
 		if OUTLINE_PARTS.has(placement.part):
@@ -6727,6 +6740,7 @@ func _read_model(args: Dictionary) -> Model:
 	var shell_said: Array = []
 	args = _with_shells(args, shell_trouble, shell_said)
 	args = _with_figures(args, shell_trouble, shell_said)
+	args = _with_sculpts(args, shell_trouble, shell_said)
 	var model := Model.new()
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
@@ -6749,6 +6763,7 @@ func _read_model(args: Dictionary) -> Model:
 	for raw: Variant in patterns:
 		_shaped_body = _shaped_body or (raw is Dictionary
 			and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape")
+	_shaped_body = _shaped_body or _sculpted_body
 	if not patterns.is_empty():
 		var trouble: Array = []
 		# A face of studs turned out needs the parts' own geometry to know
@@ -11045,6 +11060,11 @@ var _pattern_advice: Array = []
 ## Whether the last design read laid its body with the shape pattern: it is
 ## then told to keep that body (Style.SHAPED_KEEP), not to say one.
 var _shaped_body: bool = false
+## Whether it laid one as a sculpt (Sculpt): a body round from every side,
+## which is what keeps a creature from being a statue of stacked bricks, as
+## its outline's parts are (_outlined), so it is not sent to the figure
+## pattern's plain stack for want of a joint.
+var _sculpted_body: bool = false
 
 ## And with the last set of repeats. Kept apart from the patterns so the
 ## summary can name which of the two went wrong: a model told only that
@@ -11334,6 +11354,157 @@ func _with_figures(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 	return out
 
 
+## The rounded bodies a design says as solids ({"pattern": "sculpt"}), laid
+## by Brickify (Sculpt) into the plain bricks they are, before anything is
+## read: so a sculpt is checked, edited and detailed as any bricks are. Where
+## the design's own bricks stand on one, its studs are left there for them.
+## What each came to goes in [param said], why one could not in [param trouble].
+func _with_sculpts(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
+	_sculpted_body = false
+	var sculpts: Array = _sculpts_in(args)
+	if sculpts.is_empty():
+		return args
+	var out: Dictionary = args.duplicate()
+	out["patterns"] = (args["patterns"] as Array).filter(func(raw: Variant) -> bool:
+		return not sculpts.has(raw))
+	var bricks: Array = (args.get("bricks", []) as Array).duplicate() \
+		if args.get("bricks") is Array else []
+	if library == null:
+		trouble.append("sculpt: this build has no parts to lay one with")
+		return out
+	var feet: Dictionary = Patterns.feet_of(bricks, library)
+	for raw: Dictionary in sculpts:
+		var key: String = _sculpt_key(raw, feet)
+		# Laid here only when nothing laid it first (_sculpt_ready): a probe's read.
+		if not _sculpts_laid.has(key):
+			_keep_sculpt(key, _lay_sculpt(raw, feet, _sculpt_checker_now()))
+		var laid: Dictionary = _sculpts_laid[key]
+		if laid.has("trouble"):
+			trouble.append_array(laid["trouble"])
+			continue
+		bricks.append_array((laid["bricks"] as Array).duplicate(true))
+		said.append(str(laid["said"]) + _sculpt_on_nothing(laid, args.get("bricks", [])))
+		_sculpted_body = true
+	out["bricks"] = bricks
+	return out
+
+
+## The sculpts [param args] says.
+static func _sculpts_in(args: Dictionary) -> Array:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	return patterns.filter(func(raw: Variant) -> bool:
+		return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+			== "sculpt")
+
+
+static func _sculpt_key(raw: Dictionary, feet: Dictionary) -> String:
+	return JSON.stringify(raw) + JSON.stringify(feet.keys())
+
+
+## [param raw] laid by Brickify where the design stands on it ([param feet])
+## and checked by [param checker]: what Sculpt.lay makes of it, or
+## {"trouble": why it could not be}. On a worker (_sculpt_ready) or here.
+static func _lay_sculpt(raw: Dictionary, feet: Dictionary, checker: Assistant) -> Dictionary:
+	var why: Array = []
+	var laid: Dictionary = Sculpt.lay(raw, checker, why, feet)
+	return laid if not laid.is_empty() else {"trouble": why}
+
+
+func _keep_sculpt(key: String, laid: Dictionary) -> void:
+	if _sculpts_laid.size() >= SCULPTS_KEPT:
+		_sculpts_laid.erase(_sculpts_laid.keys()[0])
+	_sculpts_laid[key] = laid
+
+
+func _sculpt_checker_now() -> Assistant:
+	if _sculpt_checker == null:
+		_sculpt_checker = Assistant.new()
+	_sculpt_checker.library = library
+	_sculpt_checker.builder = builder
+	_sculpt_checker.world = world
+	return _sculpt_checker
+
+
+## What a sculpt raised off the ground with nothing of the design under it is
+## told, or "": the pig's first check of its body alone, raised for its legs,
+## came back 285 parts floating.
+func _sculpt_on_nothing(laid: Dictionary, design: Variant) -> String:
+	var lowest: int = roundi((laid["box"] as AABB).position.y)
+	if lowest <= 0 or not design is Array:
+		return ""
+	var tops: Dictionary = {}
+	for raw: Variant in design:
+		for cell: Vector3i in Patterns._foot_cells(raw, library, true):
+			tops[cell] = true
+	for raw: Dictionary in laid["bricks"]:
+		if roundi(float(raw["y"])) != lowest:
+			continue
+		for cell: Vector3i in Patterns._foot_cells(raw, library, false):
+			if tops.has(cell):
+				return ""
+	return (" Its underside is at y=%d and nothing of the design has its top there " % lowest
+		+ "under it, so it floats: say what it stands on in the same design (legs, feet, a "
+		+ "stand), their tops at y=%d under its lowest course, or bring it down to y=0." % lowest)
+
+
+## Sculpts laid, by what was said of them and where the design stands on
+## them: a check_design, the submit after it and each submit again ask for
+## the same body, which Brickify takes a second or two to lay. One that could
+## not be is kept too, as {"trouble": why}.
+var _sculpts_laid: Dictionary = {}
+const SCULPTS_KEPT := 8
+## What checks and mends a sculpt as Brickify lays it: an assistant of its
+## own, so its checks leave this one's pattern advice alone.
+var _sculpt_checker: Assistant = null
+
+
+## Each sculpt [param args] says that is not laid yet, laid now on a worker,
+## so the read after this ([method _read_model]) finds it laid: laid in the
+## read, on the main thread, the first of each held the window 0.3 to 0.7 s
+## on the desktop (the bench's potato and fat rabbit) and several times that
+## in a browser. Every part it may lay is here first (on the web a part is
+## fetched, and a worker reads only what is here), and the tables it fills
+## on first use are filled here a slice a frame (Brickify.warm), as the
+## Brickify panel does. Said on the Working bar and to the design's log
+## meanwhile. A coroutine.
+##
+## And any design is read only once no model is being laid off the main
+## thread (Brickify.laid): reading one lays its shapes, whose tables a
+## build fills as it goes.
+func _sculpt_ready(args: Dictionary) -> void:
+	var sculpts: Array = _sculpts_in(args)
+	if library != null and not sculpts.is_empty():
+		var wanted := Model.new()
+		for id: String in Brickify.parts_needed(library):
+			wanted.placements.append(Placement.from_dict({"part": id}))
+		await _ensure_parts(wanted)
+		# Where the design stands on them, as the read will see it.
+		var bricks: Variant = _with_figures(_with_shells(args, [], []), [], []).get("bricks")
+		var feet: Dictionary = Patterns.feet_of(bricks if bricks is Array else [], library)
+		var unlaid: Array = sculpts.filter(func(raw: Dictionary) -> bool:
+			return not _sculpts_laid.has(_sculpt_key(raw, feet)))
+		if not unlaid.is_empty():
+			var count: String = "a sculpt" if unlaid.size() == 1 else "%d sculpts" % unlaid.size()
+			progress.emit("laying " + count)
+			var job: Working.Job = Working.begin("Laying %s…" % count)
+			await Brickify.begin_laying(self)
+			await Brickify.warm(library, job)
+			var checker: Assistant = _sculpt_checker_now()
+			for raw: Dictionary in unlaid:
+				# Its own copies: the worker reads them while this frame goes on.
+				var own: Dictionary = raw.duplicate(true)
+				var standing: Dictionary = feet.duplicate(true)
+				var laid: Variant = await WorkerTasks.awaited(func() -> Variant:
+					return _lay_sculpt(own, standing, checker), "lay a sculpt", library)
+				# A worker that failed leaves nothing: laid in the read instead,
+				# slow, but an answer (as _checked does).
+				if laid is Dictionary and not (laid as Dictionary).is_empty():
+					_keep_sculpt(_sculpt_key(raw, feet), laid)
+			Brickify.end_laying(self)
+			job.end()
+	await Brickify.laid()
+
+
 ## The joint a shell's panels hang on, as [Shells] wants it: a clip on a
 ## bar, its line read off the parts.
 func _shell_hinge() -> Dictionary:
@@ -11369,10 +11540,12 @@ const SMALL_ROUND := ("The %s %s studs across is laid as bricks and plates, "
 	+ "edge each makes (read_guide \"outline\"): a 4 x 4 or 2 x 2 round brick (87081, "
 	+ "3941), a dome (30367c) or a dish (3960, 4740), corner rounds (3063b, 5152, "
 	+ "2577) and ones with a rounded top (5651, 49612) round a core, curved slopes "
-	+ "over and inverted ones under. The round pattern lays one that swells and "
-	+ "narrows in one entry, a \"diameter\" on each band. A figure's or a "
-	+ "creature's head or body is built so, as a sub-assembly, its limbs on "
-	+ "joints (read_guide \"figures\").")
+	+ "over and inverted ones under. A body 6 studs or more said as a sculpt "
+	+ "instead, {\"pattern\": \"sculpt\", \"color\", \"solids\": [{\"ellipsoid\": "
+	+ "{\"centre\": [x, y, z], \"size\": [across, plates, deep]}}]}, is the same "
+	+ "solid laid by Brickify, round from the side as well as from above "
+	+ "(read_guide \"outline\"). A figure's or a creature's head or body is built "
+	+ "so, its limbs and features put on it after (read_guide \"figures\").")
 
 
 static func _round_by_panels(patterns: Array) -> Array:
@@ -11398,7 +11571,10 @@ static func _round_by_panels(patterns: Array) -> Array:
 					% [solid["kind"], Placement._num(snappedf(across, 0.5))])
 					+ "plates is a staircase however fine. " + panels
 					+ "An egg or a body lying on its side reads smooth as skins on side "
-					+ "studs, with the shape kept inside as its core.")
+					+ "studs, with the shape kept inside as its core. An organic body (an "
+					+ "animal's, a big fruit's) said as a sculpt, {\"pattern\": "
+					+ "\"sculpt\"} with the same solids, is laid by Brickify with its sides "
+					+ "turned out so (read_guide \"outline\").")
 				return said
 			if solid["kind"] in ["dome", "ellipsoid", "revolve"] and across < ROUND_PANELS_FROM:
 				said.append(SMALL_ROUND % [solid["kind"],
@@ -17579,18 +17755,54 @@ one strip, built and checked.
 THE OUTLINE OF A ROUNDED BODY
 The outline is read before anything on it. A body that should be round, \
 plump, swelling or pinched and comes out a box, a slab, a drum or a barrel \
-loses whatever is built on it. A designer chooses the parts that make the \
-outline before laying a brick, and lays the body from them: nothing \
-smooths a box afterwards. For every rounded or organic mass (an animal's \
-body or head, a fruit, a belly, a car's bonnet and roof), before \
-submit_design:
-  1. See it in three views, front, side and from above, and say what each \
-edge of its outline does: a corner that rounds; a shoulder or a crown that \
-falls away; an underside that curves in (a belly, a chin, a bilge); a \
-swell and a pinch (a waist, a neck, a pear's middle, a balloon's twist); a \
-taper to a point; a cap.
-  2. Give each edge its part, by its role and at the size of its curve (the \
-largest corner that fits is half the mass's width):
+loses whatever is built on it, and one laid course by course by hand comes \
+out a drum: from the side its courses keep one width, however its corners \
+are rounded. So every rounded or organic mass bigger than a ball 8 studs \
+across (an animal's body and head, a big fruit or vegetable, a bird, a \
+fish, a belly) is laid as a sculpt, before submit_design:
+  1. See it in three views, front, side and from above, and say it as one \
+to four simple solids, each by its middle and its whole size: an \
+ellipsoid; an egg, narrower at its "point" end; a capsule, a round-ended \
+cylinder along its axis (a sausage of a body, a seal, a caterpillar's \
+segment); a superellipsoid, between a ball and a box ("power" 3: a pig's \
+barrel of a body, a loaf, a block-headed character; 2 is an ellipsoid). \
+Joined where they overlap: a body and its head, a pear's two lobes, a \
+breast and a back, a muzzle on a head.
+  2. Lay them as one entry of submit_design's patterns, sized to the \
+brief's proportions (fat is fat: as wide as it is long): {"pattern": \
+"sculpt", "color": 29, "solids": [{"superellipsoid": {"centre": [8, 15, \
+6], "size": [15, 22, 11], "power": 2.6}}, {"ellipsoid": {"centre": [16, \
+19, 6], "size": [7, 17, 8]}}]} is a pig's body and head, 15 studs long, \
+its belly at plate 4 over legs 4 plates tall. Brickify lays it as it lays \
+a 3D model: bricks inside, curved and straight slopes fitted to how the \
+surface falls, inverted slopes under it (from 20 studs its steep sides \
+turned out on side studs), mended into one piece, round from the side as \
+well as from above. 6 to 40 studs along its longest side, its height \
+counted in studs (2.5 plates a stud). It costs about a part a stud of its \
+surface: a ball 8 studs across is 115 parts, an egg 10 across and 24 \
+plates tall 260, that pig 420; keep it to half the brief's pieces or \
+less, for what makes it the subject. Each solid may have its own \
+"color": a belly or a face patch is an ellipsoid set into the front of the \
+body in white. The reply says where it was laid and its parts; \
+check_design shows it before you submit.
+  3. Then make it the subject, with your own parts, in the same submit or \
+by edits after: eyes, a snout, a beak, ears, legs under it, arms, a tail, \
+a stalk, a hat. A part said in the same submit standing on its top keeps \
+its studs there; on a side, take a tile off (edit_model) and put the \
+feature on the side studs under it, or on a bracket. Legs under it hold \
+its lowest course from below. The sculpt is the body only: what reads as \
+the subject is what you put on it, so give its features the parts that \
+make them (find_techniques, find_parts_like).
+  4. A body too small to sculpt (under 6 studs: a head, a paw, a \
+fruit on a stalk) is a few moulded parts, each chosen by the edge it \
+makes, at the size of its curve (the largest corner that fits is half the \
+mass's width). So is a ball or a dome 8 studs across, round in plan, \
+which they make smoother than a sculpt that small can: four domed corners \
+49612 over a ring of four 2577 (or 48092), on an 8 x 8 round plate 74611, \
+a 6 across of 65617 over 5152 (a snowman's ball, a pear's or a bun's \
+bottom, a cartoon head). A body longer than it is wide, egg-shaped, \
+bigger, or round in no plan (a pig, a potato, a whale, a fat rabbit, a \
+bird, a fish) is the sculpt. The same parts detail a sculpt:
     round corner     corner round bricks 3063b 2x2, 5152 3x3, 2577 4x4 \
 (48092 a 4x4 ring); plates 79491 2x2, 30357 3x3, 30565 4x4, 6003 6x6; \
 tiles over them 25269 1x1, 27925 2x2, 79393 3x3, 27507 4x4. Four of one \
@@ -17606,45 +17818,17 @@ ways at once: 5906 2x2, 65617 3x3, 5651 4x4, and domed 88293 3x3, 49612 \
 under any course wider than the one below it.
     ball, segment    24947, an ovoid dome, under a domed cylinder 3262: a \
 ball two studs across that tapers both ways, so the next pinches where it \
-meets it (a balloon's segment, a snowman, a bead, a paw, a knuckle).
+meets it (a balloon's segment, a bead, a paw, a knuckle).
     cap or point     domes 30367c and 3262; dishes 4740 2x2, 3960 4x4; cones \
 4589 1x1, 3942c 2x2.
     taper in plan    wedge plates in left and right pairs, 43722a and 43723a \
 2x3, 41769a and 41770a 2x4; 2450 a cut corner.
     spikes, tufts    22388, a 1x1 slope falling four ways (spiky hair, fur, \
 a leafy crown); 1x1 cones.
-  3. Round it in every view, not only from above: corner rounds on \
-straight sides make a drum, and are read as one. The cheap way is one \
-entry of the round pattern, its bands' "diameter" (2, 4, 6, 8) swelling \
-and narrowing: a pear {"pattern": "round", "at": {"x", "y", "z"}, \
-"diameter": 8, "stack": [{"plates": 9}, {"diameter": 6, \
-"plates": 6}, {"diameter": 4, "plates": 3}, {"nose": "dome"}]}; an egg 6, \
-8, 8, 6, 4 under a dome; a fat belly 8 between hips and a chest of 6; a \
-body lying down the same with "axis": "x" on its legs, the nose its head \
-end. It lays the corner rounds, round bricks and round plates, each turned \
-right. Then by hand only what no pattern lays: rounded tops on the step \
-above the widest band, inverted curved slopes under the step below it, a \
-ball's two domes, the corner rounds of a body that is not round in plan.
-  4. A part curves in the plane of its studs. Studs up, a corner round \
-rounds what is seen from above and a slope what is seen from the side. \
-Where the outline seen most is a face — a potato or a pear from the front, \
-a fish or a car from the side — build that face as layers stacked toward \
-the viewer: a section turned out (pitch -90, its yaw the side it faces) \
-on a core with studs out, each layer's outline its corner rounds, the \
-layers narrower toward the front (show_technique "sideways skins").
-  5. Search the hand-laid ones before you submit, at their size ("corner \
-round curved top 4 x 4", "dome inverted", "slope curved inverted 2 x 1"), \
-and lay each by its turn below, not tried in a row first. Submit the body \
-whole, its outline on it, in one call: rounded after, it is an edit and a \
-look a part. The outline parts are the outermost stud of every course and \
-its top and bottom; the core is plain bricks, staggered. A creature or a \
-character whose body is its shape (fat, round, an egg, a pear) is laid so \
-first, its head and limbs then put on it by joints (place_technique "ball \
-shoulder", "limb on a clip", "head on a neck", "tail on a bar"): the \
-figure pattern's body is a plain stack, for a plain figure. A small body \
-(under about 16 studs) said as a shape, a fill or an ellipsoid comes out a \
-barrel or a block; so does one of 1x1 plates, or square bricks with curved \
-slopes only on top.
+  Search those before you lay them, at their size ("corner round curved top \
+4 x 4", "dome inverted"). A body laid by hand, a fill, a shape's ellipsoid \
+or the round pattern's bands under 16 studs comes out a barrel, a block or \
+a stack of drums; a sculpt does not.
   Turned: at rot 0 a slope falls toward +z, at rot 1 +x, 2 -z, 3 -x; a \
 corner round's curve faces +x and +z at rot 0, +x -z at 1, -x -z at 2, -x \
 +z at 3, so a ring's four go rot 2, 1, 0, 3 at its corners from low x low \
@@ -17689,10 +17873,11 @@ studs tall, a cartoon's head a third of it or more.
 dish (4740, 3960) for a face or a cap, a cone (3942c) for a hat; eyes \
 printed round tiles (98138p07, 14769p01) or 1 x 1 round plates; a beak, a \
 snout or a muzzle a curved or cheese slope on a jumper
-    a body   its outline parts, chosen and searched before it is laid \
-(read_guide "outline"): corner rounds and round bricks, curved slopes over \
-and inverted ones under, on bricks with side studs (87087, 11211), a dish \
-for a belly, slopes falling for a robe
+    a body   a rounded or fat one (a creature's, a mascot's) is a \
+sculpt, its head joined to it or put on after \
+(read_guide "outline"); a small one its outline parts: corner rounds and \
+round bricks, curved slopes over and inverted ones under, on bricks with \
+side studs (87087, 11211), a dish for a belly, slopes falling for a robe
     a limb   turned to its pose on a joint, never butted on: a section on \
 hinge "clip" (a bar in a clip: an arm, a wing, a tail, a lance), "click" \
 or "tilting" (read_guide "angle"); a ball in a socket (22890 in 14418) for \
@@ -21093,7 +21278,7 @@ func _tools() -> Array:
 		"properties": {
 			"pattern": {"type": "string",
 				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
-					"round", "shape", "shell", "figure"],
+					"round", "shape", "sculpt", "shell", "figure"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -21135,7 +21320,15 @@ func _tools() -> Array:
 					+ "curves up and down laid on its side on side studs, "
 					+ "tiles on top, one half and its mirror; a car's body, "
 					+ "a hull, a fuselage, an animal's body. Another shape "
-					+ "standing on it keeps its studs there. shell: a dome or "
+					+ "standing on it keeps its studs there. sculpt: a rounded, "
+					+ "organic body, 6 to 40 studs, said as solids and laid by "
+					+ "Brickify — an ellipsoid, an egg, a capsule or a "
+					+ "superellipsoid, or several joined (a body and its head, a "
+					+ "pear's two lobes, a muzzle) — round from the side as well "
+					+ "as from above, its surface curved and inverted slopes, in "
+					+ "one piece, about a part a stud of its surface; then detail "
+					+ "it with your own parts: a face, ears, limbs, a tail "
+					+ "(read_guide \"outline\"). shell: a dome or "
 					+ "a ball bigger than a dish, in one object — twelve "
 					+ "strips of flat panels on clip hinges round a ring, "
 					+ "each band's panels sized to its round, the strips "
@@ -21176,7 +21369,16 @@ func _tools() -> Array:
 				+ "{\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, "
 				+ "{\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — "
 				+ "with its own \"color\" if it wants one (the last that holds a stud "
-				+ "gives it its colour). Studs across and along, plates up, from at."},
+				+ "gives it its colour). Studs across and along, plates up, from at. "
+				+ "sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, "
+				+ "{\"capsule\": {...}} or {\"superellipsoid\": {...}}, each "
+				+ "{\"centre\": [x, y, z] in the design's studs and plates, "
+				+ "\"size\": [studs across, plates tall, studs deep], \"color\"}; "
+				+ "an egg's \"point\" is the way its narrow end faces (\"+y\" "
+				+ "unless said; \"-x\" a body lying with its narrow end to -x), "
+				+ "its \"taper\" 0 to 0.6; a capsule's or an ellipsoid's \"axis\" "
+				+ "x, y or z; a superellipsoid's \"power\" 2 (round) to 6 "
+				+ "(nearly a box), 3 unless said. Joined where they overlap."},
 			"cuts": {"type": "array", "items": {"type": "object"}, "description":
 				"shape: solids taken away, said the same way: a cockpit, a doorway; "
 				+ "\"keep\": true keeps the cut clear of every part."},
@@ -21245,7 +21447,8 @@ func _tools() -> Array:
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":
 				"fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71); "
-				+ "figure: its clothes or its body"},
+				+ "figure: its clothes or its body; sculpt: all of it but a solid that "
+				+ "says its own"},
 			"height": {"type": "number", "description":
 				"rock: how tall, in plates. figure: a person's, feet to crown, 20 to 60 "
 				+ "plates (34 and over at the larger size); a head's neck"},
