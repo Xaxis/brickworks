@@ -516,6 +516,13 @@ comment at 390 and 1280; hiding a comment hides its replies; the rules
 (13+, limits, comments off, under-13 owners) unchanged and proven by
 `comments_flow`. *Supabase:* `model_comments.parent` (nullable, additive)
 and the comment functions' new versions.
+*Built (2026-10-22, `supabase/replies.sql`):* a reply to a reply joins its
+thread; a reply reaches the comment's author and whoever replied before
+it in the thread (Notifications, kind `reply`); one rule,
+`comment_parent_shown`, keeps a reply only where its comment is shown
+(page, card counts, designer numbers, the day's email, notifications). The
+step pill opens `/app?view=<id>&step=<n>`, which the app now takes into
+its step player.
 
 **U9. A feed you look at** (M). *What:* `/feed` as cards: a new model (its
 picture, name, designer), a new version (what changed), a build photo

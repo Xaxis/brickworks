@@ -52,6 +52,11 @@ the pages say what the site does.
   admin page says Challenges are not open yet, a model's page offers no
   entry, no card says it won, and the feed tells of no entry. Applied to
   the live project 2026-10-19.
+- `supabase/replies.sql` after comments, follows, challenges, designers,
+  gallery_tabs and notifications (it replaces a function of each, marked
+  REPLACED LATER there; `tools/apply_sql.mjs` refuses any of those files
+  applied again alone, unless `--again=supabase/replies.sql`). Until then a
+  model's page offers no Reply and `?op=reply` says replies are not open yet.
 
 ## The rules
 
@@ -147,6 +152,18 @@ settles its reports; taking a model or an account out settles what was
 reported about the model, not about the comments on it. Nothing is
 deleted: removed and hidden are times kept on the row. A comment by an
 account taken out of the gallery, or by one under 13, is not shown.
+
+**Replies** (2026-10-22, `supabase/replies.sql`, docs/SOCIAL.md U8). One
+level: a reply answers a comment, and a reply to a reply joins its thread.
+A reply is a comment under every rule above (who, what, the same limits,
+counted with comments, and the same moderation: its author removes it, the
+model's owner hides it, anybody reports it, the admin page removes it), on
+its comment's version and step. It lives under its comment: a comment
+hidden or removed, or by an account not shown, takes its replies with it
+everywhere (`comment_parent_shown`), and showing it again brings them back;
+an account deleted takes its comments and the replies to them. A reply is
+told to the comment's author, and to whoever replied in the thread before
+it, in Notifications; the model's owner is told as of any comment.
 
 **Telling a model's owner.** At most one email a day, from the sign-in
 codes' sender, of new comments on their models: off by default, because the
