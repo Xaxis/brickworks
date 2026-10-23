@@ -11512,7 +11512,7 @@ static func _round_by_panels(patterns: Array) -> Array:
 					+ "plates is a staircase however fine. " + panels
 					+ "An egg or a body lying on its side reads smooth as skins on side "
 					+ "studs, with the shape kept inside as its core. An organic body (an "
-					+ "animal's, a fruit's, a snowman's) said as a sculpt, {\"pattern\": "
+					+ "animal's, a big fruit's) said as a sculpt, {\"pattern\": "
 					+ "\"sculpt\"} with the same solids, is laid by Brickify with its sides "
 					+ "turned out so (read_guide \"outline\").")
 				return said
@@ -17697,9 +17697,9 @@ The outline is read before anything on it. A body that should be round, \
 plump, swelling or pinched and comes out a box, a slab, a drum or a barrel \
 loses whatever is built on it, and one laid course by course by hand comes \
 out a drum: from the side its courses keep one width, however its corners \
-are rounded. So every rounded or organic mass (an animal's body and head, \
-a fruit, a vegetable, a bird, a fish, a snowman, a belly) is laid as a \
-sculpt, before submit_design:
+are rounded. So every rounded or organic mass bigger than a ball 8 studs \
+across (an animal's body and head, a big fruit or vegetable, a bird, a \
+fish, a belly) is laid as a sculpt, before submit_design:
   1. See it in three views, front, side and from above, and say it as one \
 to four simple solids, each by its middle and its whole size: an \
 ellipsoid; an egg, narrower at its "point" end; a capsule, a round-ended \
@@ -17707,7 +17707,7 @@ cylinder along its axis (a sausage of a body, a seal, a caterpillar's \
 segment); a superellipsoid, between a ball and a box ("power" 3: a pig's \
 barrel of a body, a loaf, a block-headed character; 2 is an ellipsoid). \
 Joined where they overlap: a body and its head, a pear's two lobes, a \
-snowman's three balls, a breast and a back, a muzzle on a head.
+breast and a back, a muzzle on a head.
   2. Lay them as one entry of submit_design's patterns, sized to the \
 brief's proportions (fat is fat: as wide as it is long): {"pattern": \
 "sculpt", "color": 29, "solids": [{"superellipsoid": {"centre": [8, 15, \
@@ -17813,8 +17813,8 @@ studs tall, a cartoon's head a third of it or more.
 dish (4740, 3960) for a face or a cap, a cone (3942c) for a hat; eyes \
 printed round tiles (98138p07, 14769p01) or 1 x 1 round plates; a beak, a \
 snout or a muzzle a curved or cheese slope on a jumper
-    a body   a rounded or fat one (a creature's, a mascot's, a \
-snowman's) is a sculpt, its head joined to it or put on after \
+    a body   a rounded or fat one (a creature's, a mascot's) is a \
+sculpt, its head joined to it or put on after \
 (read_guide "outline"); a small one its outline parts: corner rounds and \
 round bricks, curved slopes over and inverted ones under, on bricks with \
 side studs (87087, 11211), a dish for a belly, slopes falling for a robe
@@ -21264,7 +21264,7 @@ func _tools() -> Array:
 					+ "organic body, 6 to 40 studs, said as solids and laid by "
 					+ "Brickify — an ellipsoid, an egg, a capsule or a "
 					+ "superellipsoid, or several joined (a body and its head, a "
-					+ "pear's two lobes, a snowman) — round from the side as well "
+					+ "pear's two lobes, a muzzle) — round from the side as well "
 					+ "as from above, its surface curved and inverted slopes, in "
 					+ "one piece, about a part a stud of its surface; then detail "
 					+ "it with your own parts: a face, ears, limbs, a tail "
