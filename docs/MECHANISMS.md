@@ -6141,7 +6141,10 @@ what stays: with the bracket's parts it had one fewer, the middle cross
 member stayed instead, the seat hung on its long pins as a boom and the
 rear blocks were read as steering. The kart's steps are its own now
 (`0 !BRICKWORKS AUTHORED_STEPS`): worked out, the column's bearing came
-after the column through it, hidden.
+after the column through it, hidden. The planner itself (instructions_probe)
+pushes the column into the universal joint's end already on its cross,
+which the probe counted as a pin before its hole; for a universal joint's
+end the axle is the pin now.
 
 Measured (`tools/probe.sh kart_steer_probe`, a drag round the wheel's rim):
 the steering wheel +31.5 degrees turns the pinion 23.43 (23.41 by its
