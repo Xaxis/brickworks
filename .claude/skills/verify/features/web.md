@@ -3346,18 +3346,33 @@ models whose answers are known:
 ```sh
 godot --headless --path . --script src/dev/tested_probe.gd
 godot --headless --path . --script src/dev/tested_probe.gd -- --sets vendor/omr/files/10218-1.mpd   # each test, and where the time went
+godot --headless --path . --script src/dev/tested_models_probe.gd
 ```
 
 Proves it when it ends "each of the four tests passes a model that should
 and fails one that should not, saying why" with no `FAIL`: 6680-1 stands at
-its 15 steps, every part made in its colour, nothing loose; three bricks
+its 15 steps, every part made in its colour, and is not one piece (its
+figures stand apart from its car); three bricks
 stacked pass all four; the top one put in before what holds it fails steps
 ("Step 2: Brick 2 x 4 is put down in the air"); a brick put in a closed box
 after its roof fails steps as hidden; an arm on a 1 x 2 base fails stands
 ("At step 2 it tips over, 1.4 studs past the right edge"); a 1 x 1 brick in
 Light Blue fails parts ("never made in Light Blue"); a brick held by nothing
-fails whole ("1 part loose"); the finding names its file's fingerprint and
-the app's version; 10218-1 (2,042 parts, 190 steps) tested in about 2.2 s.
+fails whole ("Brick 1 x 1 is held by nothing"); the finding names its file's
+fingerprint and the app's version; 10218-1 (2,042 parts, 190 steps) tested in
+about 2.2 s.
+
+The whole test is the exact check's (since 2026-10-23, tested176): one piece,
+every part held by BrickNet's connections or caught where it is, no two parts
+passing into each other past a joint's own. `tested_models_probe` proves it
+when it ends "a model is Tested when it goes together, and one that does not
+says why": a tile on two bricks is Tested and a brick resting on the tile is
+not ("Brick 1 x 2 rests on Tile 1 x 2"); a cheese slope on a round plate's
+rim is not ("where it has no stud"); the kart, castle and orrery in models/
+are Tested; the six sculpt170 bench designs (`src/dev/fixtures/bench/`) are
+one piece, and Tested where they stand; Orthanc as models175 found it
+(`src/dev/fixtures/orthanc_models175.ldr.gz`) is not, its whole test saying
+"pass into each other" and "pieces, not one" in at most 300 characters.
 
 The SQL, dry (never applied by an agent):
 
