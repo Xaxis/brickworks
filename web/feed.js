@@ -276,7 +276,7 @@ async function load() {
 
 // Signed in, here or from a Follow among the designers, the page is drawn
 // again as it is for them (brickworks:signed-in, below).
-$("sign-in").addEventListener("click", () => askToSignIn("Sign in with your email address: we send you a code, no password."));
+$("sign-in").addEventListener("click", () => askToSignIn());
 $("older").addEventListener("click", async () => {
   $("older").disabled = true;
   await page(run);

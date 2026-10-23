@@ -52,6 +52,8 @@ import { noticeGroups } from "../../api/_notifications.js";
 // Designers to follow, read from Top builds' cards as the API reads them
 // (docs/SOCIAL.md U9): pure too.
 import { LATEST, designersFrom } from "../../api/_follows.js";
+// What a handle may not be, as the API says it (a new account's First steps).
+import { handleTrouble } from "../../api/_names.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -331,6 +333,47 @@ export function applied(yes) {
   APPLIED = Boolean(yes);
 }
 
+// The gallery as brickworks.diy had it on 2026-10-22, with the house's
+// profile as supabase/house.sql writes it, held here and nowhere else
+// (liveCommunity(true), for first_steps_flow.mjs): the studio's seven
+// models, credited Brickworks and described as live, and nobody else's;
+// no likes, builds or photos yet. None unless asked.
+let LIVE = false;
+const LIVE_MODELS = [
+  ["o3dLMc5A3Z", "A sports car, and its driver", "vehicle", ["car", "racing", "minifigure"], 187, 5, "2026-10-13T13:37:34Z",
+    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate. Designed by Claude."],
+  ["cGHqpHnEFZ", "A small modular corner shop", "town", ["modular", "shop", "street", "minifigures"], 774, 57, "2026-10-13T13:37:37Z",
+    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof. Designed by Claude."],
+  ["B6FhDpMowd", "A three-core heavy-lift rocket", "space", ["rocket", "launch pad", "minifigure"], 350, 9, "2026-10-13T13:37:39Z",
+    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it. Designed by Claude."],
+  ["uoRqCfPWYJ", "A barn owl", "nature", ["owl", "bird", "sculpture"], 1037, 3, "2026-10-13T13:37:41Z",
+    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes. Designed by Claude."],
+  ["kfpYMjke5U", "A castle, from one sentence", "castle", ["castle", "medieval", "moat"], 2438, 72, "2026-10-13T13:37:44Z",
+    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat. Claude designed it from a single sentence."],
+  ["EzEXhtXE2C", "Wizard's Tower", "castle", ["tower", "wizard", "minifigures", "display"], 9541, 1324, "2026-10-13T13:37:46Z",
+    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside. Claude designed it from one paragraph."],
+  ["8eb6GRvnSV", "Orrery of the Sun and eight planets", "mechanism", ["orrery", "gears", "planets", "crank"], 494, 27, "2026-10-14T06:27:39Z",
+    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own. A Claude session built it in Brickworks."],
+].map(([id, name, kind, tags, parts, steps, at, description]) => model({ id, owner: HOUSE, name, author: "Brickworks", parts, steps,
+  kind, tags, listed_at: at, updated_at: at, description }));
+const LIVE_IDS = new Set(LIVE_MODELS.map((one) => one.id));
+// What supabase/house.sql gives the house: its words, the castle across
+// the top, three pinned.
+const HOUSE_SAYS = { bio: "The Brickworks studio's own account. Every model here was designed with the assistant, "
+  + "Claude working in the app, and each one's description says how. Open one to build it step by step, or remix it as your own.",
+banner: "kfpYMjke5U", pins: ["EzEXhtXE2C", "8eb6GRvnSV", "cGHqpHnEFZ"] };
+export function liveCommunity(yes) {
+  LIVE = Boolean(yes);
+  const house = personOf(HOUSE);
+  house.bio = LIVE ? HOUSE_SAYS.bio : null;
+  for (let at = MODELS.length - 1; at >= 0; at -= 1) if (LIVE_IDS.has(MODELS[at].id)) MODELS.splice(at, 1);
+  for (let at = SHOWS.length - 1; at >= 0; at -= 1) if (SHOWS[at].account === HOUSE) SHOWS.splice(at, 1);
+  if (LIVE) {
+    MODELS.push(...LIVE_MODELS);
+    SHOWS.push({ account: HOUSE, links: [], banner: HOUSE_SAYS.banner, pins: HOUSE_SAYS.pins, updated_at: "2026-10-22T10:00:00Z" });
+  }
+}
+
 // Sam's feed, as feed_of keeps its rows, newest first, and when it was last opened.
 const FEED = [
   { kind: "comment", at: "2026-10-16T09:30:00Z", by: PRIYA, model: "SamModel01", name: "Harbour Tram", step: 2,
@@ -478,7 +521,8 @@ function listModels(query = {}) {
   if (query.collection) rows = (listOf(query.collection)?.models || []).map(modelOf);
   else if (query.favourites) rows = FAVOURITES.filter(([who]) => who === query.favourites).map(([, id]) => modelOf(id));
   else rows = [...MODELS, ...CROWD].filter((one) => !query.owner || (one.owner === query.owner && one.author !== null));
-  rows = rows.filter((one) => one && one.published && !one.barred && (one.listed || hidden) && (!one.test || query.tests));
+  rows = rows.filter((one) => one && one.published && !one.barred && (one.listed || hidden) && (!one.test || query.tests)
+    && (!LIVE || LIVE_IDS.has(one.id)));
   const words = String(query.words || "").split("&").map((one) => one.trim().replace(/:\*$/, "")).filter(Boolean);
   if (words.length) rows = rows.filter((one) => wordsMatch(one, words));
   if (query.kind) rows = rows.filter((one) => one.kind === query.kind);
@@ -540,7 +584,7 @@ function profilePage(handle, tests = false) {
 }
 
 /// The photos that may be shown, newest first.
-const photosWhere = (test) => PHOTOS.filter((one) => !one.removed_at && !one.hidden_at && test(one)).sort(byTime("at"));
+const photosWhere = (test) => PHOTOS.filter((one) => !one.removed_at && !one.hidden_at && !LIVE && test(one)).sort(byTime("at"));
 
 /// designer_page: what a designer's models earned, for anybody.
 function designerPage(handle, tests = false) {
@@ -1129,6 +1173,10 @@ function people(method, params, body, who, state) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
       : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : SIGN_IN });
   }
+  if (who && state.fresh) {
+    const said = freshPeople(method, op, params, body, state.fresh);
+    if (said) return said;
+  }
   if (method === "GET") {
     // A picture, and the pages the server makes (serverPage): not JSON.
     if (["photo_file", "page", "list_page"].includes(op)) return null;
@@ -1239,6 +1287,64 @@ function people(method, params, body, who, state) {
   return answer(200, { ok: true });
 }
 
+/// A new account, signed in for the first time (state.fresh, which the
+/// flow gives and this keeps: {aged, profile, follows}): no profile until
+/// it makes one, following nobody until it follows, and its feed what the
+/// people it follows listed. What else it asks is answered as for Sam.
+function freshPeople(method, op, params, body, fresh) {
+  const mine = () => (fresh.profile ? { handle: fresh.profile.handle, name: fresh.profile.name } : null);
+  const theirs = () => [...fresh.follows].map(personNamed).filter(Boolean);
+  if (method === "GET" && op === "me") {
+    return answer(200, { profile: fresh.profile, collections: [], mail: { ...MAIL, ready: true, kinds: true },
+      follows: { ready: true, shows_follows: false }, showcase: { ready: true, links: [], banner: null, pins: [], models: [] } });
+  }
+  if (method === "GET" && op === "feed_count") {
+    return answer(200, { count: 0, notifications: 0, feed: 0, signed_in: true, ready: true, me: mine() });
+  }
+  if (method === "GET" && op === "following" && !params.get("handle")) {
+    return answer(200, { mine: true, ready: true, following: theirs().map((one) => ({ handle: one.handle, name: one.name })) });
+  }
+  if (method === "GET" && op === "follows") {
+    const found = followState(null, params.get("handle"));
+    if (!found) return answer(404, { error: "Nobody here has that handle." });
+    const on = fresh.follows.has(found.handle);
+    return answer(200, { handle: found.handle, ready: true, followers: found.followers + (on ? 1 : 0), following: found.following,
+      shows: found.shows, you_follow: on, mine: false, may: true, why_not: "", signed_in: true });
+  }
+  if (method === "GET" && op === "feed") {
+    // follow_page: what the people it follows listed, newest first.
+    const rows = params.get("before") ? [] : theirs()
+      .flatMap((one) => listModels({ owner: one.account, size: 100, tests: true }).map((m) => ({ m, by: one.account })))
+      .sort((a, b) => String(b.m.listed_at).localeCompare(String(a.m.listed_at)))
+      .map(({ m, by }) => ({ ...feedRow({ kind: "model", at: m.listed_at, by, model: m.id, name: m.name }), new: true,
+        card: apiCard(m) }));
+    return answer(200, { ready: true, rows, more: false, seen_at: null,
+      ...(params.get("before") ? {} : { following: theirs().map((one) => one.handle) }) });
+  }
+  if (method === "POST" && op === "follow") {
+    const person = personNamed(body?.handle);
+    if (!person) return answer(404, { error: "Nobody here has that handle." });
+    if (body?.on) fresh.follows.add(person.handle);
+    else fresh.follows.delete(person.handle);
+    return freshPeople("GET", "follows", new URLSearchParams({ handle: person.handle }), null, fresh);
+  }
+  if (method === "POST" && op === "profile") {
+    // api/people.js saveProfile's refusals, in its words.
+    const handle = String(body?.handle ?? "").trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/.test(handle) || handle.includes("--")) {
+      return answer(400, { error: "a handle is 3 to 24 letters, digits and single hyphens, starting and ending with a letter or a digit" });
+    }
+    const trouble = handleTrouble(handle);
+    if (trouble) return answer(409, { error: trouble });
+    if (personNamed(handle)) return answer(409, { error: "somebody already has that handle: choose another" });
+    const name = String(body?.name ?? "").trim().slice(0, 40);
+    if (!name) return answer(400, { error: "give the name to show on your profile: whatever you like to be called here" });
+    fresh.profile = { handle, name, bio: null, created_at: "2026-10-22T12:00:00Z" };
+    return answer(200, { handle, name, bio: null, url: `${ORIGIN}/u/${handle}` });
+  }
+  return null;
+}
+
 /// The gallery's question, checked as api/_directory.js listQuery checks
 /// it: {asked, said}, or the refusal.
 function galleryQuery(params, mine, who) {
@@ -1334,7 +1440,8 @@ function share(method, params, who, state = {}) {
     const small = state.empty ? [] : listModels({ most: SIZES.small.most, sort: "top", size: SHELF + 1, ...own });
     const ready = mine && !state.empty ? listModels({ pool: ME, buildable: true, sort: "top", size: SHELF + 1 }) : [];
     return answer(200, { ...(mine ? { ...pool, ready: { models: ready.slice(0, SHELF).map(shown), more: ready.length > SHELF } } : {}),
-      pick: state.empty ? null : { chosen: false, until: null, week: PICK.week,
+      // No pick in a quiet week: the live gallery's (liveCommunity).
+      pick: state.empty || LIVE ? null : { chosen: false, until: null, week: PICK.week,
         model: shown(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
       small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(shown),
         more: small.length > SHELF }, score: SCORE,
@@ -1443,7 +1550,11 @@ function account(method, params, body, who, state) {
       : answer(422, { error: "Type your email address exactly as you sign in with it to delete this account." });
   }
   // The age question answered: it went, 13 or over.
-  if (method === "POST" && params.get("op") === "age") return who ? answer(200, { age: { ask: false, over_13: true } }) : answer(401, { error: SIGN_IN });
+  if (method === "POST" && params.get("op") === "age") {
+    if (!who) return answer(401, { error: SIGN_IN });
+    if (state.fresh) state.fresh.aged = true;
+    return answer(200, { age: { ask: false, over_13: true } });
+  }
   // The theme on the account (supabase/theme.sql): state.theme, or never
   // chosen; one sent is kept (state.theme is the caller's to change).
   if (params.get("op") === "theme") {
@@ -1454,8 +1565,10 @@ function account(method, params, body, who, state) {
   if (method !== "GET") return answer(405, { error: "GET, or POST ?op=age" });
   const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null };
   if (!who) return answer(200, { ...base, signed_in: false });
+  // A new account (state.fresh) is asked until it answers.
+  const ask = state.askAge === true || Boolean(state.fresh && !state.fresh.aged);
   return answer(200, { ...base, signed_in: true, email: EMAIL, master: state.admin === true,
-    age: { ask: state.askAge === true, over_13: state.askAge === true ? null : true } });
+    age: { ask, over_13: ask ? null : true } });
 }
 
 /// The sign-in service (DB/auth/v1/...): a session for EMAIL for any code

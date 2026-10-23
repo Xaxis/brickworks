@@ -165,7 +165,7 @@ async function load() {
 }
 
 $("sign-in").addEventListener("click", async () => {
-  if (await askToSignIn("Sign in with your email address: we send you a code, no password.")) load();
+  if (await askToSignIn()) load();
 });
 $("all-read").addEventListener("click", async () => {
   $("all-read").disabled = true;

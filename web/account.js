@@ -17,7 +17,9 @@
 // the app asks it: the month and year the person was born, with nothing
 // before the answer to say which answer opens what. The server keeps only
 // whether that is 13 or over (api/account.js). Under 13, the dialog says
-// afterwards what is and is not open to them.
+// afterwards what is and is not open to them. 13 or over, First steps
+// follow (web/first-steps.js, docs/SOCIAL.md U10): a profile, what they
+// build, and designers and models to start with, every one skippable.
 
 const KEY = "brickworks.session";
 const ACCESS = "brickworks.access";
@@ -159,7 +161,9 @@ export async function call(path, { method = "GET", body } = {}) {
 
 /// The two steps of signing in, in a dialog the page opens over itself:
 /// an address, then the code sent to it. Resolves true once signed in,
-/// false when the person closes it.
+/// false when the person closes it. [why]: what signing in is for here (a
+/// like, a comment), which the page does once it resolves; with none, it
+/// is the page's own Sign in, and First steps may end at the feed.
 export function askToSignIn(why) {
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
@@ -226,7 +230,7 @@ export function askToSignIn(why) {
           finished = true;
           dialog.close();
           dialog.remove();
-          await askAgeIfAsked().catch(() => null);
+          await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
           done(true);
         }
       } catch (trouble) {
@@ -254,11 +258,17 @@ export async function age() {
 
 /// The age question, if this account is to be asked it: resolves with
 /// {ask, over_13} as kept after, or null when there was nothing to ask or
-/// it was put off.
-export async function askAgeIfAsked() {
+/// it was put off. Answered 13 or over, this was a first sign-in, and First
+/// steps are offered before the page carries on ([pending]: it has
+/// something to do once signed in, so they end back on the page).
+export async function askAgeIfAsked({ pending = false } = {}) {
   const now = await age();
   if (!now || !now.ask) return now;
-  return askAge();
+  const kept = await askAge();
+  if (kept && kept.over_13 === true) {
+    await import("/first-steps.js").then((steps) => steps.firstSteps({ pending })).catch(() => null);
+  }
+  return kept;
 }
 
 /// The question itself, in a dialog over the page. Neutral: the same
