@@ -928,7 +928,9 @@ plan with Claude as the client.
   are, then hidden for your avatar (below), which carries the count.
 - `the account menu` (`web/follow.js` `showFeedCount`, 2026-10-22,
   docs/SOCIAL.md U7, D10): signed in, `details.more-menu.end.account-menu`
-  after the hidden `a[data-account]` in `.nav`: its summary `.account-btn`
+  after the hidden `a[data-account]`, the last thing in `.nav`, after Open
+  the app at the far right (2026-10-23; `design_flow.mjs` fails another
+  order, and `keyboard_flow.mjs` the Tab to it): its summary `.account-btn`
   is your avatar (`avatarHtml`, 36 px) with `.count` over its corner (what
   is new: notifications and the feed together, as `?op=feed_count`'s
   `count`), labelled "Your account, N new"; its `.menu-list` holds

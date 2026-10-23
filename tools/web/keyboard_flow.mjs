@@ -21,9 +21,10 @@
 //   report    signed out, More, Report it: the dialog takes the focus,
 //             keeps it, and Escape gives it back to More;
 //   follow    a designer's page: Follow, pressed, the focus kept, said;
-//   notices   the account menu from the header (Escape closes it back to
-//             its button), Notifications from it, a notice reached, Mark
-//             all read said and the focus not lost;
+//   notices   the account menu from the header, its last stop after Open
+//             the app (Escape closes it back to its button), Notifications
+//             from it, a notice reached, Mark all read said and the focus
+//             not lost;
 //   profile   Edit profile: the dialog takes the focus and keeps it, a name
 //             typed and saved, the focus back on Edit profile; Escape too;
 //   settings  Dark chosen, a checkbox ticked (Space) and said;
@@ -381,9 +382,12 @@ const JOURNEYS = {
     const { context, page } = await visit(browser, "/gallery", { theme });
     const label = `notices ${theme}`;
     await until(page, () => document.querySelector(".site-head .account-menu summary"), null, 15000);
-    if (await tabTo(page, label, ".site-head .account-menu summary", { most: 10 })) {
+    const way = await tabTo(page, label, ".site-head .account-menu summary", { most: 10 });
+    if (way) {
       const button = await page.evaluate(focusNow);
       check(/account/i.test(button.name), `${label}: the header's avatar is named (${button.said})`);
+      // The header's last stop, after Open the app (the owner, 2026-10-23).
+      check(/"Open the app"$/.test(way.at(-2) || ""), `${label}: the avatar is reached after Open the app (${way.slice(-2).join(" → ")})`);
       await page.keyboard.press("Enter");
       await until(page, () => document.querySelector(".site-head .account-menu[open]"));
       await page.keyboard.press("Escape");

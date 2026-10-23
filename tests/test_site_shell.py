@@ -28,6 +28,17 @@ def test_the_header_has_four_things_at_most() -> None:
     assert len(re.findall(r"<a ", nav.group(1))) <= 4
 
 
+def test_the_account_is_last_after_open_the_app() -> None:
+    # The owner, 2026-10-23: "the user account circle obviously is the item
+    # that goes to the far right with the 'Open the app' button to the left
+    # of it". web/follow.js puts the avatar where Sign in is.
+    shell = (ROOT / "web/_shell.html").read_text(encoding="utf-8")
+    nav = re.search(r'<nav class="nav" aria-label="Main">(.*?)</nav>', shell, re.S)
+    assert nav is not None
+    links = re.findall(r"<a [^>]*>[^<]*</a>", nav.group(1))
+    assert len(links) >= 2 and 'class="cta"' in links[-2] and "data-account" in links[-1], links
+
+
 def test_each_page_marks_only_itself() -> None:
     for name, own in {"gallery.html": "/gallery", "download.html": "/download", "profile.html": "/profile"}.items():
         header = re.search(r'<header class="site-head">.*?</header>',
