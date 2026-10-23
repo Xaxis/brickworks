@@ -3404,7 +3404,8 @@ gear trains a drag uses: steering (a steering arm on its kingpin, a
 steering rack, or whatever carries a wheel and turns on an upright line:
 a knuckle of beams and blocks on its pin, a toy's front axle on a
 turntable; taken by its steering wheel where it has one, else its arm or
-its biggest part), turntable,
+its biggest part; not by a steering wheel spinning alone on its stud, which
+turns nothing with it, as the kart's does on its round brick), turntable,
 boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
 reaching 3 studs or more from its line, no tyre in it, and lifting: its
 line is not upright), doors (a door,

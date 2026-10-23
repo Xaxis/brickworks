@@ -1229,6 +1229,10 @@ plan with Claude as the client.
   `kinds`, `words`, `KINDS`, `MECHANISMS`): steering, turntable, boom,
   doors, gears, pneumatics, actuator, rack, from `Bodies` and the gear
   trains; sent with a publish (`SharePanel.moves_of`, `main._moves_now`).
+  A steering wheel spinning alone on its stud is never the steering's
+  handle: `tools/probe.sh kart_steer_probe` (windowed) takes the shipped
+  kart's steering where its card says, drags it each way by Grab and
+  undoes it, with pictures in `shots/kart_steer/`.
 - `what moves on a gallery card` (`supabase/play.sql`, not applied until
   the owner does): `shared_models.moves` (the words, eight at most, `{}`
   for every row before), `moves_mechanism`, `directory_card` with `moves`,
