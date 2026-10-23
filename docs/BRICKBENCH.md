@@ -2187,9 +2187,12 @@ to its rim, and its 2 x 2 of anti-studs is a plate and two plates above the
 round's studs, so it rested, held by nothing (`patterns_probe` counted its round
 bodies and the Falcon Heavy two pieces). They now stand on 2 x 2 round plates
 under their middles (`Rounds.DISH_RISE`), as the crowns in `shells.gd` already
-did. add_rooms' furniture has pieces that rest unjoined (a turntable top, 3679,
-laid straight on a plate with what stands on it); they are set down, so they are
-advice, as a brick on a tile is (`clutch_probe`).
+did. Brickify's forty-stud bunny laid upright had a 1 x 1 brick that rests
+where nothing joins it; its mend now takes out what comes away (the check's
+`come_away`) as it takes out what floats, and it is one piece again. add_rooms'
+furniture has pieces that rest unjoined (a turntable top, 3679, laid straight
+on a plate with what stands on it); they are set down, so they are advice, as a
+brick on a tile is (`clutch_probe`).
 
 Proved by `exact_probe`: a 54200 on an 11213's rim is said not held and counted
 two pieces (both fail on d05a59be: 33 passed, 2 failed; 35 passed now), the

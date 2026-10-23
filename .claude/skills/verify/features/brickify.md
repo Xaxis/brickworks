@@ -177,8 +177,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   then join (`_tie`, a 1 x 2 plate under or over a joint, or the shortest
   pillar of 1 x 1s onto anything held, each stud checked against the part's
   real cover; a round that joins nothing taken back), at most two rounds;
-  then what is still apart, floating or unheld (the exact check's `unheld`)
-  taken out together and said, never the body. Weighed again: given a stand
+  then what is still apart, floating or unheld (the exact check's `unheld`,
+  and its `come_away`: a part resting where nothing joins it, which this
+  lattice joins to what it rests on; the forty-stud bunny upright had a 1 x 1
+  brick so) taken out together and said, never the body. Weighed again: given a stand
   after all if it would tip or all but (`needs_help`), and a joint past its
   working load propped (`_prop`) if that leaves fewer: a pillar under the
   piece beyond the joint, near its centre of mass, onto the model

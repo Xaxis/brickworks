@@ -12734,6 +12734,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 			"tips over": issues.get("tips over", [])},
 		## The parts of what is not held, as indices into the placements.
 		"unheld": unheld.keys(),
+		## And of what stands but comes away in the hand, said or advised: each
+		## a piece of its own in "pieces" (ExactCheck.comes_away).
+		"come_away": come_away.keys(),
 		## The later part of each pair whose real shapes collide.
 		"colliding": colliding.keys(),
 		## And what asking the exact shapes cost this check, ms.
