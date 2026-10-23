@@ -57,14 +57,14 @@ const SAMPLES = [
   [{ id: "CardAbcde5", name: "Liked, from the gallery", parts: 412, author: "Robin Castell", thumb: "/m/CardAbcde5.webp",
     likes: 97, liked: true, builds: 37, comments: 3, tags: ["castle", "ai-designed"],
     by: { handle: "robin-castell", name: "Robin <Castell>" } }, { like: true }],
+  [{ id: "CardAbcde6", name: "A handle that is not one", parts: 9, author: "Eve", by: { handle: "../admin", name: "Eve" },
+    tags: ["brickify"] }, { like: true }],
   // Its designer's own picture (supabase/avatars.sql), and one from
   // anywhere else, which is never drawn: the tile is.
   [{ id: "CardAbcde7", name: "With a face", parts: 88, author: "Robin Castell", thumb: "/m/CardAbcde7.webp",
     by: { handle: "robin-castell", name: "Robin Castell", picture: "/api/people?op=avatar&id=FaceRobin1" } }, {}],
   [{ id: "CardAbcde8", name: "A face from elsewhere", parts: 88, author: "Mallory", thumb: "/m/CardAbcde8.webp",
     by: { handle: "mallory-m", name: "Mallory", picture: "https://tracker.example/pixel.png" } }, {}],
-  [{ id: "CardAbcde6", name: "A handle that is not one", parts: 9, author: "Eve", by: { handle: "../admin", name: "Eve" },
-    tags: ["brickify"] }, { like: true }],
 ];
 
 const cardsOf = (html) => [...html.matchAll(/<article class="model"[\s\S]*?<\/article>/g)].map((m) => m[0]);
@@ -122,6 +122,11 @@ try {
   const [linked, odd] = await drawn([SAMPLES[4][0], SAMPLES[5][0]], { like: true });
   check(/href="\/u\/robin-castell"/.test(linked) && /Robin &lt;Castell&gt;/.test(linked) && /aria-pressed="true"/.test(linked)
     && !/href="\/u\//.test(odd) && /Brickify/.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
+  // Their own picture only from this site's address for one.
+  const [face, elsewhere] = await drawn([SAMPLES[6][0], SAMPLES[7][0]], {});
+  check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)
+    && !/<img[^>]*tracker\.example/.test(elsewhere) && />M<\/span>/.test(elsewhere),
+  "a designer's own picture drawn, and one from anywhere else never: the tile");
   check(!errors.length, `no script errors${errors.length ? `: ${errors.join("; ")}` : ""}`);
 } finally {
   await browser.close();
