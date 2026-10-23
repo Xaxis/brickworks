@@ -8,10 +8,12 @@
   with "_".
 
   Four things across the top, no more (the owner, 2026-10-20: "the main nav
-  has too many links"): the gallery, the desktop download, your account,
-  and the way in. What the CAD does and the assistant are sections of the
-  landing page; questions, the changelog and the legal pages are in the
-  footer. Account says Sign in until you are (web/follow.js).
+  has too many links"): the gallery, the desktop download, the way in,
+  and your account last, at the far right (the owner, 2026-10-23: "the
+  user account circle obviously is the item that goes to the far right").
+  What the CAD does and the assistant are sections of the landing page;
+  questions, the changelog and the legal pages are in the footer. Account
+  says Sign in until you are, then is your avatar (web/follow.js).
 
   And what every page's <head> carries (tools/site_shell.py puts it there,
   before site.css, on the pages without the header too): the browser
@@ -32,8 +34,8 @@
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
 			<a href="/download">Download</a>
-			<a href="/profile" data-account>Sign in</a>
 			<a class="cta" href="/app">Open the app</a>
+			<a href="/profile" data-account>Sign in</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
