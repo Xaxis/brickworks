@@ -33,6 +33,14 @@
 // takes it. What they hold is at /__held_storage/list/<bucket> and
 // /__held_storage/file/<bucket>/<path>. Several held files' functions are
 // layered, each adding what its file adds.
+//
+// For supabase/avatars.sql: profile_avatars (a person's own picture, with
+// the profile's trigger: 13 or over) and, held with it, the avatars bucket;
+// profile_choices (whether a profile shows the models its owner liked); and
+// the file's three functions answered here whole over the real project:
+// avatars_of (by the real people, as shown_publicly says), profile_likes
+// (the real likes, newest first, each the real directory_model's card) and
+// profile_likes_count.
 
 /// [ids]' newest versions, from the real share_versions: id -> n.
 async function newestOf(real, base, headers, ids) {
@@ -69,6 +77,36 @@ async function withBuilds(real, base, url, init, rows) {
       .map(([card]) => card).slice(skip, skip + (Number(query.size) || 25));
   }
   return jsonReply(200, cards);
+}
+
+/// The profile's trigger (trust.sql trust_guard_person): 13 or over, asked
+/// as the API asks it.
+async function overThirteen(row, rows, base, headers) {
+  const age = await globalThis.fetch(`${base}/rest/v1/rpc/age_of`, { method: "POST",
+    headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify({ account: row.account }) });
+  const said = age.ok ? await age.json() : null;
+  return said && said.over_13 === true ? "" : "brickworks: a public profile is for accounts 13 or over";
+}
+
+/// The models [whose] liked that the gallery shows, newest like first, each
+/// as the real directory_model gives its card (avatars.sql profile_likes).
+async function likedCards(real, base, headers, whose, tests) {
+  if (!/^[0-9a-f-]{36}$/.test(String(whose))) return [];
+  const got = await real(`${base}/rest/v1/model_likes?account=eq.${whose}&select=model,at&order=at.desc&limit=500`, { headers });
+  const likes = got.ok ? await got.json() : [];
+  if (!likes.length) return [];
+  const ids = likes.map((one) => one.model);
+  const flags = await real(`${base}/rest/v1/shared_models?id=in.(${ids.join(",")})&select=id,published,listed,barred,test,owner`, { headers });
+  const shown = new Map((flags.ok ? await flags.json() : []).filter((m) => m.published && m.listed && !m.barred && (tests || !m.test))
+    .map((m) => [m.id, m]));
+  const cards = [];
+  for (const id of ids.filter((one) => shown.has(one))) {
+    const page = await real(`${base}/rest/v1/rpc/directory_model`, { method: "POST",
+      headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify({ model_id: id }) });
+    const card = page.ok ? await page.json() : null;
+    if (card && card.id) cards.push(card);
+  }
+  return cards;
 }
 
 const TABLES = {
@@ -164,6 +202,59 @@ const TABLES = {
         headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify({ account: row.account }) });
       const said = age.ok ? await age.json() : null;
       return said && said.over_13 === true ? "" : "brickworks: a public profile is for accounts 13 or over";
+    },
+  },
+  // supabase/avatars.sql: a person's own picture, one row an account.
+  profile_avatars: {
+    key: ["account"],
+    parents: [],
+    defaults: () => ({ at: new Date().toISOString(), removed_at: null, removed_why: null }),
+    check(row) {
+      if (!/^[A-Za-z0-9]{10}$/.test(String(row.id))) return "profile_avatars_id_check";
+      if (!Number.isInteger(row.side) || row.side < 120 || row.side > 400) return "profile_avatars_side_check";
+      if (!Number.isInteger(row.bytes) || row.bytes < 1 || row.bytes > 1048576) return "profile_avatars_bytes_check";
+      if (!["jpeg", "png", "webp"].includes(row.was)) return "profile_avatars_was_check";
+      if (row.removed_why !== null && (typeof row.removed_why !== "string" || row.removed_why.length < 1
+        || row.removed_why.length > 200)) return "profile_avatars_removed_why_check";
+      return "";
+    },
+    guard: overThirteen,
+    rpc: {
+      // Which of the handles show a picture of their own now.
+      async avatars_of(real, base, url, init, rows) {
+        const handles = (JSON.parse(String(init.body || "{}")).handles || []).filter((one) => /^[a-z0-9-]{3,24}$/.test(String(one)));
+        if (!handles.length) return jsonReply(200, []);
+        const answer = await real(`${base}/rest/v1/people?handle=in.(${handles.join(",")})&select=account,handle`, { headers: init.headers });
+        const people = answer.ok ? await answer.json() : [];
+        const out = [];
+        for (const person of people) {
+          const row = rows.find((one) => one.account === person.account && !one.removed_at);
+          if (!row) continue;
+          const shown = await real(`${base}/rest/v1/rpc/shown_publicly`, { method: "POST",
+            headers: { ...init.headers, "content-type": "application/json" }, body: JSON.stringify({ account: person.account }) });
+          if (shown.ok && (await shown.json()) === true) out.push({ handle: person.handle, avatar: row.id });
+        }
+        return jsonReply(200, out);
+      },
+    },
+  },
+  // supabase/avatars.sql: whether a profile shows the models its owner liked.
+  profile_choices: {
+    key: ["account"],
+    parents: [],
+    defaults: () => ({ shows_likes: false, updated_at: new Date().toISOString() }),
+    check: (row) => (typeof row.shows_likes === "boolean" ? "" : "profile_choices_shows_likes_check"),
+    guard: overThirteen,
+    rpc: {
+      async profile_likes(real, base, url, init) {
+        const { whose, size = 25, skip = 0, tests = false } = JSON.parse(String(init.body || "{}"));
+        const cards = await likedCards(real, base, init.headers, whose, tests);
+        return jsonReply(200, cards.slice(Math.max(0, skip), Math.max(0, skip) + Math.min(Math.max(size, 1), 49)));
+      },
+      async profile_likes_count(real, base, url, init) {
+        const { whose, tests = false } = JSON.parse(String(init.body || "{}"));
+        return jsonReply(200, (await likedCards(real, base, init.headers, whose, tests)).length);
+      },
     },
   },
   // supabase/tested.sql
@@ -363,28 +454,32 @@ async function answer(real, base, url, init = {}) {
 // Storage: builds.sql's two buckets, held with build_photos.
 
 const BUCKETS = {
-  "build-photo-uploads": { most: 8388608, types: ["image/jpeg", "image/png", "image/webp"] },
-  "build-photos": { most: 4194304, types: ["image/jpeg"] },
+  "build-photo-uploads": { most: 8388608, types: ["image/jpeg", "image/png", "image/webp"], with: "build_photos" },
+  "build-photos": { most: 4194304, types: ["image/jpeg"], with: "build_photos" },
+  // supabase/avatars.sql
+  avatars: { most: 1048576, types: ["image/jpeg"], with: "profile_avatars" },
 };
+/// Whether [bucket] is held here: the table it comes with is.
+const bucketHeld = (bucket) => Boolean(BUCKETS[bucket]) && held.has(BUCKETS[bucket].with);
 const files = new Map(Object.keys(BUCKETS).map((bucket) => [bucket, new Map()]));
 const tickets = new Map();
 let here = "";
 
 /// A storage request for a held bucket, answered from memory; null else.
 async function storage(url, init = {}) {
-  if (!held.has("build_photos")) return null;
+  if (!Object.keys(BUCKETS).some(bucketHeld)) return null;
   const at = url.indexOf("/storage/v1/object/");
   if (at < 0) return null;
   const rest = url.slice(at + 19).split("?")[0];
   const method = String(init.method || "GET").toUpperCase();
   const signing = /^upload\/sign\/([a-z-]+)\/(.+)$/.exec(rest);
-  if (signing && BUCKETS[signing[1]] && method === "POST") {
+  if (signing && bucketHeld(signing[1]) && method === "POST") {
     const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
     tickets.set(token, { bucket: signing[1], name: decodeURIComponent(signing[2]) });
     return jsonReply(200, { url: `${here}/__held_storage/upload/${signing[1]}/${signing[2]}?token=${token}` });
   }
   const listing = /^list\/([a-z-]+)$/.exec(rest);
-  if (listing && BUCKETS[listing[1]]) {
+  if (listing && bucketHeld(listing[1])) {
     const { prefix = "" } = JSON.parse(String(init.body || "{}"));
     const names = [...files.get(listing[1]).keys()].filter((name) => name.startsWith(prefix)).map((name) => name.slice(prefix.length));
     const folders = [...new Set(names.filter((name) => name.includes("/")).map((name) => name.split("/")[0]))];
@@ -393,13 +488,13 @@ async function storage(url, init = {}) {
         updated_at: files.get(listing[1]).get(prefix + name).at }))]);
   }
   const whole = /^([a-z-]+)$/.exec(rest);
-  if (whole && BUCKETS[whole[1]] && method === "DELETE") {
+  if (whole && bucketHeld(whole[1]) && method === "DELETE") {
     const { prefixes = [] } = JSON.parse(String(init.body || "{}"));
     for (const name of prefixes) files.get(whole[1]).delete(name);
     return jsonReply(200, prefixes.map((name) => ({ name })));
   }
   const one = /^([a-z-]+)\/(.+)$/.exec(rest);
-  if (!one || !BUCKETS[one[1]]) return null;
+  if (!one || !bucketHeld(one[1])) return null;
   const name = decodeURIComponent(one[2]);
   if (method === "GET") {
     const file = files.get(one[1]).get(name);
@@ -429,7 +524,7 @@ function put(bucket, name, bytes, type) {
 /// This server's own storage addresses (relay_server.mjs): the signed
 /// upload a page sends, and what a check reads. {status, type, body} or null.
 export function storageRoute(url, method, headers, body) {
-  if (!held.has("build_photos")) return null;
+  if (!Object.keys(BUCKETS).some(bucketHeld)) return null;
   const upload = /^\/__held_storage\/upload\/([a-z-]+)\/(.+)$/.exec(url.pathname);
   if (upload && method === "PUT") {
     const ticket = tickets.get(url.searchParams.get("token") || "");
@@ -443,12 +538,12 @@ export function storageRoute(url, method, headers, body) {
       : { status: 200, type: "application/json", body: JSON.stringify({ Key: `${upload[1]}/${name}` }) };
   }
   const listed = /^\/__held_storage\/list\/([a-z-]+)$/.exec(url.pathname);
-  if (listed && BUCKETS[listed[1]]) {
+  if (listed && bucketHeld(listed[1])) {
     return { status: 200, type: "application/json", body: JSON.stringify([...files.get(listed[1]).entries()]
       .map(([name, file]) => ({ name, bytes: file.bytes.length, type: file.type, at: file.at }))) };
   }
   const read = /^\/__held_storage\/file\/([a-z-]+)\/(.+)$/.exec(url.pathname);
-  if (read && BUCKETS[read[1]]) {
+  if (read && bucketHeld(read[1])) {
     const file = files.get(read[1]).get(decodeURIComponent(read[2]));
     return file ? { status: 200, type: file.type, body: file.bytes } : { status: 404, type: "text/plain", body: "" };
   }
