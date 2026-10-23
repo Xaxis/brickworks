@@ -1084,8 +1084,8 @@ function buildsSection(id, model, photos) {
 }
 
 /// Where the comments go: drawn by web/model-page.js from
-/// /api/people?op=comments (api/_comments.js), so the page itself is the
-/// same for everybody and kept by the CDN. The step picker has the steps of
+/// /api/people?op=comments (api/_comments.js) as threads, so the page
+/// itself is the same for everybody and kept by the CDN. The step picker has the steps of
 /// the version shown; a model of more than a thousand has a number to type.
 function commentsSection(id, shown, newest, steps) {
   const many = Number(steps) > 1000;
@@ -1097,8 +1097,8 @@ function commentsSection(id, shown, newest, steps) {
   return `<section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
     data-version="${shown}" data-newest="${newest}" hidden>
     <h2 id="comments-h">Comments</h2>
-    <p class="note comments-lede">What builders said about it, and about its steps, oldest first.
-      Plain words only; <a href="/guidelines">the guidelines</a> say what is welcome.</p>
+    <p class="note comments-lede">What builders said about it and its steps, the newest first, with
+      the replies under each. Plain words only; <a href="/guidelines">the guidelines</a> say what is welcome.</p>
     <ol class="comment-list"></ol>
     <form class="comment-new" hidden>
       <div class="comment-on"><label for="comment-step">On</label> ${picker}

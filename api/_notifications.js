@@ -17,7 +17,9 @@
 //                                the caller is, for their avatar
 //
 // A comment, a photo of a build, a remix, likes (a number a model a day,
-// never who) and a challenge's end. Nothing says who followed you: a
+// never who) and a challenge's end; and since replies.sql, a reply to your
+// comment, or after yours in its thread, on anybody's model, grouped under
+// that model. Nothing says who followed you: a
 // follow tells nobody anything (supabase/follows.sql).
 //
 // Until notifications.sql is applied its functions are not there (404),
@@ -72,8 +74,15 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40) } : null;
   const model = ID.test(String(row.model || "")) ? row.model : "";
   const base = { kind: row.kind, at: row.at, who: by ? by.name : null, by, said: "" };
+  const onStep = row.step ? ` on step ${Number(row.step)}` : "";
   if (row.kind === "comment") {
-    return { ...base, who: base.who || "A builder", did: row.step ? `commented on step ${Number(row.step)}` : "commented",
+    // A reply to somebody else's comment on your model is a comment on it.
+    return { ...base, who: base.who || "A builder", did: row.parent ? `replied to a comment${onStep}` : `commented${onStep}`,
+      said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
+  }
+  if (row.kind === "reply") {
+    return { ...base, who: base.who || "A builder",
+      did: row.yours === false ? `replied to a comment you answered${onStep}` : `replied to your comment${onStep}`,
       said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
   }
   if (row.kind === "photo") {

@@ -4,12 +4,18 @@
 //   GET  ?op=comments&id=X&v=N    the comments on model X, oldest first,
 //                                 each saying its step and version as it
 //                                 is shown on version N (the newest when
-//                                 none is asked), and what the caller may
-//                                 do (with a session: whether they may
-//                                 write, and why not in words)
+//                                 none is asked), the comment it answers
+//                                 (parent: a reply, 2026-10-22), and what
+//                                 the caller may do (with a session:
+//                                 whether they may write, and why not in
+//                                 words); replies: true once replies.sql
+//                                 is applied
 //   POST ?op=comment              (session) {model, version, step?, body}:
 //                                 a comment on the model, or on that step
 //                                 of that version
+//   POST ?op=reply                (session) {id, body}: a reply to comment
+//                                 id, on its step and version; to a reply,
+//                                 in its thread (supabase/replies.sql)
 //   POST ?op=comment_change       (session) {id, what, body?}: its author
 //                                 edits it (edit, with body) or removes it
 //                                 (remove); the model's owner hides it or
@@ -42,7 +48,11 @@
 //
 // Until comments.sql is applied its functions are not there (404): the
 // list says there are none and comments are not open yet, and nothing
-// can be written. Everything else works as before.
+// can be written. Everything else works as before. Until replies.sql is,
+// the list says replies: false and a reply is refused as not open yet.
+//
+// A reply is a comment, under every rule of one (the same limits count
+// it); it lives under its comment and is shown only where that is.
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
@@ -57,6 +67,7 @@ const ID = /^[A-Za-z0-9]{10}$/;
 const VERSION = /^[1-9][0-9]{0,5}$/;
 const NOT_THERE = /: 404$/;
 const NOT_YET = "Comments are not open on Brickworks yet.";
+const REPLIES_NOT_YET = "Replies are not open on Brickworks yet: add a comment of your own.";
 
 // What a refusal from comments.sql says, and its status.
 export const WORDS = {
@@ -72,7 +83,7 @@ export const WORDS = {
   no_step: [400, "That version has no such step."],
   body: [400, "A comment is 1 to 1,000 characters of plain text."],
   limit: [429, "That is a lot of comments in a short time: try again in an hour."],
-  no_comment: [404, "There is no such comment."],
+  no_comment: [404, "That comment is not there any more, so it cannot be answered."],
   not_yours: [403, "That comment is somebody else's."],
   not_owner: [403, "Only the model's builder can do that."],
 };
@@ -161,6 +172,7 @@ export function commentSaid(comment, asked, newest, versions) {
     edited_at: comment.edited_at ?? null, by: comment.by ?? null, handle: comment.handle ?? null,
     by_owner: comment.by_owner === true, mine: comment.mine === true, hidden: comment.hidden === true,
     older: comment.version < newest, said: saidWhere(comment, newest),
+    parent: Number.isInteger(comment.parent) ? comment.parent : null,
   };
 }
 
@@ -204,7 +216,7 @@ export async function listComments(request, response) {
   if (!versions.some((one) => one.n === asked)) throw refused("no_version");
   const comments = (on.comments || []).map((one) => commentSaid(one, asked, newest, versions));
   return response.status(200).json({ model: id, ready: true, version: asked, newest, open: on.open === true,
-    count: comments.length, comments, you: await youOn(id, who, on.owner === true) });
+    replies: on.threads === true, count: comments.length, comments, you: await youOn(id, who, on.owner === true) });
 }
 
 /// A new comment. Its model's owner, if they asked to be emailed and no
@@ -239,6 +251,36 @@ export async function addComment(request, response, { origin }) {
     }
   } catch (problem) {
     // Kept, and told in the next: no reason to say the comment did not go.
+    console.error(`comments: digest: ${String(problem?.message || problem).slice(0, 160)}`);
+  }
+  return response.status(201).json({ comment, ...(told.state === "dry" ? { told } : {}) });
+}
+
+/// A reply to a comment (supabase/replies.sql): on its comment's model,
+/// version and step. The model's owner is told as of a comment
+/// (sendCommentDigests); whoever is in the thread, by their notifications.
+export async function addReply(request, response, { origin }) {
+  response.setHeader("Cache-Control", "no-store");
+  const who = await account(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const id = Number(body.id);
+  if (!Number.isInteger(id) || id < 1) throw new Unacceptable("name the comment it answers: id, a number");
+  const { text, trouble } = cleanComment(body.body);
+  if (trouble) throw new Unacceptable(trouble);
+  const made = await call("add_reply", { account: who, comment_id: id, said: text }, () => {
+    throw new Unacceptable(REPLIES_NOT_YET, 503);
+  });
+  if (made?.refused) throw refused(made.refused);
+  // As said on its own version, as a comment written there is.
+  const versions = await versionsOf(made.model);
+  const comment = commentSaid(made.comment, made.comment.version, versions[0].n, versions);
+  let told = { state: "none" };
+  try {
+    if (made.owner && made.owner !== who) {
+      const sent = await sendCommentDigests({ origin, owner: made.owner });
+      if (sent.digests[0]) told = { state: sent.digests[0].state, id: sent.digests[0].id };
+    }
+  } catch (problem) {
     console.error(`comments: digest: ${String(problem?.message || problem).slice(0, 160)}`);
   }
   return response.status(201).json({ comment, ...(told.state === "dry" ? { told } : {}) });

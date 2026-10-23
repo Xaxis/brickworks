@@ -258,7 +258,14 @@ const COMMENTS = [
     body: "Cheap bricks, best prices, link in my profile" },
   { id: 107, model: MODEL_ID, version: 2, step: null, author: SPAMMER, at: "2026-10-16T03:00:00Z",
     body: "Buy bricks here", removed_at: "2026-10-16T09:00:00Z", removed_by: "admin" },
-].map((comment) => ({ edited_at: null, hidden_at: null, removed_at: null, removed_by: null, ...comment }));
+  // Replies (supabase/replies.sql): on their comment's version and step.
+  { id: 108, model: MODEL_ID, version: 1, step: 3, author: ROBIN, at: "2026-10-03T08:20:00Z", parent: 101,
+    body: "Dark tan under it is a good idea: I may put it in the next version." },
+  { id: 109, model: MODEL_ID, version: 2, step: 5, author: ROBIN, at: "2026-10-17T09:05:00Z", parent: 103,
+    body: "Thank you, Priya. I will add an arrow to step 5's page so nobody else gets stuck." },
+  { id: 110, model: MODEL_ID, version: 2, step: 5, author: JO, at: "2026-10-17T12:30:00Z", parent: 103,
+    body: "Same here. Under, then it clicks." },
+].map((comment) => ({ edited_at: null, hidden_at: null, removed_at: null, removed_by: null, parent: null, ...comment }));
 
 // Collections, newest first, each with its models in the order they were added (newest first).
 const LISTS = [
@@ -974,7 +981,7 @@ function commentSaid(comment, shown, versions, asker) {
     edited_at: comment.edited_at, by: author?.name ?? null, handle: author?.handle ?? null,
     by_owner: comment.author === modelOf(comment.model)?.owner, mine: Boolean(asker) && comment.author === asker,
     hidden: Boolean(comment.hidden_at), older: comment.version < newest,
-    said: comment.version < newest ? `${where}, an older version` : where };
+    said: comment.version < newest ? `${where}, an older version` : where, parent: comment.parent };
 }
 
 /// /api/people?op=comments&id=X&v=N.
@@ -991,7 +998,7 @@ function comments(params, who, state) {
     && (!one.hidden_at || (who && (one.author === who || owner)))).sort((a, b) => String(a.at).localeCompare(String(b.at)) || a.id - b.id)
     .map((one) => commentSaid(one, shown, versions, who));
   const trouble = !who ? "sign_in" : state.askAge ? "ask_first" : null;
-  return answer(200, { model: id, ready: true, version: shown, newest: versions[0].n, open: true, count: list.length,
+  return answer(200, { model: id, ready: true, version: shown, newest: versions[0].n, open: true, replies: true, count: list.length,
     comments: list, you: { signed_in: Boolean(who), may_write: !trouble, why_not: trouble ? COMMENT_WORDS[trouble] : "", owner } });
 }
 
@@ -1209,6 +1216,16 @@ function people(method, params, body, who, state) {
     if (typeof body?.on !== "boolean") return answer(400, { error: "say on: true or on: false" });
     state.likes?.set(id, body.on);
     return answer(200, { id, liked: body.on, likes: state.likes ? likeCount(state, id) : statsOf(id)[1] });
+  }
+  // A reply (supabase/replies.sql): on its comment's version and step, as
+  // the API answers it; kept nowhere, as every write here.
+  if (op === "reply") {
+    const to = COMMENTS.find((one) => one.id === Number(body?.id) && !one.removed_at && !one.hidden_at);
+    if (!to) return answer(404, { error: "That comment is not there any more, so it cannot be answered." });
+    const thread = to.parent ? COMMENTS.find((one) => one.id === to.parent) : to;
+    const made = { ...thread, id: 900, author: who, at: "2026-10-18T12:00:00Z", body: String(body?.body || ""),
+      parent: thread.id, edited_at: null, hidden_at: null };
+    return answer(201, { comment: commentSaid(made, thread.version, commentVersions(thread.model), who) });
   }
   // Any other write: the check presses nothing that writes, so it went.
   return answer(200, { ok: true });

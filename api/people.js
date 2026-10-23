@@ -43,8 +43,8 @@
 //                                 owner who asked for one. Needs no secret:
 //                                 it can send nothing else
 //   GET  ?op=comments&id=X&v=N    the comments on a model, and on its steps
-//   POST ?op=comment, comment_change, comments_open&id=X, mail
-//                                 (session) a comment written, changed,
+//   POST ?op=comment, reply, comment_change, comments_open&id=X, mail
+//                                 (session) a comment or a reply written, changed,
 //                                 hidden or removed; comments on a model
 //                                 turned on or off; the comments' email
 //                                 chosen (api/_comments.js)
@@ -161,7 +161,7 @@ import {
   BuildRefusal, MAX_WORDS, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto, startPhoto,
 } from "./_builds.js";
 import {
-  addComment, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
+  addComment, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
   setCommentsOpen,
 } from "./_comments.js";
 import {
@@ -1204,6 +1204,7 @@ export default async function handler(request, response) {
       if (op === "report") return await report(request, response);
       if (op === "digest") return await knock(request, response);
       if (op === "comment") return await addComment(request, response, { origin: originOf(request) });
+      if (op === "reply") return await addReply(request, response, { origin: originOf(request) });
       if (op === "comment_change") return await changeComment(request, response);
       if (op === "comments_open") return await setCommentsOpen(request, response);
       if (op === "mail") return await chooseMail(request, response);

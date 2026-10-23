@@ -206,7 +206,7 @@ $$;
 -- Writing a reply.
 
 -- A reply from [account] to comment [comment_id]: {comment} as comment_as
--- gives it and the model's owner, or {refused}: comment_trouble's reasons
+-- gives it, its model and the model's owner, or {refused}: comment_trouble's reasons
 -- on its model, no_comment (none, removed, hidden, by an account not
 -- shown, or of the link's life before), body and limit, as add_comment
 -- says them. A reply to a reply answers its comment, in the same thread.
@@ -254,7 +254,8 @@ begin
     values (p.model, p.version, p.step, account, said, p.id)
     returning * into made;
     select s.owner into owner_of from public.shared_models s where s.id = p.model;
-    return jsonb_build_object('comment', public.comment_as(made, account, owner_of), 'owner', owner_of);
+    return jsonb_build_object('comment', public.comment_as(made, account, owner_of), 'owner', owner_of,
+        'model', p.model);
 end;
 $$;
 
