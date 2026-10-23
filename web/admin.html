@@ -46,7 +46,10 @@
           border-radius: var(--r-2); padding: 14px 16px; }
   .stat b { display: block; font-size: var(--t-h2); letter-spacing: -0.02em; }
   .stat span { font-size: var(--t-micro); color: var(--ink-faint); }
-  .scroller { overflow-x: auto; }
+  /* A table wider than a phone scrolls inside its card; positioned, so a
+     header's words for a screen reader (.visually-hidden) scroll with it
+     rather than push the page sideways. */
+  .scroller { overflow-x: auto; position: relative; }
   table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
   th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: var(--t-micro);
        text-transform: uppercase; letter-spacing: .05em;
