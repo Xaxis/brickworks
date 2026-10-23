@@ -209,10 +209,12 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 				held[next] = true
 				queue.append(next)
 	# What a step is judged on: held through what joins it, as the steps score
-	# judges it. Then, for loose, what rests against what is held though
-	# nothing read joins them — a wheel on an old holder's pin, a tool in a
-	# figure's hand, which the graph does not read: a part is loose only when
-	# it touches nothing held. 6688-1's car read 67 parts loose without it.
+	# judges it. Then, for a part with no exact shape, which the whole test
+	# holds by these as the design check holds it by the lattice
+	# ([method _exact_whole]), what rests against what is held though nothing
+	# read joins them — a wheel on an old holder's pin, a tool in a figure's
+	# hand: such a part is loose only when it touches nothing held. 6688-1's
+	# car read 67 parts loose without it.
 	var joined: Dictionary = held.duplicate()
 	var touches: Dictionary = {}
 	for id: int in by_id:
@@ -544,8 +546,7 @@ const ON_GROUND := ExactCheck.ON_GROUND
 ## model, the biggest first, kind "falls" (held by nothing, it does not stand
 ## where it is), "away" (it stands, and comes away in the hand), "missed"
 ## (that, on another part's stud grid where it has no stud) or "apart" (on
-## the floor beside the model); "loose": how many parts those are}. Numbers
-## are [param parts]'.
+## the floor beside the model)}. Numbers are [param parts]'.
 ##
 ## Two parts are joined by BrickNet's connections, by [param glued], and by
 ## [param joints] where either has no exact shape. The piece with the most
@@ -624,11 +625,9 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 				for n: int in members[key]:
 					gone[n] = true
 	var apart: Array = []
-	var loose: int = 0
 	for key: int in stands:
 		if stands[key] and not away.has(key):
 			continue
-		loose += (members[key] as Array).size()
 		apart.append({"kind": "apart" if on_floor.has(key) else "away" if away.has(key) else "falls",
 			"part": (members[key] as Array)[0], "on": -1, "size": (members[key] as Array).size(),
 			"key": key})
@@ -648,7 +647,7 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 				one["kind"] = "missed"
 				one["on"] = missed
 		one.erase("key")
-	return {"into": into, "pieces": 1 + apart.size(), "apart": apart, "loose": loose}
+	return {"into": into, "pieces": 1 + apart.size(), "apart": apart}
 
 
 ## The whole test, said: one piece, every part held and none in another, or
