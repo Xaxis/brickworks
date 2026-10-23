@@ -2197,7 +2197,10 @@ brick on a tile is (`clutch_probe`).
 Proved by `exact_probe`: a 54200 on an 11213's rim is said not held and counted
 two pieces (both fail on d05a59be: 33 passed, 2 failed; 35 passed now), the
 same slope on one of its studs and the potato's dish say nothing and count one.
-`src/dev/pieces_agree.gd` prints both counts for any LDraw files.
+`src/dev/pieces_agree.gd` prints both counts for any LDraw files. The check's
+cost is unchanged (`exact_cost_probe`, three runs each on d05a59be and now, on
+the 9,541-part Orthanc): an edit 4.4-5.0 s and 4.2-5.6 s, of it the exact check
+82-102 ms and 74-85 ms; a whole new design 31.9-39.0 s and 27.5-35.2 s.
 
 ## Repeat it
 
