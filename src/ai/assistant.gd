@@ -13239,8 +13239,9 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 ## where it is but comes away in the hand (ExactCheck.comes_away) goes into
 ## [param apart], said: a fault when its anti-stud stands where another part
 ## has no stud (ExactCheck.on_missing_stud), advice when it was set down so.
-## The connections found go into [param joins], [a, b] each, for the count of
-## pieces (_pieces_of).
+## One worn round a post and clamped there, a beard under a figure's head
+## (ExactCheck.clamped), is held. The connections found go into [param
+## joins], [a, b] each, for the count of pieces (_pieces_of).
 func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
 		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
@@ -13340,6 +13341,24 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		if not stands[key]:
 			for index: Variant in pieces[key]:
 				gone[int(index)] = true
+	# What is worn round a post and clamped there by what stays is held: a
+	# beard on a figure's neck under its head, which BrickNet's labels join to
+	# nothing (ExactCheck.clamped). Joined to the post's part for the count.
+	var clamped: Dictionary = {}   ## root -> true
+	for key: Variant in pieces:
+		if stands[key]:
+			continue
+		var others: Dictionary = gone.duplicate()
+		for index: Variant in pieces[key]:
+			others.erase(int(index))
+		var on: Dictionary = exact.clamped(pieces[key], others)
+		if on.is_empty():
+			continue
+		clamped[key] = true
+		for index: Variant in on:
+			gone.erase(int(index))
+			if int(on[index]) < count:
+				joins.append([int(index), int(on[index])])
 	var away: Dictionary = {}      ## root -> true
 	var more: bool = true
 	while more:
@@ -13352,6 +13371,8 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 					gone[int(index)] = true
 	var set_down: Array = []
 	for key: Variant in pieces:
+		if clamped.has(key):
+			continue
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
 		# it. Unless a stud holds it, it comes away in the hand: a fault when

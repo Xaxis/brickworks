@@ -569,6 +569,93 @@ static func _tube_grips(a: Exact.Item, b: Exact.Item) -> bool:
 	return false
 
 
+## How far a part's origin may be off a post's axis, or past its ends, and
+## still be worn round it, in LDU: as Joints.WORN_OFF_AXIS.
+const WORN_OFF := 1.0
+## How far a part worn round a post is slid along it to see whether it comes
+## off, in LDU: past a minifigure's neck (12) with a plate to spare.
+const WORN_REACH := 24.0
+
+
+## Whether a piece of [param members] is worn round a post and clamped there:
+## each of its parts drawn about another part's post, its origin on the
+## post's line (BrickNet's pin, which a head's socket takes, at a torso's
+## neck), and the piece caught where it is ([method caught]) and along that
+## line both ways by what stays. A minifigure's beard sits on the neck under
+## the head and is held as a builder wears it; BrickNet labels every beard's
+## neck joint a quarter turn about the shoulders from every torso's, so its
+## graph joins none (docs/BRICKBENCH.md). With the head off it slides up off
+## the neck, whichever way the figure leans. Each part -> the part whose post
+## it is on, or {}.
+func clamped(members: Array, gone: Dictionary = {}) -> Dictionary:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	var on: Dictionary = {}
+	var lines: Array = []
+	for i: Variant in members:
+		var post: Array = _worn_on(int(i), mine)
+		if post.is_empty():
+			return {}
+		on[int(i)] = post[0]
+		lines.append(post[1])
+	if not caught(members, gone):
+		return {}
+	for way: Vector3 in lines:
+		if not _stopped_along(members, way, gone) or not _stopped_along(members, -way, gone):
+			return {}
+	return on
+
+
+## The part not in [param mine] whose post item [param i] is drawn about, and
+## the post's line: [part, way], or [].
+func _worn_on(i: int, mine: Dictionary) -> Array:
+	var item: Exact.Item = items[i]
+	if item == null:
+		return []
+	var origin: Vector3 = item.at.origin
+	for j: int in Exact._near(items, i, PackedInt32Array(), TOUCH + Exact.TAU):
+		var other: Exact.Item = items[j]
+		if mine.has(j) or other == null:
+			continue
+		for one: Array in other.world():
+			var k: int = one[0]
+			if other.shape.kind[k] != Exact.AXLE or other.shape.sub[k] != Exact.S_PIN:
+				continue
+			var way: Vector3 = one[2]
+			var d: Vector3 = origin - (one[1] as Vector3)
+			var along: float = d.dot(way)
+			if absf(along) <= other.shape.length[k] + WORN_OFF \
+					and (d - way * along).length() <= WORN_OFF:
+				return [j, way]
+	return []
+
+
+## Whether [param members], slid along [param way] a SLIDE at a time as far
+## as WORN_REACH, run into a part that stays, theirs and [param gone]'s
+## aside: [method caught] slides along the axes, and a figure leaning over
+## has its neck along none of them.
+func _stopped_along(members: Array, way: Vector3, gone: Dictionary) -> bool:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	var others: Dictionary = {}
+	for i: Variant in members:
+		for j: int in Exact._near(items, int(i), PackedInt32Array(), WORN_REACH):
+			var other: Exact.Item = items[j]
+			if not mine.has(j) and not gone.has(j) and other.shape.has_pieces():
+				others[j] = true
+	for step: int in range(1, ceili(WORN_REACH / SLIDE) + 1):
+		for i: Variant in members:
+			var item: Exact.Item = items[int(i)]
+			var moved := Exact.Item.new(item.shape,
+				Transform3D(item.at.basis, item.at.origin + way * SLIDE * float(step)))
+			for j: Variant in others:
+				if not Exact.clash(moved, items[int(j)]).is_empty():
+					return true
+	return false
+
+
 ## The part a piece of [param members] stands on by an anti-stud set on that
 ## part's own stud grid, a whole number of studs from one of its studs, where
 ## the part has no stud: a 1 x 1 cheese slope on a round plate's rim, which a
