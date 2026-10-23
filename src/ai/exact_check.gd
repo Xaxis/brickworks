@@ -753,11 +753,12 @@ func on_studded(members: Array) -> int:
 	var mine: Dictionary = {}
 	for i: Variant in members:
 		mine[int(i)] = true
+	var around: PackedInt32Array = _around(members)
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		if item == null:
 			continue
-		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+		for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
 			var other: Exact.Item = items[j]
 			if mine.has(j) or other == null:
 				continue
