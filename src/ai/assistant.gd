@@ -3674,6 +3674,10 @@ func _adopted() -> Dictionary:
 		# A figure stands on no stud grid, and its parts nest in each other.
 		if scenery.has(brick.id) or _section_of.has(brick.id) or _figure_part(brick.part_id):
 			continue
+		# Square, it is read where it is (below): asked first, as it is most
+		# of a model, the turns cost Orthanc's 9,541 parts 200 ms a reading.
+		if BrickLattice.is_square_to_grid(brick.transform.basis):
+			continue
 		var axis: String = ""
 		var turn: float = NAN
 		for one: String in ["y", "x", "z"]:
@@ -20279,16 +20283,19 @@ func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictiona
 		return "No part '%s' exists; search_parts finds one." % part_id
 	if await _geometry_of(part_id) == null:
 		return "The geometry for %s could not be fetched; ask again." % part_id
-	# The exact shapes of it and of what stands round the room, as the edit's
-	# check will have them: a browser fetches them, and until one comes a
-	# part is judged by its cover.
-	var shaped: Dictionary = {part_id: true}
-	for other: int in builder.lattice.near_bounds(OpenPoints._box_cells(
-			focus.region.grow(STUD * 2.0))):
-		var standing: BrickWorld.Brick = world.get_brick(other)
-		if standing != null:
-			shaped[standing.part_id] = true
-	await _ensure_exact_of(shaped)
+	# In a browser the exact shapes of it and of what stands round the room
+	# are fetched, and until one comes a part is judged by its cover: waited
+	# for, as the edit's check waits. The desktop reads each as it is asked
+	# for, only those a part tried meets: all round the horn first, the first
+	# offer on Orthanc took 135 ms longer.
+	if OS.has_feature("web"):
+		var shaped: Dictionary = {part_id: true}
+		for other: int in builder.lattice.near_bounds(OpenPoints._box_cells(
+				focus.region.grow(STUD * 2.0))):
+			var standing: BrickWorld.Brick = world.get_brick(other)
+			if standing != null:
+				shaped[standing.part_id] = true
+		await _ensure_exact_of(shaped)
 	var most: int = clampi(int(args.get("limit", MOST_FITS)), 1, 30)
 	var fits := PackedStringArray()
 	var tried: int = 0

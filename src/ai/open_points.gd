@@ -304,11 +304,11 @@ func world_of(placement: Assistant.Placement, mesh: Lbm.PartMesh) -> Transform3D
 	return assistant._transform(placement, mesh, section)
 
 
-## One part, asked as the check would ask it: what it runs into and what
-## holds it. {"fits", "hits": brick ids, "held_by": brick ids, "rests_on",
-## "box": its box in LDU}. [param skip] are bricks taken off or moved, and
-## [param also] other parts the same edit puts down, as [key, mesh, world
-## transform, part id] with negative keys.
+## One part, asked as the check would ask it: what it runs into and, when
+## nothing, what holds it. {"fits", "hits": brick ids, "held_by": brick ids,
+## "rests_on", "box": its box in LDU}. [param skip] are bricks taken off or
+## moved, and [param also] other parts the same edit puts down, as [key,
+## mesh, world transform, part id] with negative keys.
 func test(placement: Assistant.Placement, skip: Dictionary = {},
 		also: Array = []) -> Dictionary:
 	var answer: Dictionary = {"fits": false, "hits": [], "held_by": [], "rests_on": 0,
@@ -366,18 +366,6 @@ func test(placement: Assistant.Placement, skip: Dictionary = {},
 		if _clear(me, _standing_item(brick)):
 			continue
 		hits.append(other)
-	var near: PackedInt64Array = builder.lattice.near_bounds(_grown(packed, 4))
-	# And what the covers cannot see, as the check refuses it
-	# (Assistant._exact_collisions): the studs cut out of a cover and pushed
-	# into another's solid, and any overlap a joint forgave above that is not
-	# inside the joint.
-	for other: int in near:
-		if hits.has(other) or skip.has(other) or assistant.scenery.has(other):
-			continue
-		var brick: BrickWorld.Brick = assistant.world.get_brick(other)
-		if brick != null and _refused(me, _standing_item(brick), mesh, at, placement.part,
-				assistant.library.mesh_for(brick.part_id), brick.transform, brick.part_id):
-			hits.append(other)
 	var extra := BrickLattice.new()
 	extra.keeps_columns = false
 	for one: Array in also:
@@ -387,13 +375,30 @@ func test(placement: Assistant.Placement, skip: Dictionary = {},
 		met[key] = true
 		if not _clear(me, int(also_items.get(key, -1))):
 			hits.append(key)
+	answer["hits"] = hits
+	# Refused already: the rest is asked only of a part that fits.
+	if not hits.is_empty():
+		return answer
+	var near: PackedInt64Array = builder.lattice.near_bounds(_grown(packed, 4))
+	# And what the covers cannot see, as the check refuses it
+	# (Assistant._exact_collisions): the studs cut out of a cover and pushed
+	# into another's solid, and any overlap a joint forgave above that is not
+	# inside the joint.
+	for other: int in near:
+		if skip.has(other) or assistant.scenery.has(other):
+			continue
+		var brick: BrickWorld.Brick = assistant.world.get_brick(other)
+		if brick != null and _refused(me, _standing_item(brick), mesh, at, placement.part,
+				assistant.library.mesh_for(brick.part_id), brick.transform, brick.part_id):
+			hits.append(other)
 	for one: Array in also:
 		if not met.has(int(one[0])) and one.size() > 3 and _refused(me,
 				int(also_items.get(int(one[0]), -1)), mesh, at, placement.part, one[1], one[2],
 				str(one[3])):
 			hits.append(int(one[0]))
-	answer["hits"] = hits
-	answer["fits"] = hits.is_empty()
+	if not hits.is_empty():
+		return answer
+	answer["fits"] = true
 	answer["held_by"] = _held_by(mesh, at, packed, skip, also, extra, near, me, also_items)
 	# Resting on something, which the check counts as held and calls loose.
 	var floor_y: int = 0x7FFFFFFF
