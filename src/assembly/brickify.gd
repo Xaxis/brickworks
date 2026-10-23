@@ -1794,6 +1794,83 @@ static func parts_needed(library: PartLibrary = null) -> PackedStringArray:
 	return PackedStringArray(out.keys())
 
 
+## The tables filled on first use, filled here on the main thread rather
+## than by a worker laying a model. A part that had not arrived when one was
+## filled is not in it, and would never be laid: those are filled again now
+## it may be here. A coroutine.
+##
+## A frame given back between each table and each part ([param job]'s
+## slices): filled in one go, on a browser's first Brickify, they held the
+## page for two seconds before anything else happened.
+static func warm(library: PartLibrary, job: Working.Job = null) -> void:
+	for key: Variant in Shapes._parts.keys():
+		if (Shapes._parts[key] as Dictionary).is_empty():
+			Shapes._parts.erase(key)
+	for key: Variant in Shapes._plans.keys():
+		if str(Shapes._plans[key]).is_empty():
+			Shapes._plans.erase(key)
+	if Patterns._wedge_shapes.size() < 4 * Patterns.WEDGES.size():
+		Patterns._wedge_shapes.clear()
+		Patterns._wedge_prints.clear()
+	Shapes._edge_parts.clear()
+	Style.norms()
+	if job != null:
+		await job.next()
+	Patterns.wedge_shapes(library)
+	if job != null:
+		await job.next()
+	Shapes.edge_parts(library, 1)
+	if job != null:
+		await job.next()
+	Shapes.edge_parts(library, 3)
+	for table: Array in [Shapes.Plan.SLOPES, Shapes.Plan.INVERTED]:
+		for entry: Array in table:
+			for id: Variant in [entry[3], entry[4]]:
+				if job != null and job.due():
+					await job.next()
+				if not str(id).is_empty():
+					Shapes.part(library, str(id), table == Shapes.Plan.INVERTED)
+	for id: String in parts_needed(library):
+		Minifig.slot_for(library.parts.get(id))
+	# The element list, read on first asking: here, not on the worker, which
+	# asks it which colours each part is made in (made_colours).
+	library.element_for(ONE_BRICK, STAND_COLOUR)
+
+
+## What is laying a model off the main thread now, from filling the tables
+## for it (warm) until its worker is collected: the Brickify panel, or a
+## design's sculpt (Assistant). Null when nothing is. Set and read on the
+## main thread only.
+##
+## A build reads and fills Shapes' and Patterns' tables as it goes, which
+## are not locked: its own warm clears some of them, and laying a shape
+## writes what it said (Shapes.said, Shapes.last). Two builds at once, or a
+## design's shapes read on the main thread meanwhile, is two threads in one
+## table, which crashed the app before (WorkerTasks.first_here, and a static
+## table assigned on two threads, racefix 2026-10-20). So one lays at a time,
+## and a design is read once none is (Assistant._sculpt_ready).
+static var _laying: Object = null
+
+
+## Wait, a frame at a time, until nothing else is laying a model, then
+## [param by] is: a coroutine. Something freed while it laid holds nothing.
+static func begin_laying(by: Object) -> void:
+	await laid(by)
+	_laying = by
+
+
+static func end_laying(by: Object) -> void:
+	if _laying == by:
+		_laying = null
+
+
+## Wait, a frame at a time, until nothing but [param by] is laying a model:
+## a coroutine, returning at once when nothing is.
+static func laid(by: Object = null) -> void:
+	while _laying != null and _laying != by and is_instance_valid(_laying):
+		await (Engine.get_main_loop() as SceneTree).process_frame
+
+
 ## Measure, lay, stand, check and weigh: {"model", "report", "grid",
 ## "trouble", "ms"}, or {"error", "studs"} (a size that keeps it, or 0).
 ## Every part in [method parts_needed] must already be loaded.

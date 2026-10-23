@@ -11361,14 +11361,12 @@ func _with_figures(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 ## What each came to goes in [param said], why one could not in [param trouble].
 func _with_sculpts(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 	_sculpted_body = false
-	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
-	var sculpts: Array = patterns.filter(func(raw: Variant) -> bool:
-		return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
-			== "sculpt")
+	var sculpts: Array = _sculpts_in(args)
 	if sculpts.is_empty():
 		return args
 	var out: Dictionary = args.duplicate()
-	out["patterns"] = patterns.filter(func(raw: Variant) -> bool: return not sculpts.has(raw))
+	out["patterns"] = (args["patterns"] as Array).filter(func(raw: Variant) -> bool:
+		return not sculpts.has(raw))
 	var bricks: Array = (args.get("bricks", []) as Array).duplicate() \
 		if args.get("bricks") is Array else []
 	if library == null:
@@ -11376,27 +11374,55 @@ func _with_sculpts(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 		return out
 	var feet: Dictionary = Patterns.feet_of(bricks, library)
 	for raw: Dictionary in sculpts:
-		var key: String = JSON.stringify(raw) + JSON.stringify(feet.keys())
-		var laid: Dictionary = _sculpts_laid.get(key, {})
-		if laid.is_empty():
-			if _sculpt_checker == null:
-				_sculpt_checker = Assistant.new()
-			_sculpt_checker.library = library
-			_sculpt_checker.builder = builder
-			_sculpt_checker.world = world
-			var why: Array = []
-			laid = Sculpt.lay(raw, _sculpt_checker, why, feet)
-			if laid.is_empty():
-				trouble.append_array(why)
-				continue
-			if _sculpts_laid.size() >= SCULPTS_KEPT:
-				_sculpts_laid.erase(_sculpts_laid.keys()[0])
-			_sculpts_laid[key] = laid
+		var key: String = _sculpt_key(raw, feet)
+		# Laid here only when nothing laid it first (_sculpt_ready): a probe's read.
+		if not _sculpts_laid.has(key):
+			_keep_sculpt(key, _lay_sculpt(raw, feet, _sculpt_checker_now()))
+		var laid: Dictionary = _sculpts_laid[key]
+		if laid.has("trouble"):
+			trouble.append_array(laid["trouble"])
+			continue
 		bricks.append_array((laid["bricks"] as Array).duplicate(true))
 		said.append(str(laid["said"]) + _sculpt_on_nothing(laid, args.get("bricks", [])))
 		_sculpted_body = true
 	out["bricks"] = bricks
 	return out
+
+
+## The sculpts [param args] says.
+static func _sculpts_in(args: Dictionary) -> Array:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	return patterns.filter(func(raw: Variant) -> bool:
+		return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+			== "sculpt")
+
+
+static func _sculpt_key(raw: Dictionary, feet: Dictionary) -> String:
+	return JSON.stringify(raw) + JSON.stringify(feet.keys())
+
+
+## [param raw] laid by Brickify where the design stands on it ([param feet])
+## and checked by [param checker]: what Sculpt.lay makes of it, or
+## {"trouble": why it could not be}. On a worker (_sculpt_ready) or here.
+static func _lay_sculpt(raw: Dictionary, feet: Dictionary, checker: Assistant) -> Dictionary:
+	var why: Array = []
+	var laid: Dictionary = Sculpt.lay(raw, checker, why, feet)
+	return laid if not laid.is_empty() else {"trouble": why}
+
+
+func _keep_sculpt(key: String, laid: Dictionary) -> void:
+	if _sculpts_laid.size() >= SCULPTS_KEPT:
+		_sculpts_laid.erase(_sculpts_laid.keys()[0])
+	_sculpts_laid[key] = laid
+
+
+func _sculpt_checker_now() -> Assistant:
+	if _sculpt_checker == null:
+		_sculpt_checker = Assistant.new()
+	_sculpt_checker.library = library
+	_sculpt_checker.builder = builder
+	_sculpt_checker.world = world
+	return _sculpt_checker
 
 
 ## What a sculpt raised off the ground with nothing of the design under it is
@@ -11423,7 +11449,8 @@ func _sculpt_on_nothing(laid: Dictionary, design: Variant) -> String:
 
 ## Sculpts laid, by what was said of them and where the design stands on
 ## them: a check_design, the submit after it and each submit again ask for
-## the same body, which Brickify takes a second or two to lay.
+## the same body, which Brickify takes a second or two to lay. One that could
+## not be is kept too, as {"trouble": why}.
 var _sculpts_laid: Dictionary = {}
 const SCULPTS_KEPT := 8
 ## What checks and mends a sculpt as Brickify lays it: an assistant of its
@@ -11431,18 +11458,48 @@ const SCULPTS_KEPT := 8
 var _sculpt_checker: Assistant = null
 
 
-## Every part a sculpt may lay, here before one is laid: on the web a part is
-## fetched, and Brickify reads only what is here.
+## Each sculpt [param args] says that is not laid yet, laid now on a worker,
+## so the read after this ([method _read_model]) finds it laid: laid in the
+## read, on the main thread, the first of each held the window 0.3 to 0.7 s
+## on the desktop (the bench's potato and fat rabbit) and several times that
+## in a browser. Every part it may lay is here first (on the web a part is
+## fetched, and a worker reads only what is here), and the tables it fills
+## on first use are filled here a slice a frame (Brickify.warm), as the
+## Brickify panel does. Said on the Working bar and to the design's log
+## meanwhile. A coroutine.
+##
+## And any design is read only once no model is being laid off the main
+## thread (Brickify.laid): reading one lays its shapes, whose tables a
+## build fills as it goes.
 func _sculpt_ready(args: Dictionary) -> void:
-	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
-	if library == null or not patterns.any(func(raw: Variant) -> bool:
-			return raw is Dictionary and str((raw as Dictionary).get("pattern", "")) \
-				.to_lower() == "sculpt"):
-		return
-	var wanted := Model.new()
-	for id: String in Brickify.parts_needed(library):
-		wanted.placements.append(Placement.from_dict({"part": id}))
-	await _ensure_parts(wanted)
+	var sculpts: Array = _sculpts_in(args)
+	if library != null and not sculpts.is_empty():
+		var wanted := Model.new()
+		for id: String in Brickify.parts_needed(library):
+			wanted.placements.append(Placement.from_dict({"part": id}))
+		await _ensure_parts(wanted)
+		# Where the design stands on them, as the read will see it.
+		var bricks: Variant = _with_figures(_with_shells(args, [], []), [], []).get("bricks")
+		var feet: Dictionary = Patterns.feet_of(bricks if bricks is Array else [], library)
+		var unlaid: Array = sculpts.filter(func(raw: Dictionary) -> bool:
+			return not _sculpts_laid.has(_sculpt_key(raw, feet)))
+		if not unlaid.is_empty():
+			var count: String = "a sculpt" if unlaid.size() == 1 else "%d sculpts" % unlaid.size()
+			progress.emit("laying " + count)
+			var job: Working.Job = Working.begin("Laying %s…" % count)
+			await Brickify.begin_laying(self)
+			await Brickify.warm(library, job)
+			var checker: Assistant = _sculpt_checker_now()
+			for raw: Dictionary in unlaid:
+				# Its own copies: the worker reads them while this frame goes on.
+				var own: Dictionary = raw.duplicate(true)
+				var standing: Dictionary = feet.duplicate(true)
+				var laid: Dictionary = await WorkerTasks.awaited(func() -> Variant:
+					return _lay_sculpt(own, standing, checker), "lay a sculpt", library)
+				_keep_sculpt(_sculpt_key(raw, feet), laid)
+			Brickify.end_laying(self)
+			job.end()
+	await Brickify.laid()
 
 
 ## The joint a shell's panels hang on, as [Shells] wants it: a clip on a
