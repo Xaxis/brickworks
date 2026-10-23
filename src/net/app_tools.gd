@@ -2593,7 +2593,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 	var bar: ModelBar = app.get("_bar")
 	# Every saved model, whatever is on the baseplate.
 	if str(input.get("format", "")) == "all_models":
-		var all: String = exports.all_models()
+		var all: String = await exports.all_models()
 		return all.left(1).to_upper() + all.substr(1) + "." if not all.is_empty() \
 			else "The person has no saved models yet."
 	if world.brick_count() - store.scenery.size() <= 0:
@@ -2611,9 +2611,9 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				return "A picture needs something to draw with, and this app is running without a window."
 			said = await exports.take_picture()
 		"bricklink":
-			said = exports.shop_list("bricklink")
+			said = await exports.shop_list("bricklink")
 		"rebrickable":
-			said = exports.shop_list("rebrickable")
+			said = await exports.shop_list("rebrickable")
 		"instructions":
 			if DisplayServer.get_name() == "headless":
 				return "The booklet's pictures need something to draw with, and this app is running without a window."

@@ -391,7 +391,8 @@ func attend(name: String, work: Callable) -> void:
 	# worked-out steps (AuthorSteps.ensure).
 	if name.begins_with("step_") and world != null:
 		slow = slow and not AuthorSteps.any(world, store.scenery)
-	Working.attend(name, doing(name), work, name in IN_THE_PRESS, slow, size)
+	var asks: bool = name in ASKS_WHERE and SaveTo.asks()
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks, slow, size)
 
 
 ## How much a command has to do: the selection, for one that changes the
@@ -429,6 +430,13 @@ func doing(name: String) -> String:
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
 	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit", "new_window"]
+
+## The commands that on the desktop ask where their file goes (SaveTo)
+## before any slow work: run at once like those above, never said first,
+## so no "Exporting…" bar sits under the dialog while the person chooses.
+## The shop lists are counted before they ask, and are said first as ever.
+const ASKS_WHERE: Array[String] = ["save_as", "export_ldraw", "export_io", "export_picture",
+	"export_all", "instructions"]
 
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
@@ -672,21 +680,23 @@ func _define() -> void:
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
-		func() -> void: await (app.get("_exports") as Exports).studio_io(), something)
+		func() -> void: await (app.get("_exports") as Exports).studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
 	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
 		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
-		func() -> void: await (app.get("_exports") as Exports).take_picture(), something)
+		func() -> void: await (app.get("_exports") as Exports).take_picture(true), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
-		func() -> void: (app.get("_exports") as Exports).shop_list("bricklink"), something)
+		func() -> void: await (app.get("_exports") as Exports).shop_list("bricklink", {}, true),
+		something)
 	_add("export_all", "All my models (.zip)", 0,
-		func() -> void: (app.get("_exports") as Exports).all_models(),
+		func() -> void: await (app.get("_exports") as Exports).all_models(true),
 		func() -> bool: return ModelStore.any_saved(),
 		"Every model saved here, as LDraw files in one .zip: a copy of your own")
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
-		func() -> void: (app.get("_exports") as Exports).shop_list("rebrickable"), something)
+		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
+		something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/pose_panel.gd.
@@ -1270,6 +1280,13 @@ func _fill_history(menu: PopupMenu) -> void:
 
 
 func _ask_save_as() -> void:
+	# The desktop's is the platform's Save dialog, and a file where it says.
+	if not OS.has_feature("web"):
+		var path: String = await SaveTo.ask(ModelStore._safe_name(bar.model_name())
+			+ bar.ldraw_extension(), "", "Save as")
+		if not path.is_empty():
+			await bar.save_to_file(path)
+		return
 	_save_as_name.text = bar.model_name()
 	_save_as.popup_centered()
 	_save_as_name.grab_focus()

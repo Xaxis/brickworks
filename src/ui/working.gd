@@ -199,6 +199,10 @@ static var _depth: int = 0
 static var _costs_read: bool = false
 static var _begun: int = 0
 static var _frame_end: _FrameEnd = null
+## Save dialogs up now (SaveTo), and shown so far: a command waiting on one
+## is waiting on the person, so it is neither said as working nor timed.
+static var asking: int = 0
+static var asked: int = 0
 
 
 ## Run command [param name] now, or said first when it is known to be slow.
@@ -221,6 +225,7 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 		said = begin(doing)
 		await said.shown()
 	var begun_before: int = _begun
+	var asks_before: int = asked
 	var from: int = Time.get_ticks_usec()
 	# Only what it does before its first await is inside it: a command
 	# pressed while this one waits on a frame is a command of its own.
@@ -235,8 +240,9 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 			await tree.process_frame
 			if going.finished:
 				break
-		# Unless it began a job of its own: that says what it does.
-		if not going.finished and not _has_job_since(begun_before):
+		# Unless it began a job of its own: that says what it does. Or it
+		# is asking where to save: then the person is the one working.
+		if not going.finished and not _has_job_since(begun_before) and asking == 0:
 			said = begin(doing)
 	if not going.finished:
 		await going.ended
@@ -244,7 +250,9 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 	# whatever it set going.
 	if _frame_end != null and is_instance_valid(_frame_end):
 		await _frame_end.ended
-	_remember(name, parts, (Time.get_ticks_usec() - from) / 1000.0)
+	# A command that asked where to save took the person's time, not its own.
+	if asked == asks_before and asking == 0:
+		_remember(name, parts, (Time.get_ticks_usec() - from) / 1000.0)
 	if said != null:
 		said.end()
 

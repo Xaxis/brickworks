@@ -147,9 +147,10 @@ func refusal(format: String, list: Array = []) -> String:
 	return ""
 
 
-## Write the model as [param format], named [param title]. A coroutine: it
-## gives the frame back between parts.
-func write(format: String, title: String) -> Made:
+## Write the model as [param format], named [param title]; its files named
+## [param base] and the format's extension, or after the title when it is
+## empty. A coroutine: it gives the frame back between parts.
+func write(format: String, title: String, named: String = "") -> Made:
 	var made := Made.new()
 	var list: Array = bricks()
 	made.refused = refusal(format, list)
@@ -158,7 +159,7 @@ func write(format: String, title: String) -> Made:
 	_pace = FramePace.new()
 	if job != null:
 		job.count(0, list.size())
-	var base: String = _file_base(title)
+	var base: String = named if not named.is_empty() else _file_base(title)
 	match format:
 		"glb", "gltf":
 			var built: Dictionary = await _gltf(list, title, made)
