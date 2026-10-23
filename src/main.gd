@@ -98,6 +98,9 @@ var _copying: String = ""
 ## the link has and what each changed (api/share.js), which is what keeps a
 ## builder's place (BuildSteps.changed_since).
 var _viewing_version: int = 0
+## The step a link asked to be opened at (?step=<n>, as --step=<n>: a
+## comment's step on the model's page), 0 for none: Build it, at that page.
+var _viewing_step: int = 0
 var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
@@ -1327,6 +1330,12 @@ func _ready() -> void:
 	# And which version of it, a number or nothing.
 	if _viewing_version == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--v")) != null:
 		_viewing_version = _argument("--v").to_int()
+	# And a step to open it at: taken up once the steps are worked out, as
+	# Build it tapped before then is.
+	if _viewing_step == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--step")) != null:
+		_viewing_step = _argument("--step").to_int()
+	if not _viewing.is_empty() and _viewing_step > 0:
+		_build_wanted = _viewing_step
 	if not _viewing.is_empty():
 		# Before anything reads or writes the visitor's own layout, or a
 		# part the model carries is kept for next time.

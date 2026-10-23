@@ -39,6 +39,26 @@
 //      count goes up; a visitor with no account and the account under 13
 //      read them and are told why they cannot write.
 //
+// And replies (docs/SOCIAL.md U8, supabase/replies.sql), once the
+// deployment keeps them (the list says replies: true; before, nobody is
+// offered Reply and the API says replies are not open yet). The page puts
+// the newest thread first, each with its writer's avatar and its step as a
+// pill into the viewer at that step; the box is shown to a visitor too, and
+// sending asks them to sign in, keeping what they typed. In 5 the owner
+// replies to the step comment from its Reply: under it, marked Designer;
+// the builder is told in Notifications ("replied to your comment"), with
+// the model's picture, and opening the group reads it; an account under 13
+// is refused a reply in the comment's words. The owner hides the step
+// comment: its reply goes with it, for a visitor and from the builder's
+// notifications; shown again, both are back. In 6 a visitor may report a
+// reply, and the comment the site's owner removes takes its reply with it.
+//
+// Locally the relay holds replies.sql (--hold=replies,
+// tools/web/replies_stand_in.mjs):
+//
+//   node --env-file=.env tools/web/relay_server.mjs 8830 --hold=replies &
+//   node --env-file=.env tools/web/comments_flow.mjs --url=http://127.0.0.1:8830 --site --out=DIR
+//
 // Pictures in --out.
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -72,6 +92,8 @@ const ON_STEP = "On step 4 this part goes under, not over. See https://example.c
 const ON_OLD = "Step 2 is easier with the bricks sorted first.";
 const ON_GONE = "Step 5 of the first version wobbled for me.";
 const FROM_APP = "Built to step 4 on my phone: it holds.";
+const REPLY_OWNER = "Thank you: I will say so on step 4's page.";
+const FROM_VISITOR = "Lovely tower: which bricks are these?";
 const SIGN_IN = "Sign in to add a comment: we email you a code, no password. Anyone can read them.";
 const UNDER_13 = "Comments are for people 13 and over, so you can read them here but not add one. "
   + "Building, your models and sharing by link are all yours.";
@@ -179,16 +201,26 @@ async function heldDigests(owner) {
   return kept;
 }
 
-/// The comments on the model's page, as drawn.
+/// The comments on the model's page, as drawn: each comment and reply in
+/// the page's order (the newest thread first, its replies under it).
 const drawn = (page) => page.evaluate(() => ({
   shown: !document.getElementById("comments")?.hidden,
-  items: [...document.querySelectorAll("#comments .comment")].map((li) => ({
-    id: li.id, body: li.querySelector(".comment-body")?.textContent || "",
-    where: (li.querySelector(".where")?.textContent || "").trim(),
-    links: li.querySelectorAll(".comment-body a").length,
-    acts: [...li.querySelectorAll(".comment-acts button")].map((b) => b.textContent),
-    hidden: li.classList.contains("hidden-one") })),
+  items: [...document.querySelectorAll("#comments .comment")].map((li) => {
+    const main = li.querySelector(":scope > .comment-main");
+    const pill = main?.querySelector(":scope > .comment-head a.pill.step");
+    return {
+      id: li.id, body: main?.querySelector(":scope > .comment-body")?.textContent || "",
+      reply: li.classList.contains("reply"), under: li.parentElement?.closest("li.comment")?.id || "",
+      where: (main?.querySelector(":scope > .comment-head .where")?.textContent || "").trim(),
+      step: pill ? pill.textContent : "", to: pill ? pill.getAttribute("href") : "",
+      avatar: Boolean(li.querySelector(":scope > .avatar")),
+      designer: main?.querySelector(":scope > .comment-head .pill.designer")?.textContent || "",
+      links: main?.querySelectorAll(":scope > .comment-body a").length ?? 0,
+      acts: [...(main?.querySelectorAll(":scope > .comment-acts button") || [])].map((b) => b.textContent),
+      hidden: li.classList.contains("hidden-one") };
+  }),
   form: !document.querySelector("#comments form.comment-new")?.hidden,
+  send: document.querySelector("#comments form.comment-new button[type=submit]")?.textContent || "",
   why: (document.querySelector("#comments .comment-why")?.hidden ? ""
     : document.querySelector("#comments .comment-why .note")?.textContent) || "",
   said: document.querySelector("#comments .comments-said")?.textContent || "",
@@ -241,7 +273,8 @@ try {
   await page.fill("#comment-body", ON_MODEL);
   await page.click("#comments form.comment-new button[type=submit]");
   now = await untilDrawn(page, (d) => d.items.length === 1, "the model comment");
-  check(`a comment on the model says "${now.items[0].where}"`, now.items[0].body === ON_MODEL && now.items[0].where === "on version 2");
+  check(`a comment on the model has its writer's avatar and no step (${now.items[0].step || "none"})`,
+    now.items[0].body === ON_MODEL && now.items[0].avatar && !now.items[0].step && !now.items[0].where);
   const digests = await heldDigests(owner.kept.user_id);
   check(`the owner is told at once, a dry run (${digests.map((d) => d.state).join(", ")}): "${digests[0]?.subject}"`,
     digests.length === 1 && digests[0].state === "dry" && /comment on your model/.test(digests[0].subject || "")
@@ -250,12 +283,15 @@ try {
   await page.fill("#comment-body", ON_STEP);
   await page.click("#comments form.comment-new button[type=submit]");
   now = await untilDrawn(page, (d) => d.items.length === 2, "the step comment");
-  check(`a comment on step 4 says "${now.items[1].where}", its link left as words (${now.items[1].links} links)`,
-    now.items[1].body === ON_STEP && now.items[1].where === "on step 4 of version 2" && now.items[1].links === 0);
+  check(`the newest first: a comment on step 4 wears "${now.items[0].step}", a way into the viewer there (${now.items[0].to}), its link left as words (${now.items[0].links} links)`,
+    now.items[0].body === ON_STEP && now.items[0].step === "Step 4" && now.items[0].to === `/app?view=${id}&step=4`
+    && now.items[0].links === 0 && now.items[1].body === ON_MODEL);
   check("...and the owner is not emailed again the same day",
     (await heldDigests(owner.kept.user_id)).length === 1);
   check(`its own comments offer Remove it, not Report it (${now.items[0].acts.join(", ")})`,
-    now.items[0].acts.includes("Remove it") && !now.items[0].acts.includes("Report it"));
+    now.items.every((c) => c.acts.includes("Remove it") && !c.acts.includes("Report it")));
+  const repliesOn = (await api(`/api/people?op=comments&id=${id}`)).body.replies === true;
+  console.log(`  --    replies ${repliesOn ? "kept here (replies.sql, or --hold=replies)" : "not open on this deployment yet"}`);
   await page.evaluate(() => document.getElementById("comments").scrollIntoView());
   await shot(page, "1_builder_comments.png");
   const old = await api("/api/people?op=comment", { method: "POST", token: writer.access_token,
@@ -294,8 +330,18 @@ try {
   listen(page, "visitor");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
   now = await untilDrawn(page, (d) => d.items.length === 4, "the comments for a visitor");
-  check(`reads all four, with no box, and is told: "${now.why}"`, !now.form && now.why === SIGN_IN);
+  check(`reads all four, the newest first, with the box shown to them too ("${now.send}")`,
+    now.form && now.send === "Sign in and add it" && !now.why && now.items[0].body === ON_GONE);
   check(`...and may report each (${now.items[1].acts.join(", ")})`, now.items.every((c) => c.acts.includes("Report it")));
+  await page.fill("#comment-body", FROM_VISITOR);
+  await page.click("#comments form.comment-new button[type=submit]");
+  const askedIn = await page.waitForSelector("dialog.sign-in[open]", { timeout: 10000 }).then(() => true, () => false);
+  await shot(page, "2a_visitor_signs_in_from_the_box.png");
+  check(`sending asks them to sign in: "${askedIn ? (await page.textContent("dialog.sign-in p")).slice(0, 70) : "no dialog"}"`,
+    askedIn && /add your comment/.test(await page.textContent("dialog.sign-in p")));
+  await page.keyboard.press("Escape");
+  check("...and, not signed in, what they typed is kept", (await page.inputValue("#comment-body")) === FROM_VISITOR);
+  await page.fill("#comment-body", "");
   const anon = await api("/api/people?op=comment", { method: "POST", body: { model: id, version: 2, body: "hi" } });
   check(`the API refuses a comment without an account: ${anon.status}`, anon.status === 401);
   await page.evaluate(() => document.getElementById("comments").scrollIntoView());
@@ -334,13 +380,21 @@ try {
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
   now = await untilDrawn(page, (d) => d.items.length === 4 && d.items.every((c) => c.acts.includes("Hide it")), "the owner's view");
   check(`each comment has Hide it for its builder (${now.items[0].acts.join(", ")})`, true);
+  const stepComment = () => page.locator("#comments .comment-list > li.comment").filter({ hasText: ON_STEP });
+  if (repliesOn) await replies(page, stepComment);
+  else {
+    check(`replies not open: nobody is offered Reply (${now.items[0].acts.join(", ")})`, now.items.every((c) => !c.acts.includes("Reply")));
+    const early = await api("/api/people?op=reply", { method: "POST", token: writer.access_token,
+      body: { id: Number(now.items[0].id.slice(8)), body: "Early" } });
+    check(`...and the API says so: ${early.status}, "${early.body.error}"`, early.status === 503 && /not open/.test(early.body.error || ""));
+  }
   const modelComment = page.locator("#comments .comment").filter({ hasText: ON_MODEL });
   await modelComment.locator("button", { hasText: "Hide it" }).click();
   now = await untilDrawn(page, (d) => d.items.some((c) => c.hidden), "the comment hidden");
   check(`hidden: still there for the owner, marked (${now.items.filter((c) => c.hidden).length})`, now.items.find((c) => c.body === ON_MODEL)?.hidden === true);
   const forVisitor = await api(`/api/people?op=comments&id=${id}`);
-  check(`...and gone for a visitor (${forVisitor.body.comments.length} shown)`, forVisitor.body.comments.length === 3
-    && !forVisitor.body.comments.some((c) => c.body === ON_MODEL));
+  check(`...and gone for a visitor (${forVisitor.body.comments.filter((c) => !c.parent).length} shown)`,
+    forVisitor.body.comments.filter((c) => !c.parent).length === 3 && !forVisitor.body.comments.some((c) => c.body === ON_MODEL));
   await shot(page, "5_owner_hid_one.png");
   await page.locator("#comments .owner-line button", { hasText: "Turn them off" }).click();
   await page.waitForFunction(() => /Comments are off/.test(document.querySelector("#comments .comments-said")?.textContent || ""), null, { timeout: 20000 });
@@ -359,7 +413,11 @@ try {
   page = await reporting.newPage();
   listen(page, "reporter");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
-  await untilDrawn(page, (d) => d.items.length === 3, "the comments to report");
+  now = await untilDrawn(page, (d) => d.items.filter((c) => !c.reply).length === 3, "the comments to report");
+  if (repliesOn) {
+    check(`a visitor may report a reply too (${now.items.find((c) => c.reply)?.acts.join(", ")})`,
+      now.items.some((c) => c.reply) && now.items.filter((c) => c.reply).every((c) => c.acts.includes("Report it")));
+  }
   await page.locator("#comments .comment").filter({ hasText: ON_STEP }).locator("button", { hasText: "Report it" }).click();
   await page.waitForSelector("dialog.report[open]");
   check(`the report dialog is for "${await page.textContent("dialog.report h2")}"`, /Report this comment/.test(await page.textContent("dialog.report h2")));
@@ -398,6 +456,7 @@ try {
   const after = await api(`/api/people?op=comments&id=${id}`);
   check(`...and it is gone from the model's page (${after.body.comments.length} left)`,
     !after.body.comments.some((c) => c.body === ON_STEP));
+  if (repliesOn) check("...and its reply with it", !after.body.comments.some((c) => c.body === REPLY_OWNER));
   const kept = await fetch(`${site}/__held/model_comments`, { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   if (kept) {
     const row = kept.find((c) => c.body === ON_STEP);
@@ -418,6 +477,79 @@ for (const error of errors) console.log(`  page: ${error}`);
 check("no page errors", errors.length === 0);
 console.log(failed ? `${failed} FAILED` : "comments: who may write, where each was said, the owner's say, reports, and the step player");
 process.exit(failed ? 1 : 0);
+
+// --- replies ---------------------------------------------------------------
+
+/// The owner, on the model's page ([page]), replies to the step comment
+/// ([stepComment]); the builder is told; an account under 13 is refused;
+/// the comment hidden takes its reply with it, and shown brings it back.
+async function replies(page, stepComment) {
+  await stepComment().locator(":scope > .comment-main > .comment-acts button", { hasText: "Reply" }).click();
+  const box = stepComment().locator("form.reply-new textarea");
+  await box.fill(REPLY_OWNER);
+  await stepComment().locator("form.reply-new button[type=submit]").click();
+  let now = await untilDrawn(page, (d) => d.items.some((c) => c.body === REPLY_OWNER), "the owner's reply");
+  const theirs = now.items.find((c) => c.body === REPLY_OWNER);
+  const parent = now.items.find((c) => c.body === ON_STEP);
+  check(`the owner's reply is under the step comment, marked "${theirs.designer}", with its avatar, said "${now.said}"`,
+    theirs.reply && theirs.under === parent.id && theirs.designer === "Designer" && theirs.avatar && now.said === "Replied."
+    && !now.items.some((c) => c.reply && c.acts.includes("Reply")));
+  await page.evaluate(() => document.getElementById("comments").scrollIntoView());
+  await shot(page, "5a_owner_replied.png");
+  const listed = await api(`/api/people?op=comments&id=${id}`);
+  const reply = (listed.body.comments || []).find((c) => c.body === REPLY_OWNER);
+  check(`...on its comment's step and version (step ${reply?.step} of version ${reply?.version}), its parent ${reply?.parent}`,
+    reply?.step === 4 && reply?.version === 2 && reply?.parent === Number(parent.id.slice(8)));
+  const kid = await api("/api/people?op=reply", { method: "POST", token: young.access_token,
+    body: { id: Number(parent.id.slice(8)), body: "Me too!" } });
+  check(`an account under 13 is refused a reply in a comment's words: ${kid.status}`, kid.status === 422 && kid.body.error === UNDER_13);
+  const nobody = await api("/api/people?op=reply", { method: "POST", body: { id: Number(parent.id.slice(8)), body: "hi" } });
+  check(`...and nobody signed in: ${nobody.status}`, nobody.status === 401);
+
+  // The builder is told, in Notifications.
+  const told = await api("/api/people?op=notifications", { token: writer.access_token });
+  const group = (told.body.groups || []).find((g) => g.model === id);
+  const row = group?.rows.find((r) => r.kind === "reply");
+  check(`the builder's notifications: "${row ? `${row.who} ${row.did}: ${row.said}` : "nothing"}", under "${group?.name}"`,
+    told.status === 200 && Boolean(row) && row.did === "replied to your comment on step 4" && row.said === REPLY_OWNER
+    && row.link.endsWith(`/m/${id}#comment-${reply?.id}`) && group.name === NAME);
+  const reading = await context({ as: await mintSession(writerEmail), width: 390, height: 844, phone: true });
+  const inbox = await reading.newPage();
+  listen(inbox, "builder's notifications");
+  await inbox.goto(`${site}/notifications`, { waitUntil: "load" });
+  await inbox.waitForFunction(() => document.documentElement.dataset.notifications === "ready", null, { timeout: 30000 });
+  const line = await inbox.evaluate((model) => document.querySelector(`#groups .notice[data-model="${model}"] li[data-kind="reply"]`)
+    ?.innerText.replace(/\s+/g, " ") || "", id);
+  check(`...on the page at 390: "${line.slice(0, 90)}"`, line.includes("replied to your comment") && line.includes(REPLY_OWNER)
+    && !(await sideways(inbox)));
+  await shot(inbox, "5b_builder_notified_390.png");
+  await inbox.click(`#groups .notice[data-model="${id}"] li[data-kind="reply"] a`);
+  await inbox.waitForURL(new RegExp(`/m/${id}#comment-`), { timeout: 30000 });
+  await untilDrawn(inbox, (d) => d.items.some((c) => c.body === REPLY_OWNER), "the reply, opened from the notification");
+  const asked = await inbox.evaluate(() => document.querySelector("#comments .comment.asked")?.querySelector(".comment-body")?.textContent);
+  check(`opened, the model's page marks the reply ("${asked}")`, asked === REPLY_OWNER);
+  await shot(inbox, "5c_reply_opened_390.png");
+  await reading.close();
+  const read = await api("/api/people?op=notifications", { token: writer.access_token });
+  check("...and its group is read", (read.body.groups || []).find((g) => g.model === id)?.unread === false);
+
+  // Hiding the comment hides its reply.
+  await stepComment().locator(":scope > .comment-main > .comment-acts button", { hasText: "Hide it" }).click();
+  now = await untilDrawn(page, (d) => d.items.find((c) => c.body === ON_STEP)?.hidden, "the step comment hidden");
+  check("the owner hides the step comment: still there for them, its reply under it",
+    now.items.some((c) => c.body === REPLY_OWNER && c.under === now.items.find((p) => p.body === ON_STEP).id));
+  const hidden = await api(`/api/people?op=comments&id=${id}`);
+  check(`...gone for a visitor, and its reply with it (${hidden.body.comments.length} shown)`,
+    !hidden.body.comments.some((c) => c.body === ON_STEP || c.body === REPLY_OWNER));
+  const quiet = await api("/api/people?op=notifications", { token: writer.access_token });
+  check("...and from the builder's notifications",
+    !(quiet.body.groups || []).some((g) => g.rows.some((r) => r.kind === "reply" && r.said === REPLY_OWNER)));
+  await stepComment().locator(":scope > .comment-main > .comment-acts button", { hasText: "Show it" }).click();
+  await untilDrawn(page, (d) => d.items.find((c) => c.body === ON_STEP)?.hidden === false, "the step comment shown");
+  const back = await api(`/api/people?op=comments&id=${id}`);
+  check("shown again: the comment and its reply are back",
+    back.body.comments.some((c) => c.body === ON_STEP) && back.body.comments.some((c) => c.body === REPLY_OWNER));
+}
 
 // --- the app ---------------------------------------------------------------
 

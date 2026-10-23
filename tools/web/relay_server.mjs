@@ -72,6 +72,11 @@
 // memory, its functions answered over the project's feed_rows and likes
 // (tools/web/notifications_stand_in.mjs), for tools/web/notifications_flow.mjs
 // and follows_flow.mjs as they will be once the file is applied.
+//
+// --hold=replies holds supabase/replies.sql: which comment each reply
+// answers kept here, the replies written to the project as the comments
+// they are, and the functions the API asks answered over the live ones
+// (tools/web/replies_stand_in.mjs), for tools/web/comments_flow.mjs.
 import http from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
@@ -85,7 +90,7 @@ const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9
 // at /__held/<table>, on this machine only.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
-  "notifications"].includes(name));
+  "notifications", "replies"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
@@ -110,6 +115,9 @@ if (heldChallenges) heldChallenges.hold();
 // Outermost: it reads the project's feed_rows and likes, and asks no other.
 const heldNotifications = holding.includes("notifications") ? await import("./notifications_stand_in.mjs") : null;
 if (heldNotifications) heldNotifications.hold();
+// Outermost of all: it reads the project's comments and notifications.
+const heldReplies = holding.includes("replies") ? await import("./replies_stand_in.mjs") : null;
+if (heldReplies) heldReplies.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
 const routes = new Map();
@@ -191,11 +199,11 @@ function page(pathname) {
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
-    || heldNotifications) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+    || heldNotifications || heldReplies) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   if (asked) {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
-      ?? heldNotifications?.rowsOf(asked[1]) ?? null;
+      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1]) ?? null;
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
   }
