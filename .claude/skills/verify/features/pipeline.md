@@ -2,7 +2,7 @@
 
 The Python side: LDraw in, mesh cache and catalogue out.
 
-<!-- covers: cli:build the meshes, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
+<!-- covers: cli:build the meshes, cli:update the parts, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
 
 ## Sub-features
 
@@ -18,6 +18,20 @@ The Python side: LDraw in, mesh cache and catalogue out.
   number, 197 a BrickLink number). `--colours` writes `colors.json` alone,
   without reading or rewriting the catalogue. See [parts](parts.md) for what each
   colour carries.
+- `update the parts`: `tools/update_parts.py` brings the library and the
+  catalogue up to a month of LDraw without the full build. It fetches the
+  official updates newer than the library's release notes (`models/NoteYYRRCA.txt`)
+  and the Parts Tracker's unofficial zip, reads them as data (members that
+  would land outside `parts/`, `p/` or `models/` are left out), compares each
+  with the library's file by hash, works out every part that reaches a new or
+  changed file through its references (as `ldraw/library.py` resolves them,
+  so an unofficial file an official one shadows changes nothing), and builds
+  those with `build_meshes._convert`. Meshes are added beside the others,
+  entries merged, exact shapes carried, and `refresh_catalogue.refresh` run
+  over the whole. It prints "N new parts: ..." for `CHANGELOG.md` and what to
+  upload. `--dry-run` says all of it and writes nothing. Proves it when
+  `tests/test_update_parts.py` passes, a second run says "0 new or changed",
+  and `tools/probe.sh new_parts_probe N N N` places three of the new parts.
 - `check the gear table`: `assets/ldraw/gears.json`, the tooth counts, kinds and
   holes `src/assembly/mechanism.gd` reads (the catalogue says how many teeth a
   gear has only in its name). `tools/gears.py check` proves four things: every
@@ -71,6 +85,9 @@ tools/fetch_data.sh                   # vendor/ldraw and vendor/rebrickable, fir
 tools/build_meshes.py                 # ~90 min on 20 cores; needs numpy and scipy
 tools/build_meshes.py --only 3001 ... --out DIR   # just those parts
 tools/merge_subbuild.py DIR ids.txt   # merge such a build back, with a safety check
+tools/update_parts.py --dry-run       # what LDraw's newer update and unofficial zips would add
+tools/update_parts.py                 # apply them: the new and changed parts only, minutes
+tools/update_parts.py --zip Z... --ldraw DIR --out DIR   # given zips, on a copy
 tools/gears.py check                  # the gear table against names, holes and sizes, ~3s
 tools/gears.py measure                # spacing in every OMR Technic set (heavy: a minute or two)
 tools/refresh_catalogue.py            # also joins colour availability, ~10s of it
@@ -99,6 +116,25 @@ tools/export.sh linux                 # one of them
   parts with `--only`, include a few hundred parts that did *not* change, and it
   refuses to merge unless every one of those comes out identical.
 
+- **An LDraw update is minutes, not the full build (2026-10-22).** On a copy
+  of the library and catalogue, the unofficial zip of 2026-10-22 (169 new and
+  143 changed files against the 2026-10-05 one) built 205 parts, 81 of them
+  new and 27 rebuilt only for a subpart or primitive they draw (3220 for
+  `s/3220s02.dat`, two files down), in 194 s on 8 jobs at a load of 20. The
+  official 2026-09 update on the library with its 162 new files taken out
+  built 462 parts in 723 s at a load of 22-26: 341 reach a primitive or
+  subpart that came with it. Every one of the 667 is byte for byte what
+  `build_meshes.py --only` makes on the same library, entry and all after a
+  refresh; the library it writes is `diff -r` equal to `fetch_data.sh`'s
+  unzip of the same zips. Against the shipped catalogue 367 of the 462 match
+  exactly, and the other 95 differ only in boxes and sockets: that catalogue's
+  meshes predate the occupancy commits of 2026-10-17 and 18 (9 of 10 of them
+  rebuild exactly with the code before those). A second run builds nothing.
+- **A refresh rewrote every set kind until 2026-10-22.** `rebrickable.kinds`
+  listed each kind's commonest parts in `most_common()` order, and ties came
+  in the order a set of part numbers iterates, which changes with Python's
+  hash seed. Ties now go by number, and a refresh of an unchanged catalogue
+  changes nothing.
 - **`build_meshes.py` rewrites `catalogue.json` from scratch**, which drops the
   colour availability and element fields. Always follow it with
   `tools/refresh_catalogue.py`.

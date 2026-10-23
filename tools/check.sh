@@ -78,7 +78,7 @@ out=(
   technique_sheet   # pictures for a person, no pass or fail
   gallery           # pictures of every shipped model for a person, no pass or fail
   anim_walk         # an audit: every answer printed for a person, no pass or fail
-  new_parts         # needs the numbers of the parts a library update added: tools/update_parts.py prints them, then tools/probe.sh new_parts N N N
+  new_parts         # needs the numbers of the parts a library update added: tools/update_parts.py prints them, then tools/probe.sh new_parts_probe N N N
   grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
   # Failing on the code as it is (2026-10-22), each a unit to fix:
 )

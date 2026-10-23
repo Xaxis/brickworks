@@ -443,8 +443,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     print(f"{len(rebuilt)} rebuilt, {len(through)} of them for a subpart or primitive "
           "they draw: " + ", ".join(rebuilt))
     print("\nTo put them live, from this checkout: tools/storage_parts.py (the "
-          f"{written:,} new meshes), tools/storage_ldraw.py (the LDraw files), "
-          "then a release, which carries the catalogue.")
+          f"{written:,} new meshes, and exact shapes carried), tools/storage_ldraw.py "
+          "(official LDraw files the bucket lacks), then a deploy and a release, "
+          "which carry the catalogue.")
     return 0
 
 

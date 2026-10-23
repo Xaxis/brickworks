@@ -35,7 +35,7 @@ def bare(entry: dict) -> dict:
 
 
 def carry_exact(before: dict[str, str], after: dict[str, str],
-                exact: Path = GENERATED / "exact") -> tuple[int, list[str]]:
+                exact: Path) -> tuple[int, list[str]]:
     """Each part's exact shape under its new mesh hash: (copied, still lacking).
 
     before and after are part id -> mesh hash. An exact shape is BrickNet's,
@@ -140,7 +140,7 @@ def main(argv: list[str]) -> int:
 
     whole_path.write_text(json.dumps(whole, separators=(",", ":")))
     print(f"merged {replaced:,} entries and {copied:,} mesh files")
-    carried, lacking = carry_exact(before, after)
+    carried, lacking = carry_exact(before, after, GENERATED / "exact")
     print(f"carried {carried:,} exact shapes to their parts' new meshes")
     if lacking:
         print(f"WARNING: {len(lacking)} parts lost their exact shapes")

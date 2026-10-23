@@ -281,6 +281,13 @@
     },
     {
       "kind": "cli",
+      "label": "update the parts",
+      "entry": "tools/update_parts.py",
+      "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "cli",
       "label": "pack the web parts",
       "entry": "tools/web_pack.py",
       "reach": "tools/web_pack.py --list",

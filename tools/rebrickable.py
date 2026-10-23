@@ -836,7 +836,10 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
         # missing the 1 x 1 and 2 x 3 plates, both jumpers and both cheese
         # slopes, each in more than half of them.
         common = []
-        for part, count in in_sets.most_common():
+        # Ties by number: most_common() keeps them in the order the sets'
+        # parts were counted, which is a set's, so every refresh shuffled
+        # them and rewrote every kind (2026-10-22).
+        for part, count in sorted(in_sets.items(), key=lambda pc: (-pc[1], pc[0])):
             if part not in ldraw_of or a_prop[ldraw_of[part]]:
                 continue
             common.append([ldraw_of[part], round(100 * count / len(members))])
