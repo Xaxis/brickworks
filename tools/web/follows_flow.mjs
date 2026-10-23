@@ -198,10 +198,12 @@ const accountDrawn = (page) => page.evaluate(() => {
     menu: menu?.querySelector(".count")?.textContent || "" };
 });
 
-/// The feed as drawn: [{kind, text, href, new}].
+/// The feed as drawn: [{kind, text, href, new}]: each post's words, what
+/// it said, and the link its name is (docs/SOCIAL.md U9).
 const feedDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#rows .feed-row")].map((li) => ({
-  kind: li.dataset.kind, text: li.textContent.replace(/\s+/g, " ").trim(),
-  href: li.querySelector("a")?.getAttribute("href") || "", new: li.classList.contains("new") })));
+  kind: li.dataset.kind, text: [li.querySelector(".what"), li.querySelector(":scope > q")].filter(Boolean)
+    .map((one) => one.textContent).join(" ").replace(/\s+/g, " ").trim(),
+  href: li.querySelector("a.go")?.getAttribute("href") || "", new: li.classList.contains("new") })));
 
 let ada = null;
 let bob = null;

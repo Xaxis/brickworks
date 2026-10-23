@@ -324,8 +324,16 @@ const PAGES = [
   { name: "collection", path: `/c/${stand.LIST_ID}` },
   { name: "challenge", path: "/challenge",
     ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
+  // The feed as posts with pictures (docs/SOCIAL.md U9): signed in, what
+  // the people Sam follows made, and designers to follow beside it; signed
+  // out and following nobody, Latest on Brickworks too.
   { name: "feed", path: "/feed",
-    ready: (page, { signedIn }) => (signedIn ? until(page, () => document.querySelectorAll(".feed-row").length > 0) : true) },
+    ready: (page, { signedIn }) => (signedIn
+      ? until(page, () => document.documentElement.dataset.feed === "ready" && document.querySelectorAll(".feed-row").length > 0)
+      : until(page, () => document.documentElement.dataset.feed === "signed-out" && document.querySelectorAll("#latest .model").length > 0)) },
+  { name: "feed-nobody", path: "/feed", nobody: true, signedInOnly: true, local: true,
+    ready: (page) => until(page, () => document.documentElement.dataset.feed === "ready"
+      && document.querySelectorAll("#latest .model").length > 0) },
   // Notifications (docs/SOCIAL.md U7): a group a model, with its picture;
   // and signed in, the account menu open from the avatar (Menu on a phone).
   { name: "notifications", path: "/notifications",
@@ -508,7 +516,7 @@ try {
           const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 },
             colorScheme: theme, extraHTTPHeaders: headers,
             ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
-          await serve(context, { askAge: Boolean(one.askAge), admin: Boolean(one.admin) });
+          await serve(context, { askAge: Boolean(one.askAge), admin: Boolean(one.admin), nobody: Boolean(one.nobody) });
           if (signedIn) {
             const kept = JSON.parse(asProject(JSON.stringify(stand.signedInStorage())));
             await context.addInitScript(([session, access]) => {

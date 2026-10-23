@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow -->
 
 ## Sub-features
 
@@ -857,7 +857,19 @@ plan with Claude as the client.
   (docs/SOCIAL.md U7) what the people you follow made (`follow_page`),
   Notifications a tab beside it (`.tabs`, each with what is new in it);
   before `supabase/notifications.sql` it is the feed of before, your
-  models' news in it too.
+  models' news in it too. Since U9 (docs/SOCIAL.md, 2026-10-22) a feed you
+  look at: `ol#rows` of `li.feed-row[data-kind]` (`.new`), each a post:
+  `.post-head` (the avatar and `a.who` to `/u/`, `.what` the sentence with
+  `a.go` the thing's link, New, a `time`), the `q` said (a version's note,
+  a photo's words), then the gallery's card (`article.model`, `cardHtml`)
+  or `.feed-photo` (the photo, "A build of" its model). `#designers`
+  (`.feed-rail`, `ul#people` of `li.person-row[data-handle]` with Follow,
+  `followButton` given its state) beside it from 1100 px, under it on a
+  phone, leaving out whom you follow and you; `#latest` (Latest on
+  Brickworks: `#latest-models` cards, `#latest-photos` a `.build-grid`)
+  when signed out (`#signed-out`, Sign in), following nobody (`#nobody`)
+  or with nothing in 90 days (`#quiet`). `html[data-feed]` is `ready`,
+  `signed-out`, `not-yet` or `failed`. The 60-word lede is gone.
 - `follow a person and the count on Account` (`web/follow.js`): loaded by
   every page with the site's header, the model page and `/u/`, `/c/`.
   `button[data-follow]` shown once `?op=follows` answers (Follow, Following,
@@ -912,6 +924,22 @@ plan with Claude as the client.
   `failed`.
 - `notifications browser flow` (`tools/web/notifications_flow.mjs`,
   preview check `[notifications]`): below.
+- `latest on Brickworks and designers to follow` (`api/_follows.js`
+  `latest`, `designersFrom`, docs/SOCIAL.md U9): `GET ?op=latest`, anybody,
+  `{models, photos, designers}`: the 8 newest listed models as the
+  gallery's cards (`gallery_models` sort newest), the 6 newest photos of
+  builds of listed models by builders shown in public (`photosWhere`), and
+  8 designers read from Top builds' first 49 cards, each credited one
+  with a public profile (a card's `by`, D1), most first by the sum of
+  their models' score (a build 3, a remix 2, Tested 5), then builds, then
+  the newest: `{handle, name, score, builds, models: [{id, name}]}`.
+  `s-maxage=30` for everybody; `&tests=1` test models too, `no-store`. No
+  SQL of its own. And `GET ?op=feed` gives each row `card` (directory_card
+  read as a column, `shared_models?select=card:directory_card`) and a
+  photo row `photo` `{id, url, width, height}`; its first page
+  `following`, the handles the caller follows (`follow_list_mine`).
+- `feed browser flow` (`tools/web/feed_flow.mjs`, preview check
+  `[feed]`): below.
 - `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
   `src/ui/model_bar.gd` `show_feed_count`. "Account · N" on the bar, "N new
   in your feed since you last opened it." and Open your feed (control
@@ -2507,6 +2535,46 @@ and the group unread again; Mark all read kept across a reload
 (`7_signed_out-*.png`); Sign out from her menu. 38 checks before the file
 and 39 held, all ok, 2026-10-22, about a minute each; the throwaway
 accounts deleted.
+
+A feed you look at (2026-10-22, docs/SOCIAL.md U9). No SQL. The look
+first, on the stand-in (Sam follows Mika and Priya; `feed-nobody` follows
+nobody), then the code against the live project through a local relay
+with nothing held:
+
+```sh
+node tools/web/design_flow.mjs --only=feed,feed-nobody --out=shots/design-feed
+node --env-file=.env tools/web/relay_server.mjs 8840 &
+node --env-file=.env tools/web/feed_flow.mjs --url=http://127.0.0.1:8840 --out=shots/feed
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/feed_flow.mjs --url=<preview> --out=shots/feed
+```
+
+`design_flow` passes 12 pages with no failure: signed in, Priya's photo,
+her rover, her challenge entry and Mika's version and mech as posts with
+the designers Sam does not follow beside them (Robin, Jo; not Sam);
+signed out and following nobody, the ask or "You follow nobody yet",
+Latest's cards and photos and five designers. `feed_flow` proves it when
+it ends "feed: Latest signed out and following nobody, a follow from the
+suggestions, posts with pictures: ok": a throwaway Ada lists a tower, one
+build finished, a photo of her build and its version 2; a visitor at 390
+light and 1280 dark sees the ask, Latest with her tower and every picture
+drawn, Ada among the designers (`1_signed_out-*.png`); Bob, following
+nobody, the same under "You follow nobody yet", not himself suggested,
+the designers beside the feed at 1280 (`2_nobody-390-dark.png`,
+`2_nobody-1280-light.png`); Follow beside Ada makes Following and "What
+they share is in your feed now.", and the API says he follows her
+(`3_followed-390-dark.png`); the next load at 390 and 1280: version,
+photo, model, newest first, each sentence and its link (`/m/<id>/v/2`,
+`#photo-`, `/m/<id>`), the note and the photo's words, her card or her
+photo, every picture drawn, none New (made before he last opened it), no
+Latest, Ada no longer suggested, nothing sideways
+(`4_posts-{390,1280}-{light,dark}.png`); the version's name opens it;
+latest kept by the CDN and never with tests=1, her tower only with it,
+Ada's score 3; the feed itself 401 signed out; no script errors.
+33 checks, all ok, on the live project through a relay with nothing held,
+2026-10-22; the throwaway accounts and their models deleted. The flows
+that read the feed's markup, run with it: `follows_flow --site` (the
+post's `.what`, `q` and `a.go`), `notifications_flow`, `challenges_flow`
+(50 checks; the entry's post at 390 and 1280).
 
 Discovery (2026-10-19): Top builds, this week's pick, small builds, and
 build with what I own. The SQL first, after the live files, in one

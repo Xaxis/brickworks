@@ -11,9 +11,16 @@
 //   POST ?op=follow_choice        (session) {shows}: whether the caller's
 //                                 profile shows whom they follow
 //   GET  ?op=feed&before=ISO      (session) a page of the caller's feed,
-//                                 newest first, each row with its words and
-//                                 its link; the first page counts as the
-//                                 feed opened, which clears its count
+//                                 newest first, each row with its words,
+//                                 its link, its model's card and a photo's
+//                                 picture; the first page counts as the
+//                                 feed opened, which clears its count, and
+//                                 says whom the caller follows
+//   GET  ?op=latest               anybody: the newest models in the gallery,
+//                                 the newest photos of real builds of them,
+//                                 and designers to follow, by Top builds
+//                                 (what the feed shows when it has nothing
+//                                 of its own, docs/SOCIAL.md U9)
 //
 // Since supabase/notifications.sql the feed is what the people you follow
 // made; what happened to your own models is Notifications, and the count
@@ -32,10 +39,15 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
-import { Unacceptable } from "./_directory.js";
+import { SCORE, TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
+import { photosWhere } from "./_builds.js";
+import { shownPublicly } from "./_trust.js";
 
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
+const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
+// Kept briefly by the CDN, as the gallery's list is.
+const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 export const NOT_YET = "Following and the feed are not open on Brickworks yet.";
 
 // What a refusal from follows.sql says, and its status.
@@ -237,7 +249,108 @@ export async function feed(request, response, { origin }) {
   const page = await call("follow_page", asked, () => call("feed_of", asked, () => ({ missing: true })));
   if (page && page.missing) return response.status(200).json({ ready: false, rows: [], more: false, seen_at: null });
   const seen = page?.seen_at ? Date.parse(page.seen_at) : null;
-  const rows = (page?.rows || []).map((row) => ({ ...feedSaid(row, origin), model: row.model,
-    new: seen === null || Date.parse(row.at) > seen }));
-  return response.status(200).json({ ready: true, rows, more: page?.more === true, seen_at: page?.seen_at ?? null });
+  const found = page?.rows || [];
+  // What each row shows (docs/SOCIAL.md U9): its model's card, a photo's
+  // picture; and, with the first page, whom the caller follows, so the page
+  // knows a feed empty for want of anybody followed and leaves them out of
+  // the designers it suggests.
+  const [cards, photos, following] = await Promise.all([
+    cardsOf(found.map((row) => row.model), origin),
+    photosOf(found.filter((row) => row.kind === "photo").map((row) => row.photo), origin),
+    before === null ? followingMine(asker) : null,
+  ]);
+  const rows = found.map((row) => ({ ...feedSaid(row, origin), model: row.model,
+    new: seen === null || Date.parse(row.at) > seen, card: cards.get(row.model) || null,
+    ...(row.kind === "photo" ? { photo: photos.get(row.photo) || null } : {}) }));
+  return response.status(200).json({ ready: true, rows, more: page?.more === true, seen_at: page?.seen_at ?? null,
+    ...(before === null ? { following: following ? following.map((one) => one.handle) : null } : {}) });
+}
+
+/// The cards of the models [ids], as the gallery gives them: id -> card.
+/// directory_card read as a column of shared_models (PostgREST takes a
+/// function of the row as one), so a feed's card is the gallery's to the
+/// letter. Only models still up.
+async function cardsOf(ids, origin) {
+  const wanted = [...new Set(ids.map(String))].filter((id) => ID.test(id));
+  if (!wanted.length) return new Map();
+  const rows = await db(`shared_models?id=in.(${wanted.join(",")})&published=is.true&barred=is.false&select=card:directory_card`);
+  return new Map(rows.filter((row) => row.card && row.card.id).map((row) => [row.card.id, cardOf(origin, row.card)]));
+}
+
+/// The pictures of the photos [ids] a feed has rows of (follow_rows shows
+/// only what may be shown): id -> {id, url, width, height}.
+async function photosOf(ids, origin) {
+  const wanted = [...new Set(ids.map(String))].filter((id) => ID.test(id));
+  if (!wanted.length) return new Map();
+  const rows = await db(`build_photos?id=in.(${wanted.join(",")})&select=id,width,height`);
+  return new Map(rows.map((row) => [row.id, { id: row.id, url: `${origin}/api/people?op=photo_file&id=${row.id}`,
+    width: Number(row.width) || null, height: Number(row.height) || null }]));
+}
+
+// ---------------------------------------------------------------------------
+// Latest on Brickworks: the feed for somebody signed out, following nobody,
+// or followed people who made nothing in 90 days (docs/SOCIAL.md U9, D12).
+
+/// How many of each it shows: models, photos, designers.
+export const LATEST = { models: 8, photos: 6, designers: 8 };
+// How many of Top builds' first models the designers are read from: the
+// list's one page, its most.
+const TOP_READ = 49;
+
+/// Designers to follow, from the cards of Top builds' list: each credited
+/// designer whose profile is shown in public (a card's by, which only such
+/// a one has: D1), most first by what their models earned as Top builds
+/// weighs it (a build finished, a remix, the Tested mark), then by builds,
+/// then the newest listed. Each: {handle, name, score, builds, models:
+/// [{id, name}], their best first}. Pure.
+export function designersFrom(cards, most = LATEST.designers) {
+  const by = new Map();
+  for (const card of cards) {
+    const handle = String(card?.by?.handle || "");
+    if (!HANDLE.test(handle)) continue;
+    const one = by.get(handle) || { handle, name: quoted(card.by.name || handle, 40), score: 0, builds: 0, newest: 0, models: [] };
+    const builds = Number(card.builds) || 0;
+    one.score += builds * SCORE.builds + (Number(card.remixes) || 0) * SCORE.remixes + (card.tested === true ? SCORE.tested : 0);
+    one.builds += builds;
+    one.newest = Math.max(one.newest, Date.parse(card.listed_at || "") || 0);
+    one.models.push({ id: String(card.id), name: quoted(card.name, 80) });
+    by.set(handle, one);
+  }
+  return [...by.values()].sort((a, b) => b.score - a.score || b.builds - a.builds || b.newest - a.newest)
+    .slice(0, most).map(({ newest, ...one }) => one);
+}
+
+/// The gallery's list asked [query]: gallery_models, or directory_models
+/// before supabase/gallery_tabs.sql.
+const listed = (query) => call("gallery_models", { query }, () => db("rpc/directory_models", { method: "POST", body: { query } }));
+
+/// The newest photos of real builds of models in the gallery, of builders
+/// shown in public, at most [most]: as a profile's builds give them.
+async function newestPhotos(origin, tests, most) {
+  const photos = await photosWhere("hidden_at=is.null", shownPublicly, { limit: most * 2 });
+  const ids = [...new Set(photos.map((one) => one.model))].filter((id) => ID.test(String(id)));
+  const models = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&published=is.true&listed=is.true`
+    + "&barred=is.false&select=id,name,test") : [];
+  const names = new Map(models.filter((one) => tests || !one.test).map((one) => [one.id, one.name]));
+  return photos.filter((one) => names.has(one.model)).slice(0, most).map((one) => ({ id: one.id, model: one.model,
+    model_name: quoted(names.get(one.model), 80), words: one.words ? quoted(one.words, 140) : null,
+    width: Number(one.width) || null, height: Number(one.height) || null, at: one.at,
+    by: one.by ? { handle: one.by.handle, name: quoted(one.by.name, 40) } : null,
+    url: `${origin}/api/people?op=photo_file&id=${one.id}`, page: `${origin}/m/${one.model}#photo-${one.id}` }));
+}
+
+/// ?op=latest: {models, photos, designers}, the same for everybody, so
+/// kept by the CDN; asked with tests=1 (a probe), test models too, never
+/// kept.
+export async function latest(request, response, { origin }) {
+  const tests = testsAsked(request.query || {});
+  const flag = tests ? { tests: true } : {};
+  const [newest, top, photos] = await Promise.all([
+    listed({ sort: "newest", size: LATEST.models, skip: 0, ...flag }),
+    listed({ sort: "top", size: TOP_READ, skip: 0, ...flag }),
+    newestPhotos(origin, tests, LATEST.photos),
+  ]);
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
+  return response.status(200).json({ models: (newest || []).slice(0, LATEST.models).map((row) => cardOf(origin, row)),
+    photos, designers: designersFrom((top || []).map((row) => cardOf(origin, row))) });
 }
