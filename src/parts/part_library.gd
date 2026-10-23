@@ -251,6 +251,10 @@ class PartInfo extends RefCounted:
 	func still_made() -> bool:
 		return not colors_recent.is_empty()
 	var keywords: PackedStringArray
+	## The words set inventories name it by that its name does not have
+	## (assets/ldraw/part_names.json): "curved macaroni" on 27507, Tile 4 x 4
+	## Corner Round. Searched as its name is.
+	var also_called: String = ""
 	## Counts by connector kind. The connectors themselves live in the
 	## .lbm beside the geometry and arrive with it; keeping them here took
 	## the catalogue past 25 MB, to answer questions about parts nobody
@@ -614,10 +618,30 @@ func load_catalogue(path: String = "") -> bool:
 		parts[info.id] = info
 		_ordered_ids.append(info.id)
 	_index_prints()
+	_read_names()
+	_search_index = null
 
 	_load_colors()
 	loaded.emit(parts.size())
 	return true
+
+
+## What set inventories call each part, where LDraw's name says otherwise
+## (tools/part_names.py). Without the file a part is searched by its own name.
+const NAMES := "res://assets/ldraw/part_names.json"
+
+
+func _read_names() -> void:
+	if not FileAccess.file_exists(NAMES):
+		return
+	var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(NAMES))
+	if typeof(raw) != TYPE_DICTIONARY:
+		return
+	var words: Dictionary = (raw as Dictionary).get("words", {})
+	for id: Variant in words:
+		var info: PartInfo = parts.get(id)
+		if info != null:
+			info.also_called = str(words[id])
 
 
 func _read_part(entry: Dictionary) -> PartInfo:
@@ -1232,6 +1256,9 @@ func add_custom(info: PartInfo, mesh: Lbm.PartMesh, source: String) -> void:
 		_ordered_ids.append(info.id)
 	parts[info.id] = info
 	custom[info.id] = source
+	_search_lock.lock()
+	_search_index = null
+	_search_lock.unlock()
 	_mesh_cache.erase(info.mesh_hash)
 	_custom_meshes[info.mesh_hash] = mesh
 	custom_added.emit(info.id)
@@ -1522,25 +1549,34 @@ func staples(most: int = 30) -> Array[PartInfo]:
 	return ranked
 
 
-func search(query: String, limit: int = 100) -> Array[PartInfo]:
-	var asked: String = in_ldraw_words(query)
-	var needles: PackedStringArray = asked.split(" ", false)
-	var results: Array[PartInfo] = []
-	if needles.is_empty():
-		return results
+## The parts that answer a builder's query, best first (PartSearch): ranked
+## by how much of it each has, so a word the catalogue does not use lowers
+## a part and never hides it. With [param every_word], only the parts that
+## have every word.
+func search(query: String, limit: int = 100, every_word: bool = false) -> Array[PartInfo]:
+	return _finder().find(in_ldraw_words(query), limit, every_word)
 
-	for id: String in _ordered_ids:
-		var info: PartInfo = parts[id]
-		if not info.is_redirect() and matched(info, needles) != NOT_MATCHED:
-			results.append(info)
 
-	# Ranked against the translated words too, or a query the library
-	# does not use its own words for scores nothing and the order falls
-	# back to whatever the catalogue happened to be in.
-	PartsBin._sort_for(results, asked)
-	if results.size() > limit:
-		results.resize(limit)
-	return results
+## The words of [param query] that no part has, by name, keyword or the
+## words sets name it by.
+func unknown_words(query: String) -> PackedStringArray:
+	return _finder().unknown(in_ldraw_words(query))
+
+
+var _search_index: PartSearch = null
+var _search_lock := Mutex.new()
+
+
+## The word index, made at the first search: under a second over the whole
+## catalogue, once, where every search read all of it (a tenth of a second a
+## search, 2026-10-22). A part made in the app makes it again.
+func _finder() -> PartSearch:
+	_search_lock.lock()
+	if _search_index == null:
+		_search_index = PartSearch.new(parts, _ordered_ids)
+	var index: PartSearch = _search_index
+	_search_lock.unlock()
+	return index
 
 
 ## The part a number actually means today.

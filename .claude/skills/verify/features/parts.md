@@ -46,8 +46,33 @@ geometry in front of them.
   since its families are plain moulds. The figure builder's search
   (`MinifigDialog._matches`) reads the same index. `print_search_probe`
   holds 26 print queries to parts read off the catalogue, 22 plain queries to
-  the part they led with before and the two rows an index of names alone
-  gives, and the tool results.
+  the part they led with before (and, in the bin, the two rows an index of
+  names alone gives; in search_parts no print ahead of a plain part), and the
+  tool results.
+  `search_parts` (and `find_parts_like`'s prints) no longer needs every word:
+  `PartLibrary.search` asks `PartSearch` (`src/parts/part_search.gd`), a word
+  index made at the first search (about a second, once). A part is ranked by
+  how many of the asked words it has, then plain before prints, stickers and
+  Duplo, then how many in the builder's own words, then what the words are
+  worth (rarer words more), and parts within a tenth of each other in
+  `_sort_for`'s order. Words match whole, with plurals ("4" is not in
+  "6410654"); a size is the name's first "N x M", either way round, with its
+  height if asked; colour words are dropped unless a print is asked; a part
+  number asked leads; two words a name runs together are found ("air tank",
+  Airtank). A builder's shape words (`SAME_SHAPE`: macaroni, quarter, dome
+  bottom, spiky, bowl, half circle) are also read as the catalogue's, and the
+  words set inventories name each plain part by are read beside its name
+  (`PartInfo.also_called`, from `assets/ldraw/part_names.json`, made by
+  `tools/part_names.py` from Rebrickable's parts.csv through the one join in
+  `tools/rebrickable.py`; 553 is "Brick Round 2 x 2 Dome Top" there). Asked by
+  shape, a print has no more of the words than its plain part. A word no part
+  has is said ("No part's name has ..."). The bin still filters to parts with
+  every word. `shaping_search_probe` holds 42 builders' queries (the m147
+  round's seven failed searches, earlier sessions', and set inventories'
+  shape words) to the parts an expert wants in the first five, the round's
+  searches that found their part to the same first answer, and the batch's
+  time; run it as is and with `-- --parts-only=` BrickNet's list. Base
+  (`dec645b3`) met 17 of 42 and none of the seven, at 108 ms a search.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. A part dragged out of it is in hand
   from the start of the drag, its ghost follows the pointer over the model and
