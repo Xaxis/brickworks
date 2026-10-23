@@ -3405,7 +3405,8 @@ steering rack, or whatever carries a wheel and turns on an upright line:
 a knuckle of beams and blocks on its pin, a toy's front axle on a
 turntable; taken by its steering wheel where it has one, else its arm or
 its biggest part; not by a steering wheel spinning alone on its stud, which
-turns nothing with it, as the kart's does on its round brick), turntable,
+turns nothing with it, as the kart's did on its round brick until
+kartlink196 joined it to the rack, section 38), turntable,
 boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
 reaching 3 studs or more from its line, no tyre in it, and lifting: its
 line is not upright), doors (a door,
@@ -6105,3 +6106,68 @@ hole turns its partner 1:1. All 40 checks pass; on 8c0cc501 34 of 42 fail.
   half and says how far to slide the first.
 - **A gear on an axle held rigidly** (in an axle hole of the frame) cannot
   be grabbed at all, so it cannot be slid either.
+
+## 38. The kart's steering wheel turns its front wheels (kartlink196)
+
+The shipped kart (`models/kart.ldr`) steered by its knuckles alone: blocks
+on frictionless pins, a beam 9 between their arms, and a steering wheel on
+a round brick's stud on a 45 degree column joined to none of it (kart195).
+It now has the linkage a Technic kart has, routed as 8841-1's chassis
+routes its column (a column at an angle, a universal joint, a horizontal
+axle to a pinion over the rack on the track rod):
+
+- the track rod is a gear rack 1 x 8 with holes (6630), its end holes on
+  the knuckles' arms by 3/4 pins, 20 LDU in front of each kingpin;
+- a 16 tooth pinion over it, on an axle 3 in the middle hole of the front
+  cross member, which now stands on its edge on the rails' ends, held by a
+  pin with a hole across it (15100) in each rail; the rack's pitch line
+  puts a 16's middle 22 LDU over the rack's foot and the beam's hole stands
+  20 over it, 2 LDU deep, inside the spread real sets stand theirs at
+  (section 12) and read as a mesh;
+- a universal joint of two 3L ends and their centre, bent 45 degrees, the
+  column's fork square to the bend as built, so near the middle the pinion
+  turns cos 45 of the wheel's turn (tan of its turn = cos of the bend times
+  tan of the wheel's);
+- the column, an axle 5, turns in another 15100's hole, in the top of a
+  T beam pinned to a 3 x 3 block's side holes on the middle cross member;
+  a bush under that bearing and the wheel's hub on top of it keep the
+  column from sliding; the steering wheel is the Technic small one (2819),
+  on the axle, since 16091 takes only a stud.
+
+The front cross member moved to the rails' ends, and the wheel sits 40 LDU
+further back and at the same height. The middle cross member's right pin
+is a 3L one through the block too, so the seat stays the biggest body and
+what stays: with the bracket's parts it had one fewer, the middle cross
+member stayed instead, the seat hung on its long pins as a boom and the
+rear blocks were read as steering. The kart's steps are its own now
+(`0 !BRICKWORKS AUTHORED_STEPS`): worked out, the column's bearing came
+after the column through it, hidden. The planner itself (instructions_probe)
+pushes the column into the universal joint's end already on its cross,
+which the probe counted as a pin before its hole; for a universal joint's
+end the axle is the pin now.
+
+Measured (`tools/probe.sh kart_steer_probe`, a drag round the wheel's rim):
+the steering wheel +31.5 degrees turns the pinion 23.43 (23.41 by its
+bend), the rack 8.34 LDU (8.33 by 8 LDU a tooth) and both front wheels
+24.64 (24.64 by the arm); -17.7 turns them 13.1 the other way. That is
+1.28 to 1.38 turns of the wheel to one of the front wheels. The card names
+the steering wheel first (`steering: [wheel, knuckle, knuckle]`), and
+mcp_walk's session turns it over MCP.
+
+The range: turned from the wheel, the room is tested, and a front wheel
+meets its side rail's end at about 32 degrees of the steering wheel one way
+and 35 the other (the front wheels about 25 and 28). Taken by a knuckle, as
+the card did before, the kart turned 90 degrees each way with no room test
+at all, its wheels through the rails; that was never a range a built kart
+has. mcp_walk turns 15 and 10 degrees where it turned 20 and 15.
+
+A drag round a circle on the page, as the probe drew it for the knuckle,
+went along the column's line on its first move, seen from above the front,
+and the grab took it for a slide, which moved nothing ("0 studs along"):
+the column's axle reads a slide in its bearing (`Bodies.line_room` 2 LDU
+up to the bush, 46.8 down, the wheel's hub on the bearing not read), and
+the universal joint's cross holds it to none. The probe drags round the
+rim instead, as a hand does. A grab that offers a slide its loop cannot
+make (`Grab.can_slide` reads `Linkage.slide_col`, not whether the loop
+lets it go) is left.
+

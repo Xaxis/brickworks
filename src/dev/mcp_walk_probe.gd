@@ -14,10 +14,13 @@
 ##    part it names for the steering turns both front wheels and not the
 ##    back ones; pose_model, with nothing to pose, points to it. The session
 ##    had tried five parts one at a time.
-##  - "Steer the wheels left and back": turned 20° and then 15°, the answer
-##    says the steering stands 35° from where it was built, as the knuckle's
-##    turn against the beam it hangs on measures it, and back by 35° it
-##    stands where it was built. It said "now 15°", that call's turn.
+##  - "Steer the wheels left and back": turned 15° and then 10°, the answer
+##    says the steering stands 25° from where it was built, as the steering
+##    wheel's turn on its column measures it, and back by 25° it stands
+##    where it was built. It said "now 10°", that call's turn. Since
+##    kartlink196 the card names the kart's steering wheel, which drives a
+##    rack by a pinion, and its front wheels meet the frame at about 32° of
+##    it, so the turns are smaller than the 20° and 15° they were.
 ##  - "Show me it turning": animate_model takes the steering by its part, as
 ##    move_part names it, in degrees from where it was built: the frames it
 ##    would draw turn both front wheels as move_part does, nothing on the
@@ -51,6 +54,9 @@ var _socket: CommandSocket
 var _world: BrickWorld
 var _store: ModelStore
 var _next: int = 0
+## The kart's wheels by id, front and back (_find_wheels).
+var _front: Array = []
+var _back: Array = []
 
 
 ## The gallery's answer for one model, played here.
@@ -123,25 +129,23 @@ func _what_moves() -> void:
 			steering = int(line.trim_prefix("  steering: #").get_slice(" ", 0))
 			break
 	_check("it names a part to take hold of for the steering: #%d" % steering, steering != 0)
-	# The kart's front wheels (#10, #11) and its back ones (#8, #9), by where
-	# the file puts them.
-	said = await _say("move_part", {"part": "#%d" % steering, "degrees": 20})
+	_find_wheels()
+	said = await _say("move_part", {"part": "#%d" % steering, "degrees": 15})
 	var after: Dictionary = _poses()
 	_check("the part it names steers both front wheels, not the back ones",
-		_turned(before, after, 10) and _turned(before, after, 11)
-		and not _turned(before, after, 8) and not _turned(before, after, 9))
+		_steers(before, after))
 	print("    " + said.get_slice("\n", 1))
-	said = await _say("move_part", {"part": "#%d" % steering, "degrees": 15})
+	said = await _say("move_part", {"part": "#%d" % steering, "degrees": 10})
 	var stands: String = said.get_slice("Its joint now stands ", 1).get_slice(";", 0)
-	_check("turned 20° and then 15°, it says the turn and where it stands: %s, %s"
+	_check("turned 15° and then 10°, it says the turn and where it stands: %s, %s"
 		% [said.get_slice("\n", 1).get_slice(" (", 0), stands],
-		said.contains("Moved ") and said.contains(": turned 15° (asked 15°)")
-		and stands == "35° from where it was built")
+		said.contains("Moved ") and said.contains(": turned 10° (asked 10°)")
+		and stands == "25° from where it was built")
 	said = await _say("move_part", {"part": "#%d" % steering})
 	_check("asked with nothing else, it says where it stands: %s" % said.get_slice("Its joint stands ", 1)
-		.get_slice(".", 0), said.contains("Its joint stands 35° from where it was built."))
-	said = await _say("move_part", {"part": "#%d" % steering, "degrees": -35})
-	_check("...and back by 35°, where it was built: %s" % said.get_slice("Its joint now stands ", 1)
+		.get_slice(".", 0), said.contains("Its joint stands 25° from where it was built."))
+	said = await _say("move_part", {"part": "#%d" % steering, "degrees": -25})
+	_check("...and back by 25°, where it was built: %s" % said.get_slice("Its joint now stands ", 1)
 		.get_slice(";", 0), said.contains("Its joint now stands where it was built")
 		and _same(_poses(), before))
 	await _animate(steering, before)
@@ -161,8 +165,7 @@ func _animate(steering: int, before: Dictionary) -> void:
 	var at: Dictionary = before.duplicate()
 	at.merge(placed, true)
 	_check("its frame at 25° turns both front wheels, not the back ones (%d parts)" % placed.size(),
-		_turned(before, at, 10) and _turned(before, at, 11) and not _turned(before, at, 8)
-		and not _turned(before, at, 9))
+		_steers(before, at))
 	_check("...and moves nothing on the baseplate", _same(_poses(), before))
 	var keys: Array = [{"t": 0, "angles": {"#%d" % steering: 0}}, {"t": 1, "angles": {"#%d" % steering: 25}}]
 	var said: String = await _say("animate_model", {"keys": keys, "render": false})
@@ -179,7 +182,7 @@ func _animate(steering: int, before: Dictionary) -> void:
 	var turned_while_playing: bool = false
 	for _n: int in 240:
 		await process_frame
-		if _turned(before, _poses(), 10) and _turned(before, _poses(), 11):
+		if _turned(before, _poses(), _front[0]) and _turned(before, _poses(), _front[1]):
 			turned_while_playing = true
 		if not pose.is_playing():
 			break
@@ -198,6 +201,26 @@ func _animate(steering: int, before: Dictionary) -> void:
 	said = await _say("animate_model", {"keys": [{"t": 0, "angles": {"#999": 10}}]})
 	_check("a part that is not there: %s" % said.left(70), said.begins_with("No joint #999: no part"))
 	_check("...and nothing on the baseplate moved", _same(_poses(), before))
+
+
+## The kart's front wheels and its back ones, by where they stand: the front
+## two furthest along x.
+func _find_wheels() -> void:
+	var wheels: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "105162":
+			wheels.append(brick)
+	wheels.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.x > b.transform.origin.x)
+	_front = wheels.slice(0, 2).map(func(b: BrickWorld.Brick) -> int: return b.id)
+	_back = wheels.slice(2, 4).map(func(b: BrickWorld.Brick) -> int: return b.id)
+
+
+## Whether both front wheels stand turned in [param b] from [param a], and
+## neither back one.
+func _steers(a: Dictionary, b: Dictionary) -> bool:
+	return _front.size() == 2 and _back.size() == 2 and _turned(a, b, _front[0]) \
+		and _turned(a, b, _front[1]) and not _turned(a, b, _back[0]) and not _turned(a, b, _back[1])
 
 
 ## Whether brick [param id] stands turned in [param b] from where it stood in [param a].
