@@ -228,7 +228,12 @@ fixing what it got wrong.
   part was the hard thing, not the room.
   So the selection now says where a part can go, and a refusal says where
   instead (`OpenPoints`, `src/ai/open_points.gd`, the check's own rules
-  asked of one part against the live lattice). `selection` gives each part
+  asked of one part against the live lattice, and its exact shapes where
+  both parts have one, by the same rule for what a joint forgives,
+  `ExactCheck.forgiven`: by covers alone, whose studs are cut away, it
+  offered a 49668 on Orthanc's horn with its tooth over the wing's next
+  stud, which the edit refused, and 166 of 649 offers on four shipped models
+  were refused so). `selection` gives each part
   as edit_model reads it, `section='turned 25 2'` and that section's own
   studs and plates for a part laid turned (it gave world corners, which no
   edit could write back), names the sections, and counts the open points by
@@ -2140,7 +2145,7 @@ godot --headless --path . --script src/dev/selection_probe.gd   # a change asked
 godot --headless --path . --script src/dev/design_undo_probe.gd # each request in the panel is one undo step, Claude's; the person's own stay theirs
 godot --headless --path . --script src/dev/sketch_probe.gd      # Sketch first: three sketches, one sent back, the second chosen and designed from; over MCP too
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/sketch_probe.gd -- --pictures=DIR   # ...and each one's picture
-godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, copies that follow
+godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, every offer on it, a kart and a car taken, copies that follow
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/selection_fit_probe.gd   # ...and the numbered picture: shots/selection_fit/points.png
 godot --headless --path . --script src/dev/scale_probe.gd       # a model too big to list in one go
 godot --headless --path . --script src/dev/scanner_probe.gd     # half-written arguments yield whole bricks

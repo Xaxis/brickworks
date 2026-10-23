@@ -16,16 +16,27 @@
 //
 // For every press it measures, against the press's own time in the page:
 //
-//   heard    how long before the bar was drawn: the end of the engine frame
-//            it was first drawn in. A build without the bar is read by its
-//            page state instead (the status line, the timeline's buttons, the
-//            parts), polled every quarter second, and marked ~;
-//   own      the longest of the app's own work from the press to the end,
-//            which is what is judged: an engine frame less the time it
-//            spent inside WebGL calls, or one of its input handlers, timed
-//            in the page (a press can be handled outside a frame, and
-//            Timeline's eight seconds were), or its slowest frame by its own
-//            clock (brickworksState.slow, labelled with what it was doing);
+//   said     the app's own work from the press until it put the bar up:
+//            every engine frame and input handler from the press to the one
+//            the bar was begun in (its first drawing less the app's own
+//            ms from begin to drawn, which it tells the page), that one
+//            whole. What is judged: a long act that says nothing until it is
+//            done does its work there, and one that begins the bar and works
+//            on in the same frame does it in the frame counted whole;
+//   heard    how long before the bar was drawn, by the page's clock: the end
+//            of the engine frame it was first drawn in. A build without the
+//            bar is read by its page state instead (the status line, the
+//            timeline's buttons, the parts), polled every quarter second,
+//            and marked ~. Said, not judged: on SwiftShader that frame waits
+//            on the software drawing of the frames before it, or is held for
+//            a picture read back (GpuFence), as long as the box's load says;
+//   own      the longest of the app's own work in one go from the press to
+//            the end, which is what is judged: an engine frame or one of its
+//            input handlers (a press can be handled outside a frame, and
+//            Timeline's eight seconds were). After it, said and not judged,
+//            the same by the page's clock less the time inside WebGL calls,
+//            or the app's slowest frame by its own clock (brickworksState.slow,
+//            labelled with what it was doing), whichever is longer;
 //   frame    the longest engine frame callback, timed in the page as
 //            render_open_check.mjs does: the app's work and its WebGL calls,
 //            which on SwiftShader wait for the software drawing of the frame
@@ -44,10 +55,26 @@
 // without saving, with --only=new. The commands after Timeline are the ones
 // src/dev/command_probe.gd found holding the window longest.
 //
-// Fails when a press that is meant to show the bar (EXPECT) does not within
-// --heard ms (150), when one of the four that must stay alive (ALIVE) has
-// work of its own over --budget ms (250) in one go, or when the bar is still
-// up at the end.
+// The app's own work is its time on a CPU (traceFrom): on a busy box the
+// page's clock counts the time the page waited for a core, and on
+// SwiftShader for the drawing, which is the box and not the app.
+//
+// Fails when a press that is meant to show the bar (EXPECT) does not, or
+// does over --said ms (150) of its own work first; when one of the four that
+// must stay alive (ALIVE) has over --budget ms (300) of its own in one go;
+// or when the bar is still up at the end. The bars, from m145's and m146's
+// builds three times each at load 26 to 52 (2026-10-22): the most a press
+// did before its bar was 82 ms (Export; another Export's 27 ms before
+// it was 1,195 ms heard by the page), and the longest frame of the four
+// was 241 ms (Timeline finding its joints; 184 to 241 across the six).
+// A CPU's time stops growing with the load once every core's two threads
+// are busy, at 24, so a loaded box is the worst case and an idle one is
+// faster. 150 is the app's own line for a command it must say before it
+// runs (Working.SAY_FIRST_MS); 300 is a quarter over the worst frame seen,
+// still under the 355 and 377 ms frames this check found in Brick Art
+// (2026-10-15), though over the 273 ms Timeline slice it found then. Every
+// one of the six failed the old bars by the page's clock (heard up to
+// 3,667 ms, a frame of 315 ms).
 // --report-only prints the table and passes, for a build from before.
 // --model=FILE --parts=N opens FILE, of N parts, where Orthanc is opened:
 // --only=timeline with a model whose author's steps are taken out times the
@@ -65,8 +92,8 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const out = args.out || "shots/progress";
 mkdirSync(out, { recursive: true });
-const budget = Number(args.budget || 250);
-const heardBudget = Number(args.heard || 150);
+const budget = Number(args.budget || 300);
+const saidBudget = Number(args.said || 150);
 const reportOnly = Boolean(args["report-only"]);
 const only = args.only ? String(args.only).split(",") : null;
 const wanted = (name) => !only || only.includes(name);
@@ -276,6 +303,65 @@ function helpers(page) {
   return { controls, state, now, where, quiet };
 }
 
+// Each engine frame and input handler of a press, timed on a CPU: Chrome's
+// trace says how long each callback ran on the page's thread (tdur), which
+// the box's load does not stretch. The page's clock counts the time the
+// thread waited for a core too, and on SwiftShader for the drawing: m145's
+// Timeline had a 263 ms frame of its own by it at load 29, and m146's booklet
+// 378 ms at load 38. The page stamps the trace with its own clock, and its
+// entries are found there by when they began.
+async function traceFrom(page) {
+  try {
+    await browser.startTracing(page, { categories: ["devtools.timeline"] });
+  } catch {
+    return null;
+  }
+  return page.evaluate(() => {
+    const t = performance.now();
+    console.timeStamp(`progress ${t}`);
+    return t;
+  });
+}
+// A function of a page entry ([t0, ms, kind, gl]) to its CPU ms, or null
+// where the trace has none.
+async function traceTo(mark) {
+  const none = Object.assign(() => null, { traced: false });
+  if (mark === null) return none;
+  let events;
+  try {
+    events = JSON.parse((await browser.stopTracing()).toString()).traceEvents;
+  } catch {
+    return none;
+  }
+  const stamp = events.find((e) => e.name === "TimeStamp" && e.args?.data?.message === `progress ${mark}`);
+  if (!stamp) return none;
+  const offset = stamp.ts - mark * 1000;
+  const calls = { frame: [], input: [] };
+  for (const e of events) {
+    if (e.ph !== "X" || e.pid !== stamp.pid || e.tid !== stamp.tid || e.tdur === undefined) continue;
+    if (e.name === "FireAnimationFrame") calls.frame.push(e);
+    else if (e.name === "FunctionCall") calls.input.push(e);
+  }
+  for (const list of Object.values(calls)) list.sort((a, b) => a.ts - b.ts);
+  // The innermost callback of its kind that it began in: the last to begin
+  // before it, of those it lies inside. One begun after it is a call of its.
+  return Object.assign(([t0, , kind]) => {
+    const list = calls[kind === "frame" ? "frame" : "input"];
+    const at = t0 * 1000 + offset;
+    let lo = 0;
+    let hi = list.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (list[mid].ts <= at + 100) lo = mid + 1;
+      else hi = mid;
+    }
+    for (let n = lo - 1; n >= 0 && n >= lo - 50; n--) {
+      if (at <= list[n].ts + list[n].dur) return list[n].tdur / 1000;
+    }
+    return null;
+  }, { traced: true });
+}
+
 // One press, measured. [press] does it; [done] says, from the page's state,
 // when it has finished; [heard] says, for a build without the bar, whether
 // anything on screen has answered yet.
@@ -285,6 +371,7 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
   const { state, now, quiet } = helpers(page);
   const from = await now();
   const engineFrom = (await state()).now || 0;
+  const mark = await traceFrom(page);
   await press();
   const t0 = Date.now();
   let heardAt = null;
@@ -307,34 +394,55 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
     const shown = work.find((e) => e.shown);
     // The frame the bar was first drawn in ends after it said so.
     const frameOf = shown ? p.frames.find(([t0, d]) => t0 <= shown.at && shown.at <= t0 + d + 1) : null;
+    // The frame or handler the bar was begun in: its first drawing less
+    // the app's own ms from then. One begun outside them (a file's bytes
+    // handed over by a callback) has the ones before it.
+    const setAt = shown ? Math.max(press, shown.at - (shown.ms || 0)) : -1;
+    const setIn = shown ? p.frames.find(([t0, d]) => t0 - 1 <= setAt && setAt <= t0 + d + 1) : null;
+    const until = setIn ? setIn[0] : setAt;
+    const before = p.frames.filter(([t0]) => t0 >= press && t0 <= until);
     return { press, shownAt: shown ? (frameOf ? frameOf[0] + frameOf[1] : shown.at) : null,
+      setAt: shown ? setAt - press : null, before,
       what: shown ? shown.what : "", frames: p.frames.filter(([t0]) => t0 >= press),
       stalls: p.stalls.filter(([t0]) => t0 >= press - 20) };
   }, [from]);
+  const cpu = await traceTo(mark);
   const end = doneAt ?? (await now());
   const during = facts.frames.filter(([t0]) => t0 <= end);
   const longest = Math.max(0, ...during.map(([, d]) => d));
   // How long the page went without running a timer, drawing included.
   const stall = Math.max(0, ...facts.stalls.filter(([t0]) => t0 <= end).map(([, d]) => d));
   const s = await state();
-  // The app's own work: its slowest frame by its own clock (scripts, from
-  // a frame's start to its drawing: Main._watch_own_frames), or the longest
-  // of its input handlers, which run outside a frame. What is judged: the
-  // engine's whole frame also holds the WebGL calls, which on SwiftShader
-  // wait for software drawing whenever the box is busy.
+  // Its slowest frames by its own clock (scripts, from a frame's start to
+  // its drawing: Main._watch_own_frames), said for what they were doing.
   const slow = (s.slow || []).filter(([t]) => t >= engineFrom).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const own = Math.max(0, ...slow.map(([, ms]) => ms), ...during.map(([, d, , g]) => d - (g || 0)));
+  // The app's own work, which is what is judged: each engine frame and
+  // input handler's time on a CPU, or where there is no trace, its time
+  // less the time it spent inside WebGL calls.
+  const work = (entry) => cpu(entry) ?? entry[1] - (entry[3] || 0);
+  const own = Math.max(0, ...during.map(work));
+  const ownWall = Math.max(0, ...slow.map(([, ms]) => ms), ...during.map(([, d, , g]) => d - (g || 0)));
   const gone = Object.keys(s.working || {}).length === 0;
   const heardMs = facts.shownAt !== null ? facts.shownAt - facts.press
     : (heardAt !== null ? heardAt - facts.press : null);
   const row = {
     name, heard: heardMs === null ? null : Math.round(heardMs), byBar: facts.shownAt !== null,
-    own: Math.round(own), longest: Math.round(longest), stall: Math.round(stall), total: doneAt === null ? null : Math.round(doneAt - facts.press),
+    ownBefore: facts.shownAt === null ? null : Math.round(facts.before.reduce((a, e) => a + work(e), 0)),
+    ownBeforeWall: facts.shownAt === null ? null : Math.round(facts.before.reduce((a, [, d, , g]) => a + d - g, 0)),
+    setAt: facts.setAt === null ? null : Math.round(facts.setAt), traced: cpu.traced,
+    untraced: during.filter((e) => cpu(e) === null).length,
+    before: facts.before.map((e) => [Math.round(e[0] - facts.press), Math.round(e[1]), e[2], Math.round(e[3]),
+      cpu(e) === null ? null : Math.round(cpu(e))]),
+    // Its longest four, as [ms from the press, ms, kind, ms in WebGL, ms on a CPU].
+    longestFour: [...during].sort((a, b) => b[1] - a[1]).slice(0, 4).map((e) => [Math.round(e[0] - facts.press),
+      Math.round(e[1]), e[2], Math.round(e[3]), cpu(e) === null ? null : Math.round(cpu(e))]),
+    own: Math.round(own), ownWall: Math.round(ownWall), longest: Math.round(longest), stall: Math.round(stall), total: doneAt === null ? null : Math.round(doneAt - facts.press),
     gone, frames: during.length, what: facts.what, said: String(last.said || "").slice(0, 80),
   };
   const problems = [];
   if (doneAt === null) problems.push("never finished");
-  if (EXPECT.has(name) && !(row.byBar && row.heard <= heardBudget)) problems.push(`heard after ${row.heard} ms`);
+  if (EXPECT.has(name) && !row.byBar) problems.push("no bar");
+  else if (EXPECT.has(name) && row.ownBefore > saidBudget) problems.push(`${row.ownBefore} ms of its own before the bar`);
   if (ALIVE.has(name) && row.own > budget) problems.push(`a ${row.own} ms frame of its own`);
   if (!gone) problems.push("the bar is still up");
   row.problems = problems;
@@ -342,7 +450,9 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
   const failed = problems.length > 0 && !reportOnly;
   if (failed) failures += 1;
   const heardText = row.heard === null ? "never" : `${row.byBar ? "" : "~"}${row.heard} ms`;
-  console.log(`${failed ? "FAIL" : "ok  "}  ${name.padEnd(10)} heard ${heardText.padStart(9)}  own ${String(row.own).padStart(6)} ms`
+  const saidText = row.ownBefore === null ? "—" : `${row.ownBefore} ms`;
+  console.log(`${failed ? "FAIL" : "ok  "}  ${name.padEnd(10)} said ${saidText.padStart(7)}  heard ${heardText.padStart(9)}`
+    + `  own ${String(row.own).padStart(6)} ms (${row.ownWall} wall)`
     + `  frame ${String(row.longest).padStart(6)} ms  page held ${String(row.stall).padStart(6)} ms`
     + `  total ${row.total === null ? "    —" : String(row.total).padStart(7) + " ms"}  ${gone ? "gone" : "STILL UP"}`
     + `  ${row.what || row.said}${problems.length ? "  [" + problems.join("; ") + "]" : ""}`);
@@ -638,7 +748,7 @@ try {
   failures += 1;
 } finally {
   for (const e of errors.slice(0, 8)) console.log(`  error: ${e}`);
-  writeFileSync(`${out}/progress.json`, JSON.stringify({ url, budget, heardBudget, rows }, null, 1));
+  writeFileSync(`${out}/progress.json`, JSON.stringify({ url, budget, saidBudget, rows }, null, 1));
   await browser.close().catch(() => {});
   if (server) server.kill();
 }

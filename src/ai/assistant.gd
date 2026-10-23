@@ -3674,6 +3674,10 @@ func _adopted() -> Dictionary:
 		# A figure stands on no stud grid, and its parts nest in each other.
 		if scenery.has(brick.id) or _section_of.has(brick.id) or _figure_part(brick.part_id):
 			continue
+		# Square, it is read where it is (below): asked first, as it is most
+		# of a model, the turns cost Orthanc's 9,541 parts 200 ms a reading.
+		if BrickLattice.is_square_to_grid(brick.transform.basis):
+			continue
 		var axis: String = ""
 		var turn: float = NAN
 		for one: String in ["y", "x", "z"]:
@@ -12979,12 +12983,10 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 		# until the pattern lays its corners another way.
 		if _in_a_prism(model, a) or _in_a_prism(model, b):
 			continue
-		# A wheel drawn spun on its axle: in plastic the axle turns with it.
-		if exact.turned_on_axle(a, b):
-			continue
-		# A ball in its socket, a bar in its clip, a pin in its hole: real sets
+		# A wheel drawn spun on its axle: in plastic the axle turns with it. A
+		# ball in its socket, a bar in its clip, a pin in its hole: real sets
 		# meet so by their shapes, and are built (ExactCheck.at_joint).
-		if not exact.at_joint(a, b).is_empty():
+		if exact.forgiven(a, b):
 			continue
 		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
 		if not mine:
@@ -16504,14 +16506,20 @@ func _ready_to_check(model: Model) -> void:
 ## geometry, and waited for as the geometry is (a part BrickNet does not have
 ## is answered at once, with none).
 func _ensure_exact(model: Model) -> void:
-	if library == null:
-		return
 	# Asked once a part, not once a placement: in the browser a shape not yet
 	# fetched is looked for in the pack each time it is asked for, and the
 	# Falcon's 4,242 placements of 20 parts held the page for 8 seconds.
 	var parts: Dictionary = {}
 	for placement: Placement in model.placements:
 		parts[placement.part] = true
+	await _ensure_exact_of(parts)
+
+
+## The exact shapes of these parts (part id -> true), to hand as [method
+## _ensure_exact] has them.
+func _ensure_exact_of(parts: Dictionary) -> void:
+	if library == null:
+		return
 	var wanted: Dictionary = {}
 	for part_id: String in parts:
 		if not Exact.known(library, part_id):
@@ -20276,6 +20284,19 @@ func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictiona
 		return "No part '%s' exists; search_parts finds one." % part_id
 	if await _geometry_of(part_id) == null:
 		return "The geometry for %s could not be fetched; ask again." % part_id
+	# In a browser the exact shapes of it and of what stands round the room
+	# are fetched, and until one comes a part is judged by its cover: waited
+	# for, as the edit's check waits. The desktop reads each as it is asked
+	# for, only those a part tried meets: all round the horn first, the first
+	# offer on Orthanc took 135 ms longer.
+	if OS.has_feature("web"):
+		var shaped: Dictionary = {part_id: true}
+		for other: int in builder.lattice.near_bounds(OpenPoints._box_cells(
+				focus.region.grow(STUD * 2.0))):
+			var standing: BrickWorld.Brick = world.get_brick(other)
+			if standing != null:
+				shaped[standing.part_id] = true
+		await _ensure_exact_of(shaped)
 	var most: int = clampi(int(args.get("limit", MOST_FITS)), 1, 30)
 	var fits := PackedStringArray()
 	var tried: int = 0
@@ -20293,7 +20314,7 @@ func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictiona
 			together)
 		if found.is_empty():
 			continue
-		together.append([-(together.size() + 1), mesh, read.world_of(found[0], mesh)])
+		together.append([-(together.size() + 1), mesh, read.world_of(found[0], mesh), part_id])
 		var turns := PackedStringArray()
 		for other: Placement in found:
 			if other.rot != found[0].rot and not turns.has(str(other.rot)):
@@ -20400,8 +20421,9 @@ func _what_would_fit(edited: Model, verdict: Dictionary) -> String:
 				var one: Placement = edited.placements[n]
 				var mesh: Lbm.PartMesh = library.mesh_for(one.part)
 				if mesh != null and (one.id == 0 or one.moved):
-					also.append([-(n + 1), mesh, _transform(one, mesh, edited.section_for(one)), n])
-		var others: Array = also.filter(func(one: Array) -> bool: return int(one[3]) != index)
+					also.append([-(n + 1), mesh, _transform(one, mesh, edited.section_for(one)),
+						one.part])
+		var others: Array = also.filter(func(one: Array) -> bool: return int(one[0]) != -(index + 1))
 		var what: String = "the %s at x=%s y=%s z=%s face=%s%s" % [placement.part,
 			Placement._num(placement.x), Placement._num(placement.y), Placement._num(placement.z),
 			placement.face, "" if placement.section.is_empty()
@@ -20435,7 +20457,7 @@ func _what_would_fit(edited: Model, verdict: Dictionary) -> String:
 		var seated: String = ""
 		for point: OpenPoints.Point in free.slice(0, 40):
 			var found: Array[Placement] = read.fits_on(point, placement.part, placement.color,
-				skip, focus.region, 1)
+				skip, focus.region, 1, others)
 			if not found.is_empty():
 				seated = "the nearest free %s it fits on is on #%d (%s), %s studs away: %s" % [
 					OpenPoints.NAMES[point.kind], point.brick, point.part,
