@@ -2219,8 +2219,10 @@ slide up off their rims and still come away. `exact_probe` has both: a 2 x 2
 tile resting on a tile, walled in and roofed over, says nothing and counts one
 piece; without the roof it comes away. The orrery is now one piece by the
 check and ten by BrickNet's graph, as the bench's flower on its round brick is
-one and two (a tube between four studs, `_tube_grips`). Its check took 66 s
-on this box with the test and without it.
+one and two (a tube between four studs, `_tube_grips`). Each pair of parts is
+asked only at the steps where their boxes meet, the nearest first: on a whole
+new design the test costs Orthanc 3.1 s of 51 s and the orrery 0.6 s
+(`exact_cost_probe`, its `caught`), and an edit asks it of nothing.
 
 ## 2026-10-23, later: the side measured, but not said last
 

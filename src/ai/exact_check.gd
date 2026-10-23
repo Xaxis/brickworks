@@ -54,7 +54,7 @@ var ground: float = 0.0
 var _asked: Dictionary = {}
 ## What asking it has cost this check, in microseconds: the report says it.
 var spent_usec: int = 0
-## And by what it was spent on: seat, collisions, pieces, cleared, place.
+## And by what it was spent on: seat, collisions, pieces, cleared, place, caught.
 var spent_on: Dictionary = {}
 
 
@@ -470,6 +470,13 @@ func comes_away(members: Array, gone: Dictionary = {}) -> bool:
 ## stack lifting off, so picked up, the model keeps them. A tile resting on a
 ## plate slides up off it, and comes away.
 func caught(members: Array, gone: Dictionary = {}) -> bool:
+	var began: int = Time.get_ticks_usec()
+	var held: bool = _caught(members, gone)
+	_spent("caught", began)
+	return held
+
+
+func _caught(members: Array, gone: Dictionary) -> bool:
 	var mine: Dictionary = {}
 	var lo := Vector3.INF
 	var hi := -Vector3.INF
@@ -480,25 +487,23 @@ func caught(members: Array, gone: Dictionary = {}) -> bool:
 		mine[int(i)] = true
 		lo = lo.min(item.lo)
 		hi = hi.max(item.hi)
-	for way: Vector3 in [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT,
-			Vector3.FORWARD, Vector3.BACK]:
-		# What it could run into that way: whatever is across the path of its
-		# box, and how far it goes before its box is past all of them.
-		var path_lo: Vector3 = lo.min(lo + way * INF_REACH)
-		var path_hi: Vector3 = hi.max(hi + way * INF_REACH)
-		var across: Array[int] = []
-		var far: float = 0.0
-		for j: int in items.size():
-			var other: Exact.Item = items[j]
-			if other == null or mine.has(j) or gone.has(j) or not other.shape.has_pieces() \
-					or other.lo.x > path_hi.x or path_lo.x > other.hi.x \
-					or other.lo.y > path_hi.y or path_lo.y > other.hi.y \
-					or other.lo.z > path_hi.z or path_lo.z > other.hi.z:
+	# What it could run into each way: whatever is across the path of its box.
+	var across: Array = [[], [], [], [], [], []]
+	for j: int in items.size():
+		var other: Exact.Item = items[j]
+		if other == null or mine.has(j) or gone.has(j) or not other.shape.has_pieces():
+			continue
+		var over := Vector3i(int(other.lo.x <= hi.x and lo.x <= other.hi.x),
+			int(other.lo.y <= hi.y and lo.y <= other.hi.y), int(other.lo.z <= hi.z and lo.z <= other.hi.z))
+		for axis: int in 3:
+			if over[(axis + 1) % 3] == 0 or over[(axis + 2) % 3] == 0:
 				continue
-			across.append(j)
-			var axis: int = way.abs().max_axis_index()
-			far = maxf(far, other.hi[axis] - lo[axis] if way[axis] > 0.0 else hi[axis] - other.lo[axis])
-		if not _runs_into(members, across, way, far):
+			if other.hi[axis] > lo[axis]:
+				(across[axis * 2] as Array).append(j)
+			if other.lo[axis] < hi[axis]:
+				(across[axis * 2 + 1] as Array).append(j)
+	for way: int in 6:
+		if not _runs_into(members, across[way], way / 2, 1.0 if way % 2 == 0 else -1.0):
 			return false
 	return true
 
@@ -506,28 +511,35 @@ func caught(members: Array, gone: Dictionary = {}) -> bool:
 ## How far a piece is slid at a time when asked whether it is caught, in LDU:
 ## under a plate's height, so no plate is passed through between two steps.
 const SLIDE := 4.0
-## How far a caught piece's path is looked along for what it runs into, in
-## LDU: past any model built here.
-const INF_REACH := 100000.0
 
 
-## Whether [param members], slid along [param way] a step at a time up to
-## [param far], meet any of [param across] by more than TAU.
-func _runs_into(members: Array, across: Array[int], way: Vector3, far: float) -> bool:
-	var t: float = SLIDE
-	while t <= far + SLIDE:
-		for i: Variant in members:
-			var item: Exact.Item = items[int(i)]
-			var moved := Exact.Item.new(item.shape, Transform3D(item.at.basis, item.at.origin + way * t))
-			for j: int in across:
-				var other: Exact.Item = items[j]
-				if other.lo.x > moved.hi.x or moved.lo.x > other.hi.x \
-						or other.lo.y > moved.hi.y or moved.lo.y > other.hi.y \
-						or other.lo.z > moved.hi.z or moved.lo.z > other.hi.z:
-					continue
-				if not Exact.clash(moved, other).is_empty():
-					return true
-		t += SLIDE
+## Whether [param members], slid along [param axis] the way [param sign] says
+## a step at a time, meet any of [param across] by more than TAU: each pair
+## asked only at the steps where their boxes overlap, the pair whose boxes
+## meet soonest first, as it is the likeliest to stop it.
+func _runs_into(members: Array, across: Array, axis: int, sign: float) -> bool:
+	var pairs: Array = []    ## [first step, last step, member, other]
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		for j: Variant in across:
+			var other: Exact.Item = items[int(j)]
+			if other.lo[(axis + 1) % 3] > item.hi[(axis + 1) % 3] or item.lo[(axis + 1) % 3] > other.hi[(axis + 1) % 3] \
+					or other.lo[(axis + 2) % 3] > item.hi[(axis + 2) % 3] or item.lo[(axis + 2) % 3] > other.hi[(axis + 2) % 3]:
+				continue
+			var from: float = other.lo[axis] - item.hi[axis] if sign > 0.0 else item.lo[axis] - other.hi[axis]
+			var to: float = other.hi[axis] - item.lo[axis] if sign > 0.0 else item.hi[axis] - other.lo[axis]
+			if to >= SLIDE:
+				pairs.append([maxi(1, ceili(from / SLIDE)), floori(to / SLIDE), int(i), int(j)])
+	pairs.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var way := Vector3.ZERO
+	way[axis] = sign
+	for pair: Array in pairs:
+		var item: Exact.Item = items[pair[2]]
+		for step: int in range(pair[0], pair[1] + 1):
+			var moved := Exact.Item.new(item.shape,
+				Transform3D(item.at.basis, item.at.origin + way * SLIDE * float(step)))
+			if not Exact.clash(moved, items[pair[3]]).is_empty():
+				return true
 	return false
 
 
