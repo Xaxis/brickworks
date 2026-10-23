@@ -13061,9 +13061,10 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 ## this design (unless only the ground holds: _ground_only), or a part with no
 ## exact shape that this check holds. One fault a piece. A piece that stands
 ## where it is but comes away in the hand (ExactCheck.comes_away) goes into
-## [param apart], said: a fault when it sits on its anti-studs where no stud
-## is, advice when it lies so on purpose. The connections found go into
-## [param joins], [a, b] each, for the count of pieces (_pieces_of).
+## [param apart], said: a fault when its anti-stud stands where another part
+## has no stud (ExactCheck.on_missing_stud), advice when it was set down so.
+## The connections found go into [param joins], [a, b] each, for the count of
+## pieces (_pieces_of).
 func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
 		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
@@ -14887,9 +14888,9 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 	for index: int in cells_of:
 		joined[index] = []
 	# The connections of the parts' exact shapes, BrickNet's as verify.py
-	# counts pieces by: a round brick laid on its side on a stud the 2 LDU
-	# cells miss (the figfaces balloon dog's legs, three pieces by the
-	# lattice and one by verify.py).
+	# counts pieces by: a dome's stud in the middle tube of a round brick laid
+	# on its side, which the 2 LDU cells miss (the figfaces arm's balloon dog,
+	# three pieces by the lattice and one by verify.py).
 	for pair: Array in joins:
 		if joined.has(pair[0]) and joined.has(pair[1]):
 			joined[pair[0]].append(pair[1])
