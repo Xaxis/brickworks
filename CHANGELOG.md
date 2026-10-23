@@ -19,6 +19,12 @@ whole cycle.
 - A part a design stands on a shape's top, a coupling's plate among them, is
   held by the studs the shape keeps for it, not set down on tiles.
 - The house's and the lighthouse's leaves and lamp sit on their studs.
+- The kart's steering column is held by an angle connector, and the castle's
+  moat and lawns by a course of plates beneath them, so neither drops a part
+  when picked up.
+- A part nothing joins but that cannot slide out any way, as the orrery's
+  planet rings are caught round its core, is no longer said to come away in
+  the hand.
 
 ## [0.6.0] - 2026-10-23
 

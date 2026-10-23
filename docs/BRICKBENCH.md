@@ -2202,6 +2202,28 @@ cost is unchanged (`exact_cost_probe`, three runs each on d05a59be and now, on
 the 9,541-part Orthanc): an edit 4.4-5.0 s and 4.2-5.6 s, of it the exact check
 82-102 ms and 74-85 ms; a whole new design 31.9-39.0 s and 27.5-35.2 s.
 
+**A piece caught where it is (models175).** Under that rule the shipped
+orrery came apart in nine pieces: each planet's ring of four 24121 quarters,
+with its arm and planet, rests on the ring below and is joined to nothing,
+since no connector BrickNet knows turns a ring round a core. In the hand they
+stay. `src/dev/pieces_agree.gd`'s rings were slid out each of the six ways
+along the axes, 4 LDU at a time, by their exact shapes: across, each meets a
+gear in mesh with its teeth within 4 LDU (46372, 32270); up and down, the axles
+of the rings above and below within 4; the top ring, the frame's 15-long beam
+(32278) after 24. So a piece that stands, that no stud holds, and that cannot
+slide out any way before it runs into a part that stays is held
+(`ExactCheck.caught`). The parts that catch it must stay themselves: what
+falls, and what comes away, catches nothing, asked again until nothing more
+comes away, so a tile on a loose tile goes with it. The rabbit's cheese slopes
+slide up off their rims and still come away. `exact_probe` has both: a 2 x 2
+tile resting on a tile, walled in and roofed over, says nothing and counts one
+piece; without the roof it comes away. The orrery is now one piece by the
+check and ten by BrickNet's graph, as the bench's flower on its round brick is
+one and two (a tube between four studs, `_tube_grips`). Each pair of parts is
+asked only at the steps where their boxes meet, the nearest first: on a whole
+new design the test costs Orthanc 3.1 s of 51 s and the orrery 0.6 s
+(`exact_cost_probe`, its `caught`), and an edit asks it of nothing.
+
 ## 2026-10-23, later: the side measured, but not said last
 
 taper165 (`6185b456`) is outline161 with one lever: `git log 71f25bdb..6185b456
