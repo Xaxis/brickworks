@@ -288,6 +288,65 @@ function helpers(page) {
   return { controls, state, now, where, quiet };
 }
 
+// Each engine frame and input handler of a press, timed on a CPU: Chrome's
+// trace says how long each callback ran on the page's thread (tdur), which
+// the box's load does not stretch. The page's clock counts the time the
+// thread waited for a core too, and on SwiftShader for the drawing: m145's
+// Timeline had a 263 ms frame of its own by it at load 29, and m146's booklet
+// 378 ms at load 38. The page stamps the trace with its own clock, and its
+// entries are found there by when they began.
+async function traceFrom(page) {
+  try {
+    await browser.startTracing(page, { categories: ["devtools.timeline"] });
+  } catch {
+    return null;
+  }
+  return page.evaluate(() => {
+    const t = performance.now();
+    console.timeStamp(`progress ${t}`);
+    return t;
+  });
+}
+// A function of a page entry ([t0, ms, kind, gl]) to its CPU ms, or null
+// where the trace has none.
+async function traceTo(mark) {
+  const none = Object.assign(() => null, { traced: false });
+  if (mark === null) return none;
+  let events;
+  try {
+    events = JSON.parse((await browser.stopTracing()).toString()).traceEvents;
+  } catch {
+    return none;
+  }
+  const stamp = events.find((e) => e.name === "TimeStamp" && e.args?.data?.message === `progress ${mark}`);
+  if (!stamp) return none;
+  const offset = stamp.ts - mark * 1000;
+  const calls = { frame: [], input: [] };
+  for (const e of events) {
+    if (e.ph !== "X" || e.pid !== stamp.pid || e.tid !== stamp.tid || e.tdur === undefined) continue;
+    if (e.name === "FireAnimationFrame") calls.frame.push(e);
+    else if (e.name === "FunctionCall") calls.input.push(e);
+  }
+  for (const list of Object.values(calls)) list.sort((a, b) => a.ts - b.ts);
+  // The innermost callback of its kind that it began in: the last to begin
+  // before it, of those it lies inside. One begun after it is a call of its.
+  return Object.assign(([t0, , kind]) => {
+    const list = calls[kind === "frame" ? "frame" : "input"];
+    const at = t0 * 1000 + offset;
+    let lo = 0;
+    let hi = list.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (list[mid].ts <= at + 100) lo = mid + 1;
+      else hi = mid;
+    }
+    for (let n = lo - 1; n >= 0 && n >= lo - 50; n--) {
+      if (at <= list[n].ts + list[n].dur) return list[n].tdur / 1000;
+    }
+    return null;
+  }, { traced: true });
+}
+
 // One press, measured. [press] does it; [done] says, from the page's state,
 // when it has finished; [heard] says, for a build without the bar, whether
 // anything on screen has answered yet.
@@ -297,6 +356,7 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
   const { state, now, quiet } = helpers(page);
   const from = await now();
   const engineFrom = (await state()).now || 0;
+  const mark = await traceFrom(page);
   await press();
   const t0 = Date.now();
   let heardAt = null;
@@ -327,32 +387,41 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
     const until = setIn ? setIn[0] : setAt;
     const before = p.frames.filter(([t0]) => t0 >= press && t0 <= until);
     return { press, shownAt: shown ? (frameOf ? frameOf[0] + frameOf[1] : shown.at) : null,
-      setAt: shown ? setAt - press : null,
-      before: before.map(([t0, d, kind, g]) => [Math.round(t0 - press), Math.round(d), kind, Math.round(g)]),
+      setAt: shown ? setAt - press : null, before,
       what: shown ? shown.what : "", frames: p.frames.filter(([t0]) => t0 >= press),
       stalls: p.stalls.filter(([t0]) => t0 >= press - 20) };
   }, [from]);
+  const cpu = await traceTo(mark);
   const end = doneAt ?? (await now());
   const during = facts.frames.filter(([t0]) => t0 <= end);
   const longest = Math.max(0, ...during.map(([, d]) => d));
   // How long the page went without running a timer, drawing included.
   const stall = Math.max(0, ...facts.stalls.filter(([t0]) => t0 <= end).map(([, d]) => d));
   const s = await state();
-  // The app's own work: its slowest frame by its own clock (scripts, from
-  // a frame's start to its drawing: Main._watch_own_frames), or the longest
-  // of its input handlers, which run outside a frame. What is judged: the
-  // engine's whole frame also holds the WebGL calls, which on SwiftShader
-  // wait for software drawing whenever the box is busy.
+  // Its slowest frames by its own clock (scripts, from a frame's start to
+  // its drawing: Main._watch_own_frames), said for what they were doing.
   const slow = (s.slow || []).filter(([t]) => t >= engineFrom).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const own = Math.max(0, ...slow.map(([, ms]) => ms), ...during.map(([, d, , g]) => d - (g || 0)));
+  // The app's own work, which is what is judged: each engine frame and
+  // input handler's time on a CPU, or where there is no trace, its time
+  // less the time it spent inside WebGL calls.
+  const work = (entry) => cpu(entry) ?? entry[1] - (entry[3] || 0);
+  const own = Math.max(0, ...during.map(work));
+  const ownWall = Math.max(0, ...slow.map(([, ms]) => ms), ...during.map(([, d, , g]) => d - (g || 0)));
   const gone = Object.keys(s.working || {}).length === 0;
   const heardMs = facts.shownAt !== null ? facts.shownAt - facts.press
     : (heardAt !== null ? heardAt - facts.press : null);
   const row = {
     name, heard: heardMs === null ? null : Math.round(heardMs), byBar: facts.shownAt !== null,
-    ownBefore: facts.shownAt === null ? null : facts.before.reduce((a, [, d, , g]) => a + d - g, 0),
-    setAt: facts.setAt === null ? null : Math.round(facts.setAt), before: facts.before,
-    own: Math.round(own), longest: Math.round(longest), stall: Math.round(stall), total: doneAt === null ? null : Math.round(doneAt - facts.press),
+    ownBefore: facts.shownAt === null ? null : Math.round(facts.before.reduce((a, e) => a + work(e), 0)),
+    ownBeforeWall: facts.shownAt === null ? null : Math.round(facts.before.reduce((a, [, d, , g]) => a + d - g, 0)),
+    setAt: facts.setAt === null ? null : Math.round(facts.setAt), traced: cpu.traced,
+    untraced: during.filter((e) => cpu(e) === null).length,
+    before: facts.before.map((e) => [Math.round(e[0] - facts.press), Math.round(e[1]), e[2], Math.round(e[3]),
+      cpu(e) === null ? null : Math.round(cpu(e))]),
+    // Its longest four, as [ms from the press, ms, kind, ms in WebGL, ms on a CPU].
+    longestFour: [...during].sort((a, b) => b[1] - a[1]).slice(0, 4).map((e) => [Math.round(e[0] - facts.press),
+      Math.round(e[1]), e[2], Math.round(e[3]), cpu(e) === null ? null : Math.round(cpu(e))]),
+    own: Math.round(own), ownWall: Math.round(ownWall), longest: Math.round(longest), stall: Math.round(stall), total: doneAt === null ? null : Math.round(doneAt - facts.press),
     gone, frames: during.length, what: facts.what, said: String(last.said || "").slice(0, 80),
   };
   const problems = [];
@@ -368,7 +437,7 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
   const heardText = row.heard === null ? "never" : `${row.byBar ? "" : "~"}${row.heard} ms`;
   const saidText = row.ownBefore === null ? "—" : `${row.ownBefore} ms`;
   console.log(`${failed ? "FAIL" : "ok  "}  ${name.padEnd(10)} said ${saidText.padStart(7)}  heard ${heardText.padStart(9)}`
-    + `  own ${String(row.own).padStart(6)} ms`
+    + `  own ${String(row.own).padStart(6)} ms (${row.ownWall} wall)`
     + `  frame ${String(row.longest).padStart(6)} ms  page held ${String(row.stall).padStart(6)} ms`
     + `  total ${row.total === null ? "    —" : String(row.total).padStart(7) + " ms"}  ${gone ? "gone" : "STILL UP"}`
     + `  ${row.what || row.said}${problems.length ? "  [" + problems.join("; ") + "]" : ""}`);
