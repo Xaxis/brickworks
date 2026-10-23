@@ -3837,6 +3837,8 @@ func _build_ui() -> void:
 	_stability = Stability.new()
 	_stability.library = _library
 	_stability.lattice = _builder.lattice
+	# Its verdict weighs the joints as View, Stress does, so the two agree.
+	_stability.with_margins = true
 
 	_thumbnails = PartThumbnails.new()
 	_thumbnails.library = _library
@@ -6037,18 +6039,38 @@ func _weigh() -> void:
 	if _world.brick_count() <= scenery.size() and not _stats_shown:
 		_stability_text = ""
 		return
-	var report: Stability.Report
-	# Every joint's margin too, while View, Stress shows them.
 	var stress: StressView = _shell.stress if _shell != null else null
 	var margins: bool = stress != null and stress.on
-	# The baseplate is the floor, not the model: whether it tips is asked
-	# of what stands on it.
-	_stability.floor_ids = scenery
+	_weighing = true
+	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))
+	_weighing = false
+	if report == null:
+		# For a part the library had to add: weighed again.
+		_stability_revision = -1
+		return
+	_stability_text = report.summary()
+	if margins:
+		stress.show_report(report)
+
+
+## The model weighed as the status bar weighs it (Stability.check), every
+## joint's margin with it unless [param margins] is false: what View, Stress
+## tints, the verdict the status bar says and a session's weakest_joints
+## reads, so the three agree. A joint past its working load is a weak one.
+## On a worker where there are threads; on the window's own thread only
+## while View, Stress is on, since the joints cost 10% to 150% more than the
+## courses and the tipping. Null when the library had to add a part
+## meanwhile. The baseplate is the floor, not the model: whether it tips is
+## asked of what stands on it, and it is not in the weight.
+func weigh_joints(margins: bool = true) -> Stability.Report:
+	var scenery: Dictionary = _store.scenery if _store != null else {}
+	var report: Stability.Report
 	if OS.has_feature("nothreads"):
+		_stability.floor_ids = scenery
 		_stability.with_margins = margins
 		report = _stability.check(_world)
+		_stability.with_margins = true
 	else:
-		_weighing = true
 		var judge := Stability.new()
 		judge.library = _library
 		judge.with_margins = margins
@@ -6065,22 +6087,16 @@ func _weigh() -> void:
 		WorkerTasks.collect(task)
 		_library.end_reading(task)
 		still.free()
-		_weighing = false
 		report = weighed[0]
-		if report == null:
-			if judge.stopped:
-				# For a part the library had to add: weighed again.
-				_stability_revision = -1
-			return
+	if report == null:
+		return null
 	for id: int in scenery:
 		var plate: BrickWorld.Brick = _world.get_brick(id)
 		var info: PartLibrary.PartInfo = \
 			_library.parts.get(plate.part_id) if plate != null else null
 		if info != null:
 			report.total_grams -= Stability.grams(info)
-	_stability_text = report.summary()
-	if margins:
-		stress.show_report(report)
+	return report
 
 
 ## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.
