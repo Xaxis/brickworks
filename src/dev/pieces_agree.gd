@@ -11,8 +11,14 @@
 ## checked as review_model checks a whole design, on a bare floor; this says
 ## the check's verdict, what it said of parts held by nothing, and the pieces
 ## by the exact shapes' connections (Exact.connections, BrickNet's rules),
-## each part apart from the largest with where it is.
+## each part apart from the largest with where it is. Last, a verdict a
+## build: BrickNet's pieces (a dish held by its tube between four studs
+## joined, as connect166 judged it) against whether the check holds it
+## together, and how many of the builds agree.
 extends SceneTree
+
+var _agreed: int = 0
+var _asked: int = 0
 
 
 func _initialize() -> void:
@@ -95,17 +101,52 @@ func _run() -> void:
 						print("    studs of %s at %s grip a tube of %s" % [model.placements[j].part, (exact.items[j] as Exact.Item).at.origin, model.placements[m].part])
 					if ExactCheck._tube_grips(exact.items[m], exact.items[j]):
 						print("    studs of %s grip a tube of %s at %s" % [model.placements[m].part, model.placements[j].part, (exact.items[j] as Exact.Item).at.origin])
+		# BrickNet's pieces as connect166 judged them: a dish whose tube stands
+		# between four studs is held, and a part with no exact shape is the
+		# lattice's to judge (a car's tyre on its wheel).
+		var bricknet: int = 1
+		for k: int in order.slice(1):
+			var those: Array = []
+			for i: int in root.size():
+				if root[i] == k and exact.items[i] != null:
+					those.append(i)
+			if not those.is_empty() and (exact.comes_away(those) or not exact.rests(those)):
+				bricknet += 1
+		# The check's: whole when it finds nothing that comes away, floats,
+		# tips or stands loose, and counts one piece.
+		var why := PackedStringArray()
+		for kind: String in ["not held", "tips over"]:
+			if not (found.get(kind, []) as Array).is_empty():
+				why.append("%s %d" % [kind, (found.get(kind, []) as Array).size()])
+		if int(report.get("loose", 0)) > 0:
+			why.append("loose %d" % int(report.get("loose", 0)))
+		if not (report.get("resting", []) as Array).is_empty():
+			why.append("resting %d, said" % (report.get("resting", []) as Array).size())
+		if int(report.get("named", 0)) > 0:
+			why.append("named apart %d" % int(report.get("named", 0)))
+		var holds: bool = why.is_empty() and int(report.get("pieces", 0)) <= 1
+		if why.is_empty() and not holds:
+			why.append("%d pieces, passed" % int(report.get("pieces", 0)))
+		var agree: bool = (bricknet == 1) == holds
+		_agreed += 1 if agree else 0
+		_asked += 1
+		print("  verdict: BrickNet %d piece%s; the check %s; %s" % [bricknet,
+			"" if bricknet == 1 else "s", "holds it together" if holds else "does not (%s)"
+				% ", ".join(why), "agree" if agree else "DISAGREE"])
 		var lattice_pieces: Array = report.get("each_piece", [])
 		lattice_pieces.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
 		for piece: Array in lattice_pieces.slice(1):
 			print("  lattice apart: %s" % ", ".join(PackedStringArray(piece.map(func(i: int) -> String:
 				return "%s %s" % [model.placements[i].part, _where(exact, model, i)]))))
 		for sentence: Variant in found.get("not held", []):
-			print("  not held: %s" % str(sentence).left(300))
+			print("  not held: %s" % str(sentence).left(700))
 		for line: Variant in report.get("advice", []):
 			var s: String = str(line)
 			if s.contains("held by nothing") or s.contains("picked up") or s.contains("grips"):
 				print("  advice: %s" % s.left(300))
+		for clause: Variant in report.get("resting", []):
+			print("  resting: %s" % str(clause).left(300))
+	print("agree on %d of %d" % [_agreed, _asked])
 	quit(0)
 
 

@@ -16,8 +16,8 @@
 ## is asked of the studs under the part, not of the grid.
 ##
 ## Since 2026-10-14 (ExactCheck) a part a few LDU off its studs is seated on
-## them as it is checked; one standing square on a smooth face is still
-## advice, since it stays where it is, as BrickBench's simulation finds. The
+## them as it is checked. One standing square on a smooth face comes away in
+## the hand, a fault, unless it is a tile laid on one (rest181, 2026-10-23). The
 ## thing this probe guards hardest is that it stays quiet about the eight
 ## models that ship with the app, which are known good.
 extends SceneTree
@@ -178,9 +178,14 @@ func _check_smooth(assistant: Assistant) -> void:
 	print("\nstanding something on a face with nothing to grip it")
 	var tile: Dictionary = _stack(assistant, "3068b", "3003", 0.0, 1.0)
 	_ok(tile["smooth"], "a brick on a 2x2 tile is told the tile grips nothing")
-	# Standing square on the tile it stays, as BrickBench's simulation finds:
-	# advice, not a fault (ExactCheck.rests).
-	_ok(tile["ok"], "...and it is advice, so the design still passes")
+	# Standing square on the tile it stays while the model stands, as
+	# BrickBench's simulation finds, and falls off when it is lifted: a brick
+	# is made to be held, so it missed (ExactCheck.set_down).
+	_ok(not tile["ok"], "...and it comes away in the hand, so the design does not pass")
+	# A tile laid on a tile is set down on purpose, as sets lay a loose printed
+	# tile on a table: advice, said.
+	var laid: Dictionary = _stack(assistant, "3068b", "3068b", 0.0, 1.0)
+	_ok(laid["ok"], "a tile on a tile is advice, so the design still passes")
 
 	var brick: Dictionary = _stack(assistant, "3003", "3003", 0.0, 3.0)
 	_ok(not brick["smooth"], "a brick on a brick is not")

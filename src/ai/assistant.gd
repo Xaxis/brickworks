@@ -3423,6 +3423,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if not _unknown.is_empty():
 				said += " No brick has %s, so those were left alone." \
 					% _numbers(_unknown)
+			# A tile set down where nothing joins it is let stand, and said on
+			# every edit: the pose174 toilet's roll was set down by an edit
+			# whose reply said nothing of it, and the session ended in two pieces.
+			var resting: String = _resting_line(verdict)
+			if not resting.is_empty():
+				said += "\n" + resting
 			if scoped:
 				var words: String = _gather_focus_step(standing_was)
 				# What held is known for the edit as it landed; copies that
@@ -12678,8 +12684,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	## pieces is by both (_pieces_of), as verify.py counts them.
 	var come_away: Dictionary = {}
 	var exact_joins: Array = []
+	## Tiles set down on a face with no stud, a clause each: every edit's
+	## reply says them (ExactCheck.resting_said).
+	var resting: Array = []
 	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
-		clutched_pairs, stuck, unheld, advice, come_away, exact_joins)
+		clutched_pairs, stuck, unheld, advice, come_away, exact_joins, resting)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -12913,6 +12922,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		## And of what stands but comes away in the hand, said or advised: each
 		## a piece of its own in "pieces" (ExactCheck.comes_away).
 		"come_away": come_away.keys(),
+		## Of those, the tiles set down on purpose: which, on what, and where
+		## each would be seated, a clause each, for an edit's reply.
+		"resting": resting,
 		## The later part of each pair whose real shapes collide.
 		"colliding": colliding.keys(),
 		## And what asking the exact shapes cost this check, ms.
@@ -13083,6 +13095,35 @@ func _exact_name(model: Model, exact: ExactCheck, item: int) -> String:
 	return "a part"
 
 
+## What a check found set down where nothing joins it (its "resting"), in
+## the one line an edit's reply gives it, or "".
+static func _resting_line(verdict: Dictionary) -> String:
+	var clauses: Array = verdict.get("resting", [])
+	if clauses.is_empty():
+		return ""
+	var line: String = "; ".join(PackedStringArray(clauses.slice(0, WORTH_SAYING)))
+	if clauses.size() > WORTH_SAYING:
+		line += "; and %d more" % (clauses.size() - WORTH_SAYING)
+	return ("Resting, joined to nothing, so it falls off when the model is lifted and "
+		+ "BrickBench counts it a piece of its own: %s." % line)
+
+
+## Where placement [param item] would be, moved [param move] LDU across, as
+## its placement says where it is: "" for one in a section, whose
+## coordinates are its section's own, or one the move takes off whole cells.
+func _moved_where(model: Model, item: int, move: Vector3) -> String:
+	if item < 0 or item >= model.placements.size():
+		return ""
+	var placement: Placement = model.placements[item]
+	if not placement.section.is_empty():
+		return ""
+	var x: float = placement.x + move.x / BrickLattice.STUD
+	var z: float = placement.z + move.z / BrickLattice.STUD
+	if not is_equal_approx(x * 2.0, roundf(x * 2.0)) or not is_equal_approx(z * 2.0, roundf(z * 2.0)):
+		return ""
+	return "%s,%s,%s" % [Placement._num(x), Placement._num(placement.y), Placement._num(z)]
+
+
 ## Each part of this design that misses a connector by a few LDU and joins
 ## nothing exactly, moved onto it (ExactCheck.seat): its placement changed
 ## here, so what is checked and built is the seated one. Only a part square
@@ -13237,15 +13278,15 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 ## this design (unless only the ground holds: _ground_only), or a part with no
 ## exact shape that this check holds. One fault a piece. A piece that stands
 ## where it is but comes away in the hand (ExactCheck.comes_away) goes into
-## [param apart], said: a fault when its anti-stud stands where another part
-## has no stud (ExactCheck.on_missing_stud), advice when it was set down so.
-## The connections found go into [param joins], [a, b] each, for the count of
-## pieces (_pieces_of).
+## [param apart], said: a fault, unless it is a tile set down on a face with
+## no stud (ExactCheck.set_down), which is advice and a clause in [param
+## resting] for the edit's reply. The connections found go into [param
+## joins], [a, b] each, for the count of pieces (_pieces_of).
 func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
 		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
 		unheld: Dictionary = {}, advice: Array = [], apart: Dictionary = {},
-		joins: Array = []) -> void:
+		joins: Array = [], resting: Array = []) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -13329,27 +13370,31 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		members.append(index)
 		pieces[root[index]] = members
 	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	var mover: Callable = func(item: int, move: Vector3) -> String:
+		return _moved_where(model, item, move)
 	var set_down: Array = []
 	for key: Variant in pieces:
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
-		# it. Unless a stud holds it, it comes away in the hand: a fault when
-		# its anti-stud stands on another part's stud grid where that part has
-		# no stud, as the outline161 rabbit's twelve cheese slopes on round
-		# plates' rims did, which the check passed while BrickNet counted each
-		# a piece of its own; advice otherwise, as a brick stood on a tile or a
-		# log in the groove of two below it are set down on purpose.
+		# it. Unless a stud holds it, it comes away in the hand, and that is a
+		# fault: the outline161 rabbit's twelve cheese slopes on round plates'
+		# rims, and the pose174 toilet's roll a stud off the studs at the edge
+		# of its tank, each passed while BrickNet counted it a piece of its own.
+		# Only a tile set down on a face with no stud is advice, as sets lay a
+		# loose printed tile on a table (ExactCheck.set_down), and every
+		# edit's reply says it (resting).
 		if exact.rests(pieces[key]):
 			if not exact.comes_away(pieces[key]):
 				continue
 			for index: Variant in pieces[key]:
 				apart[int(index)] = true
-			if exact.on_missing_stud(pieces[key]) >= 0:
-				_note(issues, "not held", exact.comes_away_said(pieces[key], namer))
+			if exact.set_down(pieces[key]):
+				set_down.append(exact.comes_away_said(pieces[key], namer, mover))
+				resting.append(exact.resting_said(pieces[key], namer, mover))
+			else:
+				_note(issues, "not held", exact.comes_away_said(pieces[key], namer, mover))
 				for index: Variant in pieces[key]:
 					unheld[int(index)] = true
-			else:
-				set_down.append(exact.comes_away_said(pieces[key], namer))
 			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
 		# By index too, for what mends a design (Brickify.mend) to join or

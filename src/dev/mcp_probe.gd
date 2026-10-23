@@ -386,6 +386,7 @@ func _run() -> void:
 	await _over_http(port)
 	await _list_changes(port)
 	await _saving()
+	await _resting()
 
 	# An unknown tool is an answer, not a dropped connection.
 	var nonsense: Dictionary = await _ask("no_such_tool", {})
@@ -395,6 +396,34 @@ func _run() -> void:
 	_client.disconnect_from_host()
 	_socket.stop()
 	_done()
+
+
+## Does an edit that leaves a part resting where nothing joins it say so?
+##
+## The pose174 arm's toilet (brickbench-2026-10-22-m147) ended in two pieces:
+## its last edit stood a toilet roll on the tank a stud off the studs, the
+## check called it set down on purpose, and the edit's reply said nothing.
+## Now only a tile laid on a smooth face is let stand, and the edit says it in
+## one line, with where to seat it; a brick laid so is refused.
+func _resting() -> void:
+	print("")
+	print("  a part left resting")
+	var laid: String = _text_of(await _ask("edit_model", {"add": [
+		{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 30, "rot": 0},
+		{"part": "87079", "color": 15, "x": 0, "y": 1, "z": 30, "rot": 0},
+		{"part": "3068b", "color": 14, "x": 0, "y": 2, "z": 30, "rot": 0}]}))
+	var line: String = ""
+	for one: String in laid.split("\n"):
+		if one.begins_with("Resting"):
+			line = one
+	_check("an edit that leaves a tile set down on a tile says so in one line: %s" % line,
+		laid.begins_with("Done.") and line.contains("3068b") and line.contains("seated"))
+	var refused: String = _text_of(await _ask("edit_model", {"add": [
+		{"part": "3003", "color": 4, "x": 2, "y": 2, "z": 30, "rot": 0}]}))
+	_check("...and one that stands a brick on it is refused, said with how to seat it: %s"
+		% refused.get_slice("\n", 0),
+		refused.begins_with("Not applied") and refused.contains("3003")
+		and refused.contains("falls off when the model is picked up") and refused.contains("Seat it"))
 
 
 ## Does the app do one call at a time?

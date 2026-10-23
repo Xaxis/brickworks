@@ -523,18 +523,134 @@ func on_missing_stud(members: Array) -> int:
 	return -1
 
 
-## A piece that stands but comes away in the hand ([method comes_away]),
-## said: what it rests on, and how to fix it.
-func comes_away_said(members: Array, name: Callable) -> String:
-	var first: int = members[0]
-	var on: int = -1
+## Whether a piece of [param members] that rests and comes away ([method
+## comes_away]) was set down so on purpose, as sets lay a loose printed tile on
+## a table or a floor: one part with no stud of its own and no taller than a
+## plate, right way up, on faces with no stud where it stands. Anything else
+## that only rests was meant to be held and missed it, and falls off when the
+## model is lifted: the pose174 toilet's roll, a round brick and its tile a stud
+## off the 30414 at the edge of the tank's top (brickbench-2026-10-22-m147),
+## which the check called set down and BrickNet two pieces; a plate stood on its
+## edge; four tooth plates turned off the grid of the plate under them; a brick
+## on a tile.
+func set_down(members: Array) -> bool:
+	if members.size() != 1:
+		return false
+	var item: Exact.Item = items[int(members[0])]
+	if item == null or item.at.basis.y.normalized().dot(Vector3.UP) < SQUARE \
+			or item.hi.y - item.lo.y > TILE_HIGH:
+		return false
+	for one: Array in item.world():
+		if item.shape.kind[one[0]] == Exact.STUD:
+			return false
+	return on_studded(members) < 0
+
+
+## A part a piece of [param members] touches whose studs stand at the piece's
+## foot, up to a stud's height under it: it stands on a studded face, or on the
+## studs, and is not on them. -1 for none.
+func on_studded(members: Array) -> int:
+	var mine: Dictionary = {}
 	for i: Variant in members:
-		on = under(int(i))
-		if on >= 0 and not members.has(on):
-			first = int(i)
-			break
+		mine[int(i)] = true
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null:
+			continue
+		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+			var other: Exact.Item = items[j]
+			if mine.has(j) or other == null:
+				continue
+			var studded: bool = false
+			for stud: Array in other.world():
+				var dy: float = (stud[1] as Vector3).y - item.lo.y
+				if other.shape.kind[stud[0]] == Exact.STUD \
+						and (stud[2] as Vector3).dot(Vector3.UP) >= Exact.AXIS_THR \
+						and dy <= 1.0 and dy >= -STUD_HIGH - 1.0:
+					studded = true
+					break
+			if not studded:
+				continue
+			var touching := PackedVector3Array()
+			_touching(item, other, touching)
+			if not touching.is_empty():
+				return j
+	return -1
+
+
+## Where a piece of [param members] that only rests would be held: the move
+## across, in LDU, that puts the most of its anti-studs onto studs of the
+## parts near it at the height they stand at, the shortest of those, and
+## clear of every part near it. [move, the part whose studs take it], or []
+## when there is none within [constant SEAT_ASK].
+func seat_for(members: Array) -> Array:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	var anti: Array = []
+	var near: Dictionary = {}
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null:
+			return []
+		for one: Array in item.world():
+			if item.shape.kind[one[0]] == Exact.HOLE \
+					and (one[2] as Vector3).dot(Vector3.UP) >= Exact.AXIS_THR:
+				anti.append(one[1])
+		for j: int in Exact._near(items, int(i), PackedInt32Array(), SEAT_ASK):
+			if not mine.has(j) and items[j] != null:
+				near[j] = true
+	var studs: Array = []
+	for j: Variant in near:
+		var other: Exact.Item = items[int(j)]
+		for stud: Array in other.world():
+			if other.shape.kind[stud[0]] == Exact.STUD \
+					and (stud[2] as Vector3).dot(Vector3.UP) >= Exact.AXIS_THR:
+				studs.append([stud[1], int(j)])
+	## Each move, rounded to the LDU -> [move, onto, the anti-studs it seats].
+	var moves: Dictionary = {}
+	for k: int in anti.size():
+		for stud: Array in studs:
+			var d: Vector3 = (stud[0] as Vector3) - (anti[k] as Vector3)
+			var across: float = Vector2(d.x, d.z).length()
+			if absf(d.y) > 1.0 or across <= Exact.POS_THR or across > SEAT_ASK:
+				continue
+			var key := Vector3i(roundi(d.x), 0, roundi(d.z))
+			if not moves.has(key):
+				moves[key] = [Vector3(key), int(stud[1]), {}]
+			(moves[key][2] as Dictionary)[k] = true
+	var order: Array = moves.values()
+	order.sort_custom(func(a: Array, b: Array) -> bool:
+		if (a[2] as Dictionary).size() != (b[2] as Dictionary).size():
+			return (a[2] as Dictionary).size() > (b[2] as Dictionary).size()
+		return (a[0] as Vector3).length() < (b[0] as Vector3).length())
+	for found: Array in order.slice(0, 12):
+		var move: Vector3 = found[0]
+		var clear: bool = true
+		for i: Variant in members:
+			var item: Exact.Item = items[int(i)]
+			var there := Exact.Item.new(item.shape, Transform3D(item.at.basis, item.at.origin + move))
+			for j: Variant in near:
+				if not Exact.clash(there, items[int(j)]).is_empty():
+					clear = false
+					break
+			if not clear:
+				break
+		if clear:
+			return [move, found[1]]
+	return []
+
+
+## A piece that stands but comes away in the hand ([method comes_away]),
+## said: what it rests on, and how to seat it. [param moved] (index, move in
+## LDU) -> where that part would be, as a placement says it.
+func comes_away_said(members: Array, name: Callable, moved: Callable = Callable()) -> String:
+	var first: int = _resting_one(members)
+	var on: int = under(first)
+	if members.has(on):
 		on = -1
 	var missed: int = on_missing_stud(members)
+	var studded: int = on_studded(members) if missed < 0 else -1
 	var rest: int = members.size() - 1
 	var who: String = name.call(first)
 	if rest > 0:
@@ -542,11 +658,59 @@ func comes_away_said(members: Array, name: Callable) -> String:
 	var where: String = "rests on %s" % name.call(on) if on >= 0 else "stands where it is"
 	if missed >= 0:
 		where = "stands on %s where it has no stud to take its anti-stud" % name.call(missed)
+	elif studded >= 0:
+		where = "stands on the studded top of %s, off its studs" % name.call(studded)
+	elif set_down(members):
+		where = "is a tile set down on %s, a face with no stud" % (name.call(on) if on >= 0
+			else "what is under it")
 	return ("%s %s, and nothing joins it to the rest: it stands while the model stands, and "
 		% [who, where] + "falls off when the model is picked up (BrickNet's connection graph, "
-		+ "which BrickBench counts pieces by, has it as a piece of its own). Move it onto a "
-		+ "stud, put a part under it that has a stud where it sits, or hold it in a clip; "
-		+ "attachment_points lists where a part joins.")
+		+ "which BrickBench counts pieces by, has it as a piece of its own). "
+		+ seat_said(members, name, moved))
+
+
+## How to seat a piece that only rests, in a sentence: the move [method
+## seat_for] finds, as a placement, or what would hold it.
+func seat_said(members: Array, name: Callable, moved: Callable = Callable()) -> String:
+	var at: String = _seat_at(members, name, moved)
+	if not at.is_empty():
+		return "Seat it at %s%s." % [at, "" if members.size() == 1 else ", with what is joined to it"]
+	return ("Seat it on a stud: move it onto one, put a part under it that has a stud "
+		+ "where it sits, or hold it in a clip; attachment_points lists where a part joins.")
+
+
+## A piece set down on purpose ([method set_down]), in a clause for an edit's
+## reply: which part, on what, and where it would be seated.
+func resting_said(members: Array, name: Callable, moved: Callable = Callable()) -> String:
+	var first: int = _resting_one(members)
+	var on: int = under(first)
+	var at: String = _seat_at(members, name, moved)
+	return "%s on %s, %s" % [name.call(first), name.call(on) if on >= 0 and not members.has(on)
+		else "what is under it", "seated at %s" % at if not at.is_empty()
+		else "seated on a stud (a plate under it) or held in a clip"]
+
+
+## Where [method seat_for] would seat a piece, as a placement and whose studs
+## take it: "7,31,1, where its anti-studs go onto the studs of ...", or "".
+func _seat_at(members: Array, name: Callable, moved: Callable) -> String:
+	if not moved.is_valid():
+		return ""
+	var seat: Array = seat_for(members)
+	if seat.is_empty():
+		return ""
+	var there: String = moved.call(_resting_one(members), seat[0])
+	if there.is_empty():
+		return ""
+	return "%s, where its anti-studs go onto the studs of %s" % [there, name.call(int(seat[1]))]
+
+
+## The part of [param members] that stands on something outside them.
+func _resting_one(members: Array) -> int:
+	for i: Variant in members:
+		var on: int = under(int(i))
+		if on >= 0 and not members.has(on):
+			return int(i)
+	return int(members[0])
 
 
 ## Whether a piece of [param members] that only the floor holds stands on a
@@ -749,6 +913,12 @@ const TOUCH := 2.5
 const DIAGONAL := 14.142
 ## A stud's pitch, LDU.
 const PITCH := 20.0
+## A stud's height, LDU.
+const STUD_HIGH := 4.0
+## How tall a tile is at most, LDU: a plate's height (set_down).
+const TILE_HIGH := 8.5
+## How far a part that only rests is looked to be seated, LDU: two studs.
+const SEAT_ASK := 40.0
 
 
 ## The points where items [param a] and [param b] touch, into [param out]:
