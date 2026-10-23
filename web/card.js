@@ -46,20 +46,25 @@ export function avatarTone(handle) {
   return (hash % 8) + 1;
 }
 
-/// A person's avatar: their picture when they have one, else a tile in
-/// their handle's colour with the first letter of their name. Never a
-/// figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11). [size] is
-/// "small", "", "big" or "huge"; it is decoration beside their name, so
-/// hidden from a screen reader.
+// Where a person's own picture is (api/_faces.js pictureAt): this site's,
+// never an address from anywhere else.
+const PICTURE = /^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/;
+
+/// A person's avatar: their picture when they have one (supabase/avatars.sql),
+/// else a tile in their handle's colour with the first letter of their
+/// name. Never a figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11).
+/// [size] is "small", "", "big" or "huge"; it is decoration beside their
+/// name, so hidden from a screen reader.
 export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
   const letter = [...String(name || handle || "?").trim()][0] || "?";
-  const classes = ["avatar", size, `c${avatarTone(handle || name)}`].filter(Boolean).join(" ");
-  return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${picture
+  const pictured = PICTURE.test(String(picture || ""));
+  const classes = ["avatar", size, `c${avatarTone(handle || name)}`, pictured ? "pictured" : ""].filter(Boolean).join(" ");
+  return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${pictured
     ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
 }
 
 /// The icons there are (web/icons.svg).
-export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award"];
+export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {
@@ -168,7 +173,8 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
   // they credited it to, as words; else nobody.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
   const who = by
-    ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle }, { size: "small" })}`
+    ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
+      picture: by.picture }, { size: "small" })}`
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];

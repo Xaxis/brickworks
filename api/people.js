@@ -8,9 +8,22 @@
 //   GET  ?op=profile&handle=X     a profile as anyone sees it, with its first
 //                                 page of models (&page=N for more), its
 //                                 links, banner and pinned models
-//   GET  ?op=page&handle=X        /u/X: the profile's page; &tab=builds or
-//                                 &tab=collections for those tabs, &page=N
-//                                 for the models' page N
+//   GET  ?op=page&handle=X        /u/X: the profile's page; &tab=builds,
+//                                 &tab=collections or &tab=likes for those
+//                                 tabs, &page=N for the models' (or the
+//                                 likes') page N
+//   GET  ?op=likes&handle=X&page=N  the models X liked, when X chose to
+//                                 show them (supabase/avatars.sql)
+//   GET  ?op=avatar&id=P          picture P, a person's own avatar, while
+//                                 it may be shown
+//   POST ?op=avatar               (session) {picture: base64, type}: the
+//                                 caller's own picture as their avatar,
+//                                 the square Edit profile cropped, at most
+//                                 2 MB (api/_avatars.js)
+//   POST ?op=avatar_remove        (session) that picture taken off: the
+//                                 avatar made from the handle again
+//   POST ?op=likes_choice         (session) {shows}: show on my profile the
+//                                 models I liked
 //   POST ?op=showcase             (session) {links?, banner?, pins?}: what
 //                                 the caller's profile shows besides its
 //                                 name: one or two https links, one of
@@ -173,6 +186,11 @@ import {
 } from "./_follows.js";
 import { feedCount, notifications, notificationsRead } from "./_notifications.js";
 import { designerOf, designs } from "./_designers.js";
+import {
+  AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
+  likesCount,
+} from "./_avatars.js";
+import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
 import { cardHtml, pictureOf } from "./_card.js";
@@ -192,7 +210,7 @@ export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
   collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300],
-  showcase: [20, 60] };
+  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60] };
 // What a profile shows besides its name (supabase/profile_shows.sql).
 export const MOST_LINKS = 2;
 export const MOST_PINS = 3;
@@ -411,7 +429,7 @@ async function saveShowcase(request, response) {
 async function me(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signedIn(request);
-  const [people, lists, mail, follows, shows, theirs] = await Promise.all([
+  const [people, lists, mail, follows, shows, theirs, avatar, likes] = await Promise.all([
     db(`people?account=eq.${account}&select=handle,name,bio,created_at`),
     db(`model_collections?owner=eq.${account}&select=id,name,description,public,updated_at&order=updated_at.desc`),
     mailChoice(account),
@@ -421,11 +439,18 @@ async function me(request, response) {
     // with their name, newest first.
     db(`shared_models?owner=eq.${account}&published=is.true&listed=is.true&barred=is.false&author=not.is.null`
       + "&select=id,name,has_image&order=listed_at.desc&limit=200"),
+    avatarOf(account),
+    likesChoiceOf(account),
   ]);
   const counts = await Promise.all(lists.map((list) =>
     db("rpc/collection_count", { method: "POST", body: { list: list.id, private: true } })));
+  const said = avatarSaid(avatar);
   return response.status(200).json({
-    profile: people[0] || null,
+    profile: people[0] ? { ...people[0], ...(said.picture ? { picture: said.picture } : {}) } : null,
+    // Their own picture as their avatar, and whether their profile shows
+    // the models they liked (supabase/avatars.sql).
+    avatar: said,
+    likes,
     collections: lists.map((list, at) => ({ ...list, count: Number(counts[at]) || 0 })),
     // What is emailed: comments on their models and the feed's kinds, once
     // a day, each when chosen.
@@ -478,13 +503,14 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built, follows, designer, shows] = await Promise.all([
+  const [page, about, built, follows, designer, shows, liked] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
     followsOf(handle),
     designerOf(originOf(request), handle, tests),
     showsOf(person.account),
+    likedShown(person.account, tests),
   ]);
   // What their models earned (supabase/designers.sql), and each card's
   // comments beside its builds and remixes, and what it won: the same
@@ -493,14 +519,98 @@ async function profile(request, response) {
   const cards = (await withWins(page.models, tests))
     .map((card) => (earned ? { ...card, comments: earned.cards[card.id]?.comments ?? 0 } : card));
   const showcase = await showcaseOf(origin, person, shows, tests);
-  return response.status(200).json({ handle: person.handle, name: person.name, bio: person.bio,
+  return response.status(200).json(await withFaces({ handle: person.handle, name: person.name, bio: person.bio,
     since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
+    // How many models they liked, when they chose to show which: else null.
+    liked_count: liked,
     followers: follows?.followers ?? 0, following: follows?.following ?? 0,
     designer: earned ? { models: earned.models, builds: earned.builds, remixes: earned.remixes,
       comments: earned.comments, tested: earned.tested, likes: earned.likes, builders: earned.builders,
       followers: follows?.followers ?? 0, photos: earned.photos } : null,
     collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`,
-    links: showcase.links, banner: showcase.banner, pins: showcase.pins, ...page, models: cards });
+    links: showcase.links, banner: showcase.banner, pins: showcase.pins, ...page, models: cards }));
+}
+
+/// How many models [account] liked, when they chose to show which (and
+/// avatars.sql is applied); else null, and no Likes tab.
+async function likedShown(account, tests) {
+  const choice = await likesChoiceOf(account).catch(() => ({ ready: false }));
+  return choice.ready && choice.shows_likes ? likesCount(account, tests).catch(() => null) : null;
+}
+
+/// A page of the models [person] liked, as cards: only when they chose to
+/// show them; null when they did not.
+async function likedPage(origin, person, page, tests) {
+  if ((await likedShown(person.account, tests)) === null) return null;
+  const { rows, more } = await likedRows(person.account, { size: PER_PAGE, skip: (page - 1) * PER_PAGE, tests });
+  return { page, per_page: PER_PAGE, more, models: rows.map((row) => cardOf(origin, row)) };
+}
+
+/// GET ?op=likes&handle=X&page=N: the models X liked, when X shows them.
+async function likes(request, response) {
+  const handle = String(request.query?.handle || "").toLowerCase();
+  const tests = testsAsked(request.query);
+  const person = await personOf(handle);
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
+  if (!person) return response.status(404).json({ error: "nobody has that handle" });
+  const page = await likedPage(originOf(request), person, pageOf(request.query || {}), tests);
+  if (!page) return response.status(404).json({ error: "they do not show the models they liked" });
+  return response.status(200).json(await withFaces({ handle: person.handle, ...page,
+    models: await withWins(page.models, tests) }));
+}
+
+/// POST ?op=likes_choice {shows}: whether the caller's profile shows the
+/// models they liked. Off until they turn it on.
+async function saveLikesChoice(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const shows = request.body?.shows;
+  if (typeof shows !== "boolean") throw new Refusal("say shows: true or shows: false");
+  const person = (await db(`people?account=eq.${account}&select=handle`))[0];
+  if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
+  const young = await publicTrouble(account, { profile: true });
+  if (young) throw new Refusal(young, 422);
+  await counted(account, "likes_choice");
+  return response.status(200).json(await chooseLikes(account, shows));
+}
+
+// ---------------------------------------------------------------------------
+// Your own picture as your avatar (api/_avatars.js).
+
+/// POST ?op=avatar {picture, type}: the square Edit profile cropped, kept
+/// as the caller's avatar.
+async function saveAvatar(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const kept = await keepAvatar(account, body.picture, String(body.type || ""), async () => {
+    const person = (await db(`people?account=eq.${account}&select=handle`))[0];
+    if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
+    const young = await publicTrouble(account, { profile: true });
+    if (young) throw new Refusal(young, 422);
+    await counted(account, "avatar");
+  });
+  return response.status(200).json(kept);
+}
+
+/// POST ?op=avatar_remove: the caller's own picture taken off.
+async function dropOwnAvatar(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  await counted(account, "avatar");
+  return response.status(200).json(await dropAvatar(account));
+}
+
+/// GET ?op=avatar&id=P: a person's own picture, while it may be shown.
+async function avatarServe(request, response) {
+  const file = await avatarFile(String(request.query?.id || ""), shownPublicly);
+  if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
+  response.setHeader("Content-Type", "image/jpeg");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  // Kept as briefly as the pages, so a picture taken out leaves every cache
+  // within a minute. A new picture has a new address.
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
+  return response.status(200).end(file);
 }
 
 // ---------------------------------------------------------------------------
@@ -550,8 +660,8 @@ async function toggle(request, response, table) {
 async function favourites(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signedIn(request);
-  return response.status(200).json(await models(originOf(request),
-    { favourites: account, private: true, sort: "added" }, pageOf(request.query || {})));
+  return response.status(200).json(await withFaces(await models(originOf(request),
+    { favourites: account, private: true, sort: "added" }, pageOf(request.query || {}))));
 }
 
 /// A list, as its owner or anybody may see it: {id, name, description,
@@ -651,8 +761,8 @@ async function collection(request, response) {
   const origin = originOf(request);
   const page = await models(origin, { collection: id, private: mine, sort: "added", tests },
     pageOf(request.query || {}));
-  return response.status(200).json({ id, name: list.name, description: list.description, public: list.public,
-    by: list.by, count: mine ? list.all : list.count, mine, url: `${origin}/c/${id}`, ...page });
+  return response.status(200).json(await withFaces({ id, name: list.name, description: list.description, public: list.public,
+    by: list.by, count: mine ? list.all : list.count, mine, url: `${origin}/c/${id}`, ...page }));
 }
 
 // ---------------------------------------------------------------------------
@@ -813,8 +923,8 @@ async function photos(request, response) {
   const shown = await photosWhere(`model=eq.${model.id}`, shownPublicly, { hidden: owner });
   const mine = account ? await photosWhere(`model=eq.${model.id}&account=eq.${account}`, async () => true,
     { hidden: true, limit: 3 }) : [];
-  return response.status(200).json({ model: model.id, owner, photos: shown.map((one) => photoSaid(origin, one)),
-    mine: mine.map((one) => photoSaid(origin, one)), left: account ? Math.max(0, 3 - mine.length) : null });
+  return response.status(200).json(await withFaces({ model: model.id, owner, photos: shown.map((one) => photoSaid(origin, one)),
+    mine: mine.map((one) => photoSaid(origin, one)), left: account ? Math.max(0, 3 - mine.length) : null }));
 }
 
 async function photoServe(request, response) {
@@ -966,8 +1076,9 @@ function stripHtml(photos, { by = false } = {}) {
 }
 
 /// A profile's tabs, each a page of its own (?tab=): its work, its builds,
-/// its lists, each with its count once there is one.
-const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Collections"]];
+/// its lists, and the models they liked when they chose to show them, each
+/// with its count once there is one.
+const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Collections"], ["likes", "Likes"]];
 
 /// The pictures on each public list's card: up to four of its models in
 /// the gallery, the newest put in first. id -> [picture].
@@ -1013,7 +1124,7 @@ async function profilePage(request, response) {
   const asked = TABS.some(([id]) => id === request.query?.tab) ? String(request.query.tab) : "";
   const number = Number(request.query?.page ?? 1);
   const at = Number.isInteger(number) && number >= 1 && number <= MOST_PAGES ? number : 1;
-  const [shown, about, built, follows, following, designer, wins, shows] = await Promise.all([
+  const [shown, about, built, follows, following, designer, wins, shows, liked] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, asked === "models" || !asked ? at : 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
@@ -1022,15 +1133,22 @@ async function profilePage(request, response) {
     designerOf(origin, handle, tests),
     winsBy(person.account, tests).catch(() => []),
     showsOf(person.account),
+    likedShown(person.account, tests),
   ]);
   const showcase = await showcaseOf(origin, person, shows, tests);
+  // Their picture, and the faces of whom they follow, in one lookup.
+  await withFaces([person, following]);
   const url = `${origin}/u/${person.handle}`;
   const earned = designer && designer.ready && designer.models > 0 ? designer : null;
   const lists = (about?.collections || []).filter((list) => ID.test(String(list.id)));
   const theirs = earned ? earned.photos : [];
-  const counts = { models: Number(about?.models) || 0, builds: built.length + theirs.length, collections: lists.length };
+  const counts = { models: Number(about?.models) || 0, builds: built.length + theirs.length, collections: lists.length,
+    likes: liked ?? 0 };
+  // Likes only when they chose to show them: else no tab, and ?tab=likes
+  // is any other profile's first tab.
+  const tabs = TABS.filter(([id]) => id !== "likes" || liked !== null);
   // The tab asked for; else the first with something in it.
-  const tab = asked || TABS.map(([id]) => id).find((id) => counts[id] > 0) || "models";
+  const tab = (tabs.some(([id]) => id === asked) ? asked : "") || tabs.map(([id]) => id).find((id) => counts[id] > 0) || "models";
   const query = (more) => {
     const said = new URLSearchParams(more);
     if (tests) said.set("tests", "1");
@@ -1051,7 +1169,7 @@ async function profilePage(request, response) {
     + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
   const head = `${showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.png" alt="" width="1200" height="630" decoding="async"></div>` : ""}
   <header class="profile-head">
-    ${avatarHtml({ handle: person.handle, name: person.name }, { size: "huge" })}
+    ${avatarHtml({ handle: person.handle, name: person.name, picture: person.picture }, { size: "huge" })}
     <div class="who">
       <h1>${name}</h1>
       <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? "Designer" : "Builder"}</span>${Number.isFinite(since)
@@ -1071,6 +1189,7 @@ async function profilePage(request, response) {
   ${won ? `<ul class="pills wins" aria-label="Challenges won">${won}</ul>` : ""}`;
 
   // Pinned: up to three of their models, in the order they chose.
+  await withFaces(showcase.pins);
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">Pinned</h2>
     <div class="models row">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
       { earned: Boolean(earned) })).join("")}</div></section>` : "";
@@ -1078,7 +1197,8 @@ async function profilePage(request, response) {
   // The tab.
   let panel = "";
   if (tab === "models") {
-    const cards = (await withWins(shown.models, tests)).map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
+    const cards = (await withWins(await withFaces(shown.models), tests))
+      .map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
     const first = shown.page === 1 ? cards[0] : null;
     // The model to start with: the first by Top builds, once somebody built it.
     const start = earned && first && first.builds > 0 ? first : null;
@@ -1099,12 +1219,21 @@ async function profilePage(request, response) {
       <p class="note">${escapeHtml(earned.builders === 1 ? "One person" : `${earned.builders.toLocaleString("en-US")} people`)} posted photos of their real builds of ${name}’s models.</p>
       <div class="build-grid">${stripHtml(theirs, { by: true })}</div></section>` : ""}`
       : `<p class="state">No builds yet. Photos of real builds show here: the ones ${name} posts of what they built, and the ones other people post of ${name}’s models.</p>`;
+  } else if (tab === "likes") {
+    const page = await likedPage(origin, person, at, tests);
+    const cards = page ? await withWins(await withFaces(page.models), tests) : [];
+    panel = cards.length ? `<p class="note">${name} chose to show the models they liked, newest first.</p>
+    <div class="models" data-models data-page="${page.page}">${cards.map((card) => cardHtml(card)).join("")}</div>
+    ${page.more || page.page > 1 ? `<p class="paging">${page.more ? `<a class="cta ghost" data-more="${page.page + 1}"
+      href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "likes", page: page.page + 1 }))}">Show more</a>` : ""}${page.page > 1
+      ? ` <a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "likes" }))}">Back to the first</a>` : ""}</p>` : ""}`
+      : `<p class="state">No likes yet. The models ${name} likes in the gallery show here, as they chose.</p>`;
   } else {
     const covers = lists.length ? await coversOf(lists, tests) : new Map();
     panel = lists.length ? `<div class="list-cards">${lists.map((list) => listCardHtml(list, covers)).join("")}</div>`
       : `<p class="state">No collections yet. The lists of models ${name} makes public show here.</p>`;
   }
-  const tabs = `<nav class="tabs" aria-label="${name}’s work">${TABS.map(([id, label]) =>
+  const tabsHtml = `<nav class="tabs" aria-label="${name}’s work">${tabs.map(([id, label]) =>
     `<a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
     + `${label}${counts[id] ? ` <span class="n">${escapeHtml(counts[id].toLocaleString("en-US"))}</span>` : ""}</a>`).join("")}</nav>`;
 
@@ -1113,13 +1242,13 @@ async function profilePage(request, response) {
   <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
   ${pinned}
   <div class="work" id="work">
-  ${tabs}
+  ${tabsHtml}
   <div class="tab-panel" data-panel="${tab}">${panel}</div>
   </div>
   ${following.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
     <p class="note">${name} chose to show whom they follow.</p>
     <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
-      + `${avatarHtml({ handle: one.handle, name: one.name }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
+      + `${avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
 </div>`;
   const told = earned
     ? `${count(earned.models, "model")} by ${person.name}, ${count(earned.builds, "build")} finished and ${count(earned.remixes, "remix", "remixes")}: designed in Brickworks.`
@@ -1140,7 +1269,7 @@ async function listPage(request, response) {
   const tests = testsAsked(request.query);
   const list = await listFor(id, null, tests);
   if (!list) return html(response, 404, missingPage(origin, "There is no collection here"), { tests });
-  const shown = await models(origin, { collection: id, sort: "added", tests }, 1);
+  const shown = await withFaces(await models(origin, { collection: id, sort: "added", tests }, 1));
   const url = `${origin}/c/${id}`;
   const by = list.by ? `<a href="/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : "a Brickworks builder";
   const first = shown.models[0];
@@ -1179,6 +1308,8 @@ export default async function handler(request, response) {
       if (op === "me") return await me(request, response);
       if (op === "profile") return await profile(request, response);
       if (op === "page") return await profilePage(request, response);
+      if (op === "likes") return await likes(request, response);
+      if (op === "avatar") return await avatarServe(request, response);
       if (op === "marks") return await marks(request, response);
       if (op === "favourites") return await favourites(request, response);
       if (op === "collection") return await collection(request, response);
@@ -1201,6 +1332,9 @@ export default async function handler(request, response) {
       if (op === "photo_hide") return await photoHide(request, response);
       if (op === "profile") return await saveProfile(request, response);
       if (op === "showcase") return await saveShowcase(request, response);
+      if (op === "avatar") return await saveAvatar(request, response);
+      if (op === "avatar_remove") return await dropOwnAvatar(request, response);
+      if (op === "likes_choice") return await saveLikesChoice(request, response);
       if (op === "like") return await toggle(request, response, "model_likes");
       if (op === "favourite") return await toggle(request, response, "model_favourites");
       if (op === "collection") return await saveList(request, response);
@@ -1225,7 +1359,7 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
     if (trouble instanceof AuthError || trouble instanceof Refusal || trouble instanceof Unacceptable
-        || trouble instanceof BuildRefusal) {
+        || trouble instanceof BuildRefusal || trouble instanceof AvatarRefusal) {
       return response.status(trouble.status).json({ error: trouble.message });
     }
     console.error("people:", trouble.message);

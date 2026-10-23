@@ -173,7 +173,8 @@ is on the page, `hidden`, for the script to show.
   (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile). It is
   decoration beside the name, so `aria-hidden`.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
-  share, comment, more, build, search, filter, award; `web/kit.js` `iconHtml`),
+  share, comment, more, build, search, filter, award, zoom-in, zoom-out;
+  `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
   icon once there is one. Its label says its name and count to a screen

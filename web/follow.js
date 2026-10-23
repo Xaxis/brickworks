@@ -128,7 +128,8 @@ function badge(n, label = "") {
 
 function avatarOf(state, size) {
   const made = document.createElement("template");
-  made.innerHTML = avatarHtml({ handle: state.me?.handle || "", name: state.me?.name || state.email || "?" }, { size });
+  made.innerHTML = avatarHtml({ handle: state.me?.handle || "", name: state.me?.name || state.email || "?",
+    picture: state.me?.picture || "" }, { size });
   return made.content.firstElementChild;
 }
 

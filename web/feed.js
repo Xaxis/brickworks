@@ -91,7 +91,7 @@ function row(one) {
   // Who did it, and what.
   const head = document.createElement("div");
   head.className = "post-head";
-  const face = one.by && one.by.handle ? parsed(avatarHtml({ handle: one.by.handle, name: one.by.name })) : null;
+  const face = one.by && one.by.handle ? parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture })) : null;
   if (face) head.append(toProfile(one.by, face, { tabindex: "-1", "aria-hidden": "true", class: "face" }));
   const what = document.createElement("p");
   what.className = "what";
@@ -139,7 +139,7 @@ function person(one) {
   const item = document.createElement("li");
   item.className = "person-row";
   item.dataset.handle = one.handle;
-  item.append(toProfile(one, parsed(avatarHtml({ handle: one.handle, name: one.name })),
+  item.append(toProfile(one, parsed(avatarHtml({ handle: one.handle, name: one.name, picture: one.picture })),
     { tabindex: "-1", "aria-hidden": "true", class: "face" }));
   const names = document.createElement("div");
   names.className = "names";

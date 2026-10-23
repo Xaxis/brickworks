@@ -31,6 +31,8 @@
 import { inflateSync } from "node:zlib";
 import { decode as decodeJpeg, encode as encodeJpeg } from "./_jpeg.js";
 
+export { encodeJpeg };
+
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 export const MOST_PIXELS = 40 * 1000 * 1000;
 export const MOST_SIDE = 12000;
@@ -324,21 +326,20 @@ async function readWebp(bytes) {
 // ---------------------------------------------------------------------------
 // The new picture.
 
-/// [image] made at most LONG_SIDE on its long side, by averaging the pixels
-/// each new one covers, its transparent parts on white: RGBA, opaque.
-function shrink(image) {
-  const { width, height, data } = image;
-  const scale = Math.min(1, LONG_SIDE / Math.max(width, height));
-  const w = Math.max(1, Math.round(width * scale));
-  const h = Math.max(1, Math.round(height * scale));
+/// The part [box] ({left, top, width, height}) of [image] made [w] x [h]
+/// pixels, each new one the average of the pixels it covers, its
+/// transparent parts on white: RGBA, opaque. Only ever made smaller.
+export function resample(image, box, w, h) {
+  const { width, data } = image;
+  const { left, top } = box;
   const sums = new Float64Array(w * h * 3);
   const counts = new Float64Array(w * h);
-  const columns = new Int32Array(width);
-  for (let x = 0; x < width; x += 1) columns[x] = Math.min(w - 1, Math.floor((x * w) / width));
-  for (let y = 0; y < height; y += 1) {
-    const row = Math.min(h - 1, Math.floor((y * h) / height)) * w;
-    for (let x = 0; x < width; x += 1) {
-      const from = (y * width + x) * 4;
+  const columns = new Int32Array(box.width);
+  for (let x = 0; x < box.width; x += 1) columns[x] = Math.min(w - 1, Math.floor((x * w) / box.width));
+  for (let y = 0; y < box.height; y += 1) {
+    const row = Math.min(h - 1, Math.floor((y * h) / box.height)) * w;
+    for (let x = 0; x < box.width; x += 1) {
+      const from = ((top + y) * width + left + x) * 4;
       const to = row + columns[x];
       const a = data[from + 3] / 255;
       sums[to * 3] += data[from] * a + 255 * (1 - a);
@@ -356,6 +357,14 @@ function shrink(image) {
     out[i * 4 + 3] = 255;
   }
   return { width: w, height: h, data: out };
+}
+
+/// [image] made at most LONG_SIDE on its long side.
+function shrink(image) {
+  const { width, height } = image;
+  const scale = Math.min(1, LONG_SIDE / Math.max(width, height));
+  return resample(image, { left: 0, top: 0, width, height },
+    Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale)));
 }
 
 /// [image] turned and flipped the way Exif's [orientation] says it was
@@ -387,20 +396,29 @@ export function upright(image, orientation) {
   return { width: w, height: h, data: out };
 }
 
-/// A photo as it was sent, made into the one that is kept: {bytes (a JPEG),
-/// width, height, was ("jpeg", "png" or "webp")}. [declared] is the type
-/// the upload said it was; it must agree with what the bytes say.
-export async function cleanPhoto(given, declared = "") {
+/// A picture as it was sent, decoded: {width, height, data (RGBA),
+/// orientation, was ("jpeg", "png" or "webp")}. [declared] is the type the
+/// upload said it was; it must agree with what the bytes say. [most] is
+/// the most bytes it may be.
+export async function decodePicture(given, declared = "", most = MAX_PHOTO_BYTES) {
   const bytes = Buffer.isBuffer(given) ? given : Buffer.from(given || []);
   if (bytes.length === 0) throw new PhotoTrouble("there is no photo in that", 400);
-  if (bytes.length > MAX_PHOTO_BYTES) {
-    throw new PhotoTrouble(`that photo is ${(bytes.length / 1048576).toFixed(1)} MB: at most 8 MB, please`, 413);
+  if (bytes.length > most) {
+    throw new PhotoTrouble(`that photo is ${(bytes.length / 1048576).toFixed(1)} MB: at most ${most / 1048576} MB, please`, 413);
   }
   const was = sniff(bytes);
   if (!was) throw new PhotoTrouble(NOT_A_PICTURE);
   if (declared && TYPES[declared] !== was) throw new PhotoTrouble(`that file says it is ${declared}, and it is not`);
   const image = was === "jpeg" ? readJpeg(bytes) : was === "png" ? readPng(bytes) : await readWebp(bytes);
+  return { ...image, was };
+}
+
+/// A photo as it was sent, made into the one that is kept: {bytes (a JPEG),
+/// width, height, was ("jpeg", "png" or "webp")}. [declared] is the type
+/// the upload said it was; it must agree with what the bytes say.
+export async function cleanPhoto(given, declared = "") {
+  const image = await decodePicture(given, declared);
   const made = upright(shrink(image), image.orientation);
   const jpeg = encodeJpeg({ data: made.data, width: made.width, height: made.height }, QUALITY).data;
-  return { bytes: Buffer.from(jpeg), width: made.width, height: made.height, was };
+  return { bytes: Buffer.from(jpeg), width: made.width, height: made.height, was: image.was };
 }

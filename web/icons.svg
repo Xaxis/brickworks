@@ -10,5 +10,7 @@
 <symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></symbol>
 <symbol id="filter" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
 <symbol id="build" viewBox="0 0 24 24"><path d="M3.8 11.2h16.4v8.3H3.8z"/><path d="M6.6 11.2V8.6h3.6v2.6M13.8 11.2V8.6h3.6v2.6"/></symbol>
+<symbol id="zoom-in" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5"/></symbol>
+<symbol id="zoom-out" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5h5"/></symbol>
 <symbol id="award" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.2"/><path d="M8.7 13.4 7.2 20.3 12 17.8l4.8 2.5-1.5-6.9"/></symbol>
 </svg>

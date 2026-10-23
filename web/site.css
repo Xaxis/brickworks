@@ -608,6 +608,18 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .avatar.c5 { background: var(--avatar-5); } .avatar.c6 { background: var(--avatar-6); }
 .avatar.c7 { background: var(--avatar-7); } .avatar.c8 { background: var(--avatar-8); }
 
+/* A picture of your own cropped to a circle (web/picture.js, Edit
+   profile's Choose a picture): the picture on a square canvas, the circle
+   it is cut to drawn on it, as wide as the dialog lets it be, the zoom's
+   two icon buttons under it. Dragged with a finger, so the page does not
+   scroll under it. */
+.crop-dialog { width: min(440px, calc(100vw - 32px)); }
+.cropper { display: grid; gap: var(--s-3); justify-items: center; margin: 0 0 var(--s-4); }
+.cropper canvas { display: block; width: 100%; max-width: 360px; aspect-ratio: 1; border-radius: var(--radius);
+	background: var(--field); touch-action: none; cursor: grab; }
+.cropper canvas:active { cursor: grabbing; }
+.cropper .zoom { display: flex; gap: var(--s-2); }
+
 /* An icon from the sprite (web/icons.svg, web/kit.js iconHtml), in the
    words' colour; filled when its button is pressed. */
 .icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

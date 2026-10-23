@@ -39,6 +39,7 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { withFaces } from "./_faces.js";
 import { SCORE, TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
 import { photosWhere } from "./_builds.js";
 import { shownPublicly } from "./_trust.js";
@@ -201,11 +202,11 @@ export async function getFollowing(request, response) {
     // Before account.sql: not the list, only that it is not there yet
     // (ready: false), and the page says how many from follow_state.
     const mine = await followingMine(asker);
-    return response.status(200).json({ mine: true, ready: mine !== null, following: mine || [] });
+    return response.status(200).json(await withFaces({ mine: true, ready: mine !== null, following: mine || [] }));
   }
   response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   if (!handle) throw refused("nobody");
-  return response.status(200).json({ handle, following: await followingOf(handle) });
+  return response.status(200).json(await withFaces({ handle, following: await followingOf(handle) }));
 }
 
 export async function followChoice(request, response) {
@@ -262,7 +263,7 @@ export async function feed(request, response, { origin }) {
   const rows = found.map((row) => ({ ...feedSaid(row, origin), model: row.model,
     new: seen === null || Date.parse(row.at) > seen, card: cards.get(row.model) || null,
     ...(row.kind === "photo" ? { photo: photos.get(row.photo) || null } : {}) }));
-  return response.status(200).json({ ready: true, rows, more: page?.more === true, seen_at: page?.seen_at ?? null,
+  return response.status(200).json({ ready: true, rows: await withFaces(rows), more: page?.more === true, seen_at: page?.seen_at ?? null,
     ...(before === null ? { following: following ? following.map((one) => one.handle) : null } : {}) });
 }
 
@@ -351,6 +352,6 @@ export async function latest(request, response, { origin }) {
     newestPhotos(origin, tests, LATEST.photos),
   ]);
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
-  return response.status(200).json({ models: (newest || []).slice(0, LATEST.models).map((row) => cardOf(origin, row)),
-    photos, designers: designersFrom((top || []).map((row) => cardOf(origin, row))) });
+  return response.status(200).json(await withFaces({ models: (newest || []).slice(0, LATEST.models).map((row) => cardOf(origin, row)),
+    photos, designers: designersFrom((top || []).map((row) => cardOf(origin, row))) }));
 }

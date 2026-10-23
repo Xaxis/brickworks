@@ -1,5 +1,6 @@
 // Your settings, /settings (settings.html): the theme, what Brickworks
-// emails you, your age answer and whom your profile shows you follow, the
+// emails you, your age answer, whom your profile shows you follow and
+// whether it shows the models you liked (supabase/avatars.sql), the
 // Claude apps that may work in your tabs, signing out and deleting the
 // account. Your profile itself (name, handle, words, links, pins) is
 // changed on /profile, with Edit profile (docs/SOCIAL.md U6, D9).
@@ -110,6 +111,11 @@ async function load() {
   const shows = answer.body.follows;
   $("follows-choice").hidden = !(shows && shows.ready) || young;
   $("shows-follows").checked = Boolean(shows && shows.shows_follows);
+  // Whether their profile shows the models they liked: only with a profile
+  // to show them on (supabase/avatars.sql).
+  const likes = answer.body.likes;
+  $("likes-choice").hidden = !(likes && likes.ready) || young || !handle;
+  $("shows-likes").checked = Boolean(likes && likes.shows_likes);
   await claude().catch(() => null);
   document.documentElement.dataset.settings = "ready";
 }
@@ -161,6 +167,21 @@ $("shows-follows").addEventListener("change", async () => {
   $("follows-said").textContent = answer.body.shows_follows
     ? "Shown: your profile lists whom you follow."
     : "Not shown: your profile says only how many.";
+});
+
+$("shows-likes").addEventListener("change", async () => {
+  const box = $("shows-likes");
+  box.disabled = true;
+  const answer = await call("/api/people?op=likes_choice", { method: "POST", body: { shows: box.checked } });
+  box.disabled = false;
+  if (answer.status !== 200) {
+    box.checked = !box.checked;
+    $("likes-said").textContent = answer.body.error || "That did not work just now.";
+    return;
+  }
+  $("likes-said").textContent = answer.body.shows_likes
+    ? "Shown: your profile has a Likes tab of the models you liked."
+    : "Not shown: nobody sees which models you liked.";
 });
 
 $("sign-in").addEventListener("click", async () => {

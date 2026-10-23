@@ -29,6 +29,7 @@
 import { bearer, isTestAccount, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db } from "./_db.js";
+import { withFaces } from "./_faces.js";
 import { TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -237,7 +238,7 @@ export async function challenge(request, response, { origin }) {
         : !kind ? "A test account votes only in a test challenge."
           : mine?.under_13 ? VOTE_SAID.under_13[1] : mine?.may_vote !== true ? ASK_FIRST : null };
   }
-  return response.status(200).json({ ready: true, challenge: shown, ...(you ? { you } : {}) });
+  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...(you ? { you } : {}) }));
 }
 
 /// GET ?op=challenge_entry&id=X: for X's own designer, the challenge open

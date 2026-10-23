@@ -218,7 +218,7 @@ export function firstSteps({ pending = false } = {}) {
         for (const one of designers) {
           const row = make("li", "person-row");
           row.dataset.handle = one.handle;
-          const face = make("a", "face", parsed(avatarHtml({ handle: one.handle, name: one.name })));
+          const face = make("a", "face", parsed(avatarHtml({ handle: one.handle, name: one.name, picture: one.picture })));
           face.href = `/u/${encodeURIComponent(one.handle)}`;
           face.tabIndex = -1;
           face.setAttribute("aria-hidden", "true");

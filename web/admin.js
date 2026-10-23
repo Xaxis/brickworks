@@ -182,6 +182,18 @@ function draw(data) {
     } else if (report.handle) {
       link.href = `/u/${encodeURIComponent(report.handle)}`;
       link.textContent = `@${report.handle}`;
+      // The picture the profile shows as its avatar, if one of its own
+      // (supabase/avatars.sql), to look at before taking it out.
+      if (/^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/.test(String(report.picture || ""))) {
+        const img = document.createElement("img");
+        img.className = "reported-photo reported-avatar";
+        img.alt = "The picture this profile shows as its avatar";
+        img.width = 96;
+        img.height = 96;
+        img.src = report.picture;
+        row.dataset.picture = report.handle;
+        about.append(img, document.createElement("br"));
+      }
     } else {
       link.href = `/c/${encodeURIComponent(report.collection)}`;
       link.textContent = `collection ${report.collection}`;
@@ -207,6 +219,11 @@ function draw(data) {
       acts.append(act("Take the photo out", () => confirm("Take this photo out? Its file is deleted, and it is shown nowhere again.")
         && post(`op=remove_photo&photo=${encodeURIComponent(report.photo.id)}`, "reports-note",
           "The photo is out, and its file deleted.")));
+    } else if (report.handle && report.picture) {
+      acts.append(act("Take the picture out", () => confirm("Take this profile's picture out? Its file is deleted, "
+        + "and its avatar is made from its handle again.")
+        && post(`op=remove_avatar&handle=${encodeURIComponent(report.handle)}`, "reports-note",
+          "The picture is out, and its file deleted.")));
     } else if (report.model) {
       acts.append(act("Take out", () => confirm(`Take this model out of the gallery for good?`)
         && post(`op=unlist&id=${encodeURIComponent(report.model)}`, "reports-note", "Taken out.")));

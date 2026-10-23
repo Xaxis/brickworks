@@ -3,7 +3,7 @@
   Your settings, at /settings: everything about the account that is not
   your profile itself (docs/SOCIAL.md U6, D9). Appearance (the theme),
   Email (what Brickworks sends you), Privacy (your age answer, whom your
-  profile shows you follow), Claude (the apps that may work in your tabs),
+  profile shows you follow, whether it shows the models you liked), Claude (the apps that may work in your tabs),
   Sign out and Delete account; and a way back to your profile, where
   Edit profile changes what it shows. These were the foot of the account
   page until 2026-10-22, the same rows and the same controls.
@@ -161,6 +161,13 @@
 						<label class="choice"><input type="checkbox" id="shows-follows">
 							Show on my profile whom I follow</label>
 						<p class="said" id="follows-said" role="status"></p>
+					</div>
+					<div class="wide" id="likes-choice" hidden>
+						<p>A model shows how many people liked it, never who. You may show on your profile the
+							models you liked, as a tab of their cards; off until you turn it on.</p>
+						<label class="choice"><input type="checkbox" id="shows-likes">
+							Show on my profile the models I liked</label>
+						<p class="said" id="likes-said" role="status"></p>
 					</div>
 				</div>
 

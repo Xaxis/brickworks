@@ -3,9 +3,10 @@
 //
 // Share is the phone's own share sheet where there is one, else the page's
 // link copied and said so in the toast. Show more asks /api/people for the
-// next page of the person's models and puts its cards after these, the
-// same cards the server draws (web/card.js); with no script it is a link to
-// that page. Hidden until this is here to make them work.
+// next page of the person's models (or of the models they liked, on their
+// Likes tab) and puts its cards after these, the same cards the server
+// draws (web/card.js); with no script it is a link to that page. Hidden
+// until this is here to make them work.
 import { modelCard } from "/card.js";
 import { toast } from "/kit.js";
 
@@ -41,7 +42,8 @@ if (more && grid && person) {
     if (more.getAttribute("aria-disabled") === "true") return;
     more.setAttribute("aria-disabled", "true");
     const page = Number(more.dataset.more);
-    const asked = new URLSearchParams({ op: "profile", handle: person.dataset.handle, page: String(page) });
+    const liked = grid.closest("[data-panel]")?.dataset.panel === "likes";
+    const asked = new URLSearchParams({ op: liked ? "likes" : "profile", handle: person.dataset.handle, page: String(page) });
     const tests = new URLSearchParams(location.search).get("tests");
     if (tests) asked.set("tests", tests);
     let body = null;
@@ -57,7 +59,7 @@ if (more && grid && person) {
       toast("That did not load just now. Try again in a minute.");
       return;
     }
-    const earned = person.classList.contains("designer");
+    const earned = !liked && person.classList.contains("designer");
     const cards = body.models.filter((model) => ID.test(String(model.id))).map((model) => modelCard(model, { earned }));
     grid.append(...cards);
     grid.dataset.page = String(page);
