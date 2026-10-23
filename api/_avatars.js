@@ -17,7 +17,9 @@
 // /admin: its file deleted, the row kept to say so, the reports about the
 // profile settled, the avatar made from the handle shown again. Its owner
 // takes it off themselves in Edit profile, which deletes the file and the
-// row. Deleting the account deletes the file first (api/account.js).
+// row. Deleting the account deletes the file first (api/account.js). Its
+// address is kept at the CDN PICTURE_KEPT seconds at most (api/_photo.js),
+// so a picture taken out or taken off is seen no longer than that.
 //
 // Likes. A person may choose, in /settings, to show on their profile which
 // models they liked: off until they turn it on, and nobody else's to turn.

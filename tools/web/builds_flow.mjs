@@ -262,10 +262,11 @@ async function api(token, pathname, body, method = "POST", extra = {}) {
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }
 
-/// On a deployment the model's page and a photo's file are kept at the CDN
-/// for 30 s and served stale for 30 more (SHARED_CACHE, photoServe): a photo
-/// added, hidden or taken out shows there within a minute, as promised, not
-/// at once. [test] asked again every 5 s for up to 90 s (once on the local
+/// On a deployment the model's page is kept at the CDN for 30 s and served
+/// stale for 30 more (SHARED_CACHE), a photo's file 10 s (photoServe,
+/// PICTURE_KEPT): a photo added, hidden or taken out shows there within a
+/// minute, as promised, not at once. [test] asked again every 5 s for up to
+/// 90 s (once on the local
 /// relay, which keeps nothing): {value, waited} with waited in seconds.
 async function fresh(test) {
   const began = Date.now();

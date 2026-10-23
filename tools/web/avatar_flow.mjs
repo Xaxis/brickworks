@@ -29,13 +29,15 @@
 // liked model, she hides them and it is gone; Bob reports her profile and
 // the site's owner takes the picture out on /admin, its file deleted;
 // she chooses another and takes it off herself; and deleting her account
-// deletes its file.
+// deletes its file. A picture taken out or taken off answers 404 at its
+// address within PICTURE_KEPT seconds (api/_photo.js: the CDN keeps it
+// that long at most), asked every second until then.
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { decodePicture } from "../../api/_photo.js";
+import { decodePicture, PICTURE_KEPT } from "../../api/_photo.js";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -317,6 +319,18 @@ async function api(pathname, { method = "GET", token, body } = {}) {
     bytes: type.startsWith("image/") ? Buffer.from(await reply.arrayBuffer()) : null };
 }
 
+/// Picture [address], taken out or taken off when [since] (ms): asked every
+/// second until it answers 404, for the PICTURE_KEPT seconds the CDN may
+/// keep it and 2 more for the asking. {status, waited} in seconds.
+async function goneBy(address, since) {
+  for (;;) {
+    const { status } = await api(address);
+    const waited = (Date.now() - since) / 1000;
+    if (status === 404 || waited > PICTURE_KEPT + 2) return { status, waited: waited.toFixed(1) };
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+}
+
 /// What the relay holds of the avatars bucket, or null where nothing is held.
 const heldFiles = async () => (remote ? fetch(`${site}/__held_storage/list/avatars`, { headers })
   .then((a) => (a.ok && /json/.test(a.headers.get("content-type") || "") ? a.json() : null)).catch(() => null) : null);
@@ -499,19 +513,25 @@ async function deployed() {
           until: Date.now() + 50 * 60 * 1000, email: master.kept.email })] });
       const row = page.locator(`tr[data-picture="${ADA}"]`);
       const shown = await row.waitFor({ timeout: 30000 }).then(() => true, () => false);
-      check("/admin: her report with her picture to look at", shown && await row.locator("img.reported-avatar").evaluate((img) =>
-        img.complete && img.naturalWidth > 0).catch(() => false));
+      // Loaded, not only begun: on the relay, or past the CDN's 10 s, the
+      // picture is read from storage first, and was still loading when
+      // the row appeared.
+      check("/admin: her report with her picture to look at", shown && await until(page, (handle) => {
+        const img = document.querySelector(`tr[data-picture="${handle}"] img.reported-avatar`);
+        return img?.complete && img.naturalWidth > 0;
+      }, ADA));
       await row.scrollIntoViewIfNeeded().catch(() => {});
       await shot(page, "admin_1280_light.png");
       if (shown) {
         await row.locator("button", { hasText: "Take the picture out" }).click();
         check("/admin: the picture is out", await until(page, () => /picture is out/.test(document.getElementById("reports-note")?.textContent || "")));
       }
+      const outAt = Date.now();
       await context.close();
       const after = await api(`/api/people?op=me`, { token: ada.access_token });
-      const gone = await api(picture);
-      check(`her picture after: ${gone.status}, op=me says taken out`, gone.status === 404 && after.json?.avatar?.picture === null
-        && after.json?.avatar?.removed === true);
+      const gone = await goneBy(picture, outAt);
+      check(`her picture after: ${gone.status} in ${gone.waited} s (the CDN keeps it ${PICTURE_KEPT} s at most), op=me says taken out`,
+        gone.status === 404 && after.json?.avatar?.picture === null && after.json?.avatar?.removed === true);
       const herPage = await fetch(`${site}/u/${ADA}?tests=1`, { headers }).then((a) => a.text());
       check("her page shows the tile again", !herPage.includes(picture) && /class="avatar huge c\d"/.test(herPage));
       const files = await heldFiles();
@@ -528,6 +548,7 @@ async function deployed() {
     const third = String(r.json?.picture || "");
     const replaced = await api(second);
     check(`a third replaces it: ${r.status}, the second's file gone (${replaced.status})`, r.status === 200 && replaced.status === 404);
+    let offAt = Date.now();
     {
       const { page, context } = await open("/profile", { width: 390, theme: "dark", session: asAda(), label: "Ada remove" });
       await until(page, () => document.documentElement.dataset.profile === "ready", null, 30000);
@@ -537,11 +558,12 @@ async function deployed() {
       await page.click("#avatar-remove");
       check("Ada 390: Remove the picture, and the tile at once", await until(page, () => !document.querySelector("#avatar-edit img")
         && !document.querySelector(".profile-head .avatar img"), null, 20000));
+      offAt = Date.now();
       await shot(page, "removed_390_dark.png");
       await context.close();
     }
-    const off = await api(third);
-    check(`its file gone: ${off.status}`, off.status === 404);
+    const off = await goneBy(third, offAt);
+    check(`its file gone: ${off.status} in ${off.waited} s (the CDN keeps it ${PICTURE_KEPT} s at most)`, off.status === 404);
     r = await api("/api/people?op=avatar", { method: "POST", token: ada.access_token, body: { picture: stand.PORTRAIT.toString("base64"), type: "image/jpeg" } });
     const last = String(r.json?.picture || "");
     check(`one more, kept until the account goes: ${r.status}`, r.status === 200 && PICTURED.test(last));

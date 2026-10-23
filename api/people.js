@@ -174,6 +174,7 @@ import {
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
 import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
+import { PICTURE_CACHE } from "./_photo.js";
 import {
   BuildRefusal, MAX_WORDS, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto, startPhoto,
 } from "./_builds.js";
@@ -607,9 +608,10 @@ async function avatarServe(request, response) {
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   response.setHeader("Content-Type", "image/jpeg");
   response.setHeader("X-Content-Type-Options", "nosniff");
-  // Kept as briefly as the pages, so a picture taken out leaves every cache
-  // within a minute. A new picture has a new address.
-  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
+  // Kept at the CDN for PICTURE_KEPT seconds, never stale, so a picture
+  // taken out or taken off is gone from every cache that soon. A new
+  // picture has a new address.
+  response.setHeader("Cache-Control", PICTURE_CACHE);
   return response.status(200).end(file);
 }
 
@@ -932,9 +934,9 @@ async function photoServe(request, response) {
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   response.setHeader("Content-Type", "image/jpeg");
   response.setHeader("X-Content-Type-Options", "nosniff");
-  // Kept as briefly as the pages, so a photo hidden or taken out leaves
-  // every cache within a minute.
-  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
+  // Kept at the CDN for PICTURE_KEPT seconds, never stale, so a photo
+  // hidden or taken out is gone from every cache that soon.
+  response.setHeader("Cache-Control", PICTURE_CACHE);
   return response.status(200).end(file);
 }
 
