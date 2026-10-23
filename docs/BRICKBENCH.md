@@ -2499,6 +2499,173 @@ kept every build in one piece. What is left is how a figure stands.
   verify.py.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-23, morning: the pose planned from the brief, on the same six
+
+pose174 (`40fdc956`) is sculpt170 (`55eee104`) and one lever: `git log
+55eee104..40fdc956 -- src/ai` is its commits. A brief's pose words are read limb
+by limb (`FigurePose`) into a plan in plates: the head's share by kind, where
+each arm and leg goes, a seat as an L, a hunch as a tilt on a hinge, a tail's
+angle. The plan is said in the figures and outline guides and the first check.
+The check measures the build's silhouettes (the head, the arms, the lap, the
+legs) and says what is off in check_design and submit_design, and after the
+massing in an edit's or a view's reply. It designed the same six prompts, one
+design each, in the m147 round's folder. Its builds were drawn on the GPU by the
+same renderer and judged against sculpt170's, m147's and BrickAgent's, every
+pair both orders twice: 72 new verdicts, with the other three pairs' 72 read
+back (`compare-pose174.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every log,
+`40fdc956` in every `design.json`. **One build comes apart**: the toilet is two
+pieces, by verify.py's graph and by our check (`src/dev/pieces_agree.gd` at
+`9a835523`, `pieces-pose174.txt`). The creative pass's last edit set a toilet
+roll on the tank, a 2 x 2 round brick (3941) under a round tile (15535), off the
+stud grid of the 1 x 4 brick with side studs (30414) it rests on. Our check
+counts it a piece of its own and calls it set down on purpose, so advice, not a
+fault. The edit's reply said nothing of it, and the session ended saying the
+check "says it holds together". The judge named the two pieces in 3 of the 4
+verdicts the toilet lost to sculpt170.
+
+| build | parts | pieces, verify.py | pieces, ours | what the plan and the measure said in its session |
+|---|---|---|---|---|
+| potato (042) | 293 | 1 | 1 | nothing: no figure in the brief. Its body an egg, 266 parts laid by Brickify, kept |
+| balloon dog (043) | 179 | 1 | 1 | the plan once (the tail 30-50 degrees up and back, not straight up); the measure 11 times, every time "the legs are 0% of its height to the back ... it reads as lying or legless" |
+| toilet (044) | 312 | 2 | 2 | nothing: a toilet with a head is no figure |
+| statue (049) | 149 | 1 | 1 | the plan once (seated as an L, hunched 20-35 degrees on a hinge); the measure once, at its last edit: "the head is 14 plates of 41 standing (34%)" |
+| rabbit (078) | 342 | 1 | 1 | the plan twice; the measure once, at an edit: an arm out 2 studs with air under it, a T |
+| boy (080) | 133 | 1 | 1 | the plan once (the torso on a turntable, a fist 6 studs ahead at the shoulder, the other at the waist); the measure once, of a check 4 plates tall |
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| pose174 | 8.7 (4.7-16.6) | 2.59 (16.71 for six) | 38 | 236 |
+| sculpt170 | 7.2 (5.2-12.8) | 2.33 (15.06) | 35 | 195 |
+| m147 | 12.7 (8.1-14.2) | 3.14 (19.18) | 50 | 202 |
+
+pose174 costs 11% more than sculpt170, a design and over the six, and 18% less
+a design than m147 (13% over the six). The boy is most of the rise: 16.6 minutes
+and $5.46, the dearest design of the three arms, with about 27 of its 87 calls
+spent fitting its arms on ball shoulders to the plan's fist forward and fist at
+the waist. Its builds are larger than sculpt170's and less stacked: 236 parts at
+the median against 195, 56% stacked against 69%.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| pose174 vs sculpt170 | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+| pose174 vs m147 | 17 of 24 (71%) | 51-85% | 2 / 4 / 0 |
+| pose174 vs BrickAgent | 1 of 24 (4%) | 1-20% | 0 / 1 / 5 |
+| sculpt170 vs m147 (the sculpt round's verdicts) | 13 of 24 (54%) | 35-72% | 3 / 1 / 2 |
+| sculpt170 vs BrickAgent (the sculpt round's verdicts) | 4 of 24 (17%) | 7-36% | 1 / 0 / 5 |
+
+| dimension | pose174 ELO (95%) | sculpt170 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|---|
+| likeness | 900 (780-980) | 934 (734-1150) | 866 (650-983) | 1300 (1196-1613) |
+| surface | 915 (659-1037) | 946 (786-1082) | 1006 (731-1208) | 1132 (978-1539) |
+| colour | 1022 (897-1182) | 905 (651-1078) | 921 (711-1128) | 1152 (1084-1293) |
+| technique | 983 (889-1063) | 890 (698-1034) | 976 (721-1166) | 1151 (1040-1396) |
+| creativity | 1002 (900-1155) | 1065 (909-1293) | 829 (500-986) | 1105 (1006-1259) |
+| buildability | 1029 (878-1207) | 1007 (835-1171) | 927 (790-1050) | 1036 (909-1147) |
+| **overall** | **938 (817-1038)** | **929 (698-1133)** | **852 (647-970)** | **1281 (1177-1615)** |
+
+Overall pose174 is 9 ELO over sculpt170, well inside the intervals, and about
+340 behind BrickAgent; in this fit sculpt170 is 350 behind (974 against 1265 in
+its own round's). Against sculpt170 it has technique 14 of 24, likeness 11 and
+surface 9; against m147 likeness 15, technique 13 and surface 8. Against
+BrickAgent it won no likeness verdict (0 of 24, 0-14%), where sculpt170 won 4.
+
+| prompt | vs sculpt170 | vs m147 | vs BrickAgent | what the judge said of pose174's |
+|---|---|---|---|---|
+| potato (042) | 4-0 | 3-1 | 0-4 | "rounder potato shape", a banded hat and "a true ear in place of the mouth" beat sculpt170's; against BrickAgent "a crude brown block", "a stepped brown block with a hat on it", its mustache "a thin black plate" |
+| balloon dog (043) | 0-4 | 4-0 | 0-4 | "pinched rounded segments" beat m147's "slab-and-cylinder body"; sculpt170's and BrickAgent's beat "blocky plate platforms", "large flat plate hubs at the hips, shoulders and head", "a table on legs". No verdict holds its tail against it; one calls it "angled" |
+| toilet (044) | 0-4 | 1-3 | 0-4 | "a jumble of blocky white slabs", "a messy two-piece build"; the longer neck and the grinning head named, and outweighed |
+| statue (049) | 2-2 | 2-2 | 0-4 | "seated" in all four it won ("a seated man with planted feet"); no hunch or no chin on a fist in all eight it lost, six of them "upright" ("sits bolt upright like a boxy robot") |
+| rabbit (078) | 4-0 | 3-1 | 1-3 | "hanging arms", buck teeth and "a drooping white belly" beat sculpt170's arms "stuck out stiffly" and m147's "studded drum"; BrickAgent's beat "a gaping open mouth", "a boxy head" and a belly "only a thin white band" low down |
+| boy (080) | 2-2 | 4-0 | 0-4 | its pose in all six it won ("the forward punch, the torso twist"); against BrickAgent "a grey robot", "a flat crew cut", "a grille for a mouth", and its fists jut sideways in 3 of 4 |
+
+**The bar is missed** on all three counts. Against sculpt170, 12 of 24 where it
+asked 15: an even match (31-69%), two prompts won every time and two lost.
+Against BrickAgent, 1 of 24 where it asked 6, where sculpt170 had 4. Six of six
+are valid, but the toilet is two pieces. Against m147, 17 of 24 (51-85%) is the
+one clear win.
+
+### What the lever reached
+
+The plan and the measure spoke to the four figures only: the potato's and the
+toilet's sessions never heard either (`scripts/pose_said.py`,
+`pose-said-pose174.txt`). Those two prompts went 4-0 and 0-4 against sculpt170,
+4 of 8 where the lever never spoke, and 8 of 16 on the four figures. One design
+a prompt does not tell a lever from a session's choices. Each saved build was
+measured again by pose174's own check (`figure_pose_probe --models`,
+`pose-final-pose174.txt`).
+
+- **The rabbit is the lever working.** The measure told it once that an arm
+  stood out 2 studs from the body with air under it. It laid the arms again,
+  and in the saved build they hang against the body: the measure is quiet. The
+  judge named the hanging arms, or sculpt170's "stuck out stiffly", in all four
+  wins over sculpt170 and all three over m147. It lost to BrickAgent on its face
+  and its belly, not its arms.
+- **The statue sits, and does not hunch.** It laid the figure pattern twice,
+  seated on a block and leaning 25 degrees on a hinge at the waist, then laid
+  the whole figure again by hand and its block as a fill (87 parts, "nothing
+  in it is on a joint yet"),
+  as sculpt170's statue did. The saved build sits: its knees 4 studs ahead of
+  the belly, a lap at plate 9. The measure reads its lean as 19.5 degrees and
+  says nothing (it speaks under 8); the judge reads the same build as upright.
+  The one finding it said, at the last edit, was a head of 34%, which no
+  verdict names.
+- **The boy turned, and its punch reads two ways.** Its torso is on a
+  turntable and its arms on ball shoulders. The judge named its pose, the turn or
+  the punch, in all six of its wins. Against BrickAgent's, whose fist is straight
+  ahead, three of four say its fists jut sideways. The measure finds a reach
+  3 studs ahead of the chest, over the 2.9 it asks of a figure 48 plates tall,
+  and is quiet.
+- **The balloon dog was told eleven times that it has no legs**, from its first
+  check to its last edit: "the legs are 0% of its height to the back (belly at
+  plate 0)". It stands on four legs on a plinth, and the measure found nothing
+  under it (`"base": -1`). The session never answered it. It laid the plan's
+  tail "on a tilting hinge", and no verdict holds the tail against it, where
+  all four of sculpt170's losses to BrickAgent did. It has outline161's and
+  sculpt170's ten 24947 on ten 3262, and between them 4 x 6 and 2 x 6 plates
+  for hips and shoulders: the "flat plate hubs" in all eight verdicts it lost.
+
+### What the judge holds against it now
+
+The 23 verdicts lost to BrickAgent, by what their overall and likeness reasons
+hold against it (one verdict can hold more than one):
+
+1. **A body that does not read as the thing. 12 of 23.** The potato a stepped,
+   faceted brown block (4), the toilet a jumble of white slabs (4), the balloon
+   dog's segments on flat plate hubs (4). sculpt170 had 4 here, the potato's.
+2. **The face and the colour. 10 of 23.** The boy a grey robot with a grille
+   for a mouth and a flat crew cut (4), the rabbit's gaping mouth and boxy head
+   (3), the potato's mustache a thin plate (3). sculpt170 had 8 (the rabbit and
+   the boy).
+3. **The pose. 7 of 23.** The statue upright with no chin on a fist (4), the
+   boy's fists out to the sides (3).
+4. **The proportions. 6 of 23.** The balloon dog's stilt legs and short body
+   (3), the rabbit's white belly a band low down rather than its front (3).
+
+Pose or proportions are 13 of 23, from 16 of 20 for sculpt170. The rabbit's T
+and the dog's tail have left the list. The statue is on it still, now seated
+but upright. Loose parts are in none of the 23, though 3 of the 4 the toilet
+lost to sculpt170 name its two pieces.
+
+### The next lever: the face, and a measure that reads as the judge does
+
+- **What changes.** The measure is made to agree with the judge where this
+  round split them: a figure on four legs measured from the top of what it
+  stands on (the dog), a reach forward along the way the hips face (the boy),
+  and a hunch as the shoulders ahead of the hips as well as the head's lean (the
+  statue, 19.5 degrees and read as upright). And a character's face is planned
+  from the brief's face words as its limbs are from its pose words: the mouth,
+  the teeth, the hair and the skin and suit colours, each at the head's size.
+- **Apart from the lever:** a part an edit sets down where nothing joins it is
+  said in that edit's reply (the toilet's roll). It is a validity risk on any
+  build's last touches.
+- **Proof in the unit** (minutes): `figure_pose_probe --models` on this round's
+  builds says the dog stands and the boy's fists are out to the sides, and
+  still nothing of BrickAgent's; the rabbit and the boy briefs in a short design
+  each, each one piece by verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -2607,6 +2774,22 @@ each session's submits and the sculpts in them `scripts/sculpt_calls.py`, a
 session's words and calls `scripts/said_calls.py`, and the pieces main's
 `src/dev/pieces_agree.gd` on the six `design.ldr` (`pieces-sculpt170.txt`), with
 the sheets in `sheets-sculpt170/`.
+
+The pose round (2026-10-23, morning) is the sculpt round's commands with `--arm
+pose174` and `--app` a locked `release_wt.sh pose174-bench 40fdc956` worktree
+(imported; retired after). Export, verify, views and pairs ran from an imported
+worktree of `9a835523`, two prompts at a time with `--tasks` as the designs
+finished, then `pairs` once over all six, which asked nothing new: `pairs
+--arms pose174,sculpt170,m147` and `compare --arms pose174,sculpt170,m147 --runs
+1 --out .../compare-pose174.md`, the m147 round's `compare.md` copied aside first
+and put back. What each session was told of its pose is `scripts/pose_said.py`
+on its transcripts (Claude Code's project folder for the pose174-bench
+worktree, `pose-said-pose174.txt`); each saved build measured by pose174's own
+`tools/probe.sh figure_pose_probe --models=LIST.json` in its checkout, a JSON of
+each `design.ldr` and its brief (`pose-final-pose174.txt`); the pieces
+`src/dev/pieces_agree.gd` at `9a835523` (`pieces-pose174.txt`); the reasons
+`scripts/reasons.py` (`reasons-pose174-*.txt`), with the sheets in
+`sheets-pose174/`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
