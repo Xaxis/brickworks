@@ -357,6 +357,18 @@ session of the test account (`delivered+brickworks-tests@resend.dev`,
 once, so a reload finds the renewed one. Without `.env` sourced the pages start
 signed out and say so.
 
+`mintSession` signs a Resend test address in by password, not by a code
+(2026-10-23): the account made by the admin API with a password worked out from
+`SUPABASE_SECRET_KEY`, then `/auth/v1/token?grant_type=password`, which counts
+against the token limit (shared with renewals) rather than verify's (30 in five
+minutes, which m156's battery spent). An address that has an account made some
+other way (by a code, or by the dialog earlier in the flow) and every other
+address, `MASTER_EMAIL`'s above all, is still signed in by its code, and no
+password is put on it. On a 429 it waits and asks again, about two minutes in
+all, saying so. The flows about the sign-in itself (`account_flow`,
+`people_flow`'s visitor, `first_steps`' dialog, `oauth_flow`'s authorize page)
+type a minted code (`mintCode`) and so still drive the real `/auth/v1/verify`.
+
 ## Gotchas
 
 - **Never ask `/api/otp` for a real person's address as a check.** It emails
