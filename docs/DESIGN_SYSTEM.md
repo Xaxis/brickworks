@@ -281,7 +281,7 @@ is on the page, `hidden`, for the script to show.
   with "_") shows every component once, drawn by `web/kit.js` and
   `web/card.js`, so `design_flow.mjs` judges what no page uses yet.
 - **Settings**: `.settings`, a panel of `.setting` rows, what a setting is
-  (an `h3` and a line) and its control beside it, under it on a phone;
+  (an `h2` under the page's `h1`, and a line) and its control beside it, under it on a phone;
   `.wide` takes the whole row. What cannot be undone is `.setting.danger`
   and its button `.cta.ghost.danger`, in `--bad`.
 

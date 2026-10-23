@@ -502,8 +502,10 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .model .marks .pill { box-shadow: 0 1px 3px var(--shade); }
 .model .words { flex: 1; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 @media (min-width: 900px) { .model .words { padding: 12px 16px 14px; } }
-/* The name: the card's one link to the model, stretched over all of it. */
-.model .open { color: inherit; text-decoration: none; }
+/* The name: the card's one link to the model, stretched over all of it,
+   and a finger's target of its own too (24 px at least, WCAG 2.5.8): a
+   one-line name on a phone is 20 px, a hair from the designer's link. */
+.model .open { color: inherit; text-decoration: none; min-height: 24px; }
 .model .open::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
 .model .open:focus-visible { outline: none; }
 .model .open:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
@@ -679,7 +681,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 }
 .setting + .setting { border-top: 1px solid var(--line); }
 .setting .wide { grid-column: 1 / -1; }
-.setting h3 { font-size: var(--t-body); margin: 0 0 2px; }
+.setting h2 { font-size: var(--t-body); margin: 0 0 2px; }
 .setting p { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-small); max-width: 70ch; }
 .setting .actions .said { margin: 0; }
 @media (max-width: 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }

@@ -237,7 +237,11 @@ function startComments(section) {
     const acts = document.createElement("p");
     acts.className = "comment-acts";
     if (!reply && state.replies && state.open && !one.hidden && mayTry()) {
-      acts.append(button("Reply", () => openReply(one.id)));
+      const answer = button("Reply", () => openReply(one.id));
+      answer.dataset.reply = String(one.id);
+      // Whose, for a screen reader's list of buttons: six "Reply" say nothing.
+      answer.setAttribute("aria-label", `Reply to ${one.by || "a builder"}`);
+      acts.append(answer);
     }
     if (state.you?.owner) {
       acts.append(button(one.hidden ? "Show it" : "Hide it", () => change(one, one.hidden ? "show" : "hide")));
@@ -269,7 +273,21 @@ function startComments(section) {
     }
     const order = (a, b) => (Date.parse(a.at) - Date.parse(b.at)) || (a.id - b.id);
     const threads = all.filter((one) => !one.parent).sort((a, b) => order(b, a));
+    // A person on the keyboard pressed something in a comment (Hide it,
+    // Show it): the same comment's button keeps the focus once it is drawn
+    // again, else the comment, else the list's heading, never the body.
+    const at = list.contains(document.activeElement) ? document.activeElement : null;
+    const where = at && { comment: at.closest("li.comment")?.id, words: at.localName === "button" ? at.textContent : "" };
     list.replaceChildren(...threads.map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
+    if (where && !list.contains(document.activeElement) && !document.querySelector("form.reply-new")) {
+      const again = where.comment && document.getElementById(where.comment);
+      const pressed = again && [...again.querySelectorAll(":scope > .comment-main > .comment-acts button")]
+        .find((one) => one.textContent === where.words);
+      const heading = document.getElementById("comments-h");
+      const to = pressed || again || heading;
+      if (to && to.tabIndex < 0 && to.localName !== "button") to.tabIndex = -1;
+      to?.focus({ preventScroll: true });
+    }
     // None yet: one line, and the box under it.
     const empty = threads.length === 0;
     section.querySelector(".comments-lede").hidden = empty;
@@ -354,10 +372,18 @@ function startComments(section) {
       post.type = "submit";
       post.className = "cta small";
       post.textContent = signedIn() ? "Reply" : "Sign in and reply";
-      go.append(post, button("Cancel", () => {
+      // Cancel, or Escape in the box: gone, the focus back on Reply.
+      const cancel = () => {
         replying = null;
         made.remove();
-      }, "cta ghost small"));
+        thread.querySelector(`[data-reply="${to}"]`)?.focus();
+      };
+      go.append(post, button("Cancel", cancel, "cta ghost small"));
+      made.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        cancel();
+      });
       made.append(label, field, go);
       field.addEventListener("input", () => {
         replying = { id: to, text: field.value };
@@ -387,7 +413,13 @@ function startComments(section) {
     replying = null;
     say("Replied.");
     await load();
-    document.getElementById(`comment-${answer.body.comment?.id}`)?.scrollIntoView({ block: "nearest" });
+    // The reply, read out where it now is; else its comment's Reply.
+    const made = document.getElementById(`comment-${answer.body.comment?.id}`);
+    if (made) {
+      made.tabIndex = -1;
+      made.focus({ preventScroll: true });
+      made.scrollIntoView({ block: "nearest" });
+    } else document.querySelector(`[data-reply="${to}"]`)?.focus();
   }
 
   async function change(one, what) {
@@ -750,7 +782,13 @@ function start() {
     const box = document.createElement("input");
     box.type = "checkbox";
     box.checked = Boolean(has);
-    box.addEventListener("change", () => change(box));
+    // The lists are drawn again once it is kept: the same list's box keeps
+    // the keyboard's focus.
+    box.addEventListener("change", async () => {
+      const focused = document.activeElement === box;
+      await change(box);
+      if (focused) [...lists.querySelectorAll("label[data-list]")].find((one) => one.dataset.list === key)?.querySelector("input")?.focus();
+    });
     const words = document.createElement("span");
     words.textContent = String(name);
     const who = document.createElement("small");
@@ -806,6 +844,14 @@ function start() {
     panel.hidden = !panel.hidden;
     save.setAttribute("aria-expanded", String(!panel.hidden));
     if (!panel.hidden) lists.querySelector("input")?.focus();
+  });
+  // Escape closes your lists, back on Save, as a menu closes.
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || panel.hidden) return;
+    event.preventDefault();
+    panel.hidden = true;
+    save.setAttribute("aria-expanded", "false");
+    save.focus();
   });
 
   async function keep(box) {
@@ -993,6 +1039,8 @@ function enterDialog(said) {
   dialog.className = "sign-in report enter";
   const title = document.createElement("h2");
   title.textContent = `Enter “${said.challenge.title}”`;
+  title.id = "enter-title";
+  dialog.setAttribute("aria-labelledby", title.id);
   const lede = document.createElement("p");
   lede.textContent = (said.challenge.rules_said || []).length
     ? "Brickworks checks its rules on this model as you shared it:" : "It has no rules but its brief.";

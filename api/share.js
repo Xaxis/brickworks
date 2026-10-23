@@ -1199,10 +1199,12 @@ ${pageHead(origin, row, id, `${row.name} — a Brickworks model`)}
 </style>
 </head>
 <body>
+<main>
 <a class="whole" href="${escapeHtml(link.url)}" target="_blank" rel="noopener">
-  ${row.has_image ? `<img src="/m/${id}.png" alt="${escapeHtml(row.name)}">` : `<img src="/share.png" alt="">`}
-  <span class="embed-bar"><span class="words"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small></span><span class="cta small">View in 3D</span></span>
+  <img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt="">
+  <span class="embed-bar"><span class="words"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small></span><span class="cta small">View in 3D<span class="visually-hidden"> (opens in a new tab)</span></span></span>
 </a>
+</main>
 </body>
 </html>`;
 }

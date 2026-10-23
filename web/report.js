@@ -32,6 +32,8 @@ function open(target, about) {
   dialog.className = "sign-in report";
   const title = document.createElement("h2");
   title.textContent = `Report ${about}`;
+  title.id = "report-title";
+  dialog.setAttribute("aria-labelledby", title.id);
   const said = document.createElement("p");
   said.textContent = "Tell the site's owner what is wrong. Only they see this.";
   const form = document.createElement("form");
