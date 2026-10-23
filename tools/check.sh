@@ -43,7 +43,7 @@ headless=(mcp_sync app_tools element_files element modify part_tool dimensions s
   "table_race:--tries=8" technic_hand ahead art_plan autosave_paths balance
   brickify_buy build_steps cabin_glass cabins carried_at_once carried_fetch
   decor design_memory dome dress exact_cost fidelity flex_skin gear_ratio
-  hinged_panels mcp_walk mcp_walk3 mesh_formats own_copies page_places
+  hinged_panels turned_tips mcp_walk mcp_walk3 mesh_formats own_copies page_places
   parts_only print_search shapes snippets standing subject_words surface
   unrestored update viewer_tools worker_first_run second_design
   drag_cost seated)

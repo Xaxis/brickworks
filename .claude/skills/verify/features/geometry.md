@@ -24,7 +24,12 @@ can occupy the same millimetre.
   inside the part's own box, rounded out (`BrickLattice.within`) — it only
   ever drops cells the part is not in (a flipper on a plate read as in it).
   Turned covers stay rounded out all round: tipped sections find what they
-  lean on by them (`section_probe` fails if they are cut back too).
+  lean on by them (`section_probe` fails if they are cut back too). So a
+  turned part's cover holds its own studs' tips as well as the part on them,
+  and a tip is read past its own part (`BrickLattice.brick_but`), in the
+  check's support and its piece count alike: read as in nothing, a 1 x 1 tile
+  on a chamfered wing (41769b, no exact shape) in a ball's strip turned 210
+  degrees was refused as not held (`turned_tips_probe` lays that ball).
   A turned cover is a box a row of cells, hundreds of them (42112's mixer
   drum, a part its file carries, is 23,309), so what two covers meet is not
   asked pair by pair (`_overlaps_pairwise`, kept as the reference): past a few
