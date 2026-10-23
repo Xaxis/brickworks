@@ -1024,6 +1024,13 @@ func _ready() -> void:
 	add_child(_http)
 
 
+func _notification(what: int) -> void:
+	# Never in the tree, so freed with this one.
+	if what == NOTIFICATION_PREDELETE and _sculpt_checker != null:
+		_sculpt_checker.free()
+		_sculpt_checker = null
+
+
 func is_busy() -> bool:
 	return _busy
 
@@ -1169,6 +1176,7 @@ func _sketch_opening() -> Array:
 ## the app's own loop is sketching): read, checked, measured and pictured on
 ## a world of its own, and held. Nothing is put on the baseplate.
 func _hold_sketch(args: Dictionary) -> Variant:
+	await _sculpt_ready(args)
 	var model: Model = _read_model(args)
 	_say_shorthand_trouble()
 	var parts: int = model.placements.size()
@@ -3161,6 +3169,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("looking up \"%s\"" % query)
 			return _search(query, int(args.get("limit", 15)))
 		"check_design":
+			await _sculpt_ready(args)
 			var trial: Model = _read_model(args)
 			# Fetch what the check will need first. Without this the web
 			# build tells the model that real catalogue parts do not
@@ -3474,6 +3483,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				_held_sketches = []
 				sketch_chosen.emit(0)
 			_last_submitted = args
+			await _sculpt_ready(args)
 			_pending = _read_model(args)
 			_subject_submitted(_pending)
 			progress.emit("submitted %d bricks%s"
@@ -6727,6 +6737,7 @@ func _read_model(args: Dictionary) -> Model:
 	var shell_said: Array = []
 	args = _with_shells(args, shell_trouble, shell_said)
 	args = _with_figures(args, shell_trouble, shell_said)
+	args = _with_sculpts(args, shell_trouble, shell_said)
 	var model := Model.new()
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
@@ -11332,6 +11343,73 @@ func _with_figures(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 		bricks.append_array(args["bricks"])
 	out["bricks"] = bricks
 	return out
+
+
+## The rounded bodies a design says as solids ({"pattern": "sculpt"}), laid
+## by Brickify (Sculpt) into the plain bricks they are, before anything is
+## read: so a sculpt is checked, edited and detailed as any bricks are. Where
+## the design's own bricks stand on one, its studs are left there for them.
+## What each came to goes in [param said], why one could not in [param trouble].
+func _with_sculpts(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	var sculpts: Array = patterns.filter(func(raw: Variant) -> bool:
+		return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+			== "sculpt")
+	if sculpts.is_empty():
+		return args
+	var out: Dictionary = args.duplicate()
+	out["patterns"] = patterns.filter(func(raw: Variant) -> bool: return not sculpts.has(raw))
+	var bricks: Array = (args.get("bricks", []) as Array).duplicate() \
+		if args.get("bricks") is Array else []
+	if library == null:
+		trouble.append("sculpt: this build has no parts to lay one with")
+		return out
+	var feet: Dictionary = Patterns.feet_of(bricks, library)
+	for raw: Dictionary in sculpts:
+		var key: String = JSON.stringify(raw) + JSON.stringify(feet.keys())
+		var laid: Dictionary = _sculpts_laid.get(key, {})
+		if laid.is_empty():
+			if _sculpt_checker == null:
+				_sculpt_checker = Assistant.new()
+			_sculpt_checker.library = library
+			_sculpt_checker.builder = builder
+			_sculpt_checker.world = world
+			var why: Array = []
+			laid = Sculpt.lay(raw, _sculpt_checker, why, feet)
+			if laid.is_empty():
+				trouble.append_array(why)
+				continue
+			if _sculpts_laid.size() >= SCULPTS_KEPT:
+				_sculpts_laid.erase(_sculpts_laid.keys()[0])
+			_sculpts_laid[key] = laid
+		bricks.append_array((laid["bricks"] as Array).duplicate(true))
+		said.append(str(laid["said"]))
+	out["bricks"] = bricks
+	return out
+
+
+## Sculpts laid, by what was said of them and where the design stands on
+## them: a check_design, the submit after it and each submit again ask for
+## the same body, which Brickify takes a second or two to lay.
+var _sculpts_laid: Dictionary = {}
+const SCULPTS_KEPT := 8
+## What checks and mends a sculpt as Brickify lays it: an assistant of its
+## own, so its checks leave this one's pattern advice alone.
+var _sculpt_checker: Assistant = null
+
+
+## Every part a sculpt may lay, here before one is laid: on the web a part is
+## fetched, and Brickify reads only what is here.
+func _sculpt_ready(args: Dictionary) -> void:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	if library == null or not patterns.any(func(raw: Variant) -> bool:
+			return raw is Dictionary and str((raw as Dictionary).get("pattern", "")) \
+				.to_lower() == "sculpt"):
+		return
+	var wanted := Model.new()
+	for id: String in Brickify.parts_needed(library):
+		wanted.placements.append(Placement.from_dict({"part": id}))
+	await _ensure_parts(wanted)
 
 
 ## The joint a shell's panels hang on, as [Shells] wants it: a clip on a
@@ -21093,7 +21171,7 @@ func _tools() -> Array:
 		"properties": {
 			"pattern": {"type": "string",
 				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
-					"round", "shape", "shell", "figure"],
+					"round", "shape", "sculpt", "shell", "figure"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -21135,7 +21213,15 @@ func _tools() -> Array:
 					+ "curves up and down laid on its side on side studs, "
 					+ "tiles on top, one half and its mirror; a car's body, "
 					+ "a hull, a fuselage, an animal's body. Another shape "
-					+ "standing on it keeps its studs there. shell: a dome or "
+					+ "standing on it keeps its studs there. sculpt: a rounded, "
+					+ "organic body, 6 to 40 studs, said as solids and laid by "
+					+ "Brickify — an ellipsoid, an egg, a capsule or a "
+					+ "superellipsoid, or several joined (a body and its head, a "
+					+ "pear's two lobes, a snowman) — round from the side as well "
+					+ "as from above, its surface curved and inverted slopes and "
+					+ "sides turned out on side studs, in one piece; then detail "
+					+ "it with your own parts: a face, ears, limbs, a tail "
+					+ "(read_guide \"outline\"). shell: a dome or "
 					+ "a ball bigger than a dish, in one object — twelve "
 					+ "strips of flat panels on clip hinges round a ring, "
 					+ "each band's panels sized to its round, the strips "
@@ -21176,7 +21262,16 @@ func _tools() -> Array:
 				+ "{\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, "
 				+ "{\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — "
 				+ "with its own \"color\" if it wants one (the last that holds a stud "
-				+ "gives it its colour). Studs across and along, plates up, from at."},
+				+ "gives it its colour). Studs across and along, plates up, from at. "
+				+ "sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, "
+				+ "{\"capsule\": {...}} or {\"superellipsoid\": {...}}, each "
+				+ "{\"centre\": [x, y, z] in the design's studs and plates, "
+				+ "\"size\": [studs across, plates tall, studs deep], \"color\"}; "
+				+ "an egg's \"point\" is the way its narrow end faces (\"+y\" "
+				+ "unless said; \"-x\" a body lying with its narrow end to -x), "
+				+ "its \"taper\" 0 to 0.6; a capsule's or an ellipsoid's \"axis\" "
+				+ "x, y or z; a superellipsoid's \"power\" 2 (round) to 6 "
+				+ "(nearly a box), 3 unless said. Joined where they overlap."},
 			"cuts": {"type": "array", "items": {"type": "object"}, "description":
 				"shape: solids taken away, said the same way: a cockpit, a doorway; "
 				+ "\"keep\": true keeps the cut clear of every part."},
@@ -21245,7 +21340,8 @@ func _tools() -> Array:
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":
 				"fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71); "
-				+ "figure: its clothes or its body"},
+				+ "figure: its clothes or its body; sculpt: all of it but a solid that "
+				+ "says its own"},
 			"height": {"type": "number", "description":
 				"rock: how tall, in plates. figure: a person's, feet to crown, 20 to 60 "
 				+ "plates (34 and over at the larger size); a head's neck"},

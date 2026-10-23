@@ -114,6 +114,11 @@ class Options extends RefCounted:
 	## staircase of studs up, as [method build] lays it again where the
 	## build leaves a region of the model out.
 	var snot: bool = true
+	## Where something else stands on its top, for its studs to be left there
+	## rather than tiled: a grid stud Vector2i(x, z) -> the plates its feet
+	## stand at, the grid's own (Shapes' "_carried"). A design's sculpt
+	## (Sculpt) with a head or a hat said on it in the same design.
+	var carried: Dictionary = {}
 
 	func copied() -> Options:
 		var out := Options.new()
@@ -1734,6 +1739,8 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 	if options.near:
 		shape["fine"] = grid.fine
+	if not options.carried.is_empty():
+		shape["_carried"] = options.carried
 	if not grid.cubes.is_empty():
 		shape["sideways"] = true
 		shape["cubes"] = grid.cubes
