@@ -25,6 +25,10 @@ whole cycle.
 - A part nothing joins but that cannot slide out any way, as the orrery's
   planet rings are caught round its core, is no longer said to come away in
   the hand.
+- The Wizard's Tower is one piece a person can pick up: its columns stand on
+  studs and are tied to its core, its guards hold their shields by the
+  handle, and its wizards wear their beards printed on their faces, as a
+  beard round the neck is joined to nothing.
 
 ## [0.6.0] - 2026-10-23
 
