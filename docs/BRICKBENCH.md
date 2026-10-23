@@ -1724,6 +1724,154 @@ wide as its body, which is how a BrickHeadz brief is built: the real-set test's
 three characters never laid the pattern in either arm (docs/DESIGN_SCORES.md),
 so faces cannot reach them until it can say one.
 
+## 2026-10-22: m147 against BrickAgent, and where the gap is
+
+The release about to go live, rel-m147 (`9379fbb1`), on the six character
+prompts of the 10-16 rounds (model-042, 043, 044, 049, 078, 080), one design
+each, beside that round's figfaces designs (`ccab190`) and BrickAgent's Opus
+5.5 builds. The prompts, the parts list and BrickAgent's builds were copied
+from the 10-16 folder, so the field is the same. All three drawn again by one
+renderer on the GPU and judged by our judge, every pair both orders twice: 72
+verdicts (`bench/results/brickbench-2026-10-22-m147`, `compare.md`).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every
+log. The toilet is two components (251 parts and one resting loose), which
+verify.py passes and the judge counts against it. A design took 12.7 minutes
+at the median (8.1 to 14.2); figfaces' took 8.5. The bench runs one design a
+brief; the panel's best of two is not measured here.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| m147 vs BrickAgent | 2 of 24 (8%) | 2-26% | 0 / 1 / 5 |
+| figfaces vs BrickAgent, judged again | 3 of 24 (12%) | 4-31% | 0 / 1 / 5 |
+| m147 vs figfaces | 17 of 24 (71%) | 51-85% | 3 / 2 / 1 |
+| ...likeness | 17 of 24 (71%) | 51-85% | 3 / 2 / 1 |
+
+| dimension | m147 ELO (95%) | figfaces ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|
+| likeness | 933 (811-1079) | 823 (515-1000) | 1244 (1140-1572) |
+| surface | 961 (734-1090) | 971 (789-1103) | 1068 (905-1404) |
+| colour | 956 (674-1113) | 892 (749-971) | 1152 (980-1536) |
+| technique | 1000 (808-1154) | 931 (735-1060) | 1069 (914-1266) |
+| creativity | 934 (789-1034) | 901 (759-1023) | 1165 (1070-1346) |
+| buildability | 1062 (911-1294) | 876 (455-1038) | 1062 (942-1343) |
+| **overall** | **933 (811-1079)** | **823 (515-1000)** | **1244 (1139-1572)** |
+
+**Against the 10-16 round.** That round gave figfaces 2 of 24 against
+BrickAgent; judged again here it has 3, so the judge reads the field as it
+did. The units since are a real gain on characters: m147 beats figfaces head
+to head on five of six prompts, about 110 ELO. Against BrickAgent nothing
+moved: 2 of 24 again, about 310 ELO behind. The rabbit split (two verdicts for
+its round body); the other five were lost every time. m147 lost the toilet to
+figfaces 4-0, for the loose part and a head out of proportion.
+
+### What the judge held against ours
+
+Read as a builder would: each build's four views beside BrickAgent's
+(`sheets/`), the reasons of all 24 verdicts (`reasons-m147-opus.txt`), what
+each build is made of (`scripts/parts_of.py`), and the sessions' transcripts.
+
+Two things are not the gap. **Recognition:** a cold reader (Claude Code with
+Read only, the four views, no brief; `scripts/blindread.py`) named five of
+m147's six as their subject (Mr. Potato Head, a balloon dog on a plinth,
+Skibidi Toilet, a chubby bunny, a man in a shark suit) and the statue "an
+elephant clambering over a stone wall"; BrickAgent's, all six. The judge knows
+what ours are and likes theirs better. **The vocabulary in aggregate:** shaped
+36% in both, stacked 50% in both, joints 2% and 0%, buildability 1062 each.
+What differs is which shaped part goes where.
+
+The 22 lost verdicts, by how many give each as a reason (likeness and overall
+read together):
+
+1. **The body's outline: a box, slab, drum or barrel where the subject is
+   round, pinched or posed. 21 of 22.** The potato "a tall blocky barrel" (4),
+   the balloon dog "a flat slab table on cylinder legs" (4), the toilet "a
+   square box bowl" (4), the statue "a tilted slab on two pillars" (4), the boy
+   "a squat grey block" (3), the rabbit "a drum" (2). BrickAgent's outlines are
+   large curved parts set on the silhouette. 90 of its potato's 237 parts are
+   corner rounds (3063b, 27925, 27507, 79393, 30565, 2577, 5152, 6003), an oval
+   face laid sideways. Every balloon segment is an inverted ovoid dome (24947)
+   on a domed cylinder (3262), so each tapers at both ends and pinches at the
+   next. The bowl is round and corner-round bricks (2577, 3063b, 87081).
+   Ours: the potato is 98 plates 1 x 1 and 7% tiles, the balloon's body a
+   plate deck on round bricks, the bowl 2 x 3 bricks. The one prompt we split, the rabbit, is the
+   one body of ours built of large corner rounds (24 of 2577), and the two
+   verdicts it won said so.
+2. **Defining features that read as something else. 14 of 22.** The ear for a
+   mouth reads as a tongue (4: two pink curved slopes under a round plate;
+   BrickAgent's is a pink macaroni brick and corner tile); the cold reader,
+   told the brief, took the mustache (a plate 1 x 4 and two curved slopes)
+   for a bow tie. The boy's hair is a flat brim and
+   his grin a grille (4; BrickAgent's hair is 17 quadruple slopes 22388, its
+   grin buck teeth). The rabbit's belly is a band
+   round a drum, not a panel (2). The toilet's face is less expressive (4).
+3. **Limbs posed where the brief does not put them. 10 of 22.** The statue's
+   torso is tipped forward on hinges as one slab (the figure pattern's
+   `"lean": "forward"`), with no elbow and no fist at a chin (4). The boy's
+   arms stick out sideways and throw no punch (3). The rabbit's arms jut out
+   on ball joints (2); its session said "The arms can't hang any lower without
+   hitting the body, so they stay at their outward angle". The potato has no
+   arms (1). BrickAgent's rabbit, boy and statue have limbs of bricks, laid on
+   the body where the pose puts them, with no joint.
+4. **Colour. 3 of 22:** the boy is all grey, where BrickAgent dressed him in blue.
+
+**Why the first two: the session asked for the parts and was told they do not
+exist.** Four of six sessions had a search for a shaping part come back empty
+or wrong, three of them for the very parts BrickAgent's winning builds are
+made of. search_parts, kept to BrickNet's list as BrickBench requires,
+answered as follows (the same words through the app's own `Assistant._search`;
+`scripts/search_check.gd`):
+
+| the session asked | the app answered | plainer words find |
+|---|---|---|
+| "dome bottom 2 x 2 round inverted" (balloon dog) | No parts match | 24947, the ovoid BrickAgent used |
+| "tile 2x2 macaroni curved", "tile 2x2 round corner quarter" (potato) | No parts match | 27925 |
+| "tile round corner 4 x 4 macaroni" (rabbit) | 27925ph0, a printed 2 x 2 | 27507 |
+| "slope curved 1 x 3 or 1 x 4 double ear" (rabbit) | 61484d01, a stickered 5 x 6 | 93273 |
+| "brick 1x4 with 4 studs on one side" (boy) | 88930py0, an AMG grille print | 30414 |
+| "spiky hair" (boy) | 53982, minifig hair | 22388, as "slope 1 x 1 quadruple" |
+
+The potato's session took it that none existed and built the ear and the
+mustache of curved slopes and plates. The rabbit's said "No macaroni tile available, so the stud
+rings around the shoulders stay". The balloon dog's built round bricks. Two
+faults make it. Every word must be in a part's name or keywords, so one
+builder's word the catalogue does not use ("macaroni" on 27507, "quarter",
+"bottom", "curved", "round") hides the right part. And keywords match as
+substrings, so "4" is found in "LegoID 6410654" and "one" in "Project One",
+and prints and stickers come first. BrickAgent's `find` ranks every part by how
+many of the asked words it matches, so an extra word lowers a part and never
+hides it. The prompts whose reasons trace to those parts (the potato, the
+balloon dog, the boy's hair) carry 12 of the 22 lost verdicts.
+
+The toilet and the statue found their parts and still laid them square (the
+bowl's corner rounds are "odd round pieces stuck on the sides") or as a slab.
+That is the outline's other half, and posture is the next gap after it.
+
+### The next lever: search_parts that finds what a builder describes
+
+- **What changes.** `Assistant._search` and `PartLibrary.search` rank by how
+  many of the asked words a part matches: all first, then most, and a size
+  asked must match. Keywords match as whole words. A builder's shape words are
+  translated (macaroni and quarter to corner round, bottom and underside to
+  inverted, ovoid, spiky to quadruple slope, studs on one side to studs on
+  side). Plain parts come before prints and stickers unless a print is asked
+  for. "No parts match" only when no word matches. find_parts_like names real
+  parts for a mustache, spiky hair and an ear.
+- **Proof in the unit** (a probe, minutes): each query in the table returns
+  the part in its right-hand column within its first six. Every query of this
+  round's six transcripts that found its part still gets the same first answer.
+- **The bar on this bench** (the lead's run: six designs two at a time, about
+  50 minutes, then 72 verdicts): the six prompts, one design each, against m147
+  and BrickAgent, `pairs --repeat 2`. Head to head with m147, at least 60%
+  overall and no prompt lost every time. Against BrickAgent, at least 6 of 24
+  overall (from 2), with the potato and the balloon dog no longer lost every
+  time and their sessions using the shaping parts (corner-round tiles, 24947).
+  Six of six valid by verify.py.
+- **After it:** limbs laid where the brief puts them (the rabbit's arms
+  hanging, the boy's fist forward, the statue's elbow on its knee), which the
+  armature's joints cannot reach against a body. Then the outline laid from the
+  parts once found.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -1765,6 +1913,17 @@ The faces round (2026-10-16) ran in the armature round's folder: `design --date
 `views`, `pairs --repeat 2` and `compare` with `--arms armature,figfaces`; the
 round's `compare.md` was copied aside first and put back. The transcripts were
 read with `bench/results/armature-2026-10-16/scripts/uptake.py`.
+
+The m147 round (2026-10-22) copied `prompts.json`, `bricknet_parts.txt` and
+`theirs/` from the armature round's folder, and its figfaces designs in as
+`arms/figfaces`. Then `design --date 2026-10-22-m147 --arm m147 --runs 1
+--jobs 2 --app` a locked `release_wt.sh` worktree of `9379fbb1` (with
+`godot --headless --import` run there once), `export` and `verify --which
+ours` for that arm, `views --arms figfaces` and `--arms m147` on the GPU,
+`pairs --arms m147,figfaces --runs 1 --repeat 2 --jobs 3`, and `compare`. The
+cold reads are `scripts/blindread.py` (on the subscription, Read only). The
+searches are `scripts/search_check.gd`, run headless in the app's checkout
+with `--parts-only=` the round's list.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
