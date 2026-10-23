@@ -102,6 +102,20 @@ declare -A CMD=(
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
   [design]="tools/web/design_flow.mjs --url=$P --out=$S/${TAG}_design"
+  # Every page and dialog design visits (tools/web/site_pages.mjs), judged
+  # by axe-core (tools/web/axe-core, vendored): no serious or critical
+  # finding at 390 and 1280, light and dark, signed out and in; and every
+  # control's name in the browser's accessibility tree meaningful, the key
+  # pages' controls there by name. The API answered by the stand-in.
+  [a11y]="tools/web/a11y_flow.mjs --url=$P --out=$S/${TAG}_a11y"
+  # The journeys by keyboard alone (Tab, Enter, Escape; Space on a
+  # checkbox): the gallery to a model, Like, Save, Share, a comment and a
+  # reply, Report it's dialog, Follow, the account menu to Notifications
+  # and Mark all read, Edit profile's dialog, Settings, Sign in's dialog and
+  # the download; each stop's focus shown, the focus never lost, dialogs
+  # keeping it and giving it back. The deployment's pages and scripts, the
+  # API and the stand-in's model answered here.
+  [keyboard]="tools/web/keyboard_flow.mjs --url=$P --out=$S/${TAG}_keyboard"
   # The gallery as a person uses it (docs/SOCIAL.md U3): at 390 the first
   # card's picture within 330 px, at 1280 four whole cards; Top, New and
   # Following, Top over this week, a kind and Made; a like from a card;
@@ -226,7 +240,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design theme model_page gallery download frames"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download frames"
 NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and

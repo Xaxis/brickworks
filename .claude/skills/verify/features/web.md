@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
 
 ## Sub-features
 
@@ -786,7 +786,13 @@ plan with Claude as the client.
   `/_kit` (served by the stand-in, never deployed: tools/site.py skips
   "_" names) shows each.
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
-  `[design]`): every page and dialog, below.
+  `[design]`): every page and dialog, below. Its pages and the states it
+  opens are `tools/web/site_pages.mjs`, shared with the accessibility flow.
+- `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
+  `[a11y]`) and `keyboard browser flow` (`tools/web/keyboard_flow.mjs`,
+  `[keyboard]`): axe and the accessibility tree's names on every page,
+  and the site's journeys by keyboard alone; below, "The site for
+  everyone" (docs/DESIGN_SYSTEM.md "Accessibility").
 - `theme choice` (2026-10-22, docs/SOCIAL.md U1): System, Light or Dark,
   a `.segmented` row of three buttons, the chosen one `aria-pressed` and
   edged in `--accent-edge` (the yellow in dark, `#a67c00` in light: the
@@ -3714,6 +3720,42 @@ the SQL refusing a window or Made in words (400), after offering them with
 each card's comments. Pictures `gallery_<width>_<theme>[_fold].png` and
 each step's. `design_flow` judges `gallery` for controls, the scale and
 zeros.
+
+### The site for everyone: axe, names and the keyboard
+
+No network and no account: this checkout's pages, the stand-in's API.
+
+```sh
+heavy node tools/web/a11y_flow.mjs --out=shots/a11y
+heavy node tools/web/keyboard_flow.mjs --out=shots/keyboard
+BW_BYPASS=$VERCEL_BYPASS node tools/web/a11y_flow.mjs --url=<preview>       # a deployment's pages, the API stood in
+BW_BYPASS=$VERCEL_BYPASS node tools/web/keyboard_flow.mjs --url=<preview>
+```
+
+`a11y_flow` passes when it ends "356 pages and dialogs, ... 0 failed"
+(2026-10-23, about 10 minutes): axe-core 4.12.1 (`tools/web/axe-core`,
+WCAG 2.2 A and AA and best practices) finds nothing serious or critical on
+any page or state at 390 and 1280, light and dark, signed out and in, and
+lists each moderate one once after (one: the embed has no h1); every
+control in Chromium's accessibility tree has a name that says something;
+and the key pages' controls are there by name (a card's "Like <model>",
+"Reply to <who>", Mark all read, Edit profile, the theme's three). Before
+the fixes it named 246 serious findings on 58 states.
+
+`keyboard_flow` passes when it ends "79 checks passed, 0 failed" (2026-10-23,
+light and dark, about 4 minutes): with Tab, Enter and Escape (Space for a checkbox)
+the skip link first, the first card's name in 20 presses and Enter opening
+it; Like pressed with its count in its name and the focus kept, Enter
+again taking it back; Save's lists with the focus in them, a list ticked,
+Escape back on Save; Share's toast read out; a comment and a reply sent,
+Escape taking a reply's box away back on "Reply to ..."; Report it's dialog
+named, 15 Tabs inside it, Escape back on More; Follow; the account menu,
+Escape, Notifications, Mark all read said with the focus on the title;
+Edit profile's dialog keeping 40 Tabs and saving back on Edit profile;
+Settings' theme and a checkbox said; Sign in's dialog named, the code
+sent, Escape back on Sign in; the download started; and every one of
+the 354 stops showing its focus ring, on the screen and clear of the
+sticky header, with nothing moving (reduced motion asked).
 
 ## Gotchas
 

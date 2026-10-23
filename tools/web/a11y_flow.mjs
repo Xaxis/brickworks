@@ -123,8 +123,11 @@ async function controls(page, scope) {
 }
 
 /// What a person must find on the pages they use most, by role and name,
-/// signed out (out), signed in (in) or either (any). Each is a [role, name]
-/// pair, the name a pattern; at least one control there must match.
+/// signed out (out), signed in (in) or either (any); here (local), signed
+/// in, what only the stand-in's own model and designer have (a
+/// deployment's are its own, which the stand-in answering the API does not
+/// know). Each is a [role, name] pair, the name a pattern; at least one
+/// control there must match.
 const NAMES = {
   home: { any: [["link", /^Skip to content$/], ["link", /^Open the app$/]] },
   gallery: {
@@ -135,9 +138,10 @@ const NAMES = {
   },
   model: {
     any: [["button", /^Share/], ["button", /^More/]],
-    in: [["button", /^Like/], ["button", /^Save/], ["button", /^Comment|^Add a comment/i], ["textbox", /comment/i]],
+    in: [["button", /^Like/], ["button", /^Save/], ["button", /^Comment/]],
+    local: [["textbox", /comment/i], ["button", /^Reply to .+/]],
   },
-  person: { any: [["button", /^Share/], ["button", /^More/]], in: [["button", /^Follow|^Following/]] },
+  person: { any: [["button", /^Share/], ["button", /^More/]], local: [["button", /^Follow|^Following/]] },
   notifications: { in: [["button", /^Mark all read$/], ["link", /^Notifications/], ["link", /^Feed|^Your feed/]] },
   feed: { in: [["button", /^Follow/]] },
   account: { in: [["button", /^Edit profile$/], ["link", /^Settings$/]], out: [["button", /^Sign in/]] },
@@ -202,7 +206,8 @@ async function judge(page, label, what, scope, { name, signedIn }) {
   }
   // The controls a person comes for, on the whole page.
   if (!scope && NAMES[name]) {
-    const wanted = [...(NAMES[name].any || []), ...((signedIn ? NAMES[name].in : NAMES[name].out) || [])];
+    const wanted = [...(NAMES[name].any || []), ...((signedIn ? NAMES[name].in : NAMES[name].out) || []),
+      ...((signedIn && !remote && NAMES[name].local) || [])];
     for (const [role, pattern] of wanted) {
       if (!acted.some((one) => one.role === role && pattern.test(one.name))) {
         const near = acted.filter((one) => one.role === role).map((one) => `"${one.name}"`).slice(0, 6).join(", ");
