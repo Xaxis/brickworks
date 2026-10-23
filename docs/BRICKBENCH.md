@@ -1872,6 +1872,108 @@ That is the outline's other half, and posture is the next gap after it.
   armature's joints cannot reach against a body. Then the outline laid from the
   parts once found.
 
+## 2026-10-22, later: the new search on the same six, and nobody asked it
+
+search156 (`9590a07d`) is m147 with the new `search_parts` (`PartSearch`):
+words ranked by how many match, builders' words translated, plain parts before
+prints. Nothing else a design reaches changed. It designed the same six prompts,
+one design each, in the m147 round's folder. Its builds were drawn on the GPU by
+the same renderer and judged against m147's and BrickAgent's, every pair both
+orders twice: 72 verdicts. The 24 between m147 and BrickAgent are the m147
+round's, read back (`compare-search156.md`; that round's `compare.md` is as it
+was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every log,
+`9590a07d` in every `design.json`. The boy is two components (a loose part),
+which verify.py passes and the judge held against it. A design took
+8.2 minutes at the median (5.4 to 10.1; m147's 12.7) and is smaller: 128 parts
+at the median against m147's 202.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| search156 vs m147 | 9 of 24 (38%) | 21-57% | 1 / 3 / 2 |
+| search156 vs BrickAgent | 4 of 24 (17%) | 7-36% | 0 / 2 / 4 |
+| m147 vs BrickAgent (the m147 round's verdicts) | 2 of 24 (8%) | 2-26% | 0 / 1 / 5 |
+
+| dimension | search156 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|
+| likeness | 884 (654-1036) | 918 (815-1027) | 1199 (1116-1370) |
+| surface | 990 (735-1125) | 931 (637-1049) | 1079 (916-1545) |
+| colour | 881 (691-951) | 967 (735-1101) | 1153 (980-1533) |
+| technique | 932 (772-1027) | 1010 (819-1151) | 1059 (895-1343) |
+| creativity | 851 (675-935) | 964 (869-1024) | 1185 (1080-1370) |
+| buildability | 1019 (875-1221) | 962 (808-1100) | 1019 (869-1192) |
+| **overall** | **868 (643-1012)** | **914 (799-1043)** | **1218 (1150-1370)** |
+
+| prompt | vs m147 | vs BrickAgent | what the judge said of search156's |
+|---|---|---|---|
+| potato (042) | 1-3 | 0-4 | "a tall, narrow dark-brown block"; its ear "a stack of pink studded plates", "more like a tongue" |
+| balloon dog (043) | 0-4 | 0-4 | "boxy slab body and straight cylinder pillars", a flat wedge for a muzzle |
+| toilet (044) | 4-0 | 2-2 | a round bowl, the long neck, and one piece where m147's and BrickAgent's each have a loose part |
+| statue (049) | 2-2 | 2-2 | a hunched seated statue to some verdicts, "an upright, studded stack" or "doesn't read as the subject" to the others |
+| rabbit (078) | 0-4 | 0-4 | "a slim striped barrel" that does not read enormously fat |
+| boy (080) | 2-2 | 0-4 | better colour than m147's grey, and the loose part |
+
+**The bar is missed.** Against m147, 38% where it asked 60%, and two prompts
+lost every time. Against BrickAgent, 4 of 24 where it asked 6. The potato and
+the balloon dog were lost 4 of 4 again, and neither build has a corner-round
+tile or a 24947. Six of six valid is the one part met. With one design a
+prompt, 9 of 24 is not told apart from an even match (21-57%). The two prompts
+split with BrickAgent, the toilet and the statue, owe nothing to a search: the
+bowl's round plates and round bricks (74611, 3941) were never searched for, the
+toilet won its two for being one piece, and the statue won its two only when
+BrickAgent's was shown first.
+
+### What the sessions asked the search
+
+The search answered everything it was asked. **It was not asked for an
+outline.** Six sessions made 21 searches, and none came back empty (m147's made
+35, and 6 came back empty). No session asked for a corner-round tile, an
+inverted dome, an ovoid or spiky hair, the parts the m147 round traced 12 of
+its 22 lost verdicts to. The boy made no search and built his hair of tooth
+plates. Every session laid its body in its first `submit_design`, before its
+first search; the potato never laid it again. The searches came after, for
+features: a nose, a mustache, an ear, side studs, a turntable, eye and mouth
+prints.
+
+The round's 18 distinct queries, through both apps' own `Assistant._search`
+(`scripts/search_check_bench160.gd`, headless, with the round's list): 13 get
+m147's first answer. Two, "brick 2 x 2 round dome top" and "brick round 2x2
+dome top", get a different first part: 5906 now, 20952 then. Three were empty on m147 and are answered now:
+
+| query | search156 answers | the design |
+|---|---|---|
+| "plate 2 x 3 rounded end" (potato) | 3176, 41948, 35480, 80031, 77850 | its ear of 35480 and 77850, which the judge read as a tongue |
+| "tile mouth teeth grin print" (toilet) | 3626cpnc, 14769p02, 98138p1x | none of them |
+| "buck teeth print" (rabbit) | 2431pk0, a teeth print | plain white 2431 instead |
+
+The parts a search found were used where the session asked: the potato's nose
+(30367c), side-stud bricks (30414), turntables, eye tiles (98138p07), and the
+rabbit's round body of twelve 2577 and four 49612 from "brick 4 x 4 round
+corner". m147 gives that last answer too.
+
+Against m147 the verdicts follow each session's choices, not the search. The
+toilet won on a round bowl and being one piece; m147 lost the same prompt to
+figfaces for its loose part. The rabbit lost for being slim, and the balloon
+dog for a slab head and a flat muzzle. None of the queries that came back
+empty for m147's sessions was asked this time.
+
+### The next lever: the outline parts before the body is laid
+
+The search finds what a builder asks for. The designer does not ask for an
+outline's parts: every session read a guide first (`shapes` twice, `figures`
+four times), then laid its body. So the parts have to be in what it reads
+first, or in what lays the body for it.
+
+- **What changes.** The `shapes` and `figures` guides name the parts that make
+  an outline by the silhouette they make: a round or egg body faced with
+  corner-round bricks and tiles (2577, 3063b, 27925, 27507), a balloon's
+  pinched segment as 24947 on 3262, spiky hair as 22388. Or the body patterns
+  (`round`, the figure's torso) lay them when asked for a round body.
+- **Proof in the unit** (minutes): the potato and the balloon dog briefs in a
+  short design each, whose builds have corner-round tiles and a 24947.
+- **The bar on this bench:** this round's, unchanged.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -1924,6 +2026,18 @@ ours` for that arm, `views --arms figfaces` and `--arms m147` on the GPU,
 cold reads are `scripts/blindread.py` (on the subscription, Read only). The
 searches are `scripts/search_check.gd`, run headless in the app's checkout
 with `--parts-only=` the round's list.
+
+The search round (2026-10-22, later) ran in the m147 round's folder from
+search156's locked worktree (`9590a07d`, imported): `design --date
+2026-10-22-m147 --arm search156 --runs 1 --jobs 2 --app` that worktree, `export`
+and `verify --which ours` for that arm (`BRICKNET_DATA` the main checkout's
+`bench/data/bricknet_data`), `views --arms search156` on the GPU, `pairs --arms
+search156,m147 --runs 1 --repeat 2 --jobs 3` (which judges BrickAgent's too, and
+reads the m147 round's verdicts back), and `compare --arms search156,m147 --runs
+1`, its `compare.md` kept as `compare-search156.md` and the m147 round's put
+back. The searches each session made are `scripts/searches.py`, a session's
+words `scripts/said.py`, and the same queries through both apps
+`scripts/search_check_bench160.gd`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
