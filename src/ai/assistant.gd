@@ -17577,13 +17577,14 @@ round curved top 4 x 4", "dome inverted", "slope curved inverted 2 x 1"), \
 and lay each by its turn below, not tried in a row first. Submit the body \
 whole, its outline on it, in one call: rounded after, it is an edit and a \
 look a part. The outline parts are the outermost stud of every course and \
-its top and bottom; the core is plain bricks, staggered. A creature or a character whose body is \
-its shape (fat, round, an egg, a pear) is laid so first, its head and \
-limbs then put on it by joints (place_technique "ball shoulder", "limb on \
-a clip", "head on a neck", "tail on a bar"): the figure pattern's body is \
-a plain stack, for a plain figure. A small body (under about 16 studs) \
-said as a shape, a fill or an ellipsoid comes out a barrel or a block; so \
-does one of 1x1 plates, or square bricks with curved slopes only on top.
+its top and bottom; the core is plain bricks, staggered. A creature or a \
+character whose body is its shape (fat, round, an egg, a pear) is laid so \
+first, its head and limbs then put on it by joints (place_technique "ball \
+shoulder", "limb on a clip", "head on a neck", "tail on a bar"): the \
+figure pattern's body is a plain stack, for a plain figure. A small body \
+(under about 16 studs) said as a shape, a fill or an ellipsoid comes out a \
+barrel or a block; so does one of 1x1 plates, or square bricks with curved \
+slopes only on top.
   Turned: at rot 0 a slope falls toward +z, at rot 1 +x, 2 -z, 3 -x; a \
 corner round's curve faces +x and +z at rot 0, +x -z at 1, -x -z at 2, -x \
 +z at 3, so a ring's four go rot 2, 1, 0, 3 at its corners from low x low \
