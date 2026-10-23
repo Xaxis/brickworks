@@ -171,7 +171,12 @@ is on the page, `hidden`, for the script to show.
   same for a handle on every page, and the first letter of their name;
   never a figure's likeness, docs/TRADEMARKS.md). Sizes `.small` 24
   (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile). It is
-  decoration beside the name, so `aria-hidden`.
+  decoration beside the name, so `aria-hidden`. A person's own picture
+  (`.avatar.pictured`, supabase/avatars.sql) fills the same circle over its
+  tile, and only this site's address for one is drawn. **Cropper**:
+  `.cropper` in `dialog.crop-dialog` (`web/picture.js`), the picture chosen
+  on a square canvas with the circle it is cut to, dragged and zoomed, the
+  zoom two `.icon-btn`s (zoom-out, zoom-in) under it.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
   share, comment, more, build, search, filter, award, zoom-in, zoom-out;
   `web/kit.js` `iconHtml`),

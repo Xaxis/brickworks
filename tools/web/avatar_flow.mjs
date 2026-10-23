@@ -351,10 +351,11 @@ async function deployed() {
     r = await api("/api/people?op=follow", { method: "POST", token: bob.access_token, body: { handle: ADA, on: true } });
     check(`Bob follows Ada: ${r.status}`, r.status === 200);
     const comment = await api("/api/people?op=comment", { method: "POST", token: ada.access_token,
-      body: { model, body: "Built to be built: the gate first." } });
+      body: { model, version: 1, body: "Built to be built: the gate first." } });
+    check(`Ada comments on her castle: ${comment.status}`, comment.status === 201);
     const me = await api("/api/people?op=me", { token: ada.access_token });
     const ready = me.json?.avatar?.ready === true;
-    console.log(`  --    ${ready ? "avatars.sql is held here or applied" : "avatars.sql is not applied here"}; comment ${comment.status}`);
+    console.log(`  --    ${ready ? "avatars.sql is held here or applied" : "avatars.sql is not applied here"}`);
 
     if (!ready) {
       console.log("2. Before avatars.sql: the tile everywhere, and pictures and Likes not open yet");
@@ -551,11 +552,13 @@ async function deployed() {
     check(`its file after: ${lastFile.status}`, lastFile.status === 404);
     const files = await heldFiles();
     if (files) check(`the bucket holds nothing of hers: ${files.length} files`, files.length === 0);
+    // Gone from the sign-in service: there is nobody at her address to delete.
+    check("her account gone from the sign-in service", !(await deleteAccount(adaEmail)));
     ada = null;
   } finally {
     if (model && ada) await api(`/api/share?op=unpublish&id=${model}`, { method: "POST", token: ada.access_token }).catch(() => {});
-    const gone = [await deleteAccount(adaEmail), await deleteAccount(bobEmail)];
-    check("both throwaway accounts deleted", gone.every(Boolean));
+    const gone = [ada ? await deleteAccount(adaEmail) : true, await deleteAccount(bobEmail)];
+    check("the throwaway accounts deleted", gone.every(Boolean));
   }
 }
 
