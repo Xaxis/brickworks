@@ -331,7 +331,8 @@ Proves it when:
   the legs' hole's middle). A
   sword two studs out of the hand, a cape two studs off the neck and a visor
   two studs off its pivots are pieces of their own. And the page's Orthanc,
-  run 5, 9,429 parts, is one piece.
+  10,093 parts, is one piece (its wizards wear printed beards: BrickNet joins
+  no beard worn round the neck, `bench/results/orthanc182-2026-10-23/`).
 - `minifig_ui_probe` ends `a figure was made by clicking, named, placed on a stud
   and photographed`, and leaves `shots/minifig_builder.png`,
   `minifig_builder_surprise.png`, `minifig_figures_front.png`,
