@@ -150,17 +150,26 @@ try {
   await page.click('dialog.sign-in button[type="submit"]');
   // Once supabase/trust.sql is applied, a new account is asked its age once
   // after signing in (web/account.js), before the like goes: 13 or over here
-  // (tools/web/age_flow.mjs is about the question itself).
-  if (await page.waitForSelector("dialog.age[open]", { timeout: 8000 }).then(() => true).catch(() => false)) {
+  // (tools/web/age_flow.mjs is about the question itself). Whichever comes
+  // first, the dialog or the like: the like goes only once no dialog is
+  // left to come. A fixed 8 s for the question took a slow sign-in for "not
+  // asked", and the like then waited behind the question (m152's preview).
+  const first = (dialog, ms) => page.waitForFunction((which) => {
+    if (document.querySelector(`${which}[open]`)) return "asked";
+    return document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed") === "true" ? "liked" : "";
+  }, dialog, { timeout: ms }).then((said) => said.jsonValue(), () => "");
+  const signingIn = Date.now();
+  if (await first("dialog.age", 45000) === "asked") {
+    const after = ((Date.now() - signingIn) / 1000).toFixed(1);
     await page.selectOption("#age-month", "3");
     // The year is a dropdown, as the month is (c98af5bd).
     await page.selectOption("#age-year", String(new Date().getUTCFullYear() - 30));
     await page.click("#age-go");
-    check("asked its age once, after signing in", true);
+    check(`asked its age once, after signing in (${after} s)`, true);
     // Then First steps (docs/SOCIAL.md U10): signed in to like, they end
     // with Done and the like goes on. Skipped here: no profile yet, as step
     // 3 below expects (tools/web/first_steps_flow.mjs is about them).
-    if (await page.waitForSelector("dialog.first-steps[open]", { timeout: 15000 }).then(() => true).catch(() => false)) {
+    if (await first("dialog.first-steps", 30000) === "asked") {
       for (const step of ["profile", "kinds"]) {
         await page.waitForFunction((want) => document.querySelector("dialog.first-steps")?.dataset.step === want, step, { timeout: 30000 })
           .catch(() => {});
