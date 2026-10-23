@@ -695,6 +695,19 @@ static func _named(basis: Basis) -> Array:
 	return []
 
 
+## The 2 x 2 round plates a 6 x 6 and an 8 x 8 dish stand on, by width: each
+## is hollow out to its rim, its anti-studs a plate and two plates above it
+## (Shells.CROWNS), so laid straight on the round its rim sits on the studs and
+## nothing joins it. It came away in the hand, a piece of its own in BrickNet's
+## graph, and the check passed it until 2026-10-23.
+const DISH_RISE: Dictionary = {6: 1, 8: 2}
+
+
+static func _under_dish(made: Array, colour: int, two: Vector2, y: float, d: int) -> void:
+	for k: int in int(DISH_RISE.get(d, 0)):
+		made.append(_part("4032a", colour, two, y + k))
+
+
 ## The top of a round: a cone, an ogive (a dome and then a cone, as a
 ## fairing narrows), a dome, a flat round tile, or a point.
 static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
@@ -721,10 +734,12 @@ static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
 					made.append(_part("3942c", colour, two, y + 6.0))
 					y += 12.0
 				6:
+					_under_dish(made, colour, two, y, d)
 					made.append(_part("44375b", colour, low, y))
 					made.append(_part("3942c", colour, two, y + 2.0))
 					y += 8.0
 				8:
+					_under_dish(made, colour, two, y, d)
 					made.append(_part("3961", colour, low, y))
 					made.append(_part("3943b", colour, centre - Vector2(2, 2), y + 3.0))
 					made.append(_part("3942c", colour, two, y + 9.0))
@@ -748,10 +763,12 @@ static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
 					made.append(_part("3942c", colour, two, y + 3.0))
 					y += 9.0
 				6:
+					_under_dish(made, colour, two, y, d)
 					made.append(_part("44375b", colour, low, y))
 					made.append(_part("3942c", colour, two, y + 2.0))
 					y += 8.0
 				8:
+					_under_dish(made, colour, two, y, d)
 					made.append(_part("3961", colour, low, y))
 					made.append(_part("3942c", colour, two, y + 3.0))
 					y += 9.0
@@ -766,6 +783,7 @@ static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
 			elif d == 4:
 				made.append(_part("4032a", colour, two, y))
 				y += 1.0
+			_under_dish(made, colour, two, y, d)
 			var dish: Dictionary = {1: "6141", 2: "4740", 4: "3960", 6: "44375b", 8: "3961"}
 			made.append(_part(str(dish[d]), colour, low, y))
 			y += {1: 1.0, 2: 1.0, 4: 2.0, 6: 2.0, 8: 3.0}[d]

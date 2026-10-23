@@ -80,8 +80,8 @@ func _run() -> void:
 					var on: int = exact.under(i)
 					print("  apart: %s at LDU %s, on %s" % [p.part, (exact.items[i] as Exact.Item).at.origin,
 						model.placements[on].part if on >= 0 and on < model.placements.size() else "-"])
-			print("    rests %s, comes away %s, on its anti-studs %s" % [exact.rests(members),
-				exact.comes_away(members), exact.on_anti_studs(members)])
+			print("    rests %s, comes away %s, on a missing stud %s" % [exact.rests(members),
+				exact.comes_away(members), exact.on_missing_stud(members)])
 			for m: int in members:
 				for j: int in Exact._near(exact.items, m, PackedInt32Array(), ExactCheck.TOUCH + Exact.TAU):
 					if members.has(j) or exact.items[j] == null:

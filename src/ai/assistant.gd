@@ -13153,16 +13153,17 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
 		# it. Unless a stud holds it, it comes away in the hand: a fault when
-		# it sits on its anti-studs where there is no stud, as the outline161
-		# rabbit's twelve cheese slopes on round plates' rims did, which the
-		# check passed while BrickNet counted each a piece of its own; said
-		# otherwise, as a log in the groove of two below it lies in real sets.
+		# its anti-stud stands on another part's stud grid where that part has
+		# no stud, as the outline161 rabbit's twelve cheese slopes on round
+		# plates' rims did, which the check passed while BrickNet counted each
+		# a piece of its own; advice otherwise, as a brick stood on a tile or a
+		# log in the groove of two below it are set down on purpose.
 		if exact.rests(pieces[key]):
 			if not exact.comes_away(pieces[key]):
 				continue
 			for index: Variant in pieces[key]:
 				apart[int(index)] = true
-			if exact.on_anti_studs(pieces[key]):
+			if exact.on_missing_stud(pieces[key]) >= 0:
 				_note(issues, "not held", exact.comes_away_said(pieces[key], namer))
 				for index: Variant in pieces[key]:
 					unheld[int(index)] = true

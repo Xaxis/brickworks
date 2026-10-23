@@ -486,17 +486,41 @@ static func _tube_grips(a: Exact.Item, b: Exact.Item) -> bool:
 	return false
 
 
-## Whether a part of [param members] sits on its anti-studs: a hole of it
-## points down, as one takes a stud from below. Set where no stud is, it is
-## a part made to be held by studs that missed them; one lying on its side
-## (a log in the groove of two others) is set down so on purpose.
-func on_anti_studs(members: Array) -> bool:
+## The part a piece of [param members] stands on by an anti-stud set on that
+## part's own stud grid, a whole number of studs from one of its studs, where
+## the part has no stud: a 1 x 1 cheese slope on a round plate's rim, which a
+## round plate leaves without studs. A part laid so was meant to be on studs and
+## missed them. -1 for none: a brick on a tile, a dish on its rim over a plate
+## (its anti-studs above the studs), a plate on its edge, each set down so.
+func on_missing_stud(members: Array) -> int:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		for one: Array in item.world():
-			if item.shape.kind[one[0]] == Exact.HOLE and (one[2] as Vector3).dot(Vector3.UP) >= Exact.AXIS_THR:
-				return true
-	return false
+			if item.shape.kind[one[0]] != Exact.HOLE or (one[2] as Vector3).dot(Vector3.UP) < Exact.AXIS_THR:
+				continue
+			var at: Vector3 = one[1]
+			for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+				var other: Exact.Item = items[j]
+				if mine.has(j) or other == null or at.x < other.lo.x or at.x > other.hi.x \
+						or at.z < other.lo.z or at.z > other.hi.z:
+					continue
+				var to_other: Basis = other.at.basis.inverse()
+				for stud: Array in other.world():
+					if other.shape.kind[stud[0]] != Exact.STUD \
+							or (stud[2] as Vector3).dot(Vector3.UP) < Exact.AXIS_THR:
+						continue
+					var d: Vector3 = at - (stud[1] as Vector3)
+					if absf(d.y) > 1.0:
+						continue
+					var local: Vector3 = to_other * d
+					if absf(local.x - snappedf(local.x, PITCH)) <= 1.0 \
+							and absf(local.z - snappedf(local.z, PITCH)) <= 1.0 \
+							and Vector2(local.x, local.z).length() > Exact.POS_THR:
+						return j
+	return -1
 
 
 ## A piece that stands but comes away in the hand ([method comes_away]),
@@ -510,13 +534,14 @@ func comes_away_said(members: Array, name: Callable) -> String:
 			first = int(i)
 			break
 		on = -1
+	var missed: int = on_missing_stud(members)
 	var rest: int = members.size() - 1
 	var who: String = name.call(first)
 	if rest > 0:
 		who += " and %d part%s joined to it" % [rest, "" if rest == 1 else "s"]
 	var where: String = "rests on %s" % name.call(on) if on >= 0 else "stands where it is"
-	if on_anti_studs(members):
-		where += " with no stud under it to take its anti-stud"
+	if missed >= 0:
+		where = "stands on %s where it has no stud to take its anti-stud" % name.call(missed)
 	return ("%s %s, and nothing joins it to the rest: it stands while the model stands, and "
 		% [who, where] + "falls off when the model is picked up (BrickNet's connection graph, "
 		+ "which BrickBench counts pieces by, has it as a piece of its own). Move it onto a "
@@ -722,6 +747,8 @@ const TOUCH := 2.5
 ## Half a stud's diagonal, LDU: how far a tube's middle is from each of the
 ## four studs it stands between.
 const DIAGONAL := 14.142
+## A stud's pitch, LDU.
+const PITCH := 20.0
 
 
 ## The points where items [param a] and [param b] touch, into [param out]:
