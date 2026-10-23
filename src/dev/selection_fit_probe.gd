@@ -11,9 +11,11 @@
 ## edit_model reads it, in its section; where_to_attach lists the open
 ## studs and, given a tooth plate, placements that land as they are; a
 ## plate put inside another is refused with where it fits, and that lands;
-## one put in the air likewise; check_only changes nothing. Then two copies
-## of a sub-assembly: a change to one, about a selection, is followed by
-## the other, and one undo takes back both.
+## one put in the air likewise; check_only changes nothing. Every placement
+## where_to_attach offers there, on a Technic go-kart and on a car, is one
+## edit_selection takes, alone and with the rest, and stands where offered.
+## Then two copies of a sub-assembly: a change to one, about a selection, is
+## followed by the other, and one undo takes back both.
 extends SceneTree
 
 
@@ -164,6 +166,26 @@ func _run() -> void:
 	_ok(builder.history_depth() == depth + 1, "every change landed is one undo step (%d)"
 		% (builder.history_depth() - depth))
 
+	print("\nevery placement where_to_attach offers, edit_selection takes")
+	# A check of Orthanc is ten seconds: there, each part's offers together.
+	await _offers_taken("Orthanc's west horn", assistant, world, ["out"], false)
+	# A Technic go-kart, and a car of plates and round plates on their sides:
+	# their top forty parts, and forty from the middle.
+	for name: String in ["kart", "car"]:
+		for band: int in 2:
+			var other: Assistant = await _model(library, name)
+			var bricks: Array = other.world.bricks().duplicate()
+			bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+				return a.transform.origin.y > b.transform.origin.y)
+			var from: int = 0 if band == 0 else bricks.size() / 2
+			for n: int in range(from, mini(bricks.size(), from + 40)):
+				other.builder.selection[(bricks[n] as BrickWorld.Brick).id] = true
+			other.focus_on(other.builder.selection.keys(), true)
+			await _offers_taken("the %s's %s" % [name, "top" if band == 0 else "middle"],
+				other, other.world)
+			for node: Node in [other, other.builder, other.world]:
+				node.queue_free()
+
 	if ModelShot.possible():
 		var shot: Variant = await assistant.use_tool("where_to_attach", {"toward": "out"})
 		var saved: bool = false
@@ -255,6 +277,90 @@ func _copies(library: PartLibrary) -> void:
 	builder.undo()
 	_ok(assemblies.ids_under("Wing#1").size() == 2 and assemblies.ids_under("Wing#2").size() == 2,
 		"one undo takes back both")
+
+
+## Every placement where_to_attach offers for a few parts, tried with
+## check_only with the others offered with it and, [param alone], by itself,
+## is taken; and the last set, put down, stands where each was offered. On
+## the code before, Orthanc's tooth plate over the next stud of its wing was
+## refused as a collision, and of 649 offers on four shipped models 166 were.
+func _offers_taken(said: String, assistant: Assistant, world: BrickWorld,
+		towards: Array = ["out", "up"], alone: bool = true) -> void:
+	var offered: int = 0
+	var refused := PackedStringArray()
+	var last: Array = []
+	var started: int = Time.get_ticks_msec()
+	for part: String in ["49668", "3024", "3023", "4073", "99781"]:
+		for toward: String in towards:
+			var fits: Array = _placements(_text(await assistant.use_tool("where_to_attach",
+				{"part": part, "color": 4, "toward": toward, "limit": 4})))
+			offered += fits.size()
+			for fit: Variant in fits if alone else []:
+				var one: String = _text(await assistant.use_tool("edit_selection",
+					{"add": [fit], "check_only": true}))
+				if not one.begins_with("It would be applied"):
+					refused.append("%s, %s" % [JSON.stringify(fit), _line_with(one, " - ")])
+			if fits.size() > 1 or (not alone and not fits.is_empty()):
+				var together: String = _text(await assistant.use_tool("edit_selection",
+					{"add": fits, "check_only": true}))
+				if not together.begins_with("It would be applied"):
+					refused.append("%d %ss together, %s" % [fits.size(), part,
+						_line_with(together, " - ")])
+			if not fits.is_empty():
+				last = fits
+	_ok(offered >= 8 and refused.is_empty(), "%s: %d placements offered, taken %s, in %d s%s" % [
+		said, offered, "alone and with the rest offered with it" if alone else "together",
+		(Time.get_ticks_msec() - started) / 1000, "" if refused.is_empty()
+			else "; %d refused, the first %s" % [refused.size(), refused[0]]])
+	if last.is_empty():
+		return
+	var read: OpenPoints = OpenPoints.read(assistant)
+	var wanted: Array[Transform3D] = []
+	for fit: Variant in last:
+		var placement: Assistant.Placement = Assistant.Placement.from_dict(fit)
+		wanted.append(read.world_of(placement, assistant.library.mesh_for(placement.part)))
+	var before: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		before[brick.id] = true
+	var landed: String = _text(await assistant.use_tool("edit_selection", {"add": last}))
+	var where: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if before.has(brick.id):
+			continue
+		for at: Transform3D in wanted:
+			if brick.transform.origin.distance_to(at.origin) < 0.01 \
+					and brick.transform.basis.is_equal_approx(at.basis):
+				where += 1
+				break
+	_ok(landed.begins_with("Done.") and where == last.size(),
+		"...and the last %d, put down, each stand where offered (%d do): %s" % [last.size(),
+			where, landed.get_slice("\n", 0).left(50)])
+
+
+## A shipped model standing in a world of its own, with its assistant.
+func _model(library: PartLibrary, name: String) -> Assistant:
+	var world := BrickWorld.new()
+	world.library = library
+	root.add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	root.add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = library
+	assistant.world = world
+	assistant.builder = builder
+	root.add_child(assistant)
+	await process_frame
+	var ldr: LdrModel = LdrModel.load_file("res://models/%s.ldr" % name)
+	for piece: LdrModel.Placement in ldr.flatten():
+		var part_id: String = piece.part_id.to_lower().trim_suffix(".dat")
+		if library.mesh_for(part_id) == null:
+			continue
+		var id: int = world.add_brick(part_id, piece.color_code, piece.transform)
+		if id != 0:
+			builder.register(id, part_id, piece.transform)
+	return assistant
 
 
 func _blue_in(world: BrickWorld, unit: String) -> int:

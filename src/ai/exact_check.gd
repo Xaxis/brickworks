@@ -202,6 +202,14 @@ func at_joint(i: int, j: int) -> String:
 	return kind
 
 
+## Whether items [param i] and [param j], which collide, meet as real sets
+## are built: a wheel spun on its axle, or a joint's own parts inside the
+## joint. The check forgives these (Assistant._exact_collisions), and so does
+## where_to_attach in what it offers (OpenPoints), by this one rule.
+func forgiven(i: int, j: int) -> bool:
+	return turned_on_axle(i, j) or not at_joint(i, j).is_empty()
+
+
 ## For each pair of pieces of items [param i] and [param j] that overlap:
 ## [depth, [[joint kind, how far the overlap can reach from that joint's
 ## ball or line], ...]], over the joints of [constant JOINT_ROUND]'s kinds
