@@ -17,7 +17,12 @@
 ## fits where none of its cells is another's, square in its section's own
 ## frame against its section-mates, and holds where a stud of its own
 ## reaches into another part, or another's into it, or a pin, axle, bar or
-## clip joins them. The edit itself is still checked whole.
+## clip joins them. Where both parts have an exact shape, the shapes decide
+## as they do for the check (ExactCheck): a cover is whole cells with its
+## studs cut away, so a stud pushed into another's solid is clear by covers.
+## where_to_attach offered a 49668 on Orthanc's west horn with its tooth over
+## the next stud of the wing it stood on, a lattice fit, and edit_selection
+## refused it as the collision it is. The edit itself is still checked whole.
 class_name OpenPoints
 extends RefCounted
 
@@ -65,6 +70,11 @@ var assistant: Assistant
 ## The model as edit_model reads it, and its placements by brick id.
 var model: Assistant.Model
 var by_id: Dictionary = {}
+## The parts by their exact shapes, as the check reads them: each brick
+## standing near a part tried, read once ([member _item_of], brick id ->
+## item), and each part tried, an item of its own.
+var _exact := ExactCheck.new({}, 0)
+var _item_of: Dictionary = {}
 
 
 static func read(of: Assistant) -> OpenPoints:
@@ -298,7 +308,7 @@ func world_of(placement: Assistant.Placement, mesh: Lbm.PartMesh) -> Transform3D
 ## holds it. {"fits", "hits": brick ids, "held_by": brick ids, "rests_on",
 ## "box": its box in LDU}. [param skip] are bricks taken off or moved, and
 ## [param also] other parts the same edit puts down, as [key, mesh, world
-## transform, section] with negative keys.
+## transform, part id] with negative keys.
 func test(placement: Assistant.Placement, skip: Dictionary = {},
 		also: Array = []) -> Dictionary:
 	var answer: Dictionary = {"fits": false, "hits": [], "held_by": [], "rests_on": 0,
@@ -318,6 +328,11 @@ func test(placement: Assistant.Placement, skip: Dictionary = {},
 	if (answer["box"] as AABB).position.y < -1.0:
 		answer["hits"] = ["the ground"]
 		return answer
+	var me: int = _item(placement.part, at, placement.section)
+	var also_items: Dictionary = {}    ## key in [param also] -> its item
+	for one: Array in also:
+		if one.size() > 3:
+			also_items[int(one[0])] = _item(str(one[3]), one[2], "")
 	var hits: Array = []
 	var square: PackedInt32Array = PackedInt32Array()
 	for other: int in builder.lattice.blockers_boxes(packed, 0, skip):
@@ -347,16 +362,39 @@ func test(placement: Assistant.Placement, skip: Dictionary = {},
 		if theirs != null and assistant._seated(placement.part, at, brick.part_id,
 				brick.transform):
 			continue
+		# Their exact shapes decide where both have one (ExactCheck.drop_cleared).
+		if _clear(me, _standing_item(brick)):
+			continue
 		hits.append(other)
+	var near: PackedInt64Array = builder.lattice.near_bounds(_grown(packed, 4))
+	# And what the covers cannot see, as the check refuses it
+	# (Assistant._exact_collisions): the studs cut out of a cover and pushed
+	# into another's solid, and any overlap a joint forgave above that is not
+	# inside the joint.
+	for other: int in near:
+		if hits.has(other) or skip.has(other) or assistant.scenery.has(other):
+			continue
+		var brick: BrickWorld.Brick = assistant.world.get_brick(other)
+		if brick != null and _refused(me, _standing_item(brick), mesh, at, placement.part,
+				assistant.library.mesh_for(brick.part_id), brick.transform, brick.part_id):
+			hits.append(other)
 	var extra := BrickLattice.new()
 	extra.keeps_columns = false
 	for one: Array in also:
 		extra.occupy_boxes(int(one[0]), builder.boxes_for(one[1], one[2]))
+	var met: Dictionary = {}
 	for key: int in extra.blockers_boxes(packed):
-		hits.append(key)
+		met[key] = true
+		if not _clear(me, int(also_items.get(key, -1))):
+			hits.append(key)
+	for one: Array in also:
+		if not met.has(int(one[0])) and one.size() > 3 and _refused(me,
+				int(also_items.get(int(one[0]), -1)), mesh, at, placement.part, one[1], one[2],
+				str(one[3])):
+			hits.append(int(one[0]))
 	answer["hits"] = hits
 	answer["fits"] = hits.is_empty()
-	answer["held_by"] = _held_by(mesh, at, packed, skip, also, extra)
+	answer["held_by"] = _held_by(mesh, at, packed, skip, also, extra, near, me, also_items)
 	# Resting on something, which the check counts as held and calls loose.
 	var floor_y: int = 0x7FFFFFFF
 	for n: int in range(1, packed.size(), 6):
@@ -377,8 +415,13 @@ func test(placement: Assistant.Placement, skip: Dictionary = {},
 
 ## What holds a part standing at [param at]: a stud of its own reaching
 ## into another, another's reaching into it, or a pin, axle, bar or clip.
+## [param near] are the bricks round it, and [param me] its exact item.
+## Between two parts with exact shapes, only a connection of BrickNet's
+## holds, as the check has it (Assistant._exact_unheld): a stud's tip in a
+## cover's cell can be in a hollow that takes no stud, or in solid.
 func _held_by(mesh: Lbm.PartMesh, at: Transform3D, packed: PackedInt32Array,
-		skip: Dictionary, also: Array, extra: BrickLattice) -> Array:
+		skip: Dictionary, also: Array, extra: BrickLattice, near: PackedInt64Array,
+		me: int, also_items: Dictionary) -> Array:
 	var held: Dictionary = {}
 	var lattice: BrickLattice = assistant.builder.lattice
 	for connector: Lbm.Connector in mesh.connectors:
@@ -395,9 +438,8 @@ func _held_by(mesh: Lbm.PartMesh, at: Transform3D, packed: PackedInt32Array,
 	var mine := BrickLattice.new()
 	mine.keeps_columns = false
 	mine.occupy_boxes(1, packed)
-	var around: PackedInt32Array = _grown(packed, 4)
 	var entries: Array = [[0, at, mesh]]
-	for other: int in lattice.near_bounds(around):
+	for other: int in near:
 		if skip.has(other) or held.has(other):
 			continue
 		var brick: BrickWorld.Brick = assistant.world.get_brick(other)
@@ -425,7 +467,85 @@ func _held_by(mesh: Lbm.PartMesh, at: Transform3D, packed: PackedInt32Array,
 	for other: Variant in rounds.get(0, {}):
 		if int(other) != 0:
 			held[int(other)] = true
+	if not _exact._shaped(me) or held.is_empty():
+		return held.keys()
+	var item_of: Dictionary = {}    ## holder -> its exact item, where it has a shape
+	for key: Variant in held:
+		var item: int = int(also_items.get(int(key), -1)) if int(key) < 0 \
+			else _standing_item(assistant.world.get_brick(int(key)))
+		if _exact._shaped(item):
+			item_of[key] = item
+	if item_of.is_empty():
+		return held.keys()
+	var joined: Dictionary = {}
+	var only := PackedInt32Array([me])
+	for key: Variant in item_of:
+		only.append(int(item_of[key]))
+	for edge: Array in Exact.connections(_exact.items, only):
+		if int(edge[0]) == me or int(edge[2]) == me:
+			joined[int(edge[2]) if int(edge[0]) == me else int(edge[0])] = true
+	for key: Variant in item_of:
+		if not joined.has(int(item_of[key])):
+			held.erase(key)
 	return held.keys()
+
+
+# -- by their exact shapes ----------------------------------------------------
+
+
+## A part as an item of the exact shapes, its index: one tried, at [param
+## at] in [param section]. No shape where the part has none, or is one of
+## the prism pattern's walls, which the check judges by their covers.
+func _item(part_id: String, at: Transform3D, section: String) -> int:
+	var shapes: Dictionary = _exact.shapes
+	if not shapes.has(part_id):
+		shapes[part_id] = Exact.shape_for(assistant.library, part_id)
+	var index: int = _exact.items.size()
+	_exact.parts.append(part_id)
+	_exact.items.append(Exact.Item.new(shapes[part_id], at)
+		if shapes[part_id] != null and not section.begins_with("prism ") else null)
+	return index
+
+
+## A brick standing as an item of the exact shapes, read once; -1 for none.
+func _standing_item(brick: BrickWorld.Brick) -> int:
+	if brick == null:
+		return -1
+	if not _item_of.has(brick.id):
+		_item_of[brick.id] = _item(brick.part_id, brick.transform, section_of(brick.id))
+	return _item_of[brick.id]
+
+
+## Whether items [param one] and [param other] are clear by their exact
+## shapes: false where either has none.
+func _clear(one: int, other: int) -> bool:
+	var found: Variant = _exact.between(one, other)
+	return found is Dictionary and (found as Dictionary).is_empty()
+
+
+## Whether the check refuses items [param one] and [param other] for their
+## exact shapes, which their covers did not refuse: they overlap by more
+## than a build allows, and not as a joint's own parts, a wheel spun on its
+## axle (ExactCheck.forgiven) or gears in mesh do.
+func _refused(one: int, other: int, one_mesh: Lbm.PartMesh, one_at: Transform3D,
+		one_id: String, other_mesh: Lbm.PartMesh, other_at: Transform3D,
+		other_id: String) -> bool:
+	if not _exact._shaped(one) or not _exact._shaped(other):
+		return false
+	var a: Exact.Item = _exact.items[one]
+	var b: Exact.Item = _exact.items[other]
+	# Their boxes first, as ExactCheck.pairs_near asks it.
+	if minf(a.hi.x, b.hi.x) - maxf(a.lo.x, b.lo.x) <= Exact.TAU \
+			or minf(a.hi.y, b.hi.y) - maxf(a.lo.y, b.lo.y) <= Exact.TAU \
+			or minf(a.hi.z, b.hi.z) - maxf(a.lo.z, b.lo.z) <= Exact.TAU:
+		return false
+	var found: Variant = _exact.between(one, other)
+	if not (found is Dictionary) or (found as Dictionary).is_empty():
+		return false
+	if _exact.forgiven(one, other):
+		return false
+	return Joints.meshing([[1, one_at, one_mesh, one_id],
+		[2, other_at, other_mesh, other_id]]).is_empty()
 
 
 ## Whether a stud of a part standing at [param at] reaches into the cells

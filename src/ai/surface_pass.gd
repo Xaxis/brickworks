@@ -3567,7 +3567,7 @@ func _fits(placed: Dictionary, skip: Dictionary, with_these: Array = []) -> bool
 		var other: Assistant.Placement = Assistant.Placement.from_dict(with_these[n])
 		var mesh: Lbm.PartMesh = assistant.library.mesh_for(other.part)
 		if mesh != null:
-			also.append([-(n + 1), mesh, assistant._transform(other, mesh, null), ""])
+			also.append([-(n + 1), mesh, assistant._transform(other, mesh, null), other.part])
 	var trial: Dictionary = _read.test(Assistant.Placement.from_dict(placed), skip, also)
 	if not bool(trial["fits"]):
 		return false
