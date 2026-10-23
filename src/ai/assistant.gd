@@ -12497,8 +12497,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	# the model is picked up, and its simulation lets it fall. Not said again
 	# of a section already said to lean on nothing or to be adrift.
 	var unheld: Dictionary = {}
+	## Parts nothing joins that this check held only by what they rest on,
+	## and the connections that join parts, by BrickNet's rules: the count of
+	## pieces is by both (_pieces_of), as verify.py counts them.
+	var come_away: Dictionary = {}
+	var exact_joins: Array = []
 	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
-		clutched_pairs, stuck, unheld)
+		clutched_pairs, stuck, unheld, advice, come_away, exact_joins)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -12591,13 +12596,19 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		if not lopsided.is_empty():
 			advice.append(lopsided)
 
-	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds)
+	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds,
+		exact_joins, come_away)
 	var pieces: int = each_piece.size()
 	# What touches what, asked only of a model with a part of the design's
 	# in it: of one that is all the person's own nothing is asked, and for a
 	# real set in a thousand pieces each piece's every part was asked what it
-	# stands beside.
-	var apart: Dictionary = _standing_apart(model, each_piece, floating,
+	# stands beside. What comes away is said already, part by part, as what
+	# floats is.
+	var adrift: Dictionary = floating
+	if not come_away.is_empty():
+		adrift = floating.duplicate()
+		adrift.merge(come_away)
+	var apart: Dictionary = _standing_apart(model, each_piece, adrift,
 		func() -> Dictionary: return _touching(each_piece, lattice, boxes_of),
 		func() -> Dictionary: return _outside(each_piece, box_of), box_of)
 	for piece: Array in apart["loose"]:
@@ -13045,11 +13056,16 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 ## both parts have an exact shape and by this check's own where one has not:
 ## a piece of them is held when it reaches the ground, a brick standing before
 ## this design (unless only the ground holds: _ground_only), or a part with no
-## exact shape that this check holds. One fault a piece.
+## exact shape that this check holds. One fault a piece. A piece that stands
+## where it is but comes away in the hand (ExactCheck.comes_away) goes into
+## [param apart], said: a fault when it sits on its anti-studs where no stud
+## is, advice when it lies so on purpose. The connections found go into
+## [param joins], [a, b] each, for the count of pieces (_pieces_of).
 func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
 		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
-		unheld: Dictionary = {}) -> void:
+		unheld: Dictionary = {}, advice: Array = [], apart: Dictionary = {},
+		joins: Array = []) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -13100,7 +13116,11 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 				near[pair[0]] = true
 				near[pair[1]] = true
 				grew = true
-	var root: PackedInt32Array = exact.pieces(extra, near)
+	var edges: Array = []
+	var root: PackedInt32Array = exact.pieces(extra, near, edges)
+	for edge: Array in edges:
+		if int(edge[0]) < count and int(edge[2]) < count:
+			joins.append([int(edge[0]), int(edge[2])])
 	var held: Dictionary = {}
 	## Pieces held by something other than the floor: what stood before, or
 	## what the lattice holds. The rest the floor alone holds, and on a bare
@@ -13132,14 +13152,29 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 	for key: Variant in pieces:
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
-		# it; that it comes away in the hand the loose advice says.
+		# it. Unless a stud holds it, it comes away in the hand: a fault when
+		# it sits on its anti-studs where there is no stud, as the outline161
+		# rabbit's twelve cheese slopes on round plates' rims did, which the
+		# check passed while BrickNet counted each a piece of its own; said
+		# otherwise, as a log in the groove of two below it lies in real sets.
 		if exact.rests(pieces[key]):
+			if not exact.comes_away(pieces[key]):
+				continue
+			for index: Variant in pieces[key]:
+				apart[int(index)] = true
+			if exact.on_anti_studs(pieces[key]):
+				_note(issues, "not held", exact.comes_away_said(pieces[key], namer))
+				for index: Variant in pieces[key]:
+					unheld[int(index)] = true
+			else:
+				advice.append(exact.comes_away_said(pieces[key], namer))
 			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
 		# By index too, for what mends a design (Brickify.mend) to join or
 		# take out, as it does a part floating.
 		for index: Variant in pieces[key]:
 			unheld[int(index)] = true
+			apart[int(index)] = true
 	# And what the floor alone holds, on a bare floor: it stands while it
 	# balances. On a baseplate its studs hold it, as they do in the hand.
 	if _ground_only or not _on_bare_floor(model):
@@ -14833,20 +14868,32 @@ const NEAR: Array[int] = [5, 4, 5]
 ## placements, joined by the rules [method _check] says them by.
 func _pieces_of(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice, boxes_of: Dictionary = {},
-		holds: Dictionary = {}) -> Array:
+		holds: Dictionary = {}, joins: Array = [],
+		come_away: Dictionary = {}) -> Array:
 	if cells_of.size() <= 1:
 		return [cells_of.keys()] if cells_of.size() == 1 else []
 
 	var joined: Dictionary = {}   ## index -> Array of index
 	for index: int in cells_of:
 		joined[index] = []
+	# The connections of the parts' exact shapes, BrickNet's as verify.py
+	# counts pieces by: a round brick laid on its side on a stud the 2 LDU
+	# cells miss (the figfaces balloon dog's legs, three pieces by the
+	# lattice and one by verify.py).
+	for pair: Array in joins:
+		if joined.has(pair[0]) and joined.has(pair[1]):
+			joined[pair[0]].append(pair[1])
+			joined[pair[1]].append(pair[0])
 	# And the joints, which support counts and this did not: a flag clipped
 	# to a lance was held up and yet a piece of its own. With what is pushed
 	# into what (a carrot in a hand's grip, a cape round a neck), so a whole
 	# minifigure is one piece, as it is in the hand ([method _check]).
+	# Not for a part that comes away in the hand, which only rests where it
+	# is: the exact shapes say nothing joins it ([method _exact_unheld]).
 	for index: Variant in holds:
 		for other: Variant in holds[index]:
-			if joined.has(index) and joined.has(other):
+			if joined.has(index) and joined.has(other) \
+					and not come_away.has(index) and not come_away.has(other):
 				joined[index].append(other)
 				joined[other].append(index)
 	# What sits directly on each brick, asked as a slab across its top
@@ -14865,15 +14912,17 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 			over[n + 3] = packed[n + 3]
 			over[n + 4] = packed[n + 4] + 1
 			over[n + 5] = packed[n + 5]
+		if come_away.has(index):
+			continue
 		for above: int in lattice.blockers_boxes(over, index + 1):
-			if above > 0 and joined.has(above - 1):
+			if above > 0 and joined.has(above - 1) and not come_away.has(above - 1):
 				joined[index].append(above - 1)
 				joined[above - 1].append(index)
 
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
-		if part == null:
+		if part == null or come_away.has(index):
 			continue
 		var at: Transform3D = _joined_at(placement, part, model)
 		for connector: Lbm.Connector in part.connectors:
@@ -14882,7 +14931,7 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 			var tip: Vector3 = at * (connector.position
 				+ connector.axis.normalized() * 5.0)
 			var reached: int = lattice.brick_but(BrickLattice.to_cell(tip), index + 1)
-			if reached != 0 and joined.has(reached - 1):
+			if reached != 0 and joined.has(reached - 1) and not come_away.has(reached - 1):
 				joined[index].append(reached - 1)
 				joined[reached - 1].append(index)
 

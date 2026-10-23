@@ -25,7 +25,8 @@ var _failed: int = 0
 var _passed: int = 0
 
 ## name, LDraw lines, what must be said: {"collision": [part ids named] and
-## words, "not held": [part], "seated": [part]}.
+## words, "not held": [part], "seated": [part]}, and "pieces": how many
+## BrickNet's graph has it in, which the check must count too.
 const CASES: Array = [
 	["a side stud pushed into the next brick (11211 by 3003, model-008)",
 		["1 71 -20 -192 -60 1 0 0 0 1 0 0 0 1 3003.dat",
@@ -110,6 +111,15 @@ const CASES: Array = [
 		"1 72 280 -20 -68 1 0 0 0 0 -1 0 1 0 4032a.dat",
 		"1 71 280 -20 -44 1 0 0 0 0 -1 0 1 0 3941.dat"],
 		{"tips over": "past the 3 LDU"}],
+	# A 1 x 1 cheese slope on a round plate's rim, where the plate has no stud:
+	# it stands through BrickBench's two seconds of gravity and comes away in
+	# the hand, a piece of its own in BrickNet's graph. The outline161 arm's
+	# rabbit stood twelve so (brickbench-2026-10-22-m147), and the check said it
+	# held together, in one piece.
+	["a cheese slope on a round plate's rim, where it has no stud (54200 on 11213, outline161 model-078)",
+		["1 71 80 -8 -100 1 0 0 0 1 0 0 0 1 11213.dat",
+		"1 71 50 -8 -150 1 0 0 0 1 0 0 0 1 54200.dat"],
+		{"not held": ["54200"], "pieces": 2}],
 ]
 
 ## Built right, these must say nothing: [name, lines].
@@ -133,6 +143,9 @@ const CLEAN: Array = [
 		["1 0 0 -24 0 1 0 0 0 1 0 0 0 1 87081.dat",
 		"1 0 0 -32 0 1 0 0 0 1 0 0 0 1 4032a.dat",
 		"1 0 0 -48 0 1 0 0 0 1 0 0 0 1 3960.dat"]],
+	["a cheese slope on a round plate's stud",
+		["1 71 80 -8 -100 1 0 0 0 1 0 0 0 1 11213.dat",
+		"1 71 70 -8 -150 1 0 0 0 1 0 0 0 1 54200.dat"]],
 	["the potato's shoes and legs with its body over its feet",
 		["1 1 160 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
 		"1 1 240 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
@@ -198,8 +211,9 @@ func _run() -> void:
 	for case: Array in CLEAN:
 		var report: Dictionary = _checked(case[1])
 		var said: Array = _exact_said(report)
-		_say(said.is_empty(), "%s: nothing said" % case[0],
-			"%s: said %s" % [case[0], "; ".join(PackedStringArray(said))])
+		_say(said.is_empty() and int(report.get("pieces", 0)) == 1, "%s: nothing said, one piece" % case[0],
+			"%s: said %s; in %d pieces" % [case[0], "; ".join(PackedStringArray(said)),
+				int(report.get("pieces", 0))])
 	await _figure()
 	_hinge()
 	print("exact probe: %d passed, %d failed" % [_passed, _failed])
@@ -254,6 +268,11 @@ func _expect(name: String, report: Dictionary, wanted: Dictionary) -> void:
 				hit = str(sentence)
 		_say(not hit.is_empty(), "%s: said not held: %s" % [name, hit],
 			"%s: not said to be unheld (summary: %s)" % [name, report.get("summary", "")])
+	if wanted.has("pieces"):
+		_say(int(report.get("pieces", 0)) == int(wanted["pieces"]),
+			"%s: in %d pieces, as BrickNet counts it" % [name, int(wanted["pieces"])],
+			"%s: counted in %d pieces, where BrickNet's graph has %d" % [name,
+				int(report.get("pieces", 0)), int(wanted["pieces"])])
 	if wanted.has("tips over"):
 		var said: Array = found.get("tips over", [])
 		var hit: String = ""
