@@ -6,7 +6,8 @@
 #
 # flatten.py (printed parts back as real ones; --steps keeps the design's own
 # step order, which made finer steps than the worked-out one for the tractor
-# and the fox), then fixsteps.gd. OUT.flat is kept beside OUT: fix colours
+# and the fox), then fixsteps.gd. OUT.flat is kept beside OUT, and the
+# fixer's whole report in OUT.fix (the first 60 lines are shown): fix colours
 # (colours.py --check) or drop hidden parts (drop.py) in it, then run
 # fixsteps.gd on it again. Q=heavy|gpu picks the queue (gpu by default: a
 # minute's headless run, and heavy waits whenever the box is past its load
@@ -20,5 +21,6 @@ python3 "$here/flatten.py" "$in" "$out.flat" "$title" "$@" || exit 1
 mkdir -p "$(dirname "$out")/xdg"
 cd "$root" && XDG_DATA_HOME="${XDG_DATA_HOME:-$(dirname "$out")/xdg}" timeout 2400 \
   ~/.claude/claude-core/bin/${Q:-gpu} godot --headless --path . --script tools/house_models/fixsteps.gd -- "$out.flat" "$out" 2>&1 \
-  | grep "^  \|SCRIPT ERROR\|^fixsteps" | head -60
+  | grep "^  \|SCRIPT ERROR\|^fixsteps" > "$out.fix"
+head -60 "$out.fix"
 [ -f "$out" ] && sed -i "1s/.*/0 $title/" "$out"
