@@ -252,29 +252,38 @@ func _hotel() -> void:
 
 
 ## Stress on [param runs] times over [param path]: from the press to the
-## weighing drawn, and the drawing alone.
+## weighing drawn, and the drawing alone. Where there is a panel, every other
+## run is without it, so the two are timed side by side on a box whose load
+## moves more between runs than the panel costs.
 func _time(path: String, runs: int) -> void:
 	await _open(path)
-	var pressed: Array = []
-	var drawing: Array = []
-	for n: int in runs:
+	var stress: StressView = _shell.stress
+	var panel: Variant = _panel()
+	var timed: Dictionary = {"with": [[], []], "without": [[], []]}
+	for n: int in runs * (2 if panel != null else 1):
+		var how: String = "with" if panel == null or n % 2 == 1 else "without"
+		stress.set("panel", panel if how == "with" else null)
 		var began: int = Time.get_ticks_usec()
 		_shell.run("stress")
 		await _drawn(0)
-		pressed.append((Time.get_ticks_usec() - began) / 1000.0)
-		var report: Stability.Report = _shell.stress.report
+		timed[how][0].append((Time.get_ticks_usec() - began) / 1000.0)
 		var at: int = Time.get_ticks_usec()
-		_shell.stress.show_report(report)
-		drawing.append((Time.get_ticks_usec() - at) / 1000.0)
+		stress.show_report(stress.report)
+		timed[how][1].append((Time.get_ticks_usec() - at) / 1000.0)
 		await _frames(10)
 		_shell.run("stress")
 		await _frames(30)
-	pressed.sort()
-	drawing.sort()
-	print("stress time: %s, %d parts, %d runs: on in %s ms (median %.0f), drawn in %s ms (median %.1f)"
-		% [path.get_file(), _world.brick_count(), runs, ", ".join(pressed.map(func(ms: float) -> String:
-		return "%.0f" % ms)), pressed[runs / 2], ", ".join(drawing.map(func(ms: float) -> String:
-		return "%.1f" % ms)), drawing[runs / 2]])
+	stress.set("panel", panel)
+	for how: String in ["without", "with"] if panel != null else ["with"]:
+		var pressed: Array = timed[how][0]
+		var drawing: Array = timed[how][1]
+		pressed.sort()
+		drawing.sort()
+		print("stress time%s: %s, %d parts, %d runs: on in %s ms (median %.0f), drawn in %s ms (median %.1f)"
+			% ["" if panel == null else " " + how + " its panel", path.get_file(), _world.brick_count(),
+			pressed.size(), ", ".join(pressed.map(func(ms: float) -> String: return "%.0f" % ms)),
+			pressed[pressed.size() / 2], ", ".join(drawing.map(func(ms: float) -> String:
+			return "%.1f" % ms)), drawing[drawing.size() / 2]])
 
 
 # -- reading it --------------------------------------------------------------------

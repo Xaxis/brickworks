@@ -141,6 +141,8 @@ func _say_chosen() -> void:
 	_why.text = view.words(one.id) if view != null else ""
 	_fix.text = StressView.fix_words(one, view.library if view != null else null)
 	_fix.visible = not _fix.text.is_empty()
+	# Its words take room from the list, not from under the key strip.
+	_fit_later()
 
 
 ## The row for the [param n]th listed.
