@@ -200,6 +200,19 @@ takes turns. Here:
 
 ## Not done yet
 
+- **A change takes about 2 s to cross once the model has a motion, a
+  printed part, steps of its own and its hidden parts coloured** (the
+  flow's second measure on the 2026-10-24 preview: p50 2,145 ms, p95
+  3,088 ms, with both pages drawing 60 frames a second when idle), against
+  under half a second before those (p50 488 ms, p95 614 ms in the same
+  run). Not frames, then, and not found yet: the next unit measures each
+  of the seven changes in turn to find which one makes every later change
+  slow, on both sides.
+- **The desktop once fell behind after the hidden parts were coloured**
+  (the same run): both browsers matched, the desktop's file did not within
+  the check's 90 s, and it matched again at the next check. Not
+  reproduced on this box (three runs passed it).
+
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
