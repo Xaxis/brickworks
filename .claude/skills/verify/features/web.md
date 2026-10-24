@@ -1218,9 +1218,9 @@ plan with Claude as the client.
   challenges.sql's `challenge_shown` (an upcoming one once told),
   `challenge_page` (`challenge_page_at` of the shown one) and
   `challenge_list` (+`announced_at`), each guarded in `tools/apply_sql.mjs`
-  LATER. **Not applied** until the lead applies it: until then GET
-  `?op=challenge` says `year: false`, no `next`, `past: []`, and `&id=N`
-  answers `ready: false`. On `/challenge`: `#next[data-next]`
+  LATER. Applied live 2026-10-24; before it, GET `?op=challenge` said
+  `year: false`, no `next`, `past: []`, and `&id=N` answered `ready:
+  false`, as a project without it still would. On `/challenge`: `#next[data-next]`
   (`#next-title`, `#next-days`, `#next-brief`) and `#past article.past-one
   [data-past]` (`h3 a` to `/challenge?id=N`, `.note` days and entries,
   winners as `.kept[data-entry]` with `.challenge-said` "Winner, built by
@@ -3224,7 +3224,8 @@ the winners checks above run; Ada's win is the first of her achievements
 the database makes from its own entries, is then not asked): 59 checks, all
 ok, 2026-10-24; against base code 2 failed (no year form, no achievements).
 On a preview before the file: the year's form says it is not open yet, and
-the hub is read as before.
+the hub is read as before (62 checks, all ok); with it applied (2026-10-24),
+the year path above on the unit's preview: 62 checks, all ok.
 
 The list, asked hard (reads only):
 
