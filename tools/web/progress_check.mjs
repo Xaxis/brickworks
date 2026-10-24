@@ -608,10 +608,27 @@ try {
       if (!chooser) await page.keyboard.press("Escape");
     }
     if (!chooser) throw new Error("no file chooser came up for Open");
-    // The press is the file handed over: what a person does last.
+    // The press is the file handed over: what a person does last. Over the
+    // bunny Brickify left unsaved, the open asks first whether to save it
+    // (ModelBar.ask_to_replace, 6d3eb0bd): it is this run's, so Don't save,
+    // and that is the press.
     await measure(page, "open", async () => {
       await page.evaluate(() => window.brickworksFrames.presses.push(performance.now()));
       await chooser.setFiles(orthanc);
+      for (let n = 0; n < 40; n++) {
+        const asked = (await h.controls()).replace_discard;
+        if (asked) {
+          console.log("        asked to save the model first: Don't save");
+          await page.evaluate(() => {
+            const presses = window.brickworksFrames.presses;
+            presses[presses.length - 1] = performance.now();
+          });
+          await page.mouse.click(asked.x, asked.y);
+          break;
+        }
+        if (said(/open|reading|orthanc/i)(await h.state())) break;
+        await page.waitForTimeout(500);
+      }
     }, async (s) => (s.bricks || 0) > opened && !s.playing,
     async (s) => said(/open|reading|orthanc/i)(s) || (s.bricks || 0) > begun, 600);
     await h.quiet(4000, 300000);

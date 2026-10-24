@@ -305,9 +305,9 @@ func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 	# in one piece (m157, 9,541 parts to 10,094) ties its turned columns with
 	# 288 more turned 1 x 2 plates and 312 more round bricks, cheap to build
 	# and each beside several turned parts, so the check compares 33,839
-	# pairs where it compared 28,005. Each pair costs what it did (50 us
-	# against 51), the old tower still reads 2.5-2.7 by the same code, and
-	# the new one 2.6-3.1 (2026-10-23). Box against box was 4.4 on the old.
+	# pairs where it compared 28,005, 21% more. Each pair costs what it did
+	# (50 us against 51), the old tower still reads 2.5-2.7 by the same code,
+	# and the new one 2.6-3.1 (2026-10-23). Box against box was 4.4 on the old.
 	if times < 3.5 and world.brick_count() > 8000:
 		print("  ok    Orthanc, %d bricks: built in %d ms, checked in %d — %.2f times (%s, %d joints)"
 			% [world.brick_count(), built / 1000, checked / 1000, times,

@@ -636,6 +636,7 @@ func _answered(said: String) -> String:
 	if job == null:
 		return said
 	var done: RegEx = RegEx.create_from_string("^Job \\d+ \\([^)]*\\) is done, after \\d+ s:\\s*")
+	print("    a job: %s" % said.get_slice(":", 0))
 	for _n: int in 30:
 		var polled: String = await _say("job", {"id": int(job.get_string(1))})
 		if not polled.contains(" is still going"):
