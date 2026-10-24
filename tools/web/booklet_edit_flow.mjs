@@ -37,6 +37,21 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
+// Until the booklet in the tab is whole, or ms have gone: it is written in
+// as it is drawn (BookletOut, 2026-10-23), its first pages read while the
+// rest are drawn, and whole once the app closes the document. Its first
+// page is not the booklet: read then, it has no parts pages. Says whether
+// it came whole.
+async function bookletWhole(tab, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const state = await tab.evaluate(() => document.readyState).catch(() => "");
+    if (state === "complete") return true;
+    await tab.waitForTimeout(2000);
+  }
+  return false;
+}
+
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
@@ -480,21 +495,6 @@ try {
     await download.saveAs(saved);
     const lines = execFileSync("python3", ["-I", "-c", `
 import json, sys
-
-// Until the booklet in the tab is whole, or ms have gone: it is written in
-// as it is drawn (BookletOut, 2026-10-23), its first pages read while the
-// rest are drawn, and whole once the app closes the document. Its first
-// page is not the booklet: read then, it has no parts pages. Says whether
-// it came whole.
-async function bookletWhole(tab, ms) {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
-    const state = await tab.evaluate(() => document.readyState).catch(() => "");
-    if (state === "complete") return true;
-    await tab.waitForTimeout(2000);
-  }
-  return false;
-}
 text = open(sys.argv[1], encoding="utf-8").read()
 want = ["0 ROTSTEP 0 45 0 REL", "0 !BRICKWORKS ZOOM 1.25", "0 !BRICKWORKS PAGE NEW",
         "0 !BRICKWORKS PAGE ALONE", "0 !BRICKWORKS PARTS OFF", "0 !BRICKWORKS PER_PAGE 2"]
