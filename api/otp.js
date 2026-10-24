@@ -125,9 +125,17 @@ async function post(key, from, email, code) {
   });
 }
 
+// Resend's test inboxes, where every probe and flow signs in
+// (api/_auth.js isTestAccount). Mail sent there reaches nobody.
+const TEST_INBOX = /@resend\.dev$/i;
+
 async function deliver(email, code) {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
+  // A unit's preview runs without the mail key (tools/deploy.sh --unit), so
+  // unreviewed code can never send from brickworks.diy. A test inbox would
+  // have received nothing anyway, and its flow mints its own code
+  // (tools/web/session.mjs mintCode), so it is "delivered" as Resend would.
+  if (!key) return TEST_INBOX.test(email);
 
   const wanted = process.env.EMAIL_FROM || SENDER;
   let reply = await post(key, wanted, email, code);
@@ -204,9 +212,6 @@ export default async function handler(request, response) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
     return response.status(503).json({ error: "Accounts are not configured here." });
   }
-  if (!process.env.RESEND_API_KEY) {
-    return response.status(503).json({ error: "Email is not configured here." });
-  }
 
   let body = request.body;
   if (typeof body === "string") {
@@ -223,6 +228,9 @@ export default async function handler(request, response) {
   // nothing.
   if (!EMAIL.test(email) || email.length > 320) {
     return response.status(422).json({ error: "That is not an email address." });
+  }
+  if (!process.env.RESEND_API_KEY && !TEST_INBOX.test(email)) {
+    return response.status(503).json({ error: "Email is not configured here." });
   }
   // Where orangecheck accounts' made-up addresses are (api/orangecheck.js):
   // no mail is delivered there, and a code is never the way into one.
