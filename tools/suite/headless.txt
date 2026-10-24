@@ -167,3 +167,5 @@ touch
 step_count   # a model's steps counted alike by the server and the app (steps206)
 mcp_lean          # walk180's M8 and M9: an edit says what it changed and broke, check_design edit= asks what if, sizes and tallies said once
 part_choice   # held-out figures, obsolete parts, plan_scale and real-set kinds (figs217)
+held_steps   # worked-out steps put each part on what holds it (steps223)
+default_view   # View > Default view frames what is built, an empty baseplate too (viewer218)

@@ -613,6 +613,8 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	var named: bool = _assign_regions(built, regions, nodes.size())
 	var raw: Array = _sequence(built, named, _per_step(nodes.size()))
 	var steps: Array[Step] = _expand(raw, world)
+	# Each part on what holds it, by the Tested mark's rules (HeldSteps).
+	HeldSteps.mend_into(steps, world, library, skip)
 	# A node and its assembly point at each other, and two RefCounted
 	# objects that do are never freed.
 	for made: Assembly in assemblies:
@@ -747,6 +749,10 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	if not job.cancelled:
 		steps = _expand(raw, world)
 	lap.call("expand")
+	# Each part on what holds it, by the Tested mark's rules (HeldSteps).
+	if not job.cancelled:
+		await HeldSteps.mend_into(steps, world, library, skip, job)
+	lap.call("held")
 	for made: Assembly in assemblies:
 		made.node = null
 	return steps

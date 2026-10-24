@@ -38,3 +38,4 @@ save_dialog
 kart_steer
 booklet_stream
 stress_list
+viewer_steps   # Build it at step 1, the viewer timeline framing its steps, the play pill only for what moves (viewer218)

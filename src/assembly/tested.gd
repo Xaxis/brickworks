@@ -351,35 +351,211 @@ class Weighing extends RefCounted:
 				settled[id] = piece
 
 
-## The four tests of [param world]'s parts as [param steps] build them.
-## [param lattice] holds the parts' covers (what rests on what, the stud
-## joints); [param skip] is the baseplate, which is the floor. {"v", "app",
-## "parts", "steps", "tests": {stands, steps, parts, whole: {"ok", "why"}},
-## "ms"}, or {} when there is nothing to test or [param job] was cancelled.
-static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary,
-		steps: Array[Instructions.Step], skip: Dictionary = {},
-		job: Working.Job = null) -> Dictionary:
-	var began: int = Time.get_ticks_msec()
-	var asked: Working.Job = job if job != null else Working.Job.new()
-	var bricks: Array = []
-	for brick: BrickWorld.Brick in world.bricks():
-		if not skip.has(brick.id) and library.mesh_for(brick.part_id) != null:
-			bricks.append(brick)
-	if bricks.is_empty() or steps.is_empty():
-		return {}
+## The steps test as a build goes in, a step at a time: what each step puts
+## down in the air, and what it puts behind what is already built, by the
+## booklet's own rules (the "steps" test). The worked-out steps are put
+## right by asking it first what would stand ([method stands_if]) and then
+## building with it as the test does (HeldSteps).
+class Steps extends RefCounted:
+	var by_id: Dictionary
+	var near: Dictionary
+	var bottom: Dictionary
+	var piece: Dictionary
+	var joined: Dictionary
+	var library: PartLibrary
+	var main := Pile.new()
+	var side: Dictionary = {}          ## callout -> Pile
+	var _main_pictures := Instructions.Pictures.new()
+	var _side_pictures: Dictionary = {} ## callout -> Instructions.Pictures
+	## id -> Instructions.Node2, made as they are asked for ([method Tested._node]).
+	var nodes: Dictionary = {}
+	var _begun_pieces: Dictionary = {}
+	var floating: Array = []           ## [step number, id]
+	var hidden: Array = []
+	var hidden_us: int = 0
+
+	## [param holding] is [method holds]'s, of the parts [param bricks_by_id].
+	func _init(bricks_by_id: Dictionary, holding: Dictionary, given_library: PartLibrary) -> void:
+		by_id = bricks_by_id
+		near = holding["near"]
+		bottom = holding["bottom"]
+		piece = holding["piece"]
+		joined = holding["joined"]
+		library = given_library
+
+	## What [param step] puts down, each thing a PackedInt64Array of ids: in
+	## the hand each part of the copy its pictures show; on the model each
+	## copy of a sub-assembly it puts on, then each part.
+	func things_of(step: Instructions.Step) -> Array:
+		var things: Array = []
+		if step.in_callout():
+			for id: int in (step.shown_ids if not step.shown_ids.is_empty() else step.brick_ids):
+				if by_id.has(id):
+					things.append(PackedInt64Array([id]))
+			return things
+		things = copies_of(step)
+		for id: int in step.brick_ids:
+			if by_id.has(id):
+				things.append(PackedInt64Array([id]))
+		return things
+
+	## The copies of a sub-assembly [param step] puts on the model, each a thing.
+	func copies_of(step: Instructions.Step) -> Array:
+		var things: Array = []
+		for copy: PackedInt64Array in step.copies:
+			var mine := PackedInt64Array()
+			for id: int in copy:
+				if by_id.has(id):
+					mine.append(id)
+			if not mine.is_empty():
+				things.append(mine)
+		return things
+
+	## The build [param step] goes into: the model's, or its sub-assembly's in the hand.
+	func pile_of(step: Instructions.Step) -> Pile:
+		if not step.in_callout():
+			return main
+		if not side.has(step.callout):
+			side[step.callout] = Pile.new()
+			_side_pictures[step.callout] = Instructions.Pictures.new()
+		return side[step.callout]
+
+	## Which of [param things], put down as [param step]'s, would stand were
+	## they put down now, by the rules [method take] judges them by: true for
+	## each that would, and for each the finished model does not hold, whose
+	## fault is the whole test's. Nothing is put down. One that would stand
+	## stands as well with those that would not left out: each that stands is
+	## held through parts that stand.
+	func stands_if(step: Instructions.Step, things: Array) -> Array[bool]:
+		var in_hand: bool = step.in_callout()
+		var pile: Pile = pile_of(step)
+		var fresh: Dictionary = {}
+		var lowest: int = pile.lowest
+		for thing: PackedInt64Array in things:
+			for id: int in thing:
+				if not pile.placed.has(id):
+					fresh[id] = true
+					lowest = mini(lowest, int(bottom[id]))
+		var stood: Dictionary = {}
+		var queue: Array[int] = []
+		for id: int in fresh:
+			var stands: bool = not pile.begun or not in_hand and int(bottom[id]) <= lowest + Balance.ON_FLOOR
+			if not stands:
+				for other: int in (near[id] as Dictionary):
+					if pile.placed.has(other) and pile.stands(other):
+						stands = true
+						break
+			if stands:
+				stood[id] = true
+				queue.append(id)
+		if not in_hand:
+			var begun: Dictionary = {}
+			for thing: PackedInt64Array in things:
+				var which: int = int(piece[thing[0]])
+				if not _begun_pieces.has(which) and not begun.has(which):
+					begun[which] = true
+					if fresh.has(thing[0]) and not stood.has(thing[0]):
+						stood[thing[0]] = true
+						queue.append(thing[0])
+		while not queue.is_empty():
+			var here: int = queue.pop_back()
+			for other: int in (near[here] as Dictionary):
+				if fresh.has(other) and not stood.has(other):
+					stood[other] = true
+					queue.append(other)
+		var out: Array[bool] = []
+		for thing: PackedInt64Array in things:
+			var stands: bool = not joined.has(thing[0])
+			for id: int in thing:
+				if stood.has(id) or pile.placed.has(id) and pile.stands(id):
+					stands = true
+					break
+			out.append(stands)
+		return out
+
+	## [param things] put down as [param step]'s, and judged: each new thing
+	## held to something that stands at the end of the step, and in sight
+	## with what earlier steps built in front of it ([member floating],
+	## [member hidden]). The ids it put in.
+	func take(step: Instructions.Step, things: Array) -> Array[int]:
+		var in_hand: bool = step.in_callout()
+		var pile: Pile = pile_of(step)
+		var pictures: Instructions.Pictures = _side_pictures[step.callout] if in_hand else _main_pictures
+		var new_ids: Array[int] = []
+		for thing: PackedInt64Array in things:
+			for id: int in thing:
+				if not pile.placed.has(id):
+					new_ids.append(id)
+		# Hidden by what earlier steps built, before this one's parts go in.
+		var hidden_from: int = Time.get_ticks_usec()
+		for thing: PackedInt64Array in things:
+			if Tested._hidden(thing, pictures, nodes, by_id, library):
+				hidden.append([step.number, thing[0]])
+		hidden_us += Time.get_ticks_usec() - hidden_from
+		# Put in, and joined to what is there.
+		for id: int in new_ids:
+			pile.put(id)
+			pile.lowest = mini(pile.lowest, int(bottom[id]))
+		for id: int in new_ids:
+			for other: int in (near[id] as Dictionary):
+				if pile.placed.has(other):
+					pile.join(id, other)
+		# What stands: in the hand its first parts; on the model those, what
+		# is on its lowest point as it stands, and the first parts of each
+		# piece of the finished model a step begins. Asked of the new parts
+		# only: the lowest point only goes lower, so a part on it now was on
+		# it when it went in, and stood then.
+		if not pile.begun:
+			for id: int in new_ids:
+				pile.stand(id)
+			pile.begun = true
+		if not in_hand:
+			for id: int in new_ids:
+				if int(bottom[id]) <= pile.lowest + Balance.ON_FLOOR:
+					pile.stand(id)
+			for thing: PackedInt64Array in things:
+				var which: int = int(piece[thing[0]])
+				if not _begun_pieces.has(which):
+					_begun_pieces[which] = true
+					pile.stand(thing[0])
+		for thing: PackedInt64Array in things:
+			if not joined.has(thing[0]):
+				continue
+			var stood: bool = false
+			for id: int in thing:
+				if pile.stands(id):
+					stood = true
+					break
+			if not stood:
+				floating.append([step.number, thing[0]])
+		var step_nodes: Array = []
+		for id: int in new_ids:
+			step_nodes.append(Tested._node(id, nodes, by_id, library))
+		pictures.built(step_nodes)
+		return new_ids
+
+
+## What holds what in [param bricks], as the tests read it, into [param
+## out]: "contacts" (Stability.contacts), "bottom" (id -> its lowest cell),
+## "floor" (the lowest of them), "near" (id -> {id: true}, every joint read,
+## either way round), "links" (the joints Balance weighs a part by),
+## "otherwise" (what glue, magnets and flexible things hold,
+## Joints.held_otherwise), "joined" (what the finished model holds to what it
+## stands on through them), "piece" (id -> which piece of the finished model
+## it is in, by them) and "us" (microseconds reading the contacts, then the
+## joints). Left empty when [param job] was cancelled; at once with no job.
+## The worked-out steps are put right by these same joints (HeldSteps).
+static func holds_into(out: Dictionary, bricks: Array, lattice: BrickLattice,
+		library: PartLibrary, job: Working.Job = null) -> void:
 	var by_id: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:
 		by_id[brick.id] = brick
-
-	asked.say("Testing it: what holds what in %s parts…" % Working.comma(bricks.size()))
-	await asked.next()
-	laps.clear()
 	var lap_from: int = Time.get_ticks_usec()
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = lattice
 	var contacts: Dictionary = judge.contacts(bricks)
-	laps["contacts"] = Time.get_ticks_usec() - lap_from
+	var contacts_us: int = Time.get_ticks_usec() - lap_from
 	var boxes: Dictionary = contacts["boxes"]
 	var bottom: Dictionary = {}
 	var floor_cell: int = 0x7FFFFFFF
@@ -390,9 +566,10 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			low = mini(low, packed[at])
 		bottom[id] = low
 		floor_cell = mini(floor_cell, low)
-	await asked.next()
-	if asked.cancelled:
-		return {}
+	if job != null:
+		await job.next()
+		if job.cancelled:
+			return
 
 	# What holds what: the studs, as Balance and Sections read them
 	# (Stability.stud_joints), what is seated in what, and every other joint
@@ -420,11 +597,14 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		with_paths.append([brick.id, brick.transform, mesh, brick.part_id, Assemblies.path_of(brick)])
 	var links: Array = []
 	var both: Dictionary = Joints.both_ways(entries)
-	await asked.next()
+	if job != null:
+		await job.next()
 	var rounds: Dictionary = Joints.rounds(entries)
-	await asked.next()
+	if job != null:
+		await job.next()
 	var otherwise: Dictionary = Joints.held_otherwise(with_paths, library)
-	await asked.next()
+	if job != null:
+		await job.next()
 	for held: Dictionary in [both, rounds, otherwise]:
 		for one: Variant in held:
 			for other: Variant in (held[one] as Dictionary):
@@ -436,11 +616,12 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			link.call(one, other)
 	for pair: Array in Joints.through(entries):
 		link.call(pair[0], pair[1])
-	await asked.next()
-	if asked.cancelled:
-		return {}
+	if job != null:
+		await job.next()
+		if job.cancelled:
+			return
+	var joints_us: int = Time.get_ticks_usec() - lap_from - contacts_us
 
-	laps["joints"] = Time.get_ticks_usec() - lap_from - int(laps["contacts"])
 	# What the finished model holds to what it stands on, and its pieces.
 	var held: Dictionary = {}
 	var queue: Array[int] = []
@@ -454,6 +635,59 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			if not held.has(next):
 				held[next] = true
 				queue.append(next)
+	var piece: Dictionary = {}
+	var pieces: int = 0
+	for start: int in by_id:
+		if piece.has(start):
+			continue
+		piece[start] = pieces
+		var pending: Array[int] = [start]
+		while not pending.is_empty():
+			var here: int = pending.pop_back()
+			for next: int in (near[here] as Dictionary):
+				if not piece.has(next):
+					piece[next] = pieces
+					pending.append(next)
+		pieces += 1
+	out.merge({"contacts": contacts, "bottom": bottom, "floor": floor_cell, "near": near,
+		"links": links, "otherwise": otherwise, "joined": held, "piece": piece,
+		"us": [contacts_us, joints_us]})
+
+
+## The four tests of [param world]'s parts as [param steps] build them.
+## [param lattice] holds the parts' covers (what rests on what, the stud
+## joints); [param skip] is the baseplate, which is the floor. {"v", "app",
+## "parts", "steps", "tests": {stands, steps, parts, whole: {"ok", "why"}},
+## "ms"}, or {} when there is nothing to test or [param job] was cancelled.
+static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary,
+		steps: Array[Instructions.Step], skip: Dictionary = {},
+		job: Working.Job = null) -> Dictionary:
+	var began: int = Time.get_ticks_msec()
+	var asked: Working.Job = job if job != null else Working.Job.new()
+	var bricks: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id) and library.mesh_for(brick.part_id) != null:
+			bricks.append(brick)
+	if bricks.is_empty() or steps.is_empty():
+		return {}
+	var by_id: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		by_id[brick.id] = brick
+
+	asked.say("Testing it: what holds what in %s parts…" % Working.comma(bricks.size()))
+	await asked.next()
+	laps.clear()
+	var holding: Dictionary = {}
+	await holds_into(holding, bricks, lattice, library, asked)
+	if asked.cancelled or holding.is_empty():
+		return {}
+	laps["contacts"] = int(holding["us"][0])
+	laps["joints"] = int(holding["us"][1])
+	var contacts: Dictionary = holding["contacts"]
+	var boxes: Dictionary = contacts["boxes"]
+	var near: Dictionary = holding["near"]
+	var links: Array = holding["links"]
+	var otherwise: Dictionary = holding["otherwise"]
 	# What a step is judged on: held through what joins it, as the steps score
 	# judges it. Then, for a part with no exact shape, which the whole test
 	# holds by these as the design check holds it by the lattice
@@ -461,7 +695,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	# read joins them — a wheel on an old holder's pin, a tool in a figure's
 	# hand: such a part is loose only when it touches nothing held. 6688-1's
 	# car read 67 parts loose without it.
-	var joined: Dictionary = held.duplicate()
+	var held: Dictionary = (holding["joined"] as Dictionary).duplicate()
 	var touches: Dictionary = {}
 	for id: int in by_id:
 		if held.has(id):
@@ -483,20 +717,6 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 					held[id] = true
 					more = true
 					break
-	var piece: Dictionary = {}
-	var pieces: int = 0
-	for start: int in by_id:
-		if piece.has(start):
-			continue
-		piece[start] = pieces
-		var pending: Array[int] = [start]
-		while not pending.is_empty():
-			var here: int = pending.pop_back()
-			for next: int in (near[here] as Dictionary):
-				if not piece.has(next):
-					piece[next] = pieces
-					pending.append(next)
-		pieces += 1
 
 	# The whole of it by the parts' exact shapes, on a worker.
 	var lap_exact: int = Time.get_ticks_usec()
@@ -507,14 +727,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 
 	# Step by step: each new thing held and in sight, and the build so far
 	# weighed.
-	var main := Pile.new()
-	var side: Dictionary = {}          ## callout -> Pile
-	var main_pictures := Instructions.Pictures.new()
-	var side_pictures: Dictionary = {} ## callout -> Instructions.Pictures
-	var nodes: Dictionary = {}         ## id -> Instructions.Node2
-	var begun_pieces: Dictionary = {}
-	var floating: Array = []           ## [step number, id]
-	var hidden: Array = []
+	var test := Steps.new(by_id, holding, library)
 	var tips: Array = []               ## [step number, words]
 	## How many steps were built when the time ran out; -1 when every one was.
 	var built_to: int = -1
@@ -534,82 +747,11 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			built_to = step.index
 			break
 		asked.count(step.index, steps.size())
-		var in_hand: bool = step.in_callout()
-		var pile: Pile = main
-		var pictures: Instructions.Pictures = main_pictures
-		var things: Array = []        ## PackedInt64Array of ids
-		if in_hand:
-			if not side.has(step.callout):
-				side[step.callout] = Pile.new()
-				side_pictures[step.callout] = Instructions.Pictures.new()
-			pile = side[step.callout]
-			pictures = side_pictures[step.callout]
-			for id: int in (step.shown_ids if not step.shown_ids.is_empty() else step.brick_ids):
-				if by_id.has(id):
-					things.append(PackedInt64Array([id]))
-		else:
-			for copy: PackedInt64Array in step.copies:
-				var mine := PackedInt64Array()
-				for id: int in copy:
-					if by_id.has(id):
-						mine.append(id)
-				if not mine.is_empty():
-					things.append(mine)
-			for id: int in step.brick_ids:
-				if by_id.has(id):
-					things.append(PackedInt64Array([id]))
+		var things: Array = test.things_of(step)
 		if things.is_empty():
 			continue
-		var new_ids: Array[int] = []
-		for thing: PackedInt64Array in things:
-			for id: int in thing:
-				if not pile.placed.has(id):
-					new_ids.append(id)
-		# Hidden by what earlier steps built, before this one's parts go in.
-		var hidden_from: int = Time.get_ticks_usec()
-		for thing: PackedInt64Array in things:
-			if _hidden(thing, pictures, nodes, by_id, library):
-				hidden.append([step.number, thing[0]])
-		laps["hidden"] = int(laps.get("hidden", 0)) + Time.get_ticks_usec() - hidden_from
-		# Put in, and joined to what is there.
-		for id: int in new_ids:
-			pile.put(id)
-			pile.lowest = mini(pile.lowest, int(bottom[id]))
-		for id: int in new_ids:
-			for other: int in (near[id] as Dictionary):
-				if pile.placed.has(other):
-					pile.join(id, other)
-		# What stands: in the hand its first parts; on the model those, what
-		# is on its lowest point as it stands, and the first parts of each
-		# piece of the finished model a step begins.
-		if not pile.begun:
-			for id: int in new_ids:
-				pile.stand(id)
-			pile.begun = true
-		if not in_hand:
-			for id: int in pile.placed:
-				if int(bottom[id]) <= pile.lowest + Balance.ON_FLOOR:
-					pile.stand(id)
-			for thing: PackedInt64Array in things:
-				var which: int = int(piece[thing[0]])
-				if not begun_pieces.has(which):
-					begun_pieces[which] = true
-					pile.stand(thing[0])
-		for thing: PackedInt64Array in things:
-			if not joined.has(thing[0]):
-				continue
-			var stood: bool = false
-			for id: int in thing:
-				if pile.stands(id):
-					stood = true
-					break
-			if not stood:
-				floating.append([step.number, thing[0]])
-		var step_nodes: Array = []
-		for id: int in new_ids:
-			step_nodes.append(_node(id, nodes, by_id, library))
-		pictures.built(step_nodes)
-		if in_hand:
+		var new_ids: Array[int] = test.take(step, things)
+		if step.in_callout():
 			continue
 		# Weighed as the build check weighs it, the build so far.
 		var weigh_from: int = Time.get_ticks_usec()
@@ -628,6 +770,9 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 					_named(one.beyond_part, library), "hangs from" if one.hangs else "is held by",
 					_named(one.held_part, library), one.studs, "" if one.studs == 1 else "s"]])
 				break
+	laps["hidden"] = test.hidden_us
+	var floating: Array = test.floating
+	var hidden: Array = test.hidden
 
 	# Every part in its colour.
 	var never: Dictionary = {}         ## "part:colour" -> [part, colour, how many, why]

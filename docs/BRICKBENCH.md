@@ -3114,6 +3114,379 @@ list is the first one's.
 **Verdict: do not merge critique210.** It is even with sculpt170 (12 of 24) and
 won nothing from BrickAgent (0 of 24), at 94% more a design.
 
+## 2026-10-24, morning: the look while the body is laid, on the same six
+
+critique221 (`a0030c02`; the six ran on `64bc7f7a`, the same tree, before the
+branch's merge of main was re-made as the user) is critique210 (`c6899364`)
+with main merged (`91129987`) and the look moved, bench216's lever: its commits
+are `97b5ed28`, `b8517e42`, `1b5dfe25` and `a0030c02`. The look now comes with the first submit_design that holds
+together, not with the save; what it finds is answered by laying the design
+again with one submit, which is looked at again (three looks at most); a fault
+the last look listed that is still there is laid another way; the stranger's
+other readings ("a balloon giraffe") are faults; a feature not laid yet ("not
+yet: the ears") is not one. The steps after a design stands wait for the body
+to settle, the look standing for the whole review, and saving is no longer held
+for it. It was tuned on held-out briefs only (a cat, a penguin, a snowman, a
+frog, in `brickbench-critique221-tune/`): the penguin went from "a black blob"
+to "a penguin's body" in one re-laying, the frog from "a green turtle shell" to
+"a frog with its mouth wide open". It designed the same six prompts, one design
+each, in the m147 round's folder, judged against sculpt170's, m147's and
+BrickAgent's, every pair both orders twice: 72 new verdicts, the other 72 read
+back (`compare-critique221.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every
+log, `64bc7f7a` in every `design.json`. **Four of six are one piece.** The
+potato is two (its hat's 4 x 4 dish held on a round plate by its tube) and the
+balloon dog five (its legs and ears laid again in inverted ovoid domes, each
+on studs by its tube): our check holds both together, as they hold in the
+hand, and BrickNet's graph joins none of those (`pieces-critique221.txt`).
+
+| build | parts | pieces | the first look: what a stranger would call it | the last look | looks | submits refused between them |
+|---|---|---|---|---|---|---|
+| potato (042) | 240 | 2 | "a brown ball or egg on blue feet, or a chocolate egg" | "a brown potato-shaped toy in a black top hat and blue shoes" | 2 | 2 |
+| balloon dog (043) | 82 | 5 | "a blocky blue llama or dog, or a pixel-art horse" | "a blue balloon dog sculpture on a white plinth" | 3 | 0 |
+| toilet (044) | 350 | 1 | "a lollipop or a tree in a pot, or a block on a stick" | "a toilet with a blocky head on a pole popping out of it" | 3 | 6 |
+| statue (049) | 345 | 1 | "a brown box robot waving its arms on a pedestal" | "a hunched man sitting on a stone block (Rodin's Thinker)" | 3 | 3 |
+| rabbit (078) | 309 | 1 | "a grey stone idol or a squat robot, or a penguin-like blob" | "a fat grey pear-shaped creature with a white belly: a penguin, a seal pup, or a fat bunny once its ears go on" | 2 | 2 |
+| boy (080) | 116 | 1 | "a grey robot box with a face, or a vending machine with arms" | "a cartoon boy in silver armour with a shark-mouth chest throwing a punch" | 3 | 3 |
+
+**Every session was looked at within its first two minutes (0.2 to 1.6) and
+answered at its next call, every one laid the design again, and in every one
+the reading moved toward the subject** (`likeness-said-critique221.txt`). The
+rabbit's second look took longer to draw than a call waits and came back by
+`job`, its pictures with it; it went on in edits, still "a penguin, a seal pup,
+or a fat bunny once its ears go on". Re-laying cost 16 refused submits between
+looks, 0 to 6 a session (the toilet 11 in all).
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| critique221 | 9.1 (5.6-15.2) | 2.69 (18.57 for six) | 40 | 276 |
+| critique210 | 14.0 (5.5-17.8) | 4.53 (26.82) | 56 | 167 |
+| sculpt170 | 7.2 (5.2-12.8) | 2.33 (15.06) | 35 | 195 |
+
+critique221 costs 15% more a design than sculpt170 (23% over the six), 41% less
+than critique210. The toilet ($4.46, 59 replies) and the boy ($4.70) are the
+dear ones, each with three looks and refused re-layings between them.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| critique221 vs sculpt170 | 8 of 24 (33%) | 18-53% | 2 / 0 / 4 |
+| critique221 vs m147 | 12 of 24 (50%) | 31-69% | 1 / 4 / 1 |
+| critique221 vs BrickAgent | 1 of 24 (4%) | 1-20% | 0 / 1 / 5 |
+| critique210 vs sculpt170 (the likeness round's verdicts) | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+
+| dimension | critique221 ELO (95%) | sculpt170 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|---|
+| likeness | 861 (664-961) | 946 (768-1168) | 912 (730-1034) | 1281 (1182-1498) |
+| colour | 858 (717-960) | 941 (742-1120) | 1005 (843-1175) | 1196 (1071-1362) |
+| technique | 913 (708-1047) | 929 (766-1083) | 998 (773-1152) | 1161 (1034-1455) |
+| buildability | 933 (752-1064) | 1082 (960-1235) | 948 (807-1091) | 1037 (873-1202) |
+| **overall** | **860 (643-969)** | **963 (768-1211)** | **895 (690-1024)** | **1282 (1181-1502)** |
+
+| prompt | vs sculpt170 | vs m147 | vs BrickAgent | what the judge said of critique221's |
+|---|---|---|---|---|
+| potato (042) | 0-4 | 0-4 | 0-4 | "a tall, narrow, boxy column", "a brown pillar wearing a hat", beside sculpt170's "wide, rounded oval", and its "loose second piece"; its first look had asked for "taller than wide (about 9 wide, 32 plates tall)" |
+| balloon dog (043) | 0-4 | 4-0 | 0-4 | likeness even with sculpt170 (2-2, "the extra bulb at the back of the head"), every overall to sculpt170's one piece: "comes apart into five pieces" |
+| toilet (044) | 0-4 | 2-2 | 0-4 | "boxy and less clear" beside sculpt170's curved bowl, lid and plunger; against BrickAgent "a box-shaped bowl", "its black-bar mouth does not read as a grin" |
+| statue (049) | 4-0 | 2-2 | 1-3 | "reads clearly as the hunched seated statue on a rough plinth" over sculpt170's "crude block"; one verdict over BrickAgent, "a smoother outline and a sturdier build"; the other three "a blobby mass", "a pose that cannot be read" |
+| rabbit (078) | 4-0 | 2-2 | 0-4 | "a proper face and angled ears and arms", "a rounded belly" over sculpt170's T-shaped arms; against BrickAgent "arms stick out like flared wings", "a single tooth set low and no smile" |
+| boy (080) | 0-4 | 2-2 | 0-4 | "grey, sparser", "monotonous" beside sculpt170's shark-mouth chest and colour |
+
+**The bar is missed** on three counts of four: 8 of 24 against sculpt170 where
+it asked 15, 1 of 24 against BrickAgent where it asked 6, and four builds of six
+in one piece where it asked six. The cost is met: +15% a design where it allowed
++40%.
+
+### What the look did, and what it cost
+
+**The look changes the body now.** Given at the save, five of six sessions
+saved with the faults the second look still listed. Given at the submit, all six
+laid the design again and every reading moved: the statue from "a box robot"
+to "Rodin's Thinker", the toilet from "a lollipop" to "a toilet with a head".
+The statue's is the first verdict won from BrickAgent since pose174's (face201
+and critique210 won none), and the statue and the rabbit won every verdict over
+sculpt170.
+
+**But a session's reading of its own pictures is not the judge's.** The potato's
+first look called its wide body "a ball, not a potato" and asked for it taller
+than wide; the judge then preferred sculpt170's wide oval in all four verdicts.
+The toilet and the boy came out of their re-layings boxier and greyer than
+sculpt170's, which kept the gags (a plunger, a shark-mouth chest) a re-laid
+design dropped. A look that judges its build alone can talk it out of what was
+right.
+
+**Re-laying in other parts brought pieces BrickBench counts apart.** The dog's
+round legs and ears are inverted ovoid domes on studs, held by their tubes: the
+check passed them, verify.py counted five pieces, the judge was told so, and
+gave sculpt170's one-piece dog every overall verdict with the likeness even.
+Saving now waits on that (`b24d707c`, after this round, not benched): a piece
+BrickNet's graph joins to nothing, standing on another and not on the floor, is
+named with where to seat it, at most twice, as a collision is. On the six
+builds it names the potato's dish and the dog's four domes, and nothing in the
+other four (`features_probe`: a dish held by its tube on a round plate holds
+the save, and saves once it is gone).
+
+### The next lever: the look as a choice between two
+
+What the look got right was the stranger's reading of each build; what it got
+wrong was keeping the re-laid build whether or not it read better. So: at each
+re-laying, the look is shown the build before and the build after side by side
+(the judge's own question, "which reads more as a potato?"), and the design
+that reads better is kept, the other undone.
+
+- **Proof in the unit:** on held-out briefs, a re-laying that a side-by-side
+  look prefers is kept and one it does not is undone; each one piece by
+  verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
+**Verdict: do not merge critique221's look** as it stands: 8 of 24 against
+sculpt170 and 1 of 24 against BrickAgent. The pieces gate (`b24d707c`) stands
+on its own and could go in alone.
+
+## 2026-10-24: What BrickAgent does that we don't
+
+Three arms in a row (face201, critique210, critique221) made the designer look at
+its own build and fix its likeness, and none beat sculpt170. This section stops
+adding levers and measures what BrickAgent's six builds have that ours do not,
+from their `model.mpd` files and the judge's renders, prompt by prompt, then ties
+each of the judge's reasons to the difference that explains it. Ours is
+sculpt170, the best arm (4 of 24 against BrickAgent); where a measure is checked
+for generality, it is also read on all nine of our arms on the six (54 builds)
+and on 44 other prompts from the 10-14 and 10-15 rounds whose BrickAgent builds
+we hold (older arms of ours). Nothing was designed, judged or submitted.
+
+The scripts and their outputs are in
+`bench/results/brickbench-2026-10-22-m147/gap228/`: `geometry.py` (scale,
+parts, colour, studs showing, what five views show, verify.py's graph),
+`silhouette.py` (the renders' outlines and colourfulness), `colour_boxes.py`,
+`face_parts.py`, `turns.py`, `scale_rounds.py` and `surface_rounds.py` (the 44
+other prompts), `pictures.py`. Each table cell is **ours / BrickAgent's**.
+
+![The six, corner view: sculpt170 above, BrickAgent below](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-six.png)
+
+Each prompt's four views, ours above theirs, with the measures under each row:
+[potato](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-model-042.png),
+[balloon dog](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-model-043.png),
+[toilet](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-model-044.png),
+[statue](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-model-049.png),
+[rabbit](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-model-078.png),
+[boy](../bench/results/brickbench-2026-10-22-m147/gap228/side-by-side-model-080.png).
+
+### Scale
+
+| measure | potato | balloon dog | toilet | statue | rabbit | boy |
+|---|---|---|---|---|---|---|
+| parts | 203 / 237 | 111 / 85 | 203 / 140 | 128 / 352 | 320 / 382 | 186 / 195 |
+| box, studs x studs x bricks | 10x10x12 / 17x13x16 | 17x8x18 / 16x8x17 | 14x12x21 / 12x8x16 | 11x10x13 / 20x14x20 | 13x11x14 / 18x16x20 | 14x13x19 / 16x10x21 |
+| minifigs tall (one is 4 bricks) | 3.1 / 3.9 | 4.5 / 4.2 | 5.2 / 4.0 | 3.2 / 5.0 | 3.6 / 4.9 | 4.8 / 5.2 |
+| box, cubic studs | 1510 / 4098 | 2965 / 2715 | 4166 / 1843 | 1626 / 6720 | 2460 / 6876 | 4044 / 4041 |
+| parts per 1000 cubic studs | 134 / 58 | 37 / 31 | 49 / 76 | 79 / 52 | 130 / 56 | 46 / 48 |
+
+On the three prompts we lose for the body's read (potato, statue, rabbit),
+BrickAgent's box is 2.7, 4.1 and 2.8 times sculpt170's, and 1.5 to 4.4 times
+every one of our ten arms' builds of them (`scale_rounds.txt`). It
+is not BrickAgent's habit: over 50 prompts its box is bigger than our median
+build's on 23 and the median ratio is 0.88. The renderer fits every build to the
+frame, so size reaches the judge only as resolution: how many studs a limb or a
+belly gets. Ours spend the parts on plates instead: the potato and the rabbit
+are 55% and 59% plates, at more than twice BrickAgent's parts per cubic stud.
+
+### Part vocabulary (shares of all parts)
+
+| measure | potato | balloon dog | toilet | statue | rabbit | boy |
+|---|---|---|---|---|---|---|
+| plates | 55% / 23% | 50% / 12% | 25% / 6% | 22% / 2% | 59% / 8% | 19% / 35% |
+| bricks | 21% / 34% | 18% / 42% | 51% / 61% | 59% / 58% | 19% / 57% | 41% / 26% |
+| tiles | 5% / 36% | 14% / 22% | 14% / 28% | 14% / 21% | 4% / 6% | 16% / 17% |
+| straight slopes | 16% / 0% | 0% / 0% | 0% / 1% | 2% / 19% | 14% / 27% | 14% / 17% |
+| curved slopes | 2% / 0% | 0% / 0% | 8% / 4% | 2% / 0% | 3% / 1% | 1% / 1% |
+| round parts | 5% / 57% | 41% / 40% | 20% / 28% | 6% / 0% | 2% / 2% | 20% / 5% |
+| of them corner rounds | 0% / 44% | 0% / 0% | 4% / 14% | 0% / 0% | 0% / 0% | 0% / 0% |
+| SNOT parts (brackets, studs on a side) | 2% / 4% | 3% / 5% | 5% / 4% | 4% / 0% | 1% / 1% | 12% / 3% |
+| studs not pointing up | 6% / 77% | 9% / 14% | 6% / 21% | 2% / 0% | 1% / 2% | 18% / 31% |
+| hinges, clips and bars, ball joints | 0% / 0% | 0% / 1% | 0% / 0% | 0% / 0% | 0% / 0% | 0% / 0% |
+| off the grid (angled) | 0% / 0% | 0% / 2% | 0% / 0% | 0% / 0% | 0% / 0% | 22% / 40% |
+| printed parts | 0 / 1 | 0 / 0 | 2 / 3 | 0 / 0 | 0 / 3 | 3 / 3 |
+| distinct parts | 38 / 52 | 17 / 15 | 42 / 38 | 33 / 29 | 40 / 39 | 43 / 46 |
+
+Neither side uses a hinge or a ball joint; BrickAgent's one bar (65578) holds
+the dog's tail at 45 degrees. Its potato is the outlier: 77% of its parts lie on their side, so the
+oval face is drawn in the plane the judge looks at, by 4 x 4, 3 x 3 and 2 x 2
+corner-round tiles and plates (27507, 79393, 27925, 30565, 6003). Its statue's
+figure is 81% parts one stud wide (162 of 199 dark brown parts: 1 x 1, 1 x 2,
+1 x 3 bricks and 54 cheese slopes); ours is 46% (37 of 80, mostly 2 x 3 bricks).
+
+### Colour
+
+| measure | potato | balloon dog | toilet | statue | rabbit | boy |
+|---|---|---|---|---|---|---|
+| colours | 6 / 9 | 2 / 3 | 7 / 5 | 3 / 3 | 7 / 4 | 9 / 9 |
+| colours on 2% or more of what shows | 5 / 5 | 2 / 2 | 5 / 3 | 3 / 3 | 4 / 2 | 7 / 7 |
+| the colour shown most, its share | reddish brown 66% / medium nougat 47% | blue 60% / white 58% | white 50% / 72% | dark brown 72% / 57% | light bluish grey 79% / 82% | light bluish grey 38% / pearl silver 31% |
+| its luminance | 0.046 / 0.239 | 0.104 / 0.905 | 0.905 / 0.905 | 0.018 / 0.018 | 0.305 / 0.305 | 0.305 / 0.244 |
+| contrast with the next colour shown | 1.35 / 4.05 (black) | 6.19 / 6.19 | 1.36 / 1.36 | 2.59 / 2.59 | 2.69 / 2.69 | 3.68 / 3.05 |
+| colourfulness, front view | 76 / 88 | 76 / 66 | 57 / 50 | 31 / 32 | 28 / 22 | 52 / 74 |
+
+Colour is chosen alike on five prompts. The potato is the exception: a brown
+five times darker, against black features at a contrast of 1.35 (the hat and the
+mustache vanish into the body), where BrickAgent's medium nougat stands 4.05
+from them. Over the 44 other prompts the main colour's luminance and its
+contrast are even (BrickAgent higher on 17 and 16, lower on 15 and 17): colour is
+not a general gap. The boy's blue suit is where BrickAgent is more colourful.
+
+### Surface
+
+| measure | potato | balloon dog | toilet | statue | rabbit | boy |
+|---|---|---|---|---|---|---|
+| studs showing (nothing over them along their axis) | 29 / 9 | 14 / 7 | 21 / 0 | 17 / 13 | 13 / 1 | 19 / 0 |
+| per 100 square studs of the box's surface | 3.6 / 0.6 | 1.0 / 0.6 | 1.3 / 0.0 | 2.0 / 0.6 | 1.2 / 0.0 | 1.2 / 0.0 |
+| of what the four sides and the top show: tiles | 5% / 38% | 20% / 16% | 15% / 16% | 15% / 21% | 4% / 3% | 8% / 11% |
+| ...: parts on their side | 10% / 59% | 14% / 17% | 12% / 12% | 4% / 0% | 2% / 2% | 20% / 29% |
+| front outline running level or upright | 84% / 65% | 75% / 75% | 86% / 85% | 93% / 95% | 82% / 82% | 75% / 77% |
+| front outline's share of its convex hull | 88% / 79% | 53% / 67% | 82% / 94% | 84% / 83% | 74% / 76% | 80% / 78% |
+
+**Studs showing is the one difference that holds everywhere.** BrickAgent's
+builds show fewer on all six against sculpt170, on 49 of 54 builds of our nine
+arms here (median 0.3 against 1.05 per 100 square studs), and on 40 of the 44
+other prompts (1.05 against 8.4). Tiles are a larger share of its parts on 38 of
+54 and 31 of 44; more of its parts lie on their side on 33 of 54 and 32 of 44; it
+uses fewer plates on 43 of 54 and 32 of 44 (`surface_rounds.txt`). A stepped
+outline is not general: BrickAgent's statue and rabbit run as level or upright
+as ours (95% and 82%), and only the potato's outline is curved (65% against 84%).
+(Studs and views are measured off the parts' boxes: a stud counts as showing
+when no other part's box lies along its axis.)
+
+### Face and head (parts in the top 45% of the build)
+
+| feature | potato | toilet (won) | rabbit | boy |
+|---|---|---|---|---|
+| eyes | white 2 x 2 round plates and black 1 x 1 round tiles / the same (18674, 98138) | eye prints 98138p07 / the same | two black 45-degree slopes (3040b), "black goggles" / two eye prints 98138p07 | eye prints 98138p07 / black disc prints with white squares 98138pz4 |
+| mouth and teeth | a pink slab under a black bar / the ear in the mouth's place, pink corner-round bricks and tiles (3063b, 27925, 25269) | a white plate band outlined in black 1 x 1 plates / a teeth print 2431pk0, brows of half-round tiles (1748) | white plates, no smile / a smile print (3004p0g) and two white 1 x 1 bricks as buck teeth | a teeth print and four tooth plates / a teeth print |
+| hair or hat | a top hat / a bowler of corner-round tiles | hair of curved slopes / the same | pink-lined ears / the same | 24 spikes (22388) in two tiers 32 LDU apart, 12 cones on top / 17 spikes, 6 triple slopes (3048b), 7 cheese slopes in four tiers over 72 LDU, the bottom row wider than the head |
+| arms | none / Bigfig arms and hands (10124, 10154, 10126, 10127) on side-stud bricks | | level frames 2 studs out / brick columns hanging at the sides | |
+
+Printed parts are where BrickAgent is ahead in general: more on 28 of 54 builds
+of our nine arms, fewer on 5 (median 2 against 0.5), and more on 20 of the 44
+other prompts, fewer on 10. Eyes are not the gap (face201 closed it): the
+rabbit's are, and its mouth.
+
+### Pose and silhouette
+
+| measure | potato | balloon dog | toilet | statue | rabbit | boy |
+|---|---|---|---|---|---|---|
+| mirror symmetry (share of parts with a partner) | 88% / 84% | 91% / 93% | 64% / 100% | 41% / 17% | 68% / 86% | 68% / 46% |
+| limbs | no arms / two arms, gloved hands | tail upright (0 degrees) / 45 degrees back | | one block, a round-brick column for a head / legs apart, one arm up to a forward head, one hanging | arms out level / hanging | fist forward; head and torso turned together / fist forward; torso alone turned |
+| other measures | | the dog 1.40 times as tall as long / 0.97; legs 122 LDU / 98; plinth 2.2 bricks (12% of the height) / 5.2 (30%) | | | white belly 26% of the front silhouette / 35% | head and torso both 15 degrees off the hips / torso 20 degrees, head and hips square |
+
+The boy's twist is measured by `turns.py`: every part from 40% of the height up
+is turned 15 degrees in ours, the hair too, so the whole figure faces a little
+aside and nothing twists; in BrickAgent's only the bands between 30% and 60% are
+turned, against a square head and square hips. Off the grid, BrickAgent tilts or
+turns parts on 24 of the 44 other prompts and fewer than ours on 3, but on the
+six it does so only in the boy and the dog's tail.
+
+### How they hold together
+
+| measure | potato | balloon dog | toilet | statue | rabbit | boy |
+|---|---|---|---|---|---|---|
+| valid by verify.py | yes / yes | yes / yes | yes / yes | yes / yes | yes / yes | yes / yes |
+| pieces by verify.py's graph | 1 / 1 | 1 / 1 | 1 / 2 | 1 / 1 | 1 / 1 | 1 / 1 |
+| connections a part (its native edges over parts) | 3.0 / 4.9 | 7.4 / 5.3 | 5.3 / 5.7 | 4.3 / 4.2 | 2.7 / 4.0 | 3.9 / 3.4 |
+
+Both are valid by the same verify.py on all six. BrickAgent joins its parts by
+studs, side studs and brackets, with one bar (the dog's tail) and no hinge or
+ball; the toilet is its one build in two pieces, and the judge held it against
+it.
+
+### The judge's reasons, tied to what was measured
+
+sculpt170 lost 20 verdicts to BrickAgent (`reasons-sculpt170-opus.txt`):
+
+| prompt | what the judge said | the measured difference |
+|---|---|---|
+| potato, 0-4 | "a blocky octagonal brown lump", "stepped, angular", "rough"; "no arms"; BrickAgent "smooth", "more colourful", its ear "clearly in the mouth spot" and one on the side | front outline 84% level or upright against 65%; 0% corner rounds against 44%, 6% of parts on their side against 77%; 3.6 studs showing per 100 square studs against 0.6; no arms against Bigfig arms; a brown of luminance 0.046 at contrast 1.35 with its black features against 0.239 at 4.05; a box 2.7 times smaller, at 2.3 times the parts per cubic stud |
+| balloon dog, 0-4 | "legs and neck stretched tall", "a gangly H", "its tail points straight up", "a thin slab instead of a plinth"; BrickAgent "compact", "a tail angled up and back", "a plaque" | 1.40 times as tall as long against 0.97; legs 1.25 times longer; tail 0 degrees against 45; plinth 2.2 bricks of plates (12% of the height) against 5.2 bricks (30%) with a black plaque. The vocabulary is the same (ten 24947 on ten 3262 in both) |
+| statue, 0-4 | "a slab-like brown block with a cylinder for a head", "a solid brown box"; BrickAgent "separate legs, feet, a head leaning forward and a hanging arm" | 3.2 minifigs tall against 5.0, 128 parts against 352; the figure 46% one-stud-wide parts against 81%; mirror symmetry 41% against 17% (one arm up, one down) |
+| rabbit, 0-4 | "arms stick straight out like a T-shaped frame"; "a muddle of black slopes with no teeth or smile"; BrickAgent "a big white belly", "hanging arms", "buck teeth" | arms level against hanging; black slopes for eyes and no printed part against two eye prints and a smile print; no buck teeth against two white 1 x 1 bricks; belly 26% of the front against 35%; a box 2.8 times smaller |
+| boy, 0-4 | "hair a flat block topped with cones", "torso faces straight ahead", "its fin is small"; BrickAgent "hair that spikes out sideways", "a torso turned against the hips" | spikes in two tiers over 32 LDU against four tiers over 72 LDU, its bottom row wider than the head; head and torso turned together 15 degrees against the torso alone 20 degrees |
+
+The same holds over all nine arms. Of the 176 likeness verdicts BrickAgent won
+from them on the six, **149 (85%) name an appendage**: arms, legs, feet, a fist,
+a tail, hair or a fin. Per prompt the most named: the potato's arms in 32 of 32,
+the boy's hair in 32 of 32, the dog's tail in 28 of 32, the statue's arms and
+head in 26 of 27, the rabbit's belly in 27 and its arms in 25 of 28. Of the 200
+overall verdicts BrickAgent won, **119 (60%) name its finish** (smooth, rough,
+clean, studs, polished, stepped, faceted, crude). The brief does not ask the
+potato for arms, and every Mr. Potato Head has them: the judge calls ours
+armless in 12 of the 32, and critique210's own look named them missing and left
+them off because "the brief didn't ask".
+
+### The three levers most likely to move the judge, ranked
+
+**1. Every appendage the subject is known for, as its own mass, at its angle.**
+Arms, legs, tails, hair and fins decide likeness: 85% of the likeness verdicts
+lost name one, and the potato's arms are in every one of its 32 though the brief
+never says arms. BrickAgent builds each one apart from the body, in parts one or
+two studs wide, at the angle the subject has (the tail 45 degrees, the arms
+hanging, hair in four tiers, the torso alone turned). pose174 showed one fix
+moves its feature out of the reasons (its rabbit's arms hung, and no verdict
+held them against it; its dog's tail tilted, and none held the tail), and that
+one fix is not enough when the next appendage is still wrong. So the lever is all
+of them at once, including those the brief leaves out.
+
+- *Test (an hour, no designer change):* edit sculpt170's own builds by hand to
+  fix only their appendages: two Bigfig arms on the potato, the dog's tail on a
+  hinge at 45 degrees, the rabbit's arms hanging, the boy's hair in four tiers.
+  Check each with verify.py, draw them with the same renderer, and judge each
+  against its original and against BrickAgent's, both orders twice (32
+  verdicts). It works if the edited builds win at least 13 of 16 against their
+  originals and take at least 4 of 16 from BrickAgent where sculpt170 took 0 on
+  these four. It is falsified if the originals hold half.
+
+**2. A finished skin: no stud showing, tiles on top, a round front built on its
+side.** The most general difference measured: fewer studs showing on 49 of 54 of
+our builds of the six and 40 of 44 other prompts, more tiles, more parts on their
+side, fewer plates. The judge names finish in 60% of the overall verdicts it gives
+BrickAgent, and the surface and technique ELO gaps are 216 and 234 in sculpt170's
+round. It is the cheapest lever to build, because tiling a stud that shows needs
+no judgement: a pass after the design, not a sentence in a guide.
+
+- *Test (an hour, no session):* a script caps every upward stud that shows on
+  sculpt170's six builds with a tile of its part's colour (1 x 1, 1 x 2 or 2 x 2,
+  as fits, seated on it), checks verify.py, draws and judges each against its
+  original and against BrickAgent's, both orders twice (48 verdicts). It works if
+  the capped builds win at least 16 of 24 overall and surface against their
+  originals, and add verdicts against BrickAgent. Falsified if they take 9 to 15
+  of 24, an even match, or lose likeness.
+
+**3. Proportions and resolution set by the subject, not by the least that will
+do.** Where a brief has limbs to keep apart or a mass to exaggerate ("enormously
+fat", a hunched seated man), BrickAgent builds 2.7 to 4.1 times our box and
+spends its parts on bricks one stud wide, not plates: the statue's limbs stand
+apart only at that resolution. And it holds proportions to the subject: the
+balloon dog as long as it is tall, its plinth 30% of the height; the rabbit's
+belly 35% of its front. It is not "always bigger": over 50 prompts BrickAgent's
+box is bigger on only 23. The lever is measuring the proportions the subject
+needs.
+
+- *Test (half a day, one design each):* the statue, rabbit and potato briefs
+  with one sentence added to the brief, "build it 5 minifigs tall, limbs one or
+  two studs wide, in bricks rather than plates", one design each on sculpt170's
+  tree, judged against sculpt170's builds, both orders twice (12 verdicts). It
+  works if they win at least 9 of 12 and the statue's verdicts name separate
+  legs. Falsified if they win 6 or fewer, or come apart.
+
+Below these three: printed faces (BrickAgent uses more prints on 28 of 54 builds
+of the six, fewer on 5; the rabbit's smile and teeth are 21 of its 28 lost
+likeness verdicts), and the potato's colour, a one-prompt finding.
+
+**What this does not say.** One design a prompt, one judge, and six prompts:
+every per-prompt number is one build. The 44 other prompts are older arms of
+ours, so they say what BrickAgent does, not what our designer does now. Studs
+showing and the views are measured off part boxes, which overstate what a
+curved part covers. The levers are ranked by how many verdicts their reasons
+cover, not by a run of each.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -3272,6 +3645,23 @@ minutes, calls and share of the cost in the looks `scripts/look_time.py` and
 `src/dev/pieces_agree.gd` at `1ef56fd2` (`pieces-critique210.txt`); the reasons
 `scripts/reasons.py` (`reasons-critique210-*.txt`), with the sheets in
 `sheets-critique210/`.
+
+The round of the look while the body is laid (2026-10-24, morning) is the
+likeness round's commands with `--arm critique221`, `--app` a locked
+`release_wt.sh critique221-bench 64bc7f7a` worktree (imported by
+`tools/fresh_import.sh`) and `BENCH_PORTS` the unit's ports. Export, verify,
+views and pairs ran from the unit's imported worktree (main's tools and
+renderer), two prompts at a time with `--tasks` as the designs finished, then
+`pairs` once over all six, which asked nothing new: `pairs --arms
+critique221,sculpt170,m147` and `compare --arms critique221,sculpt170,m147
+--runs 1 --out .../compare-critique221.md`, the m147 round's `compare.md`
+copied aside first and put back. What each session's looks said and did
+between them is `scripts/looks_said.py` on its transcripts (Claude Code's
+project folder for the critique221-bench worktree,
+`likeness-said-critique221.txt`); the pieces `src/dev/pieces_agree.gd` at
+`b24d707c` (`pieces-critique221.txt`); the reasons `scripts/reasons.py`
+(`reasons-critique221-*.txt`). The held-out tuning briefs and their designs are
+`brickbench-critique221-tune/` (arms `critique221` and `critique221b`).
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the

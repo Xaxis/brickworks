@@ -3,7 +3,9 @@
 //
 //   GET  /api/models          the account's models: {models: [{name,
 //                             version, parts, bytes, sum, saved_at}],
-//                             kept: {models, most_models, most_bytes}},
+//                             kept: {models, bytes, most_models,
+//                             most_bytes}}, bytes as stored (left out
+//                             until account_models_delete.sql is applied),
 //                             never the files themselves; {models: [],
 //                             off: <why>} where none are kept here
 //   GET  /api/models?name=X   one model: {name, version, parts, sum, model},
@@ -16,6 +18,15 @@
 //                             made from an older version than the one there:
 //                             then it is kept beside that one under a name
 //                             of its own ("Castle 2"), and neither is lost
+//   DELETE /api/models?name=X&version=N
+//                             a model deleted in the app, as it was at
+//                             version N: {name, deleted}, or {name, gone}
+//                             when the account had none; {name, kept: M}
+//                             when version M was saved since elsewhere,
+//                             which is kept and never deleted unseen
+//                             (supabase/account_models_delete.sql). A
+//                             rename is a delete and a save under the new
+//                             name.
 //
 // The app saves into the browser as it always has, and sends each save
 // here once it is made (src/account/cloud_models.gd); every browser the
@@ -151,13 +162,13 @@ export default async function handler(request, response) {
       .status(204)
       .setHeader("Access-Control-Allow-Origin", "*")
       .setHeader("Access-Control-Allow-Headers", "content-type, authorization")
-      .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+      .setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
       .end();
   }
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Cache-Control", "private, no-store");
-  if (!["GET", "POST"].includes(request.method)) {
-    return response.status(405).json({ error: "GET, or POST a save" });
+  if (!["GET", "POST", "DELETE"].includes(request.method)) {
+    return response.status(405).json({ error: "GET, POST a save, or DELETE one" });
   }
   if (!authConfigured() || !dbConfigured()) {
     return response.status(503).json({ error: "Accounts are not configured here." });
@@ -205,15 +216,34 @@ export default async function handler(request, response) {
       }
     }
     try {
-      const rows = await db(`account_models?owner=eq.${owner}&select=name,version,parts,raw_bytes,sum,saved_at`
-        + "&order=saved_at.desc");
+      const [rows, kept] = await Promise.all([
+        db(`account_models?owner=eq.${owner}&select=name,version,parts,raw_bytes,sum,saved_at`
+          + "&order=saved_at.desc"),
+        keptBy(owner),
+      ]);
       return response.status(200).json({
         models: (rows || []).map((one) => ({ name: one.name, version: one.version, parts: one.parts,
           bytes: one.raw_bytes, sum: one.sum, saved_at: one.saved_at })),
-        kept: { models: (rows || []).length, most_models: MOST_MODELS, most_bytes: MOST_BYTES },
+        kept: { models: (rows || []).length, ...(kept ? { bytes: kept.bytes } : {}),
+          most_models: MOST_MODELS, most_bytes: MOST_BYTES },
       });
     } catch (trouble) {
       return unreached(trouble, "not listed");
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const name = nameOf(String(request.query?.name ?? ""));
+    if (!name) return response.status(422).json({ error: "That is not a model's name." });
+    const version = Number(request.query?.version);
+    if (!Number.isInteger(version) || version < 1) {
+      return response.status(422).json({ error: "version is the version that was deleted." });
+    }
+    try {
+      return response.status(200).json(await db("rpc/delete_account_model",
+        { method: "POST", body: { p_owner: owner, p_name: name, p_version: version } }));
+    } catch (trouble) {
+      return unreached(trouble, "not deleted");
     }
   }
 
@@ -233,13 +263,27 @@ export default async function handler(request, response) {
   } catch (trouble) {
     return unreached(trouble, "not saved");
   }
+  // full says which, for the app to word it for where the model is kept
+  // (a browser, a computer) and to offer to delete old ones.
   if (kept.full === "too many") {
-    return response.status(413).json({ error: `Your account keeps ${MOST_MODELS} models at most. This one is kept in this browser.` });
+    return response.status(413).json({ full: "too many",
+      error: `Your account keeps ${MOST_MODELS} models at most. This one is kept in this browser.` });
   }
   if (kept.full === "too big") {
-    return response.status(413).json({ error: "Your account keeps 64 MB of models at most, and this one would go past it. It is kept in this browser." });
+    return response.status(413).json({ full: "too big",
+      error: "Your account keeps 64 MB of models at most, and this one would go past it. It is kept in this browser." });
   }
   return response.status(200).json(kept);
+}
+
+/// How many models [owner] keeps and how much, as stored: {models, bytes},
+/// or null where account_models_delete.sql is not applied yet.
+async function keptBy(owner) {
+  try {
+    return await db("rpc/account_models_kept", { method: "POST", body: { p_owner: owner } });
+  } catch {
+    return null;
+  }
 }
 
 /// save_account_model, as the server: what it kept, or {full} with its

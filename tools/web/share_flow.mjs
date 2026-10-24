@@ -19,7 +19,8 @@
 //      there by a word of its description in the search box and by its tag.
 //   2. A browser that has never signed in opens the link: the model's page
 //      (og:title, og:image, its description, tags, licence and counts, the
-//      view counted once), and View in 3D on it opens the viewer, which
+//      view counted once); Build it on it opens the step player at step 1,
+//      and View in 3D the viewer, which
 //      shows the model, its name, author and part count, with no sign-in
 //      screen and the address back at the link. The steps scrub (Start, Next, End),
 //      the part under the pointer is named, the parts list opens and gives
@@ -327,16 +328,34 @@ try {
   await visitor.goto(link, { waitUntil: "load", timeout: 120000 });
   const onPage = await until(visitor, () => {
     const h1 = document.querySelector("main h1");
-    const go = document.querySelector('.actions a.cta[href^="/app?view="]');
-    return h1 && go ? { name: h1.textContent, go: go.getAttribute("href"), url: location.href } : null;
+    const go = document.querySelector('.model-page a.picture[href^="/app?view="]');
+    const build = document.querySelector('.model-page .actions a.cta[href^="/app?view="]');
+    return h1 && go && build ? { name: h1.textContent, go: go.getAttribute("href"), build: build.getAttribute("href"),
+      url: location.href } : null;
   }, "the model's page", 60);
-  check(`the link is the model's page: "${onPage.name}", and View in 3D (${onPage.go})`,
-    onPage.name === NAME && onPage.go === `/app?view=${id}` && onPage.url === link);
+  check(`the link is the model's page: "${onPage.name}", View in 3D (${onPage.go}) and Build it (${onPage.build})`,
+    onPage.name === NAME && onPage.go === `/app?view=${id}` && onPage.build === `/app?view=${id}&build`
+    && onPage.url === link);
   await visitor.waitForTimeout(1500);
   await shot(visitor, "2a_model_page.png");
   const counted = (await fetchText(link)).bytes.toString("utf8");
   check("the visit counted once: 1 view", counted.includes('<span data-count="views">1 view</span>'));
-  await visitor.click('.actions a.cta[href^="/app?view="]');
+  // Build it: the step player at step 1, in one press. It was the viewer on
+  // the finished model, its own Build it, then Start (walk180 W3). Closed,
+  // so the viewer that View in 3D opens next is not this build taken up.
+  await visitor.click('.model-page .actions a.cta[href^="/app?view="]');
+  const building = await until(visitor, () => {
+    const b = (window.brickworksShare || {}).build || {};
+    return b.open && b.page >= 1 ? b : null;
+  }, "the step player", 300).catch(() => ({}));
+  check(`Build it opens the step player at step 1 ("${building.caption}")`, building.open === true && building.page === 1);
+  await shot(visitor, "2b_build_it.png");
+  if (building.open) {
+    await press(visitor, "build_close");
+    await until(visitor, () => !((window.brickworksShare || {}).build || {}).open, "the step player closed", 60).catch(() => null);
+  }
+  await visitor.goto(link, { waitUntil: "load", timeout: 120000 });
+  await visitor.click('.model-page a.picture[href^="/app?view="]');
   const viewing = await until(visitor, () => {
     const v = (window.brickworksShare || {}).view || {};
     return v.state === "ready" || v.state === "gone" || v.state === "failed" ? v : null;

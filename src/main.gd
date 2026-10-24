@@ -101,6 +101,9 @@ var _viewing_version: int = 0
 ## The step a link asked to be opened at (?step=<n>, as --step=<n>: a
 ## comment's step on the model's page), 0 for none: Build it, at that page.
 var _viewing_step: int = 0
+## Build it on the model's page (?build, as --build): the step player at
+## step 1, or where this device was building it.
+var _viewing_build: bool = false
 var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
@@ -302,6 +305,8 @@ var _update_offer: UpdateOffer
 var _storage_offer: StorageOffer
 ## The person's models kept with their account too, signed in on the web.
 var _cloud: CloudModels
+var _saved_models: SavedModelsDialog
+var _full_offer: AccountFullOffer
 ## The working model could not be opened at start-up: where it is kept.
 var _restore_notice: RestoreNotice
 ## When the files other tabs and windows share with this one were last
@@ -727,6 +732,10 @@ func _tell_page() -> void:
 		# The models kept with the account, as the last look found them
 		# (CloudModels, tools/web/cloud_library_flow.mjs).
 		"cloud": _cloud.page_state() if _cloud != null else {},
+		# File, Open, Rename or delete saved models…, and the full account's
+		# offer of it (tools/web/cloud_library_flow.mjs).
+		"saved_models": _saved_models.page_state() if _saved_models != null else {},
+		"room_offer": _full_offer.words() if _full_offer != null else "",
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -887,6 +896,10 @@ func _page_controls() -> Dictionary:
 		named.merge(_update_offer.controls_by_name())
 	if _storage_offer != null:
 		named.merge(_storage_offer.controls_by_name())
+	if _saved_models != null:
+		named.merge(_saved_models.controls_by_name())
+	if _full_offer != null:
+		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
 	if _brickify != null:
@@ -1374,6 +1387,7 @@ func _ready() -> void:
 		_viewing_step = _argument("--step").to_int()
 	if not _viewing.is_empty() and _viewing_step > 0:
 		_build_wanted = _viewing_step
+	_viewing_build = _viewing_build or (not _viewing.is_empty() and _has_argument("--build"))
 	if not _viewing.is_empty():
 		# Before anything reads or writes the visitor's own layout, or a
 		# part the model carries is kept for next time.
@@ -2204,6 +2218,13 @@ func _enter_view() -> void:
 	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
 		_share_view.comments.set_step(_timeline_page()))
 	_steps.closed.connect(func() -> void: _share_view.comments.set_step(0))
+	# Stepped, the step's new parts outlined and in view, as the step player
+	# shows its page; moved any other way, they are let go.
+	_steps.stepped.connect(_light_step)
+	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
+		_unlight_step())
+	_steps.reveal.connect(func(_ids: Dictionary) -> void: _unlight_step())
+	_steps.closed.connect(_unlight_step)
 	if OS.has_feature("web"):
 		_add_frame_probes()
 	_build_outline = SelectionOutline.new()
@@ -2216,6 +2237,43 @@ func _enter_view() -> void:
 		_hovered_from = Vector2(-1, -1))
 	# The viewer's timeline stepped onto its last step: built, along it.
 	_steps.stepped_to_end.connect(_count_built)
+
+
+## Whether the viewer's timeline has a step's new parts outlined.
+var _step_lit: bool = false
+
+
+## The viewer's timeline stepped (Next, Back, the arrow keys): the step's new
+## parts outlined, and the view turned and framed on them, as the step player
+## shows that page (_build_go). The timeline only showed more or less of the
+## model as it stood in the view, and step 248 of a castle, six plates in its
+## courtyard, was behind its walls (walk180 W4). Studio and LEGO Builder
+## frame and highlight each step.
+func _light_step() -> void:
+	_unlight_step()
+	var at: Instructions.Step = _steps.current_step()
+	if at == null or (_build_mode != null and _build_mode.is_open()) or _steps.steps().is_empty():
+		return
+	# The pages of the steps showing: the timeline's own, unless it has
+	# worked them out again since (the author's steps, or the build order).
+	if _build_pages == null or _build_pages.steps != _steps.steps():
+		_make_build_pages(_steps.steps())
+	var page: int = _build_pages.steps.find(at) + 1
+	if page < 1:
+		return
+	_build_outline.show_selection(_build_pages.fresh(page))
+	_step_lit = true
+	var view: Dictionary = _build_pages.view(page)
+	_camera.look_from(view["from"])
+	_camera.frame(view["box"], 1.0)
+
+
+func _unlight_step() -> void:
+	if not _step_lit:
+		return
+	_step_lit = false
+	if _build_mode == null or not _build_mode.is_open():
+		_build_outline.show_selection({})
 
 
 ## The timeline's bricks on screen, as a set: the history's, and the end's
@@ -2404,6 +2462,11 @@ func _view_shared() -> void:
 			int(kept["page"]))
 		if changed == 0 and int(kept["version"]) != _view_version:
 			BuildSteps.remember(_viewing, int(kept["page"]), bool(kept["building"]), _view_version)
+	# Build it on the model's page: its first step, in one press. It was the
+	# viewer on the finished model, a Build it there and Start on a cover
+	# (walk180 W3). A device that was building it goes back there, below.
+	if _viewing_build and _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
+		_build_wanted = 1
 	if _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
 		_ready_the_pages()
 	# The lattice, for what is under a pointer, a slice a frame, once the
@@ -3820,6 +3883,19 @@ func _view_hover() -> void:
 ## design assistant on the right. Both are built in code rather than in
 ## the scene because they are data-driven — 24,731 parts and 322 colours
 ## are not things to lay out by hand.
+## The saved model called [param from] is called [param to] now (renamed,
+## here or elsewhere, or kept beside the account's as "Castle 2"): so is
+## the model on the baseplate, when it is that one.
+func _called_now(from: String, to: String) -> void:
+	if _store.title != from or _store.example:
+		return
+	_store.title = to
+	_store.know(ModelStore.SAVE_DIR + to + ".ldr")
+	_store.touch()
+	_bar._name.text = to
+	_bar.model_named.emit(to)
+
+
 func _build_ui() -> void:
 	# Before anything reads it: /app?assistant=on.
 	_assistant_from_address()
@@ -4672,16 +4748,29 @@ func _build_ui() -> void:
 	_cloud.keeps = _account.keeps
 	_cloud.said.connect(_bar.say)
 	# A save made from an older version than the account's is kept beside it
-	# under a name of its own: the model on the baseplate takes that name.
-	_cloud.kept_as.connect(func(from: String, to: String) -> void:
-		if _store.title != from:
-			return
-		_store.title = to
-		_store.know(ModelStore.SAVE_DIR + to + ".ldr")
-		_store.touch()
-		_bar._name.text = to
-		_bar.model_named.emit(to))
+	# under a name of its own, or a saved model was renamed, here or
+	# elsewhere: the model on the baseplate takes that name when it is that
+	# one.
+	_cloud.kept_as.connect(_called_now)
+	_store.renamed_save.connect(_called_now)
+	_cloud.deleted_elsewhere.connect(func(name: String) -> void:
+		if _store.title == name and not _store.example:
+			_bar.say(("“%s” was deleted in another browser or on another device. The one on "
+				+ "the baseplate is kept: Save keeps it again.") % name))
 	add_child(_cloud)
+	# File, Open, Rename or delete saved models… (src/ui/saved_models_dialog.gd),
+	# and the offer of it when the account is full (src/ui/account_full_offer.gd).
+	_saved_models = SavedModelsDialog.new()
+	_saved_models.store = _store
+	_saved_models.cloud = _cloud
+	_saved_models.say = _bar.say
+	add_child(_saved_models)
+	_bar.saved_models_wanted.connect(func() -> void: _saved_models.open())
+	_full_offer = AccountFullOffer.new()
+	_full_offer.make_room = func() -> void: _saved_models.open(true)
+	_full_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_full_offer)
+	_cloud.short_of_room.connect(_full_offer.tell)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -5099,6 +5188,16 @@ func _built_bounds() -> AABB:
 			and _floor.area.size.length_squared() > 0.0:
 		return AABB(_floor.area.position, _floor.area.size + Vector3(0.0, BrickLattice.BRICK, 0.0))
 	return everything
+
+
+## View > Default view (0): the view the app opens on, turned to its usual
+## angle and framed on what is built, the baseplate when nothing is. It
+## turned the camera alone and kept the focus and the zoom, so a view lost
+## in empty space stayed lost and only Fit found the model (walk180 A2);
+## Studio's Home frames the build area.
+func default_view() -> void:
+	_camera.set_view("default")
+	_camera.frame(_built_bounds())
 
 
 ## Lay the chosen picture out in plates.
@@ -7751,7 +7850,7 @@ func _key_pressed(key: InputEventKey) -> void:
 		KEY_5, KEY_KP_5: _camera.set_view("top")
 		KEY_KP_6: _camera.set_view("bottom")
 		KEY_KP_7: _camera.set_view("isometric")
-		KEY_0, KEY_KP_0: _camera.set_view("default")
+		KEY_0, KEY_KP_0: default_view()
 		KEY_KP_PERIOD:
 			# Blender's and Mecabricks' key for the selection, framed.
 			_camera.frame(_selection_bounds())

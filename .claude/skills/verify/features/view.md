@@ -61,7 +61,11 @@ picture the assistant is shown.
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. Nothing that begins
+  is what everything frames against, baseplate excluded. View > Default view
+  (0, `Main.default_view`) turns to the usual angle and frames what is built,
+  the baseplate when nothing is, as Fit does: it turned the camera alone, so
+  a view lost in empty space stayed lost (walk180 A2; `default_view_probe`,
+  headless). Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
   or a right or middle press over any panel, dialog, popup or the toolbar is
   dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:
@@ -814,6 +818,22 @@ picture the assistant is shown.
   and 6531-1 as File > Open does (their own parts, skins and figures) and
   8159-1 again, and holds its two plans (worked out, and the author's as the
   booklet draws them) to the same every field (`_same_however_reached`).
+  Then the worked-out steps pass the Tested mark's steps test by themselves
+  (steps223, 2026-10-24, `HeldSteps`, the last stage of `Instructions.plan`
+  and `plan_paced`, so the timeline, booklet, saves and shares agree): the
+  steps are built as the mark builds them (`Tested.Steps`, by its joints,
+  `Tested.holds_into`), a part that would be in the air waits for the first
+  step where something standing holds it, a sub-assembly put on before what
+  holds it waits too, each piece of a sub-assembly built in the hand begins
+  in its box's first step, and a part a step would hide goes in with what
+  holds it, then the first of it. What already builds is left as planned.
+  Of seed211's twelve house designs as saved, steps passed 4 before and 10
+  after (the fox's two parts its body hides even beside their holders and
+  the rover's figure's arm and hand still named); sculpt170's six bench
+  designs 2 to 5. The castle's plan 1.1 to 1.5 s. `held_steps_probe` holds
+  the fox, the pagoda and the robot (fixtures/house) to it, red without the
+  mend, and sculpt170-043 to its plan unchanged. Authored steps are the
+  author's and are not touched.
 - `score the steps against real sets' authors` (`tools/steps_score.py`,
   `src/dev/steps_score.gd`; the write-up is `docs/INSTRUCTIONS.md`): files of
   LDraw's model repository (vendor/omr) with their authors' `0 STEP` lines,
@@ -1596,6 +1616,8 @@ godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet co
 #   covers the Technic ordering case via models/kart.ldr, a shed whose two
 #   windows are one sub-model placed twice (a "2x" callout) and a figure, and
 #   31009 Skaters House from vendor/omr when it is there
+godot --headless --path . --script src/dev/held_steps_probe.gd    # worked-out steps pass the Tested mark's steps test
+#   the fox, pagoda and robot as the designer saved them, red without the mend
 godot --headless --path . --script src/dev/steps_score.gd -- --selftest  # the steps score's measures give known answers
 python3 tools/minitest.py tests/test_steps_score.py                # ...and its maths (tau-b, intervals, samples)
 python3 tools/steps_score.py run --which proof --out build/steps_score/proof   # ~10 min under heavy, then

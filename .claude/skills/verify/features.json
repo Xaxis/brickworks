@@ -35,7 +35,7 @@
       "id": "api:/api/models",
       "kind": "api",
       "entry": "api/models.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list, GET ?name=X one model, POST {name, base, model} a save)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete)",
       "area": "model-io",
       "tests": [
         "tests/test_bench.py",
@@ -68,6 +68,14 @@
       "kind": "api",
       "entry": "api/admin.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:GET /api/otp/canary",
+      "kind": "api",
+      "entry": "api/_canary.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/otp/canary   (401 without CRON_SECRET; Vercel's cron runs it daily at 04:47 UTC)",
       "area": "account",
       "tests": []
     },
@@ -372,6 +380,14 @@
       "tests": []
     },
     {
+      "id": "cli:canary check",
+      "kind": "cli",
+      "entry": "tools/web/canary_check.mjs",
+      "reach": "node tools/web/canary_check.mjs --url=https://brickworks.diy   (.env sourced; --route for a deployment's own run, --stand-in for the canary itself)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:card check",
       "kind": "cli",
       "entry": "tools/web/card_check.mjs",
@@ -517,6 +533,14 @@
       "entry": "tools/web/designers_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designers_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=model_opens until designers.sql is applied)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:desktop cloud probe",
+      "kind": "cli",
+      "entry": "src/dev/desktop_cloud_probe.gd",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8891 & BRICKWORKS_API=http://127.0.0.1:8891 tools/probe.sh desktop_cloud_probe   (the desktop's models in step with the account: saves, a browser's model, both of two edits kept as Name 2, deletes online and offline, a delete while changed, renames, Undo; a throwaway account)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -2054,7 +2078,7 @@
       "id": "lib:models kept with the account",
       "kind": "lib",
       "entry": "src/account/cloud_models.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql applied)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe)",
       "area": "model-io",
       "tests": []
     },
@@ -2566,6 +2590,14 @@
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:account full offer",
+      "kind": "ui",
+      "entry": "src/ui/account_full_offer.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models\u2026)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -3255,6 +3287,14 @@
       "entry": "src/ui/shell_prefs.gd",
       "reach": "godot --path .  (fold a panel, drag the bar between two, change the snap, quit and start again)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:rename or delete saved models",
+      "kind": "ui",
+      "entry": "src/ui/saved_models_dialog.gd",
+      "reach": "godot --path .  (File, Open, Rename or delete saved models\u2026: each saved model's Rename\u2026 and Delete\u2026, which asks first; a deleted one's row has Undo)",
+      "area": "model-io",
       "tests": []
     },
     {

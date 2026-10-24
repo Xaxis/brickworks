@@ -256,6 +256,7 @@ func _check_the_checker(library: PartLibrary) -> void:
 
 	_check_colours_refused(assistant)
 	await _check_a_recolour_refused(assistant, world, builder)
+	await _check_placed_in_made(assistant, world, builder)
 
 
 ## The join itself, read through what the app loads.
@@ -363,3 +364,48 @@ func _check_a_recolour_refused(assistant: Assistant, world: BrickWorld,
 		"recolouring to 24 is refused: %s" % said.substr(0, 100))
 	_ok(brick != null and brick.color_code == 4,
 		"...and the brick is still red")
+
+
+
+## A part placed in a colour it was never made in goes in in the nearest it
+## was made in, and the design is told: the Tested mark refuses the first,
+## and seed211's house models each had one recoloured by hand (steps223).
+func _check_placed_in_made(assistant: Assistant, world: BrickWorld, builder: Builder) -> void:
+	print("\na part placed in a colour it was never made in")
+	var library: PartLibrary = assistant.library
+	var plate: PartLibrary.PartInfo = library.parts.get("3030")
+	var nearest: int = -1
+	var gap: float = INF
+	for made: int in plate.colors:
+		var colour: PartLibrary.BrickColor = library.colors.get(made)
+		if colour == null or not colour.is_plastic() or colour.is_transparent():
+			continue
+		var apart: float = Brickify.de2000(HiddenColours.lab(library.colors[484].rgb), HiddenColours.lab(colour.rgb))
+		if apart < gap:
+			gap = apart
+			nearest = made
+	_ok(plate.never_made_in(484) and library.made_nearest("3030", 484) == nearest,
+		"3030 was never made in 484 Dark Orange; the nearest it was made in is %d %s" % [nearest,
+			library.colors[nearest].name])
+	_ok(library.made_nearest("3030", nearest) == nearest and library.made_nearest("3068p10", 484) == 484,
+		"...a colour it was made in is kept, and so is one for a part nothing is known of")
+	world.clear()
+	builder.lattice.clear()
+	var answer: Variant = await assistant.use_tool("edit_model",
+		{"add": [{"part": "3030", "color": 484, "x": 0, "y": 0, "z": 0}]})
+	var said: String = str(answer[0].get("text", "")) if answer is Array else str(answer)
+	var laid: Array = world.bricks()
+	print("     %s" % said.left(300).replace("\n", " "))
+	_ok(laid.size() == 1 and (laid[0] as BrickWorld.Brick).color_code == nearest,
+		"an edit adding it in Dark Orange puts it down in %d" % nearest)
+	_ok(said.contains("never made in 484 Dark Orange, so it is placed in %d" % nearest),
+		"...and its answer says so")
+	if laid.size() != 1:
+		return
+	var standing: int = (laid[0] as BrickWorld.Brick).id
+	answer = await assistant.use_tool("edit_model", {"recolor": [{"bricks": [standing], "color": 484}]})
+	said = str(answer[0].get("text", "")) if answer is Array else str(answer)
+	_ok(world.get_brick(standing) != null and world.get_brick(standing).color_code == nearest
+			and said.contains("so it is placed in %d" % nearest),
+		"recoloured to Dark Orange, it is put in %d, and told: %s" % [nearest, said.left(160).replace("\n", " ")])
+

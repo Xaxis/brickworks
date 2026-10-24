@@ -143,6 +143,35 @@ func plain_code(code: int) -> int:
 	return found.plain_code if found != null else code
 
 
+## The colour [param part] was made in nearest [param code] as an eye judges
+## (CIEDE2000, Brickify.de2000), a transparent one for a transparent colour
+## where it was made in any: what a design is given in place of a colour the
+## catalogue knows the part was never made in (PartInfo.never_made_in, as the
+## Tested mark asks it). [param code] itself where it was, where nothing is
+## known, and for a code that is no colour a part can be.
+func made_nearest(part: String, code: int) -> int:
+	var info: PartInfo = parts.get(part)
+	var want: BrickColor = colors.get(code)
+	if info == null or want == null or not want.is_plastic() or not info.never_made_in(code):
+		return code
+	var here: Vector3 = HiddenColours.lab(want.rgb)
+	var best: int = code
+	var gap: float = INF
+	for alike: bool in [true, false]:
+		for made: int in info.colors:
+			var colour: BrickColor = colors.get(made)
+			if colour == null or not colour.is_plastic() \
+					or alike and colour.is_transparent() != want.is_transparent():
+				continue
+			var apart: float = Brickify.de2000(here, HiddenColours.lab(colour.rgb))
+			if apart < gap:
+				gap = apart
+				best = made
+		if best != code:
+			break
+	return best
+
+
 ## BrickLink's colour numbers -> LDraw's plain colour for each, filled as the
 ## colours load: for reading a Studio file's model2.ldr.
 static var by_bricklink: Dictionary = {}

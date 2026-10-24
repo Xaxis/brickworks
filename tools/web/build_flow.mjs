@@ -125,9 +125,10 @@ try {
 
     // 1. The link, as somebody follows it.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    // On a deployment the link is the model's own page, whose button opens
-    // it in the app (the local relay goes straight on), as play found.
-    const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
+    // On a deployment the link is the model's own page, whose View in 3D (its
+    // picture) opens the viewer, Build it the step player at step 1 (the
+    // local relay goes straight on), as play found.
+    const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
     if (cta) {
       await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), cta.tap()]);
     }

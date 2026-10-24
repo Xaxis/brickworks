@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
 
 ## Sub-features
 
@@ -755,6 +755,29 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the last look went. Save on a model nobody has named (Untitled) asks what
   to call it first, in a dialog like Save as's, and refuses a name a saved
   model has (`ModelBar.ask_name`; controls `save_name`, `save_name_ok`).
+- `rename or delete saved models`, `account full offer` and `desktop cloud
+  probe` (`src/ui/saved_models_dialog.gd`, `src/ui/account_full_offer.gd`,
+  `ModelStore.delete_saved`/`rename_saved`/`put_back`,
+  `supabase/account_models_delete.sql`, 2026-10-24, lib219): File › Open has
+  "Rename or delete saved models…" under the saved ones, a dialog listing
+  each with Rename… (asks the name, as Save does) and Delete… (asks first).
+  A deleted model is kept in the tab's own folder (`deleted/`) and its row
+  says "Deleted" with Undo. A rename writes the new name into the file
+  (`ModelStore.retitled`), so it opens and saves under it; "Name 2" kept
+  beside the account's is retitled the same way. Signed in, a delete goes
+  to the account with the version deleted (`DELETE /api/models`,
+  `delete_account_model` under the save's lock): a newer save from
+  elsewhere is kept and comes back; offline or signed out it waits in each
+  account's manifest (`deleted`) and nothing fetches it back. Another
+  browser deletes a model it has unchanged, and keeps (sends as new) one it
+  changed since; a rename is a delete and a save, and a browser with the
+  old name open takes the new one (matched by `retitled` text). The desktop
+  app does all of it too (CloudModels is no longer web only). After a save
+  with the account at 90% of 500 models or 64 MB, or past it, a strip above
+  the model says so plainly with "Delete old models…" (the dialog, oldest
+  first). Controls `saved_rename_N`, `saved_delete_N`, `saved_undo_N`,
+  `saved_rename_name`, `saved_delete_ok`, `room_delete_old`;
+  `brickworksState.saved_models` and `.room_offer`.
 
 - `cad task test` (`tools/bench/cadtask.py`, 2026-10-16; the write-up is
   `docs/CADTASK.md`): is building here as faithful and as fast as in Studio.
@@ -857,8 +880,13 @@ python3 tools/bench/cadtask.py roundtrip && python3 tools/minitest.py tests/test
 # the page's half in real Chromium, persist() played refused and granted
 BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep
 # models kept with the account: a fresh browser's Open, two saves of one version, offline,
-# signed out, the name asked, the account deleted (a throwaway account; account_models.sql applied)
+# renamed and deleted in one browser and so in the other, a change kept past a delete, Undo,
+# the limit said, signed out, the name asked, the account deleted (throwaway accounts;
+# account_models.sql and account_models_delete.sql applied)
 BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud
+# the desktop's half, against the functions on this machine (a throwaway account)
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8891 &
+BRICKWORKS_API=http://127.0.0.1:8891 tools/probe.sh desktop_cloud_probe
 ```
 
 `versions_probe` proves it when it ends "a model's last 20 saves are kept and
@@ -883,9 +911,13 @@ models, a refusal is warned of once, and every save is kept to open again".
 On production before 2026-10-14 the flow fails at the first save (never asked).
 `cloud_library_flow` proves the account's half when it ends "a signed-in
 person's models kept with their account: in Open in a fresh browser, both of
-two saves kept, saved offline and signed out, and gone with the account"; on a
+two saves kept, renamed and deleted everywhere with a change kept, Undo, the
+limit said, saved offline and signed out, and gone with the account"; on a
 build from before 2026-10-23 the second browser finds nothing to open, and the
-unnamed model's Save asks nothing.
+unnamed model's Save asks nothing; on one from before 2026-10-24 Open has no
+Rename or delete. `desktop_cloud_probe` proves the desktop's when it ends
+"desktop_cloud probe: all good" (on 9ae8ebe0, before it, 21 checks fail:
+CloudModels is off off the web).
 
 And the round trip, which is the one to run after touching the writer:
 

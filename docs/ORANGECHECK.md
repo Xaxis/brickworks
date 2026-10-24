@@ -136,7 +136,10 @@ last piece waits on its release (below).
   off. Turning it off (`disable_signup`, and "Confirm email" on) is
   orangecheck's to do with its Management token once oc205's release is
   live: `tools/web/signup_check.mjs` (authsec197's) holds that, and reads
-  "all ok" only after.
+  "all ok" only after. Turned off 2026-10-24 ~09:55Z, with TOTP enrolment;
+  a daily canary (`api/_canary.js`, Vercel's cron) holds all three by
+  trying each, and the `phone_verified` trigger, which stood in for the
+  setting, goes with `supabase/drop_no_public_sign_up.sql`.
 - **Second factors.** Brickworks asks for none, and Supabase's setting is
   out of reach here, so `no_new_ways_in.sql` refuses enrolling one
   (`auth.mfa_factors`) on any account.

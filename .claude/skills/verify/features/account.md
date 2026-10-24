@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, cli:signup check -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -222,10 +222,27 @@ they have. A Claude connector belongs to the account that switched it on.
   off. Measured open on 2026-10-23 (`false`, `true`): a password sign-up at an
   unused address came back confirmed with a session `/api/account` took as
   signed in. Nothing here can change it (the dashboard, or a Management API
-  token, which `.env` does not hold): orangecheck turns it off with its own
-  once oc205's release is live. Until then it reads 2 FAIL, the two
-  settings; a stranger's sign-up and the public `/otp` are refused already,
-  leaving no account (`supabase/no_new_ways_in.sql`).
+  token, which `.env` does not hold): orangecheck's session turned both, and
+  TOTP enrolment off, on 2026-10-24 ~09:55Z.
+- `sign-in canary` (`GET /api/otp/canary`, `api/_canary.js`, 2026-10-24):
+  Vercel's cron, daily at 04:47 UTC with `CRON_SECRET` (`tools/deploy.sh`
+  writes it beside the sweep's), holds those settings by behaviour, at
+  Resend test addresses: (a) a public sign-up refused `signup_disabled`, no
+  account left; (b) an account the admin API made unconfirmed: its password
+  refused `email_not_confirmed`, the public `/otp` (which would sign it up
+  again and confirm it) `signup_disabled`, still unconfirmed; (c) a new
+  address given a code by `api/otp.js`'s own `mint` and `deliver` (exported
+  for it), redeemed, the session taken by `api/_auth.js` `verify` (amr
+  `otp`), TOTP enrolment refused `mfa_totp_enroll_not_enabled`. Each judged
+  by Supabase's own error code, so a trigger refusing the same call cannot
+  pass for the setting. Its accounts deleted whatever happens, a cut-off
+  run's at the next start (`delivered+canary-[abc]-<ms>-<hex>@resend.dev`
+  only). 200 or 500; each run a row of `canary_runs` (`supabase/canary.sql`,
+  server only); a failed run mails `MASTER_EMAIL` once, naming each failed
+  check and what came back (`skipped: no RESEND_API_KEY here` on a unit's
+  preview). `mailer_autoconfirm` alone cannot be seen while sign-up is off:
+  (b)'s `/otp` is where it would act. `canary check`
+  (`tools/web/canary_check.mjs`) runs the same from a checkout.
 
 - `sign in with orangecheck` (2026-10-23; `api/orangecheck.js` POST
   `?op=signin`, `api/_oc.js`, `web/account.js` `orangecheckButton` and
@@ -290,9 +307,11 @@ they have. A Claude connector belongs to the account that switched it on.
   refuses setting a password on any account but a `@resend.dev` test
   account's, and any change of address (`supabase/no_new_ways_in.sql`, a
   trigger on `auth.users`; its dry run `tools/no_new_ways_in_try.sql`), a
-  sign-in by password on such an account (`auth.mfa_amr_claims`), the
-  account a public sign-up makes (its user data says `phone_verified`;
-  refused as it commits) and any second factor. The keys a
+  sign-in by password on such an account (`auth.mfa_amr_claims`), and any
+  second factor; and the account a public sign-up makes (its user data says
+  `phone_verified`; refused as it commits) until
+  `supabase/drop_no_public_sign_up.sql`, since sign-up is off and the canary
+  holds it. The keys a
   page holds reach nothing in the database (`supabase/no_client_access.sql`,
   then `no_client_access_models.sql` once oc205's release is live; read by
   `supabase/client_exposure.sql`); `api/otp.js` makes a new person's account
@@ -511,6 +530,30 @@ sign-up, the public `/otp` asked to make an account, an anonymous and a wallet s
 each refused with no account left; and still a first sign-in by a minted code
 (taken as signed in and asked its age), a returning one reaching the same
 account, and an admin-made account signing in by its password.
+
+The sign-in canary, the cron's three checks (Supabase itself; ~5 s from here,
+~10 s more with `--route`; throwaway accounts at Resend test addresses,
+deleted; one code mailed to one, through Resend where the key is):
+
+```sh
+node tools/web/canary_check.mjs --url=https://brickworks.diy           # from here, and the site asked of (c)'s session
+node tools/web/canary_check.mjs --url=<deployment> --route             # and the deployment's own run (preview check canary)
+node tools/web/canary_check.mjs --stand-in                             # the canary itself, no network
+```
+
+Proves it when it ends "all ok" (13 checks, 14 with `--url`, 29 with `--route`): (a), (b)
+and (c) as above, each step's answer in brackets, and no canary account left
+in Supabase; with `--route` the route refusing a call without the secret, the
+deployment's run all held and recorded, and how its mail went. `--stand-in`
+(43 checks) runs the route against `tools/web/canary_stand_in.mjs`, a
+Supabase and Resend in memory: sign-up open fails (a) and (b), an unconfirmed
+password signing in (b), the code refused and TOTP on (c), an undeletable
+account `gone`, all at once with Resend down and the record unwritable (a),
+(b), (c); each the owner's mail attempted once naming each failed step and
+what it got (caught), the run recorded; right, it passes with no mail, and a
+cut-off run's account is deleted while another run's and one only named
+alike are not. The last runs: `select at, ok, host, mailed, checks from
+public.canary_runs order by at desc limit 7`.
 
 The whole of it in a real browser, on a deployment (a throwaway account, deleted
 at the end; one email to a Resend test address; about four minutes):

@@ -500,6 +500,76 @@ try {
       }
     }
   }
+
+  // 13. Build it starts the build at step 1 (?build: the step player, not the
+  // viewer on the finished model; walk180 W3), and View in 3D is the viewer.
+  // The picture slow to come, as a first view right after publishing was:
+  // the frame says it is coming, never a blank grey frame (walk180 S2); and a
+  // picture that fails once is asked again.
+  const first = PAGES[0];
+  for (const width of widths) {
+    for (const theme of themes) {
+      const label = `${first.name} ${width} ${theme}, its picture slow`;
+      const phone = width < 600;
+      const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 },
+        colorScheme: theme, extraHTTPHeaders: headers,
+        ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+      await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb });
+      const id = first.path.split("/")[2];
+      let release = () => {};
+      const held = new Promise((done) => { release = done; });
+      let asked = 0;
+      const failOnce = width === widths[0] && theme === themes[0];
+      await context.route((url) => url.pathname === `/m/${id}.png`, async (route) => {
+        asked += 1;
+        // The first view's, failed once where this checks the asking again,
+        // and held until this lets it go.
+        if (asked === 1 && failOnce) return route.fulfill({ status: 404, contentType: "text/plain", body: "" });
+        await held;
+        return route.fallback();
+      });
+      const page = await context.newPage();
+      page.on("pageerror", (e) => errors.push(`${label}: ${String(e).slice(0, 200)}`));
+      try {
+        await page.goto(base + first.path, { waitUntil: "domcontentloaded", timeout: 60000 });
+        const links = await page.evaluate(() => ({
+          build: document.querySelector(".model-page .actions a.cta:not(.ghost)")?.getAttribute("href") || "",
+          view: document.querySelector(".model-page a.picture")?.getAttribute("href") || "",
+        }));
+        check(`${label}: Build it starts the build at step 1 (${links.build}), View in 3D is the viewer (${links.view})`,
+          links.build === `/app?view=${id}&build` && links.view === `/app?view=${id}`);
+        await page.waitForTimeout(1500);
+        const waiting = await page.evaluate(() => {
+          const frame = document.querySelector(".model-page .picture");
+          const img = frame?.querySelector("img");
+          const sign = frame?.querySelector(".waiting");
+          const shown = sign && getComputedStyle(sign).display !== "none" && sign.getClientRects().length > 0;
+          return { drawn: Boolean(img && img.complete && img.naturalWidth > 0), sign: shown ? sign.textContent.trim() : "" };
+        });
+        check(`${label}: while its picture comes, the frame says so ("${waiting.sign}"), not a blank frame`,
+          !waiting.drawn && waiting.sign.length > 0);
+        if (out) await page.locator(".model-page .picture").screenshot({
+          path: path.join(out, `picture_waiting_${width}_${theme}.png`) }).catch(() => {});
+        release();
+        const came = await until(page, () => {
+          const frame = document.querySelector(".model-page .picture");
+          const img = frame?.querySelector("img");
+          const sign = frame?.querySelector(".waiting");
+          return img && img.complete && img.naturalWidth > 0
+            && (!sign || getComputedStyle(sign).display === "none");
+        }, null, 15000);
+        check(`${label}: then the picture, and nothing over it${failOnce ? `, asked again after it failed (${asked} asks)` : ""}`,
+          came && (!failOnce || asked >= 2));
+        if (out) await page.locator(".model-page .picture").screenshot({
+          path: path.join(out, `picture_came_${width}_${theme}.png`) }).catch(() => {});
+      } catch (trouble) {
+        check(`${label}: visited (${String(trouble).split("\n")[0]})`, false);
+      } finally {
+        release();
+        await context.close();
+      }
+    }
+  }
 } finally {
   await browser.close();
 }

@@ -867,7 +867,11 @@ func _define() -> void:
 			["view_bottom", "From below", KEY_6, "bottom"],
 			["view_iso", "Isometric", KEY_7, "isometric"]]:
 		var named: String = view[3]
-		_add(view[0], view[1], view[2], func() -> void: camera.set_view(named),
+		var look: Callable = func() -> void: camera.set_view(named)
+		# Turned and framed, so it finds the model again (Main.default_view).
+		if named == "default":
+			look = func() -> void: app.call("default_view")
+		_add(view[0], view[1], view[2], look,
 			Callable(), "Look at the model %s" % str(view[1]).to_lower())
 	_add("fit_model", "Fit the model", SHIFT | KEY_F,
 		func() -> void: camera.frame(app.call("_built_bounds")), Callable(),

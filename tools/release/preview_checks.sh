@@ -211,9 +211,12 @@ declare -A CMD=(
   # A signed-in person's models kept with their account (supabase/account_models.sql):
   # saved in one browser and opened from File, Open in a fresh one with the
   # same parts; two saves of one version both kept ("Cloud House 2"), one
-  # made offline; saved signed out with nothing sent, and Save on an unnamed
-  # model asking its name; then the throwaway account deleted, and its rows
-  # with it.
+  # made offline; renamed and deleted from File, Open in one browser and so
+  # in the other, a change made there while it was deleted kept, and Undo
+  # (account_models_delete.sql); an account near and at its limit saying
+  # so after a save, with Delete old models; saved signed out with nothing
+  # sent, and Save on an unnamed model asking its name; then the throwaway
+  # accounts deleted, and their rows with them.
   [cloud_library]="tools/web/cloud_library_flow.mjs --url=$P/app $B --out=$S/${TAG}_cloud_library"
   # Signing in as a person does: a first visit's sign-in screen, an emailed
   # code typed (minted, sent nowhere), a reload still signed in, Account
@@ -232,9 +235,15 @@ declare -A CMD=(
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
   # local only: signup_check.mjs. It asks the Supabase project, not a
   # deployment, whether anybody can make an account without the code:
-  # public sign-up off, confirmation on (account.md). It fails until the
-  # owner changes those settings; name it here once it passes, so a setting
-  # turned back on holds a release.
+  # public sign-up off, confirmation on (account.md). canary below holds
+  # the same settings by behaviour on every preview.
+  # The daily sign-in canary (api/_canary.js), from here and as the
+  # deployment's own run (/api/otp/canary, with CRON_SECRET): a public
+  # sign-up refused, an unconfirmed address signing in by no way, a new
+  # address signing in by a code api/otp.js made and enrolling no second
+  # factor; the run recorded. Throwaway accounts at Resend test addresses,
+  # deleted and checked gone.
+  [canary]="tools/web/canary_check.mjs --url=$P --route"
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"

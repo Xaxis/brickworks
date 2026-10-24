@@ -600,17 +600,35 @@ func _say_play() -> void:
 	_play.reset_size()
 
 
+## Whether the pill has something to offer: what moves, by name (Playable),
+## the model's own motions, or a drag being made or made. A part that only
+## turns on its joint, a wheel on its pin or a flag on its clip, can still
+## be taken hold of, but is not offered: the castle, whose card says nothing
+## moves, said "Parts of it move" (walk180 W5).
+func _offers_play() -> bool:
+	return not play_moves.is_empty() or not play_motions.is_empty() or played or not _play_said.is_empty()
+
+
 ## What a drag is doing, said in the pill while it is ("" for the hint).
 func play_said(words: String) -> void:
 	_play_said = words
 	if _play != null:
 		_say_play()
+		_show_pill()
 
 
 ## Something has moved since it was built ([param yes]): Reset is offered.
 func show_played(yes: bool) -> void:
 	played = yes
 	_say_play()
+	_show_pill()
+
+
+## The pill shown or put away when what it offers changes, not every frame
+## a drag says something.
+func _show_pill() -> void:
+	if _play != null and _play.visible != (state == "ready" and _bar.visible and play_ready and _offers_play()):
+		_fit_big()
 
 
 ## Tell a builder who had reached step [param at] that the model changed
@@ -760,7 +778,7 @@ func _fit_big() -> void:
 	if not ready and comments.is_open():
 		comments.close()
 	comments.visible = ready
-	_play.visible = ready and play_ready
+	_play.visible = ready and play_ready and _offers_play()
 	_fit_play(pt if _narrow else 1.0, _narrow)
 	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible)
 
