@@ -63,9 +63,10 @@ asking for an API key.
   Break out, Put back and Evaluate the section…; see [building](building.md)'s
   `sections`; `src/dev/sections_probe.gd` calls each over `tools/call`),
   `weakest_joints` (View, Stress: `Main.weigh_joints`, the status bar's own
-  weighing, said by `StressView.said`; every joint that alone holds what is
-  past it, weakest first, with its margin, and what stands on a touch alone
-  past it; `part=` says what pointing at that part says; read-only, and
+  weighing, said by `StressView.said`; the panel's count, "N past working
+  load · M near it", then what stands on a touch alone past it and every
+  joint that alone holds what is past it, weakest first, with its margin,
+  in the panel's order (`StressView.ranked`); `part=` says what pointing at that part says; read-only, and
   `touch_probe` calls it in the app on walk180's tug),
   `make_unique` (Edit, Make this copy unique) and `colour_hidden_parts`
   (Tools, Colour the hidden parts…; `HiddenColoursPanel.for_session`, which

@@ -17,7 +17,11 @@
 ##
 ## Pointing at a part says on the status bar what it carries and on what:
 ## "carries 12 g on 1 stud, margin 0.4". A weak one's menu offers Ask Claude
-## to brace this (Shell.open_context).
+## to brace this (Shell.open_context). Its panel (StressPanel) says what the
+## colours mean, how many joints are past their working load and how many
+## near it, and lists the weakest, worst first, to step through: walk180
+## found a 3,164-part hotel washed pale with nothing to say it stands, where
+## Studio lists what it reads weak (2026-10-23, A9).
 ##
 ## The weighing is the status bar's own (Main._weigh), on a worker after a
 ## change, asked for its margins only while this is on: off, it costs
@@ -45,6 +49,25 @@ signal wanted
 var on: bool = false
 ## The weighing drawn, null until the first arrives.
 var report: Stability.Report = null
+## The legend, the count and the weakest joints, over the model's right
+## edge (Shell); null for a view with no window, as a probe's.
+var panel: StressPanel = null
+
+
+## One place the view shows weak, as its panel lists it: a stud joint that
+## alone holds what is past it, by the part past it, or a piece standing on a
+## touch alone past where it touches.
+class Weak extends RefCounted:
+	## The part said and selected, every part that comes off with it that
+	## the view tints, and what holds it, framed with it.
+	var id: int = 0
+	var ids: Array = []
+	var around: int = 0
+	## The joint, or null for a piece on a touch.
+	var joint: Balance.JointLoad = null
+	## How many times over it holds what is past it: 0 for a piece on a
+	## touch past where it touches, which falls.
+	var margin: float = INF
 
 
 ## Turn the view on or off. On, the model is drawn faded at once and its
@@ -55,6 +78,9 @@ func set_on(value: bool) -> void:
 	on = value
 	report = null
 	world.set_stress(on)
+	if panel != null:
+		panel.visible = on
+		panel.show_weak([])
 	if on:
 		say.call("stress: red is past its working load, amber within twice it — "
 			+ "point at a part for what it carries")
@@ -81,6 +107,80 @@ func show_report(weighed: Stability.Report) -> void:
 		if weighed.held[id] == "tips off" and not scenery.has(int(id)):
 			tints[int(id)] = RED
 	world.set_stress(true, tints)
+	if panel != null:
+		panel.show_weak(ranked(weighed, world, scenery))
+
+
+## The places [param weighed] is weak, worst first (Weak): each piece standing
+## on a touch alone past where it touches, heaviest first, since it falls;
+## then every joint that alone holds what is past it, nearest its working
+## load first. What the panel lists and a session's weakest_joints says.
+static func ranked(weighed: Stability.Report, world: BrickWorld, scenery: Dictionary) -> Array:
+	var out: Array = []
+	if weighed == null:
+		return out
+	for piece: Dictionary in weighed.tipping:
+		var ids: Array = (piece["ids"] as Array).filter(func(id: Variant) -> bool:
+			return not scenery.has(int(id)) and world.get_brick(int(id)) != null)
+		if ids.is_empty():
+			continue
+		var weak := Weak.new()
+		weak.id = int(ids[0])
+		weak.ids = ids
+		weak.around = int(piece["on"])
+		weak.margin = 0.0
+		out.append(weak)
+	var joints: Array = []
+	for id: Variant in weighed.margins:
+		if not scenery.has(int(id)) and world.get_brick(int(id)) != null:
+			joints.append(weighed.margins[id])
+	joints.sort_custom(func(a: Balance.JointLoad, b: Balance.JointLoad) -> bool:
+		return a.ratio > b.ratio)
+	for one: Balance.JointLoad in joints:
+		var weak := Weak.new()
+		weak.id = one.beyond
+		weak.ids = [one.beyond]
+		weak.around = one.held_by
+		weak.joint = one
+		weak.margin = 1.0 / maxf(one.ratio, 0.000001)
+		out.append(weak)
+	return out
+
+
+## Of [param weak] (as [method ranked] gives), how many are past their
+## working load and how many near it: [past, near].
+static func tally(weak: Array) -> Array:
+	var past: int = 0
+	var near: int = 0
+	for one: Weak in weak:
+		if one.margin < WEAK:
+			past += 1
+		elif one.margin < CLOSE:
+			near += 1
+	return [past, near]
+
+
+## The count as the panel heads it and a session reads it.
+static func count_words(weak: Array) -> String:
+	var counted: Array = tally(weak)
+	return "%d past working load · %d near it" % counted
+
+
+## What would make [param weak] hold, as the designer is told to make a joint
+## past its working load hold (Balance.Report.said): with how much more hold
+## it needs, and empty for one that holds twice over already.
+static func fix_words(weak: Weak, library: PartLibrary) -> String:
+	var one: Balance.JointLoad = weak.joint
+	if one == null:
+		return "Hold it with studs, or move its weight back over where it touches."
+	if weak.margin >= CLOSE:
+		return ""
+	var how: String = "hold it up from below, or hang it from more studs" if one.hangs \
+		else "brace it, give it more studs, or move weight back over the %s" % _named(library,
+			one.held_part)
+	if weak.margin < WEAK:
+		return "It needs %s times the hold it has: %s." % [Balance.tidy(one.ratio), how]
+	return "To hold it twice over, %s." % how
 
 
 ## How many times over the one stud joint holding [param id] holds what is
@@ -194,20 +294,23 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 		lines.append("#%d %s." % [part, about] if not about.is_empty()
 			else "There is no part #%d in the model." % part)
 		return "\n".join(lines)
-	var joints: Array = []
-	for id: Variant in weighed.margins:
-		if not scenery.has(int(id)) and world.get_brick(int(id)) != null:
-			joints.append(weighed.margins[id])
-	joints.sort_custom(func(a: Balance.JointLoad, b: Balance.JointLoad) -> bool:
-		return a.ratio > b.ratio)
+	# As the panel counts and lists them (ranked), so the two agree.
+	var weak: Array = ranked(weighed, world, scenery)
+	lines.append("%s (red past the studs' working load, amber within twice it)." % count_words(weak))
+	var joints: Array = weak.filter(func(one: Weak) -> bool: return one.joint != null)
 	if joints.is_empty():
 		lines.append("No joint alone holds what is past it: every part is held more than one way.")
 	else:
 		lines.append(("%d joint%s each hold alone what is past them, levered about the edge "
 			+ "each would turn on (1 N a stud working, about 3 N lets go); the weakest:") % [
 			joints.size(), "" if joints.size() == 1 else "s"])
-	for one: Balance.JointLoad in joints.slice(0, count):
-		var margin: float = 1.0 / maxf(one.ratio, 0.000001)
+	# A piece on a touch past where it touches first: it falls.
+	for risk: Stability.Risk in weighed.risks:
+		if risk.kind == "rests on a touch":
+			lines.append("  #%d and what is with it: %s, red." % [risk.brick_id, risk.message])
+	for listed: Weak in joints.slice(0, count):
+		var one: Balance.JointLoad = listed.joint
+		var margin: float = listed.margin
 		var how: String
 		if margin < WEAK:
 			how = "past its studs' working load, red"
@@ -223,9 +326,6 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 			Balance.tidy(one.grams), margin_words(margin), Balance.tidy(one.ratio), how,
 			"; it lets go at about %s times this load" % Balance.tidy(3.0 * margin)
 				if margin < 100.0 else ""])
-	for risk: Stability.Risk in weighed.risks:
-		if risk.kind == "rests on a touch":
-			lines.append("  #%d and what is with it: %s, red." % [risk.brick_id, risk.message])
 	var held: Dictionary = {}
 	for id: Variant in weighed.held:
 		if not scenery.has(int(id)):
