@@ -22,6 +22,9 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- The sign-in screen says your models are kept with your account as well
+  as on the device, as they have been since 2026-10-23. It said they were
+  not kept with your account, and so did the FAQ and the privacy page.
 - Signed in on a new browser, a phone or a fresh install, Brickworks opens
   on the model you saved last instead of the example car. A first visit, and
   an account with no models yet, still start on the example car.

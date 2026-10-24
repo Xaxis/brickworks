@@ -39,6 +39,8 @@ var account: Account
 var _card: PanelContainer
 var _form: SignInForm
 var _ended: Label
+## The line saying what an account is and where the models are kept.
+var _keeps: Label
 var _checking: Label
 var _unreachable: VBoxContainer
 var _retry: Button
@@ -143,11 +145,8 @@ func setup(with_account: Account) -> void:
 
 	column.add_child(HSeparator.new())
 	# What an account is and is not, where it is asked for.
-	# Claude only for a device that has the assistant (Settings, Assistant (AI)).
-	column.add_child(_line("An account is your email address and nothing "
-		+ "else. Your models are saved on this device, not with your "
-		+ ("account; Claude runs on your own plan or API key." if ShellPrefs.assistant_shown()
-			else "account."), 11, 0.6))
+	_keeps = _line(keeps_words(), 11, 0.6)
+	column.add_child(_keeps)
 
 	account.changed.connect(_follow)
 	_follow()
@@ -270,6 +269,21 @@ func controls_by_name() -> Dictionary:
 	return named
 
 
+## What an account is and where the models are kept, true in every way
+## they stand with it (CloudModels.standing): saved on this device and,
+## signed in, with the account too (2026-10-23), so they open wherever the
+## person signs in; not with it only on a deployment that keeps none. It
+## said "not with your account" to somebody whose account had their model
+## (walk239's A12). Claude only for a device that has the assistant
+## (Settings, Assistant (AI)).
+static func keeps_words() -> String:
+	var where: String = "saved on this device, not with your account" \
+		if CloudModels.standing == "none" \
+		else "saved on this device and kept with your account, so they open wherever you sign in"
+	return "An account is your email address and nothing else. Your models are %s%s" % [where,
+		"; Claude runs on your own plan or API key." if ShellPrefs.assistant_shown() else "."]
+
+
 func _line(text: String, size: int, alpha: float) -> Label:
 	var label := Label.new()
 	label.text = text
@@ -299,6 +313,7 @@ func _follow() -> void:
 	_checking.visible = state == Account.State.CHECKING or waiting
 	_form.visible = state == Account.State.SIGNED_OUT
 	_unreachable.visible = state == Account.State.UNREACHABLE
+	_keeps.text = keeps_words()
 	_ended.text = account.ended
 	_ended.visible = state == Account.State.SIGNED_OUT and not account.ended.is_empty()
 	if _form.visible and not _shown_form:
