@@ -181,8 +181,15 @@ try {
     page.once("dialog", (dialog) => dialog.accept());
     const [again2] = await Promise.all([page.waitForEvent("popup", { timeout: 30000 }), page.locator("#delete-go").click()]);
     await walletSignIn(again2, "delete");
-    await page.waitForFunction(() => document.documentElement.dataset.deleted === "yes"
-      || /./.test(document.querySelector("#delete-said")?.textContent || ""), null, { timeout: 120000 });
+    // "Signing in with orangecheck, in its own window." is said the moment
+    // the window opens. Waiting for any words read that as the answer, and
+    // the browser closed before orangecheck's answer could delete anything
+    // (2026-10-24): wait for the deletion, or for words that are not that.
+    await page.waitForFunction(() => {
+      const said = document.querySelector("#delete-said")?.textContent || "";
+      return document.documentElement.dataset.deleted === "yes"
+        || (said !== "" && !/in its own window/.test(said));
+    }, null, { timeout: 120000 }).catch(() => null);
     const deleted = await page.evaluate(() => document.documentElement.dataset.deleted === "yes");
     check("deleted from /settings by signing in with orangecheck again", deleted,
       await page.locator("#delete-said").textContent().catch(() => ""));
