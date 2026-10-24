@@ -230,9 +230,11 @@ async function asking(request) {
     db("rpc/oc_session_of", { method: "POST", body: { session: claims.session_id || null } }),
     db("rpc/oc_did_of", { method: "POST", body: { account: claims.sub } }),
   ]);
-  const code = (Array.isArray(claims.amr) ? claims.amr : []).find((one) => one?.method === "otp");
-  // A session orangecheck started says "otp" too (it is minted from a
-  // one-time link), so it is told apart by its binding, never by that.
+  // An emailed code, or a test account's password (tools/web/session.mjs):
+  // the account's own sign-in. A session orangecheck started says "otp"
+  // too (it is minted from a one-time link), so it is told apart by its
+  // binding, never by that.
+  const code = (Array.isArray(claims.amr) ? claims.amr : []).find((one) => one?.method === "otp" || one?.method === "password");
   const fresh = Boolean(code && session && session.exists && !session.bound
     && Date.now() / 1000 - Number(code.timestamp) <= FRESH_SECONDS);
   return { claims, did: did || null, only: madeUp(claims.email), fresh };

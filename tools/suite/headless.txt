@@ -158,3 +158,8 @@ shaping_search
 stress
 sculpt
 tested_models
+unsaved_open
+door
+known_fits
+gear_mesh
+touch

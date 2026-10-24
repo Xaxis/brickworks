@@ -1,6 +1,7 @@
 ## View, Stress against real sets that stand: how many of each set's parts
 ## read red (a joint past its working load) and amber (within twice it), and
-## which, so each can be looked at.
+## which, so each can be looked at; and the pieces standing on a touch alone
+## past where they touch, which the view tints red too.
 ##
 ##   godot --headless --path . --script src/dev/stress_sets.gd -- FILE.mpd ...
 ##
@@ -81,8 +82,30 @@ func _weigh(path: String) -> void:
 			one.held_by, _name(one.held_part), one.grams, one.studs, "" if one.studs == 1 else "s",
 			1.0 / maxf(one.ratio, 0.000001), str(one.at.round()),
 			" in %s" % Assemblies.path_of(brick) if brick != null and not Assemblies.path_of(brick).is_empty() else ""])
-	for risk: Stability.Risk in plain.risks:
+	for piece: Dictionary in _tipping(weighed):
+		var names := PackedStringArray()
+		for id: Variant in (piece["ids"] as Array).slice(0, 4):
+			var brick: BrickWorld.Brick = _world.get_brick(int(id))
+			names.append("#%d %s (%s) at %s" % [int(id), brick.part_id, _name(brick.part_id),
+				str(brick.transform.origin.round())])
+		var on: BrickWorld.Brick = _world.get_brick(int(piece["on"]))
+		print("    RED   tips off a touch: %d part%s, %.1f g, %s studs past, on #%d %s (%s): %s%s" % [
+			(piece["ids"] as Array).size(), "" if (piece["ids"] as Array).size() == 1 else "s",
+			float(piece["grams"]), Balance.studs(float(piece["past"])), int(piece["on"]),
+			on.part_id if on != null else "?", _name(on.part_id) if on != null else "?",
+			"; ".join(names), " ..." if (piece["ids"] as Array).size() > 4 else ""])
+	print("    verdict with its margins: %s" % weighed.summary())
+	for risk: Stability.Risk in weighed.risks:
 		print("    stability: %s %s" % [risk.kind, risk.message])
+
+
+## The pieces standing on touches alone past them, as the verdict's risks say.
+func _tipping(weighed: Stability.Report) -> Array:
+	var weigher := Balance.new()
+	weigher.library = _library
+	weigher.lattice = _builder.lattice
+	weigher.floor_ids = _store.scenery
+	return weigher.measure(_world.bricks()).tipping
 
 
 func _name(part_id: String) -> String:

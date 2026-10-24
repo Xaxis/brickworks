@@ -3404,7 +3404,9 @@ gear trains a drag uses: steering (a steering arm on its kingpin, a
 steering rack, or whatever carries a wheel and turns on an upright line:
 a knuckle of beams and blocks on its pin, a toy's front axle on a
 turntable; taken by its steering wheel where it has one, else its arm or
-its biggest part), turntable,
+its biggest part; not by a steering wheel spinning alone on its stud, which
+turns nothing with it, as the kart's did on its round brick until
+kartlink196 joined it to the rack, section 38), turntable,
 boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
 reaching 3 studs or more from its line, no tyre in it, and lifting: its
 line is not upright), doors (a door,
@@ -6033,3 +6035,139 @@ was 0.0199 (its rack +8.02 and -8.02, where it was +1.98 and -14.12).
   `SWEEP_OUT=bench/results/grab17-2026-10-20 tools/steer_sweep.py run grab23
   --jobs=3`, then `table grab23 --against=grab22`; the bar is every set that
   steers in grab22 (77) steering, and 5533-1 and 8466-1 with them.
+
+## 38. Gears put in mesh by hand (gears186)
+
+walk180 (2026-10-23, item 3) built two 24s on axles three studs apart in the
+web app. Each went on its axle wherever the pointer was along it, and they
+stood a stud apart in depth. Sliding one towards the other moved the whole
+axle through its brick until the axle's end reached the hole ("2 parts on
+its axle: not moved"). Turning one did not turn the other, and nothing said
+why. Studio and LDCad put a gear on the Technic hole grid, so a pair lines
+up.
+
+### Why
+
+- **Where a gear goes on an axle** was the pointer's alone
+  (`JointSnap.ways`: a hole on an axle anywhere along it, in whole LDU). The
+  gear beside it was never asked.
+- **The slide** moved the grabbed part's whole body. A gear keyed on its
+  axle is one body with it, so the axle slid in its round hole, as far as
+  it stays in the hole, and then no further.
+- **Meshing** was right all along: `Mechanism` meshes two gears whose
+  planes are within 6 LDU. These were 20.75 apart.
+
+### What was done
+
+- **A gear in hand on an axle seats in mesh** (`Builder._into_mesh`, from
+  `GearMesh.shifts`). For each gear beside the axle, it finds where along
+  the axle the gear in hand meshes it: parallel, at right angles (bevels,
+  double bevels, a crown and a spur) and with a worm. Each place is checked
+  by `Mechanism.couple`, the coupling test `_find_couplings` now shares, so
+  a seat here is a mesh there. Within `GearMesh.CAPTURE` (30 LDU) of the
+  pointer, and with room, the gear goes there. The status line says "in
+  mesh with the 24 beside it (24 teeth to 24)", or why not.
+- **A bevel's teeth face where the axles cross.** Which face is read from
+  the part's box: 6589's crossing is on its -z (app axes) in all 319 pairs
+  of two in the OMR's sets, 4143's and 87407's on +z, a crown's on -z.
+- **Where only the other gear stands wrong** (a bevel's partner too far
+  from where the axles cross, a worm's gear out of its plane), the gear in
+  hand seats for its own half and says what the other needs: "meshing the
+  12 bevel beside it, once it is slid along its axle: it stands 22 LDU
+  from where the axles cross, and meshes this one at 17".
+- **A gear goes on by the hole in its middle** (`Builder._on_its_middle`).
+  The 36 went on by a hole a stud from its middle. The 16's hole is drawn
+  0.28 LDU off its middle, so two 16s turned each other 1:1.02. Real sets
+  stand a gear's middle on its axle.
+- **A gear dragged along its axle slides on it** (`Grab._slide_on_axle`).
+  The gear and what is fixed to it move, and the axle stays. It goes as far
+  as its hole stays on the axle and the parts on the axle let it. It stops
+  in mesh within `GearMesh.SNAP` (4 LDU), and a gear it slides into mesh
+  with is not in its way.
+- **Why two gears beside each other do not mesh is said** as one goes
+  down and as the other is turned (`Grab.mesh_words`): "their axles are 80
+  LDU apart where a 24 and a 24 mesh at 60, 20 LDU too far"; "its axle is
+  square to this one's, and gears like these mesh only on parallel axles";
+  "...meshes it where the Technic Bush with Two Flanges is in the way".
+
+### Checked
+
+`tools/probe.sh gear_mesh_probe` builds each pair by pointing and turns the
+first 30° with Grab. Spurs 8/24, 24/24, 16/16, 12/20, a 36 and a 12 double
+bevel, and 40/8 turn by their teeth to 0.001°, the other way. Bevels 12/12,
+20/12 and double 12/20 at right angles mesh once the first is dragged into
+mesh. A worm turns a 24 1/24 as far. A 24 on an axle in a crossblock's pin
+hole turns its partner 1:1. All 40 checks pass; on 8c0cc501 34 of 42 fail.
+
+### Left
+
+- **The first gear of a pair at right angles** has nothing to mesh when it
+  goes down, so it goes where the pointer is. The second seats for its own
+  half and says how far to slide the first.
+- **A gear on an axle held rigidly** (in an axle hole of the frame) cannot
+  be grabbed at all, so it cannot be slid either.
+
+## 38. The kart's steering wheel turns its front wheels (kartlink196)
+
+The shipped kart (`models/kart.ldr`) steered by its knuckles alone: blocks
+on frictionless pins, a beam 9 between their arms, and a steering wheel on
+a round brick's stud on a 45 degree column joined to none of it (kart195).
+It now has the linkage a Technic kart has, routed as 8841-1's chassis
+routes its column (a column at an angle, a universal joint, a horizontal
+axle to a pinion over the rack on the track rod):
+
+- the track rod is a gear rack 1 x 8 with holes (6630), its end holes on
+  the knuckles' arms by 3/4 pins, 20 LDU in front of each kingpin;
+- a 16 tooth pinion over it, on an axle 3 in the middle hole of the front
+  cross member, which now stands on its edge on the rails' ends, held by a
+  pin with a hole across it (15100) in each rail; the rack's pitch line
+  puts a 16's middle 22 LDU over the rack's foot and the beam's hole stands
+  20 over it, 2 LDU deep, inside the spread real sets stand theirs at
+  (section 12) and read as a mesh;
+- a universal joint of two 3L ends and their centre, bent 45 degrees, the
+  column's fork square to the bend as built, so near the middle the pinion
+  turns cos 45 of the wheel's turn (tan of its turn = cos of the bend times
+  tan of the wheel's);
+- the column, an axle 5, turns in another 15100's hole, in the top of a
+  T beam pinned to a 3 x 3 block's side holes on the middle cross member;
+  a bush under that bearing and the wheel's hub on top of it keep the
+  column from sliding; the steering wheel is the Technic small one (2819),
+  on the axle, since 16091 takes only a stud.
+
+The front cross member moved to the rails' ends, and the wheel sits 40 LDU
+further back and at the same height. The middle cross member's right pin
+is a 3L one through the block too, so the seat stays the biggest body and
+what stays: with the bracket's parts it had one fewer, the middle cross
+member stayed instead, the seat hung on its long pins as a boom and the
+rear blocks were read as steering. The kart's steps are its own now
+(`0 !BRICKWORKS AUTHORED_STEPS`): worked out, the column's bearing came
+after the column through it, hidden. The planner itself (instructions_probe)
+pushes the column into the universal joint's end already on its cross,
+which the probe counted as a pin before its hole; for a universal joint's
+end the axle is the pin now.
+
+Measured (`tools/probe.sh kart_steer_probe`, a drag round the wheel's rim):
+the steering wheel +31.5 degrees turns the pinion 23.43 (23.41 by its
+bend), the rack 8.34 LDU (8.33 by 8 LDU a tooth) and both front wheels
+24.64 (24.64 by the arm); -17.7 turns them 13.1 the other way. That is
+1.28 to 1.38 turns of the wheel to one of the front wheels. The card names
+the steering wheel first (`steering: [wheel, knuckle, knuckle]`), and
+mcp_walk's session turns it over MCP.
+
+The range: turned from the wheel, the room is tested, and a front wheel
+meets its side rail's end at about 32 degrees of the steering wheel one way
+and 35 the other (the front wheels about 25 and 28). Taken by a knuckle, as
+the card did before, the kart turned 90 degrees each way with no room test
+at all, its wheels through the rails; that was never a range a built kart
+has. mcp_walk turns 15 and 10 degrees where it turned 20 and 15.
+
+A drag round a circle on the page, as the probe drew it for the knuckle,
+went along the column's line on its first move, seen from above the front,
+and the grab took it for a slide, which moved nothing ("0 studs along"):
+the column's axle reads a slide in its bearing (`Bodies.line_room` 2 LDU
+up to the bush, 46.8 down, the wheel's hub on the bearing not read), and
+the universal joint's cross holds it to none. The probe drags round the
+rim instead, as a hand does. A grab that offers a slide its loop cannot
+make (`Grab.can_slide` reads `Linkage.slide_col`, not whether the loop
+lets it go) is left.
+

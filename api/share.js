@@ -639,9 +639,44 @@ function links(origin, id) {
   };
 }
 
+/// Whom a model credits, by name, wherever it is said: its designer's
+/// profile as it is named now, as Studio and Mecabricks credit your
+/// username, when they have one shown in public (a page's by, or a row's
+/// looked up by profileOf); else the name given as it was published; null
+/// when it credits nobody. The page's head said the profile while its
+/// licence credited a name the app had made from the address its designer
+/// signs in with (walk180, 2026-10-23).
+export const creditName = (model) => (model.author ? (model.by && model.by.name) || model.author : null);
+
+/// The profile a published model's credit names, for an answer made from
+/// its row alone: its owner's, while shown in public (supabase/follows.sql
+/// feed_who), and only when it credits anybody. null when there is none,
+/// or the database does not say.
+async function profileOf(id, author) {
+  if (!author) return null;
+  try {
+    const rows = await db(`shared_models?id=eq.${id}&select=owner`);
+    return rows[0] ? await db("rpc/feed_who", { method: "POST", body: { account: rows[0].owner } }) : null;
+  } catch {
+    return null;
+  }
+}
+
+/// Whether a credit is made from the address [email] signs in with: the
+/// letters and digits of the part before its @, as an app before m157
+/// offered it ("Delivered+walk 180 Web"), or the address in it. An address
+/// is never shown, nor any part of one.
+export function madeFromAddress(credit, email) {
+  const plain = (text) => String(text || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  const local = String(email || "").split("@")[0].toLowerCase();
+  const said = String(credit || "").toLowerCase();
+  return Boolean(local) && (plain(said) === plain(local) || said.includes(local) || said.includes("@"));
+}
+
 function describe(row) {
   const parts = count(row.parts, "part");
-  return row.author ? `${parts}, by ${row.author}` : parts;
+  const by = creditName(row);
+  return by ? `${parts}, by ${by}` : parts;
 }
 
 /// What a link preview reads: the title, a sentence, the picture.
@@ -677,9 +712,15 @@ const when = (iso) => {
   return Number.isFinite(at) ? `<time datetime="${escapeHtml(new Date(at).toISOString())}">${DAY.format(at)}</time>` : "";
 };
 
-/// Who to credit, as a page says it: the name the owner gave, or the link
-/// itself when they gave none.
-const creditOf = (model) => (model.author ? escapeHtml(model.author) : "this page’s link");
+/// Who to credit, as a page says it: their profile's name and handle, a
+/// link to it, or the name the owner gave; the link itself when they gave
+/// none.
+function creditOf(model, nobody = "this page’s link") {
+  if (!model.author) return nobody;
+  if (!model.by) return escapeHtml(model.author);
+  const handle = escapeHtml(model.by.handle);
+  return `${escapeHtml(model.by.name)} (<a href="/u/${handle}">@${handle}</a>)`;
+}
 
 /// The licence, said for a person: what they may do, whom to credit, and
 /// the licence itself.
@@ -692,7 +733,7 @@ function licenceWords(model) {
   const deed = licence.url ? ` <a href="${licence.url}" rel="license">The licence</a>.` : "";
   if (model.licence === "all-rights-reserved") {
     return `<p><b>${licence.name}.</b> Look at it and build it for yourself; ask `
-      + `${model.author ? escapeHtml(model.author) : "whoever shared it"} before you share a copy `
+      + `${creditOf(model, "whoever shared it")} before you share a copy `
       + `or a version of it.</p>`;
   }
   if (model.licence === "cc-by-sa-4.0") {
@@ -714,7 +755,8 @@ function structured(origin, id, model) {
   const data = {
     "@context": "https://schema.org", "@type": "CreativeWork", name: model.name, url,
     description: model.description || describe(model), image: model.has_image ? `${url}.png` : undefined,
-    author: model.author ? { "@type": "Person", name: model.author } : undefined,
+    author: model.author ? { "@type": "Person", name: creditName(model),
+      url: model.by ? `${origin}/u/${model.by.handle}` : undefined } : undefined,
     license: LICENCES[model.licence]?.url || undefined, dateCreated: model.listed_at || undefined,
     keywords: (model.tags || []).join(", ") || undefined,
     isBasedOn: parent && parent.id ? `${origin}/m/${parent.id}` : undefined,
@@ -1346,7 +1388,7 @@ async function read(request, response) {
       const gone = await missing(id);
       return html(response, gone.status, gonePage(origin, id, gone.unpublished), { embed: true });
     }
-    return html(response, 200, embedCard(origin, id, row), { embed: true });
+    return html(response, 200, embedCard(origin, id, { ...row, by: await profileOf(id, row.author) }), { embed: true });
   }
 
   if (op === "image" || op === "thumb") {
@@ -1398,7 +1440,7 @@ async function read(request, response) {
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   // The mark this version passed, for the viewer's bar; a failure is its
   // owner's alone (?op=tested), so here it is no mark at all.
-  const [mark, builds] = await Promise.all([markOf(db, id, shown.n), buildsOf(id)]);
+  const [mark, builds, by] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author)]);
   const tested = publicMark(mark);
   return response.status(200).json({
     tested,
@@ -1406,7 +1448,8 @@ async function read(request, response) {
     builds,
     id,
     name: row.name,
-    author: row.author,
+    // Whom it credits, as its page says it: the viewer's "by".
+    author: creditName({ ...row, by }),
     parts: shown.n === newest ? row.parts : shown.parts,
     updated_at: row.updated_at,
     version: shown.n,
@@ -1668,10 +1711,16 @@ async function signedIn(request) {
 async function mine(request, response, origin) {
   response.setHeader("Cache-Control", "private, no-store");
   const owner = await signedIn(request);
-  const rows = await db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred&order=updated_at.desc`);
+  const [rows, profile] = await Promise.all([
+    db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred&order=updated_at.desc`),
+    db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null),
+  ]);
   const marks = await newestMarks(rows.filter((row) => row.published).map((row) => row.id));
   return response.status(200).json({
     shared: rows.map((row) => ({ ...row, ...links(origin, row.id), tested: ownerMark(marks.get(row.id)) })),
+    // Whom Show who made it credits (src/ui/share_panel.gd): their profile
+    // shown in public, {name, handle}, or null with none.
+    credit: profile && profile.name ? { name: profile.name, handle: profile.handle } : null,
   });
 }
 
@@ -1751,7 +1800,20 @@ async function publish(request, response) {
   const motions = motionsIn(body.model);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
-  const author = cleanText(body.author, MAX_AUTHOR) || null;
+  // A credit is the person's profile, by its name, when they have one shown
+  // in public, whatever name came with it: as Studio and Mecabricks credit
+  // your username, and as the model's page heads it. Without one, the name
+  // given, but never one made from the address they sign in with, which an
+  // app before m157 offered (walk180, 2026-10-23).
+  let author = cleanText(body.author, MAX_AUTHOR) || null;
+  if (author) {
+    const profile = await db("rpc/feed_who", { method: "POST", body: { account: owner } });
+    if (profile && profile.name) author = profile.name;
+    else if (madeFromAddress(author, claims.email)) {
+      throw new Refusal("that name to credit is made from the address you sign in with, which Brickworks never "
+        + "shows: make a profile at brickworks.diy/profile to be credited by its name, or give another", 422);
+    }
+  }
   if (body.listed !== undefined && typeof body.listed !== "boolean") {
     throw new Refusal("listed is true or false");
   }

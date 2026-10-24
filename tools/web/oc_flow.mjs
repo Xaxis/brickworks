@@ -4,23 +4,27 @@
 //
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 //
-//   1. The sign-in dialog (from /profile signed out) has Sign in with
+//   0. Offered to everybody, or until then (api/_oc_config.js) only to a
+//      tab opened with ?oc=1, as /api/account says: drawn, or not, without it.
+//   1. The sign-in dialog (from /profile?oc=1 signed out) has Sign in with
 //      orangecheck under the email, with its words, at 390 and 1280 px in
 //      light and dark, nothing sideways.
-//   2. Its button opens orangecheck's window (me.ochk.io) from the click;
-//      closed, the dialog stays as it was and says nothing. A browser that
-//      blocks the window is told so, in words, and how to allow it.
-//      Sent from the app (/profile?then=/app), the dialog opens by itself to
-//      go back there; with an address elsewhere, nothing opens.
+//   2. Where the deployment has no signing secret (a unit's preview), the
+//      button says sign-in with orangecheck is unavailable, and opens
+//      nothing. Elsewhere it opens orangecheck's window (me.ochk.io) from
+//      the click; closed, the dialog stays as it was and says nothing. A
+//      browser that blocks the window is told so, in words, and how to
+//      allow it. Sent from the app (/profile?then=/app), the dialog opens
+//      by itself to go back there; with an address elsewhere, nothing opens.
 //   3. The page loads its orangecheck code from its own origin, with no
 //      refusal from the page's security policy.
 //   4. The site's pages send Cross-Origin-Opener-Policy
 //      same-origin-allow-popups, so the window can answer; /app keeps
 //      same-origin for its threads.
 //   5. The server: nothing, junk, or a GET refused in words; never cached;
-//      no other site may read its answer. Where the deployment has no
-//      signing secret, sign-in with orangecheck said to be unavailable. An orangecheck account's made-up
-//      address is refused a sign-in code.
+//      no other site may read its answer; without the signing secret,
+//      sign-in with orangecheck said to be unavailable. An orangecheck
+//      account's made-up address is refused a sign-in code.
 //   6. /settings for an email account (a throwaway at a Resend test
 //      address, deleted after) offers Link orangecheck with its words, at
 //      390 and 1280 in light and dark; with the code just redeemed, the
@@ -92,14 +96,33 @@ async function context(width, theme, { blockWindows = false } = {}) {
   return made;
 }
 
-async function openDialog(page) {
-  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
+async function openDialog(page, { flag = "?oc=1" } = {}) {
+  await page.goto(`${site}/profile${flag}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("#sign-in").waitFor({ state: "visible", timeout: 60000 });
   await page.locator("#sign-in").click();
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
 }
 
+// What the deployment says of orangecheck (api/_oc_config.js): whether it
+// takes a token here, and whether everybody is offered it, or only a tab
+// opened with ?oc=1.
+const offer = (await (await fetch(`${site}/api/account`, { headers })).json()).orangecheck || {};
+console.log(`  --    orangecheck here: ${offer.ready ? "takes a token" : "unavailable (no signing secret)"}, `
+  + `offered to ${offer.everyone ? "everybody" : "a tab opened with ?oc=1"}`);
+
 try {
+  // 0. Who is offered it.
+  {
+    const made = await context(1280, "light");
+    const page = await made.newPage();
+    await openDialog(page, { flag: "" });
+    await page.waitForTimeout(2000);
+    const drawn = await page.locator("dialog.sign-in #oc-sign-in").isVisible();
+    check(offer.everyone ? "offered to everybody: drawn without ?oc=1" : "offered only with ?oc=1: not drawn without it",
+      drawn === Boolean(offer.everyone));
+    await made.close();
+  }
+
   // 1. The dialog, at both widths, in both themes.
   for (const width of [390, 1280]) {
     for (const theme of ["light", "dark"]) {
@@ -143,8 +166,26 @@ try {
     }
   }
 
+  // 2. Where orangecheck takes no token: the button says so, and opens nothing.
+  if (!offer.ready) {
+    const made = await context(390, "light");
+    const page = await made.newPage();
+    listen(page, "unavailable");
+    let opened = false;
+    page.on("popup", () => { opened = true; });
+    await openDialog(page);
+    await page.locator("#oc-sign-in").click();
+    await page.waitForTimeout(1500);
+    const said = await page.locator("dialog.sign-in .said").textContent();
+    check("unavailable here: the button says so, in words, and opens no window",
+      said === "Signing in with orangecheck is unavailable here. Sign in with your email instead." && !opened, said);
+    await page.mouse.move(1, 1);
+    await shot(page, "unavailable_390_light.png");
+    await made.close();
+  }
+
   // 2. The window: opened from the click, at orangecheck; closed, nothing said.
-  {
+  if (offer.ready) {
     const made = await context(1280, "light");
     const leaked = [];
     made.on("request", (request) => {
@@ -172,7 +213,7 @@ try {
       JSON.stringify(after));
     await made.close();
   }
-  {
+  if (offer.ready) {
     const made = await context(390, "dark", { blockWindows: true });
     const page = await made.newPage();
     listen(page, "blocked");
@@ -193,7 +234,7 @@ try {
     const made = await context(390, "light");
     const page = await made.newPage();
     listen(page, "from the app");
-    await page.goto(`${site}/profile?then=${encodeURIComponent("/app")}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.goto(`${site}/profile?then=${encodeURIComponent("/app")}&oc=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const opened = await page.locator("dialog.sign-in #oc-sign-in").waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false);
     const said = await page.locator("dialog.sign-in p").first().textContent().catch(() => "");
     check("sent from the app, the sign-in opens by itself and says it goes back", opened && /back to the app/.test(said), said);

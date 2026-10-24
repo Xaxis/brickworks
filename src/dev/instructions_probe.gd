@@ -110,6 +110,14 @@ func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 			if int(order.get(pair[1], 0)) < int(order.get(pair[0], 0)):
 				wheels_first += 1
 			continue
+		# A universal joint's end hangs on its cross, and its axle is pushed
+		# into it, as the kart's column is into the end on its pinion's
+		# side (kartlink196): there the axle is the pin. Joints.pairs has
+		# every part gripping an axle going onto it, as a gear does.
+		var plug: BrickWorld.Brick = world.get_brick(pair[0])
+		var plug_info: PartLibrary.PartInfo = library.parts.get(plug.part_id)
+		if plug_info != null and plug_info.name.contains("Universal Joint") and plug_info.name.contains("End"):
+			pair = [pair[1], pair[0]]
 		if not into.has(pair[0]):
 			into[pair[0]] = []
 		(into[pair[0]] as Array).append(pair[1])

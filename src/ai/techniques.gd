@@ -397,8 +397,9 @@ static func written() -> Array:
 			"name": "armchair",
 			"group": "furniture and interiors",
 			"when": "a room: an office, a parlour, a lounge",
-			"why": "A chair is a seat, a back and arms, a few small parts. As the LEGO Group built it in 10246 Detective’s Office: 8 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
+			"why": "A chair is a seat, a back and arms, a few small parts. As the LEGO Group built it in 10246 Detective’s Office: 8 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0). Here on a turntable's base (3680), a swivel chair: its seat, a turntable's top, takes no stud without it, and stood on a floor's studs it lifted off with the room.",
 			"bricks": [
+				{"part": "3680", "color": 0, "x": 1, "y": 0, "z": 1, "rot": 1},
 				{"part": "3679", "color": 71, "x": 1, "y": 0, "z": 1, "rot": 1},
 				{"part": "99207", "color": 0, "x": 1, "y": 1, "z": 1, "rot": 2},
 				{"part": "4079", "color": 70, "x": 0.8, "y": 2, "z": 1, "rot": 1},
@@ -1565,8 +1566,12 @@ static func written() -> Array:
 				{"part": "5152", "color": 15, "x": 3, "y": 1, "z": 3, "rot": 0},
 				{"part": "5152", "color": 15, "x": 0, "y": 1, "z": 3, "rot": 3},
 				{"part": "11213", "color": 15, "x": 0, "y": 4, "z": 0, "rot": 0},
-				{"part": "44375b", "color": 15, "x": 0, "y": 5, "z": 0, "rot": 0},
-				{"part": "3942c", "color": 15, "x": 2, "y": 7, "z": 2, "rot": 0},
+				# The dish is hollow to its rim: laid straight on the round plate
+				# it rests on the studs and lifts off. A round plate under its
+				# middle takes its anti-studs (Rounds.DISH_RISE).
+				{"part": "4032a", "color": 15, "x": 2, "y": 5, "z": 2, "rot": 0},
+				{"part": "44375b", "color": 15, "x": 0, "y": 6, "z": 0, "rot": 0},
+				{"part": "3942c", "color": 15, "x": 2, "y": 8, "z": 2, "rot": 0},
 			],
 		},
 		{

@@ -120,6 +120,27 @@ const CASES: Array = [
 		["1 71 80 -8 -100 1 0 0 0 1 0 0 0 1 11213.dat",
 		"1 71 50 -8 -150 1 0 0 0 1 0 0 0 1 54200.dat"],
 		{"not held": ["54200"], "pieces": 2}],
+	# A round brick and its round tile stood on smooth tiles a stud off the
+	# studs beside them, as the pose174 arm's toilet roll (3941 under 15535)
+	# stood on its tank's top a stud off the 30414 at its edge
+	# (brickbench-2026-10-22-m147). It stands, and falls off when the model is
+	# lifted: the check called it set down on purpose, advice, and the edit
+	# that put it there said nothing. Now a fault, with where to seat it.
+	["a toilet roll a stud off the studs beside it (3941 under 15535, pose174 model-044)",
+		["1 15 0 -8 0 1 0 0 0 1 0 0 0 1 3031.dat",
+		"1 15 0 -16 30 1 0 0 0 1 0 0 0 1 2431.dat",
+		"1 15 0 -16 10 1 0 0 0 1 0 0 0 1 2431.dat",
+		"1 15 0 -16 -10 1 0 0 0 1 0 0 0 1 3710.dat",
+		"1 15 0 -40 20 1 0 0 0 1 0 0 0 1 3941.dat",
+		"1 15 0 -48 20 1 0 0 0 1 0 0 0 1 15535.dat"],
+		{"not held": ["3941"], "seat": "Seat it at", "pieces": 2}],
+	# A tile laid on a tile, as sets lay a loose printed tile on a table: it
+	# comes away too, but nobody lifts a model by it, so it is advice, said.
+	["a tile set down on a tile (3068b on 87079)",
+		["1 4 0 -8 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"1 15 0 -16 0 1 0 0 0 1 0 0 0 1 87079.dat",
+		"1 14 -20 -24 0 1 0 0 0 1 0 0 0 1 3068b.dat"],
+		{"resting": ["3068b"], "pieces": 2}],
 ]
 
 ## Built right, these must say nothing: [name, lines].
@@ -228,6 +249,7 @@ func _run() -> void:
 				int(report.get("pieces", 0))])
 	await _figure()
 	_hinge()
+	_beard()
 	print("exact probe: %d passed, %d failed" % [_passed, _failed])
 	quit(1 if _failed > 0 else 0)
 
@@ -278,8 +300,19 @@ func _expect(name: String, report: Dictionary, wanted: Dictionary) -> void:
 		for sentence: Variant in said:
 			if str(sentence).contains(str((wanted["not held"] as Array)[0])):
 				hit = str(sentence)
-		_say(not hit.is_empty(), "%s: said not held: %s" % [name, hit],
-			"%s: not said to be unheld (summary: %s)" % [name, report.get("summary", "")])
+		_say(not hit.is_empty() and (not wanted.has("seat") or hit.contains(str(wanted["seat"]))),
+			"%s: said not held: %s" % [name, hit],
+			"%s: not said to be unheld%s (said: %s; summary: %s)" % [name,
+				", with \"%s\"" % wanted["seat"] if wanted.has("seat") else "", said,
+				report.get("summary", "")])
+	if wanted.has("resting"):
+		var part: String = str((wanted["resting"] as Array)[0])
+		var clauses: Array = report.get("resting", [])
+		var line: String = Assistant._resting_line(report)
+		_say(_exact_said(report).is_empty() and line.contains(part),
+			"%s: advice, and an edit says it in one line: %s" % [name, line],
+			"%s: not advice in one line (said: %s; resting: %s)" % [name,
+				"; ".join(PackedStringArray(_exact_said(report))), clauses])
 	if wanted.has("pieces"):
 		_say(int(report.get("pieces", 0)) == int(wanted["pieces"]),
 			"%s: in %d pieces, as BrickNet counts it" % [name, int(wanted["pieces"])],
@@ -354,6 +387,80 @@ func _figure() -> void:
 	_say(meets.is_empty() and joined,
 		"a figure in a breastplate: its head clear of it and joined to the torso",
 		"a figure in a breastplate: head and armour %s, joined %s" % [meets, joined])
+
+
+## A figure's beard (60750) round its neck under its head, as a builder wears
+## one: held there (ExactCheck.clamped), where BrickNet's labels turn every
+## beard's neck joint a quarter from every torso's and its graph joins none.
+## Leaning, the beard rests on nothing square, so only the clamp holds it;
+## with the head off it falls, and set beside the neck it is on no post.
+const BEARDED: Array = [
+	"1 0 0 -28 1.25 1 0 0 0 1 0 0 0 1 3816c.dat",
+	"1 0 0 -28 1.25 1 0 0 0 1 0 0 0 1 3817c.dat",
+	"1 0 0 -40 1.25 1 0 0 0 1 0 0 0 1 3815b.dat",
+	"1 15 0 -72 1.25 1 0 0 0 1 0 0 0 1 973psx.dat",
+	"1 15 0 -72 1.25 1 0 0 0 1 0 0 0 1 60750.dat",
+	"1 14 0 -99 1.25 1 0 0 0 1 0 0 0 1 3626cpbb.dat"]
+
+
+func _beard() -> void:
+	var headless: Array = BEARDED.slice(0, 5)
+	var beside: Array = BEARDED.duplicate()
+	beside[4] = "1 15 60 -72 1.25 1 0 0 0 1 0 0 0 1 60750.dat"
+	for case: Array in [["under its head", BEARDED, true], ["with its head off", headless, false],
+			["set beside the neck", beside, false]]:
+		var exact: Array = _exact_of(case[1])
+		var on: Dictionary = (exact[0] as ExactCheck).clamped([exact[1]])
+		_say(on.is_empty() != case[2], "a beard on a figure %s: %s" % [case[0],
+			"clamped on the torso's neck" if case[2] else "not clamped"],
+			"a beard on a figure %s: clamped %s" % [case[0], on])
+	# Leaning 20 degrees on a baseplate, so not asked whether it tips.
+	_assistant.floor_kind = func() -> String: return ModelFloor.BASEPLATE
+	var leaning: Dictionary = _checked(_leaning(BEARDED, 20.0))
+	var said: Array = _exact_said(leaning)
+	_say(said.is_empty() and int(leaning.get("pieces", 0)) == 1,
+		"a figure leaning with its beard under its head: nothing said, one piece",
+		"a figure leaning with its beard under its head: said %s; in %d pieces" % [
+			"; ".join(PackedStringArray(said)), int(leaning.get("pieces", 0))])
+	var bare: Dictionary = _checked(_leaning(headless, 20.0))
+	var fell: Array = (bare.get("exact", {}) as Dictionary).get("not held", [])
+	_say(fell.any(func(s: Variant) -> bool: return str(s).contains("60750")),
+		"...and with its head off, the beard said not held",
+		"...and with its head off, the beard not said unheld: %s" % str(_exact_said(bare)))
+	_assistant.floor_kind = func() -> String: return ModelFloor.NONE
+
+
+## [param lines] turned back [param degrees] about the x axis through the
+## origin, and lifted clear of the floor.
+static func _leaning(lines: Array, degrees: float) -> Array:
+	var turn := Basis(Vector3.RIGHT, deg_to_rad(degrees))
+	var out: Array = []
+	for line: Variant in lines:
+		var w: PackedStringArray = str(line).split(" ", false)
+		var at := Vector3(w[2].to_float(), w[3].to_float(), w[4].to_float())
+		var m := Basis(Vector3(w[5].to_float(), w[8].to_float(), w[11].to_float()),
+			Vector3(w[6].to_float(), w[9].to_float(), w[12].to_float()),
+			Vector3(w[7].to_float(), w[10].to_float(), w[13].to_float()))
+		at = turn * at + Vector3(0, -4, 0)
+		m = turn * m
+		out.append("1 %s %f %f %f %f %f %f %f %f %f %f %f %f %s" % [w[1], at.x, at.y, at.z,
+			m.x.x, m.y.x, m.z.x, m.x.y, m.y.y, m.z.y, m.x.z, m.y.z, m.z.z, w[14]])
+	return out
+
+
+## [param lines] as a session's model, its exact check with every part placed,
+## and the index of the beard (60750) in it.
+func _exact_of(lines: Array) -> Array:
+	_store.open_text("0 probe\n" + "\n".join(PackedStringArray(lines)) + "\n", "probe.ldr")
+	var model: Assistant.Model = _assistant._model_from_world()
+	var exact: ExactCheck = _assistant._exact_check_for(model, true)
+	var beard: int = -1
+	for i: int in model.placements.size():
+		var p: Assistant.Placement = model.placements[i]
+		exact.place(i, p.part, p.exact_at(_assistant._joined_at(p, _library.mesh_for(p.part), model)))
+		if p.part == "60750":
+			beard = i
+	return [exact, beard]
 
 
 ## A section hung on the app's own tilting hinge, as a session writes it: the

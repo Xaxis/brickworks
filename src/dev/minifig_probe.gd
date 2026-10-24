@@ -1741,6 +1741,29 @@ func _the_assistant_adds_one() -> void:
 		"name": "Wormtongue", "x": 3, "z": 1})
 	_check("and where somebody already stands: %s" % str(crowded).substr(0, 90),
 		str(crowded).begins_with("Not placed"))
+
+	# Refused for a part in the way, it names the part and the nearest spot
+	# that is clear: told only "something is in the way", a session looked
+	# five times to find the roof plate over its captain (walk180).
+	var deck := Transform3D(Basis.IDENTITY, Vector3(400, 24, 40))
+	var deck_id: int = world.add_brick("3001", 15, deck)
+	builder.register(deck_id, "3001", deck)
+	var post := Transform3D(Basis.IDENTITY, Vector3(410, 48, 30))
+	var post_id: int = world.add_brick("3005", 4, post)
+	builder.register(post_id, "3005", post)
+	var blocked: String = str(await assistant.use_tool("add_minifig", {
+		"name": "Skipper", "x": 19, "z": 1, "y": 3}))
+	print("    %s" % blocked)
+	var spot: RegExMatch = RegEx.create_from_string(
+		"nearest spot it stands is x (-?[\\d.]+), z (-?[\\d.]+)").search(blocked)
+	_check("a figure refused for a part in the way names it (#%d 3005)" % post_id,
+		blocked.begins_with("Not placed") and blocked.contains("#%d 3005" % post_id))
+	_check("...and the nearest spot that is clear", spot != null)
+	if spot != null:
+		var moved: String = str(await assistant.use_tool("add_minifig", {"name": "Skipper",
+			"x": float(spot.get_string(1)), "z": float(spot.get_string(2)), "y": 3}))
+		_check("...where it then stands: %s" % moved.substr(0, 60),
+			moved.begins_with("Placed Skipper"))
 	assistant.queue_free()
 	await process_frame
 

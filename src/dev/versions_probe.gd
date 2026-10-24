@@ -12,7 +12,7 @@
 ##     oldest, and a save that changes nothing keeps no second copy.
 ##   - File, Versions… lists them, newest first, and Open on one puts that
 ##     save on the baseplate under the model's name, part for part; with
-##     changes not saved it says so and offers Save.
+##     changes not saved it says so and offers Save, and Open asks first.
 ##   - All of them together stay under the cap, oldest first, never a
 ##     model's newest.
 ##   - A save asks the browser to keep the storage (StorageKeep; the page's
@@ -103,6 +103,14 @@ func _run() -> void:
 		str(listed["note"]).contains("not saved") and controls.has("versions_save"))
 	var fifth: ModelVersions.Version = kept[4]
 	(controls["version_open_5"] as Button).pressed.emit()
+	await process_frame
+	# Asked first, as every open over changes not saved is
+	# (ModelBar.ask_to_replace); Don't save, here.
+	var asked: Dictionary = shell.bar.controls_by_name()
+	_check("...asked first: Save, Don't save or Cancel",
+		asked.has("replace_save") and asked.has("replace_discard") and asked.has("replace_cancel"))
+	if asked.has("replace_discard"):
+		(asked["replace_discard"] as Button).pressed.emit()
 	for _n: int in 30:
 		await process_frame
 	_check("Open on the fifth puts that save on the baseplate: %d parts, %d wanted"

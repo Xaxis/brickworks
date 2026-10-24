@@ -2,6 +2,8 @@
 # Put the web build on Vercel and prove it runs there.
 #   tools/deploy.sh                 a preview URL, for looking at
 #   tools/deploy.sh --prod          the one the domain points at
+#   tools/deploy.sh --unit          a unit's preview (unit_preview.sh), without
+#                                   the secrets unreviewed code is not to hold
 #   tools/deploy.sh --no-export     deploy what is already in build/web
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
 #   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
@@ -21,16 +23,18 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-prod=0; do_export=1; do_check=1; dir=build/web
+prod=0; unit=0; do_export=1; do_check=1; dir=build/web
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
+    --unit) unit=1 ;;
     --no-export) do_export=0 ;;
     --no-check) do_check=0 ;;
     --dir=*) dir="${a#--dir=}"; do_export=0 ;;
     *) echo "deploy: unknown option $a"; exit 2 ;;
   esac
 done
+if [ "$prod" = 1 ] && [ "$unit" = 1 ]; then echo "deploy: --unit is a preview, never --prod"; exit 2; fi
 
 [ -f .env ] && set -a && . ./.env && set +a
 if [ -z "${VERCEL_TOKEN:-}" ]; then echo "deploy FAILED: no VERCEL_TOKEN (.env or environment)"; exit 1; fi
@@ -411,20 +415,6 @@ if [ ! -f .vercel/project.json ]; then
   exit 1
 fi
 
-# Production signs people in with orangecheck (api/orangecheck.js), which
-# must hear when somebody ends every session there: that takes the
-# project's key and signing secret, in Production's environment alone (a
-# preview has the key at most). Without both it does not go out, since it
-# would start sessions nobody could end. Names only are read, never values.
-if [ "$prod" = 1 ]; then
-  names="$(npx --yes vercel@48 env ls production --token "$VERCEL_TOKEN" 2>/dev/null | awk '{print $1}')"
-  for name in OC_PROJECT_KEY OC_SIGNING_SECRET; do
-    if ! printf '%s\n' "$names" | grep -qx "$name"; then
-      echo "deploy FAILED: $name is not set for Production on Vercel; orangecheck sign-in needs it"; exit 1
-    fi
-  done
-fi
-
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # Always uploaded unpromoted, even when the domain is the destination.
@@ -450,8 +440,24 @@ log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # as production does, and promoting it moves the domain onto this build
 # rather than queueing a second one. Preview and production differ only in
 # a key no page or API here reads, so the checks see what production runs.
+#
+# So every deployment gets every production secret, and a unit's preview
+# runs code nobody has reviewed. --unit withholds the two it never needs:
+# OC_SIGNING_SECRET, which orangecheck asked be kept from unreviewed branch
+# code, since their review covers what ships (2026-10-23); and
+# ANTHROPIC_API_KEY, which nothing has read since the proxy that spent it
+# went (2026-10-09). --env NAME= sets one to nothing for this deployment
+# alone, over the project's value. Never --env NAME: that sends the value
+# in .env. A release's preview and production are reviewed code, and keep
+# both.
+withheld=(OC_SIGNING_SECRET ANTHROPIC_API_KEY)
+blank=()
+if [ "$unit" = 1 ]; then
+  for k in "${withheld[@]}"; do blank+=(--env "$k="); done
+  echo "deploy: a unit's preview, without ${withheld[*]}"
+fi
 npx --yes vercel@48 deploy --prebuilt --prod --skip-domain --yes --archive=tgz \
-  --token "$VERCEL_TOKEN" >"$log" 2>&1
+  ${blank[@]+"${blank[@]}"} --token "$VERCEL_TOKEN" >"$log" 2>&1
 code=$?
 url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' "$log" | tail -1)"
 if [ $code -ne 0 ] || [ -z "$url" ]; then

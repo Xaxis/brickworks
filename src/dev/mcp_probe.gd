@@ -386,6 +386,7 @@ func _run() -> void:
 	await _over_http(port)
 	await _list_changes(port)
 	await _saving()
+	await _resting()
 
 	# An unknown tool is an answer, not a dropped connection.
 	var nonsense: Dictionary = await _ask("no_such_tool", {})
@@ -395,6 +396,47 @@ func _run() -> void:
 	_client.disconnect_from_host()
 	_socket.stop()
 	_done()
+
+
+## Does an edit that leaves a part resting where nothing joins it say so?
+##
+## The pose174 arm's toilet (brickbench-2026-10-22-m147) ended in two pieces:
+## its last edit stood a toilet roll on the tank a stud off the studs, the
+## check called it set down on purpose, and the edit's reply said nothing.
+## Now a part that only rests is refused unless it is a tile laid on a face
+## with no stud (said in one line when the edit lands: exact_probe), and the
+## refusal says which part and where to seat it. The design's own tiles under
+## a part are laid again as plates (standing_probe), so here the outline161
+## rabbit's cheese slope on a round plate's rim, where it has no stud.
+func _resting() -> void:
+	print("")
+	print("  a part left resting")
+	var refused: String = _text_of(await _ask("edit_model", {"add": [
+		{"part": "11213", "color": 71, "x": 1, "y": 0, "z": 32, "rot": 0},
+		{"part": "54200", "color": 71, "x": 2, "y": 1, "z": 37, "rot": 0}],
+		"assemblies": [{"name": "dish", "x_from": 1, "x_to": 7, "z_from": 32, "z_to": 38}]}))
+	var line: String = ""
+	for one: String in refused.split("\n"):
+		if one.contains("54200") and one.contains("Seat it at"):
+			line = one.strip_edges()
+	_check("an edit that leaves a cheese slope resting off a round plate's studs is refused, "
+			+ "and says which part and where to seat it: %s" % (line if not line.is_empty()
+				else refused.left(900).replace("\n", " / ")),
+		refused.begins_with("Not applied") and not line.is_empty()
+		and line.contains("falls off when the model is picked up"))
+	var seat: String = line.get_slice("Seat it at ", 1).get_slice(",", 0) + "," \
+		+ line.get_slice("Seat it at ", 1).get_slice(",", 1) + "," \
+		+ line.get_slice("Seat it at ", 1).get_slice(",", 2)
+	var at: PackedStringArray = seat.split(",")
+	var seated: String = _text_of(await _ask("edit_model", {"add": [
+		{"part": "11213", "color": 71, "x": 1, "y": 0, "z": 32, "rot": 0},
+		{"part": "54200", "color": 71, "x": float(at[0]) if at.size() == 3 else 2.0,
+			"y": float(at[1]) if at.size() == 3 else 1.0,
+			"z": float(at[2]) if at.size() == 3 else 37.0, "rot": 0}],
+		"assemblies": [{"name": "dish", "x_from": 1, "x_to": 7, "z_from": 32, "z_to": 38}]}))
+	_check("...and seated where it says, %s, the edit lands with nothing said resting: %s"
+			% [seat, seated.get_slice("\n", 0)],
+		seated.begins_with("Done.") and not seated.contains("Resting"))
 
 
 ## Does the app do one call at a time?

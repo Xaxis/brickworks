@@ -1902,6 +1902,14 @@ var turn_step: float = 90.0
 ## one: what R turns about and T flips over, instead of the part's own up.
 var _joint_site: JointSnap.End = null
 var _joint_words: String = ""
+## A gear in hand on an axle: the gear beside it that it seats in mesh with,
+## or why it meshes none there ([method _into_mesh]); "" for anything else.
+var _mesh_words: String = ""
+## The places along the axle the ghost is on where the gear in hand meshes
+## a gear beside it, and why there are none, by what they were found for
+## ([method _mesh_places]).
+var _mesh_found: Dictionary = {}
+var _mesh_asked: String = ""
 ## Which of the ways onto the joint (JointSnap.choices) and how many steps
 ## turned about it, as R and T leave them.
 var _joint_way: int = 0
@@ -1943,7 +1951,9 @@ func is_on_joint() -> bool:
 ## What the ghost is on, in words, or "": "the pin hole of Technic Brick
 ## 1 x 2 with Hole".
 func joint_words() -> String:
-	return _joint_words if _joint_site != null else ""
+	if _joint_site == null:
+		return ""
+	return _joint_words if _mesh_words.is_empty() else "%s, %s" % [_joint_words, _mesh_words]
 
 
 ## Every connector of every part down that a part could be put onto, in
@@ -1963,28 +1973,61 @@ func joint_sites() -> Array:
 func _joint_grid() -> BrickGrid:
 	if _site_grid == null:
 		_site_grid = JointSnap.site_grid(library)
+		if not library.exact_fetched.is_connected(_on_exact_fetched):
+			library.exact_fetched.connect(_on_exact_fetched)
 	_site_grid.follow(world)
 	return _site_grid
 
 
+## A part's exact shape come in a browser after its parts were put down: they
+## are measured again for their hinge halves (JointSnap.hinges_of), so a door
+## goes into a frame put down before the frame's shape was there.
+func _on_exact_fetched(part_id: String) -> void:
+	if _site_grid == null or world == null:
+		return
+	var shape: Exact.Shape = Exact.shape_for(library, part_id)
+	if shape == null or not shape.kind.has(Exact.HINGE):
+		return
+	var parts: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		var info: PartLibrary.PartInfo = library.shaped_as(brick.part_id)
+		if info != null and info.id == part_id:
+			parts[brick.part_id] = true
+	_site_grid.remeasure(parts)
+	_sites_at = -1
+	_joint_last = ""
+
+
 ## Put the ghost on the joint the pointer is aimed at, if the part in hand
 ## has an end for one there. False, leaving the ghost to the studs, when
-## it is not aimed at one or the part has no ends.
+## it is not aimed at one or the part has no ends. Aimed only at a part a
+## hinge is on (JointSnap.framed), on the first of its hinges, nearest
+## first, the part has room on some way: a shutter over its window's middle
+## on the hinge outside it, not a pane's inside it; and a second door held
+## over a frame with one in it on the frame's studs.
 func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		hit: BrickLattice.Hit) -> bool:
 	_joint_site = null
-	var held: Array = JointSnap.ends_of(part)
+	var held: Array = JointSnap.ends_for(library, held_part)
 	if held.is_empty() or world == null:
 		return false
 	# A little past what the line met: a hole's middle is inside the part
 	# whose face was struck. Only the ends near the line are asked.
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
-	var site: JointSnap.End = JointSnap.aimed_at(
-		JointSnap.near(_joint_grid(), origin, direction, before), held, origin, direction,
-		before, lattice.unseen)
+	var near: Array = JointSnap.near(_joint_grid(), origin, direction, before)
+	var site: JointSnap.End = JointSnap.aimed_at(near, held, origin, direction, before,
+		lattice.unseen)
+	if site != null and site.is_hinge() and not JointSnap.within_reach(site, origin, direction):
+		var framed: Array = JointSnap.framed(near, held, origin, direction, before, lattice.unseen)
+		site = null
+		for other: JointSnap.End in framed.slice(0, _FRAMED_TRIES):
+			if _has_room_on(other, held, origin, direction):
+				site = other
+				break
 	if site == null:
 		return false
-	var options: Array = JointSnap.choices(held, site, origin, direction)
+	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
+	var options: Array = _into_mesh(JointSnap.choices(held, site, origin, direction), site, basis)
 	if options.is_empty():
 		return false
 	var key: String = "%d|%s|%s|%s" % [site.brick, site.kind, site.at, site.axis]
@@ -1998,7 +2041,6 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		_joint_key = key
 		_joint_extra = 0.0
 		_joint_chosen = false
-	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
 	_joint_options = options
 	_joint_basis = basis
 	if _joint_asked(key, basis, options) != _joint_last:
@@ -2019,6 +2061,204 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	_ghost_transform = _joint_last_at
 	_ghost_valid = _joint_last_fits
 	return true
+
+
+## How many of the hinges of a part pointed at are tried for room, nearest
+## first ([method _onto_a_joint]): 3853 has six of one kind, a pane's two on
+## each face inside it and a shutter's two outside, nearest last.
+const _FRAMED_TRIES := 8
+## Whether the part in hand has room on a hinge some way, by the hinge, for
+## the model, part and turn [member _hinge_room_at] says.
+var _hinge_room: Dictionary = {}
+var _hinge_room_at: String = ""
+
+
+## Whether the part in hand has room some way on [param site], a hinge's
+## half: either way along it, at any quarter turn about it.
+func _has_room_on(site: JointSnap.End, held: Array, origin: Vector3, direction: Vector3) -> bool:
+	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
+	var stamp: String = "%d|%s|%s" % [world.revision, held_part, basis]
+	if stamp != _hinge_room_at:
+		_hinge_room.clear()
+		_hinge_room_at = stamp
+	var key: String = "%d|%s|%s" % [site.brick, site.at, site.axis]
+	if _hinge_room.has(key):
+		return _hinge_room[key]
+	var fits: bool = false
+	for option: Array in JointSnap.choices(held, site, origin, direction):
+		for q: int in 4:
+			if room_for(held_part, JointSnap.pose(option[0], site, int(option[1]),
+					float(option[2]), q * 90.0, basis), true, true):
+				fits = true
+				break
+		if fits:
+			break
+	_hinge_room[key] = fits
+	return fits
+
+
+## A gear in hand going onto an axle anywhere along it: the ways onto it
+## ([param options], JointSnap.choices) that seat it where it meshes a gear
+## beside it, when the pointer is within GearMesh.CAPTURE of there and it
+## has room there; [param options] as they are otherwise. Two 24s pointed
+## onto axles three studs apart went on wherever the pointer was along each,
+## a stud apart in depth, and meshed nothing (walk180). Said in
+## [member _mesh_words]: what it meshes, or why nothing.
+func _into_mesh(options: Array, site: JointSnap.End, basis: Basis) -> Array:
+	_mesh_words = ""
+	if site.kind != "axle" or site.back <= 0.0 or options.is_empty() \
+			or Mechanism.spec_of(held_part).is_empty():
+		return options
+	options = _on_its_middle(options)
+	var found: Dictionary = _mesh_places(options, site, basis)
+	var seated: Array = []
+	var further: float = INF
+	var with: String = ""
+	for place: Array in found["places"]:
+		# [the way's index, slide, the gear it meshes in words]
+		var gap: float = absf(float(place[1]) - float(options[int(place[0])][2]))
+		if gap <= GearMesh.CAPTURE:
+			seated.append([options[int(place[0])][0], options[int(place[0])][1], float(place[1]),
+				gap, place[2]])
+		elif gap < further:
+			further = gap
+			with = str(place[2])
+	if seated.is_empty():
+		if further < INF:
+			_mesh_words = "meshing nothing here: it meshes %s %s studs along the axle" % [
+				with.get_slice(" (", 0), Balance.studs(further / BrickLattice.STUD)]
+		elif not str(found["why"]).is_empty():
+			_mesh_words = str(found["why"])
+		return options
+	seated.sort_custom(func(a: Array, b: Array) -> bool: return float(a[3]) < float(b[3]))
+	_mesh_words = "in mesh with %s" % seated[0][4] if not str(seated[0][4]).contains(", once") \
+		else "meshing %s" % seated[0][4]
+	var out: Array = []
+	for one: Array in seated:
+		out.append([one[0], one[1], one[2]])
+	return out
+
+
+## A gear goes on an axle by the hole in its middle: of [param options],
+## the ways by a hole on the gear's own axis, that hole taken on the axis.
+## A 36 went on by the hole a stud from its middle, and turned about it; a
+## 16's hole is drawn 0.28 LDU off its middle, and two 16s on axles two
+## studs apart turned each other 1:1.02. Real sets stand a gear's middle on
+## its axle.
+func _on_its_middle(options: Array) -> Array:
+	var spec: Dictionary = Mechanism.spec_of(held_part)
+	var axis: Vector3 = Mechanism._axis_of(spec.get("axis", "z"))
+	var middle: Vector3 = axis * float(spec.get("plane", 0.0))
+	var out: Array = []
+	for option: Array in options:
+		var end: JointSnap.End = option[0]
+		if absf(end.axis.dot(axis)) < 0.99:
+			continue
+		var gap: Vector3 = end.at - middle
+		var off: Vector3 = gap - axis * gap.dot(axis)
+		if off.length() > Mechanism.LINE_SLACK:
+			continue
+		var centred := JointSnap.End.new()
+		centred.kind = end.kind
+		centred.at = end.at - off
+		centred.axis = end.axis
+		centred.reach = end.reach
+		centred.radius = end.radius
+		centred.back = end.back
+		centred.brick = end.brick
+		out.append([centred, option[1], option[2]])
+	return out if not out.is_empty() else options
+
+
+## Where along the axle [param site] the part in hand, put on it each of
+## [param options]' ways, meshes a gear beside it with room there:
+## {"places": [[the way's index, its slide, "the 24 beside it (8 teeth to
+## 24)"], ...], "why": why none does, or ""}. Read once for the axle, the
+## model and the part as it is held, not at every motion of the pointer.
+func _mesh_places(options: Array, site: JointSnap.End, basis: Basis) -> Dictionary:
+	var asked: String = "%d|%s|%s|%d|%s|%s|%d" % [site.brick, site.at, site.axis, world.revision,
+		held_part, basis, options.size()]
+	if asked == _mesh_asked:
+		return _mesh_found
+	_mesh_asked = asked
+	_mesh_found = {"places": [], "why": ""}
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	if part == null:
+		return _mesh_found
+	# A way's slide moves the part this way along the axle (JointSnap.pose).
+	var way: Vector3 = -site.axis
+	var reach: float = part.bounds.size.length() * 0.5 + GearMesh.BESIDE + BrickLattice.STUD * 4.0
+	var span := AABB(site.at, Vector3.ZERO).expand(site.at - site.axis * site.back).grow(reach)
+	var near := PackedInt32Array([floori(span.position.x / BrickLattice.CELL),
+		floori(span.position.y / BrickLattice.CELL), floori(span.position.z / BrickLattice.CELL),
+		ceili(span.end.x / BrickLattice.CELL), ceili(span.end.y / BrickLattice.CELL),
+		ceili(span.end.z / BrickLattice.CELL)])
+	var partners: Array = []
+	for other: int in lattice.near_bounds(near):
+		var brick: BrickWorld.Brick = world.get_brick(other)
+		if brick != null and other != site.brick:
+			partners.append_array(GearMesh.gears_at(brick.part_id, brick.transform,
+				library.mesh_for(brick.part_id), other))
+	if partners.is_empty():
+		return _mesh_found
+	var local_axis: Vector3 = Mechanism._axis_of(Mechanism.spec_of(held_part).get("axis", "z"))
+	var facing: float = GearMesh.facing(held_part, part)
+	var whys: Array = []   ## [how far, why]
+	for n: int in options.size():
+		var end: JointSnap.End = options[n][0]
+		var side: int = int(options[n][1])
+		var at: Transform3D = JointSnap.pose(end, site, side, 0.0, 0.0, basis)
+		var faces: Vector3 = (at.basis * local_axis).normalized() * facing
+		for mine: Mechanism.Gear in GearMesh.gears_at(held_part, at, part):
+			# Only a gear turning on the axle: its own axis on the axle's line.
+			if not Mechanism._same_line(mine.centre, mine.axis, site.at, site.axis):
+				continue
+			for theirs: Mechanism.Gear in partners:
+				if not GearMesh.beside(mine, theirs):
+					continue
+				var how_far: float = (theirs.centre - mine.centre).length()
+				var said: String = "%s beside it" % GearMesh.named(theirs)
+				var shifts: Dictionary = GearMesh.shifts(mine, way, theirs, faces)
+				# Where only the other stands wrong, this one seats where it
+				# meshes once the other is slid along its axle.
+				var half: bool = shifts.has("seat")
+				if shifts.has("why") and not half:
+					whys.append([how_far, "%s does not mesh: %s" % [said, shifts["why"]]])
+					continue
+				for shift: float in shifts["seat" if half else "shifts"]:
+					var slide: float = snappedf(shift, 0.001)
+					if slide < 1.0 - end.reach or slide > site.back - end.reach:
+						whys.append([how_far, "%s meshes it only past the axle's end" % said])
+						continue
+					var there: Transform3D = JointSnap.pose(end, site, side, slide, 0.0, basis)
+					if not room_for(held_part, there, true, true):
+						var named: String = _part_named(room_blocker)
+						whys.append([how_far, "%s meshes it where %s is in the way" % [said,
+							named if not named.is_empty() else "a part"]])
+						continue
+					(_mesh_found["places"] as Array).append([n, slide, "%s (%s)" % [said,
+						_teeth_words(mine, theirs)] if not half else "%s, once it is slid along its axle: %s" % [
+						said, shifts["why"]]])
+	if (_mesh_found["places"] as Array).is_empty() and not whys.is_empty():
+		whys.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		_mesh_found["why"] = whys[0][1]
+	return _mesh_found
+
+
+## "8 teeth to 24", "a worm to 24 teeth".
+static func _teeth_words(mine: Mechanism.Gear, theirs: Mechanism.Gear) -> String:
+	if mine.kind == "worm":
+		return "a worm to %d teeth" % theirs.teeth
+	if theirs.kind == "worm":
+		return "%d teeth to a worm" % mine.teeth
+	return "%d teeth to %d" % [mine.teeth, theirs.teeth]
+
+
+## A part's name as the parts list has it, "" for none.
+func _part_named(brick_id: int) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+	return "the " + Inventory._tidy(info.name) if info != null else ""
 
 
 ## Everything the pose on a joint is worked out from, in one string: the
@@ -2051,7 +2291,8 @@ func _joint_pose(options: Array, way: int, roll: int, site: JointSnap.End,
 func _closings(options: Array, way: int, site: JointSnap.End, basis: Basis) -> Array:
 	var out: Array = []
 	var held_end: JointSnap.End = options[way][0]
-	if held_end.is_round() or JointSnap.step_of(held_end, site, 0.0) == JointSnap.CROSS_STEP:
+	if held_end.is_round() or held_end.is_hinge() \
+			or JointSnap.step_of(held_end, site, 0.0) == JointSnap.CROSS_STEP:
 		return out
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
 	if part == null:
@@ -2211,6 +2452,7 @@ func _joins_made(at: Transform3D) -> int:
 ## rises to stand on it ([method _stand_on_the_ground]).
 func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		held: bool = false) -> bool:
+	room_blocker = 0
 	var part: Lbm.PartMesh = library.mesh_for(part_id)
 	if part == null:
 		return false
@@ -2247,6 +2489,12 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		if Assistant._seated_in(mine, at, theirs, there) \
 				or Assistant._seated_in(theirs, there, mine, at):
 			continue
+		# A hinge's two halves, which BrickNet's labels pair (a door and its
+		# frame), meet inside each other's covers at the pins: where both have
+		# exact shapes, the shapes say, as check_design's do. 60621 shut in
+		# 60596 had no room, nor did any door swung open on its frame's hinge.
+		if _hinged_clear(mine, at, theirs, there):
+			continue
 		if turning.has(other):
 			var square: bool = BrickLattice.is_square_to_grid(at.basis) \
 				and BrickLattice.is_square_to_grid(there.basis)
@@ -2261,8 +2509,27 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		if Joints.past_the_teeth(packed, lattice.boxes_of(other),
 				Joints.gear_rounds([[mine, at], [theirs, there]], library), Transform3D.IDENTITY):
 			continue
+		room_blocker = other
 		return false
 	return true
+
+
+## Whether two parts are a hinge's two halves by BrickNet's labels
+## (Exact.hinge_between) and their exact shapes are clear of each other.
+func _hinged_clear(mine: String, at: Transform3D, theirs: String, there: Transform3D) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	if one == null or other == null or not one.kind.has(Exact.HINGE) \
+			or not other.kind.has(Exact.HINGE):
+		return false
+	var a := Exact.Item.new(one, at)
+	var b := Exact.Item.new(other, there)
+	return not Exact.hinge_between(a, b).is_empty() and Exact.clash(a, b, true).is_empty()
+
+
+## The part [method room_for] last found in the way, by its shapes; 0 when
+## it was in none's (below the ground, or no geometry).
+var room_blocker: int = 0
 
 
 ## [param ids] less the floor's own bricks.

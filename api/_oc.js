@@ -18,8 +18,11 @@
 // OC_PROJECT_KEY and OC_SIGNING_SECRET are the project's (ochk.app). Without
 // either, or without an audience, no token is taken here.
 
-import { db, dbConfigured } from "./_db.js";
+import { db } from "./_db.js";
+import { audiences, ocConfigured } from "./_oc_config.js";
 import { bondMeets, integratorRevocationCheck, verifyOcToken } from "./_orangecheck.js";
+
+export { audiences, ocConfigured };
 
 const DID = /^did:oc:[0-9a-f]{32}$/;
 const ME = "https://me.ochk.io";
@@ -30,26 +33,6 @@ const BACK_URL = "https://ochk.app/me/account#backing";
 /// (api/orangecheck.js): random, at a domain that takes no mail.
 export function madeUp(address) {
   return /@oc\.brickworks\.diy$/i.test(String(address || ""));
-}
-
-/// The origins of the pages a token may be for, which are the only
-/// audiences one is taken with, from configuration, never the request:
-/// brickworks.diy, and this deployment's own address (Vercel's VERCEL_URL),
-/// where a release is checked before the domain is moved onto it. Every
-/// deployment is a production one (tools/deploy.sh --prod --skip-domain), so
-/// both are a production deployment's. On this machine, only a loopback
-/// address set as OC_AUDIENCE. None: no token is taken.
-export function audiences() {
-  const own = /^[a-z0-9.-]+\.vercel\.app$/.test(process.env.VERCEL_URL || "") ? [`https://${process.env.VERCEL_URL}`] : [];
-  if (process.env.VERCEL_ENV === "production") return ["https://brickworks.diy", ...own];
-  if (process.env.VERCEL_ENV) return own;
-  const local = String(process.env.OC_AUDIENCE || "").replace(/\/+$/, "");
-  return /^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/.test(local) ? [local] : [];
-}
-
-export function ocConfigured() {
-  return Boolean(process.env.OC_PROJECT_KEY && process.env.OC_SIGNING_SECRET && audiences().length
-    && dbConfigured() && process.env.SUPABASE_PUBLISHABLE_KEY);
 }
 
 /// The audience [token] names, unchecked: only to choose which of ours to

@@ -43,7 +43,10 @@ const BOOM_REACH := 60.0
 ## A line this near the upright (its cosine) is a kingpin's or a turntable's,
 ## as Poser.Joint.kind reads one.
 const UPRIGHT := 0.9
-const _DOOR_WORDS: Array[String] = ["Door", "Ramp", "Hatch", "Gate", "Tailgate", "Flap", "Lid"]
+## A window's shutter and its opening pane hang on a hinge as a door does
+## (3856 on 3853, 3854 in it): BrickNet's labels name each one's.
+const _DOOR_WORDS: Array[String] = ["Door", "Ramp", "Hatch", "Gate", "Tailgate", "Flap", "Lid",
+	"Shutter", "Pane"]
 
 
 ## {kind: [brick ids]} for what moves in [param bodies]: for each kind the
@@ -115,9 +118,14 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 			continue
 		_add(found, kind, ids.size(), driver)
 	# A steering wheel on its column: where a person turns the steering,
-	# when the model has one.
+	# when the model has one. Not one that spins alone on its stud, which
+	# turns nothing with it: the kart's, on a round brick, was named the
+	# steering's, and turned it moved itself and no wheel.
 	for body: int in moving:
 		var ids: PackedInt64Array = bodies.members.get(body, PackedInt64Array())
+		if (moving[body] as Bodies.Link).kind == "stud" and ids.size() == 1 \
+				and bodies.beyond(body).size() == 1:
+			continue
 		for id: int in ids:
 			var part_name: String = name_of.call(id)
 			if part_name.contains("Steering Wheel") and not steering_arm(part_name):
@@ -185,8 +193,8 @@ static func steering_arm(name: String) -> bool:
 		or name.contains("Wheel Spindle Steering") or name.contains("Steering Wheel Hub")
 
 
-## A door, a ramp, a hatch, a gate, a tailgate, a flap or a lid, by its
-## name: the word whole, and not a frame for one.
+## A door, a ramp, a hatch, a gate, a tailgate, a flap, a lid, a shutter or
+## a window's pane, by its name: the word whole, and not a frame for one.
 static func door_named(part_name: String) -> bool:
 	if part_name.contains("Frame") or part_name.begins_with("~"):
 		return false

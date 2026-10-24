@@ -73,20 +73,21 @@ def _crashed_on(path: Path) -> str | None:
 
 
 def _shard_command(shard: int, shards: int, out: Path, files: list[str],
-                   project: Path = ROOT) -> list[str]:
-    command = [str(HEAVY), "godot", "--headless", "--path", str(project), "--script", PROBE,
-               "--", f"--shard={shard}/{shards}", f"--out={out}"]
+                   project: Path = ROOT, probe: str = PROBE, extra: tuple = ()) -> list[str]:
+    command = [str(HEAVY), "godot", "--headless", "--path", str(project), "--script", probe,
+               "--", f"--shard={shard}/{shards}", f"--out={out}", *extra]
     return command + files
 
 
 def run(shards: int, out: Path, files: list[str], parallel: int = 2,
-        project: Path = ROOT) -> int:
+        project: Path = ROOT, probe: str = PROBE, data: Path = ROOT / ".scratch-data",
+        extra: tuple = ()) -> int:
     if not files and not SETS.is_dir():
         print(f"no {SETS}: tools/omr.py fetch brings the sets")
         return 1
     out = out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, XDG_DATA_HOME=str(ROOT / ".scratch-data"))
+    env = dict(os.environ, XDG_DATA_HOME=str(data))
     named = [f if f.startswith("res://") else "res://" + str(Path(f).resolve().relative_to(ROOT))
              for f in files]
     live: dict[int, subprocess.Popen] = {}
@@ -99,7 +100,7 @@ def run(shards: int, out: Path, files: list[str], parallel: int = 2,
         logs[shard] = log
         # Named files go to shard 0 alone.
         mine = named if shard == 0 else []
-        live[shard] = subprocess.Popen(_shard_command(shard, shards, path, mine, project),
+        live[shard] = subprocess.Popen(_shard_command(shard, shards, path, mine, project, probe, extra),
                                        cwd=ROOT,
                                        env=env, stdout=log, stderr=subprocess.STDOUT)
 

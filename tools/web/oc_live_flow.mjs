@@ -100,7 +100,8 @@ const nextAnswer = () => page.waitForResponse((response) => response.url().endsW
 
 try {
   // 1. Through orangecheck's window.
-  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  // ?oc=1: offered to this tab, as before everybody is (api/_oc_config.js).
+  await page.goto(`${site}/profile?oc=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("#sign-in").click({ timeout: 60000 });
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
   const answered = nextAnswer();

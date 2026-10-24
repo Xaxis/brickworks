@@ -236,8 +236,14 @@ they have. A Claude connector belongs to the account that switched it on.
   with a fresh orangecheck sign-in as itself instead of the typed address.
   Needs `OC_PROJECT_KEY` and `OC_SIGNING_SECRET` (Vercel: the secret in
   Production alone); without either nobody signs in with orangecheck, and
-  the button is drawn and a sign-in says it is unavailable; `deploy.sh
-  --prod` refuses to deploy without both in Production. In the web
+  where the deployment has no signing secret (a unit's preview) the button is
+  drawn and a sign-in says it is unavailable; production without both takes
+  no token, and says so in its log at every start. Offered to everybody:
+  `ORANGECHECK_FOR_EVERYONE` in `api/_oc_config.js` is the one switch (step 1
+  alone kept it to a tab opened with `?oc=1`, sessionStorage
+  `brickworks.oc`, and test accounts), told to pages and the app by
+  `/api/account` as `orangecheck: {ready, everyone}`. Where the docs fell
+  short: `docs/ORANGECHECK.md`. In the web
   app the sign-in screen has **Sign in with orangecheck** too
   (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
   `/profile?then=/app…`, which opens the dialog by itself and, signed in,
@@ -316,7 +322,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (65: a first sign-in is a new
+`orangecheck_check` ends "N passed, 0 failed" (67: a first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
 ended at orangecheck and never in the answer; refused a second time, here and
 on another instance; the same did is the same account; no `rh`, another
@@ -334,10 +340,13 @@ to unlink, reading but not writing while the list is down, ended everywhere
 and not renewable while the email session goes on, unlinking ending what the
 id started, an orangecheck account unable to link or unlink, a Claude
 connection it approved waiting while the list is down and ended with it;
-twenty tries from one address, the next 429). `oc_flow` (a preview check, `oc`) needs
-no orangecheck account: the dialog at 390 and 1280 in both themes, the window
-opened at me.ochk.io and closed, a blocked one said in words, the headers,
-the server's refusals. A finished sign-in through orangecheck's real window
+`/api/account`'s offer; twenty tries from one address, the next 429).
+`oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
+without `?oc=1` once everybody is offered it, the dialog at 390 and 1280 in
+both themes, the window opened at me.ochk.io and closed, a blocked one said
+in words, or on a unit's preview (no signing secret) the button saying it is
+unavailable, the headers, the server's refusals, Link orangecheck on
+/settings. A finished sign-in through orangecheck's real window
 runs only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
 
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
@@ -430,6 +439,18 @@ session of the test account (`delivered+brickworks-tests@resend.dev`,
 `BW_TEST_EMAIL` for another) per context and puts it where the app keeps one,
 once, so a reload finds the renewed one. Without `.env` sourced the pages start
 signed out and say so.
+
+`mintSession` signs a Resend test address in by password, not by a code
+(2026-10-23): the account made by the admin API with a password worked out from
+`SUPABASE_SECRET_KEY`, then `/auth/v1/token?grant_type=password`, which counts
+against the token limit (shared with renewals) rather than verify's (30 in five
+minutes, which m156's battery spent). An address that has an account made some
+other way (by a code, or by the dialog earlier in the flow) and every other
+address, `MASTER_EMAIL`'s above all, is still signed in by its code, and no
+password is put on it. On a 429 it waits and asks again, about two minutes in
+all, saying so. The flows about the sign-in itself (`account_flow`,
+`people_flow`'s visitor, `first_steps`' dialog, `oauth_flow`'s authorize page)
+type a minted code (`mintCode`) and so still drive the real `/auth/v1/verify`.
 
 ## Gotchas
 

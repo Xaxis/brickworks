@@ -25,6 +25,10 @@ var _said: int = 0
 var _saves: PopupMenu
 var _confirm: ConfirmationDialog
 var _confirm_new: ConfirmationDialog
+var _confirm_open: ConfirmationDialog
+var _dont_save_button: Button
+## What the person answered _confirm_open: "save", "discard" or "cancel".
+signal _replace_answered(answer: String)
 var _account: Button
 var _claude_tab: HBoxContainer
 var _claude_dot: ColorRect
@@ -184,6 +188,19 @@ func _build() -> void:
 			attend.call("save_new", _save_then_new))
 	add_child(_confirm_new)
 
+	# Every open over a model with changes not saved asks this first
+	# (ask_to_replace), as New does, and as Studio, LeoCAD and LDCad ask.
+	_confirm_open = ConfirmationDialog.new()
+	_confirm_open.ok_button_text = "Save"
+	_confirm_open.confirmed.connect(func() -> void: _replace_answered.emit("save"))
+	_confirm_open.canceled.connect(func() -> void: _replace_answered.emit("cancel"))
+	_dont_save_button = _confirm_open.add_button("Don't save", false, "discard")
+	_confirm_open.custom_action.connect(func(action: StringName) -> void:
+		if action == &"discard":
+			_confirm_open.hide()
+			_replace_answered.emit("discard"))
+	add_child(_confirm_open)
+
 	_saves = PopupMenu.new()
 	_saves.id_pressed.connect(_on_pick)
 	add_child(_saves)
@@ -248,10 +265,12 @@ func bind(to: ModelStore) -> void:
 		model_named.emit(name)
 		_say_when_stored(name))
 	store.loaded.connect(func(name: String, bricks: int) -> void:
+		on_disk = ""
 		_name.text = name
 		model_named.emit(name)
 		_say("opened %s — %d bricks" % [name, bricks]))
 	store.begun.connect(func(name: String) -> void:
+		on_disk = ""
 		_name.text = name
 		model_named.emit(name))
 
@@ -283,6 +302,11 @@ func controls_by_name() -> Dictionary:
 	if _confirm_new.visible:
 		out["new_save"] = _save_then_new_button
 		out["new_discard"] = _confirm_new.get_ok_button()
+	# And an open's.
+	if _confirm_open.visible:
+		out["replace_save"] = _confirm_open.get_ok_button()
+		out["replace_discard"] = _dont_save_button
+		out["replace_cancel"] = _confirm_open.get_cancel_button()
 	return out
 
 
@@ -346,8 +370,10 @@ func _say(text: String) -> void:
 	# Clear it after a moment; a status line that never resets stops
 	# meaning "just now". Only if nothing has been said since: the same
 	# words said again were cleared by the first saying's timer, Check
-	# stability pressed twice gone a moment after the second press.
-	var timer: SceneTreeTimer = get_tree().create_timer(4.0)
+	# stability pressed twice gone a moment after the second press. A line
+	# naming a file just written stays long enough to press its Show in
+	# folder (StatusBar).
+	var timer: SceneTreeTimer = get_tree().create_timer(20.0 if SaveTo.names(text) else 4.0)
 	timer.timeout.connect(func() -> void:
 		if _said == said and _status.text == text:
 			_status.text = "")
@@ -383,11 +409,34 @@ func _on_save() -> bool:
 			return false
 	if not saved:
 		_say(store.refused if not store.refused.is_empty() else "could not save that name")
+	elif not on_disk.is_empty() and on_disk.get_file().get_basename().strip_edges() == name:
+		if await store.export_paced(on_disk, name):
+			SaveTo.wrote(on_disk)
+			_say("saved “%s” — wrote %s" % [name, on_disk])
+		else:
+			_say("saved “%s” here, but could not write %s" % [name, on_disk])
+			return false
 	return saved
 
 
 ## The save going, while it works out the build order.
 var _saving: Working.Job = null
+## The file on the computer that Save as wrote on the desktop, which each
+## Save writes again while the model keeps the file's name: "" for none.
+## Opening or beginning another model lets it go.
+var on_disk: String = ""
+
+
+## File › Save as on the desktop: the model named after the file the person
+## chose in the platform's Save dialog (SaveTo), saved here under that name
+## as Save does (Open, Versions), and written to the file. True when both
+## were.
+func save_to_file(path: String) -> bool:
+	var called: String = path.get_file().get_basename()
+	on_disk = path
+	_name.text = called
+	_name.text_changed.emit(called)
+	return await _on_save()
 
 
 ## "Save, then start new": the new model only once the save has been made.
@@ -458,6 +507,8 @@ func _on_pick(id: int) -> void:
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
+	if not await ask_to_replace("“%s”" % entry.name):
+		return
 	var placed: int = await open_with_progress(entry.path)
 	if placed >= 0:
 		opened.emit(placed)
@@ -602,6 +653,10 @@ func _import() -> void:
 		_picker.library = store.library
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
+			# Asked once the file is chosen: the browser opens its picker
+			# only in the click itself.
+			if not await ask_to_replace("“%s”" % file_name.get_file()):
+				return
 			# The status bar says so first (Working), and has been drawn
 			# before it begins; a big file is read and laid over frames,
 			# counted there (see open_with_progress).
@@ -625,34 +680,92 @@ func _import() -> void:
 func _on_export() -> void:
 	if store == null:
 		return
-	var said: String = await export_now()
+	var said: String = await export_now("", true)
 	if not said.is_empty():
 		_say(said)
 
 
 ## The model as LDraw, into [param into] (the Downloads folder when empty;
-## a download on the web). What was written, or why not: File, Export, and
+## a download on the web), or on the desktop where the person chooses when
+## [param asking] (SaveTo). What was written, or why not: File, Export, and
 ## a session over MCP (AppTools).
-func export_now(into: String = "") -> String:
+func export_now(into: String = "", asking: bool = false) -> String:
 	if world.brick_count() == 0:
 		return "nothing to export"
-	# A model in assemblies is written as a multi-part document, and LDraw
-	# names those .mpd so that whatever opens it knows to look for them.
-	var grouped: bool = world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
-		return not brick.group.is_empty())
-	var file_name: String = model_name().to_snake_case() \
-		+ (".mpd" if grouped else ".ldr")
+	var file_name: String = model_name().to_snake_case() + ldraw_extension()
 	if OS.has_feature("web"):
 		if await store.export_paced(file_name, model_name()):
 			return "downloaded %s" % file_name
 		return ""
 	# Only the name's last part: a model's title is named by whoever
 	# designed it, and "../" in one would put the file somewhere else.
-	var folder: String = into if not into.is_empty() else Download.downloads()
-	var path: String = folder.path_join(file_name.replace("\\", "/").get_file())
+	var path: String = await SaveTo.ask(file_name, into) if asking \
+		else (into if not into.is_empty() else Download.downloads()).path_join(
+			file_name.replace("\\", "/").get_file())
+	if path.is_empty():
+		return ""
 	if await store.export_paced(path, model_name()):
+		SaveTo.wrote(path)
 		return "wrote %s" % path
 	return "could not write %s" % path
+
+
+## ".mpd" for a model in assemblies, which is written as a multi-part
+## document, and LDraw names those .mpd so that whatever opens it knows to
+## look for them; ".ldr" for the rest.
+func ldraw_extension() -> String:
+	var grouped: bool = world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
+		return not brick.group.is_empty())
+	return ".mpd" if grouped else ".ldr"
+
+
+## Whether to go on with an open that puts [param opening] (its name in
+## words: "“Car”") in place of the model on the baseplate: at once when
+## nothing of it would be lost; otherwise the person is asked to save it
+## first (Save, Don't save, Cancel), and true unless they cancel or the
+## save is not made. Whichever, the open keeps what it takes off, and Undo
+## brings it back (ModelStore.opened_over). Every way a person opens a
+## model over this one asks this: File › Open, the examples, Open recent, a
+## file from the computer, Collection › Open and Versions.
+func ask_to_replace(opening: String) -> bool:
+	# One question at once: a second open while it is asked waits for none.
+	if _confirm_open.visible:
+		return false
+	# Half a model being laid is nothing of anybody's.
+	if store == null or store.laying or not store.has_unsaved_work():
+		return true
+	var name: String = model_name()
+	_confirm_open.title = "Save changes to “%s”?" % name
+	_confirm_open.dialog_text = ("“%s” is not saved as it is now. Opening %s replaces it on the "
+		+ "baseplate; Undo brings it back.") % [name, opening]
+	_confirm_open.popup_centered()
+	var answer: String = await _replace_answered
+	match answer:
+		"save":
+			return await _on_save()
+		"discard":
+			return true
+	_say("kept “%s” — nothing opened" % name)
+	return false
+
+
+## Edit › Undo with nothing left to undo but an open: what the open took off
+## the baseplate put back as it stood (ModelStore.reopen); Redo's with
+## [param again]. True when it was, said either way.
+func reopen(again: bool = false) -> bool:
+	if store == null or not store.can_reopen(again):
+		return false
+	var words: String = store.reopen_words(again)
+	var job: Working.Job = Working.begin("Taking back: %s…" % words if not again else "Again: %s…" % words)
+	await job.shown()
+	var placed: int = await store.reopen(again, job)
+	job.end()
+	if placed < 0:
+		_say("could not %s %s: %s" % ["redo" if again else "take back", words, store.not_opened])
+		return false
+	opened.emit(placed)
+	_say("%s: %s" % ["redid" if again else "undid", words])
+	return true
 
 
 ## New, asking first only when there is something it would lose.

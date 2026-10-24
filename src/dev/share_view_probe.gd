@@ -98,9 +98,13 @@ class FakeShared extends SharedModels:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		return {"code": 200, "body": {"id": id, "published": false}}
 
+	## Whom a credit names (api/share.js ?op=mine credit): the account's
+	## profile, or null with none.
+	var credit: Variant = {"name": "Probe Builder", "handle": "probe-builder"}
+
 	func mine(_token: String) -> Dictionary:
 		await (Engine.get_main_loop() as SceneTree).process_frame
-		return {"code": 200, "body": {"shared": []}}
+		return {"code": 200, "body": {"shared": [], "credit": credit}}
 
 	## Builds finished, as api/share.js ?op=built counts them: once per
 	## device and link. Kept across viewers, as the server keeps them.
@@ -330,7 +334,20 @@ func _run() -> void:
 		"the BrickLink wanted list (%d bytes)" % wanted.length())
 	_ok(listed.begins_with("Part,Color,Quantity") or listed.contains(","),
 		"the Rebrickable list (%d bytes)" % listed.length())
-	inventory.hide_list()
+	# A row shows where its parts are in the model, picked out and framed, as
+	# in the builder; Escape lets go of them, the viewer having no other way.
+	var picker: Builder = _main.get("_builder")
+	var first_row: Control = inventory.controls_by_name()["parts_row"]
+	var first_lot: Inventory.Lot = inventory._made[0][0]
+	await _press(first_row)
+	await _settle()
+	var found_box: AABB = _main.call("_selection_bounds")
+	_ok(not inventory.is_showing() and picker.selection.size() == first_lot.count
+		and camera._target_focus.distance_to(found_box.get_center()) < 1.0,
+		"a row selects its %d in the model and frames them" % first_lot.count)
+	await _key(KEY_ESCAPE, false)
+	await _settle()
+	_ok(picker.selection.is_empty(), "...and Escape lets go of them")
 
 	print("\nthe booklet")
 	var said_booklet: String = await _main.call("_export_booklet", OUT_DIR + "booklet.html")
@@ -1052,7 +1069,8 @@ func _the_panel(text: String) -> void:
 	var store: ModelStore = _main.get("_store")
 	var shell: Shell = _main.get("_shell")
 	var bar: ModelBar = _main.get("_bar")
-	account.email = "probe.builder@example.com"
+	# An address nothing may be made from (walk180's was delivered+walk180-web).
+	account.email = "delivered+walk180-web@resend.dev"
 	account._access = "probe.signed.in"
 	account._expires_at = Time.get_unix_time_from_system() + 3600.0
 	account.state = Account.State.SIGNED_IN
@@ -1069,9 +1087,23 @@ func _the_panel(text: String) -> void:
 		"File › Share… opens the panel")
 	_ok(panel.controls_by_name().has("share_publish"), "...with Publish")
 	_ok(panel._name.text == "Probe House", "...and the model's name (%s)" % panel._name.text)
+	# With no profile, nothing: never a name made from the address.
+	fake.credit = null
 	panel._credit.button_pressed = true
+	for _n: int in 30:
+		await process_frame
+	_ok(panel._author.visible and panel._author.text.is_empty(),
+		"ticked with no profile, the name to credit is left to type, nothing made from the address (\"%s\")"
+			% panel._author.text)
+	panel._credit.button_pressed = false
+	fake.credit = {"name": "Probe Builder", "handle": "probe-builder"}
+	panel._credit.button_pressed = true
+	for _n: int in 30:
+		await process_frame
+		if not panel._author.text.is_empty():
+			break
 	_ok(panel._author.visible and panel._author.text == "Probe Builder",
-		"ticking Show who made it offers a name from the account (%s)" % panel._author.text)
+		"ticking Show who made it offers the profile's name (%s)" % panel._author.text)
 	await _settle()
 	_save("6_panel.png")
 	_ok(not panel.controls_by_name().has("share_note"),

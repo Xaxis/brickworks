@@ -80,6 +80,10 @@ date says when.
   `~/.claude/claude-core/bin/featuremap affected` lists, and your own checks.
 
 ## The product
+- **A new probe goes on one line of tools/suite/headless.txt or
+  windowed.txt** (as its `##` header runs it), or of out.txt with why it is
+  not run. `tools/check.sh --lists` must pass before you send ready: four units
+  on 2026-10-23 forgot, and each merge stopped at the gate.
 - Never change the app's on-screen interface (layout, controls, wording a
   person sees) unless the brief says the owner asked for exactly that change.
 - The website follows docs/DESIGN_SYSTEM.md: the shared components in

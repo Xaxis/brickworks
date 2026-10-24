@@ -18,7 +18,8 @@ var say: Callable = func(_line: String) -> void: pass
 ## The model's name, for the file's.
 var named: Callable = func() -> String: return "Model"
 ## Where files go on the desktop; the Downloads folder when empty. A probe
-## points it at a folder of its own.
+## points it at a folder of its own. A person's own press asks instead
+## ([param asking] on each: SaveTo).
 var folder: String = ""
 
 var picture: Picture
@@ -29,24 +30,27 @@ func _ready() -> void:
 	add_child(picture)
 
 
-func take_picture() -> String:
+func take_picture(asking: bool = false) -> String:
 	if world.brick_count() - scenery.size() <= 0:
 		say.call("nothing to take a picture of")
 		return ""
 	if not Picture.possible():
 		say.call("no picture: a run with no window draws nothing")
 		return ""
+	var to: String = await _where(_file("png"), asking)
+	if to.is_empty():
+		return ""
 	say.call("taking the picture…")
 	var image: Image = await picture.take()
 	if image == null:
 		say.call("nothing to take a picture of")
 		return ""
-	var line: String = Picture.keep(image, _file("png"), folder)
+	var line: String = Picture.keep(image, to.get_file(), to.get_base_dir())
 	say.call(line)
 	return line
 
 
-func shop_list(shop: String, skip: Dictionary = {}) -> String:
+func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false) -> String:
 	# [param skip]: the bricks to leave off besides the baseplate, for the
 	# list of one part of what is built (a brickified model, from its panel).
 	var left: Dictionary = scenery
@@ -68,7 +72,10 @@ func shop_list(shop: String, skip: Dictionary = {}) -> String:
 		made = ShopLists.rebrickable_csv(stock)
 		file_name = _file("csv", "_rebrickable")
 		mime = "text/csv"
-	var line: String = _give(str(made["text"]), file_name, mime, folder)
+	var to: String = await _where(file_name, asking)
+	if to.is_empty():
+		return ""
+	var line: String = _give(str(made["text"]), to.get_file(), mime, to.get_base_dir())
 	if int(made["left_out"]) > 0:
 		line += " — %d of %d lots left off: %s" % [int(made["left_out"]), stock.lots.size(),
 			ShopLists.why_left_off(made, shop)]
@@ -78,9 +85,12 @@ func shop_list(shop: String, skip: Dictionary = {}) -> String:
 
 ## The model as a BrickLink Studio file (.io): its LDraw, with the build
 ## order, and a picture of it, in a zip. See [StudioIo].
-func studio_io() -> String:
+func studio_io(asking: bool = false) -> String:
 	if store == null or world.brick_count() - scenery.size() <= 0:
 		say.call("nothing to export")
+		return ""
+	var to: String = await _where(_file("io"), asking)
+	if to.is_empty():
 		return ""
 	say.call("writing the Studio file…")
 	var text: String = await store.text_for_file(str(named.call()), "Writing the Studio file…")
@@ -95,7 +105,8 @@ func studio_io() -> String:
 		thumbnail = image.save_png_to_buffer()
 	var bytes: PackedByteArray = StudioIo.pack(text, thumbnail, ModelStore.count_in(text),
 		studio_parts(world, library))
-	var line: String = _give_bytes(bytes, _file("io"), "application/octet-stream", folder)
+	var line: String = _give_bytes(bytes, to.get_file(), "application/octet-stream",
+		to.get_base_dir())
 	say.call(line)
 	return line
 
@@ -122,15 +133,19 @@ static func studio_parts(model: BrickWorld, parts: PartLibrary) -> Dictionary:
 ## All my models, and the warning shown where a browser may clear them
 ## (StorageOffer). On the web a person's models are in the browser and
 ## nowhere else, and this is a copy of their own that outlives it.
-func all_models() -> String:
+func all_models(asking: bool = false) -> String:
 	var members: Array = []
 	for entry: ModelStore.Entry in store.list_saved():
 		members.append([entry.path.get_file(), FileAccess.get_file_as_bytes(entry.path)])
 	if members.is_empty():
 		say.call("no saved models to download yet")
 		return ""
-	var line: String = _give_bytes(StudioIo.zip(members),
-		"brickworks_models_%s.zip" % Time.get_date_string_from_system(), "application/zip", folder)
+	var to: String = await _where("brickworks_models_%s.zip" % Time.get_date_string_from_system(),
+		asking)
+	if to.is_empty():
+		return ""
+	var line: String = _give_bytes(StudioIo.zip(members), to.get_file(), "application/zip",
+		to.get_base_dir())
 	line += " — %d model%s" % [members.size(), "" if members.size() == 1 else "s"]
 	say.call(line)
 	return line
@@ -168,7 +183,7 @@ func ask_model_3d() -> void:
 		_model_3d.add_child(asking)
 		_model_3d.confirmed.connect(func() -> void:
 			_format = MeshExport.FORMATS[_format_choice.selected]
-			model_3d(_format))
+			model_3d(_format, true))
 		add_child(_model_3d)
 	_format_choice.select(maxi(MeshExport.FORMATS.find(_format), 0))
 	_describe_format()
@@ -218,10 +233,10 @@ func _mesh_export() -> MeshExport:
 
 
 ## The model as a 3D file (MeshExport): glb, gltf, obj or stl. Downloaded in a
-## browser, where an OBJ and its MTL come as one zip; written to Downloads
-## on the desktop. What was written, or why not: the dialog, and a session
-## over MCP (AppTools).
-func model_3d(format: String) -> String:
+## browser, where an OBJ and its MTL come as one zip; on the desktop written
+## where the person chose, an OBJ's MTL beside it, or to Downloads. What was
+## written, or why not: the dialog, and a session over MCP (AppTools).
+func model_3d(format: String, asking: bool = false) -> String:
 	if _writing:
 		say.call("already writing a 3D model")
 		return "already writing a 3D model"
@@ -230,11 +245,15 @@ func model_3d(format: String) -> String:
 	if not refused.is_empty():
 		say.call(refused)
 		return refused
+	var title: String = str(named.call())
+	var to: String = await _where(MeshExport._file_base(title) + "." + format, asking)
+	if to.is_empty():
+		return ""
 	_writing = true
 	var job: Working.Job = Working.begin("Writing the model as %s…" % format.to_upper(), 0, true)
 	maker.job = job
 	await job.shown()
-	var made: MeshExport.Made = await maker.write(format, str(named.call()))
+	var made: MeshExport.Made = await maker.write(format, title, to.get_file().get_basename())
 	var line: String
 	if made.cancelled:
 		line = "stopped writing the 3D model"
@@ -252,7 +271,7 @@ func model_3d(format: String) -> String:
 		await job.shown()
 		var said: PackedStringArray = []
 		for file: Array in files:
-			said.append(_give_bytes(file[1], file[0], file[2], folder))
+			said.append(_give_bytes(file[1], file[0], file[2], to.get_base_dir()))
 		line = " and ".join(said)
 		line += " — %s parts" % Working.comma(made.parts)
 		if made.shapes > 0:
@@ -279,7 +298,20 @@ func _file(extension: String, suffix: String = "") -> String:
 	return "%s%s.%s" % [base, suffix, extension]
 
 
-## Downloaded in a browser, written to Downloads on the desktop.
+## Where [param file_name] goes: on the desktop the path the person chose
+## when [param asking] ("" when they cancelled), else [member folder] or
+## Downloads; in a browser, its name alone.
+func _where(file_name: String, asking: bool) -> String:
+	if OS.has_feature("web"):
+		return file_name
+	if asking:
+		return await SaveTo.ask(file_name, folder)
+	return (folder if not folder.is_empty() else Download.downloads()).path_join(
+		file_name.replace("\\", "/").get_file())
+
+
+## Downloaded in a browser, written into [param into] (or Downloads) on the
+## desktop.
 static func _give(text: String, file_name: String, mime: String,
 		into: String = "") -> String:
 	return _give_bytes(text.to_utf8_buffer(), file_name, mime, into)
@@ -297,4 +329,5 @@ static func _give_bytes(bytes: PackedByteArray, file_name: String, mime: String,
 		return "could not write %s" % file_name
 	file.store_buffer(bytes)
 	file.close()
+	SaveTo.wrote(path)
 	return "wrote %s" % path

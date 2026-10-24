@@ -49,6 +49,9 @@ const DEFAULTS: Dictionary = {
 	# FLOOR in its meta line. The dark green 32 x 32 every model had
 	# before there was a choice.
 	"new_floor": "BASEPLATE 32 32 288",
+	# The folder the last export or Save as went to on the desktop, where
+	# the next one's dialog opens (SaveTo): "" for Documents.
+	"save_folder": "",
 }
 
 static var _values: Dictionary = {}

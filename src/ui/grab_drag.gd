@@ -364,6 +364,8 @@ func motion(screen: Vector2) -> void:
 		line += " — stopped: %s holds it" % grab.stretch_words
 	elif grab.stopped:
 		line += " — stopped: it meets the model"
+	if grab.mode == "turn" and not grab.mesh_words.is_empty():
+		line += " — " + grab.mesh_words
 	if report != null and not report.empty:
 		line += " · " + _standing_words(report, true)
 	_tell(line)
@@ -560,6 +562,8 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 				if not _met_words(held).is_empty() else "it meets the model")
 		if not swung.is_empty():
 			words += "; " + swung
+		if held.mode == "turn" and not held.mesh_words.is_empty():
+			words += "; " + held.mesh_words
 		if not own.is_empty():
 			words += "; " + own
 		if _judge != null:
