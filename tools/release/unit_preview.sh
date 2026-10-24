@@ -4,7 +4,9 @@
 # unpromoted (never production, never main), then runs the browser checks
 # for what the unit changed (flows_for.py since the commit it was made
 # from), or the checks named, and site always. One pass or FAIL line a
-# check; exits 0 only when every one passed.
+# check; exits 0 only when every one passed. The preview goes without the
+# secrets unreviewed code is not to hold (tools/deploy.sh --unit):
+# orangecheck's signing secret, kept for code assembled for release.
 #
 # Four release previews held on 2026-10-22, each about an hour, and every
 # time the fault was a check a unit had not run: units are not to deploy,
@@ -64,7 +66,7 @@ URL=""
 [ -n "${UNIT_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
 if [ -z "$URL" ]; then
   import_here || { echo "unit_preview: the import did not finish (tools/fresh_import.sh)"; exit 1; }
-  deploy_preview "$TAG" "$SHA" || exit 1
+  deploy_preview "$TAG" "$SHA" --unit || exit 1
 fi
 echo "UNIT: checks on $URL: $*"
 run_checks "$URL" "${TAG}_pv" "$@" || exit 1

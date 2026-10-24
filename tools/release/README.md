@@ -129,6 +129,14 @@ What each one guards against, all learned the hard way on 2026-10-13:
   previews held on 2026-10-22, about an hour each, and every time on a
   check: digest, moderation, share_flow, builds, share_probe and challenges
   read markup a unit had changed, and a smooth scroll was read mid-way.
+  Its deploy is `tools/deploy.sh --unit`: as a production deployment
+  (m112's queue) it would hold every production secret while it runs code
+  nobody has reviewed, so `OC_SIGNING_SECRET` (orangecheck asked,
+  2026-10-23) and `ANTHROPIC_API_KEY` (read by nothing) are set to nothing
+  for it alone (`vercel deploy --env NAME=`). A release's preview and
+  production keep both. The rest stay: every API needs
+  `SUPABASE_SECRET_KEY`, share_probe runs the sweep with `CRON_SECRET`,
+  and the preview's own email sign-in sends with `RESEND_API_KEY`.
 - `flows_for.py` also names a changed flow's own checks, and the checks of
   every flow that imports a changed module in `tools/web` (`session.mjs`
   is nearly all of them).

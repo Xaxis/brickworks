@@ -57,14 +57,16 @@ import_here() {
   tools/fresh_import.sh
 }
 
-# deploy_preview NAME SHA: this worktree on Vercel, unpromoted (tools/deploy.sh
-# without --prod: no domain points at it), in URL. Its log is
-# NAME_preview.log, and the commit it was made from NAME_preview.sha.
+# deploy_preview NAME SHA [OPTION...]: this worktree on Vercel, unpromoted
+# (tools/deploy.sh without --prod: no domain points at it), in URL, with the
+# deploy's options (a unit's: --unit). Its log is NAME_preview.log, and the
+# commit it was made from NAME_preview.sha.
 deploy_preview() {
-  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh > "$S/${1}_preview.log" 2>&1
-  URL=$(grep -oE "deploy done https://[^ ]+" "$S/${1}_preview.log" | cut -d' ' -f3)
-  [ -n "$URL" ] || { echo "$WHO: preview deploy failed"; tail -3 "$S/${1}_preview.log"; return 1; }
-  echo "$2" > "$S/${1}_preview.sha"
+  local name=$1 sha=$2; shift 2
+  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh "$@" > "$S/${name}_preview.log" 2>&1
+  URL=$(grep -oE "deploy done https://[^ ]+" "$S/${name}_preview.log" | cut -d' ' -f3)
+  [ -n "$URL" ] || { echo "$WHO: preview deploy failed"; tail -3 "$S/${name}_preview.log"; return 1; }
+  echo "$sha" > "$S/${name}_preview.sha"
   echo "$WHO: preview $URL"
 }
 
