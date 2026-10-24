@@ -60,10 +60,12 @@ def body(name: str, text: str) -> str:
 
 
 def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
+    # challenge_year.sql replaces three of these later, guarded as follows.sql's
+    # feed is (tests/test_challenge_year.py).
     others = {
         name
         for path in (ROOT / "supabase").glob("*.sql")
-        if path.name != "challenges.sql"
+        if path.name not in ("challenges.sql", "challenge_year.sql")
         for name in defined(path.read_text())
     }
     mine = defined(SQL)
@@ -148,7 +150,8 @@ def test_the_stand_in_answers_what_the_api_asks() -> None:
     asked = set(re.findall(r'"rpc/(challenge_[a-z_]+)"', API + ADMIN))
     held = set(re.findall(r'"(challenge_[a-z_]+)"', STAND_IN.split("];", 1)[0]))
     assert asked <= held, asked - held
-    assert asked <= set(defined(SQL)), asked - set(defined(SQL))
+    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text()))
+    assert asked <= both, asked - both
 
 
 def test_the_flow_asks_a_deployment_only_through_its_api() -> None:

@@ -2733,7 +2733,21 @@
       "kind": "ui",
       "label": "setting the monthly challenge",
       "entry": "web/admin.js",
-      "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N",
+      "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "challenges between months",
+      "entry": "supabase/challenge_year.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_year.sql --dry --try=tools/challenge_year_try.sql --table=challenges   (after challenges.sql; the promises in tests/test_challenge_year.py; then the challenges browser flow, --held against relay_server.mjs --hold=challenges until it is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "achievements on a profile",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers (achievementsOf; GET /api/people?op=profile says achievements); the profile browser flow",
       "area": "web"
     },
     {

@@ -7,12 +7,13 @@
 // designer page and the model's card say so.
 //
 //   node --env-file=.env tools/web/relay_server.mjs 9271 --hold=challenges &
-//   node --env-file=.env tools/web/challenges_flow.mjs --url=http://127.0.0.1:9271 --out=shots/challenges
+//   node --env-file=.env tools/web/challenges_flow.mjs --url=http://127.0.0.1:9271 --held --out=shots/challenges
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challenges_flow.mjs --url=<preview> --out=DIR
 //
 // Until supabase/challenges.sql is applied the local relay holds it in memory
 // (--hold=challenges, tools/web/challenges_stand_in.mjs) over the live
-// project's tables; on a deployment everything is asked of its API alone,
+// project's tables, and --held says so: the feed, which the database makes
+// from its own entries, is then not asked; on a deployment everything is asked of its API alone,
 // with the bypass headers: /api/share, /api/people and /api/admin, nothing
 // else. The challenge is a test one (/admin?tests=1), which only a page
 // asked with tests=1 shows, so no visitor ever sees it; throwaway accounts at
@@ -43,9 +44,19 @@
 //      for her own, nor Cy at all, and the page tells Cy why.
 //   6. The owner ends it on /admin: /challenge shows the winners, the house
 //      by hand with 2 votes and the shed with the assistant with 1, each
-//      entry's votes; Ada's designer page has the win as a pill under her
-//      numbers (the house and its 2 votes on hover), and the house's card
-//      there and in the gallery says it won.
+//      entry's votes; Ada's designer page has the win as the first of her
+//      achievements under her numbers (the house and its 2 votes on hover,
+//      docs/SOCIAL.md U13), and the house's card there and in the gallery
+//      says it won.
+//
+// Between months (supabase/challenge_year.sql, docs/SOCIAL.md U12): in 1 the
+// owner also sets a year of themes, three months from next month, and reads
+// them back, the first told at once and the others from a month before each
+// opens; in 4 the hub says the first as Coming next and never names the
+// others, whose pages are refused; in 6, once it ends, the hub lists it
+// under Past challenges with both winners' cards, its name a link to its own
+// page, which shows the winners and votes. Before that file is applied, the
+// year's form says it is not open yet, and 6 reads the hub as before.
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
@@ -65,6 +76,8 @@ const site = String(args.url || "http://127.0.0.1:9271").replace(/\/+$/, "").rep
 const out = path.resolve(String(args.out || "shots/challenges"));
 mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
+// Against a relay that holds the challenges in memory: the feed is the database's.
+const held = Boolean(args.held);
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const { modelHash } = await import(path.join(root, "api/_directory.js"));
 const rand = randomBytes(4).toString("hex");
@@ -217,7 +230,13 @@ try {
   // --- 1. The owner sets it ------------------------------------------------
   console.log("the owner sets the challenge on /admin");
   const today = new Date().toISOString().slice(0, 10);
-  const last = new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10);
+  // A week, inside this month, so a year of themes from next month is free
+  // and its first is told at once (a month before it opens).
+  const monthEnd = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+  const week = new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10);
+  const last = week < monthEnd ? week : monthEnd;
+  const THEMES = [`Year ${rand} one`, `Year ${rand} two`, `Year ${rand} three`];
+  let year = false;
   for (const [width, height, phone] of [[390, 844, true], [1280, 900, false]]) {
     const adminContext = await context({ as: master, width, height, phone, dark: true });
     const admin = await adminContext.newPage();
@@ -254,6 +273,40 @@ try {
         && /at most 30 parts; set 6075-2, Castle; Tested/.test(row.text) && /with set 6075-2 \(Castle, \d+ lots\)/.test(row.note));
       await admin.evaluate(() => document.getElementById("challenges").scrollIntoView());
       await shot(admin, "1_admin_set-1280.png", false);
+
+      // A year of themes, from the month after this one: three months of it.
+      year = await admin.evaluate(() => document.getElementById("year-not-yet")?.hidden === true);
+      if (!year) {
+        const form = await admin.evaluate(() => ({ said: !document.getElementById("year-not-yet")?.hidden,
+          disabled: document.querySelector('#year-form button[type="submit"]')?.disabled }));
+        check(`before challenge_year.sql: the year's form says it is not open yet (${JSON.stringify(form)})`, form.said && form.disabled);
+      } else {
+        const next = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1));
+        const months = [0, 1, 2].map((n) => new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + n, 1)).toISOString().slice(0, 7));
+        const first = await admin.evaluate(() => document.querySelector("#year-months fieldset")?.dataset.month);
+        check(`the year's form starts at the month after this challenge: ${first}`, first === months[0]);
+        for (const [at, title] of THEMES.entries()) {
+          await admin.fill(`#year-months input[name="theme_${at}_title"]`, title);
+          await admin.fill(`#year-months textarea[name="theme_${at}_brief"]`, `The brief of ${title}.`);
+        }
+        await admin.click('#year-form button[type="submit"]');
+        await until(admin, (titles) => titles.every((one) => [...document.querySelectorAll("#challenges tr[data-state]")]
+          .some((tr) => tr.textContent.includes(one))) || document.querySelector("#year-note.bad"), "the year listed", 30, THEMES);
+        const back = await admin.evaluate((titles) => ({ note: document.getElementById("year-note").textContent,
+          rows: titles.map((one) => [...document.querySelectorAll("#challenges tr[data-state]")].find((tr) => tr.textContent.includes(one)))
+            .map((tr) => tr ? { id: Number(tr.dataset.challenge), state: tr.dataset.state, text: tr.textContent.replace(/\s+/g, " ") } : null) }), THEMES);
+        ids.year = back.rows.map((one) => one?.id);
+        check(`the year set: "${back.note}"; read back: ${back.rows.map((one) => one && one.text.slice(0, 80)).join(" | ")}`,
+          /^Set: 3 themes, from 1 /.test(back.note) && back.rows.every((one) => one && one.state === "upcoming")
+          && !/told from/.test(back.rows[0].text) && back.rows.slice(1).every((one) => /to come, told from /.test(one.text)));
+        const listed = await api("/api/admin?tests=1", { token: master.access_token });
+        const rows = THEMES.map((one) => (listed.body.challenges || []).find((c) => c.title === one));
+        check(`...and the admin's answer: each its month and when it is told (${rows.map((one) => one && `${one.starts_on}…${one.ends_on}`).join(", ")})`,
+          rows.every((one, at) => one && one.starts_on === `${months[at]}-01` && one.announced_at && one.state === "upcoming")
+          && Date.parse(rows[0].announced_at) <= Date.now() && Date.parse(rows[1].announced_at) > Date.now());
+        await admin.evaluate(() => document.getElementById("year-form").scrollIntoView());
+        await shot(admin, "1b_admin_year-1280.png", false);
+      }
     } else {
       const days = await admin.evaluate(() => ({ boxes: document.querySelectorAll('#challenge-form input[type="date"]').length,
         dropdowns: [...document.querySelectorAll("#challenge-form fieldset.date select")].map((one) => one.name) }));
@@ -364,6 +417,8 @@ try {
   check(`the house's entry asked by Bob: ${JSON.stringify(notYours.body)}`, notYours.status === 200 && JSON.stringify(notYours.body) === '{"mine":false}');
 
   // --- Ed's feed: somebody he follows entered ------------------------------
+  if (held) console.log("  --    the feed is made from the database's own entries, which this relay holds in memory: not asked");
+  else {
   console.log("Ed's feed says Ada entered the house");
   const entered = `Ada Challenges entered “Challenge House ${rand}” in the challenge “${TITLE}”, built by hand`;
   for (const [width, height, phone, dark] of [[390, 844, true, false], [1280, 900, false, true]]) {
@@ -385,6 +440,7 @@ try {
   const told = (fed.body.rows || []).filter((one) => one.kind === "challenge");
   check(`...the API: ${told.length} entry, by ${told[0]?.by?.handle}, not Bob's shed (he is not followed)`,
     told.length === 1 && told[0].by?.handle === ADA && told[0].link.endsWith(`/m/${ids.house}`));
+  }
 
   // --- 4. /challenge signed out ----------------------------------------------
   console.log("/challenge, signed out");
@@ -404,6 +460,13 @@ try {
       && hand.entries.length === 1 && hand.entries[0].id === ids.house && hand.entries[0].card && helped.entries.length === 1
       && helped.entries[0].id === ids.shed && hand.entries[0].button === "Vote for it" && /Votes are counted when it ends/.test(hand.note));
     check(`...nothing sideways at ${width} px`, !(await sideways(page)));
+    if (year) {
+      const next = await page.evaluate(() => ({ shown: !document.getElementById("next").hidden,
+        title: document.getElementById("next-title").textContent, days: document.getElementById("next-days").textContent,
+        text: document.body.textContent }));
+      check(`...Coming next: "${next.title}", "${next.days}"; the year's others named nowhere`, next.shown && next.title === THEMES[0]
+        && /^Opens on 1 .*, until \d+ /.test(next.days) && !next.text.includes(THEMES[1]) && !next.text.includes(THEMES[2]));
+    }
     await pictures(page);
     await shot(page, `5_challenge_visitor-${width}.png`);
     if (width === 390) {
@@ -425,6 +488,14 @@ try {
     + `and has no test challenge (${cached.body.challenge?.test ?? "none"})`,
   /public/.test(kept) && /max-age=0/.test(kept) && (local ? /s-maxage=30/.test(kept) : /HIT|STALE/.test(cdn))
     && cached.body.challenge?.title !== TITLE);
+  if (year) {
+    const told = await api(`/api/people?op=challenge&id=${ids.year[0]}&tests=1`);
+    const untold = await api(`/api/people?op=challenge&id=${ids.year[1]}&tests=1`);
+    const visitorAsks = await api(`/api/people?op=challenge&id=${ids.year[0]}`);
+    check(`the first theme's own page ${told.status} (${told.body.challenge?.state}), the second's ${untold.status} (not told yet), `
+      + `the first asked without tests=1 ${visitorAsks.status}`, told.status === 200 && told.body.challenge?.state === "upcoming"
+      && told.body.challenge?.title === THEMES[0] && untold.status === 404 && visitorAsks.status === 404);
+  }
   {
     const visitor = await context({ width: 1280, height: 900 });
     const page = await visitor.newPage();
@@ -528,6 +599,32 @@ try {
     listen(page, `winners at ${width} px`);
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.challenge, "the challenge drawn");
+    if (year) {
+      // The hub shows the first theme now, and this one under Past
+      // challenges with its winners; its name opens its own page.
+      const hub = await page.evaluate((id) => {
+        const item = document.querySelector(`#past article[data-past="${id}"]`);
+        return { state: document.documentElement.dataset.challenge, title: document.getElementById("title").textContent,
+          href: item?.querySelector("h3 a")?.getAttribute("href") || "", days: item?.querySelector(".note")?.textContent || "",
+          winners: [...(item?.querySelectorAll(".kept") || [])].map((k) => ({ id: k.dataset.entry,
+            line: k.querySelector(".challenge-said")?.textContent || "", by: k.querySelector("a.who")?.getAttribute("href") || "" })),
+          first: document.querySelector("#past article")?.dataset.past };
+      }, ids.challenge);
+      check(`at ${width} px the hub shows "${hub.title}" (${hub.state}); under Past challenges, first, ${hub.days}: ${JSON.stringify(hub.winners)}`,
+        hub.title === THEMES[0] && hub.state === "upcoming" && hub.first === String(ids.challenge)
+        && hub.href === `/challenge?id=${ids.challenge}&tests=1` && /2 entries/.test(hub.days)
+        && hub.winners.length === 2 && hub.winners[0].id === ids.house && hub.winners[0].line === "Winner, built by hand · 2 votes"
+        && hub.winners[0].by === `/u/${ADA}` && hub.winners[1].id === ids.shed && hub.winners[1].line === "Winner, built with the assistant · 1 vote");
+      await pictures(page);
+      await page.evaluate(() => document.getElementById("past").scrollIntoView());
+      await shot(page, `9a_challenge_past-${width}.png`, false);
+      await page.click(`#past article[data-past="${ids.challenge}"] h3 a`);
+      await page.waitForLoadState("load");
+      await until(page, () => document.documentElement.dataset.challenge === "ended", "its own page");
+      const crumbs = await page.evaluate(() => document.getElementById("crumbs")?.hidden === false
+        && document.querySelector("#crumbs a")?.getAttribute("href") === "/challenge");
+      check(`...its own page, ${page.url().replace(site, "")}, under the crumbs to the hub`, crumbs && page.url().endsWith(`/challenge?id=${ids.challenge}&tests=1`));
+    }
     const d = await drawn(page);
     check(`at ${width} px: ${d.state}, "${d.days}"; winners ${JSON.stringify(d.winners)}`, d.state === "ended" && /it has ended/.test(d.days)
       && d.winnersShown && d.winners.length === 2 && d.winners[0].id === ids.house && d.winners[0].line === "Winner, built by hand · 2 votes"
@@ -544,17 +641,19 @@ try {
     const page = await visitor.newPage();
     listen(page, "Ada's page");
     await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
-    // Her wins are pills under her numbers (api/people.js, docs/SOCIAL.md
-    // U5): what it won, the model and its votes on hover, a link to it.
-    const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll(".wins li a")].map((a) => ({
+    // Her win is the first of her achievements under her numbers
+    // (api/people.js achievementsOf, docs/SOCIAL.md U13): what it won, the
+    // model and its votes on hover, a link to it; then the rest she earned.
+    const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll('.awards li[data-award="won"] a')].map((a) => ({
       said: a.textContent.replace(/\s+/g, " ").trim(), title: a.title, href: a.getAttribute("href") })),
+      awards: [...document.querySelectorAll(".awards li")].map((li) => li.dataset.award).join(","),
       card: [...document.querySelectorAll(`.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
     check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].said === `Won “${TITLE}”, by hand`
       && won.wins[0].title === `Challenge House ${rand}: 2 votes` && won.wins[0].href === `/m/${ids.house}`
-      && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
+      && won.awards === "won,tested,listed" && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
     check("...nothing sideways at 390 px", !(await sideways(page)));
     await pictures(page);
-    await page.evaluate(() => document.querySelector(".wins")?.scrollIntoView());
+    await page.evaluate(() => document.querySelector(".awards")?.scrollIntoView());
     await shot(page, "10_designer_won-390.png");
     await visitor.close();
   }
@@ -573,8 +672,8 @@ try {
   failed += 1;
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
 } finally {
-  if (master && ids.challenge) {
-    await api(`/api/admin?op=end_challenge&challenge=${ids.challenge}&tests=1`, { method: "POST", token: master.access_token }).catch(() => {});
+  for (const id of master ? [ids.challenge, ...(ids.year || [])].filter(Boolean) : []) {
+    await api(`/api/admin?op=end_challenge&challenge=${id}&tests=1`, { method: "POST", token: master.access_token }).catch(() => {});
   }
   for (const [id, owner] of made.reverse()) {
     if (id && who[owner]) await api(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: who[owner].access_token }).catch(() => {});

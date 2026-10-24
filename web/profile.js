@@ -173,7 +173,8 @@ function drawHead() {
 /// the start. Test models are asked for too: they are only ever your own.
 async function readShown() {
   const handle = handleOf();
-  if (!handle) {
+  // Under 13 your page is shown to nobody, so there is none to ask for.
+  if (!handle || young) {
     shown = null;
     return;
   }

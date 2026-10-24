@@ -54,6 +54,8 @@ import { noticeGroups } from "../../api/_notifications.js";
 import { LATEST, designersFrom } from "../../api/_follows.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
+// What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
+import { achievementsOf } from "../../api/people.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
 // API gives it; and the pictures themselves, made here.
 import { facesOn, pictureAt } from "../../api/_faces.js";
@@ -1268,6 +1270,8 @@ function profile(handle, page = 1, tests = false) {
         page: `${ORIGIN}/m/${one.model}#photo-${one.id}` })) } : null,
     collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...cards,
     liked_count: CHOICES.some((one) => one.account === person.account && one.shows_likes) ? likedOf(person.account, tests).length : null,
+    achievements: achievementsOf({ about, earned: earned.models ? earned : null, built,
+      wins: RPC.challenge_wins({ owner: person.account }) }),
     models: cards.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
 }
 
