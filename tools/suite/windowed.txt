@@ -40,3 +40,4 @@ booklet_stream
 stress_list
 viewer_steps   # Build it at step 1, the viewer timeline framing its steps, the play pill only for what moves (viewer218)
 bin_techniques   # the parts bin's Techniques: a construction held whole, turned, put down on a wall, one undo (bin238)
+bin_fold   # 3008, 3001, 3039, 3069b: prints and stickers folded under the part's tile, opened by its count, listed when typed; the window with its glass beside it (search242)

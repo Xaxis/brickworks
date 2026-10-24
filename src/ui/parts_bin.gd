@@ -991,6 +991,8 @@ func controls_by_name() -> Dictionary:
 	for child: Node in _category_row.get_children():
 		if str(child.get_meta("category", "")) == TECHNIQUES:
 			named["techniques"] = child
+		elif str(child.get_meta("category", "")) == "All":
+			named["all parts"] = child
 	for child: Node in _grid.get_children():
 		if child.has_meta("technique"):
 			named["technique " + str(child.get_meta("technique"))] = child
@@ -1708,7 +1710,7 @@ func _update_status() -> void:
 			_comma(_shown), _comma(total)]
 	# What the tiles hold folded: said where nothing else is, on one line.
 	if _folded > 0 and _set_aside == 0:
-		_status.text += "\n%s prints, stickers and assemblies under their parts' +" % _comma(_folded)
+		_status.text += "\n%s more folded under their parts: press +" % _comma(_folded)
 
 	# Where the rest went. Only on the default view, since that is the
 	# only place anything is held back.
@@ -1810,18 +1812,19 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 
 
 ## The count in a tile's corner of the prints, stickers and assemblies folded
-## under it, which opens them after it and folds them again. A button of its
-## own, so Tab reaches it from the search and Enter or Space presses it, as a
-## finger does on a phone, where it is a fingertip square.
+## under it, which opens them after it and folds them again: a fingertip
+## square on a phone. Not a stop for the keys, as no tile is (a field gives
+## them back at Tab, FocusGuard); typed, "3008 print" and "3008 sticker" list
+## them, unfolded, and its tooltip says so.
 func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 	var count: int = (_folds[info.id] as Array).size()
 	var opened: bool = _open.has(info.id)
 	var badge := Button.new()
 	badge.text = "%s%d" % ["−" if opened else "+", count]
-	badge.tooltip_text = "%s %s print%s, sticker%s and assembl%s of %s" % [
+	badge.tooltip_text = "%s %s print%s, sticker%s and assembl%s of %s; typed, \"%s print\" lists them" % [
 		"Fold away" if opened else "Show", _comma(count), "" if count == 1 else "s",
-		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id]
-	badge.focus_mode = Control.FOCUS_ALL
+		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id, info.id]
+	badge.focus_mode = Control.FOCUS_NONE
 	badge.add_theme_font_size_override("font_size", ceili(_z(10)))
 	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	badge.offset_left = _z(2.0)

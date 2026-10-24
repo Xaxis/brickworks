@@ -713,9 +713,10 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 				literal[at] = mini(literal[at], literal[plain_at])
 				score[at] = minf(score[at], score[plain_at])
 	# One key a part, the larger the better, in fields that decide the order
-	# one after another: its number typed, then a part asked for by its
-	# number ("2x2 bracket inverted 99207" is 99207, a 1 x 2 - 2 x 2 bracket
-	# LDraw calls Up), then how many of the words it has, then plain before
+	# one after another: a part asked for by its number ("2x2 bracket
+	# inverted 99207" is 99207, a 1 x 2 - 2 x 2 bracket LDraw calls Up), then
+	# how many of the words it has, then the number typed itself (3001 before
+	# 3001b, and "3623 print" its prints), then plain before
 	# prints, stickers and other systems' parts, then how well it has them:
 	# all in the builder's own words in its own name (a wedge brick for
 	# "wedge" before a wing that says it only in its keywords), then by its
@@ -761,10 +762,13 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 				if lead.begins_with(start):
 					named_for = 1
 					break
-		var key: int = (flags[at] >> 1) & 1
-		key = key * 2 + (flags[at] & 1)
+		var key: int = flags[at] & 1
 		key = key * 16 + mini(15, has)
-		key = key * 2 + (1 if decor_asked else _plain[at])
+		key = key * 2 + ((flags[at] >> 1) & 1)
+		# A print or a sticker asked for is a part with it on: a sticker
+		# itself, off its sheet, after them.
+		key = key * 2 + ((0 if _infos[at].category == "Sticker" else 1) if decor_asked
+			else _plain[at])
 		key = key * 4 + tier
 		key = key * 2 + named_for
 		key = key * 4096 + _usage[at]

@@ -79,7 +79,9 @@ const SAME_FIRST: Array = [
 	["brick round corner 4 x 4", "48092"], ["brick 1 x 4 studs on side", "30414"],
 	["turntable 2 x 2 plate", "3679"], ["plate 1x1 tooth", "49668"],
 	["tile 1x2 grille", "2412b"], ["47456", "47456"], ["87087", "87087"],
-	["tile round 2x2 eye print", "4150p0a"],
+	# Or the same eye on the round tile sets use now, 14769, in 100 sets where
+	# the old mould's print is in none known (search242 ranks by use).
+	["tile round 2x2 eye print", "4150p0a", "14769p01"],
 ]
 
 const WITHIN := 5
@@ -126,10 +128,14 @@ func _run() -> void:
 	for row: Array in SAME_FIRST:
 		var ids: PackedStringArray = _listed(assistant._search(row[0], WITHIN))
 		var first: String = ids[0] if not ids.is_empty() else "nothing"
-		if first != row[1] and (PartsOnly.active() or not ids.has(row[1])):
+		var meant: String = row[1]
+		for one: Variant in row.slice(2):
+			if ids.has(str(one)) and not ids.has(meant):
+				meant = str(one)
+		if first != meant and (PartsOnly.active() or not ids.has(meant)):
 			_fail("%s -> %s, where it found %s first" % [row[0], ", ".join(ids), row[1]])
 		else:
-			print("  ok    %-36s %s at %d" % [row[0], row[1], ids.find(row[1]) + 1])
+			print("  ok    %-36s %s at %d" % [row[0], meant, ids.find(meant) + 1])
 
 	# As fast as it was: one design makes dozens of searches.
 	var started: int = Time.get_ticks_usec()

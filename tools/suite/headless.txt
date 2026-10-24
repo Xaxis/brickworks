@@ -172,3 +172,4 @@ default_view   # View > Default view frames what is built, an empty baseplate to
 open_list_time   # File › Open says when each model was saved by the local clock (walk180 D4)
 made_with   # who laid a model's parts, said as it is published (social230)
 photo_search_stub   # the bin's camera: said before the first photo, nothing sent without one, every failure in words, Brickognize stubbed (bin238)
+search_rank   # 63 held-out queries, the part an expert expects in the bin's first three tiles and search_parts'; a first keystroke under 50 ms (search242)

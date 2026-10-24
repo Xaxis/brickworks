@@ -59,8 +59,9 @@ const PRINTS: Array = [
 ]
 
 ## Plain parts asked for plainly, which must not move: the part each led
-## with before prints could be found (at 960498a), and the first two rows
-## the same as an index of names alone gives.
+## with before prints could be found (at 960498a), or one real sets use more
+## (search242: "technic pin" leads with 2780, the friction pin in 2,900 sets
+## and 72,000 pieces, where the order names gave led with 3673).
 const PLAIN: Array = [
 	["1x2 plate", "3023b"], ["plate 1 x 2", "3023b"], ["brick 2x4", "3001"],
 	["2x4 brick", "3001"], ["tile 2 x 2", "3068b"], ["tile 1 x 2", "3069b"],
@@ -123,11 +124,11 @@ func _run() -> void:
 		print("  ok    %-22s %s at %d, %s" % [asked, hit, searched.find(hit) + 1,
 			library.parts[hit].name.strip_edges().substr(0, 50)])
 
-	# The bin keeps to the parts with every word, in the order names alone
-	# give. search_parts ranks every part by the words it has (PartSearch)
-	# and lists the plain parts before their prints and stickers, so past its
-	# first answer it is not that order: it is held to the same first answer,
-	# and to no print or sticker ahead of a plain part.
+	# The bin keeps to the parts with every word, ranked as search_parts
+	# ranks them (PartSearch), so the two lead alike. The order names alone
+	# gave is no longer the bin's: it was what put 80400a, a door frame in 24
+	# sets, before 60596, in 850 (walk239 A13). Held to the part it led
+	# with, or one sets use more, and to no print ahead of a plain part.
 	print("")
 	print("  plain parts asked for plainly do not move")
 	for row: Array in PLAIN:
@@ -135,17 +136,19 @@ func _run() -> void:
 		var found: Array[PartLibrary.PartInfo] = library.search(asked, 8)
 		var searched: Array = _ids(found)
 		var binned: Array = _ids(bin._find(asked, "All").slice(0, 8))
-		var by_name: Array = _ids(_by_name_alone(library, asked).slice(0, 8))
 		var led: String = searched[0] if not searched.is_empty() else "nothing"
+		var was: PartLibrary.PartInfo = library.parts.get(row[1])
+		var held: bool = led == row[1] or (not found.is_empty() and was != null
+			and not _decorated(found[0]) and found[0].commonness() >= was.commonness())
 		var crowded: bool = false
 		var after_a_print: bool = false
 		for info: PartLibrary.PartInfo in found:
 			after_a_print = after_a_print or _decorated(info)
 			crowded = crowded or (after_a_print and not _decorated(info)
 				and _as_good(info, asked, found[0]))
-		if led != row[1] or binned != by_name or crowded:
-			_fail("%s -> %s (the bin %s), wanted %s first, the bin what names alone give, %s%s"
-				% [asked, str(searched), str(binned), row[1], str(by_name),
+		if not held or binned.is_empty() or binned[0] != led or crowded:
+			_fail("%s -> %s (the bin %s), wanted %s first or one sets use more, the bin the same first%s"
+				% [asked, str(searched), str(binned), row[1],
 				", and no print before a plain part" if crowded else ""])
 			continue
 		print("  ok    %-22s %s" % [asked, ", ".join(PackedStringArray(searched.slice(0, 5)))])
@@ -211,25 +214,6 @@ func _run() -> void:
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
-
-
-## What a query found when only a part's number, name and category were
-## read (the index before 2026-10-13), ranked as the search ranks.
-static func _by_name_alone(library: PartLibrary, query: String) -> Array[PartLibrary.PartInfo]:
-	var asked: String = PartLibrary.in_ldraw_words(query)
-	var needles: PackedStringArray = asked.split(" ", false)
-	var found: Array[PartLibrary.PartInfo] = []
-	for id: String in library.ids():
-		var info: PartLibrary.PartInfo = library.parts[id]
-		# As the bin: not a part LDraw keeps only for old files that one made
-		# now stands for (PartLibrary.superseded), 30069 beside 4070.
-		if info.is_redirect() or not info.reachable or library.superseded(id):
-			continue
-		var text: String = ("%s %s %s" % [info.id, info.name, info.category]).to_lower()
-		if Array(needles).all(func(needle: String) -> bool: return text.contains(needle)):
-			found.append(info)
-	PartsBin._sort_for(found, asked)
-	return found
 
 
 ## Whether a plain part answers [param asked] as well as the first answer
