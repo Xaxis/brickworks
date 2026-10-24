@@ -256,11 +256,22 @@ func tick() -> void:
 	# turned a few seconds of network into a permanent deletion, so until
 	# 2026-10-20 a model short of a part was not written at all: one part
 	# that never came, and nothing done after was kept.
-	# A small model in one go, as before; a big one over frames.
-	if world.brick_count() - scenery.size() < PACED_FROM:
+	# A small model in one go, as before; a big one over frames, and any
+	# model while others build in it (Together sets [member paced_always]):
+	# their changes keep coming, and each written in one frame held both
+	# sides' windows for that frame after every change.
+	if world.brick_count() - scenery.size() < PACED_FROM and not paced_always:
+		var began: int = Time.get_ticks_usec()
 		_autosave_is_model = _write(autosave(), title)
+		last_write_ms = (Time.get_ticks_usec() - began) / 1000.0
 		return
 	_autosave_paced()
+
+
+## Write the autosave over frames whatever the model's size (Together, while
+## a session is live). And how long the last autosave held its frame, in ms.
+var paced_always: bool = false
+var last_write_ms: float = 0.0
 
 
 ## The working model's text made a slice at a time, then written in a frame

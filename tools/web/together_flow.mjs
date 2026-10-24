@@ -233,6 +233,28 @@ function dumpTexts(what, mine, theirs) {
 async function measure(label, rounds) {
   const { owner, guest } = people;
   const times = { "owner to guest": [], "guest to owner": [] };
+  // Where each change's time went (Together.timing, both pages' clocks), and
+  // the longest the page's thread was held between two frames in the second
+  // after it: a frame that draws the whole model, in software, is that long.
+  const stages = { pickup: [], number: [], reach: [], apply: [], shown: [], held_sender: [], held_receiver: [] };
+  for (const who of [owner, guest]) {
+    await who.page.evaluate(() => {
+      if (window.__frameTimes) return;
+      window.__frameTimes = [];
+      const tick = (t) => {
+        window.__frameTimes.push(t);
+        if (window.__frameTimes.length > 600) window.__frameTimes.splice(0, 300);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+  const heldSince = (page, since) => page.evaluate((from) => {
+    const t = window.__frameTimes.filter((x) => x >= from);
+    let most = 0;
+    for (let n = 1; n < t.length; n++) most = Math.max(most, t[n] - t[n - 1]);
+    return Math.round(most);
+  }, since);
   const [swatch] = await ask(owner.page, [{ op: "place", part: "3005", colour: 4, x: -2400, y: 48, z: 2400 + 80 * rounds }]);
   await settled([owner.page, guest.page]);
   for (let n = 0; n < rounds; n++) {
@@ -240,6 +262,8 @@ async function measure(label, rounds) {
     const before = (await together(to.page)).seq;
     await from.page.evaluate(() => { window.brickworksTogetherDone = undefined; });
     const t0 = Date.now();
+    const [fromSince, toSince] = await Promise.all([from.page.evaluate(() => performance.now()),
+      to.page.evaluate(() => performance.now())]);
     await from.page.evaluate((a) => { window.brickworksTogetherAsk = a; },
       [{ op: "paint", uid: swatch.uid, colour: n % 2 ? 4 : 1 }]);
     let got = null;
@@ -250,6 +274,37 @@ async function measure(label, rounds) {
     if (got) times[way].push(got - t0);
     await until(() => from.page.evaluate(() => window.brickworksTogetherDone), "the edit's answer", 20).catch(() => null);
     await wait(300);
+    const sent = (await together(from.page)).timing?.sent || {};
+    const taken = (await together(to.page)).timing?.taken || {};
+    stages.pickup.push(sent.queued - t0);
+    stages.number.push(sent.answered - sent.sent);
+    stages.reach.push(taken.polled - sent.sent);
+    stages.apply.push(taken.applied - taken.polled);
+    stages.shown.push(got - taken.applied);
+    stages.held_sender.push(await heldSince(from.page, fromSince));
+    stages.held_receiver.push(await heldSince(to.page, toSince));
+  }
+  const mid = (list) => {
+    const sorted = list.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+    return sorted.length ? sorted[Math.floor(sorted.length / 2)] : NaN;
+  };
+  console.log(`        stages (median ms): ${Object.entries(stages).map(([k, v]) => `${k} ${mid(v)}`).join(", ")}`);
+  for (const [name, who] of [["owner", owner], ["guest", guest]]) {
+    const timing = (await together(who.page)).timing || {};
+    // And the same hold after nothing but the view turning (Shift+Q): the
+    // model drawn again, no change made and nothing sent. As long, and the
+    // time is the drawing's.
+    const turns = [];
+    const view = (await controls(who.page)).view;
+    if (view) await who.page.mouse.move(view.x, view.y + 60);
+    for (let n = 0; n < 3; n++) {
+      const since = await who.page.evaluate(() => performance.now());
+      await who.page.keyboard.press("Shift+KeyQ");
+      await wait(1500);
+      turns.push(await heldSince(who.page, since));
+    }
+    console.log(`        ${name}: worst ${JSON.stringify(timing.worst || {})}, last autosave ${timing.autosave_ms} ms;`
+      + ` held after a turn of the view alone ${turns.join(", ")} ms`);
   }
   const all = [...times["owner to guest"], ...times["guest to owner"]].sort((x, y) => x - y);
   const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];

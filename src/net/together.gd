@@ -152,8 +152,12 @@ func _process(delta: float) -> void:
 	if OS.has_feature("web"):
 		_tell_page()
 	if not live:
+		if store != null and store.paced_always:
+			store.paced_always = false
 		return
+	store.paced_always = true
 	_note_worst("frame_ms", delta * 1000.0)
+	timing["autosave_ms"] = snappedf(store.last_write_ms, 0.1)
 	# The model was replaced under the session: another opened, New, Clear.
 	if world.generation() != _generation:
 		_stop("You opened another model, so you left the session." if not owns
