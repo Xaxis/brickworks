@@ -1557,7 +1557,18 @@ func staples(most: int = 30) -> Array[PartInfo]:
 ## a part and never hides it. With [param every_word], only the parts that
 ## have every word.
 func search(query: String, limit: int = 100, every_word: bool = false) -> Array[PartInfo]:
-	return _finder().find(in_ldraw_words(query), limit, every_word)
+	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word)
+	# A number LDraw keeps only for old files, typed: the part made now in its
+	# shape, first (current), as the index leaves the old one out.
+	var typed: String = query.strip_edges().to_lower()
+	if superseded(typed):
+		var twin: PartInfo = parts.get(current(typed))
+		if twin != null:
+			found.erase(twin)
+			found.push_front(twin)
+			if found.size() > limit:
+				found.resize(limit)
+	return found
 
 
 ## The words of [param query] that no part has, by name, keyword or the
@@ -1696,27 +1707,42 @@ var _current_lock := Mutex.new()
 
 
 func _index_current() -> void:
+	# The stale parts first, by a look at their names, so that only a current
+	# part sharing one's mesh or box is read further: a second's work over
+	# every part's name was a tenth of that.
+	var stale: Array[PartInfo] = []
+	var meshes: Dictionary = {}
+	var boxes: Dictionary = {}
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		if is_stale(info):
+			stale.append(info)
+			meshes[info.mesh_hash] = true
+			for key: String in _sizes_near(info):
+				boxes[key] = true
 	var by_mesh: Dictionary = {}
 	var by_family: Dictionary = {}
 	for id: String in _ordered_ids:
 		var info: PartInfo = parts[id]
 		if info.is_redirect() or info.custom or not info.reachable or is_stale(info):
 			continue
-		if not by_mesh.has(info.mesh_hash):
-			by_mesh[info.mesh_hash] = []
-		(by_mesh[info.mesh_hash] as Array).append(info)
-		var family: String = family_of(info)
-		if not by_family.has(family):
-			by_family[family] = []
-		(by_family[family] as Array).append(info)
-	for id: String in _ordered_ids:
-		var info: PartInfo = parts[id]
-		if not is_stale(info):
-			continue
+		if meshes.has(info.mesh_hash):
+			if not by_mesh.has(info.mesh_hash):
+				by_mesh[info.mesh_hash] = []
+			(by_mesh[info.mesh_hash] as Array).append(info)
+		if boxes.has(_size_key(info.size)):
+			var family: String = family_of(info)
+			if not by_family.has(family):
+				by_family[family] = []
+			(by_family[family] as Array).append(info)
+	for info: PartInfo in stale:
+		var id: String = info.id
 		var twins: Array = by_mesh.get(info.mesh_hash, [])
-		if twins.is_empty():
+		# A print only by its drawing: another print of the mould in the same
+		# box is another picture (3626bp30's messy hair is not 3626bp7g's glasses).
+		if twins.is_empty() and info.decor() == 0:
 			for other: PartInfo in by_family.get(family_of(info), []):
-				if (other.decor() == 0) == (info.decor() == 0) \
+				if other.decor() == 0 \
 						and other.bounds.position.distance_to(info.bounds.position) <= 1.0 \
 						and other.bounds.end.distance_to(info.bounds.end) <= 1.0:
 					twins.append(other)
@@ -1747,6 +1773,23 @@ func _index_current() -> void:
 		_current_of[id] = best.id if best != null else id
 	# Marked as built even where nothing is stale.
 	_current_of[""] = ""
+
+
+## A size to four LDU, and the sizes a part within one LDU of [param info]'s
+## may be filed under.
+static func _size_key(size: Vector3) -> String:
+	return "%d %d %d" % [floori(size.x / 4.0), floori(size.y / 4.0), floori(size.z / 4.0)]
+
+
+static func _sizes_near(info: PartInfo) -> PackedStringArray:
+	var out := PackedStringArray()
+	for dx: float in [-2.0, 0.0, 2.0]:
+		for dy: float in [-2.0, 0.0, 2.0]:
+			for dz: float in [-2.0, 0.0, 2.0]:
+				var key: String = _size_key(info.size + Vector3(dx, dy, dz))
+				if not out.has(key):
+					out.append(key)
+	return out
 
 
 ## What a name says a part is with and without, a clause each: "without

@@ -172,7 +172,8 @@ the model, and the design assistant doing the same with `add_minifig`.
   mould than the classic one, unless no other part has the words ("spongebob"):
   whose a part is comes from Rebrickable's figure inventories
   (`assets/knowledge/minifig_sets.json`, `tools/minifig_sets.py`, read by
-  `SetKnowledge`, fetched beside the web build). Arms not given a colour are
+  `SetKnowledge`, fetched beside the web build; where no inventory says,
+  LDraw's licence initials in the name, "SW", "HP", `LICENCE_WORDS`). Arms not given a colour are
   in the one official figures pair most with the torso (plain torsos by
   colour, printed ones by `TORSO_HANDS`). Refused bare-headed-would-fit, it
   offers a lower headgear that stands there (`_lower_headwear`: the asked

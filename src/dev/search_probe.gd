@@ -177,7 +177,10 @@ static func _numbers(library: PartLibrary) -> int:
 		# 61409): the part it became, a letter on, is what is meant.
 		var gone: bool = library.parts[number].is_redirect() \
 			or library.parts[number].name.begins_with("~")
-		var ok: bool = top == number or top == meant or (top.begins_with(number)
+		# One LDraw keeps only for old files brings the part made now in its
+		# shape (PartLibrary.current): 50746, an alias, its slope.
+		var ok: bool = top == number or top == meant or top == library.current(number) \
+			or (top.begins_with(number)
 			and not top.substr(number.length(), 1).is_valid_int() and gone)
 		if not ok:
 			failures += 1

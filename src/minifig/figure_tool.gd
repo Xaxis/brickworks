@@ -203,7 +203,20 @@ static func _whose(library: PartLibrary, info: PartLibrary.PartInfo, slot: Strin
 			if forms[0] not in ["minifig", "head"] and named.has(forms[0]):
 				return SetKnowledge.generic(info.id)
 		return 0
-	return SetKnowledge.generic(info.id)
+	var whose: int = SetKnowledge.generic(info.id)
+	# Where no set inventory says, LDraw's own name may: it files a licence's
+	# prints under its initials ("Torso with SW Dark Red Robe Pattern").
+	if whose == 1:
+		for word: String in _words_of(info.name):
+			if LICENCE_WORDS.has(word):
+				return 0
+	return whose
+
+
+## The words LDraw names a licence's parts by.
+const LICENCE_WORDS: Array[String] = ["sw", "hp", "lotr", "lor", "potc", "batman", "marvel",
+	"spongebob", "simpsons", "disney", "ninjago", "chima", "nexo", "minecraft", "jurassic",
+	"avengers", "superman", "spider", "stark", "vader", "hobbit", "muppet", "mario"]
 
 
 ## A name's words, lower case, each as said and in the singular.

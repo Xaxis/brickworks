@@ -468,16 +468,21 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
   the redirects and then, for a part LDraw keeps only for old files (an alias
   "=", an obsolete mould, a "~" part: `is_stale`), gives the current part of
   the same mesh, or of its family (`family_of`, the name up to "with") in the
-  same box, closest named, then most used: 3660, which walk180's session
+  same box (not a print, whose twin is only its own drawing), agreeing on what
+  it is with and without, closest named, then most used: 3660, which walk180's session
   knew from memory, was LDraw's obsolete 3660a nineteen times on a tug's
   parts list; it is 3660c. The designer maps every new placement through it
   (`Assistant._current_parts`, at the end of `_read_model` and `_edit`, and
   says so once a part), `search_parts` and the palette's search leave such a
   part out (`superseded`; the palette's Obsolete category still shows it),
-  and find_parts_like and how_real_sets_build_this name the current part. A
+  and find_parts_like and how_real_sets_build_this name the current part; a
+  superseded number typed into search_parts brings its twin first
+  (`search_probe`), and `print_search_probe`'s names-alone index leaves the
+  same parts out as the bin. Built once, about 0.4 s. A
   file opened keeps its numbers. `part_choice_probe -- stale` scans every
-  number: base 1,033 placed as a part kept for old files where a twin
-  exists, 23 offered by search_parts, 25 shown by the palette; the branch 0.
+  number (758 such parts have a current twin): base 778 placed as a part
+  kept for old files, 23 offered by search_parts, 25 shown by the palette; the
+  branch 0, 0, 0.
 - **Which moulding a bare part number means is settled by LDraw's redirects, not
   by the alphabet.** `3023a` and `3023b` are both "Plate 1 x 2" and both reduce
   to `3023`, so whichever was indexed first took the number — and every `3023`

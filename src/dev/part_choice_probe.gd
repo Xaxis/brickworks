@@ -367,7 +367,9 @@ func _stale() -> void:
 		var twin: bool = by_mesh.has(info.mesh_hash)
 		if not twin:
 			for other: PartLibrary.PartInfo in by_family.get(_family(info), []):
-				if _same_box(info, other) and (other.decor() == 0) == (info.decor() == 0):
+				# A print's twin is its own drawing (the same mesh): another
+				# print of the mould is another picture.
+				if _same_box(info, other) and other.decor() == 0 and info.decor() == 0:
 					twin = true
 					break
 		if twin:
