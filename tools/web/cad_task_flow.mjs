@@ -1247,13 +1247,33 @@ async function openFile(path) {
     for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
     const picker = page.choosers.shift();
     if (picker) {
+      const before = (await state()).said;
       await picker.setFiles(path);
+      await dontSave(before);
       return true;
     }
     await page.keyboard.press("Escape");
     await page.waitForTimeout(3000);
   }
   return false;
+}
+// The set's file opened over the model built from it asks first whether to
+// save that (ModelBar.ask_to_replace): it was exported to be compared, so
+// Don't save, not counted as the build's. When nothing is asked, waits only
+// until the status bar says, in place of [before], that the open has begun
+// or ended.
+async function dontSave(before) {
+  for (let n = 0; n < 40; n++) {
+    const asked = (await controls()).replace_discard;
+    if (asked) {
+      log("asked to save the model built first: Don't save");
+      await page.mouse.click(asked.x, asked.y);
+      return;
+    }
+    const said = (await state()).said || "";
+    if (said !== before && /open|read/i.test(said)) return;
+    await page.waitForTimeout(500);
+  }
 }
 
 // Every part of the file against the model read back: the same id, colour
