@@ -291,7 +291,13 @@ takes turns. Here:
   on this box, which no change of the session's makes or can take away. The
   run before (the same code, the box busier) was p50 1,789 ms, p95 2,169
   ms; the first rich measures of the day, before any of these fixes, 2.1 to
-  2.8 s.
+  2.8 s. On the 745989a6 preview, two browser checks drawing in software at
+  once, the rich measure was p50 2,148 ms, p95 3,432 ms, and the pages were
+  held 967 and 1,300 ms after a change against 850 to 2,233 ms after a turn
+  of the view alone: the drawing again. So the flow's rich check passes a
+  p95 under a second, or a wait that is all the drawing's (each page held
+  after a change no longer than 1.25 times its hold after a turn of the view
+  alone, and 50 ms), and says which.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
