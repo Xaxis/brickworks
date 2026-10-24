@@ -3,7 +3,7 @@
 Two people build one model at once, live, each in a browser or the desktop
 app, joined by a link (docs/TOGETHER.md).
 
-<!-- covers: ui:build together, lib:building together, api:POST /api/together, cli:together probe, cli:together browser flow, cli:together desktop probe -->
+<!-- covers: ui:build together, lib:building together, api:POST /api/together, cli:together probe, cli:together browser flow, cli:together desktop probe, cli:together timing -->
 
 ## Sub-features
 
@@ -91,6 +91,13 @@ signed in as someone else.
   mismatch writes both files to DIR and prints the first lines that differ.
   On a build without the feature it fails at "File, Build together… opens
   its panel".
+- Where the time of a change goes, stage by stage (`together timing`,
+  `tools/web/together_timing.mjs`, a measure, local only): a baseline of
+  paints, then each of the seven kinds of change and paints again; a line
+  each with the median total and p95 and the stages pickup, send, number,
+  reach, apply, shown, and the worst frame, capture and read of the
+  model's own state on each side (`Together.timing`). On 2026-10-24 after
+  the page's fetch: p50 193 to 701 ms, p95 under 1 s but one round.
 - In the preview battery: `together_probe` and `together`
   (tools/release/preview_checks.sh); they need supabase/together.sql applied
   to the project.
@@ -100,6 +107,12 @@ signed in as someone else.
 - A menu row typed to with a space presses the row the menu is on: the flow
   types "Buildtog", not "Build together".
 - `Together.owns`, not `owner`: Node has an `owner` already.
+- In a browser the session asks with the page's fetch (`_ask_page`), not
+  HTTPRequest: polled once a frame, a state a frame, it held every change
+  two or three software-drawn frames (150 ms each) after it had arrived.
+- `Together._heal` puts back, every two seconds, what this side shows that
+  the numbered changes say otherwise; "together: put back N parts" on the
+  console names them.
 - The desktop probe signs in by the password grant itself (as
   tools/web/session.mjs does) and needs `BW_BYPASS` in its environment to
   reach a protected preview (`Together.extra_headers`).

@@ -78,10 +78,11 @@ desktop app. Started 2026-10-24 (unit together233).
   made in the app whose geometry was built after its first part arrived,
   or anything else that slipped. Each one is said on the console and
   counted (`timing.healed`); the desktop's half of the flow reports them.
-  This is what keeps the desktop's lag once seen after the hidden parts
-  were coloured (the copy matched again at the next check, not within the
-  check's 90 s) to two seconds; its cause did not come back in the timed
-  runs, so it is not named yet.
+  The desktop's lag once seen after the hidden parts were coloured (its
+  copy matched again at the next check, not within the check's 90 s) did
+  not come back in the timed runs, so its cause is not named yet; if it is
+  a part or a state that slipped, this puts it back within two seconds and
+  names it.
 - **Sent twice is put down once.** A send whose answer was lost is sent
   again; every side skips a copy's change it has had already (by its count,
   `cid`), the same everywhere.

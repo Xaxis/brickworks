@@ -3253,6 +3253,13 @@
       "entry": "src/dev/together_probe.gd",
       "reach": "godot --headless --path . --script src/dev/together_probe.gd -- --api=<relay or preview> [--join=<link> --out=FILE --edits=N --email=<resend.dev address>]   (with .env sourced)",
       "area": "together"
+    },
+    {
+      "kind": "cli",
+      "label": "together timing",
+      "entry": "tools/web/together_timing.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 9011 --static=build/web --hold=together_sessions,together_ops,together_people, then node tools/web/together_timing.mjs --url=http://127.0.0.1:9011 --out=DIR [--rounds=10] [--only=floor,print]   (with .env sourced)",
+      "area": "together"
     }
   ]
 }
