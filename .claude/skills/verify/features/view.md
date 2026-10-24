@@ -981,7 +981,10 @@ picture the assistant is shown.
   such line: every shipped model, every save before this) is not the author's,
   and is worked out again (`LdrModel.steps_are_authored`), or a model saved
   yesterday would put a new tower in its last step. `Instructions.plan(...,
-  authored=true)` groups by those steps (`_authored_plan`): a sub-model's own
+  authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
+  share, `plan_paced`, what holds what is read a slice at a time, as for a
+  worked-out plan: in one go the Wizard's Tower's own steps held a frame for
+  1.7 s, orthsteps212): a sub-model's own
   steps before the step that puts it on, a small one still a callout ("2x",
   found by unit as the worked-out plan finds one) whose put-on step also takes
   the parts of the author's step it is in; regions and the parts-a-step limit
