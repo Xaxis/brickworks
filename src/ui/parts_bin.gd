@@ -145,6 +145,9 @@ signal stickers_wanted
 ## A worked construction chosen under Techniques, to hold whole: its parts
 ## as Carry holds them, and its name.
 signal construction_chosen(parts: Array, name: String)
+## A part or a construction chosen from the keyboard (Tab to its tile, then
+## Return): the keys go to the model, to aim it and put it down.
+signal chose_by_keyboard
 
 
 ## [param units] of the desktop's bin, drawn at its zoom.
@@ -192,7 +195,7 @@ func _build() -> void:
 	make.text = "Make a part…"
 	make.tooltip_text = ("A brick, plate, tile, slope or round part of any "
 		+ "size, or a part here resized — it joins the bin under Custom")
-	make.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(make)
 	make.add_theme_font_size_override("font_size", ceili(_z(12)))
 	make.custom_minimum_size = Vector2(least, least)
 	make.pressed.connect(func() -> void: make_wanted.emit())
@@ -202,7 +205,7 @@ func _build() -> void:
 	_print_button.tooltip_text = ("Print a picture or a drawing on the part in hand — a tile, a "
 		+ "slope, any face — as a part of its own, under My prints; with one part picked out in "
 		+ "the model (Shift-click), on that part, where it stands")
-	_print_button.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(_print_button)
 	_print_button.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_print_button.custom_minimum_size = Vector2(least, least)
 	_print_button.pressed.connect(func() -> void: print_wanted.emit())
@@ -211,7 +214,7 @@ func _build() -> void:
 	_stickers_button.text = "Stickers…"
 	_stickers_button.tooltip_text = ("The model's stickers: a new one for any face, the sheet "
 		+ "to print at true size")
-	_stickers_button.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(_stickers_button)
 	_stickers_button.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_stickers_button.custom_minimum_size = Vector2(least, least)
 	_stickers_button.pressed.connect(func() -> void: stickers_wanted.emit())
@@ -221,6 +224,7 @@ func _build() -> void:
 	# Filled in once the catalogue is loaded; the count differs between
 	# the desktop build and the web pack.
 	_search.placeholder_text = "Search parts…"
+	_search.accessibility_name = "Search parts"
 	_search.clear_button_enabled = true
 	_search.text_changed.connect(_on_search_typed)
 	if zoom != 1.0:
@@ -294,6 +298,7 @@ func _build() -> void:
 	# test, 2026-10-16). Enter takes the first; Shift-C comes here.
 	_colour_find = LineEdit.new()
 	_colour_find.placeholder_text = "Name or number"
+	_colour_find.accessibility_name = "Find a colour by name or number"
 	_colour_find.tooltip_text = ("A colour by its name or number, every colour there is: "
 		+ "Enter takes the first (Shift-C)")
 	_colour_find.clear_button_enabled = true
@@ -305,7 +310,7 @@ func _build() -> void:
 	_all_colours = Button.new()
 	_all_colours.toggle_mode = true
 	_all_colours.flat = true
-	_all_colours.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(_all_colours)
 	_all_colours.add_theme_font_size_override("font_size", 12)
 	_all_colours.toggled.connect(func(_on: bool) -> void: _build_swatches())
 	colour_head.add_child(_all_colours)
@@ -413,7 +418,7 @@ func _build_categories() -> void:
 				+ "to hold it whole, R turns it, a click puts it down")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
-		button.focus_mode = Control.FOCUS_NONE
+		FocusGuard.by_keyboard(button)
 		button.add_theme_font_size_override("font_size", ceili(_z(12)))
 		button.custom_minimum_size = Vector2(least, least)
 		button.pressed.connect(_on_category.bind(category))
@@ -815,6 +820,8 @@ func _mark_swatches() -> void:
 			swatch.made_in = made
 			swatch.queue_redraw()
 		swatch.tooltip_text = _swatch_tip(swatch.color, info, made)
+		swatch.accessibility_description = swatch.tooltip_text.trim_prefix(swatch.color.name) \
+			.strip_edges()
 	_say_colour()
 
 
@@ -881,11 +888,15 @@ class Swatch extends Button:
 		color = of
 		custom_minimum_size = Vector2(SIZE, SIZE)
 		toggle_mode = true
-		focus_mode = Control.FOCUS_NONE
+		FocusGuard.by_keyboard(self)
 		var nothing := StyleBoxEmpty.new()
-		for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 			add_theme_stylebox_override(state, nothing)
+		add_theme_stylebox_override("focus", FocusGuard.ring(2))
 		set_meta("code", of.code)
+		# Its name, as a screen reader says it; the rest of its tooltip
+		# (PartsBin._swatch_tip) is its description.
+		accessibility_name = of.name
 
 	# Filled rectangles and nothing else. A polygon, a circle or a line
 	# between them breaks the 2D batch, and 84 swatches drawn that way cost
@@ -1598,8 +1609,14 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	button.toggle_mode = true
 	# Clicked, a tile kept the keys: the arrows then walked the focus round
 	# the grid, and Right never reached the timeline (the CAD task test,
-	# 2026-10-16). Nothing in the bin needs the keyboard but the search.
-	button.focus_mode = Control.FOCUS_NONE
+	# 2026-10-16). So a click leaves the keys with the model, and only Tab
+	# and the arrows bring them here, where Return takes the part.
+	FocusGuard.by_keyboard(button)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
+	# Its title, as a screen reader says it, and its number and size after.
+	button.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
+	button.accessibility_description = "%d x %d studs, %s" % [
+		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
 	button.button_pressed = info.id == _selected_part
 	button.pressed.connect(_on_part.bind(info.id))
 	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
@@ -1730,6 +1747,7 @@ static func _height_text(info: PartLibrary.PartInfo) -> String:
 
 
 func _on_part(part_id: String) -> void:
+	var by_keyboard: bool = FocusGuard.keys_with_a_control(get_viewport())
 	_selected_part = part_id
 	PartShelf.used(part_id)
 	_refresh_shelf()
@@ -1741,6 +1759,18 @@ func _on_part(part_id: String) -> void:
 			(child as Button).button_pressed = str(child.get_meta("part", "")) == part_id
 	_mark_swatches()
 	part_chosen.emit(part_id)
+	_keys_to_model(by_keyboard)
+
+
+## After a part or a construction is chosen from the keyboard: the keys are
+## the model's, to aim what is in hand and put it down.
+func _keys_to_model(by_keyboard: bool) -> void:
+	if not by_keyboard:
+		return
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	if focused != null:
+		focused.release_focus()
+	chose_by_keyboard.emit()
 
 
 ## Follow a part and colour that were chosen somewhere else — the
@@ -1848,8 +1878,12 @@ func _technique_cell(technique: Dictionary) -> Control:
 	button.custom_minimum_size = Vector2(0, _z(64))
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
-	button.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(button)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
 	button.set_meta("technique", name)
+	button.accessibility_name = name.capitalize()
+	button.accessibility_description = "%s. %d parts" % [Techniques.reason(technique),
+		(technique["bricks"] as Array).size()]
 	button.tooltip_text = "%s: %s.\n\n%s\n\n%d parts: choose it to hold it whole" % [
 		name.capitalize(), technique["when"], technique["why"],
 		(technique["bricks"] as Array).size()]
@@ -1929,6 +1963,7 @@ func _technique_tiles() -> Array[ThumbTile]:
 ## A construction chosen: its parts, in the colour in hand where its main
 ## colour was, held whole once each one's geometry is here (Main).
 func _on_technique(name: String) -> void:
+	var by_keyboard: bool = FocusGuard.keys_with_a_control(get_viewport())
 	for child: Node in _grid.get_children():
 		if child is Button:
 			(child as Button).button_pressed = str(child.get_meta("technique", "")) == name
@@ -1937,6 +1972,7 @@ func _on_technique(name: String) -> void:
 		_status.text = "%s could not be had: its parts did not load" % name
 		return
 	construction_chosen.emit(parts, name)
+	_keys_to_model(by_keyboard)
 
 
 ## A construction's parts as Carry holds them, in [param colour] where its
@@ -1974,8 +2010,9 @@ var _guessed_note: String = ""
 func _add_photo_button() -> void:
 	_photo_button = Button.new()
 	_photo_button.flat = true
-	_photo_button.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(_photo_button)
 	_photo_button.tooltip_text = "Find a part from a photo of it"
+	_photo_button.accessibility_name = "Find a part from a photo"
 	_photo_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var wide: float = maxf(_z(26), least)
 	_photo_button.set_anchors_preset(Control.PRESET_RIGHT_WIDE)

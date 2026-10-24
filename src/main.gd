@@ -382,7 +382,10 @@ func _match_screen_density() -> void:
 	var down: float = Room.down()
 	if across <= 0.0 or down <= 0.0:
 		return
-	var factor: float = screen_factor(across, down, OS.has_feature("web"))
+	# And Settings, Interface size, on top: bigger or smaller than the
+	# window would draw it, for eyes that want it so.
+	var factor: float = screen_factor(across, down, OS.has_feature("web")) \
+		* ShellPrefs.interface_size()
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:
@@ -4117,6 +4120,9 @@ func _build_ui() -> void:
 		_bar.say("picked %s" % part_id))
 
 	_bin.part_chosen.connect(_on_part_chosen)
+	_bin.chose_by_keyboard.connect(func() -> void:
+		_aim_by_keys = true
+		_refresh_preview())
 	_bin.construction_chosen.connect(func(parts: Array, what: String) -> void:
 		_verbs.hold(parts, what))
 	_bin.color_chosen.connect(_on_color_chosen)
@@ -4448,6 +4454,7 @@ func _build_ui() -> void:
 	_controls.changed.connect(func() -> void:
 		if _hint != null:
 			_hint.rebuild())
+	_controls.interface_sized.connect(_match_screen_density)
 
 	_picker = PickImage.new()
 	add_child(_picker)
@@ -6438,8 +6445,8 @@ const HOLD_AFTER := 0.22
 ## turning, shift and arrows sliding — but never while someone is typing,
 ## and the arrows only when a selection or the booklet is not using them.
 func _steer_from_keys(delta: float) -> void:
-	var focused: Control = get_viewport().gui_get_focus_owner()
-	if focused is LineEdit or focused is TextEdit or _camera == null or _gated():
+	# Nor while Tab has put the keys on a control: its arrows are its own.
+	if FocusGuard.keys_with_a_control(get_viewport()) or _camera == null or _gated():
 		_held_for = 0.0
 		return
 	var free: bool = _builder.selection.is_empty()
@@ -6612,6 +6619,11 @@ var _weighed_us: int = 0
 func _process_main(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
+	# Aimed from the keyboard: the ghost keeps to the middle of the view as
+	# the keys slide and turn it.
+	if _aim_by_keys and _camera.global_transform != _aimed_from:
+		_aimed_from = _camera.global_transform
+		_refresh_preview()
 	# Held is what the frames saw (PressHold).
 	if _press_brick != 0:
 		_press_hold.saw()
@@ -6794,10 +6806,22 @@ func _css_pixel() -> float:
 ## click put the part under the pointer (placing_probe, 2026-10-16); in a
 ## browser it is the press's whole pixel (_true_point).
 func _pointer() -> Vector2:
+	# A part taken in hand from the keyboard is aimed at the middle of the
+	# view until the mouse moves: the keys slide and turn the view under it,
+	# and Return puts it down there.
+	if _aim_by_keys:
+		return _model_rect().get_center()
 	var system: Vector2 = get_viewport().get_mouse_position()
 	if _pointer_at.x > -INF and system.distance_to(_system_at) <= _css_pixel() * 1.5:
 		return _pointer_at
 	return _true_point(system)
+
+
+## Set while the part in hand was taken from the keyboard and the mouse has
+## not moved since (PartsBin.chose_by_keyboard): [method _pointer] is then the
+## middle of the view.
+var _aim_by_keys: bool = false
+var _aimed_from: Transform3D = Transform3D()
 
 
 ## A move the app never saw, followed as it would have been.
@@ -7749,6 +7773,8 @@ func _input(event: InputEvent) -> void:
 	# And where every move left it, to the fraction of a pixel, or a press
 	# put it, and where the system said it was then (_true_point, _pointer).
 	if event is InputEventMouseMotion:
+		if (event as InputEventMouseMotion).relative != Vector2.ZERO:
+			_aim_by_keys = false
 		_pointer_at = (event as InputEventMouseMotion).position
 		_system_at = get_viewport().get_mouse_position()
 		_pointer_seen_ms = Time.get_ticks_msec()
@@ -7864,6 +7890,15 @@ func _key_pressed(key: InputEventKey) -> void:
 		KEY_SPACE:
 			if _steps.is_playing_back() and not key.echo:
 				_steps.toggle_play()
+		KEY_ENTER, KEY_KP_ENTER:
+			# The part in hand put down where its ghost is, as a click there
+			# would: the way to build without the mouse, with the part taken
+			# from the bin by Tab and Return and aimed by the view's keys.
+			if not key.echo and _verbs != null and _verbs.shows_ghost() \
+					and _builder.has_preview():
+				_aim_at(_pointer())
+				_builder.place()
+				_refresh_preview()
 		KEY_6:
 			_camera.set_view("bottom")
 		KEY_7:

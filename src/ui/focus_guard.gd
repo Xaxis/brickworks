@@ -15,8 +15,47 @@
 ## Escape also puts back what the field said when the typing began, or what
 ## Enter last kept, in a field marked for it (``revert_on_escape``), which
 ## the model's name is.
+##
+## And the controls Tab reaches that are not fields (the toolbar, the bin's
+## tiles and colours, the view cube: [method by_keyboard]) have the keys only
+## while Tab or the arrows put them there. A click on one does what it does
+## and leaves the keys with the model, as before: a tile kept after a click
+## walked its arrows round the grid, and Right never reached the timeline
+## (the CAD task test, 2026-10-16); a button kept took the space bar.
 class_name FocusGuard
 extends Node
+
+## Marks a control that Tab and the arrows reach, and a click does not keep.
+const BY_KEYBOARD := &"by_keyboard"
+
+
+## [param control] in the keyboard's order: Tab and the arrows reach it, and
+## a press of Return or the space bar there is a click. A click still leaves
+## the keys with the model.
+static func by_keyboard(control: Control) -> void:
+	control.focus_mode = Control.FOCUS_ALL
+	control.set_meta(BY_KEYBOARD, true)
+
+
+## The ring round a control the keys are on, drawn only when Tab or the
+## arrows put them there (a control a click reached draws no focus).
+static func ring(corner: int = 5) -> StyleBoxFlat:
+	var ring := StyleBoxFlat.new()
+	ring.draw_center = false
+	ring.border_color = Look.ACCENT
+	ring.set_border_width_all(2)
+	ring.set_corner_radius_all(corner)
+	ring.set_expand_margin_all(1)
+	return ring
+
+
+## Whether the keys are with a control a person moved to with Tab or the
+## arrows, or is typing in: then they are its, and not the model's.
+static func keys_with_a_control(viewport: Viewport) -> bool:
+	var focused: Control = viewport.gui_get_focus_owner()
+	if focused == null:
+		return false
+	return focused is LineEdit or focused is TextEdit or focused.has_focus(true)
 
 ## What a field said when it took the focus, for Escape.
 var _before: Dictionary = {}     ## instance id -> String
@@ -27,6 +66,10 @@ func _ready() -> void:
 
 
 func _on_focus(control: Control) -> void:
+	# Taken by a click (its focus hidden), a keyboard control lets go again.
+	if control.has_meta(BY_KEYBOARD) and not control.has_focus(true):
+		_let_go.call_deferred(control)
+		return
 	var field: LineEdit = control as LineEdit
 	if field == null:
 		return
@@ -59,8 +102,22 @@ func _submitted(_text: String, field: LineEdit) -> void:
 		field.release_focus()
 
 
+func _let_go(control: Control) -> void:
+	if is_instance_valid(control) and control.has_focus() and not control.has_focus(true):
+		control.release_focus()
+
+
 func _input(event: InputEvent) -> void:
 	var focused: Control = get_viewport().gui_get_focus_owner()
+	if focused == null:
+		_tab_in(event)
+		return
+	if focused.has_meta(BY_KEYBOARD):
+		# A press of the pointer anywhere gives the keys back to the model.
+		var click: InputEventMouseButton = event as InputEventMouseButton
+		if click != null and click.pressed:
+			focused.release_focus()
+		return
 	if not (focused is LineEdit or focused is TextEdit):
 		return
 	var press: InputEventMouseButton = event as InputEventMouseButton
@@ -88,7 +145,35 @@ func _input(event: InputEvent) -> void:
 			# (the minifigure builder's search) as it always did.
 		KEY_TAB:
 			# A field of more than one line may want Tab; a one-line field
-			# never does here.
+			# never does here. It goes on to the next control, or gives the
+			# keys back to the model when there is none.
 			if focused is LineEdit:
+				var next: Control = focused.find_prev_valid_focus() if key.shift_pressed \
+					else focused.find_next_valid_focus()
 				focused.release_focus()
+				if next != null and next != focused:
+					next.grab_focus()
 				get_viewport().set_input_as_handled()
+
+
+## Tab with nothing focused, as it is from launch and after a click on the
+## model: into the interface at its first control (Shift-Tab, its last).
+## The window's own Tab starts from a control at its top, and the app's
+## top is the 3D scene, so without this Tab did nothing.
+func _tab_in(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.keycode != KEY_TAB \
+			or key.ctrl_pressed or key.alt_pressed or key.meta_pressed:
+		return
+	var top: Control = interface_top
+	if top == null or not top.is_visible_in_tree():
+		return
+	var first: Control = top.find_prev_valid_focus() if key.shift_pressed \
+		else top.find_next_valid_focus()
+	if first != null:
+		first.grab_focus()
+		get_viewport().set_input_as_handled()
+
+
+## Where Tab goes in from: the interface's outermost control (Shell).
+var interface_top: Control

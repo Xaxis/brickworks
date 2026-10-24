@@ -54,6 +54,7 @@ var snapped: Array[String] = []
 func _ready() -> void:
 	clip_contents = true
 	focus_mode = Control.FOCUS_CLICK
+	accessibility_name = "The print, to draw on"
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(fit)
 

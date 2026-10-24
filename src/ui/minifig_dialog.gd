@@ -321,6 +321,7 @@ func _build_figure() -> Control:
 	frame.stretch = true
 	frame.custom_minimum_size = Vector2(250, 300)
 	frame.tooltip_text = "Drag to turn it"
+	frame.accessibility_name = "The minifigure"
 	frame.gui_input.connect(_on_preview_input)
 	column.add_child(frame)
 	_viewport = SubViewport.new()
@@ -553,6 +554,7 @@ func _cell(info: PartLibrary.PartInfo) -> Button:
 		cell.tooltip_text = "Nothing in this slot"
 	else:
 		cell.tooltip_text = "%s\n%s" % [info.id, info.name.strip_edges().replace("  ", " ")]
+		cell.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
 		# Named while it waits: these cells have no label, and a grid of
 		# forty identical placeholders says nothing about what is coming.
 		var tile := ThumbTile.new()

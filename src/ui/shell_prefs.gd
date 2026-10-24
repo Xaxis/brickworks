@@ -55,7 +55,17 @@ const DEFAULTS: Dictionary = {
 	# The folder the last export or Save as went to on the desktop, where
 	# the next one's dialog opens (SaveTo): "" for Documents.
 	"save_folder": "",
+	# Settings, Interface size: how much bigger or smaller than the window
+	# would draw it the interface is, 0.85 to 1.5 (Main._match_screen_density).
+	"interface_size": 1.0,
+	# Settings, Reduce motion: no model going up brick by brick, no light
+	# crossing a waiting picture, and the view goes where it is sent at once.
+	"reduce_motion": false,
 }
+
+## Settings, Interface size: the choices, as shares of the size the window
+## would draw it at.
+const INTERFACE_SIZES: Array[float] = [0.85, 1.0, 1.15, 1.3, 1.5]
 
 static var _values: Dictionary = {}
 static var _loaded: bool = false
@@ -85,6 +95,16 @@ static func assistant_shown() -> bool:
 	if chosen.is_empty():
 		return keeps() and used_claude_here()
 	return chosen == "on"
+
+
+## Settings, Interface size, as a factor: one of [constant INTERFACE_SIZES].
+static func interface_size() -> float:
+	return clampf(float(value("interface_size")), INTERFACE_SIZES[0], INTERFACE_SIZES[-1])
+
+
+## Settings, Reduce motion: whatever moves by itself keeps still.
+static func reduce_motion() -> bool:
+	return bool(value("reduce_motion"))
 
 
 static func used_claude_here() -> bool:

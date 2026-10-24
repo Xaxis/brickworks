@@ -39,6 +39,8 @@ var _done: Button
 signal changed
 ## Settings, Assistant (AI): shown, or building by hand only.
 signal assistant_chosen(on: bool)
+## Settings, Interface size: chosen, for the window to be drawn again at it.
+signal interface_sized
 
 
 func _ready() -> void:
@@ -85,6 +87,7 @@ func _build() -> void:
 		ViewPrefs.invert_zoom,
 		func(on: bool) -> void: ViewPrefs.invert_zoom = on)
 	_presets(column)
+	_interface(column)
 	_new_floor(column)
 	_assistant(column)
 
@@ -181,7 +184,7 @@ func _row(binding: ControlsHint.Binding, density: float) -> Control:
 
 
 func _toggle(column: VBoxContainer, text: String, why: String,
-		on: bool, set_it: Callable) -> void:
+		on: bool, set_it: Callable) -> CheckBox:
 	var box := CheckBox.new()
 	box.text = text
 	box.button_pressed = on
@@ -202,6 +205,7 @@ func _toggle(column: VBoxContainer, text: String, why: String,
 	note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(note)
+	return box
 
 
 ## The navigation preset: how the mouse looks round the model, after the
@@ -219,6 +223,7 @@ func _presets(column: VBoxContainer) -> void:
 	row.add_child(words)
 	preset_choice = OptionButton.new()
 	preset_choice.focus_mode = Control.FOCUS_NONE
+	preset_choice.accessibility_name = "Navigate like"
 	preset_choice.add_theme_font_size_override("font_size", 12)
 	for name: String in ViewPrefs.PRESETS:
 		preset_choice.add_item(ViewPrefs.preset_name(name))
@@ -244,6 +249,50 @@ func _presets(column: VBoxContainer) -> void:
 		# moment that changes.
 		_fill()
 		changed.emit())
+
+
+## Settings, Interface size and Reduce motion (ShellPrefs): for eyes that
+## want the words bigger, and for anyone whom motion on a screen makes ill.
+var interface_choice: OptionButton
+var reduce_motion: CheckBox
+
+
+func _interface(column: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	var words := Label.new()
+	words.text = "Interface size"
+	words.add_theme_font_size_override("font_size", 12)
+	row.add_child(words)
+	interface_choice = OptionButton.new()
+	interface_choice.focus_mode = Control.FOCUS_NONE
+	interface_choice.add_theme_font_size_override("font_size", 12)
+	interface_choice.accessibility_name = "Interface size"
+	for size: float in ShellPrefs.INTERFACE_SIZES:
+		interface_choice.add_item("%d%%" % roundi(size * 100.0))
+	interface_choice.select(_interface_index())
+	row.add_child(interface_choice)
+	interface_choice.item_selected.connect(func(index: int) -> void:
+		ShellPrefs.put("interface_size", ShellPrefs.INTERFACE_SIZES[index])
+		interface_sized.emit()
+		changed.emit())
+
+	reduce_motion = _toggle(column, "Reduce motion",
+		"A model appears whole rather than going up brick by brick, a picture still being "
+			+ "drawn keeps still, and the view goes where it is sent at once.",
+		ShellPrefs.reduce_motion(),
+		func(on: bool) -> void: ShellPrefs.put("reduce_motion", on))
+
+
+func _interface_index() -> int:
+	var at: float = ShellPrefs.interface_size()
+	var best: int = 0
+	for index: int in ShellPrefs.INTERFACE_SIZES.size():
+		if absf(ShellPrefs.INTERFACE_SIZES[index] - at) \
+				< absf(ShellPrefs.INTERFACE_SIZES[best] - at):
+			best = index
+	return best
 
 
 ## What a new model stands on (ModelFloor.preferred): New, and a file
@@ -359,6 +408,9 @@ func open() -> void:
 		new_floor.show_floor(ModelFloor.preferred(), false)
 	if assistant_on != null:
 		_show_assistant_choice()
+	if interface_choice != null:
+		interface_choice.select(_interface_index())
+		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
 	visible = true
 
 
@@ -367,4 +419,5 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	return {"assistant_on": assistant_on, "assistant_off": assistant_off,
+		"interface_size": interface_choice, "reduce_motion": reduce_motion,
 		"settings_done": _done}

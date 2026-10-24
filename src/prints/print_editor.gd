@@ -375,6 +375,7 @@ func _build_tools() -> Control:
 	size_words.add_theme_font_size_override("font_size", 11)
 	column.add_child(size_words)
 	_size = HSlider.new()
+	_size.accessibility_name = "Brush size"
 	_size.min_value = 1
 	_size.max_value = 40
 	_size.value = 6
@@ -515,6 +516,7 @@ func _slider(column: Container, words: String, low: float, high: float, value: f
 	label.add_theme_font_size_override("font_size", 11)
 	column.add_child(label)
 	var slider := HSlider.new()
+	slider.accessibility_name = words
 	slider.min_value = low
 	slider.max_value = high
 	slider.step = 1.0
@@ -623,6 +625,7 @@ func _build_side() -> Control:
 	frame.stretch = true
 	frame.custom_minimum_size = Vector2(270, 250)
 	frame.tooltip_text = "The part wearing the print as it is drawn. Drag to turn it"
+	frame.accessibility_name = "The part wearing the print"
 	frame.gui_input.connect(_on_preview_input)
 	column.add_child(frame)
 	_viewport = SubViewport.new()

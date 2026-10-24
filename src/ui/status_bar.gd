@@ -59,6 +59,10 @@ func _ready() -> void:
 	_hint.clip_text = true
 	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hint.custom_minimum_size = Vector2(80, 0)
+	# A live region: what the app says here is read out as it is said, by a
+	# screen reader that is running, without the keys leaving the model.
+	_hint.accessibility_name = "Status"
+	_hint.accessibility_live = AccessibilityServer.LIVE_POLITE
 	show_folder = Button.new()
 	show_folder.text = "Show in folder"
 	show_folder.tooltip_text = "Open the folder the file was saved in"

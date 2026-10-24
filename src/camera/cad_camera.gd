@@ -927,8 +927,9 @@ func _process(delta: float) -> void:
 		_dragging_right = false
 
 	# An exponential approach, framerate independent: the same fraction of
-	# the remaining distance per second whatever the frame time.
-	_apply(1.0 - exp(-smoothing * delta))
+	# the remaining distance per second whatever the frame time. Under
+	# Settings, Reduce motion, no approach: the view is where it was sent.
+	_apply(1.0 if ShellPrefs.reduce_motion() else 1.0 - exp(-smoothing * delta))
 
 
 ## The pose last put on the camera, and the transform it came to. A camera

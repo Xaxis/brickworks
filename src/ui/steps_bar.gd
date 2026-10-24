@@ -154,6 +154,7 @@ func _build() -> void:
 	line.add_theme_constant_override("separation", 10)
 	column.add_child(line)
 	_slider = HSlider.new()
+	_slider.accessibility_name = "Timeline: the step shown"
 	_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_slider.min_value = 0

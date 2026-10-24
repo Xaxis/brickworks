@@ -733,6 +733,7 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 		row.add_child(words)
 		return
 	var slider := HSlider.new()
+	slider.accessibility_name = called.text
 	_style_slider(slider)
 	if joint.mode == "turn":
 		slider.min_value = -180.0
@@ -1925,6 +1926,7 @@ func _build_editor(into: Control) -> void:
 	at.add_theme_font_size_override("font_size", 12)
 	timing.add_child(at)
 	_time = HSlider.new()
+	_time.accessibility_name = "At, in seconds"
 	_style_slider(_time)
 	_time.custom_minimum_size = Vector2(200, 18)
 	_time.min_value = 0.0

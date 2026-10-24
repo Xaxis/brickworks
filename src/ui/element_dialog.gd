@@ -137,6 +137,7 @@ func _build() -> void:
 
 	# The preview: the part itself, turning, in the colour in hand.
 	var frame := SubViewportContainer.new()
+	frame.accessibility_name = "The part, turning"
 	frame.stretch = true
 	frame.custom_minimum_size = Vector2(380, 190)
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -339,6 +340,7 @@ func _build() -> void:
 			end_label.modulate = Color(1, 1, 1, 0.6)
 			cut_grid.add_child(end_label)
 			var box := SpinBox.new()
+			box.accessibility_name = "%s, %s" % [str(row[0]), end]
 			box.min_value = 0
 			box.max_value = int(row[1])
 			box.step = 1
@@ -420,6 +422,7 @@ func _number(column: Container, field: String, label: String, low: int,
 	var row := _row(column, label)
 	_rows[field] = row.get_parent()
 	var box := SpinBox.new()
+	box.accessibility_name = label
 	box.min_value = low
 	box.max_value = high
 	box.step = 1

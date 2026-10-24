@@ -759,6 +759,7 @@ func _build() -> void:
 	_worst = _button(playing, "Worst balance", go_to_worst,
 		"Go to the frame of the cycle where it comes nearest tipping")
 	_scrub = HSlider.new()
+	_scrub.accessibility_name = "Where in the cycle"
 	_scrub.focus_mode = Control.FOCUS_NONE
 	_scrub.custom_minimum_size = Vector2(300, 18)
 	# A track to see, as Pose's sliders have.

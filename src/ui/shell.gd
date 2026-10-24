@@ -275,8 +275,13 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	library_dialog.attach(app)
 	bar.library_wanted.connect(func() -> void: library_dialog.open())
 
-	# Every text field gives the keys back: src/ui/focus_guard.gd.
-	add_child(FocusGuard.new())
+	# Every text field gives the keys back, and Tab goes into the frame
+	# from the model: src/ui/focus_guard.gd.
+	var guard := FocusGuard.new()
+	guard.interface_top = column
+	add_child(guard)
+	# And names for the parts of Godot's own dialogs it leaves unnamed.
+	add_child(Access.new())
 
 	_save_as = ConfirmationDialog.new()
 	_save_as.title = "Save as"
@@ -286,6 +291,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	words.text = "What should this copy of the model be called?"
 	asking.add_child(words)
 	_save_as_name = LineEdit.new()
+	_save_as_name.accessibility_name = "Name of the copy"
 	_save_as_name.custom_minimum_size = Vector2(320, 0)
 	_save_as_name.text_submitted.connect(func(_text: String) -> void:
 		_save_as.hide()
@@ -1572,6 +1578,8 @@ func _ask_floor_size() -> void:
 			spin.max_value = ModelFloor.MOST
 			spin.step = 8
 			spin.custom_minimum_size = Vector2(90, 0)
+		_floor_wide.accessibility_name = "Studs across"
+		_floor_deep.accessibility_name = "Studs deep"
 		row.add_child(_floor_wide)
 		var by := Label.new()
 		by.text = " × "
