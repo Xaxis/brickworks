@@ -271,8 +271,27 @@ takes turns. Here:
   p50 2,194), against p50 383, p95 516 ms before the seven kinds in the
   same run. So in the flow's rich state the time is in the frames that
   follow a change, not in idle ones, and the timing tool's two pages do not
-  reach that state (its rich rows: p50 452 to 890 ms). Next: the timing
-  tool's stages logged inside the flow itself, at its second measure.
+  reach that state (its rich rows: p50 452 to 890 ms).
+
+  **Inside the flow itself**, at both measures, the stages and the longest
+  each page's thread went between two frames after the change ("held"),
+  beside the same hold after nothing but the view turning (Shift+Q: the
+  model drawn again, no change made, nothing sent). With the model
+  autosaved over frames while a session is live (`ModelStore.paced_always`;
+  an autosave written in one frame held both pages after a change) and the
+  pointer looked for only when something moved, this box, 2026-10-24:
+
+  | Measure | p50 | p95 | number | shown | held, receiver | held by a turn of the view alone |
+  |---|---|---|---|---|---|---|
+  | after the 50 edits | 384 ms | 851 ms | 53 ms | 166 ms | 150 ms | 17 to 133 ms |
+  | after the seven kinds (the rich car) | 644 ms | 794 ms | 322 ms | 497 ms | 483 ms | 17 to 617 ms |
+
+  The hold after a change is the hold after a turn of the view: what is
+  left is the rich car drawn again in software, about half a second a frame
+  on this box, which no change of the session's makes or can take away. The
+  run before (the same code, the box busier) was p50 1,789 ms, p95 2,169
+  ms; the first rich measures of the day, before any of these fixes, 2.1 to
+  2.8 s.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
