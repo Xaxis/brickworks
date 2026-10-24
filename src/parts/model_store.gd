@@ -280,11 +280,22 @@ func tick() -> void:
 	# turned a few seconds of network into a permanent deletion, so until
 	# 2026-10-20 a model short of a part was not written at all: one part
 	# that never came, and nothing done after was kept.
-	# A small model in one go, as before; a big one over frames.
-	if world.brick_count() - scenery.size() < PACED_FROM:
+	# A small model in one go, as before; a big one over frames, and any
+	# model while others build in it (Together sets [member paced_always]):
+	# their changes keep coming, and each written in one frame held both
+	# sides' windows for that frame after every change.
+	if world.brick_count() - scenery.size() < PACED_FROM and not paced_always:
+		var began: int = Time.get_ticks_usec()
 		_autosave_is_model = _write(autosave(), title)
+		last_write_ms = (Time.get_ticks_usec() - began) / 1000.0
 		return
 	_autosave_paced()
+
+
+## Write the autosave over frames whatever the model's size (Together, while
+## a session is live). And how long the last autosave held its frame, in ms.
+var paced_always: bool = false
+var last_write_ms: float = 0.0
 
 
 ## The working model's text made a slice at a time, then written in a frame
@@ -1881,6 +1892,10 @@ func _source_asked(title_now: String) -> Dictionary:
 		home.step = brick.step
 		home.hidden = brick.hidden
 		bricks.append(home)
+	# In an order of their own, not the world's: which line a part is paired
+	# with and where a part put down goes in the file follow it, and two
+	# copies of a model built in another order (Together) wrote two files.
+	bricks = _in_brick_order(bricks)
 	var waiting: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
@@ -2483,15 +2498,45 @@ static func _in_file_order(placements: Array) -> Array:
 	for n: int in placements.size():
 		var placement: LdrModel.Placement = placements[n]
 		var at: Vector3 = placement.transform.origin
+		# And two of a part in one place turned two ways by how each is
+		# turned, not by which the world held first: two copies of a model
+		# built in another order (Together) wrote them the other way round.
+		var turn: Basis = placement.transform.basis
 		keys[n] = [placement.step, roundi(at.y * 1000.0), placement.group,
 			placement.part_id, roundi(at.x * 1000.0), roundi(at.z * 1000.0),
-			placement.color_code, n]
+			placement.color_code, _turn_key(turn.x), _turn_key(turn.y), _turn_key(turn.z), n]
 	keys.sort()
 	var ordered: Array = []
 	ordered.resize(keys.size())
 	for n: int in keys.size():
-		ordered[n] = placements[int((keys[n] as Array)[7])]
+		ordered[n] = placements[int((keys[n] as Array)[10])]
 	return ordered
+
+
+## [param bricks] in an order of what each is and where, whatever order
+## they were put down in ([method _in_file_order]'s, for bricks).
+static func _in_brick_order(bricks: Array) -> Array:
+	var keys: Array = []
+	keys.resize(bricks.size())
+	for n: int in bricks.size():
+		var brick: BrickWorld.Brick = bricks[n]
+		var at: Vector3 = brick.transform.origin
+		var turn: Basis = brick.transform.basis
+		keys[n] = [brick.step, brick.unit, brick.group, brick.part_id, roundi(at.y * 1000.0),
+			roundi(at.x * 1000.0), roundi(at.z * 1000.0), brick.color_code, _turn_key(turn.x),
+			_turn_key(turn.y), _turn_key(turn.z), n]
+	keys.sort()
+	var ordered: Array = []
+	ordered.resize(keys.size())
+	for n: int in keys.size():
+		ordered[n] = bricks[int((keys[n] as Array)[11])]
+	return ordered
+
+
+## A column of a part's turn as one number, to the thousandth.
+static func _turn_key(column: Vector3) -> int:
+	return ((roundi(column.x * 1000.0) + 1001) * 2003 + roundi(column.y * 1000.0) + 1001) * 2003 \
+		+ roundi(column.z * 1000.0) + 1001
 
 
 ## [param text] saying its steps are its author's, under the model's own

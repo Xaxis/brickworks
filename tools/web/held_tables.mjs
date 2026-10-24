@@ -11,7 +11,7 @@
 // is proven against the real database by its file's dry run
 // (tools/apply_sql.mjs --dry --try=FILE), which rolls back.
 //
-// Only what the functions ask of these tables: eq. and in. filters, select
+// Only what the functions ask of these tables: eq., gt. and in. filters, select
 // of named columns, order by one column, limit; insert of one row or
 // several, with the table's own refusals (TABLES below); update and delete
 // by filter. Kept for the life of the process.
@@ -305,6 +305,65 @@ const TABLES = {
       },
     },
   },
+  // supabase/together.sql: building together (api/together.js). The
+  // sessions, their numbered changes and who is in each, with the file's
+  // two functions answered here as it makes them: together_append numbers
+  // a send after every change before it, refused for an ended session or
+  // an author not in it, and together_sweep.
+  together_sessions: {
+    key: ["id"],
+    parents: [],
+    defaults: () => ({ title: "", last_seq: 0, created_at: new Date().toISOString(),
+      changed_at: new Date().toISOString(), ended_at: null }),
+    check(row) {
+      if (!/^[0-9a-f]{64}$/.test(String(row.id))) return "together_sessions_id_check";
+      if (String(row.title).length > 120) return "together_sessions_title_check";
+      return "";
+    },
+  },
+  together_people: {
+    key: ["session", "account"],
+    parents: [{ column: "session", table: "together_sessions", on: "id" }],
+    defaults: () => ({ name: "", joined_at: new Date().toISOString(), seen_at: new Date().toISOString(),
+      left_at: null, removed_at: null, pointer: null, pointer_at: null }),
+    check(row) {
+      return String(row.name).length > 40 ? "together_people_name_check" : "";
+    },
+  },
+  together_ops: {
+    key: ["session", "seq"],
+    parents: [{ column: "session", table: "together_sessions", on: "id" }],
+    defaults: () => ({ at: new Date().toISOString() }),
+    check(row) {
+      if (!/^[a-z0-9]{6,16}$/.test(String(row.client))) return "together_ops_client_check";
+      if (!row.changes || typeof row.changes !== "object" || Array.isArray(row.changes)) return "together_ops_changes_check";
+      return "";
+    },
+    rpc: {
+      async together_append(real, base, url, init, rows) {
+        const { p_session: id, p_author: author, p_client: client, p_ops: ops } = JSON.parse(String(init.body || "{}"));
+        if (!Array.isArray(ops) || ops.length < 1 || ops.length > 500) {
+          return jsonReply(400, { code: "22023", message: "brickworks: send between 1 and 500 changes" });
+        }
+        const session = (held.get("together_sessions") || []).find((one) => one.id === id && !one.ended_at);
+        if (!session) return jsonReply(400, { code: "P0001", message: "brickworks: that session has ended", hint: "together:ended" });
+        const member = (held.get("together_people") || []).some((one) => one.session === id && one.account === author
+          && !one.removed_at);
+        if (session.owner !== author && !member) {
+          return jsonReply(400, { code: "P0001", message: "brickworks: not in this session", hint: "together:refused" });
+        }
+        const first = session.last_seq;
+        session.last_seq += ops.length;
+        session.changed_at = new Date().toISOString();
+        ops.forEach((op, k) => rows.push({ session: id, seq: first + k + 1, author, client, cid: op.cid,
+          changes: op.changes, at: new Date().toISOString() }));
+        return jsonReply(200, ops.map((_, k) => first + k + 1));
+      },
+      async together_sweep() {
+        return jsonReply(200, 0);
+      },
+    },
+  },
   // supabase/versions.sql
   share_versions: {
     key: ["model", "n"],
@@ -374,7 +433,9 @@ async function answer(real, base, url, init = {}) {
     const eq = /^eq\.(.*)$/.exec(said);
     const among = /^in\.\((.*)\)$/.exec(said);
     const is = /^is\.(null|true|false)$/.exec(said);
-    if (eq) filters.push((row) => String(row[column]) === eq[1]);
+    const above = /^gt\.(-?\d+)$/.exec(said);
+    if (above) filters.push((row) => Number(row[column]) > Number(above[1]));
+    else if (eq) filters.push((row) => String(row[column]) === eq[1]);
     else if (among) filters.push((row) => among[1].split(",").includes(String(row[column])));
     else if (is) filters.push((row) => (is[1] === "null" ? row[column] === null || row[column] === undefined
       : row[column] === (is[1] === "true")));

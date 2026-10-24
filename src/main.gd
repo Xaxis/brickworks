@@ -58,6 +58,17 @@ var _driven: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
 var _connector: ClaudeConnector
+## File, Build together…: this model built with somebody else, live
+## (src/net/together.gd, src/ui/together_dialog.gd).
+var _together: Together
+var _together_dialog: TogetherDialog
+## A Build together link's secret from the page's address (?together=).
+var _together_wanted: String = ""
+## Whether the session this tab was in before a reload has been gone back to.
+var _together_tried: bool = false
+## Where the pointer was last looked for (mouse, view, model) and what it found.
+var _pointer_key: Array = []
+var _pointer_found: Variant = null
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
@@ -922,6 +933,8 @@ func _page_controls() -> Dictionary:
 	# viewer opens — the timeline and the parts list.
 	if _share_panel != null:
 		named.merge(_share_panel.controls_by_name())
+	if _together_dialog != null:
+		named.merge(_together_dialog.controls_by_name())
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
 	if _build_mode != null:
@@ -1381,6 +1394,8 @@ func _ready() -> void:
 		_copying = _argument("--copy")
 	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
 		_from_library = _argument("--library")
+	if _together_wanted.is_empty():
+		_together_wanted = Together.secret_in(_argument("--together"))
 	# And which version of it, a number or nothing.
 	if _viewing_version == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--v")) != null:
 		_viewing_version = _argument("--v").to_int()
@@ -1459,6 +1474,7 @@ func _ready() -> void:
 	_first_open_done = true
 	_maybe_copy()
 	_maybe_open_library()
+	_maybe_join_together()
 	# Somebody with saved models: the browser is asked to keep them, as it
 	# is at a first save (StorageKeep, ModelStore._write).
 	if ModelStore.any_saved():
@@ -2123,6 +2139,7 @@ func _on_account_changed() -> void:
 	if _connector == null or not _viewing.is_empty():
 		return
 	_maybe_copy()
+	_maybe_join_together()
 	if _account.signed_in() and not _connector_resumed:
 		_connector_resumed = true
 		_connector.resume()
@@ -4342,6 +4359,42 @@ func _build_ui() -> void:
 	_connector.held = not ShellPrefs.assistant_shown()
 	add_child(_connector)
 	_chat.use_connector(_connector)
+	_together = Together.new()
+	_together.world = _world
+	_together.builder = _builder
+	_together.store = _store
+	_together.account = _account
+	_together.bar = _bar
+	_together.base_url = Deployment.api_base()
+	_together.said.connect(func(words: String) -> void: _bar.say(words))
+	# Where this person is working, for the others' view: the part under the
+	# mouse, a few times a second while in a session.
+	# Looked for again only when the mouse, the view or the model moved: a
+	# look under the mouse four times a second on a model standing still
+	# was the owner's page held to 27 frames a second (the flow, 2026-10-24).
+	_together.pointer_at = func() -> Variant:
+		var mouse: Vector2 = get_viewport().get_mouse_position()
+		var looked: Array = [mouse, _camera.global_transform, _world.revision]
+		if looked == _pointer_key:
+			return _pointer_found
+		_pointer_key = looked
+		_pointer_found = null
+		if _verbs == null or _over_panel_at(mouse):
+			return null
+		var under: int = _verbs.brick_at(mouse)
+		var brick: BrickWorld.Brick = _world.get_brick(under) if under != 0 else null
+		_pointer_found = brick.transform.origin if brick != null else null
+		return _pointer_found
+	# A check's change made as Claude makes one: the same tools, answered here.
+	_together.run_tool = func(name: String, arguments: Dictionary) -> String:
+		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,
+			"method": "tools/call", "params": {"name": name, "arguments": arguments}})
+		var said := PackedStringArray()
+		for block: Variant in ((got as Dictionary).get("result", {}) as Dictionary).get("content", []):
+			if (block as Dictionary).get("type", "") == "text":
+				said.append(str((block as Dictionary).get("text", "")))
+		return "\n".join(said)
+	add_child(_together)
 	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
 	# as the chats in it change, and twice a minute for their "2 min ago".
 	var badge := func() -> void:
@@ -4625,6 +4678,7 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	_verbs.together = _together
 	add_child(_verbs)
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
@@ -5839,6 +5893,40 @@ func reshape_flex() -> void:
 
 func can_reshape_flex() -> bool:
 	return _flex != null and not _flex.selected_item().is_empty()
+
+
+## File, Build together….
+func open_together() -> void:
+	if _together_dialog == null:
+		_together_dialog = TogetherDialog.new()
+		_together_dialog.together = _together
+		add_child(_together_dialog)
+	_together_dialog.open()
+
+
+## A Build together link opened: joined once whatever was here is back and
+## somebody is signed in (_on_account_changed asks again then).
+func _maybe_join_together() -> void:
+	if not _first_open_done or _account == null or not _account.signed_in() or _together.live:
+		return
+	# The session this tab was in before a reload or a restart, gone back
+	# into by itself: its model is the session's, so nothing is asked.
+	var kept: String = Together.kept_secret() if not _together_tried else ""
+	_together_tried = true
+	if _together_wanted.is_empty() and kept.is_empty():
+		return
+	var secret: String = _together_wanted if not _together_wanted.is_empty() else kept
+	_together_wanted = ""
+	_set_address("")
+	var trouble: String = await _together.join(secret, secret == kept)
+	if not trouble.is_empty():
+		_bar.say(trouble)
+		return
+	# Gone back into after a reload: said, not a panel over the model.
+	if secret == kept:
+		_bar.say("Back in the session: %s" % _store.title)
+		return
+	open_together()
 
 
 ## Build, Motions….

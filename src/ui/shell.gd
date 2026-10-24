@@ -78,7 +78,7 @@ const ALT := KEY_MASK_ALT
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "-", "share", ">export", "render", "instructions", "-", "clear", "account",
+		"versions", "-", "share", "together", ">export", "render", "instructions", "-", "clear", "account",
 		"quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
@@ -723,6 +723,9 @@ func _define() -> void:
 		"Building instructions for this model, step by step")
 	_add("share", "Share…", 0, func() -> void: app.call("_share_wanted"), something,
 		"A link anyone can open to see this model, its steps and its parts list")
+	# src/net/together.gd, src/ui/together_dialog.gd.
+	_add("together", "Build together…", 0, func() -> void: app.call("open_together"), Callable(),
+		"Build this model with someone else, live, each in their own browser or the app")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),

@@ -20,6 +20,19 @@ whole cycle.
   many collections it is in, each a card a click away. Share on a model's
   page opens a sheet with its link and the code to embed it, each with
   Copy, and the embed is drawn in the light or dark its viewer chose.
+- Build together: File › Build together… gives a link to the model, and
+  whoever opens it, signed in, builds it with you at the same time, in a
+  browser or the desktop app. Each of you sees the other's parts go down,
+  move, change colour and come off as it happens, and who is here. Undo
+  takes back only your own changes. Two people moving one part at once
+  both see it end in the same place, and the one whose move was overtaken
+  is told. Everything the model is goes too: its name, the floor, motions,
+  build steps, the booklet's looks, the colours of hidden parts, and parts
+  printed or made in the app. Each person's pointer shows in the others'
+  view with their name, and the panel has a short chat for people 13 and
+  over. A reload or a lost connection goes back into the session by
+  itself. A Claude connected to one person's tab builds for everyone. The
+  owner ends the session; the model stays theirs.
 
 ### Fixed
 - Saving, exporting or moving parts between steps on a big model with its

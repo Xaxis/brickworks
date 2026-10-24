@@ -174,6 +174,16 @@ declare -A CMD=(
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"
   [tabpair]="tools/web/tabpair_flow.mjs --url=$P/app --out=$S/${TAG}_tabpair"
+  # Build together (docs/TOGETHER.md): the server's half from three accounts
+  # in seconds (numbering, refusals, the time a change takes), then two
+  # browsers and the desktop app in one session: joined by the link, 50
+  # edits interleaved and byte-identical after, each undo its own, a
+  # stranger refused, the owner ending it. Needs supabase/together.sql.
+  [together_probe]="tools/web/together_probe.mjs --url=$P"
+  [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # local only: together_timing.mjs. A measure with no verdict: where the
+  # time of a change goes, stage by stage, as the model grows richer; the
+  # flow above holds the bar (docs/TOGETHER.md).
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"

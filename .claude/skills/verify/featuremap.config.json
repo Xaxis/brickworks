@@ -3281,6 +3281,55 @@
       "entry": "src/dev/oc_listener_probe.gd",
       "reach": "tools/probe.sh oc_listener_probe   (headless, nothing beyond 127.0.0.1; in tools/suite/headless.txt)",
       "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "build together",
+      "entry": "src/ui/together_dialog.gd",
+      "reach": "File, Build together…: Start a session (a link to send) or paste a link and Join; in one, the link, who is in it, Remove, End the session or Leave. A link opened in a browser (/app?together=<secret>) or --together=<secret> joins at start",
+      "area": "together"
+    },
+    {
+      "kind": "lib",
+      "label": "building together",
+      "entry": "src/net/together.gd",
+      "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then godot --headless --path . --script src/dev/together_probe.gd -- --api=http://127.0.0.1:9011   (with .env sourced)",
+      "area": "together"
+    },
+    {
+      "kind": "api",
+      "label": "POST /api/together",
+      "entry": "api/together.js",
+      "reach": "node tools/web/together_probe.mjs --url=<a relay server or a preview>   (with .env sourced; BW_BYPASS for a preview)",
+      "area": "together"
+    },
+    {
+      "kind": "cli",
+      "label": "together probe",
+      "entry": "tools/web/together_probe.mjs",
+      "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then node tools/web/together_probe.mjs --url=http://127.0.0.1:9011   (with .env sourced; or --url=<preview> with BW_BYPASS once supabase/together.sql is applied)",
+      "area": "together"
+    },
+    {
+      "kind": "cli",
+      "label": "together browser flow",
+      "entry": "tools/web/together_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 9011 --static=build/web --hold=together_sessions,together_ops,together_people, then node tools/web/together_flow.mjs --url=http://127.0.0.1:9011 --out=shots/together   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "together"
+    },
+    {
+      "kind": "cli",
+      "label": "together desktop probe",
+      "entry": "src/dev/together_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/together_probe.gd -- --api=<relay or preview> [--join=<link> --out=FILE --edits=N --email=<resend.dev address>]   (with .env sourced)",
+      "area": "together"
+    },
+    {
+      "kind": "cli",
+      "label": "together timing",
+      "entry": "tools/web/together_timing.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 9011 --static=build/web --hold=together_sessions,together_ops,together_people, then node tools/web/together_timing.mjs --url=http://127.0.0.1:9011 --out=DIR [--rounds=10] [--only=floor,print]   (with .env sourced)",
+      "area": "together"
     }
   ]
 }

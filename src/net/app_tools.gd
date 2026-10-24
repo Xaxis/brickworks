@@ -77,6 +77,7 @@ const WINDOW_ONLY: Dictionary = {
 	"import_*": "reads a file from the person's disk, picked in a dialog; open_model opens the app's own models",
 	"share": "publishes the model on the web as the person, for anyone with the link and, ticked, in the public gallery: theirs to decide",
 	"account": "signing in is the person's",
+	"together": "lets another account build in the person's model, by a link they send: theirs to decide",
 	"quit": "closes the app the session is driving",
 	"new_window": "opens another tab or window for the person, on a model of its own; a session works in the tab it is connected to, and clear_model begins a new model there",
 	"connector": "connects Claude to this tab; a session is already connected",
