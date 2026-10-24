@@ -1406,6 +1406,16 @@ plan with Claude as the client.
   models an hour from one account (`may_list`, `supabase/gallery.sql`), so
   more than six go up as node-half runs an hour apart, each on a DIR of at
   most six bodies; a seventh is refused 429 and nothing of it is kept.
+  The scripts that made them are `tools/house_models/` (each says how in its
+  header): `design.sh` (one design on the plan), `finish.sh` (`flatten.py`
+  then the step fixer `fixsteps.gd`, which derives an id-naming copy of the
+  Tested check from `src/assembly/tested.gd` as it runs), `colours.py
+  --check`, `drop.py`, `tested_check.gd`, `preview.sh` (the Godot half and
+  each body's Tested finding), `house_listing.mjs` and `compare.py` (the
+  read-only before and after) and `live_shot.mjs`. Proved 2026-10-24: the
+  committed `finish.sh --steps` on the tractor's design wrote the file the
+  published tractor was made from, line for line, and `tested_check.gd` on
+  the twelve seed files said TESTED for each.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory
