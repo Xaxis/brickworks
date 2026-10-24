@@ -36,9 +36,13 @@ export function ocConfigured() {
     && dbConfigured() && process.env.SUPABASE_PUBLISHABLE_KEY);
 }
 
-/// What /api/account says of orangecheck: {ready, everyone}. ready false
-/// (no signing secret here, as on a unit's preview): the button, where it
-/// is offered, says sign-in with orangecheck is unavailable.
+/// What /api/account says of orangecheck: {ready, everyone, connect}.
+/// ready false (no signing secret here, as on a unit's preview): the
+/// button, where it is offered, says sign-in with orangecheck is
+/// unavailable. connect: orangecheck Connect's key is here, so the sign-in
+/// dialog offers the box that makes an orangecheck account
+/// (api/orangecheck.js ?op=connect); without it, no box.
 export function orangecheckOffer() {
-  return { ready: ocConfigured(), everyone: ORANGECHECK_FOR_EVERYONE };
+  return { ready: ocConfigured(), everyone: ORANGECHECK_FOR_EVERYONE,
+    connect: Boolean(process.env.OC_CONNECT_KEY && dbConfigured()) };
 }

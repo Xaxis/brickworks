@@ -30,11 +30,27 @@
 //      390 and 1280 in light and dark; with the code just redeemed, the
 //      button opens orangecheck's window from the click. Linking without a
 //      sign-in is refused.
+//   Step 4 (2026-10-24, oc225): every button is orangecheck's own
+//   (data-oc-sign-in, enhanced by web/oc-button.mjs, its mark drawn, its
+//   stylesheet web/oc-button.css loaded from this origin under the page's
+//   policy), and still the kit's secondary button beside Email me a code.
+//   7. orangecheck Connect's box under it: unticked, in orangecheck's exact
+//      words (web/oc-connect-consent.mjs). Ticked, a sign-in by emailed code
+//      asks for an orangecheck account once; unticked, never; a failed ask
+//      still signs in. orangecheck is stood in for, here in the browser,
+//      on every deployment: the box where the deployment has no Connect key
+//      (a unit's preview), and ?op=connect always, so this flow never makes
+//      anybody an orangecheck account (oc_live_flow.mjs does, on
+//      brickworks.diy). Deleting an account Connect made one for asks
+//      orangecheck first: without the key it says so and deletes nothing.
 // A finished orangecheck sign-in needs a wallet and orangecheck's list of
 // ended sessions for the domain, which a preview's address is not:
 // tools/web/oc_live_flow.mjs does that on brickworks.diy.
 import { launch } from "./browser.mjs";
-import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { deleteAccount, mintCode, mintSession, STORAGE_KEY } from "./session.mjs";
+// orangecheck's own words, as this checkout serves them.
+import { OUTCOME_COPY } from "../../web/oc-button.mjs";
+import { CONNECT_CONSENT_BLURB, CONNECT_CONSENT_LABEL } from "../../web/oc-connect-consent.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -87,9 +103,30 @@ async function api(pathname, { method = "GET", body, raw } = {}) {
 const browser = await launch({ signedOut: true });
 const person = `delivered+bw-oc-flow-${randomBytes(4).toString("hex")}@resend.dev`;
 
+// orangecheck Connect, stood in for in the browser: each ask the page makes
+// (?op=connect) kept, and answered as set, never sent on.
+const connectAsks = [];
+let connectAnswer = [200, { made: true, did: "did:oc:00000000000000000000000000000000" }];
+
 async function context(width, theme, { blockWindows = false } = {}) {
   const made = await browser.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: theme });
   await made.route(`${site}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...headers } }));
+  // A deployment without the Connect key offers no box: offered here.
+  await made.route(`${site}/api/account`, async (route) => {
+    if (route.request().method() !== "GET" || route.request().headers().authorization) {
+      return route.continue({ headers: { ...route.request().headers(), ...headers } });
+    }
+    const reply = await route.fetch({ headers: { ...route.request().headers(), ...headers } });
+    const said = await reply.json();
+    if (said.orangecheck) said.orangecheck.connect = true;
+    return route.fulfill({ response: reply, json: said });
+  });
+  await made.route(`${site}/api/orangecheck?op=connect`, (route) => {
+    const request = route.request();
+    connectAsks.push({ method: request.method(), body: request.postDataJSON(), signedIn: /^Bearer \S+/.test(request.headers().authorization || "") });
+    const [status, json] = connectAnswer;
+    return route.fulfill({ status, json });
+  });
   await made.addInitScript(([chosen, block]) => {
     try {
       localStorage.setItem("brickworks.theme", chosen);
@@ -110,7 +147,7 @@ async function openDialog(page) {
 // takes a token here, and whether everybody is offered it.
 const offer = (await (await fetch(`${site}/api/account`, { headers })).json()).orangecheck || {};
 console.log(`  --    orangecheck here: ${offer.ready ? "takes a token" : "unavailable (no signing secret)"}, `
-  + `offered to ${offer.everyone ? "everybody" : "nobody"}`);
+  + `offered to ${offer.everyone ? "everybody" : "nobody"}, Connect ${offer.connect ? "set up" : "not set up (stood in for)"}`);
 
 try {
   // 0. Who is offered it: everybody, with nothing on the address.
@@ -152,6 +189,42 @@ try {
       });
       check(`${width} ${theme}: drawn as the kit's secondary button, inside the dialog, below the email`,
         looks.inside && looks.below && looks.ghost && looks.height >= 40 && looks.theme === theme, JSON.stringify(looks));
+      const theirs = await page.evaluate(() => {
+        const b = document.querySelector("#oc-sign-in");
+        const go = document.querySelector("dialog.sign-in button[type=submit]");
+        const mark = b.querySelector("svg[data-oc-mark]");
+        const words = b.querySelector("[data-oc-label]");
+        const sheet = [...document.styleSheets].find((one) => one.href && new URL(one.href).pathname === "/oc-button.css");
+        let rules = 0;
+        try {
+          rules = sheet ? sheet.cssRules.length : 0;
+        } catch { /* another origin's */ }
+        const m = mark ? mark.getBoundingClientRect() : null;
+        return { attr: b.hasAttribute("data-oc-sign-in"), variant: mark?.getAttribute("data-oc-mark"),
+          first: b.firstElementChild === mark, ink: [...(mark?.querySelectorAll("polygon") || [])].every((one) => one.getAttribute("fill") === "currentColor"),
+          markWide: m ? Math.round(m.width) : 0, words: words?.textContent, sheet: sheet ? new URL(sheet.href).origin === location.origin : false, rules,
+          height: Math.round(b.getBoundingClientRect().height), goHeight: Math.round(go.getBoundingClientRect().height),
+          radius: getComputedStyle(b).borderRadius === getComputedStyle(go).borderRadius,
+          font: getComputedStyle(b).fontSize === getComputedStyle(go).fontSize && getComputedStyle(b).fontWeight === getComputedStyle(go).fontWeight };
+      });
+      check(`${width} ${theme}: it is orangecheck's button (data-oc-sign-in), its mono mark in the button's ink before its words`,
+        theirs.attr && theirs.variant === "mono" && theirs.first && theirs.ink && theirs.markWide >= 16 && theirs.words === "Sign in with orangecheck",
+        JSON.stringify(theirs));
+      check(`${width} ${theme}: its stylesheet is orangecheck's, from this site, read under the page's policy`, theirs.sheet && theirs.rules > 0,
+        JSON.stringify(theirs));
+      check(`${width} ${theme}: and it looks like Email me a code's kind: the same height, corners and type`,
+        theirs.height === theirs.goHeight && theirs.height >= 44 && theirs.radius && theirs.font, JSON.stringify(theirs));
+      const box = await page.evaluate(() => {
+        const tick = document.querySelector("dialog.sign-in #oc-connect");
+        const label = tick?.closest("label");
+        const blurb = document.querySelector("dialog.sign-in #oc-connect-blurb");
+        const b = document.querySelector("#oc-sign-in").getBoundingClientRect();
+        return { drawn: Boolean(tick && tick.checkVisibility()), checked: tick?.checked, label: label?.textContent.trim(),
+          blurb: blurb?.textContent, described: tick?.getAttribute("aria-describedby") === "oc-connect-blurb",
+          under: tick ? label.getBoundingClientRect().top >= b.bottom : false, choice: label?.classList.contains("choice") };
+      });
+      check(`${width} ${theme}: under it, orangecheck Connect's box, unticked, with orangecheck's exact words`, box.drawn && box.checked === false
+        && box.label === CONNECT_CONSENT_LABEL && box.blurb === CONNECT_CONSENT_BLURB && box.described && box.under && box.choice, JSON.stringify(box));
       check(`${width} ${theme}: nothing sideways`, !(await sideways(page)));
       // The pointer off the dialog: the click that opened it leaves it over
       // whatever button is drawn there now.
@@ -212,8 +285,8 @@ try {
     await page.waitForFunction(() => !document.querySelector("#oc-sign-in")?.disabled, null, { timeout: 15000 }).catch(() => null);
     const after = await page.evaluate(() => ({ open: document.querySelector("dialog.sign-in")?.open,
       said: document.querySelector("dialog.sign-in .said")?.textContent, enabled: !document.querySelector("#oc-sign-in").disabled }));
-    check("closed, the dialog stays, says nothing, and can try again", after.open === true && after.said === "" && after.enabled,
-      JSON.stringify(after));
+    check("closed, the dialog stays, says so in orangecheck's words, and can try again", after.open === true
+      && after.said === OUTCOME_COPY.closed && after.enabled, JSON.stringify(after));
     await made.close();
   }
   if (offer.ready) {
@@ -225,8 +298,7 @@ try {
     await page.waitForFunction(() => /blocked/.test(document.querySelector("dialog.sign-in .said")?.textContent || ""), null,
       { timeout: 15000 }).catch(() => null);
     const said = await page.locator("dialog.sign-in .said").textContent();
-    check("a blocked window is said in words, with how to allow it",
-      said === `Your browser blocked the sign-in window. Allow pop-ups for ${host} and try again.`, said);
+    check("a blocked window is said in orangecheck's words, with how to allow it", said === OUTCOME_COPY.blocked, said);
     await shot(page, "blocked_390_dark.png");
     await made.close();
   }
@@ -252,10 +324,14 @@ try {
   }
 
   // 3. Loaded from here, and nothing refused.
-  const code = await fetch(`${site}/oc-popup.mjs`, { headers });
-  check("orangecheck's window code is served from this site as a script",
-    code.ok && /javascript/.test(code.headers.get("content-type") || "") && /signInWithOcOutcome/.test(await code.text()),
-    `${code.status} ${code.headers.get("content-type")}`);
+  for (const [file, type, has] of [["/oc-button.mjs", /javascript/, /enhanceSignInButton/], ["/oc-button.css", /text\/css/, /data-oc-sign-in/],
+    ["/oc-connect-consent.mjs", /javascript/, /CONNECT_CONSENT_LABEL/]]) {
+    const code = await fetch(site + file, { headers });
+    check(`orangecheck's ${file} is served from this site, as orangecheck made it`,
+      code.ok && type.test(code.headers.get("content-type") || "") && has.test(await code.text()), `${code.status} ${code.headers.get("content-type")}`);
+  }
+  const gone = await fetch(`${site}/oc-popup.mjs`, { headers });
+  check("the popup module it replaces is gone", gone.status === 404, String(gone.status));
   check("no refusal from the page's security policy, no error", errors.length === 0, errors.slice(0, 3).join(" | "));
 
   // 4. Who may open a window.
@@ -324,6 +400,13 @@ try {
       const said = await page.locator("#oc-said").textContent().catch(() => "");
       check(`settings ${width} ${theme}: Link orangecheck, with its words`, await page.locator("#oc-go").isVisible()
         && (await page.locator("#oc-go").textContent()) === "Link orangecheck" && /^Link orangecheck to sign in with it/.test(said), said);
+      const linkIs = await page.evaluate(() => ({
+        link: Boolean(document.querySelector("#oc-go[data-oc-sign-in].cta.ghost svg[data-oc-mark=mono]")),
+        remove: Boolean(document.querySelector("#delete-oc[data-oc-sign-in].cta.ghost.danger svg[data-oc-mark=mono]")),
+        unlink: document.querySelector("#oc-unlink")?.hidden === true,
+        height: Math.round(document.querySelector("#oc-go").getBoundingClientRect().height) }));
+      check(`settings ${width} ${theme}: Link orangecheck is orangecheck's button, the kit's secondary, and so is an orangecheck account's delete`,
+        linkIs.link && linkIs.remove && linkIs.unlink && linkIs.height >= 44, JSON.stringify(linkIs));
       check(`settings ${width} ${theme}: nothing sideways, drawn ${theme}`, !(await sideways(page))
         && await page.evaluate((wanted) => document.documentElement.getAttribute("data-theme") === wanted, theme));
       await page.locator("#oc-part").scrollIntoViewIfNeeded();
@@ -355,7 +438,8 @@ try {
           await page.waitForFunction(() => !document.querySelector("#oc-go")?.disabled, null, { timeout: 15000 }).catch(() => null);
           const status = await within(60000, "reading #oc-status", page.locator("#oc-status").textContent());
           const label = await within(60000, "reading #oc-go", page.locator("#oc-go").textContent());
-          check("closed, nothing is linked and nothing said", status === "" && label === "Link orangecheck");
+          check("closed, nothing is linked, and it says so in orangecheck's words", status === OUTCOME_COPY.closed && label === "Link orangecheck",
+            `${status} ${label}`);
         } catch (trouble) {
           const heard = await within(10000, "reading what the page heard", page.evaluate(() => window.__ocHeard)).catch(() => ["(page did not answer)"]);
           writeFileSync(path.join(out, "popup_trail.txt"), [...trail, "-- the page heard:", ...heard, `-- ${trouble.message}`].join("\n") + "\n");
@@ -366,6 +450,75 @@ try {
     }
   }
   check("no refusal from the page's security policy, no error, on /settings either", errors.length === 0, errors.slice(0, 3).join(" | "));
+
+  // 7. orangecheck Connect's box, ticked or not, at a sign-in by emailed code.
+  const signInByCode = async ({ tick }) => {
+    const made = await context(390, "light");
+    const page = await made.newPage();
+    listen(page, `connect ${tick ? "ticked" : "unticked"}`);
+    await openDialog(page);
+    await page.locator("dialog.sign-in #oc-connect").waitFor({ state: "visible", timeout: 15000 });
+    if (tick) await page.locator("dialog.sign-in #oc-connect").check();
+    await page.fill("dialog.sign-in form input", person);
+    await page.click('dialog.sign-in button[type="submit"]');
+    await page.waitForFunction(() => /The code sent to/.test(document.querySelector("dialog.sign-in label")?.textContent || ""), null, { timeout: 30000 });
+    const ticked = await page.locator("dialog.sign-in #oc-connect").isChecked();
+    const shown = await page.locator("dialog.sign-in #oc-connect").isVisible();
+    if (tick) await shot(page, "connect_ticked_390_light.png");
+    await page.fill("dialog.sign-in form input", await mintCode(person));
+    await page.click('dialog.sign-in button[type="submit"]');
+    const signedIn = await page.waitForFunction((key) => {
+      try {
+        return Boolean(JSON.parse(localStorage.getItem(key) || "null")?.refresh_token);
+      } catch {
+        return false;
+      }
+    }, STORAGE_KEY, { timeout: 30000 }).then(() => true, () => false);
+    // The ask is never waited on: a moment for it to go.
+    await page.waitForTimeout(3000);
+    await made.close();
+    return { signedIn, ticked, shown };
+  };
+  connectAsks.length = 0;
+  const unticked = await signInByCode({ tick: false });
+  check("Connect: unticked, a sign-in by code asks for no orangecheck account", unticked.signedIn && connectAsks.length === 0,
+    `${JSON.stringify(unticked)} ${connectAsks.length} asks`);
+  connectAsks.length = 0;
+  const ticked = await signInByCode({ tick: true });
+  check("Connect: ticked, the box stays ticked through the code, and the sign-in asks once, signed in, with consent",
+    ticked.signedIn && ticked.ticked && ticked.shown && connectAsks.length === 1 && connectAsks[0].method === "POST"
+    && connectAsks[0].signedIn && connectAsks[0].body?.consent === true, `${JSON.stringify(ticked)} ${JSON.stringify(connectAsks)}`);
+  connectAsks.length = 0;
+  connectAnswer = [503, { error: "orangecheck is down" }];
+  const failing = await signInByCode({ tick: true });
+  check("Connect: an ask that fails still signs in", failing.signedIn && connectAsks.length === 1, `${JSON.stringify(failing)} ${connectAsks.length}`);
+  connectAnswer = [200, { made: true }];
+
+  // Deleting an account Connect made one for asks orangecheck first.
+  {
+    const SB = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+    const secret = process.env.SUPABASE_SECRET_KEY || "";
+    const leaver = `delivered+bw-oc-flow-leave-${randomBytes(4).toString("hex")}@resend.dev`;
+    const theirs = await mintSession(leaver, { age: true });
+    const asked = await fetch(`${SB}/rest/v1/rpc/oc_connect_asked`, { method: "POST",
+      headers: { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify({ account: theirs.kept.user_id }) });
+    const quit = await fetch(`${site}/api/account?op=delete`, { method: "POST",
+      headers: { ...headers, authorization: `Bearer ${theirs.access_token}`, "content-type": "application/json" },
+      body: JSON.stringify({ confirm: leaver }) });
+    const said = await quit.json().catch(() => ({}));
+    const still = await fetch(`${SB}/auth/v1/admin/users/${theirs.kept.user_id}`, { headers: { apikey: secret, authorization: `Bearer ${secret}` } });
+    if (offer.connect) {
+      check("Connect: deleting an account Connect made one for asks orangecheck to delete it, then deletes the account",
+        asked.ok && quit.status === 200 && still.status === 404, `${asked.status} ${quit.status} ${said.error || ""} ${still.status}`);
+    } else {
+      check("Connect: deleting an account Connect made one for asks orangecheck first: with no Connect key here, it says so and deletes nothing",
+        asked.ok && quit.status === 503 && /orangecheck could not delete/.test(said.error || "") && still.status === 200,
+        `${asked.status} ${quit.status} ${said.error || ""} ${still.status}`);
+    }
+    await deleteAccount(leaver).catch(() => false);
+  }
+  check("no refusal from the page's security policy, no error, signing in with the box", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (trouble) {
   check("the flow finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {

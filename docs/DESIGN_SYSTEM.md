@@ -113,6 +113,16 @@ is on the page, `hidden`, for the script to show.
   page's opening offer; a button beside a field is the regular size. A
   toggle that is on (`aria-pressed="true"`) has the accent edge. A
   `<summary>` that opens something is `summary.cta.ghost`.
+- **Sign in with orangecheck**: our own `.cta.ghost` with `data-oc-sign-in`
+  and a `<span data-oc-mark>` holding its mark's place, made orangecheck's
+  by its own code (`web/oc-button.mjs`, `account.js` `orangecheckButton`):
+  its mark in the button's ink before the words, its busy state, its window
+  opened from the click. `web/oc-button.css` is orangecheck's too, at zero
+  specificity, so every rule here wins; it holds the mark's size and the
+  44 px target `--control-h` gives every button already. Under it in the
+  sign-in dialog, orangecheck Connect's box (`dialog .consent`): a
+  `label.choice`, never ticked but by the person, and orangecheck's own
+  words, label and line, exactly as `web/oc-connect-consent.mjs` gives them.
 - **Dialog**: the `dialog` element (sign in and the age question in
   `web/account.js`, report it in `web/report.js`): a `--panel` card, its
   title an h2 that names it (`aria-labelledby`), the form, the buttons

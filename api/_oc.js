@@ -18,11 +18,21 @@
 //     which touches nobody signing in by email.
 // OC_PROJECT_KEY and OC_SIGNING_SECRET are the project's (ochk.app). Without
 // either, or without an audience, no token is taken here.
+//
+// Step 4 (2026-10-24): every token's rh is kept with its id (oc_handles,
+// supabase/orangecheck_merge_connect.sql), so that once somebody merges two
+// orangecheck accounts, the one they keep signs in to the Brickworks
+// account the other had (merged). And orangecheck Connect, with
+// OC_CONNECT_KEY: an orangecheck account made at the person's tick
+// (provision), and deleted with their Brickworks account (unprovision).
 
 import { isTestAccount } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, ocConfigured } from "./_oc_config.js";
-import { _resetJwksCachesForTests, bondMeets, checkOcToken, integratorRevocationCheck } from "./_orangecheck.js";
+import {
+  _resetJwksCachesForTests, bondMeets, checkOcToken, connectDelete, connectProvision, integratorRevocationCheck, matchMergedUser,
+  mergedHandles,
+} from "./_orangecheck.js";
 
 export { audiences, ocConfigured };
 
@@ -155,6 +165,98 @@ export async function checkToken(token) {
 /// while the token lasts, on every instance. Throws when it cannot be asked.
 export async function spendToken(jti, exp) {
   return (await db("rpc/oc_spend", { method: "POST", body: { token_id: jti, until: new Date(exp * 1000).toISOString() } })) === true;
+}
+
+/// [session]'s rh kept with its id, for a merge to find later (merged).
+/// Never in the way of the sign-in or link it came with: not kept is said
+/// in the log, and only a later merge misses it.
+export async function keepHandle(session) {
+  try {
+    const kept = await db("rpc/oc_keep_handle", { method: "POST", body: { did: session.did_oc, rh: session.rh, aud: session.aud } });
+    if (kept !== true) console.error("orangecheck: a handle was not kept: its id is linked to no account");
+  } catch (trouble) {
+    console.error(`orangecheck: a handle was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+  }
+}
+
+/// The Brickworks account a merged orangecheck account had, for a checked
+/// token whose id has none here: its merged_rh, our handle for each account
+/// merged into it (read from the checked token alone), looked up among the
+/// handles kept, by orangecheck's matchMergedUser. {account, email, was}
+/// when they name one account, which is now the token's id's
+/// (oc_follow_merge: was is the id it had, whose sessions there are ended;
+/// email, the account's address); {conflict} when they name
+/// two, and neither is picked; null when they name none, and the id is a
+/// new person. Throws with again when the account changed under it (the
+/// person tries again), or when the database cannot be asked.
+export async function merged(session) {
+  const handles = mergedHandles(session);
+  if (!handles.length) return null;
+  const rows = await db("rpc/oc_accounts_of_handles", { method: "POST", body: { handles, aud: session.aud } });
+  const whose = new Map((Array.isArray(rows) ? rows : []).map((row) => [row.rh, row.account]));
+  const match = await matchMergedUser(session, (rh) => whose.get(rh) || null);
+  if (match.kind === "none") return null;
+  if (match.kind === "conflict") {
+    console.error(`orangecheck: merged handles name ${match.users.length} accounts; signed in to none`);
+    return { conflict: match.users };
+  }
+  const moved = await db("rpc/oc_follow_merge", { method: "POST",
+    body: { did: session.did_oc, account: match.user, handles, aud: session.aud } });
+  if (!moved?.account) throw Object.assign(new Error("the merge no longer held"), { again: true });
+  return { account: moved.account, email: moved.email || "", was: moved.was };
+}
+
+/// Whether orangecheck Connect is set up here: its key (ochk.app, the
+/// project's Sign-in, Your own login). A unit's preview has none
+/// (tools/deploy.sh --unit).
+export function connectConfigured() {
+  return Boolean(process.env.OC_CONNECT_KEY);
+}
+
+/// An orangecheck account made for [account], which ticked the box for it:
+/// {made, did} or {made: false, reason}. Asked of orangecheck with consent,
+/// and the account's id alone; written down first, so deleting the account
+/// deletes that one too whatever the answer. Never throws: a refusal or an
+/// outage is an answer, as Connect's own calls give them.
+export async function provision(account) {
+  try {
+    await db("rpc/oc_connect_asked", { method: "POST", body: { account } });
+  } catch (trouble) {
+    console.error(`orangecheck: Connect not asked, nothing kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { made: false, reason: "unavailable" };
+  }
+  let made;
+  try {
+    made = await connectProvision({ apiKey: process.env.OC_CONNECT_KEY, userId: account, consent: true });
+  } catch (trouble) {
+    console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { made: false, reason: "unavailable" };
+  }
+  if (!made.ok) {
+    console.error(`orangecheck: Connect made no account: ${made.reason} ${made.status}`);
+    return { made: false, reason: made.reason };
+  }
+  await db("rpc/oc_connect_made", { method: "POST", body: { account, did: made.did_oc } })
+    .catch((trouble) => console.error(`orangecheck: Connect's id not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  return { made: true, did: made.did_oc };
+}
+
+/// The orangecheck account Connect made for [account], deleted, before the
+/// account itself is: true when it is gone (deleted, the person's own now
+/// that they claimed it, or never made), false when orangecheck could not
+/// delete it, and nothing should be.
+export async function unprovision(account) {
+  if (!connectConfigured()) return false;
+  let gone;
+  try {
+    gone = await connectDelete({ apiKey: process.env.OC_CONNECT_KEY, userId: account });
+  } catch (trouble) {
+    console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return false;
+  }
+  if (gone.ok || gone.reason === "unknown_user") return true;
+  console.error(`orangecheck: Connect did not delete an account: ${gone.reason} ${gone.status}`);
+  return false;
 }
 
 /// The token ended at orangecheck once it has been taken, so it is good for

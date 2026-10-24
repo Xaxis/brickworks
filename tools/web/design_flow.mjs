@@ -225,6 +225,10 @@ function offScale() {
       continue; // another site's, which this cannot read
     }
     const name = sheet.href ? new URL(sheet.href).pathname : `<style> of ${location.pathname}`;
+    // orangecheck's own, copied as it ships (tools/web/vendor_orangecheck.sh):
+    // zero specificity, and its literals are its brand appearance alone,
+    // which nothing here asks for.
+    if (name === "/oc-button.css") continue;
     walk(name, rules);
   }
   for (const el of document.querySelectorAll("[style]")) {

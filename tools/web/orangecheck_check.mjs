@@ -4,7 +4,10 @@
 // served as ochk.io's key set; the project's rule and the list of ended
 // sessions are answered here too. Everything on Brickworks' side is real:
 // supabase/orangecheck.sql's functions, Supabase's admin API, the session
-// minted and then used against api/account.js.
+// minted and then used against api/account.js. Step 4 (oc225): an
+// orangecheck account merge follows to the same Brickworks account
+// (merged_rh), and orangecheck Connect makes an orangecheck account only at
+// a tick, and deletes it with the Brickworks account.
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/orangecheck_check.mjs
@@ -19,6 +22,8 @@ const AUD = "http://127.0.0.1:8841";
 process.env.OC_AUDIENCE = AUD;
 process.env.OC_PROJECT_KEY ||= "pk_test_orangecheck_check";
 process.env.OC_SIGNING_SECRET ||= "orangecheck-check-secret";
+// Never the real Connect key: every call to Connect is answered here.
+process.env.OC_CONNECT_KEY = "ock_test_orangecheck_check";
 delete process.env.VERCEL_ENV;
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY || !process.env.SUPABASE_PUBLISHABLE_KEY) {
   console.error("orangecheck_check: no SUPABASE_* — source .env");
@@ -40,6 +45,11 @@ const ochk = {
   list: () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} }),
   listStatus: 200,
   revoked: [],
+  // Connect (ochk.io/api/connect/*): each call kept, as it was asked, and
+  // answered as set.
+  connect: [],
+  provision: (body) => [200, { ok: true, did_oc: `did:oc:${createHash("sha256").update(body.user_id).digest("hex").slice(0, 32)}`, is_new: true }],
+  remove: () => [200, { ok: true, result: "deleted" }],
 };
 
 const made = new Set();
@@ -51,6 +61,8 @@ const hooks = { beforeBind: null, minted: null, sessionOf: null, mail: [], signu
 const tag = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-oc-ada-${tag}@resend.dev`;
 const bobEmail = `delivered+bw-oc-bob-${tag}@resend.dev`;
+const carolEmail = `delivered+bw-oc-carol-${tag}@resend.dev`;
+const danEmail = `delivered+bw-oc-dan-${tag}@resend.dev`;
 const real = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input?.url || input);
@@ -58,6 +70,13 @@ globalThis.fetch = async (input, init = {}) => {
   if (url === "https://ochk.io/.well-known/jwks.json") return ochk.jwksStatus === 200 ? json(200, { keys: [jwk] }) : json(ochk.jwksStatus, {});
   if (url.startsWith("https://me.ochk.io/api/integrator/revocations")) return json(ochk.listStatus, ochk.list());
   if (/^https:\/\/me\.ochk\.io\/api\/integrator\/[^/]+\/sign-in$/.test(url)) return json(ochk.ruleStatus, ochk.rule);
+  if (url === "https://ochk.io/api/connect/provision" || url === "https://ochk.io/api/connect/delete") {
+    const body = JSON.parse(init.body);
+    ochk.connect.push({ path: new URL(url).pathname, body, key: String(init.headers?.authorization || "") === `Bearer ${process.env.OC_CONNECT_KEY}`,
+      redirect: init.redirect });
+    const [status, answer] = url.endsWith("/provision") ? ochk.provision(body) : ochk.remove(body);
+    return json(status, answer);
+  }
   if (url === "https://ochk.io/api/auth/revoke") {
     ochk.revoked.push(...JSON.parse(init.body).tokens);
     return json(200, { ok: true, revoked: 1 });
@@ -117,18 +136,30 @@ async function route() {
 // unless it says which: the rate limit is checked on its own, below.
 const anywhere = () => `2001:db8::${randomBytes(4).toString("hex").replace(/(.{4})/, "$1:")}`;
 
+// Supabase redeems 30 sign-in links from one address at once, then one
+// every 10 s, and every agent on this machine shares the address (step 4
+// took the run past 30). A sign-in turned away for that is tried again
+// after the wait, with a token of its own like the first's, as the person
+// would: the first was spent.
+const BUSY = /A lot of people are signing in/;
 async function call(handler, body, { method = "POST", op = "signin", ip = anywhere() } = {}) {
-  let status = 0;
-  let answer = null;
-  const response = {
-    headers: {},
-    setHeader(name, value) { this.headers[name.toLowerCase()] = value; return this; },
-    status(code) { status = code; return this; },
-    json(value) { answer = value; return this; },
-    end() { return this; },
-  };
-  await handler({ method, query: { op }, headers: { "x-forwarded-for": ip }, body }, response);
-  return { status, body: answer, headers: response.headers };
+  for (let attempt = 0; ; attempt += 1) {
+    let status = 0;
+    let answer = null;
+    const response = {
+      headers: {},
+      setHeader(name, value) { this.headers[name.toLowerCase()] = value; return this; },
+      status(code) { status = code; return this; },
+      json(value) { answer = value; return this; },
+      end() { return this; },
+    };
+    await handler({ method, query: { op }, headers: { "x-forwarded-for": ip }, body }, response);
+    if (!(status === 503 && BUSY.test(answer?.error || "") && attempt < 8 && body?.token)) {
+      return { status, body: answer, headers: response.headers, retried: attempt };
+    }
+    await new Promise((done) => setTimeout(done, 11000));
+    body = { ...body, token: token({ ...claimsOf(body.token), jti: randomBytes(12).toString("hex") }).jwt };
+  }
 }
 
 const account = (await import("../../api/account.js")).default;
@@ -745,6 +776,157 @@ try {
     }
   }
 
+
+  // Step 4: an orangecheck account merge (me-client 0.45.0, merged_rh).
+  // Somebody with two orangecheck accounts, each signed in here once, merges
+  // one into the other: the one they stop using no longer signs in, and the
+  // one they keep brings our handle for the other (merged_rh). It signs in
+  // to the Brickworks account the other had, as long as the handles name
+  // one account; two, and it signs in to neither and makes nothing.
+  {
+    handler = await route();
+    // A new account, and none of [others]: a sign-in turned away by
+    // Supabase's limit after its account was made finds it on the try again.
+    const isNew = (answer, others = []) => answer.status === 200 && !others.includes(answer.body.user?.id)
+      && (answer.body.orangecheck?.new_account === true || answer.retried > 0);
+    const handleOf = async (rh) => (await rpc("oc_accounts_of_handles", { handles: [rh], aud: AUD }))?.[0]?.account || null;
+    const old = token();
+    const was = await call(handler, { token: old.jwt });
+    check("step 4: a sign-in's handle (rh) is kept with the account it signed in to", was.status === 200
+      && (await handleOf(old.claims.rh)) === was.body.user?.id, `${was.status} ${was.body.error || ""}`);
+    const kept = token({ merged_rh: [old.claims.rh] });
+    const before = new Set(made);
+    const merged = await call(handler, { token: kept.jwt });
+    check("step 4: an id that has no account, merged from one that has, signs in to that same account", merged.status === 200
+      && merged.body.user?.id === was.body.user?.id && merged.body.orangecheck?.new_account === false
+      // Turned away by Supabase's limit after the merge was followed, the
+      // try again finds the id already the account's.
+      && (merged.body.orangecheck?.merged === true || merged.retried > 0) && [...made].every((id) => before.has(id)),
+      `${merged.status} ${merged.body.error || ""} ${merged.body.user?.id === was.body.user?.id} ${JSON.stringify(merged.body.orangecheck)} ${merged.retried}`);
+    check("step 4: the account is now the kept id's, and the old id's no longer",
+      (await rpc("oc_account_of", { did: kept.claims.did_oc })) === was.body.user?.id && (await rpc("oc_account_of", { did: old.claims.did_oc })) === null
+      && (await handleOf(old.claims.rh)) === was.body.user?.id && (await handleOf(kept.claims.rh)) === was.body.user?.id);
+    forgetForTests();
+    check("step 4: and the session the old id started there is ended", (await whoIs(was.body.access_token)).body?.signed_in === false);
+    const again = await call(handler, { token: token({ did_oc: kept.claims.did_oc }).jwt });
+    check("step 4: the kept id signs in to it again, as itself", again.status === 200 && again.body.user?.id === was.body.user?.id
+      && again.body.orangecheck?.merged === false, `${again.status}`);
+    // The kept id has an account already: its own, whatever it says it merged.
+    const otherToken = token();
+    const other = await call(handler, { token: otherToken.jwt });
+    const own = await call(handler, { token: token({ did_oc: kept.claims.did_oc, merged_rh: [otherToken.claims.rh] }).jwt });
+    check("step 4: an id with an account signs in to its own, never to one its merged handles name", other.status === 200 && own.status === 200
+      && own.body.user?.id === was.body.user?.id && (await rpc("oc_account_of", { did: otherToken.claims.did_oc })) === other.body.user?.id, `${own.status}`);
+    // Handles that name nobody: a new person.
+    const stranger = await call(handler, { token: token({ merged_rh: [randomBytes(16).toString("base64url")] }).jwt });
+    check("step 4: merged handles that name nobody here are a new account", isNew(stranger, [was.body.user?.id, other.body.user?.id]),
+      `${stranger.status}`);
+    // Two accounts named: neither, nothing made, said in words.
+    const one = token();
+    const two = token();
+    const ones = await call(handler, { token: one.jwt });
+    const twos = await call(handler, { token: two.jwt });
+    const both = token({ merged_rh: [one.claims.rh, two.claims.rh] });
+    const counted = new Set(made);
+    const torn = await call(handler, { token: both.jwt });
+    check("step 4: merged handles that name two accounts sign in to neither, make nothing, and say why", ones.status === 200 && twos.status === 200
+      && torn.status === 409 && !torn.body.access_token && /two/.test(torn.body.error || "") && [...made].every((id) => counted.has(id))
+      && (await rpc("oc_account_of", { did: both.claims.did_oc })) === null, `${torn.status} ${torn.body.error || ""}`);
+    // A merged handle read from the token only: one the claim cannot hold
+    // (more than 16) is read as none.
+    const many = await call(handler, { token: token({ merged_rh: [one.claims.rh, ...Array.from({ length: 16 }, () => randomBytes(8).toString("hex"))] }).jwt });
+    check("step 4: a merged_rh of more than 16 handles is read as none: a new account", isNew(many, [ones.body.user?.id]), `${many.status}`);
+
+    // Linking keeps its handle too, and an unlinked id's handles name nobody.
+    const dan = await mintSession(danEmail, { age: true });
+    const danLink = token();
+    const linkedDan = await ocRoute({ method: "POST", op: "link", access: dan.access_token, body: { token: danLink.jwt } });
+    const danMerged = token({ merged_rh: [danLink.claims.rh] });
+    const viaMerge = await call(handler, { token: danMerged.jwt });
+    check("step 4: an id merged from one linked to an email account signs in to that account", linkedDan.status === 200
+      && viaMerge.status === 200 && viaMerge.body.user?.id === dan.kept.user_id && (await rpc("oc_did_of", { account: dan.kept.user_id })) === danMerged.claims.did_oc,
+      `${linkedDan.status} ${viaMerge.status} ${viaMerge.body.error || ""}`);
+    const unlinkedDan = await rpc("oc_unlink", { account: dan.kept.user_id });
+    const afterUnlink = await call(handler, { token: token({ merged_rh: [danLink.claims.rh, danMerged.claims.rh] }).jwt });
+    check("step 4: once unlinked, its handles name nobody: a merge from it is a new account, never the one that unlinked it",
+      unlinkedDan?.did === danMerged.claims.did_oc && isNew(afterUnlink, [dan.kept.user_id]),
+      `${JSON.stringify(unlinkedDan)} ${afterUnlink.status} ${JSON.stringify(afterUnlink.body.orangecheck)} ${afterUnlink.retried}`);
+    check("step 4: oc_follow_merge gives nothing for handles that do not name the account", (await rpc("oc_follow_merge",
+      { did: `did:oc:${randomBytes(16).toString("hex")}`, account: ones.body.user?.id, handles: [two.claims.rh], aud: AUD })) === null);
+  }
+
+  // Step 4: orangecheck Connect (me-client 0.39.0+, connectProvision and
+  // connectDelete). A tick of the box under Sign in with orangecheck, after
+  // a sign-in by emailed code, asks orangecheck to make the person an
+  // account; no tick, no call. It never blocks or fails the sign-in.
+  // Deleting the Brickworks account deletes that one first.
+  {
+    const connected = (account) => rpc("oc_connected_of", { account });
+    const carol = await mintSession(carolEmail, { age: true });
+    const asked = (access, body = { consent: true }) => ocRoute({ method: "POST", op: "connect", access, body });
+    const key = process.env.OC_CONNECT_KEY;
+    delete process.env.OC_CONNECT_KEY;
+    const noKey = await asked(carol.access_token);
+    process.env.OC_CONNECT_KEY = key;
+    check("Connect: without the Connect key, nothing is asked of orangecheck, and it says so", noKey.status === 503
+      && ochk.connect.length === 0, `${noKey.status} ${noKey.body.error || ""}`);
+    const unticked = await asked(carol.access_token, {});
+    const falsely = await asked(carol.access_token, { consent: "yes" });
+    check("Connect: no tick (consent not true) makes no call", unticked.status === 422 && falsely.status === 422 && ochk.connect.length === 0
+      && (await connected(carol.kept.user_id)) === null, `${unticked.status} ${falsely.status} ${ochk.connect.length}`);
+    const nobody = await asked("not.a.token");
+    check("Connect: without a sign-in, refused, and no call", nobody.status === 401 && ochk.connect.length === 0, `${nobody.status}`);
+    const ticked = await asked(carol.access_token);
+    const call1 = ochk.connect.filter((one) => one.path === "/api/connect/provision");
+    check("Connect: a tick after a sign-in by code asks orangecheck once, with consent, the account's id and the Connect key, and nowhere else",
+      ticked.status === 200 && ticked.body.made === true && call1.length === 1 && call1[0].body.consent === true
+      && call1[0].body.user_id === carol.kept.user_id && call1[0].key && call1[0].redirect === "error"
+      && Object.keys(call1[0].body).sort().join(",") === "consent,user_id", `${ticked.status} ${JSON.stringify(ticked.body)} ${call1.length}`);
+    const row = await connected(carol.kept.user_id);
+    check("Connect: the id orangecheck made is kept with the account", row?.did === ticked.body.did && Boolean(row?.made_at), JSON.stringify(row));
+    // orangecheck refusing or down: answered, never thrown, and the
+    // sign-in it followed goes on.
+    ochk.provision = () => [503, { ok: false }];
+    const down = await asked(carol.access_token);
+    check("Connect: orangecheck down, the answer says nothing was made, and the sign-in goes on", down.status === 200 && down.body.made === false
+      && (await whoIs(carol.access_token)).body?.signed_in === true && (await theme(carol.access_token)).status === 200,
+      `${down.status} ${JSON.stringify(down.body)}`);
+    ochk.provision = () => { throw new Error("orangecheck_check: Connect timed out"); };
+    const thrown = await asked(carol.access_token);
+    check("Connect: and a call that never answers too", thrown.status === 200 && thrown.body.made === false, `${thrown.status} ${JSON.stringify(thrown.body)}`);
+    ochk.provision = (body) => [200, { ok: true, did_oc: `did:oc:${createHash("sha256").update(body.user_id).digest("hex").slice(0, 32)}`, is_new: false }];
+    // Not for somebody who has orangecheck already: their sign-in gave it.
+    const counted = ochk.connect.length;
+    const ocOnly = await call(handler, { token: token().jwt });
+    const fromOc = await asked(ocOnly.body.access_token);
+    const danNow = await mintSession(danEmail, { age: true });
+    await rpc("oc_link", { did: `did:oc:${randomBytes(16).toString("hex")}`, account: danNow.kept.user_id });
+    const linkedOne = await asked(danNow.access_token);
+    check("Connect: an account that has orangecheck (its own, or linked) is never made a second one", fromOc.status !== 200 || fromOc.body.made === false);
+    check("Connect: ...and no call is made for it", ochk.connect.length === counted && linkedOne.body.made === false,
+      `${fromOc.status} ${linkedOne.status} ${JSON.stringify(linkedOne.body)}`);
+    // Deleting: Connect's account first, then ours; refused whole while
+    // orangecheck cannot delete it.
+    ochk.remove = () => [503, {}];
+    const held = await quit(carol.access_token, { confirm: carolEmail });
+    check("Connect: while orangecheck cannot delete the account it made, the Brickworks account is not deleted either, and it says so",
+      held.status === 503 && /orangecheck/.test(held.body?.error || "") && (await adminUser(carol.kept.user_id)).status === 200,
+      `${held.status} ${held.body?.error || ""}`);
+    ochk.remove = () => [200, { ok: true, result: "deleted" }];
+    const removed = ochk.connect.filter((one) => one.path === "/api/connect/delete").length;
+    const gone = await quit(carol.access_token, { confirm: carolEmail });
+    const deletes = ochk.connect.filter((one) => one.path === "/api/connect/delete");
+    check("Connect: deleting the account calls connectDelete for it, with the key, then deletes it", gone.status === 200
+      && deletes.length === removed + 1 && deletes.at(-1).body.user_id === carol.kept.user_id && deletes.at(-1).key
+      && (await adminUser(carol.kept.user_id)).status === 404 && (await connected(carol.kept.user_id)) === null,
+      `${gone.status} ${gone.body?.error || ""} ${deletes.length - removed}`);
+    const before = ochk.connect.length;
+    const plain = await mintSession(`delivered+bw-oc-plain-${tag}@resend.dev`, { age: true });
+    const plainGone = await quit(plain.access_token, { confirm: `delivered+bw-oc-plain-${tag}@resend.dev` });
+    check("Connect: deleting an account Connect never made one for asks nothing of orangecheck", plainGone.status === 200
+      && ochk.connect.length === before, `${plainGone.status} ${ochk.connect.length - before}`);
+  }
+
   // Without the project's key or secret, nobody signs in with orangecheck.
   const offered = (await whoIs(undefined)).body?.orangecheck;
   check("/api/account says orangecheck takes a token here, offered to everybody", offered?.ready === true
@@ -775,7 +957,7 @@ try {
 } catch (trouble) {
   check("the run finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {
-  for (const email of [adaEmail, bobEmail]) await deleteAccount(email).catch(() => false);
+  for (const email of [adaEmail, bobEmail, carolEmail, danEmail]) await deleteAccount(email).catch(() => false);
   let gone = 0;
   for (const id of made) {
     const reply = await real(`${SB}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: ADMIN });

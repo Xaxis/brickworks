@@ -42,7 +42,8 @@
 //   collections, follows, its collection of sets and its Claude
 //   connections). Model files no row owns any longer go with the daily
 //   sweep (api/share.js). The site owner's account is refused: it holds
-//   the admin page.
+//   the admin page. An orangecheck account Connect made for it, at its
+//   tick (2026-10-24), is deleted at orangecheck before anything here.
 //
 // Everyone who uses Brickworks signs in (2026-10-11). There were
 // accounts before, until 2026-10-09, so that one of them could design on
@@ -107,7 +108,7 @@ export default async function handler(request, response) {
     parts_url: process.env.PARTS_URL || null,
     // Sign in with orangecheck (api/orangecheck.js): whether it works here,
     // and whether everybody is offered it (api/_oc_config.js).
-    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false },
+    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false, connect: false },
   };
 
   const token = bearer(request);
@@ -328,6 +329,24 @@ async function deleteAccount(request, response) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });
   }
   const account = claims.sub;
+  // The orangecheck account Connect made for it, at its own tick
+  // (api/orangecheck.js ?op=connect), deleted first: until the person
+  // claims it, deleting it is Brickworks' to do, and once this account is
+  // gone nothing could. While orangecheck cannot, nothing is deleted.
+  let connected;
+  try {
+    connected = await db("rpc/oc_connected_of", { method: "POST", body: { account } });
+  } catch (trouble) {
+    console.error(`account: whether Connect made an account: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+  }
+  if (connected) {
+    const { unprovision } = await import("./_oc.js");
+    if (!(await unprovision(account))) {
+      return response.status(503).json({ error: "orangecheck could not delete the orangecheck account made for you just now, "
+        + "so nothing is deleted yet. Try again in a minute." });
+    }
+  }
   try {
     // The files of the build photos it posted, and of those posted of its
     // models (their rows go with the models), by name: storage keeps no

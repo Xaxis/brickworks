@@ -17,6 +17,18 @@ extends VBoxContainer
 
 enum Step { ADDRESS, CODE }
 
+## orangecheck's mark, mono in white as the button's words are
+## (@orangecheck/mark 0.3.0, tools/web/vendor_orangecheck.sh), drawn 14
+## units tall and 28 wide, as orangecheck's own button draws it beside 16 px
+## words, with its clear space (a quarter of its width) to them.
+const ORANGECHECK_MARK := "res://assets/ui/orangecheck-mark-mono-white.svg"
+const MARK_TALL := 14.0
+
+## Whether this form offers Sign in with orangecheck: in a browser, where
+## the site's sign-in is a page away. Set by a probe to see the button on
+## the desktop (gate_probe).
+static var offers_orangecheck: bool = OS.has_feature("web")
+
 var account: Account
 
 var _why: Label
@@ -101,10 +113,14 @@ func setup(with_account: Account) -> void:
 	# threads need, so the button takes the person to the site's sign-in,
 	# which brings them back here signed in (web/profile.js). The desktop
 	# keeps a sign-in of its own, which a browser's cannot give it.
-	if OS.has_feature("web"):
+	if offers_orangecheck:
 		_orangecheck = Button.new()
 		_orangecheck.text = "Sign in with orangecheck"
-		_orangecheck.custom_minimum_size = Vector2(0, 36)
+		# orangecheck's mark before the words, and its 44 px target
+		# (2026-10-24, the owner's step 4).
+		_orangecheck.add_theme_constant_override("icon_max_width", roundi(MARK_TALL * 2.0))
+		_orangecheck.add_theme_constant_override("h_separation", roundi(MARK_TALL / 2.0))
+		_orangecheck.custom_minimum_size = Vector2(0, 44)
 		_orangecheck.focus_mode = Control.FOCUS_NONE
 		_orangecheck.pressed.connect(_to_orangecheck)
 		add_child(_orangecheck)
@@ -115,13 +131,16 @@ func setup(with_account: Account) -> void:
 		_orangecheck_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_orangecheck_why.modulate = Color(1, 1, 1, 0.75)
 		add_child(_orangecheck_why)
+		_draw_mark()
 
 	_show(Step.ADDRESS)
 
 
 func focus_first() -> void:
 	# Shown again now the deployment has answered whether it offers
-	# orangecheck to everybody.
+	# orangecheck to everybody, its mark drawn for the screen it is on.
+	if _orangecheck != null:
+		_draw_mark()
 	if _orangecheck != null and _step == Step.ADDRESS:
 		var offered: bool = _orangecheck_offered()
 		_orangecheck.visible = offered
@@ -219,6 +238,11 @@ func _redeem() -> void:
 ## says (web/account.js orangecheckOffer, api/_oc_config.js).
 func _orangecheck_offered() -> bool:
 	return account != null and account.deployment != null and account.deployment.orangecheck_for_everyone
+
+
+## The mark on the orangecheck button, drawn at the pixels it is shown at.
+func _draw_mark() -> void:
+	_orangecheck.icon = Icons.texture_for(ORANGECHECK_MARK, MARK_TALL, Icons.density(self))
 
 
 ## To the site's sign-in, which comes back to this very address.
