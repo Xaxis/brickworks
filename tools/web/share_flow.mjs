@@ -350,8 +350,10 @@ try {
   }, "the step player", 300).catch(() => ({}));
   check(`Build it opens the step player at step 1 ("${building.caption}")`, building.open === true && building.page === 1);
   await shot(visitor, "2b_build_it.png");
-  await press(visitor, "build_close");
-  await until(visitor, () => !((window.brickworksShare || {}).build || {}).open, "the step player closed", 60).catch(() => null);
+  if (building.open) {
+    await press(visitor, "build_close");
+    await until(visitor, () => !((window.brickworksShare || {}).build || {}).open, "the step player closed", 60).catch(() => null);
+  }
   await visitor.goto(link, { waitUntil: "load", timeout: 120000 });
   await visitor.click('.model-page a.picture[href^="/app?view="]');
   const viewing = await until(visitor, () => {
