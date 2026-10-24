@@ -29,6 +29,8 @@ var _builder: Builder
 var _store: ModelStore
 var _drag: GrabDrag
 var _camera: CadCamera
+## What the status line said.
+var _heard: Array = []
 ## How far the model rose as parts were put down, and what each put said.
 var _rose: float = 0.0
 var _said: String = ""
@@ -62,6 +64,7 @@ func _run() -> void:
 	_store = _main.get("_store")
 	_drag = _main.get("_grab_drag")
 	_camera = _main.get("_camera")
+	(_main.get("_bar") as ModelBar).said.connect(func(words: String) -> void: _heard.append(words))
 	_main.call("clear_model")
 	await _quiet()
 	print("  the floor: %d part(s) of scenery" % _store.scenery.size())
@@ -96,6 +99,11 @@ func _run() -> void:
 			Vector3(0, BRICK, 10)))
 	_check("nothing says the model rose (%s)" % _said, not _said.contains("rose") and _rose == 0.0)
 	_check("the two 24s mesh (%s)" % said, said.contains("in mesh"))
+	var below: Array = _heard.filter(func(words: String) -> bool: return words.contains("floor") \
+		or words.contains("rose"))
+	_check("the status line says how far below the floor it reaches, and that the model stays (%s)"
+		% [below], not below.is_empty() and str(below.back()).contains("18 LDU below the floor")
+		and str(below.back()).contains("stays"))
 
 	# One undo takes the gear off, and only the gear.
 	_builder.undo()
