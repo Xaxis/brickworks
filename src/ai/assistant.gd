@@ -3484,6 +3484,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("changed it: %d bricks%s"
 				% [edited.placements.size(), _shorthand_used(args)])
 			var said: String = "Done. %d bricks now." % edited.placements.size()
+			if not _made_said.is_empty():
+				said += " " + _made_said
 			if not _unknown.is_empty():
 				said += " No brick has %s, so those were left alone." \
 					% _numbers(_unknown)
@@ -3921,6 +3923,7 @@ func _edit(args: Dictionary) -> Model:
 		model.placements = kept
 
 	_bad_colours = PackedStringArray()
+	var recoloured: Dictionary = {}
 	for raw: Variant in args.get("recolor", []):
 		var order: Dictionary = raw
 		if not order.has("color"):
@@ -3937,6 +3940,7 @@ func _edit(args: Dictionary) -> Model:
 				_unknown.append(int(id_raw))
 			elif placement.color != colour:
 				placement.color = colour
+				recoloured[placement.id] = true
 				_touched += 1
 
 	for raw: Variant in args.get("move", []):
@@ -4030,6 +4034,7 @@ func _edit(args: Dictionary) -> Model:
 	_touched += model.placements.size() - before
 	_touched += gone.size()
 	_current_parts(model)
+	_made_colours(model, recoloured)
 	return model
 
 
@@ -7103,6 +7108,7 @@ func _read_model(args: Dictionary) -> Model:
 	model.features = _read_features(args)
 	model.feature_spots = FeaturePass.read_spots(args)
 	_current_parts(model)
+	_made_colours(model)
 	return model
 
 
@@ -7129,6 +7135,45 @@ func _current_parts(model: Model) -> void:
 				% [placement.part, now, " (%s)" % _part_called(now) if info != null else "",
 					was] + "and %s is the part made now in its shape and size." % now)
 		placement.part = now
+
+
+## Each part a design puts in a colour the catalogue knows it was never made
+## in, put in the nearest colour it was made in (PartLibrary.made_nearest),
+## and the design told once a part and colour what it was given, as advice
+## and in [member _made_said]. The Tested mark refuses a model with a part in
+## a colour it was never made in, and advice alone left them there: of
+## seed211's twelve house models (2026-10-24) the fox had six inverted
+## slopes in orange, the rover a bracket in dark bluish grey, the bakery a
+## ponytail in reddish brown and the treehouse its leaves in bright green,
+## each recoloured by hand before it could be marked. A part already standing
+## keeps its colour unless this change recolours it ([param also], by id).
+func _made_colours(model: Model, also: Dictionary = {}) -> void:
+	_made_said = ""
+	if library == null:
+		return
+	var told: Dictionary = {}         ## "part|colour" -> [part, was, now, how many]
+	for placement: Placement in model.placements:
+		if placement.id != 0 and not also.has(placement.id):
+			continue
+		var made: int = library.made_nearest(placement.part, placement.color)
+		if made == placement.color:
+			continue
+		var key: String = "%s|%d" % [placement.part, placement.color]
+		if not told.has(key):
+			told[key] = [placement.part, placement.color, made, 0]
+		told[key][3] = int(told[key][3]) + 1
+		placement.color = made
+	var lines := PackedStringArray()
+	for one: Array in told.values():
+		var count: int = int(one[3])
+		lines.append("%s (%s) %s never made in %d %s, so %s placed in %d %s, the nearest colour it was made in." % [
+			one[0], _part_called(str(one[0])), "was" if count == 1 else "x%d were" % count, int(one[1]),
+			_colour_name(int(one[1])), "it is" if count == 1 else "they are", int(one[2]),
+			_colour_name(int(one[2]))])
+	if lines.is_empty():
+		return
+	_made_said = " ".join(lines)
+	_pattern_advice.append(_made_said)
 
 
 ## A finishing pass over what stands: the plain one-wide bricks with an open
@@ -11418,6 +11463,9 @@ static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
 	return named.slice(0, MOST_ASSEMBLIES)
 
 
+## What the last design or edit read was given in place of a colour its part
+## was never made in ([method _made_colours]), or "".
+var _made_said: String = ""
 ## What was wrong with the last set of patterns, said by the check.
 var _pattern_trouble: Array = []
 ## And what the patterns did that was not asked, said as advice.
