@@ -229,6 +229,18 @@ takes turns. Here:
 
 ## Not done yet
 
+- **The flow's rich model is still slow on a preview, and it is not the
+  model's richness alone.** On the b03c786f preview the flow measured
+  p50 377 ms, p95 688 ms after its 50 edits, and p50 1,490 ms, p95
+  1,961 ms after the seven kinds of change, with both pages at 60 frames a
+  second when idle. The timing tool's same seven kinds, on two pages and
+  nothing else, stay at p50 193 to 701 ms. What the flow has besides: the
+  owner's assistant open with Claude connected (its connector polling the
+  relay), the desktop copy in the session, an account under 13 (its age
+  read on each poll), Ctrl+Z pressed with the pointer left on the model,
+  and twice the parts. Next: the timing tool with each of those added in
+  turn, as it added each kind of change.
+
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
