@@ -12,7 +12,9 @@
 // unless said; signed in the way the tests are, a code minted with the secret
 // key and sent nowhere). A model that account already shares under the same
 // title is updated at its link rather than shared twice, so running it again
-// changes those rows and no others. --dry says what it would do.
+// changes those rows and no others, each its next version (and a note in
+// the list is what that version changed; a first version has none). --dry
+// says what it would do.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { mintSession } from "./session.mjs";
@@ -48,9 +50,11 @@ let failed = 0;
 // the order given.
 for (const body of [...bodies].reverse()) {
   const id = byName.get(body.name);
-  const sending = { ...body, listed: true, ...(id ? { id } : {}) };
+  const { note, ...rest } = body;
+  const sending = { ...rest, listed: true, ...(id ? { id, ...(note ? { note } : {}) } : {}) };
   if (args.dry) {
     console.log(`  would ${id ? `update ${id}` : "publish"}: ${body.name}, by ${body.author}`
+      + (sending.note ? `, "${sending.note}"` : "")
       + ` (${Math.round(Buffer.byteLength(body.model) / 1024)} KB of LDraw, `
       + `${Math.round(Buffer.from(body.image || "", "base64").length / 1024)} KB picture)`);
     continue;
@@ -60,7 +64,8 @@ for (const body of [...bodies].reverse()) {
   const ok = (reply.status === 200 || reply.status === 201) && said.listed === true;
   if (!ok) failed += 1;
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${body.name}: ${reply.status} ${said.url || said.error || ""}`
-    + (ok ? ` (${said.parts} parts, ${said.updated ? "updated" : "new"})` : ""));
+    + (ok ? ` (${said.parts} parts, ${said.updated ? `version ${said.version}` : "new"}, `
+      + `${said.tested?.kept && said.tested.passed ? "Tested" : `not Tested${said.tested?.why ? `: ${said.tested.why}` : ""}`})` : ""));
   // Listed a second apart, so each has a time of its own in the gallery.
   await new Promise((done) => setTimeout(done, 1100));
 }

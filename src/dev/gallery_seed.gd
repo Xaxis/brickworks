@@ -4,19 +4,23 @@
 ##       --seed-list=SEEDS.json --seed-out=DIR
 ##
 ## SEEDS.json is a list of {"file", "name", "author", "about", "tags",
-## "kind", "licence", "turn"}: an LDraw file (a path from the project's
-## folder, or absolute), the title it is shared under, and what its page and
-## the gallery say about it; "turn" is [yaw, pitch] in degrees, the way the
-## view is turned before its picture is taken (the app's own opening view
-## when not said). tools/web/gallery_seeds.json is the project's list. Each
-## is opened in the real app, framed as opening frames it, and published
-## through the real Share panel — its words typed into the panel's boxes,
-## its kind and licence chosen in its menus, List it in the gallery and Show
-## who made it ticked — into a SharedModels that keeps what it was sent
-## instead of sending it. So each body in DIR (<n>.json: name, author,
-## model, image, thumb, description, tags, kind, licence, listed) is byte for
-## byte what the app publishes, its pictures taken by the panel itself;
+## "kind", "licence", "turn", "note"}: an LDraw file (a path from the
+## project's folder, or absolute), the title it is shared under, and what its
+## page and the gallery say about it; "turn" is [yaw, pitch] in degrees, the
+## way the view is turned before its picture is taken (the app's own opening
+## view when not said); "note" is what changed, as the panel's What changed?
+## box says it for a link already up, sent only when the model is published
+## again at its link (gallery_seed.mjs). tools/web/gallery_seeds/seeds.json
+## is the project's list. Each is opened in the real app, framed as opening
+## frames it, and published through the real Share panel — its words typed
+## into the panel's boxes, its kind and licence chosen in its menus, List it
+## in the gallery and Show who made it ticked — into a SharedModels that
+## keeps what it was sent instead of sending it. So each body in DIR
+## (<n>.json: name, author, model, image, thumb, description, tags, kind,
+## licence, listed, tested, and the note) is byte for byte what the app
+## publishes, its pictures taken and its tests run by the panel itself;
 ## tools/web/gallery_seed.mjs then publishes them as the project's account.
+## A list of some of them republishes only those.
 ##
 ## Needs a display (xvfb under heavy): the picture is drawn. Writes nothing
 ## but DIR. Not --out: the app itself takes that (export a model and quit).
@@ -74,7 +78,13 @@ func _run() -> void:
 	var bar: ModelBar = main.get("_bar")
 	var panel: SharePanel = main.get("_share_panel")
 	var camera: CadCamera = main.get("_camera")
-	# Signed in as far as the panel can tell; the token goes nowhere.
+	# Signed in as far as the panel can tell; the token goes nowhere. Only
+	# once the app has given up asking the unreachable server who is here:
+	# it asks again since 2026-10-20, and its answer, signed out, came in
+	# after the first model and signed the rest out of the panel.
+	var asking_until: float = Time.get_ticks_msec() + 120000.0
+	while account.state == Account.State.CHECKING and Time.get_ticks_msec() < asking_until:
+		await process_frame
 	account.email = "gallery@brickworks.diy"
 	account._access = "seed.not.sent"
 	account._expires_at = Time.get_unix_time_from_system() + 3600.0
@@ -144,6 +154,11 @@ func _run() -> void:
 			_ok(false, "%s: the panel sent nothing (%s)" % [name, panel._status.text])
 			continue
 		var body: Dictionary = keeping.sent[-1]
+		# The panel shows What changed? only for a link it already has,
+		# which here it never does: said for it, as that box sends it.
+		var note: String = str(said.get("note", "")).strip_edges()
+		if not note.is_empty():
+			body["note"] = note
 		var png: PackedByteArray = Marshalls.base64_to_raw(str(body.get("image", "")))
 		var picture := Image.new()
 		var read: int = picture.load_png_from_buffer(png) if not png.is_empty() else ERR_FILE_EOF
