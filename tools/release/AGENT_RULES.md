@@ -84,6 +84,10 @@ date says when.
   windowed.txt** (as its `##` header runs it), or of out.txt with why it is
   not run. `tools/check.sh --lists` must pass before you send ready: four units
   on 2026-10-23 forgot, and each merge stopped at the gate.
+- **SQL that replaces another file's function** adds one line to
+  supabase/later.tsv (tab-separated: the earlier file, the function, the later
+  file, words only the later body has), never to tools/apply_sql.mjs. SQL is
+  additive and server-only, dry-run first, and applied by the lead, not you.
 - Never change the app's on-screen interface (layout, controls, wording a
   person sees) unless the brief says the owner asked for exactly that change.
 - The website follows docs/DESIGN_SYSTEM.md: the shared components in
