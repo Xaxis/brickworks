@@ -288,8 +288,13 @@ try {
       await audit("undone");
 
       // 10. A finger held on it: its actions.
+      // Held as a person holds: still, until something comes (a drawn frame
+      // on SwiftShader under load can take longer than the hold itself).
       await touch("touchStart", [{ x: brick.x, y: brick.y }]);
-      await page.waitForTimeout(900);
+      for (let n = 0; n < 8; n++) {
+        await page.waitForTimeout(500);
+        if ((await sheetNow()).sheet) break;
+      }
       await touch("touchEnd", []);
       await page.waitForTimeout(600);
       phone = await sheetNow();
