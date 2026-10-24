@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.6.0",
+ "latest": "0.7.0",
  "releases": [
+  {
+   "version": "0.7.0",
+   "tag": "v0.7.0",
+   "date": "2026-10-24",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.7.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.7.0/CHANGELOG.md",
+   "summary": "A release about models a person can build, and keep. The Tested mark now means what it says: every part held by a stud, a joint or what catches it, and no two parts passing into each other, by their real shapes. The Wizard's Tower, the orrery, the castle and every house model in the gallery pass. Signed in, the desktop keeps your models with your account, in step with every browser you use, and File \u203a Open renames and deletes them. Every export asks where to save it and says where it went, and opening a model over work not saved always asks first, with Undo to bring it back. A big booklet is drawn about six times faster, and View \u203a Stress counts the weak joints and steps through them. Gears put down by hand mesh, a door hangs on its frame's hinge, and Claude picks a figure's parts as real sets do and answers an edit in a quarter of the words. Models saved by 0.6.0 open in 0.7.0 unchanged.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.7.0-linux-x86_64.AppImage",
+     "size": 571955704,
+     "sha256": "b070fac55ffe0c4ca027cc8e8252c9149b3ce6b84e01a6de4e306ec1e41ae1ec",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.7.0/Brickworks-0.7.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.7.0-linux-x86_64.tar.xz",
+     "size": 422400016,
+     "sha256": "516b35593bf8d79261a1da383a6740fb3d5ac5c52f7169be46d85f6a5ff60223",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.7.0/Brickworks-0.7.0-linux-x86_64.tar.xz",
+     "unpacked": 1482320672,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.7.0-macos-universal.zip",
+     "size": 751253958,
+     "sha256": "175be589743c83601cd565b85e99d2c6cb19f9f2d7cac512a5c72ce2417e0f3c",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.7.0/Brickworks-0.7.0-macos-universal.zip",
+     "unpacked": 1579075138,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.7.0-windows-x86_64.zip",
+     "size": 729617141,
+     "sha256": "a5acb699087b83d32bb7f882efc8c944a377df6825a8ba0c1efec2d9d9d0d61f",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.7.0/Brickworks-0.7.0-windows-x86_64.zip",
+     "unpacked": 1518023552,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.6.0",
    "tag": "v0.6.0",
