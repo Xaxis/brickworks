@@ -171,7 +171,9 @@ def main():
           labels and not missing)
 
     # The pages as pictures, against the PDF drawn by poppler.
-    if args.zip:
+    if args.zip and not check("the zip is there (%s)" % args.zip, os.path.exists(args.zip)):
+        pass
+    elif args.zip:
         with zipfile.ZipFile(args.zip) as archive:
             names = sorted(n for n in archive.namelist() if n.endswith(".png"))
             check("the zip has a PNG a page (%d)" % len(names), len(names) == count)
