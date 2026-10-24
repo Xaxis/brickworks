@@ -40,6 +40,12 @@ declare -A CMD=(
   # account each run (the lead purges them), and orangecheck vouches for
   # sessions only on the verified domain: it runs on brickworks.diy after a
   # release, never on a preview.
+  # local only: oc_native_flow.mjs. The desktop's Sign in with orangecheck
+  # (?op=native, 2026-10-24) on orangecheck's test stack: the app's probe,
+  # a real Chromium and a throwaway orangecheck account, against this
+  # machine's functions at the test project's development origin. orangecheck
+  # offers apps' sign-in to test projects alone, and no deployment has a test
+  # key, so it cannot run on a preview.
   # Comments and their replies (docs/SOCIAL.md U8): threads newest first,
   # the step pill into the viewer, the box for a visitor (sending signs in),
   # under 13 and comments off refused; a reply under its comment, its

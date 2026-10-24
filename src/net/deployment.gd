@@ -38,6 +38,10 @@ var accounts_key: String = ""
 ## Whether everybody is offered Sign in with orangecheck (api/_oc_config.js):
 ## off, nobody is (SignInForm).
 var orangecheck_for_everyone: bool = false
+## Where the desktop opens orangecheck in the person's browser, when the
+## deployment offers it (api/_oc_config.js orangecheckOffer): {project,
+## auth, audience}, all public. Empty, and the desktop offers no button.
+var orangecheck_native: Dictionary = {}
 
 ## Emitted once, when the question is over, whether or not anything
 ## answered. Anyone waiting on it needs to hear that it failed, too.
@@ -118,7 +122,22 @@ func _read(result: Array) -> bool:
 		var orangecheck: Variant = body.get("orangecheck")
 		orangecheck_for_everyone = typeof(orangecheck) == TYPE_DICTIONARY \
 			and bool((orangecheck as Dictionary).get("everyone", false))
+		orangecheck_native = _native_of((orangecheck as Dictionary).get("native") \
+			if typeof(orangecheck) == TYPE_DICTIONARY else null)
 	return answered
+
+
+## The desktop's orangecheck offer, taken only whole: a project key, an
+## https host, and an audience that is an origin.
+static func _native_of(said: Variant) -> Dictionary:
+	if typeof(said) != TYPE_DICTIONARY:
+		return {}
+	var project: String = str((said as Dictionary).get("project", ""))
+	var auth: String = str((said as Dictionary).get("auth", ""))
+	var audience: String = str((said as Dictionary).get("audience", ""))
+	var whole: bool = project.begins_with("pk_") and auth.begins_with("https://") \
+		and (audience.begins_with("https://") or audience.begins_with("http://127.0.0.1:"))
+	return {"project": project, "auth": auth, "audience": audience} if whole else {}
 
 
 func _finish() -> void:

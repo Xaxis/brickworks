@@ -34,7 +34,7 @@
 # The versions are pinned here and written into each file's first line, so
 # a change of version is a diff someone reads. Run it again to upgrade.
 set -euo pipefail
-ME=0.48.0
+ME=0.50.0
 CORE=2.18.0
 MARK=0.3.0
 ESBUILD=0.24.2
@@ -46,7 +46,7 @@ npm init -y >/dev/null
 npm install --ignore-scripts --no-audit --no-fund --silent \
   "@orangecheck/me-client@$ME" "@orangecheck/auth-core@$CORE" "@orangecheck/mark@$MARK" "esbuild@$ESBUILD"
 cat > entry.mjs <<'EOF'
-export { bondMeets, checkOcToken, connectDelete, connectProvision, matchMergedUser, mergedHandles } from "@orangecheck/me-client/server";
+export { bondMeets, checkOcToken, connectDelete, connectProvision, exchangeNativeCode, matchMergedUser, mergedHandles } from "@orangecheck/me-client/server";
 export { _resetJwksCachesForTests, integratorRevocationCheck } from "@orangecheck/auth-core";
 EOF
 ./node_modules/.bin/esbuild entry.mjs --bundle --format=esm --platform=node --target=node22 \

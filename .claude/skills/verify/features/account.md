@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -307,7 +307,7 @@ they have. A Claude connector belongs to the account that switched it on.
   Where the docs fell short, and orangecheck's review and its fixes:
   `docs/ORANGECHECK.md`. In the web
   app the sign-in screen has **Sign in with orangecheck** too
-  (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
+  (`signin_orangecheck`, `src/ui/sign_in_form.gd`; the desktop's is below): it goes to
   `/profile?then=/app…`, which opens the dialog by itself and, signed in,
   goes back (`web/profile.js`; only ever to `/app`). Linking from
   `/settings` (`GET ?op=status`, `POST ?op=link`, `?op=unlink`) asks for a
@@ -378,7 +378,42 @@ they have. A Claude connector belongs to the account that switched it on.
   ruling): 503 "Deleting is paused while Brickworks fixes a setup problem.
   Nothing has been deleted." The canary's (d) hears of a key problem by the
   next morning. An account that never ticked the box asks
-  orangecheck nothing, and is deleted whatever Connect's state.
+  orangecheck nothing, and is deleted whatever Connect's state. An account
+  deleted while Connect is still asked (orangecheck's L2, oc237): deleting
+  marks the account leaving as it reads it (`oc_connect_leaving`, writing a
+  row of the mark alone when there is none, `asked_at` `-infinity`, which
+  `oc_connected_of` answers null, so a first tick that starts meanwhile is
+  caught too: site-attest's race), provision keeps the answer only while
+  there is a row and no mark of the last 15 minutes (`oc_connect_kept`), and
+  otherwise deletes what orangecheck made at once (`unprovision`), answering
+  `{made: false, reason: "account_leaving"}`. A mark is never lifted, only
+  lapses, so a failed deletion cannot unmark another of the same account
+  going on (site-attest's R1) (`supabase/orangecheck_connect_leaving.sql`).
+- `sign in with orangecheck on the desktop` (2026-10-24, oc237;
+  `src/account/orangecheck_sign_in.gd`, `Account.sign_in_with_orangecheck`,
+  `api/orangecheck.js` POST `?op=native`, `api/_oc.js` `tradeCode`): the
+  desktop's sign-in screen shows the same button (`signin_orangecheck`) only
+  where `/api/account` says `orangecheck.native = {project, auth,
+  audience}` (`nativeOffered`: `NATIVE_FOR_EVERYONE` on a deployment, false
+  until orangecheck's site-attest and the live project offer it;
+  `OC_NATIVE=1` on this machine). A press listens on `127.0.0.1` at any free
+  port, opens `<auth>/native/authorize` in the person's browser with an S256
+  challenge, `state` and the loopback redirect (`Account.opens_browser`
+  false in a probe, which reads `orangecheck_link`), and the form's note
+  says to finish in the browser; the browser comes back to
+  `/oc/callback?code&state` ("Back to Brickworks to finish signing in"; read
+  until the headers end, however the browser splits them, `oc_listener_probe`), the
+  app posts `{code, code_verifier, redirect_uri}`, and keeps the session as
+  an emailed code's. A second press starts again; an email sign-in stops
+  the listener. The server refuses a malformed ask 422 before counting or
+  asking anything, counts the address, trades with me-client 0.50.0's
+  `exchangeNativeCode` (key from configuration, our audience, our list of
+  ended sessions), then takes the token as `?op=signin` does
+  (`signInWith`): 401 for a spent, expired or mismatched code, another
+  audience or no `rh`; 403 with `back_url` for a backed-only rule; 503 for
+  an outage or a project that does not offer it. `OC_ISSUER` and
+  `OC_ME_ORIGIN` point at orangecheck's test stack off Vercel only
+  (`ocHosts`).
 
 Decisions, so they can be changed: the gate is a client gate (the desktop is
 open source and runs on the person's machine); the server enforces accounts
@@ -444,7 +479,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (136 since step 4; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (163 since oc237; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -499,7 +534,29 @@ mapping, deleting on the six it allows alone; an account that never ticked
 the box deleted with orangecheck down or no key, 0 calls; a stale code's session refused 403 with no call at all; the address sent as verified for a fresh emailed code's
 session, and never for a password's, an address the request names, a code's
 past five minutes or an orangecheck session's, which is answered
-`has_orangecheck`).
+`has_orangecheck`; oc237: Connect's L2, an account deleted whole, or only
+marked as going, while orangecheck was making it one leaving no orangecheck
+account behind, site-attest's race in its four steps (the mark before any
+row, a first tick, the answer, the account gone) leaving none either, nor
+site-attest's R1 and R1b (two deletions at once, one failing while the other
+goes on, a tick between), an account that never ticked reading as never asked
+after a deletion that failed past its mark, and a tick within 15 minutes of a
+held deletion deleting what it makes (`account_leaving`), with
+`supabase/orangecheck_connect_leaving.sql`'s two functions answered in the
+check over the real rows until the file as it is now is applied (it says so;
+that the mark lapses is the dry run's); the desktop's
+`?op=native` against a stand-in token endpoint: not offered without
+`OC_NATIVE`, `/api/account`'s `native` offer, a code signing in a new account
+traded once with the configured key (never the app's) and never redirected,
+its token ended and spent (`?op=signin` with it 409), the same id signing in
+to the same account from the app and the window, and a code used twice, a
+wrong verifier and the right one after, another `redirect_uri`, a token for
+another audience (no account made) or without `rh`, each 401; six malformed
+asks 422 with nothing asked; orangecheck down 503; GET 405; site-attest: a
+token whose own id orangecheck ended before sign-in refused at the exchange,
+401, from the window and the app, while one of the same `rh` with another id
+gets in, and our own revoke of the token after the exchange signs nobody out,
+since the requests after ask the list without the id).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
 for everybody with nothing on the address, the dialog at 390 and 1280 in
 both themes with orangecheck's button (its mark, its stylesheet from this
@@ -515,6 +572,37 @@ orangecheck has answered (on a unit's preview, with no key, paused: 503,
 nothing deleted).
 A finished sign-in through orangecheck's real window, and Connect for real
 (`--connect` alone), run only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
+
+The desktop's sign-in, end to end on orangecheck's test stack (never the live
+project; local only, no deployment has a test key; about 2 minutes; a
+throwaway orangecheck account each run, written to `--keys` for orangecheck
+to purge, and the Brickworks account it makes deleted at the end):
+
+```sh
+npm install --prefix /tmp/bip322 @orangecheck/bip322@1.1.2     # once
+set -a; . ./.env; set +a
+BIP322_MODULE=/tmp/bip322/node_modules/@orangecheck/bip322/dist/index.mjs \
+OC_TEST_SECRET_FILE=<the test project's signing secret, from orangecheck> \
+  node tools/web/oc_native_flow.mjs --keys=oc_throwaways.txt
+```
+
+It runs `relay_server.mjs` at 8790 and 9051 with the test key, `OC_NATIVE=1`
+and the test hosts, then `tools/probe.sh oc_native_probe` headless with
+`BRICKWORKS_API=http://127.0.0.1:8790`, and opens the link the probe prints
+in Chromium with the throwaway's session, pressing Continue. Proves it when it
+ends "8 passed, 0 failed": the probe's 12 checks (offered, the link's project,
+S256 and loopback redirect, a second press starting again, the note, signed in
+at a made-up address, the listener gone, the refresh token kept and not the
+access token, `/api/account` signed in, signed out) and, as the app from Node,
+the same id signing in to that account, then a code used twice, a wrong
+verifier and the right one after it, another `redirect_uri`, and a code traded
+by a server at another origin, each 401.
+
+The listener alone, headless and in the suite (`tools/probe.sh
+oc_listener_probe`, a few seconds): another path or state 404 while it waits
+on, a request line and then headers split across two writes read whole (200,
+the code, a 43-letter verifier and the redirect; a no is `access_denied`), and
+a cancel answered once. Proves it when it ends "all passed" (8 checks).
 
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
 refusal (same server; a throwaway account, deleted at the end; about 90 s, 31 of

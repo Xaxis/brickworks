@@ -7,7 +7,10 @@
 // minted and then used against api/account.js. Step 4 (oc225): an
 // orangecheck account merge follows to the same Brickworks account
 // (merged_rh), and orangecheck Connect makes an orangecheck account only at
-// a tick, and deletes it with the Brickworks account.
+// a tick, and deletes it with the Brickworks account. oc237: the desktop's
+// sign-in (?op=native), a code from orangecheck's authorize page traded
+// for the token, and an account deleted while Connect is still making it
+// one (orangecheck's review, L2).
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/orangecheck_check.mjs
@@ -25,6 +28,10 @@ process.env.OC_SIGNING_SECRET ||= "orangecheck-check-secret";
 // Never the real Connect key: every call to Connect is answered here.
 process.env.OC_CONNECT_KEY = "ock_test_orangecheck_check";
 delete process.env.VERCEL_ENV;
+// orangecheck's own hosts, stood in for below, never a test stack's.
+delete process.env.OC_ISSUER;
+delete process.env.OC_ME_ORIGIN;
+delete process.env.OC_NATIVE;
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY || !process.env.SUPABASE_PUBLISHABLE_KEY) {
   console.error("orangecheck_check: no SUPABASE_* — source .env");
   process.exit(2);
@@ -50,13 +57,30 @@ const ochk = {
   connect: [],
   provision: (body) => [200, { ok: true, did_oc: `did:oc:${createHash("sha256").update(body.user_id).digest("hex").slice(0, 32)}`, is_new: true }],
   remove: () => [200, { ok: true, result: "deleted" }],
+  // The desktop's sign-in: each code the authorize page gave the app's
+  // listener, with the challenge, redirect and claims it was given for
+  // (nativeCode, below); every trade asked, as it was asked; every token
+  // a trade gave; and the trade's answer when orangecheck is down.
+  codes: new Map(),
+  traded: [],
+  minted: [],
+  tradeStatus: 200,
 };
 
 const made = new Set();
+// supabase/orangecheck_connect_leaving.sql as it is now (a mark written
+// with or without a row, lapsing after 15 minutes), answered here over the
+// real oc_connected rows while the project has only its first version (the
+// run says so): a deletion's mark is kept here with its time, for an
+// account whether or not it has a row, as the file writes a row of the
+// mark alone (which oc_connected_of reads as none); kept is false while
+// the row is gone or a mark is under 15 minutes old.
+const leavingSql = { missing: false, marks: new Map() };
+const LAPSE_MS = 15 * 60 * 1000;
 // Brickworks' own answers, reached into for the review's races (oc205): run
 // once just before a session is bound; the last session Supabase minted;
 // what the database says of a session, changed.
-const hooks = { beforeBind: null, minted: null, sessionOf: null, mail: [], signupOff: new Set() };
+const hooks = { beforeBind: null, minted: null, sessionOf: null, mail: [], signupOff: new Set(), holdDelete: null };
 // Two email accounts, at Resend's test addresses, which reach nobody.
 const tag = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-oc-ada-${tag}@resend.dev`;
@@ -75,8 +99,27 @@ globalThis.fetch = async (input, init = {}) => {
     const body = JSON.parse(init.body);
     ochk.connect.push({ path: new URL(url).pathname, body, key: String(init.headers?.authorization || "") === `Bearer ${process.env.OC_CONNECT_KEY}`,
       redirect: init.redirect });
-    const [status, answer] = url.endsWith("/provision") ? ochk.provision(body) : ochk.remove(body);
+    const [status, answer] = await (url.endsWith("/provision") ? ochk.provision(body) : ochk.remove(body));
     return json(status, answer);
+  }
+  // orangecheck's token endpoint for an app's code (me-client's
+  // exchangeNativeCode): a code works once, whatever the answer, and only
+  // with the verifier its challenge was made from, for this project and
+  // the exact redirect it was given for.
+  if (url === "https://ochk.io/api/auth/native/token") {
+    const asked = JSON.parse(init.body);
+    ochk.traded.push({ ...asked, redirect: init.redirect });
+    if (ochk.tradeStatus !== 200) return json(ochk.tradeStatus, {});
+    const grant = ochk.codes.get(asked.code);
+    ochk.codes.delete(asked.code);
+    const challenge = createHash("sha256").update(String(asked.code_verifier)).digest("base64url");
+    if (!grant || asked.grant_type !== "authorization_code" || asked.project !== process.env.OC_PROJECT_KEY
+      || asked.redirect_uri !== grant.redirect || challenge !== grant.challenge) {
+      return json(400, { ok: false, reason: "invalid_grant" });
+    }
+    const minted = token({ azp: "native", ...grant.claims });
+    ochk.minted.push(minted);
+    return json(200, { ok: true, token: minted.jwt });
   }
   if (url === "https://ochk.io/api/auth/revoke") {
     ochk.revoked.push(...JSON.parse(init.body).tokens);
@@ -95,6 +138,26 @@ globalThis.fetch = async (input, init = {}) => {
     const asked = JSON.parse(init.body).email;
     if (!(await accountAt(asked))) return json(422, { code: 422, error_code: "signup_disabled", msg: "Signups not allowed for this instance" });
     hooks.signupOff.delete(asked);
+  }
+  if (leavingSql.missing && /^rpc\/oc_connect_(leaving|kept)$/.test(url.slice(`${SB}/rest/v1/`.length))) {
+    const asked = JSON.parse(init.body);
+    const row = await rpc("oc_connected_of", { account: asked.account });
+    if (url.endsWith("_leaving")) {
+      leavingSql.marks.set(asked.account, Date.now());
+      return json(200, row);
+    }
+    const mark = leavingSql.marks.get(asked.account);
+    if (!row || (mark !== undefined && Date.now() - mark < LAPSE_MS)) return json(200, false);
+    await rpc("oc_connect_made", { account: asked.account, did: asked.did });
+    return json(200, true);
+  }
+  // An account's own deletion held at its last step until the test says.
+  if (hooks.holdDelete && (init.method || "GET") === "DELETE" && url === `${SB}/auth/v1/admin/users/${hooks.holdDelete.account}`) {
+    const held = hooks.holdDelete;
+    hooks.holdDelete = null;
+    held.reached?.();
+    await held.until;
+    if (held.fails) return json(500, { msg: "orangecheck_check: this deletion fails" });
   }
   if (url === `${SB}/rest/v1/rpc/oc_bind_session` && hooks.beforeBind) {
     const before = hooks.beforeBind;
@@ -123,6 +186,20 @@ function token(claims = {}, { key = privateKey, kid = KID, alg = "EdDSA" } = {})
   const signed = `${head}.${b64(body)}`;
   return { jwt: `${signed}.${sign(null, Buffer.from(signed), key).toString("base64url")}`, claims: body };
 }
+
+/// What orangecheck's authorize page sends the app's listener once the
+/// person signs in: a code for a token of [claims], given for the challenge
+/// of the verifier made here and for [redirect].
+function nativeCode(claims = {}, redirect = "http://127.0.0.1:53111/oc/callback") {
+  const verifier = randomBytes(32).toString("base64url");
+  const code = randomBytes(32).toString("base64url");
+  ochk.codes.set(code, { challenge: createHash("sha256").update(verifier).digest("base64url"), redirect, claims });
+  return { code, code_verifier: verifier, redirect_uri: redirect };
+}
+
+/// A token's id as the list of ended sessions names it (auth-core's
+/// revocationKey): its first 16 bytes of SHA-256, base64url.
+const endedJti = (jti) => createHash("sha256").update(`ocrev1:jti:${jti}`).digest().subarray(0, 16).toString("base64url");
 
 const { forgetForTests } = await import("../../api/_oc.js");
 const signInRoute = (await import("../../api/orangecheck.js")).default;
@@ -262,6 +339,14 @@ async function passwordSession(email, password) {
 
 try {
   let handler = await route();
+  // The first version marks only a row that is there, so it answers a
+  // made-up account null; the file as it is now writes the mark, which no
+  // made-up account can have (its key is auth.users'), and refuses it.
+  leavingSql.missing = (await real(`${SB}/rest/v1/rpc/oc_connect_leaving`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
+    body: JSON.stringify({ account: randomUUID() }) })).status === 200;
+  if (leavingSql.missing) {
+    console.log("orangecheck_check: supabase/orangecheck_connect_leaving.sql as it is now is not applied: its two functions are answered here");
+  }
 
   // A first sign-in: a new account, a working session, the token ended at orangecheck.
   const first = token();
@@ -1133,6 +1218,324 @@ try {
       verifiedOwn && viaOc.status === 200 && viaOc.body.user?.id === coded.user?.id && unverified(fromItsOc)
       && fromItsOc.answer.status === 200 && fromItsOc.answer.body?.made === false && fromItsOc.answer.body?.reason === "has_orangecheck",
       `${viaOc.status} ${fromItsOc.answer.status} ${JSON.stringify(fromItsOc.answer.body)} ${JSON.stringify(fromItsOc.sent)}`);
+  }
+
+  // orangecheck's review of step 4, L2: an account deleted while Connect is
+  // still making it an orangecheck account. Deleting asked orangecheck to
+  // delete one that was not made yet (unknown_user), and the answer that
+  // came after made one nothing here knew of, which nobody could ever
+  // delete. Now an answer for an account gone, or going, deletes what it
+  // made (supabase/orangecheck_connect_leaving.sql). Twice: the account
+  // deleted whole before orangecheck answers; and only marked as going, its
+  // own deletion held at the last step until the answer is written down.
+  {
+    // The accounts orangecheck holds, as it would.
+    const theirs = new Set();
+    const didOf = (id) => `did:oc:${createHash("sha256").update(id).digest("hex").slice(0, 32)}`;
+    const provisionWas = ochk.provision;
+    const removeWas = ochk.remove;
+    const unmade = (body) => (theirs.delete(body.user_id) ? [200, { ok: true, result: "deleted" }] : [404, { ok: false, reason: "unknown_user" }]);
+    const ticks = (access) => ocRoute({ method: "POST", op: "connect", access, body: { consent: true } });
+    for (const how of ["deleted whole", "only marked as going"]) {
+      const email = `delivered+bw-oc-l2-${how.split(" ")[0]}-${tag}@resend.dev`;
+      const fay = await mintSession(email, { age: true });
+      let deleting = null;
+      let release = () => {};
+      ochk.remove = unmade;
+      ochk.provision = async (body) => {
+        if (how === "deleted whole") deleting = await quit(fay.access_token, { confirm: email });
+        else {
+          let heard;
+          const deleteAsked = new Promise((done) => { heard = done; });
+          ochk.remove = (asked) => { heard(); return unmade(asked); };
+          hooks.holdDelete = { account: fay.kept.user_id, until: new Promise((done) => { release = done; }) };
+          deleting = quit(fay.access_token, { confirm: email });
+          await deleteAsked;
+          ochk.remove = unmade;
+        }
+        theirs.add(body.user_id);
+        return [200, { ok: true, did_oc: didOf(body.user_id), is_new: true }];
+      };
+      let ticked;
+      let left;
+      try {
+        ticked = await ticks(fay.access_token);
+      } finally {
+        release();
+        left = await deleting;
+        hooks.holdDelete = null;
+        ochk.provision = provisionWas;
+        ochk.remove = removeWas;
+      }
+      const orphan = theirs.has(fay.kept.user_id);
+      check(`Connect, L2: an account ${how} while orangecheck was making it one leaves no orangecheck account behind`,
+        ticked.status === 200 && ticked.body?.made === false && left?.status === 200 && !orphan
+        && (await adminUser(fay.kept.user_id)).status === 404,
+        `${ticked.status} ${JSON.stringify(ticked.body)}, deleted ${left?.status}${orphan ? ", orphaned at orangecheck" : ""}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    // site-attest's race, step by step (its bw237/l2_race.mjs, on our own
+    // SQL): (a) the deletion marks first, before any oc_connected row is
+    // there; (b) a first tick asks, and the row is written; (c) orangecheck
+    // answers, and the answer is asked to be kept; (d) the deletion goes
+    // on, and the account goes, its row with it.
+    {
+      const email = `delivered+bw-oc-l2-race-${tag}@resend.dev`;
+      const hal = await mintSession(email, { age: true });
+      let reached;
+      let release = () => {};
+      const marked = new Promise((done) => { reached = done; });
+      hooks.holdDelete = { account: hal.kept.user_id, reached, until: new Promise((done) => { release = done; }) };
+      ochk.remove = unmade;
+      ochk.provision = (body) => {
+        theirs.add(body.user_id);
+        return [200, { ok: true, did_oc: didOf(body.user_id), is_new: true }];
+      };
+      // (a), held just before (d).
+      const deleting = quit(hal.access_token, { confirm: email });
+      let ticked;
+      let left;
+      try {
+        await Promise.race([marked, deleting]);
+        // (b) and (c).
+        ticked = await ticks(hal.access_token);
+      } finally {
+        release();
+        // (d).
+        left = await deleting;
+        hooks.holdDelete = null;
+        ochk.provision = provisionWas;
+        ochk.remove = removeWas;
+      }
+      const orphan = theirs.has(hal.kept.user_id);
+      check("Connect, L2 race: the deletion marks before any row, a first tick asks, orangecheck answers, the account goes: no orangecheck account left behind",
+        ticked?.status === 200 && ticked.body?.made === false && left?.status === 200 && !orphan
+        && (await adminUser(hal.kept.user_id)).status === 404,
+        `${ticked?.status} ${JSON.stringify(ticked?.body)}, deleted ${left?.status}${orphan ? ", orphaned at orangecheck" : ""}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    // site-attest's R1 (its bw237/l2_stays.mjs): two deletions of one
+    // account at once (a double submit). A is held at its last step; B
+    // fails there; a tick lands between; then A goes through and the
+    // account goes with its row. B's failure must not lift the mark A
+    // still relies on. R1: an account that never ticked, its first tick
+    // made then; R1b: one that ticked before, whose old orangecheck
+    // account A deletes, and the tick makes it a new one.
+    for (const r of ["R1", "R1b"]) {
+      const email = `delivered+bw-oc-l2-${r.toLowerCase()}-${tag}@resend.dev`;
+      const jo = await mintSession(email, { age: true });
+      let made = 0;
+      ochk.remove = unmade;
+      ochk.provision = (body) => {
+        made += 1;
+        theirs.add(body.user_id);
+        return [200, { ok: true, did_oc: didOf(`${body.user_id}:${made}`), is_new: true }];
+      };
+      if (r === "R1b") await ticks(jo.access_token);
+      const before = theirs.has(jo.kept.user_id);
+      let reached;
+      let release = () => {};
+      const heldA = new Promise((done) => { reached = done; });
+      hooks.holdDelete = { account: jo.kept.user_id, reached, until: new Promise((done) => { release = done; }) };
+      const a = quit(jo.access_token, { confirm: email });
+      let b;
+      let ticked;
+      let left;
+      try {
+        await Promise.race([heldA, a]);
+        hooks.holdDelete = { account: jo.kept.user_id, until: Promise.resolve(), fails: true };
+        b = await quit(jo.access_token, { confirm: email });
+        hooks.holdDelete = null;
+        ticked = await ticks(jo.access_token);
+      } finally {
+        release();
+        left = await a;
+        hooks.holdDelete = null;
+        ochk.provision = provisionWas;
+        ochk.remove = removeWas;
+      }
+      const orphan = theirs.has(jo.kept.user_id);
+      check(`Connect, L2 ${r}: two deletions at once, one failing while the other goes on, and a tick between: no orangecheck account left behind`,
+        (r === "R1" || before) && b?.status === 502 && ticked?.status === 200 && ticked.body?.made === false && left?.status === 200 && !orphan
+        && (await adminUser(jo.kept.user_id)).status === 404,
+        `${r === "R1b" ? `ticked before ${before}, ` : ""}B ${b?.status}, tick ${ticked?.status} ${JSON.stringify(ticked?.body)}, A ${left?.status}${orphan ? ", orphaned at orangecheck" : ""}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    // A deletion that fails after its mark leaves the mark (it lapses), and
+    // for an account Connect was never asked for, its row of the mark alone
+    // reads as never asked, so the next deletion asks orangecheck nothing.
+    {
+      const email = `delivered+bw-oc-l2-fails-${tag}@resend.dev`;
+      const ivy = await mintSession(email, { age: true });
+      hooks.holdDelete = { account: ivy.kept.user_id, until: Promise.resolve(), fails: true };
+      const failed = await quit(ivy.access_token, { confirm: email });
+      hooks.holdDelete = null;
+      const leftOver = await rpc("oc_connected_of", { account: ivy.kept.user_id });
+      const calls = ochk.connect.length;
+      ochk.remove = () => [503, {}];
+      const second = await quit(ivy.access_token, { confirm: email });
+      ochk.remove = removeWas;
+      check("Connect, L2: after a deletion that fails past its mark, an account that never ticked reads as never asked, and its next deletion asks orangecheck nothing",
+        failed.status === 502 && leftOver === null && second.status === 200 && ochk.connect.length === calls,
+        `${failed.status} ${JSON.stringify(leftOver)} ${second.status} ${ochk.connect.length - calls} calls`);
+      await deleteAccount(email).catch(() => false);
+    }
+    // A tick within 15 minutes of a deletion that was held (orangecheck
+    // down) deletes what it makes, and says so: the mark lapses rather than
+    // being lifted, which fails safe (that it lapses is the dry run's,
+    // tools/orangecheck_connect_leaving_try.sql).
+    const email = `delivered+bw-oc-l2-held-${tag}@resend.dev`;
+    const gil = await mintSession(email, { age: true });
+    await rpc("oc_connect_asked", { account: gil.kept.user_id });
+    ochk.remove = () => [503, {}];
+    const held = await quit(gil.access_token, { confirm: email });
+    ochk.remove = unmade;
+    ochk.provision = (body) => {
+      theirs.add(body.user_id);
+      return [200, { ok: true, did_oc: didOf(`${body.user_id}:held`), is_new: true }];
+    };
+    const again = await ticks(gil.access_token);
+    ochk.provision = provisionWas;
+    ochk.remove = removeWas;
+    check("Connect, L2: a tick within 15 minutes of a deletion that was held deletes what orangecheck made, and says so", held.status === 503
+      && again.status === 200 && again.body?.made === false && again.body?.reason === "account_leaving" && !theirs.has(gil.kept.user_id),
+      `${held.status} ${again.status} ${JSON.stringify(again.body)}`);
+    await deleteAccount(email).catch(() => false);
+  }
+
+  // The desktop's sign-in (?op=native, oc237): orangecheck's authorize page
+  // hands the app's listener a code, the app posts it here with its PKCE
+  // verifier and the redirect it listened at, and the code is traded for
+  // the token the window would have given (me-client's exchangeNativeCode),
+  // then taken as ?op=signin takes one. Each refusal is beside a case that
+  // signs in, so none passes by refusing everything.
+  {
+    const native = async (body) => call(await route(), body, { op: "native" });
+    /// A sign-in from the app that should get in, signed in again with a
+    /// new code of the same [claims] while Supabase's redemption limit
+    /// turns it away (BUSY), as the person would: {answer, sent}, the last.
+    const getsIn = async (claims, extra = {}) => {
+      for (let attempt = 0; ; attempt += 1) {
+        const sent = nativeCode(claims);
+        const answer = await native({ ...sent, ...extra });
+        if (!(answer.status === 503 && BUSY.test(answer.body?.error || "")) || attempt >= 8) return { answer, sent };
+        await new Promise((done) => setTimeout(done, 11000));
+      }
+    };
+    const refusedInWords = (answer, status) => answer.status === status && typeof answer.body?.error === "string" && answer.body.error.length > 10;
+
+    const off = await native(nativeCode());
+    check("native: not offered here (no OC_NATIVE, no NATIVE_FOR_EVERYONE), refused in words, and orangecheck asked nothing",
+      refusedInWords(off, 503) && ochk.traded.length === 0 && (await whoIs(undefined)).body?.orangecheck?.native === null,
+      `${off.status} ${off.body?.error || ""} ${ochk.traded.length}`);
+    process.env.OC_NATIVE = "1";
+    const offer = (await whoIs(undefined)).body?.orangecheck?.native;
+    check("native: offered, /api/account tells the app where to sign in: the project, orangecheck's host, this audience",
+      offer?.project === process.env.OC_PROJECT_KEY && offer?.auth === "https://ochk.io" && offer?.audience === AUD, JSON.stringify(offer));
+
+    const did = `did:oc:${randomBytes(16).toString("hex")}`;
+    const { answer: first, sent: firstCode } = await getsIn({ did_oc: did }, { project: "pk_test_someone_else" });
+    const trade = ochk.traded.at(-1);
+    const minted = ochk.minted.at(-1);
+    check("native: a code signs in, a new account, with a session that is a Brickworks sign-in", first.status === 200
+      && first.body.orangecheck?.did === did && first.body.orangecheck?.new_account === true
+      && (await whoIs(first.body.access_token)).body?.signed_in === true, `${first.status} ${first.body?.error || ""}`);
+    check("native: traded once, with this project's key from configuration (never the app's), the app's code, verifier and redirect, never redirected",
+      ochk.traded.filter((one) => one.code === firstCode.code).length === 1 && trade.project === process.env.OC_PROJECT_KEY && trade.grant_type === "authorization_code"
+      && trade.code === firstCode.code && trade.code_verifier === firstCode.code_verifier && trade.redirect_uri === firstCode.redirect_uri
+      && trade.redirect === "error", JSON.stringify({ ...trade, code: "[code]", code_verifier: "[verifier]" }));
+    check("native: the token it was traded for is ended at orangecheck, and not in the answer", ochk.revoked.includes(minted?.jwt)
+      && !JSON.stringify(first.body).includes(minted?.jwt));
+    const popup = await call(handler, { token: minted.jwt });
+    check("native: and its token is spent, as the window's: sent to ?op=signin after, refused", popup.status === 409, `${popup.status}`);
+    const reused = await native(firstCode);
+    check("native: a code used already is refused", refusedInWords(reused, 401), `${reused.status} ${reused.body?.error || ""}`);
+    const { answer: second } = await getsIn({ did_oc: did });
+    const byWindow = await call(handler, { token: token({ did_oc: did }).jwt });
+    check("native: the same orangecheck id signs in to the same account, from the app and from the window", second.status === 200
+      && second.body.user?.id === first.body.user?.id && byWindow.status === 200 && byWindow.body.user?.id === first.body.user?.id,
+      `${second.status} ${byWindow.status}`);
+
+    const wrongVerifier = nativeCode();
+    const tried = await native({ ...wrongVerifier, code_verifier: randomBytes(32).toString("base64url") });
+    check("native: a code with a verifier its challenge was not made from is refused", refusedInWords(tried, 401), `${tried.status} ${tried.body?.error || ""}`);
+    const thenRight = await native(wrongVerifier);
+    check("native: ...and is spent by trying: the right verifier after it is refused too", refusedInWords(thenRight, 401), `${thenRight.status}`);
+    const elsewhere = nativeCode();
+    const otherPort = await native({ ...elsewhere, redirect_uri: "http://127.0.0.1:53112/oc/callback" });
+    check("native: a code sent with a redirect_uri other than the one it was given for is refused", refusedInWords(otherPort, 401),
+      `${otherPort.status} ${otherPort.body?.error || ""}`);
+    const accountsBefore = made.size;
+    const forOther = await native(nativeCode({ aud: "https://example.com" }));
+    check("native: a code whose token is for another audience is refused, and no account is made", refusedInWords(forOther, 401)
+      && made.size === accountsBefore, `${forOther.status} ${forOther.body?.error || ""}`);
+    const unended = await native(nativeCode({ rh: undefined }));
+    check("native: a code whose token has no rh is refused", refusedInWords(unended, 401), `${unended.status} ${unended.body?.error || ""}`);
+
+    const asks = ochk.traded.length;
+    const shapes = [
+      ["a redirect_uri that is not 127.0.0.1", { ...nativeCode(), redirect_uri: "https://evil.example/oc/callback" }],
+      ["a redirect_uri at localhost", { ...nativeCode(), redirect_uri: "http://localhost:53111/oc/callback" }],
+      ["a redirect_uri with a query", { ...nativeCode(), redirect_uri: "http://127.0.0.1:53111/oc/callback?then=x" }],
+      ["a verifier too short", { ...nativeCode(), code_verifier: "short" }],
+      ["no code", { ...nativeCode(), code: "" }],
+      ["nothing at all", {}],
+    ];
+    const wrongShapes = [];
+    for (const [name, body] of shapes) {
+      const answer = await native(body);
+      if (!refusedInWords(answer, 422)) wrongShapes.push(`${name}: ${answer.status}`);
+    }
+    check(`native: ${shapes.length} malformed asks refused 422 in words, orangecheck asked nothing`, wrongShapes.length === 0
+      && ochk.traded.length === asks, `${wrongShapes.join("; ")} ${ochk.traded.length - asks} asked`);
+    ochk.tradeStatus = 503;
+    const down = await native(nativeCode());
+    ochk.tradeStatus = 200;
+    check("native: orangecheck down, 503 in words, nobody signed in", refusedInWords(down, 503) && !down.body.access_token,
+      `${down.status} ${down.body?.error || ""}`);
+    const wrongMethod = await call(await route(), nativeCode(), { op: "native", method: "GET" });
+    check("native: only POST", wrongMethod.status === 405, `${wrongMethod.status}`);
+    delete process.env.OC_NATIVE;
+  }
+
+  // site-attest: a token orangecheck ended by its id (POST /api/auth/revoke,
+  // the list's `tokens`) before it reached us is refused at the exchange,
+  // by the window and by the app alike. The requests after are asked
+  // without the id: our own revoke of the token right after the exchange
+  // puts its id on the list, and must sign nobody out.
+  {
+    const listWith = (jtis) => () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: jtis.map(endedJti), accounts: {}, handles: {} });
+    const listWas = ochk.list;
+    try {
+      const ended = token();
+      const other = token({ rh: ended.claims.rh });
+      ochk.list = listWith([ended.claims.jti]);
+      const refused = await call(await route(), { token: ended.jwt });
+      check("an orangecheck token whose id was ended before sign-in is refused at the exchange, 401 in words",
+        refused.status === 401 && /ended/.test(refused.body?.error || "") && !refused.body?.access_token,
+        `${refused.status} ${refused.body?.error || ""}`);
+      const sibling = await call(await route(), { token: other.jwt });
+      check("...where a token of the same sign-in (rh) with an id not ended gets in", sibling.status === 200,
+        `${sibling.status} ${sibling.body?.error || ""}`);
+      process.env.OC_NATIVE = "1";
+      const appCode = nativeCode({ jti: ended.claims.jti, rh: ended.claims.rh });
+      const fromApp = await call(await route(), appCode, { op: "native" });
+      delete process.env.OC_NATIVE;
+      check("...and from the app (?op=native), a code whose token's id was ended is refused, 401",
+        fromApp.status === 401 && !fromApp.body?.access_token, `${fromApp.status} ${fromApp.body?.error || ""}`);
+      ochk.list = listWith([]);
+      const fresh = await call(await route(), { token: token().jwt });
+      ochk.list = listWith([claimsOf(ochk.revoked.at(-1)).jti]);
+      forgetForTests();
+      const after = await whoIs(fresh.body.access_token);
+      const wrote = await theme(fresh.body.access_token);
+      check("our own revoke of the token right after the exchange puts its id on the list, and its session still reads and writes",
+        fresh.status === 200 && claimsOf(ochk.revoked.at(-1)).did_oc === fresh.body.orangecheck?.did
+        && after.body?.signed_in === true && wrote.status === 200, `${fresh.status} ${after.body?.signed_in} ${wrote.status}`);
+    } finally {
+      delete process.env.OC_NATIVE;
+      ochk.list = listWas;
+    }
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.

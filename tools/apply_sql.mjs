@@ -68,6 +68,7 @@ const LATER = [
   ["challenges.sql", "challenge_shown", "challenge_year.sql", "challenge_announced(c)"],
   ["challenges.sql", "challenge_list", "challenge_year.sql", "'announced_at'"],
   ["challenges.sql", "challenge_page", "challenge_year.sql", "challenge_page_at("],
+  ["orangecheck_merge_connect.sql", "oc_connected_of", "orangecheck_connect_leaving.sql", "c.asked_at <> '-infinity'"],
 ];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");
