@@ -6915,6 +6915,50 @@ func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
 	_refresh_preview()
 
 
+## What the person holds and where their view is going, as a session's
+## call begins (CommandSocket._run): for [method after_session_call].
+func hand_and_view() -> Dictionary:
+	return {"part": _builder.held_part, "colour": _builder.held_color,
+		"figure": not _builder.held_figure.is_empty(), "carrying": _builder.is_carrying(),
+		"mode": _verbs.mode if _verbs != null else "", "revision": _world.revision,
+		"aim": _camera_aim()}
+
+
+## A session's call ended: nothing it put in the person's hand stays
+## there, and a model it changed is framed, unless the person turned the
+## view meanwhile. walk239 (M13, M4): a session's print_part left its print
+## in hand ("click puts one down", as a person's own new print is), so the
+## first click dropped a stray panel, and after a session built a taco truck
+## the view was still framed on the empty baseplate it began on, a corner
+## of the truck filling it.
+func after_session_call(before: Dictionary) -> void:
+	if before.is_empty() or _verbs == null:
+		return
+	var handed: bool = _builder.held_part != str(before["part"]) \
+		or _builder.held_color != int(before["colour"]) or _verbs.mode != str(before["mode"]) \
+		or (_builder.is_carrying() and not bool(before["carrying"])) \
+		or (not _builder.held_figure.is_empty() and not bool(before["figure"]))
+	if handed:
+		if _builder.is_carrying() and not bool(before["carrying"]):
+			_verbs.put_away()
+		if not bool(before["figure"]):
+			_builder.drop_figure()
+		_builder.held_part = str(before["part"])
+		_builder.held_color = int(before["colour"])
+		_verbs.set_mode(str(before["mode"]))
+		if _bin != null and not _builder.held_part.is_empty():
+			_bin.show_held(_builder.held_part, _builder.held_color)
+		_refresh_preview()
+	if _world.revision != int(before["revision"]) and _camera_aim() == before["aim"]:
+		_camera.frame(_built_bounds())
+
+
+## Where the view is going: its turn, tilt, distance and focus.
+func _camera_aim() -> Array:
+	return [_camera.get("_target_yaw"), _camera.get("_target_pitch"),
+		_camera.get("_target_distance"), _camera.get("_target_focus")]
+
+
 ## The end of a drag that carried a part: down where the pointer is, if it
 ## fits there, and back where it came from (or the copy gone) if not.
 func _drop_dragged(at: Vector2) -> void:

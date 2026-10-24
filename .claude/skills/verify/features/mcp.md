@@ -11,6 +11,19 @@ asking for an API key.
   `--mcp` asks for it. One object in, one out. `__tools__` answers with the tool
   list, `__ping__` with the app's name and port, and anything else is run through
   `Assistant.use_tool` — the same implementations the app's own assistant calls.
+  What a call leaves of the person's own (2026-10-24, walk239's M13 and M4):
+  `CommandSocket._run` and the own tools' run ask `Main.hand_and_view` as a
+  call begins and `Main.after_session_call` as it ends. Nothing the call
+  put in the person's hand stays (print_part's print had been left in hand,
+  "click puts one down", as a person's own new print is): the part, its
+  colour, the tool, a carried part and a figure are put back as they were.
+  A call that changed the model frames it (`_built_bounds`) unless the
+  person turned the view meanwhile (the camera's aim compared): a taco truck
+  a session built was left framed as the empty baseplate it began on.
+  Probe: `session_hand_probe` (edit_model forty studs long framed whole;
+  print_part with Select, and with a 1 x 2 in hand, leaves the hand as it
+  was; look_at_model leaves the view where the person turned it; red on the
+  base).
 - `mcp server`: `tools/brickworks_mcp.py`, which speaks MCP on stdio and relays to
   that port. Stdlib only, no dependencies. It carries no tool definitions of its
   own: it fetches them from the app, so the two cannot drift, and keeps a copy in

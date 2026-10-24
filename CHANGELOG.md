@@ -22,6 +22,11 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- After Claude works on a model over the connector, nothing of its is left
+  in your hand and the view shows the whole model. A print Claude made was
+  left in hand, so the first click put down a stray part, and the view was
+  still framed on the empty baseplate the design began on. A view you turned
+  while Claude worked is left as you turned it.
 - The words in an SVG print. A sign, a menu board or a name plate drawn
   with SVG text, by a person or by Claude, printed without its words: the
   app's SVG renderer draws no text. Its words are now set in the app's font
