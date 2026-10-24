@@ -152,6 +152,10 @@ var _plainness := PackedInt32Array()
 ## system's; and the index of the part it is a print of, or -1.
 var _plain := PackedByteArray()
 var _print_of := PackedInt32Array()
+## Per part: the first word of its category, what kind of part it is: a
+## name says what it has, and "Technic Wedge Belt Wheel" is filed a Technic
+## part, where Wedge 4 x 2 is a wedge.
+var _lead := PackedStringArray()
 ## A first letter -> the parts with a word of their names that it begins.
 var _by_letter: Dictionary = {}
 ## Every part's number in lower case, in order, and the part each is.
@@ -184,6 +188,8 @@ func _init(parts: Dictionary, ids: PackedStringArray) -> void:
 				_index(_tall, PackedStringArray([size[1]]), at)
 		_usage.append(mini(4095, roundi(info.commonness() * USAGE_SCALE)))
 		_plainness.append(15 - mini(15, own.size()))
+		var kind: PackedStringArray = words_of(info.family_category())
+		_lead.append(kind[0] if not kind.is_empty() else "")
 		_plain.append(1 if PartLibrary.decor_of(info.name, info.category) == 0
 			and not info.name.begins_with("=") and not _other_line(info) else 0)
 	_named_words = _in_order(_named)
@@ -684,7 +690,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 			score[at] += worth * share
 			matched[at] += 1
 			shares[at] *= share
-			if by_name[at] >= 1.0 or by_keyword[at] >= 1.0:
+			if by_name[at] >= 1.0:
 				literal[at] += 1
 		for at: int in keyed_list:
 			if by_name[at] == 0.0:
@@ -693,17 +699,16 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 				score[at] += worth * by_keyword[at] * KEYWORD_SHARE
 				matched[at] += 1
 				shares[at] *= by_keyword[at] * KEYWORD_SHARE
-				if by_keyword[at] >= 1.0:
-					literal[at] += 1
 
 	# A print has the words of what is printed on it as well as its shape's:
 	# "round corner plate macaroni large" found 25269p04, a 1 x 1 tile with
 	# a pattern that says plate and large. Asked for by shape, it has no
-	# more of the words than the part it is a print of.
+	# more of the words than the part it is a print of. One its part has none
+	# of is found by what is printed on it: "Å" is 3005pwc.
 	if not decor_asked:
 		for at: int in touched:
 			var plain_at: int = _print_of[at]
-			if plain_at >= 0:
+			if plain_at >= 0 and matched[plain_at] > 0:
 				matched[at] = mini(matched[at], matched[plain_at])
 				literal[at] = mini(literal[at], literal[plain_at])
 				score[at] = minf(score[at], score[plain_at])
@@ -712,12 +717,32 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	# number ("2x2 bracket inverted 99207" is 99207, a 1 x 2 - 2 x 2 bracket
 	# LDraw calls Up), then how many of the words it has, then plain before
 	# prints, stickers and other systems' parts, then how well it has them:
-	# all in the builder's own words (85080, macaroni in its keywords, before
-	# 67810, a curved corner), then by its words' shares multiplied, in three
-	# bands: as good as a word begun, as one a letter off, and less. Then,
-	# among the parts that answer as well, how much real sets use it: 60596,
+	# all in the builder's own words in its own name (a wedge brick for
+	# "wedge" before a wing that says it only in its keywords), then by its
+	# words' shares multiplied, in three
+	# bands: as good as a word begun, as one a letter off, and less; then a
+	# part filed under a word asked, the thing itself. Then, among the
+	# parts that answer as well, how much real sets use it: 60596,
 	# the door frame in 850 sets, before 80400a, in 24. Then the plainer name,
 	# what its words are worth, and the catalogue's order. Sorted as numbers.
+	# The words a category may begin with for the part to be the thing asked
+	# for, and not a part that has it ("wedge" is Wedge 4 x 2, not Technic
+	# Wedge Belt Wheel, in more sets): each word asked, its forms and the
+	# words one letter off it, and the start of any word asked, as typed.
+	var leads: Dictionary = {}
+	var begun := PackedStringArray()
+	for term: Dictionary in terms:
+		if term.has("sizes"):
+			continue
+		for option: PackedStringArray in term["options"]:
+			for word: String in option:
+				for form: String in _forms(word):
+					leads[form] = true
+				if loose and not word.is_valid_float():
+					begun.append(word)
+					if word.length() >= 3 and not named(word):
+						for near: String in _near(word):
+							leads[near] = true
 	var keys := PackedInt64Array()
 	var needed: int = terms.size()
 	for at: int in touched:
@@ -729,11 +754,19 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 			var product: float = shares[at]
 			tier = 2 if product >= PREFIX_SHARE - 0.01 else (1 if product >= FUZZY_SHARE - 0.01 else 0)
 		var worth: int = mini(1023, roundi(1023.0 * score[at] / maxf(possible, 0.001)))
+		var lead: String = _lead[at]
+		var named_for: int = 1 if leads.has(lead) else 0
+		if named_for == 0:
+			for start: String in begun:
+				if lead.begins_with(start):
+					named_for = 1
+					break
 		var key: int = (flags[at] >> 1) & 1
 		key = key * 2 + (flags[at] & 1)
 		key = key * 16 + mini(15, has)
 		key = key * 2 + (1 if decor_asked else _plain[at])
 		key = key * 4 + tier
+		key = key * 2 + named_for
 		key = key * 4096 + _usage[at]
 		key = key * 16 + _plainness[at]
 		key = key * 1024 + worth

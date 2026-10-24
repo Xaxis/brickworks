@@ -120,6 +120,11 @@ static func _rankings(library: PartLibrary) -> int:
 		# its own answer is plain proves nothing, and the score carries
 		# family bonuses and a height penalty that have no bearing on it.
 		var plain: bool = PLAIN_NAME.search(name) != null
+		# Or a part of the family sets use most. A plain name stood in for a
+		# staple until search knew how much sets use a part (search242): the
+		# curved 4 x 4 wedge on most cars (45677), the 1 x 2 x 1 panel moulded
+		# with rounded corners since 2011 (4865b).
+		var staple: bool = _most_used(library, family).has(top.id)
 		var area: int = top.footprint_studs().x * top.footprint_studs().y
 		# A wedge is not sold in 1 x 1, so "small" has to mean small for
 		# the family rather than small in the absolute.
@@ -129,12 +134,12 @@ static func _rankings(library: PartLibrary) -> int:
 			if regressions.has(info.id):
 				intruders.append(info.id)
 
-		var ok: bool = plain and small and intruders.is_empty()
+		var ok: bool = (plain or staple) and small and intruders.is_empty()
 		if not ok:
 			failures += 1
 		print("  %s %-7s leads with %s (%s) — %s%s%s"
 			% ["ok  " if ok else "FAIL", family, top.id, name,
-				"plain" if plain else "NOT PLAIN",
+				"plain" if plain else ("among the most used" if staple else "NOT PLAIN"),
 				", %d studs" % area,
 				"" if intruders.is_empty() else ", intruders: " + ", ".join(intruders)])
 
@@ -142,6 +147,21 @@ static func _rankings(library: PartLibrary) -> int:
 	print("%d family(s) ranked badly" % failures if failures
 		else "every family name leads with something plain and small")
 	return 1 if failures else 0
+
+
+## The three parts filed under [param family] that sets use most.
+static func _most_used(library: PartLibrary, family: String) -> PackedStringArray:
+	var filed: Array[PartLibrary.PartInfo] = []
+	for id: String in library.parts:
+		var info: PartLibrary.PartInfo = library.parts[id]
+		if info.category.to_lower() == family and not info.is_redirect():
+			filed.append(info)
+	filed.sort_custom(func(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
+		return a.commonness() > b.commonness())
+	var out := PackedStringArray()
+	for info: PartLibrary.PartInfo in filed.slice(0, 3):
+		out.append(info.id)
+	return out
 
 
 ## A part number typed brings that part first: a builder working from a

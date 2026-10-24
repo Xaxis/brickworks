@@ -1757,6 +1757,7 @@ func staples(most: int = 30) -> Array[PartInfo]:
 func search(query: String, limit: int = 100, every_word: bool = false,
 		loose: bool = true) -> Array[PartInfo]:
 	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word, loose)
+	_collect_preparing()
 	# A number LDraw keeps only for old files, typed: the part made now in its
 	# shape, first (current), as the index leaves the old one out.
 	var typed: String = query.strip_edges().to_lower()
@@ -1785,6 +1786,8 @@ func search_ready() -> bool:
 	_search_lock.lock()
 	var made: bool = _search_index != null
 	_search_lock.unlock()
+	if made:
+		_collect_preparing()
 	return made
 
 
@@ -1792,9 +1795,20 @@ func search_ready() -> bool:
 ## threads, so the first key typed in the parts bin is not the one that waits
 ## the second it takes. A search asked meanwhile waits for it (_finder).
 func prepare_search() -> void:
-	if OS.has_feature("web") and not OS.has_feature("threads"):
+	if (OS.has_feature("web") and not OS.has_feature("threads")) or _preparing >= 0 \
+			or search_ready():
 		return
-	WorkerThreadPool.add_task(func() -> void: _finder(), false, "index the parts for search")
+	_preparing = WorkerTasks.add(func() -> void: _finder(), false, "index the parts for search")
+
+
+## The task making the index (prepare_search), until it is let go of.
+var _preparing: int = -1
+
+
+func _collect_preparing() -> void:
+	if _preparing >= 0 and _on_main_thread() and WorkerThreadPool.is_task_completed(_preparing):
+		WorkerTasks.collect(_preparing)
+		_preparing = -1
 
 
 ## The word index, made at the first search: under a second over the whole
