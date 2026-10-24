@@ -118,6 +118,8 @@ signal look_wanted(op: String)
 signal closed
 ## Stepped forward onto the last step from the step before it (step_forward).
 signal stepped_to_end
+## Stepped forward or back, by Next, Back or the arrow keys.
+signal stepped
 
 ## Its buttons and the slider by name, for the page to find (controls_by_name).
 var _named: Dictionary = {}
@@ -691,11 +693,13 @@ func step_forward() -> void:
 			and _shown >= _length() and from < _length() \
 			and from >= (_step_ends[-2] if _step_ends.size() >= 2 else 0):
 		stepped_to_end.emit()
+	stepped.emit()
 
 
 func step_back() -> void:
 	_stop_play()
 	_show(_next_stop(-1))
+	stepped.emit()
 
 
 func to_start() -> void:

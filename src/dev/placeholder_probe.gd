@@ -19,6 +19,9 @@
 ##   asked for every cell of a page in list order, so a scroll waited
 ##   behind every cell scrolled past,
 ## * and once everything in sight is drawn, no tile is doing any work.
+## * A new colour picked keeps every picture in sight until its new
+##   colour's is drawn, then shows that: the grid was made again for the
+##   colour, every tile blank for seconds (walk180 A3).
 ##
 ## The same for the minifigure builder's grid and its slots. Pictures of
 ## each state go to shots/placeholders/ for a person to look at.
@@ -67,6 +70,8 @@ func _run() -> void:
 	print("  the parts bin")
 	await _open_bin(bin)
 	await _bin_fills_in(bin)
+	print("")
+	await _new_colour_keeps_pictures(bin)
 	print("")
 	await _in_sight_first(bin)
 	print("")
@@ -146,6 +151,50 @@ func _bin_fills_in(bin: PartsBin) -> void:
 	_check("once drawn, no tile is doing any work (%d processing, %d with the shimmer)"
 		% [busy, shimmering], busy == 0 and shimmering == 0)
 	await _shot_of(bin, "desktop_bin_loaded")
+
+
+## A colour picked by its swatch, as a person picks one: every tile in sight
+## keeps the picture it had, with no shimmer over it, until the picture in
+## its new colour is drawn; then it is that one, in the same tile.
+func _new_colour_keeps_pictures(bin: PartsBin) -> void:
+	var tiles: Array[ThumbTile] = _seen(bin.get("_scroll"), _tiles_of(bin.get("_grid")))
+	var was: int = bin.selected_color()
+	var to: int = 14 if was != 14 else 1
+	var swatch: Control = (bin.get("_swatches") as Dictionary).get(to)
+	# Held while the colour changes, so what stands in a tile before its
+	# new picture is drawn can be read; on this machine it is a few frames.
+	_thumbs.set_process(false)
+	if swatch != null and swatch.is_visible_in_tree():
+		await _click(swatch.get_global_rect().get_center())
+	else:
+		bin.call("_on_colour", to)
+	await _frames(6)
+	_check("colour %d picked, from %d (%s)" % [to, was, "its swatch clicked" if swatch != null else "by its code"],
+		bin.selected_color() == to)
+	var now: Array[ThumbTile] = _seen(bin.get("_scroll"), _tiles_of(bin.get("_grid")))
+	# Its own picture, or the one it had in the colour before (_was).
+	var blank: int = now.filter(func(tile: ThumbTile) -> bool:
+		return tile.texture == null and tile.get("_was") == null).size()
+	var shimmering: int = now.filter(func(tile: ThumbTile) -> bool: return tile.material != null).size()
+	_check("every tile in sight still shows a picture while the new ones are drawn (%d of %d blank, %d with the shimmer)"
+		% [blank, now.size(), shimmering], now.size() >= 8 and blank == 0 and shimmering == 0)
+	await _shot_of(bin, "desktop_bin_new_colour_waiting")
+	_thumbs.set_process(true)
+	var took: int = await _until_drawn(now, 900)
+	var recoloured: int = 0
+	for tile: ThumbTile in now:
+		if tile.state == ThumbTile.State.READY and tile.color_code == to and tile.texture != null \
+				and tile.texture == _thumbs.peek(tile.part_id, to, tile.printed):
+			recoloured += 1
+	_check("then each is its picture in the new colour (%d of %d, %d frames)" % [recoloured, now.size(), took],
+		recoloured == now.size())
+	_check("in the tiles it was in: none made again (%d of %d the same)" % [
+		now.filter(func(tile: ThumbTile) -> bool: return tiles.has(tile)).size(), now.size()],
+		now.all(func(tile: ThumbTile) -> bool: return tiles.has(tile)))
+	await create_timer(ThumbTile.FADE_SECONDS * 3.0).timeout
+	await _shot_of(bin, "desktop_bin_new_colour")
+	bin.call("_on_colour", was)
+	await _until_drawn(_seen(bin.get("_scroll"), _tiles_of(bin.get("_grid"))), 900)
 
 
 ## Scrolled a long way down before anything is drawn: what is on screen

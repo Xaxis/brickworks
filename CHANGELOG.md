@@ -18,6 +18,15 @@ whole cycle.
   as does, and New's "Save, then start new" asks too; a name another saved
   model has is refused rather than written over. Before, it was saved as
   "Untitled" without a word.
+- View › Default view puts the view back on the model, or on the baseplate
+  when nothing is built, as Fit does; it turned the view and kept a zoom
+  lost in empty space.
+- Picking a colour keeps the parts' pictures in the bin until each is drawn
+  in the new colour; the whole grid went blank for seconds.
+- A shared model: Build it on its page starts the build at step 1, in one
+  press; Next and Back on its timeline outline each step's new parts and
+  bring them into view, as the step player does; and "Parts of it move" is
+  said only when something in it moves that its card names.
 - Opening a model over one with changes not saved asks first, as New does:
   Save, Don't save or Cancel. File › Open and its examples, Open recent, a
   file from the computer, Collection › Open and Versions all ask, and an

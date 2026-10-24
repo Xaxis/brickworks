@@ -34,6 +34,11 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
+// Its picture: the frame says it is coming until it is drawn, and one that
+// fails is asked for again, twice, before the frame says there is none.
+const frame = document.querySelector(".model-page .picture");
+if (frame) startPicture(frame);
+
 // The strip of its pictures (api/share.js mediaStrip): the one chosen is
 // shown in the picture's place, whole, and edged in the strip. The picture
 // is still the way into the viewer.
@@ -42,6 +47,32 @@ if (strip) startPictures(strip);
 // The page's tabs: the part being read is marked as the page scrolls.
 const tabs = document.getElementById("page-tabs");
 if (tabs) startTabs(tabs);
+
+function startPicture(big) {
+  const img = big.querySelector("img");
+  const sign = big.querySelector(".waiting");
+  if (!img || !sign) return;
+  let tries = 0;
+  const drawn = () => {
+    sign.hidden = true;
+    img.style.visibility = "";
+  };
+  const failed = () => {
+    // Not the browser's broken picture over the words while it is asked again.
+    img.style.visibility = "hidden";
+    sign.hidden = false;
+    if (tries >= 2) {
+      sign.textContent = "No picture";
+      return;
+    }
+    tries += 1;
+    const src = img.getAttribute("src").replace(/[?&]again=\d+$/, "");
+    setTimeout(() => { img.src = `${src}${src.includes("?") ? "&" : "?"}again=${tries}`; }, 1500 * tries);
+  };
+  img.addEventListener("load", drawn);
+  img.addEventListener("error", failed);
+  if (img.complete) (img.naturalWidth > 0 ? drawn : failed)();
+}
 
 function startPictures(row) {
   const big = document.querySelector(".model-page .picture");
