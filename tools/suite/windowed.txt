@@ -39,3 +39,4 @@ kart_steer
 booklet_stream
 stress_list
 viewer_steps   # Build it at step 1, the viewer timeline framing its steps, the play pill only for what moves (viewer218)
+bin_techniques   # the parts bin's Techniques: a construction held whole, turned, put down on a wall, one undo (bin238)

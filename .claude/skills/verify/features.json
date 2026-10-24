@@ -2876,6 +2876,14 @@
       "tests": []
     },
     {
+      "id": "ui:find a part from a photo",
+      "kind": "ui",
+      "entry": "src/net/brickognize.gd",
+      "reach": "godot --path .  (the camera in the parts bin's search field; the photo goes to Brickognize, said before the first)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:first steps after a first sign-in",
       "kind": "ui",
       "entry": "web/first-steps.js",
@@ -3544,6 +3552,14 @@
       "entry": "web/takedown.html",
       "reach": "https://brickworks.diy/takedown   (takedown.js sends a report with a way to reach the sender)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:techniques in the bin",
+      "kind": "ui",
+      "entry": "src/ai/techniques.gd",
+      "reach": "godot --path .  (Techniques beside Recent and Favourites in the parts bin; a row held whole, R turns it, a click puts it down)",
+      "area": "parts",
       "tests": []
     },
     {

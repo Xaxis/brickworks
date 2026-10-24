@@ -970,6 +970,16 @@ func controls_by_name() -> Dictionary:
 	# part by its number, as a person does (tools/web/assembly_flow.mjs).
 	named["part search"] = _search
 	named["photo search"] = _photo_button
+	# Its question before the first photo, and the Techniques tab and its
+	# rows by name (tools/web/bin_flow.mjs).
+	if _telling != null:
+		named["photo choose"] = _telling.get_ok_button()
+	for child: Node in _category_row.get_children():
+		if str(child.get_meta("category", "")) == TECHNIQUES:
+			named["techniques"] = child
+	for child: Node in _grid.get_children():
+		if child.has_meta("technique"):
+			named["technique " + str(child.get_meta("technique"))] = child
 	named["colour find"] = _colour_find
 	named["all colours"] = _all_colours
 	named["palette"] = _palette_scroll
