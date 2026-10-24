@@ -22,6 +22,8 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- On brickworks.diy, /challenges goes to the challenge page instead of
+  "not found", and every page's footer links the challenge.
 - The sign-in screen says your models are kept with your account as well
   as on the device, as they have been since 2026-10-23. It said they were
   not kept with your account, and so did the FAQ and the privacy page.

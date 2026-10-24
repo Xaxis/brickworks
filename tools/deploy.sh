@@ -347,6 +347,7 @@ cat > .vercel/output/config.json <<EOF
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
     { "src": "/authorize[.]html", "status": 308, "headers": { "Location": "/oauth/authorize" } },
+    { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
