@@ -229,8 +229,8 @@ try {
   const first = named(await listed(), NAME);
   check(`...and with the account: it lists "${NAME}", ${first?.parts ?? "no"} parts, version ${first?.version ?? "none"}`,
     sent && first?.version === 1);
-  check(`...and the app says the account has it: ${JSON.stringify((await cloud(a)).last || {})}`,
-    await until(async () => ((await cloud(a)).last?.names || []).includes(NAME) && (await cloud(a)).state === "kept", 60));
+  const told = await until(async () => ((await cloud(a)).last?.names || []).includes(NAME) && (await cloud(a)).state === "kept", 60);
+  check(`...and the app says the account has it: ${JSON.stringify((await cloud(a)).last || {})}`, told);
   const words = (await state(a)).storage?.words || "";
   check(`...and Account says the account keeps the models: "${words.slice(0, 90)}…"`,
     /kept with your account/.test(words));
@@ -270,8 +270,8 @@ try {
     const text = await storedText(b, savedKey(NAME));
     return text.startsWith(`0 ${NAME}`) && text !== beforeB;
   }, 120));
-  check(`...the app knowing the account has not got it: ${(await cloud(b)).state}`,
-    await until(async () => (await cloud(b)).state === "away", 60));
+  const away = await until(async () => (await cloud(b)).state === "away", 60);
+  check(`...the app knowing the account has not got it: ${(await cloud(b)).state}`, away);
   check("...nor has it", named(await listed(), NAME)?.parts === partsA && !named(await listed(), `${NAME} 2`));
   await b.unroute("**/api/models**");
   await press(b, "save");
@@ -283,8 +283,8 @@ try {
   const models = await listed();
   check(`back online, B's save is sent, and both are kept: "${NAME}" with A's ${named(models, NAME)?.parts ?? "?"} parts`
     + ` and "${besideName}" with B's ${named(models, besideName)?.parts ?? "?"} (A ${partsA}, B ${partsB})`, both);
-  check(`...B's model is called "${besideName}" now: "${await b.title()}"`,
-    await titleBecomes(b, `${besideName} — Brickworks`, 60));
+  const retitled = await titleBecomes(b, `${besideName} — Brickworks`, 60);
+  check(`...B's model is called "${besideName}" now: "${await b.title()}"`, retitled);
   check(`...B has A's under "${NAME}", whole`, await until(async () =>
     sha(await storedText(b, savedKey(NAME))) === named(await listed(), NAME)?.sum, 120));
   check(`...and its own under "${besideName}"`, await until(async () =>
@@ -323,8 +323,8 @@ try {
   check(`...saved under that name, in this browser (${partsC} parts)`, await until(async () =>
     (await storedText(c, savedKey("Asked House"))).startsWith("0 Asked House"), 120));
   check("...and nothing saved as \"Untitled\"", (await storedText(c, savedKey("Untitled"))) === "");
-  check(`...then the new model: "${await c.title()}", ${(await state(c)).bricks} parts`, await until(async () =>
-    (await state(c)).bricks === 0 && (await c.title()) === "Untitled — Brickworks", 60));
+  const fresh = await until(async () => (await state(c)).bricks === 0 && (await c.title()) === "Untitled — Brickworks", 60);
+  check(`...then the new model: "${await c.title()}", ${(await state(c)).bricks} parts`, fresh);
   check(`...and nothing was sent anywhere: ${asked} requests to /api/models`, asked === 0);
   await contextC.close();
 
