@@ -1404,6 +1404,11 @@ func _author_steps() -> void:
 	var green: int = _part_id("3022")
 
 	await _key(KEY_B)
+	# The author's steps are read over frames, as the worked-out ones are
+	# (13fa0aae, 2026-10-24): five frames after the key, it was still reading.
+	var since: int = Time.get_ticks_msec()
+	while steps.is_starting() and Time.get_ticks_msec() - since < 30000:
+		await process_frame
 	_check("B opens the timeline in the author's steps (%s), at \"%s\"" % [
 		steps._order_button.text, steps._caption.text], steps.is_playing_back()
 		and steps.mode() == StepsBar.AUTHORS and steps._caption.text.begins_with("Step 1 of 6"))
