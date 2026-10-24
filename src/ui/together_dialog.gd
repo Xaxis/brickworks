@@ -158,6 +158,12 @@ func _on_start() -> void:
 
 
 func _on_join() -> void:
+	# Enter in the field with nothing in it, or not a link, joins nothing
+	# and keeps the panel up, saying so.
+	if Together.secret_in(_join_field.text).is_empty():
+		if not _join_field.text.strip_edges().is_empty():
+			_note.text = "That is not a Build together link. Paste the whole link you were sent."
+		return
 	_busy = true
 	fill()
 	hide()
