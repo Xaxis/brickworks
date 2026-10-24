@@ -117,7 +117,7 @@ export function sitePages({ remote = "" } = {}) {
     // deployment, whose collection the stand-in does not know, Follow is
     // not waited for.
     { name: "collection", path: `/c/${stand.LIST_ID}`,
-      ready: (page, { signedIn }) => (signedIn && !remote ? until(page, () => !document.querySelector("[data-follow-list]")?.hidden) : true),
+      ready: (page, { signedIn }) => (signedIn && !remote ? until(page, () => document.querySelector("[data-follow-list]")?.hidden === false) : true),
       open: async (page) => {
         await page.click(".list-head .more-menu summary");
         const opened = await until(page, () => document.querySelector(".list-head .more-menu[open]"));

@@ -164,7 +164,7 @@ try {
   const bobPage = await bobSite.newPage();
   listen(bobPage, "Bob");
   await bobPage.goto(`${site}/c/${listId}?tests=1`, { waitUntil: "load" });
-  const ready = await until(bobPage, () => !document.querySelector("button[data-follow-list]")?.hidden, "Follow", 30)
+  const ready = await until(bobPage, () => document.querySelector("button[data-follow-list]")?.hidden === false, "Follow", 30)
     .catch(() => false);
   if (!check("its page has Follow (collection_follows.sql applied)", ready)) throw new Error("no Follow on a collection's page");
   let drawn = await headDrawn(bobPage);
@@ -191,7 +191,7 @@ try {
   const cyPage = await cySite.newPage();
   listen(cyPage, "Cy");
   await cyPage.goto(`${site}/c/${listId}?tests=1`, { waitUntil: "load" });
-  await until(cyPage, () => !document.querySelector("button[data-follow-list]")?.hidden, "Cy's Follow");
+  await until(cyPage, () => document.querySelector("button[data-follow-list]")?.hidden === false, "Cy's Follow");
   await cyPage.click("button[data-follow-list]");
   const told = await until(cyPage, () => document.querySelector("button[data-follow-list] + .said")?.textContent.trim(), "why not");
   check(`on its page Cy is told "${told}"`, told === UNDER_13);
@@ -226,6 +226,13 @@ try {
     && /^Collections\s*1$/.test(pill.tab.trim()));
   await bobPage.click('.facts a[href="#collections"]');
   await until(bobPage, () => location.hash === "#collections", "the part");
+  // Until the page stops scrolling (the site scrolls smoothly to a part).
+  for (let last = -1, at = 0; at < 30; at++) {
+    await bobPage.waitForTimeout(150);
+    const y = await bobPage.evaluate(() => scrollY);
+    if (y === last) break;
+    last = y;
+  }
   const part = await bobPage.evaluate(() => [...document.querySelectorAll("#collections .list-card")].map((card) => ({
     href: card.getAttribute("href"), words: card.querySelector(".words")?.textContent.replace(/\s+/g, " ").trim(),
     pictures: card.querySelectorAll(".mosaic img").length, top: Math.round(card.getBoundingClientRect().top) })));
