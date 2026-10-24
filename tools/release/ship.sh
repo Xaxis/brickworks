@@ -74,5 +74,7 @@ timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod > $S/${TAG}_
 grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
 # The CDN keeps serving the last pages for a minute or so after the promotion.
 sleep 90
-"$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live site share_probe
-if ! passed $S/${TAG}_live.out 2; then sleep 120; "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live2 site share_probe; cat $S/${TAG}_live2.out | cut -c1-160; else cat $S/${TAG}_live.out | cut -c1-160; fi
+# canary: sign-up still shut and a new person still signs in by a code, on
+# production's own route and settings (api/_canary.js, 2026-10-24).
+"$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live site share_probe canary
+if ! passed $S/${TAG}_live.out 3; then sleep 120; "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live2 site share_probe canary; cat $S/${TAG}_live2.out | cut -c1-160; else cat $S/${TAG}_live.out | cut -c1-160; fi
