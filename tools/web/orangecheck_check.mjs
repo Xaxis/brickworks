@@ -921,6 +921,48 @@ try {
       && deletes.length === removed + 1 && deletes.at(-1).body.user_id === carol.kept.user_id && deletes.at(-1).key
       && (await adminUser(carol.kept.user_id)).status === 404 && (await connected(carol.kept.user_id)) === null,
       `${gone.status} ${gone.body?.error || ""} ${deletes.length - removed}`);
+    // site-attest's L1: a person can always delete their Brickworks account.
+    // orangecheck refusing for good (the account holds earnings, or cannot
+    // be erased) deletes ours all the same, and says plainly that theirs
+    // stays at ochk.app; only an outage holds it (503, above); and a
+    // deployment without the Connect key says it is not set up here, never
+    // to try again.
+    const deleteCalls = () => ochk.connect.filter((one) => one.path === "/api/connect/delete").length;
+    for (const reason of ["holds_earnings", "not_deletable"]) {
+      const email = `delivered+bw-oc-${reason.replace("_", "")}-${tag}@resend.dev`;
+      const leaving = await mintSession(email, { age: true });
+      await rpc("oc_connect_asked", { account: leaving.kept.user_id });
+      ochk.remove = () => [409, { ok: false, reason }];
+      const asked = deleteCalls();
+      const left = await quit(leaving.access_token, { confirm: email });
+      check(`Connect, L1: orangecheck refusing for good (${reason}), the Brickworks account is deleted all the same, and says theirs stays at ochk.app`,
+        left.status === 200 && left.body?.deleted === true && left.body?.orangecheck?.kept === true
+        && /stays yours/.test(left.body?.orangecheck?.said || "") && /ochk\.app/.test(left.body?.orangecheck?.said || "")
+        && deleteCalls() === asked + 1 && (await adminUser(leaving.kept.user_id)).status === 404,
+        `${left.status} ${JSON.stringify(left.body)} ${deleteCalls() - asked}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    ochk.remove = () => [200, { ok: true, result: "deleted" }];
+    {
+      const email = `delivered+bw-oc-nokey-${tag}@resend.dev`;
+      const leaving = await mintSession(email, { age: true });
+      await rpc("oc_connect_asked", { account: leaving.kept.user_id });
+      const keyWas = process.env.OC_CONNECT_KEY;
+      delete process.env.OC_CONNECT_KEY;
+      const asked = deleteCalls();
+      let left;
+      try {
+        left = await quit(leaving.access_token, { confirm: email });
+      } finally {
+        process.env.OC_CONNECT_KEY = keyWas;
+      }
+      check("Connect, L1: without the Connect key, deleting says it is not set up here, not to try again, and asks orangecheck nothing",
+        left.status !== 200 && left.status !== 503 && /not set up/.test(left.body?.error || "") && !/try again/i.test(left.body?.error || "")
+        && deleteCalls() === asked && (await adminUser(leaving.kept.user_id)).status === 200,
+        `${left.status} ${left.body?.error || ""} ${deleteCalls() - asked}`);
+      await deleteAccount(email).catch(() => false);
+    }
+
     const before = ochk.connect.length;
     const plain = await mintSession(`delivered+bw-oc-plain-${tag}@resend.dev`, { age: true });
     const plainGone = await quit(plain.access_token, { confirm: `delivered+bw-oc-plain-${tag}@resend.dev` });
@@ -973,6 +1015,11 @@ try {
     }
     check("Connect: a code's session past five minutes never provisions with email_verified, where a fresh one does",
       verifiedOwn && unverified(fromStale), `${fromStale.answer.status} ${JSON.stringify(fromStale.sent)}`);
+    // site-attest's A: counted, not read through every(), which holds of no
+    // calls at all. Refused, fresh: false, and nothing asked of orangecheck.
+    check("Connect: a code's session past five minutes is refused 403, fresh: false, and asks orangecheck nothing (0 calls)",
+      fromStale.answer.status === 403 && fromStale.answer.body?.fresh === false && fromStale.sent.length === 0,
+      `${fromStale.answer.status} ${JSON.stringify(fromStale.answer.body)} ${fromStale.sent.length} calls`);
     // An orangecheck session of the same account, linked first.
     await rpc("oc_link", { did: `did:oc:${randomBytes(16).toString("hex")}`, account: coded.user?.id });
     const viaOc = await call(handler, { token: token({ did_oc: await rpc("oc_did_of", { account: coded.user?.id }) }).jwt });

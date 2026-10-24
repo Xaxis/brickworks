@@ -43,7 +43,9 @@
 //   connections). Model files no row owns any longer go with the daily
 //   sweep (api/share.js). The site owner's account is refused: it holds
 //   the admin page. An orangecheck account Connect made for it, at its
-//   tick (2026-10-24), is deleted at orangecheck before anything here.
+//   tick (2026-10-24), is deleted at orangecheck before anything here; one
+//   orangecheck will not delete stays the person's at ochk.app, and the
+//   answer says so ({orangecheck: {kept, said}}).
 //
 // Everyone who uses Brickworks signs in (2026-10-11). There were
 // accounts before, until 2026-10-09, so that one of them could design on
@@ -332,8 +334,12 @@ async function deleteAccount(request, response) {
   // The orangecheck account Connect made for it, at its own tick
   // (api/orangecheck.js ?op=connect), deleted first: until the person
   // claims it, deleting it is Brickworks' to do, and once this account is
-  // gone nothing could. While orangecheck cannot, nothing is deleted.
+  // gone nothing could. A person can always delete their Brickworks account
+  // (site-attest's L1): orangecheck refusing for good leaves theirs with
+  // them at ochk.app, said plainly; only an outage holds the deletion, and
+  // a deployment without the Connect key says it is not set up.
   let connected;
+  let kept = false;
   try {
     connected = await db("rpc/oc_connected_of", { method: "POST", body: { account } });
   } catch (trouble) {
@@ -342,10 +348,16 @@ async function deleteAccount(request, response) {
   }
   if (connected) {
     const { unprovision } = await import("./_oc.js");
-    if (!(await unprovision(account))) {
+    const there = await unprovision(account);
+    if (there === "outage") {
       return response.status(503).json({ error: "orangecheck could not delete the orangecheck account made for you just now, "
         + "so nothing is deleted yet. Try again in a minute." });
     }
+    if (there === "unset") {
+      return response.status(500).json({ error: "Deleting the orangecheck account made for you is not set up on this "
+        + "deployment, so nothing is deleted here." });
+    }
+    kept = there === "kept";
   }
   try {
     // The files of the build photos it posted, and of those posted of its
@@ -388,7 +400,9 @@ async function deleteAccount(request, response) {
     const gone = await fetch(`${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
-    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length });
+    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length,
+      ...(kept ? { orangecheck: { kept: true, said: "orangecheck could not delete the orangecheck account made for you, "
+        + "so it stays yours at ochk.app, to claim or delete there." } } : {}) });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });

@@ -42,7 +42,8 @@
 //      (a unit's preview), and ?op=connect always, so this flow never makes
 //      anybody an orangecheck account (oc_live_flow.mjs does, on
 //      brickworks.diy). Deleting an account Connect made one for asks
-//      orangecheck first: without the key it says so and deletes nothing.
+//      orangecheck first: without the key it says it is not set up here,
+//      never to try again, and deletes nothing.
 // A finished orangecheck sign-in needs a wallet and orangecheck's list of
 // ended sessions for the domain, which a preview's address is not:
 // tools/web/oc_live_flow.mjs does that on brickworks.diy.
@@ -513,8 +514,8 @@ try {
       check("Connect: deleting an account Connect made one for asks orangecheck to delete it, then deletes the account",
         asked.ok && quit.status === 200 && still.status === 404, `${asked.status} ${quit.status} ${said.error || ""} ${still.status}`);
     } else {
-      check("Connect: deleting an account Connect made one for asks orangecheck first: with no Connect key here, it says so and deletes nothing",
-        asked.ok && quit.status === 503 && /orangecheck could not delete/.test(said.error || "") && still.status === 200,
+      check("Connect: deleting an account Connect made one for asks orangecheck first: with no Connect key here, it says it is not set up, and deletes nothing",
+        asked.ok && quit.status === 500 && /not set up/.test(said.error || "") && !/try again/i.test(said.error || "") && still.status === 200,
         `${asked.status} ${quit.status} ${said.error || ""} ${still.status}`);
     }
     await deleteAccount(leaver).catch(() => false);

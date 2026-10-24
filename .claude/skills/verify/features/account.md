@@ -323,8 +323,13 @@ they have. A Claude connector belongs to the account that switched it on.
   only when that session is a fresh emailed code's (amr `otp`) for that
   address (`codeOf` `emailed`); a refusal or an outage is an
   answer, never in the sign-in's way. Unticked, nothing is asked. Deleting
-  an account Connect was asked for calls `connectDelete` first; while
-  orangecheck cannot, nothing is deleted (503, in words).
+  an account Connect was asked for calls `connectDelete` first (`unprovision`).
+  A person can always delete their account (site-attest's L1): orangecheck
+  refusing for good (`holds_earnings`, `not_deletable`) deletes ours anyway
+  and the answer says theirs stays at ochk.app (`orangecheck: {kept, said}`,
+  shown on /settings); only an outage (`unavailable`, `rate_limited`) holds
+  it, 503 "try again"; no Connect key (a unit's preview) or a key orangecheck
+  does not know answers 500 "not set up", deleting nothing.
 
 Decisions, so they can be changed: the gate is a client gate (the desktop is
 open source and runs on the person's machine); the server enforces accounts
@@ -390,7 +395,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (127 since step 4; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (131 since step 4; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -435,9 +440,11 @@ the old one had and only that, the old did's session ended, handles naming
 nobody or two accounts, more than 16, a linked then unlinked did; Connect
 without its key, unticked or not `true`, without a sign-in, ticked once with
 consent and the key, orangecheck down or never answering, never for an
-account with orangecheck, deletion held while orangecheck cannot delete and
-calling `connectDelete` when it can, and nothing asked for an account it
-never made one for; the address sent as verified for a fresh emailed code's
+account with orangecheck, deletion held while orangecheck is down and
+calling `connectDelete` when it can, deleted anyway with orangecheck's kept
+said when it refuses for good (`holds_earnings`, `not_deletable`), "not set
+up" without the key, and nothing asked for an account it never made one
+for; a stale code's session refused 403 with no call at all; the address sent as verified for a fresh emailed code's
 session, and never for a password's, an address the request names, a code's
 past five minutes or an orangecheck session's).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
@@ -451,7 +458,7 @@ headers, the server's refusals, Link orangecheck on /settings orangecheck's
 button; then Connect with orangecheck's side stood in for in the browser on
 every deployment: unticked no ask, ticked one with consent, a failed ask
 still signed in, and an account Connect was asked for deleted only once
-orangecheck has deleted its own (refused on a unit's preview, with no key).
+orangecheck has answered (on a unit's preview, with no key, "not set up").
 A finished sign-in through orangecheck's real window, and Connect for real
 (`--connect` alone), run only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
 

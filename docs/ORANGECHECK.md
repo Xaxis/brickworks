@@ -44,7 +44,11 @@ tools/web/vendor_orangecheck.sh.
   (`oc_connected`) and calls `connectProvision({consent: true})` with the
   account's id, for a fresh code's session of an account with no
   orangecheck of its own. Unticked, no call. Deleting the account calls
-  `connectDelete` first, and deletes nothing while orangecheck cannot.
+  `connectDelete` first. A person can always delete their Brickworks
+  account (site-attest's L1): when orangecheck refuses for good
+  (`holds_earnings`, `not_deletable`) ours is deleted anyway and they are
+  told theirs stays at ochk.app; only an outage holds the deletion (503),
+  and a deployment without the key says it is not set up (500).
   `OC_CONNECT_KEY` is withheld from a unit's preview (tools/deploy.sh).
   So that the person can claim it, orangecheck asked (2026-10-24) for
   `email` with `emailVerified: true`, but only when the same request carries

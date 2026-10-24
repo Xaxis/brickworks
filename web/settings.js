@@ -341,7 +341,10 @@ async function deleteAccount(body) {
   showFeedCount().catch(() => null);
   document.documentElement.dataset.deleted = "yes";
   await load();
-  $("signed-out").querySelector(".lede").textContent = "Your account is deleted, and everything in it. "
+  // An orangecheck account Connect made that orangecheck would not delete
+  // stays the person's, and they are told where (api/account.js).
+  const kept = answer.body.orangecheck && answer.body.orangecheck.kept ? `${answer.body.orangecheck.said} ` : "";
+  $("signed-out").querySelector(".lede").textContent = `Your account is deleted, and everything in it. ${kept}`
     + "Sign in again with any address to start a new one.";
 }
 

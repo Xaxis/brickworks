@@ -245,22 +245,32 @@ export async function provision(account, emailed = null) {
   return { made: true, did: made.did_oc };
 }
 
-/// The orangecheck account Connect made for [account], deleted, before the
-/// account itself is: true when it is gone (deleted, the person's own now
-/// that they claimed it, or never made), false when orangecheck could not
-/// delete it, and nothing should be.
+/// The orangecheck account Connect made for [account], asked to be deleted
+/// before the account itself is (site-attest's L1, 2026-10-24: a person can
+/// always delete their Brickworks account):
+///   "gone"    deleted, the person's own now they claimed it, or never made;
+///   "kept"    orangecheck refuses for good (it holds earnings, or cannot be
+///             erased): it stays theirs at ochk.app, and ours goes all the
+///             same;
+///   "outage"  orangecheck could not be asked, or asks us to wait: try again;
+///   "unset"   no Connect key here, or orangecheck does not know it: this
+///             deployment is not set up to, and trying again changes nothing.
+const CONNECT_OUTAGES = new Set(["unavailable", "rate_limited"]);
+const CONNECT_UNSET = new Set(["invalid_api_key"]);
 export async function unprovision(account) {
-  if (!connectConfigured()) return false;
+  if (!connectConfigured()) return "unset";
   let gone;
   try {
     gone = await connectDelete({ apiKey: process.env.OC_CONNECT_KEY, userId: account });
   } catch (trouble) {
     console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return false;
+    return "outage";
   }
-  if (gone.ok || gone.reason === "unknown_user") return true;
+  if (gone.ok || gone.reason === "unknown_user") return "gone";
   console.error(`orangecheck: Connect did not delete an account: ${gone.reason} ${gone.status}`);
-  return false;
+  if (CONNECT_OUTAGES.has(gone.reason)) return "outage";
+  if (CONNECT_UNSET.has(gone.reason)) return "unset";
+  return "kept";
 }
 
 /// The token ended at orangecheck once it has been taken, so it is good for
