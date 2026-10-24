@@ -347,6 +347,13 @@ try {
         popup.on("console", (m) => note(`console ${m.type()}: ${m.text().slice(0, 200)}`));
         popup.on("request", (r) => note(`${r.method()} ${r.url().slice(0, 160)}`));
         popup.on("requestfailed", (r) => note(`failed ${r.url().slice(0, 160)}: ${r.failure()?.errorText}`));
+        // A response that never came back looks like a stalled browser in
+        // a list of requests alone: each answer, and when it ended.
+        popup.on("response", (r) => note(`answered ${r.status()} ${r.url().slice(0, 160)}`));
+        popup.on("requestfinished", (r) => {
+          const t = r.timing();
+          note(`finished ${r.url().slice(0, 160)} in ${Math.round(t.responseEnd)} ms`);
+        });
         check("with a code just redeemed, Link orangecheck opens orangecheck's window", new URL(popup.url()).origin === "https://me.ochk.io",
           popup.url());
         try {
@@ -358,11 +365,18 @@ try {
           check("closed, nothing is linked and nothing said", status === "" && label === "Link orangecheck");
         } catch (trouble) {
           const heard = await within(10000, "reading what the page heard", page.evaluate(() => window.__ocHeard)).catch(() => ["(page did not answer)"]);
-          writeFileSync(path.join(out, "popup_trail.txt"), [...trail, "-- the page heard:", ...heard, `-- ${trouble.message}`].join("\n") + "\n");
+          const window_ = await within(10000, "reading orangecheck's window", popup.evaluate(() =>
+            `${document.readyState}: ${(document.body?.innerText || "").replace(/\s+/g, " ").slice(0, 300)}`))
+            .catch((e) => `(the window did not answer: ${e.message})`);
+          writeFileSync(path.join(out, "popup_trail.txt"), [...trail, "-- orangecheck's window:", window_,
+            "-- the page heard:", ...heard, `-- ${trouble.message}`].join("\n") + "\n");
+          // A close that never returns would hold the rest of the run: the
+          // window's whole context goes instead, and the run goes on.
+          await within(30000, "closing the context", made.close()).catch(() => null);
           check("closed, nothing is linked and nothing said", false, `${trouble.message}; trail in ${path.join(out, "popup_trail.txt")}`);
         }
       }
-      await made.close();
+      await within(30000, "closing the context", made.close()).catch(() => null);
     }
   }
   check("no refusal from the page's security policy, no error, on /settings either", errors.length === 0, errors.slice(0, 3).join(" | "));

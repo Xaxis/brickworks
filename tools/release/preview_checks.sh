@@ -335,7 +335,10 @@ run() {
 # judges its own model's place by what was listed before it
 # (tools/web/gallery_order.mjs), as share_flow and share_probe failed to
 # when each wanted its model first (m115, m122).
-SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery "
+# oc drives orangecheck's real window: beside another browser on a loaded
+# box its close stalled in m162's and m164's batteries and never alone, so
+# orangecheck asked that popup checks not run side by side (2026-10-24).
+SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery oc "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # Two at a time, a slot taking the next check as soon as it is free. Two
