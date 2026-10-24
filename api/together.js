@@ -6,10 +6,11 @@
 // in it; a signed-in person who opens the link joins. Every change either
 // side makes is sent here and numbered, in the one order everybody puts
 // them down in, and each side asks for the changes after the last number it
-// has, waiting here until there are some: the relay's way (api/mcp.js), a
-// row per message in the database and a request that waits on it, so it
-// runs on Vercel, the desktop and a browser alike, with nothing reaching
-// the database but this server (supabase/no_client_access.sql).
+// has, waiting here until there are some (looked for every 100 ms): the
+// relay's way (api/mcp.js), a row per message in the database and a request
+// that waits on it, so it runs on Vercel, the desktop and a browser alike,
+// with nothing reaching the database but this server
+// (supabase/no_client_access.sql).
 //
 // All POST, with the person's session ("Authorization: Bearer …"):
 //
@@ -51,7 +52,7 @@ const SNAPSHOT_MOST = 4_000_000;
 const SEND_MOST = 500;
 const CHANGES_MOST = 20_000;
 const WAIT_MS = 20_000;
-const POLL_MS = 150;
+const POLL_MS = 100;
 // Who is in it, read again this often while a poll waits.
 const PEOPLE_MS = 1_000;
 // Heard from within this long: here.
@@ -211,7 +212,9 @@ async function send(request, me) {
   const client = String(body.client || "");
   if (!CLIENT.test(client)) throw new Refusal(400, "send from which client?");
   checkOps(body.ops);
-  await inSession(id, me);
+  // together_append itself refuses an ended session and an account not in
+  // it, so a send costs one round trip to the database; the refusal is put
+  // in words only when there is one.
   try {
     const seqs = await db("rpc/together_append", {
       method: "POST",
@@ -219,7 +222,7 @@ async function send(request, me) {
     });
     return { seqs };
   } catch (trouble) {
-    // Ended or taken out between the check and the append: said as such.
+    // Ended, or not in it: said as such.
     await inSession(id, me);
     throw trouble;
   }

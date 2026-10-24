@@ -63,7 +63,7 @@ Measured before choosing, 2026-10-24:
 
 | Way | What it needs | Result |
 |---|---|---|
-| The relay's way: each change a row in Postgres, numbered there; each side waits on a request (`op=poll`) that looks for rows after its last every 150 ms and answers as soon as there is one | Nothing new: a Vercel function, the database as the server (`api/_db.js`), and the HTTP the app already uses for the connector, on the web and the desktop alike | Chosen. Measured on a preview (below) |
+| The relay's way: each change a row in Postgres, numbered there; each side waits on a request (`op=poll`) that looks for rows after its last every 100 ms and answers as soon as there is one | Nothing new: a Vercel function, the database as the server (`api/_db.js`), and the HTTP the app already uses for the connector, on the web and the desktop alike | Chosen. Measured on a preview (below) |
 | Supabase Realtime (Broadcast or Postgres changes) | Each page and the app opening a websocket to Supabase with the publishable key and the person's session, and row security policies for `authenticated` on `realtime.messages` | Ruled out without building it: since `supabase/no_client_access.sql` (2026-10-24) pages reach Supabase only to sign in, and the page's content security policy names nothing else there. It would reopen exactly what that file closed |
 | A websocket server | Something that holds a connection open | Vercel functions do not hold websockets; it would be a new host to run |
 
