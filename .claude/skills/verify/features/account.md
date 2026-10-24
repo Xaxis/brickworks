@@ -228,11 +228,17 @@ they have. A Claude connector belongs to the account that switched it on.
   leaving no account (`supabase/no_new_ways_in.sql`).
 
 - `sign in with orangecheck` (2026-10-23; `api/orangecheck.js` POST
-  `?op=signin`, `api/_oc.js`, `web/account.js` `signInWithOrangecheck`,
-  `supabase/orangecheck.sql`): the site's sign-in dialog has **Sign in with
-  orangecheck** under the email code ("A Bitcoin wallet, email, Google or
-  GitHub. Brickworks gets an id for you, not your address."). Its window is
-  orangecheck's own (`web/oc-popup.mjs`, served from here, made by
+  `?op=signin`, `api/_oc.js`, `web/account.js` `orangecheckButton` and
+  `exchangeOrangecheck`, `supabase/orangecheck.sql`): the site's sign-in
+  dialog has **Sign in with orangecheck** under the email code ("A Bitcoin
+  wallet, email, Google or GitHub. Brickworks gets an id for you, not your
+  address."). Since step 4 (2026-10-24, oc225) every such button (the
+  dialog's, /settings' Link orangecheck, an orangecheck account's delete) is
+  our own `.cta.ghost` with `data-oc-sign-in`, made orangecheck's by its own
+  code: its mono mark, its busy state, its window opened from the click, and
+  how the window ended said in its words (`OUTCOME_COPY`). That code is
+  me-client 0.48.0's, served from here (`web/oc-button.mjs`,
+  `web/oc-button.css`, `web/oc-connect-consent.mjs`, made by
   `tools/web/vendor_orangecheck.sh` with the server's checks in
   `api/_orangecheck.js`); the token it hands back is checked (`checkOcToken`;
   audience from configuration: brickworks.diy alone in production, a Preview
@@ -294,7 +300,29 @@ they have. A Claude connector belongs to the account that switched it on.
   no public sign-up (`signup check` holds that it is off). A connection approved in one carries its `rh`
   (`oauth_grants.oc_*`), and its code is refused once the did is unlinked. Site pages send
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
-  answer; `/app` and `/b/` keep `same-origin`.
+  answer; `/app` and `/b/` keep `same-origin`. In the app the button carries
+  orangecheck's mark (`assets/ui/orangecheck-mark-mono-white.svg`, mark
+  0.3.0) and a 44 px target.
+- `orangecheck account merge` (2026-10-24, oc225; `api/_oc.js` `merged`,
+  `keepHandle`, `supabase/orangecheck_merge_connect.sql`): every token's
+  `rh` is kept with its did (`oc_handles`, gone with the did, moved with
+  it). A did new here whose token carries `merged_rh` (me-client 0.45.0
+  `matchMergedUser`) signs in to the one account those handles name: the
+  account's did becomes the new one, what the old did started there ends,
+  its address is told; handles naming two accounts sign in to neither and
+  make nothing (409, in words); an unlinked did's handles name nobody.
+- `orangecheck Connect` (2026-10-24, oc225; `api/orangecheck.js` POST
+  `?op=connect`, `api/_oc.js` `provision`/`unprovision`, `oc_connected`):
+  under the dialog's orangecheck button, an unticked box with
+  orangecheck's exact words (`CONNECT_CONSENT_LABEL`, `_BLURB`), drawn where
+  `/api/account` says `orangecheck.connect` (the deployment has
+  `OC_CONNECT_KEY`; a unit's preview never does). Ticked, a sign-in by
+  emailed code then asks, never waited on: the server, for a fresh code's
+  session of an account without orangecheck, writes the ask down and calls
+  `connectProvision({consent: true})`; a refusal or an outage is an
+  answer, never in the sign-in's way. Unticked, nothing is asked. Deleting
+  an account Connect was asked for calls `connectDelete` first; while
+  orangecheck cannot, nothing is deleted (503, in words).
 
 Decisions, so they can be changed: the gate is a client gate (the desktop is
 open source and runs on the person's machine); the server enforces accounts
@@ -325,7 +353,9 @@ godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd
 Proves it when: the screen is up saying it cannot reach Brickworks, with Try
 again; a click on the model places nothing and `]` changes no colour; let in,
 the same click places a brick and the same key picks the next colour; signed
-out, the form is back. Pictures in `shots/signin/`.
+out, the form is back, and drawn as a browser draws it, Sign in with
+orangecheck under the email with orangecheck's mark, 2:1 at the screen's
+pixels, and a 44 px target (`orangecheck.png`). Pictures in `shots/signin/`.
 
 Against the real functions and Supabase (needs `.env`; makes throwaway accounts
 at `delivered+bw…@resend.dev`, Resend's test addresses, and deletes them):
@@ -358,7 +388,9 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (88: a first sign-in is a new
+`orangecheck_check` ends "N passed, 0 failed" (122 since step 4; a sign-in
+turned away by Supabase's redemption limit is tried again after 11 s. A
+first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
 ended at orangecheck and never in the answer; refused a second time, here and
 on another instance; the same did is the same account; no `rh`, another
@@ -395,14 +427,29 @@ is gone is ended (M1); an unmarked account's session carries the mark
 not the owner's, and deleted by unlinking (L2); deleting from an
 orangecheck sign-in asks for a fresh code (L4); production's one audience;
 keys unreadable 503; a `{min_sats, min_days}` rule letting a backed account
-in; `/api/account`'s offer; twenty tries from one address, the next 429).
+in; `/api/account`'s offer; twenty tries from one address, the next 429;
+step 4: a sign-in's handle kept, a merged did signing in to the account
+the old one had and only that, the old did's session ended, handles naming
+nobody or two accounts, more than 16, a linked then unlinked did; Connect
+without its key, unticked or not `true`, without a sign-in, ticked once with
+consent and the key, orangecheck down or never answering, never for an
+account with orangecheck, deletion held while orangecheck cannot delete and
+calling `connectDelete` when it can, and nothing asked for an account it
+never made one for).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
 for everybody with nothing on the address, the dialog at 390 and 1280 in
-both themes, the window opened at me.ochk.io and closed, a blocked one said
-in words, or on a unit's preview (no signing secret) the button saying it is
-unavailable, the headers, the server's refusals, Link orangecheck on
-/settings. A finished sign-in through orangecheck's real window
-runs only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
+both themes with orangecheck's button (its mark, its stylesheet from this
+origin, the height and type of Email me a code) and the Connect box under it,
+unticked, in orangecheck's words; the window opened at me.ochk.io and closed
+(said in orangecheck's words), a blocked one too, or on a unit's preview (no
+signing secret) the button saying it is unavailable, the files served, the
+headers, the server's refusals, Link orangecheck on /settings orangecheck's
+button; then Connect with orangecheck's side stood in for in the browser on
+every deployment: unticked no ask, ticked one with consent, a failed ask
+still signed in, and an account Connect was asked for deleted only once
+orangecheck has deleted its own (refused on a unit's preview, with no key).
+A finished sign-in through orangecheck's real window, and Connect for real
+(`--connect` alone), run only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
 
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
 refusal (same server; a throwaway account, deleted at the end; about 90 s, 31 of

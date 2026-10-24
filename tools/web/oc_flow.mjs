@@ -282,7 +282,8 @@ try {
     await shot(popup, "window_1280.png");
     await popup.close();
     check("nothing but this site was sent the deployment's bypass", leaked.length === 0, leaked.slice(0, 2).join(" "));
-    await page.waitForFunction(() => !document.querySelector("#oc-sign-in")?.disabled, null, { timeout: 15000 }).catch(() => null);
+    // orangecheck's button is busy (aria-busy) until it sees the window shut.
+    await page.waitForFunction(() => !document.querySelector("#oc-sign-in")?.hasAttribute("aria-busy"), null, { timeout: 15000 }).catch(() => null);
     const after = await page.evaluate(() => ({ open: document.querySelector("dialog.sign-in")?.open,
       said: document.querySelector("dialog.sign-in .said")?.textContent, enabled: !document.querySelector("#oc-sign-in").disabled }));
     check("closed, the dialog stays, says so in orangecheck's words, and can try again", after.open === true
@@ -435,7 +436,7 @@ try {
         try {
           await within(60000, "closing orangecheck's window", popup.close());
           note("closed");
-          await page.waitForFunction(() => !document.querySelector("#oc-go")?.disabled, null, { timeout: 15000 }).catch(() => null);
+          await page.waitForFunction(() => !document.querySelector("#oc-go")?.hasAttribute("aria-busy"), null, { timeout: 15000 }).catch(() => null);
           const status = await within(60000, "reading #oc-status", page.locator("#oc-status").textContent());
           const label = await within(60000, "reading #oc-go", page.locator("#oc-go").textContent());
           check("closed, nothing is linked, and it says so in orangecheck's words", status === OUTCOME_COPY.closed && label === "Link orangecheck",

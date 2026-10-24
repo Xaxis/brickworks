@@ -21,6 +21,55 @@ oc205 fixed every finding (below), dropped the `?oc=1` flag, and the three
 ship together with the button on every page and in the app's sign-in
 screen.
 
+## Step 4: the button, Connect, merged accounts (2026-10-24, oc225)
+
+The owner said yes to step 4. orangecheck named the versions: me-client
+0.48.0 (auth-core 2.18.0 with it) and mark 0.3.0, vendored by
+tools/web/vendor_orangecheck.sh.
+
+- **The button.** Every place we offer orangecheck (the sign-in dialog,
+  /settings' Link orangecheck, an orangecheck account's delete) is our
+  own `.cta.ghost` with `data-oc-sign-in`, made orangecheck's by
+  `enhanceSignInButton` (`web/oc-button.mjs` and `web/oc-button.css`,
+  copied from the package onto our origin, so `script-src 'self'` holds):
+  its mono mark, its busy state, the window opened inside the click. How
+  the window ended is said in its words (`OUTCOME_COPY`): a closed window
+  now says so, where it said nothing. It replaces our own popup call
+  (`web/oc-popup.mjs` is gone); the exchange, `?op=signin`, is as it was.
+  In the app, the button carries the mark (mono, white, as its words are)
+  and a 44 px target; nothing else in the app changed.
+- **Connect.** Under the dialog's button, an unticked box in orangecheck's
+  words (`web/oc-connect-consent.mjs`). Ticked, a sign-in by emailed code
+  then asks `?op=connect`, never waited on; the server writes the ask down
+  (`oc_connected`) and calls `connectProvision({consent: true})` with the
+  account's id alone, for a fresh code's session of an account with no
+  orangecheck of its own. Unticked, no call. Deleting the account calls
+  `connectDelete` first, and deletes nothing while orangecheck cannot.
+  `OC_CONNECT_KEY` is withheld from a unit's preview (tools/deploy.sh).
+  Claiming the account needs a claim link or a verified email, neither of
+  which step 4 sends; that is a later step's to choose.
+- **Merged accounts.** Every token's `rh` is kept with its did
+  (`oc_handles`). A did new here whose token carries `merged_rh` signs in
+  to the one account those handles name (`matchMergedUser`, then
+  `oc_follow_merge`: the account's did becomes the new one, its address is
+  told, what the old did started there ends); two accounts named, neither,
+  and nothing is made.
+
+What changed for us between 0.42.0 and 0.48.0 (the CHANGELOG):
+
+- 0.43.0 `checkSignInRule`: the project's rule for a session verified
+  directly, held as `withOcAuth` holds it. Ours (`api/_oc.js`
+  `whoMaySignIn`) does the same and was reviewed; left as it is, and a
+  candidate to replace it.
+- 0.44.0 family sessions (no `aud`) are checked against ochk.io's feed and
+  throw without `OC_REVOCATION_FEED_TOKEN`. Not ours: every token here is
+  for one audience, and `checkOcToken` (the only check we use) is unchanged.
+- 0.45.0 `matchMergedUser` and `mergedHandles`: wired, above.
+- 0.46.0 to 0.48.0 the button, its stylesheet and `button-auto`: the
+  button, above; `button.mjs`, since we import it ourselves.
+- auth-core 2.17.1 and 2.18.0: documentation and the `merged_rh` type.
+  Nothing else in the server bundle changed.
+
 ## The review, and what was done
 
 Each finding has its failing case in tools/web/orangecheck_check.mjs,
@@ -109,8 +158,8 @@ last piece waits on its release (below).
 - **Step 1's L1.** In production the only audience is
   `https://brickworks.diy`; the deployment's own `*.vercel.app` address is
   not one (13, below).
-- **Packages.** me-client 0.42.0 and auth-core 2.17.0, pinned in
-  tools/web/vendor_orangecheck.sh. `checkOcToken` tells a token that is no
+- **Packages.** me-client 0.48.0 and auth-core 2.18.0 since step 4
+  (0.42.0 and 2.17.0 before), pinned in tools/web/vendor_orangecheck.sh. `checkOcToken` tells a token that is no
   good from a key set that cannot be read, which answers 503, never 401.
 - **4.** The parser was right already: it reads `{min_sats, min_days}` and
   takes `max_age_secs` only if it is there (orangecheck's correction). A

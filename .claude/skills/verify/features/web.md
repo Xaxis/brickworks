@@ -32,9 +32,11 @@ plan with Claude as the client.
   a catalogue of 2,376 rebuilt meshes once went live before they were up, so
   every long Technic beam failed to load. Proves it: the deploy log's "part
   meshes in object storage" line ends "to upload : 0".
-  `--unit` (unit_preview.sh's) sets `OC_SIGNING_SECRET` and
+  `--unit` (unit_preview.sh's) sets `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`
+  (orangecheck Connect's, 2026-10-24), `RESEND_API_KEY` and
   `ANTHROPIC_API_KEY` to nothing for that deployment alone, since it runs
-  unreviewed code: its log says "a unit's preview, without ...", and
+  unreviewed code: its log says "a unit's preview, without ...", its
+  `/api/account` says `orangecheck.connect` false, and
   `POST /api/orangecheck?op=signin` with `{}` there answers 503 "not set up
   here", where a release's preview answers 422 for the missing token.
   A release goes through `tools/release/` (README there): a staging

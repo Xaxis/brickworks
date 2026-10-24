@@ -149,11 +149,13 @@ const MAPPED = [
 // And the site's pages at their bare names, as deploy.sh serves them.
 const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"], [/^\/gallery\/?$/, "gallery.html"],
   [/^\/profile\/?$/, "profile.html"], [/^\/settings\/?$/, "settings.html"]];
-const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", svg: "image/svg+xml",
+// .mjs as the host serves it: a module script, which a browser refuses as
+// anything else (orangecheck's button, web/oc-button.mjs).
+const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", mjs: "text/javascript", svg: "image/svg+xml",
   png: "image/png", json: "application/json", css: "text/css" };
 
 const FILE_TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm",
+  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm",
   ".pck": "application/octet-stream", ".png": "image/png", ".json": "application/json",
   ".svg": "image/svg+xml", ".ico": "image/x-icon", ".css": "text/css",
 };
