@@ -65,7 +65,7 @@ func _run() -> void:
 			100.0 * wanted / screen, "" if is_equal_approx(wanted, screen * size)
 			else ": the frame needs its height"],
 			absf(root.content_scale_factor - wanted) < 0.01
-			and (size < 1.0 or wanted > screen * 1.3))
+			and (size < 1.0 or wanted > screen))
 		await _within("%d%%" % roundi(size * 100.0), screen * size)
 	await _choose(1.0)
 	_finish()

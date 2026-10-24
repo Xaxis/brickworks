@@ -148,7 +148,10 @@ func _fit_settings() -> void:
 	var tall: float = offset_bottom - offset_top \
 		if is_equal_approx(anchor_top, anchor_bottom) else size.y
 	var room: float = tall - panel.get_minimum_size().y - others
-	var fits: float = clampf(room, 0.0, wants)
+	# In whole units, so the panel is never a fraction taller than its inset:
+	# grown by one, Done moved a unit when Assistant (AI) was chosen, and a
+	# check waiting for it to stand still never pressed it (fit_check).
+	var fits: float = clampf(floorf(room), 0.0, wants)
 	if not is_equal_approx(_settings.custom_minimum_size.y, fits):
 		_settings.custom_minimum_size.y = fits
 
@@ -318,8 +321,7 @@ func _interface(column: VBoxContainer) -> void:
 		changed.emit())
 
 	reduce_motion = _toggle(column, "Reduce motion",
-		"A model appears whole rather than going up brick by brick, a picture still being "
-			+ "drawn keeps still, and the view goes where it is sent at once.",
+		"No build animation, no shimmer, and the view moves without gliding.",
 		ShellPrefs.reduce_motion(),
 		func(on: bool) -> void: ShellPrefs.put("reduce_motion", on))
 
