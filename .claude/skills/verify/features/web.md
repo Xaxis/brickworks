@@ -1373,7 +1373,18 @@ plan with Claude as the client.
   was listed last (an update keeps its listing time). Titles carry no
   licensed name (films, books, brands): the tower is Wizard's Tower on every
   public page, and since the re-seed its file's figures are named as the
-  app's are, not as the book's.
+  app's are, not as the book's. A fixed model goes up as its link's next
+  version: run the Godot half on a list of just that one (entries copied
+  from seeds.json, which carries the ai-designed tag the seven were given
+  live, since the panel sends tags every time) and the node half updates it,
+  sending the entry's `note` (what changed, shown with the version) and the
+  panel's own Tested finding; `--dry` first says `would update <id>`, which
+  proves the account is the house's. Republished 2026-10-23 (m158's files):
+  the castle and the orrery, each version 2, Tested, 2,497 and 502 parts,
+  version 1 kept at `/m/<id>/v/1`. The Godot half waits for the app's own
+  sign-in check to give up before it signs the panel in: since that check
+  asks again (2026-10-20) its answer signed the panel out after the first
+  model.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory
