@@ -229,18 +229,28 @@ takes turns. Here:
 
 ## Not done yet
 
-- **The flow's rich model is still slow on a preview, and it is not the
-  model's richness alone.** On the b03c786f preview the flow measured
-  p50 377 ms, p95 688 ms after its 50 edits, and p50 1,490 ms, p95
-  1,961 ms after the seven kinds of change, with both pages at 60 frames a
-  second when idle. The timing tool's same seven kinds, on two pages and
-  nothing else, stay at p50 193 to 701 ms. What the flow has besides: the
-  owner's assistant open with Claude connected (its connector polling the
-  relay), the desktop copy in the session, an account under 13 (its age
-  read on each poll), Ctrl+Z pressed with the pointer left on the model,
-  and twice the parts. Next: the timing tool with each of those added in
-  turn, as it added each kind of change.
+- **In a browser drawing in software, a change is as quick as the frames
+  let it be.** The flow's extras timed one at a time on the rich car
+  (`together_timing.mjs --extras=undo,parts`, 10 paints each, p50 / p95,
+  with the stages):
 
+  | After | total | p95 | number (send's round trip) | shown (put down to on the page) |
+  |---|---|---|---|---|
+  | the seven kinds of change | 182 ms | 661 ms | 50 ms | 44 ms |
+  | Ctrl+Z, the pointer left on a part | 842 ms | 1,365 ms | 598 ms | 653 ms |
+  | twice the parts (143) | 806 ms | 1,785 ms | 641 ms | 536 ms |
+
+  and earlier rows of the same run, with nothing added, ran from 182 to
+  1,204 ms. What moves is "number" and "shown": a fetch answered while the
+  page draws a frame is heard when the frame ends, and a change put down
+  shows at the next frame, so both are counted in frames of about 150 ms
+  each on this loaded box, more while it is busier. Neither the session's
+  capture (at most 4 ms) nor its read of the model's state (at most 5 ms)
+  grew. Two costs of the session's own were taken out on the way: every
+  poll read the person's age (now only a poll with a chat line to give),
+  and began with four trips to the database (now two). The desktop copy,
+  the connected assistant and an account under 13, the other extras, were
+  not timed alone: the script stopped at the desktop's (since fixed).
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
