@@ -259,13 +259,14 @@ takes turns. Here:
   pointer on the model too. (The timing tool's "+ assistant" row, 1.5
   frames a second, is a page in its first seconds after the reload that
   turns the assistant on: the same page drew 7.6 a second just after
-  loading with nothing else on.) What the owner's page did have, and the
-  other's did not, was the pointer left on the model after Ctrl+Z: the
-  session looked for the part under the mouse four times a second whether
-  or not anything had moved, on a model of 150 parts. It looks only when
-  the mouse, the view or the model moved now (`Main`'s `pointer_at`),
-  and the timing tool's "+ undo" row went from 842 ms p50, p95 1,365 ms to
-  551 ms, p95 910 ms.
+  loading with nothing else on.) The one thing the owner's page had and
+  the other's did not, besides, was the pointer left on the model after
+  Ctrl+Z, and the session looked for the part under the mouse four times a
+  second whether or not anything had moved. It looks only when the mouse,
+  the view or the model moved now (`Main`'s `pointer_at`); the timing
+  tool's "+ undo" row went from p50 842 ms, p95 1,365 ms to p50 551 ms,
+  p95 910 ms in the next run. Whether that was all of the owner's 27
+  frames is the flow's next run on a preview to say.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
