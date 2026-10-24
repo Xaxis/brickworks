@@ -313,15 +313,29 @@ async function poll(request, me) {
   const id = idOf(secretOf(body));
   const after = Math.max(0, Math.floor(Number(body.after) || 0));
   const seen = String(body.seen || "");
-  let session = await inSession(id, me);
-  await db(`together_people?session=eq.${id}&account=eq.${me}`, {
-    method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null },
-  });
+  // Two trips before it waits, not four: this person heard from (their row,
+  // if they are in it and not taken out), then the session and who is in it
+  // at once. A poll begins again after every change it gives, so what it
+  // costs to begin is in every change.
+  const [mine] = await db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
+    method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null }, prefer: "return=representation",
+  }) || [];
+  const [found, all] = await Promise.all([sessionRow(id), peopleRows(id)]);
+  let session = found;
+  if (!mine || !session || session.ended_at) session = await inSession(id, me);
   // An account under 13 is not shown the chat (above): its words taken out.
-  const age = await ageOf(me);
-  const noChat = age.ready && age.over_13 === false;
+  // Asked only of a poll that has a chat line to give, not of every poll: a
+  // trip to the database each, on every side, for every change.
+  let noChat = null;
+  const chatHidden = async () => {
+    if (noChat === null) {
+      const age = await ageOf(me);
+      noChat = age.ready && age.over_13 === false;
+    }
+    return noChat;
+  };
   const until = Date.now() + WAIT_MS;
-  let people = peopleOut(id, session, await peopleRows(id), me);
+  let people = peopleOut(id, session, all, me);
   let checked = Date.now();
   for (;;) {
     const rows = await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
@@ -338,11 +352,12 @@ async function poll(request, me) {
     }
     const signature = signatureOf(people);
     if (rows.length > 0 || signature !== seen || Date.now() > until) {
+      const hide = rows.some((row) => row.changes?.["~chat"] !== undefined) && await chatHidden();
       return {
         ended: false,
         ops: rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), client: row.client,
-          cid: row.cid, changes: noChat && row.changes?.["~chat"] !== undefined ? {} : row.changes })),
-        people, seen: signature, chat: noChat ? CHAT_WORDS.under_13 : "", at: Date.now(),
+          cid: row.cid, changes: hide && row.changes?.["~chat"] !== undefined ? {} : row.changes })),
+        people, seen: signature, ...(hide ? { chat: CHAT_WORDS.under_13 } : {}), at: Date.now(),
       };
     }
     await sleep(POLL_MS);

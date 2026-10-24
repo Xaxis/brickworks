@@ -24,9 +24,10 @@
 // and the worst frame, capture and read of the model's own state on each
 // side meanwhile. Medians, a line a kind.
 import { launch } from "./browser.mjs";
-import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
+import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -41,7 +42,13 @@ const only = String(args.only || "");
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const rand = randomBytes(4).toString("hex");
-const emails = [`delivered+bw-tt-owner-${rand}@resend.dev`, `delivered+bw-tt-guest-${rand}@resend.dev`];
+const emails = [`delivered+bw-tt-owner-${rand}@resend.dev`, `delivered+bw-tt-guest-${rand}@resend.dev`,
+  `delivered+bwttdesk${rand}@resend.dev`];
+// Then what the flow has besides, one at a time on the rich model (--extras):
+// Ctrl+Z with the pointer left on the model, twice the parts, the desktop
+// copy, the owner's assistant with Claude connected, the guest under 13.
+const extras = String(args.extras || "").split(",").filter(Boolean);
+let desktop = null;
 const wait = (ms) => new Promise((done) => setTimeout(done, ms));
 const controls = (page) => page.evaluate(() => window.brickworksControls || {});
 const state = (page) => page.evaluate(() => window.brickworksState || {});
@@ -98,18 +105,37 @@ const median = (list) => {
 };
 
 const browser = await launch({ signedOut: true });
-async function person(email) {
+async function person(email, { age = true } = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, extraHTTPHeaders: headers });
-  const session = await mintSession(email);
+  const session = await mintSession(email, { age });
   await context.addInitScript(([name, value]) => {
     try { if (!localStorage.getItem(name)) localStorage.setItem(name, value); } catch {}
   }, [STORAGE_KEY, JSON.stringify(session.kept)]);
-  return { context, page: await context.newPage() };
+  return { context, page: await context.newPage(), session };
+}
+// The owner's Claude signed in as claude.ai does it (tabs_flow.mjs).
+async function claudeToken(token) {
+  const client = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+  const back = "https://claude.ai/api/mcp/auth_callback";
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const yes = await (await fetch(`${site}/api/oauth?op=approve`, { method: "POST",
+    headers: { ...headers, "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ response_type: "code", client_id: client, redirect_uri: back, code_challenge: challenge,
+      code_challenge_method: "S256", state: "t", resource: `${site}/api/mcp` }) })).json().catch(() => ({}));
+  const code = new URL(String(yes.redirect || "x:")).searchParams.get("code");
+  if (!code) return "";
+  const tokens = await (await fetch(`${site}/oauth/token`, { method: "POST",
+    headers: { ...headers, "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: back, client_id: client,
+      code_verifier: verifier, resource: `${site}/api/mcp` }).toString() })).json().catch(() => ({}));
+  return tokens.access_token || "";
 }
 
 const rows = [];
 try {
-  const [owner, guest] = [await person(emails[0]), await person(emails[1])];
+  // A guest not asked its age yet, when it is to say under 13 later.
+  const [owner, guest] = [await person(emails[0]), await person(emails[1], { age: !extras.includes("under13") })];
   await owner.page.goto(`${site}/app?model=res://models/car.ldr`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await until(async () => (await state(owner.page)).bricks > 0 && (await state(owner.page)).awaited === 0, "the car", 300);
   // File, Build together…, Start a session.
@@ -197,10 +223,53 @@ try {
     await settled([owner.page, guest.page]);
     await paints(`after ${kind}`);
   }
+  const extra = {
+    undo: async () => {
+      await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
+      const layout = await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "layout", 30);
+      const aim = (layout.targets || [])[0];
+      if (aim) await owner.page.mouse.move(aim.x, aim.y, { steps: 3 });
+      await owner.page.keyboard.press("Control+z");
+      return `pointer on ${aim ? "a part" : "nothing"}, Ctrl+Z`;
+    },
+    parts: async () => {
+      const many = [];
+      for (let n = 0; n < 80; n++) many.push({ op: "place", part: "3001", colour: [1, 4, 14][n % 3], x: 2000 + 80 * (n % 10), y: 48 + 24 * Math.floor(n / 10), z: -2000 });
+      await ask(owner.page, many);
+      return `${(await textOf(owner.page)).uids.length} parts`;
+    },
+    desktop: async () => {
+      const file = path.join(out, "desktop.json");
+      desktop = spawn("godot", ["--headless", "--path", path.resolve("."), "--script", "src/dev/together_probe.gd", "--",
+        `--api=${site}`, `--join=${link}`, `--out=${file}`, "--edits=0", `--email=${emails[2]}`, "--seconds=900"],
+      { env: { ...process.env, XDG_DATA_HOME: process.env.TOGETHER_XDG || path.join(out, "desktop-data") }, stdio: "ignore" });
+      await until(async () => (existsSync(file) && JSON.parse(readFileSync(file, "utf8")).live) || null, "the desktop in", 300);
+      return "the desktop joined";
+    },
+    assistant: async () => {
+      const claude = await claudeToken(owner.session.access_token);
+      await owner.page.goto(`${site}/app?assistant=on`, { waitUntil: "domcontentloaded", timeout: 180000 });
+      await until(async () => (await together(owner.page)).live, "the owner back in", 300);
+      const listening = await until(() => owner.page.evaluate(() => window.brickworksConnector || ""), "the connector", 180)
+        .catch(() => "");
+      return `Claude ${claude ? "connected" : "not connected"}, connector ${listening ? "listening" : "not listening"}`;
+    },
+    under13: async () => {
+      await answerAge(guest.session.kept.user_id, emails[1], false);
+      return "the guest said under 13";
+    },
+  };
+  for (const name of extras) {
+    const said = await extra[name]();
+    console.log(`  + ${name}: ${said}`);
+    await settled([owner.page, guest.page]);
+    await paints(`+ ${name}`);
+  }
 } catch (trouble) {
   console.log(`stopped: ${String(trouble.message || trouble).split("\n")[0]}`);
 } finally {
   writeFileSync(path.join(out, "timing.json"), JSON.stringify(rows, null, 1));
   await browser.close().catch(() => {});
+  if (desktop) desktop.kill();
   for (const email of emails) await deleteAccount(email).catch(() => {});
 }
