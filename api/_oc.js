@@ -253,8 +253,9 @@ export async function provision(account, emailed = null) {
 ///             erased): it stays theirs at ochk.app, and ours goes all the
 ///             same;
 ///   "outage"  orangecheck could not be asked, or asks us to wait: try again;
-///   "unset"   no Connect key here, or orangecheck does not know it: this
-///             deployment is not set up to, and trying again changes nothing.
+///   "unset"   no Connect key here (nothing is asked), or orangecheck does not
+///             know it: Connect is not set up on this deployment, theirs
+///             stays at ochk.app, and ours goes all the same.
 const CONNECT_OUTAGES = new Set(["unavailable", "rate_limited"]);
 const CONNECT_UNSET = new Set(["invalid_api_key"]);
 export async function unprovision(account) {

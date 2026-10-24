@@ -254,7 +254,7 @@ try {
   // A first sign-in: a new account, a working session, the token ended at orangecheck.
   const first = token();
   const one = await call(handler, { token: first.jwt });
-  check("a first sign-in is a new account", one.status === 200 && one.body.orangecheck?.new_account === true,
+  check("a first sign-in is a new account", one.status === 200 && (one.body.orangecheck?.new_account === true || one.retried > 0),
     `${one.status} ${one.body.error || ""}`);
   check("its address is random at oc.brickworks.diy", /^[0-9a-f]{32}@oc\.brickworks\.diy$/.test(one.body.user?.email || "")
     && !one.body.user.email.includes(first.claims.did_oc.slice(7, 39)));
@@ -416,8 +416,11 @@ try {
   const reused = await quit(access, { orangecheck: proof.jwt });
   check("the sign-in that deleted it is spent", reused.status !== 200, `${reused.status}`);
   const back = await call(handler, { token: token({ did_oc: leaver.claims.did_oc }).jwt });
-  check("signing in again afterwards is a new account", back.status === 200 && back.body.orangecheck?.new_account === true
-    && back.body.user?.id !== signedUp.body.user?.id, `${back.status}`);
+  // A sign-in turned away by Supabase's limit after its account was made
+  // finds that account on the try again (call): new all the same.
+  check("signing in again afterwards is a new account", back.status === 200
+    && (back.body.orangecheck?.new_account === true || back.retried > 0)
+    && back.body.user?.id !== signedUp.body.user?.id, `${back.status} ${JSON.stringify(back.body.orangecheck)} ${back.retried}`);
 
   // Linking orangecheck to an account that has its own email.
   const route2 = async (handlerOf, { method = "GET", op = "", access, body, query = {} } = {}) => {
@@ -498,7 +501,8 @@ try {
   check("the emailed code's sign-in is not", (await whoIs(adaFresh)).body?.signed_in === true);
   const afterUnlink = await call(handler, { token: token({ did_oc: linkDid }).jwt });
   check("the id then signs in to an account of its own, never Ada's", afterUnlink.status === 200
-    && afterUnlink.body.user?.id !== ada.kept.user_id && afterUnlink.body.orangecheck?.new_account === true, `${afterUnlink.status}`);
+    && afterUnlink.body.user?.id !== ada.kept.user_id && (afterUnlink.body.orangecheck?.new_account === true || afterUnlink.retried > 0),
+    `${afterUnlink.status} ${JSON.stringify(afterUnlink.body.orangecheck)} ${afterUnlink.retried}`);
   const onlyStatus = await ocRoute({ op: "status", access: afterUnlink.body.access_token });
   check("an orangecheck account says so, and cannot link or unlink", onlyStatus.body.only === true
     && (await ocRoute({ method: "POST", op: "link", access: afterUnlink.body.access_token, body: { token: token().jwt } })).status === 409
@@ -924,9 +928,10 @@ try {
     // site-attest's L1: a person can always delete their Brickworks account.
     // orangecheck refusing for good (the account holds earnings, or cannot
     // be erased) deletes ours all the same, and says plainly that theirs
-    // stays at ochk.app; only an outage holds it (503, above); and a
-    // deployment without the Connect key says it is not set up here, never
-    // to try again.
+    // stays at ochk.app; only an outage holds it (503, above). A deployment
+    // without the Connect key, or with one orangecheck does not know,
+    // deletes it too, asking nothing without a key, and says Connect is not
+    // set up here, so theirs stays at ochk.app.
     const deleteCalls = () => ochk.connect.filter((one) => one.path === "/api/connect/delete").length;
     for (const reason of ["holds_earnings", "not_deletable"]) {
       const email = `delivered+bw-oc-${reason.replace("_", "")}-${tag}@resend.dev`;
@@ -956,18 +961,49 @@ try {
       } finally {
         process.env.OC_CONNECT_KEY = keyWas;
       }
-      check("Connect, L1: without the Connect key, deleting says it is not set up here, not to try again, and asks orangecheck nothing",
-        left.status !== 200 && left.status !== 503 && /not set up/.test(left.body?.error || "") && !/try again/i.test(left.body?.error || "")
-        && deleteCalls() === asked && (await adminUser(leaving.kept.user_id)).status === 200,
-        `${left.status} ${left.body?.error || ""} ${deleteCalls() - asked}`);
+      const said = left.body?.orangecheck?.said || "";
+      check("Connect, L1: without the Connect key, the account is deleted all the same, asking orangecheck nothing, and says Connect is not set up here and theirs stays at ochk.app",
+        left.status === 200 && left.body?.deleted === true && left.body?.orangecheck?.kept === true && /not set up here/.test(said)
+        && /stays yours at ochk\.app/.test(said) && deleteCalls() === asked && (await adminUser(leaving.kept.user_id)).status === 404,
+        `${left.status} ${JSON.stringify(left.body)} ${deleteCalls() - asked}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    {
+      const email = `delivered+bw-oc-badkey-${tag}@resend.dev`;
+      const leaving = await mintSession(email, { age: true });
+      await rpc("oc_connect_asked", { account: leaving.kept.user_id });
+      ochk.remove = () => [401, { ok: false, reason: "invalid_api_key" }];
+      const left = await quit(leaving.access_token, { confirm: email });
+      ochk.remove = () => [200, { ok: true, result: "deleted" }];
+      const said = left.body?.orangecheck?.said || "";
+      check("Connect, L1: with a key orangecheck does not know, the account is deleted all the same, and says Connect is not set up here",
+        left.status === 200 && left.body?.deleted === true && /not set up here/.test(said) && /stays yours at ochk\.app/.test(said)
+        && (await adminUser(leaving.kept.user_id)).status === 404, `${left.status} ${JSON.stringify(left.body)}`);
       await deleteAccount(email).catch(() => false);
     }
 
-    const before = ochk.connect.length;
-    const plain = await mintSession(`delivered+bw-oc-plain-${tag}@resend.dev`, { age: true });
-    const plainGone = await quit(plain.access_token, { confirm: `delivered+bw-oc-plain-${tag}@resend.dev` });
-    check("Connect: deleting an account Connect never made one for asks nothing of orangecheck", plainGone.status === 200
-      && ochk.connect.length === before, `${plainGone.status} ${ochk.connect.length - before}`);
+    // Somebody who never ticked the box never waits on orangecheck to leave:
+    // with orangecheck down, and with no Connect key, their account is
+    // deleted at once, and nothing is asked of orangecheck (0 calls).
+    for (const [how, setUp] of [["orangecheck down", () => { ochk.remove = () => [503, {}]; }],
+      ["no Connect key", () => { delete process.env.OC_CONNECT_KEY; }]]) {
+      const email = `delivered+bw-oc-plain-${how.split(" ")[0]}-${tag}@resend.dev`;
+      const plain = await mintSession(email, { age: true });
+      const keyWas = process.env.OC_CONNECT_KEY;
+      const before = ochk.connect.length;
+      setUp();
+      let plainGone;
+      try {
+        plainGone = await quit(plain.access_token, { confirm: email });
+      } finally {
+        process.env.OC_CONNECT_KEY = keyWas;
+        ochk.remove = () => [200, { ok: true, result: "deleted" }];
+      }
+      check(`Connect: an account that never ticked the box is deleted with ${how}, asking orangecheck nothing (0 calls), and told nothing of it`,
+        plainGone.status === 200 && plainGone.body?.deleted === true && ochk.connect.length === before && !plainGone.body?.orangecheck
+        && (await adminUser(plain.kept.user_id)).status === 404, `${plainGone.status} ${JSON.stringify(plainGone.body)} ${ochk.connect.length - before} calls`);
+      await deleteAccount(email).catch(() => false);
+    }
 
     // orangecheck's answer (2026-10-24): the address goes with email_verified
     // only when the same request carries a fresh emailed code's session for
