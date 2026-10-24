@@ -424,8 +424,11 @@ function drawChallenges(list) {
     const told = one.state === "upcoming" && one.announced_at && Date.parse(one.announced_at) > Date.now()
       ? `, told from ${dayOf(one.announced_at)}` : "";
     cell(row, one.state === "open" ? "open" : one.state === "upcoming" ? `to come${told}` : "ended");
-    cell(row, `${one.entries?.hand ?? 0} in, ${one.votes?.hand ?? 0} votes`, "n");
-    cell(row, `${one.entries?.assistant ?? 0} in, ${one.votes?.assistant ?? 0} votes`, "n");
+    // Each count once there is one: a challenge to come has none yet.
+    for (const way of ["hand", "assistant"]) {
+      const [entered, votes] = [Number(one.entries?.[way]) || 0, Number(one.votes?.[way]) || 0];
+      cell(row, entered ? `${entered} in${votes ? `, ${votes} ${votes === 1 ? "vote" : "votes"}` : ""}` : "—", entered ? "n" : "n faint");
+    }
     const won = document.createElement("td");
     won.className = "model";
     for (const w of one.winners || []) {

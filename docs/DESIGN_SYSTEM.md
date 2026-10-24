@@ -164,8 +164,7 @@ is on the page, `hidden`, for the script to show.
   button pill (`a.pill`, `button.pill`, `summary.pill`) is a finger's
   height, 32 px, and takes the pointer's edge. `.good` green (Tested),
   `.new` edged in `--accent-edge`, `.tag` says "#" first, `small` inside
-  for a quieter part (a handle), an `.icon` before its words at their
-  size. A row of them is `ul.pills` or
+  for a quieter part (a handle). A row of them is `ul.pills` or
   `div.pills`; `.pills.row` keeps them on one line that scrolls inside
   itself (the gallery's kinds), and a chosen button pill is
   `aria-pressed="true"`, edged in `--accent-edge`. The one pill: a model's facts and tags, its Tested mark,
@@ -240,7 +239,8 @@ is on the page, `hidden`, for the script to show.
   any shape).
 - **Achievements** (`web/card.js` `awardsHtml`, docs/SOCIAL.md U13):
   `ul.pills.awards` under a person's `.numbers`, on their page and on your
-  own, each `li[data-award]` a `.pill` with the award icon and its name,
+  own, each `li[data-award]` a `.pill` with the award icon (16 px, at its
+  words' height) and its name,
   what it means as its title; a challenge won is `a.pill.new` to the model
   that won it. The rarest first; none at all, no row.
 - **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
