@@ -2787,6 +2787,20 @@
     },
     {
       "kind": "cli",
+      "label": "mcp lean probe",
+      "entry": "src/dev/mcp_lean_probe.gd",
+      "reach": "tools/probe.sh mcp_lean_probe   (walk180's M8 and M9 on the house: check_design edit= checks a copy and changes nothing, names standing parts #N, refuses a number not there; a check of bricks from outside is not drawn and says why; an edit says what it changed and what broke, sizes only when they change, picture=false words alone; view_model says the sizes once a change; a look at a section has no tally of the whole)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "replay calls",
+      "entry": "src/dev/replay_calls.gd",
+      "reach": "godot --path . --script src/dev/replay_calls.gd -- --calls=FILE --open=LDR [--ids=FILE] [--answers=FILE] [--png=DIR]   (a session's calls made again on its own model through answer_rpc, each answer's time, words and pictures; without --open, the design calls on an empty baseplate)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
       "label": "mcp walk 3 probe",
       "entry": "src/dev/mcp_walk3_probe.gd",
       "reach": "tools/probe.sh mcp_walk3_probe   (what the third MCP walk-through's session met on its observatory, tests/fixtures/mcpwalk3/observatory.ldr: define_motion checked after the motions it follows, the rack a wheel slides said, two tracks that meet told to use after=, a held loop and a held door said with what holds them, a joint's height in plates, a sequence's frames whole, saved under another name and opened with no unsaved warning, check_design saying a gear in or beside a rack)",

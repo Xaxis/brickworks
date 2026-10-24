@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -445,6 +445,39 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   (`Assistant._racks_said`). Checked by `src/dev/mcp_walk3_probe.gd`
   (headless, on `tests/fixtures/mcpwalk3/observatory.ldr`); the walk and
   its reruns are in `bench/results/mcpwalk3-2026-10-20/`.
+- **Answers carry what the next decision needs** (mcpcost215, 2026-10-23;
+  walk180's M8 and M9, `bench/results/walk180-2026-10-23/mcp/`). A session
+  re-reads every answer on every later turn, so an answer's size is paid
+  again each turn. From outside (not the in-app loop, `_busy`): an
+  `edit_model` answer is "Done. N bricks now.", what it changed ("Moved 36
+  by dy 1; put down 12; recoloured 12 Dark Blue (272)."), what that broke
+  (weighed with the check: tipping, each stud joint past its working load,
+  or "It stands, and no stud joint is past its working load."), and a
+  480 px close look framed on what changed, added or moved parts magenta as
+  before (`Assistant._lean_edit_answer`); `picture=true` is the whole model,
+  `picture=false` none. The massing table is said once each time it changes
+  to the nearest stud (`_sizes_once`), in edits, `view_model` and the rest.
+  `look_at_model` with `where`/`part`/`color` tallies only what was asked
+  about, and not at all when every row is listed. `check_design` from
+  outside draws nothing (its picture was of the baseplate, not the trial:
+  four checks of walk180's bow came back with the same picture of the whole
+  tug) and says why; **`check_design edit={…}`** checks a copy of the model
+  as it stands with an `edit_model` change, names standing parts `#N`, gives
+  no design advice, and changes nothing (`{}` checks it as it is). Checked by
+  `src/dev/mcp_lean_probe.gd` (headless, the house). Measured by
+  `src/dev/replay_calls.gd --open=LDR` (a session's calls on its own model
+  through `answer_rpc`, in a window under `gpu` for pictures; `--ids` maps
+  its brick numbers): walk180's edit answer 1,771 tokens to 413, the turn
+  5,659 to 2,582 (view_model's asked-for picture is most of it); the "what
+  breaks first" turn's ten answers 16,098 tokens in 2.8 s of calls, against
+  `weakest_joints` and one `check_design edit=` of the swap, 1,193 tokens in
+  0.7 s, the same joint and figures (0.86x standing; the swap 0.30x, 3.9
+  N·cm against 13). A real subscription session on the branch: the edit in
+  62 s, 9 turns, $0.95 for the whole fresh session (walk180's $12.57 was the
+  resumed session's running total; its edit turn alone was about $0.62 on a
+  428k-token context); "what breaks first" in 37 s, 5 turns, $0.15 (walk180:
+  441 s, 11 turns, $2.21). Not yet: weighing a model held by a part
+  (lifted by its mast), which the session still estimates.
 
 ## How to reach it
 

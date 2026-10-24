@@ -4226,19 +4226,18 @@ func _lean_edit_answer(args: Dictionary, edited: Model, verdict: Dictionary, sai
 			lines.append(sizes)
 		return "\n".join(lines)
 	var picked: int = _shot.highlight.size()
-	ask = ("Close up on what changed%s. picture=true shows the whole model, view_model any side."
-		% ("" if picked == 0 else (": the %d added or moved in magenta, only in the picture; "
-			% picked + "they keep the colours you gave")))
+	ask = ("%spicture=true shows the whole model." % ("" if picked == 0 else
+		"The %d added or moved are magenta only in the picture. " % picked))
 	var answer: Variant = await _with_a_look("\n".join(lines), ask, "corner",
 		box.grow(2.0 * STUD), CLOSE_UP)
 	_shot.highlight = {}
 	return answer
 
 
-## A close look's side, in pixels: a quarter of a whole picture's pixels,
-## so a quarter of what it costs the conversation (Claude counts an image
-## as its width times its height over 750 tokens).
-const CLOSE_UP := 512
+## A close look's side, in pixels: under a quarter of a whole picture's
+## pixels, so of what it costs the conversation (Claude counts an image as
+## its width times its height over 750 tokens: 307 against 1,398).
+const CLOSE_UP := 480
 
 
 ## The bricks standing with these numbers, those there are.
@@ -4660,7 +4659,8 @@ func _with_a_look(said: String, ask: String,
 		blocks.append({"type": "text", "text": said})
 	if not sizes.is_empty():
 		blocks.append({"type": "text", "text": sizes})
-	blocks.append({"type": "text", "text": "The model, from the %s:" % from})
+	blocks.append({"type": "text", "text": ("The model, from the %s:" if small <= 0
+		else "Close up on what changed, from the %s:") % from})
 	blocks.append(picture)
 	if not ask.is_empty():
 		blocks.append({"type": "text", "text": ask})

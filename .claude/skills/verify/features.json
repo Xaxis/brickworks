@@ -758,6 +758,14 @@
       "tests": []
     },
     {
+      "id": "cli:mcp lean probe",
+      "kind": "cli",
+      "entry": "src/dev/mcp_lean_probe.gd",
+      "reach": "tools/probe.sh mcp_lean_probe   (walk180's M8 and M9 on the house: check_design edit= checks a copy and changes nothing, names standing parts #N, refuses a number not there; a check of bricks from outside is not drawn and says why; an edit says what it changed and what broke, sizes only when they change, picture=false words alone; view_model says the sizes once a change; a look at a section has no tally of the whole)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -1085,6 +1093,14 @@
       "entry": "tools/web/render_open_check.mjs",
       "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app: the Render dialog's first open, every frame timed)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:replay calls",
+      "kind": "cli",
+      "entry": "src/dev/replay_calls.gd",
+      "reach": "godot --path . --script src/dev/replay_calls.gd -- --calls=FILE --open=LDR [--ids=FILE] [--answers=FILE] [--png=DIR]   (a session's calls made again on its own model through answer_rpc, each answer's time, words and pictures; without --open, the design calls on an empty baseplate)",
+      "area": "mcp",
       "tests": []
     },
     {
