@@ -15,6 +15,10 @@
 ## Account panel shows, and whether to warn, once, where the models may go
 ## (StorageOffer).
 ##
+## Signed in, the account keeps a copy of each too (CloudModels, from
+## 2026-10-23): while it has them all, Account says so and nothing is
+## warned, since a browser clearing them loses nothing.
+##
 ## Always kept off the web, where the models are files on the computer.
 class_name StorageKeep
 extends RefCounted
@@ -68,7 +72,7 @@ static func state() -> Dictionary:
 ## days without a visit whatever it agreed to.
 static func at_risk() -> bool:
 	var now: Dictionary = state()
-	if not bool(now["web"]):
+	if not bool(now["web"]) or (CloudModels.keeping and _pretended.is_empty()):
 		return false
 	if bool(now["safari"]):
 		return true
@@ -81,6 +85,9 @@ static func words() -> String:
 	if not bool(now["web"]):
 		return ("Your models are kept on this computer, not with your account — export one as "
 			+ "LDraw to take it elsewhere.")
+	if CloudModels.keeping and _pretended.is_empty():
+		return ("Your models are kept with your account, and in this browser: they are in "
+			+ "File › Open in any browser you sign in to.")
 	if bool(now["safari"]):
 		return ("Your models are kept on this device, in this browser, and may be cleared by the "
 			+ "browser: Safari deletes a site's data after seven days without a visit. Your "

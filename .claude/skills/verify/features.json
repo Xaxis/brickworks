@@ -32,6 +32,20 @@
       "tests": []
     },
     {
+      "id": "api:/api/models",
+      "kind": "api",
+      "entry": "api/models.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list, GET ?name=X one model, POST {name, base, model} a save)",
+      "area": "model-io",
+      "tests": [
+        "tests/test_bench.py",
+        "tests/test_cadtask.py",
+        "tests/test_collection.py",
+        "tests/test_designers.py",
+        "tests/test_library.py"
+      ]
+    },
+    {
       "id": "api:Claude's OAuth sign-in",
       "kind": "api",
       "entry": "api/oauth.js",
@@ -414,6 +428,14 @@
       "tests": [
         "tests/test_gears.py"
       ]
+    },
+    {
+      "id": "cli:cloud library browser flow",
+      "kind": "cli",
+      "entry": "tools/web/cloud_library_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; makes and deletes a throwaway account)",
+      "area": "model-io",
+      "tests": []
     },
     {
       "id": "cli:collection api probe",
@@ -2029,6 +2051,14 @@
       "tests": []
     },
     {
+      "id": "lib:models kept with the account",
+      "kind": "lib",
+      "entry": "src/account/cloud_models.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql applied)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "lib:more by and similar models",
       "kind": "lib",
       "entry": "api/share.js",
@@ -2999,6 +3029,14 @@
       "entry": "src/ui/collection_dialog.gd",
       "reach": "godot --path .  (Build, My collection\u2026 / What do I need?\u2026 / What can I build?\u2026; or P, then What do I need?)",
       "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "ui:name asked at the first save",
+      "kind": "ui",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (File, New, put a part down, then Save or New's Save, then start new: Save asks what to call it, and refuses a name a saved model has)",
+      "area": "model-io",
       "tests": []
     },
     {

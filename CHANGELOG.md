@@ -14,6 +14,10 @@ whole cycle.
 ## [Unreleased]
 
 ### Fixed
+- Save on a new model nobody has named asks what to call it first, as Save
+  as does, and New's "Save, then start new" asks too; a name another saved
+  model has is refused rather than written over. Before, it was saved as
+  "Untitled" without a word.
 - Opening a model over one with changes not saved asks first, as New does:
   Save, Don't save or Cancel. File › Open and its examples, Open recent, a
   file from the computer, Collection › Open and Versions all ask, and an

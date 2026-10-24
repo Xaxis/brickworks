@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
 
 ## Sub-features
 
@@ -737,6 +737,24 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a strip above the model warns once a device (`ShellPrefs` `storage_warned`),
   with Download my models (the .zip) and This one for Studio (.io).
   `brickworksState.storage` carries all of it for a browser check.
+- `models kept with the account`, `/api/models` and `name asked at the first
+  save` (`src/account/cloud_models.gd`, `api/models.js`,
+  `supabase/account_models.sql`, 2026-10-23, walk180's A4): signed in on the
+  web, each save is sent to the account too (gzipped, with the version it was
+  made from), and every browser the person signs in to fetches the account's
+  models into `user://models/`, so File › Open lists them; what each browser
+  last had of the account's is `user://cloud/<account>.json`. A save made
+  from an older version than the account's is kept beside it as "Name 2",
+  the model on the baseplate taking that name; nothing is fetched over a
+  model changed here and not sent. 500 models and 64 MB as stored per
+  account, held by `save_account_model` under one lock per account. While
+  the account has them all, Account says "Your models are kept with your
+  account…" and the clear-warning is not shown (`CloudModels.keeping`). The
+  shared test account every flow signs in as is answered 503, so those flows
+  keep their models in the browser alone; `brickworksState.cloud` says how
+  the last look went. Save on a model nobody has named (Untitled) asks what
+  to call it first, in a dialog like Save as's, and refuses a name a saved
+  model has (`ModelBar.ask_name`; controls `save_name`, `save_name_ok`).
 
 - `cad task test` (`tools/bench/cadtask.py`, 2026-10-16; the write-up is
   `docs/CADTASK.md`): is building here as faithful and as fast as in Studio.
@@ -838,6 +856,9 @@ godot --headless --path . --script src/dev/unrestored_probe.gd   # a working mod
 python3 tools/bench/cadtask.py roundtrip && python3 tools/minitest.py tests/test_cadtask.py
 # the page's half in real Chromium, persist() played refused and granted
 BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep
+# models kept with the account: a fresh browser's Open, two saves of one version, offline,
+# signed out, the name asked, the account deleted (a throwaway account; account_models.sql applied)
+BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud
 ```
 
 `versions_probe` proves it when it ends "a model's last 20 saves are kept and
@@ -860,6 +881,11 @@ store); `unrestored_probe` when it ends "a working model that cannot
 be opened is kept, and said to be"; `keep_flow` when it ends "the browser is asked to keep the
 models, a refusal is warned of once, and every save is kept to open again".
 On production before 2026-10-14 the flow fails at the first save (never asked).
+`cloud_library_flow` proves the account's half when it ends "a signed-in
+person's models kept with their account: in Open in a fresh browser, both of
+two saves kept, saved offline and signed out, and gone with the account"; on a
+build from before 2026-10-23 the second browser finds nothing to open, and the
+unnamed model's Save asks nothing.
 
 And the round trip, which is the one to run after touching the writer:
 

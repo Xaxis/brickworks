@@ -293,6 +293,8 @@ var _reload_offer: ReloadOffer
 var _update_offer: UpdateOffer
 ## Once, where this browser may clear the person's models (StorageKeep).
 var _storage_offer: StorageOffer
+## The person's models kept with their account too, signed in on the web.
+var _cloud: CloudModels
 ## The working model could not be opened at start-up: where it is kept.
 var _restore_notice: RestoreNotice
 ## When the files other tabs and windows share with this one were last
@@ -706,6 +708,9 @@ func _tell_page() -> void:
 			"warning": _storage_offer.words() if _storage_offer != null else "",
 			"versions": _shell.versions.page_state() if _shell != null else {},
 			"title": _store.title},
+		# The models kept with the account, as the last look found them
+		# (CloudModels, tools/web/cloud_library_flow.mjs).
+		"cloud": _cloud.page_state() if _cloud != null else {},
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -4604,6 +4609,26 @@ func _build_ui() -> void:
 	_storage_offer.download_io = func() -> void: await _exports.studio_io()
 	_storage_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_storage_offer)
+
+	# Signed in on the web, each save is kept with the account too, and the
+	# account's models come to every browser it signs in to
+	# (src/account/cloud_models.gd).
+	_cloud = CloudModels.new()
+	_cloud.account = _account
+	_cloud.store = _store
+	_cloud.keeps = _account.keeps
+	_cloud.said.connect(_bar.say)
+	# A save made from an older version than the account's is kept beside it
+	# under a name of its own: the model on the baseplate takes that name.
+	_cloud.kept_as.connect(func(from: String, to: String) -> void:
+		if _store.title != from:
+			return
+		_store.title = to
+		_store.know(ModelStore.SAVE_DIR + to + ".ldr")
+		_store.touch()
+		_bar._name.text = to
+		_bar.model_named.emit(to))
+	add_child(_cloud)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).

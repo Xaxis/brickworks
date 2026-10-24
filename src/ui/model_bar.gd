@@ -201,6 +201,30 @@ func _build() -> void:
 			_replace_answered.emit("discard"))
 	add_child(_confirm_open)
 
+	# Save on a model nobody has named asks what to call it, as Save as asks
+	# (Shell): "Save, then start new" saved a walk's model as "Untitled",
+	# asking nothing (walk180, 2026-10-23).
+	_ask_name = ConfirmationDialog.new()
+	_ask_name.title = "Save"
+	_ask_name.ok_button_text = "Save"
+	# Kept up while the name will not do, saying why.
+	_ask_name.dialog_hide_on_ok = false
+	var asking := VBoxContainer.new()
+	_ask_name_words = Label.new()
+	asking.add_child(_ask_name_words)
+	_ask_name_field = LineEdit.new()
+	_ask_name_field.custom_minimum_size = Vector2(320, 0)
+	_ask_name_field.text_submitted.connect(func(_text: String) -> void: _take_name())
+	asking.add_child(_ask_name_field)
+	_ask_name.add_child(asking)
+	_ask_name.confirmed.connect(_take_name)
+	# Cancel, Escape, the close button, or put away by anything else.
+	_ask_name.canceled.connect(_answer_name.bind(""))
+	_ask_name.visibility_changed.connect(func() -> void:
+		if not _ask_name.visible:
+			_answer_name(""))
+	add_child(_ask_name)
+
 	_saves = PopupMenu.new()
 	_saves.id_pressed.connect(_on_pick)
 	add_child(_saves)
@@ -302,6 +326,11 @@ func controls_by_name() -> Dictionary:
 	if _confirm_new.visible:
 		out["new_save"] = _save_then_new_button
 		out["new_discard"] = _confirm_new.get_ok_button()
+	# And the name Save asks for.
+	if _ask_name.visible:
+		out["save_name"] = _ask_name_field
+		out["save_name_ok"] = _ask_name.get_ok_button()
+		out["save_name_cancel"] = _ask_name.get_cancel_button()
 	# And an open's.
 	if _confirm_open.visible:
 		out["replace_save"] = _confirm_open.get_ok_button()
@@ -311,6 +340,13 @@ func controls_by_name() -> Dictionary:
 
 
 var _save_then_new_button: Button
+## What Save asks of a model nobody has named (ask_name).
+var _ask_name: ConfirmationDialog
+var _ask_name_words: Label
+var _ask_name_field: LineEdit
+signal _name_answered(name: String)
+var _asking_name: bool = false
+const NAME_ASK := "What should this model be called?"
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has
@@ -392,6 +428,14 @@ func _on_save() -> bool:
 		_say("nothing to save")
 		return false
 	var name: String = model_name()
+	# A model nobody has named is asked what to call it first.
+	if name == ModelStore.UNTITLED and on_disk.is_empty():
+		name = await ask_name()
+		if name.is_empty():
+			_say("not saved")
+			return false
+		_name.text = name
+		_name.text_changed.emit(name)
 	var saved: bool = false
 	if not store.paces():
 		saved = store.save_as(name)
@@ -417,6 +461,45 @@ func _on_save() -> bool:
 			_say("saved “%s” here, but could not write %s" % [name, on_disk])
 			return false
 	return saved
+
+
+## The name a model nobody has named is saved under, asked as Save as asks
+## (Shell); "" when the person cancels. Never one a saved model has: Save
+## would write over that model with this one.
+func ask_name() -> String:
+	if _asking_name:
+		return ""
+	_asking_name = true
+	_ask_name_words.text = NAME_ASK
+	_ask_name_field.text = ""
+	_ask_name.popup_centered()
+	_ask_name_field.grab_focus()
+	# The person is the one working now (Working.attend): no "Saving…" bar
+	# under the question, and the time they take is not the save's.
+	Working.asking += 1
+	Working.asked += 1
+	var called: String = await _name_answered
+	Working.asking -= 1
+	return called
+
+
+func _take_name() -> void:
+	var called: String = _ask_name_field.text.strip_edges()
+	if called.is_empty() or called == ModelStore.UNTITLED or ModelStore._safe_name(called).is_empty():
+		_ask_name_words.text = "Give it a name, in letters or numbers, to save it under."
+		return
+	if FileAccess.file_exists(ModelStore.saved_path(called)):
+		_ask_name_words.text = "“%s” is a saved model already. Choose another name." % called
+		return
+	_answer_name(called)
+	_ask_name.hide()
+
+
+func _answer_name(called: String) -> void:
+	if not _asking_name:
+		return
+	_asking_name = false
+	_name_answered.emit(called)
 
 
 ## The save going, while it works out the build order.
