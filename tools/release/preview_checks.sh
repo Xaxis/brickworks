@@ -196,6 +196,13 @@ declare -A CMD=(
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
+  # A signed-in person's models kept with their account (supabase/account_models.sql):
+  # saved in one browser and opened from File, Open in a fresh one with the
+  # same parts; two saves of one version both kept ("Cloud House 2"), one
+  # made offline; saved signed out with nothing sent, and Save on an unnamed
+  # model asking its name; then the throwaway account deleted, and its rows
+  # with it.
+  [cloud_library]="tools/web/cloud_library_flow.mjs --url=$P/app $B --out=$S/${TAG}_cloud_library"
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"
   # ext-apps' basic-host, built: BW_APP_HOST names its examples/basic-host.

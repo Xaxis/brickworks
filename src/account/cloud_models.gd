@@ -35,16 +35,13 @@
 ## sent to this one: what each account has had here is in its own manifest.
 ##
 ## Web only: on the desktop the models are files on the computer, as
-## Studio's are. Off for a run nobody is sitting at ([member keeps]), and
-## in a browser whose page says so (localStorage brickworks.cloud = "off"):
-## the browser flows signed in as the one shared test account, which would
-## otherwise each receive every model the others saved
-## (tools/web/session.mjs).
+## Studio's are. Off for a run nobody is sitting at ([member keeps]). The
+## one test account every browser flow signs in as is kept out by the
+## deployment (api/models.js), which answers it as one without the table.
 class_name CloudModels
 extends Node
 
 const MANIFEST := "user://cloud/"
-const OFF_KEY := "brickworks.cloud"
 ## How often to look again while signed in, and how soon after a return to
 ## the window: another device's save is here within this.
 const EVERY := 300.0
@@ -62,7 +59,7 @@ var keeps: bool = true
 signal said(text: String)
 ## The model called [param from] here is called [param to] now: a save of
 ## it made from an older version than the account's, kept beside that one.
-signal renamed(from: String, to: String)
+signal kept_as(from: String, to: String)
 
 ## How the last look went: "" not yet, "off", "kept" (in step with the
 ## account), "away" (could not reach it), "not_here" (this deployment keeps
@@ -78,7 +75,8 @@ var _syncing: bool = false
 var _again: bool = false
 var _looked_at: int = -1000000
 var _clock: Timer
-## What the last look did, for a browser check: {sent, fetched, kept}.
+## What the last look did, for a browser check: {sent, fetched, names},
+## names those of the account's models this browser has.
 var last: Dictionary = {}
 ## Each saved model's sum as last read, by path: [modified, size, sum]. A
 ## look reads only the files changed since; a person with a hundred models
@@ -122,12 +120,7 @@ func _on_account() -> void:
 func _on() -> bool:
 	if not keeps or account == null or store == null or not OS.has_feature("web"):
 		return false
-	if not account.signed_in() or account.offline or account.user_id.is_empty():
-		return false
-	var off: Variant = JavaScriptBridge.eval(
-		"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
-		% JSON.stringify(OFF_KEY), true)
-	return str(off) != "off"
+	return account.signed_in() and not account.offline and not account.user_id.is_empty()
 
 
 ## Bring this browser's models and the account's into step. Safe to call at
@@ -194,7 +187,7 @@ func _sync_once() -> void:
 		trouble = trouble or got < 0
 	state = "away" if trouble and refused.is_empty() else "kept"
 	keeping = not trouble and refused.is_empty()
-	last = {"sent": sent, "fetched": fetched, "kept": there.size() + sent}
+	last = {"sent": sent, "fetched": fetched, "names": _known().keys()}
 	if fetched > 0:
 		said.emit(("%d model from your account is in File › Open" if fetched == 1
 			else "%d models from your account are in File › Open") % fetched)
@@ -274,7 +267,7 @@ func _send(name: String, text: String, base: int) -> bool:
 	if not _write(path, text):
 		return false
 	_record(kept, version, sum)
-	renamed.emit(name, kept)
+	kept_as.emit(name, kept)
 	var mine: String = _path(name)
 	if FileAccess.get_file_as_string(mine).sha256_text() == sum:
 		_forget(name)
@@ -380,7 +373,7 @@ func _claimed_elsewhere(name: String) -> bool:
 ## What a browser check reads (Main's page state).
 func page_state() -> Dictionary:
 	return {"state": state, "keeping": keeping, "refused": refused, "last": last,
-		"syncing": _syncing, "known": _known().keys() if _on() else []}
+		"syncing": _syncing}
 
 
 ## One request as the person: {code, body}, code 0 when nothing came back.

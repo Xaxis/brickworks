@@ -33,6 +33,15 @@
 // holds can read or write the table. Until account_models.sql is applied
 // every answer is 503, and the app keeps its models in the browser as
 // before.
+//
+// A test account (a Resend test address, api/_auth.js isTestAccount) keeps
+// models like any other, but for the one every browser flow's pages are
+// signed in as (tools/web/session.mjs): dozens of pages at once, each of
+// which would be sent every model the others saved. It is answered 503, as
+// a deployment without the table is, and its pages keep their models in
+// the browser alone. tools/web/cloud_library_flow.mjs signs in as an
+// account of its own.
+const SHARED_TEST = "delivered+brickworks-tests@resend.dev";
 
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
@@ -156,6 +165,9 @@ export default async function handler(request, response) {
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
+  }
+  if (String(claims.email || "").trim().toLowerCase() === SHARED_TEST) {
+    return response.status(503).json({ error: "The shared test account keeps its models in the browser." });
   }
   const owner = claims.sub;
   const unreached = (trouble, doing) => {
