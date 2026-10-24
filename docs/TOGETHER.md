@@ -128,12 +128,24 @@ database plus up to 100 ms. Measured on a preview with the project's tables
 | What | p50 | p95 |
 |---|---|---|
 | A send to the other side's waiting poll answering (`together_probe.mjs`, 30 changes, from this box) | 224 ms | 302 ms |
+| ...the same, the second part (chat, pointers, the model's own state carried) | 263 ms | 336 ms |
 | ...the first version: a send that checked the session first, and polls 150 ms apart | 344 ms | 573 ms |
 | An edit asked of one browser to the other browser's frame having it (`together_flow.mjs`, 38 changes, both ways, two SwiftShader pages drawing at once) | 519 ms | 688 ms |
+| ...the second part's flow, on a preview while another browser check ran beside it (40 changes) | 695 ms | 1,356 ms |
+| ...the same against this box's server, nothing else running (40 changes) | 307 ms | 744 ms |
 
 A browser drawing in software takes a few hundred milliseconds a frame, so
-the last row is mostly frames on both sides; on a real graphics card it
-should come close to the first row, which is not measured yet.
+the browser rows are mostly frames on both sides; on a real graphics card
+they should come close to the first rows, which is not measured yet.
+
+The flow measures again later, once the model has a motion, a printed
+part, steps of its own and its hidden parts coloured, and says how many
+frames a second each page drew meanwhile. Before it said so, with the car
+on a 48 × 48 baseplate, that second measure was 2.8 s p50 on this box;
+then 1.3 s once the motions were read as kept rather than by measuring
+each joint on the model four times a second (`ModelStore._motion_lines`,
+which held the frames of a model with a motion: the session's own doing);
+and 4.0 s on the preview with another browser check beside it.
 
 ## Who may
 
