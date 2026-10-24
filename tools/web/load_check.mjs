@@ -24,16 +24,21 @@
 //   started      the engine's startGame resolved (the shell's #boot done);
 //   first frame  the first frame drawn to the window once the app is
 //                running (its first window.brickworksState);
-//   interactive  the parts bin usable: its search and first tile told to
-//                the page (window.brickworksControls), and the parts it
-//                lists first (brickworksState.found);
+//   bin drawn    the first frame drawn once the app has told the page the
+//                parts the bin lists first (brickworksState.found): the bin
+//                on the screen;
+//   interactive  the parts bin usable as a flow finds it: its search and
+//                first tile told to the page (window.brickworksControls),
+//                which waits for them to stay put a publish (Main), and the
+//                parts it lists first;
 //   net          when the last byte of the build's own files (the engine's
 //                script, wasm and pack) arrived;
-//   cpu          the page's main thread on a CPU before interactive (each
-//                task's thread time in Chrome's trace), which the box's
-//                load does not stretch; the wall clock in between is the
-//                network, and on SwiftShader the drawing, which here is
-//                done in software on a shared box;
+//   main thread  its CPU before interactive (Chrome's own ThreadTime),
+//                which the box's load does not stretch, and its long tasks
+//                by the page's clock; all threads, the engine's and the wasm
+//                compiler's too (ProcessTime). The wall clock past the
+//                network and the main thread is mostly the drawing, done
+//                here in software (SwiftShader) on a shared box;
 //   bytes        what came over the wire before interactive, as sent
 //                (compressed), headers and all.
 //
@@ -77,7 +82,7 @@ const maxInteractive = args["max-interactive"] ? Number(args["max-interactive"])
 // started, and each frame drawn to the window (a draw, clear or blit with
 // no framebuffer of the app's bound) once the app has told the page it runs.
 function instrument() {
-  const at = { started: 0, running: 0, firstFrame: 0, longtasks: [], said: [] };
+  const at = { started: 0, running: 0, firstFrame: 0, listed: 0, binDrawn: 0, longtasks: [], said: [] };
   window.__load = at;
   // What the engine says as it starts (its banner, the renderer), timed.
   for (const kind of ["log", "warn", "error"]) {
@@ -97,7 +102,11 @@ function instrument() {
   Object.defineProperty(window, "brickworksState", {
     configurable: true,
     get() { return state; },
-    set(v) { if (!at.running) at.running = performance.now(); state = v; },
+    set(v) {
+      if (!at.running) at.running = performance.now();
+      if (!at.listed && v && Array.isArray(v.found) && v.found.length) at.listed = performance.now();
+      state = v;
+    },
   });
   const watchBoot = () => {
     const boot = document.getElementById("boot");
@@ -123,7 +132,10 @@ function instrument() {
       const call = gl[name] && gl[name].bind(gl);
       if (!call) continue;
       gl[name] = (...a) => {
-        if (!at.firstFrame && at.running && bound === null) at.firstFrame = performance.now();
+        if (bound === null) {
+          if (!at.firstFrame && at.running) at.firstFrame = performance.now();
+          if (!at.binDrawn && at.listed) at.binDrawn = performance.now();
+        }
         return call(...a);
       };
     }
@@ -195,6 +207,14 @@ async function load(context, profile, label) {
     const r = requests.get(e.requestId);
     if (r) Object.assign(r, { end: e.timestamp, failed: e.errorText || "failed", bytes: 0 });
   });
+  // A worker's requests (the later parts, src/boot/shell.html) are not the
+  // page's in Chrome's own protocol; Playwright reports them with the page's.
+  const seen = [];
+  page.on("requestfinished", (request) => {
+    seen.push(Promise.all([request.sizes(), request.response()]).then(([sizes, response]) => ({
+      url: request.url(), timing: request.timing(), headers: response ? response.headers() : {},
+      bytes: sizes.responseBodySize + sizes.responseHeadersSize })).catch(() => null));
+  });
   await page.addInitScript(instrument);
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -231,6 +251,16 @@ async function load(context, profile, label) {
       + (r.end && rel(r.end) <= (marks?.interactive ?? Infinity) ? (r.headers || 0) : 0),
     failed: r.failed || "",
   }));
+  // What came by a worker: on the page's clock from the timings' epoch.
+  for (const one of await Promise.all(seen)) {
+    if (!one || requests.size === 0 || [...requests.values()].some((r) => r.url === one.url)) continue;
+    const begun = one.timing.startTime - navStart;
+    const end = begun + Math.max(0, one.timing.responseEnd);
+    files.push({ path: one.url.replace(/^https?:\/\/[^/]+/, "").replace(/[?#].*$/, ""), host: (one.url.match(/^https?:\/\/([^/]+)/) || [])[1] || "",
+      status: 200, encoding: one.headers["content-encoding"] || "", cache: one.headers["cache-control"] || "",
+      cached: false, type: one.headers["content-type"] || "", bytes: one.bytes, start: begun, end,
+      before: end <= (marks?.interactive ?? Infinity) ? one.bytes : 0, failed: "", worker: true });
+  }
   const build = files.filter((f) => /\/index\.(wasm|pck|js)$/.test(f.path) || /\.pck$/.test(f.path));
   const ends = build.filter((f) => f.end <= (marks?.interactive ?? Infinity)).map((f) => f.end);
   const net = ends.length ? Math.max(...ends) : NaN;
@@ -245,7 +275,7 @@ function sayRun(run) {
   const m = run.marks || {};
   const b = m.boot || {};
   const banner = (m.said || []).find(([, line]) => /^Godot Engine/.test(line));
-  console.log(`  ${run.label}: interactive ${sec(m.interactive)} s, first frame ${sec(m.firstFrame)} s, `
+  console.log(`  ${run.label}: interactive ${sec(m.interactive)} s (bin drawn ${sec(m.binDrawn)} s), first frame ${sec(m.firstFrame)} s, `
     + `started ${sec(m.started)} s, net ${sec(run.net)} s, main thread ${sec(run.cpu)} s on a CPU (${sec(run.busy)} s in long tasks; `
     + `${sec(run.cpuAll)} s all threads), ${mb(run.bytes)} MB before interactive`
     + (run.errors.length ? ` (page errors: ${run.errors.join(" | ")})` : ""));
@@ -267,7 +297,7 @@ function sayFiles(run) {
   console.log(`  files of ${run.label}, largest first (as sent):`);
   for (const f of rows.slice(0, 24)) {
     console.log(`    ${mb(f.bytes).padStart(7)} MB  ${(f.encoding || "-").padEnd(4)} ${String(f.status).padEnd(3)} `
-      + `${sec(f.start).padStart(5)}-${sec(f.end).padEnd(5)} s  ${f.cached ? "cache " : ""}${f.host === new URL(args.url).host ? "" : f.host}${f.path}`
+      + `${sec(f.start).padStart(5)}-${sec(f.end).padEnd(5)} s  ${f.cached ? "cache " : ""}${f.worker ? "(a worker's) " : ""}${f.host === new URL(args.url).host ? "" : f.host}${f.path}`
       + `  [${f.cache || "no cache-control"}]`);
   }
   const rest = rows.slice(24);
@@ -320,6 +350,7 @@ for (const profile of profiles) {
     const row = {
       interactive: median(these.map((r) => r.marks?.interactive)),
       firstFrame: median(these.map((r) => r.marks?.firstFrame)),
+      binDrawn: median(these.map((r) => r.marks?.binDrawn)),
       started: median(these.map((r) => r.marks?.started)),
       net: median(these.map((r) => r.net)),
       cpu: median(these.map((r) => r.cpu)),
@@ -329,7 +360,7 @@ for (const profile of profiles) {
       runs: these.length,
     };
     summary[`${profile} ${kind}`] = row;
-    console.log(`  ${`${profile} ${kind}`.padEnd(15)} interactive ${sec(row.interactive).padStart(5)}  first frame ${sec(row.firstFrame).padStart(5)}  `
+    console.log(`  ${`${profile} ${kind}`.padEnd(15)} interactive ${sec(row.interactive).padStart(5)}  bin drawn ${sec(row.binDrawn).padStart(5)}  first frame ${sec(row.firstFrame).padStart(5)}  `
       + `started ${sec(row.started).padStart(5)}  net ${sec(row.net).padStart(5)}  main ${sec(row.cpu).padStart(5)} (long ${sec(row.busy)}, all ${sec(row.cpuAll)})  ${mb(row.bytes).padStart(6)} MB  (${row.runs} runs)`);
   }
 }

@@ -983,25 +983,69 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	// index.parts.bin: asked for once the engine and its pack are here, so
 	// it never slows them, and written into the engine's files at /later/
 	// once the engine has started, where the app reads it as it reads the
-	// pack (PartLibrary.LATER). A part of it wanted before then is fetched
-	// on its own, as any part the build does not carry. What came and when
-	// is window.brickworksLater (tools/web/load_check.mjs).
+	// pack (PartLibrary.LATER). A part of it the app asks for before then
+	// waits for it, 15 s at most, and is then fetched on its own as any
+	// part the build does not carry. What came and when is
+	// window.brickworksLater (tools/web/load_check.mjs).
 	const LATER_AT = GODOT_CONFIG.executable + ".parts.bin";
-	const later = window.brickworksLater = { asked: 0, came: 0, written: 0, files: 0, failed: "" };
+	const later = window.brickworksLater = { asked: 0, came: 0, written: 0, files: 0, failed: "", gave_up: false };
 	let laterBytes = null;
+
+	// Fetched by a worker of its own, made now while the page's thread is
+	// free: that thread is the engine's while it starts, a dozen seconds
+	// in one task on a first visit, and a body read there, or a worker
+	// begun then, waited for it, so the parts came after the start rather
+	// than during it (load250). The app holds a part of them asked for
+	// before they are written in (PartLibrary._later_coming).
+	const FETCH_IN_A_WORKER = "onmessage = function (event) {"
+		+ " fetch(event.data).then(function (answer) {"
+		+ " if (!answer.ok) throw new Error('HTTP ' + answer.status); return answer.arrayBuffer(); })"
+		+ ".then(function (bytes) { postMessage(bytes, [bytes]); },"
+		+ " function (trouble) { postMessage(String(trouble)); }); };";
+	let fetcher = null;
+	try {
+		const script = URL.createObjectURL(new Blob([FETCH_IN_A_WORKER], { type: "text/javascript" }));
+		fetcher = new Worker(script);
+		fetcher.script = script;
+	} catch (e) {}
+	function fetchHere(address) {
+		return fetch(address).then(function (answer) {
+			if (!answer.ok) throw new Error("HTTP " + answer.status);
+			return answer.arrayBuffer();
+		});
+	}
+	function fetchBytes(address) {
+		const worker = fetcher;
+		fetcher = null;
+		if (!worker) return fetchHere(address);
+		const done = function () {
+			worker.terminate();
+			URL.revokeObjectURL(worker.script);
+		};
+		return new Promise(function (resolve, reject) {
+			worker.onmessage = function (event) {
+				done();
+				if (event.data instanceof ArrayBuffer) resolve(event.data);
+				else reject(new Error(String(event.data)));
+			};
+			worker.onerror = function () {
+				done();
+				fetchHere(address).then(resolve, reject);
+			};
+			worker.postMessage(new URL(address, location.href).href);
+		});
+	}
 	function fetchLater(tries) {
 		if (later.asked && !tries) return;
 		later.asked = performance.now();
-		fetch(LATER_AT).then(function (answer) {
-			if (!answer.ok) throw new Error("HTTP " + answer.status);
-			return answer.arrayBuffer();
-		}).then(function (bytes) {
+		fetchBytes(LATER_AT).then(function (bytes) {
 			later.came = performance.now();
 			laterBytes = bytes;
 			writeLater();
 		}).catch(function (trouble) {
 			later.failed = String(trouble);
 			if (tries < 3) setTimeout(function () { fetchLater(tries + 1); }, 5000 * (tries + 1));
+			else later.gave_up = true;
 		});
 	}
 	// "BWP1", the count, each file's name and size, then the files.
@@ -1031,6 +1075,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 			later.written = performance.now();
 		} catch (trouble) {
 			later.failed = String(trouble);
+			later.gave_up = true;
 			console.error("could not put the rest of the parts in place", trouble);
 		}
 	}

@@ -679,6 +679,14 @@
       "tests": []
     },
     {
+      "id": "cli:first visit load check",
+      "kind": "cli",
+      "entry": "tools/web/load_check.mjs",
+      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=\u2026 for a preview; --profiles=broadband,slow --runs=3 --warm; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:flex skin probe",
       "kind": "cli",
       "entry": "src/dev/flex_skin_probe.gd",

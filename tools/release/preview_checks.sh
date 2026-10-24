@@ -313,7 +313,7 @@ declare -A CMD=(
   # the bytes and the time until the parts bin is usable, the network and the
   # main thread apart, held to ceilings (load250: the live m167 sent 30.9 MB
   # and was usable at 28.7 s): alone, below.
-  [load]="tools/web/load_check.mjs --url=$P/app $B --runs=3 --max-bytes=LOAD_MB --max-interactive=LOAD_S --out=$S/${TAG}_load"
+  [load]="tools/web/load_check.mjs --url=$P/app $B --runs=3 --max-bytes=20 --max-interactive=28 --out=$S/${TAG}_load"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
   # File, Render…: Quick and Good pictures, a 24-frame turntable, Best

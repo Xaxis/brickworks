@@ -23,13 +23,14 @@ The working set is chosen, not sampled:
     tools/web_pack.py --list          say what would be included, write nothing
 
 Only the first screen's geometry goes in the pack everyone waits for
-(assets/web/parts/): the sample model's parts, the palette and the
-essentials. The rest of the working set goes in one file,
+(assets/web/parts/): the sample model's parts, the palette, the bin's
+first screen and the essentials. The rest of the working set goes in one file,
 assets/web/later.bin, which tools/export.sh puts beside the build as
 index.parts.bin: the page fetches it once the engine has its own files and
 writes each part into the engine's files at /later/ (src/boot/shell.html),
-where PartLibrary reads it as it reads the pack. Until then a part of it
-is fetched on its own like any part the build does not carry.
+where PartLibrary reads it as it reads the pack. A part of it asked for
+before then waits for it, 15 s at most, and is then fetched on its own like
+any part the build does not carry (PartLibrary._later_coming).
 
 later.bin: "BWP1", the count (uint32), then for each file its name's length
 (uint16), its name and its size (uint32), then the files one after another;
@@ -175,6 +176,13 @@ def parts_of(model: Path) -> set[str]:
 # The model a first visit opens on (Main.SAMPLE_MODEL).
 SAMPLE = ROOT / "models" / "car.ldr"
 
+# The parts bin's first screen with nothing typed (PartsBin, All, staples
+# first) beyond the palette, as a first visit at 1280 x 800 draws it: the
+# parts tools/web/load_check.mjs saw fetched as the bin opened, before
+# they were carried (load250, 2026-10-24). One left off is only fetched.
+BIN_FIRST: tuple[str, ...] = (
+    "3002", "3010", "3022", "3034", "3069b", "3460", "3666", "3795", "2431")
+
 
 def starter_palette() -> set[str]:
     """The parts the builder and the design assistant offer by name."""
@@ -278,7 +286,8 @@ def main() -> int:
     (out / "parts").mkdir(parents=True)
 
     # What the first screen draws, in the pack; the rest of it later.
-    first_ids = (parts_of(SAMPLE) | starter_palette() | set(ESSENTIAL)) & set(chosen)
+    first_ids = (parts_of(SAMPLE) | starter_palette() | set(ESSENTIAL)
+                 | set(BIN_FIRST)) & set(chosen)
     first = {chosen[pid]["mesh"] for pid in first_ids}
     later: list[tuple[str, bytes]] = []
     for mesh in sorted(meshes):

@@ -991,6 +991,60 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 const LATER := "/later/"
 
 
+## Parts of the later part asked for while it was on its way, held for it
+## ([method request_mesh]) and asked for again once it is written in, or has
+## failed, or [constant LATER_WAIT_MS] has gone by.
+var _for_later: PackedStringArray = PackedStringArray()
+## What the page last said of the later part (window.brickworksLater):
+## "coming", or "" once it is written in, has failed for good or never was.
+var _later: String = "?"
+var _later_asked_at: int = -LATER_ASK_MS
+## When the first part was held for it.
+var _later_held_at: int = 0
+const LATER_ASK_MS := 100
+## The longest a part is held for the later part before it is fetched alone.
+const LATER_WAIT_MS := 15000
+
+
+## Whether the web build's later part is on its way: the page has asked for
+## it, not written it in and not given up. Asked of the page at most every
+## [constant LATER_ASK_MS].
+func _later_coming() -> bool:
+	if not OS.has_feature("web") or _later.is_empty():
+		return false
+	var now: int = Time.get_ticks_msec()
+	if now - _later_asked_at >= LATER_ASK_MS:
+		_later_asked_at = now
+		var said: Variant = JavaScriptBridge.eval(
+			"(function (l) { return l && l.asked && !l.written && !l.gave_up ? 'coming' : ''; })"
+			+ "(window.brickworksLater)", true)
+		_later = str(said) if said != null else ""
+	return not _later.is_empty()
+
+
+## Ask again for the parts held for the later part once it is no longer on
+## its way, or has been waited for long enough.
+func _watch_later() -> void:
+	if _later_held_at == 0:
+		_later_held_at = Time.get_ticks_msec()
+	if _fetch_host == null or not _fetch_host.is_inside_tree() or _later_watched:
+		return
+	_later_watched = true
+	_fetch_host.get_tree().create_timer(LATER_ASK_MS / 1000.0, true, false, true).timeout.connect(func() -> void:
+		_later_watched = false
+		if _later_coming() and Time.get_ticks_msec() - _later_held_at < LATER_WAIT_MS:
+			_watch_later()
+			return
+		# Written in, failed or too slow: each read from it, or fetched.
+		_later = ""
+		_later_held_at = 0
+		var held: PackedStringArray = _for_later.duplicate()
+		_for_later.clear()
+		for part_id: String in held:
+			request_mesh(part_id, true))
+var _later_watched: bool = false
+
+
 ## The file [param hash_name]'s geometry is read from in this build: the
 ## pack's, or the web build's later part of it once it has come, or "".
 func _on_disk(hash_name: String) -> String:
@@ -1096,6 +1150,8 @@ func _keep(hash_name: String, part: Lbm.PartMesh) -> void:
 ## has no tree of its own, so whoever owns it lends one.
 func set_fetch_host(host: Node) -> void:
 	_fetch_host = host
+	if not _for_later.is_empty():
+		_watch_later()
 
 
 ## True when this build has the part's geometry to hand.
@@ -1115,7 +1171,7 @@ func is_on_its_way(part_id: String) -> bool:
 			or _arrived.has(info.mesh_hash):
 		return false
 	return (_fetching.has(info.mesh_hash) or _queued_fetches.has(part_id)
-		or _waiting.has(part_id))
+		or _waiting.has(part_id) or _for_later.has(part_id))
 
 
 ## Ask for a part this build did not ship.
@@ -1150,6 +1206,15 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 			_keep(info.mesh_hash, here)
 			fetched.emit(part_id)
 			return true
+	# One of them, while they are on their way whole: held for them rather
+	# than fetched alone. The bin's first pictures were asked for in the
+	# frames before the page could write them in, and fetched one by one.
+	if info.packed and not _fetching.has(info.mesh_hash) and _later_coming() \
+			and _on_disk(info.mesh_hash).is_empty():
+		if not _for_later.has(part_id):
+			_for_later.append(part_id)
+		_watch_later()
+		return true
 	if _fetching.has(info.mesh_hash):
 		# Already on its way for somebody else. Join them, or this part
 		# is told "coming" and never told it came.
