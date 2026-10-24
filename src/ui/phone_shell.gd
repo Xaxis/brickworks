@@ -259,7 +259,7 @@ func _tool(what: String, word: String, icon: String) -> Button:
 				roundi(button.icon.get_width() / Icons.density(self)))
 	else:
 		# Colour and More draw their own picture over the word.
-		var drawn := Picture.new()
+		var drawn := RowPicture.new()
 		drawn.kind = what
 		drawn.phone = self
 		drawn.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -600,7 +600,7 @@ func state() -> Dictionary:
 
 ## A picture drawn over a row button's word, where there is no icon: the
 ## colour in hand, or More's three dots.
-class Picture extends Control:
+class RowPicture extends Control:
 	var kind: String = ""
 	var phone: PhoneShell
 

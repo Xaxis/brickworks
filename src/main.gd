@@ -835,6 +835,12 @@ func _page_moment() -> Array:
 		_shell.assemblies.entered if _shell != null else "", _builder.held_part]
 
 
+## The phone's layout (PhoneShell), for building: a shared model's viewer
+## has its own, made for a finger already.
+func _phone_wanted() -> bool:
+	return Phone.on() and _viewing.is_empty()
+
+
 ## The colours of the first few parts selected, for the page.
 func _selected_colours() -> Array:
 	var out: Array = []
@@ -4001,7 +4007,7 @@ func _build_ui() -> void:
 	_bin.library = _library
 	_bin.thumbnails = _thumbnails
 	# On a phone the bin is the parts sheet's, drawn in points (PhoneShell).
-	if Phone.on():
+	if _phone_wanted():
 		var per_point: float = Phone.per_point(get_viewport())
 		_bin.zoom = per_point * 1.12
 		_bin.least = per_point * Phone.TARGET
@@ -4036,7 +4042,7 @@ func _build_ui() -> void:
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).
 	_stack = PanelStack.new()
-	if Phone.on():
+	if _phone_wanted():
 		_phone = PhoneShell.new()
 		_phone.app = self
 		_phone.bin = _bin
@@ -4173,7 +4179,7 @@ func _build_ui() -> void:
 
 	# The editing verbs, for a screen with no keyboard to press: a phone's
 	# are its own row (PhoneShell).
-	if TouchTools.wanted() and not Phone.on():
+	if TouchTools.wanted() and not _phone_wanted():
 		_tools = TouchTools.new()
 		_tools.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 		_tools.anchor_top = 0.5
