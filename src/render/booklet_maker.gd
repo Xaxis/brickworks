@@ -1322,38 +1322,6 @@ static func close_tab() -> void:
 	""", true)
 
 
-## Put the booklet in the tab opened for it. False when there is none —
-## the browser blocked it — and the caller downloads the file instead.
-static func fill_tab(html: String) -> bool:
-	if not OS.has_feature("web"):
-		return false
-	var window: JavaScriptObject = JavaScriptBridge.get_interface("window")
-	if window == null:
-		return false
-	var tab: Variant = window.brickworksBooklet
-	if tab == null or not (tab is JavaScriptObject):
-		return false
-	var document: JavaScriptObject = (tab as JavaScriptObject).document
-	if document == null:
-		return false
-	document.open()
-	# The tab was opened from the app, so it is under the app's security
-	# policy, which runs no inline handler: Print did nothing in a browser
-	# (share_flow, 2026-10-12). The app gives the button its click instead;
-	# the file the desktop writes keeps its own.
-	document.write(html.replace(PRINT_INLINE, ""))
-	document.close()
-	JavaScriptBridge.eval("""
-		(() => {
-			const tab = window.brickworksBooklet;
-			const button = tab && tab.document.querySelector('.bar button');
-			if (button) button.addEventListener('click', () => tab.print());
-		})();
-	""", true)
-	window.brickworksBooklet = null
-	return true
-
-
 ## Put an Instructions button on the toolbar, after the button that says
 ## [param after]: the booklet where people are, not only behind B and a
 ## command-line switch. Found by its words rather than added in the
