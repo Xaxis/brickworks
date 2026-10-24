@@ -971,7 +971,11 @@ plan with Claude as the client.
   ?op=notifications_read {model}` (that group read) or `{all: true}` (Mark
   all read; also clears the count); a model not yours 404, not an id 400.
   `GET ?op=feed_count` adds `notifications`, `feed` and `me`; `count` is
-  the two together (the app's Account reads only `count`). Tables
+  the two together (the app's Account reads only `count`). The feed's count
+  is only what came after each follow (`feed_new_count`,
+  `supabase/follow_counts.sql`, applied 2026-10-24; the count of before
+  while it is missing): a new account that followed the house in First steps
+  had 7 on its avatar at once for the house's old models (walk180 W7). Tables
   `notification_marks` (seen_at, read_at; an account without a row has its
   feed's) and `notification_reads` (account, model, at), both cascading;
   functions `notification_rows` and `follow_rows` (the live `feed_rows`
@@ -2770,8 +2774,11 @@ fills the feed: ok". With `--url`, throwaway Ada (a listed castle, one
 build) is suggested at 390 and 1280; Bob signs in through the dialog,
 makes `bob-<rand>` on the live project, follows Ada from step 3 and his
 feed is her castle; Cy, signed in elsewhere, meets the age question and
-First steps on `/profile` and reaches the filled feed in 4 taps; every
-throwaway deleted. 34 checks on the stand-in and 16 on the live project
+First steps on `/profile` and reaches the filled feed in 4 taps, with
+nothing new on the avatar after the follow for Ada's castle, listed
+before it (`feed_count` 0 and 0; m163 said 1, walk180 W7), and 1 once Ada
+lists a tower after it; every throwaway deleted (18 checks, all ok,
+open222 through a relay, 2026-10-24). 34 checks on the stand-in and 16 on the live project
 through a relay, all ok, 2026-10-22. `design_flow --only=first-steps`
 judges each of the three steps at 390 and 1280, light and dark (with the
 feed, the house's page, the account and the age question: 104 checks, all

@@ -2849,6 +2849,27 @@
       "area": "model-io"
     },
     {
+      "kind": "cli",
+      "label": "library tab browser flow",
+      "entry": "tools/web/library_tab_flow.mjs",
+      "reach": "python3 tools/web/serve.py build/web 8921 --parts-url \"$PARTS_URL\", then node tools/web/library_tab_flow.mjs --url=http://127.0.0.1:8921/index.html --out=shots/library_tab   (with .env sourced; ?library= over unsaved work asks, and the hotel's open timed)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "open time probe",
+      "entry": "src/dev/open_time_probe.gd",
+      "reach": "tools/probe.sh open_time_probe   (a window on the GPU; a measure, in tools/suite/out.txt)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "open list time probe",
+      "entry": "src/dev/open_list_time_probe.gd",
+      "reach": "tools/probe.sh open_list_time_probe",
+      "area": "model-io"
+    },
+    {
       "kind": "ui",
       "label": "theme choice",
       "entry": "web/theme.js",

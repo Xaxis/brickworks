@@ -168,6 +168,10 @@ declare -A CMD=(
   # of its own, the first tab untouched; the library and the gallery played
   # from tests/fixtures/library by Playwright's route (src/ui/library_dialog.gd).
   [library]="tools/web/library_flow.mjs --url=$P/app --out=$S/${TAG}_library"
+  # A set's ?library= typed into a tab with work not saved asks first; and the
+  # Boutique Hotel (3,164 parts) from the deployment's store, timed from its
+  # tab's start to a first picture and fully open (walk180 A8).
+  [library_tab]="tools/web/library_tab_flow.mjs --url=$P/app $B --out=$S/${TAG}_library_tab"
   # My collection in a real browser: a throwaway account imports a parts
   # export, adds a set, reads what is short and ranks what it can build;
   # the account and its collection are deleted after (tools/web/collection_flow.mjs).

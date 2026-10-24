@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
 
 ## Sub-features
 
@@ -12,7 +12,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   edit made just before is kept (view's `quitting cleanly`, `quit_probe`). The Open list counts a model as the app does once it is open
   (`ModelStore.count_in`): each copy of a sub-model as its parts, a made part as
   one. It counted a sub-model's reference as a brick, "My House — 14 bricks" of
-  a house the app called 13; `store_probe` checks both against what opens. A design that fails must leave the model it was asked to change alone.
+  a house the app called 13; `store_probe` checks both against what opens.
+  Each saved model's row says when it was saved by this computer's clock, as
+  File › Versions… does ("today at 07:48:46", "21 Oct at 07:48:46";
+  `ModelVersions.when_saved`), in File › Open and Open recent alike: it said
+  the time in UTC, 15:48:46 for a save at 07:48 in Alaska (walk180 D4).
+  `open_list_time_probe` (in the suite) reads both menus' rows. A design that fails must leave the model it was asked to change alone.
   What the model stands on goes with it (`ModelFloor`, see [building](building.md)
   `floor`): `0 !BRICKWORKS FLOOR BASEPLATE 32 32 288`, `GRID` or `NONE` in the
   head of the model, in the autosave, saves, LDraw and Studio exports and the
@@ -249,7 +254,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   its picker only in the click), Collection › Open and Versions. The reload
   offer asks nothing (Reload is the answer to a question), the library and a
   shared link open in a new tab, and Claude's `open_model` is refused over
-  the person's changes unless `discard_changes=true`. Whichever, every open
+  the person's changes unless `discard_changes=true`. A set's `?library=`
+  typed into a tab with work not saved (its reload brings the work back)
+  asks too, and it was left there with only a line in the status bar (walk180
+  A8; `library tab browser flow`). Whichever, every open
   keeps what it takes off (`ModelStore.opened_over`, copies in the tab's own
   folder, the last 10): an open is the oldest step of the history, so Edit ›
   Undo past every change since, History's last row, or a session's `undo`
@@ -344,6 +352,44 @@ Whether what you built is still there tomorrow, and still means the same thing.
   covers and models it fetched under `user://library/`; a dev checkout falls
   back to `vendor/omr/files`. Over MCP: `gallery library=true` searches the
   sets, `open_model library=<id>` opens one in the session's tab.
+  The set's file is fetched with the index, not after it
+  (`ModelLibrary.fetch_model`: an id's file is known from the id). A big
+  set opens as any big model does (`ModelStore._open_into` with a job), on
+  the screen once its parts are (walk180 A8: the hotel, 10297-1's 3,164
+  parts, took 60-90 s in a browser drawing in software): the geometry the
+  build has not got is asked for as the file is read, sixteen at once and the
+  parts the file's own copies are of first (`ModelStore.ask_geometry`,
+  `PartLibrary.want`), and waited for while nothing of it is drawn and the
+  frames are quick (`_await_geometry`, 20 s at most, 4 s with nothing
+  coming); its parts are laid with the drawing held, then drawn and the view
+  framed on it (`ModelStore.shown`) before the lattice is told of them, in
+  slices of a quarter second, still being laid (`BrickWorld.is_being_laid`:
+  the weight, Grab and the pointer's part wait). Before, its parts were asked
+  for once it was drawn, two a second, a frame of the whole model each.
+- `library tab browser flow`: `tools/web/library_tab_flow.mjs`, wired into
+  `preview_checks.sh` as `library_tab`. Needs the deployment's store (a local
+  export served with `serve.py --parts-url "$PARTS_URL"`). 1: the car with a
+  part taken off, then `?library=omr-106-1` typed into the same tab: it asks
+  ("Save changes to “Car”?"), Cancel keeps the car ("kept “Car” — nothing
+  opened"), typed again Don't save opens the set (65 parts), Undo brings the
+  car back; `asked.png`, `set.png`. 2: `?new=1&library=omr-10297-1`, the
+  hotel, pictured every second: first picture (90% of the pixels the model
+  changes as they end) and fully open (all down, none on its way, the bar
+  idle, the picture still), from the page's start and the open's; its phases,
+  the status bar's lines and when the parts' geometry came; `first.png`,
+  `open.png`, `timeline.json`, `parts.txt` (the autosave's part lines, for
+  cmp between builds). `--no-unsaved`, `--no-big`; `--first-s`, `--open-s`
+  hold times. Timed against another build with `tools/release/timing_ab.sh`
+  (AB_SERVE="--parts-url $PARTS_URL"). On a local export at load 21-31
+  (open222, 2026-10-24): first picture 10.3-13.5 s from the open's start and
+  fully open 13.5-14.4 s, where m163 took 9.3-31.2 s to a first picture with
+  170-316 parts still to come and 58-63 s to open; the same 3,611 part lines.
+- `open time probe`: `tools/probe.sh open_time_probe` (a window, on the GPU),
+  a measure in `out.txt`: the hotel opened as the library opens it, every
+  frame's primitives read; first picture, the open's end, weighed, fully
+  open, from the open's start. Copied into another checkout it times that
+  build. 1.8 s to the first picture and 3.4 s to fully open, m163 and
+  open222 alike (2026-10-24): the desktop reads its parts from disk.
 - `library probe`: `tools/probe.sh library_probe` (a window, 1400 x 900). Starts
   `tools/web/serve.py tests/fixtures/library 8901 --library
   tests/fixtures/library` (eight sets, three gallery models, one all rights
