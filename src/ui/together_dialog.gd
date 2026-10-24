@@ -21,6 +21,14 @@ var _copy: Button
 var _rows: VBoxContainer
 var _end: Button
 var _removes: Array[Button] = []
+var _chat_box: VBoxContainer
+var _chat_lines: Label
+var _chat_row: HBoxContainer
+var _chat_field: LineEdit
+var _chat_send: Button
+var _chat_note: Label
+## The chat lines shown, the newest last.
+const CHAT_SHOWN := 8
 var _busy: bool = false
 
 const WIDTH := 440
@@ -74,6 +82,32 @@ func _ready() -> void:
 	_rows = VBoxContainer.new()
 	_rows.add_theme_constant_override("separation", 4)
 	column.add_child(_rows)
+	# A short chat, under who is here.
+	_chat_box = VBoxContainer.new()
+	_chat_box.add_theme_constant_override("separation", 6)
+	_chat_lines = Label.new()
+	_chat_lines.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_chat_lines.custom_minimum_size = Vector2(WIDTH, 0)
+	_chat_box.add_child(_chat_lines)
+	_chat_row = HBoxContainer.new()
+	_chat_row.add_theme_constant_override("separation", 8)
+	_chat_field = LineEdit.new()
+	_chat_field.placeholder_text = "Say something to the others"
+	_chat_field.max_length = 280
+	_chat_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_chat_field.text_submitted.connect(func(_text: String) -> void: _on_chat())
+	_chat_row.add_child(_chat_field)
+	_chat_send = Button.new()
+	_chat_send.text = "Send"
+	_chat_send.focus_mode = Control.FOCUS_NONE
+	_chat_send.pressed.connect(_on_chat)
+	_chat_row.add_child(_chat_send)
+	_chat_box.add_child(_chat_row)
+	_chat_note = Label.new()
+	_chat_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_chat_note.custom_minimum_size = Vector2(WIDTH, 0)
+	_chat_box.add_child(_chat_note)
+	column.add_child(_chat_box)
 	_end = Button.new()
 	_end.focus_mode = Control.FOCUS_NONE
 	_end.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -100,6 +134,7 @@ func fill() -> void:
 	_join_row.visible = not live
 	_link_row.visible = live
 	_end.visible = live
+	_chat_box.visible = live
 	_start.disabled = _busy
 	_join.disabled = _busy
 	if not live:
@@ -145,6 +180,31 @@ func fill() -> void:
 			row.add_child(take_out)
 			_removes.append(take_out)
 		_rows.add_child(row)
+	_fill_chat()
+
+
+## The last lines of the chat, and the field to say one; or why not.
+func _fill_chat() -> void:
+	var lines := PackedStringArray()
+	var shown: Array = together.messages.slice(maxi(0, together.messages.size() - CHAT_SHOWN))
+	for line: Variant in shown:
+		lines.append("%s: %s" % [(line as Dictionary).get("name", ""), (line as Dictionary).get("text", "")])
+	_chat_lines.text = "\n".join(lines)
+	_chat_lines.visible = not lines.is_empty()
+	var allowed: bool = together.chat_words.is_empty()
+	_chat_row.visible = allowed
+	_chat_note.visible = not allowed
+	_chat_note.text = together.chat_words
+
+
+func _on_chat() -> void:
+	if _chat_field.text.strip_edges().is_empty():
+		return
+	var trouble: String = together.chat(_chat_field.text)
+	if trouble.is_empty():
+		_chat_field.text = ""
+	else:
+		together.said.emit(trouble)
 
 
 func _on_start() -> void:
@@ -196,6 +256,9 @@ func controls_by_name() -> Dictionary:
 	if _link_row.is_visible_in_tree():
 		out["together_copy"] = _copy
 		out["together_end"] = _end
+	if _chat_row.is_visible_in_tree():
+		out["together_chat_field"] = _chat_field
+		out["together_chat_send"] = _chat_send
 	for n: int in _removes.size():
 		out["together_remove_%d" % (n + 1)] = _removes[n]
 	return out

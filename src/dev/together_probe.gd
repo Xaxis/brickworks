@@ -91,6 +91,8 @@ func _side(email: String) -> Dictionary:
 	together.store = store
 	together.account = account
 	together.base_url = _api
+	# Two copies in one process share a tab: neither keeps its place in it.
+	together.keeps_place = false
 	if not OS.get_environment("BW_BYPASS").is_empty():
 		together.extra_headers = PackedStringArray(["x-vercel-protection-bypass: " + OS.get_environment("BW_BYPASS")])
 	together.said.connect(func(words: String) -> void: print("        [%s] %s" % [email.get_slice("+", 1).get_slice("@", 0), words]))
@@ -128,10 +130,18 @@ func _signed_in(email: String) -> Account:
 	account._key = key
 	account._keep(body as Dictionary)
 	account.state = Account.State.SIGNED_IN
+	# 13 or over, as a flow's accounts answer (tools/web/session.mjs), so it
+	# may chat.
+	await SignInHelper.admin(root, HTTPClient.METHOD_POST, "/rest/v1/rpc/answer_age",
+		JSON.stringify({"account": account.user_id, "at_least_13": true}))
 	return account
 
 
 func _settle(sides: Array, ms: int = 15000) -> bool:
+	# Long enough for the model's own state to be read for a change.
+	var read_by: int = Time.get_ticks_msec() + Together.META_MS * 2
+	while Time.get_ticks_msec() < read_by:
+		await process_frame
 	var until: int = Time.get_ticks_msec() + ms
 	while Time.get_ticks_msec() < until:
 		await process_frame
@@ -159,19 +169,19 @@ func _random_edit(together: Together, own: Array) -> Dictionary:
 			"colour": [1, 2, 4, 14, 15][_rng.randi() % 5],
 			"x": 400 + 80 * _rng.randi_range(0, 20), "y": 24 * _rng.randi_range(2, 8),
 			"z": 400 + 80 * _rng.randi_range(0, 20)}
-		var got: Dictionary = together.check_edit(edit)
+		var got: Dictionary = await together.check_edit(edit)
 		if bool(got.get("ok", false)):
 			own.append(str(got["uid"]))
 		return got
 	var uid: String = uids[_rng.randi() % uids.size()]
 	if roll < 0.6:
-		return together.check_edit({"op": "move", "uid": uid,
+		return await together.check_edit({"op": "move", "uid": uid,
 			"by": [_rng.randi_range(-3, 3) * 10, _rng.randi_range(0, 2) * 12, _rng.randi_range(-3, 3) * 10]})
 	if roll < 0.8:
-		return together.check_edit({"op": "paint", "uid": uid, "colour": [1, 2, 4, 14, 15, 0][_rng.randi() % 6]})
+		return await together.check_edit({"op": "paint", "uid": uid, "colour": [1, 2, 4, 14, 15, 0][_rng.randi() % 6]})
 	if roll < 0.9:
-		return together.check_edit({"op": "delete", "uid": uid})
-	return together.check_edit({"op": "undo"})
+		return await together.check_edit({"op": "delete", "uid": uid})
+	return await together.check_edit({"op": "undo"})
 
 
 func _pair() -> void:
@@ -201,9 +211,9 @@ func _pair() -> void:
 	var mine_b: Array = []
 	var made: int = 0
 	for n: int in 30:
-		if bool(_random_edit(ta, mine_a).get("ok", false)):
+		if bool((await _random_edit(ta, mine_a)).get("ok", false)):
 			made += 1
-		if bool(_random_edit(tb, mine_b).get("ok", false)):
+		if bool((await _random_edit(tb, mine_b)).get("ok", false)):
 			made += 1
 		for k: int in _rng.randi_range(0, 3):
 			await process_frame
@@ -214,11 +224,11 @@ func _pair() -> void:
 
 	print("3. the same part moved by both at once")
 	# A part of the owner's, out where nothing is in its way, on both.
-	var fresh: Dictionary = ta.check_edit({"op": "place", "part": "3001", "colour": 1, "x": -1600, "y": 96, "z": -1600})
+	var fresh: Dictionary = await ta.check_edit({"op": "place", "part": "3001", "colour": 1, "x": -1600, "y": 96, "z": -1600})
 	await _settle([a, b])
 	var both: String = str(fresh.get("uid", ""))
-	var got_a: Dictionary = ta.check_edit({"op": "move", "uid": both, "by": [10, 0, 0]})
-	var got_b: Dictionary = tb.check_edit({"op": "move", "uid": both, "by": [0, 0, 30]})
+	var got_a: Dictionary = await ta.check_edit({"op": "move", "uid": both, "by": [10, 0, 0]})
+	var got_b: Dictionary = await tb.check_edit({"op": "move", "uid": both, "by": [0, 0, 30]})
 	await _settle([a, b])
 	var at_a: Transform3D = (a["world"] as BrickWorld).get_brick(ta.brick_of(both)).transform
 	var at_b: Transform3D = (b["world"] as BrickWorld).get_brick(tb.brick_of(both)).transform
@@ -226,11 +236,11 @@ func _pair() -> void:
 		and ta.model_hash() == tb.model_hash(), "%s, %s, %s" % [str(at_a.origin), str(got_a), str(got_b)])
 
 	print("4. each undo is its own")
-	var placed: Dictionary = ta.check_edit({"op": "place", "part": "3001", "colour": 4, "x": -800, "y": 0, "z": -800})
+	var placed: Dictionary = await ta.check_edit({"op": "place", "part": "3001", "colour": 4, "x": -800, "y": 0, "z": -800})
 	await _settle([a, b])
-	var painted: Dictionary = tb.check_edit({"op": "paint", "uid": both, "colour": 14})
+	var painted: Dictionary = await tb.check_edit({"op": "paint", "uid": both, "colour": 14})
 	await _settle([a, b])
-	var undone: Dictionary = ta.check_edit({"op": "undo"})
+	var undone: Dictionary = await ta.check_edit({"op": "undo"})
 	await _settle([a, b])
 	_check("the owner's undo takes back the owner's part: %s" % str(undone.get("words", "")),
 		bool(undone["ok"]) and tb.brick_of(str(placed["uid"])) == 0 and ta.brick_of(str(placed["uid"])) == 0)
@@ -239,14 +249,35 @@ func _pair() -> void:
 		and (a["world"] as BrickWorld).get_brick(ta.brick_of(both)).color_code == 14)
 	# The joiner's undo of its paint, after the owner moved that part since:
 	# the paint is undone only where the part is still as the paint left it.
-	var moved: Dictionary = ta.check_edit({"op": "move", "uid": both, "by": [0, 12, 0]})
+	var moved: Dictionary = await ta.check_edit({"op": "move", "uid": both, "by": [0, 12, 0]})
 	await _settle([a, b])
-	var left: Dictionary = tb.check_edit({"op": "undo"})
+	var left: Dictionary = await tb.check_edit({"op": "undo"})
 	await _settle([a, b])
 	_check("an undo leaves a part the other changed since: %s" % str(left.get("words", "")),
 		bool(moved["ok"]) and str(left.get("words", "")).contains("left 1 part")
 		and (a["world"] as BrickWorld).get_brick(ta.brick_of(both)).color_code == 14)
 	_check("the same file on both after it all", ta.model_hash() == tb.model_hash())
+
+	print("4b. the model's own state, each kind from either side")
+	var sa: ModelStore = a["store"]
+	var sb: ModelStore = b["store"]
+	await ta.check_edit({"op": "title", "title": "Together house, renamed"})
+	await _settle([a, b])
+	_check("a name typed on one side is the other's: %s" % sb.title, sb.title == "Together house, renamed")
+	sb.model_floor = ModelFloor.parse(ModelFloor.make(ModelFloor.BASEPLATE, 48, 48, 2).whole_words())
+	await _settle([a, b], 15000)
+	_check("a floor chosen on the other side is the owner's: %s" % sa.model_floor.whole_words(),
+		sa.model_floor.whole_words() == sb.model_floor.whole_words())
+	(b["world"] as BrickWorld).step_looks = {BookletLooks.key("", 2): {"zoom": 1.5}}
+	sa.hidden_scheme = {"mode": "stages", "stages": 2}
+	await _settle([a, b], 15000)
+	_check("the booklet's looks and the hidden colours, each from one side, are both sides'",
+		(a["world"] as BrickWorld).step_looks == {BookletLooks.key("", 2): {"zoom": 1.5}} and sb.hidden_scheme == {"mode": "stages", "stages": 2})
+	_check("the same file on both, byte for byte", ta.model_hash() == tb.model_hash())
+	var said: Dictionary = await ta.check_edit({"op": "chat", "text": "Roof next?"})
+	await _settle([a, b])
+	var heard: Array = tb.messages.map(func(m: Dictionary) -> String: return "%s: %s" % [m["name"], m["text"]])
+	_check("a chat line reaches the other: %s" % str(heard), bool(said["ok"]) and heard.has("The owner: Roof next?"))
 
 	print("5. the owner ends it")
 	await ta.end()
@@ -279,7 +310,7 @@ func _join_alone() -> void:
 	while together.live and Time.get_ticks_msec() < until:
 		await process_frame
 		if made < edits and Time.get_ticks_msec() > next_edit:
-			if bool(_random_edit(together, own).get("ok", false)):
+			if bool((await _random_edit(together, own)).get("ok", false)):
 				made += 1
 			next_edit = Time.get_ticks_msec() + 700
 		if not out.is_empty() and Time.get_ticks_msec() - written > 500:

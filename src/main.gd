@@ -64,6 +64,8 @@ var _together: Together
 var _together_dialog: TogetherDialog
 ## A Build together link's secret from the page's address (?together=).
 var _together_wanted: String = ""
+## Whether the session this tab was in before a reload has been gone back to.
+var _together_tried: bool = false
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
@@ -4359,6 +4361,15 @@ func _build_ui() -> void:
 	_together.bar = _bar
 	_together.base_url = Deployment.api_base()
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
+	# A check's change made as Claude makes one: the same tools, answered here.
+	_together.run_tool = func(name: String, arguments: Dictionary) -> String:
+		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,
+			"method": "tools/call", "params": {"name": name, "arguments": arguments}})
+		var said := PackedStringArray()
+		for block: Variant in ((got as Dictionary).get("result", {}) as Dictionary).get("content", []):
+			if (block as Dictionary).get("type", "") == "text":
+				said.append(str((block as Dictionary).get("text", "")))
+		return "\n".join(said)
 	add_child(_together)
 	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
 	# as the chats in it change, and twice a minute for their "2 min ago".
@@ -5864,13 +5875,18 @@ func open_together() -> void:
 ## A Build together link opened: joined once whatever was here is back and
 ## somebody is signed in (_on_account_changed asks again then).
 func _maybe_join_together() -> void:
-	if _together_wanted.is_empty() or not _first_open_done or _account == null \
-			or not _account.signed_in():
+	if not _first_open_done or _account == null or not _account.signed_in() or _together.live:
 		return
-	var secret: String = _together_wanted
+	# The session this tab was in before a reload or a restart, gone back
+	# into by itself: its model is the session's, so nothing is asked.
+	var kept: String = Together.kept_secret() if not _together_tried else ""
+	_together_tried = true
+	if _together_wanted.is_empty() and kept.is_empty():
+		return
+	var secret: String = _together_wanted if not _together_wanted.is_empty() else kept
 	_together_wanted = ""
 	_set_address("")
-	var trouble: String = await _together.join(secret)
+	var trouble: String = await _together.join(secret, secret == kept)
 	if not trouble.is_empty():
 		_bar.say(trouble)
 		return

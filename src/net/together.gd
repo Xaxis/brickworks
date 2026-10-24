@@ -94,6 +94,45 @@ var _sending: bool = false
 var _mine_at: Dictionary = {}
 const OVERTAKEN_MS := 1500
 
+## What the model is besides its parts, carried the same way, each by a key
+## of its own with its words as the file has them (_meta_now): its name, the
+## floor, the colours of hidden parts, motions, the booklet's looks, the
+## steps of sub-assembly copies, and sections broken out. And "~part:<id>":
+## the LDraw files of a part made in the app, sent once with the first part
+## of it put down, so the other side can draw it.
+const META_KEYS: Array[String] = ["~title", "~floor", "~hidden", "~motions", "~looks",
+	"~unit_steps", "~broken"]
+const MADE_PART := "~part:"
+## How often the model's own state is read for a change of it.
+const META_MS := 250
+var _meta_at: int = 0
+var _parts_sent: Dictionary = {}
+
+## The highest cid put down of each copy: a send taken twice (its answer lost
+## on the way back, sent again) is put down once, the same everywhere.
+var _last_cid: Dictionary = {}
+
+## The chat, oldest first: [{who, name, text, mine}]. Why this person may not
+## chat, in words, or "" (api/together.js: comments' rule, and an account
+## under 13 is not shown it).
+var messages: Array = []
+var chat_words: String = ""
+const MESSAGES_KEPT := 200
+
+## Where each other person is working, drawn in the view: who -> a marker.
+var _markers: Dictionary = {}
+var _point_at: int = 0
+var _pointed: Variant = null
+var _pointing: bool = false
+const POINT_MS := 250
+const MARKER_COLOURS: Array[Color] = [Color("#e8590c"), Color("#1c7ed6"), Color("#2f9e44"),
+	Color("#ae3ec9"), Color("#f08c00"), Color("#0c8599")]
+
+## Whether this copy keeps the session it is in with the tab
+## (TabSession.path), so a reload or a restart goes back into it by itself.
+var keeps_place: bool = true
+const KEPT_FILE := "together.txt"
+
 ## A step left open this long with nothing more to it is closed: a change
 ## that kept no history step of the builder's (a pose, a tool's).
 const STEP_IDLE_MS := 1500
@@ -114,6 +153,7 @@ func _process(_delta: float) -> void:
 	if not _open_back.is_empty() and Time.get_ticks_msec() - _open_at > STEP_IDLE_MS:
 		_close_step()
 	_flush()
+	_point()
 
 
 # -- starting, joining, ending ---------------------------------------------
@@ -144,8 +184,12 @@ func start() -> String:
 		_shown[uid] = state
 		_confirmed[uid] = state
 		bricks.append([uid] + state)
+	var meta: Dictionary = _meta_now()
+	for key: String in meta:
+		_shown[key] = meta[key]
+		_confirmed[key] = meta[key]
 	var snapshot: Dictionary = {"text": store.to_text(store.title), "lift": store.lift().y,
-		"bricks": bricks}
+		"bricks": bricks, "meta": meta}
 	var got: Array = await _ask("start", {"title": store.title, "snapshot": snapshot})
 	if int(got[0]) != 200:
 		_reset()
@@ -153,6 +197,7 @@ func start() -> String:
 	var body: Dictionary = got[1]
 	_token = str(body.get("s", ""))
 	link = str(body.get("link", ""))
+	_keep_place()
 	# Steps from before the session undo nothing in it: they would put back
 	# parts somebody else may have changed since.
 	builder.forget_history()
@@ -165,9 +210,11 @@ func start() -> String:
 
 
 ## Join by a link, or its secret alone. The model here is replaced by the
-## session's (asked first when it has changes not saved). "" when joined, or
-## why not.
-func join(address: String) -> String:
+## session's (asked first when it has changes not saved, but not when
+## [param rejoining]: this tab was in that session before a reload or a
+## restart, and what is on its baseplate is the session's). "" when joined,
+## or why not.
+func join(address: String, rejoining: bool = false) -> String:
 	var token: String = secret_in(address)
 	if token.is_empty():
 		return "That is not a Build together link."
@@ -179,13 +226,17 @@ func join(address: String) -> String:
 		return "Sign in to build together."
 	var got: Array = await _ask("join", {"s": token})
 	if int(got[0]) != 200:
+		# Ended, or this account taken out: not gone back into after a reload.
+		if int(got[0]) in [403, 404, 410] and secret_in(kept_secret()) == token:
+			_forget_place()
 		return _trouble(got, "Could not join")
 	var body: Dictionary = got[1]
 	var snapshot: Variant = body.get("snapshot")
 	if not snapshot is Dictionary:
 		return "The session sent no model."
 	var title: String = str(body.get("title", "Model"))
-	if bar != null and not await bar.ask_to_replace("“%s” to build together" % title):
+	if bar != null and not rejoining \
+			and not await bar.ask_to_replace("“%s” to build together" % title):
 		return "Not joined: the model here is kept."
 	var text: String = str((snapshot as Dictionary).get("text", ""))
 	if bar != null:
@@ -214,6 +265,8 @@ func join(address: String) -> String:
 	builder.forget_history()
 	people = body.get("people", []) as Array
 	_seen = str(body.get("seen", ""))
+	chat_words = str(body.get("chat", ""))
+	_keep_place()
 	live = true
 	_heard = _model_now()
 	ended_words = ""
@@ -262,6 +315,8 @@ func _stop(words: String, tell_server: bool = false) -> void:
 	var token: String = _token
 	var was_owner: bool = owns
 	live = false
+	_forget_place()
+	_show_pointers()
 	ended_words = words
 	_polling += 1
 	# Steps from the session undo nothing after it: other people's parts.
@@ -295,6 +350,11 @@ func _reset() -> void:
 	_seen = ""
 	_polling += 1
 	_mine_at.clear()
+	_parts_sent.clear()
+	_last_cid.clear()
+	messages.clear()
+	chat_words = ""
+	_pointed = null
 	round_trips.clear()
 
 
@@ -404,6 +464,15 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 			world.remove_brick(brick_id)
 	if store._opened_in == world.generation():
 		store._lifted_by = lift_there
+	# The model's own state as the owner had it, exactly.
+	var meta: Dictionary = snapshot.get("meta", {}) as Dictionary
+	for key: String in meta:
+		if key in META_KEYS:
+			_put_meta(key, str(meta[key]))
+			_confirmed[key] = str(meta[key])
+	var now: Dictionary = _meta_now()
+	for key: String in now:
+		_shown[key] = now[key]
 
 
 # -- changes made here --------------------------------------------------------
@@ -418,6 +487,14 @@ func _capture() -> void:
 	var now: Array = _model_now()
 	if not _heard.is_empty() and now[0] == _heard[0] and now[1] == _heard[1] \
 			and is_same(now[2], _heard[2]):
+		# Nothing of the parts: the model's own state, now and then (a name
+		# typed changes no part).
+		if Time.get_ticks_msec() - _meta_at > META_MS:
+			var meta_only: Dictionary = _diff({})
+			if not meta_only.is_empty():
+				_note_step(meta_only)
+				_queue(meta_only)
+				_close_step()
 		return
 	var stepped: bool = _heard.is_empty() or now[1] != _heard[1] or not is_same(now[2], _heard[2])
 	# A step of the builder's can change what the world keeps no event for
@@ -465,6 +542,8 @@ func _diff(touched: Variant) -> Dictionary:
 			ids.append(brick.id)
 		# Parts gone, the whole way round.
 		for uid: String in _shown.keys():
+			if uid.begins_with("~"):
+				continue
 			var brick_id: int = int(_ids.get(uid, 0))
 			if brick_id == 0 or world.get_brick(brick_id) == null:
 				if not _awaiting.has(uid):
@@ -491,6 +570,24 @@ func _diff(touched: Variant) -> Dictionary:
 			_unmap(uid)
 		else:
 			_shown[uid] = changes[uid]
+	# A part made in the app goes with its first part put down: its files.
+	var made: Array = []
+	for uid: String in changes:
+		if changes[uid] is Array:
+			var part: String = str((changes[uid] as Array)[0])
+			if not _parts_sent.has(part) and not builder.library.custom_source(part).is_empty():
+				_parts_sent[part] = true
+				made.append(part)
+	for part: String in made:
+		changes[MADE_PART + part] = var_to_str(CustomParts.sources_for(builder.library, [part]))
+	# And what the model is besides its parts, when it may have changed.
+	if touched == null or Time.get_ticks_msec() - _meta_at > META_MS:
+		_meta_at = Time.get_ticks_msec()
+		var meta: Dictionary = _meta_now()
+		for key: String in meta:
+			if _shown.get(key) != meta[key]:
+				changes[key] = meta[key]
+				_shown[key] = meta[key]
 	return changes
 
 
@@ -498,6 +595,8 @@ func _diff(touched: Variant) -> Dictionary:
 ## part was before the step, and what the step left it.
 func _note_step(changes: Dictionary) -> void:
 	for uid: String in changes:
+		if uid.begins_with(MADE_PART):
+			continue
 		if not _open_back.has(uid):
 			_open_back[uid] = _was(uid)
 		_open_forward[uid] = changes[uid]
@@ -533,10 +632,16 @@ func _flush() -> void:
 	if _sending or _in_flight >= _pending.size():
 		return
 	_sending = true
+	# A chat line goes alone, so a line refused takes nothing else with it.
 	var going: Array = []
 	for n: int in range(_in_flight, mini(_pending.size(), _in_flight + 200)):
 		var op: Dictionary = _pending[n]
+		var talk: bool = (op["changes"] as Dictionary).has("~chat")
+		if talk and not going.is_empty():
+			break
 		going.append({"cid": op["cid"], "changes": op["changes"]})
+		if talk:
+			break
 	_in_flight += going.size()
 	var token: String = _token
 	var got: Array = await _ask("send", {"s": token, "client": _client, "ops": going})
@@ -547,6 +652,17 @@ func _flush() -> void:
 	if code == 410 or code == 403 or code == 404:
 		_sending = false
 		_stop(_refused_words(code, got))
+		return
+	if code == 422 and going.size() == 1 and (going[0]["changes"] as Dictionary).has("~chat"):
+		# A chat line refused (under 13, words a stranger may not be shown):
+		# said, and not sent again.
+		_pending.remove_at(_in_flight - 1)
+		_in_flight -= 1
+		_sending = false
+		var why: String = _refused_words(code, got)
+		chat_words = why if why.contains("13") else chat_words
+		said.emit(why)
+		changed.emit()
 		return
 	if code != 200:
 		# Not taken: sent again, from the first not numbered, in a moment.
@@ -581,10 +697,18 @@ func _poll_loop() -> void:
 					if not owns else "The session has ended.")
 				return
 			_seen = str(body.get("seen", _seen))
+			if body.has("chat") and str(body["chat"]) != chat_words:
+				chat_words = str(body["chat"])
+				changed.emit()
 			var now: Array = body.get("people", people) as Array
 			if now != people:
+				# A pointer moving is the view's; the panel redraws only for who
+				# is in it, and whether each is here.
+				var before: String = _people_words(people)
 				people = now
-				changed.emit()
+				_show_pointers()
+				if _people_words(people) != before:
+					changed.emit()
 			_take(body.get("ops", []) as Array)
 			continue
 		if code == 410 or code == 403 or code == 404:
@@ -607,7 +731,19 @@ func _take(ops: Array) -> void:
 			continue
 		seq = number
 		var changes: Dictionary = op.get("changes", {}) as Dictionary
-		if str(op.get("client", "")) == _client:
+		# A send taken twice: its second time is nothing, on every side.
+		var from: String = str(op.get("client", ""))
+		var cid_now: int = int(op.get("cid", -1))
+		if cid_now <= int(_last_cid.get(from, -1)):
+			continue
+		_last_cid[from] = cid_now
+		if changes.has("~chat"):
+			_heard_chat(op, from == _client)
+		# A part made in the app, before any part of it is put down.
+		for key: String in changes:
+			if key.begins_with(MADE_PART):
+				_add_made(str(changes[key]))
+		if from == _client:
 			var cid: int = int(op.get("cid", -1))
 			while not _pending.is_empty() and int((_pending[0] as Dictionary)["cid"]) <= cid:
 				var done: Dictionary = _pending.pop_front()
@@ -617,10 +753,14 @@ func _take(ops: Array) -> void:
 					if round_trips.size() > TIMES_KEPT:
 						round_trips.pop_front()
 			for uid: String in changes:
+				if uid == "~chat" or uid.begins_with(MADE_PART):
+					continue
 				_confirm(uid, changes[uid])
 				_mine_at[uid] = Time.get_ticks_msec()
 			continue
 		for uid: String in changes:
+			if uid == "~chat" or uid.begins_with(MADE_PART):
+				continue
 			_confirm(uid, changes[uid])
 			shown_again[uid] = true
 			# Mine came back a moment ago and theirs was numbered after it:
@@ -629,13 +769,26 @@ func _take(ops: Array) -> void:
 				_mine_at.erase(uid)
 				said.emit("%s changed a part you had just changed; theirs came after yours, so it stands."
 					% _name_of(str(op.get("who", ""))))
+	var later: Array = []
 	for uid: String in shown_again:
 		if _mine_on_the_way(uid):
 			continue
+		if uid.begins_with("~"):
+			later.append(uid)
+			continue
+		_put(uid, _confirmed.get(uid))
+	# The model's own state after its parts: a floor is laid round them.
+	for uid: String in later:
 		_put(uid, _confirmed.get(uid))
 	if not shown_again.is_empty():
 		_heard = _model_now()
 		builder._living_selection()
+
+
+static func _people_words(list: Array) -> String:
+	return JSON.stringify(list.map(func(one: Variant) -> Array:
+		var person: Dictionary = one
+		return [person.get("who"), person.get("name"), person.get("here"), person.get("owner")]))
 
 
 func _name_of(who: String) -> String:
@@ -646,6 +799,9 @@ func _name_of(who: String) -> String:
 
 
 func _confirm(uid: String, given: Variant) -> void:
+	if uid.begins_with("~"):
+		_confirmed[uid] = str(given) if given != null else ""
+		return
 	var state: Variant = _as_state(given)
 	if state == null:
 		_confirmed.erase(uid)
@@ -663,6 +819,9 @@ func _mine_on_the_way(uid: String) -> bool:
 ## Set [param uid] in the world to [param state] (null: taken off), past the
 ## builder's history: another side's change is not this side's to undo.
 func _put(uid: String, state: Variant) -> void:
+	if uid.begins_with("~"):
+		_put_meta(uid, str(state) if state != null else "")
+		return
 	var brick_id: int = int(_ids.get(uid, 0))
 	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
 	if state == null:
@@ -682,7 +841,13 @@ func _put(uid: String, state: Variant) -> void:
 		_unmap(uid)
 		brick = null
 	if brick == null:
-		brick_id = world.add_brick(str(s[0]), int(s[1]), at)
+		brick_id = _scenery_at(str(s[0]), int(s[1]), at)
+		if brick_id != 0:
+			# The floor's own plate made part of the model on the other side:
+			# the same plate here, not a second one on it.
+			store.scenery.erase(brick_id)
+		else:
+			brick_id = world.add_brick(str(s[0]), int(s[1]), at)
 		if brick_id == 0:
 			# Its geometry is on its way: put down when it comes.
 			_awaiting[uid] = s
@@ -697,7 +862,8 @@ func _put(uid: String, state: Variant) -> void:
 		brick.group = str(s[3])
 		brick.unit = str(s[4])
 		brick.step = int(s[5])
-		builder.register(brick_id, brick.part_id, brick.transform)
+		if builder.lattice.boxes_of(brick_id).is_empty():
+			builder.register(brick_id, brick.part_id, brick.transform)
 		_map(uid, brick_id)
 	else:
 		if brick.transform != at:
@@ -720,6 +886,253 @@ func _on_fetched(part_id: String) -> void:
 		if str(s[0]) == part_id:
 			_put(uid, s)
 	_heard = _model_now()
+
+
+# -- the model's own state, besides its parts ----------------------------------
+
+## What the model is besides its parts, as words: each as the file has it, or
+## as Godot writes the value (var_to_str), the same on every side.
+func _meta_now() -> Dictionary:
+	return {
+		"~title": store.title,
+		"~floor": store.model_floor.whole_words() if store.model_floor != null else "",
+		"~hidden": var_to_str(store.hidden_scheme),
+		"~motions": "\n".join(store._motion_lines()) if world.motions != null else "",
+		"~looks": var_to_str(world.step_looks),
+		"~unit_steps": var_to_str(world.unit_steps),
+		"~broken": _broken_words(),
+	}
+
+
+## Set the model's own state [param key] to [param words], past the history.
+func _put_meta(key: String, words: String) -> void:
+	match key:
+		"~title":
+			if words.is_empty() or words == store.title:
+				pass
+			else:
+				store.title = words
+				if bar != null:
+					bar._name.text = words
+					bar.model_named.emit(words)
+		"~floor":
+			if builder.floor_hook.is_valid():
+				builder.floor_hook.call(words)
+			else:
+				var chosen: ModelFloor = ModelFloor.parse(words)
+				if chosen != null:
+					store.model_floor = chosen
+		"~hidden":
+			var scheme: Variant = str_to_var(words)
+			store.hidden_scheme = scheme if scheme is Dictionary else {}
+		"~motions":
+			world.motions = Motions.read(words) if not words.is_empty() else null
+		"~looks":
+			var looks: Variant = str_to_var(words)
+			world.step_looks = looks if looks is Dictionary else {}
+		"~unit_steps":
+			var steps: Variant = str_to_var(words)
+			world.unit_steps = steps if steps is Dictionary else {}
+		"~broken":
+			_broken_from(words)
+	store.touch()
+	_shown[key] = _meta_now()[key]
+
+
+## Sections broken out, their parts named by uid rather than this side's
+## numbers.
+func _broken_words() -> String:
+	var out: Dictionary = {}
+	for section: String in world.broken_out:
+		var record: Dictionary = (world.broken_out[section] as Dictionary).duplicate(true)
+		var home: Dictionary = {}
+		for brick_id: Variant in record.get("home", {}):
+			home[str(_uids.get(int(brick_id), ""))] = record["home"][brick_id]
+		record["home"] = home
+		out[section] = record
+	return var_to_str(out)
+
+
+func _broken_from(words: String) -> void:
+	var given: Variant = str_to_var(words)
+	world.broken_out.clear()
+	if not given is Dictionary:
+		return
+	for section: String in given:
+		var record: Dictionary = (given[section] as Dictionary).duplicate(true)
+		var home: Dictionary = {}
+		for uid: Variant in record.get("home", {}):
+			if _ids.has(str(uid)):
+				home[int(_ids[str(uid)])] = record["home"][uid]
+		record["home"] = home
+		world.broken_out[section] = record
+
+
+## A part made in the app on the other side: its files, added here.
+func _add_made(words: String) -> void:
+	var files: Variant = str_to_var(words)
+	if not files is Dictionary:
+		return
+	for file: String in files:
+		var id: String = file.trim_suffix(".dat")
+		if builder.library.parts.has(id):
+			continue
+		CustomParts.add(builder.library, str(files[file]), id, false, files)
+	for uid: String in _awaiting.keys():
+		_put(uid, _awaiting[uid])
+
+
+## A floor's own plate standing exactly where [param at] is, or 0.
+func _scenery_at(part: String, colour: int, at: Transform3D) -> int:
+	for brick_id: int in store.scenery:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null and brick.part_id == part and brick.color_code == colour \
+				and brick.transform.is_equal_approx(at):
+			return brick_id
+	return 0
+
+
+# -- chat -----------------------------------------------------------------------
+
+## Say [param words] to the others. "" when sent, or why not.
+func chat(words: String) -> String:
+	if not live:
+		return "Not in a session."
+	if not chat_words.is_empty():
+		return chat_words
+	var line: String = words.strip_edges()
+	if line.is_empty():
+		return "Say something first."
+	_queue({"~chat": line.left(280)})
+	return ""
+
+
+func _heard_chat(op: Dictionary, mine: bool) -> void:
+	var line: String = str((op.get("changes", {}) as Dictionary).get("~chat", ""))
+	if line.is_empty():
+		return
+	var name: String = "You" if mine else _name_of(str(op.get("who", "")))
+	messages.append({"who": str(op.get("who", "")), "name": name, "text": line, "mine": mine})
+	if messages.size() > MESSAGES_KEPT:
+		messages.pop_front()
+	if not mine:
+		said.emit("%s: %s" % [name, line])
+	changed.emit()
+
+
+# -- where each person is working ----------------------------------------------
+
+## Where this person is working, in the model's space: the part in hand's
+## ghost, or the part under the pointer; null when neither.
+func _pointer_now() -> Variant:
+	if builder.has_preview():
+		var ghost: Vector3 = builder.ghost_transform().origin
+		return [snappedf(ghost.x, 0.1), snappedf(ghost.y, 0.1), snappedf(ghost.z, 0.1)]
+	var hovered: int = builder.hovered_brick()
+	var brick: BrickWorld.Brick = world.get_brick(hovered) if hovered != 0 else null
+	if brick == null:
+		return null
+	var at: Vector3 = brick.transform.origin
+	return [snappedf(at.x, 0.1), snappedf(at.y, 0.1), snappedf(at.z, 0.1)]
+
+
+## Sent a few times a second while it moves.
+func _point() -> void:
+	if _pointing or Time.get_ticks_msec() - _point_at < POINT_MS:
+		return
+	var now: Variant = _pointer_now()
+	if now == _pointed:
+		return
+	_point_at = Time.get_ticks_msec()
+	_pointing = true
+	_pointed = now
+	await _ask("point", {"s": _token, "at": now})
+	_pointing = false
+
+
+## The others' pointers in the view: a dot and their name, in a colour each.
+func _show_pointers() -> void:
+	var wanted: Dictionary = {}
+	if live:
+		for n: int in people.size():
+			var person: Dictionary = people[n]
+			if bool(person.get("me", false)) or not person.get("at") is Array:
+				continue
+			var at: Array = person["at"]
+			wanted[str(person["who"])] = [Vector3(float(at[0]), float(at[1]), float(at[2])),
+				str(person.get("name", "")), MARKER_COLOURS[n % MARKER_COLOURS.size()]]
+	for who: String in _markers.keys():
+		if not wanted.has(who):
+			(_markers[who] as Node3D).queue_free()
+			_markers.erase(who)
+	for who: String in wanted:
+		var marker: Node3D = _markers.get(who)
+		if marker == null:
+			marker = _marker(wanted[who][1], wanted[who][2])
+			world.add_child(marker)
+			_markers[who] = marker
+		marker.position = wanted[who][0] + Vector3(0, 12, 0)
+		(marker.get_child(1) as Label3D).text = wanted[who][1]
+
+
+static func _marker(name: String, colour: Color) -> Node3D:
+	var marker := Node3D.new()
+	marker.name = "TogetherPointer"
+	var dot := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 5.0
+	sphere.height = 10.0
+	dot.mesh = sphere
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = colour
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paint.no_depth_test = true
+	paint.render_priority = 10
+	dot.material_override = paint
+	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marker.add_child(dot)
+	var label := Label3D.new()
+	label.text = name
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.fixed_size = true
+	label.pixel_size = 0.0012
+	label.font_size = 28
+	label.outline_size = 8
+	label.modulate = colour
+	label.position = Vector3(0, 10, 0)
+	label.render_priority = 11
+	marker.add_child(label)
+	return marker
+
+
+## How many of the others' pointers are drawn now.
+func pointers_shown() -> int:
+	return _markers.size()
+
+
+# -- going back in after a reload -------------------------------------------------
+
+func _keep_place() -> void:
+	if not keeps_place:
+		return
+	var file := FileAccess.open(TabSession.path(KEPT_FILE), FileAccess.WRITE)
+	if file != null:
+		file.store_string(_token)
+		file.close()
+
+
+func _forget_place() -> void:
+	if keeps_place and FileAccess.file_exists(TabSession.path(KEPT_FILE)):
+		DirAccess.remove_absolute(TabSession.path(KEPT_FILE))
+
+
+## The session this tab was in when it was reloaded or closed, or "".
+static func kept_secret() -> String:
+	var path: String = TabSession.path(KEPT_FILE)
+	if not FileAccess.file_exists(path):
+		return ""
+	return secret_in(FileAccess.get_file_as_string(path))
 
 
 # -- each person's own undo ---------------------------------------------------
@@ -793,12 +1206,40 @@ func brick_of(uid: String) -> int:
 
 # -- for checks --------------------------------------------------------------
 
+## The app's own tools, as Claude calls them (CommandSocket.answer_rpc): a
+## tool's name and arguments to the words it answers. Set by Main.
+var run_tool: Callable = Callable()
+
+
 ## A change made as the keys and the mouse make it, through the builder's own
-## place, move, paint and delete, on a part named by its uid; and Undo and
+## place, move, paint and delete, on a part named by its uid; the model's name
+## typed; any of the app's tools as Claude calls it ("uid:<uid>" in its
+## arguments names a part, "#uid:<uid>" a joint); a chat line; and Undo and
 ## Redo as the Edit menu has them in a session. What
 ## tools/web/together_flow.mjs and src/dev/together_probe.gd drive.
 func check_edit(edit: Dictionary) -> Dictionary:
 	var op: String = str(edit.get("op", ""))
+	# The model's own state read at once after this, not a moment later.
+	_meta_at = 0
+	if op == "tool":
+		if not run_tool.is_valid():
+			return {"ok": false, "words": "no tools here"}
+		var words: String = await run_tool.call(str(edit.get("name", "")),
+			_with_bricks(edit.get("arguments", {})))
+		_capture()
+		return {"ok": true, "words": words}
+	if op == "title":
+		var name: String = str(edit.get("title", ""))
+		if bar != null:
+			bar._name.text = name
+			bar._name.text_changed.emit(name)
+		else:
+			store.title = name
+		_capture()
+		return {"ok": store.title == name}
+	if op == "chat":
+		var trouble: String = chat(str(edit.get("text", "")))
+		return {"ok": trouble.is_empty(), "words": trouble}
 	if op == "undo" or op == "redo":
 		var words: String = undo(op == "redo")
 		return {"ok": not words.is_empty(), "words": words}
@@ -833,6 +1274,26 @@ func check_edit(edit: Dictionary) -> Dictionary:
 	return {"ok": done > 0}
 
 
+## [param value] with each "uid:<uid>" a part's number here, and each
+## "#uid:<uid>" a joint's ("#80").
+func _with_bricks(value: Variant) -> Variant:
+	if value is String:
+		var said: String = value
+		if said.begins_with("uid:"):
+			return brick_of(said.substr(4))
+		if said.begins_with("#uid:"):
+			return "#%d" % brick_of(said.substr(5))
+		return said
+	if value is Array:
+		return (value as Array).map(func(one: Variant) -> Variant: return _with_bricks(one))
+	if value is Dictionary:
+		var out: Dictionary = {}
+		for key: Variant in value:
+			out[key] = _with_bricks(value[key])
+		return out
+	return value
+
+
 ## The uids of the parts, for a check to choose among.
 func uids() -> Array:
 	var out: Array = []
@@ -848,6 +1309,7 @@ func model_hash() -> String:
 
 
 var _page_at: int = 0
+var _answering: bool = false
 
 
 ## What a browser check reads (window.brickworksTogether) and asks
@@ -859,27 +1321,36 @@ func _tell_page() -> void:
 	if not live and now - _page_at < 500:
 		return
 	_page_at = now
+	if not _answering:
+		_answer_page()
+	var trips: Array = round_trips.slice(maxi(0, round_trips.size() - 100))
+	JavaScriptBridge.eval("window.brickworksTogether = %s" % JSON.stringify({
+		"live": live, "owner": owns, "link": link, "seq": seq, "waiting": waiting(),
+		"people": people, "parts": _ids.size(), "trips": trips, "ended": ended_words,
+		"can_undo": can_undo(), "messages": messages.slice(maxi(0, messages.size() - 20)),
+		"chat_words": chat_words, "pointers": pointers_shown()}), true)
+
+
+## The page's asks, answered in order; one batch at a time.
+func _answer_page() -> void:
 	var asked: Variant = JavaScriptBridge.eval(
 		"(() => { const a = window.brickworksTogetherAsk; window.brickworksTogetherAsk = undefined;"
 		+ " return a === undefined ? '' : JSON.stringify(a); })()", true)
 	if asked != null and not str(asked).is_empty():
 		var asks: Variant = JSON.parse_string(str(asked))
 		var answers: Array = []
+		_answering = true
 		for ask: Variant in (asks if asks is Array else [asks]):
 			if not ask is Dictionary:
 				continue
 			var one: Dictionary = ask
 			if one.has("op"):
-				answers.append(check_edit(one))
+				answers.append(await check_edit(one))
 			elif bool(one.get("text", false)):
 				answers.append({"ok": true, "hash": model_hash(), "text": model_text(),
 					"uids": uids(), "seq": seq, "waiting": waiting()})
 		JavaScriptBridge.eval("window.brickworksTogetherDone = %s" % JSON.stringify(answers), true)
-	var trips: Array = round_trips.slice(maxi(0, round_trips.size() - 100))
-	JavaScriptBridge.eval("window.brickworksTogether = %s" % JSON.stringify({
-		"live": live, "owner": owns, "link": link, "seq": seq, "waiting": waiting(),
-		"people": people, "parts": _ids.size(), "trips": trips, "ended": ended_words,
-		"can_undo": can_undo()}), true)
+		_answering = false
 
 
 # -- the server ---------------------------------------------------------------

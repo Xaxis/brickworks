@@ -325,7 +325,7 @@ const TABLES = {
     key: ["session", "account"],
     parents: [{ column: "session", table: "together_sessions", on: "id" }],
     defaults: () => ({ name: "", joined_at: new Date().toISOString(), seen_at: new Date().toISOString(),
-      left_at: null, removed_at: null }),
+      left_at: null, removed_at: null, pointer: null, pointer_at: null }),
     check(row) {
       return String(row.name).length > 40 ? "together_people_name_check" : "";
     },

@@ -30,7 +30,24 @@
 // set to [part, colour, [12 numbers of its transform], group, unit, step],
 // or taken off. Each side keeps its own changes shown until they come back
 // numbered (src/net/together.gd), so a part two people move at once ends
-// where the later of the two put it, on both sides.
+// where the later of the two put it, on both sides. And what the model is
+// besides its parts, each a key of its own with its words as the file has
+// them: "~title", "~floor", "~hidden" (the colours of hidden parts),
+// "~motions", "~looks" (the booklet's), "~unit_steps", "~broken" (sections
+// broken out), and "~part:<id>" for a part made in the app, its LDraw files,
+// so the other side can put it down.
+//
+// Chat: an op of "~chat" alone, a line of words, kept in the same log. The
+// rule is comments' (supabase/comments.sql comments_guard): an account that
+// answered the age question 13 or over and was not taken out of the
+// gallery, the words a stranger may not be shown refused (api/_names.js).
+// And stricter, because a chat is private and live where a comment is
+// public and can be reported: an account under 13 is not shown the chat at
+// all (its ops come to it with the words taken out), and is told why.
+//
+//   ?op=point   {s, at}            where this person is working now: a point
+//                                  in the model's space, or null; shown to the
+//                                  others with their name (live pointers)
 //
 // Who is in it is shown by the name of their profile when a visitor may be
 // shown it (api/_trust.js shownPublicly: never one under 13), and otherwise
@@ -40,12 +57,21 @@
 import { createHash, randomBytes } from "node:crypto";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
-import { shownPublicly } from "./_trust.js";
+import { ageOf, shownPublicly } from "./_trust.js";
+import { namesTrouble } from "./_names.js";
 
 const TOKEN = /^[A-Za-z0-9_-]{32}$/;
 const CLIENT = /^[a-z0-9]{6,16}$/;
 const UID = /^[a-z0-9]{1,16}\.[0-9]{1,9}$/;
 const WHO = /^[0-9a-f]{8}$/;
+// The model's own state besides its parts, and how long each may be.
+const META = { "~title": 120, "~floor": 200, "~hidden": 50_000, "~motions": 200_000, "~looks": 200_000,
+  "~unit_steps": 50_000, "~broken": 200_000 };
+const MADE_PART = /^~part:[A-Za-z0-9_.-]{1,80}$/;
+const MADE_PART_MOST = 1_000_000;
+const CHAT_MOST = 280;
+// A pointer is shown while it was sent within this long.
+const POINTER_MS = 15_000;
 // A model's snapshot, its text and parts, at most this much: under Vercel's
 // 4.5 MB for a request's body.
 const SNAPSHOT_MOST = 4_000_000;
@@ -82,8 +108,8 @@ async function sessionRow(id) {
 }
 
 async function peopleRows(id) {
-  return await db(`together_people?session=eq.${id}&select=account,name,joined_at,seen_at,left_at,removed_at`
-    + "&order=joined_at.asc") || [];
+  return await db(`together_people?session=eq.${id}&select=account,name,joined_at,seen_at,left_at,removed_at,`
+    + "pointer,pointer_at&order=joined_at.asc") || [];
 }
 
 // Who is in it, as each side shows them; and a short signature of that, for
@@ -96,18 +122,20 @@ function peopleOut(id, session, rows, me) {
     if (row.removed_at) continue;
     n += 1;
     const here = !row.left_at && now - Date.parse(row.seen_at) < HERE_MS;
+    const pointing = Array.isArray(row.pointer) && row.pointer_at && now - Date.parse(row.pointer_at) < POINTER_MS;
     out.push({
       who: whoOf(id, row.account),
       name: row.name || (row.account === session.owner ? "The owner" : `Builder ${n}`),
       owner: row.account === session.owner,
       me: row.account === me,
       here,
+      at: here && pointing ? row.pointer : null,
     });
   }
   return out;
 }
 const signatureOf = (people) => createHash("sha256")
-  .update(JSON.stringify(people.map((one) => [one.who, one.name, one.here])))
+  .update(JSON.stringify(people.map((one) => [one.who, one.name, one.here, one.at])))
   .digest("hex").slice(0, 12);
 
 async function shownName(account) {
@@ -128,22 +156,68 @@ function checkState(state) {
     && Number.isInteger(step);
 }
 
+// Whether [key] is the model's own state besides its parts, set to [value].
+function checkMeta(key, value) {
+  if (META[key]) return value === null || (typeof value === "string" && value.length <= META[key]);
+  if (MADE_PART.test(key)) return typeof value === "string" && value.length <= MADE_PART_MOST;
+  return false;
+}
+
+// The ops' shape; whether any is a chat line.
 function checkOps(ops) {
   if (!Array.isArray(ops) || ops.length < 1 || ops.length > SEND_MOST) {
     throw new Refusal(400, `send between 1 and ${SEND_MOST} changes`);
   }
   let parts = 0;
+  let chat = false;
   for (const op of ops) {
     if (!op || !Number.isInteger(op.cid) || op.cid < 0 || !op.changes || typeof op.changes !== "object"
         || Array.isArray(op.changes)) {
       throw new Refusal(400, "a change is {cid, changes}");
     }
+    const keys = Object.keys(op.changes);
+    if (keys.includes("~chat")) {
+      if (keys.length !== 1 || typeof op.changes["~chat"] !== "string") throw new Refusal(400, "a chat line goes alone");
+      chat = true;
+      continue;
+    }
     for (const [uid, state] of Object.entries(op.changes)) {
       parts += 1;
-      if (!UID.test(uid) || !checkState(state)) throw new Refusal(400, `that is not a part's state: ${uid.slice(0, 20)}`);
+      const ok = uid.startsWith("~") ? checkMeta(uid, state) : UID.test(uid) && checkState(state);
+      if (!ok) throw new Refusal(400, `that is not a part's state: ${uid.slice(0, 20)}`);
     }
   }
   if (parts > CHANGES_MOST) throw new Refusal(413, `at most ${CHANGES_MOST} parts changed in one send`);
+  return chat;
+}
+
+const CHAT_WORDS = {
+  ask_first: "Brickworks asks everyone one question first. Sign in again to answer it, then chat.",
+  under_13: "Chat is for people 13 and over. Building together, your models and sharing by link are all yours.",
+  barred: "Brickworks took this account out of the gallery, so it cannot chat.",
+};
+
+// Why [me] may not chat, or null: comments' rule (comments_guard).
+async function chatTrouble(me) {
+  const age = await ageOf(me);
+  if (age.ready && age.over_13 === false) return CHAT_WORDS.under_13;
+  if (age.ready && age.over_13 !== true) return CHAT_WORDS.ask_first;
+  if (await db("rpc/is_barred", { method: "POST", body: { account: me } }).catch(() => false) === true) {
+    return CHAT_WORDS.barred;
+  }
+  return null;
+}
+
+// A chat line made plain: one line, printable, 1 to CHAT_MOST characters,
+// and nothing a stranger may not be shown.
+function chatLine(said) {
+  const text = String(said).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]+/g, " ")
+    .replace(/\s+/g, " ").trim();
+  if (text.length === 0) throw new Refusal(400, "Say something first.");
+  if ([...text].length > CHAT_MOST) throw new Refusal(400, `A chat line is at most ${CHAT_MOST} characters.`);
+  const words = namesTrouble({ "Your message": [text, "words"] });
+  if (words) throw new Refusal(422, words);
+  return text;
 }
 
 // The session as this person may use it: there, not ended, and they are in it
@@ -201,7 +275,7 @@ async function join(request, me) {
   const people = peopleOut(id, session, await peopleRows(id), me);
   return {
     title: session.title, owner: session.owner === me, snapshot: whole?.snapshot || null,
-    after: 0, seq: session.last_seq, people, seen: signatureOf(people),
+    after: 0, seq: session.last_seq, people, seen: signatureOf(people), chat: (await chatTrouble(me)) || "",
     link: `${originOf(request)}/app?together=${token}`,
   };
 }
@@ -211,7 +285,13 @@ async function send(request, me) {
   const id = idOf(secretOf(body));
   const client = String(body.client || "");
   if (!CLIENT.test(client)) throw new Refusal(400, "send from which client?");
-  checkOps(body.ops);
+  if (checkOps(body.ops)) {
+    const trouble = await chatTrouble(me);
+    if (trouble) throw new Refusal(422, trouble);
+    for (const op of body.ops) {
+      if (op.changes["~chat"] !== undefined) op.changes["~chat"] = chatLine(op.changes["~chat"]);
+    }
+  }
   // together_append itself refuses an ended session and an account not in
   // it, so a send costs one round trip to the database; the refusal is put
   // in words only when there is one.
@@ -237,6 +317,9 @@ async function poll(request, me) {
   await db(`together_people?session=eq.${id}&account=eq.${me}`, {
     method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null },
   });
+  // An account under 13 is not shown the chat (above): its words taken out.
+  const age = await ageOf(me);
+  const noChat = age.ready && age.over_13 === false;
   const until = Date.now() + WAIT_MS;
   let people = peopleOut(id, session, await peopleRows(id), me);
   let checked = Date.now();
@@ -258,8 +341,8 @@ async function poll(request, me) {
       return {
         ended: false,
         ops: rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), client: row.client,
-          cid: row.cid, changes: row.changes })),
-        people, seen: signature,
+          cid: row.cid, changes: noChat && row.changes?.["~chat"] !== undefined ? {} : row.changes })),
+        people, seen: signature, chat: noChat ? CHAT_WORDS.under_13 : "",
       };
     }
     await sleep(POLL_MS);
@@ -301,7 +384,24 @@ async function remove(request, me) {
   return { people: peopleOut(id, session, await peopleRows(id), me) };
 }
 
-const OPS = { start, join, send, poll, end, leave, remove };
+async function point(request, me) {
+  const body = request.body || {};
+  const id = idOf(secretOf(body));
+  const at = body.at;
+  if (at !== null && !(Array.isArray(at) && at.length === 3 && at.every((n) => typeof n === "number" && Number.isFinite(n)
+      && Math.abs(n) < 1e6))) {
+    throw new Refusal(400, "a pointer is [x, y, z] or null");
+  }
+  // One trip a few times a second: the row of someone in it, not taken out.
+  const now = new Date().toISOString();
+  const [mine] = await db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
+    method: "PATCH", body: { pointer: at, pointer_at: now, seen_at: now }, prefer: "return=representation",
+  }) || [];
+  if (!mine) await inSession(id, me);
+  return { ok: Boolean(mine) };
+}
+
+const OPS = { start, join, send, poll, end, leave, remove, point };
 
 export default async function handler(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
