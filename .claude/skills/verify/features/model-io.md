@@ -152,7 +152,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   worker starts (`Assistant._checked`, `Sections`) covers only that
   caller's worker. `table_race_probe` lets a worker and the main thread go
   at once on each table, a run of the engine per try, and every run must
-  stay up; on main before the fix 35 of 80 died on the gear table.
+  stay up; on main before the fix 35 of 80 died on the gear table. Its
+  sibling, a flag shared with a worker: an Array's element written on one
+  thread while another reads it passes through Nil, 13 reads in 1.3 million
+  writes of an int over an int (a Dictionary's value, a member and a static
+  none), and `int(null)` is a script error. So such a flag is read and
+  written under a lock (`Sections`' phase and stop) or not shared at all:
+  `worker_first_run_probe` lets its workers go at an instant on the clock,
+  where its flag in an Array failed 6 runs of 30 two at a time,
+  "Trying to assign value of type 'Nil'" (race244).
 - `carried parts fetched` (`CustomParts.fetch_sources`, `unreached_by`,
   `PartForge.keep_fetched`): a part a file carries, or a skin, may be drawn
   from LDraw's own subparts and parts, which the desktop reads from

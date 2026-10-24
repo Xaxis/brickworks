@@ -113,13 +113,17 @@ func _try(table: String) -> void:
 	var askers: Array = _askers[table]
 	var on_worker: Callable = askers[0]
 	var here: Callable = askers[1]
-	var ready: Array = [0]
-	var go: Array = [0]
+	# The worker says it is ready and waits on a lock held here, let go of
+	# as this thread starts. Flags in an Array, set on one thread while the
+	# other reads them, can be read as null (worker_first_run_probe).
+	var ready := Semaphore.new()
+	var gate := Mutex.new()
 	var got: Array = [0]
+	gate.lock()
 	var task: int = WorkerTasks.add(func() -> void:
-		ready[0] = 1
-		while go[0] == 0:
-			pass
+		ready.post()
+		gate.lock()
+		gate.unlock()
 		var n: int = 0
 		var i: int = 0
 		var until: int = Time.get_ticks_usec() + ASK_USEC
@@ -127,9 +131,8 @@ func _try(table: String) -> void:
 			n += int(on_worker.call(i))
 			i += 1
 		got[0] = n, true, "probe: the worker's asks")
-	while ready[0] == 0:
-		pass
-	go[0] = 1
+	ready.wait()
+	gate.unlock()
 	var n: int = 0
 	var i: int = 0
 	var until: int = Time.get_ticks_usec() + ASK_USEC
