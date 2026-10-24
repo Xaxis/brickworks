@@ -18,6 +18,14 @@
 ## assistant's search_parts are measured; each must have one of them in its
 ## first three for nine queries in ten.
 ##
+## And the names builders use, which are BrickLink's and Rebrickable's more
+## than LDraw's (names248, 2026-10-24): "liftarm 5" missed 32316, which LDraw
+## calls Technic Beam 5. Thirty-one more, written before that change: the
+## names as BrickLink and Rebrickable list a part, short and in full, Technic
+## words, BrickLink numbers LDraw does not use, and element numbers as an
+## instruction booklet prints them, each of which must find its part and take
+## its colour in hand. The same bar, for each set apart.
+##
 ## And how long the bin takes to answer a first keystroke: one letter or digit,
 ## over the whole catalogue, the results and the tiles that show them; the
 ## 50 ms meant is said, and the probe fails past 150 (KEYSTROKE_GUARD_MS).
@@ -106,6 +114,48 @@ const QUERIES: Array = [
 	["brick modified", ["4070", "87087", "11211", "30414", "2877", "6091"], "category"],
 ]
 
+## The names builders use (names248), written before the change that answers
+## them: [what is typed, the parts any one of which is right, what kind]. An
+## element's part is "part/colour", the colour the bin must take in hand.
+const NAMED: Array = [
+	# BrickLink's names, short and as its catalogue lists them.
+	["liftarm 5", ["32316"], "bricklink"],
+	["liftarm thick 1 x 5", ["32316"], "bricklink"],
+	["Technic, Liftarm Thick 1 x 5", ["32316"], "bricklink"],
+	["Technic, Liftarm Thin 1 x 3", ["6632"], "bricklink"],
+	["Technic, Liftarm, Modified Bent Thick 1 x 9 (7 - 3)", ["32271"], "bricklink"],
+	["Plate, Modified 1 x 2 with Clip on End (Horizontal Grip)", ["63868"], "bricklink"],
+	["Brick, Round 2 x 2 with Axle Hole", ["3941", "6143"], "bricklink"],
+	["Tile, Modified 1 x 2 Grille with Bottom Groove", ["2412b"], "bricklink"],
+	["Technic, Pin with Friction Ridges Lengthwise and Center Slots", ["2780"], "bricklink"],
+	["Technic, Axle and Pin Connector Perpendicular", ["6536"], "bricklink"],
+	["Technic, Gear 24 Tooth (2nd Version - 1 Axle Hole)", ["3648b"], "bricklink"],
+	# Rebrickable's.
+	["Technic Beam 1 x 7 Thick", ["32524"], "rebrickable"],
+	["Plate Special 1 x 2 with Clip Horizontal on End", ["63868"], "rebrickable"],
+	["Technic Axle Pin with Friction Ridges Lengthwise", ["43093"], "rebrickable"],
+	["Technic Bush 1/2 Smooth", ["32123b"], "rebrickable"],
+	["Bracket 1 x 2 - 1 x 2 Inverted", ["99780"], "rebrickable"],
+	["Plate Round 1 x 1 with Solid Stud", ["6141"], "rebrickable"],
+	# Technic words, as a builder says them.
+	["technic pin with friction", ["2780"], "technic"],
+	["axle 4", ["3705"], "technic"],
+	["bush 1/2", ["32123b"], "technic"],
+	["3L axle", ["4519"], "technic"],
+	["axle connector", ["59443", "6538b"], "technic"],
+	["thin liftarm 1 x 4", ["32449"], "technic"],
+	["bushing", ["3713", "32123b"], "technic"],
+	["gear 8 tooth", ["3647", "10928"], "technic"],
+	["L-shape liftarm 3 x 5", ["32526"], "technic"],
+	# A BrickLink number that is not LDraw's.
+	["4589b", ["59900"], "bl number"],
+	# Element numbers, each in its colour: black, black, blue, light bluish grey.
+	["4142135", ["32316/0"], "element"],
+	["4121715", ["2780/0"], "element"],
+	["300123", ["3001/1"], "element"],
+	["4211398", ["3023b/71"], "element"],
+]
+
 ## The share of queries with a right part in the first three, at least.
 const TOP3_BAR := 0.9
 ## The bin's answer to a first keystroke, in milliseconds: what it is meant to
@@ -137,7 +187,8 @@ func _run() -> void:
 	await process_frame
 	bin.populate()
 	if only != "time":
-		_quality(library, bin)
+		_quality(library, bin, QUERIES, "everyday names, sizes and numbers (search242)")
+		_quality(library, bin, NAMED, "the names builders use (names248)")
 	if only != "quality":
 		await _time(library, bin)
 	bin.queue_free()
@@ -147,18 +198,37 @@ func _run() -> void:
 	quit(1 if _failures else 0)
 
 
-func _quality(library: PartLibrary, bin: PartsBin) -> void:
+func _quality(library: PartLibrary, bin: PartsBin, queries: Array, title: String) -> void:
+	print("")
+	print("  %s" % title)
 	var tally: Dictionary = {}     ## kind -> [queries, bin top 1, bin top 3, search top 1, search top 3]
 	var all: Array = [0, 0, 0, 0, 0]
-	for row: Array in QUERIES:
+	for row: Array in queries:
 		var asked: String = row[0]
-		var wanted: Array = row[1]
+		var wanted: Array = []
 		var kind: String = row[2]
+		# An element's part is right only in its colour: the bin's colour in
+		# hand after it is typed (white before), and the colour the library
+		# reads the number as.
+		var colour: int = -1
+		for one: String in row[1]:
+			wanted.append(one.get_slice("/", 0))
+			if one.contains("/"):
+				colour = int(one.get_slice("/", 1))
+		if colour >= 0:
+			bin._on_colour(15)
 		bin._run_search(asked)
 		var tiles: PackedStringArray = bin.first_found(3)
 		var searched := PackedStringArray()
 		for info: PartLibrary.PartInfo in library.search(asked, 3):
 			searched.append(info.id)
+		if colour >= 0:
+			if bin._selected_color != colour:
+				tiles = PackedStringArray()
+			var read: Array = library.call("part_of_element", asked) \
+				if library.has_method("part_of_element") else []
+			if read.size() != 2 or int(read[1]) != colour:
+				searched = PackedStringArray()
 		var hits: Array = [1,
 			1 if not tiles.is_empty() and wanted.has(tiles[0]) else 0,
 			1 if _any(wanted, tiles) else 0,
@@ -185,8 +255,9 @@ func _quality(library: PartLibrary, bin: PartsBin) -> void:
 		var share: float = float(all[at]) / float(all[0])
 		if share < TOP3_BAR:
 			_failures += 1
-			print("  FAIL  the %s has a right part in its first three for %d%% of the queries, under %d%%"
-				% ["bin" if at == 2 else "search", _share(all[at], all[0]), roundi(TOP3_BAR * 100)])
+			print("  FAIL  the %s has a right part in its first three for %d%% of %s, under %d%%"
+				% ["bin" if at == 2 else "search", _share(all[at], all[0]), title,
+					roundi(TOP3_BAR * 100)])
 
 
 ## The bin's answer to one keystroke, from the text changing to its tiles in

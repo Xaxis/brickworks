@@ -92,6 +92,20 @@ func _initialize() -> void:
 			["firetruck", ["truck", "fire"]], ["sailboat", ["boat"]], ["spaceship", ["space"]]]:
 		_reads_as(assistant, str(pair[0]), pair[1])
 
+	print("\nand the designer's brief reads it so too")
+	# The set-knowledge lookup fell back through what a thing is a kind of
+	# (SubjectWords.IS_A) and the brief's kinds_for did not, so texture.py and
+	# the designer read "sailboat" as no kind at all (race244). The five after
+	# it were written down before the rule was one for both.
+	for pair: Array in [["sailboat", ["boat"]], ["rowboat", ["boat"]],
+			["forklift", ["cargo", "loader"]], ["snowmobile", ["snow", "arctic"]],
+			["skyscraper", ["building", "city"]], ["lifeboat", ["boat", "coast"]]]:
+		var read: Array = library.kinds_for(str(pair[0])).map(func(kind: Dictionary) -> String:
+			return str(kind.get("kind", "")))
+		_ok(read == pair[1], "kinds_for(\"%s\") is %s (%s)" % [pair[0],
+			" then ".join(PackedStringArray(pair[1])),
+			", ".join(PackedStringArray(read)) if not read.is_empty() else "nothing"])
+
 	print("\nand so are two words that name one thing")
 	# "speed boat" was still the speed kind: two words were read in the
 	# brief's order. Said as two they are read as the word made of them is:
