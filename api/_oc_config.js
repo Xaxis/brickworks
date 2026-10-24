@@ -5,25 +5,28 @@
 
 import { dbConfigured } from "./_db.js";
 
-/// The one switch for who sees Sign in with orangecheck. Step 1 of
-/// orangecheck's brief kept it off, since a session did not yet end when
-/// somebody signed out of orangecheck everywhere: then it was offered only
-/// to a tab opened with ?oc=1 and to the test accounts (web/account.js,
-/// src/ui/sign_in_form.gd). Steps 2-3 end such a session (api/_auth.js), so
-/// it is on for everyone. Every server path works either way.
+/// The one switch for who sees Sign in with orangecheck, on every page and
+/// in the app's sign-in screen (web/account.js, src/ui/sign_in_form.gd):
+/// everyone, since steps 2-3 end a session somebody ended everywhere on
+/// orangecheck (api/_auth.js). Off, nobody sees the button. Step 1 alone
+/// kept it to a tab opened with ?oc=1, a flag that is gone (oc205).
 export const ORANGECHECK_FOR_EVERYONE = true;
 
 /// The origins of the pages a token may be for, which are the only
 /// audiences one is taken with, from configuration, never the request:
-/// brickworks.diy, and this deployment's own address (Vercel's VERCEL_URL),
-/// where a release is checked before the domain is moved onto it. Every
-/// deployment is a production one (tools/deploy.sh --prod --skip-domain), so
-/// both are a production deployment's. On this machine, only a loopback
-/// address set as OC_AUDIENCE. None: no token is taken.
+/// in production brickworks.diy alone, the domain orangecheck verified and
+/// the only one its list of ended sessions answers for (oc188's review).
+/// Every
+/// deployment is a production one (tools/deploy.sh --prod --skip-domain),
+/// so a release checked at its own address before the domain moves onto it
+/// takes no token there. A Preview deployment, its own address. On this
+/// machine, only a loopback address set as OC_AUDIENCE. None: no token is
+/// taken.
 export function audiences() {
-  const own = /^[a-z0-9.-]+\.vercel\.app$/.test(process.env.VERCEL_URL || "") ? [`https://${process.env.VERCEL_URL}`] : [];
-  if (process.env.VERCEL_ENV === "production") return ["https://brickworks.diy", ...own];
-  if (process.env.VERCEL_ENV) return own;
+  if (process.env.VERCEL_ENV === "production") return ["https://brickworks.diy"];
+  if (process.env.VERCEL_ENV) {
+    return /^[a-z0-9.-]+\.vercel\.app$/.test(process.env.VERCEL_URL || "") ? [`https://${process.env.VERCEL_URL}`] : [];
+  }
   const local = String(process.env.OC_AUDIENCE || "").replace(/\/+$/, "");
   return /^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/.test(local) ? [local] : [];
 }

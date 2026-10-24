@@ -12,7 +12,7 @@
 // One line a check, then "orangecheck_check: N passed, M failed". Every
 // account it makes is deleted at the end, whatever happened.
 
-import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
+import { createHash, generateKeyPairSync, randomBytes, randomUUID, sign } from "node:crypto";
 import { deleteAccount, mintSession } from "./session.mjs";
 
 const AUD = "http://127.0.0.1:8841";
@@ -26,6 +26,7 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY || !process.en
 }
 const SB = process.env.SUPABASE_URL.replace(/\/+$/, "");
 const ADMIN = { apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` };
+const PUBLIC = { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" };
 
 // orangecheck, stood in for.
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
@@ -33,6 +34,7 @@ const stranger = generateKeyPairSync("ed25519");
 const KID = "check-key";
 const jwk = { ...publicKey.export({ format: "jwk" }), kid: KID, alg: "EdDSA", use: "sig" };
 const ochk = {
+  jwksStatus: 200,
   rule: { ok: true, require_bond: null },
   ruleStatus: 200,
   list: () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} }),
@@ -41,6 +43,10 @@ const ochk = {
 };
 
 const made = new Set();
+// Brickworks' own answers, reached into for the review's races (oc205): run
+// once just before a session is bound; the last session Supabase minted;
+// what the database says of a session, changed.
+const hooks = { beforeBind: null, minted: null, sessionOf: null };
 // Two email accounts, at Resend's test addresses, which reach nobody.
 const tag = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-oc-ada-${tag}@resend.dev`;
@@ -49,7 +55,7 @@ const real = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input?.url || input);
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-  if (url === "https://ochk.io/.well-known/jwks.json") return json(200, { keys: [jwk] });
+  if (url === "https://ochk.io/.well-known/jwks.json") return ochk.jwksStatus === 200 ? json(200, { keys: [jwk] }) : json(ochk.jwksStatus, {});
   if (url.startsWith("https://me.ochk.io/api/integrator/revocations")) return json(ochk.listStatus, ochk.list());
   if (/^https:\/\/me\.ochk\.io\/api\/integrator\/[^/]+\/sign-in$/.test(url)) return json(ochk.ruleStatus, ochk.rule);
   if (url === "https://ochk.io/api/auth/revoke") {
@@ -57,7 +63,14 @@ globalThis.fetch = async (input, init = {}) => {
     return json(200, { ok: true, revoked: 1 });
   }
   if (/^https:\/\/([a-z0-9-]+\.)*ochk\.(io|app)\//.test(url)) throw new Error(`orangecheck_check: unexpected ${url}`);
+  if (url === `${SB}/rest/v1/rpc/oc_bind_session` && hooks.beforeBind) {
+    const before = hooks.beforeBind;
+    hooks.beforeBind = null;
+    await before();
+  }
   const reply = await real(input, init);
+  if (url === `${SB}/auth/v1/verify` && reply.ok) hooks.minted = await reply.clone().json();
+  if (url === `${SB}/rest/v1/rpc/oc_session_of` && hooks.sessionOf && reply.ok) return json(200, hooks.sessionOf(await reply.json()));
   // Every account Supabase makes for this run, so the end can delete them.
   if (url === `${SB}/auth/v1/admin/users` && (init.method || "GET") === "POST" && reply.ok) {
     const copy = await reply.clone().json();
@@ -135,6 +148,36 @@ async function refreshed(refreshToken) {
 async function adminUser(id) {
   const reply = await real(`${SB}/auth/v1/admin/users/${id}`, { headers: ADMIN });
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
+}
+
+const claimsOf = (jwt) => {
+  try {
+    return JSON.parse(Buffer.from(String(jwt).split(".")[1], "base64url").toString());
+  } catch {
+    return {};
+  }
+};
+const amrOf = (jwt) => (claimsOf(jwt).amr || []).map((one) => one.method);
+
+async function rpc(name, body) {
+  const reply = await real(`${SB}/rest/v1/rpc/${name}`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
+    body: JSON.stringify(body) });
+  return reply.json().catch(() => null);
+}
+
+/// A password set on the account from one of its sessions, as Supabase
+/// lets anybody signed in (oc188's review, H1): the status.
+async function setPassword(access, password) {
+  const reply = await real(`${SB}/auth/v1/user`, { method: "PUT", headers: { ...PUBLIC, authorization: `Bearer ${access}` },
+    body: JSON.stringify({ password }) });
+  return reply.status;
+}
+
+/// A session signed in by that password: Supabase's answer.
+async function passwordSession(email, password) {
+  const reply = await real(`${SB}/auth/v1/token?grant_type=password`, { method: "POST", headers: PUBLIC,
+    body: JSON.stringify({ email, password }) });
+  return reply.json().catch(() => ({}));
 }
 
 try {
@@ -216,6 +259,12 @@ try {
   const unbacked = await call(handler, { token: token({ aud: "http://127.0.0.1:8844" }).jwt });
   check("a rule asking for a backed account refuses one that is not", unbacked.status === 403
     && unbacked.body.back_url === "https://ochk.app/me/account#backing", `${unbacked.status} ${unbacked.body.error || ""}`);
+  // The floor is {min_sats, min_days} and nothing more (oc188's review, 4).
+  const bond = { v: 1, sats_floor: 250000, days_floor: 90, height: 900000, checked_at: Math.floor(Date.now() / 1000) - 60,
+    nullifier: randomBytes(32).toString("hex") };
+  const backed = await call(handler, { token: token({ aud: "http://127.0.0.1:8844", oc_bond: bond }).jwt });
+  check("4: a rule of {min_sats, min_days} alone is read, and lets an account backed above it in", backed.status === 200,
+    `${backed.status} ${backed.body.error || ""}`);
   ochk.ruleStatus = 503;
   ochk.rule = { ok: false };
   handler = await route();
@@ -223,6 +272,37 @@ try {
   check("a rule that cannot be read lets nobody in", noRule.status === 503, `${noRule.status}`);
   ochk.ruleStatus = 200;
   ochk.rule = { ok: true, require_bond: null };
+
+  // orangecheck's keys cannot be read: a token is neither good nor bad, so
+  // 503, never "not for Brickworks" (checkOcToken's unavailable).
+  ochk.jwksStatus = 503;
+  handler = await route();
+  const noKeys = await call(handler, { token: token({ aud: "http://127.0.0.1:8844" }).jwt });
+  check("while orangecheck's keys cannot be read, a sign-in is answered 503 in words, not 401", noKeys.status === 503
+    && /orangecheck could not be asked/.test(noKeys.body.error || ""), `${noKeys.status} ${noKeys.body.error || ""}`);
+  ochk.jwksStatus = 200;
+
+  // Production takes tokens for brickworks.diy alone, never for the
+  // deployment's own address (oc188's review of step 1, L1).
+  {
+    const { audiences } = await import("../../api/_oc_config.js");
+    const was = { env: process.env.VERCEL_ENV, url: process.env.VERCEL_URL };
+    process.env.VERCEL_URL = "brickworks-oc-check.vercel.app";
+    process.env.VERCEL_ENV = "production";
+    const production = audiences();
+    const own = await call(await route(), { token: token({ aud: "https://brickworks-oc-check.vercel.app" }).jwt });
+    process.env.VERCEL_ENV = "preview";
+    const preview = audiences();
+    for (const [name, value] of [["VERCEL_ENV", was.env], ["VERCEL_URL", was.url]]) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    check("step 1's L1: production takes tokens for https://brickworks.diy alone, not its own *.vercel.app address",
+      JSON.stringify(production) === JSON.stringify(["https://brickworks.diy"]) && own.status === 401,
+      `${JSON.stringify(production)} ${own.status}`);
+    check("and a Preview deployment, for its own address", JSON.stringify(preview) === JSON.stringify(["https://brickworks-oc-check.vercel.app"]),
+      JSON.stringify(preview));
+  }
 
   // Two first sign-ins of one person at once: one account, none left over.
   process.env.OC_AUDIENCE = AUD;
@@ -388,6 +468,138 @@ try {
     check("and its refresh token is no good", renew.status === 400, `${renew.status} ${JSON.stringify(renew.body).slice(0, 100)}`);
     ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} });
     forgetForTests();
+  }
+
+  // oc188's review, H1: anybody signed in can set a password on their
+  // account at Supabase, and sign in with it: a session nothing here
+  // started. Signed in with orangecheck, a password set, a second session
+  // by it, then Sign out everywhere: the second session must get 401.
+  {
+    handler = await route();
+    const theirs = token();
+    const signedIn = await call(handler, { token: theirs.jwt });
+    const password = `${randomBytes(18).toString("base64url")}-Aa1`;
+    const set = signedIn.status === 200 ? await setPassword(signedIn.body.access_token, password) : 0;
+    const second = set === 200 ? await passwordSession(signedIn.body.user.email, password) : {};
+    check("H1: signed in with orangecheck, a password set from that session, and a second session by it, as the review did",
+      signedIn.status === 200 && set === 200 && amrOf(second.access_token)[0] === "password", `${signedIn.status} ${set} ${amrOf(second.access_token)}`);
+    ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: { [theirs.claims.rh]: Math.floor(Date.now() / 1000) } });
+    forgetForTests();
+    const write = await theme(second.access_token);
+    const read = await whoIs(second.access_token);
+    check("H1: signed out everywhere on orangecheck, the second session gets 401", write.status === 401 && read.body?.signed_in === false,
+      `${write.status} ${write.body.error || ""}`);
+    check("H1: and it cannot be renewed", !(await refreshed(second.refresh_token)));
+    check("H1: the session orangecheck started is ended too", (await whoIs(signedIn.body.access_token)).body?.signed_in === false);
+    ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} });
+    forgetForTests();
+    const third = await passwordSession(signedIn.body.user.email, password);
+    const thirdWrite = await theme(third.access_token);
+    check("H1: an orangecheck account's session orangecheck did not start is refused at once, in words, and ended",
+      Boolean(third.access_token) && thirdWrite.status === 401 && /orangecheck/.test(thirdWrite.body.error || "")
+      && !(await refreshed(third.refresh_token)), `${thirdWrite.status} ${thirdWrite.body.error || ""}`);
+  }
+
+  // Eve: an account with its own email, at an address that takes no mail
+  // (.invalid), so nothing here or at Supabase reaches anybody, and not a
+  // test address, so no password of hers is a test's.
+  {
+    handler = await route();
+    const eveEmail = `bw-oc-eve-${tag}@example.invalid`;
+    const madeEve = await fetch(`${SB}/auth/v1/admin/users`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
+      body: JSON.stringify({ email: eveEmail, email_confirm: true }) });
+    const eve = (await madeEve.json()).id;
+    const eveDid = `did:oc:${randomBytes(16).toString("hex")}`;
+    // Linked as oc_link links, the mark left off: an account whose marking
+    // failed, or a session handed out before it was marked.
+    const linkedEve = await rpc("oc_link", { did: eveDid, account: eve });
+    const viaOc = await call(handler, { token: token({ did_oc: eveDid }).jwt });
+    check("L1: the id of an account not marked as having orangecheck signs in, and the session's own token carries the mark",
+      linkedEve === "linked" && viaOc.status === 200 && claimsOf(viaOc.body.access_token).app_metadata?.orangecheck === true
+      && (await adminUser(eve)).body.app_metadata?.orangecheck === true, `${linkedEve} ${viaOc.status} ${viaOc.body.error || ""}`);
+
+    // H1, the unlink variant.
+    const password = `${randomBytes(18).toString("base64url")}-Aa1`;
+    const set = await setPassword(viaOc.body.access_token, password);
+    const second = await passwordSession(eveEmail, password);
+    const unlinkByPassword = await ocRoute({ method: "POST", op: "unlink", access: second.access_token });
+    check("H1, the unlink variant: a session by a password set from an orangecheck sign-in cannot unlink: 403", set === 200
+      && amrOf(second.access_token)[0] === "password" && unlinkByPassword.status === 403,
+      `${set} ${unlinkByPassword.status} ${unlinkByPassword.body.error || ""}`);
+    check("H1: orangecheck is still linked, and the password session is ended", (await rpc("oc_did_of", { account: eve })) === eveDid
+      && !(await refreshed(second.refresh_token)));
+
+    // Setting a password signed out every other session of hers (Supabase
+    // does), so her emailed code comes after.
+    const eveCode = await mintSession(eveEmail, { age: true });
+    const codeStatus = await ocRoute({ op: "status", access: eveCode.access_token });
+    check("an emailed code of an account with its own email counts as fresh", codeStatus.body.fresh === true
+      && amrOf(eveCode.access_token)[0] === "otp", JSON.stringify(codeStatus.body));
+
+    // L4: deleting from the orangecheck sign-in.
+    const fromOc = await quit(viaOc.body.access_token, { confirm: eveEmail });
+    check("L4: deleting the account from its orangecheck sign-in asks for the same fresh emailed code as unlinking",
+      fromOc.status === 403 && fromOc.body?.fresh === false && (await adminUser(eve)).status === 200,
+      `${fromOc.status} ${fromOc.body?.error || ""}`);
+
+    // L2: a Claude connection's code, approved in the orangecheck sign-in.
+    const oauth = (await import("../../api/oauth.js")).default;
+    const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+    const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+    const resource = "https://brickworks.diy/api/mcp";
+    const verifier = randomBytes(32).toString("base64url");
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const approvedCode = async (access) => {
+      const approved = await route2(oauth, { method: "POST", op: "approve", access, body: { response_type: "code", client_id: CLAUDE,
+        redirect_uri: CALLBACK, code_challenge: challenge, code_challenge_method: "S256", state: "s", resource, scope: "build" } });
+      return approved.body.redirect ? new URL(approved.body.redirect).searchParams.get("code") : null;
+    };
+    const exchange = (code) => route2(oauth, { method: "POST", op: "token", body: { grant_type: "authorization_code", code,
+      redirect_uri: CALLBACK, client_id: CLAUDE, code_verifier: verifier, resource } });
+    const kept = await approvedCode(viaOc.body.access_token);
+    const stale = await approvedCode(viaOc.body.access_token);
+    // As one read just before an unlink: its id is no longer Eve's.
+    await real(`${SB}/rest/v1/oauth_codes?hash=eq.${createHash("sha256").update(String(stale)).digest("hex")}`, { method: "PATCH",
+      headers: { ...ADMIN, "content-type": "application/json" }, body: JSON.stringify({ oc_did: `did:oc:${randomBytes(16).toString("hex")}` }) });
+    const late = await exchange(stale);
+    check("L2: a code approved in an orangecheck sign-in whose id is no longer the account's is refused", Boolean(stale)
+      && late.status === 400 && /unlinked/.test(late.body.error_description || ""), `${late.status} ${JSON.stringify(late.body).slice(0, 120)}`);
+    const unlinked = await rpc("oc_unlink", { account: eve });
+    const exchangedAfter = await exchange(kept);
+    check("L2: unlinking deletes the codes that sign-in was given, so none is exchanged after", Boolean(kept) && unlinked?.codes >= 1
+      && exchangedAfter.status === 400, `${JSON.stringify(unlinked)} ${exchangedAfter.status}`);
+
+    // M1: unlinked between the sign-in finding the account and binding the
+    // session it minted.
+    await rpc("oc_link", { did: eveDid, account: eve });
+    hooks.beforeBind = () => rpc("oc_unlink", { account: eve });
+    hooks.minted = null;
+    const raced = await call(handler, { token: token({ did_oc: eveDid }).jwt });
+    const minted = hooks.minted;
+    check("M1: unlinked between finding the account and binding the session, refused in words, and no session handed out",
+      raced.status === 409 && !raced.body.access_token && /unlinked/.test(raced.body.error || ""), `${raced.status} ${raced.body.error || ""}`);
+    check("M1: and the session minted for it is ended", Boolean(minted?.refresh_token) && !(await refreshed(minted.refresh_token)));
+    check("M1: oc_bind_session binds nothing for an id that is not the account's", (await rpc("oc_bind_session", { session: randomUUID(),
+      account: eve, did: eveDid, rh: "rh", aud: AUD, iat: 1 })) === false);
+
+    // M1, the other half: a binding whose id is no longer the account's
+    // (made before oc_bind_session checked, which nothing now can) is
+    // refused and ended.
+    await rpc("oc_link", { did: eveDid, account: eve });
+    const boundAgain = await call(handler, { token: token({ did_oc: eveDid }).jwt });
+    hooks.sessionOf = (said) => (said.bound ? { ...said, linked: false } : said);
+    forgetForTests();
+    const orphan = await theme(boundAgain.body.access_token);
+    hooks.sessionOf = null;
+    check("M1: a session bound by an id that is no longer the account's is refused, in words, and ended", boundAgain.status === 200
+      && orphan.status === 401 && /unlinked/.test(orphan.body.error || "") && !(await refreshed(boundAgain.body.refresh_token)),
+      `${boundAgain.status} ${orphan.status} ${orphan.body.error || ""}`);
+
+    // Nothing about an emailed code changes: Eve's deletes the account by
+    // its address, as every email account does.
+    const byCode = await quit(eveCode.access_token, { confirm: eveEmail });
+    check("an emailed code's session deletes the account with its address typed, as before", byCode.status === 200
+      && byCode.body?.deleted === true, `${byCode.status} ${byCode.body?.error || ""}`);
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.

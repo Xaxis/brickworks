@@ -177,22 +177,13 @@ function popupCode() {
   return popup;
 }
 
-/// Whether Sign in with orangecheck is offered on this page: to everybody
-/// once the deployment says so (api/_oc_config.js, the one switch), and
-/// until then to a tab opened with ?oc=1, kept for that tab, and to a test
-/// account's browser (api/_auth.js isTestAccount). {offered, ready}: ready
-/// false is a deployment without the signing secret, where the button says
-/// so rather than open orangecheck's window.
+/// Whether Sign in with orangecheck is offered on this page: to everybody,
+/// as the deployment says (api/_oc_config.js, the one switch). {offered,
+/// ready}: ready false is a deployment without the signing secret, where
+/// the button says so rather than open orangecheck's window.
 export async function orangecheckOffer() {
-  let tab = false;
-  try {
-    if (new URLSearchParams(location.search).get("oc") === "1") sessionStorage.setItem("brickworks.oc", "1");
-    tab = sessionStorage.getItem("brickworks.oc") === "1";
-  } catch {
-    tab = new URLSearchParams(location.search).get("oc") === "1";
-  }
   const said = (await where()).orangecheck;
-  return { offered: said.everyone === true || tab || /@resend\.dev$/i.test(email()), ready: said.ready === true };
+  return { offered: said.everyone === true, ready: said.ready === true };
 }
 
 /// Whether an address is an orangecheck account's, made up by the server

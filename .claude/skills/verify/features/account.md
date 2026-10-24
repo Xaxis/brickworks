@@ -222,12 +222,16 @@ they have. A Claude connector belongs to the account that switched it on.
   GitHub. Brickworks gets an id for you, not your address."). Its window is
   orangecheck's own (`web/oc-popup.mjs`, served from here, made by
   `tools/web/vendor_orangecheck.sh` with the server's checks in
-  `api/_orangecheck.js`); the token it hands back is checked (audience from configuration:
-  brickworks.diy or the deployment's own `VERCEL_URL`, or a loopback
-  `OC_AUDIENCE` on this machine; `rh` required; the project's rule; the list of ended
+  `api/_orangecheck.js`); the token it hands back is checked (`checkOcToken`;
+  audience from configuration: brickworks.diy alone in production, a Preview
+  deployment's own `VERCEL_URL`, or a loopback `OC_AUDIENCE` on this machine;
+  orangecheck's keys unreadable is 503; `rh` required; the project's rule,
+  `{min_sats, min_days}`; the list of ended
   sessions, which must be readable), spent once (`oc_spend`), and exchanged
-  for a Supabase session minted with the admin API, bound to the token's `rh`,
-  `aud` and `iat` (`oc_sessions`) before it is handed out; the token is then
+  for a Supabase session minted with the admin API (the account marked first
+  if it is not), bound to the token's `rh`, `aud` and `iat` (`oc_sessions`)
+  before it is handed out, and only while the did is still the account's
+  (else the session is ended, 409); the token is then
   ended at orangecheck. A new did is a new account, address 32 random hex
   `@oc.brickworks.diy` (never derived from the did), `app_metadata.orangecheck`
   true, keyed in `oc_identities`. That address gets no code (`/api/otp` 422)
@@ -238,25 +242,35 @@ they have. A Claude connector belongs to the account that switched it on.
   Production alone); without either nobody signs in with orangecheck, and
   where the deployment has no signing secret (a unit's preview) the button is
   drawn and a sign-in says it is unavailable; production without both takes
-  no token, and says so in its log at every start. Offered to everybody:
+  no token, and says so in its log at every start. Offered to everybody, on
+  every page and in the app's sign-in screen:
   `ORANGECHECK_FOR_EVERYONE` in `api/_oc_config.js` is the one switch (step 1
-  alone kept it to a tab opened with `?oc=1`, sessionStorage
-  `brickworks.oc`, and test accounts), told to pages and the app by
-  `/api/account` as `orangecheck: {ready, everyone}`. Where the docs fell
-  short: `docs/ORANGECHECK.md`. In the web
+  alone kept it to a tab opened with `?oc=1`, a flag oc205 removed), told to
+  pages and the app by `/api/account` as `orangecheck: {ready, everyone}`.
+  Where the docs fell short, and orangecheck's review and its fixes:
+  `docs/ORANGECHECK.md`. In the web
   app the sign-in screen has **Sign in with orangecheck** too
   (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
   `/profile?then=/app…`, which opens the dialog by itself and, signed in,
   goes back (`web/profile.js`; only ever to `/app`). Linking from
   `/settings` (`GET ?op=status`, `POST ?op=link`, `?op=unlink`) asks for a
-  code emailed in the last five minutes, never a session orangecheck
-  started; the address is told; unlinking ends that id's sessions and the
-  Claude connections it approved. Each authenticated request of an account
-  marked `app_metadata.orangecheck` asks `oc_session_of` (held 5 s): a gone
-  session is refused, and one orangecheck started is refused and deleted
-  once ended everywhere, and reads but does not write while orangecheck
-  cannot be asked (`api/_auth.js` → `api/_oc.js` `sessionStanding`); a
-  connection approved in one carries its `rh` (`oauth_grants.oc_*`). Site pages send
+  code emailed in the last five minutes (`amr` `otp`; a password only for a
+  `@resend.dev` test account), never a session orangecheck started
+  (`api/_oc.js` `codeOf`); so does deleting an account with its own email
+  from a session orangecheck started (403 `fresh: false`, and /settings
+  asks for the code in the delete form); the address is told; unlinking
+  ends that id's sessions, the Claude connections it approved and their
+  codes not yet exchanged. Each authenticated request of an account
+  marked `app_metadata.orangecheck`, or at a made-up address, asks
+  `oc_session_of` (held 5 s): a gone session is refused, and one
+  orangecheck started is refused and deleted once ended everywhere or once
+  its did is no longer the account's, and reads but does not write while
+  orangecheck cannot be asked; a made-up address's session orangecheck did
+  not start is refused and deleted (`api/_auth.js` → `api/_oc.js`
+  `sessionStanding`). Any session signed in by password, but a test
+  account's, is refused (403) and deleted (`api/_auth.js`): anybody can set
+  one at Supabase. A connection approved in one carries its `rh`
+  (`oauth_grants.oc_*`), and its code is refused once the did is unlinked. Site pages send
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
   answer; `/app` and `/b/` keep `same-origin`.
 
@@ -322,7 +336,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (67: a first sign-in is a new
+`orangecheck_check` ends "N passed, 0 failed" (88: a first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
 ended at orangecheck and never in the answer; refused a second time, here and
 on another instance; the same did is the same account; no `rh`, another
@@ -340,9 +354,18 @@ to unlink, reading but not writing while the list is down, ended everywhere
 and not renewable while the email session goes on, unlinking ending what the
 id started, an orangecheck account unable to link or unlink, a Claude
 connection it approved waiting while the list is down and ended with it;
-`/api/account`'s offer; twenty tries from one address, the next 429).
+orangecheck's review, each failing case: a password set from an
+orangecheck sign-in and a second session by it, 401 after Sign out
+everywhere and unable to renew, and 403 for the unlink variant (H1); an
+unlink racing a sign-in leaves no session (409), and a binding whose did
+is gone is ended (M1); an unmarked account's session carries the mark
+(L1); a code approved in an orangecheck sign-in refused once its did is
+not the owner's, and deleted by unlinking (L2); deleting from an
+orangecheck sign-in asks for a fresh code (L4); production's one audience;
+keys unreadable 503; a `{min_sats, min_days}` rule letting a backed account
+in; `/api/account`'s offer; twenty tries from one address, the next 429).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
-without `?oc=1` once everybody is offered it, the dialog at 390 and 1280 in
+for everybody with nothing on the address, the dialog at 390 and 1280 in
 both themes, the window opened at me.ochk.io and closed, a blocked one said
 in words, or on a unit's preview (no signing secret) the button saying it is
 unavailable, the headers, the server's refusals, Link orangecheck on

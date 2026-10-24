@@ -211,6 +211,8 @@
 								Claude connections are deleted with the account. It cannot be undone.</p>
 							<label>Type your email address to confirm
 								<input id="delete-confirm" type="email" autocomplete="off" required></label>
+							<label id="delete-code-part" hidden><span id="delete-code-said">The code we emailed you</span>
+								<input id="delete-code" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
 							<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button></div>
 							<p class="said" id="delete-said" role="status"></p>
 						</form>

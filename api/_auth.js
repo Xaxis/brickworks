@@ -136,18 +136,46 @@ export async function verify(token, request = null) {
   if (!audience.includes("authenticated")) throw new AuthError("that sign-in is not for a person");
   if (!claims.sub) throw new AuthError("that sign-in names nobody");
 
-  // An account that has orangecheck (2026-10-23, api/orangecheck.js) has
-  // its session asked after: still there, and if orangecheck started it,
-  // not ended everywhere on orangecheck. Everybody else's never is, so
-  // nothing about orangecheck, working or not, touches them; and its code
-  // is loaded only for those who have it.
-  if (claims.app_metadata?.orangecheck === true) {
+  // An account that has orangecheck (2026-10-23, api/orangecheck.js), or
+  // the made-up address of one, has its session asked after: still there,
+  // and if orangecheck started it, not ended everywhere on orangecheck.
+  // Everybody else's never is, so nothing about orangecheck, working or
+  // not, touches them; and its code is loaded only for those who have it.
+  if (claims.app_metadata?.orangecheck === true || /@oc\.brickworks\.diy$/i.test(String(claims.email || ""))) {
     const { sessionStanding } = await import("./_oc.js");
     const standing = await sessionStanding(claims, request?.method);
     if (standing.refused) throw new AuthError(standing.refused, standing.status);
   }
 
+  // Brickworks signs people in with an emailed code or with orangecheck,
+  // never a password. Anybody signed in can set one on their account with
+  // Supabase, though, and sign in with it: a session nothing here started,
+  // which neither unlinking nor ending every session on orangecheck could
+  // end (oc188's review, H1). So one is refused, and ended, but a test
+  // account's (tools/web/session.mjs), whose address nobody receives mail at.
+  if (signedInByPassword(claims) && !isTestAccount(claims)) {
+    await endSession(claims.session_id);
+    throw new AuthError("Brickworks signs you in with a code we email you or with orangecheck, never a password. "
+      + "Sign in again.", 403);
+  }
+
   return claims;
+}
+
+function signedInByPassword(claims) {
+  return (Array.isArray(claims.amr) ? claims.amr : []).some((one) => one?.method === "password");
+}
+
+/// Supabase's session [id] deleted, with its refresh tokens: it cannot be
+/// renewed. Said in the log when it cannot be.
+async function endSession(id) {
+  if (!id) return;
+  try {
+    const { db } = await import("./_db.js");
+    await db("rpc/oc_end_session", { method: "POST", body: { session: id } });
+  } catch (trouble) {
+    console.error(`auth: a password session was not ended: ${String(trouble?.message || trouble).slice(0, 120)}`);
+  }
 }
 
 export function bearer(request) {

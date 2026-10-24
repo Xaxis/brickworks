@@ -31,7 +31,9 @@
 //   typed again is the confirmation, so a stray click or a stolen page
 //   cannot do it. An orangecheck account, whose address is made up
 //   (api/orangecheck.js), sends {orangecheck: <a token>} instead: a fresh
-//   sign-in with orangecheck, as the same person (2026-10-23). The files of the build photos it posted, of those
+//   sign-in with orangecheck, as the same person (2026-10-23); an account
+//   with its own email, signed in with orangecheck, a code emailed in the
+//   last five minutes first, as unlinking asks. The files of the build photos it posted, of those
 //   posted of its models, and of its own picture as its avatar
 //   (supabase/avatars.sql), are deleted from storage first, by name, since
 //   storage keeps no link to the account; then the account itself, and
@@ -303,6 +305,23 @@ async function deleteAccount(request, response) {
     const typed = String(body?.confirm || "").trim().toLowerCase();
     if (!address || typed !== address) {
       return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
+    }
+    // Signed in with orangecheck to an account that has its own email: the
+    // same fresh emailed code as unlinking asks first (api/orangecheck.js),
+    // so an orangecheck sign-in alone cannot delete the account it was
+    // linked to (oc188's review, L4).
+    if (claims.app_metadata?.orangecheck === true) {
+      const { codeOf } = await import("./_oc.js");
+      let asked;
+      try {
+        asked = await codeOf(claims);
+      } catch (trouble) {
+        console.error(`account: whose sign-in: ${String(trouble?.message || trouble).slice(0, 120)}`);
+        return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+      }
+      if (asked.bound && !asked.fresh) {
+        return response.status(403).json({ error: "Confirm it is you first, with a code we email you.", fresh: false });
+      }
     }
   }
   if (isMaster(claims)) {

@@ -16,7 +16,58 @@ Step 1 of orangecheck's brief was sign-in alone, offered only to a tab
 opened with `?oc=1` and to test accounts. Steps 2-3 (linking from
 Settings, and ending a session when somebody signs out of orangecheck
 everywhere) turn it on for everybody (`ORANGECHECK_FOR_EVERYONE` in
-api/_oc_config.js).
+api/_oc_config.js). orangecheck reviewed all three adversarially; unit
+oc205 fixed every finding (below), dropped the `?oc=1` flag, and the three
+ship together with the button on every page and in the app's sign-in
+screen.
+
+## The review, and what was done
+
+Each finding has its failing case in tools/web/orangecheck_check.mjs,
+which now passes.
+
+- **H1, password sessions.** Anybody signed in can set a password on their
+  account at Supabase (`PUT /auth/v1/user`) and sign in with it: a session
+  nothing here started, counted as a fresh code, and bound to nothing, so
+  Sign out everywhere could not end it. *Done:* only an emailed code
+  (`amr` `otp`) is fresh, a password only for the `@resend.dev` test
+  accounts (`api/_oc.js` `codeOf`). `api/_auth.js` `verify` refuses any
+  session signed in by password, but a test account's, with 403, and ends
+  it. And an account at a made-up `@oc.brickworks.diy` address, which takes
+  no code, has every session orangecheck did not start ended with 401
+  (`sessionStanding`). Supabase also signs out the account's other sessions
+  when a password is set: a stolen orangecheck sign-in can still sign the
+  person out of their email sessions, though it keeps nothing.
+- **M1, an unlink racing a sign-in.** `oc_bind_session` binds only while
+  the did is still the account's, holding the identity's row while it
+  writes, and answers whether it bound; when not, the sign-in ends the
+  session it minted and says so (409). A binding whose did is no longer
+  the account's (`oc_session_of` `linked`) is refused and ended.
+- **L1.** An account its did signs in to that is not marked
+  (`app_metadata.orangecheck`) is marked before the session is minted, so
+  every bound session's own token carries the mark.
+- **L2.** `oc_unlink` deletes the Claude codes that sign-in approved and
+  nobody exchanged yet, and the exchange refuses a code whose did is no
+  longer its owner's.
+- **L3, documented.** Every request of a marked account reads its session's
+  binding. When that read fails, a write cannot tell the account's emailed
+  code's session from one orangecheck started, so it answers 503 ("could
+  not check your orangecheck sign-in") for the email session too; reads go
+  on. Only accounts that have orangecheck are touched; nobody else's
+  session is ever asked after. Carrying the binding in the session's own
+  token would need a Supabase access token hook, which is more than this
+  is worth.
+- **L4.** Deleting an account that has its own email from a session
+  orangecheck started asks for the same fresh emailed code as unlinking
+  (403 `fresh: false`; /settings sends the code and asks for it).
+- **Step 1's L1.** In production the only audience is
+  `https://brickworks.diy`; the deployment's own `*.vercel.app` address is
+  not one (13, below).
+- **Packages.** me-client 0.42.0 and auth-core 2.17.0, pinned in
+  tools/web/vendor_orangecheck.sh. `checkOcToken` tells a token that is no
+  good from a key set that cannot be read, which answers 503, never 401.
+- **4.** The rule's floor is `{min_sats, min_days}`, read in exactly those
+  names; nothing asks for `max_age_secs`.
 
 ## Where the docs fell short
 
@@ -42,8 +93,10 @@ api/_oc_config.js).
 
 4. **/me/require-bond: missing.** The `/api/integrator/<key>/sign-in` answer has no
    documented shape. With "Everyone" set it is `{"ok":true,"require_bond":null}`. The shape
-   of `require_bond` when a floor is set (`min_sats`, `min_days`, `max_age_secs`?) is a guess.
-   *Did:* refuse every sign-in when the answer doesn't state the floor in exactly those names.
+   of `require_bond` when a floor is set was a guess until orangecheck's review said it:
+   `{min_sats, min_days}`, no `max_age_secs`.
+   *Did:* read exactly those two names, and refuse every sign-in when the answer doesn't
+   state them.
 
 5. **/me/sdk "Anything else" (revocation list answer): unclear.** In
    `{ v, at, tokens, accounts, handles }`, the unit of `at` isn't stated. It is Unix
@@ -102,8 +155,9 @@ api/_oc_config.js).
     docs don't say whether `audience` takes more than one origin, for a site served at several.
     The "www and the apex" note covers revocation only. Brickworks checks each release at its
     deployment's own address before the domain moves onto it, so it has two origins.
-   *Did:* keep a fixed list (brickworks.diy and the deployment's own VERCEL_URL). Pick the entry
-   that equals the token's `aud` and pass that one string.
+   *Did:* keep a fixed list, pick the entry that equals the token's `aud` and pass that one
+   string. In production the list is brickworks.diy alone (the review's step 1 L1): a
+   release checked at its own address takes no token there.
 
 14. **/me/sdk "a Bitcoin wallet in the popup": missing.** It shows how to sign the message with
     a throwaway key, but not how to reach the message in a test. Nothing documents the window's
@@ -128,3 +182,15 @@ api/_oc_config.js).
     person (or a tester) finds "Sign out everywhere", so the two-minute promise can't be checked
     from the docs alone.
    *Did:* still to be found on the live test.
+
+18. **/me/sdk: missing.** `checkOcToken` (me-client 0.42.0's `/server`), which tells
+    `valid`, `invalid` (with `no_session_handle`) and `unavailable` (`key_set_unavailable`)
+    apart, is in the package's types but on no page; the README names only `checkOcSession`.
+   *Did:* read its type declaration, and answer `unavailable` 503.
+
+19. **/me/sdk "your own accounts": missing.** It says to bind the token's `rh` to the
+    session you mint, but not that your identity provider may let that session add a way in
+    of its own that the binding never sees. With Supabase, any session can set a password
+    and sign in with it (the review's H1).
+   *Did:* refuse every password session but a test account's, and end any session of an
+    orangecheck-only account that orangecheck did not start.

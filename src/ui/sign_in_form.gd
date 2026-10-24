@@ -215,15 +215,10 @@ func _redeem() -> void:
 	_code.grab_focus()
 
 
-## Whether this tab is offered orangecheck: everybody, once the deployment
-## says so, and until then a tab opened with ?oc=1 (kept for the tab, as
-## the site keeps it: web/account.js orangecheckOffer).
+## Whether this tab is offered orangecheck: everybody, as the deployment
+## says (web/account.js orangecheckOffer, api/_oc_config.js).
 func _orangecheck_offered() -> bool:
-	if account != null and account.deployment != null and account.deployment.orangecheck_for_everyone:
-		return true
-	return bool(JavaScriptBridge.eval("(function () { try {"
-		+ " if (new URLSearchParams(location.search).get('oc') === '1') sessionStorage.setItem('brickworks.oc', '1');"
-		+ " return sessionStorage.getItem('brickworks.oc') === '1'; } catch (e) { return false; } })()", true))
+	return account != null and account.deployment != null and account.deployment.orangecheck_for_everyone
 
 
 ## To the site's sign-in, which comes back to this very address.

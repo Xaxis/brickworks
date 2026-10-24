@@ -315,11 +315,42 @@ $("delete-form").addEventListener("submit", async (event) => {
       return;
     }
     body = { confirm: typed };
+    // Asked for below, when this browser signed in with orangecheck: the
+    // code redeemed is a sign-in of its own, by email, just now.
+    if (!$("delete-code-part").hidden) {
+      $("delete-go").disabled = true;
+      try {
+        await redeem(email(), $("delete-code").value);
+        $("delete-code-part").hidden = true;
+        $("delete-code").required = false;
+      } catch (trouble) {
+        $("delete-said").textContent = trouble.message;
+        return;
+      } finally {
+        $("delete-go").disabled = false;
+      }
+    }
   }
   if (!confirm("Delete this account and everything in it, for good?")) return;
   $("delete-go").disabled = true;
   const answer = await call("/api/account?op=delete", { method: "POST", body });
   $("delete-go").disabled = false;
+  if (answer.status === 403 && answer.body.fresh === false) {
+    // Signed in with orangecheck, to an account with its own email: a code
+    // to it first, as unlinking asks (api/account.js).
+    try {
+      const to = await sendCode(email());
+      $("delete-code-said").textContent = `The code we emailed to ${to}`;
+      $("delete-code-part").hidden = false;
+      $("delete-code").required = true;
+      $("delete-code").value = "";
+      $("delete-code").focus();
+      $("delete-said").textContent = "Confirm it is you with the code, then press Delete my account again.";
+    } catch (trouble) {
+      $("delete-said").textContent = trouble.message;
+    }
+    return;
+  }
   if (answer.status !== 200) {
     $("delete-said").textContent = answer.body.error || "That did not work just now.";
     return;

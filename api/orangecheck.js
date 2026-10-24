@@ -12,7 +12,8 @@
 //   GET ?op=status       {did, only, fresh}: the orangecheck id linked, if
 //                        any; whether the account signs in only with it;
 //                        whether this session is an emailed code of the
-//                        last five minutes, which linking and unlinking ask.
+//                        last five minutes, which linking and unlinking ask
+//                        (api/_oc.js codeOf).
 //   POST ?op=link        {token}: orangecheck linked to an account that has
 //                        its own email, after a fresh code, and only an id
 //                        no other account has. The address is told.
@@ -35,11 +36,7 @@
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
-import { checkToken, endToken, madeUp, ocConfigured, spendToken } from "./_oc.js";
-
-// How recent an emailed code must be for linking or unlinking: the person
-// has just proved the inbox, not merely that a tab of theirs was open.
-const FRESH_SECONDS = 300;
+import { checkToken, codeOf, endToken, madeUp, ocConfigured, spendToken } from "./_oc.js";
 
 function supabase() {
   return String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -82,12 +79,16 @@ async function dropAccount(account) {
 /// step must name [account], or nothing is handed out. An account has one
 /// such link at a time, so two sign-ins of it at once (two tabs, or two
 /// first sign-ins racing) can each spoil the other's: the one refused asks
-/// again, after a moment that differs each time.
+/// again, after a moment that differs each time. An account its id signs
+/// in to and not marked as having orangecheck is marked first, so the
+/// session's own token carries the mark and has every request asked after
+/// (oc188's review, L1).
 async function sessionFor(account) {
   const who = await fetch(`${supabase()}/auth/v1/admin/users/${account}`, {
     headers: admin(), signal: AbortSignal.timeout(10000) });
   const user = await who.json().catch(() => ({}));
   if (!who.ok || user.id !== account || !user.email) throw new Error(`auth: the account was not read: ${who.status}`);
+  if (user.app_metadata?.orangecheck !== true) await mark(account, true);
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await redeemedFor(account, user.email);
@@ -201,13 +202,20 @@ async function signIn(request, response) {
   }
 
   // Bound before it is handed out, so a session orangecheck can end is never
-  // in a browser without the means to end it.
+  // in a browser without the means to end it; and only while the id is
+  // still the account's, so an unlink since it was looked up leaves no
+  // session of that id behind (oc188's review, M1).
+  let bound;
   try {
-    await db("rpc/oc_bind_session", { method: "POST", body: { session: minted.sessionId, account, did, rh, aud, iat } });
+    bound = await db("rpc/oc_bind_session", { method: "POST", body: { session: minted.sessionId, account, did, rh, aud, iat } });
   } catch (trouble) {
     console.error(`orangecheck: the session was not bound: ${String(trouble?.message || trouble).slice(0, 120)}`);
     await endSession(minted.session.access_token);
     return say(response, 502, "Brickworks could not finish the sign-in just now. Try again in a minute.");
+  }
+  if (bound !== true) {
+    await endSession(minted.session.access_token);
+    return say(response, 409, "orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.");
   }
   await endToken(token);
 
@@ -226,17 +234,10 @@ async function signIn(request, response) {
 /// Throws AuthError when there is none.
 async function asking(request) {
   const claims = await verify(bearer(request), request);
-  const [session, did] = await Promise.all([
-    db("rpc/oc_session_of", { method: "POST", body: { session: claims.session_id || null } }),
+  const [{ fresh }, did] = await Promise.all([
+    codeOf(claims),
     db("rpc/oc_did_of", { method: "POST", body: { account: claims.sub } }),
   ]);
-  // An emailed code, or a test account's password (tools/web/session.mjs):
-  // the account's own sign-in. A session orangecheck started says "otp"
-  // too (it is minted from a one-time link), so it is told apart by its
-  // binding, never by that.
-  const code = (Array.isArray(claims.amr) ? claims.amr : []).find((one) => one?.method === "otp" || one?.method === "password");
-  const fresh = Boolean(code && session && session.exists && !session.bound
-    && Date.now() / 1000 - Number(code.timestamp) <= FRESH_SECONDS);
   return { claims, did: did || null, only: madeUp(claims.email), fresh };
 }
 

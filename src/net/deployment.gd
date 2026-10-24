@@ -36,7 +36,7 @@ var accounts: bool = false
 var accounts_url: String = ""
 var accounts_key: String = ""
 ## Whether everybody is offered Sign in with orangecheck (api/_oc_config.js):
-## until then only a tab opened with ?oc=1 is (SignInForm).
+## off, nobody is (SignInForm).
 var orangecheck_for_everyone: bool = false
 
 ## Emitted once, when the question is over, whether or not anything

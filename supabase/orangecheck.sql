@@ -33,8 +33,9 @@
 -- directly.
 --
 -- Only additions: four new tables, four empty columns on each of
--- oauth_codes and oauth_grants, and new functions. Applying it again
--- changes nothing. Sessions are ended by deleting Supabase's own row
+-- oauth_codes and oauth_grants, and new functions (oc_bind_session made
+-- again, below, to answer whether it bound). Applying it again changes
+-- nothing. Sessions are ended by deleting Supabase's own row
 -- (auth.sessions), which takes its refresh tokens and its binding with it.
 
 create table if not exists public.oc_identities (
@@ -159,22 +160,40 @@ end;
 $$;
 
 -- The session [session] that [did] started on [account], with its token's
--- rh, aud and iat.
-create or replace function public.oc_bind_session(session uuid, account uuid, did text,
+-- rh, aud and iat: true when it is bound, false when [did] is not
+-- [account]'s (unlinked since the sign-in found it), and the caller ends
+-- the session. The id's row is held while the binding is written, so an
+-- unlink at the same moment either comes first (and this binds nothing) or
+-- waits, and then ends this session with the rest (oc188's review, M1).
+-- It returned nothing until 2026-10-24; the type of an answer cannot be
+-- changed in place, so it is made again, in the same transaction.
+drop function if exists public.oc_bind_session(uuid, uuid, text, text, text, bigint);
+create function public.oc_bind_session(session uuid, account uuid, did text,
     rh text, aud text, iat bigint)
-returns void
-language sql
+returns boolean
+language plpgsql
 security definer
 set search_path = public
 as $$
+begin
+    perform 1 from public.oc_identities i
+     where i.did_oc = oc_bind_session.did and i.account = oc_bind_session.account
+       for key share;
+    if not found then
+        return false;
+    end if;
     insert into public.oc_sessions (session_id, account, did_oc, rh, aud, iat)
     values (oc_bind_session.session, oc_bind_session.account, oc_bind_session.did,
-            oc_bind_session.rh, oc_bind_session.aud, oc_bind_session.iat)
+            oc_bind_session.rh, oc_bind_session.aud, oc_bind_session.iat);
+    return true;
+end;
 $$;
 
 -- What a request needs to know of session [session]: {exists, bound, did,
--- rh, aud, iat}. exists is false once Supabase's session is gone (signed
--- out, unlinked, ended); bound, when orangecheck started it.
+-- rh, aud, iat, linked}. exists is false once Supabase's session is gone
+-- (signed out, unlinked, ended); bound, when orangecheck started it; linked,
+-- whether the id that started it is still the account's (always, since
+-- oc_bind_session checks it; a binding from before that is refused).
 create or replace function public.oc_session_of(session uuid)
 returns jsonb
 language sql
@@ -184,7 +203,9 @@ set search_path = public
 as $$
     select jsonb_build_object(
         'exists', exists (select 1 from auth.sessions s where s.id = oc_session_of.session),
-        'bound', b.session_id is not null, 'did', b.did_oc, 'rh', b.rh, 'aud', b.aud, 'iat', b.iat)
+        'bound', b.session_id is not null, 'did', b.did_oc, 'rh', b.rh, 'aud', b.aud, 'iat', b.iat,
+        'linked', b.session_id is not null and exists (select 1 from public.oc_identities i
+                                                        where i.did_oc = b.did_oc and i.account = b.account))
       from (select 1) one
       left join public.oc_sessions b on b.session_id = oc_session_of.session
 $$;
@@ -244,8 +265,9 @@ end;
 $$;
 
 -- The orangecheck id on [account] unlinked, and every session it started
--- there ended, and every Claude connection it approved: {did, ended,
--- connections}, or null when none was linked.
+-- there ended, and every Claude connection it approved, and every code for
+-- one not yet exchanged (oc188's review, L2): {did, ended, connections,
+-- codes}, or null when none was linked.
 create or replace function public.oc_unlink(account uuid)
 returns jsonb
 language plpgsql
@@ -256,6 +278,7 @@ declare
     gone text;
     ended integer;
     connections integer;
+    codes integer;
 begin
     delete from public.oc_identities i where i.account = oc_unlink.account returning i.did_oc into gone;
     if gone is null then
@@ -267,7 +290,9 @@ begin
     get diagnostics ended = row_count;
     delete from public.oauth_grants g where g.owner = oc_unlink.account and g.oc_did = gone;
     get diagnostics connections = row_count;
-    return jsonb_build_object('did', gone, 'ended', ended, 'connections', connections);
+    delete from public.oauth_codes c where c.owner = oc_unlink.account and c.oc_did = gone;
+    get diagnostics codes = row_count;
+    return jsonb_build_object('did', gone, 'ended', ended, 'connections', connections, 'codes', codes);
 end;
 $$;
 

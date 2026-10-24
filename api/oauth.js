@@ -524,6 +524,13 @@ async function token(request, response, origin) {
     if (given.resource !== undefined && resourceAsked(given.resource, origin) !== row.resource) {
       return oauthError(response, 400, "invalid_target", "resource is not the one the code was issued for");
     }
+    // Approved while signed in with orangecheck: only while that id is
+    // still the account's. Unlinking deletes such codes too
+    // (supabase/orangecheck.sql oc_unlink); this is for one read before it
+    // (oc188's review, L2).
+    if (row.oc_did && (await db("rpc/oc_account_of", { method: "POST", body: { did: row.oc_did } })) !== row.owner) {
+      return oauthError(response, 400, "invalid_grant", "the orangecheck sign-in that approved this was unlinked");
+    }
     const [grant] = await db("oauth_grants", {
       method: "POST",
       body: {

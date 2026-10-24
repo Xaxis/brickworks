@@ -22,9 +22,10 @@
 //   4. The app, /app, is signed in too.
 //   5. Deleted from /settings with a fresh orangecheck sign-in, the same
 //      wallet: signed out, and the account gone.
-// On a preview (BW_BYPASS) the server answers that orangecheck could not
-// confirm the sign-in, since orangecheck serves its list of ended sessions
-// only for brickworks.diy: that the answer came back is what it proves there.
+// On a preview (BW_BYPASS) the server refuses the token, which is for the
+// deployment's own address: production takes tokens for brickworks.diy
+// alone (api/_oc_config.js), the only origin orangecheck serves its list of
+// ended sessions for. That the answer came back is what it proves there.
 import { launch, START_MS } from "./browser.mjs";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -99,9 +100,8 @@ const nextAnswer = () => page.waitForResponse((response) => response.url().endsW
   .catch(() => null);
 
 try {
-  // 1. Through orangecheck's window.
-  // ?oc=1: offered to this tab, as before everybody is (api/_oc_config.js).
-  await page.goto(`${site}/profile?oc=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  // 1. Through orangecheck's window, offered to everybody.
+  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("#sign-in").click({ timeout: 60000 });
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
   const answered = nextAnswer();
@@ -125,8 +125,8 @@ try {
 
   if (preview) {
     const said = await page.locator("dialog.sign-in .said").textContent().catch(() => "");
-    check("on a preview, the server says orangecheck could not confirm it, in words",
-      answer?.status === 503 && /orangecheck could not confirm/.test(said), `${answer?.status} ${said}`);
+    check("on a preview, the server refuses a token for the deployment's own address, in words",
+      answer?.status === 401 && /not for Brickworks/.test(said), `${answer?.status} ${said}`);
     await shot(page, "preview_refused.png");
   } else {
     // 2. Signed in, as a new account, asked what anybody is asked first.

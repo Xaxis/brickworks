@@ -7,17 +7,20 @@
 #                         signInWithOcOutcome, which open orangecheck's
 #                         sign-in window. Served from our own origin, since
 #                         every page runs under script-src 'self'.
-#   api/_orangecheck.js   me-client's server checks (verifyOcToken,
-#                         bondMeets) and auth-core's integratorRevocationCheck,
-#                         bundled into one file with jose, which they use.
+#   api/_orangecheck.js   me-client's server checks (checkOcToken, which
+#                         tells a token that is no good from a key set that
+#                         cannot be read, and bondMeets) and auth-core's
+#                         integratorRevocationCheck (and its cache's reset,
+#                         for tools/web/orangecheck_check.mjs), bundled into
+#                         one file with jose, which they use.
 #                         api/ has no node_modules: tools/deploy.sh copies
 #                         every api/_*.js beside each route, and this is one.
 #
 # The versions are pinned here and written into each file's first line, so
 # a change of version is a diff someone reads. Run it again to upgrade.
 set -euo pipefail
-ME=0.39.0
-CORE=2.14.0
+ME=0.42.0
+CORE=2.17.0
 ESBUILD=0.24.2
 R=$(cd "$(dirname "$0")/../.." && pwd)
 W=$(mktemp -d "${TMPDIR:-/tmp}/vendor_orangecheck.XXXXXX")
@@ -27,8 +30,8 @@ npm init -y >/dev/null
 npm install --ignore-scripts --no-audit --no-fund --silent \
   "@orangecheck/me-client@$ME" "@orangecheck/auth-core@$CORE" "esbuild@$ESBUILD"
 cat > entry.mjs <<'EOF'
-export { bondMeets, verifyOcToken } from "@orangecheck/me-client/server";
-export { integratorRevocationCheck } from "@orangecheck/auth-core";
+export { bondMeets, checkOcToken } from "@orangecheck/me-client/server";
+export { _resetJwksCachesForTests, integratorRevocationCheck } from "@orangecheck/auth-core";
 EOF
 ./node_modules/.bin/esbuild entry.mjs --bundle --format=esm --platform=node --target=node22 \
   --external:hono --external:express --log-level=warning \

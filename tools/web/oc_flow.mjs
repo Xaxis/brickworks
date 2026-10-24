@@ -4,9 +4,9 @@
 //
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 //
-//   0. Offered to everybody, or until then (api/_oc_config.js) only to a
-//      tab opened with ?oc=1, as /api/account says: drawn, or not, without it.
-//   1. The sign-in dialog (from /profile?oc=1 signed out) has Sign in with
+//   0. Offered to everybody, as /api/account says (api/_oc_config.js, the
+//      one switch): drawn with no flag on the address (?oc=1 is gone).
+//   1. The sign-in dialog (from /profile signed out) has Sign in with
 //      orangecheck under the email, with its words, at 390 and 1280 px in
 //      light and dark, nothing sideways.
 //   2. Where the deployment has no signing secret (a unit's preview), the
@@ -96,30 +96,28 @@ async function context(width, theme, { blockWindows = false } = {}) {
   return made;
 }
 
-async function openDialog(page, { flag = "?oc=1" } = {}) {
-  await page.goto(`${site}/profile${flag}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+async function openDialog(page) {
+  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("#sign-in").waitFor({ state: "visible", timeout: 60000 });
   await page.locator("#sign-in").click();
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
 }
 
 // What the deployment says of orangecheck (api/_oc_config.js): whether it
-// takes a token here, and whether everybody is offered it, or only a tab
-// opened with ?oc=1.
+// takes a token here, and whether everybody is offered it.
 const offer = (await (await fetch(`${site}/api/account`, { headers })).json()).orangecheck || {};
 console.log(`  --    orangecheck here: ${offer.ready ? "takes a token" : "unavailable (no signing secret)"}, `
-  + `offered to ${offer.everyone ? "everybody" : "a tab opened with ?oc=1"}`);
+  + `offered to ${offer.everyone ? "everybody" : "nobody"}`);
 
 try {
-  // 0. Who is offered it.
+  // 0. Who is offered it: everybody, with nothing on the address.
   {
     const made = await context(1280, "light");
     const page = await made.newPage();
-    await openDialog(page, { flag: "" });
-    await page.waitForTimeout(2000);
+    await openDialog(page);
+    await page.locator("dialog.sign-in #oc-sign-in").waitFor({ state: "visible", timeout: 15000 }).catch(() => null);
     const drawn = await page.locator("dialog.sign-in #oc-sign-in").isVisible();
-    check(offer.everyone ? "offered to everybody: drawn without ?oc=1" : "offered only with ?oc=1: not drawn without it",
-      drawn === Boolean(offer.everyone));
+    check("offered to everybody, with no flag on the address", offer.everyone === true && drawn, `everyone ${offer.everyone}, drawn ${drawn}`);
     await made.close();
   }
 
@@ -236,7 +234,7 @@ try {
     const made = await context(390, "light");
     const page = await made.newPage();
     listen(page, "from the app");
-    await page.goto(`${site}/profile?then=${encodeURIComponent("/app")}&oc=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.goto(`${site}/profile?then=${encodeURIComponent("/app")}`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const opened = await page.locator("dialog.sign-in #oc-sign-in").waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false);
     const said = await page.locator("dialog.sign-in p").first().textContent().catch(() => "");
     check("sent from the app, the sign-in opens by itself and says it goes back", opened && /back to the app/.test(said), said);

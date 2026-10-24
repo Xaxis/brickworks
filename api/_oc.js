@@ -9,7 +9,8 @@
 // with its own code for the checks (api/_orangecheck.js, made by
 // tools/web/vendor_orangecheck.sh):
 //   - the signature and the audience: this deployment's own origin, from
-//     configuration, never from the request;
+//     configuration, never from the request; while orangecheck's keys
+//     cannot be read, a token is neither good nor bad, and is answered 503;
 //   - the project's rule for who may sign in, even while it lets everyone;
 //   - a token with no rh is refused, since nothing could end what it starts;
 //   - the list of sessions people ended: an ended one is refused, and while
@@ -18,9 +19,10 @@
 // OC_PROJECT_KEY and OC_SIGNING_SECRET are the project's (ochk.app). Without
 // either, or without an audience, no token is taken here.
 
+import { isTestAccount } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, ocConfigured } from "./_oc_config.js";
-import { bondMeets, integratorRevocationCheck, verifyOcToken } from "./_orangecheck.js";
+import { _resetJwksCachesForTests, bondMeets, checkOcToken, integratorRevocationCheck } from "./_orangecheck.js";
 
 export { audiences, ocConfigured };
 
@@ -68,8 +70,9 @@ function endedSessions() {
 // minutes, and after that no token is taken until it can.
 let rule = { at: 0, tried: 0, value: undefined };
 
-/// {kind: "everyone"} or {kind: "backed", minSats, minDays, maxAgeSecs}, or
-/// null when it is not known.
+/// {kind: "everyone"} or {kind: "backed", minSats, minDays}, or null when it
+/// is not known. A floor is {min_sats, min_days}, and nothing else, as
+/// orangecheck answered oc188's review (docs/ORANGECHECK.md, 4).
 async function whoMaySignIn() {
   const now = Date.now();
   const known = rule.value !== undefined;
@@ -85,8 +88,7 @@ async function whoMaySignIn() {
       let value;
       if (bond === null) value = { kind: "everyone" };
       else if (bond && Number.isFinite(bond.min_sats) && Number.isFinite(bond.min_days)) {
-        value = { kind: "backed", minSats: bond.min_sats, minDays: bond.min_days,
-          ...(Number.isFinite(bond.max_age_secs) ? { maxAgeSecs: bond.max_age_secs } : {}) };
+        value = { kind: "backed", minSats: bond.min_sats, minDays: bond.min_days };
       } else throw new Error("a rule it does not state plainly");
       rule = { at: now, tried: now, value };
       return value;
@@ -103,6 +105,7 @@ export function forgetForTests() {
   rule = { at: 0, tried: 0, value: undefined };
   ended = null;
   standings.clear();
+  _resetJwksCachesForTests();
 }
 
 /// [token] checked: {session} with its claims (did_oc, jti, rh, aud, iat,
@@ -114,24 +117,28 @@ export async function checkToken(token) {
     return { status: 422, error: "The sign-in did not come through from orangecheck. Try again." };
   }
   const aud = audiences().find((one) => one === namedAudience(token.trim()));
-  const session = aud ? await verifyOcToken(token.trim(), { audience: aud }).catch(() => null) : null;
+  const checked = aud ? await checkOcToken(token.trim(), { audience: aud }).catch(() => ({ status: "invalid" })) : { status: "invalid" };
+  if (checked.status === "unavailable") {
+    return { status: 503, error: "orangecheck could not be asked just now. Try again in a minute, or sign in with your email." };
+  }
+  const session = checked.status === "valid" ? checked.session : null;
+  const unended = checked.reason === "no_session_handle" || (session && (typeof session.rh !== "string" || !session.rh));
+  if (unended) {
+    return { status: 401, error: "That sign-in could never be ended from orangecheck, so Brickworks does not take it. Try again." };
+  }
   if (!session || session.aud !== aud) return { status: 401, error: "That sign-in was not for Brickworks, or it has run out. Try again." };
-  const { did_oc: did, jti, rh, iat, exp } = session;
+  const { did_oc: did, jti, iat, exp } = session;
   if (!DID.test(String(did || "")) || typeof jti !== "string" || !jti || !Number.isFinite(iat) || !Number.isFinite(exp)) {
     return { status: 401, error: "That sign-in was not one Brickworks can read. Try again." };
   }
-  if (typeof rh !== "string" || !rh) {
-    return { status: 401, error: "That sign-in could never be ended from orangecheck, so Brickworks does not take it. Try again." };
-  }
   const allowed = await whoMaySignIn();
   if (!allowed) return { status: 503, error: "orangecheck could not be asked just now. Try again in a minute, or sign in with your email." };
-  if (allowed.kind === "backed"
-    && !bondMeets(session, { minSats: allowed.minSats, minDays: allowed.minDays, maxAgeSecs: allowed.maxAgeSecs })) {
+  if (allowed.kind === "backed" && !bondMeets(session, { minSats: allowed.minSats, minDays: allowed.minDays })) {
     return { status: 403, error: "Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.", more: { back_url: BACK_URL } };
   }
   let state;
   try {
-    state = await endedSessions().status({ rh, aud, iat });
+    state = await endedSessions().status({ rh: session.rh, aud, iat });
   } catch {
     state = "unverified";
   }
@@ -178,14 +185,30 @@ async function sessionOf(id) {
   return value;
 }
 
+/// [claims]'s session ended here, refused in [words]: Supabase's row
+/// deleted, so it cannot be renewed either.
+async function endHere(claims, session, words) {
+  try {
+    await db("rpc/oc_end_session", { method: "POST", body: { session: claims.session_id } });
+  } catch (trouble) {
+    console.error(`orangecheck: a session was not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
+  }
+  standings.set(claims.session_id, { at: Date.now(), value: { ...session, exists: false } });
+  return { refused: words, status: 401 };
+}
+
 /// Whether the session behind [claims], an account that has orangecheck,
 /// may go on with a request of [method]: {} when it may, or {refused,
 /// status} in words. A session that is gone (signed out, unlinked, ended)
 /// is refused. One orangecheck started is refused once the person ended
-/// every session on orangecheck, and ended here too; while that cannot be
-/// known (the list, or this session's binding, cannot be read), it reads
-/// but does not write. An emailed code's session of the same account is
-/// asked only whether it is still there.
+/// every session on orangecheck, or once the id that started it is no
+/// longer the account's, and ended here too; while that cannot be known
+/// (the list, or this session's binding, cannot be read), it reads but does
+/// not write. An emailed code's session of the same account is asked only
+/// whether it is still there. An orangecheck account's made-up address
+/// takes no code (api/otp.js), so orangecheck starts every session it has:
+/// one it did not, by a password set from one of its sessions (oc188's
+/// review, H1), is ended.
 export async function sessionStanding(claims, method) {
   const write = !READS.has(String(method || "POST").toUpperCase());
   const unsure = write
@@ -200,7 +223,14 @@ export async function sessionStanding(claims, method) {
     return unsure;
   }
   if (!session || session.exists === false) return { refused: "You were signed out. Sign in again.", status: 401 };
-  if (!session.bound) return {};
+  if (!session.bound) {
+    return madeUp(claims.email)
+      ? endHere(claims, session, "That sign-in was not made with orangecheck, so it has ended. Sign in with orangecheck.")
+      : {};
+  }
+  if (session.linked === false) {
+    return endHere(claims, session, "orangecheck was unlinked from this account, so this sign-in has ended. Sign in again.");
+  }
   if (!(process.env.OC_PROJECT_KEY && process.env.OC_SIGNING_SECRET)) return unsure;
   let state;
   try {
@@ -209,15 +239,33 @@ export async function sessionStanding(claims, method) {
     state = "unverified";
   }
   if (state === "revoked") {
-    try {
-      await db("rpc/oc_end_session", { method: "POST", body: { session: claims.session_id } });
-    } catch (trouble) {
-      console.error(`orangecheck: an ended session was not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    }
-    standings.set(claims.session_id, { at: Date.now(), value: { ...session, exists: false } });
-    return { refused: "You signed out of orangecheck everywhere, so this sign-in has ended. Sign in again.", status: 401 };
+    return endHere(claims, session, "You signed out of orangecheck everywhere, so this sign-in has ended. Sign in again.");
   }
   return state === "live" ? {} : unsure;
+}
+
+// How recent an emailed code must be for linking, unlinking, or deleting
+// from a session orangecheck started: the person has just proved the inbox,
+// not merely that a tab of theirs was open.
+const FRESH_SECONDS = 300;
+
+/// The session behind [claims], as linking, unlinking and deleting ask
+/// after it: {bound, fresh}. bound, when orangecheck started it; fresh,
+/// when it is an emailed code of the last five minutes. A session
+/// orangecheck started says "otp" too (it is minted from a one-time link),
+/// so it is told apart by its binding, and is never fresh. Nor is a
+/// password, but a test account's (tools/web/session.mjs), whose address
+/// nobody can receive mail at: anybody signed in can set a password on
+/// their account (oc188's review, H1). Throws when the binding cannot be
+/// read.
+export async function codeOf(claims) {
+  const session = claims.session_id ? await sessionOf(claims.session_id) : null;
+  const code = (Array.isArray(claims.amr) ? claims.amr : [])
+    .find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims)));
+  const bound = Boolean(session && session.bound);
+  const fresh = Boolean(code && session && session.exists && !bound
+    && Date.now() / 1000 - Number(code.timestamp) <= FRESH_SECONDS);
+  return { bound, fresh };
 }
 
 /// Whether a Claude connection approved while signed in with orangecheck
