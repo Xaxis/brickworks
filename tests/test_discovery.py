@@ -114,7 +114,9 @@ def test_a_pool_is_read_only_for_the_one_asking() -> None:
     share = (ROOT / "api/share.js").read_text()
     # The pool asked is the verified session's own, never one a query names.
     assert "if (mine?.pool) asked.pool = mine.account;" in share
-    assert "claims = await verify(bearer(request));" in share
+    # With the request since a9e5016f (2026-10-23): its method says whether
+    # an orangecheck account's session is asked after for a read or a write.
+    assert "claims = await verify(bearer(request), request);" in share
     assert not re.search(r"asked\.pool = [^m]", share)
     # And an answer with anybody's own shares in it is never kept by the CDN.
     assert 'said.tests || mine ? TESTS_CACHE : SHARED_CACHE' in share

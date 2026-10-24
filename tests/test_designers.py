@@ -142,7 +142,9 @@ def test_the_own_numbers_are_never_kept_and_only_the_caller_s() -> None:
     assert 'export const MINE_CACHE = "private, no-store";' in DESIGNERS
     # Said before the sign-in is checked, so a refusal is not kept either.
     assert designs.index('response.setHeader("Cache-Control", MINE_CACHE)') < designs.index("verify(")
-    assert "const account = (await verify(bearer(request))).sub;" in designs
+    # With the request since a9e5016f (2026-10-23): its method says whether
+    # an orangecheck account's session is asked after for a read or a write.
+    assert "const account = (await verify(bearer(request), request)).sub;" in designs
     assert 'db("rpc/designer_mine", { method: "POST", body: { designer: account, days: DAYS } })' in designs
     # Asked from another's page: nothing but that it is not theirs.
     assert "return response.status(200).json({ mine: false });" in designs
