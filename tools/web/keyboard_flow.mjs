@@ -280,16 +280,36 @@ const JOURNEYS = {
         && document.activeElement?.matches('[data-mark="save"]'), null, 3000);
       check(closed, `${label}: Escape closes the lists, back on Save (${(await page.evaluate(focusNow)).said})`);
     }
-    // Share: the toast, said by a region that was there before it spoke.
+    // Share: its sheet (docs/SOCIAL.md U14), by the keyboard alone: Enter
+    // opens it on the link, selected; Tab to Copy link and Enter, said by
+    // the sheet's own status line, which was there before it spoke (the
+    // page behind a dialog is out of a screen reader's reach); the same for
+    // the embed code; Escape closes it, back on Share.
     if (await tabTo(page, label, '[data-mark="share"], #marks [data-share]', { most: 8 })) {
-      const region = await page.evaluate(() => Boolean(document.querySelector('body > .toast[role="status"]')));
       await page.keyboard.press("Enter");
-      const said = await until(page, () => document.querySelector("body > .toast.shown")?.textContent, null, 4000);
-      const words = await page.evaluate(() => document.querySelector("body > .toast")?.textContent || "");
-      check(region && said && words, `${label}: Enter on Share: "${words}", read out from a status region on the page before it spoke`);
+      const opened = await until(page, () => document.querySelector("dialog.share-sheet[open]")
+        && document.activeElement?.id === "share-link", null, 4000);
+      check(opened, `${label}: Enter on Share opens its sheet, on the link (${(await page.evaluate(focusNow)).said})`);
+      const region = await page.evaluate(() => Boolean(document.querySelector('dialog.share-sheet .said[role="status"]')));
+      for (const [button, words] of [["share-link", /^Link copied$/], ["share-embed", /^Embed code copied/]]) {
+        const reached = await tabTo(page, label, `dialog.share-sheet [data-copy="${button}"]`, { most: 3 });
+        if (!reached) continue;
+        await page.keyboard.press("Enter");
+        const said = await until(page, (want) => new RegExp(want).test(document.querySelector("dialog.share-sheet .said")?.textContent || ""),
+          words.source, 4000);
+        const now = await page.evaluate(focusNow);
+        check(region && said && !now.lost && now.said.length > 0, `${label}: Enter on ${now.name || button}: `
+          + `"${await page.evaluate(() => document.querySelector("dialog.share-sheet .said")?.textContent || "")}", from the sheet's status line, the focus kept`);
+      }
+      const copied = await page.evaluate(() => window.__copied.slice(-2));
+      check(copied[0] === (await page.evaluate(() => document.getElementById("share-link").value)) && /^<iframe /.test(copied[1] || ""),
+        `${label}: what went to the clipboard: the link, then the iframe`);
       const moves = await moving(page);
       check(moves.length === 0, `${label}: with reduced motion asked, nothing moves (${moves.join(", ") || "nothing"})`);
       await page.keyboard.press("Escape");
+      const back = await until(page, () => !document.querySelector("dialog.share-sheet[open]")
+        && document.activeElement?.matches("#marks [data-share]"), null, 3000);
+      check(back, `${label}: Escape closes the sheet, back on Share (${(await page.evaluate(focusNow)).said})`);
     }
     // A comment, typed and sent.
     if (await tabTo(page, label, "#comment-body")) {

@@ -527,9 +527,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .list-card:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
 /* A collection's cover (api/_lists.js mosaicHtml), on its card and at the
    head of its page. */
+/* Its shape holds whatever its pictures' own: a wide picture across both
+   columns would make its row taller than the cover's half. */
 .mosaic {
-	aspect-ratio: 4 / 3; display: grid; gap: 2px; background: var(--bg-soft);
-	grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+	aspect-ratio: 4 / 3; min-height: 0; overflow: hidden; display: grid; gap: 2px; background: var(--bg-soft);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
 }
 .mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; }
 .mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; }

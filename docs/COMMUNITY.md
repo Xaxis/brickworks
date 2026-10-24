@@ -52,6 +52,13 @@ the pages say what the site does.
   admin page says Challenges are not open yet, a model's page offers no
   entry, no card says it won, and the feed tells of no entry. Applied to
   the live project 2026-10-19.
+- `supabase/collection_follows.sql` after people, follows, trust,
+  test_models and notifications (it replaces notifications.sql's
+  `follow_rows`, marked REPLACED LATER there; `tools/apply_sql.mjs` refuses
+  notifications.sql applied again alone, unless
+  `--again=supabase/replies.sql,supabase/collection_follows.sql`). Until
+  then a collection's page has no Follow and no count, and a model's page
+  says no collection.
 - `supabase/replies.sql` after comments, follows, challenges, designers,
   gallery_tabs and notifications (it replaces a function of each, marked
   REPLACED LATER there; `tools/apply_sql.mjs` refuses any of those files
@@ -98,6 +105,7 @@ database refuses too:
 | A comment | `api/_comments.js` (`comment_trouble`) | trigger `comments_guard` on `model_comments` |
 | A photo of a real build | `api/people.js` `?op=photo_start` and `?op=photo` | trigger `build_photos_guard` on `build_photos` (`supabase/builds.sql`) |
 | Following somebody (a follow is counted in public) | `api/people.js` `?op=follow` (`api/_follows.js`) | trigger `follows_guard` on `follows` (`supabase/follows.sql`) |
+| Following a collection (counted in public, as a follow is) | `api/people.js` `?op=list_follow` (`api/_lists.js`) | trigger `collection_follows_guard` on `collection_follows` (`supabase/collection_follows.sql`) |
 | Entering a challenge, or voting in one | `api/people.js` `?op=enter`, `?op=vote` (`api/_challenges.js`) | `challenge_enter`, `challenge_vote` (`supabase/challenges.sql`), the only way into their tables |
 
 Something new in public needs the question answered 13 or over: an account
@@ -189,6 +197,12 @@ words beside the button ("Following people is for people 13 and over…",
 (`may_act`, `follow`); letting somebody go is not counted. Follow is on
 every profile (`/u/<handle>`) and beside "Shared by" on a model's page.
 
+**A collection, too** (`supabase/collection_follows.sql`, 2026-10-24,
+docs/SOCIAL.md U11): Follow on a public collection's page (`/c/<id>`), by
+the same rules and the same limits, counted with following people; not
+your own (409). Its page counts its followers; nobody's are listed, and
+its owner is told nothing. What is put in it is in the follower's feed.
+
 **Following is not a way to reach anybody.** Nobody is told they were
 followed, no feed row says who followed whom, and there is no message of
 any kind. What a follow does is put what that person shares in the
@@ -215,6 +229,7 @@ a link to the thing:
 | A comment | on your model, in this life of its link | hidden by you, removed |
 | A remix | of your model, listed in the gallery; whose, only when credited | |
 | An entry in a challenge | a model in the gallery, credited to somebody you follow, entered in a challenge ("… entered “…” in the challenge “…”, built by hand"; `supabase/challenges.sql`) | one in a test challenge, but in a test account's feed |
+| A model put in a collection you follow | a model in the gallery, put in a public collection you follow, not yours ("… added “…” to their collection “…”"; `supabase/collection_follows.sql` `list_rows`, read by `follow_rows`, not by the day's email) | a collection made private or whose owner was taken out or is under 13: its follows wait, and nothing of it is shown or counted |
 
 Nothing by an account taken out or under 13, and a test account's models
 only in a test account's feed. Built from the tables that hold each thing

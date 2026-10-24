@@ -798,9 +798,8 @@ function shareSheet(share, sheet) {
   const app = sheet.querySelector("[data-share-app]");
   const url = link.value;
   const title = document.querySelector("main h1")?.textContent || document.title;
-  const native = typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url }));
-  app.hidden = !native;
   share.addEventListener("click", () => {
+    app.hidden = !(typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url })));
     said.textContent = "";
     sheet.showModal();
     document.documentElement.dataset.shared = "open";

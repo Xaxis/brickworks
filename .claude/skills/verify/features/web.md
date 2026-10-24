@@ -1048,6 +1048,27 @@ plan with Claude as the client.
   the window's focus and every five minutes. `brickworksState.feed`:
   `count`, `account`, `panel`.
 - `follows browser flow` (`tools/web/follows_flow.mjs`): below.
+- `following a collection` (`supabase/collection_follows.sql`,
+  `api/_lists.js`, docs/SOCIAL.md U11): `GET ?op=list_follows&id=X`
+  (followers, and with the session `you_follow`, `may`, `why_not`) and
+  `POST ?op=list_follow` `{id, on}` by follows.sql's rules (13 or over, not
+  taken out, not your own, counted with following people); table
+  `collection_follows`, read by no key; `list_rows` in `follow_rows`, so a
+  model put in a followed collection is in the feed (kind `collection`,
+  `feedSaid`'s `list`) and the avatar's count; `model_lists`, the public
+  collections a model is in, on its page as "In N collections", a tab and
+  `#collections` (`listsOf`, `listCardHtml` with covers by `coversOf`). The
+  collection's page `/c/X` (`api/people.js` `listPage`): its cover
+  (`mosaicHtml`), Follow (`web/follow.js` `followButton` with
+  `data-follow-list`), its counts, Share (`web/person.js`), More.
+- `share sheet` (`api/share.js` `shareSheet`, `web/model-page.js`,
+  docs/SOCIAL.md U14): Share on a model's page opens `dialog.share-sheet`,
+  `#share-link` and `#share-embed` with `[data-copy]`, `[data-share-app]`
+  where `navigator.share` is; `html[data-shared]` `open`, `copied`,
+  `embed`, `sheet` or `failed`. The embed `/m/X/embed` loads `web/theme.js`
+  (`<html data-embed>`: never the account).
+- `list follows browser flow` (`tools/web/list_follows_flow.mjs`, preview
+  check `[list_follows]`): below, under "A collection followed".
 - `Top builds and this week's pick` (`supabase/discovery.sql`, 2026-10-19):
   `gallery_score` (a build finished 3, a remix 2, the Tested mark 5; views
   nothing), `directory_models` with sort `top` (and `owned`, a pool's
@@ -3868,6 +3889,45 @@ each card's comments. Pictures `gallery_<width>_<theme>[_fold].png` and
 each step's. `design_flow` judges `gallery` for controls, the scale and
 zeros.
 
+### A collection followed, and Share's sheet
+
+docs/SOCIAL.md U11 and U14. The SQL first, in a rolled-back dry run with
+trial queries (never applied by a unit):
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/collection_follows.sql \
+  --dry --table=collection_follows --try=<a file of queries>
+```
+
+Then the pages with no network, from the stand-in (Robin's castles, which
+Sam, Jo and Priya follow; the watchtower in two public collections):
+`tests/test_model_page.py` (the pill, the part's cards and covers, the
+collection's head, Follow, Share, More, followers hidden at none),
+`model_page_flow.mjs` (Share's sheet: the link selected, Copy link and Copy
+code onto the clipboard and said, Escape back on Share, a phone's own
+sheet offered and given the link; "In N collections" and its tab, the pill
+bringing the part into view; the embed light chosen on a dark computer and
+dark on a light one, the computer's with nothing chosen), `keyboard_flow`
+and `design_flow`/`a11y_flow` (`model` with the sheet open, `collection`
+with More open). Then live, with throwaway accounts, once the SQL is
+applied:
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/list_follows_flow.mjs --url=<preview> --out=shots/list_follows
+```
+
+It passes when it ends "list follows: ..." with no FAIL: Bob's Follow on
+Ada's empty collection (its cover "No pictures yet") pressed, Following,
+"1 follower"; a visitor told the count and no name; Ada's own refused
+(409) and her counts unchanged; Cy (under 13) told why on the page and
+refused (422); Ada puts her tower in and Bob's feed says "Ada Collects
+added “…” to their collection “…”" with the tower's card, linked both
+ways, counted on his avatar; the tower's page "In 1 collection" and
+"Collections 1", the pill bringing its card into view; the collection's
+cover the tower; let go, Follow again with no count and nothing in his
+feed; made private, its page 404 and no collection on the tower's page.
+
 ### The site for everyone: axe, names and the keyboard
 
 No network and no account: this checkout's pages, the stand-in's API.
@@ -3894,7 +3954,9 @@ light and dark, about 4 minutes): with Tab, Enter and Escape (Space for a checkb
 the skip link first, the first card's name in 20 presses and Enter opening
 it; Like pressed with its count in its name and the focus kept, Enter
 again taking it back; Save's lists with the focus in them, a list ticked,
-Escape back on Save; Share's toast read out; a comment and a reply sent,
+Escape back on Save; Share's sheet opened on its link, Copy link and Copy
+code each said in the sheet's status line with the focus kept, Escape
+back on Share; a comment and a reply sent,
 Escape taking a reply's box away back on "Reply to ..."; Report it's dialog
 named, 15 Tabs inside it, Escape back on More; Follow; the account menu,
 Escape, Notifications, Mark all read said with the focus on the title;

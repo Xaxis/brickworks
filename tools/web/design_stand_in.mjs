@@ -455,13 +455,13 @@ const FEED = [
     title: "Off-world October", way: "assistant" },
   { kind: "photo", at: "2026-10-14T19:10:00Z", by: JO, model: "SamModel01", name: "Harbour Tram", photo: "PhotoEee05",
     words: "Ran it round the whole layout.", yours: true },
+  // Put in a collection Sam follows (supabase/collection_follows.sql list_rows).
+  { kind: "collection", at: "2026-10-14T10:00:00Z", by: ROBIN, model: "DesignPar1", name: "Gatehouse Starter",
+    collection: LIST_ID, list_name: "Castles worth a weekend" },
   { kind: "remix", at: "2026-10-13T12:00:00Z", by: MIKA, model: "MikaTram01", name: "Night Tram", of_name: "Harbour Tram" },
   { kind: "version", at: "2026-10-05T16:00:00Z", by: MIKA, model: "DesignPar1", name: "Gatehouse Starter", version: 1,
     note: "Stronger hinges on the gate." },
   { kind: "model", at: "2026-10-01T17:00:00Z", by: MIKA, model: "MikaRobot1", name: "Pocket Mech" },
-  // Put in a collection Sam follows (supabase/collection_follows.sql list_rows).
-  { kind: "collection", at: "2026-10-14T10:00:00Z", by: ROBIN, model: "DesignPar1", name: "Gatehouse Starter",
-    collection: LIST_ID, list_name: "Castles worth a weekend" },
 ];
 const FEED_SEEN = "2026-10-14T00:00:00Z";
 

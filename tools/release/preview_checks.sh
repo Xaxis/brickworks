@@ -52,6 +52,13 @@ declare -A CMD=(
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"
   [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
+  # Following a collection (docs/SOCIAL.md U11, supabase/collection_follows.sql):
+  # Follow on its page and its count; a model put in it in the follower's
+  # feed, counted on the avatar; the model's page "In 1 collection", linked
+  # to a card with its cover; let go; under 13 refused in words; made
+  # private, gone. Throwaway accounts, deleted after with their model and
+  # collection.
+  [list_follows]="tools/web/list_follows_flow.mjs --url=$P --out=$S/${TAG}_list_follows"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with
