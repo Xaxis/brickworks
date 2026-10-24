@@ -1055,6 +1055,22 @@
       "tests": []
     },
     {
+      "id": "cli:orangecheck desktop flow",
+      "kind": "cli",
+      "entry": "tools/web/oc_native_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; BIP322_MODULE=<@orangecheck/bip322 dist/index.mjs> OC_TEST_SECRET_FILE=<test project secret> node tools/web/oc_native_flow.mjs --keys=oc_throwaways.txt",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:orangecheck desktop probe",
+      "kind": "cli",
+      "entry": "src/dev/oc_native_probe.gd",
+      "reach": "tools/probe.sh oc_native_probe   (headless; run by tools/web/oc_native_flow.mjs, which opens its link; in tools/suite/out.txt)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:own copies read as their parts",
       "kind": "cli",
       "entry": "src/dev/own_copies_probe.gd",
@@ -3455,6 +3471,14 @@
       "tests": [
         "tests/test_model_page.py"
       ]
+    },
+    {
+      "id": "ui:sign in with orangecheck on the desktop",
+      "kind": "ui",
+      "entry": "src/account/orangecheck_sign_in.gd",
+      "reach": "tools/web/relay_server.mjs 8790 on orangecheck's test stack (OC_NATIVE=1, OC_ISSUER, OC_ME_ORIGIN, the test key), then BRICKWORKS_API=http://127.0.0.1:8790 godot --path . signed out, Sign in with orangecheck",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "ui:sign-in screen",

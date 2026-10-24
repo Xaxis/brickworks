@@ -25,6 +25,12 @@
 ## Only Supabase saying no — the session was revoked, or ran out — signs
 ## anyone out.
 ##
+## On the desktop, orangecheck too (2026-10-24, [method
+## sign_in_with_orangecheck]): its sign-in opens in the person's own
+## browser and hands a one-time code back to this app on 127.0.0.1
+## ([OrangecheckSignIn]); the deployment trades it for a session like the
+## site's own orangecheck sign-in gives, which is kept as a code's is.
+##
 ## What the account is for, so far: the platform asks for one, and a Claude
 ## connector belongs to one (api/mcp.js records the owner when a signed-in
 ## tab switches it on). The assistant still runs on the person's own key or
@@ -37,6 +43,9 @@ extends Node
 ## the session this machine uses.
 static var where: String = "user://session.json"
 static var web_key: String = "brickworks.session"
+## Whether Sign in with orangecheck opens the person's browser. Off in a
+## probe, which opens [member orangecheck_link] in a browser of its own.
+static var opens_browser: bool = true
 
 ## Renew this far before the access token runs out, so a request that
 ## starts just under the wire does not fail halfway through.
@@ -92,6 +101,10 @@ var _access: String = ""
 var _refresh: String = ""
 var _expires_at: float = 0.0
 var _renewing: bool = false
+## The orangecheck sign-in waiting on the browser, if one is, and the link
+## it opened there.
+var _orangecheck: OrangecheckSignIn
+var orangecheck_link: String = ""
 ## How the last renewal went, for a caller that waited on one in flight.
 var _last_renewal: String = "unreachable"
 
@@ -211,13 +224,87 @@ func verify_code(with_email: String, code: String) -> String:
 	if int(reply.get("code", 0)) >= 400 or not (body as Dictionary).has("access_token"):
 		return _readable(body as Dictionary)
 
-	_keep(body as Dictionary)
+	_signed_in_with(body as Dictionary)
+	return ""
+
+
+## What a sign-in to wait for in the browser answered when another started,
+## or one by email finished: nothing to show.
+const SUPERSEDED := "superseded"
+
+
+## Sign in with orangecheck, on the desktop: orangecheck opens in the
+## person's browser ([OrangecheckSignIn]), and the code it sends back here
+## goes to the deployment with the verifier only this run knows
+## (api/orangecheck.js ?op=native), which answers with a session as
+## Supabase's verify does. Empty on success, [constant SUPERSEDED] when a
+## newer sign-in took over, or something to show.
+func sign_in_with_orangecheck() -> String:
+	var offer: Dictionary = deployment.orangecheck_native if deployment != null else {}
+	if offer.is_empty():
+		return "Signing in with orangecheck is not offered here. Sign in with your email instead."
+	_stop_orangecheck()
+	var listener := OrangecheckSignIn.new()
+	listener.project_key = str(offer["project"])
+	listener.auth_host = str(offer["auth"])
+	listener.audience = str(offer["audience"])
+	listener.open_browser = opens_browser
+	add_child(listener)
+	_orangecheck = listener
+	orangecheck_link = listener.start()
+	if orangecheck_link.is_empty():
+		_stop_orangecheck()
+		return "Brickworks could not wait for orangecheck on this computer. Sign in with your email instead."
+	var answer: Dictionary = await listener.answered
+	if _orangecheck == listener:
+		_orangecheck = null
+		orangecheck_link = ""
+	listener.queue_free()
+	match str(answer.get("reason", "")):
+		"":
+			pass
+		"cancelled":
+			return SUPERSEDED
+		"timeout":
+			return "orangecheck did not answer in time. Sign in with orangecheck again."
+		_:
+			return "Signing in with orangecheck was cancelled."
+
+	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/orangecheck?op=native",
+		PackedStringArray(["content-type: application/json"]), HTTPClient.METHOD_POST,
+		JSON.stringify({"code": answer["code"], "code_verifier": answer["code_verifier"],
+			"redirect_uri": answer["redirect_uri"]}))
+	var body: Variant = reply.get("body")
+	if int(reply.get("code", 0)) == 0:
+		return "Could not reach Brickworks to sign in. Check your connection."
+	if int(reply.get("code", 0)) != 200 or typeof(body) != TYPE_DICTIONARY \
+			or not (body as Dictionary).has("access_token"):
+		if typeof(body) == TYPE_DICTIONARY and (body as Dictionary).has("error"):
+			return str((body as Dictionary)["error"])
+		return "Could not sign in with orangecheck just now (%d). Try again in a minute." % int(reply.get("code", 0))
+	_signed_in_with(body as Dictionary)
+	return ""
+
+
+## The orangecheck sign-in waiting on the browser, given up.
+func _stop_orangecheck() -> void:
+	if _orangecheck != null:
+		var waiting: OrangecheckSignIn = _orangecheck
+		_orangecheck = null
+		orangecheck_link = ""
+		waiting.cancel()
+
+
+## A session just handed out (Supabase's verify, or the deployment's
+## orangecheck exchange), taken: kept, and the person signed in.
+func _signed_in_with(body: Dictionary) -> void:
+	_stop_orangecheck()
+	_keep(body)
 	ended = ""
 	offline = false
 	state = State.SIGNED_IN
 	changed.emit()
 	_ask_who(true)
-	return ""
 
 
 ## Sign out of this device. This session is revoked with Supabase (other

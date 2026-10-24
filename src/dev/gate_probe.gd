@@ -19,11 +19,11 @@
 ## screen is back. A throwaway account at a Resend test address, deleted
 ## at the end.
 ##
-## Signed out again, the form as a browser draws it (SignInForm's
-## offers_orangecheck, set here before the app is made): Sign in with
-## orangecheck under the email, offered as the deployment says, with
-## orangecheck's mark before its words, drawn at the screen's pixels, and a
-## 44 px target (2026-10-24), in orangecheck.png.
+## Signed out again: Sign in with orangecheck under the email, offered as
+## the deployment says (everybody, and on the desktop where to open it,
+## 2026-10-24), with orangecheck's mark before its words, drawn at the
+## screen's pixels, and a 44 px target, in orangecheck.png. Not before the
+## deployment offers the desktop's.
 ##
 ## Pictures in shots/signin/. A window is needed: the screen is drawn.
 extends SceneTree
@@ -46,9 +46,6 @@ func _run() -> void:
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
-	# The browser's form, with Sign in with orangecheck (only ever drawn
-	# there), so that it is looked at here too.
-	SignInForm.offers_orangecheck = true
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("gate_for_probe", true)
 	root.add_child(_main)
@@ -109,7 +106,8 @@ func _run() -> void:
 		"the same click places a brick (%d, %d before)" % [world.brick_count(), before])
 	await _key(KEY_BRACKETRIGHT)
 	_ok(builder.held_color != colour, "the same key picks the next colour: %d" % builder.held_color)
-	# As a deployment offering orangecheck to everybody says it.
+	# As a deployment offering orangecheck to everybody says it, but not yet
+	# where the desktop opens it.
 	if account.deployment != null:
 		account.deployment.orangecheck_for_everyone = true
 	account.state = Account.State.SIGNED_OUT
@@ -117,11 +115,18 @@ func _run() -> void:
 	await _settle()
 	_ok(gate.visible and _text_on(gate).contains("Your email address is your account"),
 		"signed out, the screen is back, asking for an address")
-	_save("signed_out.png")
-
-	print("\nSign in with orangecheck, as a browser draws it")
 	var named: Dictionary = gate.controls_by_name()
 	var oc: Button = named.get("signin_orangecheck")
+	_ok(oc != null and not oc.is_visible_in_tree(),
+		"no Sign in with orangecheck while the deployment does not say where the desktop opens it")
+	_save("signed_out.png")
+
+	print("\nSign in with orangecheck, on the desktop")
+	if account.deployment != null:
+		account.deployment.orangecheck_native = {"project": "pk_test_gate_probe",
+			"auth": "https://ochk.io", "audience": "https://brickworks.diy"}
+	(gate.get("_form") as SignInForm).focus_first()
+	await _settle()
 	_ok(oc != null and oc.is_visible_in_tree() and oc.text == "Sign in with orangecheck",
 		"offered under the email, with its words")
 	if oc != null:

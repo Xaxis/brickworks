@@ -89,6 +89,78 @@ What changed for us between 0.42.0 and 0.48.0 (the CHANGELOG):
 - auth-core 2.17.1 and 2.18.0: documentation and the `merged_rh` type.
   Nothing else in the server bundle changed.
 
+## The desktop, and Connect's L2 (2026-10-24, oc237)
+
+orangecheck asked for native sign-in (#321) on its test stack first:
+project `pk_test_WlwvYN8n055vuMCm`, audience `http://127.0.0.1:8790` (the
+project's development origin), auth host `https://oc-www-test.vercel.app`,
+`https://oc-me-test.vercel.app` for the rule and the list. Never the live
+project: orangecheck offers it to test projects alone until it is proven on
+real builds, and the live rollout waits on its site-attest's review.
+
+- **The app.** The desktop's sign-in screen offers **Sign in with
+  orangecheck**, the same button the web form has (its mark, its 44 px),
+  only where `/api/account` says where to open it:
+  `orangecheck.native = {project, auth, audience}`, all public
+  (`api/_oc_config.js` `nativeOffered`). A press listens on `127.0.0.1` at
+  any free port and opens `<auth>/native/authorize` in the person's own
+  browser with a PKCE challenge (S256), a `state` and the loopback
+  redirect (`src/account/orangecheck_sign_in.gd`, orangecheck's Godot
+  recipe, with one signal in place of two). The browser comes back with a
+  code; the app posts `{code, code_verifier, redirect_uri}` to
+  `?op=native` and keeps the session it gets as an emailed code's
+  (`Account.sign_in_with_orangecheck`). While it waits, the form's note
+  says to finish in the browser; a second press starts again (a tab closed
+  by mistake), and signing in by email meanwhile stops the listener.
+  Nothing else in the app changed.
+- **The server.** `?op=native` refuses anything but a code, an RFC 7636
+  verifier and an `http://127.0.0.1:<port>/<path>` redirect with no query
+  (422, nothing asked), counts the address as `?op=signin` does, then
+  trades the code with me-client 0.50.0's `exchangeNativeCode`: the
+  project key from configuration (never the app's), our one audience, the
+  test or live hosts, and our own list of ended sessions (the trade is a
+  write). The token it gives is then taken exactly as the window's:
+  `checkToken`, spent once, the same account, merge and binding
+  (`signInWith`). Refusals: an outage, or a project that does not offer it,
+  503; a backed-only rule, 403 with `back_url`; anything else (a spent,
+  expired or mismatched code, another audience, no `rh`, an ended session)
+  401, "Sign in with orangecheck again", since a code works once whatever
+  the answer.
+- **Where it is on.** On a deployment, nowhere until
+  `NATIVE_FOR_EVERYONE` in `api/_oc_config.js` is true (after site-attest,
+  once brickworks.diy's project offers it). On this machine, `OC_NATIVE=1`.
+  `OC_ISSUER` and `OC_ME_ORIGIN` point the server at a test stack, and are
+  read only off Vercel (`ocHosts`), so nothing set on a deployment can send
+  a token anywhere but ochk.io. Before rollout, one question for
+  orangecheck: the docs say to leave `audience` empty for the verified
+  domain; the app sends `https://brickworks.diy` itself.
+- **Proof.** `tools/web/oc_native_flow.mjs` on the test stack: a throwaway
+  Bitcoin key signed in at the test auth host, `src/dev/oc_native_probe.gd`
+  headless (the real form, button, listener and `Account`), a real
+  Chromium opening the link it printed and pressing Continue, and this
+  machine's functions (`relay_server.mjs` at 8790) with the test key: the
+  app signed in (12 checks), then as the app from Node, a code twice, a
+  wrong verifier (and the right one after), another `redirect_uri`, and a
+  code traded by a server at another origin (9051) are each refused (8
+  checks, every one passing, 2026-10-24). `orangecheck_check` holds the same
+  refusals against a stand-in token endpoint, beside sign-ins that get in.
+- **Connect, L2** (orangecheck's review of step 4). An account deleted while
+  `connectProvision` was still in flight: deleting asked orangecheck to
+  delete one not made yet (`unknown_user`), the account and its
+  `oc_connected` row went, and the answer that came after made an
+  orangecheck account nothing here knew of. Now deleting marks the row as
+  leaving as it reads it (`oc_connect_leaving`), and provision keeps
+  orangecheck's answer only while the row is there and not marked since its
+  ask (`oc_connect_kept`, false otherwise); on false it calls
+  `connectDelete` at once (`unprovision`, the same allow-list) and answers
+  `{made: false, reason: "account_deleted"}`. Both take the row's lock, so
+  either order ends with orangecheck's account deleted; a tick after a
+  deletion that was held is a later ask, and kept.
+  `supabase/orangecheck_connect_leaving.sql` adds a column and the two
+  functions; until it is applied the code reads and writes as before
+  (`oc_connected_of`, `oc_connect_made`). Dry run with
+  `tools/orangecheck_connect_leaving_try.sql`.
+
 ## The review, and what was done
 
 Each finding has its failing case in tools/web/orangecheck_check.mjs,
@@ -180,8 +252,12 @@ last piece waits on its release (below).
 - **Step 1's L1.** In production the only audience is
   `https://brickworks.diy`; the deployment's own `*.vercel.app` address is
   not one (13, below).
-- **Packages.** me-client 0.48.0 and auth-core 2.18.0 since step 4
-  (0.42.0 and 2.17.0 before), pinned in tools/web/vendor_orangecheck.sh. `checkOcToken` tells a token that is no
+- **Packages.** me-client 0.50.0 (exchangeNativeCode; 0.48.0 at step 4,
+  0.42.0 before) and auth-core 2.18.0, pinned in
+  tools/web/vendor_orangecheck.sh. From 0.48.0 the button, its stylesheet
+  and the Connect words are byte for byte the same, and the server bundle
+  only gains what `exchangeNativeCode` brings (`checkOcSession`,
+  `checkSignInRule`). `checkOcToken` tells a token that is no
   good from a key set that cannot be read, which answers 503, never 401.
 - **4.** The parser was right already: it reads `{min_sats, min_days}` and
   takes `max_age_secs` only if it is there (orangecheck's correction). A
@@ -347,3 +423,23 @@ where it did.
     and sign in with it (the review's H1).
    *Did:* refuse every password session but a test account's, and end any session of an
     orangecheck-only account that orangecheck did not start.
+
+20. **/sdk/me-client/server/interfaces/ExchangeNativeCodeInput: wrong.** It lists
+    `projectKey` ("Your project key, as the app sent it") as an input field, but
+    `exchangeNativeCode` throws when the input has one: the key goes in its options, from
+    your own configuration (as /integration/native-sign-in says). The reference also leaves
+    out `meOrigin`, `revocation` and `requireBond` from `ExchangeNativeCodeOptions`.
+   *Did:* followed the guide and the type declarations: the key, the hosts and our own
+    list of ended sessions in the options.
+
+21. **/integration/native-sign-in, "What comes back": missing.** It says to spend the
+    `jti`, but not to end the token at orangecheck right after, as the popup's token is
+    (/me/quickstart, "End the token right after the exchange"), nor that a test stack's
+    issuer must be passed so the token's `iss` matches.
+   *Did:* took the native token exactly as the popup's (`checkToken`, spent, ended), and
+    the test stack's auth host as `issuer` for both the trade and the check.
+
+22. **/integration/native-sign-in, the app (`audience`): unclear.** "Empty for its verified
+    domain": it doesn't say whether naming the verified domain itself is also accepted.
+   *Did:* the app sends what `/api/account` names, the deployment's one audience
+    (`https://brickworks.diy` in production). To ask before the live rollout.

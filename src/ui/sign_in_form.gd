@@ -24,11 +24,6 @@ enum Step { ADDRESS, CODE }
 const ORANGECHECK_MARK := "res://assets/ui/orangecheck-mark-mono-white.svg"
 const MARK_TALL := 14.0
 
-## Whether this form offers Sign in with orangecheck: in a browser, where
-## the site's sign-in is a page away. Set by a probe to see the button on
-## the desktop (gate_probe).
-static var offers_orangecheck: bool = OS.has_feature("web")
-
 var account: Account
 
 var _why: Label
@@ -108,30 +103,31 @@ func setup(with_account: Account) -> void:
 		_email.grab_focus())
 	links.add_child(_again)
 
-	# On the web, orangecheck too (2026-10-23, api/orangecheck.js). Its
-	# window cannot answer this page, which keeps the isolation the engine's
-	# threads need, so the button takes the person to the site's sign-in,
-	# which brings them back here signed in (web/profile.js). The desktop
-	# keeps a sign-in of its own, which a browser's cannot give it.
-	if offers_orangecheck:
-		_orangecheck = Button.new()
-		_orangecheck.text = "Sign in with orangecheck"
-		# orangecheck's mark before the words, and its 44 px target
-		# (2026-10-24, the owner's step 4).
-		_orangecheck.add_theme_constant_override("icon_max_width", roundi(MARK_TALL * 2.0))
-		_orangecheck.add_theme_constant_override("h_separation", roundi(MARK_TALL / 2.0))
-		_orangecheck.custom_minimum_size = Vector2(0, 44)
-		_orangecheck.focus_mode = Control.FOCUS_NONE
-		_orangecheck.pressed.connect(_to_orangecheck)
-		add_child(_orangecheck)
-		_orangecheck_why = Label.new()
-		_orangecheck_why.text = ("A Bitcoin wallet, email, Google or GitHub. "
-			+ "Brickworks gets an id for you, not your address.")
-		_orangecheck_why.add_theme_font_size_override("font_size", 12)
-		_orangecheck_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_orangecheck_why.modulate = Color(1, 1, 1, 0.75)
-		add_child(_orangecheck_why)
-		_draw_mark()
+	# orangecheck too, as the deployment offers it (2026-10-23,
+	# api/orangecheck.js). On the web its window cannot answer this page,
+	# which keeps the isolation the engine's threads need, so the button
+	# takes the person to the site's sign-in, which brings them back here
+	# signed in (web/profile.js). On the desktop (2026-10-24) it opens in
+	# the person's own browser, which hands a code back to this app
+	# (Account.sign_in_with_orangecheck).
+	_orangecheck = Button.new()
+	_orangecheck.text = "Sign in with orangecheck"
+	# orangecheck's mark before the words, and its 44 px target
+	# (2026-10-24, the owner's step 4).
+	_orangecheck.add_theme_constant_override("icon_max_width", roundi(MARK_TALL * 2.0))
+	_orangecheck.add_theme_constant_override("h_separation", roundi(MARK_TALL / 2.0))
+	_orangecheck.custom_minimum_size = Vector2(0, 44)
+	_orangecheck.focus_mode = Control.FOCUS_NONE
+	_orangecheck.pressed.connect(_to_orangecheck)
+	add_child(_orangecheck)
+	_orangecheck_why = Label.new()
+	_orangecheck_why.text = ("A Bitcoin wallet, email, Google or GitHub. "
+		+ "Brickworks gets an id for you, not your address.")
+	_orangecheck_why.add_theme_font_size_override("font_size", 12)
+	_orangecheck_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_orangecheck_why.modulate = Color(1, 1, 1, 0.75)
+	add_child(_orangecheck_why)
+	_draw_mark()
 
 	_show(Step.ADDRESS)
 
@@ -139,9 +135,8 @@ func setup(with_account: Account) -> void:
 func focus_first() -> void:
 	# Shown again now the deployment has answered whether it offers
 	# orangecheck to everybody, its mark drawn for the screen it is on.
-	if _orangecheck != null:
-		_draw_mark()
-	if _orangecheck != null and _step == Step.ADDRESS:
+	_draw_mark()
+	if _step == Step.ADDRESS:
 		var offered: bool = _orangecheck_offered()
 		_orangecheck.visible = offered
 		_orangecheck_why.visible = offered
@@ -153,11 +148,8 @@ func focus_first() -> void:
 
 ## The form's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
-	var named := {"signin_email": _email, "signin_send": _send,
-		"signin_code": _code, "signin_go": _verify}
-	if _orangecheck != null:
-		named["signin_orangecheck"] = _orangecheck
-	return named
+	return {"signin_email": _email, "signin_send": _send,
+		"signin_code": _code, "signin_go": _verify, "signin_orangecheck": _orangecheck}
 
 
 func _show(step: int) -> void:
@@ -169,10 +161,9 @@ func _show(step: int) -> void:
 	_verify.visible = not asking
 	_again.visible = not asking
 	_resend.visible = not asking
-	if _orangecheck != null:
-		var offered: bool = asking and _orangecheck_offered()
-		_orangecheck.visible = offered
-		_orangecheck_why.visible = offered
+	var offered: bool = asking and _orangecheck_offered()
+	_orangecheck.visible = offered
+	_orangecheck_why.visible = offered
 	_why.text = ("Your email address is your account. We email you a code "
 		+ "to type here — there is no password, and nothing else to make."
 		if asking else
@@ -235,9 +226,11 @@ func _redeem() -> void:
 
 
 ## Whether this tab is offered orangecheck: everybody, as the deployment
-## says (web/account.js orangecheckOffer, api/_oc_config.js).
+## says (web/account.js orangecheckOffer, api/_oc_config.js); and on the
+## desktop, only where the deployment says where to open it.
 func _orangecheck_offered() -> bool:
-	return account != null and account.deployment != null and account.deployment.orangecheck_for_everyone
+	return account != null and account.deployment != null and account.deployment.orangecheck_for_everyone \
+		and (OS.has_feature("web") or not account.deployment.orangecheck_native.is_empty())
 
 
 ## The mark on the orangecheck button, drawn at the pixels it is shown at.
@@ -245,10 +238,23 @@ func _draw_mark() -> void:
 	_orangecheck.icon = Icons.texture_for(ORANGECHECK_MARK, MARK_TALL, Icons.density(self))
 
 
-## To the site's sign-in, which comes back to this very address.
+## To the site's sign-in, which comes back to this very address; on the
+## desktop, orangecheck in the person's browser, waited on here. A second
+## press starts again, for a browser tab closed by mistake.
 func _to_orangecheck() -> void:
-	JavaScriptBridge.eval("location.assign('/profile?then=' "
-		+ "+ encodeURIComponent(location.pathname + location.search))", true)
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("location.assign('/profile?then=' "
+			+ "+ encodeURIComponent(location.pathname + location.search))", true)
+		return
+	_say("Finish signing in with orangecheck in your browser.", true)
+	var problem: String = await account.sign_in_with_orangecheck()
+	if problem == Account.SUPERSEDED:
+		return
+	if problem.is_empty():
+		_show(Step.ADDRESS)
+		done.emit()
+		return
+	_say(problem, false)
 
 
 func _set_busy(busy: bool) -> void:

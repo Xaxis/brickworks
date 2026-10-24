@@ -25,20 +25,26 @@
 // account the other had (merged). And orangecheck Connect, with
 // OC_CONNECT_KEY: an orangecheck account made at the person's tick
 // (provision), and deleted with their Brickworks account (unprovision).
+//
+// The desktop app (2026-10-24, oc237): it cannot open orangecheck's window,
+// so it opens orangecheck in the person's own browser, which hands a
+// one-time code back to the app on 127.0.0.1; the app posts the code here
+// with its PKCE verifier, traded at orangecheck for the token the window
+// would have given (tradeCode, me-client's exchangeNativeCode). From there
+// the token is taken as the window's is: checkToken, then the same
+// sign-in.
 
 import { isTestAccount } from "./_auth.js";
 import { db } from "./_db.js";
-import { audiences, ocConfigured } from "./_oc_config.js";
+import { audiences, nativeOffered, ocConfigured, ocHosts } from "./_oc_config.js";
 import {
-  _resetJwksCachesForTests, bondMeets, checkOcToken, connectDelete, connectProvision, integratorRevocationCheck, matchMergedUser,
-  mergedHandles,
+  _resetJwksCachesForTests, bondMeets, checkOcToken, connectDelete, connectProvision, exchangeNativeCode, integratorRevocationCheck,
+  matchMergedUser, mergedHandles,
 } from "./_orangecheck.js";
 
-export { audiences, ocConfigured };
+export { audiences, nativeOffered, ocConfigured };
 
 const DID = /^did:oc:[0-9a-f]{32}$/;
-const ME = "https://me.ochk.io";
-const AUTH_HOST = "https://ochk.io";
 const BACK_URL = "https://ochk.app/me/account#backing";
 
 /// Whether an address is one an orangecheck account was made with
@@ -71,6 +77,7 @@ function endedSessions() {
   ended ||= integratorRevocationCheck({
     projectKey: process.env.OC_PROJECT_KEY,
     signingSecret: process.env.OC_SIGNING_SECRET,
+    meOrigin: ocHosts().me,
   });
   return ended;
 }
@@ -90,7 +97,7 @@ async function whoMaySignIn() {
   if (now - rule.tried >= 10_000) {
     rule.tried = now;
     try {
-      const reply = await fetch(`${ME}/api/integrator/${encodeURIComponent(process.env.OC_PROJECT_KEY)}/sign-in`, {
+      const reply = await fetch(`${ocHosts().me}/api/integrator/${encodeURIComponent(process.env.OC_PROJECT_KEY)}/sign-in`, {
         signal: AbortSignal.timeout(4000) });
       const body = await reply.json();
       if (!reply.ok || body?.ok !== true || !("require_bond" in body)) throw new Error(`answered ${reply.status}`);
@@ -128,7 +135,9 @@ export async function checkToken(token) {
     return { status: 422, error: "The sign-in did not come through from orangecheck. Try again." };
   }
   const aud = audiences().find((one) => one === namedAudience(token.trim()));
-  const checked = aud ? await checkOcToken(token.trim(), { audience: aud }).catch(() => ({ status: "invalid" })) : { status: "invalid" };
+  const checked = aud
+    ? await checkOcToken(token.trim(), { audience: aud, issuer: ocHosts().auth }).catch(() => ({ status: "invalid" }))
+    : { status: "invalid" };
   if (checked.status === "unavailable") {
     return { status: 503, error: "orangecheck could not be asked just now. Try again in a minute, or sign in with your email." };
   }
@@ -159,6 +168,42 @@ export async function checkToken(token) {
     return { status: 503, error: "orangecheck could not confirm the sign-in just now. Try again in a minute, or sign in with your email." };
   }
   return { session };
+}
+
+/// The desktop app's code (api/orangecheck.js ?op=native) traded at
+/// orangecheck for its token, by me-client's exchangeNativeCode: the code
+/// with the verifier its challenge was made from and the exact loopback
+/// address it was sent to, for this project, bound to this deployment's
+/// audience, checked against the list of ended sessions (the trade is a
+/// write) and the project's rule. {token}, which the caller then takes as
+/// it takes the window's (checkToken, and the rest of the sign-in); or
+/// {status, error, more} to answer with, in words. A code works once,
+/// whatever the answer, so each refusal asks for a new sign-in.
+export async function tradeCode({ code, verifier, redirect }) {
+  const { auth, me } = ocHosts();
+  let out;
+  try {
+    out = await exchangeNativeCode({ code, codeVerifier: verifier, redirectUri: redirect, audience: audiences()[0] },
+      { projectKey: process.env.OC_PROJECT_KEY.trim(), issuer: auth, meOrigin: me, revocation: endedSessions() });
+  } catch (trouble) {
+    // What it refuses by throwing is a malformed input.
+    console.error(`orangecheck: a code was not traded: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { status: 422, error: "The sign-in did not come through from orangecheck. Try again." };
+  }
+  if (out.status === "valid") return { token: out.token };
+  if (out.status === "unavailable") {
+    console.error(`orangecheck: a code was not traded: ${out.reason}`);
+    return { status: 503, error: "orangecheck could not be asked just now. Sign in with orangecheck again in a minute, or with your email." };
+  }
+  if (out.reason === "bond_required") {
+    return { status: 403, error: "Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.", more: { back_url: BACK_URL } };
+  }
+  if (out.reason === "session_ended") return { status: 401, error: "That orangecheck sign-in was ended. Sign in again." };
+  if (out.reason === "not_offered" || out.reason === "unknown_project_key") {
+    console.error(`orangecheck: a code was not traded: ${out.reason}`);
+    return { status: 503, error: "Signing in with orangecheck from the app is not offered just now. Sign in with your email instead." };
+  }
+  return { status: 401, error: "That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again." };
 }
 
 /// [jti] spent until [exp] (seconds): true the first time, false ever after
@@ -219,8 +264,12 @@ export function connectConfigured() {
 /// emailed code's for that address (codeOf), the address as verified, so
 /// that signing in to ochk.app with it offers the account to claim. Written
 /// down first, so deleting the account deletes that one too whatever the
-/// answer. Never throws: a refusal or an outage is an answer, as Connect's
-/// own calls give them.
+/// answer. And once orangecheck has answered, kept only while the account
+/// is not being deleted (supabase/orangecheck_connect_leaving.sql): one
+/// deleted while orangecheck was asked would leave an orangecheck account
+/// nothing here could ever delete (orangecheck's review, L2), so that one
+/// is deleted at once. Never throws: a refusal or an outage is an answer,
+/// as Connect's own calls give them.
 export async function provision(account, emailed = null) {
   try {
     await db("rpc/oc_connect_asked", { method: "POST", body: { account } });
@@ -240,8 +289,21 @@ export async function provision(account, emailed = null) {
     console.error(`orangecheck: Connect made no account: ${made.reason} ${made.status}`);
     return { made: false, reason: made.reason };
   }
-  await db("rpc/oc_connect_made", { method: "POST", body: { account, did: made.did_oc } })
-    .catch((trouble) => console.error(`orangecheck: Connect's id not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  let kept;
+  try {
+    kept = await db("rpc/oc_connect_kept", { method: "POST", body: { account, did: made.did_oc } });
+  } catch (trouble) {
+    // Until supabase/orangecheck_connect_leaving.sql is applied, as before.
+    if (/: 404$/.test(String(trouble?.message || ""))) {
+      kept = await db("rpc/oc_connect_made", { method: "POST", body: { account, did: made.did_oc } }).then(() => true, () => null);
+    }
+    if (kept !== true) console.error(`orangecheck: Connect's id not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+  }
+  if (kept === false) {
+    const gone = await unprovision(account);
+    if (!gone.go) console.error(`orangecheck: Connect made ${made.did_oc} for an account deleted meanwhile, and it is not deleted: delete it at orangecheck`);
+    return { made: false, reason: "account_deleted" };
+  }
   return { made: true, did: made.did_oc };
 }
 
@@ -296,7 +358,7 @@ export async function unprovision(account, ask = connectDelete) {
 /// answers.
 export async function endToken(token) {
   try {
-    const reply = await fetch(`${AUTH_HOST}/api/auth/revoke`, {
+    const reply = await fetch(`${ocHosts().auth}/api/auth/revoke`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ tokens: [token] }), signal: AbortSignal.timeout(5000) });
     if (!reply.ok) console.error(`orangecheck: the token was not ended there: ${reply.status}`);

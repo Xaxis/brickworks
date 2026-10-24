@@ -7,6 +7,13 @@
 //   an emailed code gives, so the page keeps it where the app finds it and
 //   the app is signed in too. The answer is that session, as Supabase's own
 //   verify answers.
+//   POST ?op=native, {code, code_verifier, redirect_uri}: the desktop app's
+//   sign-in (2026-10-24, src/account/orangecheck_sign_in.gd), which has no
+//   window to open: a one-time code orangecheck sent the person's browser
+//   back to the app with, at 127.0.0.1. Traded at orangecheck for the token
+//   the window would have given (api/_oc.js tradeCode), then exactly as
+//   ?op=signin: counted, checked, spent, the same account, the same
+//   session. Only where it is offered (api/_oc_config.js nativeOffered).
 //
 //   With a sign-in (/settings, web/settings.js):
 //   GET ?op=status       {did, only, fresh}: the orangecheck id linked, if
@@ -49,7 +56,8 @@ import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import {
-  checkToken, codeOf, connectConfigured, endToken, keepHandle, madeUp, merged, ocConfigured, provision, spendToken,
+  checkToken, codeOf, connectConfigured, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, provision, spendToken,
+  tradeCode,
 } from "./_oc.js";
 
 function supabase() {
@@ -159,23 +167,55 @@ function bodyOf(request) {
   }
 }
 
+/// Whether [request]'s address may try another sign-in, answered when not.
+/// Counted before anything else is asked, so a stranger cannot make this
+/// server ask orangecheck and the database for them as often as they like.
+async function counted(request, response) {
+  let may;
+  try {
+    may = await db("rpc/oc_may_try", { method: "POST", body: { from_ip: addressOf(request) } });
+  } catch (trouble) {
+    console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    say(response, 503, "Brickworks could not start a sign-in just now. Try again in a minute.");
+    return false;
+  }
+  if (may !== true) say(response, 429, "Too many sign-ins tried from here. Wait a few minutes and try again.");
+  return may === true;
+}
+
 async function signIn(request, response) {
   if (!ocConfigured()) return say(response, 503, "Signing in with orangecheck is unavailable here. Sign in with your email instead.");
   const body = bodyOf(request);
   const token = typeof body?.token === "string" ? body.token.trim() : "";
-  // Counted before anything else is asked, so a stranger cannot make this
-  // server ask orangecheck and the database for them as often as they like.
-  if (token) {
-    let may;
-    try {
-      may = await db("rpc/oc_may_try", { method: "POST", body: { from_ip: addressOf(request) } });
-    } catch (trouble) {
-      console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`);
-      return say(response, 503, "Brickworks could not start a sign-in just now. Try again in a minute.");
-    }
-    if (may !== true) return say(response, 429, "Too many sign-ins tried from here. Wait a few minutes and try again.");
-  }
+  if (token && !(await counted(request, response))) return;
+  return signInWith(token, response);
+}
 
+// What the app sends: orangecheck's code, a PKCE verifier (RFC 7636: 43 to
+// 128 of its letters) and the loopback address the code came to, with no
+// query. Anything else is refused before anything is asked or counted.
+const CODE = /^[\x21-\x7e]{8,512}$/;
+const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
+const LOOPBACK = /^http:\/\/127\.0\.0\.1:\d{1,5}\/[A-Za-z0-9._~/-]*$/;
+
+async function native(request, response) {
+  if (!nativeOffered()) {
+    return say(response, 503, "Signing in with orangecheck from the app is not offered here yet. Sign in with your email instead.");
+  }
+  const body = bodyOf(request);
+  const [code, verifier, redirect] = ["code", "code_verifier", "redirect_uri"].map((name) => (typeof body?.[name] === "string" ? body[name] : ""));
+  if (!CODE.test(code) || !VERIFIER.test(verifier) || !LOOPBACK.test(redirect)) {
+    return say(response, 422, "The sign-in did not come through from orangecheck. Try again.");
+  }
+  if (!(await counted(request, response))) return;
+  const traded = await tradeCode({ code, verifier, redirect });
+  if (!traded.token) return say(response, traded.status, traded.error, traded.more);
+  return signInWith(traded.token, response);
+}
+
+/// [token], orangecheck's, checked and exchanged for a Brickworks session,
+/// answered: the window's sign-in and the app's alike.
+async function signInWith(token, response) {
   const checked = await checkToken(token);
   if (!checked.session) return say(response, checked.status, checked.error, checked.more);
   const { did_oc: did, jti, rh, aud, iat, exp } = checked.session;
@@ -403,9 +443,10 @@ export default async function handler(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const op = String(request.query?.op || "");
   if (request.method === "POST" && op === "signin") return signIn(request, response);
+  if (request.method === "POST" && op === "native") return native(request, response);
   if (request.method === "GET" && op === "status") return status(request, response);
   if (request.method === "POST" && op === "link") return link(request, response);
   if (request.method === "POST" && op === "unlink") return unlink(request, response);
   if (request.method === "POST" && op === "connect") return connect(request, response);
-  return say(response, 405, "POST ?op=signin, ?op=link, ?op=unlink or ?op=connect, or GET ?op=status");
+  return say(response, 405, "POST ?op=signin, ?op=native, ?op=link, ?op=unlink or ?op=connect, or GET ?op=status");
 }

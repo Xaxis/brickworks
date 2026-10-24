@@ -31,18 +31,51 @@ export function audiences() {
   return /^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/.test(local) ? [local] : [];
 }
 
+/// orangecheck's two hosts: where it signs people in (auth: the tokens'
+/// issuer, its key set, where a token is ended and an app's code traded)
+/// and where its projects are kept (me: the project's rule, the list of
+/// ended sessions). Its own, but on this machine a test stack's when
+/// OC_ISSUER and OC_ME_ORIGIN name one (orangecheck's, for the desktop's
+/// sign-in, 2026-10-24): never on a deployment, so nothing set there can
+/// point a token anywhere else.
+export function ocHosts() {
+  const local = !process.env.VERCEL_ENV;
+  const named = (value) => (local && /^https:\/\/[a-z0-9.-]+$/.test(value || "") ? value : "");
+  return { auth: named(process.env.OC_ISSUER) || "https://ochk.io", me: named(process.env.OC_ME_ORIGIN) || "https://me.ochk.io" };
+}
+
+/// Whether the desktop app is offered Sign in with orangecheck
+/// (api/orangecheck.js ?op=native): the person's own browser, and a
+/// one-time code back to the app on 127.0.0.1. orangecheck offers it to
+/// test projects alone while it is proven on real builds, so every
+/// deployment leaves it off until orangecheck's site-attest has reviewed
+/// ours and brickworks.diy's project has it (then true here, as
+/// ORANGECHECK_FOR_EVERYONE is). On this machine OC_NATIVE=1 turns it on,
+/// for a test project.
+export const NATIVE_FOR_EVERYONE = false;
+
+export function nativeOffered() {
+  return ocConfigured() && (NATIVE_FOR_EVERYONE || (!process.env.VERCEL_ENV && process.env.OC_NATIVE === "1"));
+}
+
 export function ocConfigured() {
   return Boolean(process.env.OC_PROJECT_KEY && process.env.OC_SIGNING_SECRET && audiences().length
     && dbConfigured() && process.env.SUPABASE_PUBLISHABLE_KEY);
 }
 
-/// What /api/account says of orangecheck: {ready, everyone, connect}.
-/// ready false (no signing secret here, as on a unit's preview): the
-/// button, where it is offered, says sign-in with orangecheck is
+/// What /api/account says of orangecheck: {ready, everyone, connect,
+/// native}. ready false (no signing secret here, as on a unit's preview):
+/// the button, where it is offered, says sign-in with orangecheck is
 /// unavailable. connect: orangecheck Connect's key is here, so the sign-in
 /// dialog offers the box that makes an orangecheck account
-/// (api/orangecheck.js ?op=connect); without it, no box.
+/// (api/orangecheck.js ?op=connect); without it, no box. native: where the
+/// desktop app opens orangecheck in the person's browser, {project, auth,
+/// audience}, all three public, when it is offered (nativeOffered);
+/// otherwise null, and the app's sign-in screen shows no button.
 export function orangecheckOffer() {
   return { ready: ocConfigured(), everyone: ORANGECHECK_FOR_EVERYONE,
-    connect: Boolean(process.env.OC_CONNECT_KEY && dbConfigured()) };
+    connect: Boolean(process.env.OC_CONNECT_KEY && dbConfigured()),
+    native: nativeOffered()
+      ? { project: process.env.OC_PROJECT_KEY.trim(), auth: ocHosts().auth, audience: audiences()[0] }
+      : null };
 }

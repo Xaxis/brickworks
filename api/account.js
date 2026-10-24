@@ -110,7 +110,7 @@ export default async function handler(request, response) {
     parts_url: process.env.PARTS_URL || null,
     // Sign in with orangecheck (api/orangecheck.js): whether it works here,
     // and whether everybody is offered it (api/_oc_config.js).
-    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false, connect: false },
+    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false, connect: false, native: null },
   };
 
   const token = bearer(request);
@@ -345,10 +345,17 @@ async function deleteAccount(request, response) {
   // would leave their orangecheck account behind (orangecheck's final
   // ruling, 2026-10-24). The daily canary asks Connect with the key
   // (api/_canary.js, d).
+  // Marked as leaving as it is read (supabase/orangecheck_connect_leaving.sql),
+  // so a Connect ask still in flight deletes what it makes rather than
+  // keep it (api/_oc.js provision, orangecheck's review, L2).
   let connected;
   let kept = "";
   try {
-    connected = await db("rpc/oc_connected_of", { method: "POST", body: { account } });
+    connected = await db("rpc/oc_connect_leaving", { method: "POST", body: { account } }).catch((trouble) => {
+      // Until that file is applied, read as before.
+      if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
+      return db("rpc/oc_connected_of", { method: "POST", body: { account } });
+    });
   } catch (trouble) {
     console.error(`account: whether Connect made an account: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
