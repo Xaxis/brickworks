@@ -63,6 +63,7 @@ const adaEmail = `delivered+bw-oc-ada-${tag}@resend.dev`;
 const bobEmail = `delivered+bw-oc-bob-${tag}@resend.dev`;
 const carolEmail = `delivered+bw-oc-carol-${tag}@resend.dev`;
 const danEmail = `delivered+bw-oc-dan-${tag}@resend.dev`;
+const pwEmail = `delivered+bw-oc-pw-${tag}@resend.dev`;
 const real = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input?.url || input);
@@ -925,6 +926,60 @@ try {
     const plainGone = await quit(plain.access_token, { confirm: `delivered+bw-oc-plain-${tag}@resend.dev` });
     check("Connect: deleting an account Connect never made one for asks nothing of orangecheck", plainGone.status === 200
       && ochk.connect.length === before, `${plainGone.status} ${ochk.connect.length - before}`);
+
+    // orangecheck's answer (2026-10-24): the address goes with email_verified
+    // only when the same request carries a fresh emailed code's session for
+    // that very address (amr otp, within the five minutes linking asks).
+    // Never for a password or an orangecheck session, a stale code, or an
+    // address the request names. Each refusal is checked beside the one
+    // case that sends it, so none passes by sending no address at all.
+    const provisions = () => ochk.connect.filter((one) => one.path === "/api/connect/provision");
+    const sentFor = async (access, body) => {
+      const from = provisions().length;
+      const answer = await asked(access, body);
+      return { answer, sent: provisions().slice(from).map((one) => one.body) };
+    };
+    const unverified = (one) => one.sent.every((body) => !("email" in body) && !("email_verified" in body));
+    const codedEmail = `bw-oc-verified-${tag}@example.invalid`;
+    const code = await mintCode(codedEmail);
+    const coded = await (await real(`${SB}/auth/v1/verify`, { method: "POST", headers: PUBLIC,
+      body: JSON.stringify({ type: "email", email: codedEmail, token: code }) })).json().catch(() => ({}));
+    if (coded.user?.id) made.add(coded.user.id);
+    const fromCode = await sentFor(coded.access_token);
+    const verifiedOwn = amrOf(coded.access_token)[0] === "otp" && fromCode.answer.status === 200 && fromCode.sent.length === 1
+      && fromCode.sent[0].email === codedEmail && fromCode.sent[0].email_verified === true;
+    check("Connect: a fresh emailed code's session provisions with its own address, email_verified", verifiedOwn,
+      `${fromCode.answer.status} ${JSON.stringify(fromCode.sent)}`);
+    const password = await mintSession(pwEmail, { age: true });
+    const fromPassword = await sentFor(password.access_token);
+    check("Connect: a password session (a test account's) provisions without email_verified, where a fresh code's has it",
+      verifiedOwn && amrOf(password.access_token)[0] === "password" && fromPassword.sent.length === 1 && unverified(fromPassword),
+      `${fromPassword.answer.status} ${JSON.stringify(fromPassword.sent)}`);
+    const other = `bw-oc-someone-else-${tag}@example.invalid`;
+    const fromOther = await sentFor(coded.access_token, { consent: true, email: other, email_verified: true });
+    check("Connect: an address the request names is never sent as verified, only the code's own",
+      verifiedOwn && fromOther.sent.length === 1 && fromOther.sent.every((body) => body.email === codedEmail),
+      `${fromOther.answer.status} ${JSON.stringify(fromOther.sent)}`);
+    // Six minutes on: the same code's session is stale.
+    const now = Date.now;
+    Date.now = () => now() + 6 * 60 * 1000;
+    forgetForTests();
+    let fromStale;
+    try {
+      fromStale = await sentFor(coded.access_token);
+    } finally {
+      Date.now = now;
+      forgetForTests();
+    }
+    check("Connect: a code's session past five minutes never provisions with email_verified, where a fresh one does",
+      verifiedOwn && unverified(fromStale), `${fromStale.answer.status} ${JSON.stringify(fromStale.sent)}`);
+    // An orangecheck session of the same account, linked first.
+    await rpc("oc_link", { did: `did:oc:${randomBytes(16).toString("hex")}`, account: coded.user?.id });
+    const viaOc = await call(handler, { token: token({ did_oc: await rpc("oc_did_of", { account: coded.user?.id }) }).jwt });
+    const fromItsOc = await sentFor(viaOc.body.access_token);
+    check("Connect: an orangecheck session never provisions with email_verified, where a fresh code does",
+      verifiedOwn && viaOc.status === 200 && viaOc.body.user?.id === coded.user?.id && unverified(fromItsOc),
+      `${viaOc.status} ${fromItsOc.answer.status} ${JSON.stringify(fromItsOc.sent)}`);
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.
@@ -957,7 +1012,7 @@ try {
 } catch (trouble) {
   check("the run finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {
-  for (const email of [adaEmail, bobEmail, carolEmail, danEmail]) await deleteAccount(email).catch(() => false);
+  for (const email of [adaEmail, bobEmail, carolEmail, danEmail, pwEmail]) await deleteAccount(email).catch(() => false);
   let gone = 0;
   for (const id of made) {
     const reply = await real(`${SB}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: ADMIN });

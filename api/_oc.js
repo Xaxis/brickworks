@@ -214,11 +214,14 @@ export function connectConfigured() {
 }
 
 /// An orangecheck account made for [account], which ticked the box for it:
-/// {made, did} or {made: false, reason}. Asked of orangecheck with consent,
-/// and the account's id alone; written down first, so deleting the account
-/// deletes that one too whatever the answer. Never throws: a refusal or an
-/// outage is an answer, as Connect's own calls give them.
-export async function provision(account) {
+/// {made, did} or {made: false, reason}. Asked of orangecheck with consent
+/// and the account's id; and with [emailed], when the request is a fresh
+/// emailed code's for that address (codeOf), the address as verified, so
+/// that signing in to ochk.app with it offers the account to claim. Written
+/// down first, so deleting the account deletes that one too whatever the
+/// answer. Never throws: a refusal or an outage is an answer, as Connect's
+/// own calls give them.
+export async function provision(account, emailed = null) {
   try {
     await db("rpc/oc_connect_asked", { method: "POST", body: { account } });
   } catch (trouble) {
@@ -227,7 +230,8 @@ export async function provision(account) {
   }
   let made;
   try {
-    made = await connectProvision({ apiKey: process.env.OC_CONNECT_KEY, userId: account, consent: true });
+    made = await connectProvision({ apiKey: process.env.OC_CONNECT_KEY, userId: account, consent: true,
+      ...(emailed ? { email: emailed, emailVerified: true } : {}) });
   } catch (trouble) {
     console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return { made: false, reason: "unavailable" };
@@ -354,8 +358,11 @@ export async function sessionStanding(claims, method) {
 const FRESH_SECONDS = 300;
 
 /// The session behind [claims], as linking, unlinking and deleting ask
-/// after it: {bound, fresh}. bound, when orangecheck started it; fresh,
-/// when it is an emailed code of the last five minutes. A session
+/// after it: {bound, fresh, emailed}. bound, when orangecheck started it;
+/// fresh, when it is an emailed code of the last five minutes; emailed, the
+/// address that code went to, when it is one (amr otp alone, never a test
+/// account's password), which Connect may send orangecheck as verified
+/// (orangecheck's answer, 2026-10-24). A session
 /// orangecheck started says "otp" too (it is minted from a one-time link),
 /// so it is told apart by its binding, and is never fresh. Nor is a
 /// password, but a test account's (tools/web/session.mjs), whose address
@@ -364,12 +371,14 @@ const FRESH_SECONDS = 300;
 /// refuses it). Throws when the binding cannot be read.
 export async function codeOf(claims) {
   const session = claims.session_id ? await sessionOf(claims.session_id) : null;
-  const code = (Array.isArray(claims.amr) ? claims.amr : [])
-    .find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims)));
+  const amr = Array.isArray(claims.amr) ? claims.amr : [];
   const bound = Boolean(session && session.bound);
-  const fresh = Boolean(code && session && session.exists && !bound
-    && Date.now() / 1000 - Number(code.timestamp) <= FRESH_SECONDS);
-  return { bound, fresh };
+  const recent = (one) => Boolean(one && session && session.exists && !bound
+    && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
+  const fresh = recent(amr.find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims))));
+  const address = String(claims.email || "").trim().toLowerCase();
+  const emailed = recent(amr.find((one) => one?.method === "otp")) && address && !madeUp(address) ? address : null;
+  return { bound, fresh, emailed };
 }
 
 /// Whether a Claude connection approved while signed in with orangecheck

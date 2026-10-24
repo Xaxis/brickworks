@@ -23,8 +23,9 @@
 //                        code with the box under Sign in with orangecheck
 //                        ticked (2026-10-24): orangecheck Connect makes the
 //                        person an orangecheck account (api/_oc.js
-//                        provision). Never for an account that has
-//                        orangecheck already. No tick, no call: the page
+//                        provision), with the address as verified when
+//                        this session is a fresh emailed code's for it.
+//                        Never for an account that has orangecheck already. No tick, no call: the page
 //                        sends nothing, and this refuses anything but true.
 //                        It never holds up the sign-in, which is done.
 //
@@ -262,15 +263,16 @@ async function signIn(request, response) {
   });
 }
 
-/// The account asking, from its sign-in: {claims, did, only, fresh}.
+/// The account asking, from its sign-in: {claims, did, only, fresh,
+/// emailed} (api/_oc.js codeOf).
 /// Throws AuthError when there is none.
 async function asking(request) {
   const claims = await verify(bearer(request), request);
-  const [{ fresh }, did] = await Promise.all([
+  const [{ fresh, emailed }, did] = await Promise.all([
     codeOf(claims),
     db("rpc/oc_did_of", { method: "POST", body: { account: claims.sub } }),
   ]);
-  return { claims, did: did || null, only: madeUp(claims.email), fresh };
+  return { claims, did: did || null, only: madeUp(claims.email), fresh, emailed };
 }
 
 /// orangecheck's mark on the account (app_metadata.orangecheck), which is
@@ -389,7 +391,10 @@ async function connect(request, response) {
   // The tick goes with the sign-in it was given at: a code just now, never
   // a session left open.
   if (!who.fresh) return say(response, 403, "Tick the box as you sign in with a code we email you.", { fresh: false });
-  return response.status(200).json(await provision(who.claims.sub));
+  // Its address as verified only from this session's own fresh code: never
+  // a password's, an orangecheck session's, a stale code's, or one the
+  // request names (orangecheck's answer, 2026-10-24).
+  return response.status(200).json(await provision(who.claims.sub, who.emailed));
 }
 
 export default async function handler(request, response) {

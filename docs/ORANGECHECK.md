@@ -42,12 +42,16 @@ tools/web/vendor_orangecheck.sh.
   words (`web/oc-connect-consent.mjs`). Ticked, a sign-in by emailed code
   then asks `?op=connect`, never waited on; the server writes the ask down
   (`oc_connected`) and calls `connectProvision({consent: true})` with the
-  account's id alone, for a fresh code's session of an account with no
+  account's id, for a fresh code's session of an account with no
   orangecheck of its own. Unticked, no call. Deleting the account calls
   `connectDelete` first, and deletes nothing while orangecheck cannot.
   `OC_CONNECT_KEY` is withheld from a unit's preview (tools/deploy.sh).
-  Claiming the account needs a claim link or a verified email, neither of
-  which step 4 sends; that is a later step's to choose.
+  So that the person can claim it, orangecheck asked (2026-10-24) for
+  `email` with `emailVerified: true`, but only when the same request carries
+  a fresh Brickworks code's session (amr `otp`, the five minutes linking
+  asks) for that very address (`api/_oc.js` `codeOf`, `emailed`): never a
+  password's, an orangecheck session's, a stale code's, or an address the
+  request names, which is never read.
 - **Merged accounts.** Every token's `rh` is kept with its did
   (`oc_handles`). A did new here whose token carries `merged_rh` signs in
   to the one account those handles name (`matchMergedUser`, then

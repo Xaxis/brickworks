@@ -319,7 +319,9 @@ they have. A Claude connector belongs to the account that switched it on.
   `OC_CONNECT_KEY`; a unit's preview never does). Ticked, a sign-in by
   emailed code then asks, never waited on: the server, for a fresh code's
   session of an account without orangecheck, writes the ask down and calls
-  `connectProvision({consent: true})`; a refusal or an outage is an
+  `connectProvision({consent: true})`, with `email` and `emailVerified: true`
+  only when that session is a fresh emailed code's (amr `otp`) for that
+  address (`codeOf` `emailed`); a refusal or an outage is an
   answer, never in the sign-in's way. Unticked, nothing is asked. Deleting
   an account Connect was asked for calls `connectDelete` first; while
   orangecheck cannot, nothing is deleted (503, in words).
@@ -388,7 +390,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (122 since step 4; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (127 since step 4; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -435,7 +437,9 @@ without its key, unticked or not `true`, without a sign-in, ticked once with
 consent and the key, orangecheck down or never answering, never for an
 account with orangecheck, deletion held while orangecheck cannot delete and
 calling `connectDelete` when it can, and nothing asked for an account it
-never made one for).
+never made one for; the address sent as verified for a fresh emailed code's
+session, and never for a password's, an address the request names, a code's
+past five minutes or an orangecheck session's).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
 for everybody with nothing on the address, the dialog at 390 and 1280 in
 both themes with orangecheck's button (its mark, its stylesheet from this
