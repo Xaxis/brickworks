@@ -13,6 +13,14 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+- On brickworks.diy, a public collection can be followed: its page leads
+  with a cover of its models' pictures, Follow and how many follow it, and
+  what is put in it shows in the follower's feed. A model's page says how
+  many collections it is in, each a card a click away. Share on a model's
+  page opens a sheet with its link and the code to embed it, each with
+  Copy, and the embed is drawn in the light or dark its viewer chose.
+
 ### Fixed
 - Save on a new model nobody has named asks what to call it first, as Save
   as does, and New's "Save, then start new" asks too; a name another saved

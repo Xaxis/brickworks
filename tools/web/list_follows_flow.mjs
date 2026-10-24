@@ -265,7 +265,9 @@ try {
   const shut = await api("/api/people?op=collection", { method: "POST", token: ada.access_token,
     body: { id: listId, name: LIST, public: false } });
   const gone = await text(`/c/${listId}?tests=1`);
-  const towerNow = await text(`/m/${tower}`);
+  // A model's page is kept by the CDN for half a minute (api/share.js
+  // SHARED_CACHE), and the tower's was shown a moment ago: asked anew.
+  const towerNow = await text(`/m/${tower}?asked=${Date.now()}`);
   const feedNow = await api("/api/people?op=feed", { token: bob.access_token });
   check(`private: its page ${gone.status}, the tower's page counts no collection, Bob's feed none of it `
     + `(followed again ${again.status}, made private ${shut.status})`, again.status === 200 && shut.status === 200
