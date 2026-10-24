@@ -13,6 +13,15 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+- Build together: File › Build together… gives a link to the model, and
+  whoever opens it, signed in, builds it with you at the same time, in a
+  browser or the desktop app. Each of you sees the other's parts go down,
+  move, change colour and come off as it happens, and who is here. Undo
+  takes back only your own changes. Two people moving one part at once
+  both see it end in the same place, and the one whose move was overtaken
+  is told. The owner ends the session; the model stays theirs.
+
 ### Fixed
 - A big set from the library is on the screen in seconds. Its parts the
   build has not got are fetched as soon as its file is read, sixteen at a
