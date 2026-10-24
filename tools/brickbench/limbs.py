@@ -155,10 +155,11 @@ GREY = 71
 
 
 def boy(e: Edit) -> None:
-    """The boy's spiky hair in four tiers, its lowest wider than his head: the 6 x 6 plate on
-    his head made an 8 x 8, one stud past the head all round, and on its rim a fringe of
-    cheese slopes, each turned to fall away outward, under the rings of spikes and cones
-    already there."""
+    """The boy's spiky hair with a lowest row wider than his head: the 6 x 6 plate on his head
+    made an 8 x 8, one stud past the head all round, and a spike on every stud of its rim,
+    around the rings of spikes and cones already there. RIM = ["54200"] puts cheese slopes
+    there instead, each turned to fall away outward: they read as a roof's eaves. The judge
+    read the spikes as a brim too (docs/BRICKBENCH.md, "testing the limbs and skin levers")."""
     from bricknet.graph import _part_info
     plate = e.swap(e.find("3958", (120, -408, -80)), "41539")
     info = _part_info(flat.pid("41539"))
@@ -173,8 +174,8 @@ def boy(e: Edit) -> None:
         e.add(mate(flat.frame(e.parts[plate], k), stem, conn(stem, "hole"), HAIR, yaw=yaw, note="+fringe"))
         rim += 1
     e.techniques += ["the hair plate one size up (3958 6x6 -> 41539 8x8), so the lowest tier stands past the head",
-                     f"{rim} cheese slopes (54200) round its rim, each turned to fall away outward",
-                     "four tiers: the fringe, the ring of spikes (22388), the ring of cones (4589), the spikes on top"]
+                     f"{rim} parts ({', '.join(RIM)}) on its rim, each turned to face outward",
+                     "the rim row at the height of the old ring of spikes: wider, not a tier of its own"]
 
 
 FRINGE = 0

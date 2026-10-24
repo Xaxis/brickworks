@@ -3487,6 +3487,151 @@ showing and the views are measured off part boxes, which overstate what a
 curved part covers. The levers are ranked by how many verdicts their reasons
 cover, not by a run of each.
 
+## 2026-10-24: testing the limbs and skin levers
+
+gap228 ranked three levers above and gave each a test that can fail. This runs
+the first two on sculpt170's own builds, edited, with no change to the designer:
+the edited builds are new arms, `lever-limbs` and `lever-skin`, judged exactly as
+the likeness round was (bench204's recipe: Opus through `claude -p` on the
+subscription, the same four views, the same prompt, both orders, twice). Every
+edited build is valid by verify.py, one piece by its graph and by our
+`pieces_agree.gd`, with no collision. Nothing was submitted.
+
+**Neither lever passes its bar.** Limbs took 8 of 16 from the originals (bar 13)
+and 0 of 16 from BrickAgent (bar 4). Skin took 12 of 24 from the originals (bar
+16; 9 to 15 is the falsified band) and 2 of 24 from BrickAgent, two fewer than
+sculpt170 itself.
+
+| arm | vs sculpt170, overall | vs BrickAgent, overall | by prompt vs sculpt170 | by prompt vs BrickAgent |
+|---|---|---|---|---|
+| lever-limbs (4 prompts) | 8 of 16 (28-72%) | 0 of 16 (0-19%) | potato 4-0, dog 4-0, rabbit 0-4, boy 0-4 | 0-4 on all four |
+| lever-skin (6 prompts) | 12 of 24 (31-69%) | 2 of 24 (2-26%) | potato 0-4, dog 0-4, toilet 2-2, statue 4-0, rabbit 3-1, boy 3-1 | toilet 2-2, the rest 0-4 |
+| sculpt170 (the base) | | 4 of 24; 0 of 16 on the limbs' four | | toilet 4-0, the rest 0-4 |
+
+By dimension, lever-skin against sculpt170 won likeness 12, surface 12, colour
+17, technique 10, creativity 17, buildability 9 of 24; lever-limbs won likeness
+8, surface 4, technique 8, creativity 10 and buildability 0 of 16 (all 16
+call sculpt170 the sturdier build from the pictures; on the potato, for having
+"no large arms jutting out sideways on small side connections"). Against BrickAgent, lever-skin's surface verdicts rose from 3 to 5
+of 24.
+
+Each prompt's corner and front views, before (sculpt170), after (limbs, skin)
+and BrickAgent:
+[potato](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-042.png),
+[balloon dog](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-043.png),
+[toilet](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-044.png),
+[statue](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-049.png),
+[rabbit](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-078.png),
+[boy](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-080.png).
+
+![The potato before, with arms, tiled, and BrickAgent's](../bench/results/brickbench-2026-10-22-m147/lever229/lever-model-042.png)
+
+### Limbs: a right limb wins every verdict, a wrong one loses every verdict
+
+What each edit took (`tools/brickbench/limbs.py`, which rebuilds each from
+sculpt170's `model.mpd`; every new part is placed by mating one of its BrickNet
+connectors to another's, so the graph joins it):
+
+| prompt | what was added | parts | techniques |
+|---|---|---|---|
+| potato | two white gloved arms, one hanging bent, one reaching forward | +7 (210): two Bigfig arms 10124/10154, two hands 10126/10127, two 2L axles 3704, a 1x1 brick; two side bricks made Technic bricks 32064b | an axle hole swapped into the body's side wall; a 2L axle as the shoulder; the arm on the axle by its cross hole, turned a quarter at a time (the only turns that clear the body by BrickNet's colliders); the hand by its pin in the wrist, slid 1 LDU to seat |
+| balloon dog | the raised tail tilted 45 degrees back | +2 (113): hinge brick 3937 + 3938; the tail's four parts moved | the tail lifted off its pinch as one rigid group, a hinge brick on the pinch's stud with its pin across the dog, the top turned 45 degrees, the group put back on the hinge top |
+| rabbit | the arms carried down beside the torso | +6 (326): four 1x2 bricks, two inverted curved slopes 24201 as paws; the carrot moved; the white wrist plates made grey | each arm's column extended two bricks down, hung from the shoulder plate by studs |
+| boy | a lowest row of hair wider than the head | +28 (214): 28 spikes 22388; the 6x6 hair plate 3958 made an 8x8 41539 | the hair plate one size up so its rim stands a stud past the head, a spike on every rim stud |
+
+The statue and the toilet were not edited. The statue's limbs (legs apart, an
+arm on the opposite knee) are a rebuild of its figure, not an addition, and did
+not fit the time box; the toilet's subject has no limb. So the limbs test is
+gap228's own four prompts, 32 verdicts.
+
+What the judge said (`reasons-lever-limbs-sculpt170.txt`, `-opus.txt` beside
+the pictures):
+
+- **Potato, 4-0 over sculpt170.** All four name the arms: "[sculpt170] is an
+  armless lump", "adds the toy's well-known white gloved arms, so it reads as
+  the potato toy at a glance", "at the cost of only seven parts".
+- **Dog, 4-0.** All four name the tail: it "sweeps up and back at an angle like
+  a real balloon-dog tail, while [sculpt170]'s points straight up and makes the
+  body read as a stiff letter H", "which outweighs its slightly messier hinge
+  joint".
+- **Rabbit, 0-4.** The arms were made too long: "drop almost to the feet like a
+  gorilla's", "box the body in like table legs"; sculpt170's "stubby arms ending
+  at mid-torso suit a fat rabbit". The brief says the arms hang loosely; it also
+  says the rabbit is fat with short legs, and the edit ignored the second.
+- **Boy, 0-4.** The wider row read as a hat: "a wide flat brim of spiked plates
+  that juts out past the head like a roof". BrickAgent's lowest row is wider
+  than the head too, but it is slopes falling outward over four heights, not a
+  plate's rim at one.
+- **Against BrickAgent, 0 of 16.** The arms left the potato's reasons; what is
+  left is the body: "the smoother, more recognisable potato toy", "[lever-limbs]
+  is blocky and rough by comparison". The dog's tail is now praised even in
+  defeat ("despite [lever-limbs]'s nice tail knot"), and it loses on
+  "exposed connectors and stretched proportions" and the plinth.
+
+So gap228's reading holds where the limb was right: one missing or wrongly
+angled limb, put right, moved every verdict against the same build. But the
+limb has to be right for the subject (a fat rabbit's arms are short; spiky hair
+is not a brim), and a right limb alone took nothing from BrickAgent, whose
+builds win the rest on finish and proportion.
+
+### Skin: tiles help a flat top and hurt a round one
+
+`tools/brickbench/skin.py` caps every stud that shows (no joint uses it and no
+part's box lies over it along its axis, gap228's measure) with tiles of its
+part's colour: the largest rectangle tiles that fit a part's studs in one plane
+(2x4 down to 1x1), turned with the part; round 1x1 tiles (98138) on round parts,
+a 2x2 round tile (14769) where all four of a round 2x2 show. Sideways studs were
+capped too. A tile that collides or is not joined is left off.
+
+| prompt | studs showing (up) | tiles added | studs showing after | parts |
+|---|---|---|---|---|
+| potato | 29 (20) | 26: 23 round 1x1, two 1x1, one 1x4 | 0 | 229 |
+| balloon dog | 14 (6) | 9: four round 1x1, five 1x1 (five collided, left off) | 5 | 120 |
+| toilet | 21 (5) | 19: 17 round 1x1, two 1x2 | 0 | 222 |
+| statue | 17 (16) | 10: four 1x2, four 1x1, one round 2x2, one round 1x1 | 0 | 138 |
+| rabbit | 13 (13) | 13: eleven 1x1, two round 1x1 | 0 | 333 |
+| boy | 19 (12) | 18: 14 round 1x1, three 1x1, one 1x2 | 0 | 204 |
+
+What the judge said (`reasons-lever-skin-sculpt170.txt`, `-opus.txt`):
+
+- **Statue, 4-0; rabbit and boy, 3-1.** Square tiles on flat tops: "tiles over
+  the head, shoulders, fist and knees, but [sculpt170] leaves studs showing",
+  "reads more like a cast statue"; the rabbit's "tiled ear tips, head, nose and
+  tail"; the boy's "cleaner back without bare Technic holes beside the fin".
+- **Potato, 0-4; dog, 0-4; toilet, 2-2.** Round tiles on the rings of round
+  plates (the hat's brim and crown, the eyes, the toilet's lid and rim) read as
+  lumps: "eyes are clusters of small round plates that look like flowers", "its
+  hat has bumps of round plates sticking out around its brim", "covers the lid
+  and rim with extra 1x1 round plates that make them busy". On the dog, tiles on
+  the joints' side studs made them "bulky square blocks at the neck and hips".
+- **Against BrickAgent** the skin changed nothing the judge weighs: "[opus55]
+  builds its rounded body from curved arches and dome parts, while
+  [lever-skin]'s body is a staircase of small bricks and slopes". Studs were
+  never the whole of finish; the stepped outline is.
+
+### Verdicts
+
+- **Limbs: do not build it in as specified** (8 of 16 and 0 of 16, both bars
+  missed). The narrower finding is worth one designer test: a limb the subject is
+  known for that the build lacks or holds at the wrong angle (the potato's arms,
+  the dog's tail) won 8 of 8 against the same build, at 2 to 7 parts; a limb
+  added against the subject's proportions lost 8 of 8.
+- **Skin: do not build it** (12 of 24 against the originals, the falsified band;
+  2 of 24 against BrickAgent, below sculpt170's 4). Tiling flat tops helped
+  (statue 4-0); capping round rings and side studs with round or square tiles
+  hurt as much (potato and dog 0-4). Finish against BrickAgent is the outline,
+  not the studs.
+
+**What this does not say.** One edit a prompt, by hand, and one judge. The limbs
+were edited by someone who saw the originals' faults named in gap228's reasons;
+the designer would have to find them itself. Two of four limb edits were wrong,
+so the 8 of 16 mixes the lever's effect with the edits' quality: it says a right
+limb matters, not how often the designer would make one right. The skin rule is
+one rule: it took 10 of 12 on the three prompts where its tiles sat on flat
+tops and the fin's mount (statue, rabbit, boy) and 2 of 12 where they capped
+round rings and side studs (potato, dog, toilet). A rule that tiled flat tops
+only was not judged.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -3662,6 +3807,21 @@ project folder for the critique221-bench worktree,
 `b24d707c` (`pieces-critique221.txt`); the reasons `scripts/reasons.py`
 (`reasons-critique221-*.txt`). The held-out tuning briefs and their designs are
 `brickbench-critique221-tune/` (arms `critique221` and `critique221b`).
+
+The levers round (2026-10-24) edited sculpt170's builds instead of designing. In
+the BrickBench venv with `BRICKNET_DATA` set: `python -I
+tools/brickbench/skin.py arms/sculpt170/TASK/run1/submission/model.mpd
+arms/lever-skin/TASK/run1/design.ldr --report .../skin.json` for each of the six,
+and `python -I tools/brickbench/limbs.py TASK` (same arguments, into
+`arms/lever-limbs/`) for model-042, 043, 078 and 080, each with a `design.json`
+naming the commit. Then, from the unit's imported worktree: `export` and `verify
+--which ours` with `--arm lever-skin` (and `lever-limbs`, `--tasks` its four),
+`src/dev/pieces_agree.gd` on the `design.ldr`, `views --arms lever-skin` on the
+GPU, `pairs --arms lever-skin,sculpt170 --runs 1 --repeat 2 --jobs 3` (and
+`lever-limbs,sculpt170 --tasks` its four), the counts `scripts/by_prompt.py`,
+the reasons `scripts/reasons.py`, and `compare --out
+lever229/compare-lever-skin.md` (and `-limbs`), the m147 round's `compare.md`
+copied aside first and put back. The pictures are `lever229/pictures.py`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the

@@ -172,7 +172,7 @@ def check(parts: list[Placed]) -> Check:
     """Collisions and BrickNet's joints, as verify.py finds them."""
     ids = [pid(p.stem) for p in parts]
     mats = np.stack([p.m for p in parts])
-    hits = [tuple(sorted(map(int, pair))) for pair in colliding_pairs(ids, mats)]
+    hits = [(min(int(a), int(b)), max(int(a), int(b))) for a, b in colliding_pairs(ids, mats)]
     graph = parse_ldr(text(parts))
     used = set()
     for e in graph.edges:
