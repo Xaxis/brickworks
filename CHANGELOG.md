@@ -22,6 +22,9 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- Signed in on a new browser, a phone or a fresh install, Brickworks opens
+  on the model you saved last instead of the example car. A first visit, and
+  an account with no models yet, still start on the example car.
 - After Claude works on a model over the connector, nothing of its is left
   in your hand and the view shows the whole model. A print Claude made was
   left in hand, so the first click put down a stray part, and the view was

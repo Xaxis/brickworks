@@ -89,7 +89,13 @@ signal deleted_elsewhere(name: String)
 ## The account is full or nearly, said after a save: [param words] say
 ## how full, plainly, for an offer to delete old models (AccountFullOffer).
 signal short_of_room(words: String)
+## A look at the account ended, its models here as it keeps them: [member
+## newest] names the one saved last.
+signal looked
 
+## The account's model saved last, as its list said at the last look; ""
+## when it keeps none. What a returning person opens on (Main._open_theirs).
+var newest: String = ""
 ## How the last look went: "" not yet, "off", "kept" (in step with the
 ## account), "away" (could not reach it), "not_here" (this deployment keeps
 ## no models: account_models.sql not applied).
@@ -217,9 +223,13 @@ func _sync_once() -> void:
 		standing = "none"
 		return
 	var there: Dictionary = {}
+	# Listed the one saved last first (api/models.js).
+	newest = ""
 	for one: Variant in (listed["body"] as Dictionary)["models"]:
 		if one is Dictionary and fits(str((one as Dictionary).get("name", ""))):
 			there[str(one["name"])] = one
+			if newest.is_empty():
+				newest = str(one["name"])
 	var kept: Variant = (listed["body"] as Dictionary).get("kept")
 	room = kept if kept is Dictionary else {}
 	var sent: int = 0
@@ -305,6 +315,7 @@ func _sync_once() -> void:
 		if refused.values().any(func(why: Variant) -> bool: return str(why).begins_with(FULL)) \
 		else "refused"
 	last = {"sent": sent, "fetched": fetched, "deleted": gone, "names": _known().keys()}
+	looked.emit()
 	if fetched > 0:
 		said.emit(("%d model from your account is in File › Open" if fetched == 1
 			else "%d models from your account are in File › Open") % fetched)

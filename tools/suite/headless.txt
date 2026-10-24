@@ -175,3 +175,4 @@ photo_search_stub   # the bin's camera: said before the first photo, nothing sen
 floor_gears
 svg_text
 session_hand
+returning

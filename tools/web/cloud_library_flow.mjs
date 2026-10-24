@@ -13,8 +13,9 @@
 //
 //   1. Browser A signs in, opens a model, names it and saves it: it is in
 //      this browser's storage, and the account lists it with its parts.
-//   2. Browser B, a fresh one with nothing stored, signs in: the model is in
-//      File › Open, and opens there with the same parts.
+//   2. Browser B, a fresh one with nothing stored, signs in: it opens on
+//      the model by itself, the one saved last, not the example car; the
+//      model is in File › Open, and opens there with the same parts.
 //   3. Both change it and save, A first, then B, offline (the account's
 //      route unreachable), from the version it had: B's is kept in B's
 //      browser, and sent once the account is back. Both are kept: the
@@ -321,6 +322,11 @@ try {
   if (!(await controlAt(b, "model_name"))) throw new Error("the app never came up in browser B");
   const arrived = await until(async () => (await storedText(b, savedKey(NAME))).startsWith(`0 ${NAME}`), 180);
   check(`"${NAME}" comes to this browser from the account`, arrived);
+  // A returning person opens on their own work, not the example car a
+  // first visit is shown (walk239's A16, Main._open_theirs).
+  const onIt = await titleBecomes(b, `${NAME} — Brickworks`, 120);
+  check(`...and B opens on it by itself, the model saved last, not the example car: "${await b.title()}"`, onIt);
+  await b.screenshot({ path: `${out}/2_b_opens_on_it.png` }).catch(() => {});
   await b.waitForTimeout(3000);
   check(`...and opens from File › Open`, await openFromMenu(b, "Cloud"));
   const openedB = await titleBecomes(b, `${NAME} — Brickworks`, 180)

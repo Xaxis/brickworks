@@ -1436,6 +1436,12 @@ func _ready() -> void:
 			_store.begin(ModelStore.UNTITLED)
 			_store.touch()
 			_store.write_now()
+		# No working model here, but models saved here: the one saved last,
+		# not the example car (walk239's A16). Not for a probe, as above.
+		if placed == 0 and not empty and not OS.get_cmdline_args().has("--script"):
+			var saved: Array[ModelStore.Entry] = _store.list_saved()
+			if not saved.is_empty():
+				placed = _open(saved[0].path)
 		if placed == 0 and not empty:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
@@ -4791,6 +4797,7 @@ func _build_ui() -> void:
 	_full_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_full_offer)
 	_cloud.short_of_room.connect(_full_offer.tell)
+	_cloud.looked.connect(_open_theirs)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -6957,6 +6964,32 @@ func after_session_call(before: Dictionary) -> void:
 func _camera_aim() -> Array:
 	return [_camera.get("_target_yaw"), _camera.get("_target_pitch"),
 		_camera.get("_target_distance"), _camera.get("_target_focus")]
+
+
+## The example car of a first visit is on the baseplate, untouched, and the
+## account signed in keeps models: the one saved last is opened in its
+## place, once a start. walk239 (A16) and walk180 (D2): signed in on a new
+## browser, a phone or a fresh desktop, a person was shown the example car,
+## not their own work. An account with none keeps the car, which is what a
+## first visit sees dimmed behind the sign-in screen and what every browser
+## flow starts from; a person who had a model on the screen here gets it
+## back from this device's own copy before any of this (ModelStore.restore).
+func _open_theirs() -> void:
+	if _theirs_opened or not _sample_untouched or _cloud.newest.is_empty() \
+			or not _copying.is_empty() or not _from_library.is_empty() or _store.read_only:
+		return
+	var path: String = ModelStore.SAVE_DIR + _cloud.newest + ".ldr"
+	if not FileAccess.file_exists(path):
+		return
+	_theirs_opened = true
+	var placed: int = await _bar.open_with_progress(path)
+	if placed >= 0:
+		_bar.opened.emit(placed)
+		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+
+
+## Whether [method _open_theirs] has opened one this start.
+var _theirs_opened: bool = false
 
 
 ## The end of a drag that carried a part: down where the pointer is, if it
