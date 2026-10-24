@@ -394,9 +394,9 @@ they have. A Claude connector belongs to the account that switched it on.
   `api/orangecheck.js` POST `?op=native`, `api/_oc.js` `tradeCode`): the
   desktop's sign-in screen shows the same button (`signin_orangecheck`) only
   where `/api/account` says `orangecheck.native = {project, auth,
-  audience}` (`nativeOffered`: `NATIVE_FOR_EVERYONE` on a deployment, false
-  until orangecheck's site-attest and the live project offer it;
-  `OC_NATIVE=1` on this machine). A press listens on `127.0.0.1` at any free
+  audience}` (`nativeOffered`: `NATIVE_FOR_EVERYONE`, on since m167, and
+  wherever orangecheck takes a token, so never on a deployment without the
+  project's keys, as a unit's preview). A press listens on `127.0.0.1` at any free
   port, opens `<auth>/native/authorize` in the person's browser with an S256
   challenge, `state` and the loopback redirect (`Account.opens_browser`
   false in a probe, which reads `orangecheck_link`), and the form's note
@@ -461,9 +461,12 @@ godot --headless --path . --script src/dev/connector_probe.gd -- 8790
 `account_probe` ends "signing in works from the app's side" (26 checks: a
 malformed address refused in words, a code sent, a wrong code refused in words,
 the minted code signs in, only the refresh token kept, `/api/account` with and
-without the token, `/api/admin` 404 to them and 401 to nobody, a restart renews,
+without the token, the desktop offered orangecheck exactly where it takes a
+token (off on a relay without the project's keys, on with them), `/api/admin`
+404 to them and 401 to nobody, a restart renews,
 offline stays signed in and says so, a session revoked elsewhere is refused and
-forgotten, the sixth code in a row refused). `gate_probe -- live` types the
+forgotten, the sixth code in a row refused). `gate_probe -- live` shows Sign
+in with orangecheck exactly as the deployment offers it, types the
 address, presses Email me a code, types a wrong code then the minted one, signs
 in, opens Account and signs out, with pictures `shots/signin/1_form.png` to
 `6_signed_out.png`. `connector_probe` covers the relay's half.
@@ -545,8 +548,10 @@ held deletion deleting what it makes (`account_leaving`), with
 `supabase/orangecheck_connect_leaving.sql`'s two functions answered in the
 check over the real rows until the file as it is now is applied (it says so;
 that the mark lapses is the dry run's); the desktop's
-`?op=native` against a stand-in token endpoint: not offered without
-`OC_NATIVE`, `/api/account`'s `native` offer, a code signing in a new account
+`?op=native` against a stand-in token endpoint: not offered without the
+project's keys, offered with them (`/api/account`'s `native`, and in
+production ochk.io and `https://brickworks.diy` whatever a test stack is
+named there), a code signing in a new account
 traded once with the configured key (never the app's) and never redirected,
 its token ended and spent (`?op=signin` with it 409), the same id signing in
 to the same account from the app and the window, and a code used twice, a
@@ -564,7 +569,9 @@ origin, the height and type of Email me a code) and the Connect box under it,
 unticked, in orangecheck's words; the window opened at me.ochk.io and closed
 (said in orangecheck's words), a blocked one too, or on a unit's preview (no
 signing secret) the button saying it is unavailable, the files served, the
-headers, the server's refusals, Link orangecheck on /settings orangecheck's
+headers, the server's refusals, the desktop offered orangecheck exactly where
+it takes a token (ochk.io, the project and the audience, a made-up code 422;
+on a unit's preview nothing, `?op=native` 503), Link orangecheck on /settings orangecheck's
 button; then Connect with orangecheck's side stood in for in the browser on
 every deployment: unticked no ask, ticked one with consent, a failed ask
 still signed in, and an account Connect was asked for deleted only once
@@ -586,8 +593,8 @@ OC_TEST_SECRET_FILE=<the test project's signing secret, from orangecheck> \
   node tools/web/oc_native_flow.mjs --keys=oc_throwaways.txt
 ```
 
-It runs `relay_server.mjs` at 8790 and 9051 with the test key, `OC_NATIVE=1`
-and the test hosts, then `tools/probe.sh oc_native_probe` headless with
+It runs `relay_server.mjs` at 8790 and 9051 with the test key and the test
+hosts, then `tools/probe.sh oc_native_probe` headless with
 `BRICKWORKS_API=http://127.0.0.1:8790`, and opens the link the probe prints
 in Chromium with the throwaway's session, pressing Continue. Proves it when it
 ends "8 passed, 0 failed": the probe's 12 checks (offered, the link's project,
@@ -596,7 +603,10 @@ at a made-up address, the listener gone, the refresh token kept and not the
 access token, `/api/account` signed in, signed out) and, as the app from Node,
 the same id signing in to that account, then a code used twice, a wrong
 verifier and the right one after it, another `redirect_uri`, and a code traded
-by a server at another origin, each 401.
+by a server at another origin, each 401. With `--url=https://brickworks.diy`
+(since m167) the same against production: orangecheck's live project at
+ochk.io as `/api/account` offers it, no servers here and no secret, every
+case but another audience.
 
 The listener alone, headless and in the suite (`tools/probe.sh
 oc_listener_probe`, a few seconds): another path or state 404 while it waits

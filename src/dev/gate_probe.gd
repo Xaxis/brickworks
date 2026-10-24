@@ -151,6 +151,13 @@ func _live_sign_in(account: Account, gate: SignInGate, world: BrickWorld,
 	print("\nthe real form, against %s" % Deployment.api_base())
 	_ok(account.state == Account.State.SIGNED_OUT and gate.visible,
 		"signed out, the screen is up with the form")
+	# Sign in with orangecheck on the desktop (on since m167), exactly where
+	# the deployment offers it: wherever orangecheck takes a token, never
+	# where it has not the project's keys.
+	var oc: Button = gate.controls_by_name()["signin_orangecheck"]
+	var offered: bool = not account.deployment.orangecheck_native.is_empty()
+	_ok(oc.is_visible_in_tree() == offered,
+		"Sign in with orangecheck %s, as the deployment offers it" % ("shown" if offered else "not shown"))
 	_save("1_form.png")
 	var email: String = SignInHelper.throwaway("gate")
 	var named: Dictionary = gate.controls_by_name()

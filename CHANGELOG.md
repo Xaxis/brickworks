@@ -14,6 +14,7 @@ whole cycle.
 ## [Unreleased]
 
 ### Added
+
 - Brickworks works with a screen reader on the desktop. Every button, part,
   colour and field says its name ("Select, V", "Brick 2 x 4, 3001"), and
   what the status line says is read out. F6 (or Tab, with a screen reader
@@ -42,10 +43,12 @@ whole cycle.
   owner ends the session; the model stays theirs.
 
 ### Fixed
+
 - Saving, exporting or moving parts between steps on a big model with its
   own steps says so on the status bar before the app is held, as it does on
   any other big model. The Wizard's Tower's Save held the window for up to a
   second, and a step edit for up to three, with nothing said.
+
 ## [0.7.0] - 2026-10-24
 
 A release about models a person can build, and keep. The Tested mark now
