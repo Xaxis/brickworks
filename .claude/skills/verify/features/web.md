@@ -571,7 +571,9 @@ plan with Claude as the client.
   docs/SOCIAL.md U5, `api/people.js` `profilePage`, `web/person.js`) — a
   person-shaped page, the same for everybody it shows (the house account
   too, no special case): a banner (`.banner`, one of their models' pictures,
-  chosen) if any; the head (`header.profile-head`: `.avatar.huge` made from
+  chosen: its cut-out, `/m/X.cutout.png`, on `--picture-ground` as a card's
+  picture is, the PNG itself for a model published before cut-outs; also
+  `/profile`'s `#banner-shown`) if any; the head (`header.profile-head`: `.avatar.huge` made from
   the handle by `web/card.js` `avatarHtml` through `api/_card.js`, `h1`,
   `@handle · [data-role] Designer|Builder · since`, Follow, Share
   `button[data-share]` (copies the link, "Link copied" toast; the share sheet

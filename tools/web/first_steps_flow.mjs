@@ -255,7 +255,7 @@ try {
       check(`/u/${HOUSE} at ${width}: "${house.name}" (${house.role}), its words say whose it is and that the assistant made its models, `
         + `the castle across the top, ${house.pinned.length} pinned, ${house.models} models`,
       house.name === "Brickworks" && /studio's own account/.test(house.bio) && /designed with the assistant/.test(house.bio)
-        && house.banner === "/m/kfpYMjke5U.png" && house.pinned.join() === "EzEXhtXE2C,8eb6GRvnSV,cGHqpHnEFZ" && house.models === 7
+        && house.banner === "/m/kfpYMjke5U.cutout.png" && house.pinned.join() === "EzEXhtXE2C,8eb6GRvnSV,cGHqpHnEFZ" && house.models === 7
         && house.follow && !(await sideways(page)));
       await shots(page, `1_house-${width}`, theme);
     }

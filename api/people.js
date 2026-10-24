@@ -1152,7 +1152,10 @@ async function profilePage(request, response) {
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More">${iconHtml("more")}</summary>`
     + `<div class="menu-list"><button type="button" data-report="this profile" data-report-handle="${escapeHtml(person.handle)}" hidden>`
     + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
-  const head = `${showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.png" alt="" width="1200" height="630" decoding="async"></div>` : ""}
+  // The banner is its model's picture with nothing behind the model, on
+  // the theme's own ground as a card's is (web/directory.css); the server
+  // gives the picture itself for a model published before cut-outs.
+  const head = `${showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.cutout.png" alt="" width="1200" height="630" decoding="async"></div>` : ""}
   <header class="profile-head">
     ${avatarHtml({ handle: person.handle, name: person.name, picture: person.picture }, { size: "huge" })}
     <div class="who">
