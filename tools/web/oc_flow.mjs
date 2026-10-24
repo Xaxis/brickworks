@@ -293,8 +293,12 @@ try {
     `${madeUp.status} ${madeUp.json?.error || ""}`);
 
   // 6. /settings, for an account with its own email.
+  // Where orangecheck takes no token, linking is said to be unavailable
+  // before anything is asked of who is linking.
   const unsigned = await api("/api/orangecheck?op=link", { method: "POST", body: { token: "not.a.token" } });
-  check("linking without a sign-in: refused", unsigned.status === 401, `${unsigned.status}`);
+  check(available ? "linking without a sign-in: refused" : "linking where orangecheck is unavailable: said so, in words",
+    available ? unsigned.status === 401 : unsigned.status === 503 && /not set up here/.test(unsigned.json?.error || ""),
+    `${unsigned.status} ${unsigned.json?.error || ""}`);
   // Settings offer orangecheck only where it signs people in.
   const session = available ? await mintSession(person, { age: true }) : null;
   for (const width of available ? [390, 1280] : []) {
