@@ -243,8 +243,8 @@ they have. A Claude connector belongs to the account that switched it on.
   `/profile?then=/app…`, which opens the dialog by itself and, signed in,
   goes back (`web/profile.js`; only ever to `/app`). Where the deployment
   has no signing secret (Vercel's Preview has the key at most) the button is
-  drawn and a sign-in says it is unavailable; `deploy.sh --prod` refuses to
-  deploy without both in Production. Site pages send
+  drawn and a sign-in says it is unavailable; production without both takes
+  no token, and says so in its log at every start. Site pages send
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
   answer; `/app` and `/b/` keep `same-origin`.
 

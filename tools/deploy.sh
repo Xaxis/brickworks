@@ -411,20 +411,6 @@ if [ ! -f .vercel/project.json ]; then
   exit 1
 fi
 
-# Production signs people in with orangecheck (api/orangecheck.js), which
-# must hear when somebody ends every session there: that takes the
-# project's key and signing secret, in Production's environment alone (a
-# preview has the key at most). Without both it does not go out, since it
-# would start sessions nobody could end. Names only are read, never values.
-if [ "$prod" = 1 ]; then
-  names="$(npx --yes vercel@48 env ls production --token "$VERCEL_TOKEN" 2>/dev/null | awk '{print $1}')"
-  for name in OC_PROJECT_KEY OC_SIGNING_SECRET; do
-    if ! printf '%s\n' "$names" | grep -qx "$name"; then
-      echo "deploy FAILED: $name is not set for Production on Vercel; orangecheck sign-in needs it"; exit 1
-    fi
-  done
-fi
-
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # Always uploaded unpromoted, even when the domain is the destination.
