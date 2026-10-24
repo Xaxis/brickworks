@@ -108,7 +108,8 @@ is on the page, `hidden`, for the script to show.
 - **Checkbox and radio**: the browser's own, 18 px, in `--accent`. With its
   words: `label.choice` (or `.tick`).
 - **Buttons**: primary `.cta` (yellow, the way in), secondary `.cta.ghost`
-  (and any `button` with no class), quiet `button.link` (underlined words).
+  (and any `button` with no class), quiet `button.link` (underlined words;
+  `a.link` for one that goes somewhere, as the embed's View in 3D).
   `.small` (36 px) for a row of actions on a card or a list, `.big` for a
   page's opening offer; a button beside a field is the regular size. A
   toggle that is on (`aria-pressed="true"`) has the accent edge. A
@@ -226,7 +227,11 @@ is on the page, `hidden`, for the script to show.
   `shareSheet`, `web/model-page.js`. The embed (`/m/<id>/embed`) loads
   `web/theme.js` as every page does, so it is in the theme its viewer chose
   where their browser lets a frame read the site's own storage, else their
-  device's; `<html data-embed>`, so it never asks their account.
+  device's; `<html data-embed>`, so it never asks their account. Its
+  picture, then a bar: the name and credit (a link to the model's page),
+  View in 3D as an `a.link` (hidden under 400 px, where the bar has no room
+  for it), and Build it, `.cta.small`, the guided build at step 1 as the
+  model's page's is; each opens a tab of its own.
 - **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
   `.media`, the picture and under it `.media-strip`, a row of thumbnails
   that scrolls inside itself, the one shown large `aria-current` and edged
@@ -372,7 +377,7 @@ pointer, whose brighter hover axe cannot read (the check now moves the
 pointer away). After, none; and of the moderate ones:
 
 - **The embed** (`/m/<id>/embed`) has no `h1`, axe's one moderate
-  finding: it is a card inside somebody else's page, one link, and their
+  finding: it is a card inside somebody else's page, a few links, and their
   page has the heading.
 - **The app** (`/app`) draws its controls on a canvas: a screen reader
   reaches it only through the engine's own accessibility (Godot's

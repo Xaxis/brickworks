@@ -429,8 +429,13 @@ plan with Claude as the client.
   `share_probe` checks both. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
-  (`frame-ancestors *`) that opens the link in a tab — the threaded engine
-  cannot run in somebody else's page, which cannot be cross-origin isolated.
+  (`frame-ancestors *`) whose links each open a tab — the threaded engine
+  cannot run in somebody else's page, which cannot be cross-origin isolated:
+  its picture and name the model's page, **Build it** (`.cta.small`) the
+  guided build at step 1 (`/app?view=<id>&build`, as the page's Build it),
+  and View in 3D a quiet `a.link` to the viewer, hidden in a frame under
+  400 px. `model_page_flow` step 15 holds the links at 560 px and the bar
+  whole at 340 px; `share_probe` the links in the markup.
   **Who can do what:** a visitor's read asks, as the server, for a published
   row's public columns alone (`api/share.js` `publishedRow`; until oc205 it
   went through the publishable key and `shared_models_read_published`, and

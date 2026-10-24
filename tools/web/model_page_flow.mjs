@@ -63,7 +63,11 @@
 //      two (Robin's and Sam's public ones), the dusk in one.
 //  15. The embed (/m/<id>/embed) in the theme its viewer chose: light
 //      chosen on a dark computer is light, dark chosen on a light one dark,
-//      and with no choice the computer's.
+//      and with no choice the computer's. Its button is Build it, the
+//      guided build at step 1 as the page's Build it is (/app?view=<id>
+//      &build), View in 3D a quiet link beside it to the viewer, and its
+//      picture and name the model's page, each in a tab of its own; in a
+//      frame a phone's column wide the bar still fits, Build it whole.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
 // Save's lists and More open.
@@ -557,9 +561,12 @@ try {
   {
     const id = PAGES[0]?.path.split("/")[2];
     const ground = {};
-    for (const [system, chosen] of [["light", null], ["dark", null], ["dark", "light"], ["light", "dark"]]) {
-      const label = `the embed, ${system} computer, ${chosen ? `${chosen} chosen` : "nothing chosen"}`;
-      const context = await browser.newContext({ viewport: { width: 560, height: 420 }, colorScheme: system, extraHTTPHeaders: headers });
+    // The iframe the share sheet gives is 560 x 420, and max-width 100%: in
+    // a phone's column, some 340 wide.
+    for (const [system, chosen, width] of [["light", null, 560], ["dark", null, 560], ["dark", "light", 560],
+      ["light", "dark", 560], ["light", null, 340], ["dark", null, 340]]) {
+      const label = `the embed ${width}, ${system} computer, ${chosen ? `${chosen} chosen` : "nothing chosen"}`;
+      const context = await browser.newContext({ viewport: { width, height: 420 }, colorScheme: system, extraHTTPHeaders: headers });
       await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb });
       if (chosen) await context.addInitScript((theme) => { try { localStorage.setItem("brickworks.theme", theme); } catch {} }, chosen);
       const page = await context.newPage();
@@ -571,14 +578,35 @@ try {
         await page.goto(`${base}/m/${id}/embed`, { waitUntil: "load", timeout: 60000 });
         const seen = await page.evaluate(() => ({ ground: getComputedStyle(document.body).backgroundColor,
           ink: getComputedStyle(document.querySelector(".embed-bar b")).color, theme: document.documentElement.dataset.theme || "" }));
-        if (!chosen) {
+        const card = await page.evaluate(() => {
+          const shown = (el) => Boolean(el) && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0;
+          const said = (a) => a ? { href: a.getAttribute("href"), tab: a.target === "_blank", text: a.textContent.trim(),
+            shown: shown(a), right: a.getBoundingClientRect().right, left: a.getBoundingClientRect().left } : null;
+          return { build: said(document.querySelector(".embed-bar a.cta")), view: said(document.querySelector(".embed-bar a.link")),
+            name: said(document.querySelector(".embed-bar a.words")), picture: said(document.querySelector("a.picture")),
+            wide: document.documentElement.scrollWidth, room: innerWidth };
+        });
+        if (width === 560) {
+          check(`${label}: its button is Build it, the guided build at step 1 (${card.build?.href}), in a tab of its own`,
+            card.build?.text.startsWith("Build it") && card.build?.href === `${base}/app?view=${id}&build` && card.build?.tab);
+          check(`${label}: View in 3D a quiet link to the viewer (${card.view?.href})`,
+            card.view?.shown && card.view?.text.startsWith("View in 3D") && card.view?.href === `${base}/app?view=${id}` && card.view?.tab);
+          check(`${label}: its picture and its name the model's page (${card.picture?.href}, ${card.name?.href})`,
+            card.picture?.href === `${base}/m/${id}` && card.name?.href === `${base}/m/${id}` && card.picture?.tab && card.name?.tab);
+        } else {
+          check(`${label}: the bar fits (${card.wide} of ${card.room} px), Build it whole (${Math.round(card.build?.left)} to `
+            + `${Math.round(card.build?.right)}), the name beside it (${card.name ? Math.round(card.name.right - card.name.left) : 0} px)`,
+            card.wide <= card.room && card.build?.shown && card.build.left >= 0 && card.build.right <= card.room
+            && card.name?.shown && card.name.right - card.name.left >= 80);
+        }
+        if (width === 560 && !chosen) {
           ground[system] = seen;
           check(`${label}: the computer's (${seen.ground}, its name in ${seen.ink})`, seen.theme === "");
-        } else {
+        } else if (width === 560) {
           check(`${label}: ${chosen} (${seen.ground}, its name in ${seen.ink})`, seen.theme === chosen
             && seen.ground === ground[chosen]?.ground && seen.ink === ground[chosen]?.ink && ground.light?.ground !== ground.dark?.ground);
         }
-        if (out) await page.screenshot({ path: path.join(out, `embed_${system}_${chosen || "none"}.png`) });
+        if (out) await page.screenshot({ path: path.join(out, `embed_${width}_${system}_${chosen || "none"}.png`) });
       } catch (trouble) {
         check(`${label}: visited (${String(trouble).split("\n")[0]})`, false);
       } finally {

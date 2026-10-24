@@ -306,12 +306,12 @@ a:focus-visible { border-radius: var(--r-1); }
 .nav .cta { min-height: 38px; padding: 8px 14px; font-size: var(--t-small); }
 summary.cta { width: fit-content; list-style: none; }
 summary.cta::-webkit-details-marker { display: none; }
-button.link {
+button.link, a.link {
 	display: inline; min-height: 0; padding: 0; border: 0; border-radius: 0; white-space: normal;
 	font: inherit; color: var(--ink-soft); background: none;
 	text-decoration: underline; text-underline-offset: 0.18em; cursor: pointer;
 }
-button.link:hover { color: var(--ink); background: none; }
+button.link:hover, a.link:hover { color: var(--ink); background: none; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .actions.center { justify-content: center; }
 
