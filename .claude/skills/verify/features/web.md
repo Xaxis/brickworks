@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
 
 ## Sub-features
 
@@ -414,7 +414,17 @@ plan with Claude as the client.
   the picture and the way in, and `web/share-page.js` sends a person straight
   on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
   (`op=image`): the picture the app rendered, `Cross-Origin-Resource-Policy:
-  cross-origin`. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
+  cross-origin`. `/m/<id>.cutout.png` (`op=cutout`, 2026-10-24, docs/SOCIAL.md
+  U15): the same with nothing behind the model, posted as `cutout`, which the
+  page's picture shows on `--picture-ground`; the PNG itself for a model
+  published without one (an app before, or every model before that day), and
+  `/m/<id>/v/<n>.cutout.png` a version's, copied to `<id>.v<n>.cutout.png` on
+  a republish, deleted with the rest; a republish with none deletes the old
+  one. `made_with` (U16, `supabase/made_with.sql`, the server's alone): hand,
+  assistant or brickify, as the app says (400 for anything else), kept by a
+  PATCH of its own that never stops the publish (nothing before the file is
+  applied) and answered as `made_with`; not said, it stays as it was.
+  `share_probe` checks both. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) that opens the link in a tab — the threaded engine
@@ -784,8 +794,22 @@ plan with Claude as the client.
   draw with it through `api/_card.js` (a pass-through in a checkout;
   `tools/deploy.sh` copies web/card.js over it in each function): /u/
   (earned on a designer's page), /c/, and a model's remixes on /m/ (in
-  `.models.compact`; the `.mini` card is gone). Its picture is 4:3 by
-  `object-fit: cover` of the 1200 x 630 one; Tested is a `.pill.good`.
+  `.models.compact`; the `.mini` card is gone). Its picture is 4:3: since
+  2026-10-24 the app's own 480 x 360, nothing behind the model, on the
+  frame's `--picture-ground` (the theme's: a lit dark grey, or the light
+  ground the app drew before), an older one the 1200 x 630 cut by
+  `object-fit: cover`; Tested is a `.pill.good`. The Assistant or Brickify
+  mark is `madeOf(model)`: `made_with` as the app said (`cardOf` passes it
+  from `directory_card`), else the `ai-designed`/`brickify` tags; its title
+  says which. `card_check` holds a hand-built model tagged ai-designed
+  unmarked, an untagged one of Claude's marked (red on base).
+- `picture themes` (`tools/web/picture_themes.mjs`, 2026-10-24, U15): a
+  model's card (found by a word in the gallery's search) and page at 390 and
+  1280 in each theme, pictured, a corner of each measured on screen: dark in
+  the dark theme (under 0.3), light in the light one; the card's picture
+  4:3 and clear at its corners, the page's clear. `share_flow` runs it on its
+  model; standalone `--url --id [--tests] [--old] --out`. On the live fox
+  before U15: 0.83 and 0.93 bright in the dark theme, 480 x 252 opaque.
 - `card check` (`tools/web/card_check.mjs`, local only): below.
 - `component kit` (`web/kit.js`, `web/icons.svg`, site.css "the kit",
   2026-10-22): `.pill` (`a`/`button`/`summary.pill` 32 px; `.good`,

@@ -148,9 +148,15 @@ def test_the_strip_leads_with_the_published_picture_then_the_owners_photos_then_
     tower, bakery = (one["html"] for one in said)
     # The owner's photo is the oldest, yet it comes before the builds by
     # Priya (16 October) and Jo (12 October), newest first.
-    assert strip(tower) == ["/m/DesignAbc1.png", "#photo-PhotoOwn01", "#photo-PhotoBbb02", "#photo-PhotoAaa01"]
+    assert strip(tower) == ["/m/DesignAbc1.cutout.png", "#photo-PhotoOwn01", "#photo-PhotoBbb02", "#photo-PhotoAaa01"]
     assert 'alt="Riverside Watchtower, a photo by its designer"' in tower
-    assert re.search(r'<a class="thumb" href="/m/DesignAbc1.png"[^>]*aria-current="true"', tower)
+    assert re.search(r'<a class="thumb" href="/m/DesignAbc1.cutout.png"[^>]*aria-current="true"', tower)
+    # The picture with nothing behind the model, on the theme's own ground
+    # (docs/SOCIAL.md U15); in the strip, whose frames are four to three,
+    # the cards' picture, which is too.
+    assert re.search(r'<a class="picture" [^>]*>.*?<img src="/m/DesignAbc1.cutout.png"', tower, flags=re.S)
+    assert re.search(r'<a class="thumb" href="/m/DesignAbc1.cutout.png" '
+                     r'data-picture="/m/DesignAbc1.cutout.png"[^>]*><img src="/m/DesignAbc1.webp\?v=[a-z0-9]+"', tower)
     # And in Built by people, the same order.
     assert re.findall(r'<figure class="build" id="photo-([A-Za-z0-9]{10})"', tower) == [
         "PhotoOwn01", "PhotoBbb02", "PhotoAaa01"]

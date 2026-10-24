@@ -166,7 +166,7 @@ import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { cardHtml } from "./_card.js";
+import { MADE_WITH, cardHtml } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
@@ -452,9 +452,9 @@ export function checkImage(given, what = "the picture") {
   return bytes;
 }
 
-/// Who laid a model's parts, as its app says (supabase/made_with.sql):
-/// undefined when it does not say, which a republish keeps as it was.
-export const MADE_WITH = ["hand", "assistant", "brickify"];
+/// Who laid a model's parts, as its app says (supabase/made_with.sql,
+/// web/card.js MADE_WITH): undefined when it does not say, which a
+/// republish keeps as it was.
 export function checkMadeWith(given) {
   if (given === undefined || given === null) return undefined;
   if (!MADE_WITH.includes(given)) throw new Refusal(`made_with is one of ${MADE_WITH.join(", ")}`);

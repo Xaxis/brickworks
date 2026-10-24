@@ -812,6 +812,14 @@
       "tests": []
     },
     {
+      "id": "cli:made with probe",
+      "kind": "cli",
+      "entry": "src/dev/made_with_probe.gd",
+      "reach": "tools/probe.sh made_with_probe   (headless: who laid a model's parts, as the app knows it to say at publish)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:mcp lean probe",
       "kind": "cli",
       "entry": "src/dev/mcp_lean_probe.gd",
@@ -1058,6 +1066,14 @@
       "kind": "cli",
       "entry": "tools/web/people_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:picture themes check",
+      "kind": "cli",
+      "entry": "tools/web/picture_themes.mjs",
+      "reach": "node tools/web/picture_themes.mjs --url=<site> --id=<model> [--tests] [--old] --out=DIR   (a model's card and page at 390 and 1280 in each theme, a corner of each measured; share_flow runs it on its model)",
       "area": "web",
       "tests": []
     },

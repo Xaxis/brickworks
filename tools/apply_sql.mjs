@@ -60,6 +60,8 @@ const LATER = [
   ["notifications.sql", "notification_read", "replies.sql", "k.author = viewer"],
   ["designers.sql", "designer_said", "replies.sql", "comment_parent_shown"],
   ["gallery_tabs.sql", "directory_card", "replies.sql", "comment_parent_shown"],
+  ["replies.sql", "directory_card", "made_with.sql", "'made_with', m.made_with"],
+  ["gallery_tabs.sql", "gallery_models", "made_with.sql", "m.made_with in ('assistant', 'brickify')"],
 ];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");

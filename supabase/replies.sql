@@ -513,6 +513,10 @@ as $$
      group by c.model
 $$;
 
+-- REPLACED LATER: made_with.sql replaces this function (who laid the
+-- model's parts, as its app said). Apply made_with.sql again right after
+-- this file: tools/apply_sql.mjs refuses it alone, unless
+-- --again=supabase/made_with.sql.
 create or replace function public.directory_card(m public.shared_models)
 returns jsonb
 language sql

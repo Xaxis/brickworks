@@ -125,17 +125,29 @@ export function pictureOf(model) {
 }
 
 /// The tags that say a model was made with the assistant or Brickify, as
-/// the guidelines ask a designer to tag it (web/guidelines.html), until the
-/// app says so as it publishes (docs/SOCIAL.md D7, U16). The gallery's
-/// "With the assistant" filter reads the same two (api/_directory.js,
-/// supabase/gallery_tabs.sql gallery_models).
+/// the guidelines ask a designer to tag it (web/guidelines.html), read for
+/// a model whose app did not say (docs/SOCIAL.md D7). The gallery's "With
+/// the assistant" filter reads the same two (api/_directory.js,
+/// supabase/made_with.sql gallery_models).
 export const ASSISTANT_TAGS = ["ai-designed", "brickify"];
 
-/// "assistant" for a model tagged as made with the assistant or Brickify,
-/// "hand" for every other.
-export function madeWith(model) {
+/// Who laid a model's parts, as its app says as it publishes (2026-10-24,
+/// docs/SOCIAL.md U16, supabase/made_with.sql): by hand, Claude, Brickify.
+export const MADE_WITH = ["hand", "assistant", "brickify"];
+
+/// How [model] was made, and who says so: {way, by, said}. way is
+/// "assistant" for one made with the assistant or Brickify and "hand" for
+/// every other; by is "brickify" for Brickify's alone; said is "app" when
+/// its app said it as it was published, else "tags". The app is believed
+/// over the tags: a hand-built model tagged ai-designed is hand-built.
+export function madeOf(model) {
+  if (MADE_WITH.includes(model.made_with)) {
+    return { way: model.made_with === "hand" ? "hand" : "assistant", by: model.made_with, said: "app" };
+  }
   const tags = Array.isArray(model.tags) ? model.tags : [];
-  return tags.some((tag) => ASSISTANT_TAGS.includes(tag)) ? "assistant" : "hand";
+  const brickify = tags.includes("brickify") && !tags.includes("ai-designed");
+  return { way: tags.some((tag) => ASSISTANT_TAGS.includes(tag)) ? "assistant" : "hand",
+    by: brickify ? "brickify" : tags.includes("ai-designed") ? "assistant" : "hand", said: "tags" };
 }
 
 // What the Tested mark means, said on hover.
@@ -165,10 +177,12 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
     marks.push(`<span class="pill good tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</span>`);
     data.push('data-tested="yes"');
   }
-  if (madeWith(model) === "assistant") {
-    const brickified = (model.tags || []).includes("brickify") && !(model.tags || []).includes("ai-designed");
-    marks.push(`<span class="pill made" title="${brickified ? "Made from a 3D model with Brickify, as its designer tagged it"
-      : "Designed with the assistant, as its designer tagged it"}">${brickified ? "Brickify" : "Assistant"}</span>`);
+  const made = madeOf(model);
+  if (made.way === "assistant") {
+    const brickified = made.by === "brickify";
+    const how = made.said === "app" ? "as the app said when it was published" : "as its designer tagged it";
+    marks.push(`<span class="pill made" title="${brickified ? `Made from a 3D model with Brickify, ${how}`
+      : `Designed with the assistant, ${how}`}">${brickified ? "Brickify" : "Assistant"}</span>`);
     data.push('data-made="assistant"');
   }
   // Who made it: their avatar and name, a link to their profile, when they

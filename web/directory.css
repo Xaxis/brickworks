@@ -30,10 +30,11 @@
 }
 
 /* The picture is the shape it was published at, 1200 x 630, so the page
-   holds its space before it arrives. */
+   holds its space before it arrives; on the theme's own ground, which a
+   picture with nothing behind the model shows (site.css --picture-ground). */
 .model-page .picture {
 	position: relative; display: block; border-radius: var(--radius); overflow: hidden;
-	border: 1px solid var(--line); background: var(--bg-soft); aspect-ratio: 1200 / 630;
+	border: 1px solid var(--line); background: var(--picture-ground); aspect-ratio: 1200 / 630;
 	box-shadow: var(--shadow); text-decoration: none; color: inherit;
 }
 .model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; }
@@ -65,7 +66,7 @@
 .media-strip[hidden] { display: none; }
 .media-strip .thumb {
 	flex: none; display: block; width: 96px; height: 72px; padding: 0; overflow: hidden;
-	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft);
+	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--picture-ground);
 }
 .media-strip .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .media-strip .thumb[aria-current="true"] { outline: 2px solid var(--accent-edge); outline-offset: 1px; }
@@ -371,7 +372,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
 .notice.unread { border-color: var(--accent-edge); }
-.notice .pic { display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-2); background: var(--bg-soft); }
+.notice .pic { display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-2); background: var(--picture-ground); }
 .notice .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .notice h2 { display: flex; align-items: center; gap: var(--s-2); margin: 2px 0 var(--s-2); font-size: var(--t-body); }
 .notice h2 a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
@@ -431,7 +432,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0;
 	background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-3); padding: 12px;
 }
-.design-row .pic { display: block; border-radius: var(--r-1); overflow: hidden; background: var(--bg-soft); aspect-ratio: 1200 / 630; }
+.design-row .pic { display: block; border-radius: var(--r-1); overflow: hidden; background: var(--picture-ground); aspect-ratio: 1200 / 630; }
 .design-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .design-row .pic.none { display: grid; place-items: center; color: var(--ink-faint); font-size: var(--t-tiny); }
 .design-main { min-width: 0; }
@@ -528,7 +529,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	aspect-ratio: 4 / 3; display: grid; gap: 2px; background: var(--bg-soft);
 	grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
 }
-.list-card .mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; }
+.list-card .mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; background: var(--picture-ground); }
 .list-card .mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; }
 /* Kept wide, as the pictures are: two one above the other, three a wide
    one over two. */

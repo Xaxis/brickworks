@@ -133,11 +133,13 @@ const MAPPED = [
   // A shared model's link, its picture and its card, as /m/<id>.
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
+  [/^\/m\/([A-Za-z0-9]{10})[.]cutout[.]png$/, "share", "cutout"],
   [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
   // An older version of it, and that version's picture.
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],

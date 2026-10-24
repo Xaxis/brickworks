@@ -573,6 +573,22 @@ With the assistant finds them.
 | U15 | Pictures that suit both themes | Renders at publish on a backdrop that sits in light and dark, and a 4:3 one (app code at publish, no interface change) | M | none |
 | U16 | Hand-built said by the app | The app says at publish whether the assistant laid parts, so D7 is not left to tags (app code, no interface change) | S | `shared_models.made_with` |
 
+*U15 and U16 built (2026-10-24, social230):* at publish the app sends,
+beside the 1200 x 630 PNG link previews keep (on its own light ground, as
+another site's page may be any colour), the same render with nothing behind
+the model (`/m/X.cutout.png`, the model's page) and the cards' picture drawn
+again four to three (480 x 360 WebP, nothing behind it). The site draws the
+ground: `--picture-ground`, a lit dark grey in the dark theme (a black model
+still shows on it) and in the light one the ground the app drew before, so an
+old picture and a new one look alike there. Old models keep their pictures
+(the page's cut-out falls back to the PNG) until published again; nobody's is
+re-rendered. And the app says who laid the parts (`made_with`: hand for a
+model begun empty in it, assistant once Claude laid any, by the panel or a
+session's tools, brickify once Brickify did; nothing for a file that does not
+say), kept in the model's text and sent; `supabase/made_with.sql` keeps it
+for the server alone, and the card and the filter read it before the tags,
+which a model the app said nothing of still goes by.
+
 What we will not build: messages between people, lists of followers,
 "X followed you", view counts as a ranking, streaks, or anything that
 shows a person's activity they did not choose to show (D1, D13).
