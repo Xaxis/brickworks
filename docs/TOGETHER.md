@@ -251,6 +251,18 @@ takes turns. Here:
   and began with four trips to the database (now two). The desktop copy,
   the connected assistant and an account under 13, the other extras, were
   not timed alone: the script stopped at the desktop's (since fixed).
+  On the e2c43adb preview the flow's rich measure was p50 1,907 ms, p95
+  3,464 ms, and its frame count named the side: the owner's page drew 27
+  frames a second while idle, the other's 60, and owner to guest was the
+  slower way (p50 2,379 against 1,607 ms). The owner's page is the only one
+  with the assistant open and Claude connected (its connector polling the
+  relay); in the timing tool, where it is not, the owner's page kept 60.
+  That extra is the next to time alone.
+- **The desktop lagged once more**, after the second browser was reloaded
+  (e2c43adb preview): both browsers matched, the desktop's file did not at
+  that check and did at the next, and it had put nothing back (its count
+  stayed 0), so what differed was not a part or a state the session
+  tracks.
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
