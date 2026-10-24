@@ -2998,14 +2998,22 @@ judged by its parts' shapes as on a deployment: without them it stopped by
 its covers, at 95° rather than 108°, and its stop cost half as much (G14a).
 Proves it when it ends "a shared model's steering turns by its wheel, by
 mouse and by finger, and Reset puts it back" (34 checks, about 100 s), at
-1280 x 800 by the mouse and at 390 x 844 by a finger (index 1, the CPU
-slowed four times for the drag), in SwiftShader: what moves said inside the
+1280 x 800 by the mouse and at 390 x 844 by a finger (index 1), in
+SwiftShader: what moves said inside the
 page, the joints read on a worker, the steering wheel's handle (`play:
 "steering"`) turned 10° or more with the view still (85° and 107°), the
 finger taken as the steering's (`brickworksShare.finger` "part"), the pill
-saying what turns, the app's own work in a drag frame under 33 ms (3.5 ms
-mean and 9.2 worst; slowed, 6.9 and 23; the page's frame gaps said beside
-it; and, said, its worst frame checking the way while the finger rested,
+saying what turns, the app's own work in a drag frame under 36 ms on
+average on a CPU (2026-10-23: each engine frame after a move of the
+pointer, its `tdur` in Chrome's trace, the dearest apart, the frame it
+takes hold in; on the phone each counted four times, as on a phone that
+much slower; m158 and m159 22.6 to 28.9 ms on the phone at load 14 to 35,
+about 6.5 on the laptop; the drag runs at the box's speed, since CDP's
+CPU throttle spins a slowed thread as long as the clock says, so a slowed
+frame's CPU time grows with the load; the app's own figures by the page's
+clock, which held m147 and m159 at load 35 to 40 on the old bar of 33 ms,
+and the page's frame gaps said beside it; and, said, its worst frame
+checking the way while the finger rested,
 `worst_pause_ms`, where a loop's joints' own parts are asked, Grab 15:
 by a finger slowed four times 18.8 and 22.9 ms on Grab 16, 34.7 to 42.3 on
 m101), Reset offered and inside the page, the pill clear of the view cube,
