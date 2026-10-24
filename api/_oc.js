@@ -257,9 +257,9 @@ const FRESH_SECONDS = 300;
 /// orangecheck started says "otp" too (it is minted from a one-time link),
 /// so it is told apart by its binding, and is never fresh. Nor is a
 /// password, but a test account's (tools/web/session.mjs), whose address
-/// nobody can receive mail at: anybody signed in can set a password on
-/// their account (oc188's review, H1). Throws when the binding cannot be
-/// read.
+/// nobody can receive mail at: anybody signed in could set a password on
+/// their account (oc188's review, H1; supabase/no_new_ways_in.sql now
+/// refuses it). Throws when the binding cannot be read.
 export async function codeOf(claims) {
   const session = claims.session_id ? await sessionOf(claims.session_id) : null;
   const code = (Array.isArray(claims.amr) ? claims.amr : [])

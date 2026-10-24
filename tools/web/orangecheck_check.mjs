@@ -13,7 +13,7 @@
 // account it makes is deleted at the end, whatever happened.
 
 import { createHash, generateKeyPairSync, randomBytes, randomUUID, sign } from "node:crypto";
-import { deleteAccount, mintSession } from "./session.mjs";
+import { deleteAccount, mintCode, mintSession } from "./session.mjs";
 
 const AUD = "http://127.0.0.1:8841";
 process.env.OC_AUDIENCE = AUD;
@@ -173,8 +173,17 @@ async function setPassword(access, password) {
   return reply.status;
 }
 
+/// An address change asked for from a session, as Supabase lets anybody
+/// signed in: the status.
+async function changeAddress(access, email) {
+  const reply = await real(`${SB}/auth/v1/user`, { method: "PUT", headers: { ...PUBLIC, authorization: `Bearer ${access}` },
+    body: JSON.stringify({ email }) });
+  return reply.status;
+}
+
 /// A session signed in by that password: Supabase's answer.
 async function passwordSession(email, password) {
+  if (!email) return {};
   const reply = await real(`${SB}/auth/v1/token?grant_type=password`, { method: "POST", headers: PUBLIC,
     body: JSON.stringify({ email, password }) });
   return reply.json().catch(() => ({}));
@@ -470,34 +479,58 @@ try {
     forgetForTests();
   }
 
-  // oc188's review, H1: anybody signed in can set a password on their
-  // account at Supabase, and sign in with it: a session nothing here
-  // started. Signed in with orangecheck, a password set, a second session
-  // by it, then Sign out everywhere: the second session must get 401.
+  // oc188's review, H1: any session could set a password on its account at
+  // Supabase and sign in with it, a session nothing here started, and
+  // setting one signed the account's other sessions out. Now Supabase
+  // refuses it (supabase/no_new_ways_in.sql), and a change of address too.
+  // Signed in with orangecheck twice, a password tried from one session,
+  // then an address: both refused, nothing to sign in with, and the other
+  // session not signed out. Then Sign out everywhere ends them both.
   {
     handler = await route();
     const theirs = token();
     const signedIn = await call(handler, { token: theirs.jwt });
+    const other = await call(handler, { token: token({ did_oc: theirs.claims.did_oc, rh: theirs.claims.rh }).jwt });
     const password = `${randomBytes(18).toString("base64url")}-Aa1`;
     const set = signedIn.status === 200 ? await setPassword(signedIn.body.access_token, password) : 0;
-    const second = set === 200 ? await passwordSession(signedIn.body.user.email, password) : {};
-    check("H1: signed in with orangecheck, a password set from that session, and a second session by it, as the review did",
-      signedIn.status === 200 && set === 200 && amrOf(second.access_token)[0] === "password", `${signedIn.status} ${set} ${amrOf(second.access_token)}`);
+    const second = await passwordSession(signedIn.body.user?.email, password);
+    check("H1: a password set from an orangecheck sign-in is refused at Supabase, and none signs in", signedIn.status === 200
+      && set >= 400 && !second.access_token, `${signedIn.status} ${set} ${amrOf(second.access_token)}`);
+    check("H1: and trying signs out none of the account's other sessions", other.status === 200
+      && (await whoIs(other.body.access_token)).body?.signed_in === true && Boolean(await refreshed(other.body.refresh_token)));
+    // Supabase writes an address change asked from a session only once it
+    // can send the confirmation (and answers 429 while its mail limit is
+    // spent), so the same write is asked through the admin API too, which
+    // sends nothing: the trigger refuses either.
+    const moved = await changeAddress(signedIn.body.access_token, `delivered+bw-oc-moved-${tag}@resend.dev`);
+    const movedByAdmin = await real(`${SB}/auth/v1/admin/users/${signedIn.body.user?.id}`, { method: "PUT",
+      headers: { ...ADMIN, "content-type": "application/json" }, body: JSON.stringify({ email: `bw-oc-moved-${tag}@example.invalid` }) });
+    const kept = (await adminUser(signedIn.body.user?.id)).body;
+    check("H1: nor can the account's address be changed, from a session or at all", moved >= 400 && movedByAdmin.status >= 400
+      && kept.email === signedIn.body.user?.email && !kept.new_email, `${moved} ${movedByAdmin.status} ${kept.email} ${kept.new_email || ""}`);
     ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: { [theirs.claims.rh]: Math.floor(Date.now() / 1000) } });
     forgetForTests();
-    const write = await theme(second.access_token);
-    const read = await whoIs(second.access_token);
-    check("H1: signed out everywhere on orangecheck, the second session gets 401", write.status === 401 && read.body?.signed_in === false,
-      `${write.status} ${write.body.error || ""}`);
-    check("H1: and it cannot be renewed", !(await refreshed(second.refresh_token)));
-    check("H1: the session orangecheck started is ended too", (await whoIs(signedIn.body.access_token)).body?.signed_in === false);
+    check("H1: signed out everywhere on orangecheck, both its sessions get 401", (await theme(signedIn.body.access_token)).status === 401
+      && (await theme(other.body.access_token)).status === 401);
     ochk.list = () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: [], accounts: {}, handles: {} });
     forgetForTests();
-    const third = await passwordSession(signedIn.body.user.email, password);
-    const thirdWrite = await theme(third.access_token);
-    check("H1: an orangecheck account's session orangecheck did not start is refused at once, in words, and ended",
-      Boolean(third.access_token) && thirdWrite.status === 401 && /orangecheck/.test(thirdWrite.body.error || "")
-      && !(await refreshed(third.refresh_token)), `${thirdWrite.status} ${thirdWrite.body.error || ""}`);
+  }
+
+  // Signing in by an emailed code, as api/otp.js mints one, is as it was: a
+  // new address that is not a test's, a code asked for twice (Send again)
+  // before the second is used, and a test account by its password
+  // (tools/web/session.mjs).
+  {
+    const newcomer = `bw-oc-new-${tag}@example.invalid`;
+    await mintCode(newcomer);
+    const byCode = await mintSession(newcomer, { age: false });
+    check("a new person signs in by an emailed code, asked for twice, as before", Boolean(byCode.access_token)
+      && amrOf(byCode.access_token)[0] === "otp" && (await whoIs(byCode.access_token)).body?.signed_in === true);
+    if (byCode.kept.user_id) made.add(byCode.kept.user_id);
+    const again = await mintSession(newcomer, { age: false });
+    check("and signs in by a code again", (await whoIs(again.access_token)).body?.signed_in === true);
+    check("a test account signs in by its password, as the tests do", amrOf(ada.access_token)[0] === "password"
+      && (await whoIs(ada.access_token)).body?.signed_in === true);
   }
 
   // Eve: an account with its own email, at an address that takes no mail
@@ -518,22 +551,17 @@ try {
       linkedEve === "linked" && viaOc.status === 200 && claimsOf(viaOc.body.access_token).app_metadata?.orangecheck === true
       && (await adminUser(eve)).body.app_metadata?.orangecheck === true, `${linkedEve} ${viaOc.status} ${viaOc.body.error || ""}`);
 
-    // H1, the unlink variant.
+    // H1, the unlink variant: her emailed code first, then a password tried
+    // from the orangecheck sign-in. Refused, so there is no password session
+    // to unlink with, and her own session is not signed out by the try.
+    const eveCode = await mintSession(eveEmail, { age: true });
     const password = `${randomBytes(18).toString("base64url")}-Aa1`;
     const set = await setPassword(viaOc.body.access_token, password);
     const second = await passwordSession(eveEmail, password);
-    const unlinkByPassword = await ocRoute({ method: "POST", op: "unlink", access: second.access_token });
-    check("H1, the unlink variant: a session by a password set from an orangecheck sign-in cannot unlink: 403", set === 200
-      && amrOf(second.access_token)[0] === "password" && unlinkByPassword.status === 403,
-      `${set} ${unlinkByPassword.status} ${unlinkByPassword.body.error || ""}`);
-    check("H1: orangecheck is still linked, and the password session is ended", (await rpc("oc_did_of", { account: eve })) === eveDid
-      && !(await refreshed(second.refresh_token)));
-
-    // Setting a password signed out every other session of hers (Supabase
-    // does), so her emailed code comes after.
-    const eveCode = await mintSession(eveEmail, { age: true });
+    check("H1, the unlink variant: a password set from an orangecheck sign-in of an account with its own email is refused",
+      set >= 400 && !second.access_token && (await rpc("oc_did_of", { account: eve })) === eveDid, `${set} ${amrOf(second.access_token)}`);
     const codeStatus = await ocRoute({ op: "status", access: eveCode.access_token });
-    check("an emailed code of an account with its own email counts as fresh", codeStatus.body.fresh === true
+    check("her emailed code's session is still signed in, and counts as fresh", codeStatus.body.fresh === true
       && amrOf(eveCode.access_token)[0] === "otp", JSON.stringify(codeStatus.body));
 
     // L4: deleting from the orangecheck sign-in.

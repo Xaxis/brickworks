@@ -35,9 +35,14 @@ which now passes.
   session signed in by password, but a test account's, with 403, and ends
   it. And an account at a made-up `@oc.brickworks.diy` address, which takes
   no code, has every session orangecheck did not start ended with 401
-  (`sessionStanding`). Supabase also signs out the account's other sessions
-  when a password is set: a stolen orangecheck sign-in can still sign the
-  person out of their email sessions, though it keeps nothing.
+  (`sessionStanding`). And, at orangecheck's follow-up, Supabase itself
+  refuses the first step (supabase/no_new_ways_in.sql, a trigger on
+  `auth.users`): a password set on any account but a test account's, and a
+  change of any account's address, which would have been the same kind of
+  way in. Setting a password also signed the account's other sessions out,
+  so a stolen session can no longer sign the person out that way. Accounts
+  are made as before: Supabase gives every one a random password hash when
+  it makes it, and no sign-in by code changes it (measured).
 - **M1, an unlink racing a sign-in.** `oc_bind_session` binds only while
   the did is still the account's, holding the identity's row while it
   writes, and answers whether it bound; when not, the sign-in ends the

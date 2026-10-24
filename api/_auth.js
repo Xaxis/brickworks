@@ -148,11 +148,13 @@ export async function verify(token, request = null) {
   }
 
   // Brickworks signs people in with an emailed code or with orangecheck,
-  // never a password. Anybody signed in can set one on their account with
-  // Supabase, though, and sign in with it: a session nothing here started,
-  // which neither unlinking nor ending every session on orangecheck could
-  // end (oc188's review, H1). So one is refused, and ended, but a test
-  // account's (tools/web/session.mjs), whose address nobody receives mail at.
+  // never a password. Supabase let anybody signed in set one on their
+  // account and sign in with it: a session nothing here started, which
+  // neither unlinking nor ending every session on orangecheck could end
+  // (oc188's review, H1). It now refuses to (supabase/no_new_ways_in.sql);
+  // a password session that gets here all the same is refused, and ended,
+  // but a test account's (tools/web/session.mjs), whose address nobody
+  // receives mail at.
   if (signedInByPassword(claims) && !isTestAccount(claims)) {
     await endSession(claims.session_id);
     throw new AuthError("Brickworks signs you in with a code we email you or with orangecheck, never a password. "

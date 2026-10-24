@@ -268,8 +268,10 @@ they have. A Claude connector belongs to the account that switched it on.
   orangecheck cannot be asked; a made-up address's session orangecheck did
   not start is refused and deleted (`api/_auth.js` → `api/_oc.js`
   `sessionStanding`). Any session signed in by password, but a test
-  account's, is refused (403) and deleted (`api/_auth.js`): anybody can set
-  one at Supabase. A connection approved in one carries its `rh`
+  account's, is refused (403) and deleted (`api/_auth.js`), and Supabase
+  refuses setting a password on any account but a `@resend.dev` test
+  account's, and any change of address (`supabase/no_new_ways_in.sql`, a
+  trigger on `auth.users`; its dry run `tools/no_new_ways_in_try.sql`). A connection approved in one carries its `rh`
   (`oauth_grants.oc_*`), and its code is refused once the did is unlinked. Site pages send
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
   answer; `/app` and `/b/` keep `same-origin`.
@@ -355,8 +357,11 @@ and not renewable while the email session goes on, unlinking ending what the
 id started, an orangecheck account unable to link or unlink, a Claude
 connection it approved waiting while the list is down and ended with it;
 orangecheck's review, each failing case: a password set from an
-orangecheck sign-in and a second session by it, 401 after Sign out
-everywhere and unable to renew, and 403 for the unlink variant (H1); an
+orangecheck sign-in refused at Supabase, none signing in, the account's
+other session not signed out, an address change refused, both sessions 401
+after Sign out everywhere, and the same refusal for an account with its own
+email (H1); a new person signing in by a code asked for twice, again, and a
+test account by its password, as before; an
 unlink racing a sign-in leaves no session (409), and a binding whose did
 is gone is ended (M1); an unmarked account's session carries the mark
 (L1); a code approved in an orangecheck sign-in refused once its did is
