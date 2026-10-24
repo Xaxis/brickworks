@@ -9,7 +9,8 @@
 ## 45 2 x 4" gave the plain part and then dozens of its stickered versions.
 ##
 ## The queries below were written before the ranking was changed, and nothing
-## was tuned on them: everyday names, sizes, part numbers and misspellings, each
+## was tuned on them (the five of the kind "category" after the rest, before
+## the change they test): everyday names, sizes, part numbers and misspellings, each
 ## with the parts any one of which an expert expects among the first three
 ## tiles. Each answer was read off the catalogue by hand, the part in the most
 ## sets of the ones that are what was asked. Both the bin's tiles (what a
@@ -92,6 +93,16 @@ const QUERIES: Array = [
 	["minifig hed", ["3626c", "28621", "3626b"], "misspelt"],
 	["doorframe", ["60596"], "misspelt"],
 	["tile 1x2 grill", ["2412b"], "misspelt"],
+	# A family word and what kind of it, as BrickLink files them: written
+	# after the first 63 and before the change they test (search242, the
+	# lead's "wedge brick"). A modified plate or brick is one with
+	# something on it, not a round one.
+	["round brick", ["3062b", "3941"], "category"],
+	["curved slope", ["11477", "15068", "93273", "50950"], "category"],
+	["tile round", ["98138", "14769", "4150"], "category"],
+	["plate modified", ["15573", "87580", "2540", "48336", "60478", "32028", "4081b",
+		"60897", "61252", "63868", "11476"], "category"],
+	["brick modified", ["4070", "87087", "11211", "30414", "2877", "6091"], "category"],
 ]
 
 ## The share of queries with a right part in the first three, at least.
