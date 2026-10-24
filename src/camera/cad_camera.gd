@@ -318,11 +318,32 @@ var _was_tap: bool = false
 var _touch_started: Vector2 = Vector2.ZERO
 var _touch_travel: float = 0.0
 
+## The phone's gestures (PhoneShell): two fingers turn the view and pinch
+## zooms it, and a finger the app has taken (finger_taken) is left to it.
+var phone: bool = false
+## Whether the app has the finger that is dragging now (a part being moved
+## by it): asked at its first drag, on a phone.
+var finger_taken: Callable = Callable()
+## Whether a finger that comes down here is on the interface (a sheet, a
+## bar): such a finger is not the camera's, on a phone.
+var touch_over: Callable = Callable()
+var _not_mine: Dictionary = {}
+var _left_to_app: int = 0
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event
+		if phone and touch.pressed and _touches.is_empty() and touch_over.is_valid() \
+				and bool(touch_over.call(touch.position)):
+			_not_mine[touch.index] = true
+			return
+		if phone and not touch.pressed and _not_mine.has(touch.index):
+			_not_mine.erase(touch.index)
+			return
 		if touch.pressed:
+			if _touches.is_empty():
+				_left_to_app = 0
 			_touches[touch.index] = touch.position
 			if _touches.size() == 1:
 				_touch_started = touch.position
@@ -337,8 +358,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			var tapped: bool = _touches.size() == 1 and _touch_travel <= TAP_SLOP
 			_was_tap = tapped
 			# A drag or a pinch raises a click on release just as a tap
-			# does. Only a tap should reach whoever places bricks.
-			if not tapped:
+			# does. Only a tap should reach whoever places bricks — or a
+			# drag the app had, whose release is its own.
+			if not tapped and _left_to_app != 1:
 				swallow_next_click()
 			_touches.erase(touch.index)
 			_spread = 0.0
@@ -348,9 +370,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventScreenDrag:
 		var drag: InputEventScreenDrag = event
+		if _not_mine.has(drag.index):
+			return
 		_touches[drag.index] = drag.position
 		_touch_travel += drag.relative.length()
 
+		if _touches.size() == 1 and phone:
+			if _left_to_app == 0:
+				_left_to_app = 1 if finger_taken.is_valid() and bool(finger_taken.call()) else -1
+			if _left_to_app == 1:
+				return
 		if _touches.size() == 1:
 			# One finger turns the model. It is what people try first,
 			# and on a build sitting on a table it is what you do.
@@ -372,6 +401,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				_target_distance = clampf(
 					_target_distance * change, min_distance, max_distance)
 			_spread = now
+
+			# On a phone two fingers turn it, about the point between
+			# them, and one finger is for building.
+			if phone:
+				if _doing != Doing.ORBIT:
+					_begin(Doing.ORBIT, MOUSE_BUTTON_LEFT, _between())
+				_turn_by(drag.relative * 0.5, 0.006)
+				return
 
 			# Halved: with two fingers down each contributes a drag
 			# event, so the motion would otherwise be applied twice.
@@ -858,6 +895,14 @@ func _slide_share(by: Vector2) -> void:
 		if is_inside_tree() else 900.0)
 	_target_focus += global_transform.basis.x * by.x * across
 	_target_focus += global_transform.basis.y * by.y * across
+
+
+## The point halfway between the first two fingers.
+func _between() -> Vector2:
+	var points: Array = _touches.values()
+	if points.size() < 2:
+		return points[0] if not points.is_empty() else Vector2.ZERO
+	return ((points[0] as Vector2) + (points[1] as Vector2)) * 0.5
 
 
 ## How far apart the first two fingers are.

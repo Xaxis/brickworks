@@ -60,6 +60,17 @@ func open_width() -> float:
 	return _full_width
 
 
+## On a phone (PhoneShell): the rail shows only while the panel is open, as
+## its way out, and is a fingertip wide. Folded, the phone's own bars lead
+## to the panel. Nothing changes on a desktop, which never calls this.
+var _phone_rail: float = 0.0
+
+
+func set_phone_rail(width: float) -> void:
+	_phone_rail = width
+	_update_rail()
+
+
 func setup(inner: Control, on_edge: int, width: float) -> void:
 	edge = on_edge
 	content = inner
@@ -190,6 +201,9 @@ func _settled() -> void:
 
 
 func _update_rail() -> void:
+	if _phone_rail > 0.0:
+		_rail.visible = _open
+		_rail.custom_minimum_size.x = _phone_rail
 	# An arrow pointing the way a click will send the panel, so the
 	# control says what it does without a label. Doubled when the panel
 	# is away, because then the rail is the only thing left of it and has
