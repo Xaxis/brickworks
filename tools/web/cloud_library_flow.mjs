@@ -248,6 +248,16 @@ async function comeBack(page) {
     window.dispatchEvent(new Event("focus"));
   });
 }
+// Until [test] passes, the person coming back to the window every few
+// seconds: the app looks again at most every 20 s (CloudModels
+// AGAIN_AFTER_MS), so a return just after its last look asks nothing.
+async function lookedAgain(page, test, seconds) {
+  for (let waited = 0; waited < seconds; waited += 5) {
+    await comeBack(page);
+    if (await until(test, 5)) return true;
+  }
+  return false;
+}
 // File › Open, Rename or delete saved models…, picked as a person picks it:
 // its first word typed, Enter. Then the saved models dialog is open.
 async function openSavedModels(page) {
@@ -379,8 +389,7 @@ try {
     const models = await listed();
     return Boolean(named(models, BARN)) && !named(models, besideName);
   }, 120));
-  await comeBack(b);
-  check(`B, back at its window, has "${BARN}" and no "${besideName}"`, await until(async () =>
+  check(`B, back at its window, has "${BARN}" and no "${besideName}"`, await lookedAgain(b, async () =>
     (await storedText(b, savedKey(BARN))).startsWith(`0 ${BARN}`) && (await storedText(b, savedKey(besideName))) === "", 120));
   check(`...and its model, which was "${besideName}", is called "${BARN}": "${await b.title()}"`,
     await titleBecomes(b, `${BARN} — Brickworks`, 30));
@@ -398,15 +407,13 @@ try {
   check(`...deleted from A's storage, with Undo on its row`, await until(async () =>
     (await storedText(a, savedKey(BARN))) === "" && Boolean(await controlAt(a, "saved_undo_1", 5)), 60));
   check(`...and from the account`, await until(async () => !named(await listed(), BARN), 120));
-  await comeBack(b);
   check(`B, back at its window: "${BARN}" gone from its storage, its model still on the baseplate (${partsEdited} parts)`,
-    await until(async () => (await storedText(b, savedKey(BARN))) === "", 120)
+    await lookedAgain(b, async () => (await storedText(b, savedKey(BARN))) === "", 120)
     && (await state(b)).bricks === partsEdited && (await b.title()) === `${BARN} — Brickworks`);
   await press(b, "save");
   check(`B saves: its change is a saved model again, with the account (${partsEdited} parts)`,
     await until(async () => named(await listed(), BARN)?.parts === partsEdited, 120));
-  await comeBack(a);
-  check(`...and back in A, whole`, await until(async () =>
+  check(`...and back in A, whole`, await lookedAgain(a, async () =>
     sha(await storedText(a, savedKey(BARN))) === named(await listed(), BARN)?.sum, 120));
   await press(a, "saved_close");
   check(`A deletes "${NAME}"`, await openSavedModels(a) && await press(a, `saved_delete_${await rowOf(a, NAME)}`)

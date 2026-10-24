@@ -71,7 +71,12 @@ func _run() -> void:
 	_cloud = CloudModels.new()
 	_cloud.account = _account
 	_cloud.store = _store
-	_cloud.kept_as.connect(func(from: String, to: String) -> void: _renamed.append([from, to]))
+	# As Main takes a new name for the model on the baseplate (_called_now).
+	_cloud.kept_as.connect(func(from: String, to: String) -> void:
+		_renamed.append([from, to])
+		if _store.title == from:
+			_store.title = to
+			_store.know(_path(to)))
 	get_root().add_child(_cloud)
 	await _settled()
 	_check("CloudModels is on, off the web: %s" % _cloud.state, _cloud.state == "kept")
@@ -186,11 +191,15 @@ func _steps() -> void:
 	browser = await _browser_save("Final", _titled(text, "Final"), 0)
 	deleted = await _browser_delete("Edited", int(_listed(models, "Edited").get("version", 1)))
 	_renamed.clear()
+	_store.title = "Edited"
+	_store.know(_path("Edited"))
 	await _look()
 	_check("a browser renames it “Final”: here “Final”, no “Edited”",
 		FileAccess.file_exists(_path("Final")) and not FileAccess.file_exists(_path("Edited")))
 	_check("...known for a rename, so the model open here takes the name: %s" % str(_renamed),
-		_renamed.has(["Edited", "Final"]))
+		_renamed.has(["Edited", "Final"]) and _store.title == "Final")
+	_check("...and knows its file as fetched, not as a save made elsewhere to reload",
+		not _store.saved_elsewhere())
 
 	print("\n8. a delete undone")
 	var kept: String = _do("delete_saved", ["Final"])

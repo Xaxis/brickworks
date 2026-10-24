@@ -210,6 +210,7 @@ func _sync_once() -> void:
 	var fetched: int = 0
 	var gone: int = 0
 	var trouble: bool = false
+	var away: bool = false
 	# Deleted here first: the account deletes each as it was, unless it was
 	# saved since elsewhere, and then it comes back here below.
 	var deleted: Dictionary = _manifest(_manifest_path()).get("deleted", {})
@@ -247,10 +248,13 @@ func _sync_once() -> void:
 				var got: int = await _fetch_model(name, sum)
 				fetched += maxi(got, 0)
 				trouble = trouble or got < 0
+				away = got == AWAY
+				if away:
+					break
 			continue
 		if not had.is_empty() and theirs.is_empty():
 			if str(had.get("sum", "")) == sum:
-				gone += 1 if _gone_elsewhere(name, there, known) else 0
+				gone += 1 if await _gone_elsewhere(name, there, known) else 0
 				continue
 			# Changed here since: kept, and sent as a model of its own.
 			_forget(name)
@@ -263,14 +267,21 @@ func _sync_once() -> void:
 			int(had.get("v", 0)) if not had.is_empty() else 0)
 		sent += 1 if went == "kept" else 0
 		trouble = trouble or went == "away"
+		# Out of reach: the rest waits for the next look, not a request each.
+		away = went == "away"
+		if away:
+			break
 	# Then what only the account has, but for what was deleted here and has
 	# not reached it yet.
 	for name: String in there:
+		if away:
+			break
 		if FileAccess.file_exists(_path(name)) or deleted.has(name):
 			continue
 		var got: int = await _fetch_model(name, "")
 		fetched += maxi(got, 0)
 		trouble = trouble or got < 0
+		away = got == AWAY
 	state = "away" if trouble else "kept"
 	keeping = not trouble and refused.is_empty()
 	last = {"sent": sent, "fetched": fetched, "deleted": gone, "names": _known().keys()}
@@ -327,9 +338,10 @@ static func here() -> String:
 ## The model called [param name], unchanged here, was deleted with the
 ## account elsewhere: deleted here too, the model on the baseplate kept. A
 ## rename when the account has a model it had not that is this one called
-## something else ([method ModelStore.retitled]): the model on the
-## baseplate takes that name, and the new one is fetched below. Whether it
-## was deleted.
+## something else ([method ModelStore.retitled]): that one is fetched first,
+## then the model on the baseplate takes its name, so it knows the file
+## under it as fetched (ModelStore.know) and does not take it for a save
+## made elsewhere. Whether it was deleted.
 func _gone_elsewhere(name: String, there: Dictionary, known: Dictionary) -> bool:
 	var path: String = _path(name)
 	if not NewerBuild.may_write(path):
@@ -342,6 +354,8 @@ func _gone_elsewhere(name: String, there: Dictionary, known: Dictionary) -> bool
 		if ModelStore.retitled(text, other).sha256_text() == str((there[other] as Dictionary).get("sum", "")):
 			renamed = other
 			break
+	if not renamed.is_empty() and await _fetch_model(renamed, "") != 1:
+		return false
 	if DirAccess.remove_absolute(path) != OK:
 		return false
 	_sums.erase(path)
@@ -455,12 +469,19 @@ func _send(name: String, text: String, base: int) -> String:
 	return "kept"
 
 
+## What [method _fetch_model] answers when the account could not be reached.
+const AWAY := -2
+
+
 ## Fetch the account's model called [param name] here, over the file of that
 ## name only while it is still [param was] (its sum, "" for none): how many
-## were fetched, 0 or 1, and -1 when it could not be.
+## were fetched, 0 or 1; -1 when it could not be, and [constant AWAY] when
+## nothing answered.
 func _fetch_model(name: String, was: String) -> int:
 	var reply: Dictionary = await _ask("GET", "/api/models?name=" + name.uri_encode())
 	var body: Variant = reply["body"]
+	if int(reply["code"]) == 0:
+		return AWAY
 	if int(reply["code"]) != 200 or not body is Dictionary:
 		return -1
 	var zipped: PackedByteArray = Marshalls.base64_to_raw(str((body as Dictionary).get("model", "")))
@@ -471,10 +492,13 @@ func _fetch_model(name: String, was: String) -> int:
 		return -1
 	var path: String = _path(name)
 	# Changed here while it was on its way: kept, and sent at the next look.
+	# Or deleted here meanwhile, in another tab: not brought back.
 	var now: String = FileAccess.get_file_as_string(path).sha256_text() \
 		if FileAccess.file_exists(path) else ""
 	if now != was:
 		_again = true
+		return 0
+	if (_manifest(_manifest_path())["deleted"] as Dictionary).has(name):
 		return 0
 	if not _write(path, text):
 		return -1
