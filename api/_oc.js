@@ -271,12 +271,13 @@ export function connectConfigured() {
 /// that signing in to ochk.app with it offers the account to claim. Written
 /// down first, so deleting the account deletes that one too whatever the
 /// answer. And once orangecheck has answered, kept only while the account
-/// is neither marked as leaving nor gone
+/// is neither gone nor marked as leaving in the last 15 minutes
 /// (supabase/orangecheck_connect_leaving.sql): one deleted while
 /// orangecheck was asked, even on a first tick that began after its
 /// deletion did (site-attest's race), would leave an orangecheck account
 /// nothing here could ever delete (orangecheck's review, L2), so that one
-/// is deleted at once. Never throws: a refusal or an outage is an answer,
+/// is deleted at once, and the answer is {made: false, reason:
+/// "account_leaving"}. Never throws: a refusal or an outage is an answer,
 /// as Connect's own calls give them.
 export async function provision(account, emailed = null) {
   try {
@@ -302,7 +303,7 @@ export async function provision(account, emailed = null) {
   if (kept === false) {
     const gone = await unprovision(account);
     if (!gone.go) console.error(`orangecheck: Connect made ${made.did_oc} for an account deleted meanwhile, and it is not deleted: delete it at orangecheck`);
-    return { made: false, reason: "account_deleted" };
+    return { made: false, reason: "account_leaving" };
   }
   return { made: true, did: made.did_oc };
 }

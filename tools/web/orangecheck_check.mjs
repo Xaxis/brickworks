@@ -68,13 +68,15 @@ const ochk = {
 };
 
 const made = new Set();
-// supabase/orangecheck_connect_leaving.sql as it is now (with
-// oc_connect_stays, site-attest's race closed), answered here over the real
-// oc_connected rows while the project has only its first version (the run
-// says so): a deletion's mark is kept here, for an account whether or not
-// it has a row, as the file writes a row of the mark alone; kept is false
-// while the mark stands or the row is gone; stays takes the mark off.
-const leavingSql = { missing: false, marks: new Set() };
+// supabase/orangecheck_connect_leaving.sql as it is now (a mark written
+// with or without a row, lapsing after 15 minutes), answered here over the
+// real oc_connected rows while the project has only its first version (the
+// run says so): a deletion's mark is kept here with its time, for an
+// account whether or not it has a row, as the file writes a row of the
+// mark alone (which oc_connected_of reads as none); kept is false while
+// the row is gone or a mark is under 15 minutes old.
+const leavingSql = { missing: false, marks: new Map() };
+const LAPSE_MS = 15 * 60 * 1000;
 // Brickworks' own answers, reached into for the review's races (oc205): run
 // once just before a session is bound; the last session Supabase minted;
 // what the database says of a session, changed.
@@ -137,18 +139,15 @@ globalThis.fetch = async (input, init = {}) => {
     if (!(await accountAt(asked))) return json(422, { code: 422, error_code: "signup_disabled", msg: "Signups not allowed for this instance" });
     hooks.signupOff.delete(asked);
   }
-  if (leavingSql.missing && /^rpc\/oc_connect_(leaving|kept|stays)$/.test(url.slice(`${SB}/rest/v1/`.length))) {
+  if (leavingSql.missing && /^rpc\/oc_connect_(leaving|kept)$/.test(url.slice(`${SB}/rest/v1/`.length))) {
     const asked = JSON.parse(init.body);
-    if (url.endsWith("_stays")) {
-      leavingSql.marks.delete(asked.account);
-      return new Response(null, { status: 204 });
-    }
     const row = await rpc("oc_connected_of", { account: asked.account });
     if (url.endsWith("_leaving")) {
-      leavingSql.marks.add(asked.account);
+      leavingSql.marks.set(asked.account, Date.now());
       return json(200, row);
     }
-    if (!row || leavingSql.marks.has(asked.account)) return json(200, false);
+    const mark = leavingSql.marks.get(asked.account);
+    if (!row || (mark !== undefined && Date.now() - mark < LAPSE_MS)) return json(200, false);
     await rpc("oc_connect_made", { account: asked.account, did: asked.did });
     return json(200, true);
   }
@@ -340,10 +339,13 @@ async function passwordSession(email, password) {
 
 try {
   let handler = await route();
-  leavingSql.missing = (await real(`${SB}/rest/v1/rpc/oc_connect_stays`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
-    body: JSON.stringify({ account: randomUUID() }) })).status === 404;
+  // The first version marks only a row that is there, so it answers a
+  // made-up account null; the file as it is now writes the mark, which no
+  // made-up account can have (its key is auth.users'), and refuses it.
+  leavingSql.missing = (await real(`${SB}/rest/v1/rpc/oc_connect_leaving`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
+    body: JSON.stringify({ account: randomUUID() }) })).status === 200;
   if (leavingSql.missing) {
-    console.log("orangecheck_check: supabase/orangecheck_connect_leaving.sql as it is now is not applied: its three functions are answered here");
+    console.log("orangecheck_check: supabase/orangecheck_connect_leaving.sql as it is now is not applied: its two functions are answered here");
   }
 
   // A first sign-in: a new account, a working session, the token ended at orangecheck.
@@ -1312,9 +1314,56 @@ try {
         `${ticked?.status} ${JSON.stringify(ticked?.body)}, deleted ${left?.status}${orphan ? ", orphaned at orangecheck" : ""}`);
       await deleteAccount(email).catch(() => false);
     }
-    // A deletion that fails after its mark takes the mark off: for an
-    // account Connect was never asked for, nothing of it is left, so the
-    // next deletion asks orangecheck nothing either.
+    // site-attest's R1 (its bw237/l2_stays.mjs): two deletions of one
+    // account at once (a double submit). A is held at its last step; B
+    // fails there; a tick lands between; then A goes through and the
+    // account goes with its row. B's failure must not lift the mark A
+    // still relies on. R1: an account that never ticked, its first tick
+    // made then; R1b: one that ticked before, whose old orangecheck
+    // account A deletes, and the tick makes it a new one.
+    for (const r of ["R1", "R1b"]) {
+      const email = `delivered+bw-oc-l2-${r.toLowerCase()}-${tag}@resend.dev`;
+      const jo = await mintSession(email, { age: true });
+      let made = 0;
+      ochk.remove = unmade;
+      ochk.provision = (body) => {
+        made += 1;
+        theirs.add(body.user_id);
+        return [200, { ok: true, did_oc: didOf(`${body.user_id}:${made}`), is_new: true }];
+      };
+      if (r === "R1b") await ticks(jo.access_token);
+      const before = theirs.has(jo.kept.user_id);
+      let reached;
+      let release = () => {};
+      const heldA = new Promise((done) => { reached = done; });
+      hooks.holdDelete = { account: jo.kept.user_id, reached, until: new Promise((done) => { release = done; }) };
+      const a = quit(jo.access_token, { confirm: email });
+      let b;
+      let ticked;
+      let left;
+      try {
+        await Promise.race([heldA, a]);
+        hooks.holdDelete = { account: jo.kept.user_id, until: Promise.resolve(), fails: true };
+        b = await quit(jo.access_token, { confirm: email });
+        hooks.holdDelete = null;
+        ticked = await ticks(jo.access_token);
+      } finally {
+        release();
+        left = await a;
+        hooks.holdDelete = null;
+        ochk.provision = provisionWas;
+        ochk.remove = removeWas;
+      }
+      const orphan = theirs.has(jo.kept.user_id);
+      check(`Connect, L2 ${r}: two deletions at once, one failing while the other goes on, and a tick between: no orangecheck account left behind`,
+        (r === "R1" || before) && b?.status === 502 && ticked?.status === 200 && ticked.body?.made === false && left?.status === 200 && !orphan
+        && (await adminUser(jo.kept.user_id)).status === 404,
+        `${r === "R1b" ? `ticked before ${before}, ` : ""}B ${b?.status}, tick ${ticked?.status} ${JSON.stringify(ticked?.body)}, A ${left?.status}${orphan ? ", orphaned at orangecheck" : ""}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    // A deletion that fails after its mark leaves the mark (it lapses), and
+    // for an account Connect was never asked for, its row of the mark alone
+    // reads as never asked, so the next deletion asks orangecheck nothing.
     {
       const email = `delivered+bw-oc-l2-fails-${tag}@resend.dev`;
       const ivy = await mintSession(email, { age: true });
@@ -1326,23 +1375,31 @@ try {
       ochk.remove = () => [503, {}];
       const second = await quit(ivy.access_token, { confirm: email });
       ochk.remove = removeWas;
-      check("Connect, L2: a deletion that fails after its mark leaves nothing of it, and the next deletion of an account that never ticked asks orangecheck nothing",
+      check("Connect, L2: after a deletion that fails past its mark, an account that never ticked reads as never asked, and its next deletion asks orangecheck nothing",
         failed.status === 502 && leftOver === null && second.status === 200 && ochk.connect.length === calls,
         `${failed.status} ${JSON.stringify(leftOver)} ${second.status} ${ochk.connect.length - calls} calls`);
       await deleteAccount(email).catch(() => false);
     }
-    // A tick after a deletion that was held (orangecheck down) is a new
-    // ask, and keeps what orangecheck makes.
+    // A tick within 15 minutes of a deletion that was held (orangecheck
+    // down) deletes what it makes, and says so: the mark lapses rather than
+    // being lifted, which fails safe (that it lapses is the dry run's,
+    // tools/orangecheck_connect_leaving_try.sql).
     const email = `delivered+bw-oc-l2-held-${tag}@resend.dev`;
     const gil = await mintSession(email, { age: true });
     await rpc("oc_connect_asked", { account: gil.kept.user_id });
     ochk.remove = () => [503, {}];
     const held = await quit(gil.access_token, { confirm: email });
-    ochk.remove = removeWas;
+    ochk.remove = unmade;
+    ochk.provision = (body) => {
+      theirs.add(body.user_id);
+      return [200, { ok: true, did_oc: didOf(`${body.user_id}:held`), is_new: true }];
+    };
     const again = await ticks(gil.access_token);
-    const row = await rpc("oc_connected_of", { account: gil.kept.user_id });
-    check("Connect, L2: a tick after a deletion that was held keeps what orangecheck makes", held.status === 503
-      && again.status === 200 && again.body?.made === true && row?.did === again.body.did, `${held.status} ${again.status} ${JSON.stringify(row)}`);
+    ochk.provision = provisionWas;
+    ochk.remove = removeWas;
+    check("Connect, L2: a tick within 15 minutes of a deletion that was held deletes what orangecheck made, and says so", held.status === 503
+      && again.status === 200 && again.body?.made === false && again.body?.reason === "account_leaving" && !theirs.has(gil.kept.user_id),
+      `${held.status} ${again.status} ${JSON.stringify(again.body)}`);
     await deleteAccount(email).catch(() => false);
   }
 

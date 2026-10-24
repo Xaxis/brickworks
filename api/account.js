@@ -348,8 +348,10 @@ async function deleteAccount(request, response) {
   // Marked as leaving as it is read, whether or not Connect was ever asked
   // (supabase/orangecheck_connect_leaving.sql), so a Connect ask in flight,
   // or one that starts while this goes on, deletes what it makes rather
-  // than keep it (api/_oc.js provision, orangecheck's review, L2). A
-  // deletion that does not go through takes the mark off again.
+  // than keep it (api/_oc.js provision, orangecheck's review, L2). The mark
+  // is never taken off, even when this deletion does not go through:
+  // another of the same account may be going on (site-attest's R1). It
+  // lapses after 15 minutes.
   let connected;
   let kept = "";
   try {
@@ -358,15 +360,10 @@ async function deleteAccount(request, response) {
     console.error(`account: whether Connect made an account: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
   }
-  const stays = () => db("rpc/oc_connect_stays", { method: "POST", body: { account } })
-    .catch((trouble) => console.error(`account: the mark of a deletion that did not go was not taken off: ${String(trouble?.message || trouble).slice(0, 120)}`));
   if (connected) {
     const { unprovision } = await import("./_oc.js");
     const decided = await unprovision(account);
-    if (!decided.go) {
-      await stays();
-      return response.status(decided.status).json({ error: decided.error });
-    }
+    if (!decided.go) return response.status(decided.status).json({ error: decided.error });
     kept = decided.kept || "";
   }
   try {
@@ -414,7 +411,6 @@ async function deleteAccount(request, response) {
       ...(kept ? { orangecheck: { kept: true, said: kept } } : {}) });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    await stays();
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
   }
 }

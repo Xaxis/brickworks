@@ -150,23 +150,26 @@ real builds, and the live rollout waits on its site-attest's review.
   `oc_connected` row went, and the answer that came after made an
   orangecheck account nothing here knew of. Now deleting marks the account
   as leaving as it reads it (`oc_connect_leaving`), and provision keeps
-  orangecheck's answer only while the row is there and not marked
-  (`oc_connect_kept`, false otherwise); on false it calls `connectDelete`
-  at once (`unprovision`, the same allow-list) and answers `{made: false,
-  reason: "account_deleted"}`. Each takes the row's lock, so either order
-  ends with orangecheck's account deleted. site-attest's race (its PGlite
-  proof, on our first version): the mark found no row yet, a first tick
-  then wrote one, its answer was kept, and the account went with the row.
-  So the mark writes a row of its own when there is none (`asked_at`
-  `-infinity`, read as never asked, so a deletion of an account that never
-  ticked still asks orangecheck nothing), `oc_connect_kept` asks only
-  whether the mark is there, and a deletion that does not go through (held,
-  paused, or failing after the mark) takes it off again
-  (`oc_connect_stays`, which also deletes a row of the mark alone), so a
-  tick after a held deletion is kept. `supabase/orangecheck_connect_leaving.sql`
-  holds the column and the three functions, replaced in place and
+  orangecheck's answer only while the row is there and carries no mark of
+  the last 15 minutes (`oc_connect_kept`); otherwise it calls
+  `connectDelete` at once (`unprovision`, the same allow-list) and answers
+  `{made: false, reason: "account_leaving"}`. Each takes the row's lock, so
+  either order ends with orangecheck's account deleted. site-attest found
+  two holes, each proven on our own SQL (PGlite) and fixed: the mark found
+  no row yet, a first tick then wrote one and was kept (so the mark writes
+  a row of its own, `asked_at` `-infinity`, read as never asked, which
+  `oc_connected_of` now answers null, so an account that never ticked still
+  asks orangecheck nothing when deleted); and a deletion that failed lifted
+  the mark another deletion of the same account still relied on, a double
+  submit being enough (R1, and R1b with an earlier did). So a mark is never
+  lifted: it lapses after 15 minutes, longer than a deletion runs
+  (orangecheck's ruling), and a tick in those minutes after a deletion that
+  did not go through deletes what it makes, which fails safe.
+  `supabase/orangecheck_connect_leaving.sql` holds the column and the three
+  functions (`oc_connected_of` replacing `orangecheck_merge_connect.sql`'s,
+  which `tools/apply_sql.mjs` now guards), replaced in place and
   idempotent; dry run with `tools/orangecheck_connect_leaving_try.sql`,
-  which walks the race's four steps.
+  which walks each race on the real Postgres.
 - **The listener reads the whole request** (site-attest's nit). It answers
   once the headers have ended (or 16 KB came without an end), so a
   request line a browser sends in two pieces is never answered 404 from

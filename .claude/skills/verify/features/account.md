@@ -381,13 +381,14 @@ they have. A Claude connector belongs to the account that switched it on.
   orangecheck nothing, and is deleted whatever Connect's state. An account
   deleted while Connect is still asked (orangecheck's L2, oc237): deleting
   marks the account leaving as it reads it (`oc_connect_leaving`, writing a
-  row of the mark alone when there is none, `asked_at` `-infinity`, so a
-  first tick that starts meanwhile is caught too: site-attest's race),
-  provision keeps the answer only while there is a row and no mark
-  (`oc_connect_kept`), and otherwise deletes what orangecheck made at once
-  (`unprovision`), answering `{made: false, reason: "account_deleted"}`; a
-  deletion that does not go through takes the mark off (`oc_connect_stays`)
-  (`supabase/orangecheck_connect_leaving.sql`).
+  row of the mark alone when there is none, `asked_at` `-infinity`, which
+  `oc_connected_of` answers null, so a first tick that starts meanwhile is
+  caught too: site-attest's race), provision keeps the answer only while
+  there is a row and no mark of the last 15 minutes (`oc_connect_kept`), and
+  otherwise deletes what orangecheck made at once (`unprovision`), answering
+  `{made: false, reason: "account_leaving"}`. A mark is never lifted, only
+  lapses, so a failed deletion cannot unmark another of the same account
+  going on (site-attest's R1) (`supabase/orangecheck_connect_leaving.sql`).
 - `sign in with orangecheck on the desktop` (2026-10-24, oc237;
   `src/account/orangecheck_sign_in.gd`, `Account.sign_in_with_orangecheck`,
   `api/orangecheck.js` POST `?op=native`, `api/_oc.js` `tradeCode`): the
@@ -478,7 +479,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (161 since oc237; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (163 since oc237; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -536,11 +537,14 @@ past five minutes or an orangecheck session's, which is answered
 `has_orangecheck`; oc237: Connect's L2, an account deleted whole, or only
 marked as going, while orangecheck was making it one leaving no orangecheck
 account behind, site-attest's race in its four steps (the mark before any
-row, a first tick, the answer, the account gone) leaving none either, a
-deletion that fails after its mark leaving nothing of it, and a tick after a
-held deletion kept, with `supabase/orangecheck_connect_leaving.sql`'s three
-functions answered in the check over the real rows until the file as it is
-now is applied (it says so); the desktop's
+row, a first tick, the answer, the account gone) leaving none either, nor
+site-attest's R1 and R1b (two deletions at once, one failing while the other
+goes on, a tick between), an account that never ticked reading as never asked
+after a deletion that failed past its mark, and a tick within 15 minutes of a
+held deletion deleting what it makes (`account_leaving`), with
+`supabase/orangecheck_connect_leaving.sql`'s two functions answered in the
+check over the real rows until the file as it is now is applied (it says so;
+that the mark lapses is the dry run's); the desktop's
 `?op=native` against a stand-in token endpoint: not offered without
 `OC_NATIVE`, `/api/account`'s `native` offer, a code signing in a new account
 traded once with the configured key (never the app's) and never redirected,
