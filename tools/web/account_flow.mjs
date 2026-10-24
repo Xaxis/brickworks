@@ -166,7 +166,21 @@ try {
   await page.keyboard.type(code);
   await page.waitForTimeout(1500);
   await click("signin_go");
-  let inside = await until((s) => s.state === "signed_in" && (!s.gated || s.age_ask), "signed in");
+  // Supabase lets one machine check so many codes in five minutes, and
+  // every flow and agent on this box shares that count: m165's preview held
+  // twice on "Too many attempts just now" with the right code in the field
+  // (2026-10-24). The form keeps the code after a refusal, so the same code
+  // is pressed again once the limit has had a minute; a wrong code still
+  // fails all three tries.
+  const signedIn = (s) => s.state === "signed_in" && (!s.gated || s.age_ask);
+  let inside = await until(signedIn, "signed in", 45).catch(() => null);
+  for (let again = 1; again <= 2 && !inside; again++) {
+    console.log(`  --    not in after try ${again}; waiting out the code-check limit, then Sign in again`);
+    await page.waitForTimeout(65000);
+    await click("signin_go");
+    inside = await until(signedIn, "signed in", 45).catch(() => null);
+  }
+  inside ||= await until(signedIn, "signed in", 5);
   if (inside.age_ask) {
     // The age question (supabase/trust.sql), once that is applied: asked
     // once, in the sign-in screen, and answered 13 or over here
