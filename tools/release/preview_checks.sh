@@ -239,6 +239,11 @@ declare -A CMD=(
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"
   [placing]="tools/web/placing_flow.mjs --url=$P/app $B --out=$S/${TAG}_placing_web"
+  # The app on a phone, built for a finger: a small house built by touch at
+  # 390 x 844 and 430 x 932 (three to the point), every target 44 points or
+  # more and no text under 12, the parts sheet swiped, a part's actions by a
+  # held finger, two fingers turning the view.
+  [phone]="tools/web/phone_flow.mjs --url=$P/app $B --out=$S/${TAG}_phone_web"
   [flex_skin]="tools/web/flex_skin_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_skin_web $R/vendor/omr/files/8202-1.mpd"
   # A set's carried parts drawn from LDraw's own subparts, fetched from the
   # parts bucket as it opens (tools/storage_ldraw.py must have run).

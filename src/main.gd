@@ -280,6 +280,13 @@ var _outline: SelectionOutline
 var _gizmo: ViewCube
 var _turning: PivotMark
 var _tools: TouchTools
+## The phone's own bars and sheets, on a phone only (Phone.on).
+var _phone: PhoneShell
+## The room kept under the model for the key strip, or the phone's row.
+var _hint_area: Control
+## A finger held still on the model, on a phone: its part's actions.
+var _phone_hold: Timer
+var _phone_hold_at: Vector2 = Vector2.ZERO
 var _marquee: Marquee
 var _thumbnails: PartThumbnails
 ## Copy, paste, duplicate, moving and turning a selection: src/ui/edit_verbs.gd.
@@ -579,6 +586,12 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksAskLayout = false", true)
 		JavaScriptBridge.eval("window.brickworksLayout = %s"
 			% JSON.stringify(_layout_for_page(to_window, per_css)), true)
+	# And, on a phone, every target a finger has and every line of text,
+	# by its size in points, when a check asks (tools/web/phone_flow.mjs).
+	if _phone != null and bool(JavaScriptBridge.eval("window.brickworksAskPhone === true", true)):
+		JavaScriptBridge.eval("window.brickworksAskPhone = false", true)
+		JavaScriptBridge.eval("window.brickworksPhone = %s"
+			% JSON.stringify(_phone_audit(to_window, per_css)), true)
 	# And every word the window shows, when a check asks: the canvas has no
 	# text a page can read (tools/web/noai_flow.mjs searches it for AI).
 	if bool(JavaScriptBridge.eval("window.brickworksAskWords === true", true)):
@@ -639,6 +652,9 @@ func _tell_page() -> void:
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
+		# ...and their colours, the first few (tools/web/phone_flow.mjs
+		# paints one by a swatch and undoes it).
+		"selected_colours": _selected_colours(),
 		"carrying": _builder.is_carrying(),
 		# The timeline, while it is up: its order, caption and step's parts
 		# (tools/web/steps_flow.mjs).
@@ -824,6 +840,21 @@ func _page_moment() -> Array:
 		_shell.assemblies.entered if _shell != null else "", _builder.held_part]
 
 
+## The phone's layout (PhoneShell), for building: a shared model's viewer
+## has its own, made for a finger already.
+func _phone_wanted() -> bool:
+	return Phone.on() and _viewing.is_empty()
+
+
+## The colours of the first few parts selected, for the page.
+func _selected_colours() -> Array:
+	var out: Array = []
+	for id: Variant in _builder.selection.keys().slice(0, 12):
+		var brick: BrickWorld.Brick = _world.get_brick(int(id))
+		out.append(brick.color_code if brick != null else -1)
+	return out
+
+
 ## Every control the page may press, by the name a browser check knows it by.
 func _page_controls() -> Dictionary:
 	var named: Dictionary = _chat.controls_by_name()
@@ -862,6 +893,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.status.working.controls_by_name())
+	if _phone != null:
+		named.merge(_phone.controls_by_name())
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
 	if _controls != null:
@@ -3978,6 +4011,12 @@ func _build_ui() -> void:
 	_bin = PartsBin.new()
 	_bin.library = _library
 	_bin.thumbnails = _thumbnails
+	# On a phone the bin is the parts sheet's, drawn in points (PhoneShell).
+	if _phone_wanted():
+		var per_point: float = Phone.per_point(get_viewport())
+		_bin.zoom = per_point * 1.12
+		_bin.least = per_point * Phone.TARGET
+		_bin.by_finger = true
 	# The eyedropper changes what is held, so the bin and the palette have
 	# to follow — a swatch that still shows red after picking up a blue
 	# brick is a swatch that is lying.
@@ -4008,7 +4047,13 @@ func _build_ui() -> void:
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).
 	_stack = PanelStack.new()
-	_stack.add_section(_bin)
+	if _phone_wanted():
+		_phone = PhoneShell.new()
+		_phone.app = self
+		_phone.bin = _bin
+		$HUD.add_child(_phone)
+	else:
+		_stack.add_section(_bin)
 	_bin_dock = SideDock.new()
 	_bin_dock.title = "Parts"
 	_bin_dock.icon = "parts"
@@ -4122,6 +4167,7 @@ func _build_ui() -> void:
 	# strip that exists precisely so the controls cannot go unsaid cut
 	# its own last row off.
 	var hint_area := Control.new()
+	_hint_area = hint_area
 	hint_area.custom_minimum_size = Vector2(0, 48)
 	hint_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(hint_area)
@@ -4136,8 +4182,9 @@ func _build_ui() -> void:
 	add_child(_turning)
 
 
-	# The editing verbs, for a screen with no keyboard to press.
-	if TouchTools.wanted():
+	# The editing verbs, for a screen with no keyboard to press: a phone's
+	# are its own row (PhoneShell).
+	if TouchTools.wanted() and not _phone_wanted():
 		_tools = TouchTools.new()
 		_tools.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 		_tools.anchor_top = 0.5
@@ -4157,6 +4204,8 @@ func _build_ui() -> void:
 	hint_area.add_child(hint)
 	# The box grows to whatever the strip needs, however it wraps.
 	hint.resized.connect(func() -> void:
+		if _phone != null:
+			return
 		var wants: float = maxf(hint.get_combined_minimum_size().y, 46.0)
 		hint_area.custom_minimum_size = Vector2(0, wants + 4.0)
 		hint.offset_top = -wants)
@@ -4499,6 +4548,9 @@ func _build_ui() -> void:
 	_shell.assistant_shown = ShellPrefs.assistant_shown()
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	if _phone != null:
+		_phone.shell = _shell
+		_dress_for_phone()
 	# View, Stress: weighed with the status bar's check, at once when it is
 	# turned on, and the part under the pointer said.
 	_shell.stress.hovered = func() -> int: return _hovered
@@ -5383,7 +5435,7 @@ func _model_rect() -> Rect2:
 	var rect: Rect2 = _over_model.get_global_rect()
 	var top: float = (_over_model.get_parent() as Control).get_global_rect().position.y
 	rect = Rect2(rect.position.x, top, rect.size.x, rect.end.y - top)
-	if _columns == "drawers":
+	if _columns == "drawers" and _phone == null:
 		var across: float = get_viewport().get_visible_rect().size.x
 		rect.position.x = SideDock.RAIL_WIDTH
 		# Simulate's column is not a drawer: it stays open beside the model.
@@ -5490,6 +5542,30 @@ func _show_notices() -> void:
 	for note: Node in _notices.get_child(0).get_children():
 		any = any or (note as Control).visible
 	_notices.visible = any
+	if _phone != null and any:
+		_for_a_finger(_notices)
+
+
+## A desktop panel's words and buttons drawn for a finger, on a phone: its
+## text in points rather than the desktop's units, 13 at the least, and
+## every button a fingertip tall. The strip over the model (the assistant's
+## offer on a first visit, the browser's warning about keeping models) says
+## what it says on a phone too. Each control once.
+func _for_a_finger(node: Node) -> void:
+	var per_point: float = Phone.per_point(get_viewport())
+	var all: Array[Node] = node.find_children("*", "Control", true, false)
+	all.append(node)
+	for item: Node in all:
+		var control: Control = item as Control
+		if control == null or control.has_meta("for_a_finger"):
+			continue
+		control.set_meta("for_a_finger", true)
+		if control is Label or control is Button or control is LineEdit:
+			var units: int = control.get_theme_font_size("font_size")
+			control.add_theme_font_size_override("font_size", roundi(maxf(units, 13.0) * per_point))
+		if control is BaseButton or control is LineEdit:
+			control.custom_minimum_size = control.custom_minimum_size.max(
+				Vector2.ONE * Phone.TARGET * per_point)
 
 
 ## Show or hide the parts list. Worked out on opening rather than kept
@@ -6680,7 +6756,10 @@ func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
 			if not _builder.selection.has(brick_id):
 				_builder.select_brick(brick_id, false)
 			_builder.hide_preview()
-			_shell.open_context(at)
+			if _phone != null:
+				_phone.open_context(_context_title(brick_id))
+			else:
+				_shell.open_context(at)
 			return
 	if _verbs != null:
 		if _builder.is_carrying():
@@ -6766,6 +6845,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _touch_index == -1:
 				_touch_index = touch.index
 				_touch_hold.start()
+				if _phone_hold != null:
+					_phone_hold_at = touch.position
+					_phone_hold.start()
+			elif _phone_hold != null:
+				_phone_hold.stop()
 			return
 
 		if touch.index != _touch_index:
@@ -6778,6 +6862,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		# against a timestamp from minutes ago, read as a hold and took
 		# a brick off instead of putting one on.
 		_touch_index = -1
+		# On a phone a finger held still is the part's actions, as it
+		# comes (_on_phone_hold): nothing is taken off as it lifts.
+		if _phone_hold != null:
+			_phone_hold.stop()
+			return
 		if _over_panel_at(touch.position):
 			return
 		# The camera saw the same finger and knows whether it travelled.
@@ -6800,6 +6889,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseMotion:
 		var moved: InputEventMouseMotion = event
+		# A finger that moves is not held still.
+		if _phone_hold != null and not _phone_hold.is_stopped() \
+				and moved.position.distance_to(_phone_hold_at) > CadCamera.TAP_SLOP:
+			_phone_hold.stop()
 		# A left drag that began on a part, with the Select tool: past a
 		# few pixels it picks the part up (Ctrl: a copy of it), and from
 		# then on the part follows the pointer until the button comes up.
@@ -7149,6 +7242,118 @@ func _on_touch_tool(what: String) -> void:
 				_bar.say("nothing to redo")
 
 
+## The desktop's bars put away for the phone's own (PhoneShell): the menus,
+## the toolbar, the key strip and the status line, whose room the phone's
+## bars take, and the view cube, whose turns are two fingers there. The
+## menus' commands are all in More; the status line shows only while the
+## app is busy, as the viewer's does.
+func _dress_for_phone() -> void:
+	for child: Node in _bar.get_children():
+		if child is Control:
+			(child as Control).visible = false
+	_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_bar.custom_minimum_size.y = _phone.top_height()
+	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bar.said.connect(_phone.say)
+	_shell.toolbar.visible = false
+	_shell.status.only_the_work()
+	_hint.visible = false
+	_hint_area.custom_minimum_size.y = _phone.foot_height()
+	_gizmo.visible = false
+	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
+	_bin_dock.set_phone_rail(rail)
+	_chat_dock.set_phone_rail(rail)
+	_camera.phone = true
+	_camera.touch_over = _over_panel_at
+	# A finger that came down on a part with the Select tool moves it, as
+	# the desktop's left drag does: the view does not turn with it.
+	_camera.finger_taken = func() -> bool:
+		return _press_brick != 0 or _grabbing or _dragging_part
+	_phone_hold = Timer.new()
+	_phone_hold.one_shot = true
+	_phone_hold.wait_time = HOLD_MS / 1000.0
+	_phone_hold.timeout.connect(_on_phone_hold)
+	add_child(_phone_hold)
+
+
+## A finger held still on the model, on a phone: what a right click does
+## there — what is in hand let go, and on a part its actions (_right_click),
+## a sheet rather than a menu. The click its lifting raises is not a click.
+func _on_phone_hold() -> void:
+	if _touch_index == -1 or _camera.fingers() > 1 or _store.laying:
+		return
+	_press_brick = 0
+	if _builder.is_carrying():
+		_verbs.put_away()
+	_builder.drop_figure()
+	if _verbs.mode != "select":
+		_verbs.set_mode("select")
+	_right_click(_phone_hold_at)
+	_camera.swallow_next_click()
+
+
+## What a part's actions are headed with: its name, or how many are in the
+## selection they act on.
+func _context_title(brick_id: int) -> String:
+	if _builder.selection.size() > 1:
+		return "%d parts selected" % _builder.selection.size()
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+	var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id) if brick != null else null
+	return Inventory._tidy(info.name) if info != null else "This part"
+
+
+## Every target a finger has on screen and every line of text, in points:
+## what the phone layout promises (Phone.TARGET, Phone.LEAST_TEXT), read by
+## tools/web/phone_flow.mjs. A control scrolled out of its list is left out.
+func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
+	var targets: Array = []
+	var texts: Array = []
+	var screen: Rect2 = get_viewport().get_visible_rect()
+	var walk: Array = [[get_tree().root, screen]]
+	while not walk.is_empty():
+		var next: Array = walk.pop_back()
+		var node: Node = next[0]
+		var clip: Rect2 = next[1]
+		if node is Window and node != get_window():
+			continue
+		if node is CanvasItem and not (node as CanvasItem).visible:
+			continue
+		var control := node as Control
+		if control != null:
+			var rect: Rect2 = control.get_global_rect()
+			if control.clip_contents or control is ScrollContainer:
+				clip = clip.intersection(rect)
+			var seen: bool = clip.intersects(rect) and rect.size.x > 0.5 and rect.size.y > 0.5
+			var on_page: Rect2 = to_window * rect
+			var box: Array = [roundi(on_page.position.x / per_css), roundi(on_page.position.y / per_css),
+				roundi(on_page.size.x / per_css), roundi(on_page.size.y / per_css)]
+			var named: String = "%s %s" % [_name_of(control), str(control.name)]
+			var takes: bool = control.mouse_filter != Control.MOUSE_FILTER_IGNORE and (
+				control is BaseButton or control is LineEdit or control is TextEdit
+				or control is Range and not control is ScrollBar)
+			# Off the screen: not inside it, and in nothing that scrolls.
+			var off: bool = clip == screen and not screen.grow(1.0).encloses(rect)
+			if seen and takes:
+				targets.append({"name": named, "box": box, "off": off})
+			var words: String = ""
+			if control is Label:
+				words = (control as Label).text
+			elif control is Button:
+				words = (control as Button).text
+			elif control is LineEdit:
+				var field: LineEdit = control
+				words = field.text if not field.text.is_empty() else field.placeholder_text
+			if seen and not words.strip_edges().is_empty():
+				var points: float = float(control.get_theme_font_size("font_size")) \
+					* to_window.get_scale().y / per_css
+				texts.append({"name": named, "text": words.substr(0, 40), "px": snappedf(points, 0.1),
+					"box": box, "off": off})
+		for child: Node in node.get_children():
+			walk.append([child, clip])
+	return {"targets": targets, "texts": texts, "phone": _phone.state(),
+		"screen": [roundi((to_window * screen).size.x / per_css), roundi((to_window * screen).size.y / per_css)]}
+
+
 ## A box around everything selected, for framing it.
 func _selection_bounds() -> AABB:
 	var box := AABB()
@@ -7246,6 +7451,8 @@ func _over_panel_at(point: Vector2) -> bool:
 				and panel.get_global_rect().has_point(point):
 			return true
 	if _shell != null and _shell.covers(point):
+		return true
+	if _phone != null and _phone.covers(point):
 		return true
 	if _build_mode != null and _build_mode.covers(point):
 		return true

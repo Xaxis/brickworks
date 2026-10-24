@@ -65,6 +65,8 @@ signal account_wanted()
 ## community's (LibraryDialog, which Shell owns).
 signal library_wanted()
 signal opened(bricks: int)
+## Whatever the bar says (say), for a phone's line over the model.
+signal said(text: String)
 
 
 ## How a dialog's button runs its command, said on the status bar first when
@@ -401,6 +403,7 @@ func say(text: String) -> void:
 
 func _say(text: String) -> void:
 	_status.text = text
+	said.emit(text)
 	_said += 1
 	var said: int = _said
 	# Clear it after a moment; a status line that never resets stops

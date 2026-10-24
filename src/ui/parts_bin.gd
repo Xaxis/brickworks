@@ -79,6 +79,15 @@ const NOT_A_COLOUR: Array[int] = [16, 24]
 
 var library: PartLibrary
 var thumbnails: PartThumbnails
+## How much bigger than on a desktop the bin is drawn, set before it is
+## shown: a phone's parts sheet (PhoneShell) draws it in points.
+var zoom: float = 1.0
+## The least a button in it is tall, in the window's units: a fingertip,
+## on a phone. Nothing on a desktop.
+var least: float = 0.0
+## On a phone: a finger dragged on the grid scrolls it, as everything on
+## a phone scrolls, rather than carrying the part out onto the model.
+var by_finger: bool = false
 
 ## How many parts can be placed at all, and how many of those the default
 ## view sets aside. Both are shown, because a bin that says "20,581" to
@@ -133,8 +142,20 @@ signal print_wanted
 signal stickers_wanted
 
 
+## [param units] of the desktop's bin, drawn at its zoom.
+func _z(units: float) -> float:
+	return units * zoom
+
+
+## A colour chosen as a swatch of the palette is pressed: the phone's own
+## swatches (PhoneShell) take it through here, so it does what a press does.
+func choose_colour(code: int) -> void:
+	_on_colour(code)
+	swatch_pressed.emit(code)
+
+
 func _ready() -> void:
-	custom_minimum_size = Vector2(336, 0)
+	custom_minimum_size = Vector2(_z(336), 0)
 	_build()
 	set_process(true)
 
@@ -144,21 +165,21 @@ func _build() -> void:
 	# translucent so the viewport still reads as continuous behind it.
 	var backing := StyleBoxFlat.new()
 	backing.bg_color = Color(0.11, 0.12, 0.14, 0.94)
-	backing.content_margin_left = 10
-	backing.content_margin_right = 10
-	backing.content_margin_top = 10
-	backing.content_margin_bottom = 10
+	backing.content_margin_left = _z(10)
+	backing.content_margin_right = _z(10)
+	backing.content_margin_top = _z(10)
+	backing.content_margin_bottom = _z(10)
 	add_theme_stylebox_override("panel", backing)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 8)
+	root.add_theme_constant_override("separation", int(_z(8)))
 	add_child(root)
 
 	var head := HBoxContainer.new()
 	root.add_child(head)
 	var title := Label.new()
 	title.text = "Parts"
-	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_font_size_override("font_size", ceili(_z(16)))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	var make := Button.new()
@@ -167,7 +188,8 @@ func _build() -> void:
 	make.tooltip_text = ("A brick, plate, tile, slope or round part of any "
 		+ "size, or a part here resized — it joins the bin under Custom")
 	make.focus_mode = Control.FOCUS_NONE
-	make.add_theme_font_size_override("font_size", 12)
+	make.add_theme_font_size_override("font_size", ceili(_z(12)))
+	make.custom_minimum_size = Vector2(least, least)
 	make.pressed.connect(func() -> void: make_wanted.emit())
 	head.add_child(make)
 	_print_button = Button.new()
@@ -176,7 +198,8 @@ func _build() -> void:
 		+ "slope, any face — as a part of its own, under My prints; with one part picked out in "
 		+ "the model (Shift-click), on that part, where it stands")
 	_print_button.focus_mode = Control.FOCUS_NONE
-	_print_button.add_theme_font_size_override("font_size", 12)
+	_print_button.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_print_button.custom_minimum_size = Vector2(least, least)
 	_print_button.pressed.connect(func() -> void: print_wanted.emit())
 	head.add_child(_print_button)
 	_stickers_button = Button.new()
@@ -184,7 +207,8 @@ func _build() -> void:
 	_stickers_button.tooltip_text = ("The model's stickers: a new one for any face, the sheet "
 		+ "to print at true size")
 	_stickers_button.focus_mode = Control.FOCUS_NONE
-	_stickers_button.add_theme_font_size_override("font_size", 12)
+	_stickers_button.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_stickers_button.custom_minimum_size = Vector2(least, least)
 	_stickers_button.pressed.connect(func() -> void: stickers_wanted.emit())
 	head.add_child(_stickers_button)
 
@@ -194,19 +218,22 @@ func _build() -> void:
 	_search.placeholder_text = "Search parts…"
 	_search.clear_button_enabled = true
 	_search.text_changed.connect(_on_search_typed)
+	if zoom != 1.0:
+		_search.add_theme_font_size_override("font_size", ceili(_z(14)))
+	_search.custom_minimum_size.y = least
 	root.add_child(_search)
 
 	# Built from the catalogue once it is loaded, not from a fixed list.
 	var category_scroll := ScrollContainer.new()
-	category_scroll.custom_minimum_size = Vector2(0, 58)
+	category_scroll.custom_minimum_size = Vector2(0, _z(58))
 	category_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(category_scroll)
 	_category_scroll = category_scroll
 
 	_category_row = FlowContainer.new()
 	_category_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_category_row.add_theme_constant_override("h_separation", 4)
-	_category_row.add_theme_constant_override("v_separation", 4)
+	_category_row.add_theme_constant_override("h_separation", int(_z(4)))
+	_category_row.add_theme_constant_override("v_separation", int(_z(4)))
 	category_scroll.add_child(_category_row)
 
 	_scroll = ScrollContainer.new()
@@ -215,19 +242,19 @@ func _build() -> void:
 	# A row of parts at the least, whatever else the column holds: the
 	# model tree and the properties open give back their room before the
 	# parts do (PanelStack.heights).
-	_scroll.custom_minimum_size.y = PARTS_LEAST
+	_scroll.custom_minimum_size.y = _z(PARTS_LEAST)
 	root.add_child(_scroll)
 
 	_grid = GridContainer.new()
 	_grid.columns = COLUMNS
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_grid.add_theme_constant_override("h_separation", 4)
-	_grid.add_theme_constant_override("v_separation", 4)
+	_grid.add_theme_constant_override("h_separation", int(_z(4)))
+	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_scroll.add_child(_grid)
 	_sight = ThumbTile.Sight.new(_scroll, _grid)
 
 	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 12)
+	_status.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_status.modulate = Color(1, 1, 1, 0.72)
 	# Two lines when it needs them. The line has to carry where the rest
 	# of the catalogue went, and truncating that leaves the bin looking
@@ -376,7 +403,8 @@ func _build_categories() -> void:
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(least, least)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
 	# Whole rows and the scroll bar to say there are more (_fit_palette).
@@ -1491,7 +1519,7 @@ func _update_status() -> void:
 
 func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(74, 84)
+	button.custom_minimum_size = Vector2(_z(74), _z(84))
 	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
 	# a typo in a tooltip.
 	button.tooltip_text = "%s\n%s\n%d x %d studs, %s" % [
@@ -1527,7 +1555,7 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	# prints every tile was a hole where its print should be.
 	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
 	var image := ThumbTile.new(info.id, _selected_color, made_print)
-	image.custom_minimum_size = Vector2(0, 60)
+	image.custom_minimum_size = Vector2(0, _z(60))
 	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(image)
 	button.set_meta("tile", image)
@@ -1539,18 +1567,18 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	label.clip_text = true
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Eleven, not nine: at a laptop's 0.92 nine was eight pixels high.
-	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_font_size_override("font_size", ceili(_z(11)))
 	label.modulate = Color(1, 1, 1, 0.75)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(label)
 
 	# A star in the corner for a part kept in Favourites.
-	var star: TextureRect = Icons.picture(STAR, 14.0, Icons.density(self))
+	var star: TextureRect = Icons.picture(STAR, _z(14.0), Icons.density(self))
 	star.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	star.offset_left = -18.0
-	star.offset_right = -4.0
-	star.offset_top = 4.0
-	star.offset_bottom = 18.0
+	star.offset_left = -_z(18.0)
+	star.offset_right = -_z(4.0)
+	star.offset_top = _z(4.0)
+	star.offset_bottom = _z(18.0)
 	star.visible = PartShelf.is_favourite(info.id)
 	button.add_child(star)
 	button.set_meta("star", star)
@@ -1573,6 +1601,8 @@ signal part_dropped(at: Vector2)
 const DRAG_START := 8.0
 var _drag_from: Vector2 = Vector2.INF
 var _drag_part: String = ""
+## A finger dragged the grid since it came down (by_finger).
+var _scrolled: bool = false
 
 
 func is_dragging_part() -> bool:
@@ -1587,8 +1617,14 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 			button.accept_event()
 		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed:
 			_drag_from = press.global_position
+			_scrolled = false
 		elif press.button_index == MOUSE_BUTTON_LEFT:
 			_drag_from = Vector2.INF
+			# A finger that scrolled the grid let go: no part is picked.
+			if _scrolled:
+				_scrolled = false
+				button.accept_event()
+				return
 			if not _drag_part.is_empty():
 				_drag_part = ""
 				button.tooltip_text = str(button.get_meta("tip", button.tooltip_text))
@@ -1597,6 +1633,12 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 	var motion := event as InputEventMouseMotion
 	if motion == null or _drag_from == Vector2.INF \
 			or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
+		return
+	if by_finger:
+		if _scrolled or motion.global_position.distance_to(_drag_from) >= DRAG_START:
+			_scrolled = true
+			_scroll.scroll_vertical -= roundi(motion.relative.y)
+			button.accept_event()
 		return
 	if _drag_part.is_empty():
 		if motion.global_position.distance_to(_drag_from) < DRAG_START:
