@@ -7,7 +7,7 @@
    "tag": "v0.7.0",
    "date": "2026-10-24",
    "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.7.0",
-   "notes": "https://github.com/Xaxis/brickworks/blob/v0.7.0/CHANGELOG.md",
+   "notes": "https://github.com/Xaxis/brickworks/releases/tag/v0.7.0",
    "summary": "A release about models a person can build, and keep. The Tested mark now means what it says: every part held by a stud, a joint or what catches it, and no two parts passing into each other, by their real shapes. The Wizard's Tower, the orrery, the castle and every house model in the gallery pass. Signed in, the desktop keeps your models with your account, in step with every browser you use, and File \u203a Open renames and deletes them. Every export asks where to save it and says where it went, and opening a model over work not saved always asks first, with Undo to bring it back. A big booklet is drawn about six times faster, and View \u203a Stress counts the weak joints and steps through them. Gears put down by hand mesh, a door hangs on its frame's hinge, and Claude picks a figure's parts as real sets do and answers an edit in a quarter of the words. Models saved by 0.6.0 open in 0.7.0 unchanged.",
    "files": [
     {

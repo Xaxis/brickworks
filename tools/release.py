@@ -1284,7 +1284,10 @@ def manifest_entry(version: str, tag: str, files: list[dict[str, Any]], date: st
         entries.append(item)
     return {"version": version, "tag": tag, "date": date,
             "page": "https://github.com/%s/releases/tag/%s" % (REPO, tag),
-            "notes": "https://github.com/%s/blob/%s/CHANGELOG.md" % (REPO, tag),
+            # The release's own page carries its notes. The tag's CHANGELOG.md
+            # did not when a tag was set on the live build rather than on the
+            # release commit (v0.7.0, 2026-10-24).
+            "notes": "https://github.com/%s/releases/tag/%s" % (REPO, tag),
             "summary": summary, "files": entries}
 
 
