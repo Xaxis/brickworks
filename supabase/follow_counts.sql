@@ -24,6 +24,11 @@
 
 -- Each row's maker is its item's 'by' (feed_who of the model's owner, or of
 -- whoever took the photo): the person followed, by their handle.
+-- REPLACED LATER: list_follow_counts.sql replaces this function (a
+-- collection's rows by when they were put in it after it was followed).
+-- Apply list_follow_counts.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless
+-- --again=supabase/list_follow_counts.sql.
 create or replace function public.feed_new_count(viewer uuid)
 returns integer
 language sql
