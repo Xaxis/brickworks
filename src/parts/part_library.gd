@@ -238,6 +238,11 @@ class PartInfo extends RefCounted:
 	## turn round), the identity for the rest.
 	var moved_by: Transform3D = Transform3D.IDENTITY
 
+	## The one colour LDraw draws it in whatever it is placed in, for one of
+	## its "physical colour" parts (303923, a slope brick in blue, kept for
+	## old files); -1 for every other part.
+	var fixed_colour: int = -1
+
 	func is_redirect() -> bool:
 		return not moved_to.is_empty()
 
@@ -695,6 +700,9 @@ func _read_part(entry: Dictionary) -> PartInfo:
 		info.connector_counts = counts
 	info.in_sets = int(entry.get("in_sets", 0))
 	info.recolourable = bool(entry.get("recolourable", true))
+	var fixed: Array = entry.get("fixed_colors", [])
+	if fixed.size() == 1 and not info.recolourable and info.kind.contains("Physical_Colour"):
+		info.fixed_colour = int(fixed[0])
 	info.packed = bool(entry.get("packed", true))
 	info.reachable = bool(entry.get("reachable", true))
 	info.moved_to = entry.get("moved_to", "")
@@ -1685,8 +1693,11 @@ func moved_by(part_id: String) -> Transform3D:
 ## alias ("=Tail 2 x 3 x 2 Fin") is the part it names, drawn the same; an
 ## obsolete mould or a "~" part is the current part of its family (its name
 ## up to "with") in the same box, the closest named, then the most used.
-## One with no such twin is itself. Only for what a design places: a file
-## opened keeps the numbers its maker wrote.
+## One with no such twin is itself. A part LDraw draws in one colour only
+## (303923, a slope brick in blue) is the part it draws, placed in that
+## colour ([method current_colour]): 3039 in blue. Only for what a design
+## places, and for a file opened only such a part in one colour: otherwise it
+## keeps the numbers its maker wrote.
 func current(part_id: String) -> String:
 	var at: String = resolve(part_id)
 	# A stub that turns its part (3139 a quarter round to 3139b) is placed
@@ -1699,6 +1710,21 @@ func current(part_id: String) -> String:
 	var twin: String = str(_current_of.get(at, at))
 	_current_lock.unlock()
 	return twin
+
+
+## The colour [method current] places [param part_id] in, for a part LDraw
+## draws in one colour only, kept for old files: 1 (blue) for 303923, which is
+## 3039 in blue. -1 for every other part, which keeps the colour it is given.
+## A design placing 241901, a white 3 x 6 plate, was given 2419 in its own
+## red, and a file's 303923 opened as itself, for its parts list and its
+## BrickLink order to carry.
+func current_colour(part_id: String) -> int:
+	_current_lock.lock()
+	if _current_of.is_empty():
+		_index_current()
+	var colour: int = int(_colour_of.get(resolve(part_id), -1))
+	_current_lock.unlock()
+	return colour
 
 
 ## Whether [param part_id] is a part LDraw keeps only for old files that
@@ -1803,8 +1829,67 @@ func _index_current() -> void:
 				best_score = score
 				best = other
 		_current_of[id] = best.id if best != null else id
+	_index_colours()
 	# Marked as built even where nothing is stale.
 	_current_of[""] = ""
+
+
+## The parts LDraw draws in one colour (PartInfo.fixed_colour) -> that
+## colour, [method _index_current]'s with them: each is the part it draws, in
+## that colour. The catalogue says what each draws only by its geometry, so
+## it is the part of the same box and the same triangles that takes any
+## colour, the current before one kept for old files, the plain mould before
+## a print, then the one named most alike (2419 for 241901, "~_Plate 3 x 6
+## without Corners White", over its alias 43127), then the most used; and that
+## part's own current twin. One whose drawing no part made now has (73587, a
+## hinge stick and its base as one) is itself.
+var _colour_of: Dictionary = {}
+
+
+func _index_colours() -> void:
+	_colour_of.clear()
+	var drawn: Dictionary = {}    ## box and triangles -> the parts drawn so
+	for id: String in _ordered_ids:
+		if (parts[id] as PartInfo).fixed_colour >= 0:
+			drawn[_drawn_key(parts[id])] = []
+	if drawn.is_empty():
+		return
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		if info.recolourable and not info.kind.contains("Physical_Colour") and not info.is_redirect() \
+				and not info.custom and drawn.has(_drawn_key(info)):
+			(drawn[_drawn_key(info)] as Array).append(info)
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		if info.fixed_colour < 0:
+			continue
+		var words: PackedStringArray = _name_words(info)
+		var best: PartInfo = null
+		var best_score: float = -1.0
+		for other: PartInfo in drawn[_drawn_key(info)]:
+			var shared: int = 0
+			for word: String in _name_words(other):
+				if words.has(word):
+					shared += 1
+			var score: float = (4.0 if not is_stale(other) else 0.0) \
+				+ (2.0 if other.decor() == 0 else 0.0) + shared * 0.01 + other.in_sets * 1e-7
+			if score > best_score:
+				best_score = score
+				best = other
+		var now: String = str(_current_of.get(best.id, best.id)) if best != null else ""
+		# Only for a part made now: one drawing only an alias kept for old
+		# files has (4298609's helmet, 30124) is itself.
+		if now.is_empty() or is_stale(parts[now]):
+			continue
+		_colour_of[id] = info.fixed_colour
+		_current_of[id] = now
+
+
+## A part's box to the LDU and its triangles: what a part drawn in one colour
+## shares with the part it draws.
+static func _drawn_key(info: PartInfo) -> String:
+	return "%s %s %d" % [Vector3i(info.bounds.position.round()), Vector3i(info.bounds.end.round()),
+		info.triangles]
 
 
 ## A size to four LDU, and the sizes a part within one LDU of [param info]'s

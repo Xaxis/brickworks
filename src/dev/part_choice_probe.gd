@@ -24,8 +24,11 @@
 ## within the range of the official minifigure-scale models of its kind in
 ## assets/knowledge/set_sizes.json, chosen here by their own names.
 ## kinds: how_real_sets_build_this for 20 subjects.
+## colours: every part LDraw draws in one colour only, kept for old files
+## (303923, "~_Slope Brick 45 2 x 2 Blue (Obsolete)"), placed by a design and
+## opened from a file as the part it draws, in that colour (3039 in blue).
 ##
-## `-- figures`, `-- stale`, `-- scale` or `-- kinds` runs one.
+## `-- figures`, `-- stale`, `-- scale`, `-- kinds` or `-- colours` runs one.
 extends SceneTree
 
 ## [description, add_minifig's arguments as a session writes them].
@@ -135,6 +138,8 @@ func _initialize() -> void:
 		await _scale()
 	if only.is_empty() or only == "kinds":
 		await _kinds()
+	if only.is_empty() or only == "colours":
+		await _colours()
 	assistant.queue_free()
 	await process_frame
 	print("\n%s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
@@ -456,6 +461,101 @@ func _stale() -> void:
 	_check("search_parts offers none: %d, and by their own words %d"
 		% [offered_stale.size(), said_stale], offered_stale.is_empty() and said_stale == 0)
 	_check("the palette's search shows none: %d" % bin_stale.size(), bin_stale.is_empty())
+
+
+# -- colours -----------------------------------------------------------------------
+
+
+func _colours() -> void:
+	# The catalogue's own word for them, read here rather than through the
+	# library: LDraw's "Physical_Colour" parts, drawn in one colour whatever
+	# they are placed in.
+	var fixed: Dictionary = {}
+	for entry: Variant in _json(library._resolve_root() + "catalogue.json").get("parts", []):
+		var colours: Array = (entry as Dictionary).get("fixed_colors", [])
+		if str(entry.get("kind", "")).contains("Physical_Colour") and colours.size() == 1 \
+				and not bool(entry.get("recolourable", true)):
+			fixed[str(entry["id"])] = int(colours[0])
+	print("\ncolours: %d parts LDraw draws in one colour only" % fixed.size())
+	var colour_of := func(id: String) -> int:
+		return int(library.call("current_colour", id)) if library.has_method("current_colour") else -1
+	# Every part made now that takes any colour, by its box and triangles: what
+	# one drawn in one colour shares with the part it draws.
+	var made_now: Dictionary = {}
+	for id: String in library.ids():
+		var info: PartLibrary.PartInfo = library.parts[id]
+		if info.recolourable and not info.is_redirect() and not info.custom and not _is_old(info) \
+				and not fixed.has(id):
+			var key: String = "%s %s %d" % [Vector3i(info.bounds.position.round()),
+				Vector3i(info.bounds.end.round()), info.triangles]
+			made_now[key] = (made_now.get(key, []) as Array) + [id]
+	var mapped: int = 0
+	var wrong := PackedStringArray()
+	var missed := PackedStringArray()
+	var alone: int = 0
+	for id: String in fixed:
+		var now: String = library.current(id)
+		var got: PartLibrary.PartInfo = library.parts.get(now)
+		var info: PartLibrary.PartInfo = library.parts[id]
+		if now == id:
+			var twins: Array = made_now.get("%s %s %d" % [Vector3i(info.bounds.position.round()),
+				Vector3i(info.bounds.end.round()), info.triangles], [])
+			if twins.is_empty():
+				alone += 1
+			else:
+				missed.append("%s (%s)" % [id, twins[0]])
+			continue
+		if got == null or _is_old(got) or not got.recolourable \
+				or not _same_box(info, got) or colour_of.call(id) != fixed[id]:
+			wrong.append("%s->%s in %d" % [id, now, colour_of.call(id)])
+			continue
+		mapped += 1
+	print("  placed as the part they draw, in their colour: %d; wrongly: %d %s" % [mapped,
+		wrong.size(), ", ".join(wrong.slice(0, 8))])
+	print("  kept as they are, no part made now drawn the same: %d; with one: %d %s" % [alone,
+		missed.size(), ", ".join(missed.slice(0, 8))])
+	_check("%d of %d are placed as the part they draw, in their colour; the %d left have no "
+		% [mapped, fixed.size(), alone] + "part made now drawn as they are",
+		mapped > 0 and wrong.is_empty() and missed.is_empty() and mapped + alone == fixed.size())
+	_check("303923 is 3039 in blue: %s in %d" % [library.current("303923"), colour_of.call("303923")],
+		library.current("303923") == "3039" and colour_of.call("303923") == 1)
+
+	# A design that says it.
+	var model: Assistant.Model = assistant._read_model({"name": "roof", "bricks": [
+		{"part": "303923", "color": 4, "x": 0, "y": 0, "z": 0}]})
+	var placed: Assistant.Placement = model.placements[0] if not model.placements.is_empty() else null
+	_check("a design's 303923 in red is placed as %s in %d" % [placed.part if placed != null else "none",
+		placed.color if placed != null else -1], placed != null and placed.part == "3039"
+		and placed.color == 1)
+	# A file that has it: its colour is the part's, whatever the line says.
+	var store := ModelStore.new()
+	store.world = world
+	store.library = library
+	store.builder = builder
+	store.keeps = false
+	world.clear()
+	store.open_text("0 Roof\n1 16 0 -24 0 1 0 0 0 1 0 0 0 1 303923.dat\n"
+		+ "1 4 40 -24 0 1 0 0 0 1 0 0 0 1 3039.dat\n", "roof.ldr")
+	var opened := PackedStringArray()
+	for brick: BrickWorld.Brick in world.bricks():
+		opened.append("%s in %d" % [brick.part_id, brick.color_code])
+	opened.sort()
+	_check("a file's 303923 opens as 3039 in blue, beside its own 3039 in red: %s" % ", ".join(opened),
+		opened == PackedStringArray(["3039 in 1", "3039 in 4"]))
+	world.clear()
+	# And a search offers none of them by their own words.
+	var offered := PackedStringArray()
+	var asked: int = 0
+	for id: String in fixed:
+		if library.current(id) == id:
+			continue
+		asked += 1
+		for info: PartLibrary.PartInfo in library.search(library.parts[id].name.lstrip("~_"), 10):
+			if fixed.has(info.id) and library.current(info.id) != info.id:
+				offered.append(info.id)
+				break
+	_check("search_parts offers none by their own names: %d of %d" % [offered.size(), asked],
+		offered.is_empty())
 
 
 # -- scale ------------------------------------------------------------------------

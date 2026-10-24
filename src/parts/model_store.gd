@@ -1218,6 +1218,13 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		if real != placement.part_id:
 			placement.transform = placement.transform * library.moved_by(placement.part_id)
 			placement.part_id = real
+		# A part LDraw draws in one colour only, kept for old files, as the
+		# part it draws in that colour (303923, 3039 in blue): drawn the same,
+		# and the parts list and a BrickLink order name a part made now.
+		var colour: int = library.current_colour(placement.part_id)
+		if colour >= 0:
+			placement.part_id = library.current(placement.part_id)
+			placement.color_code = colour
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
 	# on the baseplate for a save to write under this one's name.

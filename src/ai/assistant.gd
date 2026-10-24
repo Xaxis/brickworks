@@ -7116,7 +7116,9 @@ func _read_model(args: Dictionary) -> Model:
 ## the part made now of that shape and size (PartLibrary.current), and the
 ## design told once a part what it was given: 3660, which a session knew from
 ## memory, is LDraw's 3660a, obsolete, and was nineteen of a tug's hull, on
-## its parts list and its BrickLink order (walk180, 2026-10-23).
+## its parts list and its BrickLink order (walk180, 2026-10-23). One LDraw
+## draws in one colour only is placed in that colour (303923 is 3039 in blue,
+## whatever colour the design gave it), as it was drawn.
 func _current_parts(model: Model) -> void:
 	if library == null:
 		return
@@ -7128,13 +7130,18 @@ func _current_parts(model: Model) -> void:
 		if now == placement.part:
 			continue
 		var was: String = library.resolve(placement.part)
+		var colour: int = library.current_colour(placement.part)
 		if now != was and not told.has(placement.part):
 			told[placement.part] = true
 			var info: PartLibrary.PartInfo = library.parts.get(now)
-			_pattern_advice.append("%s is placed as %s%s: LDraw keeps %s only for old files, "
+			_pattern_advice.append("%s is placed as %s%s%s: LDraw keeps %s only for old files, "
 				% [placement.part, now, " (%s)" % _part_called(now) if info != null else "",
-					was] + "and %s is the part made now in its shape and size." % now)
+					" in %s (%d), the one colour it is drawn in" % [_colour_name(colour), colour]
+					if colour >= 0 else "", was]
+				+ "and %s is the part made now in its shape and size." % now)
 		placement.part = now
+		if colour >= 0:
+			placement.color = colour
 
 
 ## Each part a design puts in a colour the catalogue knows it was never made
