@@ -29,6 +29,10 @@ select pg_temp.tries($q$insert into auth.mfa_factors (id, user_id, friendly_name
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data) values ('00000000-0000-4000-8000-0000000000f3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nnwi-signup@example.invalid', 'chosen', '{"sub": "x", "email": "nnwi-signup@example.invalid", "email_verified": true, "phone_verified": false}'), ('00000000-0000-4000-8000-0000000000f4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nnwi-made@example.invalid', 'made-random', '{"email_verified": true}');
 select pg_temp.tries('set constraints all immediate') as public_sign_up;
 delete from auth.users where id = '00000000-0000-4000-8000-0000000000f3';
+-- A public sign-up at a test address: refused as well.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data) values ('00000000-0000-4000-8000-0000000000f5', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'delivered+nnwi-signup@resend.dev', 'chosen', '{"sub": "y", "email": "delivered+nnwi-signup@resend.dev", "email_verified": true, "phone_verified": false}');
+select pg_temp.tries('set constraints all immediate') as public_sign_up_at_a_test_address;
+delete from auth.users where id = '00000000-0000-4000-8000-0000000000f5';
 select pg_temp.tries('set constraints all immediate') as brickworks_made, (select count(*) from auth.users where id = '00000000-0000-4000-8000-0000000000f4') as made_kept;
 -- Deleting an account: allowed.
 select pg_temp.tries($q$delete from auth.users where id in ('00000000-0000-4000-8000-0000000000f1', '00000000-0000-4000-8000-0000000000f2')$q$) as deleted;

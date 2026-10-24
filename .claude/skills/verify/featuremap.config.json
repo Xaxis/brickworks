@@ -3106,6 +3106,13 @@
       "entry": "src/dev/step_count_probe.gd",
       "reach": "godot --headless --path . --script src/dev/step_count_probe.gd",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "signup check",
+      "entry": "tools/web/signup_check.mjs",
+      "reach": "node tools/web/signup_check.mjs --url=https://brickworks.diy   (.env sourced)",
+      "area": "account"
     }
   ]
 }

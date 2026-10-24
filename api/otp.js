@@ -9,9 +9,9 @@
 // 2026-10-09; the rate limit (may_ask_for_code) and the tables behind it
 // had stayed in the database the whole time.
 //
-// The code is minted by Supabase and delivered by us. Supabase's admin
-// generate_link makes a one-time code and, asked this way, sends
-// nothing — which is what lets the email come from our own sender
+// The code is minted by Supabase and delivered by us. A new address's
+// account is made by the admin API, and Supabase's admin generate_link
+// makes a one-time code for it and, asked this way, sends nothing — which is what lets the email come from our own sender
 // through Resend rather than from a project nobody recognises. The
 // client then redeems the code against Supabase directly, so the
 // session and the token are Supabase's throughout and this server never
@@ -44,45 +44,33 @@ function asServer() {
   return { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" };
 }
 
-/// Ask Supabase for a code without asking it to send one.
+/// Ask Supabase for a code without asking it to send one: the account
+/// made first, here, as the server, then a one-time code for it.
+///
+/// Made by the admin API rather than by generate_link, which made a new
+/// address's account until 2026-10-24: that goes through Supabase's own
+/// sign-up, which is to be turned off (disable_signup, since a public
+/// sign-up with a password made an account and a session at any address),
+/// and the admin API makes one either way. Confirmed, since only the code
+/// redeemed signs anybody in to it. An address that has its account
+/// already is answered 422, and asked its code all the same.
 async function mint(email) {
-  const link = () => fetch(`${project()}/auth/v1/admin/generate_link`, {
+  const made = await fetch(`${project()}/auth/v1/admin/users`, {
+    method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!made.ok && made.status !== 422) return null;
+  const reply = await fetch(`${project()}/auth/v1/admin/generate_link`, {
     method: "POST",
     headers: asServer(),
-    // magiclink covers both cases: Supabase creates the account if the
-    // address is new and signs it in if it is not, so there is no
-    // separate sign-up path to keep in step with this one.
+    // magiclink: a one-time code for the account, and nothing sent.
     body: JSON.stringify({ type: "magiclink", email }),
     signal: AbortSignal.timeout(10000),
   });
-  let reply = await link();
-  // Unless Supabase takes no sign-ups (its disable_signup, which public
-  // sign-up with a password made worth turning on, 2026-10-24): then it
-  // makes no account for a new address, so this server makes it, as the
-  // admin API may, and asks again.
-  if (!reply.ok && signupsOff(await reply.clone().json().catch(() => ({}))) && (await makeAccount(email))) {
-    reply = await link();
-  }
   if (!reply.ok) return null;
   const body = await reply.json();
   // Top level in current GoTrue, nested in older ones.
   return body.email_otp || body.properties?.email_otp || null;
-}
-
-/// Whether Supabase refused for taking no sign-ups.
-function signupsOff(said) {
-  return said?.error_code === "signup_disabled" || /signups? not allowed/i.test(String(said?.msg || said?.message || ""));
-}
-
-/// An account made for [email], confirmed, since only a code redeemed
-/// signs anybody in to it: true when it is there (made just now, or by a
-/// request a moment ago).
-async function makeAccount(email) {
-  const reply = await fetch(`${project()}/auth/v1/admin/users`, {
-    method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
-    signal: AbortSignal.timeout(10000),
-  });
-  return reply.ok || reply.status === 422;
 }
 
 function letter(code) {

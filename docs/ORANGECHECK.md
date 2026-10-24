@@ -62,20 +62,22 @@ last piece waits on its release (below).
   function to an emailed-code session and to anon.
 - **N2, public sign-up.** Sign-up is open and Supabase confirms an address
   itself, so `POST /auth/v1/signup` with a password made an account and
-  handed out a password session at once (`api/_auth.js` refused it, 403,
-  and ended it: checked before the fix below). Every account Supabase makes
-  carries a random password hash, so its row cannot tell a chosen password
-  from that, and the refusal is where a password signs in:
-  `supabase/no_new_ways_in.sql` refuses Supabase's record of a password
-  sign-in (`auth.mfa_amr_claims`) but for a test account. Supabase commits
-  the account before it hands out that session, so the account too is
-  refused as its making commits: only a public sign-up writes user data
-  that says `phone_verified` (measured against every account Brickworks
-  makes), and such an account, not at a test address, is not made. A
-  password sign-up now answers 500 and leaves nothing. Turning sign-up off (Supabase's `disable_signup`) is the
-  owner's setting, which nothing here reaches; the owner has been asked.
-  `api/otp.js` makes the account itself when Supabase answers that it takes
-  no sign-ups, so a new person still signs in by code then.
+  handed out a password session at once. `api/_auth.js` refused that
+  session at /api, 403, and ended it (checked while nothing at Supabase
+  refused it, 2026-10-24). Every account Supabase makes carries a random
+  password hash, so its row cannot tell a chosen password from that, and
+  `supabase/no_new_ways_in.sql` refuses at two other places: Supabase's
+  record of a password sign-in (`auth.mfa_amr_claims`) but for a test
+  account; and, as its making commits, the account a public sign-up makes,
+  which alone writes user data that says `phone_verified` (measured against
+  every account Brickworks makes). A password sign-up now answers 500 and
+  leaves nothing, and so does the public `/otp` asked for a new address.
+  `api/otp.js` makes a new person's account through the admin API, then
+  asks generate_link for its code, so code sign-in goes on once sign-up is
+  off. Turning it off (`disable_signup`, and "Confirm email" on) is
+  orangecheck's to do with its Management token once oc205's release is
+  live: `tools/web/signup_check.mjs` (authsec197's) holds that, and reads
+  "all ok" only after.
 - **Second factors.** Brickworks asks for none, and Supabase's setting is
   out of reach here, so `no_new_ways_in.sql` refuses enrolling one
   (`auth.mfa_factors`) on any account.
