@@ -272,9 +272,10 @@ async function main() {
   check(r.text.includes(`<meta property="og:image" content="${base}/m/${id}.png">`), "its og:image is the model's picture");
   check(r.text.includes('<li class="pill">9 parts</li>') && r.text.includes("<b>Probe Builder</b>"),
     "it says the part count and who made it");
-  check(r.text.includes(`<a class="cta" href="/app?view=${id}" `) && r.text.includes(">Build it</a>")
+  check(r.text.includes(`<a class="cta" href="/app?view=${id}&amp;build" `) && r.text.includes(">Build it</a>")
+    && r.text.includes(`<a class="picture" href="/app?view=${id}" `)
     && r.text.includes('<script src="/share-page.js"') && r.text.includes(`data-viewer="/app?view=${id}"`),
-  "a person goes on to the viewer, /app?view=<id>, with Build it");
+  "a person goes on to the step player with Build it, /app?view=<id>&build, and the viewer with its picture");
   check(/frame-ancestors 'none'/.test(r.headers.get("content-security-policy") || ""), "the page is not frameable");
 
   r = await call(`/m/${id}.png`);

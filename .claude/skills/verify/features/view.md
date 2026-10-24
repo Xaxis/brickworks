@@ -61,7 +61,11 @@ picture the assistant is shown.
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. Nothing that begins
+  is what everything frames against, baseplate excluded. View > Default view
+  (0, `Main.default_view`) turns to the usual angle and frames what is built,
+  the baseplate when nothing is, as Fit does: it turned the camera alone, so
+  a view lost in empty space stayed lost (walk180 A2; `default_view_probe`,
+  headless). Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
   or a right or middle press over any panel, dialog, popup or the toolbar is
   dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:

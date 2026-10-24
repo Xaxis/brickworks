@@ -82,7 +82,10 @@ geometry in front of them.
   opens the element maker, and made parts lead the categories as Custom —
   see [elements](elements.md).
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
-  a `ThumbTile`. Until its picture is drawn it is a placeholder the picture's
+  a `ThumbTile`. A colour picked points each tile at the new colour
+  (`show_part(..., keep)`) and it keeps the picture it had until the new one
+  lands, then crossfades: the grid was made again, every tile blank for
+  seconds (walk180 A3). Until its picture is drawn it is a placeholder the picture's
   size with a band of light crossing it (`src/ui/shimmer.gdshader`, one shared
   material driven by `TIME`: no script runs per waiting tile; only on a tile
   in sight, `ThumbTile.in_sight`, set by `ThumbTile.Sight`, because a shader
@@ -288,7 +291,9 @@ placeholders, every tile in
 sight becomes its picture with no cell changing size, a grid scrolled to row 40
 before anything is drawn draws the rows in sight before the screenful below and
 none of the 130-odd far below or scrolled past, two parts with no geometry end
-as "no preview", and once drawn no tile is processing or shimmering. It leaves
+as "no preview", once drawn no tile is processing or shimmering, and a colour
+picked by its swatch leaves no tile in sight blank or shimmering before each
+is its new colour's picture, in the same tiles. It leaves
 `shots/placeholders/desktop_*.png` (loading, loaded, failed) — look at them.
 
 On the web, with the network slowed so the waiting shows (export with

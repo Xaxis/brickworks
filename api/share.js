@@ -1020,7 +1020,7 @@ ${header}
   <div class="top">
     <div class="media">
     <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
-      ? `<img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
+      ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
     ${mediaStrip(model, picture, photos)}
     </div>
@@ -1028,7 +1028,7 @@ ${header}
       <h1>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
       <div class="actions">
-        <a class="cta" href="${escapeHtml(viewer)}" title="Turn it in 3D, step through its build, and get its booklet and parts list: no account needed">Build it</a>
+        <a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
         <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
       </div>
       ${actionBar(origin, id, model)}

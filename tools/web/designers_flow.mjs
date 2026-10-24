@@ -322,7 +322,7 @@ try {
           && drawn.cards[1]?.id === ids.barn && drawn.cards[1].said === "1 built · 1 comment" && !drawn.cards[1].tested);
       check("no card says its views", !drawn.views);
       check(`"${drawn.start}" → ${drawn.build}`, /Start with their most built: Designers Castle .*, 3 builds finished, Tested\. Build it/.test(drawn.start)
-        && drawn.build === `/app?view=${ids.castle}`);
+        && drawn.build === `/app?view=${ids.castle}&build`);
       // Photos of builds are the Builds tab's.
       await page.click('.profile .tabs a[data-tab="builds"]');
       await page.waitForLoadState("load");

@@ -1206,7 +1206,7 @@ async function profilePage(request, response) {
     const start = earned && first && first.builds > 0 ? first : null;
     panel = cards.length ? `${start ? `<p class="start-with">Start with their most built:
       <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
-      <a class="cta small" href="/app?view=${start.id}">Build it</a></p>` : ""}
+      <a class="cta small" href="/app?view=${start.id}&amp;build">Build it</a></p>` : ""}
     ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
     <div class="models" data-models data-page="${shown.page}">${cards.map((card) => cardHtml(card, { earned: Boolean(earned) })).join("")}</div>
     ${shown.more || shown.page > 1 ? `<p class="paging">${shown.more ? `<a class="cta ghost" data-more="${shown.page + 1}"

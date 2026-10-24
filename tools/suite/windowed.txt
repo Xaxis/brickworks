@@ -36,3 +36,4 @@ sculpt_worker
 find_part
 save_dialog
 kart_steer
+viewer_steps   # Build it at step 1, the viewer timeline framing its steps, the play pill only for what moves (viewer218)

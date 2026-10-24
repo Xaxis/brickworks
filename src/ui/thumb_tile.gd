@@ -43,7 +43,10 @@ var printed: bool = false
 var caption: String = ""
 
 var state: State = State.LOADING
+## The picture, or while it waits for one in another colour, the one it had.
 var texture: Texture2D
+## The picture a recoloured tile had, faded out as its new one fades in.
+var _was: Texture2D
 ## How far the picture has faded in, 0 to 1.
 var _shown: float = 1.0
 
@@ -56,7 +59,7 @@ var in_sight: bool = true:
 			return
 		in_sight = value
 		if state == State.LOADING:
-			material = _shimmer_material() if in_sight else null
+			material = _shimmer_material() if in_sight and texture == null else null
 
 
 func _init(part: String = "", colour: int = 0, with_print: bool = false) -> void:
@@ -68,14 +71,19 @@ func _init(part: String = "", colour: int = 0, with_print: bool = false) -> void
 ## Point the tile at a part. A tile already showing that picture keeps it;
 ## any other goes back to waiting. An empty part shows nothing, at the
 ## same size, so whatever sits beside it does not move.
-func show_part(part: String, colour: int, with_print: bool = false) -> void:
+##
+## With [param keep], the same part in another colour keeps the picture it
+## has until the new one lands: a grid recoloured went blank, every tile at
+## once, for the seconds its pictures took (walk180 A3).
+func show_part(part: String, colour: int, with_print: bool = false, keep: bool = false) -> void:
 	if part == part_id and colour == color_code and with_print == printed \
 			and state == State.READY:
 		return
+	var kept: Texture2D = texture if keep and part == part_id and with_print == printed else null
 	part_id = part
 	color_code = colour
 	printed = with_print
-	texture = null
+	texture = kept
 	if part.is_empty():
 		_settle(State.READY)
 	else:
@@ -90,8 +98,10 @@ func key() -> String:
 ## to hand when the tile was made: a grid redrawn for a new colour whose
 ## pictures are cached should not flash.
 func show_picture(picture: Texture2D, fade: bool = true) -> void:
+	var was: Texture2D = texture if state == State.LOADING else null
 	texture = picture
 	_settle(State.READY)
+	_was = was if fade else null
 	_shown = 0.0 if fade else 1.0
 	set_process(fade)
 
@@ -107,8 +117,9 @@ func show_failed() -> void:
 func _settle(now: State) -> void:
 	state = now
 	_shown = 1.0
+	_was = null
 	set_process(false)
-	material = _shimmer_material() if now == State.LOADING and in_sight else null
+	material = _shimmer_material() if now == State.LOADING and in_sight and texture == null else null
 	queue_redraw()
 
 
@@ -116,6 +127,7 @@ func _process(delta: float) -> void:
 	_shown = minf(1.0, _shown + delta / FADE_SECONDS)
 	queue_redraw()
 	if _shown >= 1.0:
+		_was = null
 		set_process(false)
 
 
@@ -136,13 +148,21 @@ func _square() -> Rect2:
 func _draw() -> void:
 	match state:
 		State.LOADING:
-			_draw_placeholder(1.0)
+			# Another colour's picture, kept till this one's is drawn.
+			if texture != null:
+				draw_texture_rect(texture, _square(), false)
+			else:
+				_draw_placeholder(1.0)
 		State.READY:
 			if texture == null:
 				return
 			if _shown < 1.0:
-				# Out as the picture comes in, so nothing blinks between them.
-				_draw_placeholder(1.0 - _shown)
+				# Out as the picture comes in, so nothing blinks between them:
+				# the placeholder, or the picture it had in another colour.
+				if _was != null:
+					draw_texture_rect(_was, _square(), false)
+				else:
+					_draw_placeholder(1.0 - _shown)
 			var eased: float = 1.0 - (1.0 - _shown) * (1.0 - _shown)
 			draw_texture_rect(texture, _square(), false, Color(1, 1, 1, eased))
 		State.FAILED:

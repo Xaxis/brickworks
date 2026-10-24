@@ -904,6 +904,13 @@ plan with Claude as the client.
   `--step=<n>`): taken up as Build it pressed while the steps were being
   worked out (`_build_wanted`), so the step player opens at page n.
   `step_link_probe` proves it (no network: a stand-in for the link).
+  Build it on the model's page is `?build` (`_viewing_build`, from
+  `--build`, viewer218 2026-10-24): the step player at step 1 in one press,
+  or at the page this device was building it at (`BuildSteps.recall`
+  building); it was the viewer on the finished model, its own Build it,
+  then Start on the cover (walk180 W3). The picture (View in 3D) is still
+  the plain viewer. `viewer_steps_probe` (windowed) proves both, and
+  `share_flow` on a deployment presses Build it on a real page.
 - `follows and the feed` (`api/_follows.js`): `supabase/follows.sql`,
   2026-10-18. `GET ?op=follows&handle=X` (counts, and with a session
   whether the caller follows and may, why not in words), `POST ?op=follow`
@@ -1197,8 +1204,11 @@ plan with Claude as the client.
   `_ready_play`, `_play_press`, `_play_touch`, `_play_reset`, 2026-10-19;
   docs/MECHANISMS.md §21): once a shared model is up, its steps worked out
   and its lattice told of every part, the grab reads its joints and the
-  pill under the bar says what moves ("Moves: steering", or "Parts of it
-  move") and how ("Drag a part that moves. Drag anywhere else to turn the
+  pill under the bar says what moves ("Moves: steering"; only when
+  Playable names something or the model has motions of its own,
+  `ShareView._offers_play`: a car whose wheels only turn on their pins says
+  nothing, as its card does, though a drag still turns them and the pill
+  then offers Reset; walk180 W5, `viewer_steps_probe`) and how ("Drag a part that moves. Drag anywhere else to turn the
   model."; on a touch screen "Touch a part that moves and drag it…"). A
   left drag on a part that moves moves it on the builder's own joints
   (`GrabDrag.press`, held still 0.4 s first by its chain's end); one that
@@ -1406,7 +1416,8 @@ plan with Claude as the client.
   with a column beside it on a laptop that stays on screen as the page
   scrolls (`.side`, sticky) and under it on a phone: the name, the designer
   (`.shared-by`: avatar, name and @handle linking to /u/, Follow), Build it
-  (the viewer, `.actions a.cta`) and Open in Brickworks, the action bar
+  (`.actions a.cta`, `/app?view=<id>&build`: the step player at step 1) and
+  Open in Brickworks, the action bar
   (below), then facts as pills (Tested first, parts, steps and whether they
   are its builder's, Technic, Moves, views, when it was listed, its version
   and remixes as links), and what it was remixed from while that is listed
@@ -1425,7 +1436,13 @@ plan with Claude as the client.
   to the viewer, so a phone whose tab reloaded mid-build is not left on the
   page. A link taken down answers 410 "This model is no longer shared" and
   names nothing; one that never was, 404 (both pages of the site too). The
-  card is a picture and a View in 3D that opens the link in a tab.
+  card is a picture and a View in 3D that opens the link in a tab. Until the
+  page's picture is drawn its frame says "Loading its picture…" (`.picture
+  .waiting`, the card's no-picture face), and one that fails is asked again
+  twice (`web/model-page.js` `startPicture`) before it says "No picture": the
+  first view right after publishing was a blank grey frame (walk180 S2).
+  `model_page_flow` holds the picture (and fails it once) at 390 and 1280,
+  light and dark (`picture_waiting_*.png`, `picture_came_*.png`).
 - `shared model viewer` (`src/ui/share_view.gd`, `main._enter_view`,
   `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>` — the app's page
   itself since 2026-10-12, query and all, so the address bar keeps it (`?copy=`
@@ -1440,7 +1457,11 @@ plan with Claude as the client.
   "Could not reach Brickworks" once in four runs, and the same link opened at
   the next try), the model opened
   through `ModelStore.open_text` (made parts and prints built from the file),
-  the parts fetched, then the timeline (`StepsBar`) at the finished model; a bar
+  the parts fetched, then the timeline (`StepsBar`) at the finished model,
+  whose Next and Back (and the arrow keys) outline the step's new parts and
+  turn and frame the view on them as the step player draws that page
+  (`main._light_step`, `StepsBar.stepped`; any other move lets them go;
+  walk180 W4, `viewer_steps_probe`); a bar
   along the top with the name, part count and author, Steps, Booklet, Parts list
   and Open in Brickworks; the part under the pointer outlined in blue and named
   beside it (`_view_hover`, the lattice ray, skipping parts the timeline hides);

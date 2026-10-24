@@ -699,8 +699,22 @@ func _on_colour(code: int) -> void:
 		swatch.queue_redraw()
 	_say_colour()
 	color_chosen.emit(code)
-	# Previews are per colour, so the grid has to be redrawn.
-	_fill_grid()
+	# Previews are per colour: every tile is pointed at the new one and keeps
+	# the picture it has until that one is drawn. The grid was made again,
+	# every tile blank for the seconds the pictures took (walk180 A3), and
+	# scrolled back to its top.
+	for cell: Node in _grid.get_children():
+		var tile: Variant = cell.get_meta("tile") if cell.has_meta("tile") else null
+		if not tile is ThumbTile:
+			continue
+		var one: ThumbTile = tile
+		one.show_part(one.part_id, code, one.printed, true)
+		var ready_now: ImageTexture = thumbnails.peek(one.part_id, code, one.printed) if thumbnails else null
+		if ready_now:
+			one.show_picture(ready_now, false)
+	# The same tiles, so what is in sight is told again: they wait on new pictures.
+	if _sight != null:
+		_sight.forget()
 
 
 ## How many lines the note under the palette always takes.

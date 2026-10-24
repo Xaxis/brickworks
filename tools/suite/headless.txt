@@ -164,3 +164,4 @@ known_fits
 gear_mesh
 touch
 step_count   # a model's steps counted alike by the server and the app (steps206)
+default_view   # View > Default view frames what is built, an empty baseplate too (viewer218)

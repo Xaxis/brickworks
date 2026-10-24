@@ -340,7 +340,7 @@ async function houseLink(size, shape) {
   const served = sha(await fetch(`${site}/api/share?id=${houseId}`, { headers }).then((r) => r.json())
     .then((body) => body.model || "").catch(() => ""));
   await page.goto(`${site}/m/${houseId}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-  const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
+  const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
   if (cta) {
     await Promise.all([page.waitForURL(/\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
   }
@@ -516,11 +516,12 @@ try {
 
     // 1. The link, as somebody follows it.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-    // On a deployment the link is the model's own page, whose button opens
-    // it in the app (serve.py goes straight on); m87's preview waited
-    // 600 s on the page for an app that was never opened. The local relay
+    // On a deployment the link is the model's own page, whose View in 3D (its
+    // picture) opens the viewer, Build it the step player at step 1 (serve.py
+    // goes straight on); m87's preview waited 600 s on the page for an app
+    // that was never opened. The local relay
     // (relay_server.mjs --static) sends /app?view= on to /?view=.
-    const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
+    const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
     if (cta) {
       await Promise.all([page.waitForURL(/\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
     }

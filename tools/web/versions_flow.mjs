@@ -255,12 +255,14 @@ try {
   const old = await visitor.evaluate(() => ({
     banner: (document.querySelector(".old-version") || {}).textContent || "",
     newest: (document.querySelector(".old-version a") || {}).getAttribute?.("href") || "",
-    view: (document.querySelector(".actions a.cta") || {}).getAttribute?.("href") || "",
+    view: (document.querySelector(".model-page a.picture") || {}).getAttribute?.("href") || "",
+    build: (document.querySelector(".actions a.cta") || {}).getAttribute?.("href") || "",
     robots: Boolean(document.querySelector('meta[name="robots"][content="noindex"]')),
   }));
   check(`/m/${id}/v/1 is marked as older: "${old.banner.replace(/\s+/g, " ").trim()}"`,
     /This is version 1 of\s+2/.test(old.banner) && old.newest === `/m/${id}`);
-  check(`...its View in 3D is version 1's (${old.view}), and it is kept out of searches`, old.view === `/app?view=${id}&v=1` && old.robots);
+  check(`...its View in 3D (${old.view}) and Build it (${old.build}) are version 1's, and it is kept out of searches`,
+    old.view === `/app?view=${id}&v=1` && old.build === `/app?view=${id}&v=1&build` && old.robots);
   await shot(visitor, "2_version_1_page.png");
   const oldModel = await (await fetch(`${site}/api/share?id=${id}&v=1`, { headers })).json();
   check(`...and version 1's model is the old one: step 3 red (version ${oldModel.version} of ${oldModel.newest})`,
