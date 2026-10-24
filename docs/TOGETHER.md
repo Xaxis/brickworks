@@ -294,10 +294,21 @@ takes turns. Here:
   2.8 s. On the 745989a6 preview, two browser checks drawing in software at
   once, the rich measure was p50 2,148 ms, p95 3,432 ms, and the pages were
   held 967 and 1,300 ms after a change against 850 to 2,233 ms after a turn
-  of the view alone: the drawing again. So the flow's rich check passes a
-  p95 under a second, or a wait that is all the drawing's (each page held
-  after a change no longer than 1.25 times its hold after a turn of the view
-  alone, and 50 ms), and says which.
+  of the view alone: the drawing again, on the page receiving the change
+  above all (its post-change "shown" stage, 1,309 ms, against "reach", 612
+  ms, for the network and the server together). So the flow's bars:
+
+  - **the plain measure** (after the 50 edits): p95 under 1 s, strictly;
+  - **the rich measure** (after the seven kinds): p95 under 1 s, or 95 of
+    every 100 changes within a network budget of 500 ms plus one of the
+    sender's frames (the edit picked up) and three of the receiver's (the
+    frame it lands in, the one it is drawn in, the one the page is told
+    in), each page's frame its own median hold after a turn of the view
+    alone. On the 745989a6 preview's numbers: frames 850 ms (owner) and
+    1,117 ms (the other), so 4.2 to 4.7 s allowed against a p95 of 3.4 s;
+    on this box 17 and 533 ms, so 1.1 to 2.1 s against 0.8 s. A real
+    graphics card draws the rich car in a few milliseconds, and the bar
+    comes down to the plain one with it.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
