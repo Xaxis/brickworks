@@ -274,6 +274,18 @@ is on the page, `hidden`, for the script to show.
   with `data-follow-list`, its words in `.said`; Share; More with Report
   it); on a phone the cover across the top at 2:1. Then its models as
   `.models`, or a `.state`.
+- **Achievements** (`web/card.js` `awardsHtml`, docs/SOCIAL.md U13):
+  `ul.pills.awards` after a person's `.numbers`, the two in one
+  `.standing` row that wraps (beside them on a laptop, under them on a
+  phone), on their page and on your own, each `li[data-award]` a `.pill` with the award icon (16 px, at its
+  words' height) and its name,
+  what it means as its title; a challenge won is `a.pill.new` to the model
+  that won it. The rarest first; none at all, no row.
+- **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
+  under the one shown, Coming next (`#next`, a `.card` of its theme and
+  days) and Past challenges (`#past`, each an `article.past-one`: its name
+  a link to its own page, its days, its winners as `.models` cards); its own
+  page (`?id=N`) is the same page under the `.crumbs` back to the hub.
 - **Your profile** (`/profile`, `web/profile.html`, docs/SOCIAL.md U6):
   your page as a person's page draws it (the same `.profile-head`,
   `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share

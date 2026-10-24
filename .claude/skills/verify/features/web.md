@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
 
 ## Sub-features
 
@@ -1245,7 +1245,44 @@ plan with Claude as the client.
   `fieldset.date[data-date]`, `select[name=starts_on_day|_month|_year]`
   and the same for `ends_on`, this year and next; three ticks: at most N
   parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
-  and sets the flows' test ones.
+  and sets the flows' test ones. Then `#year-form` (`drawYear`, Set a year
+  of themes): the first month (`select[name=year_from_month|_year]`, by
+  default the month after the last challenge not ended) and twelve
+  `#year-months fieldset[data-month]`, each `theme_N_title` and
+  `theme_N_brief`; empty months skipped; POST `/api/admin?op=plan {themes:
+  [{month, title, brief}]}`, all or none, refused in words naming the month
+  (`#year-note`). An upcoming row's State says `to come, told from <day>`
+  until its `announced_at`. Before challenge_year.sql, `#year-not-yet`
+  shows and Set the year is disabled (`year: false` in GET /api/admin).
+- `challenges between months` (`supabase/challenge_year.sql`, 2026-10-24,
+  docs/SOCIAL.md U12): `challenges.announced_at` (null: told at once);
+  `challenge_announced(c)`, `challenge_opened(c)`, `challenge_next(tests,
+  after)`, `challenge_past(tests)` (the 24 that ran, last first, winners
+  with `directory_card`, a test one only while it has an entry),
+  `challenge_page_at(id, tests)` (null for one not told, not opened, or a
+  test one unasked), `challenge_plan(themes, lead_days 31, test)` (refused
+  `none`, `words`, `days`, `past`, `overlap` with `at` and `with`). Replaces
+  challenges.sql's `challenge_shown` (an upcoming one once told),
+  `challenge_page` (`challenge_page_at` of the shown one) and
+  `challenge_list` (+`announced_at`), each guarded in `tools/apply_sql.mjs`
+  LATER. **Not applied** until the lead applies it: until then GET
+  `?op=challenge` says `year: false`, no `next`, `past: []`, and `&id=N`
+  answers `ready: false`. On `/challenge`: `#next[data-next]`
+  (`#next-title`, `#next-days`, `#next-brief`) and `#past article.past-one
+  [data-past]` (`h3 a` to `/challenge?id=N`, `.note` days and entries,
+  winners as `.kept[data-entry]` with `.challenge-said` "Winner, built by
+  hand · 2 votes"); `/challenge?id=N` shows `#crumbs` to the hub,
+  `dataset.challenge` `gone` for a number not shown; `dataset.year` yes or
+  no. Held by `tools/web/challenges_stand_in.mjs` (`--hold=challenges`).
+- `achievements on a profile` (`api/people.js` `achievementsOf`, `web/card.js`
+  `awardsHtml`, 2026-10-24, docs/SOCIAL.md U13): computed, never stored,
+  from what the profile reads: `won` (each challenge won, `a.pill.new` to
+  the model, `data-won`), `ten` (designer builds ≥ 10), `tested` (a Tested
+  model), `listed` (a model in the gallery), `built` (a photo of their real
+  build); `ul.pills.awards li[data-award]` after `.numbers` in one
+  `.standing` row on `/u/<handle>` and `/profile` (`#awards-shown`); GET `?op=profile` says `achievements:
+  [{id, name, said, model?}]`. None for a profile under 13 or taken out
+  (404); `/profile` of an account under 13 asks for no public page.
 - the feed's entry line (`supabase/challenges.sql` `feed_rows`, which
   supersedes follows.sql's; `api/_follows.js` `feedSaid` kind `challenge`,
   with `after`; `web/feed.js`): somebody you follow entered a model, "Ada
@@ -3220,6 +3257,22 @@ again (`x-vercel-cache: HIT`) is the proof; locally, `s-maxage=30`. 50
 checks, all ok, 2026-10-19, on a preview with challenges.sql applied, and
 the same against a local relay over the live tables.
 
+Between months (challenge_year.sql, 2026-10-24): the owner also sets a
+year of three themes from next month (`1b_admin_year-1280.png`), read back
+from the table (the first "to come", the others "to come, told from …")
+and the admin's answer (each its month, `announced_at`); the hub's Coming
+next names the first and never the others (whose `?id=` is 404, as the
+first's is without tests=1); ended, the hub shows the first theme and lists
+the challenge first under Past challenges with both winners' cards
+(`9a_challenge_past-*`), its name opening `/challenge?id=N&tests=1`, where
+the winners checks above run; Ada's win is the first of her achievements
+(`won,tested,listed`). Until the file is applied, run it against
+`relay_server.mjs <port> --hold=challenges` with `--held` (the feed, which
+the database makes from its own entries, is then not asked): 59 checks, all
+ok, 2026-10-24; against base code 2 failed (no year form, no achievements).
+On a preview before the file: the year's form says it is not open yet, and
+the hub is read as before.
+
 The list, asked hard (reads only):
 
 ```sh
@@ -3819,7 +3872,20 @@ and saying so, More opening Report it; the Builds and Collections tabs;
 the house's 7 models and its empty tabs' words; Ines's 60 models reached
 by Show more twice, page 3 as served 12 cards; on the relay, op=showcase's
 seven refusals, Ada's links, banner and pins kept (or "not open yet"
-before the SQL on a preview) and her page as above. `design_flow` judges
+before the SQL on a preview) and her page as above. Achievements
+(2026-10-24, docs/SOCIAL.md U13): Robin's five in order (won, ten, tested,
+listed, built), the win a link to the watchtower, each with the award icon
+and its meaning as its title; the house's include listed and no win; Alex
+none; your own `/profile` (Sam) the same ones /u/sam-builds shows. On the
+relay, Ada earns each by doing it, read from `?op=profile` after each step:
+nothing with a profile alone, `listed`, `tested,listed`, then a photo of her
+build of Bob's model `tested,listed,built`, then ten finishes of her castle
+`ten,tested,listed,built`, and her page at both widths and themes says so
+under her numbers; Cy, with a profile and a listed model, says he is under
+13 (his profiles row): his page and its answer 404 naming nothing, and his
+own /profile says under 13 with no achievements. Ada is deleted by Delete
+account (her photo's file with her). 210 passed locally (14 failed against
+base code), 102 on the relay, 2026-10-24. `design_flow` judges
 `person`, `person-builds`, `person-lists` (More open), `person-house` and
 `person-new` for controls, the scale and zeros.
 

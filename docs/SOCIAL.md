@@ -607,6 +607,32 @@ The embed loads `web/theme.js`, so it is in the theme its viewer chose
 where their browser lets a frame inside somebody else's page read the
 site's storage (most keep it apart: then their device's light or dark).
 The embed's button still says View in 3D, and opens the model's page.
+*U12 built (2026-10-24, `supabase/challenge_year.sql`):* under the
+challenge shown, **Coming next** (the next one's theme and days, a
+`.card`) and **Past challenges** (each that ran, the last first: its name a
+link to its own page, `/challenge?id=N`, its days and entries, its winners
+as the gallery's cards), as contest hubs list running, upcoming and finished
+ones. `challenges.announced_at` says when visitors are told of one: null,
+at once, for one set alone; a year of themes set once on /admin (a month a
+row from a first month, title and brief, all or none, `POST /api/admin
+?op=plan`) tells each a month before it opens, so the next is known while
+one runs and the rest of the year stays the owner's. One the owner ends
+before it opens never ran, and is in no list. Three of challenges.sql's
+functions replaced with the same answers for every challenge there is
+(`tools/challenge_year_try.sql`), guarded by `tools/apply_sql.mjs`.
+
+*U13 built (2026-10-24, no Supabase change):* **achievements** on a
+profile and on your own, a row of pills after the numbers (beside them
+on a laptop, under them on a phone), as GitHub's and Printables' profiles
+carry their badges in the person's head: each
+challenge won (a link to the model that won it), Ten builds (of their
+models, to the last step), Tested, First model listed, First build
+finished (a photo of their real build: builds are counted per device and
+name nobody, D13), the rarest first. `api/people.js` `achievementsOf`
+works them out from what the page already reads, so nothing is kept and
+nothing new is tracked; a profile not shown in public (under 13, taken
+out) shows none, to anybody, its owner included. No name uses a LEGO®
+mark.
 
 What we will not build: messages between people, lists of followers,
 "X followed you", view counts as a ranking, streaks, or anything that

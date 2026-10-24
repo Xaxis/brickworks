@@ -116,6 +116,7 @@ function draw(data) {
 
   drawPicks(data.picks);
   drawChallenges(data.challenges);
+  drawYear(data.challenges, data.year === true);
 
   // Marked Tested: the app's finding, to clear when it should not be there.
   const tested = $("tested");
@@ -418,9 +419,16 @@ function drawChallenges(list) {
     if (one.rules?.set_number) rules.push(`set ${one.rules.set_number}${one.rules.set_name ? `, ${one.rules.set_name}` : ""}`);
     if (one.rules?.tested) rules.push("Tested");
     cell(row, rules.join("; ") || "none", rules.length ? "said" : "faint");
-    cell(row, one.state === "open" ? "open" : one.state === "upcoming" ? "to come" : "ended");
-    cell(row, `${one.entries?.hand ?? 0} in, ${one.votes?.hand ?? 0} votes`, "n");
-    cell(row, `${one.entries?.assistant ?? 0} in, ${one.votes?.assistant ?? 0} votes`, "n");
+    // One to come is told to visitors from its announced_at (a year's themes,
+    // supabase/challenge_year.sql), or at once.
+    const told = one.state === "upcoming" && one.announced_at && Date.parse(one.announced_at) > Date.now()
+      ? `, told from ${dayOf(one.announced_at)}` : "";
+    cell(row, one.state === "open" ? "open" : one.state === "upcoming" ? `to come${told}` : "ended");
+    // Each count once there is one: a challenge to come has none yet.
+    for (const way of ["hand", "assistant"]) {
+      const [entered, votes] = [Number(one.entries?.[way]) || 0, Number(one.votes?.[way]) || 0];
+      cell(row, entered ? `${entered} in${votes ? `, ${votes} ${votes === 1 ? "vote" : "votes"}` : ""}` : "—", entered ? "n" : "n faint");
+    }
     const won = document.createElement("td");
     won.className = "model";
     for (const w of one.winners || []) {
@@ -509,6 +517,114 @@ function datesFirst() {
   if (!dateOf(form, "starts_on")) setDate(form, "starts_on", now);
   if (!dateOf(form, "ends_on")) setDate(form, "ends_on", new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)));
 }
+
+// ---------------------------------------------------------------------------
+// A year of themes (supabase/challenge_year.sql): from a first month, twelve
+// rows, each its month's title and brief; the empty ones skipped.
+
+const MONTH_SAID = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+
+/// The year's first month, as YYYY-MM: the form's, or the month after the
+/// last day of any challenge not ended, else next month.
+function yearFrom(list) {
+  const form = $("year-form");
+  const month = Number(form.elements.year_from_month?.value);
+  const year = Number(form.elements.year_from_year?.value);
+  if (month && year) return [year, month];
+  const last = (list || []).filter((one) => !one.test === !TESTS && one.state !== "ended").map((one) => String(one.ends_on).slice(0, 10))
+    .sort().pop();
+  const after = last ? new Date(`${last}T00:00:00Z`) : new Date();
+  return [after.getUTCFullYear() + (after.getUTCMonth() === 11 ? 1 : 0), (after.getUTCMonth() + 1) % 12 + 1];
+}
+
+/// The twelve months' rows, from [year]-[month], each its words kept when
+/// the first month changes.
+function yearRows([year, month]) {
+  const box = $("year-months");
+  const kept = [...box.querySelectorAll("fieldset")].map((set) => ({
+    title: set.querySelector("input").value, brief: set.querySelector("textarea").value }));
+  box.replaceChildren(...Array.from({ length: 12 }, (_, at) => {
+    const when = new Date(Date.UTC(year, month - 1 + at, 1));
+    const set = document.createElement("fieldset");
+    set.dataset.month = when.toISOString().slice(0, 7);
+    const legend = document.createElement("legend");
+    legend.textContent = MONTH_SAID.format(when);
+    const title = document.createElement("label");
+    const input = document.createElement("input");
+    input.name = `theme_${at}_title`;
+    input.maxLength = 80;
+    input.value = kept[at]?.title || "";
+    title.append("Title", input);
+    const brief = document.createElement("label");
+    const area = document.createElement("textarea");
+    area.name = `theme_${at}_brief`;
+    area.maxLength = 600;
+    area.rows = 2;
+    area.value = kept[at]?.brief || "";
+    brief.append("The brief", area);
+    set.append(legend, title, brief);
+    return set;
+  }));
+}
+
+/// The year's form: its first month as two dropdowns, and its rows; hidden
+/// with challenges.sql, and saying so before challenge_year.sql.
+function drawYear(list, ready) {
+  const form = $("year-form");
+  form.hidden = list === null || list === undefined;
+  $("year-not-yet").hidden = ready;
+  form.querySelector('button[type="submit"]').disabled = !ready;
+  const set = form.querySelector('fieldset[data-date="year_from"] .dropdowns');
+  if (!set.childElementCount) {
+    const [year, month] = yearFrom(list);
+    const choose = (part, said, choices, value) => {
+      const label = document.createElement("label");
+      const hidden = document.createElement("span");
+      hidden.className = "visually-hidden";
+      hidden.textContent = `The first month: ${said.toLowerCase()}`;
+      const select = document.createElement("select");
+      select.name = `year_from_${part}`;
+      select.append(...choices.map(([v, text]) => new Option(text, String(v), v === value, v === value)));
+      select.addEventListener("change", () => yearRows(yearFrom(list)));
+      label.append(hidden, select);
+      return label;
+    };
+    const now = new Date().getUTCFullYear();
+    set.append(choose("month", "Month", MONTHS.map((name, at) => [at + 1, name]), month),
+      choose("year", "Year", [[now, String(now)], [now + 1, String(now + 1)]], year));
+    yearRows([year, month]);
+  }
+}
+
+$("year-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const send = form.querySelector('button[type="submit"]');
+  const themes = [...form.querySelectorAll("#year-months fieldset")].map((set) => ({ month: set.dataset.month,
+    title: set.querySelector("input").value.trim(), brief: set.querySelector("textarea").value.trim(),
+    said: set.querySelector("legend").textContent })).filter((one) => one.title || one.brief);
+  if (!themes.length) return say("year-note", "Give at least one month a theme.", true);
+  const half = themes.find((one) => !one.title || !one.brief);
+  if (half) return say("year-note", `${half.said}: give it a title and a brief.`, true);
+  send.disabled = true;
+  try {
+    const token = await accessToken();
+    const reply = await fetch(`/api/admin?op=plan${TESTS ? `&${TESTS}` : ""}`, { method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ themes: themes.map(({ month, title, brief }) => ({ month, title, brief })) }) });
+    const said = await reply.json().catch(() => ({}));
+    if (!reply.ok) throw new Error(said.error || `The server said ${reply.status}.`);
+    for (const field of form.querySelectorAll("#year-months input, #year-months textarea")) field.value = "";
+    await refresh();
+    const planned = said.planned || [];
+    say("year-note", `Set: ${planned.length} ${planned.length === 1 ? "theme" : "themes"}, from ${dayOf(planned[0].starts_on)} `
+      + `to ${dayOf(planned[planned.length - 1].ends_on)}. Each is told a month before it opens.`);
+  } catch (problem) {
+    say("year-note", problem.message, true);
+  } finally {
+    send.disabled = false;
+  }
+});
 
 $("challenge-form").addEventListener("submit", async (event) => {
   event.preventDefault();

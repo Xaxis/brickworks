@@ -5,11 +5,15 @@
 //                                 or the next, or the last that ended with
 //                                 entries), its rules in words, its entries
 //                                 as gallery cards in their two groups, and
-//                                 once it ended, the votes and the winners.
+//                                 once it ended, the votes and the winners;
+//                                 the next one told (next) and the ones that
+//                                 ran (past), each with its winners' cards.
 //                                 With the sign-in, also the caller's: whom
 //                                 they voted for in each group, and whether
 //                                 they may vote. Kept by the CDN only when
 //                                 asked without a sign-in.
+//   GET  ?op=challenge&id=N       challenge N as the same page draws it, once
+//                                 it is open, told or ran; 404 else
 //   GET  ?op=challenge_entry&id=X (session) for a model's page: the
 //                                 challenge open now, whether X is in it, and
 //                                 what its rules say of X. Only X's owner is
@@ -20,6 +24,10 @@
 //   POST ?op=withdraw             (session) {model}: the entry taken back
 //   POST ?op=vote                 (session) {challenge, model}: one vote in
 //                                 the model's group
+//
+// Between months (2026-10-24, supabase/challenge_year.sql): what ran before
+// and its winners, and the next one's theme and days once the owner's year
+// of themes tells it. Before that file, year is false and neither is said.
 //
 // The rules are the database's (challenge_enter, challenge_vote), checked on
 // the model as it is stored; what is here is the words. A test account's
@@ -146,20 +154,73 @@ function challengeOf(origin, page, wins = new Map()) {
 }
 
 /// The challenge page's facts, settling a challenge that has ended and was
-/// not yet (challenge_settle): {ready, page}.
-async function pageOf(tests) {
+/// not yet (challenge_settle): {ready, page}. Challenge [id] when one is
+/// asked for (challenge_page_at), else the one shown now.
+async function pageOf(tests, id = null) {
+  const ask = () => (id ? db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } })
+    : db("rpc/challenge_page", { method: "POST", body: { tests } }));
   let page;
   try {
-    page = await db("rpc/challenge_page", { method: "POST", body: { tests } });
+    page = await ask();
   } catch (trouble) {
     if (missing(trouble)) return { ready: false, page: null };
     throw trouble;
   }
   if (page && page.state === "ended" && !page.settled) {
     await db("rpc/challenge_settle", { method: "POST", body: { challenge_id: page.id } });
-    page = await db("rpc/challenge_page", { method: "POST", body: { tests } });
+    page = await ask();
   }
   return { ready: true, page };
+}
+
+/// "1 to 31 October 2026", "28 September to 4 October 2026": a challenge's
+/// days, said once each.
+export function daysSaid(from, to) {
+  const [a, b] = [dayOf(from), dayOf(to)];
+  if (a === b) return a;
+  const [ay, by] = [a.split(" "), b.split(" ")];
+  if (ay[2] !== by[2]) return `${a} to ${b}`;
+  return ay[1] === by[1] ? `${ay[0]} to ${b}` : `${ay[0]} ${ay[1]} to ${b}`;
+}
+
+/// The next challenge told, after the one shown [after]: {id, title, brief,
+/// starts_on, ends_on, days_said}, or null.
+async function nextOf(tests, after) {
+  const row = await db("rpc/challenge_next", { method: "POST", body: { tests, after } });
+  if (!row || !row.id) return null;
+  return { id: n(row.id), title: String(row.title), brief: String(row.brief), starts_on: row.starts_on,
+    ends_on: row.ends_on, test: row.test === true, days_said: daysSaid(row.starts_on, row.ends_on) };
+}
+
+/// The challenges that ran, newest first, but [shown], each with its
+/// winners as gallery cards; one that ended and was never counted is
+/// counted first (challenge_settle), as its own page would.
+async function pastOf(origin, tests, shown) {
+  const ask = () => db("rpc/challenge_past", { method: "POST", body: { tests } });
+  let rows = (await ask()) || [];
+  const unsettled = rows.filter((row) => !row.settled);
+  if (unsettled.length) {
+    for (const row of unsettled) await db("rpc/challenge_settle", { method: "POST", body: { challenge_id: row.id } });
+    rows = (await ask()) || [];
+  }
+  return rows.filter((row) => n(row.id) !== shown).map((row) => ({
+    id: n(row.id), title: String(row.title), starts_on: row.starts_on, ends_on: row.ended_on || row.ends_on,
+    test: row.test === true, entries: n(row.entries), days_said: daysSaid(row.starts_on, row.ended_on || row.ends_on),
+    winners: (row.winners || []).filter((one) => one && ID.test(String(one.model || "")) && one.card)
+      .map((one) => ({ ...cardOf(origin, one.card), way: one.way, label: WAYS[one.way] || one.way, votes: n(one.votes) })),
+  }));
+}
+
+/// The hub's between months: {year, next, past}; year false before
+/// supabase/challenge_year.sql, and neither said.
+async function betweenOf(origin, tests, shown) {
+  try {
+    const [next, past] = await Promise.all([nextOf(tests, shown || null), pastOf(origin, tests, shown)]);
+    return { year: true, next, past };
+  } catch (trouble) {
+    if (missing(trouble)) return { year: false, next: null, past: [] };
+    throw trouble;
+  }
 }
 
 /// What challenges [models] won, by model: Map id -> [{title, way, ends_on}].
@@ -217,14 +278,23 @@ export async function challengeLine(tests = false) {
     days_said: `${dayOf(row.starts_on)} to ${dayOf(row.ends_on)}` };
 }
 
-/// GET ?op=challenge.
+/// GET ?op=challenge, and ?op=challenge&id=N.
 export async function challenge(request, response, { origin }) {
   const tests = testsAsked(request.query || {});
+  const asked = request.query?.id === undefined ? null : Number(request.query.id);
+  if (asked !== null && !(Number.isInteger(asked) && asked >= 1)) throw new Unacceptable("name a challenge: ?id=<number>");
   const who = bearer(request) ? await caller(request) : null;
   response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : PAGE_CACHE);
-  const { ready, page } = await pageOf(tests);
+  const { ready, page } = await pageOf(tests, asked);
   if (!ready) return response.status(200).json({ ready: false, challenge: null });
-  if (!page) return response.status(200).json({ ready: true, challenge: null, ...(who ? { you: { signed_in: true } } : {}) });
+  if (asked && !page) return response.status(404).json({ error: "There is no challenge at that number to show." });
+  // The hub says what ran before and what comes next; a challenge's own page
+  // is that challenge alone.
+  const between = asked ? {} : await betweenOf(origin, tests, page ? n(page.id) : null);
+  if (!page) {
+    return response.status(200).json(await withFaces({ ready: true, challenge: null, ...between,
+      ...(who ? { you: { signed_in: true } } : {}) }));
+  }
   const wins = await winsOf((page.entries || []).map((one) => one.model), tests);
   const shown = challengeOf(origin, page, wins);
   let you = null;
@@ -238,7 +308,7 @@ export async function challenge(request, response, { origin }) {
         : !kind ? "A test account votes only in a test challenge."
           : mine?.under_13 ? VOTE_SAID.under_13[1] : mine?.may_vote !== true ? ASK_FIRST : null };
   }
-  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...(you ? { you } : {}) }));
+  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...between, ...(you ? { you } : {}) }));
 }
 
 /// GET ?op=challenge_entry&id=X: for X's own designer, the challenge open

@@ -1840,6 +1840,14 @@
       "tests": []
     },
     {
+      "id": "lib:challenges between months",
+      "kind": "lib",
+      "entry": "supabase/challenge_year.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_year.sql --dry --try=tools/challenge_year_try.sql --table=challenges   (after challenges.sql; the promises in tests/test_challenge_year.py; then the challenges browser flow, --held against relay_server.mjs --hold=challenges until it is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:change a part",
       "kind": "lib",
       "entry": "src/parts/part_editor.gd",
@@ -2494,6 +2502,7 @@
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql --dry --try=tools/challenges_try.sql --table=challenge_entries   (after the live files; the promises around it in tests/test_challenges.py; then the challenges browser flow)",
       "area": "web",
       "tests": [
+        "tests/test_challenge_year.py",
         "tests/test_challenges.py"
       ]
     },
@@ -2647,6 +2656,14 @@
       "entry": "src/ui/account_panel.gd",
       "reach": "godot --path .  (Account, on the toolbar)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:achievements on a profile",
+      "kind": "ui",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers (achievementsOf; GET /api/people?op=profile says achievements); the profile browser flow",
+      "area": "web",
       "tests": []
     },
     {
@@ -3426,7 +3443,7 @@
       "id": "ui:setting the monthly challenge",
       "kind": "ui",
       "entry": "web/admin.js",
-      "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N",
+      "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
       "area": "web",
       "tests": []
     },

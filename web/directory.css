@@ -183,6 +183,14 @@
    pages adds: a button under it on your account (.kept). */
 .kept { display: grid; gap: 8px; align-content: start; }
 
+/* /challenge between months (docs/SOCIAL.md U12): the next one's theme in
+   a .card, and each challenge that ran, its name, its days and its winners'
+   cards, a section's space apart. */
+.challenge .next-one h3, .challenge .past-one h3 { margin: 0 0 var(--s-1); }
+.challenge .next-one > :last-child { margin-bottom: 0; }
+.challenge .past-one { margin: 0 0 var(--s-6); }
+.challenge .past-one .models { margin-top: var(--s-3); }
+
 /* A person, a collection, and your own page. */
 .person { padding: var(--page-top) 0 var(--section); }
 .person h1 { margin-bottom: 6px; overflow-wrap: anywhere; }
@@ -488,7 +496,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .numbers { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-5); margin: 0 0 var(--s-4); padding: 0; list-style: none; }
 .numbers b { color: var(--ink); font-size: var(--t-h3); font-weight: 700; font-variant-numeric: tabular-nums; }
 .numbers span { color: var(--ink-soft); font-size: var(--t-small); }
-.profile .wins { margin: 0 0 var(--s-4); }
+/* Their numbers and what they earned (docs/SOCIAL.md U13), one row that
+   wraps: the achievements beside the numbers when there is room, under
+   them when not, so a page is no taller for them on a laptop. */
+.profile .standing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
+.profile .standing .numbers, .profile .standing .awards { margin: 0; }
 .profile .pinned { margin-top: var(--s-6); }
 .profile .pinned h2, .profile .follows h2, .profile .tab-panel h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
 .profile .work { margin-top: var(--s-6); }

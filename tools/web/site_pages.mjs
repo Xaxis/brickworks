@@ -125,6 +125,10 @@ export function sitePages({ remote = "" } = {}) {
       } },
     { name: "challenge", path: "/challenge",
       ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
+    // A challenge that ran, on its own page (supabase/challenge_year.sql):
+    // its winner's card, under the crumbs back to the hub.
+    { name: "challenge-past", path: "/challenge?id=2", local: true,
+      ready: (page) => until(page, () => document.documentElement.dataset.challenge === "ended") },
     // The feed as posts with pictures (docs/SOCIAL.md U9): signed in, what
     // the people Sam follows made, and designers to follow beside it; signed
     // out and following nobody, Latest on Brickworks too.

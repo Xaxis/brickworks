@@ -65,6 +65,9 @@ const LATER = [
   ["replies.sql", "directory_card", "made_with.sql", "'made_with', m.made_with"],
   ["gallery_tabs.sql", "gallery_models", "made_with.sql", "m.made_with in ('assistant', 'brickify')"],
   ["notifications.sql", "follow_rows", "collection_follows.sql", "list_rows("],
+  ["challenges.sql", "challenge_shown", "challenge_year.sql", "challenge_announced(c)"],
+  ["challenges.sql", "challenge_list", "challenge_year.sql", "'announced_at'"],
+  ["challenges.sql", "challenge_page", "challenge_year.sql", "challenge_page_at("],
 ];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");

@@ -602,6 +602,9 @@ summary.pill::-webkit-details-marker { display: none; }
 .pill.tag::before { content: "#"; color: var(--ink-faint); }
 /* Its quieter part: a handle after a name. */
 .pill small { color: var(--ink-faint); font-size: inherit; }
+/* A person's achievements (web/card.js awardsHtml): pills, each the award
+   icon at its words' height before its name. */
+.pills.awards .icon { width: 16px; height: 16px; margin-left: -2px; }
 .pills { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
 /* One row of them that scrolls sideways inside itself (the gallery's
    kinds), never the page. A pressed one is chosen, edged in the accent. */

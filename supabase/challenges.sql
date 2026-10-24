@@ -174,6 +174,10 @@ $$;
 -- Which challenge /challenge shows, as a page asked with [tests] (whose
 -- own test ones come first): the one open, or else the next to open, or
 -- else the last that ended with somebody in it.
+-- REPLACED LATER: challenge_year.sql replaces this function (an upcoming one only once it is told).
+-- Applying this file again alone takes that out, so apply challenge_year.sql
+-- again right after it: tools/apply_sql.mjs refuses this file while the live
+-- one is challenge_year.sql's, unless --again=supabase/challenge_year.sql.
 create or replace function public.challenge_shown(tests boolean)
 returns public.challenges
 language sql
@@ -344,6 +348,10 @@ $$;
 -- Every challenge, newest first, for the admin page: {id, title, brief,
 -- starts_on, ends_on, state, rules, test, entries: {hand, assistant},
 -- votes: {hand, assistant}, winners}.
+-- REPLACED LATER: challenge_year.sql replaces this function (each one's announced_at too).
+-- Applying this file again alone takes that out, so apply challenge_year.sql
+-- again right after it: tools/apply_sql.mjs refuses this file while the live
+-- one is challenge_year.sql's, unless --again=supabase/challenge_year.sql.
 create or replace function public.challenge_list(tests boolean default false)
 returns setof jsonb
 language sql
@@ -601,6 +609,10 @@ $$;
 -- each with its group, when it was entered, whether it keeps the rules and,
 -- once it has ended, its votes; the winners once settled. Null when there
 -- is none. The same for everybody: who voted for what is challenge_mine's.
+-- REPLACED LATER: challenge_year.sql replaces this function (asked of challenge_page_at, the same body by id).
+-- Applying this file again alone takes that out, so apply challenge_year.sql
+-- again right after it: tools/apply_sql.mjs refuses this file while the live
+-- one is challenge_year.sql's, unless --again=supabase/challenge_year.sql.
 create or replace function public.challenge_page(tests boolean default false)
 returns jsonb
 language sql

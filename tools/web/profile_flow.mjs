@@ -25,6 +25,11 @@
 //     brings each, and with no script each is a page of its own;
 //   whom they follow only when they chose to show it, and never a list of
 //     who follows them;
+//   what they earned (docs/SOCIAL.md U13), a row of pills under the
+//     numbers: each challenge won (a link to the model that won it), ten
+//     builds of their models, a model Tested, their first model listed and
+//     their first build finished, the rarest first, worked out from what
+//     the page shows and never kept; none for somebody with nothing yet;
 //   nothing scrolling sideways, no script error, no refused request.
 //
 // Locally (no --url) nothing leaves this machine: design_stand_in.mjs's
@@ -42,10 +47,19 @@
 // at the end, and with it her row of profile_shows: read back with the
 // secret key on a deployment; on the relay the table is held in memory,
 // where the dry run (tools/profile_shows_try.sql) proves the cascade.
+// Her achievements, earned by doing each thing: none with a profile alone;
+// First model listed once she lists; Tested once a model of hers is; First
+// build finished once she posts a photo of her build of Bob's model; Ten
+// builds once her castle is built to its last step on ten devices. And Cy,
+// who had a profile and a model in the gallery before saying he is under 13
+// (an account from before the age question): his page, its answer and his
+// achievements are shown to nobody, and his own /profile shows none.
+// A challenge won is challenges_flow.mjs's, which has the challenge.
 // Pictures in --out.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { modelHash } from "../../api/_directory.js";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -123,6 +137,12 @@ const drawn = (page) => page.evaluate(() => {
     empty: document.querySelector(".tab-panel .state")?.textContent.replace(/\s+/g, " ").trim() || "",
     more: document.querySelector("a[data-more]")?.getAttribute("href") || "",
     follows: [...document.querySelectorAll(".follows a")].map((a) => a.getAttribute("href")),
+    awards: [...document.querySelectorAll(".profile .awards li")].map((li) => ({ id: li.dataset.award,
+      text: li.textContent.replace(/\s+/g, " ").trim(), href: li.querySelector("a")?.getAttribute("href") || "",
+      said: li.querySelector(".pill")?.title || "", icon: Boolean(li.querySelector("svg.icon use[href$='#award']")) })),
+    // Beside the numbers or under them, never before them.
+    awardsAfter: Boolean(document.querySelector(".profile .numbers")?.compareDocumentPosition(document.querySelector(".profile .awards") || document.body)
+      & Node.DOCUMENT_POSITION_FOLLOWING) && Boolean(document.querySelector(".profile .awards")),
     share: shown(document.querySelector("button[data-share]")),
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     screen: innerHeight,
@@ -217,6 +237,11 @@ async function local() {
           said.links.map((one) => one.text).join(",") === "robin-castell.example/castles,flickr.com/photos/robin-castell");
         check(`${label}: the watchtower across the top (${said.banner}), loaded`, said.banner === `/m/${stand.MODEL_ID}.png` && said.bannerLoaded);
         check(`${label}: pinned in Robin's order: ${said.pins.join(", ")}`, said.pins.join(",") === `DesignGea1,${stand.MODEL_ID},DesignFox1`);
+        check(`${label}: achievements ${said.awards.map((one) => one.text).join(" · ")}, the win a link to the watchtower, each with its icon and what it means`,
+          said.awards.map((one) => one.id).join(",") === "won,ten,tested,listed,built"
+          && said.awards[0].text === "Won “Castle September”, by hand" && said.awards[0].href === `/m/${stand.MODEL_ID}`
+          && said.awards.slice(1).map((one) => one.text).join("|") === "Ten builds|Tested|First model listed|First build finished"
+          && said.awards.every((one) => one.icon && one.said));
         check(`${label}: Models shown, 4 cards; whom Robin follows, shown by choice (${said.follows.join(", ")}); Follow ${said.follow?.shown ? "shown" : "hidden"}`,
           said.panel === "models" && said.cards.length === 4 && said.follows.join(",") === "/u/priya-plays,/u/mika-mocs"
           && Boolean(said.follow?.shown));
@@ -267,6 +292,8 @@ async function local() {
       headHolds(said, `house ${width} ${theme}`, { name: "Brickworks", handle: "brickworks", phone: width < 600 });
       check(`house ${width} ${theme}: its 7 models, no banner, no pins, no links`, said.cards.length === 7 && !said.banner
         && said.pins.length === 0 && said.links.length === 0);
+      check(`house ${width} ${theme}: achievements ${said.awards.map((one) => one.text).join(" · ")}, no challenge won`,
+        said.awards.some((one) => one.id === "listed") && !said.awards.some((one) => one.id === "won"));
       await shot(house.page, `house_${width}_${theme}.png`);
       await house.page.click('.profile .tabs a[data-tab="builds"]');
       await house.page.waitForLoadState("load");
@@ -276,8 +303,8 @@ async function local() {
       const alex = await open("/u/new-here", { width, theme, label: `new ${width} ${theme}` });
       said = await drawn(alex.page);
       headHolds(said, `new ${width} ${theme}`, { name: "Alex Moreau", handle: "new-here", phone: width < 600 });
-      check(`new ${width} ${theme}: no numbers, Models says what goes there: "${said.empty.slice(0, 50)}…"`,
-        said.numbers.every((one) => !one.shown) && /^Nothing in the gallery yet\./.test(said.empty));
+      check(`new ${width} ${theme}: no numbers, no achievements, Models says what goes there: "${said.empty.slice(0, 50)}…"`,
+        said.numbers.every((one) => !one.shown) && said.awards.length === 0 && /^Nothing in the gallery yet\./.test(said.empty));
       await shot(alex.page, `new_${width}_${theme}.png`);
       await alex.page.click('.profile .tabs a[data-tab="collections"]');
       await alex.page.waitForLoadState("load");
@@ -316,6 +343,33 @@ async function local() {
     third.status === 200 && cards.length === 12 && !third.html.includes("data-more") && third.html.includes("Back to the first"));
   const nobody = await stand.serverPage(path.join(root, "api"), "/u/nobody-here");
   check(`a handle nobody has: ${nobody.status}`, nobody.status === 404);
+
+  console.log("5. Your own page shows what you earned, as everybody sees it on your page");
+  const theirs = await stand.serverPage(path.join(root, "api"), "/u/sam-builds");
+  const shownToAll = [...theirs.html.matchAll(/<li data-award="([a-z]+)"/g)].map((one) => one[1]);
+  for (const width of widths) {
+    const theme = themes[0];
+    const phone = width < 600;
+    const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
+      ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+    await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api") });
+    await context.addInitScript(([key, value, access]) => {
+      try {
+        localStorage.setItem(key, value);
+        if (access) sessionStorage.setItem("brickworks.access", access);
+      } catch { /* a browser that keeps nothing */ }
+    }, standSession());
+    const page = await context.newPage();
+    listen(page, `your page ${width}`);
+    await page.goto(`${site}/profile`, { waitUntil: "load", timeout: 60000 });
+    await until(page, () => document.documentElement.dataset.profile === "ready");
+    const mine = await page.evaluate(() => [...document.querySelectorAll("#awards-shown .awards li")]
+      .map((li) => `${li.dataset.award}:${li.textContent.trim()}`));
+    check(`your page ${width} ${theme}: ${mine.join(" · ") || "(none)"}, as /u/sam-builds shows everybody (${shownToAll.join(", ")})`,
+      mine.length > 0 && mine.map((one) => one.split(":")[0]).join(",") === shownToAll.join(","));
+    await shot(page, `yours_${width}_${theme}.png`, false);
+    await context.close();
+  }
 }
 
 /// A throwaway account's request to the site's API.
@@ -327,14 +381,35 @@ async function api(pathname, { method = "GET", token, body } = {}) {
   return { status: reply.status, json: await reply.json().catch(() => null) };
 }
 
+/// [count] 1 x 2 bricks, each its own step: a model small enough to share.
+function stepped(name, count, rand) {
+  const lines = [`0 ${name}`, `0 Name: profile_${rand}.ldr`, "0 Author: Profile Flow", `0 !BRICKWORKS PAGES {"v":1,"steps":${count}}`];
+  for (let n = 0; n < count; n++) lines.push(`1 14 ${(n % 6) * 80} ${-24 * Math.floor(n / 6)} 0 1 0 0 0 1 0 0 0 1 3004.dat`, "0 STEP");
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+/// The app's finding of [text] as the Share panel sends it: all four passed.
+const finding = (text, count) => ({ v: 1, app: "0.3.0", model: modelHash(text), steps: count, parts: count,
+  tests: Object.fromEntries(["stands", "steps", "parts", "whole"].map((name) => [name, { ok: true, why: "The profile flow's model" }])) });
+
+/// What [handle]'s page answers it earned (?op=profile), by id: "listed,built".
+async function earned(handle) {
+  const r = await api(`/api/people?op=profile&handle=${handle}&tests=1`);
+  return r.status === 200 ? (r.json?.achievements || []).map((one) => one.id).join(",") : `HTTP ${r.status}`;
+}
+
 async function deployed() {
   const rand = randomBytes(4).toString("hex");
   const adaEmail = `delivered+bw-profile-ada-${rand}@resend.dev`;
   const bobEmail = `delivered+bw-profile-bob-${rand}@resend.dev`;
+  const cyEmail = `delivered+bw-profile-cy-${rand}@resend.dev`;
   const ADA = `profile-ada-${rand}`;
+  const CY = `profile-cy-${rand}`;
   const made = [];
+  const others = [];
   let ada = null;
   let bob = null;
+  let cy = null;
   try {
     console.log("1. Ada makes a profile, lists two models, and chooses what her page shows");
     ada = await mintSession(adaEmail);
@@ -342,6 +417,8 @@ async function deployed() {
     let r = await api("/api/people?op=profile", { method: "POST", token: ada.access_token,
       body: { handle: ADA, name: "Ada Profile", bio: "Castles and small machines, for the profile flow." } });
     check(`Ada's profile: ${r.status} /u/${r.json?.handle}`, r.status === 200 && r.json?.handle === ADA);
+    let marks = await earned(ADA);
+    check(`a profile alone has earned nothing: "${marks}"`, marks === "");
     const picture = readFileSync(path.join(root, "web/share.png")).toString("base64");
     for (const [file, name] of [["castle.ldr", "Profile Castle"], ["lighthouse.ldr", "Profile Lighthouse"]]) {
       r = await api("/api/share", { method: "POST", token: ada.access_token, body: { name: `${name} ${rand}`, author: "Ada Profile",
@@ -350,6 +427,46 @@ async function deployed() {
       check(`listed ${name}: ${r.status} ${r.json?.id}`, r.status === 201 && ID.test(String(r.json?.id || "")));
       made.push(r.json?.id);
     }
+    marks = await earned(ADA);
+    check(`listed, she has her first model listed: "${marks}"`, marks === "listed");
+    {
+      // A model the app tested as she shared it.
+      const text = stepped(`Profile Tested ${rand}`, 6, rand);
+      r = await api("/api/share", { method: "POST", token: ada.access_token, body: { name: `Profile Tested ${rand}`,
+        author: "Ada Profile", model: text, image: picture, listed: true, tested: finding(text, 6) } });
+      check(`a Tested one listed: ${r.status} ${r.json?.id}, Tested ${r.json?.tested?.passed}`, r.status === 201 && r.json?.tested?.passed === true);
+      made.push(r.json?.id);
+    }
+    marks = await earned(ADA);
+    check(`...and Tested: "${marks}"`, marks === "tested,listed");
+    {
+      // Bob lists a model, and Ada posts a photo of her real build of it.
+      r = await api("/api/share", { method: "POST", token: bob.access_token, body: { name: `Profile Bob's ${rand}`, author: "Bob Profile",
+        model: readFileSync(path.join(root, "models", "castle.ldr"), "utf8"), image: picture, listed: true } });
+      others.push([r.json?.id, bob]);
+      const png = readFileSync(path.join(root, "web/share.png"));
+      const start = await api("/api/people?op=photo_start", { method: "POST", token: ada.access_token,
+        body: { model: r.json?.id, type: "image/png", size: png.length } });
+      const sent = start.status === 200 ? await fetch(start.json.upload, { method: "PUT", headers: { "content-type": "image/png" }, body: png }) : null;
+      const kept = start.status === 200 ? await api("/api/people?op=photo", { method: "POST", token: ada.access_token,
+        body: { model: r.json?.id, ticket: start.json.ticket } }) : start;
+      check(`her photo of her build of Bob's model: ${start.status}, ${sent?.status ?? "-"}, ${kept.status}`, kept.status === 201);
+    }
+    marks = await earned(ADA);
+    check(`...and her first build finished: "${marks}"`, marks === "tested,listed,built");
+    {
+      // Her castle built to its last step on ten devices (the desktop app's finish).
+      const counted = [];
+      for (let n = 0; n < 10; n += 1) {
+        const one = await fetch(`${site}/api/share?op=built&id=${made[0]}`, { method: "POST", body: JSON.stringify({ device: randomBytes(16).toString("hex") }),
+          headers: { ...headers, "content-type": "application/json", "user-agent": "Brickworks/0.3.0 (desktop)" } });
+        counted.push((await one.json().catch(() => ({}))).counted === true);
+      }
+      check(`her castle finished on ten devices: ${counted.filter(Boolean).length} counted`, counted.every(Boolean));
+    }
+    marks = await earned(ADA);
+    check(`...and ten builds of her models, the rarest first: "${marks}"`, marks === "ten,tested,listed,built");
+
     // Refused whether or not profile_shows.sql is applied: each is checked first.
     const refused = [
       ["signed out", null, { links: ["https://ada.example"] }, 401],
@@ -373,7 +490,7 @@ async function deployed() {
       : r.status === 503 && /not open on Brickworks yet/.test(r.json?.error || ""));
     const me = await api("/api/people?op=me", { token: ada.access_token });
     check(`her account page has them to choose from: ${me.json?.showcase?.models?.length} models`,
-      me.status === 200 && me.json.showcase.ready === applied && me.json.showcase.models.length === 2);
+      me.status === 200 && me.json.showcase.ready === applied && me.json.showcase.models.length === 3);
 
     console.log("2. Her page, at both widths and themes, signed out and as Bob");
     for (const width of widths) {
@@ -385,8 +502,11 @@ async function deployed() {
           await until(page, () => !document.querySelector("button[data-follow]")?.hidden);
           const said = await drawn(page);
           headHolds(said, label, { name: "Ada Profile", handle: ADA, phone: width < 600 });
-          check(`${label}: her 2 models; the Models tab shown`, said.panel === "models" && said.cards.length === 2
-            && said.cards.every((id) => made.includes(id)) && said.tabs[0].n === "2");
+          check(`${label}: her 3 models; the Models tab shown`, said.panel === "models" && said.cards.length === 3
+            && said.cards.every((id) => made.includes(id)) && said.tabs[0].n === "3");
+          check(`${label}: what she earned, after her numbers: ${said.awards.map((one) => one.text).join(" · ")}`,
+            said.awards.map((one) => one.id).join(",") === "ten,tested,listed,built" && said.awards.every((one) => one.icon)
+            && said.awardsAfter);
           check(applied ? `${label}: links, the lighthouse across the top, pins in her order`
             : `${label}: no links, banner or pins before profile_shows.sql`, applied
             ? said.links.length === 2 && said.banner === `/m/${made[1]}.png` && said.pins.join(",") === `${made[1]},${made[0]}`
@@ -396,13 +516,62 @@ async function deployed() {
         }
       }
     }
+
+    console.log("3. Cy had a profile and a model in the gallery, then said he is under 13");
+    cy = await mintSession(cyEmail);
+    r = await api("/api/people?op=profile", { method: "POST", token: cy.access_token, body: { handle: CY, name: "Cy Profile" } });
+    const cys = await api("/api/share", { method: "POST", token: cy.access_token, body: { name: `Profile Cy ${rand}`, author: "Cy Profile",
+      model: readFileSync(path.join(root, "models", "castle.ldr"), "utf8"), image: picture, listed: true } });
+    others.push([cys.json?.id, cy]);
+    marks = await earned(CY);
+    check(`before: /u/${CY} shows his first model listed ("${marks}")`, r.status === 200 && marks === "listed");
+    // As an account from before the age question stands once it answers
+    // under 13: its row says so (answer_age would also take its models out
+    // of the gallery; here they stay in it, the harder case).
+    const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+    const secret = process.env.SUPABASE_SECRET_KEY || "";
+    const said = await fetch(`${base}/rest/v1/profiles?id=eq.${cy.kept.user_id}`, { method: "PATCH",
+      headers: { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json", prefer: "return=minimal" },
+      body: JSON.stringify({ over_13: false, age_asked_at: new Date().toISOString() }) });
+    const page = await fetch(`${site}/u/${CY}?tests=1`, { headers });
+    const body = await page.text();
+    const json = await api(`/api/people?op=profile&handle=${CY}&tests=1`);
+    check(`after (${said.status}): his page ${page.status}, its answer ${json.status}, neither naming what he earned`,
+      said.ok && page.status === 404 && json.status === 404 && !/First model listed|data-award/.test(body)
+      && !/achievements|First model listed/.test(JSON.stringify(json.json || {})));
+    {
+      const width = widths[0];
+      const phone = width < 600;
+      const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: themes[0],
+        extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+      await context.addInitScript(([key, value]) => {
+        try { localStorage.setItem(key, value); } catch { /* a browser that keeps nothing */ }
+      }, [STORAGE_KEY, JSON.stringify(cy.kept)]);
+      const his = await context.newPage();
+      listen(his, `Cy's own page ${width}`);
+      await his.goto(`${site}/profile`, { waitUntil: "load", timeout: 60000 });
+      await until(his, () => document.documentElement.dataset.profile === "ready", undefined, 45000);
+      const own = await his.evaluate(() => ({ young: document.documentElement.dataset.young,
+        awards: document.querySelectorAll("#awards-shown li, .awards li").length,
+        told: document.getElementById("young")?.hidden === false }));
+      check(`his own /profile at ${width}: under 13 said (${own.young}), no achievements (${own.awards})`,
+        own.young === "yes" && own.told && own.awards === 0);
+      await shot(his, `cy_own_${width}.png`, false);
+      await context.close();
+    }
   } finally {
     for (const id of made) {
       if (id && ada) await api(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: ada.access_token }).catch(() => {});
     }
+    for (const [id, who] of others) {
+      if (id && who) await api(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: who.access_token }).catch(() => {});
+    }
     const account = ada?.kept?.user_id;
-    const gone = [await deleteAccount(adaEmail), await deleteAccount(bobEmail)];
-    check("both throwaway accounts deleted", gone.every(Boolean));
+    // Ada's by the site's own Delete account, which deletes her photo's file
+    // by name first; the others' as every flow's.
+    const hers = ada ? await api("/api/account?op=delete", { method: "POST", token: ada.access_token, body: { confirm: adaEmail } }) : null;
+    const gone = [hers?.status === 200 || await deleteAccount(adaEmail), await deleteAccount(bobEmail), await deleteAccount(cyEmail)];
+    check(`the throwaway accounts deleted (Ada's by Delete account: ${hers?.status})`, gone.every(Boolean));
     const page = await api(`/u/${ADA}?tests=1`);
     check(`her page after: ${page.status}`, page.status === 404);
     // Her row of profile_shows, gone with her account (on delete cascade).

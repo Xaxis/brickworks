@@ -204,7 +204,7 @@ import { withFaces } from "./_faces.js";
 import { cardHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml } from "./_card.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -511,7 +511,7 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built, follows, designer, shows, liked] = await Promise.all([
+  const [page, about, built, follows, designer, shows, liked, wins] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
@@ -519,6 +519,7 @@ async function profile(request, response) {
     designerOf(originOf(request), handle, tests),
     showsOf(person.account),
     likedShown(person.account, tests),
+    winsBy(person.account, tests).catch(() => []),
   ]);
   // What their models earned (supabase/designers.sql), and each card's
   // comments beside its builds and remixes, and what it won: the same
@@ -536,7 +537,9 @@ async function profile(request, response) {
       comments: earned.comments, tested: earned.tested, likes: earned.likes, builders: earned.builders,
       followers: follows?.followers ?? 0, photos: earned.photos } : null,
     collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`,
-    links: showcase.links, banner: showcase.banner, pins: showcase.pins, ...page, models: cards }));
+    links: showcase.links, banner: showcase.banner, pins: showcase.pins,
+    // What they earned (docs/SOCIAL.md U13), as their page has it.
+    achievements: achievementsOf({ about, earned, built, wins }), ...page, models: cards }));
 }
 
 /// How many models [account] liked, when they chose to show which (and
@@ -1073,6 +1076,30 @@ function numbersHtml(earned, about, follows) {
     + "</ul>";
 }
 
+/// What a person earned here (docs/SOCIAL.md U13), worked out from what
+/// their page already shows and never stored: each challenge their models
+/// won, ten builds finished of their models, a model marked Tested, their
+/// first model in the gallery, their first photo of a real build; the
+/// rarest first. Nothing of a profile not shown in public, as every other
+/// part of it (personOf: none under 13, none taken out).
+export function achievementsOf({ about, earned, built, wins }) {
+  const out = (wins || []).map((win) => ({ id: "won", name: wonSaid(win), model: win.model,
+    said: `${win.name}: ${count(win.votes, "vote")}` }));
+  if ((Number(earned?.builds) || 0) >= 10) {
+    out.push({ id: "ten", name: "Ten builds", said: "Their models were built to the last step ten times or more" });
+  }
+  if ((Number(earned?.tested) || 0) > 0) {
+    out.push({ id: "tested", name: "Tested", said: "A model of theirs is marked Tested: it stands at every step" });
+  }
+  if ((Number(earned ? earned.models : about?.models) || 0) > 0) {
+    out.push({ id: "listed", name: "First model listed", said: "They shared a model in the gallery with their name on it" });
+  }
+  if ((built || []).length > 0) {
+    out.push({ id: "built", name: "First build finished", said: "They posted a photo of their real build of a model in the gallery" });
+  }
+  return out;
+}
+
 /// A set of photos of real builds: [photos] each with its model's name;
 /// [by] says who built each, for the photos of a designer's models. Any
 /// shape, so in columns (docs/SOCIAL.md D4).
@@ -1145,8 +1172,6 @@ async function profilePage(request, response) {
 
   // The head: who they are, what they said, where else they are, their
   // numbers, and what can be done here.
-  const won = wins.map((win) => `<li data-won="${escapeHtml(win.model)}"><a class="pill new" href="/m/${escapeHtml(win.model)}"`
-    + ` title="${escapeHtml(`${win.name}: ${count(win.votes, "vote")}`)}">${escapeHtml(wonSaid(win))}</a></li>`).join("");
   const links = showcase.links.map((link) => `<li><a href="${escapeHtml(link.href)}" rel="ugc nofollow noopener" target="_blank">`
     + `${escapeHtml(link.said)}</a></li>`).join("");
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More">${iconHtml("more")}</summary>`
@@ -1170,8 +1195,7 @@ async function profilePage(request, response) {
   </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="Elsewhere">${links}</ul>` : ""}
-  ${numbersHtml(earned, about, follows)}
-  ${won ? `<ul class="pills wins" aria-label="Challenges won">${won}</ul>` : ""}`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins }))}</div>`;
 
   // Pinned: up to three of their models, in the order they chose.
   await withFaces(showcase.pins);

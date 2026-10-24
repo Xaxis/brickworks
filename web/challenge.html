@@ -9,6 +9,12 @@
   or over vote, once in each group; when it ends the most voted in each
   wins, and the winner's card and designer's page say so.
 
+  Between months (supabase/challenge_year.sql, 2026-10-24): under the one
+  shown, the next one's theme and days once it is told (the owner sets a
+  year of themes on /admin, each told a month before it opens), and the
+  challenges that ran, each with its winners as the gallery's cards and a
+  link to its own page, /challenge?id=N, which draws it as this one is.
+
   challenge.js draws it from /api/people?op=challenge, every name as text
   and never as markup, with the gallery's own cards (directory.css). No
   inline script: the site's content security policy allows none it has not
@@ -79,6 +85,7 @@
 
 <main id="main">
 	<div class="wrap person challenge" id="challenge">
+		<nav class="crumbs" id="crumbs" aria-label="Where it is" hidden><a href="/challenge">Challenges</a> › <span id="crumb"></span></nav>
 		<p class="eyebrow" id="eyebrow">Monthly challenge</p>
 		<h1 id="title">This month’s challenge</h1>
 		<p class="handle" id="days"></p>
@@ -112,6 +119,20 @@
 
 		<div id="groups"></div>
 		<p class="said" id="said" role="status"></p>
+
+		<section id="next" aria-labelledby="next-h" hidden>
+			<h2 id="next-h">Coming next</h2>
+			<div class="card next-one">
+				<h3 id="next-title"></h3>
+				<p class="handle" id="next-days"></p>
+				<p id="next-brief"></p>
+			</div>
+		</section>
+
+		<section id="past" aria-labelledby="past-h" hidden>
+			<h2 id="past-h">Past challenges</h2>
+			<div id="past-list"></div>
+		</section>
 	</div>
 </main>
 

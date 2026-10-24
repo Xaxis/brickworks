@@ -1,5 +1,7 @@
 // supabase/challenges.sql's functions, held in the local server's own
-// process, for proving the API and the pages before the file is applied.
+// process, for proving the API and the pages before the file is applied;
+// and supabase/challenge_year.sql's (challenge_next, _past, _page_at, _plan,
+// and the announced_at it adds), which the flows prove before that one is.
 //
 //   node --env-file=.env tools/web/relay_server.mjs 9271 --hold=challenges
 //
@@ -25,7 +27,7 @@ const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const REST = `${SUPABASE}/rest/v1/`;
 const NAMES = ["challenge_set", "challenge_end", "challenge_list", "challenge_shown", "challenge_enter",
   "challenge_withdraw", "challenge_for_model", "challenge_vote", "challenge_settle", "challenge_page",
-  "challenge_mine", "challenge_wins"];
+  "challenge_mine", "challenge_wins", "challenge_next", "challenge_past", "challenge_page_at", "challenge_plan"];
 const CARD = "id,owner,name,author,parts,published,listed,barred,test,has_image,has_thumb,listed_at,updated_at,kind,tags,"
   + "licence,steps,own_steps,technic";
 
@@ -54,6 +56,10 @@ const yes = async (name, body) => (await rpc(name, body)) === true;
 
 const today = () => new Date().toISOString().slice(0, 10);
 const stateOf = (c) => (c.ended_at || c.ends_on < today() ? "ended" : c.starts_on > today() ? "upcoming" : "open");
+/// challenge_year.sql: told to visitors, and ever opened.
+const announced = (c) => !c.announced_at || Date.parse(c.announced_at) <= Date.now();
+const opened = (c) => c.starts_on <= today() && (!c.ended_at || c.ended_at.slice(0, 10) >= c.starts_on);
+const endedOn = (c) => (c.ended_at && c.ended_at.slice(0, 10) < c.ends_on ? c.ended_at.slice(0, 10) : c.ends_on);
 const addDays = (day, n) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 
 async function model(id) {
@@ -123,7 +129,8 @@ const openFor = (tests) => challenges.filter((c) => c.test === Boolean(tests) &&
 
 function shownFor(tests) {
   const rank = { open: 0, upcoming: 1, ended: 2 };
-  return challenges.filter((c) => (!c.test || tests) && (stateOf(c) !== "ended" || entries.some((e) => e.challenge === c.id)))
+  return challenges.filter((c) => (!c.test || tests) && (stateOf(c) !== "ended" || entries.some((e) => e.challenge === c.id))
+    && (stateOf(c) !== "upcoming" || announced(c)))
     .sort((a, b) => rank[stateOf(a)] - rank[stateOf(b)] || Number(b.test) - Number(a.test)
       || (stateOf(a) === "upcoming" ? (a.starts_on < b.starts_on ? -1 : a.starts_on > b.starts_on ? 1 : 0) : 0)
       || (b.ends_on < a.ends_on ? -1 : b.ends_on > a.ends_on ? 1 : 0) || b.id - a.id)[0] || null;
@@ -149,7 +156,7 @@ const FUNCTIONS = {
     const c = { id: nextId++, title: a.title, brief: a.brief, starts_on: a.starts_on, ends_on: a.ends_on,
       most_parts: a.most_parts ?? null, set_number: a.set_number ? String(a.set_number).toLowerCase() : null,
       set_name: a.set_name ?? null, tested: a.tested === true, test: a.test === true, created_at: new Date().toISOString(),
-      ended_at: null, settled_at: null };
+      ended_at: null, settled_at: null, announced_at: null };
     challenges.push(c);
     if (c.set_number) {
       const lots = new Map();
@@ -177,7 +184,8 @@ const FUNCTIONS = {
       for (const w of winners.filter((one) => one.challenge === c.id).sort((a, b) => (a.way < b.way ? 1 : -1))) {
         won.push({ way: w.way, model: w.model, name: (await model(w.model))?.name ?? null, votes: w.votes });
       }
-      out.push({ id: c.id, title: c.title, brief: c.brief, starts_on: c.starts_on, ends_on: c.ends_on, state: stateOf(c),
+      out.push({ id: c.id, title: c.title, brief: c.brief, starts_on: c.starts_on, ends_on: c.ends_on,
+        announced_at: c.announced_at, state: stateOf(c),
         test: c.test, ended_at: c.ended_at, settled: Boolean(c.settled_at), rules: rulesOf(c),
         entries: { hand: of(entries, "hand"), assistant: of(entries, "assistant") },
         votes: { hand: of(votes, "hand"), assistant: of(votes, "assistant") }, winners: won });
@@ -265,6 +273,12 @@ const FUNCTIONS = {
 
   async challenge_page({ tests = false }) {
     const c = shownFor(tests);
+    return c ? FUNCTIONS.challenge_page_at({ challenge_id: c.id, tests }) : null;
+  },
+
+  async challenge_page_at({ challenge_id, tests = false }) {
+    const c = challenges.find((one) => one.id === Number(challenge_id) && (!one.test || tests)
+      && (stateOf(one) === "open" || (stateOf(one) === "upcoming" ? announced(one) : opened(one))));
     if (!c) return null;
     const state = stateOf(c);
     const shown = [];
@@ -289,6 +303,62 @@ const FUNCTIONS = {
       entries: entries.filter((e) => e.challenge === id && e.owner === account).map((e) => e.model),
       may_vote: (await yes("trust_may_go_public", { account })) && !(await yes("is_barred", { account })),
       under_13: await yes("trust_kept_private", { account }) };
+  },
+
+  async challenge_next({ tests = false, after = null }) {
+    const c = challenges.filter((one) => (!one.test || tests) && stateOf(one) === "upcoming" && announced(one)
+      && one.id !== Number(after)).sort((a, b) => Number(b.test) - Number(a.test)
+      || (a.starts_on < b.starts_on ? -1 : a.starts_on > b.starts_on ? 1 : a.id - b.id))[0];
+    return c ? { ...c } : { id: null };
+  },
+
+  async challenge_past({ tests = false }) {
+    const out = [];
+    const ran = challenges.filter((c) => (!c.test || tests) && stateOf(c) === "ended" && opened(c)
+      && (!c.test || entries.some((e) => e.challenge === c.id)))
+      .sort((a, b) => (endedOn(b) < endedOn(a) ? -1 : endedOn(b) > endedOn(a) ? 1 : b.id - a.id)).slice(0, 24);
+    for (const c of ran) {
+      let shown = 0;
+      for (const e of entries.filter((one) => one.challenge === c.id)) {
+        if (await inGallery(await model(e.model), tests) && await yes("shown_publicly", { account: e.owner })) shown += 1;
+      }
+      const won = [];
+      for (const w of winners.filter((one) => one.challenge === c.id).sort((a, b) => (a.way < b.way ? 1 : -1))) {
+        const m = await model(w.model);
+        if (!(await inGallery(m, tests)) || !(await yes("shown_publicly", { account: w.owner }))) continue;
+        won.push({ way: w.way, model: w.model, votes: w.votes, card: await card(m) });
+      }
+      out.push({ id: c.id, title: c.title, brief: c.brief, starts_on: c.starts_on, ends_on: c.ends_on, ended_on: endedOn(c),
+        test: c.test, settled: Boolean(c.settled_at), entries: shown, winners: won });
+    }
+    return out;
+  },
+
+  async challenge_plan({ themes, lead_days = 31, test = false }) {
+    if (!Array.isArray(themes) || !themes.length || themes.length > 12) return { refused: "none" };
+    const sorted = themes.map((one, at) => ({ ...one, at })).sort((a, b) => (a.starts_on < b.starts_on ? -1 : a.starts_on > b.starts_on ? 1 : a.at - b.at));
+    let last = null;
+    for (const one of sorted) {
+      const words = (text, most) => typeof text === "string" && text.length >= 1 && text.length <= most;
+      if (!words(one.title, 80) || !words(one.brief, 600)) return { refused: "words", at: one.at };
+      if (!one.starts_on || !one.ends_on || one.ends_on < one.starts_on || one.ends_on > addDays(one.starts_on, 62)) return { refused: "days", at: one.at };
+      if (one.ends_on < today()) return { refused: "past", at: one.at };
+      if (last && one.starts_on <= last) return { refused: "overlap", at: one.at };
+      last = one.ends_on;
+      const other = challenges.filter((c) => c.test === Boolean(test) && !c.ended_at && c.starts_on <= one.ends_on
+        && c.ends_on >= one.starts_on).sort((x, y) => (x.starts_on < y.starts_on ? -1 : 1))[0];
+      if (other) return { refused: "overlap", at: one.at, with: { id: other.id, title: other.title } };
+    }
+    const planned = [];
+    for (const one of sorted) {
+      const told = Math.max(Date.now(), Date.parse(`${addDays(one.starts_on, -Number(lead_days))}T00:00:00Z`));
+      const c = { id: nextId++, title: one.title, brief: one.brief, starts_on: one.starts_on, ends_on: one.ends_on,
+        most_parts: null, set_number: null, set_name: null, tested: false, test: Boolean(test),
+        created_at: new Date().toISOString(), ended_at: null, settled_at: null, announced_at: new Date(told).toISOString() };
+      challenges.push(c);
+      planned.push({ challenge: c.id, title: c.title, starts_on: c.starts_on, ends_on: c.ends_on, announced_at: c.announced_at });
+    }
+    return { planned };
   },
 
   async challenge_wins({ owner = null, models = null, tests = false }) {
