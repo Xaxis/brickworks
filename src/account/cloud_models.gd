@@ -174,10 +174,10 @@ func _sync_once() -> void:
 			continue
 		if had.is_empty() and _claimed_elsewhere(name):
 			continue
-		var ok: bool = await _send(name, FileAccess.get_file_as_string(path),
+		var went: String = await _send(name, FileAccess.get_file_as_string(path),
 			int(had.get("v", 0)) if not had.is_empty() else 0)
-		sent += 1 if ok else 0
-		trouble = trouble or not ok
+		sent += 1 if went == "kept" else 0
+		trouble = trouble or went == "away"
 	# Then what only the account has.
 	for name: String in there:
 		if FileAccess.file_exists(_path(name)):
@@ -185,7 +185,7 @@ func _sync_once() -> void:
 		var got: int = await _fetch_model(name, "")
 		fetched += maxi(got, 0)
 		trouble = trouble or got < 0
-	state = "away" if trouble and refused.is_empty() else "kept"
+	state = "away" if trouble else "kept"
 	keeping = not trouble and refused.is_empty()
 	last = {"sent": sent, "fetched": fetched, "names": _known().keys()}
 	if fetched > 0:
@@ -236,9 +236,11 @@ func _local_names() -> PackedStringArray:
 	return out
 
 
-## Send the model called [param name], made from [param base]: true when the
-## account keeps it.
-func _send(name: String, text: String, base: int) -> bool:
+## Send the model called [param name], made from [param base]: "kept" when
+## the account keeps it, "refused" when it will not (too big, or the
+## account full: said, and in [member refused]), "away" when it could not be
+## asked.
+func _send(name: String, text: String, base: int) -> String:
 	var zipped: PackedByteArray = text.to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
 	var reply: Dictionary = await _ask("POST", "/api/models", JSON.stringify({
 		"name": name, "base": base, "model": Marshalls.raw_to_base64(zipped)}))
@@ -248,24 +250,24 @@ func _send(name: String, text: String, base: int) -> bool:
 		if str(refused.get(name, "")) != why:
 			said.emit("“%s” is not kept with your account: %s" % [name, why])
 		refused[name] = why
-		return false
+		return "refused"
 	if int(reply["code"]) != 200 or not body is Dictionary:
-		return false
+		return "away"
 	refused.erase(name)
 	var kept: String = str((body as Dictionary).get("name", name))
 	var version: int = int((body as Dictionary).get("version", 1))
 	var sum: String = text.sha256_text()
 	if kept == name or not fits(kept):
 		_record(name, version, sum)
-		return true
+		return "kept"
 	# Made from an older version than the account's, and kept beside it: this
 	# copy takes the name it is kept under, and the account's comes here as
 	# it is there.
 	var path: String = _path(kept)
 	if FileAccess.file_exists(path) and FileAccess.get_file_as_string(path).sha256_text() != sum:
-		return true
+		return "kept"
 	if not _write(path, text):
-		return false
+		return "away"
 	_record(kept, version, sum)
 	kept_as.emit(name, kept)
 	var mine: String = _path(name)
@@ -274,7 +276,7 @@ func _send(name: String, text: String, base: int) -> bool:
 		await _fetch_model(name, sum)
 	said.emit("“%s” was saved in another browser or on another device too, so this one is kept "
 		% name + "as “%s”: both are in File › Open." % kept)
-	return true
+	return "kept"
 
 
 ## Fetch the account's model called [param name] here, over the file of that
