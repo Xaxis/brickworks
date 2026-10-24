@@ -13,7 +13,8 @@ This runs the file instead.
 
 Real pytest wins wherever it exists; tools/check.sh only falls back here.
 The shim implements exactly what the suite uses — approx, fixture,
-mark.parametrize, mark.skipif, and the tmp_path and capsys fixtures — and
+mark.parametrize, mark.skipif, and the tmp_path, capsys and monkeypatch
+(its setattr) fixtures — and
 raises on anything else by name, so it can never quietly skip a test it did
 not understand.
 
@@ -149,6 +150,23 @@ class CaptureFixture:
         sys.stdout, sys.stderr = self._saved
 
 
+class MonkeyPatch:
+    """pytest's monkeypatch, its setattr: each attribute set is put back as
+    it was when the test ends."""
+
+    def __init__(self) -> None:
+        self._was: list[tuple[object, str, object]] = []
+
+    def setattr(self, target: object, name: str, value: object) -> None:
+        self._was.append((target, name, getattr(target, name)))
+        setattr(target, name, value)
+
+    def undo(self) -> None:
+        for target, name, value in reversed(self._was):
+            setattr(target, name, value)
+        self._was.clear()
+
+
 def fixture(fn=None, *, scope: str = "function"):
     def mark(f):
         f.__fixture__ = scope
@@ -234,10 +252,16 @@ def run(path: Path) -> tuple[int, int, int]:
         closers.append(capsys.close)
         return capsys
 
+    def patch(closers: list) -> MonkeyPatch:
+        monkeypatch = MonkeyPatch()
+        closers.append(monkeypatch.undo)
+        return monkeypatch
+
     # pytest's own fixtures, the ones the suite asks for.
     builtin = {
         "tmp_path": lambda closers: Path(tempfile.mkdtemp(dir=temp)),
         "capsys": capture,
+        "monkeypatch": patch,
     }
 
     def resolve(name: str, test: dict[str, object], closers: list):
