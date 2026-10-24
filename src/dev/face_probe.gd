@@ -31,14 +31,17 @@ const OWL_BODY: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}
 	{"ellipsoid": {"centre": [10, 54, 7.5], "radii": [4.5, 11, 4]}, "color": 84},
 	{"ellipsoid": {"centre": [10, 53, 9.5], "radii": [3.8, 9, 2.2]}, "color": 15}]}
 
-## Heads, each with the face said on it: [name, the shape, its face].
+## Heads, each with the face said on it: [name, the shape, its face]. The
+## cat's nose in bright pink (29), as 54200 is made: in pink (13), which it
+## never was, it has been put in the nearest colour it was since 101c4e40
+## (2026-10-24), and no nose of its colour was found.
 const HEADS: Array = [
 	["owl", "owl", {"facing": "+z", "x": 10, "y": 53, "z": 11, "across": 6, "color": 15,
 		"rim": 84, "eyes": 0, "beak": 19}],
 	["cat", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 25, "solids": [
 		{"ellipsoid": {"centre": [6, 12, 6], "radii": [5, 12, 5]}}]},
 		{"facing": "+z", "x": 6, "y": 13, "z": 11, "across": 4, "color": 15, "eyes": 2,
-			"beak": 13}],
+			"beak": 29}],
 	["big owl", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84, "solids": [
 		{"ellipsoid": {"centre": [8, 15, 8], "radii": [7, 15, 7]}}]},
 		{"facing": "+z", "x": 8, "y": 17, "z": 15, "across": 8, "color": 15, "eyes": 0,
