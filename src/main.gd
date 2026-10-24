@@ -5852,7 +5852,7 @@ func can_reshape_flex() -> bool:
 	return _flex != null and not _flex.selected_item().is_empty()
 
 
-## Build, Motions….
+## File, Build together….
 func open_together() -> void:
 	if _together_dialog == null:
 		_together_dialog = TogetherDialog.new()
@@ -5877,6 +5877,7 @@ func _maybe_join_together() -> void:
 	open_together()
 
 
+## Build, Motions….
 func open_pose() -> void:
 	_builder.hide_preview()
 	if _simulate.visible:
