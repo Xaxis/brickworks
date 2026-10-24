@@ -150,6 +150,8 @@ try {
       const box = await where("part search");
       if (!box) return false;
       await tap(box);
+      await page.keyboard.press("Control+a");
+      await page.waitForTimeout(150);
       await page.keyboard.type(query, { delay: 40 });
       await page.waitForTimeout(1800);
       const tile = await where("first part", 20);
@@ -224,9 +226,18 @@ try {
     check(`the sheet went with the pick (${phone.sheet || "none"})`, !phone.sheet);
     await audit("in_hand");
 
-    // 5. Six bricks.
-    const middle = view ? { x: view.x, y: view.y + view.h * 0.12 } : { x: width / 2, y: height / 2 };
-    const spots = [[-60, 0], [0, 0], [60, 0], [-60, 50], [0, 50], [60, 50]];
+    // 5. Six bricks, on the baseplate's middle, framed by Fit.
+    await press("phone_fit");
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
+    let laid = null;
+    for (let n = 0; n < 24 && !laid; n++) {
+      await page.waitForTimeout(250);
+      laid = await page.evaluate(() => window.brickworksLayout);
+    }
+    const middle = laid && laid.centre ? { x: laid.centre.x, y: laid.centre.y } : { x: width / 2, y: height / 2 };
+    say(`the baseplate's middle at ${Math.round(middle.x)}, ${Math.round(middle.y)}`);
+    const spots = [[-50, -20], [0, -20], [50, -20], [-50, 25], [0, 25], [50, 25]];
     let down = 0;
     for (const [dx, dy] of spots) {
       if (await putDown({ x: middle.x + dx, y: middle.y + dy })) down += 1;
@@ -236,11 +247,10 @@ try {
     await audit("six_bricks");
 
     // 6. A door and a roof.
-    held = await take("door 1 x 4 x 6");
-    say(`the door: ${held}`);
-    check(`a door tapped down (${held})`, Boolean(held) && await putDown({ x: middle.x + 110, y: middle.y + 20 }));
+    held = await take("60596");
+    check(`a door frame tapped down (${held})`, held === "60596" && await putDown({ x: middle.x + 100, y: middle.y }));
     held = await take("3039");
-    check(`a roof slope tapped down (${held})`, held === "3039" && await putDown({ x: middle.x, y: middle.y + 25 }));
+    check(`a roof slope tapped down (${held})`, held === "3039" && await putDown({ x: middle.x, y: middle.y - 20 }));
     s = await state();
     check(`the house: ${s.bricks} parts (${(s.parts || []).join(", ")})`, s.bricks >= 8);
     await audit("house");

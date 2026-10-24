@@ -246,6 +246,40 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   asked for with `brickworksAskLayout`). From a build that publishes only
   centres it works the model's rectangle out from the rails and the toolbar,
   so it fails on a build with floating panels.
+- `phone layout` (`src/ui/phone.gd`, `src/ui/phone_shell.gd`, 2026-10-23): on a
+  phone the app was the desktop shrunk (walk180 P1: 14-point buttons, 9-point
+  swatches, a drawer over half the model, "right-click" and "Shift-drag").
+  `Phone.on()`, decided once at start: the web, a touchscreen, the main
+  pointer coarse with no fine one, and the screen under 600 points in its
+  short direction; a touch laptop and every desktop keep the desktop layout
+  to the pixel. Then `Main._dress_for_phone` puts the menus, toolbar, key
+  strip, status line (shown only while busy) and view cube away, and
+  `PhoneShell` lays out in points (`Phone.px`, about 1.85 units a point at
+  390): along the top the model's name, Undo and Redo; along the foot one row,
+  Parts, Colour (the colour in hand), Turn, Tip, Select (lets go, as a right
+  click), Delete (the selection, else the Delete tool) and More; a line over
+  the model in touch words (what was just said, `Phone.touch_words`, or what a
+  finger does now); Fit in the corner. Sheets from the foot: the parts bin
+  (Main's own, `PartsBin.zoom`, a finger's drag scrolling it), half the
+  screen, its handle swiped to the whole screen or away, gone with a pick;
+  the colours, 46-point swatches by group (`PartsBin.choose_colour`, what a
+  swatch press does: it paints a selection); More, every menu's commands a
+  row each, greyed and lit as the menus are; and a finger held still on a
+  part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
+  menu's rows. Two fingers turn the view and pinch zooms
+  (`CadCamera.phone`); a finger that lands on a part with Select moves it and
+  the view stays (`finger_taken`). The shared viewer keeps its own. The
+  notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
+  `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844 and
+  430 x 932 at 3x with touch events: More, New; the parts sheet half, swiped
+  full and back; searched 3001 and picked; six bricks, a door and a roof
+  slope tapped down; Select, a brick tapped, Colour, blue painting it, Undo;
+  a held finger's actions; two fingers turning and spreading; at each step
+  the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
+  every target 44 points or more, no text under 12, nothing off the screen.
+  Not yet for a finger: the dialogs More opens (Save as, Share, the parts
+  list...), which keep the shrunk desktop size, and Model tree and Properties,
+  which open the left drawer as before.
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is

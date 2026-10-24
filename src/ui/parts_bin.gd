@@ -189,7 +189,7 @@ func _build() -> void:
 		+ "size, or a part here resized — it joins the bin under Custom")
 	make.focus_mode = Control.FOCUS_NONE
 	make.add_theme_font_size_override("font_size", ceili(_z(12)))
-	make.custom_minimum_size.y = least
+	make.custom_minimum_size = Vector2(least, least)
 	make.pressed.connect(func() -> void: make_wanted.emit())
 	head.add_child(make)
 	_print_button = Button.new()
@@ -199,7 +199,7 @@ func _build() -> void:
 		+ "the model (Shift-click), on that part, where it stands")
 	_print_button.focus_mode = Control.FOCUS_NONE
 	_print_button.add_theme_font_size_override("font_size", ceili(_z(12)))
-	_print_button.custom_minimum_size.y = least
+	_print_button.custom_minimum_size = Vector2(least, least)
 	_print_button.pressed.connect(func() -> void: print_wanted.emit())
 	head.add_child(_print_button)
 	_stickers_button = Button.new()
@@ -208,7 +208,7 @@ func _build() -> void:
 		+ "to print at true size")
 	_stickers_button.focus_mode = Control.FOCUS_NONE
 	_stickers_button.add_theme_font_size_override("font_size", ceili(_z(12)))
-	_stickers_button.custom_minimum_size.y = least
+	_stickers_button.custom_minimum_size = Vector2(least, least)
 	_stickers_button.pressed.connect(func() -> void: stickers_wanted.emit())
 	head.add_child(_stickers_button)
 
@@ -404,7 +404,7 @@ func _build_categories() -> void:
 		button.button_pressed = category == _category
 		button.focus_mode = Control.FOCUS_NONE
 		button.add_theme_font_size_override("font_size", ceili(_z(12)))
-		button.custom_minimum_size.y = least
+		button.custom_minimum_size = Vector2(least, least)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
 	# Whole rows and the scroll bar to say there are more (_fit_palette).

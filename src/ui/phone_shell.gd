@@ -68,7 +68,7 @@ const TOOLS: Array = [
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pin(self, 0.0, 0.0, 1.0, 1.0, Rect2())
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build()
 	get_viewport().size_changed.connect(_rebuild, CONNECT_DEFERRED)
@@ -103,8 +103,7 @@ func _build() -> void:
 
 	# Along the top: the name, Undo, Redo.
 	_top = _bar_panel()
-	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_top.offset_bottom = p(TOP)
+	_pin(_top, 0.0, 0.0, 1.0, 0.0, Rect2(0, 0, 0, p(TOP)))
 	add_child(_top)
 	var top_row := HBoxContainer.new()
 	top_row.add_theme_constant_override("separation", ceili(p(6)))
@@ -126,8 +125,7 @@ func _build() -> void:
 
 	# Along the foot: one row.
 	_row = _bar_panel()
-	_row.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_row.offset_top = -p(ROW)
+	_pin(_row, 0.0, 1.0, 1.0, 1.0, Rect2(0, -p(ROW), 0, 0))
 	add_child(_row)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 0)
@@ -165,11 +163,7 @@ func _build() -> void:
 	round_face.set_corner_radius_all(ceili(p(24)))
 	for state: String in ["normal", "hover", "pressed"]:
 		_fit.add_theme_stylebox_override(state, round_face)
-	_fit.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_fit.offset_left = -p(12 + 48)
-	_fit.offset_right = -p(12)
-	_fit.offset_top = p(TOP + 12)
-	_fit.offset_bottom = p(TOP + 12 + 48)
+	_pin(_fit, 1.0, 0.0, 1.0, 0.0, Rect2(-p(12 + 48), p(TOP + 12), -p(12), p(TOP + 12 + 48)))
 	_fit.pressed.connect(func() -> void: shell.run("fit"))
 	add_child(_fit)
 
@@ -185,6 +179,21 @@ func _build() -> void:
 	_more = _sheet("More", true)
 	_context = _sheet("This part", true)
 	_lay_pill()
+
+
+## Anchors left, top, right, bottom and the offsets from them, as
+## Rect2(left, top, right, bottom): set together, so none is moved to keep
+## the control where it was before it had a size.
+static func _pin(control: Control, left: float, top: float, right: float, bottom: float,
+		offsets: Rect2) -> void:
+	control.anchor_left = left
+	control.anchor_top = top
+	control.anchor_right = right
+	control.anchor_bottom = bottom
+	control.offset_left = offsets.position.x
+	control.offset_top = offsets.position.y
+	control.offset_right = offsets.size.x
+	control.offset_bottom = offsets.size.y
 
 
 func _part_picked(_part_id: String) -> void:
@@ -263,12 +272,10 @@ func _tool(what: String, word: String, icon: String) -> Button:
 		drawn.kind = what
 		drawn.phone = self
 		drawn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		drawn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		PhoneShell._pin(drawn, 0.0, 0.0, 1.0, 1.0, Rect2())
 		button.add_child(drawn)
-		button.add_theme_constant_override("icon_max_width", 0)
-		# Room above the word for the picture.
-		var blank := Image.create(1, maxi(1, roundi(p(24) * Icons.density(self))), false,
-			Image.FORMAT_RGBA8)
+		# Room above the word for the picture, in the window's units.
+		var blank := Image.create(1, maxi(1, roundi(p(24))), false, Image.FORMAT_RGBA8)
 		button.icon = ImageTexture.create_from_image(blank)
 		if what == "colour":
 			_colour_button = button
@@ -739,7 +746,7 @@ class Sheet extends PanelContainer:
 		if state == "closed":
 			return
 		var room: Vector2 = _room()
-		set_anchors_preset(Control.PRESET_TOP_LEFT)
+		PhoneShell._pin(self, 0.0, 0.0, 0.0, 0.0, Rect2())
 		var wide: float = minf(room.x, phone.p(560))
 		position = Vector2((room.x - wide) * 0.5, room.y - _height)
 		size = Vector2(wide, _height)
