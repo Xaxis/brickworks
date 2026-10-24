@@ -7,7 +7,10 @@
 // is asking: Follow, or Following (pressed again, letting them go). Signed
 // out, it asks to sign in first; an account that may not follow is told
 // why, in the server's words, beside it. Following tells the person
-// followed nothing, and there is no way to write to them from here.
+// followed nothing, and there is no way to write to them from here. And a
+// collection, the same (2026-10-24, supabase/collection_follows.sql): a
+// button with data-follow-list="<id>" on its page (/c/<id>), what is put in
+// it then in your feed; its owner is told nothing.
 //
 // Your account in the header (2026-10-22, docs/SOCIAL.md U7, D10): Sign in
 // (a[data-account]) until you are, and then your avatar, carrying how many
@@ -26,11 +29,33 @@ import { avatarHtml } from "/kit.js";
 
 const plural = (n, one, many = `${one}s`) => `${Number(n).toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
+// What a Follow button follows: a person by their handle, or a collection
+// by its id; how to ask, the counts it changes on the page, and its words.
+const FOLLOWS = {
+  person: {
+    asked: (handle) => `/api/people?op=follows&handle=${encodeURIComponent(handle)}`,
+    sent: (handle, on) => ["/api/people?op=follow", { handle, on }],
+    counted: (handle) => `[data-followers="${handle}"], .person[data-handle="${handle}"] [data-followers]`,
+    signIn: "Sign in to follow people: we email you a code, no password.",
+    titles: ["See what they share in your feed", "You follow them: press to stop"],
+    followed: "What they share is in your feed now.",
+  },
+  list: {
+    asked: (id) => `/api/people?op=list_follows&id=${encodeURIComponent(id)}`,
+    sent: (id, on) => ["/api/people?op=list_follow", { id, on }],
+    counted: (id) => `[data-list-followers="${id}"]`,
+    signIn: "Sign in to follow collections: we email you a code, no password.",
+    titles: ["See what is put in it in your feed", "You follow it: press to stop"],
+    followed: "What is put in it is in your feed now.",
+  },
+};
+
 /// One Follow button, made live: drawn from [known] when the page already
 /// knows how it stands (the feed's designers to follow, none of whom you
 /// follow yet), else as the server says.
 export async function followButton(button, known = null) {
-  const handle = button.dataset.follow;
+  const kind = button.dataset.followList ? FOLLOWS.list : FOLLOWS.person;
+  const handle = button.dataset.followList || button.dataset.follow;
   const said = button.parentElement?.querySelector(".said") || null;
   const say = (words) => {
     if (said) said.textContent = words ? ` ${words}` : "";
@@ -39,12 +64,12 @@ export async function followButton(button, known = null) {
   const draw = () => {
     button.textContent = state.you_follow ? "Following" : "Follow";
     button.setAttribute("aria-pressed", state.you_follow ? "true" : "false");
-    button.title = state.you_follow ? "You follow them: press to stop" : "See what they share in your feed";
+    button.title = kind.titles[state.you_follow ? 1 : 0];
     button.hidden = state.mine;
     // On your own page, Edit profile where Follow would be (docs/SOCIAL.md U6).
     const own = button.closest(".profile-head")?.querySelector("[data-edit-own]");
     if (own) own.hidden = !state.mine;
-    for (const counted of document.querySelectorAll(`[data-followers="${handle}"], .person[data-handle="${handle}"] [data-followers]`)) {
+    for (const counted of document.querySelectorAll(kind.counted(handle))) {
       // A designer's page draws it as a tile, its number large
       // (api/people.js earnedHtml): kept so, the words beside it.
       const big = counted.querySelector("b");
@@ -60,7 +85,7 @@ export async function followButton(button, known = null) {
     }
   };
   const ask = async () => {
-    const answer = await call(`/api/people?op=follows&handle=${encodeURIComponent(handle)}`);
+    const answer = await call(kind.asked(handle));
     if (answer.status !== 200 || !answer.body.ready) return false;
     state = answer.body;
     draw();
@@ -75,7 +100,7 @@ export async function followButton(button, known = null) {
   button.addEventListener("click", async () => {
     say("");
     if (!state.signed_in) {
-      if (!(await askToSignIn("Sign in to follow people: we email you a code, no password."))) return;
+      if (!(await askToSignIn(kind.signIn))) return;
       if (!(await ask())) return;
       if (state.mine || state.you_follow) return;
     }
@@ -84,7 +109,8 @@ export async function followButton(button, known = null) {
       return;
     }
     button.disabled = true;
-    const answer = await call("/api/people?op=follow", { method: "POST", body: { handle, on: !state.you_follow } });
+    const [where, body] = kind.sent(handle, !state.you_follow);
+    const answer = await call(where, { method: "POST", body });
     button.disabled = false;
     if (answer.status !== 200) {
       say(answer.body.error || "That did not work just now. Try again in a minute.");
@@ -92,7 +118,7 @@ export async function followButton(button, known = null) {
     }
     state = { ...state, ...answer.body };
     draw();
-    say(state.you_follow ? "What they share is in your feed now." : "");
+    say(state.you_follow ? kind.followed : "");
   });
 }
 
@@ -280,7 +306,7 @@ export function showTabCounts(state) {
   }
 }
 
-for (const button of document.querySelectorAll("button[data-follow]")) followButton(button).catch(() => null);
+for (const button of document.querySelectorAll("button[data-follow], button[data-follow-list]")) followButton(button).catch(() => null);
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: !["/feed", "/notifications"].includes(location.pathname) }).catch(() => null);

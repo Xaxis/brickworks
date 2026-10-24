@@ -118,6 +118,13 @@ const FOLLOWS = [
   { follower: JO, followed: SAM, at: "2026-10-03T10:00:00Z" },
 ];
 const SHOWS_FOLLOWS = new Set([ROBIN]);
+// Who follows which collection (supabase/collection_follows.sql): Sam, Jo
+// and Priya follow Robin's castles.
+const LIST_FOLLOWS = [
+  { follower: SAM, collection: "ListAbcde1", at: "2026-10-12T10:00:00Z" },
+  { follower: JO, collection: "ListAbcde1", at: "2026-10-13T10:00:00Z" },
+  { follower: PRIYA, collection: "ListAbcde1", at: "2026-10-14T09:00:00Z" },
+];
 
 // ---------------------------------------------------------------------------
 // The models. Each as shared_models keeps it, with what is left out filled
@@ -452,6 +459,9 @@ const FEED = [
   { kind: "version", at: "2026-10-05T16:00:00Z", by: MIKA, model: "DesignPar1", name: "Gatehouse Starter", version: 1,
     note: "Stronger hinges on the gate." },
   { kind: "model", at: "2026-10-01T17:00:00Z", by: MIKA, model: "MikaRobot1", name: "Pocket Mech" },
+  // Put in a collection Sam follows (supabase/collection_follows.sql list_rows).
+  { kind: "collection", at: "2026-10-14T10:00:00Z", by: ROBIN, model: "DesignPar1", name: "Gatehouse Starter",
+    collection: LIST_ID, list_name: "Castles worth a weekend" },
 ];
 const FEED_SEEN = "2026-10-14T00:00:00Z";
 
@@ -684,6 +694,25 @@ function followState(asker, handle, askAge = false) {
     mine, trouble };
 }
 
+/// list_follow_state: a public collection's follows, as [asker] sees them.
+function listFollowState(asker, id, askAge = false) {
+  const list = listOf(id);
+  if (!list || !list.public) return null;
+  const mine = asker === list.owner;
+  const trouble = !asker ? "sign_in" : mine ? "yourself" : askAge ? "ask_first" : null;
+  return { id: list.id, followers: LIST_FOLLOWS.filter((one) => one.collection === id).length,
+    you_follow: Boolean(asker) && LIST_FOLLOWS.some((one) => one.follower === asker && one.collection === id), mine, trouble };
+}
+
+/// model_lists: the public collections a model in the gallery is in, the
+/// one it was put in last first (the newest-updated list, here).
+function modelLists(id, most = 12) {
+  const m = shownModel(id);
+  const lists = m && m.listed ? LISTS.filter((list) => list.public && list.models.includes(id)).sort(byTime("updated_at")) : [];
+  return { count: lists.length, lists: lists.slice(0, most).map((list) => ({ id: list.id, name: list.name,
+    count: collectionCount(list.id, false), by: named(list.owner) })) };
+}
+
 /// follow_list: whom a profile follows, when it chose to show it.
 function followList(handle) {
   const person = personNamed(handle);
@@ -742,6 +771,9 @@ const RPC = {
   designer_page: ({ wanted, tests }) => designerPage(wanted, tests === true),
   follow_state: ({ asker, wanted }) => followState(asker || null, wanted),
   follow_list: ({ wanted }) => followList(wanted),
+  // supabase/collection_follows.sql
+  list_follow_state: ({ asker, list }) => listFollowState(asker || null, list),
+  model_lists: ({ model, most }) => modelLists(model, most || 12),
   follow_choice: ({ account }) => ({ shows_follows: SHOWS_FOLLOWS.has(account) }),
   shown_publicly: ({ account }) => !ADMIN.barred.some((one) => one.account === account),
   is_barred: ({ account }) => ADMIN.barred.some((one) => one.account === account),
@@ -1047,6 +1079,8 @@ const COMMENT_WORDS = { sign_in: "Sign in to add a comment: we email you a code,
   ask_first: `${ASK_FIRST}add your comment.` };
 const FOLLOW_WORDS = { sign_in: "Sign in to follow people: we email you a code, no password.", yourself: "That is you.",
   ask_first: `${ASK_FIRST}follow.` };
+const LIST_WORDS = { sign_in: "Sign in to follow collections: we email you a code, no password.",
+  yourself: "That is your own collection.", ask_first: `${ASK_FIRST}follow.` };
 
 const answer = (status, json) => ({ status, json });
 const YES = new Set(["1", "true", "yes", "on"]);
@@ -1146,6 +1180,10 @@ function feedRow(row) {
     return { ...base, did: "entered", after: `in the challenge “${row.title}”, built ${row.way === "assistant"
       ? "with the assistant" : "by hand"}`, link: `${ORIGIN}/m/${row.model}` };
   }
+  if (row.kind === "collection") {
+    return { ...base, did: "added", link: `${ORIGIN}/m/${row.model}`,
+      list: { id: row.collection, name: row.list_name, link: `${ORIGIN}/c/${row.collection}` } };
+  }
   return { ...base, did: `remixed your model “${row.of_name}” as`, link: `${ORIGIN}/m/${row.model}` };
 }
 
@@ -1203,6 +1241,17 @@ function follows(handle, who, state, on = null) {
     signed_in: Boolean(who) });
 }
 
+/// /api/people?op=list_follows&id=X, as the asker sees it; with [on], as a
+/// follow or a letting go leaves it.
+function listFollows(id, who, state, on = null) {
+  const found = listFollowState(who, id, state.askAge);
+  if (!found) return answer(404, { error: "There is no public collection here to follow." });
+  const youFollow = on === null ? found.you_follow : on;
+  const followers = found.followers + (youFollow && !found.you_follow ? 1 : 0) - (!youFollow && found.you_follow ? 1 : 0);
+  return answer(200, { id: found.id, ready: true, followers, you_follow: youFollow, mine: found.mine, may: !found.trouble,
+    why_not: found.trouble ? LIST_WORDS[found.trouble] : "", signed_in: Boolean(who) });
+}
+
 /// /api/people?op=profile&handle=X: a profile as anybody sees it, as JSON.
 function profile(handle, page = 1, tests = false) {
   const person = personNamed(handle);
@@ -1255,10 +1304,10 @@ function people(method, params, body, who, state) {
   const id = params.get("id") || "";
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
-    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar"] : ["report", "digest"];
+    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar", "list_follows"] : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
-      : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : SIGN_IN });
+      : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : op === "list_follow" ? LIST_WORDS.sign_in : SIGN_IN });
   }
   if (who && state.fresh) {
     const said = freshPeople(method, op, params, body, state.fresh);
@@ -1310,6 +1359,7 @@ function people(method, params, body, who, state) {
         mine, left: who ? Math.max(0, 3 - mine.length) : null });
     }
     if (op === "follows") return follows(params.get("handle"), who, state);
+    if (op === "list_follows") return listFollows(id, who, state);
     if (op === "following" && !params.get("handle")) {
       // Your own, for you alone (your account page), whatever you show.
       if (!who) return answer(401, { error: FOLLOW_WORDS.sign_in });
@@ -1326,7 +1376,7 @@ function people(method, params, body, who, state) {
       // there is none. state.nobody: Sam follows nobody.
       const followed = state.nobody ? [] : FOLLOWS.filter((one) => one.follower === ME);
       const rows = params.get("before") || state.nobody ? [] : FEED
-        .filter((row) => ["model", "version", "challenge"].includes(row.kind) || (row.kind === "photo" && !row.yours))
+        .filter((row) => ["model", "version", "challenge", "collection"].includes(row.kind) || (row.kind === "photo" && !row.yours))
         .map((row) => {
           const photo = row.kind === "photo" ? PHOTOS.find((one) => one.id === row.photo) : null;
           return { ...feedRow(row), card: apiCard(card(modelOf(row.model))),
@@ -1393,6 +1443,11 @@ function people(method, params, body, who, state) {
     const made = { ...thread, id: 900, author: who, at: "2026-10-18T12:00:00Z", body: String(body?.body || ""),
       parent: thread.id, edited_at: null, hidden_at: null };
     return answer(201, { comment: commentSaid(made, thread.version, commentVersions(thread.model), who) });
+  }
+  // Following a collection: as it would stand, kept nowhere.
+  if (op === "list_follow") {
+    if (typeof body?.on !== "boolean") return answer(400, { error: "say on: true or on: false" });
+    return listFollows(String(body?.id || ""), who, state, body.on);
   }
   // Any other write: the check presses nothing that writes, so it went.
   return answer(200, { ok: true });

@@ -45,6 +45,8 @@
   addEventListener("brickworks:signed-in", follow);
   document.addEventListener("DOMContentLoaded", () => {
     apply(chosen());
-    if (read("brickworks.session")) follow();
+    // An embed's card (/m/<id>/embed) follows the choice and never asks the
+    // account: it is somebody else's page's, and may reach nothing else.
+    if (read("brickworks.session") && !root.hasAttribute("data-embed")) follow();
   });
 })();
