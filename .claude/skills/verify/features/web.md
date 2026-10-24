@@ -2127,7 +2127,7 @@ plan with Claude as the client.
   Then the field, row by row (`.table.wide`, site.css): Brickworks, Studio,
   Mecabricks, LeoCAD and LDCad, from docs/COMPETITIVE.md's matrix, "—" where
   none was found. Then where the others still lead, plainly: renders, prices,
-  new parts, instructions as files, rubber bands and springs, years. Every
+  instructions as files, rubber bands and springs, years. Every
   claim about another tool is sourced at the foot (their own pages and forum
   threads, read 2026-10-12 and 13, versions rechecked 2026-10-24); a claim
   that cannot be sourced is cut, not softened. Studio has project tabs and an
@@ -2160,8 +2160,9 @@ plan with Claude as the client.
     `lib:comments on a shared model`, `ui:shared model page and card`,
     `lib:the Tested mark kept and shown`; accessibility `ui:accessibility`;
     AI `lib:design loop`, `ui:assistant on or off`;
-  - where the others lead: `ui:photo-real render`, `ui:parts lists for
-    shops`, `cli:update the parts`, `ui:the booklet`, `ui:tour`.
+  - where the others lead: `ui:photo-real render`, `ui:3d model export`,
+    `ui:parts lists for shops`, `ui:the booklet`,
+    `lib:flexible parts along a path`, `ui:tour`.
   The clips are muted, looping, `preload
   ="none"` with a poster, WebM then MP4 (Playwright's Chromium has no H.264, so
   a check there plays the WebM), and `compare.js` plays each only while it is on
