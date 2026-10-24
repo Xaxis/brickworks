@@ -131,6 +131,8 @@ try {
       listen(page, `${width} ${theme}`);
       await openDialog(page);
       const button = page.locator("dialog.sign-in #oc-sign-in");
+      // Drawn once the page has heard whether it is offered (/api/account).
+      await button.waitFor({ state: "visible", timeout: 15000 }).catch(() => null);
       const said = await page.locator("dialog.sign-in .elsewhere .note").textContent().catch(() => "");
       check(`${width} ${theme}: Sign in with orangecheck under the email`, await button.isVisible()
         && (await button.textContent()) === "Sign in with orangecheck"
@@ -282,8 +284,10 @@ try {
   check("never cached, and no other site may read it", junk.headers.get("cache-control") === "no-store"
     && !junk.headers.get("access-control-allow-origin"));
   const broken = await api("/api/orangecheck?op=signin", { method: "POST", raw: "{" });
-  // Vercel's own body parser answers this one, before the route.
-  check("a body that is not JSON: refused", broken.status === 400 || broken.status === 422, `${broken.status}`);
+  // Vercel's own body parser answers this one, before the route; where
+  // orangecheck is unavailable the route answers first.
+  check("a body that is not JSON: refused", broken.status === 400 || broken.status === 422
+    || (!offer.ready && broken.status === 503), `${broken.status}`);
   const get = await api("/api/orangecheck?op=signin");
   check("anything but POST ?op=signin: refused", get.status === 405, `${get.status}`);
   const madeUp = await api("/api/otp", { method: "POST", body: { email: "0123456789abcdef0123456789abcdef@oc.brickworks.diy" } });
