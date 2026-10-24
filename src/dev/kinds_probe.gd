@@ -82,6 +82,22 @@ func _initialize() -> void:
 	_ok(worship.begins_with("No kind of real set matches"),
 		"and \"worship\" is no ship: %s" % worship.left(50))
 
+	print("\na word made of two is what its second word is")
+	# "speedboat" was the speed kind, which is high-speed trains and chases:
+	# a word of two was read by its first. Its second says what it is, and
+	# the first which kind of it, unless what it is a kind of says otherwise
+	# (SubjectWords.IS_A: a spaceship is space, no sea ship). Held out: none
+	# of these was looked at while the rule was written but the speedboat.
+	for pair: Array in [["speedboat", ["boat"]], ["racecar", ["car", "race"]],
+			["firetruck", ["truck", "fire"]], ["sailboat", ["boat"]],
+			["police car", ["police", "car"]], ["spaceship", ["space"]]]:
+		var read: Array = []
+		for line: String in str(assistant._how_real_sets_build_this(str(pair[0]))["content"]).split("\n"):
+			if line.contains(" — measured over "):
+				read.append(line.get_slice(" — ", 0).to_lower())
+		_ok(read == pair[1], "\"%s\" is read as %s (%s)" % [pair[0], " then ".join(pair[1]),
+			", ".join(PackedStringArray(read)) if not read.is_empty() else "nothing"])
+
 	print("\nwhat it is built from, and what it carries")
 	var pirate: Array = library.kinds_for("pirate")
 	_ok(not (pirate[0].get("props", []) as Array).is_empty(),

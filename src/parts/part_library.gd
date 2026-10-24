@@ -71,15 +71,18 @@ func kinds_for(words: String, most: int = 3) -> Array:
 		# spaceship where the catalogue, reading real set names, says space.
 		# Whole words only (SubjectWords): any kind a word began with was
 		# taken, so a planetarium and an orrery's planets were the plane
-		# kind, tail planes and jet engines.
-		var form: String = SubjectWords.kind_of_word(word, kinds)
-		if form.is_empty() or seen.has(form):
-			continue
-		seen[form] = true
-		var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
-		entry["kind"] = form
-		entry["place"] = place
-		found.append(entry)
+		# kind, tail planes and jet engines. A word made of two may be two
+		# kinds, what it is first: a firetruck is a truck, then fire's.
+		var within: float = 0.0
+		for form: String in SubjectWords.kinds_of_word(word, kinds):
+			if seen.has(form):
+				continue
+			seen[form] = true
+			var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
+			entry["kind"] = form
+			entry["place"] = place + within
+			within += 0.5
+			found.append(entry)
 	# In the order the brief names them, because a brief names its subject
 	# first and its features after. Fewest sets first was the rule, and
 	# "a large space cruiser with ... two engine pods" came back as engine,
@@ -87,7 +90,7 @@ func kinds_for(words: String, most: int = 3) -> Array:
 	# space pushed out for having more sets. Generic words that once
 	# needed the specific rule are a word list now (NOT_A_KIND).
 	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a["place"]) < int(b["place"]))
+		return float(a["place"]) < float(b["place"]))
 	if found.size() > most:
 		found.resize(most)
 	return found

@@ -198,18 +198,35 @@ static func _names(said: PackedStringArray, wanted: PackedStringArray) -> bool:
 
 
 ## The word of [param vocabulary] (a Dictionary keyed by its words) that one
-## word of a brief is, or "": itself or a form of it; or, made of two, a word
-## of the vocabulary of four letters or more and one of [constant
-## COMPOUND_ENDS] — "spaceship" is space, "planetarium" is nothing.
+## word of a brief is, or "": the first of [method kinds_of_word].
 static func kind_of_word(word: String, vocabulary: Dictionary) -> String:
+	var found: PackedStringArray = kinds_of_word(word, vocabulary)
+	return found[0] if not found.is_empty() else ""
+
+
+## The words of [param vocabulary] that one word of a brief is, what it is
+## first: itself or a form of it; or, made of two, a word of the vocabulary
+## of four letters or more and one of [constant COMPOUND_ENDS] — "spaceship"
+## is space, "planetarium" is nothing. Of a word made of two that are both
+## the vocabulary's, the second is what the thing is and the first says
+## which kind of it, so the second goes first: a speedboat is a boat before
+## it is speed, whose sets are high-speed trains and chases, and a firetruck
+## a truck, then a fire set's. Unless what the word is a kind of (IS_A) says
+## which: a spaceship is space, and no sea ship.
+static func kinds_of_word(word: String, vocabulary: Dictionary) -> PackedStringArray:
 	for form: String in forms(word):
 		if form.length() >= 3 and vocabulary.has(form):
-			return form
+			return PackedStringArray([form])
 	for end: String in COMPOUND_ENDS:
 		for form: String in forms(word):
 			if form.length() > end.length() + 3 and form.ends_with(end):
-				var head: String = form.left(-end.length())
-				for one: String in forms(head):
-					if vocabulary.has(one):
-						return one
-	return ""
+				for one: String in forms(form.left(-end.length())):
+					if not vocabulary.has(one):
+						continue
+					if not vocabulary.has(end):
+						return PackedStringArray([one])
+					var is_a: Array = IS_A.get(form, IS_A.get(word, []))
+					if is_a.has(one) != is_a.has(end):
+						return PackedStringArray([one if is_a.has(one) else end])
+					return PackedStringArray([end, one])
+	return PackedStringArray()
