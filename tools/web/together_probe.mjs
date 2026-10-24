@@ -14,6 +14,11 @@
 //      in one order both read back the same, with nothing skipped.
 //   3. A change sent by one side reaches the other's waiting poll: the time
 //      from send to arrival, p50 and p95 over --rounds (default 30).
+//   3b. A line in the chat from someone 13 or over reaches the log; one with
+//      words a stranger may not be shown is refused; where someone is
+//      working reaches the others; an account under 13 joins, is told it has
+//      no chat, cannot say anything, and reads the log with the lines taken
+//      out.
 //   4. A third account with no link, or a made-up one, is refused; so is a
 //      send or a poll from an account that never joined. The owner takes
 //      the second out: its next poll, its send and joining again by the
@@ -21,7 +26,7 @@
 //   5. The owner ends it: a waiting poll says so, and a send is refused.
 //
 // Test accounts at resend.dev, deleted at the end. Exit 1 on any failure.
-import { deleteAccount, mintSession } from "./session.mjs";
+import { answerAge, deleteAccount, mintSession } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -48,9 +53,12 @@ async function ask(token, op, body) {
 }
 
 const stamp = Date.now().toString(36);
-const emails = ["a", "b", "c"].map((who) => `delivered+together-${who}-${stamp}@resend.dev`);
-const [owner, guest, stranger] = await Promise.all(emails.map((email) => mintSession(email)));
-const tokens = [owner, guest, stranger].map((one) => one.access_token);
+const emails = ["a", "b", "c", "d"].map((who) => `delivered+together-${who}-${stamp}@resend.dev`);
+const [owner, guest, stranger] = await Promise.all(emails.slice(0, 3).map((email) => mintSession(email)));
+// And one under 13, who builds together like anyone but has no chat.
+const kid = await mintSession(emails[3], { age: false });
+await answerAge(kid.kept.user_id, emails[3], false);
+const tokens = [owner, guest, stranger, kid].map((one) => one.access_token);
 const at = (x) => [1, 0, 0, 0, 1, 0, 0, 0, 1, x, 0, 0];
 const brick = (x, colour = 4) => ["3001.dat", colour, at(x), "", "", -1];
 
@@ -115,6 +123,34 @@ try {
   const pct = (p) => times[Math.min(times.length - 1, Math.floor(p * times.length))];
   check(`${times.length} of ${rounds} changes arrived: p50 ${pct(0.5)} ms, p95 ${pct(0.95)} ms`, times.length === rounds && pct(0.5) < 1000);
 
+  console.log("3b. chat and pointers");
+  const said = await ask(tokens[1], "send", { s, client: "guestab", ops: [{ cid: 500, changes: { "~chat": "Roof next?" } }] });
+  check("someone 13 or over says a line in the chat", said.status === 200, `${said.status}`);
+  const rude = await ask(tokens[1], "send", { s, client: "guestab", ops: [{ cid: 501, changes: { "~chat": "you bastard" } }] });
+  check("...a line with words a stranger may not be shown is refused", rude.status === 422, `${rude.status}`);
+  const pointed = await ask(tokens[1], "point", { s, at: [40, 24, -60] });
+  const seenNow = await ask(tokens[0], "poll", { s, after, seen: "x" });
+  const them = (seenNow.value.people || []).find((one) => !one.owner);
+  check("where the second is working reaches the owner", pointed.status === 200 && JSON.stringify(them?.at) === "[40,24,-60]",
+    JSON.stringify(them?.at));
+  check("...and the chat line, in the log", (seenNow.value.ops || []).some((op) => op.changes["~chat"] === "Roof next?"));
+  const kidJoin = await ask(tokens[3], "join", { s });
+  check("an account under 13 joins, and is told it has no chat", kidJoin.status === 200 && /13/.test(kidJoin.value.chat || ""),
+    kidJoin.value.chat);
+  const kidSays = await ask(tokens[3], "send", { s, client: "kidabc", ops: [{ cid: 0, changes: { "~chat": "hi" } }] });
+  check("...cannot say anything in it", kidSays.status === 422, `${kidSays.status}`);
+  const kidReads = await ask(tokens[3], "poll", { s, after: 0, seen: "x" });
+  const kidOps = [];
+  for (let n = 0, from = 0; n < 5; n++) {
+    const got = n === 0 ? kidReads : await ask(tokens[3], "poll", { s, after: from, seen: "x" });
+    kidOps.push(...(got.value.ops || []));
+    if (!(got.value.ops || []).length) break;
+    from = kidOps[kidOps.length - 1].seq;
+  }
+  check("...and is not shown the others' lines", kidOps.length > 0 && !kidOps.some((op) => op.changes["~chat"] !== undefined),
+    `${kidOps.length} changes read`);
+  after = (seenNow.value.ops || []).length ? seenNow.value.ops[seenNow.value.ops.length - 1].seq : after;
+
   console.log("4. who may not");
   const guessed = await ask(tokens[2], "join", { s: "x".repeat(32) });
   check("a made-up link is refused", guessed.status === 404, `${guessed.status}`);
@@ -124,7 +160,8 @@ try {
     `${peeked.status}, ${pushed.status}`);
   const guestWho = (joined.value.people || []).find((one) => !one.owner)?.who;
   const removed = await ask(tokens[0], "remove", { s, who: guestWho });
-  check("the owner takes the second account out", removed.status === 200 && removed.value.people.length === 1, `${removed.status}`);
+  check("the owner takes the second account out", removed.status === 200
+    && !removed.value.people.some((one) => one.who === guestWho), `${removed.status}`);
   const after1 = await ask(tokens[1], "poll", { s, after });
   const after2 = await ask(tokens[1], "send", { s, client: "guestab", ops: [{ cid: 999, changes: { "0.1": null } }] });
   const again = await ask(tokens[1], "join", { s });

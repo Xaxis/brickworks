@@ -897,7 +897,11 @@ func _meta_now() -> Dictionary:
 		"~title": store.title,
 		"~floor": store.model_floor.whole_words() if store.model_floor != null else "",
 		"~hidden": var_to_str(store.hidden_scheme),
-		"~motions": "\n".join(store._motion_lines()) if world.motions != null else "",
+		# As kept, not as a save rebases them (ModelStore._motion_lines): that
+		# measures each joint on the model, and four times a second it held
+		# a software-drawn browser's frames for seconds. Each side's save
+		# rebases the same motions on the same model the same way.
+		"~motions": "\n".join(world.motions.lines()) if world.motions != null else "",
 		"~looks": var_to_str(world.step_looks),
 		"~unit_steps": var_to_str(world.unit_steps),
 		"~broken": _broken_words(),

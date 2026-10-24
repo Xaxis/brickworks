@@ -226,6 +226,37 @@ function dumpTexts(what, mine, theirs) {
   }
   console.log(differ.join("\n"));
 }
+// How long a change takes to reach the other browser: [rounds] paints of a
+// part of its own, each side in turn, a colour that is always a change, from
+// the moment it is asked of one page to the frame the other page has it,
+// read every 20 ms: what a person waits, frames and all.
+async function measure(label, rounds) {
+  const { owner, guest } = people;
+  const times = { "owner to guest": [], "guest to owner": [] };
+  const [swatch] = await ask(owner.page, [{ op: "place", part: "3005", colour: 4, x: -2400, y: 48, z: 2400 + 80 * rounds }]);
+  await settled([owner.page, guest.page]);
+  for (let n = 0; n < rounds; n++) {
+    const [from, to, way] = n % 2 === 0 ? [owner, guest, "owner to guest"] : [guest, owner, "guest to owner"];
+    const before = (await together(to.page)).seq;
+    await from.page.evaluate(() => { window.brickworksTogetherDone = undefined; });
+    const t0 = Date.now();
+    await from.page.evaluate((a) => { window.brickworksTogetherAsk = a; },
+      [{ op: "paint", uid: swatch.uid, colour: n % 2 ? 4 : 1 }]);
+    let got = null;
+    for (const end = Date.now() + 20000; Date.now() < end && !got;) {
+      if ((await together(to.page)).seq > before) got = Date.now();
+      else await wait(20);
+    }
+    if (got) times[way].push(got - t0);
+    await until(() => from.page.evaluate(() => window.brickworksTogetherDone), "the edit's answer", 20).catch(() => null);
+    await wait(300);
+  }
+  const all = [...times["owner to guest"], ...times["guest to owner"]].sort((x, y) => x - y);
+  const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];
+  return check(`${label}: ${all.length} changes arrived, p50 ${pct(all, 0.5)} ms, p95 ${pct(all, 0.95)} ms`,
+    all.length >= rounds * 0.9 && pct(all, 0.5) < 1500,
+    Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
+}
 function readDesktop(file) {
   try { return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { return null; }
 }
@@ -306,7 +337,10 @@ try {
   const sides = [owner, guest];
   let made = 0;
   let together_moves = 0;
-  const uidsOf = async (page) => (await textOf(page)).uids;
+  // The car's hinge kept out of the random edits: a motion is made on it below.
+  const carParts = (await textOf(owner.page)).parts || {};
+  const hinges = new Set(Object.keys(carParts).filter((uid) => /^393[78]/.test(carParts[uid])));
+  const uidsOf = async (page) => (await textOf(page)).uids.filter((uid) => !hinges.has(uid));
   let known = await uidsOf(owner.page);
   for (let n = 0; n < EDITS; n++) {
     if (n % 10 === 0) known = await uidsOf(sides[n % 2].page);
@@ -355,6 +389,7 @@ try {
   }
   await shot(owner.page, "3_owner.png");
   await shot(guest.page, "3_guest.png");
+  await measure("how long a change takes to reach the other browser", 40);
 
 
   console.log("\n3b. what the model is besides its parts, each kind from either side");
@@ -435,36 +470,8 @@ try {
   const paintSeen = (text) => text.includes(" 14 ") ;
   check("...and leaves the other's paint, on both", painted?.ok && paintSeen(a2.text) && a2.hash === b2.hash);
 
-  console.log("\n5. how long a change takes to reach the other browser");
-  const times = { "owner to guest": [], "guest to owner": [] };
-  // One part of its own, painted by each side in turn, a colour that is
-  // always a change.
-  const [swatch] = await ask(owner.page, [{ op: "place", part: "3005", colour: 4, x: -2400, y: 48, z: 2400 }]);
-  await settled([owner.page, guest.page]);
-  for (let n = 0; n < 40; n++) {
-    const [from, to, label] = n % 2 === 0 ? [owner, guest, "owner to guest"] : [guest, owner, "guest to owner"];
-    const before = (await together(to.page)).seq;
-    const uids = a2.uids;
-    // From the moment the edit is asked of one page to the frame the other
-    // page has it, read every 20 ms: what a person waits, frames and all.
-    await from.page.evaluate(() => { window.brickworksTogetherDone = undefined; });
-    const t0 = Date.now();
-    await from.page.evaluate((a) => { window.brickworksTogetherAsk = a; },
-      [{ op: "paint", uid: swatch.uid, colour: n % 2 ? 4 : 1 }]);
-    let got = null;
-    for (const end = Date.now() + 20000; Date.now() < end && !got;) {
-      if ((await together(to.page)).seq > before) got = Date.now();
-      else await wait(20);
-    }
-    if (got) times[label].push(got - t0);
-    await until(() => from.page.evaluate(() => window.brickworksTogetherDone), "the edit's answer", 20).catch(() => null);
-    await wait(300);
-  }
-  const all = [...times["owner to guest"], ...times["guest to owner"]].sort((x, y) => x - y);
-  const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];
-  check(`${all.length} changes arrived: p50 ${pct(all, 0.5)} ms, p95 ${pct(all, 0.95)} ms`, all.length >= 36 && pct(all, 0.5) < 1500,
-    Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
-
+  console.log("\n5. how long a change takes to reach the other browser, now");
+  await measure("with the 48 x 48 floor, a motion, a print and the hidden colours, drawn in software", 20);
 
   console.log("\n5b. a reload, and a lost connection, go back in by themselves");
   await guest.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
@@ -488,13 +495,16 @@ try {
   console.log("\n5c. where each person is working, shown in the others' view");
   await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
   const layout = await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30);
-  const aim = (layout.targets || [])[0];
-  if (aim) await owner.page.mouse.move(aim.x, aim.y, { steps: 4 });
-  const seen = await until(async () => {
-    const now = await together(guest.page);
-    const them = (now.people || []).find((one) => one.owner);
-    return them?.at && now.pointers >= 1 ? them : null;
-  }, "the owner's pointer in the second browser", 20).catch(() => null);
+  let seen = null;
+  for (const aim of (layout.targets || []).slice(0, 6)) {
+    await owner.page.mouse.move(aim.x, aim.y, { steps: 4 });
+    seen = await until(async () => {
+      const now = await together(guest.page);
+      const them = (now.people || []).find((one) => one.owner);
+      return them?.at && now.pointers >= 1 ? them : null;
+    }, "the owner's pointer in the second browser", 8).catch(() => null);
+    if (seen) break;
+  }
   check("the owner's pointer is drawn in the second browser's view, with their name", Boolean(seen),
     seen ? `${seen.name} at ${seen.at.join(", ")}` : "");
   await shot(guest.page, "5c_pointer.png");
