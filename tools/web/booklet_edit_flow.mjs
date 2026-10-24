@@ -37,6 +37,21 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
+// Until the booklet in the tab is whole, or ms have gone: it is written in
+// as it is drawn (BookletOut, 2026-10-23), its first pages read while the
+// rest are drawn, and whole once the app closes the document. Its first
+// page is not the booklet: read then, it has no parts pages. Says whether
+// it came whole.
+async function bookletWhole(tab, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const state = await tab.evaluate(() => document.readyState).catch(() => "");
+    if (state === "complete") return true;
+    await tab.waitForTimeout(2000);
+  }
+  return false;
+}
+
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
@@ -425,7 +440,9 @@ try {
       await tab.waitForTimeout(2000);
     }
     ok(pages > 0, `the booklet arrives (${pages} pages, ${Math.round((Date.now() - started) / 1000)} s)`);
-    await tab.waitForLoadState("load").catch(() => {});
+    const whole = await bookletWhole(tab, Math.max(0, Number(args.wait || 900) * 1000 - (Date.now() - started)));
+    pages = await tab.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0);
+    ok(whole, `...and is whole (${pages} pages, ${Math.round((Date.now() - started) / 1000)} s)`);
     const facts = await tab.evaluate(() => [...document.querySelectorAll("section.page.steps")].map((s) => ({
       id: s.id,
       steps: (s.dataset.steps || "").split(" ").filter(Boolean).map(Number),

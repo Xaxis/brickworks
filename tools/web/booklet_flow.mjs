@@ -26,6 +26,21 @@ import { controlsWith, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
+// Until the booklet in the tab is whole, or ms have gone: it is written in
+// as it is drawn (BookletOut, 2026-10-23), its first pages read while the
+// rest are drawn, and whole once the app closes the document. Its first
+// page is not the booklet: read then, it has no parts pages. Says whether
+// it came whole.
+async function bookletWhole(tab, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const state = await tab.evaluate(() => document.readyState).catch(() => "");
+    if (state === "complete") return true;
+    await tab.waitForTimeout(2000);
+  }
+  return false;
+}
+
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
@@ -149,16 +164,29 @@ try {
     const started = Date.now();
     const limit = Number(args.wait || 600) * 1000;
     let pages = 0;
+    // When its first page and its first page of steps were in front of the
+    // reader, and when it was whole: it is written in as it is drawn.
+    let steps = -1;
     while (Date.now() - started < limit) {
-      pages = await tab.evaluate(() => document.querySelectorAll("section.page").length)
-        .catch(() => 0);
+      [pages, steps] = await tab.evaluate(() => [document.querySelectorAll("section.page").length,
+        document.querySelectorAll("section.page.steps").length]).catch(() => [0, 0]);
       if (pages > 0) break;
-      await tab.waitForTimeout(2000);
+      await tab.waitForTimeout(500);
     }
-    const seconds = Math.round((Date.now() - started) / 1000);
-    check(`the booklet arrives in it (${pages} pages, ${seconds} s)`, pages > 0);
+    const seconds = (Date.now() - started) / 1000;
+    let stepsAt = steps > 0 ? seconds : -1;
+    while (stepsAt < 0 && pages > 0 && Date.now() - started < limit) {
+      steps = await tab.evaluate(() => document.querySelectorAll("section.page.steps").length)
+        .catch(() => 0);
+      if (steps > 0) stepsAt = (Date.now() - started) / 1000;
+      else await tab.waitForTimeout(500);
+    }
+    check(`the booklet arrives in it (its first page at ${seconds.toFixed(1)} s, `
+      + `its first page of steps at ${stepsAt.toFixed(1)} s)`, pages > 0);
     if (pages > 0) {
-      await tab.waitForLoadState("load").catch(() => {});
+      const whole = await bookletWhole(tab, Math.max(0, limit - (Date.now() - started)));
+      pages = await tab.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0);
+      check(`...and is whole (${pages} pages, ${((Date.now() - started) / 1000).toFixed(1)} s)`, whole);
       const facts = await tab.evaluate(() => ({
         steps: document.querySelectorAll("section.page.steps").length,
         parts: document.querySelectorAll("section.page.parts").length,

@@ -33,6 +33,10 @@ uniform float new_from = 1.0e9;
 // Draw only those: how much of them there would be to see if nothing
 // were in front of them.
 uniform bool only_new = false;
+// Only whether each pixel is of a new brick: white where it is, black
+// where it is not. The same pixels as the codes say are new, for the
+// engine to count rather than a loop over them (BookletStudio.measure_all).
+uniform bool mask = false;
 
 varying flat vec4 code;
 
@@ -64,5 +68,8 @@ void fragment() {
 	float out_green = mod(floor(wrapped / 24.0), 24.0);
 	float out_blue = floor(wrapped / 576.0) * 2.0 + (fresh ? 1.0 : 0.0);
 	vec3 shown = (vec3(out_red, out_green, out_blue) * 8.0 + 64.0) / 255.0;
+	if (mask) {
+		shown = fresh ? vec3(1.0) : vec3(0.0);
+	}
 	ALBEDO = linearise ? to_linear(shown) : shown;
 }

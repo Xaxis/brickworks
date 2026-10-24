@@ -36,3 +36,4 @@ sculpt_worker
 find_part
 save_dialog
 kart_steer
+booklet_stream

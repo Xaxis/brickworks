@@ -23,6 +23,9 @@ extends Node
 
 ## Said as the work goes, for the status line.
 signal progress(said: String)
+## The booklet's file, a piece at a time as it is drawn: the pieces one
+## after another are the file. See [method _make].
+signal wrote(piece: String)
 
 ## The colours the pictures are laid on: see Booklet's stylesheet.
 const PAGE_COLOUR := Color8(220, 236, 248)
@@ -73,6 +76,14 @@ static var shown_button: Button = null
 static var open_when_written: bool = not OS.has_feature("web")
 
 
+## Keep the pieces sent out ([signal wrote]) and answer [method make] with
+## the whole file, as a probe wants it; off, [method make] answers with its
+## last piece, or "" when it came to nothing, and the file is what was
+## sent out (Main._export_booklet writes it as it comes).
+var keep_html: bool = true
+
+
+## The booklet's file, or "" when it came to nothing (see [member keep_html]).
 func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	busy = true
 	var html: String = await _make(world, scenery, title)
@@ -129,11 +140,21 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_apart.clear()
 	# In the author's steps, when the model has them.
 	var steps: Array[Instructions.Step] = []
+	# Planned and staged with the drawing held (GpuFence) while the booklet's
+	# own tab is in front and says how it goes (tell_tab), a person's input
+	# still drawn. Nothing is drawn meanwhile but the model again, as it
+	# was, and in a browser drawing in software each of those frames is a
+	# second: the castle's plan took 23 of them.
+	var held: bool = not dry and only.is_empty() and tab_open()
+	if held:
+		GpuFence.hold()
 	if job != null:
 		steps = await Instructions.plan_paced(world, library, scenery, {}, job, true)
 	else:
 		steps = Instructions.plan(world, library, scenery, {}, true)
 	if steps.is_empty() or _stopped():
+		if held:
+			GpuFence.let_go()
 		return ""
 	plan = steps
 	_say("Setting out %d steps…" % steps.size(), 0)
@@ -165,9 +186,14 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_main = _stage(order)
 	_order = order
 	await get_tree().process_frame
+	if held:
+		GpuFence.let_go()
 
 	document = Booklet.Document.new()
 	document.title = title
+	# As the timeline and the model's page count them (Instructions.count):
+	# two sub-assemblies put on in one step are two entries of one number.
+	document.steps = int(Instructions.count(steps)["steps"])
 	var stock: Inventory = Inventory.of(world, library, scenery)
 	_stock = stock
 	document.pieces = stock.pieces
@@ -190,60 +216,80 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 				var brick: BrickWorld.Brick = world.get_brick(brick_id)
 				if brick != null:
 					_wanted_lots[stock.key_of(brick)] = true
+	# The whole booklet goes out as it is drawn ([signal wrote]): the cover
+	# first, which is the finished model and needs nothing else, then each
+	# page as soon as its pictures are, so the first are read while the last
+	# are drawn. The parts' pictures come after the cover, in a stylesheet
+	# of their own.
+	var cover: Booklet.Page = null
+	if not dry and only.is_empty():
+		cover = await _cover()
+		_emit(Booklet.head(document, false))
+		_emit(Booklet.page_html(cover, document))
+		_lap("cover")
 	var lots: Dictionary = await _part_pictures(stock)
 	_lap("parts drawn")
 	if _stopped():
 		return _forget_all()
+	if cover != null:
+		_emit(Booklet.parts_style(document))
 
 	var entries: Array[Booklet.Entry] = _entries(steps, lots)
 	_find_apart(entries)
-	# As the timeline and the model's page count them (Instructions.count):
-	# two sub-assemblies put on in one step are two entries of one number.
-	document.steps = int(Instructions.count(steps)["steps"])
-	await _choose_views(entries)
-	_lap("views chosen")
-	if _stopped():
-		return _forget_all()
-	_subjects(entries)
-
-	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2,
+	var layout := Booklet.Layout.new(entries, 2,
 		int(BookletLooks.booklet(world).get("per_page", 0)))
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
-			_adds(entry)
-	if dry:
-		document.pages = pages
-		_forget_all()
-		return ""
+	var pages: Array[Booklet.Page] = []
+	var decided: int = 0
 	var drawn: int = 0
-	var total: int = 0
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
-			if not entry.in_callout:
-				total += 1
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
-			# A callout too big to sit beside its step has pages of its own
-			# (Booklet._callout_pages), and its steps are drawn with the step
-			# it belongs to (_draw, from its callout's stage). Drawn here as
-			# well, as a step of the model's own, they had no rank on the
-			# main stage and stopped the booklet with a script error (8022
-			# Tow Truck, 2026-10-16).
-			if entry.in_callout or not only.is_empty() and not only.has(entry.number):
-				continue
-			drawn += 1
-			if drawn % 5 == 1:
-				_say("Drawing the steps…", total, drawn - 1)
+	while not layout.done():
+		# The views of the steps the next page may take, a few at a time: the
+		# first page is drawn after its own steps are seen, not the booklet's.
+		while decided < layout.reach():
+			var upto: int = mini(entries.size(), decided + (BookletStudio.LANES
+				if decided == 0 else 48))
+			await _choose_views(entries, decided, upto)
 			if _stopped():
+				await _soon(Callable(), 1)
+				await _keep_up(0)
 				return _forget_all()
-			await _draw(entry)
-
+			_subjects(entries, decided, upto)
+			decided = upto
+		# A step's callout's own pages come before its page, and their
+		# pictures are drawn with the step's: so they go out together, after.
+		var some: Array[Booklet.Page] = layout.next()
+		for page: Booklet.Page in some:
+			pages.append(page)
+			for entry: Booklet.Entry in page.entries:
+				_adds(entry)
+			if dry:
+				continue
+			for entry: Booklet.Entry in page.entries:
+				# A callout too big to sit beside its step has pages of its own
+				# (Booklet._callout_pages), and its steps are drawn with the step
+				# it belongs to (_draw, from its callout's stage). Drawn here as
+				# well, as a step of the model's own, they had no rank on the
+				# main stage and stopped the booklet with a script error (8022
+				# Tow Truck, 2026-10-16).
+				if entry.in_callout or not only.is_empty() and not only.has(entry.number):
+					continue
+				drawn += 1
+				if drawn % 5 == 1:
+					_say("Drawing the steps…", entries.size(), drawn - 1)
+				if _stopped():
+					await _soon(Callable(), 1)
+					await _keep_up(0)
+					return _forget_all()
+				await _soon(_draw.bind(entry))
+		for page: Booklet.Page in some if cover != null else []:
+			_soon_then(func() -> void: _emit(Booklet.page_html(page, document)))
+	await _soon(Callable(), 1)
+	await _keep_up(0)
 	_lap("steps drawn")
-	if not only.is_empty():
+	if dry or not only.is_empty():
 		document.pages = pages
 		_forget_all()
 		return ""
-	document.pages.append(await _cover())
+	document.pages.append(cover)
 	document.pages.append_array(pages)
 	var finished: Booklet.Page = await _finished(pages.size() + 2)
 	document.pages.append(finished)
@@ -252,10 +298,25 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	_forget_all()
 	_say("Writing the booklet…", 0)
-	await get_tree().process_frame
-	var html: String = Booklet.html(document)
+	for page: Booklet.Page in document.pages.slice(pages.size() + 1):
+		_emit(Booklet.page_html(page, document))
+	_emit(Booklet.TAIL, "")
 	_lap("written")
-	return html
+	if keep_html:
+		return "".join(_written)
+	return Booklet.TAIL
+
+
+## Send [param text] out ([signal wrote]), and keep it for [method make]'s
+## answer when [member keep_html]: the booklet's pieces, each followed by
+## [param then].
+func _emit(text: String, then: String = "\n") -> void:
+	if keep_html:
+		_written.append(text + then)
+	wrote.emit(text + then)
+
+
+var _written := PackedStringArray()
 
 
 ## Say how it is going: to the status line (progress), and to the job with
@@ -345,6 +406,8 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		if count % 10 == 1:
 			_say("Drawing the parts…", stock.lots.size(), count - 1)
 		if _stopped():
+			await _soon(Callable(), 1)
+			await _keep_up(0)
 			return lots
 		var key: String = "%s:%d" % [lot.part_id, lot.color_code]
 		var made := Booklet.Lot.new()
@@ -361,21 +424,33 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		made.size = Booklet.part_size(extent.size)
 		if dry or not only.is_empty() and not _wanted_lots.has(key):
 			made.size += Vector2(1.0, 1.0)
-			lots[key] = made
+			_soon_then(func() -> void: lots[key] = made)
 			continue
-		var stage: BookletStudio.Stage = _studio.stage(
-			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
-		# Twice the page's resolution: a part is small on the page and
-		# read closely.
-		var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
-		var scale: float = (made.size.x / maxf(extent.size.x, 0.1)) * px_per_mm * 2.0
-		var view := BookletStudio.View.new(BookletStudio.FRONT, extent.get_center(), scale)
-		var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels)
-		_studio.forget(stage)
-		made.size += Vector2(1.0, 1.0)
-		document.parts[key] = _data_uri(shot.image)
-		lots[key] = made
+		await _soon(_part_picture.bind(lot, made, extent, lots))
+	await _soon(Callable(), 1)
+	await _keep_up(0)
 	return lots
+
+
+## The picture of [param lot]'s part, into the parts' pictures ([param lots]
+## and the document's), the work done with it put in [param into].
+func _part_picture(into: Array, lot: Inventory.Lot, made: Booklet.Lot, extent: Rect2,
+		lots: Dictionary) -> void:
+	var key: String = made.key
+	var stage: BookletStudio.Stage = _studio.stage(
+		[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
+	# Twice the page's resolution: a part is small on the page and
+	# read closely.
+	var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
+	var scale: float = (made.size.x / maxf(extent.size.x, 0.1)) * px_per_mm * 2.0
+	var view := BookletStudio.View.new(BookletStudio.FRONT, extent.get_center(), scale)
+	var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels,
+		_encoded.bind(Color(0, 0, 0, 0)))
+	_studio.forget(stage)
+	made.size += Vector2(1.0, 1.0)
+	_later([shot], func() -> void:
+		document.parts[key] = _uri(shot)
+		lots[key] = made, into)
 
 
 ## The parts list at the end, by colour: the whites, the greys and black,
@@ -630,27 +705,48 @@ func _facing(attach: Instructions.Step) -> Vector3:
 ## and can from the back. A real booklet turns the model round with a
 ## sign, and turns it back with another; so does this, and it stays
 ## turned while the back is still where the work is.
-func _choose_views(entries: Array[Booklet.Entry]) -> void:
-	var facing: Vector3 = BookletStudio.FRONT
+##
+## For [param entries] from [param from] up to [param upto], after those
+## before them: the pages are laid out and drawn as the views are chosen,
+## so the first is read while the last are still to be seen (_make).
+func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 	if dry:
-		var was: Vector3 = BookletStudio.FRONT
-		for entry: Booklet.Entry in entries:
+		for index: int in range(from, upto):
+			var entry: Booklet.Entry = entries[index]
 			if not entry.fixed:
 				entry.from = BookletStudio.FRONT
-			_sign(entry, entry != entries[0] and _round_from(was, entry.from))
-			was = entry.from
+			_sign(entry, index > 0 and _round_from(_before, entry.from))
+			_before = entry.from
 		return
-	var keep: int = _studio.supersample
-	_studio.supersample = 1
-	var count: int = 0
-	var before: Vector3 = BookletStudio.FRONT
 	var last: int = -1
 	for number: Variant in only:
 		last = maxi(last, int(number))
-	for entry: Booklet.Entry in entries:
-		count += 1
-		if count % 10 == 1:
-			_say("Choosing how each step is seen…", entries.size(), count - 1)
+	# Every step is measured from the front: from there when it is seen from
+	# the front, and to turn back to when it is turned round. So all of them
+	# are, first, many at once (BookletStudio.measure_all), and from the back
+	# those the front shows too little of; the rest from the back as the
+	# walk below comes to them. The walk is the one it was, step by step.
+	var asks: Array = []
+	var keys: Array = []
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
+		if entry.fixed or last >= 0 and entry.number > last:
+			continue
+		asks.append(_ask(_where(entry), BookletStudio.FRONT))
+		keys.append([entry, BookletStudio.FRONT])
+	await _measure(asks, keys, _seen)
+	if _stopped():
+		return
+	asks.clear()
+	keys.clear()
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
+		if float(_seen.get([entry, BookletStudio.FRONT], 1.0)) < 0.4:
+			asks.append(_ask(_where(entry), BookletStudio.BACK))
+			keys.append([entry, BookletStudio.BACK])
+	await _measure(asks, keys, _seen)
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
 		if _stopped():
 			return
 		# Past the steps being drawn: seen as laid out, from the front.
@@ -662,34 +758,115 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		# than a glance round from the step before.
 		if entry.fixed:
 			# The first step is where the reader starts: nothing to turn from.
-			_sign(entry, count > 1 and _round_from(before, entry.from))
-			before = entry.from
-			facing = BookletStudio.FRONT
+			_sign(entry, index > 0 and _round_from(_before, entry.from))
+			_before = entry.from
+			_turned_to = BookletStudio.FRONT
 			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
 				"other": -1.0, "turned": entry.turned, "fixed": true})
 			continue
-		var span: Array = _where(entry)
-		var here: float = await _seen(span, facing)
-		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
+		var other: Vector3 = BookletStudio.BACK if _turned_to == BookletStudio.FRONT \
 			else BookletStudio.FRONT
+		var here: float = await _seen_from(entry, _turned_to)
 		var turn: bool = false
 		var there: float = -1.0
 		if here < 0.4:
-			there = await _seen(span, other)
+			there = await _seen_from(entry, other)
 			turn = there > here + 0.25
-		elif facing == BookletStudio.BACK:
+		elif _turned_to == BookletStudio.BACK:
 			# Turned round: back to the front as soon as the front shows
 			# the work as well.
-			there = await _seen(span, other)
+			there = await _seen_from(entry, other)
 			turn = there >= 0.7
 		measured.append({"what": "view of step %d" % entry.number, "seen": here,
 			"other": there, "turned": turn})
 		if turn:
-			facing = other
-		entry.from = facing
-		_sign(entry, turn or _round_from(before, entry.from))
-		before = entry.from
-	_studio.supersample = keep
+			_turned_to = other
+		entry.from = _turned_to
+		_sign(entry, turn or _round_from(_before, entry.from))
+		_before = entry.from
+
+
+## Where the walk of [method _choose_views] has got to: the way the model
+## faces, the view of the step before, and every measure so far, by
+## [entry, from].
+var _turned_to: Vector3 = BookletStudio.FRONT
+var _before: Vector3 = BookletStudio.FRONT
+var _seen: Dictionary = {}
+
+
+## How much of [param entry]'s new parts [param from] shows: as measured
+## already, or measured now.
+func _seen_from(entry: Booklet.Entry, from: Vector3) -> float:
+	if not _seen.has([entry, from]):
+		await _measure([_ask(_where(entry), from)], [[entry, from]], _seen)
+	return float(_seen.get([entry, from], -1.0))
+
+
+## Measure [param asks] (BookletStudio.measure_all), a few frames' worth at
+## a time, into [param seen] under [param keys].
+func _measure(asks: Array, keys: Array, seen: Dictionary) -> void:
+	const AT_ONCE := 48
+	for from: int in range(0, asks.size(), AT_ONCE):
+		if _stopped():
+			return
+		var some: Array = await _studio.measure_all(asks.slice(from, from + AT_ONCE))
+		for index: int in some.size():
+			seen[keys[from + index]] = some[index]
+
+
+## What [method BookletStudio.measure_all] is asked for how much of a
+## step's new parts [param from] shows: [param where] as [method _where]
+## gives it.
+func _ask(where: Array, from: Vector3) -> Array:
+	var stage: BookletStudio.Stage = where[0]
+	var extent: Rect2 = _extent_upto(stage, int(where[2]), from)
+	var size := Vector2i(360, 270)
+	var scale: float = minf(size.x * 0.9 / maxf(extent.size.x, 1.0),
+		size.y * 0.9 / maxf(extent.size.y, 1.0))
+	var view := BookletStudio.View.new(from, extent.get_center(), scale)
+	return [stage, int(where[2]), int(where[1]), view, size]
+
+
+## BookletStudio.extent of the first [param upto] boxes of [param stage]
+## from [param from], read off the extents of every first so many, worked
+## out once: each in turn over all the boxes before it was a castle's 400
+## steps times its 2,500 boxes.
+func _extent_upto(stage: BookletStudio.Stage, upto: int, from: Vector3) -> Rect2:
+	var key: Array = [stage, from]
+	if not _prefixes.has(key):
+		var turn: Basis = BookletStudio.basis_for(from)
+		var lows := PackedVector2Array()
+		var highs := PackedVector2Array()
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		lows.append(low)
+		highs.append(high)
+		# The corners as BookletStudio.extent takes them, so the answer is its
+		# to the last bit.
+		for box: AABB in stage.boxes:
+			for n: int in 8:
+				var corner: Vector3 = box.position + Vector3(
+					box.size.x if n & 1 else 0.0,
+					box.size.y if n & 2 else 0.0,
+					box.size.z if n & 4 else 0.0)
+				var at := Vector2(corner.dot(turn.x), corner.dot(turn.y))
+				low = low.min(at)
+				high = high.max(at)
+			lows.append(low)
+			highs.append(high)
+		_prefixes[key] = [lows, highs]
+	var both: Array = _prefixes[key]
+	var at: int = clampi(upto, 0, stage.boxes.size())
+	var low: Vector2 = (both[0] as PackedVector2Array)[at]
+	var high: Vector2 = (both[1] as PackedVector2Array)[at]
+	if low.x > high.x:
+		return Rect2()
+	return Rect2(low, high - low)
+
+
+## Stage and view -> the extents of its first so many boxes ([method
+## _extent_upto]).
+var _prefixes: Dictionary = {}
 
 
 ## The turn sign on [param entry] where it is [param due], unless its
@@ -728,21 +905,6 @@ static func _round_from(from: Vector3, to: Vector3) -> bool:
 	return absf(a.angle_to(b)) > deg_to_rad(TURN_ROUND)
 
 
-## How much of a step's new parts [param from] shows: [param where] as
-## [method _where] gives it.
-func _seen(where: Array, from: Vector3) -> float:
-	var stage: BookletStudio.Stage = where[0]
-	var boxes: Array = stage.boxes.slice(0, int(where[2]))
-	var extent: Rect2 = BookletStudio.extent(boxes, from)
-	var size := Vector2i(360, 270)
-	var scale: float = minf(size.x * 0.9 / maxf(extent.size.x, 1.0),
-		size.y * 0.9 / maxf(extent.size.y, 1.0))
-	var view := BookletStudio.View.new(from, extent.get_center(), scale)
-	var shot: BookletStudio.Shot = await _studio.shoot(stage, int(where[2]),
-		int(where[1]), view, size, true)
-	return shot.seen
-
-
 ## The stage a step is drawn on and its new parts' ranks there: [stage,
 ## from, upto]. The model's, or a section's own ([method _find_apart]).
 func _where(entry: Booklet.Entry) -> Array:
@@ -766,6 +928,8 @@ var _apart: Dictionary = {}
 ## before it (docs/INSTRUCTIONS.md). What it touches is read off the parts'
 ## boxes, grown by a hair.
 func _find_apart(entries: Array[Booklet.Entry]) -> void:
+	_grid.clear()
+	_gridded = 0
 	var at: int = 0
 	while at < entries.size():
 		var first: Booklet.Entry = entries[at]
@@ -784,23 +948,34 @@ func _find_apart(entries: Array[Booklet.Entry]) -> void:
 
 
 ## Whether the bricks ranked [param from] to [param upto] touch any ranked
-## before them.
+## before them. The bricks before are put in a grid as the sections go on,
+## each once: a grid of every brick before each section, made afresh, was
+## 0.3 s of the castle's window held still.
 func _touches(from: int, upto: int) -> bool:
 	const CELL := 40.0
-	var grid: Dictionary = {}
-	for rank: int in range(1, from):
+	if from <= _gridded:
+		_grid.clear()
+		_gridded = 0
+	for rank: int in range(_gridded + 1, from):
 		var box: AABB = (_main.boxes[rank - 1] as AABB).grow(1.0)
 		for cell: Vector3i in _cells_of(box, CELL):
-			if not grid.has(cell):
-				grid[cell] = []
-			(grid[cell] as Array).append(box)
+			if not _grid.has(cell):
+				_grid[cell] = []
+			(_grid[cell] as Array).append(box)
+	_gridded = from - 1
 	for rank: int in range(from, upto + 1):
 		var box: AABB = _main.boxes[rank - 1]
 		for cell: Vector3i in _cells_of(box, CELL):
-			for other: AABB in grid.get(cell, []):
+			for other: AABB in _grid.get(cell, []):
 				if other.intersects(box):
 					return true
 	return false
+
+
+## The bricks ranked up to [member _gridded] by the cells they are in, for
+## [method _touches].
+var _grid: Dictionary = {}
+var _gridded: int = 0
 
 
 static func _cells_of(box: AABB, size: float) -> Array[Vector3i]:
@@ -820,13 +995,20 @@ static func _cells_of(box: AABB, size: float) -> Array[Vector3i]:
 ##
 ## "Too big" is the whole finished model not fitting a page at four
 ## millimetres a stud.
-func _subjects(entries: Array[Booklet.Entry]) -> void:
-	var area: Vector2 = Booklet.content().size
-	var whole: Rect2 = BookletStudio.extent(_main.boxes, BookletStudio.FRONT)
-	var fits: bool = minf(area.x / maxf(whole.size.x, 1.0),
-		area.y / maxf(whole.size.y, 1.0)) >= 0.2
-	var placed: Dictionary = {}
-	for entry: Booklet.Entry in entries:
+##
+## For [param entries] from [param from] up to [param upto], after those
+## before them, as [method _choose_views].
+func _subjects(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
+	if from == 0:
+		var area: Vector2 = Booklet.content().size
+		var whole: Rect2 = BookletStudio.extent(_main.boxes, BookletStudio.FRONT)
+		_fits = minf(area.x / maxf(whole.size.x, 1.0),
+			area.y / maxf(whole.size.y, 1.0)) >= 0.2
+		_placed.clear()
+	var fits: bool = _fits
+	var placed: Dictionary = _placed
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
 		var span: Array = _ranks[int(entry.get_meta("step"))]
 		var key: String = "" if fits else entry.section
 		if not placed.has(key):
@@ -841,6 +1023,12 @@ func _subjects(entries: Array[Booklet.Entry]) -> void:
 				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from)
 			entry.cropped = false
 		_zoomed(entry)
+
+
+## Whether the whole model fits a page, and each section's boxes so far:
+## see [method _subjects].
+var _fits: bool = true
+var _placed: Dictionary = {}
 
 
 ## A step its designer zoomed: in, framed on what it adds, the rest of the
@@ -897,50 +1085,132 @@ func _adds(entry: Booklet.Entry) -> void:
 # -- pictures ------------------------------------------------------------------
 
 
-func _draw(entry: Booklet.Entry) -> void:
+## The pictures of [param entry], and of its callout: each drawn here, and
+## what is made of it put in place once its worker is done (_later, into
+## [param into]), in the order they were drawn.
+func _draw(into: Array, entry: Booklet.Entry) -> void:
 	var where: Array = _where(entry)
 	var size: Vector2i = entry.pixels(px_per_mm)
 	var view: BookletStudio.View = entry.view(px_per_mm)
-	_studio.fade = (5.0 * px_per_mm) if entry.cropped else 0.0
-	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
-		int(where[1]), view, size)
-	_studio.fade = 0.0
 	# Clear behind the model on a page laid out by hand, where a thing may sit
 	# in the picture's box and must not be painted over.
-	entry.image = _data_uri(shot.image, Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR)
-	_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
-	# Where the new parts were laid out to be (booklet_layout), and where the
-	# picture drew them, for a probe to hold the one to the other.
-	if shot.new_rect.size.x > 0.0:
-		measured.append({"what": "new parts of step %d" % entry.number, "laid": entry.adds,
-			"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
-				shot.new_rect.size / px_per_mm)})
-	_point_at_small(entry, shot)
-	if entry.callout == null:
+	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
+		int(where[1]), view, size,
+		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR),
+		(5.0 * px_per_mm) if entry.cropped else 0.0)
+	_later([shot], func() -> void:
+		entry.image = _uri(shot)
+		_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
+		# Where the new parts were laid out to be (booklet_layout), and where the
+		# picture drew them, for a probe to hold the one to the other.
+		if shot.new_rect.size.x > 0.0:
+			measured.append({"what": "new parts of step %d" % entry.number, "laid": entry.adds,
+				"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
+					shot.new_rect.size / px_per_mm)})
+		_point_at_small(entry, shot), into)
+	if entry.callout != null:
+		var callout: Booklet.Callout = entry.callout
+		var stage: BookletStudio.Stage = _callouts[callout][0]
+		var spans: Array = _callouts[callout][1]
+		if not callout.inline:
+			for sub: Booklet.Entry in callout.steps:
+				var part: Array = spans[sub.number - 1]
+				var sub_size: Vector2i = sub.pixels(px_per_mm)
+				var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
+					int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size,
+					_encoded.bind(Color(0, 0, 0, 0) if sub.clear else CALLOUT_PAGE_COLOUR))
+				_later([sub_shot], func() -> void:
+					sub.image = _uri(sub_shot)
+					_note("step %d, %s step %d" % [entry.number, callout.name, sub.number],
+						sub_size, sub_shot, sub.free, sub.rect), into)
+		_later([], func() -> void: callout.images.clear(), into)
+		for index: int in callout.cells.size():
+			var part: Array = spans[index] if callout.inline else spans[-1]
+			var cell_size := Vector2i(callout.cells[index].size * px_per_mm)
+			var cell_shot: BookletStudio.Shot = await _studio.shoot(stage,
+				int(part[1]), int(part[0]) if callout.inline else int(part[1]) + 1,
+				callout.cell_view(index, px_per_mm), cell_size,
+				_encoded.bind(CALLOUT_COLOUR))
+			_later([cell_shot], func() -> void:
+				callout.images.append(_uri(cell_shot))
+				_note("step %d, %s box %d" % [entry.number, callout.name, index + 1],
+					cell_size, cell_shot, Rect2(), callout.cells[index]), into)
+		_arrows(entry, view, size)
+
+
+## Pictures drawn and still with their workers, each with what is to be done
+## with it once they are done: [[shots], Callable], oldest first.
+var _pending: Array = []
+
+
+func _later(shots: Array, then: Callable, into: Array) -> void:
+	into.append([shots, then])
+
+
+## Pictures being drawn alongside each other, as many as the studio has
+## lanes (BookletStudio.shoot): each [method _soon]'s work, whether it is
+## done, and what is to be done with its pictures, in the order it was
+## asked for: {"done", "later": [[shots], Callable], ...}.
+var _going: Array = []
+
+
+## Set [param work] (Array -> nothing, the work to be done with its
+## pictures put in the Array) going alongside what is going already, once
+## fewer than [param most] are (the studio's lanes, unless said); work done
+## at the front handed on to _pending, in order, and what the workers have
+## done with it put in place. No work, only the waiting: [code]_soon(
+## Callable(), 1)[/code] is until all of it is done.
+func _soon(work: Callable, most: int = BookletStudio.PICTURE_LANES) -> void:
+	while true:
+		while not _going.is_empty() and bool(_going[0]["done"]):
+			_pending.append_array(_going.pop_front()["later"])
+		var busy: int = 0
+		for one: Dictionary in _going:
+			if not bool(one["done"]):
+				busy += 1
+		if busy < most:
+			break
+		await get_tree().process_frame
+	await _keep_up()
+	if not work.is_valid():
 		return
-	var callout: Booklet.Callout = entry.callout
-	var stage: BookletStudio.Stage = _callouts[callout][0]
-	var spans: Array = _callouts[callout][1]
-	if not callout.inline:
-		for sub: Booklet.Entry in callout.steps:
-			var part: Array = spans[sub.number - 1]
-			var sub_size: Vector2i = sub.pixels(px_per_mm)
-			var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
-				int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size)
-			sub.image = _data_uri(sub_shot.image, Color(0, 0, 0, 0) if sub.clear else CALLOUT_PAGE_COLOUR)
-			_note("step %d, %s step %d" % [entry.number, callout.name, sub.number],
-				sub_size, sub_shot, sub.free, sub.rect)
-	callout.images.clear()
-	for index: int in callout.cells.size():
-		var part: Array = spans[index] if callout.inline else spans[-1]
-		var cell_size := Vector2i(callout.cells[index].size * px_per_mm)
-		var cell_shot: BookletStudio.Shot = await _studio.shoot(stage,
-			int(part[1]), int(part[0]) if callout.inline else int(part[1]) + 1,
-			callout.cell_view(index, px_per_mm), cell_size)
-		callout.images.append(_data_uri(cell_shot.image, CALLOUT_COLOUR))
-		_note("step %d, %s box %d" % [entry.number, callout.name, index + 1],
-			cell_size, cell_shot, Rect2(), callout.cells[index])
-	_arrows(entry, view, size)
+	var one: Dictionary = {"done": false, "later": []}
+	_going.append(one)
+	_run_soon.call(work, one)
+
+
+func _run_soon(work: Callable, one: Dictionary) -> void:
+	await work.call(one["later"])
+	one["done"] = true
+
+
+## [param then] done once all asked for before it is.
+func _soon_then(then: Callable) -> void:
+	_going.append({"done": true, "later": [[[], then]]})
+
+
+## Put in place what the workers have done, oldest first, until no more than
+## [param most] are left: a castle's pictures drawn ahead of their workers
+## are megabytes each, so only so many are let wait.
+func _keep_up(most: int = -1) -> void:
+	if most < 0:
+		most = maxi(4, OS.get_processor_count())
+	while _pending.size() > most:
+		var next: Array = _pending.pop_front()
+		for shot: BookletStudio.Shot in next[0]:
+			await _studio.finished(shot)
+		(next[1] as Callable).call()
+
+
+## What a worker made of [param shot]: its data URI, or "" for a picture
+## that was not drawn.
+static func _uri(shot: BookletStudio.Shot) -> String:
+	return str(shot.made) if shot.made is String else ""
+
+
+## On a worker: a picture as [method _data_uri] has it, laid on [param on].
+static func _encoded(image: Image, on: Color) -> String:
+	return _data_uri(image, on)
 
 
 ## A red arrow down onto what the step adds, when that is small enough to
@@ -1048,9 +1318,10 @@ func _whole(from: Vector3, area: Rect2, fill: float) -> String:
 	scale = minf(scale, Booklet.MOST_SCALE * 1.5 * px_per_mm)
 	var view := BookletStudio.View.new(from, extent.get_center(), scale)
 	var shot: BookletStudio.Shot = await _studio.shoot(_main, _main.count,
-		_main.count + 1, view, size)
-	return _data_uri(shot.image, PAGE_COLOUR if from == BookletStudio.FRONT
-		and area.size.x > 100.0 else Color.WHITE)
+		_main.count + 1, view, size, _encoded.bind(PAGE_COLOUR
+			if from == BookletStudio.FRONT and area.size.x > 100.0 else Color.WHITE))
+	await _studio.finished(shot)
+	return _uri(shot)
 
 
 ## A picture as a data URI. A step's picture is laid on the colour it
@@ -1116,6 +1387,14 @@ static func tell_tab(line: String) -> void:
 	""" % JSON.stringify(line), true)
 
 
+## Whether the tab opened for the booklet is there, in a browser.
+static func tab_open() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return bool(JavaScriptBridge.eval(
+		"!!(window.brickworksBooklet && !window.brickworksBooklet.closed)", true))
+
+
 ## Close the tab opened for a booklet that was stopped or came to nothing.
 static func close_tab() -> void:
 	if not OS.has_feature("web"):
@@ -1124,38 +1403,6 @@ static func close_tab() -> void:
 		if (window.brickworksBooklet && !window.brickworksBooklet.closed) window.brickworksBooklet.close();
 		window.brickworksBooklet = null;
 	""", true)
-
-
-## Put the booklet in the tab opened for it. False when there is none —
-## the browser blocked it — and the caller downloads the file instead.
-static func fill_tab(html: String) -> bool:
-	if not OS.has_feature("web"):
-		return false
-	var window: JavaScriptObject = JavaScriptBridge.get_interface("window")
-	if window == null:
-		return false
-	var tab: Variant = window.brickworksBooklet
-	if tab == null or not (tab is JavaScriptObject):
-		return false
-	var document: JavaScriptObject = (tab as JavaScriptObject).document
-	if document == null:
-		return false
-	document.open()
-	# The tab was opened from the app, so it is under the app's security
-	# policy, which runs no inline handler: Print did nothing in a browser
-	# (share_flow, 2026-10-12). The app gives the button its click instead;
-	# the file the desktop writes keeps its own.
-	document.write(html.replace(PRINT_INLINE, ""))
-	document.close()
-	JavaScriptBridge.eval("""
-		(() => {
-			const tab = window.brickworksBooklet;
-			const button = tab && tab.document.querySelector('.bar button');
-			if (button) button.addEventListener('click', () => tab.print());
-		})();
-	""", true)
-	window.brickworksBooklet = null
-	return true
 
 
 ## Put an Instructions button on the toolbar, after the button that says

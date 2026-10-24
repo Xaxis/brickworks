@@ -4905,17 +4905,28 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void:
 		BookletMaker.tell_tab(job.line()))
+	var file_name: String = title.to_snake_case() + "_instructions.html"
+	# Into its file and in front of the reader as it is drawn (BookletOut):
+	# the last booklet's pages, kept for its tab, go.
+	if is_instance_valid(_booklet_out):
+		_booklet_out.queue_free()
+	_booklet_out = BookletOut.new()
+	add_child(_booklet_out)
+	var show: bool = not given and BookletMaker.open_when_written
+	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
+	maker.keep_html = false
+	maker.wrote.connect(_booklet_out.take)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
-	var html: String = await maker.make(_world,
+	var made: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
 	if given:
 		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:
 			return "%s %.1f s" % [lap[0], float(lap[1]) / 1000.0])))
 	maker.queue_free()
-	if job.cancelled or html.is_empty():
+	if job.cancelled or made.is_empty():
+		_booklet_out.finish(false)
 		job.end()
-		BookletMaker.close_tab()
 		var why: String = "stopped drawing the booklet" if job.cancelled \
 			else "nothing to write instructions for"
 		_bar.say(why)
@@ -4923,35 +4934,37 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	job.say("Opening the booklet…")
 	job.count(0, 0)
 	job.can_cancel = false
-	var file_name: String = title.to_snake_case() + "_instructions.html"
+	var written: bool = _booklet_out.finish(true)
 	var note: String
 	if not to.is_empty():
-		var file: FileAccess = FileAccess.open(to, FileAccess.WRITE)
-		if file == null:
+		if not written:
 			note = "could not write %s" % to
 		else:
-			file.store_string(html)
-			file.close()
 			SaveTo.wrote(to)
 			note = "wrote %s, %d steps" % [to, steps]
-			if not given and BookletMaker.open_when_written:
-				note = _open_booklet(to, steps)
-	elif BookletMaker.fill_tab(html):
+			if show:
+				note = _open_booklet(to, steps, _booklet_out)
+	elif _booklet_out.shown:
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
-		note = Download.give(html, file_name, "text/html")
+		note = Download.give(_booklet_out.kept(), file_name, "text/html")
 	job.end()
 	_bar.say(note)
 	return note
 
 
-## The booklet written to [param path] open in the person's browser, and the
-## line to say: whether it opened, first, as a long path can run off the
-## bar's end; then the file, with Show in folder beside it (StatusBar).
-## walk180 pressed Instructions three times on a desktop with no browser,
-## and nothing happened (2026-10-23).
-func _open_booklet(path: String, steps: int) -> String:
-	if SaveTo.open(path):
+## The last booklet drawn, still there to be read (BookletOut).
+var _booklet_out: BookletOut = null
+
+
+## The line to say once the booklet written to [param path] is whole: that
+## it is open in the person's browser (it was opened on its first page,
+## [param out], or is now, from the file), first, as a long path can run
+## off the bar's end; then the file, with Show in folder beside it
+## (StatusBar). walk180 pressed Instructions three times on a desktop with
+## no browser, and nothing happened (2026-10-23).
+func _open_booklet(path: String, steps: int, out: BookletOut) -> String:
+	if out.shown or out.url().is_empty() and SaveTo.open(path):
 		return "the booklet is open in your browser, %d steps: %s" % [steps, path]
 	return "no browser could open the booklet: it is saved in %s, %d steps" % [path, steps]
 

@@ -1027,18 +1027,44 @@ picture the assistant is shown.
   window). From the toolbar's **Instructions** (added after Timeline by
   `BookletMaker.add_button`, by its words, because `model_bar.gd` is someone
   else's at the moment), the timeline's Instructions, or `--booklet=OUT.html
-  --model=M`. On the desktop it is written to Downloads and opened in the
-  browser; on the web it is written into a tab opened as the button was pressed
-  (`BookletMaker.open_tab`, then `fill_tab`; a page may only open a tab in
-  answer to a click), or downloaded if the browser blocked the tab.
+  --model=M`. It goes out as it is drawn (`BookletMaker.wrote`, a piece at a
+  time: the cover first, then the parts' pictures as a stylesheet of their
+  own, then each page as soon as its pictures are), and is read while the rest
+  is drawn (`BookletOut`, `src/net/booklet_out.gd`, 2026-10-23): on the
+  desktop into the file chosen (as NAME.part until it is whole) and, to be
+  read, over HTTP from 127.0.0.1 on a port of its own, the browser opened on
+  it with the first piece (a page opened from a file is read only as far as
+  it then goes); the pieces are kept, so the page opens again while the app
+  runs. On the web it is written into a tab opened as the button was pressed
+  (`BookletMaker.open_tab`, then `document.write` a piece at a time; a page
+  may only open a tab in answer to a click), or downloaded whole if the
+  browser blocked the tab. `booklet_stream_probe` presses Instructions on
+  the castle and reads the HTTP stream as a browser does: the cover within
+  5 s, the first page of steps long before the last, what it read the file
+  written, the page opened again whole, no frame of the app's over 500 ms.
+  The browser flows wait for the tab's document to close (`bookletWhole` in
+  `booklet_flow.mjs`, `booklet_edit_flow.mjs`, `brickify_flow.mjs`), and
+  `booklet_flow` says when the first page and the first page of steps came.
   While it works the status bar says which part of it and how far (`Working`,
   `BookletMaker.job`: planning, the parts, the views, the steps, counted, with
   Cancel, which closes the tab), and so does that tab, which is the one in
-  front (`BookletMaker.tell_tab`). The plan is `Instructions.plan_paced`, and
-  each picture is read back once the card has drawn it (`GpuFence`, in
-  `BookletStudio._drawn`), as `ModelShot` reads: read sooner, in a browser
-  drawing in software the car's booklet held the page about three seconds a
-  picture (2026-10-12, `progress_check.mjs`).
+  front (`BookletMaker.tell_tab`). The plan is `Instructions.plan_paced`
+  (in a browser with the booklet's tab in front, with the drawing held,
+  `GpuFence.hold`: each frame given back drew the model again, a second each
+  in software), and each picture is read back once the card has drawn it
+  (`GpuFence`, in `BookletStudio._drawn`), as `ModelShot` reads: read sooner,
+  in a browser drawing in software the car's booklet held the page about
+  three seconds a picture (2026-10-12, `progress_check.mjs`). Pictures are
+  drawn several at a frame (2026-10-23): each in a lane of its own
+  (`BookletStudio.PictureLane`, `PICTURE_LANES`, a copy of its stage's
+  MultiMeshes, `BrickWorld.drawing`), the maker setting that many going at
+  once (`BookletMaker._soon`) and putting what comes of them in place in
+  step order; each picture's cutting down, model and new-part rectangles and
+  JPEG are done on a worker thread (`BookletStudio._develop`); the views are
+  measured eight at a frame (`measure_all`, `Lane`), the codes and the new
+  parts alone drawn as masks the engine counts (`_count_marked`, the codes'
+  `mask`). The castle's booklet (2,497 parts, 400 steps) went from 79-95 s
+  to about 15 s on the desktop's card, every page byte for byte the same.
   `BookletMaker` (`src/render/booklet_maker.gd`) plans, decides each step's
   view, lays out (`Booklet.lay_out`, `src/assembly/booklet.gd`) and draws;
   `BookletStudio` (`src/render/booklet_studio.gd`) draws off screen, never
@@ -1055,8 +1081,8 @@ picture the assistant is shown.
   fullest page whose shared scale is still readable (`FOUR_UP` 6 mm a stud,
   `TWO_UP` 5), never more than `MOST_SCALE` (10 mm a stud) — and every step
   on a page at the same scale; a step whose new parts are hidden from the
-  front (less than 40% of them in view, measured by drawing the codes again
-  with only the new parts) drawn from the back with the turn sign, and turned
+  front (less than 40% of them in view, measured by drawing the new parts
+  again alone) drawn from the back with the turn sign, and turned
   back when the front shows 70%; a callout (cream box, sub-steps 1 2 3, "2x")
   with an arrow to each copy, projected through the step's own camera and
   drawn as print draws it, out of the box at a right angle and round one corner
@@ -1065,7 +1091,7 @@ picture the assistant is shown.
   (`Minifig.frame_of`); the finished model front and back; then the parts by
   colour with counts and element numbers. A model too big to read whole (not
   fitting a page at 4 mm a stud) is framed on the part being built, the rest
-  fading out at the picture's edges (`BookletStudio.fade`). A section that
+  fading out at the picture's edges (`BookletStudio.shoot`'s fade). A section that
   touches nothing built before it (a second vehicle, by the parts' boxes) is
   drawn on a stage of its own for its steps, as a callout is, and framed on
   itself (`BookletMaker._find_apart`, `_where`), for 7636's harvester, which
@@ -1594,6 +1620,7 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
+godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's

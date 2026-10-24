@@ -391,8 +391,10 @@ func _instructions() -> void:
 		"stopped", "nothing"], 400.0)
 	_check("the booklet is where it was put", FileAccess.get_file_as_string(path)
 		.contains("section class=\"page steps\""))
+	# Asked as it is drawn, to read it as it comes (BookletOut).
 	_check("...and the browser was asked to open it (%s)" % str(_opened),
-		_opened.size() == 1 and str(_opened[0]) == "file://" + path)
+		_opened.size() == 1 and str(_opened[0]).begins_with("http://127.0.0.1:")
+		and str(_opened[0]).ends_with("/" + path.get_file().uri_encode()))
 	_check("...and with none to open it, the line says so, and where the file is (%s)" % said,
 		said.begins_with("no browser could open the booklet: it is saved in %s, " % path)
 		and said.ends_with(" steps"))
@@ -417,8 +419,8 @@ func _instructions() -> void:
 	said = await _said(["no browser", "the booklet", "wrote", "could not", "stopped",
 		"nothing"], 400.0)
 	_check("the booklet opens in the browser, said (%s)" % said,
-		_opened == ["file://" + path] and said.begins_with("the booklet is open in your browser")
-		and said.ends_with(path))
+		_opened.size() == 1 and str(_opened[0]).begins_with("http://127.0.0.1:")
+		and said.begins_with("the booklet is open in your browser") and said.ends_with(path))
 	await _frames(3)
 	await _shot("08_status_opened")
 
