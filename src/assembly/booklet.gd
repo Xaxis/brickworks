@@ -1056,8 +1056,38 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
   margin-right: calc(1 * var(--mm)); box-shadow: inset 0 0 0 calc(.2 * var(--mm)) rgba(0,0,0,.3); }
 %s
 </style>
-<div class="bar"><span>%s</span><button onclick="print()">Print</button></div>
-<main>""" % [_escape(document.title), "\n".join(parts), _escape(document.title)]
+<div class="bar"><span>%s</span><button onclick="print()">Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
+%s
+<main>""" % [_escape(document.title), "\n".join(parts), _escape(document.title), SAVE_SCRIPT]
+
+
+## Save as PDF and Save pages as PNG, shown where they work: on the
+## desktop, while Brickworks serves the booklet to the browser (BookletOut),
+## each asks Brickworks, which asks where to save it and writes it
+## (BookletPdf, BookletPng); on the web the app shows and answers them in
+## its tab itself (BookletOut.finish), where this does not run. A booklet
+## opened from its file has no Brickworks to ask, and shows Print alone.
+const SAVE_SCRIPT := """<script>
+if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventListener("DOMContentLoaded", () => {
+  const said = document.getElementById("saved");
+  for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"]]) {
+    const button = document.getElementById(id);
+    button.hidden = false;
+    button.onclick = async () => {
+      button.disabled = true;
+      said.hidden = false;
+      said.textContent = "Saving\u2026";
+      try {
+        const answer = await fetch("/save?" + kind, {method: "POST"});
+        said.textContent = await answer.text();
+      } catch (error) {
+        said.textContent = "Brickworks is closed: open the instructions from it again to save them";
+      }
+      button.disabled = false;
+    };
+  }
+});
+</script>"""
 
 
 static func _class_of(key: String, document: Document) -> String:

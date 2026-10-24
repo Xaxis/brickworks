@@ -5189,6 +5189,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(_booklet_out.take)
+	_booklet_out.save_wanted.connect(_save_booklet)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
 	var made: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
@@ -5228,6 +5229,86 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 ## The last booklet drawn, still there to be read (BookletOut).
 var _booklet_out: BookletOut = null
+
+
+## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
+## "pdf" or "png"): the booklet read again from itself, a page at a time,
+## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng). On the
+## desktop where the person chooses, asked as every export asks (SaveTo);
+## on the web, a download. [param reply] is said back in the booklet.
+func _save_booklet(kind: String, reply: Callable) -> void:
+	reply.call(await save_booklet_as(kind))
+
+
+func save_booklet_as(kind: String, to: String = "") -> String:
+	if not is_instance_valid(_booklet_out) or _booklet_out.source() == null:
+		return "the booklet is not there to save: make the instructions again"
+	if _booklet_writing:
+		return "already saving the booklet…"
+	var pdf: bool = kind != "png"
+	var name: String = _booklet_out.base_name() + (".pdf" if pdf else "_pages.zip")
+	var web: bool = OS.has_feature("web")
+	if to.is_empty() and not web:
+		# The booklet is in the browser, in front of the window that asks.
+		DisplayServer.window_move_to_foreground()
+		to = await SaveTo.ask(name, "", "Save the instructions as a PDF" if pdf
+			else "Save the instructions' pages as pictures")
+		if to.is_empty():
+			return "not saved"
+	_booklet_writing = true
+	var started: int = Time.get_ticks_msec()
+	var job: Working.Job = Working.begin("Writing the PDF…" if pdf else "Drawing the pages…")
+	var written: String = to if not web else "user://" + name
+	var part: String = written + ".part"
+	var pages: int = -1
+	var ok: bool = false
+	# A frame for the window every few pages on the desktop; none on the
+	# web, where the app's tab is out of view (BookletRead.read_all).
+	var pace: int = 0 if web else 8
+	if pdf:
+		var read := BookletRead.new()
+		var out := BookletPdf.new()
+		if out.begin("" if web else part, read):
+			pages = await read.read_all(_booklet_out.source(), out.page, pace)
+			var bytes: PackedByteArray = out.finish(read.title)
+			ok = pages > 0 and out.ok()
+			if web and ok:
+				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
+	else:
+		var drawer := BookletPng.new()
+		add_child(drawer)
+		pages = await drawer.write(_booklet_out.source(), part, _booklet_out.base_name(), pace)
+		ok = pages > 0 and drawer.pages == pages
+		drawer.queue_free()
+		if web and ok:
+			JavaScriptBridge.download_buffer(FileAccess.get_file_as_bytes(part), name,
+				"application/zip")
+	job.end()
+	_booklet_writing = false
+	var seconds: float = (Time.get_ticks_msec() - started) / 1000.0
+	if web:
+		DirAccess.remove_absolute(part)
+		var said: String = ("downloaded %s, %d pages" % [name, pages]) if ok \
+			else "could not save the booklet"
+		_bar.say(said)
+		return said
+	if ok:
+		if FileAccess.file_exists(written):
+			DirAccess.remove_absolute(written)
+		ok = DirAccess.rename_absolute(part, written) == OK
+	else:
+		DirAccess.remove_absolute(part)
+	if not ok:
+		_bar.say("could not write %s" % written)
+		return "could not write %s" % written
+	SaveTo.wrote(written)
+	var line: String = "wrote %s, %d pages in %.1f s: %s" % [written.get_file(), pages, seconds,
+		written]
+	_bar.say(line)
+	return line
+
+
+var _booklet_writing: bool = false
 
 
 ## The line to say once the booklet written to [param path] is whole: that
