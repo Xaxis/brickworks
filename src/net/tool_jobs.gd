@@ -34,9 +34,12 @@ const TOOL := "job"
 const KEPT := 12
 
 ## How long [code]job[/code] waits for the work to end before saying how far it
-## has got: a session calling it again and again then asks about every ten
-## seconds, and has the answer within a moment of the work's end.
-var wait_s: float = 10.0
+## has got: it answers the moment the work ends, so a longer wait costs no
+## time and saves the calls between. At ten seconds a picture held up in the
+## GPU's queue for two minutes was eleven calls of the design's (detail189,
+## 2026-10-23); a session waits three minutes for an answer, the connector's
+## relay four.
+var wait_s: float = 45.0
 ## How long a call not known to be long is waited for before it becomes a
 ## job. Both variables so that a probe can shorten them, and this one set
 ## by --jobs-after=S (/app?jobs-after=S on the web): 0 makes every call a
@@ -87,7 +90,7 @@ static func definition() -> Dictionary:
 			+ "job number (a render, a turntable, a booklet, a Studio file, a Brick Art "
 			+ "picture, a brickify, a mechanism's recording, or any call still going after "
 			+ "20 s). It waits up to "
-			+ "10 s for the work to end, then says how far it has got; once done it gives "
+			+ "45 s for the work to end, then says how far it has got; once done it gives "
 			+ "the work's answer, picture and all, or why it stopped. cancel=true stops "
 			+ "it, as Cancel in the window does. id= the job's number; the latest when "
 			+ "omitted."),
@@ -244,8 +247,9 @@ func _started(entry: Entry) -> String:
 		after = " (still going after %d s)" % entry.seconds()
 	return ("Started job %d%s: %s It runs in the app, where the person sees it, and takes "
 		% [entry.id, after, _sentence(entry.work.words)]
-		+ "longer than a call waits. Call job {\"id\": %d} about every 10 s (each call " % entry.id
-		+ "waits up to 10 s for it to end) until it gives the answer%s. Nothing else can be "
+		+ "longer than a call waits. Call job {\"id\": %d} (each call waits up to 45 s " % entry.id
+		+ "for it to end, and answers the moment it does) until it gives the answer"
+		+ "%s. Nothing else can be "
 			% (", or {\"id\": %d, \"cancel\": true} to stop it" % entry.id
 				if entry.work.can_cancel else "")
 		+ "done in the app until it ends.")
@@ -302,11 +306,10 @@ func answer(input: Dictionary) -> Variant:
 		var share: String = ""
 		if entry.work.total > 0:
 			share = " (%d%%)" % roundi(100.0 * entry.work.done / entry.work.total)
-		return ("Job %d (%s) is still going, %d s in%s: %s Call job {\"id\": %d} again in "
+		return ("Job %d (%s) is still going, %d s in%s: %s Call job {\"id\": %d} again%s."
 			% [entry.id, entry.tool, entry.seconds(), share, _sentence(entry.work.line()),
-				entry.id]
-			+ "about 10 s%s." % (", or with cancel=true to stop it" if entry.work.can_cancel
-				and not entry.work.cancelled else ""))
+				entry.id, ", or with cancel=true to stop it" if entry.work.can_cancel
+				and not entry.work.cancelled else ""])
 	var said: String
 	if entry.answer == null:
 		return ("Job %d (%s) failed after %d s: it stopped without an answer (the app's log "

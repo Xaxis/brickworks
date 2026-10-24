@@ -21,6 +21,13 @@ var edited: Callable = func() -> void: pass
 var drawn_pick: Callable = Callable()
 ## Aim the ghost where the pointer is, after what is held has changed.
 var aim_again: Callable = func() -> void: pass
+## Undo (or Redo, given true) of an open, once there is no other change to
+## take back: what it took off the baseplate back (ModelBar.reopen). True
+## when it was.
+var reopen: Callable = func(_again: bool) -> bool: return false
+## What that would take back, or do again, in words; "" for nothing
+## (ModelStore.reopen_words).
+var reopen_words: Callable = func(_again: bool) -> String: return ""
 
 ## What this app last put on the system clipboard, so a paste can tell
 ## LDraw another program put there from its own copy coming back.
@@ -160,10 +167,11 @@ func press(name: String) -> void:
 				"Undoing a change to %s parts…")
 			# Said, whatever it was: undoing a sub-assembly made changes
 			# nothing a person can see, and the line said nothing either.
+			var opened: String = reopen_words.call(false) if builder.history_depth() == 0 else ""
 			if builder.undo():
 				edited.call()
 				say.call("undid: %s" % builder.redo_words())
-			else:
+			elif opened.is_empty() or not await reopen.call(false):
 				say.call("nothing to undo")
 			if job != null:
 				job.end()
@@ -171,11 +179,12 @@ func press(name: String) -> void:
 		"redo":
 			var job: Working.Job = await _say_first(builder.next_change_size(true),
 				"Redoing a change to %s parts…")
+			var opened: String = reopen_words.call(true) if builder._redo.is_empty() else ""
 			if builder.redo():
 				edited.call()
 				var done: PackedStringArray = builder.history_words(1)
 				say.call("redid: %s" % (done[0] if not done.is_empty() else "the change"))
-			else:
+			elif opened.is_empty() or not await reopen.call(true):
 				say.call("nothing to redo")
 			if job != null:
 				job.end()
@@ -464,6 +473,13 @@ func make_unique(path: String = "") -> String:
 
 ## Back through the history to before the step ``count`` steps ago.
 func go_back(count: int) -> int:
+	# To before the open they followed: its model back at once, these
+	# changes kept with the model it took off, for Redo.
+	var opened: String = reopen_words.call(false)
+	if count > builder.history_depth() and not opened.is_empty() and await reopen.call(false):
+		say.call("went back to before: %s — %s-Shift-Z goes forward again" % [opened, _hold()])
+		aim_again.call()
+		return count
 	var done: int = builder.undo_steps(count)
 	if done > 0:
 		edited.call()
@@ -511,10 +527,12 @@ func select_by(kind: String) -> int:
 		"none":
 			builder.clear_selection()
 			return 0
-	return _select_found(found)
+	return select_found(found)
 
 
-func _select_found(found: Array) -> int:
+## Select these bricks, leaving out the hidden and the locked: how many
+## that was.
+func select_found(found: Array) -> int:
 	builder.selection.clear()
 	for brick_id: int in found:
 		if not builder.lattice.unseen.has(brick_id) and not builder.is_locked(brick_id):
@@ -541,7 +559,7 @@ func select_connected() -> int:
 	if job.cancelled:
 		say.call("stopped looking for what is joined to it")
 		return 0
-	return _select_found(found)
+	return select_found(found)
 
 
 # -- hiding -------------------------------------------------------------------

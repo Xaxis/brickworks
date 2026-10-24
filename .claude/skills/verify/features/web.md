@@ -32,6 +32,11 @@ plan with Claude as the client.
   a catalogue of 2,376 rebuilt meshes once went live before they were up, so
   every long Technic beam failed to load. Proves it: the deploy log's "part
   meshes in object storage" line ends "to upload : 0".
+  `--unit` (unit_preview.sh's) sets `OC_SIGNING_SECRET` and
+  `ANTHROPIC_API_KEY` to nothing for that deployment alone, since it runs
+  unreviewed code: its log says "a unit's preview, without ...", and
+  `POST /api/orangecheck?op=signin` with `{}` there answers 503 "not set up
+  here", where a release's preview answers 422 for the missing token.
   A release goes through `tools/release/` (README there): a staging
   worktree, each ready unit merged as the user with a parse gate, then
   `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
@@ -396,7 +401,15 @@ plan with Claude as the client.
   the row stays, unpublished, and both files are deleted. `GET ?id=` is the
   viewer's one request (name, author, parts and the `.mpd`, `no-store`); 410
   `unpublished: true` once taken down, 404 for a link that never was. `GET
-  ?op=mine` (session): the account's links. `/m/<id>` (`op=page`) is the
+  ?op=mine` (session): the account's links, and `credit`, whom Show who made
+  it credits (`{name, handle}` of their profile shown in public, or null),
+  which the app's Share panel offers. A credit is the profile: published by
+  an account with one, `author` is kept as the profile's name whatever was
+  sent; with none, a name made from the sign-in address (the app before
+  m157 offered "Delivered+walk 180 Web") is refused 422. Every page and
+  answer says the credit by the profile's current name (`creditName`): the
+  licence line with its `@handle` link, the description, the JSON-LD author
+  with the profile's url, the embed card and the viewer's `author`. `/m/<id>` (`op=page`) is the
   link's page: og/twitter tags (title, the part count and author, the picture),
   the picture and the way in, and `web/share-page.js` sends a person straight
   on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
@@ -1221,6 +1234,13 @@ plan with Claude as the client.
   `kinds`, `words`, `KINDS`, `MECHANISMS`): steering, turntable, boom,
   doors, gears, pneumatics, actuator, rack, from `Bodies` and the gear
   trains; sent with a publish (`SharePanel.moves_of`, `main._moves_now`).
+  A steering wheel spinning alone on its stud is never the steering's
+  handle. The shipped kart's wheel drives its front wheels through a
+  universal joint, a pinion and the rack that is its track rod
+  (docs/MECHANISMS.md, section 38): `tools/probe.sh kart_steer_probe`
+  (windowed) takes it where its card says, drags it round its rim each way
+  by Grab, checks each stage against the linkage's ratio and undoes it,
+  with pictures in `shots/kart_steer/`.
 - `what moves on a gallery card` (`supabase/play.sql`, not applied until
   the owner does): `shared_models.moves` (the words, eight at most, `{}`
   for every row before), `moves_mechanism`, `directory_card` with `moves`,
@@ -1858,7 +1878,14 @@ plan with Claude as the client.
   `#made`, a strip from the live gallery (`landing.js`: Top builds from
   `/api/share?op=list&sort=top`, asked as it nears the screen, a card put in
   only once its picture has decoded and the strip shown only once three are,
-  so it can never show a dead card; `data-strip` on `<html>` says how many);
+  so it can never show a dead card; `data-strip` on `<html>` says how many,
+  `none` when hidden). Its cards come from `card.js` `modelCard`, which must
+  give an element of the page's own document: made in a `<template>` they
+  never loaded a picture, `decode()` refused all seven and the strip never
+  showed (walk180, 2026-10-23). `tools/web/landing_check.mjs` (run by every
+  deploy) scrolls to it at 390 and 1280, light and dark: shown with every
+  card's picture drawn when the gallery has three with pictures, else
+  hidden; `--out=DIR` keeps `strip_<width>_<theme>.png`);
   `#assistant` last, short, off until you turn it on. Claim only what ships:
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
@@ -3378,11 +3405,14 @@ ends "a model is Tested when it goes together, and one that does not says
 why": a tile on two bricks is Tested and a brick resting on the tile is not
 ("Brick 1 x 2 rests on Tile 1 x 2"); two stacks apart are "2 builds" and
 Tested, a round plate left on the floor against one is not ("stands
-against"); a cheese slope on a round plate's
-rim is not ("where it has no stud"); the kart and castle in models/ are
-Tested, and the orrery passes the whole test but not steps (its frame top
-goes up before the posts that carry it, and some gears go in after what
-hides them); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
+against"); 6680-1's figures and stretcher are builds of their own, and
+without the one 1 x 2 plate its file draws inside a 1 x 6 it is Tested
+("4 builds"); 620-1 and 6511-1, a vehicle and a figure, pass the whole test
+as "2 builds"; a cheese slope on a round plate's
+rim is not ("where it has no stud"); the kart, castle and orrery in models/
+are Tested (the orrery's steps are its own, `0 !BRICKWORKS AUTHORED_STEPS`:
+its lower and upper decks, crank, planets and Sun built in the hand, each
+drive gear in before the ring round it); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
 the whole test, and are Tested where their other three pass (one, model-043:
 the rest fail steps or parts); Orthanc as models175 found it
 (`src/dev/fixtures/orthanc_models175.ldr.gz`) is not, its whole test saying

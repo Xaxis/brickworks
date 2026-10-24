@@ -10,7 +10,9 @@
 ## stud forward and 2 LDU up from their ghosts (Main._true_point). Then a
 ## clip plate, a bar in its clip, a hinge, slopes, a Technic pin, and
 ## 8841-1's Technic plates swung on their pins onto an axle at 66.4
-## degrees, off every one of the 24 turns (Builder._closings). Pictures in
+## degrees, off every one of the 24 turns (Builder._closings). And a door
+## held over its frame, which walk180 found stood beside it or on its studs:
+## shut in it on its hinge, and a shutter on its window. Pictures in
 ## shots/placing/, the rows in shots/placing/placing.json.
 extends SceneTree
 
@@ -66,6 +68,8 @@ func _run() -> void:
 		await _wheels()
 	if only.is_empty() or only == "wholeset":
 		await _whole_sets()
+	if only.is_empty() or only == "doors":
+		await _doors()
 	var path: String = ProjectSettings.globalize_path("res://shots/placing/placing.json")
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var file := FileAccess.open(path, FileAccess.WRITE)
@@ -551,6 +555,58 @@ func _whole_sets() -> void:
 		% [row.get("ghost"), _ldr_of(wheel)], made != null and bool(row.get("on_joint", false))
 		and made.transform.origin.distance_to(wheel.origin) < 0.05 and axle != 0)
 	await _shot("wheel_on_axle")
+
+
+## walk180 (2026-10-23) held a door over a 1 x 4 x 6 frame and it stood
+## beside the frame or on its studs wherever it pointed. Held over the
+## opening, the barred door's ghost hangs shut on the frame's left hinge,
+## where 71006-1 has its doors; over the right post, the smooth door on the
+## right one, turned half round; a shutter over its window's side, where
+## 6285-1 has it. Each put down where its ghost stood (JointSnap.hinges_of).
+func _doors() -> void:
+	print("  doors into their frames, a shutter onto its window")
+	_main.call("clear_model")
+	_put_ldr("60596", 15, [-60, -144, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("60596", 15, [60, -144, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-110, 0, -40), Vector3(220, 150, 80)))
+	await _frames(40)
+	for case: Array in [
+			["60621", "60621 barred door over the left frame's opening", Vector3(-70, 72, 10),
+				[-92, -144, 5, 1, 0, 0, 0, 1, 0, 0, 0, 1], "door_ghost_left"],
+			["60616b", "60616b smooth door over the right frame's right post", Vector3(96, 72, 10),
+				[92, -144, 5, -1, 0, 0, 0, 1, 0, 0, 0, -1], "door_ghost_right"]]:
+		await _hold(case[0])
+		await _turn_to(Basis.IDENTITY)
+		var want: Transform3D = _ldr(case[3])
+		var point: Vector2 = _screen(case[2])
+		await _move(point + Vector2(0, 1))
+		await _move(point)
+		_check("%s: its ghost hangs shut on the frame's hinge (%s, wanted %s; on %s; %s)" % [
+			case[1], _ldr_of(_builder.ghost_transform()), _ldr_of(want), _builder.joint_words(),
+			"may go" if _builder.can_place() else "red"], _builder.ghost_place() != null
+			and _near(_builder.ghost_transform(), want, 0.05, 0.002) and _builder.can_place()
+			and _builder.joint_words().begins_with("the hinge of"))
+		await _shot(case[4])
+		await _one(case[1], point, want, true)
+	await _key(KEY_ESCAPE)
+	await _shot("doors_put")
+
+	_main.call("clear_model")
+	_put_ldr("3853", 15, [0, -72, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-90, 0, -40), Vector3(180, 80, 80)))
+	await _frames(40)
+	await _hold("3856")
+	await _turn_to(Basis.IDENTITY)
+	var shutter: Transform3D = _ldr([-40, -72, -12, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	var side: Vector2 = _screen(Vector3(-38, 36, 10))
+	await _move(side + Vector2(0, 1))
+	await _move(side)
+	_check("3856 shutter over its window's left side: its ghost on the window's hinge, shut across it (%s, wanted %s; on %s)"
+		% [_ldr_of(_builder.ghost_transform()), _ldr_of(shutter), _builder.joint_words()],
+		_builder.ghost_place() != null and _near(_builder.ghost_transform(), shutter, 0.05, 0.002)
+		and _builder.can_place())
+	await _shot("shutter_ghost")
+	await _one("3856 shutter on its window", side, shutter, true)
 
 
 func _one(name: String, at: Vector2, want: Variant = null, joint: bool = false) -> int:

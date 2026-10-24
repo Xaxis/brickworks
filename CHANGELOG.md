@@ -14,6 +14,22 @@ whole cycle.
 ## [Unreleased]
 
 ### Fixed
+- Opening a model over one with changes not saved asks first, as New does:
+  Save, Don't save or Cancel. File › Open and its examples, Open recent, a
+  file from the computer, Collection › Open and Versions all ask, and an
+  open can be undone: Edit › Undo, or History, brings back the model it
+  replaced as it stood. Before, the model went with no question and Undo
+  had nothing to undo.
+- A door held over its frame goes into it on the frame's hinge, shut, as
+  Studio seats one, wherever the frame is pointed at; it stood beside the
+  frame or on its studs. A window's shutter and its pane go on the window's
+  hinge the same way, and swing on it as a door does.
+- A real set's figures no longer count as parts passing into each other
+  where official sets build them so: a helmet under a roof, a backpack
+  against a head, legs in a seat, a hand on a door. The check learns
+  these fits, and how deep each goes, from the official sets themselves;
+  a brick pushed into a brick, or a figure pushed through a wall, is still
+  refused.
 - A big model no longer holds the window a quarter of a second after it
   opens: the shapes of its parts are read for dragging on a worker.
 - A part a design stands on a shape's top, a coupling's plate among them, is
@@ -34,6 +50,11 @@ whole cycle.
   were never asked about. A model that is not marked says
   why on its page, to its owner; one too big to build to its last step in the
   time a share takes still says what it failed.
+- The Wizard's Tower is one piece a person can pick up: its columns stand on
+  studs and are tied to its core, and its guards hold their shields by the
+  handle.
+- A beard worn round a figure's neck under its head is held, as it is in the
+  hand; the check had called it held by nothing.
 
 ## [0.6.0] - 2026-10-23
 

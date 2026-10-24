@@ -593,6 +593,7 @@ func _chosen() -> String:
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
 	if linkage == null:
 		_gears()
+		_unmeshed()
 	begin_took["gears"] = (Time.get_ticks_usec() - clock) / 1000
 	# A hose whose one end moves and other does not bends between them.
 	var going: Dictionary = moving.duplicate()
@@ -846,6 +847,53 @@ func _gears() -> void:
 			skip[key] = true
 			rest[key] = mechanism.rest[key]
 	_follow_driven()
+
+
+## A gear beside one that turns that it does not turn, and why: "the 24
+## beside it does not turn: it stands 20.75 LDU along the axle from where
+## they mesh (drag one along its axle)". "" when every gear beside one that
+## moves turns with it, or there is none. Walk180 turned a 24 beside another
+## 60°, and nothing said why the other stayed.
+var mesh_words: String = ""
+## Asked of no more gears than this a grab: each asks the lattice round it.
+const UNMESHED_MOST := 8
+
+
+## [member mesh_words], of the gear nearest one that turns.
+func _unmeshed() -> void:
+	mesh_words = ""
+	if mode != "turn":
+		return
+	var turning: Array = []
+	for key: int in moving:
+		if not Mechanism.spec_of(world.get_brick(key).part_id).is_empty():
+			turning.append(key)
+			if turning.size() > UNMESHED_MOST:
+				return
+	var nearest: float = INF
+	for key: int in turning:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var box: AABB = (brick.transform * mesh.bounds).grow(GearMesh.BESIDE + BrickLattice.STUD * 3.0)
+		var near := PackedInt32Array([floori(box.position.x / BrickLattice.CELL),
+			floori(box.position.y / BrickLattice.CELL), floori(box.position.z / BrickLattice.CELL),
+			ceili(box.end.x / BrickLattice.CELL), ceili(box.end.y / BrickLattice.CELL),
+			ceili(box.end.z / BrickLattice.CELL)])
+		var mine: Array[Mechanism.Gear] = GearMesh.gears_at(brick.part_id, brick.transform, mesh)
+		for other: int in builder.lattice.near_bounds(near):
+			var them: BrickWorld.Brick = world.get_brick(other)
+			if them == null or moving.has(other) or coupled.has(other) or followers.has(other):
+				continue
+			for theirs: Mechanism.Gear in GearMesh.gears_at(them.part_id, them.transform,
+					library.mesh_for(them.part_id)):
+				for gear: Mechanism.Gear in mine:
+					var why: String = GearMesh.why_not(gear, theirs)
+					var far: float = gear.centre.distance_to(theirs.centre)
+					if not why.is_empty() and far < nearest:
+						nearest = far
+						mesh_words = "%s beside it does not turn: %s" % [GearMesh.named(theirs), why]
 
 
 ## Why a worm holds what was grabbed, in words: its gear cannot turn it.
@@ -3379,6 +3427,10 @@ func slide_to(along: float) -> float:
 	frame_tests = 0
 	frame_slowest_us = 0
 	frame_slowest_said = ""
+	# A gear slid along its axle stops in mesh with a gear beside it.
+	for place: Array in mesh_places:
+		if absf(along - float(place[0])) <= GearMesh.SNAP:
+			along = float(place[0])
 	var wanted: float = clampf(along, _range.x, _range.y)
 	if budget_ms < INF and not is_nan(_wall) and (wanted - _wall) * (_wall - shift) >= 0.0 \
 			and absf(_wall - shift) < absf(wanted - shift) + 0.001:
@@ -3529,7 +3581,8 @@ func _keep_loop() -> void:
 
 
 ## Slide it along its joint's line rather than turn it: a drag along the
-## line, or move_part's along=.
+## line, or move_part's along=. A gear keyed on an axle slides along the
+## axle ([method _slide_on_axle]).
 func use_slide() -> void:
 	mode = "slide"
 	_step = 0.0
@@ -3539,6 +3592,8 @@ func use_slide() -> void:
 	_round_self.clear()
 	if linkage != null:
 		linkage.drive_slide()
+	elif not _gear_axle().is_empty():
+		_slide_on_axle(_gear_axle())
 
 
 ## The range a slide has, LDU from where it was grabbed.
@@ -3549,7 +3604,156 @@ func slide_range() -> Vector2:
 func can_slide() -> bool:
 	if linkage != null:
 		return linkage.slide_col[0] >= 0
-	return mode != "ball" and _range.y - _range.x > 4.0
+	if mode == "ball":
+		return false
+	return _range.y - _range.x > 4.0 or not _gear_axle().is_empty()
+
+
+## A gear keyed on an axle that slides along it, the axle staying: the
+## axle's id; 0 for any other slide ([method _slide_on_axle]).
+var on_axle: int = 0
+## Where along that slide the gear meshes a gear beside it, LDU, and what
+## it meshes there in words: [[LDU, "the 24 beside it"], ...].
+var mesh_places: Array = []
+
+
+## The axle [param part] is keyed on, when it is a gear on its body's
+## parent joint's line that the axle reaches past both ways: [the axle's
+## id, a point on its line, its way, the shaft's ends along it from that
+## point, where the gear's hole is along it]; [] otherwise.
+func _gear_axle() -> Array:
+	if not _axle_read.is_empty() or linkage != null or link == null:
+		return [] if _axle_read.size() < 2 else _axle_read
+	_axle_read = [null]
+	var brick: BrickWorld.Brick = world.get_brick(part)
+	if brick == null or Mechanism.spec_of(brick.part_id).is_empty() or link.axis == Vector3.ZERO:
+		return []
+	var entries: Array = []
+	for key: int in bodies.members.get(body, PackedInt64Array()):
+		var one: BrickWorld.Brick = world.get_brick(key)
+		if one != null:
+			entries.append([key, one.transform, library.mesh_for(one.part_id)])
+	for row: Array in Joints.through(entries):
+		if int(row[1]) != part or str(row[2]) != "grips" \
+				or not Bodies._same_line(row[3], row[4], link.point, link.axis.normalized()):
+			continue
+		_axle_read = [int(row[0]), row[3], row[4], float(row[5]), float(row[6]), float(row[7])]
+		break
+	return [] if _axle_read.size() < 2 else _axle_read
+
+
+var _axle_read: Array = []
+
+
+## A gear grabbed and slid along its axle goes along the axle, which stays:
+## a gear slides on its axle by hand. Walk180 slid a 24 towards the 24
+## beside it, and the whole axle went with it through its brick until the
+## axle's end came to the hole: "2 parts on its axle: not moved". What
+## moves is the gear and what is fixed to it other than by the axle, and
+## what hangs on those; it goes as far as its hole stays on the axle and
+## the parts on the axle let it, and stops in mesh with a gear beside it it
+## comes within GearMesh.SNAP of ([member mesh_places]). [param axle]:
+## [method _gear_axle]'s.
+func _slide_on_axle(axle: Array) -> void:
+	var shaft: int = int(axle[0])
+	# The gear's side of its body: joined to it, not through the axle.
+	var side: Dictionary = {part: true}
+	var frontier: Array = [part]
+	var members: PackedInt64Array = bodies.members.get(body, PackedInt64Array())
+	while not frontier.is_empty():
+		var at: int = frontier.pop_back()
+		for joined: Array in bodies.joined_by.get(at, []):
+			var next: int = int(joined[0])
+			if next != shaft and not side.has(next) and members.has(next):
+				side[next] = true
+				frontier.append(next)
+	var goes: Dictionary = side.duplicate()
+	var bodies_going: Array = [body]
+	for child: int in bodies.children.get(body, []):
+		var up: Bodies.Link = bodies.parent_link.get(child)
+		if up == null:
+			continue
+		for pair: Array in up.pairs:
+			if side.has(int(pair[0])) or side.has(int(pair[1])):
+				for key: int in bodies.parts_of(bodies.beyond(child)):
+					goes[key] = true
+				bodies_going.append_array(bodies.beyond(child))
+				break
+	on_axle = shaft
+	moving = goes
+	moving_bodies = bodies_going
+	pivot = axle[1]
+	axis = (axle[2] as Vector3).normalized()
+	var along: float = float(axle[5])
+	_range = Vector2(float(axle[3]) - along, float(axle[4]) - along)
+	rest.clear()
+	for key: int in moving:
+		rest[key] = world.get_brick(key).transform
+	placed = rest.duplicate()
+	coupled.clear()
+	followers.clear()
+	mechanism = null
+	flex = null
+	skip = moving.duplicate()
+	for one: int in bodies.flexible:
+		for key: int in bodies.members.get(one, PackedInt64Array()):
+			skip[key] = true
+	# It may press on its axle, and on nothing else that stays.
+	_across = {shaft: side.duplicate()}
+	_verdicts.clear()
+	_along.clear()
+	_rest_overlap.clear()
+	_depth_allowed.clear()
+	_near_kept.clear()
+	_on_the_line.clear()
+	_rates.clear()
+	_joint_pairs.clear()
+	_pair_clear.clear()
+	_wall = NAN
+	# A gear it slides into mesh with is not in its way: teeth go between
+	# teeth.
+	mesh_places.clear()
+	var brick: BrickWorld.Brick = world.get_brick(part)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	var box: AABB = (brick.transform * mesh.bounds).grow(GearMesh.BESIDE + BrickLattice.STUD * 3.0)
+	box = box.expand(pivot + axis * _range.x).expand(pivot + axis * _range.y)
+	var near := PackedInt32Array([floori(box.position.x / BrickLattice.CELL),
+		floori(box.position.y / BrickLattice.CELL), floori(box.position.z / BrickLattice.CELL),
+		ceili(box.end.x / BrickLattice.CELL), ceili(box.end.y / BrickLattice.CELL),
+		ceili(box.end.z / BrickLattice.CELL)])
+	var mine: Array[Mechanism.Gear] = GearMesh.gears_at(brick.part_id, brick.transform, mesh)
+	for other: int in builder.lattice.near_bounds(near):
+		var them: BrickWorld.Brick = world.get_brick(other)
+		if them == null or moving.has(other):
+			continue
+		for theirs: Mechanism.Gear in GearMesh.gears_at(them.part_id, them.transform,
+				library.mesh_for(them.part_id)):
+			for gear: Mechanism.Gear in mine:
+				if not GearMesh.beside(gear, theirs):
+					continue
+				var found: Dictionary = GearMesh.shifts(gear, axis, theirs,
+					(brick.transform.basis * Mechanism._axis_of(Mechanism.spec_of(brick.part_id).get(
+						"axis", "z"))).normalized() * GearMesh.facing(brick.part_id, mesh))
+				for shift: float in found.get("shifts", []):
+					if shift >= _range.x and shift <= _range.y:
+						mesh_places.append([shift, "%s beside it" % GearMesh.named(theirs)])
+						skip[other] = true
+	said = "%s on its axle" % _part_name(part)
+
+
+## "the Technic Gear 24 Tooth".
+func _part_name(key: int) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+	return "the " + Inventory._tidy(info.name) if info != null else "the part"
+
+
+## The gear it would mesh where it is slid to now, in words; "" for none.
+func _meshed_at(value: float) -> String:
+	for place: Array in mesh_places:
+		if absf(float(place[0]) - value) < 0.01:
+			return str(place[1])
+	return ""
 
 
 # -- following the pointer ----------------------------------------------------------
@@ -4450,7 +4654,9 @@ func changed() -> Dictionary:
 func position_words() -> String:
 	match mode:
 		"slide":
-			return "%s studs along" % Balance.studs(shift / BrickLattice.STUD)
+			var meshed: String = _meshed_at(shift)
+			return "%s studs along%s" % [Balance.studs(shift / BrickLattice.STUD),
+				"" if meshed.is_empty() else ", in mesh with " + meshed]
 		"ball":
 			var turned: float = rad_to_deg(Quaternion(twist.orthonormalized()).get_angle())
 			return "turned %d°" % roundi(turned)
@@ -4490,6 +4696,10 @@ func from_built() -> float:
 
 ## The step's words: "turned the boom, 38 parts, on its turntable to 45°".
 func step_words() -> String:
+	if on_axle != 0:
+		var meshed: String = _meshed_at(shift)
+		return "slid %s %s studs along its axle%s" % [_part_name(part), Balance.studs(absf(shift)
+			/ BrickLattice.STUD), "" if meshed.is_empty() else ", into mesh with " + meshed]
 	var verb: String = {"slide": "slid", "ball": "turned"}.get(mode, "turned")
 	return "%s %s %s %s" % [verb, _named(), link.words(),
 		"to " + position_words() if mode == "turn" else position_words()]

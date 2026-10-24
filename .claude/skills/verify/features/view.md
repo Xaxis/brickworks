@@ -438,7 +438,12 @@ picture the assistant is shown.
   under 2, every other part its own colour faded; the baseplate faded too. A
   joint that shares its load with others (a bonded wall) is never weighed and
   never tinted, and a contact on a part with no studs (an axle through a
-  cross block) is not a stud joint. Pointing at a part (Select in hand) puts on
+  cross block) is not a stud joint. A touch shares no joint's load (Balance):
+  what stands on a touch alone past where it touches is red ("stands on a
+  touch alone, its weight past where it touches"), and what stands on one
+  over it says so. The weighing is `Main.weigh_joints`, which the status
+  bar's verdict asks too (with its margins wherever there are threads), and
+  a session's `weakest_joints` reads the same numbers, so the three agree. Pointing at a part (Select in hand) puts on
   the status bar's left what it carries: "Plate 2 x 10: carries 11 g on 1
   stud, margin 0.7", or how it is held when no one joint holds it. A red or
   amber part's right-click menu has Ask Claude to brace this under Ask Claude
@@ -450,7 +455,11 @@ picture the assistant is shown.
   Known gaps: a part standing on the floor or a baseplate is held by the
   floor, so a tower's foot is not weighed; a pin, axle, clip or hinge is not
   weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
-  wall, the shipped models none red) and `stress_view_probe` (the menu, the
+  wall, the shipped models none red), `touch_probe` (walk180's tug bow amber
+  at 0.86 with its ladder and without, a plate on a touch past it red and a
+  weak joint, columns pressed down standing on studs and on a tile, and in
+  the app the verdict, the view and `weakest_joints` agreeing) and
+  `stress_view_probe` (the menu, the
   tint, the hover, the brace offer, two OMR sets and Orthanc pictured in
   shots/stress/); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.

@@ -7,16 +7,20 @@
 ##
 ## What this does
 ## --------------
-## For every joint in the model — every place one brick rests on another
-## — it asks two questions about everything carried above that joint:
+## It asks of every course whether what is above it leans past what holds
+## it or stands too tall on it, and of the whole whether it tips over on
+## what it stands on. With [member with_margins], it weighs every stud joint
+## that alone holds what is past it as Balance does, levered about the edge
+## it would turn on, and a joint past its studs' working load is a weak one;
+## so is a piece standing on touches alone with its weight past them.
 ##
-##   Does its weight exceed what the connection can hold?
-##     A stud's clutch is a measured quantity. Multiply by how many studs
-##     the joint actually has and compare.
-##
-##   Does its centre of mass fall outside the joint's footprint?
-##     If it does, the load is a moment rather than a weight, and the
-##     joint is being levered apart rather than pulled.
+## A load goes only through what joins parts: studs, pins, axles, clips,
+## hinges. A touch, one face on another, carries weight straight down into
+## what is under it, and nothing hangs from it or levers on it (Balance).
+## The weight pressing down on a joint's studs is not weighed: a stud
+## pressed on holds whatever presses it. That was a check here, 80 g a
+## stud, and the one real set it flagged, 75060-1, was a 1x1 plate pressed
+## by 160 g.
 ##
 ## What this is not
 ## ----------------
@@ -26,11 +30,11 @@
 ## contact, and it runs in milliseconds — but it needs a QP solver.
 ##
 ## This is the honest subset that can run on every edit without one. It
-## catches the three failures that actually happen — a joint carrying
-## more than its studs hold, a load hanging past its footprint, and a
-## load stacked too high over too small a base — and it reports a margin
-## rather than a verdict so the difference shows. It will not catch a
-## structure that fails through an interior path rather than at a joint.
+## catches the failures that actually happen — a joint levered or pulled
+## past what its studs hold, a load hanging past its footprint, and a load
+## stacked too high over too small a base — and it reports a margin rather
+## than a verdict so the difference shows. It will not catch a structure
+## that fails through an interior path rather than at a joint.
 class_name Stability
 extends RefCounted
 
@@ -82,7 +86,9 @@ const SLICED_FROM := 8
 
 class Risk extends RefCounted:
 	var brick_id: int
-	var kind: String        ## "overloaded" or "levered"
+	## "levered" (a joint past its studs' working load), "rests on a touch",
+	## "leaning", "top-heavy" or "tips"
+	var kind: String
 	var margin: float       ## < 1 is failing; 2 means twice the strength needed
 	var carrying_grams: float
 	var studs: int
@@ -124,8 +130,10 @@ var floor_ids: Dictionary = {}
 ## then returns null (Main._weigh, PartLibrary.reading_in).
 var stopped: bool = false
 ## Set to have [method check] weigh every stud joint's margin as well
-## ([member Report.margins]), from the contacts it reads anyway: View,
-## Stress (StressView) shows them.
+## ([member Report.margins]), from the contacts it reads anyway, and say a
+## joint past its working load and a piece tipping off a touch as weak:
+## the status bar's verdict, View, Stress (StressView) and a session's
+## weakest_joints all ask so, and agree.
 var with_margins: bool = false
 
 
@@ -151,65 +159,9 @@ func check(world: BrickWorld) -> Report:
 		return null
 	var above: Dictionary = graph["above"]
 	var boxes_of: Dictionary = graph["boxes"]
-
-	# Push the load downward, sharing it among supporters.
-	#
-	# The first attempt gave every brick the entire mass of everything
-	# above it, which reads plausibly and is wrong the moment a structure
-	# has more than one path to the ground: in a hollow tower each corner
-	# brick appeared to carry the whole ring, whose centre of mass sits
-	# over the courtyard rather than over the brick. It reported
-	# twenty-six failing joints in a wall that stands up perfectly well.
-	#
-	# A brick's load is its own mass plus whatever is handed down to it,
-	# and it hands that on to the bricks beneath in proportion to the studs
-	# between them. One pass from the top down is enough because a support
-	# graph only ever points downward.
-	var order: Array = bricks.duplicate()
-	order.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
-		return a.transform.origin.y > b.transform.origin.y)
-	# Who carries whom is read as Balance and Sections read it. The lift's
-	# own cells read two parts whose covers overlap as each resting on the
-	# other: a pin in a beam, a cone on an antenna, two turned plates side by
-	# side each carried the other, on studs that are not there. A wheel on
-	# its spindle hands its weight on, but on no stud.
-	var carriers: Dictionary = _carriers(order, stud_joints(graph, library, lattice, false))
-	if stopped:
-		return null
-
-	var received: Dictionary = {}       ## id -> grams handed down
-	var on_studs: Dictionary = {}       ## id -> grams of that through its studs
-	var holding: Dictionary = {}        ## id -> the studs those stand on
-
-	for item: Variant in order:
-		var brick: BrickWorld.Brick = item
-		var supporters: Dictionary = carriers.get(brick.id, {})
-		if supporters.is_empty():
-			continue
-		var carried: float = mass.get(brick.id, 0.0) + float(received.get(brick.id, 0.0))
-		var total: float = 0.0
-		for supporter_id: int in supporters:
-			total += maxf(1.0, float(supporters[supporter_id]))
-		for supporter_id: int in supporters:
-			var studs: int = supporters[supporter_id]
-			var handed: float = carried * maxf(1.0, float(studs)) / total
-			received[supporter_id] = float(received.get(supporter_id, 0.0)) + handed
-			if studs > 0:
-				on_studs[supporter_id] = float(on_studs.get(supporter_id, 0.0)) + handed
-				holding[supporter_id] = int(holding.get(supporter_id, 0)) + studs
-
 	for item: Variant in bricks:
-		if stopped:
-			return null
-		var brick: BrickWorld.Brick = item
-		if above.has(brick.id):
+		if above.has((item as BrickWorld.Brick).id):
 			report.joints += 1
-		var grams: float = float(on_studs.get(brick.id, 0.0))
-		if grams <= 0.0:
-			continue
-		var risk: Risk = _assess(brick, grams, int(holding[brick.id]))
-		if risk != null:
-			report.risks.append(risk)
 
 	_check_levels(world, mass, boxes_of, report)
 	if stopped:
@@ -240,6 +192,34 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 	var weighed: Balance.Report = weigher.measure(bricks, [], null, graph)
 	for one: Balance.JointLoad in weighed.joints:
 		report.margins[one.beyond] = one
+		if one.ratio <= 1.0 or floor_ids.has(one.beyond):
+			continue
+		var risk := Risk.new()
+		risk.brick_id = one.beyond
+		risk.kind = "levered"
+		risk.margin = 1.0 / one.ratio
+		risk.carrying_grams = one.grams
+		risk.studs = one.studs
+		risk.message = "%s %s %s on %d stud%s with %s g past it, %sx its studs' working load" % [
+			one.beyond_part, "hangs from" if one.hangs else "is levered off", one.held_part,
+			one.studs, "" if one.studs == 1 else "s", Balance.tidy(one.grams),
+			Balance.tidy(one.ratio)]
+		report.risks.append(risk)
+	for piece: Dictionary in weighed.tipping:
+		var risk := Risk.new()
+		risk.brick_id = int((piece["ids"] as Array)[0])
+		risk.kind = "rests on a touch"
+		risk.margin = 0.0
+		risk.carrying_grams = float(piece["grams"])
+		var on: BrickWorld.Brick = null
+		for item: Variant in bricks:
+			if (item as BrickWorld.Brick).id == int(piece["on"]):
+				on = item
+		risk.message = "%s g held by nothing stands on %s by touch alone, %s" % [
+			Balance.tidy(float(piece["grams"])), on.part_id if on != null else "what is under it",
+			"its weight %s studs past where it touches" % Balance.studs(float(piece["past"]))
+				if float(piece["past"]) < 1000.0 else "on an edge too thin to stand on"]
+		report.risks.append(risk)
 	report.held = weighed.held
 
 
@@ -371,7 +351,9 @@ static func pair_of(a: int, b: int) -> int:
 ## true for a stud pair the lift read across covers that already overlap,
 ## with no stud's tip in either, "pivots": pair -> [where its stud stands,
 ## the way it points] for a pair one stud joins into a part turned to it off
-## the square, which turns on that stud (below)}. Only pairs of those parts; worked out once and kept in [param
+## the square, which turns on that stud (below), "resting": pair -> the id of
+## the part under, for a pair the lift stood one on the other that no stud
+## joins, "seated" and "beside" too: one face on another (below)}. Only pairs of those parts; worked out once and kept in [param
 ## contacts] as "joints", so a caller weighing its parts a few at a time
 ## (Tested, BrickifySteps) pays once. Balance, Sections, Tested and [method
 ## check] all read what holds what from here.
@@ -429,7 +411,8 @@ static func pair_of(a: int, b: int) -> int:
 ## [param everywhere] false reads a stud's tip only where the lift cannot
 ## tell: on a part the lift reaches across an overlap, and for a stud not
 ## pointing up. A stud pointing up into a part that only touches its own is
-## then what the lift counts there, as it was before tips were read. The
+## then what the lift counts there, as it was before tips were read, and a
+## face resting on a face is a stud joint, never "resting". The
 ## status bar's check asks so, after every change: reading every tip, 6,162
 ## on stability_probe's 800 bricks, doubled what it cost (2026-10-21).
 static func stud_joints(contacts: Dictionary, library: PartLibrary,
@@ -598,10 +581,38 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			sideways.erase(key)
 			seated[key] = true
 			beside[key] = true
+	# And a pair the lift alone stood one on the other with no stud of either
+	# in the other: a face resting on a face. walk180's tug (2026-10-23) had
+	# its forecastle's ladder standing on the deck on two rails 4 LDU square,
+	# between the deck's studs: 8 cells, which the lift counted a stud, and
+	# that stud shared the bow's load with the four that held it, so none of
+	# them was weighed. It is touching, joined by nothing ("seated" and
+	# "beside"), and "resting" names the part under: what stands on a touch
+	# can rest there (Balance), but nothing hangs from one or levers on it.
+	var resting: Dictionary = {}
+	if everywhere:
+		for key: int in studs.keys():
+			if by_tips.has(key) or overlapped.has(key):
+				continue
+			if placed.is_empty():
+				for brick: BrickWorld.Brick in contacts.get("bricks", []):
+					placed[brick.id] = brick
+			var low: BrickWorld.Brick = placed.get(int(under[key]))
+			var high: BrickWorld.Brick = placed.get((key >> 32) if int(under[key]) != (key >> 32)
+				else (key & 0xFFFFFFFF))
+			if low == null or high == null or _stud_between(low, high, boxes, library, lattice):
+				continue
+			resting[key] = int(under[key])
+			studs.erase(key)
+			under.erase(key)
+			sideways.erase(key)
+			seated[key] = true
+			beside[key] = true
 	for key: int in studs:
 		seated.erase(key)
 	var out: Dictionary = {"studs": studs, "under": under, "sideways": sideways,
-		"seated": seated, "overlapped": overlapped, "pivots": pivots, "beside": beside}
+		"seated": seated, "overlapped": overlapped, "pivots": pivots, "beside": beside,
+		"resting": resting}
 	contacts[kept] = out
 	return out
 
@@ -804,56 +815,37 @@ static func _stud_in(foot: Vector3, way: Vector3, own: int, boxes: Dictionary,
 	return null
 
 
-## Who hands its weight to whom, from [param joints] ([method
-## stud_joints]): id -> {the id of each part carrying it: the studs between
-## them, 0 for a part held by no stud}. A stud joint whose studs point up is
-## carried by the part with the studs. One whose studs point sideways or
-## down, a part seated in another and a pair "overlapped" (no stud's tip in
-## either) are carried by whichever of the two comes later in [param order],
-## the weighing's top-down order.
-static func _carriers(order: Array, joints: Dictionary) -> Dictionary:
-	var rank: Dictionary = {}
-	for n: int in order.size():
-		rank[(order[n] as BrickWorld.Brick).id] = n
-	var out: Dictionary = {}
-	var studs: Dictionary = joints["studs"]
-	var under: Dictionary = joints["under"]
-	var sideways: Dictionary = joints["sideways"]
-	var overlapped: Dictionary = joints["overlapped"]
-	for by_studs: bool in [true, false]:
-		for key: int in (studs if by_studs else joints["seated"]):
-			var one: int = key >> 32
-			var other: int = key & 0xFFFFFFFF
-			if not rank.has(one) or not rank.has(other):
+## Whether a stud of [param low] pointing up, or of [param high] pointing
+## down, stands in the other: its tip in the other's cover, or in a hollow
+## of it ([method _stud_in]), as a stud in a round brick's underside is. Only
+## the studs over the other's footprint are asked, so a baseplate's
+## thousands are not.
+static func _stud_between(low: BrickWorld.Brick, high: BrickWorld.Brick, boxes: Dictionary,
+		library: PartLibrary, lattice: BrickLattice) -> bool:
+	for pair: Array in [[low, high, 1.0], [high, low, -1.0]]:
+		var whose: BrickWorld.Brick = pair[0]
+		var into: BrickWorld.Brick = pair[1]
+		var mesh: Lbm.PartMesh = library.mesh_for(whose.part_id)
+		var other: Lbm.PartMesh = library.mesh_for(into.part_id)
+		if mesh == null or other == null:
+			continue
+		var span: AABB = (into.transform * other.bounds).grow(STUD_RADIUS)
+		var only: Dictionary = {into.id: boxes.get(into.id)}
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
 				continue
-			var held: int = int(studs[key]) if by_studs and not overlapped.has(key) else 0
-			var low: int = one if int(rank[one]) > int(rank[other]) else other
-			if held > 0 and not sideways.has(key):
-				low = int(under[key])
-			var high: int = other if low == one else one
-			if not out.has(high):
-				out[high] = {}
-			out[high][low] = held
-	return out
-
-
-## Whether [param brick]'s stud joints hold the [param grams] handed down
-## to it through them: [param studs], the studs what is on it stands on.
-func _assess(brick: BrickWorld.Brick, grams: float, studs: int) -> Risk:
-	var holds: float = studs * GRAMS_PER_STUD
-	if grams > holds:
-		var risk := Risk.new()
-		risk.brick_id = brick.id
-		risk.kind = "overloaded"
-		risk.margin = holds / grams
-		risk.carrying_grams = grams
-		risk.studs = studs
-		risk.message = (
-			"%s carries %.0f g on %d stud%s, which holds about %.0f g" % [
-				brick.part_id, grams, studs, "" if studs == 1 else "s", holds])
-		return risk
-
-	return null
+			var way: Vector3 = (whose.transform.basis * connector.axis).normalized()
+			if way.y * float(pair[2]) < 0.5:
+				continue
+			var foot: Vector3 = whose.transform * connector.position
+			if foot.x < span.position.x or foot.x > span.end.x \
+					or foot.z < span.position.z or foot.z > span.end.z:
+				continue
+			var tip: Vector3 = foot + way * Joints.STUD_REACH
+			if lattice.bricks_at(BrickLattice.to_cell(tip), whose.id).has(into.id) \
+					or _stud_in(foot, way, whose.id, only, lattice) != null:
+				return true
+	return false
 
 
 ## Does the model lean, or stand on too little?

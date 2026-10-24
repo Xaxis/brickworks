@@ -97,6 +97,8 @@ func _open_version(n: int) -> void:
 		return
 	var version: ModelVersions.Version = _shown[n]
 	hide()
+	if not await bar.ask_to_replace("“%s” as saved %s" % [store.title, version.when()]):
+		return
 	# Said in the status bar either way, opened or not.
 	await bar.open_version(version)
 

@@ -160,7 +160,12 @@ the model, and the design assistant doing the same with `add_minifig`.
   or words matched against the slot's part names (every slot, the left hand
   and the new ones too; the torso first, so an odd body's companions can be
   replaced by what else was asked); `colors` by slot. Refused in the
-  air, in something, or on another figure's head. Its parts are the design's own
+  air, in something, or on another figure's head; refused for a part in the
+  way, it names the parts by number and which of the figure's parts they
+  meet, and says whether it stands without its headwear or the nearest spot
+  within two studs where it does (`FigureTool._in_the_way`; walk180's captain
+  took five looks to find the roof plate over his hat). `minifig_probe` checks
+  a figure refused by a post names it and stands at the spot it offers. Its parts are the design's own
   (`_placed_ids`), so a new submission replaces them. Offered over MCP like every
   tool; `connector_form.said` captions it.
 - `minifig browser flow` (`tools/web/minifig_flow.mjs`): the same in a real browser
@@ -331,7 +336,9 @@ Proves it when:
   the legs' hole's middle). A
   sword two studs out of the hand, a cape two studs off the neck and a visor
   two studs off its pivots are pieces of their own. And the page's Orthanc,
-  run 5, 9,429 parts, is one piece.
+  10,094 parts, is one piece: its wizards' beards are clamped on their necks
+  under their heads (`ExactCheck.clamped`), though BrickNet's graph joins no
+  beard worn so (docs/BRICKBENCH.md).
 - `minifig_ui_probe` ends `a figure was made by clicking, named, placed on a stud
   and photographed`, and leaves `shots/minifig_builder.png`,
   `minifig_builder_surprise.png`, `minifig_figures_front.png`,

@@ -3064,6 +3064,41 @@
       "entry": "tools/update_parts.py",
       "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
       "area": "pipeline"
+    },
+    {
+      "kind": "ui",
+      "label": "open over unsaved work",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (change the model, then File, Open and a model: Save changes to it? Save, Don't save, Cancel; after Don't save, Edit, Undo brings it back)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "unsaved open probe",
+      "entry": "src/dev/unsaved_open_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unsaved_open_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "gears put in mesh by hand",
+      "entry": "src/assembly/gear_mesh.gd",
+      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "save dialog on the desktop",
+      "entry": "src/ui/save_to.gd",
+      "reach": "godot --path .  (File, Export, any of them; Instructions; File, Save as; the parts list's CSV)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "save dialog probe",
+      "entry": "src/dev/save_dialog_probe.gd",
+      "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
+      "area": "model-io"
     }
   ]
 }

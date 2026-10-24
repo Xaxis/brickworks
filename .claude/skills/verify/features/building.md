@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
 
 ## Sub-features
 
@@ -145,6 +145,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
   across its stud axis), the opposite, all, none. The baseplate is never taken.
+  And a part by what it is called: Part number or name… opens the parts list
+  with its find to type into (`SelectBy.wanted`: "3004", "3023" for 3023b,
+  "brick 1x2" with every word as the parts bin searches, a colour of the
+  model's by name, or both, "blue 1x2 brick"); Enter selects every row it
+  kept. In the list each row shows its part's picture in its colour
+  (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
+  every piece (a hose's every segment), frames them and says how many, with I
+  for a buried one; the list opens again where it was. Escape over the list
+  closes it before it clears a selection under it. In a shared model's viewer
+  a row does the same, and Escape then lets go of them (`share_view_probe`). The MCP's twin is
+  look_at_model's `part=` and `color=`, which list where each one is: no
+  session tool sets the person's selection (`AppTools.WINDOW_ONLY`).
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
   tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
   selected) shows all, and the status line names those keys. Hidden parts are not
@@ -841,10 +853,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   round rack 2790a is loose in its holder; a socket drawn as plain rounds a
   ball's size holds a ball (`Joints.balls`). G14b (MECHANISMS §24): a
   pinion lodged in a piece whose rack it stands in turns on its own axis
-  (`Bodies._driving_pinion`); a door, a hatch or a lid held by nothing hangs
-  on the part it is lodged in, where that part is in its piece's biggest
-  body and BrickNet's labels name a hinge between the two
-  (`Bodies._labelled_hinge`, `Bodies._stays`).
+  (`Bodies._driving_pinion`); a door, a hatch, a lid, a shutter or a
+  window's pane held by nothing hangs on the part it is lodged in, where
+  that part is in its piece's biggest body and BrickNet's labels name a
+  hinge between the two (`Bodies._labelled_hinge`, `Exact.hinge_between`,
+  `Bodies._stays`; door184 added shutters and panes, which were lodged).
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket; never a tyre), else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's
@@ -1208,10 +1221,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   where the two meet inside the round — and, on a joint, not below the
   ground. The same rule now decides the ordinary ghost too. The status
   bar says what it is on ("Placing Technic Pin on the pin hole of Technic
-  Brick 1 x 2 with Hole") and what R and T do there. Probe:
-  `technic_hand_probe`; `placing_probe -- only=wheels` puts 8643-1's tyres
+  Brick 1 x 2 with Hole") and what R and T do there. A door, a shutter or a
+  window's pane goes on its holder's hinge (door184, 2026-10-23: walk180's
+  door stood beside its frame or on its studs): the halves are BrickNet's
+  labels from the exact shapes (`JointSnap.hinges_of`; the catalogue's
+  connectors have none, a door's pins being drawn as bumps), one half on
+  the other of its subtype, laid frame on frame as `Attach.pose` lays them,
+  hung shut over the holder's middle (`JointSnap._shut`), R swinging it
+  open about the hinge. Aimed at the hinge's line within 12 LDU, or
+  anywhere through the holder's box, its hinges nearest where the line
+  enters first, the first one with room some way (`JointSnap.framed`,
+  `Builder._has_room_on`: a shutter over 3853's middle goes on the hinge
+  outside, not a pane's inside). A hinge's halves are let into each other's
+  covers where their exact shapes are clear (`Builder._hinged_clear`). In a
+  browser a shape that comes after its part was put down measures that
+  part again (`Builder._on_exact_fetched`, `BrickGrid.remeasure`). Probe:
+  `technic_hand_probe`; `door_probe` (seven doors, shutters and panes on
+  their holders, shut where real sets have them, held, and swung by Grab);
+  `placing_probe -- only=wheels` puts 8643-1's tyres
   on their rims where the file has them, and wheels with their tyres on a
-  wheel pin and an axle. In a browser: `tools/web/technic_flow.mjs`, which
+  wheel pin and an axle; `-- only=doors` the doors and a shutter by the
+  pointer, pictures in shots/placing/door_ghost_*.png. In a browser: `tools/web/technic_flow.mjs`, which
   aims each part at the connector where the page says it is
   (`brickworksState.joints`, with `on_joint` and `can_place`).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
@@ -1491,6 +1521,12 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/tooltip_probe.gd
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
+# a part found in the Boutique Hotel: the list's pictures, a row clicked (57
+# selected, framed, said), Select by, Part number or name… typed key by key
+# ("blue 1x2 brick", "3004"), Escape, look_at_model part=; then Orthanc's
+# 1,074-piece row against Select all, longest frame (-- --no-time, --time-only,
+# --rounds=N; on a base checkout only Select all). shots/findpart_*.png
+tools/probe.sh find_part_probe
 # the selection's outline round its silhouette, never over it, for one brick,
 # a chain and Orthanc, through the cut and x-ray, and the hover's; its targets
 # let go of at once when nothing is outlined, with no frame drawn; at 1x and
@@ -1538,6 +1574,9 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 # its ghost. Pictures in shots/placing/ (-- only=edge|parts|balance)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/placing_probe.gd
+# a door, a shutter and a pane each pointed onto its holder's hinge, shut where
+# real sets have it, held by check_design and swung by Grab (seven pairs)
+godot --headless --path . --script src/dev/door_probe.gd
 # every part the CAD task's three sets have off the grid (39) put where the
 # file has it through the interface: aimed and clicked, Hinge or X, Y, Z
 # typed in Properties where the pointer cannot say it (-- only=5762|8643|8841)
@@ -1675,3 +1714,8 @@ For the scene itself, launch it and read the brick count in the status bar: with
   A free bar (30374 in a 3062b's hollow stud, or in a clip) takes one.
 - **New `class_name` files need `godot --headless --path . --import --quit`** before
   a probe can name them; a checkout's class cache is only refreshed by an import.
+
+
+### Gears put in mesh by hand
+
+`tools/probe.sh gear_mesh_probe`: each gear pair is pointed onto its axles the way the editor places it, the second seats where it meshes (GearMesh, src/assembly/gear_mesh.gd), and Grab turns one: the other turns at the teeth's ratio. Spur 8/12/16/20/24/36/40, double bevels at right angles, a worm with a 24, a 24 in a crossblock. Fails on a build before gears186 (34 of 42), passes after; ends "gear_mesh probe:" with its count.

@@ -2792,9 +2792,8 @@ func _studs_under(low: int, high: int) -> Array:
 
 
 ## The hinge BrickNet's labels name between parts [param a] and [param b]:
-## [where, its line], or empty. Two hinge connectors of one subtype and
-## opposite halves, within Exact.POS_THR and on one line (Exact.meets). Off
-## the main thread, only the shapes already read.
+## [where, its line], or empty (Exact.hinge_between). Off the main thread,
+## only the shapes already read.
 func _labelled_hinge(a: int, b: int) -> Array:
 	var main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
 	var items: Array = []
@@ -2806,15 +2805,7 @@ func _labelled_hinge(a: int, b: int) -> Array:
 		if shape == null or not shape.kind.has(Exact.HINGE):
 			return []
 		items.append(Exact.Item.new(shape, brick.transform))
-	for one: Array in (items[0] as Exact.Item).world():
-		if (items[0] as Exact.Item).shape.kind[int(one[0])] != Exact.HINGE:
-			continue
-		for other: Array in (items[1] as Exact.Item).world():
-			if (items[1] as Exact.Item).shape.kind[int(other[0])] != Exact.HINGE:
-				continue
-			if Exact.meets(items, [0, one[0], one[1], one[2], one[3]], [1, other[0], other[1], other[2], other[3]]):
-				return [one[1], one[2]]
-	return []
+	return Exact.hinge_between(items[0], items[1])
 
 
 ## Whether [param key] is in its piece's biggest body ([param staying]:

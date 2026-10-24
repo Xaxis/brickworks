@@ -120,8 +120,8 @@ const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable", "-", "export_all"],
-	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
-		"select_submodel", "select_inverse"],
+	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
+		"select_connected", "select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 	"steps": ["step_close", "-", "step_prev", "step_next", "step_new", "-", "step_earlier",
 		"step_later",
@@ -391,7 +391,8 @@ func attend(name: String, work: Callable) -> void:
 	# worked-out steps (AuthorSteps.ensure).
 	if name.begins_with("step_") and world != null:
 		slow = slow and not AuthorSteps.any(world, store.scenery)
-	Working.attend(name, doing(name), work, name in IN_THE_PRESS, slow, size)
+	var asks: bool = name in ASKS_WHERE and SaveTo.asks()
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks, slow, size)
 
 
 ## How much a command has to do: the selection, for one that changes the
@@ -430,6 +431,13 @@ func doing(name: String) -> String:
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
 	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit", "new_window"]
 
+## The commands that on the desktop ask where their file goes (SaveTo)
+## before any slow work: run at once like those above, never said first,
+## so no "Exporting…" bar sits under the dialog while the person chooses.
+## The shop lists are counted before they ask, and are said first as ever.
+const ASKS_WHERE: Array[String] = ["save_as", "export_ldraw", "export_io", "export_picture",
+	"export_all", "instructions"]
+
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
 
@@ -457,7 +465,8 @@ const SLOW_FROM: Dictionary = {
 	# Everything connected walks the model from the part: 464 ms on the
 	# 536-part station, unsaid on a device that had not timed it before.
 	"stability": 300, "select_connected": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
-	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "reseat": 2000,
+	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "select_find": 2000,
+	"reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
 	"new": 2000,
@@ -490,6 +499,7 @@ const DOING: Dictionary = {
 	"select_all": "Selecting everything…", "select_none": "Selecting nothing…",
 	"select_colour": "Selecting the same colour…", "select_part": "Selecting the same part…",
 	"select_alike": "Selecting the same part and colour…",
+	"select_find": "Listing the parts…",
 	"select_connected": "Selecting everything connected…",
 	"select_submodel": "Selecting the sub-model…", "select_inverse": "Selecting the opposite…",
 	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
@@ -672,21 +682,23 @@ func _define() -> void:
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
-		func() -> void: await (app.get("_exports") as Exports).studio_io(), something)
+		func() -> void: await (app.get("_exports") as Exports).studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
 	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
 		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
-		func() -> void: await (app.get("_exports") as Exports).take_picture(), something)
+		func() -> void: await (app.get("_exports") as Exports).take_picture(true), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
-		func() -> void: (app.get("_exports") as Exports).shop_list("bricklink"), something)
+		func() -> void: await (app.get("_exports") as Exports).shop_list("bricklink", {}, true),
+		something)
 	_add("export_all", "All my models (.zip)", 0,
-		func() -> void: (app.get("_exports") as Exports).all_models(),
+		func() -> void: await (app.get("_exports") as Exports).all_models(true),
 		func() -> bool: return ModelStore.any_saved(),
 		"Every model saved here, as LDraw files in one .zip: a copy of your own")
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
-		func() -> void: (app.get("_exports") as Exports).shop_list("rebrickable"), something)
+		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
+		something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/pose_panel.gd.
@@ -703,10 +715,13 @@ func _define() -> void:
 	_add("quit", "Quit", CTRL | KEY_Q, func() -> void: app.get_tree().quit(),
 		func() -> bool: return not OS.has_feature("web"))
 	# Edit
+	# An open is the oldest step: Undo past every change since brings back
+	# the model it took off (ModelStore.reopen).
 	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.press("undo"),
-		func() -> bool: return builder.history_depth() > 0, "Take back the last change")
+		func() -> bool: return builder.history_depth() > 0 or store.can_reopen(),
+		"Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: await verbs.press("redo"),
-		func() -> bool: return not builder._redo.is_empty(), "Put it back")
+		func() -> bool: return not builder._redo.is_empty() or store.can_reopen(true), "Put it back")
 	# Not "cut": that is the cut-away (K), defined under View, and a second
 	# command of one name replaced the first, so Edit, Cut sliced the model
 	# open instead of taking the selection off it.
@@ -727,6 +742,10 @@ func _define() -> void:
 	_add("select_part", "Same part", 0, func() -> void: verbs.select_by("part"), selected)
 	_add("select_alike", "Same part and colour", 0, func() -> void: verbs.select_by("alike"),
 		selected)
+	# The parts list with its find: a part's number, name or colour, and
+	# Enter selects every one of them.
+	_add("select_find", "Part number or name…", 0, func() -> void: app.call("_find_parts"),
+		something, "Find a part in the model by its number, its name or its colour")
 	_add("select_connected", "Everything connected", 0,
 		func() -> void: await verbs.select_connected(), selected)
 	_add("select_submodel", "Same sub-model", 0, func() -> void: verbs.select_by("submodel"),
@@ -1240,6 +1259,8 @@ func _fill_recent(menu: PopupMenu) -> void:
 func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	if id < 0 or id >= _recent.size():
 		return
+	if not await bar.ask_to_replace("“%s”" % _recent[id].name):
+		return
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
@@ -1248,17 +1269,30 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 func _fill_history(menu: PopupMenu) -> void:
 	menu.clear()
 	var said: PackedStringArray = builder.history_words(25)
-	if said.is_empty():
+	# And under them the open they followed, the step before the oldest:
+	# going back to before it brings back the model it took off.
+	var opened: String = store.reopen_words() if store != null else ""
+	if said.is_empty() and opened.is_empty():
 		menu.add_item("nothing to go back to yet")
 		menu.set_item_disabled(0, true)
 	for n: int in said.size():
 		menu.add_item("Undo %s" % said[n] if n == 0 else "Back to before: %s" % said[n], n)
+	if not opened.is_empty():
+		menu.add_item(("Undo %s" if said.is_empty() else "Back to before: %s") % opened,
+			builder.history_depth())
 
 
 # -- what only the shell does ---------------------------------------------------
 
 
 func _ask_save_as() -> void:
+	# The desktop's is the platform's Save dialog, and a file where it says.
+	if not OS.has_feature("web"):
+		var path: String = await SaveTo.ask(ModelStore._safe_name(bar.model_name())
+			+ bar.ldraw_extension(), "", "Save as")
+		if not path.is_empty():
+			await bar.save_to_file(path)
+		return
 	_save_as_name.text = bar.model_name()
 	_save_as.popup_centered()
 	_save_as_name.grab_focus()

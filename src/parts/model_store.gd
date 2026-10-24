@@ -123,6 +123,8 @@ var model_floor: ModelFloor = ModelFloor.preferred()
 
 var _dirty_at: int = 0
 var _pending: bool = false
+## The autosave holds the model as it stands: written since the last change.
+var _autosave_is_model: bool = false
 
 signal saved(name: String)
 signal loaded(name: String, bricks: int)
@@ -149,6 +151,7 @@ func _init() -> void:
 func touch() -> void:
 	_dirty_at = Time.get_ticks_msec()
 	_pending = true
+	_autosave_is_model = false
 	# Told of every change up to now: the watch ([method _hear]) takes up
 	# from here, and does not hear the same change again a frame later. It
 	# did, and each time pushed the write back, so an autosave that was due
@@ -250,7 +253,7 @@ func tick() -> void:
 	# that never came, and nothing done after was kept.
 	# A small model in one go, as before; a big one over frames.
 	if world.brick_count() - scenery.size() < PACED_FROM:
-		_write(autosave(), title)
+		_autosave_is_model = _write(autosave(), title)
 		return
 	_autosave_paced()
 
@@ -262,7 +265,7 @@ func tick() -> void:
 func _autosave_paced() -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if tree == null:
-		_write(autosave(), title)
+		_autosave_is_model = _write(autosave(), title)
 		return
 	_autosaves += 1
 	var mine: int = _autosaves
@@ -281,7 +284,7 @@ func _autosave_paced() -> void:
 		_dirty_at = maxi(_dirty_at, Time.get_ticks_msec())
 		_pending = true
 		return
-	_write(autosave(), title, false, str(made[0]))
+	_autosave_is_model = _write(autosave(), title, false, str(made[0]))
 
 
 ## Autosaves begun, the latest the only one that may still write; and
@@ -307,7 +310,7 @@ func write_now() -> String:
 		_pending = false
 		_autosaving = false
 		_autosaves += 1
-		_write(autosave(), title)
+		_autosave_is_model = _write(autosave(), title)
 	return autosave() if FileAccess.file_exists(autosave()) else ""
 
 
@@ -365,6 +368,10 @@ func _restored(text: String, result: Dictionary) -> int:
 	# What is awaited is this model's only when it opened: one that did not
 	# leaves the last model's there.
 	var opened: bool = str(result["error"]).is_empty()
+	# Nowhere else but the autosave, perhaps never saved.
+	if opened:
+		_opened_whole = -1
+		_autosave_is_model = true
 	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
 	if back == 0 and count_in(text) > 0:
 		_keep_unopened(text, str(result["error"]))
@@ -593,6 +600,24 @@ static func name_for(brief: String) -> String:
 	return named.left(1).to_upper() + named.substr(1)
 
 
+## The world's generation a model was opened in, as it came, from somewhere
+## that still has it as it is: a file of the person's, an example, the
+## library, a save. Until it is changed, putting it away loses nothing
+## ([method has_unsaved_work]). Not the working model restored at start-up,
+## a version opened under its model's name, or a model Undo put back: those
+## are nowhere else as they stand. -1 for none.
+var _opened_whole: int = -1
+## And how many parts it had, those on their way counted: a part put down or
+## taken off past the history changes it.
+var _opened_parts: int = 0
+
+
+## The model's parts, those still on their way counted: the same as each
+## arrives.
+func _parts_with_awaited() -> int:
+	return world.brick_count() - scenery.size() + awaited.size()
+
+
 ## Whether starting a new model would lose anything: bricks that are not
 ## in a saved model under this name, exactly as they stand.
 func has_unsaved_work() -> bool:
@@ -600,6 +625,12 @@ func has_unsaved_work() -> bool:
 	# car, untouched, asked whether to save it. Nothing has been done to
 	# it while there is nothing to undo (an Open forgets the history).
 	if example and builder != null and builder.history_depth() == 0:
+		return false
+	# Nor a model as it was opened, from somewhere that still has it: a file
+	# of the person's opened twice over asked whether to save the first.
+	if _opened_whole == world.generation() and builder != null \
+			and builder.history_depth() == 0 and builder._redo.is_empty() \
+			and _parts_with_awaited() == _opened_parts:
 		return false
 	if world.brick_count() - scenery.size() <= 0:
 		return false
@@ -745,6 +776,148 @@ func _opened_from(path: String, result: Dictionary) -> int:
 	return int(result["placed"])
 
 
+## What the opens in this tab took off the baseplate, so each can be undone:
+## {path, name, example}, a copy of the model as it stood, what it was
+## called and whether it was an example, the newest last (Edit, Undo with nothing else to undo, and History). An open
+## replaced a model of 254 parts not saved with no question, Undo greyed and
+## History empty, and those parts were in no file (walk180, D6 and A11,
+## 2026-10-23). Opens ask first now (ModelBar.ask_to_replace); this is what
+## makes a slip cost nothing, whoever opened, a Claude session too.
+var opened_over: Array[Dictionary] = []
+## And what an undone open took off in turn, for Redo, the newest last.
+var undone_over: Array[Dictionary] = []
+## How many of each are kept: the oldest goes.
+const OPENS_KEPT := 10
+## Where the copies are, in this tab's own folder (TabSession).
+const SET_ASIDE := "opened_over/"
+## The world's generation the latest open laid its model in. Once anything
+## else empties the world (New, Clear), those opens are not undone: an Undo
+## after New does not put back a model opened before it.
+var _opens_in: int = -1
+## The open going is Undo's ("undo") or Redo's ("redo") of one, or neither.
+var _reopening: String = ""
+var _asides: int = 0
+
+
+## Keep the model on the baseplate, before an open takes it off, for Undo
+## ([member opened_over]); or, while Undo is reopening one, for Redo. Nothing
+## for nothing there: an empty baseplate, half a model still being laid, a
+## run that keeps nothing. The autosave copied when it holds the model as it
+## stands, as it does once the model has been still a moment: made again,
+## Orthanc's held a frame half as long again as the open's longest. Otherwise
+## made, a big one over frames when [param paced], as the autosave makes it.
+func _set_aside(paced: bool) -> void:
+	if world.generation() != _opens_in:
+		_forget_opens()
+	if not keeps or read_only or laying or _is_empty():
+		return
+	DirAccess.make_dir_recursive_absolute(TabSession.path(SET_ASIDE))
+	_asides += 1
+	var path: String = TabSession.path(SET_ASIDE + "%d-%d.ldr" % [
+		int(Time.get_unix_time_from_system() * 1000.0), _asides])
+	_hear()
+	var kept: bool = _autosave_is_model and not _pending and not _autosaving \
+		and DirAccess.copy_absolute(autosave(), path) == OK
+	if not kept:
+		var text: String = await _model_text(paced)
+		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+		if file == null:
+			push_warning("could not keep the model an open replaced (%d)" % FileAccess.get_open_error())
+			return
+		file.store_string(text)
+		file.close()
+	var into: Array[Dictionary] = undone_over if _reopening == "undo" else opened_over
+	if _reopening.is_empty():
+		_drop(undone_over, 0)
+	# An example stays one: put back as it shipped, it is nobody's work to save.
+	into.append({"path": path, "name": title, "example": example})
+	_drop(into, OPENS_KEPT)
+
+
+## The model on the baseplate as the autosave writes it, a big one over
+## frames when [param paced].
+func _model_text(paced: bool) -> String:
+	if paced and world.brick_count() - scenery.size() >= PACED_FROM:
+		var revision: int = world.revision
+		var made: Array = []
+		await _text_into(made, title, false, {}, FramePace.new())
+		# Changed meanwhile: made again, as it is now.
+		if world.revision == revision:
+			return with_share(str(made[0]), share_id, remixed_from, remixed_from_version, credit)
+	return with_share(to_text(title), share_id, remixed_from, remixed_from_version, credit)
+
+
+## The copies of [param kept] past the newest [param leaving], deleted.
+static func _drop(kept: Array[Dictionary], leaving: int) -> void:
+	while kept.size() > leaving:
+		DirAccess.remove_absolute(str(kept.pop_front()["path"]))
+
+
+## No open to undo or redo any more, and their copies gone: those of a run
+## before this one too.
+func _forget_opens() -> void:
+	opened_over.clear()
+	undone_over.clear()
+	var folder: String = TabSession.path(SET_ASIDE)
+	if DirAccess.dir_exists_absolute(folder):
+		for file: String in DirAccess.get_files_at(folder):
+			DirAccess.remove_absolute(folder + file)
+
+
+## Whether Undo (or with [param again], Redo) can reopen what an open took
+## off: nothing has emptied the world since, and for Redo nothing has been
+## done since the Undo.
+func can_reopen(again: bool = false) -> bool:
+	if world == null or laying or world.generation() != _opens_in:
+		return false
+	if not again:
+		return not opened_over.is_empty()
+	return not undone_over.is_empty() and builder != null and builder.history_depth() == 0 \
+		and builder._redo.is_empty()
+
+
+## The open Undo (or Redo, [param again]) would take back (or do again), in
+## words, as the history says a step: "opened “Car” in place of “Harbour
+## Tug”", or "opened “Car” again" of a save of it; "" when there is none.
+func reopen_words(again: bool = false) -> String:
+	if not can_reopen(again):
+		return ""
+	var other: String = str((undone_over if again else opened_over).back()["name"])
+	if other == title:
+		# A save of it, or another tab's: the same model as it was before.
+		return "opened “%s” again" % title
+	return "opened “%s” in place of “%s”" % ([other, title] if again else [title, other])
+
+
+## Undo the latest open, or with [param again] redo the latest undone: the
+## model it took off put back as it stood, under its name, and the one on
+## the baseplate kept in turn for the other. How many parts landed; -1 when
+## it did not open, [member not_opened] saying why, nothing changed.
+func reopen(again: bool = false, job: Working.Job = null) -> int:
+	if not can_reopen(again):
+		not_opened = "there is no open to %s" % ("redo" if again else "undo")
+		return -1
+	var stack: Array[Dictionary] = undone_over if again else opened_over
+	var entry: Dictionary = stack.back()
+	var text: String = FileAccess.get_file_as_string(str(entry["path"]))
+	if text.is_empty():
+		not_opened = "its copy could not be read"
+		return -1
+	_reopening = "redo" if again else "undo"
+	var result: Dictionary = await open_text_fetched(text, str(entry["path"]).get_file(), null, job)
+	_reopening = ""
+	if not str(result["error"]).is_empty():
+		return -1
+	stack.erase(entry)
+	DirAccess.remove_absolute(str(entry["path"]))
+	example = bool(entry["example"])
+	_opened_whole = -1
+	if title != str(entry["name"]):
+		title = str(entry["name"])
+		loaded.emit(title, int(result["placed"]))
+	return int(result["placed"])
+
+
 ## The saves of the model on the baseplate kept as versions, newest first:
 ## none for a model never saved (ModelVersions).
 func versions() -> Array[ModelVersions.Version]:
@@ -769,6 +942,8 @@ func open_version(path: String, called: String = "", job: Working.Job = null) ->
 	# last model's, and that model was renamed for the one that did not open.
 	if not str(result["error"]).is_empty():
 		return 0
+	# Not what its name's file holds: Save makes it the newest save.
+	_opened_whole = -1
 	# The name it is saved under, whatever its first line says.
 	if title != name:
 		title = name
@@ -973,6 +1148,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var source: SourceFile = read["source"]
 	_phase("source")
 
+	# What is on the baseplate kept first, so the open can be undone.
+	await _set_aside(job != null)
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
@@ -982,6 +1159,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_phase("clear")
 	_source = source
 	_opened_in = world.generation()
+	_opens_in = world.generation()
 	# Whatever arrives from now is put down in this model (place_awaited).
 	_awaited_in = world.generation()
 	# What the file holds that is not on the baseplate: kept in it, and said.
@@ -1158,6 +1336,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		for brick: BrickWorld.Brick in world.bricks():
 			world.motions.snapshot[brick.id] = brick.transform
 	example = false
+	_opened_whole = world.generation()
+	_opened_parts = _parts_with_awaited()
 	_phase("meta")
 	if paced:
 		# Drawn from the end of this frame, a slice of the batches a frame

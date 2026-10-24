@@ -16,6 +16,9 @@ var message: Label
 ## The parts count and the stability, written by the app (main.gd).
 var counts: Label
 var _hint: Label
+## Beside a line naming a file just written for the person (SaveTo): the
+## file manager open on it.
+var show_folder: Button
 var _selected: Label
 var _settings: Label
 var _zoom: Label
@@ -56,6 +59,26 @@ func _ready() -> void:
 	_hint.clip_text = true
 	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hint.custom_minimum_size = Vector2(80, 0)
+	show_folder = Button.new()
+	show_folder.text = "Show in folder"
+	show_folder.tooltip_text = "Open the folder the file was saved in"
+	show_folder.focus_mode = Control.FOCUS_NONE
+	show_folder.visible = false
+	show_folder.add_theme_font_size_override("font_size", 11)
+	# As Working's Cancel, the bar's other button.
+	for state: String in ["normal", "hover", "pressed"]:
+		var face := StyleBoxFlat.new()
+		face.bg_color = Color(1, 1, 1, {"normal": 0.08, "hover": 0.16, "pressed": 0.24}[state])
+		face.border_color = Color(1, 1, 1, 0.14)
+		face.set_border_width_all(1)
+		face.set_corner_radius_all(4)
+		face.content_margin_left = 8
+		face.content_margin_right = 8
+		face.content_margin_top = 0
+		face.content_margin_bottom = 0
+		show_folder.add_theme_stylebox_override(state, face)
+	show_folder.pressed.connect(func() -> void: SaveTo.show_in_folder(SaveTo.shown))
+	row.add_child(show_folder)
 	counts = _cell(row, "How many parts the model has, and whether it would stand up as built")
 	_selected = _cell(row, "How many parts are selected")
 	_settings = _cell(row, "What a part snaps to, and how far R turns a selection: both on the toolbar")
@@ -116,6 +139,9 @@ func _process(_delta: float) -> void:
 	if said.is_empty() and shell.stress != null:
 		said = shell.stress.line()
 	var line: String = said if not said.is_empty() else shell.verbs.hint()
+	var showable: bool = not busy and SaveTo.names(said)
+	if show_folder.visible != showable:
+		show_folder.visible = showable
 	if _hint.text != line:
 		_hint.text = line
 		_hint.tooltip_text = said
@@ -150,4 +176,4 @@ func _stud_on_screen() -> float:
 func fields() -> Dictionary:
 	return {"message": message.text, "hint": shell.verbs.hint(), "line": _hint.text,
 		"counts": counts.text, "selected": _selected.text, "settings": _settings.text,
-		"zoom": _zoom.text}
+		"zoom": _zoom.text, "show_folder": show_folder.visible}

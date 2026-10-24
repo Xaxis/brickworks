@@ -92,10 +92,15 @@ fixing what it got wrong.
   before: MECHANISMS §23); a piece of the
   design no connection holds is a fault unless it stands square (`rests`), and one
   that stands but comes away in the hand (`comes_away`: no tube of it stands
-  between another part's studs, as a dish's does on a round plate) is a fault when
-  it sits on its anti-studs where no stud is (`on_anti_studs`: a 1 x 1 cheese slope
-  on a round plate's rim) and advice when it lies so on purpose (a plate on its
-  edge); the check counts pieces by BrickNet's connections as well as the
+  between another part's studs, as a dish's does on a round plate, and the parts
+  round it do not catch it every way it could slide out, `caught`, as the orrery's
+  rings are caught) is a fault,
+  said with where to seat it (`seat_for`: the shortest move that puts its
+  anti-studs on free studs), unless it is a tile laid right way up on a face with
+  no stud (`set_down`), which is advice and one line in every edit's reply
+  (`Assistant._resting_line`): a 1 x 1 cheese slope on a round plate's rim, the
+  pose174 toilet's roll a stud off the studs at its tank's edge, a plate on its
+  edge and a brick on a tile are faults; the check counts pieces by BrickNet's connections as well as the
   lattice's (`_pieces_of`), as verify.py counts them; a piece
   only the floor holds, on a bare floor (floor "none" or "grid", or no baseplate
   laid: `Assistant._on_bare_floor`), is "tips over" unless its centre of mass is
@@ -103,7 +108,16 @@ fixing what it got wrong.
   its heels, a can lying on one line of its facets); a part
   up to a plate off a stud, hole, hinge or bar is seated on it first (a nudge keeps
   the LDU past the lattice cell). Without the `exact/` folder the check is the
-  lattice alone, as it was. Recipe under How to check it, "The check by real shapes".
+  lattice alone, as it was. Fits the LEGO Group's own sets are built with are
+  forgiven (`ExactCheck.known_fit`, `src/ai/known_fits.gd`): a minifigure's part
+  against another's (hair on a torso, a backpack on a head), a thing it holds or
+  sits on, or any other part ("brick": legs in a seat, a hand round a wheel, a
+  helmet under a roof), up to the depth three in four official sets that meet so
+  reach, and two parts no figure's only where two or more sets put them in the
+  same pose; never in a run kept to BrickBench's parts. The table,
+  `assets/ldraw/known_fits.json`, is learned from the OMR by `tools/known_fits.py`
+  (`src/dev/known_fits_scan.gd`). Recipe under How to check it, "The check by real
+  shapes".
 - `figures told of their joints`: `Style.character_of` (src/ai/style.gd) reads a
   subject as a figure (people's words and he or she), a creature (the living
   things that are not plants) or a thing with a face (eyes, brows, a grin), a
@@ -1880,7 +1894,14 @@ fixing what it got wrong.
   app does the retrieval itself (`FeaturePass.propose`): `candidates_for`
   searches the index for the subject word and the feature (`_subject_words`,
   "owl eyes"), then the feature alone, and keeps up to six pieces that lay
-  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model);
+  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model)
+  and are that feature: what the piece is (`RealSnippets.what_it_is`, its
+  description up to the colon) names the feature's noun (`nouns_of`, the
+  last word of each thing it lists) or a word of the index's synonyms
+  (`RealSnippets.kin`), ranked by how much of the feature it says
+  (`names_it`), and none when no piece is it (walk180's tug was offered a
+  tugboat's funnel for its fenders, windows, bitts and mast: "harbour tug
+  boat" ran together as "tugboat" in the search);
   `spot_for` takes the design's spot or reads one off the name (`WHERE`:
   eyes high on the front, wheels low on the side, ear tufts on top, tails at
   the back) on the model's surface at that height, not its box; `fit` tries
@@ -1902,7 +1923,10 @@ fixing what it got wrong.
   `recolor` first: the same piece laid again in one edit with taking the
   old off, so a refusal leaves it), `next` (taken off, the next candidate
   laid), `reject` (a reason of three words or more; taken off), `built` (a
-  reason, or an edit put down to the feature; the app's piece is taken off). In the loop a settle ends the
+  reason, or an edit put down to the feature; the app's piece is taken off),
+  `skip` (left out, taken off; saving does not wait for it). `built`,
+  `reject` and `skip` take several features at once, comma-separated, or
+  "all" for every one not settled (`_features_in`). In the loop a settle ends the
   feature's turn (`_feature_closed`) and the next comes; turns run out with
   the piece standing and it is "kept". From outside: the build's answer says
   so (step 2), the whole review hands the first feature with its piece laid,
@@ -1925,7 +1949,10 @@ fixing what it got wrong.
   refused with both open and the eyes laid as a mirrored pair, "next" laying
   the next-best, accept with a move laying it a stud back and handing the
   beak, a reason-less rejection refused, the last settle naming the next
-  step, save going ahead, the whole review's record. Windowed (`xvfb-run -a
+  step, save going ahead, the whole review's record; then "beak, ear tufts"
+  skipped and "all" built in two calls with save going ahead, and the
+  walk180 tug's features each offered only pieces that name them (none for
+  its towing bitts). Windowed (`xvfb-run -a
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.
   Needs the index; SKIP without.
@@ -2500,8 +2527,10 @@ names a drawer `godot --script res://src/dev/draw_shots.gd`.
 godot --headless --path . --script src/dev/exact_probe.gd        # one case a pair kind BrickBench refused, and builds that are right
 godot --headless --path . --script src/dev/exact_cost_probe.gd   # station (535) and Orthanc (9,427): as standing, an edit, a whole design
 godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd B.mpd   # pairs and pieces, to set beside verify.py
-godot --headless --path . --script src/dev/pieces_agree.gd -- A.ldr B.ldr   # the check's verdict and count of pieces, beside BrickNet's
+godot --headless --path . --script src/dev/pieces_agree.gd -- A.ldr B.ldr   # the check's verdict and count of pieces, beside BrickNet's; ends "agree on N of M"
 godot --headless --path . --script src/dev/joint_check_probe.gd  # real sets' joints pass, joints turned too far and folded hinges do not
+godot --headless --path . --script src/dev/known_fits_probe.gd   # official sets' figure fits forgiven; a brick 2 LDU into a brick and a torso 6 LDU into a wall are not
+python3 tools/known_fits.py scan --out DIR && python3 tools/known_fits.py build --out DIR && python3 tools/known_fits.py report --out DIR   # learn the table from every OMR set (about 30 min, 3 shards under heavy)
 godot --headless --path . --script src/dev/joint_collisions.gd -- --out=F.jsonl [--shard=K/N] [SET.mpd ...]   # real sets' jointed pairs the shapes collide, and which the check holds to be the joint
 godot --headless --path . --script src/dev/replay_calls.gd -- --calls=F.jsonl [--only=21,30]   # a session's design calls made again on this checkout's check
 ```
@@ -2524,12 +2553,35 @@ collides by its shapes, which the check refused before: the whale's Joint-8 ball
 `replay_calls` on a session's calls (one {n, name, input} line each, taken from its
 transcript) repeats the refusals that session met, on the code it ran.
 
+**Known fits** (`ExactCheck.known_fit`, `KnownFits`): what official sets do is
+forgiven, learned from them, not loosened by hand. Proves it when:
+`known_fits_probe` ends "official sets' fits are forgiven, and nothing else" (six
+small sets that failed only on their figures pass, and fail kept to BrickBench's
+parts; 3001 2 LDU into 3001 from above and beside, and a torso 6 LDU into a wall,
+collide; a long beard through a plastic cape collides, Gandalf as 71200-1 dresses
+him does not); and `tools/known_fits.py report` over a scan of the OMR (2026-10-23,
+1,576 files): 639 pass the collision part without the table (40.5%), 754 with it
+(47.8%), and of the 252 files with a figure's part in a colliding pair, 178 have
+every such pair forgiven, against 1 before. What still fails is said by cause: 783
+files hold two parts no figure's met so by that set alone (a part drawn into
+another, or BrickNet's convex pieces filling what is hollow), 96 a part drawn twice
+in one place. A rescan with `--fits` through the real check agrees with the
+report's count of pairs left on 167 of 167 files. After a rebuild of the table,
+run `scan --fits` on a few files to see it agree.
+
 Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md);
 without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as
 it is since 2026-10-15 (each collider group the vertices its faces use, shared
 or not): built before, 679 of 3033's 785 pieces lost corners and a flame 1.27 LDU
-into a tipped lid read as clear. Proves it when: `exact_probe` ends "35
-passed, 0 failed" (its 54200 on a round plate's rim, said not held and counted
+into a tipped lid read as clear. Proves it when: `exact_probe` ends "40
+passed, 0 failed" (a tile walled in and roofed over is caught, `caught`, and says
+nothing; its toilet roll a stud off the studs beside it, said not held
+with where to seat it, is advice on 3cff0d3c, and its tile set down on a tile is
+advice said in the edit's one line, `resting`; its 54200 on a round plate's rim, said not held and counted
+into a tipped lid read as clear. Proves it when: `exact_probe` ends "41
+passed, 0 failed" (a figure leaning with its beard under its head, clamped
+on the neck, says nothing and is one piece: without `ExactCheck.clamped`, 39
+passed and 2 failed; its 54200 on a round plate's rim, said not held and counted
 two pieces, fails both on d05a59be, 33 passed and 2 failed; on the code before
 it, fb64132, 4 of its first 21 passed and 17
 failed: every pair kind came back "buildable"; the 22nd is model-010's head in a

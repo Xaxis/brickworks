@@ -1136,6 +1136,14 @@
       "tests": []
     },
     {
+      "id": "cli:save dialog probe",
+      "kind": "cli",
+      "entry": "src/dev/save_dialog_probe.gd",
+      "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:say which build this is",
       "kind": "cli",
       "entry": "src/main.gd",
@@ -1433,6 +1441,14 @@
       "kind": "cli",
       "entry": "src/dev/unrestored_probe.gd",
       "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:unsaved open probe",
+      "kind": "cli",
+      "entry": "src/dev/unsaved_open_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unsaved_open_probe.gd",
       "area": "model-io",
       "tests": []
     },
@@ -2760,6 +2776,14 @@
       ]
     },
     {
+      "id": "ui:gears put in mesh by hand",
+      "kind": "ui",
+      "entry": "src/assembly/gear_mesh.gd",
+      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:grab and move on a joint",
       "kind": "ui",
       "entry": "src/ui/grab_drag.gd",
@@ -3010,6 +3034,14 @@
       "tests": []
     },
     {
+      "id": "ui:open over unsaved work",
+      "kind": "ui",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (change the model, then File, Open and a model: Save changes to it? Save, Don't save, Cancel; after Don't save, Edit, Undo brings it back)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:palette",
       "kind": "ui",
       "entry": "src/ui/parts_bin.gd",
@@ -3178,6 +3210,14 @@
       "kind": "ui",
       "entry": "src/ui/exports.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:save dialog on the desktop",
+      "kind": "ui",
+      "entry": "src/ui/save_to.gd",
+      "reach": "godot --path .  (File, Export, any of them; Instructions; File, Save as; the parts list's CSV)",
       "area": "model-io",
       "tests": []
     },

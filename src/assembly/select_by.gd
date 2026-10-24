@@ -40,6 +40,82 @@ static func _trait(kind: String, brick: BrickWorld.Brick) -> Variant:
 	return "%s/%d" % [brick.part_id, brick.color_code]
 
 
+## The parts and the colour a person asked for by name (Edit, Select by,
+## Part number or name; the parts list's find; look_at_model's part=).
+class Wanted extends RefCounted:
+	## Part ids -> true; every part when [member any_part].
+	var parts: Dictionary = {}
+	var any_part: bool = false
+	## An LDraw colour code, or -1 for any.
+	var colour: int = -1
+
+	func takes(part_id: String, colour_code: int) -> bool:
+		return (any_part or parts.has(part_id)) and (colour < 0 or colour_code == colour)
+
+
+## What [param said] asks for: a part's number ("3004", "3023" for 3023b
+## too), its name in the catalogue's words or a builder's ("brick 1 x 2",
+## "1x2 brick"), found as the parts bin finds them (PartLibrary.search) with
+## every word; one of [param colours] (codes -> true: the model's own) by its
+## name, LDraw's or LEGO's ("dark tan", "medium stone grey"); or both, "blue
+## 1x2 brick". Nothing said is everything.
+static func wanted(library: PartLibrary, said: String, colours: Dictionary) -> Wanted:
+	var out := Wanted.new()
+	var words: String = _plain(said)
+	if words.is_empty():
+		out.any_part = true
+		return out
+	var named: Array = _colour_in(library, words, colours)
+	out.colour = int(named[0])
+	var rest: String = str(named[1])
+	if rest.is_empty():
+		out.any_part = true
+		return out
+	out.parts = _parts_named(library, rest)
+	# A colour's word in a part's own name: "black" in a print.
+	if out.parts.is_empty() and out.colour >= 0:
+		out.colour = -1
+		out.parts = _parts_named(library, words)
+	return out
+
+
+## The parts with every word of [param words], by id.
+static func _parts_named(library: PartLibrary, words: String) -> Dictionary:
+	var out: Dictionary = {}
+	for info: PartLibrary.PartInfo in library.search(words, library.parts.size(), true):
+		out[info.id] = true
+	return out
+
+
+## The colour of [param colours] whose name is in [param words] whole, the
+## longest such ("dark tan" before "tan"), and the words without it:
+## [code, rest], or [-1, words] when none is.
+static func _colour_in(library: PartLibrary, words: String, colours: Dictionary) -> Array:
+	var padded: String = " %s " % words
+	var best: int = -1
+	var best_name: String = ""
+	for code: int in colours:
+		var color: PartLibrary.BrickColor = library.color(code)
+		if color == null:
+			continue
+		for name: String in [color.name, color.lego_name]:
+			var plain: String = _plain(name)
+			if plain.length() > best_name.length() and padded.contains(" %s " % plain):
+				best = code
+				best_name = plain
+	if best < 0:
+		return [-1, words]
+	return [best, padded.replace(" %s " % best_name, " ").strip_edges()]
+
+
+## Lower case, words apart by one space, grey as LDraw spells it.
+static func _plain(text: String) -> String:
+	var words: String = text.to_lower().replace("_", " ").replace("-", " ").replace("gray", "grey")
+	while words.contains("  "):
+		words = words.replace("  ", " ")
+	return words.strip_edges()
+
+
 ## Every brick in the same sub-model as any of these: the whole tower
 ## from one of its bricks. Nothing for a brick in none.
 static func submodel(world: BrickWorld, seeds: Array, scenery: Dictionary) -> Array:

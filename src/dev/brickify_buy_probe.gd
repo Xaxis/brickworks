@@ -298,14 +298,14 @@ func _steps_for(path: String, studs: int, up: String, lists: bool = false) -> vo
 	if lists:
 		# Its lists, through the app's own exporters, of it alone.
 		var skip: Dictionary = {own: true}
-		var said: String = _exports.shop_list("bricklink", skip)
+		var said: String = await _exports.shop_list("bricklink", skip)
 		var xml: String = FileAccess.get_file_as_string(_lists.path_join("model_bricklink.xml"))
 		var wanted: int = 0
 		for found: RegExMatch in RegEx.create_from_string("<MINQTY>(\\d+)</MINQTY>").search_all(xml):
 			wanted += found.get_string(1).to_int()
 		_check("its BrickLink wanted list, of it alone: %d pieces wanted for its %d (%s)"
 			% [wanted, ids.size(), said], wanted == ids.size())
-		said = _exports.shop_list("rebrickable", skip)
+		said = await _exports.shop_list("rebrickable", skip)
 		var rows: PackedStringArray = FileAccess.get_file_as_string(
 			_lists.path_join("model_rebrickable.csv")).strip_edges().split("\n")
 		var listed: int = 0

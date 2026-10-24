@@ -3697,8 +3697,12 @@ func _looking_key(key: InputEventKey) -> bool:
 			_toggle_parts()
 			return false
 		KEY_ESCAPE:
+			# The list, then the parts a row of it picked out: a viewer
+			# selects nothing else, and has nothing else to let go of them.
 			if _inventory.is_showing():
 				_inventory.hide_list()
+			elif not _builder.selection.is_empty():
+				_builder.clear_selection()
 			return false
 		KEY_F, KEY_HOME, KEY_END, KEY_SPACE, KEY_LEFT, KEY_RIGHT, \
 				KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, \
@@ -3837,6 +3841,8 @@ func _build_ui() -> void:
 	_stability = Stability.new()
 	_stability.library = _library
 	_stability.lattice = _builder.lattice
+	# Its verdict weighs the joints as View, Stress does, so the two agree.
+	_stability.with_margins = true
 
 	_thumbnails = PartThumbnails.new()
 	_thumbnails.library = _library
@@ -4362,7 +4368,7 @@ func _build_ui() -> void:
 			and _shell.collection.store != null else {}
 	_brickify.booklet_wanted.connect(_brickify_booklet)
 	_brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
-		_brickify.tell(_exports.shop_list(shop, _outside_of(path))))
+		_brickify.tell(await _exports.shop_list(shop, _outside_of(path), true)))
 	_brickify.need_wanted.connect(func() -> void:
 		if _shell != null and _shell.collection != null:
 			_shell.collection.open("need"))
@@ -4467,6 +4473,8 @@ func _build_ui() -> void:
 	_verbs.say = _bar.say
 	_verbs.edited = _on_model_edited
 	_verbs.aim_again = _hover_again
+	_verbs.reopen = _bar.reopen
+	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
 	add_child(_verbs)
@@ -4592,7 +4600,7 @@ func _build_ui() -> void:
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
 	_storage_offer = StorageOffer.new()
-	_storage_offer.download_all = func() -> void: _exports.all_models()
+	_storage_offer.download_all = func() -> void: await _exports.all_models()
 	_storage_offer.download_io = func() -> void: await _exports.studio_io()
 	_storage_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_storage_offer)
@@ -4786,7 +4794,11 @@ func _build_ui() -> void:
 
 	# The parts list's own BrickLink and Rebrickable buttons.
 	_inventory.shop_wanted.connect(func(shop: String) -> void:
-		_inventory.tell(_exports.shop_list(shop)))
+		_inventory.tell(await _exports.shop_list(shop, {}, true)))
+	_inventory.said.connect(_bar.say)
+	# Its rows' pictures, and a row clicked: those parts, in the model.
+	_inventory.thumbnails = _thumbnails
+	_inventory.chosen.connect(_show_found)
 
 	# Over everything else, so it is added last: nothing in the builder can
 	# be used until someone is signed in. Not over a shared model's viewer,
@@ -4853,13 +4865,28 @@ func _turn_model(quarter_turns: int) -> void:
 ## The booklet: drawn off screen by BookletMaker, then handed over.
 ##
 ## [param to] writes it to a file and says so, which is how the command
-## line and the checks ask for one. Otherwise it goes where people are: on
-## the web into the tab [method _booklet_wanted] opened as the button was
-## pressed (a browser only lets a page open a tab in answer to a click,
-## and the pictures take longer than that), and on the desktop into the
-## Downloads folder and open in the browser, ready to print.
+## line, a session and the checks ask for one. Otherwise it goes where
+## people are: on the web into the tab [method _booklet_wanted] opened as the
+## button was pressed (a browser only lets a page open a tab in answer to a
+## click, and the pictures take longer than that); on the desktop where the
+## person chooses, asked before the pictures are drawn (SaveTo), and then
+## open in their browser, ready to print. The app has no page viewer of its
+## own (the booklet is a web page, and Godot draws none), so the browser it
+## is, and the line says where the file is whether or not one opened.
 func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = null,
 		called: String = "") -> String:
+	var title: String = called if not called.is_empty() else _bar.model_name()
+	var given: bool = not to.is_empty()
+	if not given and not OS.has_feature("web"):
+		var leave: Dictionary = skip if skip is Dictionary else _store.scenery
+		if not _world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
+				return not leave.has(brick.id)):
+			_bar.say("nothing to write instructions for")
+			return "nothing to write instructions for"
+		to = await SaveTo.ask(title.to_snake_case() + "_instructions.html", "",
+			"Save the instructions")
+		if to.is_empty():
+			return ""
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -4879,11 +4906,10 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	maker.progress.connect(func(_said: String) -> void:
 		BookletMaker.tell_tab(job.line()))
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
-	var title: String = called if not called.is_empty() else _bar.model_name()
 	var html: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
-	if not to.is_empty():
+	if given:
 		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:
 			return "%s %.1f s" % [lap[0], float(lap[1]) / 1000.0])))
 	maker.queue_free()
@@ -4906,16 +4932,28 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		else:
 			file.store_string(html)
 			file.close()
+			SaveTo.wrote(to)
 			note = "wrote %s, %d steps" % [to, steps]
-	elif OS.has_feature("web") and BookletMaker.fill_tab(html):
+			if not given and BookletMaker.open_when_written:
+				note = _open_booklet(to, steps)
+	elif BookletMaker.fill_tab(html):
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
 		note = Download.give(html, file_name, "text/html")
-		if note.begins_with("wrote ") and BookletMaker.open_when_written:
-			OS.shell_open("file://" + note.trim_prefix("wrote "))
 	job.end()
 	_bar.say(note)
 	return note
+
+
+## The booklet written to [param path] open in the person's browser, and the
+## line to say: whether it opened, first, as a long path can run off the
+## bar's end; then the file, with Show in folder beside it (StatusBar).
+## walk180 pressed Instructions three times on a desktop with no browser,
+## and nothing happened (2026-10-23).
+func _open_booklet(path: String, steps: int) -> String:
+	if SaveTo.open(path):
+		return "the booklet is open in your browser, %d steps: %s" % [steps, path]
+	return "no browser could open the booklet: it is saved in %s, %d steps" % [path, steps]
 
 
 ## Every brick but those in the sub-assembly at [param path]: what a list or a
@@ -5425,6 +5463,31 @@ func _toggle_parts() -> void:
 		return
 	if not _inventory.show_for(_world, _library, _store.scenery, _bar.model_name()):
 		_bar.say("nothing to list yet")
+
+
+## The parts list with its find to type into: Edit, Select by, Part number
+## or name.
+func _find_parts() -> void:
+	if not _inventory.show_finding(_world, _library, _store.scenery, _bar.model_name()):
+		_bar.say("nothing to find yet")
+
+
+## The parts the parts list was asked for, selected and in view
+## (InventoryPanel.chosen): where they are in the model. [param what] says
+## what they are.
+func _show_found(ids: PackedInt64Array, what: String) -> void:
+	var count: int = _verbs.select_found(Array(ids))
+	var left: int = ids.size() - count
+	if count == 0:
+		_bar.say("%s: %s hidden or locked — Alt-H shows everything, Shift-L unlocks it" % [
+			what, "it is" if left == 1 else "all %d are" % left])
+		return
+	_camera.frame(_selection_bounds())
+	# One part buried in a building is selected and still out of sight:
+	# x-ray is the way to see it.
+	_bar.say("selected %d: %s%s — I sees through to %s" % [count, what,
+		"" if left == 0 else " (%d more hidden or locked)" % left,
+		"it" if count == 1 else "them"])
 
 
 ## Start or leave the booklet. Editing while playback is on would place
@@ -6035,18 +6098,38 @@ func _weigh() -> void:
 	if _world.brick_count() <= scenery.size() and not _stats_shown:
 		_stability_text = ""
 		return
-	var report: Stability.Report
-	# Every joint's margin too, while View, Stress shows them.
 	var stress: StressView = _shell.stress if _shell != null else null
 	var margins: bool = stress != null and stress.on
-	# The baseplate is the floor, not the model: whether it tips is asked
-	# of what stands on it.
-	_stability.floor_ids = scenery
+	_weighing = true
+	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))
+	_weighing = false
+	if report == null:
+		# For a part the library had to add: weighed again.
+		_stability_revision = -1
+		return
+	_stability_text = report.summary()
+	if margins:
+		stress.show_report(report)
+
+
+## The model weighed as the status bar weighs it (Stability.check), every
+## joint's margin with it unless [param margins] is false: what View, Stress
+## tints, the verdict the status bar says and a session's weakest_joints
+## reads, so the three agree. A joint past its working load is a weak one.
+## On a worker where there are threads; on the window's own thread only
+## while View, Stress is on, since the joints cost 10% to 150% more than the
+## courses and the tipping. Null when the library had to add a part
+## meanwhile. The baseplate is the floor, not the model: whether it tips is
+## asked of what stands on it, and it is not in the weight.
+func weigh_joints(margins: bool = true) -> Stability.Report:
+	var scenery: Dictionary = _store.scenery if _store != null else {}
+	var report: Stability.Report
 	if OS.has_feature("nothreads"):
+		_stability.floor_ids = scenery
 		_stability.with_margins = margins
 		report = _stability.check(_world)
+		_stability.with_margins = true
 	else:
-		_weighing = true
 		var judge := Stability.new()
 		judge.library = _library
 		judge.with_margins = margins
@@ -6063,22 +6146,16 @@ func _weigh() -> void:
 		WorkerTasks.collect(task)
 		_library.end_reading(task)
 		still.free()
-		_weighing = false
 		report = weighed[0]
-		if report == null:
-			if judge.stopped:
-				# For a part the library had to add: weighed again.
-				_stability_revision = -1
-			return
+	if report == null:
+		return null
 	for id: int in scenery:
 		var plate: BrickWorld.Brick = _world.get_brick(id)
 		var info: PartLibrary.PartInfo = \
 			_library.parts.get(plate.part_id) if plate != null else null
 		if info != null:
 			report.total_grams -= Stability.grams(info)
-	_stability_text = report.summary()
-	if margins:
-		stress.show_report(report)
+	return report
 
 
 ## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.
@@ -7024,13 +7101,13 @@ func _on_touch_tool(what: String) -> void:
 			if _builder.undo():
 				_refresh_preview()
 				_on_model_edited()
-			else:
+			elif not await _bar.reopen():
 				_bar.say("nothing to undo")
 		"redo":
 			if _builder.redo():
 				_refresh_preview()
 				_on_model_edited()
-			else:
+			elif not await _bar.reopen(true):
 				_bar.say("nothing to redo")
 
 
@@ -7629,6 +7706,12 @@ func _key_pressed(key: InputEventKey) -> void:
 			if _elements != null and _elements.visible:
 				_elements.visible = false
 				return
+			# The parts list is over the model as these are, and goes with
+			# them: below the selection, Escape took the selection the list
+			# hides away and left the list up.
+			if _inventory.is_showing():
+				_inventory.hide_list()
+				return
 			# Back to Select with nothing in hand, from placing or any
 			# other tool — and on down the ladder in the same press, so
 			# one Escape is always enough to be back at rest.
@@ -7645,9 +7728,6 @@ func _key_pressed(key: InputEventKey) -> void:
 			if resting and _verbs != null and _verbs.assemblies != null \
 					and not _verbs.assemblies.entered.is_empty():
 				_verbs.leave_assembly()
-				return
-			if _inventory.is_showing():
-				_inventory.hide_list()
 				return
 			if _steps.is_playing_back():
 				_steps.stop()

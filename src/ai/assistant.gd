@@ -2201,6 +2201,7 @@ func _will_it_hold() -> String:
 	# carrying nothing.
 	judge.lattice = builder.lattice
 	judge.floor_ids = scenery
+	judge.with_margins = true
 	var report: Stability.Report = judge.check(world)
 	if report.is_stable():
 		return "It holds together: %s." % report.summary()
@@ -3106,7 +3107,7 @@ func _run_tool(block: Dictionary) -> Variant:
 		if not named.is_empty():
 			_feature_now = named
 	if _feature_now.is_empty():
-		return answer
+		return _with_save_left(str(block.get("name", "")), answer)
 	var name: String = str(block.get("name", ""))
 	var args: Dictionary = block.get("input", {}) as Dictionary
 	var grew: bool = world != null and world.brick_count() != before
@@ -3136,15 +3137,40 @@ func _run_tool(block: Dictionary) -> Variant:
 ## build's answer, the held-out owl worked none of them, looked at the whole
 ## once and saved.
 func _with_features_left(name: String, answer: Variant) -> Variant:
-	if _busy or not _outside_standing or not name in ["edit_model", "place_technique"] \
-			or _laying_whole:
+	if _busy or not _outside_standing or _laying_whole:
 		return answer
+	if not name in ["edit_model", "place_technique"]:
+		return _with_save_left(name, answer)
 	var left: Array[String] = _features_left()
 	if left.is_empty():
-		return answer
+		return _with_save_left(name, answer)
 	var line: String = ("Features not settled yet: %s — review_model {\"feature\": \"%s\"} "
 		% [", ".join(left), left[0]] + "lays the app's piece for it, to settle with "
 		+ "settle_feature. Saving waits until each is settled.")
+	return _with_line(answer, line)
+
+
+## A change from outside, once the design has been looked at whole, says the
+## save that keeps it, until it is saved: a tug session added its figures,
+## looked, and answered with nothing saved, and a fire engine went from its
+## surface pass to its figure and its answer the same way.
+func _with_save_left(name: String, answer: Variant) -> Variant:
+	if _busy or not _outside_standing or _laying_whole or not name in ["edit_model",
+			"place_technique", "add_minifig", "settle_surface"]:
+		return answer
+	var head: String = str(answer if answer is String else (
+		(answer as Array)[0].get("text", "") if answer is Array and not (answer as Array).is_empty()
+			and (answer as Array)[0] is Dictionary else ""))
+	if not head.begins_with("Not "):
+		_outside_unsaved = true
+	if not _outside_unsaved or not _features_left().is_empty() \
+			or not (_outside_looked or not _outside_creative.is_empty()):
+		return answer
+	return _with_line(answer,
+		"Not saved yet: save_model keeps it. The design is not kept until it is saved.")
+
+
+static func _with_line(answer: Variant, line: String) -> Variant:
 	if answer is String:
 		return "%s\n\n%s" % [answer, line]
 	if answer is Array:
@@ -3423,6 +3449,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if not _unknown.is_empty():
 				said += " No brick has %s, so those were left alone." \
 					% _numbers(_unknown)
+			# A tile set down where nothing joins it is let stand, and said on
+			# every edit: the pose174 toilet's roll was set down by an edit
+			# whose reply said nothing of it, and the session ended in two pieces.
+			var resting: String = _resting_line(verdict)
+			if not resting.is_empty():
+				said += "\n" + resting
 			if scoped:
 				var words: String = _gather_focus_step(standing_was)
 				# What held is known for the edit as it landed; copies that
@@ -5324,6 +5356,16 @@ func _describe_world(args: Dictionary = {}) -> String:
 	var where: Dictionary = args.get("where", {}) if typeof(
 		args.get("where")) == TYPE_DICTIONARY else {}
 	var skip: int = maxi(int(args.get("skip", 0)), 0)
+	# part= and color=: where a part is, as Edit, Select by, Part number or
+	# name finds it for the person (SelectBy.wanted).
+	var wanted: SelectBy.Wanted = null
+	if not str(args.get("part", "")).strip_edges().is_empty() or args.has("color"):
+		var colours: Dictionary = {}
+		for brick: BrickWorld.Brick in world.bricks():
+			colours[brick.color_code] = true
+		wanted = SelectBy.wanted(library, str(args.get("part", "")), colours)
+		if args.has("color"):
+			wanted.colour = int(args["color"])
 
 	for brick: BrickWorld.Brick in world.bricks():
 		# The baseplate is a brick like any other and is 32 studs
@@ -5356,7 +5398,8 @@ func _describe_world(args: Dictionary = {}) -> String:
 		# describe the whole model however narrow the question — a
 		# section listed as though it were everything is how a model
 		# rebuilds something it already has.
-		if not _inside(at, where):
+		if not _inside(at, where) \
+				or (wanted != null and not wanted.takes(brick.part_id, brick.color_code)):
 			continue
 		matched += 1
 		if matched <= skip:
@@ -5379,9 +5422,10 @@ func _describe_world(args: Dictionary = {}) -> String:
 
 	var lines := PackedStringArray()
 	lines.append("%d parts are on the baseplate." % counted)
-	if not where.is_empty() or skip > 0:
-		lines.append("%d of them are in the part you asked about%s."
-			% [matched, "" if skip == 0 else ", of which %d skipped" % skip])
+	if not where.is_empty() or skip > 0 or wanted != null:
+		lines.append("%d of them are %s you asked about%s."
+			% [matched, "in the part" if wanted == null else "the parts",
+				"" if skip == 0 else ", of which %d skipped" % skip])
 	lines.append("They span x %s..%s, z %s..%s studs, and stand y %s..%s plates."
 		% [Placement._num(low.x), Placement._num(high.x),
 			Placement._num(low.z), Placement._num(high.z),
@@ -5396,20 +5440,22 @@ func _describe_world(args: Dictionary = {}) -> String:
 		lines.append("  %d x %s in colour %s" % [int(tally[key]), bits[0], bits[1]])
 
 	lines.append("")
-	if counted > rows.size():
+	# Of those asked about: a section or a part listed whole said "the first
+	# 5 of 3,164" and "0 more here".
+	var unlisted: int = matched - skip - rows.size()
+	if unlisted > 0:
 		lines.append("Where the first %d of them are (of %d):"
-			% [rows.size(), counted])
+			% [rows.size(), matched - skip])
 	else:
 		lines.append("Where they are:")
 	lines.append_array(rows)
-	if counted > rows.size():
+	if unlisted > 0:
 		# And how to see them, which is the whole difference between a
 		# model that can be finished and one that cannot. A set-sized
 		# build never fits in one listing, so the way through is to ask
 		# for one section at a time rather than to give up on the rest.
-		var left: int = matched - skip - rows.size()
 		lines.append("  … %d more here, not listed. Ask again with "
-			% left + "skip=%d to go on, or with where={x_from,x_to,"
+			% unlisted + "skip=%d to go on, or with where={x_from,x_to,"
 			% (skip + rows.size())
 			+ "z_from,z_to,y_from,y_to} in studs and plates to work on "
 			+ "one section at a time.")
@@ -10565,10 +10611,10 @@ func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant
 			for entry: Variant in one.candidates:
 				ids.append(str((entry as Dictionary)["id"]))
 			tried = " (tried %s)" % ", ".join(ids)
-		said.append(("No real set's piece that lays whole fits where it goes%s, so build it "
+		said.append(("No real set's piece that is it lays whole where it goes%s, so build it "
 			% tried) + ("from the worked technique, %s" % technique if not technique.is_empty()
 				else "your own way") + ", then settle_feature \"built\" with how; or "
-			+ "\"reject\" with a reason if the model has it already.")
+			+ "\"skip\" if the model has it already or it does not suit this one.")
 		return "\n".join(said)
 	if not technique.is_empty():
 		said.append("To build it your own way instead: %s." % technique)
@@ -10586,10 +10632,11 @@ const SETTLE_HOW := """Settle it with settle_feature {"feature": "{name}", \
 "verdict": ...}: "accept" keeps it (with move {dx, dy, dz} in studs and \
 plates, turn or recolor {"15": 1} to adjust it first); "next" takes it off \
 and lays the next-best piece; "reject" with a reason takes it off, to build \
-it your own way or leave it out; "built" if you built it yourself (the \
-app's piece comes off). A \
-feature is parts with depth, never a tile painted on a panel. Saving waits \
-until every feature is settled."""
+it your own way; "built" if you built it yourself (the app's piece comes \
+off); "skip" leaves it out. "built", "reject" and "skip" settle several in \
+one call: "feature": "fenders, funnel" or "all". A feature is parts with \
+depth, never a tile painted on a panel. Saving waits until every feature is \
+settled."""
 
 
 ## The piece the app laid for a feature, in a few lines: what it is and
@@ -10652,9 +10699,23 @@ func _proposal_picture(one: FeaturePass.Proposal) -> Dictionary:
 ## settle_feature: what the design says of the app's piece for a feature.
 ## In the loop the loop then hands the next feature; from outside this
 ## answer does, with its piece laid, and after the last says what is next.
-func _settle_feature(args: Dictionary) -> Variant:
+func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 	var asked: String = str(args.get("feature", "")).strip_edges()
 	var names: Array[String] = _features if _busy else _outside_features
+	# Several at once, for a verdict that lays nothing: a design that built
+	# its fenders, windows and funnel into the hull settled each in a call
+	# of its own, every one handing the next a piece laid and a picture.
+	if str(args.get("verdict", "")).strip_edges().to_lower() in ["built", "reject", "skip"]:
+		var several: Array[String] = _features_in(asked, names)
+		if not several.is_empty():
+			var heads := PackedStringArray()
+			for n: int in several.size() - 1:
+				var each: Dictionary = args.duplicate()
+				each["feature"] = several[n]
+				heads.append(str(await _settle_feature(each, true)))
+			var last: Dictionary = args.duplicate()
+			last["feature"] = several[-1]
+			return _joined("\n".join(heads), await _settle_feature(last, quiet))
 	var name: String = ""
 	for listed: String in names:
 		if listed.to_lower() == asked.to_lower():
@@ -10704,7 +10765,7 @@ func _settle_feature(args: Dictionary) -> Variant:
 			var of: int = names.find(name) + 1
 			return await _feature_brief(name, of, names.size(), true) if not one.piece.is_empty() \
 				else ("No other real piece fits where the %s goes. Build it your own way and " % name
-					+ "settle_feature \"built\" with how, or \"reject\" with a reason.")
+					+ "settle_feature \"built\" with how, or \"skip\" to leave it out.")
 		"reject":
 			if reason.split(" ", false).size() < 3:
 				return ("Say why in a sentence (reason): what is wrong with the piece here — "
@@ -10732,10 +10793,24 @@ func _settle_feature(args: Dictionary) -> Variant:
 				return "Could not take the %s's piece off; settle it another way." % name
 			one.verdict = "built"
 			one.reason = reason
+		"skip":
+			# Left out, the design's call: the model has it some other way, or
+			# it does not suit this one. Saving does not wait for it.
+			if one == null:
+				one = FeaturePass.Proposal.new()
+				one.feature = name
+				features.proposals[name.to_lower()] = one
+			elif not await features.take_off(one):
+				return "Could not take the %s's piece off; settle it another way." % name
+			one.verdict = "skipped"
+			one.reason = reason
 		_:
-			return "verdict is one of \"accept\", \"next\", \"reject\" or \"built\"."
+			return ("verdict is one of \"accept\", \"next\", \"reject\", \"built\" or "
+				+ "\"skip\".")
 	progress.emit("the %s: %s" % [name, _feature_said(name)])
 	var head: String = "The %s: %s." % [name, _feature_said(name)]
+	if quiet:
+		return head
 	if _busy:
 		_feature_closed = true
 		return head
@@ -10746,6 +10821,32 @@ func _settle_feature(args: Dictionary) -> Variant:
 	_feature_now = ""
 	return "%s\n\nEvery feature is settled:\n%s\n\n%s" % [head,
 		_features_record(_outside_features), _after_features()]
+
+
+## The listed features [param asked] names: "all" for each not settled yet,
+## or several by name, comma-separated. One, or none, when it names no more.
+func _features_in(asked: String, names: Array[String]) -> Array[String]:
+	var out: Array[String] = []
+	if asked.to_lower() == "all":
+		return feature_pass().open(names)
+	if not (asked.contains(",") or asked.contains(";")):
+		return out
+	for listed: String in names:
+		if listed.to_lower() == asked.to_lower():
+			return out
+	for raw: String in asked.replace(";", ",").split(",", false):
+		var said: String = raw.strip_edges()
+		var found: String = ""
+		for listed: String in names:
+			if listed.to_lower() == said.to_lower():
+				found = listed
+		if found.is_empty():
+			found = _feature_named(said)
+		if found.is_empty():
+			return []
+		if not out.has(found):
+			out.append(found)
+	return out
 
 
 ## What comes after the features, for a session from outside: the first
@@ -10857,6 +10958,11 @@ var _creative_record: String = ""
 ## its creative pass has been handed, and while it runs the parts and the
 ## count the model had when it was handed.
 var _outside_designed: bool = false
+## Whether the design from outside has had its whole review, and whether it
+## has changed since it was last saved: from then, each change's answer says
+## to save (_with_features_left).
+var _outside_looked: bool = false
+var _outside_unsaved: bool = false
 var _outside_creative_handed: bool = false
 var _outside_creative: Dictionary = {}
 
@@ -12678,8 +12784,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	## pieces is by both (_pieces_of), as verify.py counts them.
 	var come_away: Dictionary = {}
 	var exact_joins: Array = []
+	## Tiles set down on a face with no stud, a clause each: every edit's
+	## reply says them (ExactCheck.resting_said).
+	var resting: Array = []
 	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
-		clutched_pairs, stuck, unheld, advice, come_away, exact_joins)
+		clutched_pairs, stuck, unheld, advice, come_away, exact_joins, resting)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -12913,6 +13022,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		## And of what stands but comes away in the hand, said or advised: each
 		## a piece of its own in "pieces" (ExactCheck.comes_away).
 		"come_away": come_away.keys(),
+		## Of those, the tiles set down on purpose: which, on what, and where
+		## each would be seated, a clause each, for an edit's reply.
+		"resting": resting,
 		## The later part of each pair whose real shapes collide.
 		"colliding": colliding.keys(),
 		## And what asking the exact shapes cost this check, ms.
@@ -13083,6 +13195,35 @@ func _exact_name(model: Model, exact: ExactCheck, item: int) -> String:
 	return "a part"
 
 
+## What a check found set down where nothing joins it (its "resting"), in
+## the one line an edit's reply gives it, or "".
+static func _resting_line(verdict: Dictionary) -> String:
+	var clauses: Array = verdict.get("resting", [])
+	if clauses.is_empty():
+		return ""
+	var line: String = "; ".join(PackedStringArray(clauses.slice(0, WORTH_SAYING)))
+	if clauses.size() > WORTH_SAYING:
+		line += "; and %d more" % (clauses.size() - WORTH_SAYING)
+	return ("Resting, joined to nothing, so it falls off when the model is lifted and "
+		+ "BrickBench counts it a piece of its own: %s." % line)
+
+
+## Where placement [param item] would be, moved [param move] LDU across, as
+## its placement says where it is: "" for one in a section, whose
+## coordinates are its section's own, or one the move takes off whole cells.
+func _moved_where(model: Model, item: int, move: Vector3) -> String:
+	if item < 0 or item >= model.placements.size():
+		return ""
+	var placement: Placement = model.placements[item]
+	if not placement.section.is_empty():
+		return ""
+	var x: float = placement.x + move.x / BrickLattice.STUD
+	var z: float = placement.z + move.z / BrickLattice.STUD
+	if not is_equal_approx(x * 2.0, roundf(x * 2.0)) or not is_equal_approx(z * 2.0, roundf(z * 2.0)):
+		return ""
+	return "%s,%s,%s" % [Placement._num(x), Placement._num(placement.y), Placement._num(z)]
+
+
 ## Each part of this design that misses a connector by a few LDU and joins
 ## nothing exactly, moved onto it (ExactCheck.seat): its placement changed
 ## here, so what is checked and built is the seated one. Only a part square
@@ -13237,15 +13378,17 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 ## this design (unless only the ground holds: _ground_only), or a part with no
 ## exact shape that this check holds. One fault a piece. A piece that stands
 ## where it is but comes away in the hand (ExactCheck.comes_away) goes into
-## [param apart], said: a fault when its anti-stud stands where another part
-## has no stud (ExactCheck.on_missing_stud), advice when it was set down so.
-## The connections found go into [param joins], [a, b] each, for the count of
-## pieces (_pieces_of).
+## [param apart], said: a fault, unless it is a tile set down on a face with
+## no stud (ExactCheck.set_down), which is advice and a clause in [param
+## resting] for the edit's reply. One worn round a post and clamped there, a
+## beard under a figure's head (ExactCheck.clamped), is held. The connections
+## found go into [param
+## joins], [a, b] each, for the count of pieces (_pieces_of).
 func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
 		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
 		unheld: Dictionary = {}, advice: Array = [], apart: Dictionary = {},
-		joins: Array = []) -> void:
+		joins: Array = [], resting: Array = []) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -13329,6 +13472,8 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		members.append(index)
 		pieces[root[index]] = members
 	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	var mover: Callable = func(item: int, move: Vector3) -> String:
+		return _moved_where(model, item, move)
 	# Which pieces that stand come away in the hand. One the parts round it
 	# catch stays (ExactCheck.caught), unless what catches it comes away too:
 	# asked again until nothing more does, what falls and what comes away
@@ -13340,6 +13485,24 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		if not stands[key]:
 			for index: Variant in pieces[key]:
 				gone[int(index)] = true
+	# What is worn round a post and clamped there by what stays is held: a
+	# beard on a figure's neck under its head, which BrickNet's labels join to
+	# nothing (ExactCheck.clamped). Joined to the post's part for the count.
+	var clamped: Dictionary = {}   ## root -> true
+	for key: Variant in pieces:
+		if stands[key]:
+			continue
+		var others: Dictionary = gone.duplicate()
+		for index: Variant in pieces[key]:
+			others.erase(int(index))
+		var on: Dictionary = exact.clamped(pieces[key], others)
+		if on.is_empty():
+			continue
+		clamped[key] = true
+		for index: Variant in on:
+			gone.erase(int(index))
+			if int(on[index]) < count:
+				joins.append([int(index), int(on[index])])
 	var away: Dictionary = {}      ## root -> true
 	var more: bool = true
 	while more:
@@ -13352,25 +13515,30 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 					gone[int(index)] = true
 	var set_down: Array = []
 	for key: Variant in pieces:
+		if clamped.has(key):
+			continue
 		# Standing square on what is under it, clear of everything, it stays
 		# where it is when the model stands, as BrickBench's simulation finds
-		# it. Unless a stud holds it, it comes away in the hand: a fault when
-		# its anti-stud stands on another part's stud grid where that part has
-		# no stud, as the outline161 rabbit's twelve cheese slopes on round
-		# plates' rims did, which the check passed while BrickNet counted each
-		# a piece of its own; advice otherwise, as a brick stood on a tile or a
-		# log in the groove of two below it are set down on purpose.
+		# it. Unless a stud holds it or the parts round it catch it, it comes
+		# away in the hand, and that is a fault: the outline161 rabbit's twelve
+		# cheese slopes on round plates' rims, and the pose174 toilet's roll a
+		# stud off the studs at the edge of its tank, each passed while BrickNet
+		# counted it a piece of its own.
+		# Only a tile set down on a face with no stud is advice, as sets lay a
+		# loose printed tile on a table (ExactCheck.set_down), and every
+		# edit's reply says it (resting).
 		if stands[key]:
 			if not away.has(key):
 				continue
 			for index: Variant in pieces[key]:
 				apart[int(index)] = true
-			if exact.on_missing_stud(pieces[key]) >= 0:
-				_note(issues, "not held", exact.comes_away_said(pieces[key], namer))
+			if exact.set_down(pieces[key]):
+				set_down.append(exact.comes_away_said(pieces[key], namer, mover))
+				resting.append(exact.resting_said(pieces[key], namer, mover))
+			else:
+				_note(issues, "not held", exact.comes_away_said(pieces[key], namer, mover))
 				for index: Variant in pieces[key]:
 					unheld[int(index)] = true
-			else:
-				set_down.append(exact.comes_away_said(pieces[key], namer))
 			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
 		# By index too, for what mends a design (Brickify.mend) to join or
@@ -17340,6 +17508,16 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 			+ "nothing to compare against. Design it from the "
 			+ "reference and the rules."}
 	var found: Array = library.kinds_for(subject)
+	var said: PackedStringArray = PackedStringArray()
+	if found.is_empty():
+		# The plainer word, found for it: no set is named "tugboat" or
+		# "cottage", and a session had to think of "boat" itself (walk180).
+		var plainer: String = _kind_words(subject)
+		found = library.kinds_for(plainer) if not plainer.is_empty() else []
+		if not found.is_empty():
+			said.append("Sets are not named \"%s\"; read as %s:" % [subject,
+				" and ".join(PackedStringArray(found.map(func(kind: Dictionary) -> String:
+					return "a " + str(kind.get("kind", "")))))])
 	if found.is_empty():
 		return {"content": ("No kind of real set matches \"%s\". That is "
 			% subject) + "not a verdict on the idea — it means no "
@@ -17347,7 +17525,6 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 			+ "true of most specific subjects. Try the plainer word "
 			+ "for the thing: a word like castle, fire, space, train, "
 			+ "house, tractor, pirate, dragon or police."}
-	var said: PackedStringArray = PackedStringArray()
 	for raw: Variant in found:
 		var kind: Dictionary = raw
 		said.append("\n%s — measured over %d real sets of %d"
@@ -17381,6 +17558,28 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 		+ "the kind look like itself. Use these where the shape calls for "
 		+ "them — they are what a real designer reached for, not a list "
 		+ "to fill. Check a part with search_parts before placing it."}
+
+
+## The kinds of real set [param subject]'s words are, where none is named
+## by one: by the real-set index's table of subjects (a cottage is a house,
+## a tug a boat), or a word made of two that ends in a kind after a word
+## that table knows (a tugboat is a boat, a steamboat too; "worship" is
+## nothing). "" when none is.
+func _kind_words(subject: String) -> String:
+	var out := PackedStringArray()
+	for word: String in SubjectWords.of(subject):
+		for kind: Variant in RealSnippets.subjects_of(word):
+			if not SubjectWords.kind_of_word(str(kind), library.kinds).is_empty() \
+					and not out.has(str(kind)):
+				out.append(str(kind))
+		for end: String in SubjectWords.COMPOUND_ENDS:
+			var head: String = word.trim_suffix(end)
+			if head == word or head.length() < 3 or not library.kinds.has(end) \
+					or out.has(end):
+				continue
+			if RealSnippets.is_subject(RealSnippets.stem(head)) or library.kinds.has(head):
+				out.append(end)
+	return " ".join(out)
 
 
 ## A part's name as a person would read it, or its number if unknown.
@@ -18795,9 +18994,8 @@ with where it goes (x, y, z, facing).
  3. review_model: the silhouette and proportions against real sets. Fix \
 the masses before any detail.
  4. Each feature in turn: the app lays the best real set's piece where it \
-goes; settle_feature accepts it, asks for the next, rejects it, or \
-says you built it. A feature is parts with depth, never a \
-painted tile.
+goes; settle_feature accepts it, asks for the next, rejects it, says you \
+built it or skips it. A feature is parts with depth, never a painted tile.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
  6. The surface pass: review_model {"surface": true} — the app tiles open \
@@ -19409,10 +19607,10 @@ func _snippet_bricks(entry: Dictionary, at: Vector3, turns: int,
 ## metric. Below that it is microscale, where a minifigure would be a
 ## plate tall and the shape has to carry the whole model.
 const SCALES: Array = [
-	{"name": "minifigure", "studs_per_metre": 3.0,
-		"note": "1 stud to the foot; a minifigure fits inside it"},
+	{"name": "minifigure", "studs_per_metre": 3.0, "shortened": true,
+		"note": "a minifigure fits inside it; long things shortened as sets do"},
 	{"name": "half minifigure", "studs_per_metre": 1.5,
-		"note": "half the above; a vehicle keeps its doors and wheels"},
+		"note": "a stud and a half to the metre, not shortened; a vehicle keeps its doors and wheels"},
 	{"name": "small", "studs_per_metre": 0.6,
 		"note": "a house is a handful of studs; detail is shape, not parts"},
 	{"name": "micro", "studs_per_metre": 0.2,
@@ -19420,10 +19618,32 @@ const SCALES: Array = [
 	{"name": "tiny", "studs_per_metre": 0.06,
 		"note": "a ship on a desk; masses and nothing else"},
 ]
+## Real minifigure-scale sets keep a stud to the foot for what a figure
+## uses (a door, a seat, a wheel) and shorten what is long: up to SHORTENED_FROM
+## metres a thing is its length at three studs a metre, and past it the
+## studs grow as the length to the power SHORTENED_BY. Measured from LDraw's
+## official models (vendor/omr, the parts' spread end to end): 6633 Family
+## Car 13 studs (4.5 m, 13 by this), 31009 Small Cottage and 6365 Summer
+## Cottage 21 (10 m, 21), 4010 Police Rescue Boat 23 (12 m, 23), 6480 Hook
+## and Ladder Truck 21 (12 m, 23), 10133 BNSF Locomotive 31 (22 m, 33), 316
+## Fire Fighter Ship 32 (30 m, 40). Said at three a metre, a 20 m harbour
+## tug was 60 studs where City's are 30 to 40, and a session that believed
+## it laid a hull of 312 parts for a brief of 150 to 250 (walk180).
+const SHORTENED_FROM := 4.0
+const SHORTENED_BY := 0.6
 ## Below this across, a model cannot show anything but its outline.
 const TOO_SMALL := 8.0
 ## Above this, it is a display piece in two thousand parts.
 const TOO_BIG := 120.0
+
+
+## How many studs [param metres] comes to at [param scale]: shortened past
+## SHORTENED_FROM where the scale says so, as real sets are.
+static func _studs_at(scale: Dictionary, metres: float) -> float:
+	var per: float = float(scale["studs_per_metre"])
+	if not bool(scale.get("shortened", false)) or metres <= SHORTENED_FROM:
+		return metres * per
+	return SHORTENED_FROM * per * pow(metres / SHORTENED_FROM, SHORTENED_BY)
 
 
 func _plan_scale(args: Dictionary) -> String:
@@ -19438,7 +19658,7 @@ func _plan_scale(args: Dictionary) -> String:
 	var best: Dictionary = {}
 	for one: Variant in SCALES:
 		var scale: Dictionary = one
-		var across: float = metres * float(scale["studs_per_metre"])
+		var across: float = _studs_at(scale, metres)
 		var fits: String = ""
 		if across < TOO_SMALL:
 			fits = "too small to read"
@@ -19453,17 +19673,23 @@ func _plan_scale(args: Dictionary) -> String:
 
 	var chosen: String = ""
 	if not best.is_empty():
-		var across: float = metres * float(best["studs_per_metre"])
+		var across: float = _studs_at(best, metres)
+		var shortened: bool = across < metres * float(best["studs_per_metre"]) - 0.5
 		# A plate is a third of a brick, so height in plates is what
 		# actually gets placed and is worth saying out loud.
-		chosen = ("\n\nAt %s scale, %s is %s studs along its longest side. "
-			% [best["name"], subject, Placement._num(snappedf(across, 0.1))]
+		chosen = ("\n\nAt %s scale, %s is %s studs along its longest side%s. "
+			% [best["name"], subject, Placement._num(snappedf(across, 0.1)),
+				", shortened as real sets of that scale shorten what is long (a 4.5 m "
+				+ "car is about 13 studs, a 10 m cottage 21, a 22 m locomotive 31)"
+				if shortened else ""]
 			+ "Build it at that size. Lay out the main masses first and "
 			+ "check the proportions against a picture before adding "
-			+ "anything. One stud across is %s metres; one plate up is %s."
+			+ "anything. One stud across is %s metres; one plate up is %s%s."
 			% [Placement._num(snappedf(1.0 / float(best["studs_per_metre"]), 0.01)),
 				Placement._num(snappedf(
-					1.0 / float(best["studs_per_metre"]) / 3.0, 0.01))]
+					1.0 / float(best["studs_per_metre"]) / 3.0, 0.01)),
+				" — that for what a figure uses, a door, a seat, a wheel, a window; "
+				+ "the length is what is shortened" if shortened else ""]
 			# Measured, and the reason this paragraph exists: given the
 			# list, a run picked a scale *below* the smallest on it and
 			# built a 43-stud Voyager where the list said 69, which
@@ -19475,7 +19701,7 @@ func _plan_scale(args: Dictionary) -> String:
 			+ "saucer — and a model built too small to read is the one "
 			+ "fault no amount of revising gets out of it, because "
 			+ "every detail you then want has nowhere to go.")
-	elif metres * float((SCALES[0] as Dictionary)["studs_per_metre"]) < TOO_SMALL:
+	elif _studs_at(SCALES[0], metres) < TOO_SMALL:
 		# Smaller than a scale can show: a person, an animal, a chair. "Build
 		# a part of it, a locomotive rather than the train" is no answer for
 		# those, and nothing else said how big a figure is: the first
@@ -19766,6 +19992,8 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		feature_pass().reset(design.feature_spots)
 		# A new design, so its surface and creative passes are still to come.
 		_outside_designed = true
+		_outside_looked = false
+		_outside_unsaved = true
 		_outside_creative_handed = false
 		_outside_creative = {}
 		surface_pass().reset()
@@ -19800,7 +20028,8 @@ any detail.
 real set's piece for it where it goes and hands it to you with a picture \
 (the whole review hands the first). settle_feature says what it is to be: \
 accept it (moved, turned or recoloured first if it needs it), "next" for \
-the next-best, reject it with a reason and build your own, or "built". \
+the next-best, reject it with a reason and build your own, "built", or \
+"skip" to leave it out; "built" and "skip" take several features at once. \
 Each settle hands the next. Saving waits until every feature is settled.
   3. Then review_model for each assembly in turn{names}: close up, \
 measured, with the parts real sets of the kind use that it has none of. \
@@ -19870,6 +20099,7 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
+		_outside_looked = true
 		# Every part this design placed is judged, not only what an edit adds:
 		# a design is handed over from here, and BrickBench refuses a build for
 		# one collision or one loose part (ExactCheck).
@@ -20032,7 +20262,9 @@ static func _exact_faults_said(report: Dictionary) -> String:
 ## reviewed: so saving hands it the next, as this app's own loop hands each
 ## assembly back in turn.
 func next_review() -> Variant:
-	# A coroutine because review is: callers await it.
+	# A coroutine because review is: callers await it. Called as the model is
+	# saved, so what stands is kept.
+	_outside_unsaved = false
 	var undone: Array[String] = _features_left()
 	if not undone.is_empty():
 		var passed: String = _creative_passed()
@@ -20071,7 +20303,8 @@ func save_gate() -> Variant:
 		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
 			", ".join(left)]) + "the app lays the best real set's piece where it goes; "
 		+ "settle_feature accepts it (adjusted if need be), asks for the next, rejects "
-		+ "it with a reason, or says you built it. Then save again. The %s:" % left[0],
+		+ "it with a reason, says you built it, or skips it; built and skip settle "
+		+ "several in one call (\"feature\": \"all\"). Then save again. The %s:" % left[0],
 		await _review_feature(left[0]))
 
 
@@ -20143,8 +20376,21 @@ func _features_to_review() -> String:
 		return ("No features were listed. Name what the subject is known by in "
 			+ "submit_design's features, or review_model {\"feature\": \"eyes\"} "
 			+ "for each: a feature a real set solved is better than a first guess.")
+	# With the real piece each would be laid, or that none is it: settled
+	# "built" all at once, as most sessions do, the design knows what it
+	# passed over (the pieces are found, not laid, here).
+	var said := PackedStringArray()
+	for name: String in _outside_features:
+		var record: String = _feature_said(name)
+		var line: String = "  %s: %s" % [name, record]
+		if record == "not worked yet" and RealSnippets.available():
+			var offered: Array = feature_pass().candidates_for(name)
+			line += (" — real sets have %s, %s" % [str((offered[0] as Dictionary)["id"]),
+				str((offered[0] as Dictionary).get("text", "")).get_slice(":", 0)]
+				if not offered.is_empty() else " — no real set's piece is one")
+		said.append(line)
 	return ("Its features, each laid by the app and settled in turn (settle_feature):\n%s"
-		% _features_record(_outside_features))
+		% "\n".join(said))
 
 
 func _assemblies_to_review() -> String:
@@ -20448,6 +20694,7 @@ func _focus_stability() -> String:
 	judge.library = library
 	judge.lattice = builder.lattice
 	judge.floor_ids = scenery
+	judge.with_margins = true
 	var report: Stability.Report = judge.check(world)
 	var near := PackedStringArray()
 	for risk: Stability.Risk in report.risks:
@@ -21943,25 +22190,29 @@ func _tools() -> Array:
 				+ "review, each settle and saving hand the next feature with "
 				+ "its piece laid and a picture): accept it — moved, turned "
 				+ "or recoloured first if it needs it — ask for the next-best "
-				+ "piece instead, reject it with a reason, or say you built "
-				+ "it yourself. Saving waits until every feature listed in "
-				+ "submit_design is settled."),
+				+ "piece instead, reject it with a reason, say you built "
+				+ "it yourself, or skip it. Saving waits until every feature "
+				+ "listed in submit_design is settled."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"feature": {"type": "string", "description":
-						"the feature, as listed in submit_design's features"},
+						"the feature, as listed in submit_design's features; "
+						+ "for built, reject or skip, several comma-separated, "
+						+ "or \"all\" for every one not settled"},
 					"verdict": {"type": "string",
-						"enum": ["accept", "next", "reject", "built"],
+						"enum": ["accept", "next", "reject", "built", "skip"],
 						"description": "accept: keep the app's piece (adjusted "
 							+ "by move, turn or recolor first, if given); next: "
 							+ "take it off and lay the next-best piece; reject: "
 							+ "take it off, with a reason, and build it your own "
-							+ "way or leave it out; built: you built it yourself, "
-								+ "and the app's piece comes off (accept keeps it)"},
+							+ "way; built: you built it yourself, and the app's "
+							+ "piece comes off (accept keeps it); skip: leave it "
+							+ "out, the app's piece taken off"},
 					"reason": {"type": "string", "description":
 						"a sentence: what is wrong with the piece here (to "
-						+ "reject), or how you built it (built)"},
+						+ "reject), how you built it (built), or why it is "
+						+ "left out (skip)"},
 					"move": {"type": "object", "description":
 						"accept, moved first: studs across and deep, plates up. "
 						+ "The other of a pair moves the mirror way.",
@@ -22361,10 +22612,11 @@ func _tools() -> Array:
 				+ "adding to it, changing part of it, matching its "
 				+ "colours or its height. You cannot see the model "
 				+ "otherwise.\n\nA large model will not fit in one "
-				+ "reply. Give where= to list one section, or skip= to "
-				+ "carry on from where the last listing stopped. The "
-				+ "totals and the overall span are always for the whole "
-				+ "model, whatever you ask for."),
+				+ "reply. Give where= to list one section, part= to "
+				+ "find where a part is, or skip= to carry on from where "
+				+ "the last listing stopped. The totals and the overall "
+				+ "span are always for the whole model, whatever you ask "
+				+ "for."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -22388,6 +22640,18 @@ func _tools() -> Array:
 						"description": ("How many matching bricks to "
 							+ "pass over before listing, for walking "
 							+ "through a model a section at a time."),
+					},
+					"part": {
+						"type": "string",
+						"description": ("Only this part: its number "
+							+ "(\"3004\"; \"3023\" takes 3023b), or its "
+							+ "name in search_parts' words (\"brick 1 x "
+							+ "2\"), with a colour's name if you like "
+							+ "(\"blue 1x2 brick\")."),
+					},
+					"color": {
+						"type": "integer",
+						"description": "Only this LDraw colour code.",
 					},
 				},
 				"additionalProperties": false,
