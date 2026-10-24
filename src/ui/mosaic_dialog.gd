@@ -234,6 +234,8 @@ func _row(parent: Control, words: String) -> HBoxContainer:
 
 func _range(row: HBoxContainer, least: int, most: int, value: int) -> HSlider:
 	var slider := HSlider.new()
+	# Said by the words beside it (_row).
+	slider.accessibility_name = (row.get_child(0) as Label).text
 	slider.min_value = least
 	slider.max_value = most
 	slider.step = 1

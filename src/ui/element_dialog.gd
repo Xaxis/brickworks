@@ -137,6 +137,7 @@ func _build() -> void:
 
 	# The preview: the part itself, turning, in the colour in hand.
 	var frame := SubViewportContainer.new()
+	frame.accessibility_name = "The part, turning"
 	frame.stretch = true
 	frame.custom_minimum_size = Vector2(380, 190)
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -191,6 +192,7 @@ func _build() -> void:
 	# other, changed from its own geometry.
 	var from_row := _row(column, "Start from a part")
 	_from = LineEdit.new()
+	_from.accessibility_name = "Start from a part"
 	_from.placeholder_text = "a part number: 3001, 3700, 3062b…"
 	_from.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_from.text_submitted.connect(func(_t: String) -> void: _start_from(_from.text))
@@ -339,6 +341,7 @@ func _build() -> void:
 			end_label.modulate = Color(1, 1, 1, 0.6)
 			cut_grid.add_child(end_label)
 			var box := SpinBox.new()
+			box.accessibility_name = "%s, %s" % [str(row[0]), end]
 			box.min_value = 0
 			box.max_value = int(row[1])
 			box.step = 1
@@ -368,6 +371,7 @@ func _build() -> void:
 
 	var name_row := _row(column, "Name")
 	_name = LineEdit.new()
+	_name.accessibility_name = "Name"
 	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name.text_changed.connect(func(text: String) -> void:
 		if not _filling:
@@ -420,6 +424,7 @@ func _number(column: Container, field: String, label: String, low: int,
 	var row := _row(column, label)
 	_rows[field] = row.get_parent()
 	var box := SpinBox.new()
+	box.accessibility_name = label
 	box.min_value = low
 	box.max_value = high
 	box.step = 1

@@ -338,6 +338,7 @@ func _build_bar() -> void:
 		_axis_buttons.append(button)
 
 	_slider = HSlider.new()
+	_slider.accessibility_name = "Where the cut is"
 	_slider.custom_minimum_size = Vector2(240, 0)
 	_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_slider.focus_mode = Control.FOCUS_NONE

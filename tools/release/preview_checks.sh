@@ -280,6 +280,13 @@ declare -A CMD=(
   # of a 3001 to Brickognize, live, with Brick 2 x 4 first. Brickognize is
   # a third party, so it is not in ORDER: run when the bin changes.
   [bin]="tools/web/bin_flow.mjs --url=$P/app $B --out=$S/${TAG}_bin_web"
+  # The app's accessibility in a browser (docs/COMPETITIVE.md item 14):
+  # Settings, Interface size at 150% and 85% at 1280 and on a phone at 390,
+  # every control the page is told of inside the window; and whether a
+  # screen reader in the browser hears the app (Godot builds no AccessKit
+  # for the web, so no: printed either way). Run when the app's interface
+  # changes.
+  [app_a11y]="tools/web/app_a11y_flow.mjs --url=$P/app $B --out=$S/${TAG}_app_a11y"
   # The app on a phone, built for a finger: a small house built by touch at
   # 390 x 844 and 430 x 932 (three to the point), every target 44 points or
   # more and no text under 12, the parts sheet swiped, a part's actions by a

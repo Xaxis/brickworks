@@ -95,7 +95,8 @@ func is_playing() -> bool:
 ## already standing before the change being shown.
 func play(keep: Dictionary) -> bool:
 	stop()
-	if world == null or library == null:
+	# Settings, Reduce motion: the model is simply there.
+	if world == null or library == null or ShellPrefs.reduce_motion():
 		return false
 	if not world.reveal_ended.is_connected(_on_reveal_ended):
 		world.reveal_ended.connect(_on_reveal_ended)
@@ -132,7 +133,7 @@ func _begin() -> bool:
 ## brick of the 4,242-part Falcon walked the whole model twice to find there
 ## was nothing to play.
 func play_new(fresh: PackedInt64Array) -> bool:
-	if fresh.size() < 2:
+	if fresh.size() < 2 or ShellPrefs.reduce_motion():
 		stop()
 		return false
 	if fresh.size() <= PLANNED_UP_TO:

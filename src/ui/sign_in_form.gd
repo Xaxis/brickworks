@@ -54,6 +54,8 @@ func setup(with_account: Account) -> void:
 
 	_email = LineEdit.new()
 	_email.placeholder_text = "you@example.com"
+	# Said as what it asks for: its placeholder is an example, not a name.
+	_email.accessibility_name = "Email"
 	_email.custom_minimum_size = Vector2(0, 36)
 	_email.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
 	_email.keep_editing_on_text_submit = true

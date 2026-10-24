@@ -39,6 +39,8 @@ var _done: Button
 signal changed
 ## Settings, Assistant (AI): shown, or building by hand only.
 signal assistant_chosen(on: bool)
+## Settings, Interface size: chosen, for the window to be drawn again at it.
+signal interface_sized
 
 
 func _ready() -> void:
@@ -80,13 +82,29 @@ func _build() -> void:
 
 	column.add_child(HSeparator.new())
 
-	_toggle(column, "Invert zoom direction",
+	# The settings, as they were, where the window has room for them all; in
+	# a window too short (a big Interface size on a laptop) they scroll,
+	# with Done below (_fit_settings).
+	_settings = ScrollContainer.new()
+	_settings.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(_settings)
+	var lower := VBoxContainer.new()
+	lower.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lower.add_theme_constant_override("separation", 12)
+	_settings.add_child(lower)
+	lower.minimum_size_changed.connect(_fit_settings)
+	resized.connect(_fit_settings)
+	# And when the window's scale changes, after Main has inset it again.
+	get_viewport().size_changed.connect(_fit_settings, CONNECT_DEFERRED)
+
+	_toggle(lower, "Invert zoom direction",
 		"Scroll away from you to zoom out instead of in.",
 		ViewPrefs.invert_zoom,
 		func(on: bool) -> void: ViewPrefs.invert_zoom = on)
-	_presets(column)
-	_new_floor(column)
-	_assistant(column)
+	_presets(lower)
+	_interface(lower)
+	_new_floor(lower)
+	_assistant(lower)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -97,7 +115,7 @@ func _build() -> void:
 	_version.add_theme_font_size_override("font_size", 11)
 	_version.modulate = Color(1, 1, 1, 0.6)
 	_version.text = BuildInfo.describe()
-	column.add_child(_version)
+	lower.add_child(_version)
 	if OS.has_feature("web"):
 		_read_version.call_deferred()
 
@@ -109,6 +127,33 @@ func _build() -> void:
 	done.pressed.connect(func() -> void: visible = false)
 	column.add_child(done)
 	_done = done
+
+
+## The settings under the keys: all their height, or what the dialog has
+## left over its title and Done. The keys' list has what is left after them,
+## as it always had (at 1100 x 700 that is a few rows): a row of keys kept
+## for it pushed Assistant (AI) out of sight there (fit_check, 2026-10-24).
+var _settings: ScrollContainer
+
+
+func _fit_settings() -> void:
+	var lower: Control = _settings.get_child(0)
+	var wants: float = lower.get_combined_minimum_size().y
+	var panel: StyleBox = get_theme_stylebox("panel")
+	var column: Control = _settings.get_parent()
+	var others: float = column.get_combined_minimum_size().y - _settings.custom_minimum_size.y
+	# The height Main._inset gave it, not the height it grew to: a panel is
+	# never smaller than what it holds, so asked of its size this kept the
+	# room it had at 100% when the window's scale went up.
+	var tall: float = offset_bottom - offset_top \
+		if is_equal_approx(anchor_top, anchor_bottom) else size.y
+	var room: float = tall - panel.get_minimum_size().y - others
+	# In whole units, so the panel is never a fraction taller than its inset:
+	# grown by one, Done moved a unit when Assistant (AI) was chosen, and a
+	# check waiting for it to stand still never pressed it (fit_check).
+	var fits: float = clampf(floorf(room), 0.0, wants)
+	if not is_equal_approx(_settings.custom_minimum_size.y, fits):
+		_settings.custom_minimum_size.y = fits
 
 
 ## The bindings, read from the one place they are written down.
@@ -181,7 +226,7 @@ func _row(binding: ControlsHint.Binding, density: float) -> Control:
 
 
 func _toggle(column: VBoxContainer, text: String, why: String,
-		on: bool, set_it: Callable) -> void:
+		on: bool, set_it: Callable) -> CheckBox:
 	var box := CheckBox.new()
 	box.text = text
 	box.button_pressed = on
@@ -202,6 +247,7 @@ func _toggle(column: VBoxContainer, text: String, why: String,
 	note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(note)
+	return box
 
 
 ## The navigation preset: how the mouse looks round the model, after the
@@ -219,6 +265,7 @@ func _presets(column: VBoxContainer) -> void:
 	row.add_child(words)
 	preset_choice = OptionButton.new()
 	preset_choice.focus_mode = Control.FOCUS_NONE
+	preset_choice.accessibility_name = "Navigate like"
 	preset_choice.add_theme_font_size_override("font_size", 12)
 	for name: String in ViewPrefs.PRESETS:
 		preset_choice.add_item(ViewPrefs.preset_name(name))
@@ -244,6 +291,49 @@ func _presets(column: VBoxContainer) -> void:
 		# moment that changes.
 		_fill()
 		changed.emit())
+
+
+## Settings, Interface size and Reduce motion (ShellPrefs): for eyes that
+## want the words bigger, and for anyone whom motion on a screen makes ill.
+var interface_choice: OptionButton
+var reduce_motion: CheckBox
+
+
+func _interface(column: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	var words := Label.new()
+	words.text = "Interface size"
+	words.add_theme_font_size_override("font_size", 12)
+	row.add_child(words)
+	interface_choice = OptionButton.new()
+	interface_choice.focus_mode = Control.FOCUS_NONE
+	interface_choice.add_theme_font_size_override("font_size", 12)
+	interface_choice.accessibility_name = "Interface size"
+	for size: float in ShellPrefs.INTERFACE_SIZES:
+		interface_choice.add_item("%d%%" % roundi(size * 100.0))
+	interface_choice.select(_interface_index())
+	row.add_child(interface_choice)
+	interface_choice.item_selected.connect(func(index: int) -> void:
+		ShellPrefs.put("interface_size", ShellPrefs.INTERFACE_SIZES[index])
+		interface_sized.emit()
+		changed.emit())
+
+	reduce_motion = _toggle(column, "Reduce motion",
+		"No build animation, no shimmer, and the view moves without gliding.",
+		ShellPrefs.reduce_motion(),
+		func(on: bool) -> void: ShellPrefs.put("reduce_motion", on))
+
+
+func _interface_index() -> int:
+	var at: float = ShellPrefs.interface_size()
+	var best: int = 0
+	for index: int in ShellPrefs.INTERFACE_SIZES.size():
+		if absf(ShellPrefs.INTERFACE_SIZES[index] - at) \
+				< absf(ShellPrefs.INTERFACE_SIZES[best] - at):
+			best = index
+	return best
 
 
 ## What a new model stands on (ModelFloor.preferred): New, and a file
@@ -359,6 +449,9 @@ func open() -> void:
 		new_floor.show_floor(ModelFloor.preferred(), false)
 	if assistant_on != null:
 		_show_assistant_choice()
+	if interface_choice != null:
+		interface_choice.select(_interface_index())
+		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
 	visible = true
 
 
@@ -367,4 +460,5 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	return {"assistant_on": assistant_on, "assistant_off": assistant_off,
+		"interface_size": interface_choice, "reduce_motion": reduce_motion,
 		"settings_done": _done}

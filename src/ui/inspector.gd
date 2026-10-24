@@ -250,6 +250,8 @@ func _number(words: String, says: String) -> SpinBox:
 	spin.custom_minimum_size = Vector2(76, 0)
 	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spin.tooltip_text = says
+	spin.accessibility_name = words
+	spin.accessibility_description = says
 	spin.select_all_on_focus = true
 	spin.add_theme_font_size_override("font_size", 12)
 	spin.get_line_edit().add_theme_font_size_override("font_size", 12)

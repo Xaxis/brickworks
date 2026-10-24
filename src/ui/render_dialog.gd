@@ -636,6 +636,7 @@ func _slider(into: Control, words: String, low: float, high: float, value: float
 	label.custom_minimum_size = Vector2(118, 0)
 	row.add_child(label)
 	var slider := HSlider.new()
+	slider.accessibility_name = words
 	slider.min_value = low
 	slider.max_value = high
 	slider.step = step

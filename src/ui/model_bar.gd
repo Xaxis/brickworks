@@ -129,6 +129,7 @@ func _build() -> void:
 	_name.text = "Untitled"
 	_name.custom_minimum_size = Vector2(200, 0)
 	_name.tooltip_text = "What this model is called"
+	_name.accessibility_name = "Model name"
 	_name.add_theme_font_size_override("font_size", 13)
 	# The store keeps the name, so the autosave keeps it too.
 	_name.text_changed.connect(func(text: String) -> void:
@@ -220,6 +221,7 @@ func _build() -> void:
 	_ask_name_words = Label.new()
 	asking.add_child(_ask_name_words)
 	_ask_name_field = LineEdit.new()
+	_ask_name_field.accessibility_name = "Name"
 	_ask_name_field.custom_minimum_size = Vector2(320, 0)
 	_ask_name_field.text_submitted.connect(func(_text: String) -> void: _take_name())
 	asking.add_child(_ask_name_field)

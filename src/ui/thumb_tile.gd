@@ -133,7 +133,11 @@ func _process(delta: float) -> void:
 		set_process(false)
 
 
+## The light crossing a waiting picture, or none under Settings, Reduce
+## motion: the placeholder keeps still.
 static func _shimmer_material() -> ShaderMaterial:
+	if ShellPrefs.reduce_motion():
+		return null
 	if _shimmer == null:
 		_shimmer = ShaderMaterial.new()
 		_shimmer.shader = preload("res://src/ui/shimmer.gdshader")

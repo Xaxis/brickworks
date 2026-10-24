@@ -199,6 +199,7 @@ func _build() -> void:
 	column.add_child(body)
 	body.add_child(_build_tools())
 	_frame = SubViewportContainer.new()
+	_frame.accessibility_name = "The part being shaped"
 	_frame.stretch = true
 	_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL

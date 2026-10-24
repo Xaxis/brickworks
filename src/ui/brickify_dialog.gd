@@ -288,6 +288,7 @@ func _build() -> void:
 	_about = _faint(column)
 
 	_view = SubViewportContainer.new()
+	_view.accessibility_name = "The model brickified"
 	_view.stretch = true
 	_view.custom_minimum_size = Vector2(330, 210)
 	column.add_child(_view)
@@ -319,6 +320,7 @@ func _build() -> void:
 
 	var size_row := _row(column, "Size")
 	_size = HSlider.new()
+	_size.accessibility_name = "Size"
 	_size.min_value = Brickify.LEAST_STUDS
 	_size.max_value = Brickify.MOST_STUDS
 	_size.step = 1

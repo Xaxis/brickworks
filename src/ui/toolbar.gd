@@ -147,6 +147,9 @@ func _item(name: String, icon: String) -> Control:
 		_snap.item_selected.connect(func(index: int) -> void:
 			shell.set_snap(str(SNAP_CHOICES[index][0])))
 		_snap.tooltip_text = "Snap\n" + SAYS["snap"]
+		# Said as "Snap: Stud", the choice after its name.
+		_snap.accessibility_name = "Snap"
+		_snap.accessibility_description = SAYS["snap"]
 		_buttons["snap"] = _snap
 		return _snap
 	if name == "turn":
@@ -156,6 +159,8 @@ func _item(name: String, icon: String) -> Control:
 		_turn.item_selected.connect(func(index: int) -> void:
 			shell.set_turn_step(TURN_CHOICES[index]))
 		_turn.tooltip_text = "Turn step   R\n" + SAYS["turn"]
+		_turn.accessibility_name = "Turn step, R"
+		_turn.accessibility_description = SAYS["turn"]
 		_buttons["turn"] = _turn
 		return _turn
 	var button: Button
@@ -192,13 +197,19 @@ func _item(name: String, icon: String) -> Control:
 	var says: String = SAYS.get(name, command.tip if command != null else "")
 	button.tooltip_text = "%s%s%s" % [words, ("   " + key) if not key.is_empty() else "",
 		("\n" + says) if not says.is_empty() else ""]
+	# What a screen reader says on it: its words and its key ("Select, V"),
+	# then what it does.
+	button.accessibility_name = words + ((", " + key) if not key.is_empty() else "")
+	button.accessibility_description = says
 	button.set_meta("icon", icon)
 	_buttons[name] = button
 	return button
 
 
 func _face(button: Button) -> void:
-	button.focus_mode = Control.FOCUS_NONE
+	# Tab and the arrows reach it; a click leaves the keys with the model,
+	# or the next press of the space bar would run whatever was clicked.
+	FocusGuard.by_keyboard(button)
 	button.custom_minimum_size = Vector2(BUTTON, BUTTON)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.expand_icon = false
@@ -212,18 +223,20 @@ func _face(button: Button) -> void:
 			face.border_color = Color(0.56, 0.74, 1.0, 0.9)
 			face.set_border_width_all(1)
 		button.add_theme_stylebox_override(state, face)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
 	# A lit tool stays lit under the pointer.
 	button.add_theme_stylebox_override("hover_pressed", button.get_theme_stylebox("pressed"))
 
 
 func _chooser(icon: String) -> OptionButton:
 	var chooser := OptionButton.new()
-	chooser.focus_mode = Control.FOCUS_NONE
+	FocusGuard.by_keyboard(chooser)
 	chooser.fit_to_longest_item = true
 	chooser.custom_minimum_size = Vector2(0, BUTTON)
 	chooser.add_theme_font_size_override("font_size", 13)
 	chooser.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	for state: String in ["normal", "hover", "pressed", "focus"]:
+	chooser.add_theme_stylebox_override("focus", FocusGuard.ring())
+	for state: String in ["normal", "hover", "pressed"]:
 		var face := StyleBoxFlat.new()
 		face.bg_color = Color(1, 1, 1, 0.06 if state == "normal" else 0.12)
 		face.border_color = Color(1, 1, 1, 0.12)
@@ -330,6 +343,8 @@ func _show_state() -> void:
 		var info: PartLibrary.PartInfo = shell.library.parts.get(held)
 		place.tooltip_text = "Place %s   Q\n%s" % [
 			Inventory._tidy(info.name) if info != null else held, SAYS["mode_place"]]
+		place.accessibility_name = "Place %s, Q" % [
+			Inventory._tidy(info.name) if info != null else held]
 	var snap_at: int = SNAP_CHOICES.map(func(c: Array) -> String: return str(c[0])).find(
 		shell.verbs.snap)
 	if _snap != null and snap_at >= 0 and _snap.selected != snap_at:

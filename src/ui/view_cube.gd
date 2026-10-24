@@ -72,6 +72,8 @@ func _ready() -> void:
 	# button, so Cursors._point_at passes it by.
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	tooltip_text = "Click a face, an edge or a corner to look from there; drag to turn the view"
+	accessibility_name = "View cube"
+	accessibility_description = "The keys 1 to 7 look from the front, back, sides, top, bottom and a corner"
 	_font = ThemeDB.fallback_font
 	var cube: float = cube_size()
 	var arrow: float = 16.0 if cube < 100.0 else 22.0
@@ -86,18 +88,21 @@ func _ready() -> void:
 		made.way = entry[1]
 		made.position = entry[2]
 		made.size = Vector2(arrow, arrow)
-		made.tooltip_text = "Turn the view %s — click for a step, hold to keep turning, or drag" % {
-			"cube_turn_left": "left", "cube_turn_right": "right", "cube_turn_up": "up",
-			"cube_turn_down": "down"}[entry[0]]
+		var towards: String = {"cube_turn_left": "left", "cube_turn_right": "right",
+			"cube_turn_up": "up", "cube_turn_down": "down"}[entry[0]]
+		made.tooltip_text = "Turn the view %s — click for a step, hold to keep turning, or drag" \
+			% towards
+		made.accessibility_name = "Turn the view %s" % towards
 		add_child(made)
 		_arrows[entry[0]] = made
 	# Under it: slide, zoom out, zoom in, fit.
 	var row: float = row_size()
 	var gap: float = (cube - row * 4.0) / 3.0
-	var kinds: Array = [["cube_pan", "pan", "Slide the view — drag this, or click one of its arrows"],
-		["cube_zoom_out", "zoom_out", "Zoom out — click, hold, or drag up and down"],
-		["cube_zoom_in", "zoom_in", "Zoom in — click, hold, or drag up and down"],
-		["cube_fit", "fit", "Fit the selection, or the whole model   F"]]
+	var kinds: Array = [["cube_pan", "pan", "Slide the view — drag this, or click one of its arrows",
+			"Slide the view: W, A, S and D"],
+		["cube_zoom_out", "zoom_out", "Zoom out — click, hold, or drag up and down", "Zoom out, minus"],
+		["cube_zoom_in", "zoom_in", "Zoom in — click, hold, or drag up and down", "Zoom in, plus"],
+		["cube_fit", "fit", "Fit the selection, or the whole model   F", "Fit, F"]]
 	for n: int in kinds.size():
 		var made := NavButton.new()
 		made.camera = camera
@@ -108,6 +113,7 @@ func _ready() -> void:
 		made.position = Vector2(n * (row + gap), cube + 4.0)
 		made.size = Vector2(row, row)
 		made.tooltip_text = kinds[n][2]
+		made.accessibility_name = kinds[n][3]
 		add_child(made)
 		_arrows[kinds[n][0]] = made
 	set_process(true)
@@ -301,6 +307,13 @@ class NavButton extends Control:
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		# Tab and the arrows reach the ones a key press can do: a step of a
+		# turn or a zoom, and fit. The pad slides by a drag, which W, A, S
+		# and D do from the keyboard.
+		if kind != "pan":
+			FocusGuard.by_keyboard(self)
+		focus_entered.connect(queue_redraw)
+		focus_exited.connect(queue_redraw)
 		mouse_entered.connect(func() -> void:
 			_hover = true
 			queue_redraw())
@@ -324,6 +337,11 @@ class NavButton extends Control:
 				camera.key_hold(delta, -1, Vector2.ZERO, Vector2.ZERO)
 
 	func _gui_input(event: InputEvent) -> void:
+		# Return or the space bar, with the keys here: a click's step.
+		if event.is_action_pressed("ui_accept", false, true):
+			accept_event()
+			_step(Vector2.ZERO)
+			return
 		if event is InputEventMouseMotion:
 			var motion: InputEventMouseMotion = event
 			if _down_at < 0 or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
@@ -360,7 +378,13 @@ class NavButton extends Control:
 		_down_at = -1
 		_dragged = false
 		queue_redraw()
-		if was_drag or not quick or camera == null:
+		if was_drag or not quick:
+			return
+		_step(button.position - size * 0.5)
+
+	## One click's worth: [param from_middle] is where on the pad it was.
+	func _step(from_middle: Vector2) -> void:
+		if camera == null:
 			return
 		match kind:
 			"turn":
@@ -372,7 +396,6 @@ class NavButton extends Control:
 			"pan":
 				# The arrow of the pad that was clicked: the way from its
 				# middle to the click, to the nearest of four.
-				var from_middle: Vector2 = button.position - size * 0.5
 				var step := Vector2(signf(from_middle.x), 0.0) \
 					if absf(from_middle.x) >= absf(from_middle.y) \
 					else Vector2(0.0, -signf(from_middle.y))
@@ -415,3 +438,6 @@ class NavButton extends Control:
 					var at: Vector2 = middle + corner * e
 					draw_line(at, at - Vector2(corner.x * e * 0.55, 0), ink, 1.8, true)
 					draw_line(at, at - Vector2(0, corner.y * e * 0.55), ink, 1.8, true)
+		# The ring Tab and the arrows bring, as the toolbar's buttons have.
+		if has_focus(true):
+			draw_arc(middle, r + 1.0, 0.0, TAU, 32, Look.ACCENT, 2.0, true)

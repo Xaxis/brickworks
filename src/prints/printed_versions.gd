@@ -135,6 +135,7 @@ func _cell(info: PartLibrary.PartInfo, words: String) -> Button:
 	cell.custom_minimum_size = CELL
 	cell.focus_mode = Control.FOCUS_NONE
 	cell.tooltip_text = "%s\n%s" % [info.id, info.name.strip_edges().replace("  ", " ")]
+	cell.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
 	cell.set_meta("part", info.id)
 	var tile := ThumbTile.new()
 	tile.caption = info.id

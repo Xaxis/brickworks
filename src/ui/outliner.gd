@@ -78,6 +78,7 @@ func _ready() -> void:
 	head.add_child(_arrow)
 
 	_tree = Tree.new()
+	_tree.accessibility_name = "Model tree"
 	_tree.hide_root = false
 	_tree.columns = 2
 	_tree.set_column_expand(0, true)

@@ -43,12 +43,14 @@ static func _wanted() -> bool:
 
 
 ## Interface units to the point now: the window's width in units over its
-## width in points.
+## width in points, and Settings, Interface size on top. A phone's controls
+## are laid out in points, so without it they kept their size whatever the
+## choice: the window's scale grew, and their units shrank to match.
 static func per_point(viewport: Viewport) -> float:
 	var across: float = Room.across()
 	if across <= 0.0:
 		return 1.0
-	return viewport.get_visible_rect().size.x / across
+	return viewport.get_visible_rect().size.x / across * ShellPrefs.interface_size()
 
 
 ## [param points] in the interface's units.

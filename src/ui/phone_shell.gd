@@ -84,6 +84,10 @@ func p(points: float) -> float:
 func _rebuild() -> void:
 	var k: float = Phone.per_point(get_viewport())
 	if absf(k - _k) < 0.01 * _k:
+		# The same points to the unit, as after Settings, Interface size,
+		# which scales the window and its units alike: only the row's share
+		# of the width has changed.
+		_share_row()
 		return
 	if bin.get_parent() != null:
 		bin.get_parent().remove_child(bin)
@@ -133,6 +137,7 @@ func _build() -> void:
 	for tool: Array in TOOLS:
 		var button: Button = _tool(str(tool[0]), str(tool[1]), str(tool[2]))
 		tools.add_child(button)
+	_share_row()
 
 	# What a finger does now, over the model's foot.
 	_pill = PanelContainer.new()
@@ -254,12 +259,16 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	var button := Button.new()
 	button.name = "phone_" + what
 	button.text = word
+	# Said by its word, shown or not (_share_row).
+	button.accessibility_name = word
+	button.set_meta("word", word)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.custom_minimum_size = Vector2(p(Phone.TARGET), p(ROW - 10))
+	# A fingertip wide, or its share of the row (_share_row).
+	button.custom_minimum_size = Vector2(_row_share(), p(ROW - 10))
 	button.add_theme_font_size_override("font_size", ceili(p(12)))
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-	button.clip_text = false
+	button.clip_text = true
 	_faces(button, p(10))
 	if not icon.is_empty():
 		button.icon = Icons.texture_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
@@ -282,6 +291,39 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.pressed.connect(_chose.bind(what))
 	_tool_buttons[what] = button
 	return button
+
+
+## A fingertip each, or an equal share of the window's width where seven
+## fingertips are wider than the phone: a big Settings, Interface size ran
+## Delete and More off its right edge (app_a11y_flow).
+func _row_share() -> float:
+	# The row inside its bar's margins (_bar_panel), in whole units: a share
+	# of the window's whole width put More 14 px past its edge.
+	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
+	return minf(p(Phone.TARGET), floorf(inside / TOOLS.size()))
+
+
+## Each its share, and its word under its picture where the word fits the
+## share; where one does not, the row is pictures alone, each still said by
+## its word (accessibility_name) and named in its tooltip. "Colo" and
+## "Selec", cut short at 150%, read as typos.
+func _share_row() -> void:
+	var share: float = _row_share()
+	var fits: bool = true
+	for tool: Array in TOOLS:
+		var button: Button = _tool_buttons.get(str(tool[0]))
+		if button == null:
+			continue
+		button.custom_minimum_size.x = share
+		var font: Font = button.get_theme_font("font")
+		var wide: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			button.get_theme_font_size("font_size")).x + p(2) * 2.0
+		fits = fits and wide <= share
+	for tool: Array in TOOLS:
+		var button: Button = _tool_buttons.get(str(tool[0]))
+		if button != null:
+			button.text = str(tool[1]) if fits else ""
+			button.tooltip_text = "" if fits else str(tool[1])
 
 
 ## What a button of the row does: the desktop's own command or verb.

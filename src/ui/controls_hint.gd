@@ -196,6 +196,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["M"], "minifigure"),
 		Binding.new(["I"], "brickify a 3D model"),
 		Binding.new(["Tab"], "panels"),
+		Binding.new(["F6"], "the keys to the toolbar, the parts and the colours, and back"),
 		Binding.new(["/"], "search"),
 		Binding.new([",", "F1"], "this list"),
 		Binding.new(["F11"], "full screen"),
@@ -414,6 +415,9 @@ func _ready() -> void:
 	# changes with the window: the canvas is stretched to fit it.
 	get_viewport().size_changed.connect(rebuild)
 	rebuild()
+	var room: Control = get_parent() as Control
+	if room != null:
+		room.resized.connect(_drop_wide)
 
 
 ## Draw the strip again, for when what a control does has changed.
@@ -428,6 +432,21 @@ func rebuild() -> void:
 	var density: float = Icons.density(self)
 	for binding: Binding in bindings():
 		add_child(_make(binding, density, by_touch))
+	_drop_wide.call_deferred()
+
+
+## A pill wider than the strip's room goes, as the strip wraps rather than
+## run off the edge: one wider than the model's column (a big Interface
+## size, a narrow window) ran off it, half a sentence cut at the window.
+func _drop_wide() -> void:
+	var room: Control = get_parent() as Control
+	if room == null:
+		return
+	for child: Node in get_children():
+		var pill: Control = child as Control
+		var fits: bool = pill.get_combined_minimum_size().x <= room.size.x
+		if pill.visible != fits:
+			pill.visible = fits
 
 
 func _make(binding: Binding, density: float, by_touch: bool) -> Control:
