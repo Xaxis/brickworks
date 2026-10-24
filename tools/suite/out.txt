@@ -14,6 +14,7 @@ account           # needs the relay with .env's keys, and makes accounts in prod
 connector         # needs the relay with .env's keys, and makes accounts in production Supabase
 tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
 tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
+desktop_cloud     # needs the relay with .env's keys, and makes an account in production Supabase; cloud_library_flow holds the web half on a deployment
 harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
 roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
 candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench
