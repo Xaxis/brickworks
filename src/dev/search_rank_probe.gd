@@ -184,7 +184,16 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 	cold_bin.library = fresh
 	get_root().add_child(cold_bin)
 	await process_frame
+	var shown: int = Time.get_ticks_usec()
 	cold_bin.populate()
+	# The index is made off the main thread once the bin is filled, where
+	# there are threads (PartLibrary.prepare_search); a person types after.
+	var frames: int = 0
+	if fresh.has_method("search_ready"):
+		while not fresh.call("search_ready") and frames < 600:
+			await process_frame
+			frames += 1
+	var ready: float = float(Time.get_ticks_usec() - shown) / 1000.0
 	var started: int = Time.get_ticks_usec()
 	cold_bin._run_search("d")
 	var cold: float = float(Time.get_ticks_usec() - started) / 1000.0
@@ -210,13 +219,14 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 		bin._run_search(query)
 		whole.append(float(Time.get_ticks_usec() - at) / 1000.0)
 	print("")
-	print("  a first keystroke over %d parts: median %.1f ms, slowest %.1f ms (\"%s\"); the session's first search %.1f ms"
-		% [library.parts.size(), median, worst, slowest, cold])
+	print("  a first keystroke over %d parts: median %.1f ms, slowest %.1f ms (\"%s\"); the session's first search %.1f ms, %.0f ms after the bin was filled"
+		% [library.parts.size(), median, worst, slowest, cold, ready])
 	print("  whole queries: %s ms" % ", ".join(whole.map(func(ms: float) -> String:
 		return "%.1f" % ms)))
-	if worst > KEYSTROKE_MS:
+	if worst > KEYSTROKE_MS or cold > KEYSTROKE_MS:
 		_failures += 1
-		print("  FAIL  a first keystroke takes %.1f ms, over %d" % [worst, roundi(KEYSTROKE_MS)])
+		print("  FAIL  a first keystroke takes %.1f ms, over %d" % [maxf(worst, cold),
+			roundi(KEYSTROKE_MS)])
 
 
 static func _any(wanted: Array, found: PackedStringArray) -> bool:

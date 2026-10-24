@@ -305,6 +305,13 @@ class PartInfo extends RefCounted:
 	## 60593. Empty for every other part.
 	var whole_of: String = ""
 	var _whole: PartInfo = null
+	## Which listing of the parts bin it was last in (PartsBin._fold), so a
+	## print is folded under its part only when the part is listed too.
+	var listed_in: int = 0
+
+	## The part it is a print, a stickered version or an assembly of, or null.
+	func folds_under() -> PartInfo:
+		return _plain if _plain != null else _whole
 
 	## How much real sets use it: the sets it is in and, for half as much,
 	## the pieces of it they hold, each counted logarithmically, since a part
@@ -436,13 +443,19 @@ class PartInfo extends RefCounted:
 	## names say as Pattern and Sticker and a builder says as print.
 	func own_words() -> String:
 		if _own.is_empty():
-			var words: String = "%s %s %s" % [id, name, category]
-			if decor() & PRINTED:
-				words += " print"
-			if decor() & (STICKERED | STICKER):
-				words += " sticker"
-			_own = words.to_lower()
+			_own = own_words_now()
 		return _own
+
+	## [method own_words] worked out and not kept: what the search's index is
+	## made of on a thread of its own, which must write nothing a part holds.
+	func own_words_now() -> String:
+		var on: int = PartLibrary.decor_of(name, category)
+		var words: String = "%s %s %s" % [id, name, category]
+		if on & PRINTED:
+			words += " print"
+		if on & (STICKERED | STICKER):
+			words += " sticker"
+		return words.to_lower()
 
 	## Its !KEYWORDS, lowercase: what it was made for ("Porsche", "Speed
 	## Champions"), the sets it came in and its numbers at the shops, less
@@ -450,16 +463,20 @@ class PartInfo extends RefCounted:
 	## a search for "brick" found 17,039 parts where it had found 3,633.
 	func keyword_words() -> String:
 		if _keyed.is_empty() and not keywords.is_empty():
-			var words := PackedStringArray()
-			for keyword: String in keywords:
-				var word: String = keyword.to_lower()
-				for shop: String in NOT_WORDS:
-					if word.begins_with(shop):
-						word = word.substr(shop.length())
-						break
-				words.append(word)
-			_keyed = " ".join(words)
+			_keyed = keyword_words_now()
 		return _keyed
+
+	## [method keyword_words] worked out and not kept (own_words_now).
+	func keyword_words_now() -> String:
+		var words := PackedStringArray()
+		for keyword: String in keywords:
+			var word: String = keyword.to_lower()
+			for shop: String in NOT_WORDS:
+				if word.begins_with(shop):
+					word = word.substr(shop.length())
+					break
+			words.append(word)
+		return " ".join(words)
 
 	const NOT_WORDS: Array[String] = ["bricklink ", "rebrickable ", "brickowl ",
 		"brick owl ", "brickset ", "set "]
@@ -1733,8 +1750,10 @@ func staples(most: int = 30) -> Array[PartInfo]:
 
 ## The parts that answer a builder's query, best first (PartSearch): ranked
 ## by how much of it each has, so a word the catalogue does not use lowers
-## a part and never hides it. With [param every_word], only the parts that
-## have every word.
+## a part and never hides it, and then by how much sets use it. With
+## [param every_word], only the parts that have every word; a [param limit]
+## under zero is every part that answers. Without [param loose], a word is
+## matched whole and as written, never as the start of one or misspelt.
 func search(query: String, limit: int = 100, every_word: bool = false,
 		loose: bool = true) -> Array[PartInfo]:
 	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word, loose)
@@ -1746,7 +1765,7 @@ func search(query: String, limit: int = 100, every_word: bool = false,
 		if twin != null:
 			found.erase(twin)
 			found.push_front(twin)
-			if found.size() > limit:
+			if limit >= 0 and found.size() > limit:
 				found.resize(limit)
 	return found
 
@@ -1759,6 +1778,23 @@ func unknown_words(query: String) -> PackedStringArray:
 
 var _search_index: PartSearch = null
 var _search_lock := Mutex.new()
+
+
+## Whether the search's index is made: a search asked now does not wait.
+func search_ready() -> bool:
+	_search_lock.lock()
+	var made: bool = _search_index != null
+	_search_lock.unlock()
+	return made
+
+
+## Make the search's index now, on a thread of its own where there are
+## threads, so the first key typed in the parts bin is not the one that waits
+## the second it takes. A search asked meanwhile waits for it (_finder).
+func prepare_search() -> void:
+	if OS.has_feature("web") and not OS.has_feature("threads"):
+		return
+	WorkerThreadPool.add_task(func() -> void: _finder(), false, "index the parts for search")
 
 
 ## The word index, made at the first search: under a second over the whole
