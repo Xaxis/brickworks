@@ -53,6 +53,7 @@ class Reader extends RefCounted:
 func begin(to: String, show: bool, name: String) -> void:
 	_path = ProjectSettings.globalize_path(to) if not to.is_empty() else ""
 	_name = name
+	set_process(false)
 	if OS.has_feature("web"):
 		var window: JavaScriptObject = JavaScriptBridge.get_interface("window")
 		var tab: Variant = window.brickworksBooklet if window != null else null
@@ -67,6 +68,8 @@ func begin(to: String, show: bool, name: String) -> void:
 			_url = "http://127.0.0.1:%d/%s" % [_server.get_local_port(), _name.uri_encode()]
 		else:
 			_server = null
+	# Each frame only while there is a browser to serve.
+	set_process(_server != null)
 
 
 ## Where a browser reads it as it comes, "" when it cannot.
@@ -145,6 +148,7 @@ func _part() -> String:
 
 
 func _stop() -> void:
+	set_process(false)
 	if _server != null:
 		_server.stop()
 		_server = null
