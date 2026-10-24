@@ -3176,6 +3176,20 @@
       "entry": "src/ui/model_bar.gd",
       "reach": "godot --path .  (File, New, put a part down, then Save or New's Save, then start new: Save asks what to call it, and refuses a name a saved model has)",
       "area": "model-io"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/otp/canary",
+      "entry": "api/_canary.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/otp/canary   (401 without CRON_SECRET; Vercel's cron runs it daily at 04:47 UTC)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "canary check",
+      "entry": "tools/web/canary_check.mjs",
+      "reach": "node tools/web/canary_check.mjs --url=https://brickworks.diy   (.env sourced; --route for a deployment's own run, --stand-in for the canary itself)",
+      "area": "account"
     }
   ]
 }
