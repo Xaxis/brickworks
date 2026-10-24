@@ -1344,6 +1344,16 @@ func _studio_file() -> void:
 	CustomParts.dir = OS.get_user_data_dir().path_join("handbuild_probe_parts/")
 	CustomParts.keeps = false
 	picker.take(bytes, "bay_2025.io")
+	await _frames(1)
+	# Over the parts built by hand so far, none of them saved, it asks first
+	# (ModelBar.ask_to_replace, e84e1141, 2026-10-23), and a person opening
+	# the file says Don't save. Unanswered, the file never opened, and the
+	# question still up stopped the next open as well.
+	var asked: Dictionary = bar.controls_by_name()
+	_check("...and over parts not saved, asks first: Save, Don't save or Cancel",
+		asked.has("replace_save") and asked.has("replace_discard") and asked.has("replace_cancel"))
+	if asked.has("replace_discard"):
+		(asked["replace_discard"] as Button).pressed.emit()
 	await _frames(10)
 	CustomParts.dir = kept_in
 	CustomParts.keeps = keeping
