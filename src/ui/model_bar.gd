@@ -480,7 +480,7 @@ func ask_name() -> String:
 	_asking_name = true
 	_ask_name_words.text = NAME_ASK
 	_ask_name_field.text = ""
-	_ask_name.popup_centered()
+	_ask(_ask_name)
 	_ask_name_field.grab_focus()
 	# The person is the one working now (Working.attend): no "Saving…" bar
 	# under the question, and the time they take is not the save's.
@@ -834,7 +834,7 @@ func ask_to_replace(opening: String) -> bool:
 	_confirm_open.title = "Save changes to “%s”?" % name
 	_confirm_open.dialog_text = ("“%s” is not saved as it is now. Opening %s replaces it on the "
 		+ "baseplate; Undo brings it back.") % [name, opening]
-	_confirm_open.popup_centered()
+	_ask(_confirm_open)
 	var answer: String = await _replace_answered
 	match answer:
 		"save":
@@ -869,7 +869,7 @@ func ask_for_new() -> void:
 	if store != null and store.has_unsaved_work():
 		_confirm_new.dialog_text = ("“%s” is not saved as it is now. "
 			% model_name() + "A new model replaces it on the baseplate.")
-		_confirm_new.popup_centered()
+		_ask(_confirm_new)
 		return
 	await _start_new()
 
@@ -897,8 +897,26 @@ func _say_first(words: String) -> Working.Job:
 	return job
 
 
+## Put a question up, answered only once it has been seen: for its first
+## frames Escape does not close it. An Escape pressed a moment before New, on
+## a browser's idle tab, reached the window only after New's click (the page
+## hands keys over a frame later than the mouse), so it closed New's question
+## in the frame it opened: New asked nothing and did nothing
+## (cloud_library_flow on m164, 2026-10-24).
+func _ask(dialog: AcceptDialog) -> void:
+	dialog.dialog_close_on_escape = false
+	dialog.popup_centered()
+	for _n: int in ESCAPE_AFTER_FRAMES:
+		await get_tree().process_frame
+	dialog.dialog_close_on_escape = true
+
+
+## How many frames a question is up before Escape closes it.
+const ESCAPE_AFTER_FRAMES := 2
+
+
 func _ask_to_clear() -> void:
-	_confirm.popup_centered()
+	_ask(_confirm)
 
 
 func _on_clear() -> void:
