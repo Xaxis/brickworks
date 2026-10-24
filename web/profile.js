@@ -138,6 +138,7 @@ function drawHead() {
   const awards = document.createElement("template");
   awards.innerHTML = awardsHtml(Array.isArray(body.achievements) ? body.achievements : []);
   $("awards-shown").replaceChildren(document.importNode(awards.content, true));
+  $("awards-shown").hidden = !$("awards-shown").childElementCount;
   const banner = $("banner-shown");
   const pictured = body.banner && ID.test(String(body.banner)) ? String(body.banner) : "";
   banner.replaceChildren();

@@ -238,8 +238,9 @@ is on the page, `hidden`, for the script to show.
   four pictures kept wide) and `.build-grid` (photos of builds in columns,
   any shape).
 - **Achievements** (`web/card.js` `awardsHtml`, docs/SOCIAL.md U13):
-  `ul.pills.awards` under a person's `.numbers`, on their page and on your
-  own, each `li[data-award]` a `.pill` with the award icon (16 px, at its
+  `ul.pills.awards` after a person's `.numbers`, the two in one
+  `.standing` row that wraps (beside them on a laptop, under them on a
+  phone), on their page and on your own, each `li[data-award]` a `.pill` with the award icon (16 px, at its
   words' height) and its name,
   what it means as its title; a challenge won is `a.pill.new` to the model
   that won it. The rarest first; none at all, no row.

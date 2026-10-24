@@ -495,8 +495,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .numbers { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-5); margin: 0 0 var(--s-4); padding: 0; list-style: none; }
 .numbers b { color: var(--ink); font-size: var(--t-h3); font-weight: 700; font-variant-numeric: tabular-nums; }
 .numbers span { color: var(--ink-soft); font-size: var(--t-small); }
-/* What they earned (docs/SOCIAL.md U13): a row of pills under the numbers. */
-.profile .awards { margin: 0 0 var(--s-4); }
+/* Their numbers and what they earned (docs/SOCIAL.md U13), one row that
+   wraps: the achievements beside the numbers when there is room, under
+   them when not, so a page is no taller for them on a laptop. */
+.profile .standing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
+.profile .standing .numbers, .profile .standing .awards { margin: 0; }
 .profile .pinned { margin-top: var(--s-6); }
 .profile .pinned h2, .profile .follows h2, .profile .tab-panel h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
 .profile .work { margin-top: var(--s-6); }

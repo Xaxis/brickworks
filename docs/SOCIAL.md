@@ -588,8 +588,9 @@ functions replaced with the same answers for every challenge there is
 (`tools/challenge_year_try.sql`), guarded by `tools/apply_sql.mjs`.
 
 *U13 built (2026-10-24, no Supabase change):* **achievements** on a
-profile and on your own, a row of pills under the numbers, as GitHub's
-and Printables' profiles carry their badges under the person: each
+profile and on your own, a row of pills after the numbers (beside them
+on a laptop, under them on a phone), as GitHub's and Printables' profiles
+carry their badges in the person's head: each
 challenge won (a link to the model that won it), Ten builds (of their
 models, to the last step), Tested, First model listed, First build
 finished (a photo of their real build: builds are counted per device and

@@ -140,7 +140,9 @@ const drawn = (page) => page.evaluate(() => {
     awards: [...document.querySelectorAll(".profile .awards li")].map((li) => ({ id: li.dataset.award,
       text: li.textContent.replace(/\s+/g, " ").trim(), href: li.querySelector("a")?.getAttribute("href") || "",
       said: li.querySelector(".pill")?.title || "", icon: Boolean(li.querySelector("svg.icon use[href$='#award']")) })),
-    awardsBottom: box(document.querySelector(".profile .awards"))?.bottom ?? null,
+    // Beside the numbers or under them, never before them.
+    awardsAfter: Boolean(document.querySelector(".profile .numbers")?.compareDocumentPosition(document.querySelector(".profile .awards") || document.body)
+      & Node.DOCUMENT_POSITION_FOLLOWING) && Boolean(document.querySelector(".profile .awards")),
     share: shown(document.querySelector("button[data-share]")),
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     screen: innerHeight,
@@ -502,9 +504,9 @@ async function deployed() {
           headHolds(said, label, { name: "Ada Profile", handle: ADA, phone: width < 600 });
           check(`${label}: her 3 models; the Models tab shown`, said.panel === "models" && said.cards.length === 3
             && said.cards.every((id) => made.includes(id)) && said.tabs[0].n === "3");
-          check(`${label}: what she earned, under her numbers: ${said.awards.map((one) => one.text).join(" · ")}`,
+          check(`${label}: what she earned, after her numbers: ${said.awards.map((one) => one.text).join(" · ")}`,
             said.awards.map((one) => one.id).join(",") === "ten,tested,listed,built" && said.awards.every((one) => one.icon)
-            && (said.awardsBottom ?? 0) > (said.numbersBottom ?? 1e9));
+            && said.awardsAfter);
           check(applied ? `${label}: links, the lighthouse across the top, pins in her order`
             : `${label}: no links, banner or pins before profile_shows.sql`, applied
             ? said.links.length === 2 && said.banner === `/m/${made[1]}.png` && said.pins.join(",") === `${made[1]},${made[0]}`

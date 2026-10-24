@@ -1232,8 +1232,8 @@ plan with Claude as the client.
   from what the profile reads: `won` (each challenge won, `a.pill.new` to
   the model, `data-won`), `ten` (designer builds ≥ 10), `tested` (a Tested
   model), `listed` (a model in the gallery), `built` (a photo of their real
-  build); `ul.pills.awards li[data-award]` under `.numbers` on `/u/<handle>`
-  and `/profile` (`#awards-shown`); GET `?op=profile` says `achievements:
+  build); `ul.pills.awards li[data-award]` after `.numbers` in one
+  `.standing` row on `/u/<handle>` and `/profile` (`#awards-shown`); GET `?op=profile` says `achievements:
   [{id, name, said, model?}]`. None for a profile under 13 or taken out
   (404); `/profile` of an account under 13 asks for no public page.
 - the feed's entry line (`supabase/challenges.sql` `feed_rows`, which

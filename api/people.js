@@ -1212,8 +1212,7 @@ async function profilePage(request, response) {
   </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="Elsewhere">${links}</ul>` : ""}
-  ${numbersHtml(earned, about, follows)}
-  ${awardsHtml(achievementsOf({ about, earned, built, wins }))}`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins }))}</div>`;
 
   // Pinned: up to three of their models, in the order they chose.
   await withFaces(showcase.pins);
