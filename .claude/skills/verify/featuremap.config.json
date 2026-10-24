@@ -3132,14 +3132,35 @@
       "kind": "lib",
       "label": "models kept with the account",
       "entry": "src/account/cloud_models.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql applied)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "rename or delete saved models",
+      "entry": "src/ui/saved_models_dialog.gd",
+      "reach": "godot --path .  (File, Open, Rename or delete saved models…: each saved model's Rename… and Delete…, which asks first; a deleted one's row has Undo)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "account full offer",
+      "entry": "src/ui/account_full_offer.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models…)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "desktop cloud probe",
+      "entry": "src/dev/desktop_cloud_probe.gd",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8891 & BRICKWORKS_API=http://127.0.0.1:8891 tools/probe.sh desktop_cloud_probe   (the desktop's models in step with the account: saves, a browser's model, both of two edits kept as Name 2, deletes online and offline, a delete while changed, renames, Undo; a throwaway account)",
       "area": "model-io"
     },
     {
       "kind": "api",
       "label": "/api/models",
       "entry": "api/models.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list, GET ?name=X one model, POST {name, base, model} a save)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete)",
       "area": "model-io"
     },
     {

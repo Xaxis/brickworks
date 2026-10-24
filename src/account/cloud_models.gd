@@ -279,6 +279,12 @@ func _sync_once() -> void:
 			else "%d models from your account are in File › Open") % fetched)
 	if _saved:
 		_saved = false
+		# How full the account is now, with what was just sent.
+		if sent > 0:
+			var now: Dictionary = await _ask("GET", "/api/models")
+			if int(now["code"]) == 200 and now["body"] is Dictionary \
+					and (now["body"] as Dictionary).get("kept") is Dictionary:
+				room = (now["body"] as Dictionary)["kept"]
 		var words: String = short_words()
 		if not words.is_empty():
 			short_of_room.emit(words)
