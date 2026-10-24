@@ -32,6 +32,17 @@ The Python side: LDraw in, mesh cache and catalogue out.
   upload. `--dry-run` says all of it and writes nothing. Proves it when
   `tests/test_update_parts.py` passes, a second run says "0 new or changed",
   and `tools/probe.sh new_parts_probe N N N` places three of the new parts.
+- `measure real sets' figures and sizes`: `tools/minifig_sets.py` writes
+  `assets/knowledge/minifig_sets.json` from Rebrickable's inventories: each
+  minifigure part's sets and how many of those are not a licence or a named cast
+  (`CHARACTER_THEMES`, matched on every name of a theme's path), and the arms
+  official figures put with a plain torso of each colour, read off the torso
+  assemblies' names (3 minutes). `tools/set_sizes.py` writes
+  `assets/knowledge/set_sizes.json`: every sub-model of each OMR set with a
+  minifigure, measured in studs and plates (style.py's reader, 2 minutes).
+  Both after refresh_catalogue; `tools/export.sh` copies both beside the web
+  build, which fetches them (`SetKnowledge.ensure`). Proves it when
+  `part_choice_probe` reads them ("3938 parts", "1771").
 - `check the gear table`: `assets/ldraw/gears.json`, the tooth counts, kinds and
   holes `src/assembly/mechanism.gd` reads (the catalogue says how many teeth a
   gear has only in its name). `tools/gears.py check` proves four things: every

@@ -1723,13 +1723,21 @@ func _index_current() -> void:
 		var best: PartInfo = null
 		var best_score: float = -1.0
 		var words: PackedStringArray = _name_words(info)
+		var says: PackedStringArray = _clauses(info)
 		for other: PartInfo in twins:
 			var theirs: PackedStringArray = _name_words(other)
 			var shared: int = 0
 			for word: String in words:
 				if theirs.has(word):
 					shared += 1
-			var score: float = float(shared) / float(maxi(1, words.size() + theirs.size() - shared))
+			# What it is with or without first: 3660a is "without Inner
+			# Stopper Ring", as 3660c is and 7261, "with Inner Stopper
+			# Ring without Bottom Stud", is not, though its words are closer.
+			var agreed: int = 0
+			for clause: String in _clauses(other):
+				if says.has(clause):
+					agreed += 1
+			var score: float = agreed + float(shared) / float(maxi(1, words.size() + theirs.size() - shared))
 			# Of two named alike, the one sets use, and the one made now.
 			score += (0.01 if other.in_sets > 0 else 0.0) + (0.005 if other.still_made() else 0.0)
 			if score > best_score or (is_equal_approx(score, best_score) and best != null
@@ -1739,6 +1747,26 @@ func _index_current() -> void:
 		_current_of[id] = best.id if best != null else id
 	# Marked as built even where nothing is stale.
 	_current_of[""] = ""
+
+
+## What a name says a part is with and without, a clause each: "without
+## inner stopper ring", "with flat bottom pin", "with small holes".
+static func _clauses(info: PartInfo) -> PackedStringArray:
+	var out := PackedStringArray()
+	var name: String = " ".join(info.name.to_lower().replace("(obsolete)", "").replace(",", " ")
+		.lstrip("~=_ ").split(" ", false))
+	var keyword: String = ""
+	var clause := PackedStringArray()
+	for word: String in (name + " with").split(" ", false):
+		if word == "with" or word == "without" or (word == "and" and not keyword.is_empty()):
+			if not keyword.is_empty() and not clause.is_empty():
+				out.append(keyword + " " + " ".join(clause))
+			clause = PackedStringArray()
+			if word != "and":
+				keyword = word
+		elif not keyword.is_empty():
+			clause.append(word)
+	return out
 
 
 static func _name_words(info: PartInfo) -> PackedStringArray:

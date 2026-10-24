@@ -123,10 +123,11 @@ func _initialize() -> void:
 		"%d are no more common in their kind than anywhere else" % flat)
 
 	print("\nand it says so when it does not know")
-	var answer: Dictionary = assistant._how_real_sets_build_this("a lighthouse")
+	# Not a lighthouse, which is a tower on the coast now (SubjectWords.IS_A).
+	var answer: Dictionary = assistant._how_real_sets_build_this("an orrery")
 	var said: String = str(answer.get("content", ""))
 	_ok(said.contains("No kind of real set matches"),
-		"a lighthouse is admitted to rather than guessed at")
+		"an orrery is admitted to rather than guessed at")
 	_ok(said.contains("not a verdict on the idea"),
 		"...and the design is not told to build something else")
 

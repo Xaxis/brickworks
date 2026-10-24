@@ -165,7 +165,21 @@ the model, and the design assistant doing the same with `add_minifig`.
   meet, and says whether it stands without its headwear or the nearest spot
   within two studs where it does (`FigureTool._in_the_way`; walk180's captain
   took five looks to find the roof plate over his hat). `minifig_probe` checks
-  a figure refused by a post names it and stands at the spot it offers. Its parts are the design's own
+  a figure refused by a post names it and stands at the spot it offers. Words
+  match whole words of a part's name (`FigureTool.choose`; "cap" is no captain,
+  a face's "happy" or "angry" read as LDraw's Smile, Grin, Frown, `SAID_AS`),
+  and never a part only a licence or a named cast wears, nor a head of another
+  mould than the classic one, unless no other part has the words ("spongebob"):
+  whose a part is comes from Rebrickable's figure inventories
+  (`assets/knowledge/minifig_sets.json`, `tools/minifig_sets.py`, read by
+  `SetKnowledge`, fetched beside the web build). Arms not given a colour are
+  in the one official figures pair most with the torso (plain torsos by
+  colour, printed ones by `TORSO_HANDS`). Refused bare-headed-would-fit, it
+  offers a lower headgear that stands there (`_lower_headwear`: the asked
+  words, its kind, the most worn, 24 tried). `part_choice_probe -- figures`
+  judges 34 held-out descriptions: base 18 licensed, character or baby heads,
+  13 arms no official figure pairs with the torso, 5 of 5 tall hats refused
+  under a roof with nothing offered; the branch 0, 0, 0. Its parts are the design's own
   (`_placed_ids`), so a new submission replaces them. Offered over MCP like every
   tool; `connector_form.said` captions it.
 - `minifig browser flow` (`tools/web/minifig_flow.mjs`): the same in a real browser

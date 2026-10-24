@@ -164,3 +164,4 @@ known_fits
 gear_mesh
 touch
 step_count   # a model's steps counted alike by the server and the app (steps206)
+part_choice   # held-out figures, obsolete parts, plan_scale and real-set kinds (figs217)

@@ -1762,7 +1762,26 @@ fixing what it got wrong.
   every vocabulary against some seventy near misses (planet, carriage,
   worship, giant, storey, shopkeeper, inspired…) matches none it does not
   hold as a word; castles, a spaceship, fire engines, two buses, an X-wing
-  and a farmhouse still find theirs.
+  and a farmhouse still find theirs. A subject no set is named by falls back
+  through what it is (`Assistant._kind_words`): a phrase or word of
+  `SubjectWords.IS_A`, hypernyms by class (the road, the building site, the
+  farm, the railway, the water, the air, space, snow, buildings by use: a
+  forklift is cargo and a loader, a lighthouse a tower on the coast), then the
+  real-set index's subjects table and compounds. Its part lists name the part a
+  design would place (`PartLibrary.current`). `part_choice_probe -- kinds`: 20
+  held-out subjects, base 4 found, the branch 20 (`kinds_probe`'s unknown
+  subject is an orrery now).
+- `plan scale by real models`: `plan_scale`'s minifigure length is the
+  shortened one kept within the 10th to 90th percentile of the official
+  minifigure-scale models of its kind (`Assistant._official_models` over
+  `SetKnowledge.sizes`, `assets/knowledge/set_sizes.json` from
+  `tools/set_sizes.py`: each sub-model of every OMR set with a minifigure,
+  measured in studs). Those whose names have every word of the subject
+  (`SubjectWords.plainly`: a fire engine is a fire truck), else its last word
+  with another, else that word or its kin, else its kinds; the answer names
+  how many, their range and median and three of them. `part_choice_probe --
+  scale`: 15 held-out vehicles and buildings, each within the official models
+  its own pattern picks; base 14 (a police station 40 studs, theirs 13-38).
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   83 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round

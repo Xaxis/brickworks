@@ -3277,6 +3277,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"plan_scale":
 			progress.emit("working out how big it should be")
 			heard(str(args.get("subject", "")))
+			# The official models' sizes, fetched on the web the first time.
+			await SetKnowledge.ensure(self)
 			return _plan_scale(args)
 		"find_reference":
 			var subject: String = str(args.get("subject", ""))
@@ -17596,6 +17598,21 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 ## nothing). "" when none is.
 func _kind_words(subject: String) -> String:
 	var out := PackedStringArray()
+	# What it is a kind of (SubjectWords.IS_A): a forklift moves cargo, a
+	# lighthouse is a tower on the coast. A phrase first, then each word.
+	var said: String = " ".join(SubjectWords.of(subject))
+	for phrase: String in SubjectWords.IS_A:
+		var named: bool = phrase.contains(" ") and (" %s " % said).contains(" %s " % phrase)
+		if not named and not phrase.contains(" "):
+			for word: String in SubjectWords.of(subject):
+				if SubjectWords.forms(word).has(phrase):
+					named = true
+		if not named:
+			continue
+		for kind: Variant in SubjectWords.IS_A[phrase]:
+			var form: String = SubjectWords.kind_of_word(str(kind), library.kinds)
+			if not form.is_empty() and not out.has(form):
+				out.append(form)
 	for word: String in SubjectWords.of(subject):
 		for kind: Variant in RealSnippets.subjects_of(word):
 			if not SubjectWords.kind_of_word(str(kind), library.kinds).is_empty() \
@@ -19679,6 +19696,86 @@ static func _studs_at(scale: Dictionary, metres: float) -> float:
 	return SHORTENED_FROM * per * pow(metres / SHORTENED_FROM, SHORTENED_BY)
 
 
+## Words of a subject that say nothing about which models are its kind.
+const NOT_OF_A_KIND: Array[String] = ["a", "an", "the", "of", "and", "with", "my", "our",
+	"small", "big", "large", "little", "tiny", "huge", "old", "new", "modern", "classic",
+	"model", "lego", "real", "minifig", "minifigure", "scale", "harbour", "harbor"]
+
+
+## The official minifigure-scale models of [param subject]'s kind, measured
+## (SetKnowledge.sizes, from LDraw's official models): [lengths in studs,
+## sorted, and a few of them named], or [] for fewer than two. Those whose
+## names have every word of it; else its last word, the thing itself (a
+## police *car*), with another of its words; else that word alone, or a word
+## that means it; else the kinds it is filed under (a tugboat: boat).
+func _official_models(subject: String) -> Array:
+	var models: Array = SetKnowledge.sizes()
+	var words := PackedStringArray()
+	for word: String in SubjectWords.of(SubjectWords.plainly(subject)):
+		if not NOT_OF_A_KIND.has(word) and word.length() >= 2:
+			words.append(word)
+	if words.is_empty() or models.is_empty():
+		return []
+	var head: String = words[words.size() - 1]
+	var heads := PackedStringArray([head])
+	for one: String in RealSnippets.kin(head):
+		if not heads.has(one):
+			heads.append(one)
+	var kinds: PackedStringArray = _kind_words(subject).split(" ", false)
+	var tiers: Array = [[], [], [], []]
+	for model: Variant in models:
+		var row: Array = model
+		var title: String = str(row[3]) if not str(row[3]).is_empty() else str(row[1])
+		var said: PackedStringArray = PackedStringArray()
+		for word: String in SubjectWords.of(title):
+			said.append_array(SubjectWords.forms(word))
+		var has := func(word: String) -> bool:
+			for form: String in SubjectWords.forms(word):
+				if said.has(form):
+					return true
+			return false
+		var all: bool = true
+		var others: int = 0
+		for word: String in words:
+			if not has.call(word):
+				all = false
+			elif word != head:
+				others += 1
+		var thing: bool = false
+		for one: String in heads:
+			thing = thing or has.call(one)
+		var kind: bool = false
+		for one: String in kinds:
+			kind = kind or has.call(one)
+		var tier: int = 0 if all else (1 if thing and others > 0 else (2 if thing else (3 if kind else -1)))
+		if tier >= 0:
+			(tiers[tier] as Array).append(row)
+	for tier: Array in tiers:
+		if tier.size() < 2:
+			continue
+		var lengths: Array[float] = []
+		for row: Array in tier:
+			lengths.append(float(row[5]))
+		lengths.sort()
+		var named := PackedStringArray()
+		for row: Array in tier.slice(0, 3):
+			named.append("%s %s %s" % [str(row[0]).trim_suffix("-1"),
+				str(row[3]) if not str(row[3]).is_empty() else str(row[1]),
+				Placement._num(snappedf(float(row[5]), 1.0))])
+		return [lengths, named]
+	return []
+
+
+## A share of the way through sorted [param values], 0 to 1.
+static func _percentile(values: Array[float], share: float) -> float:
+	if values.is_empty():
+		return 0.0
+	var at: float = (values.size() - 1) * share
+	var low: int = floori(at)
+	var high: int = mini(low + 1, values.size() - 1)
+	return lerpf(values[low], values[high], at - low)
+
+
 func _plan_scale(args: Dictionary) -> String:
 	var metres: float = float(args.get("longest_metres", 0.0))
 	var subject: String = str(args.get("subject", "it"))
@@ -19686,12 +19783,36 @@ func _plan_scale(args: Dictionary) -> String:
 		return ("Say how long the real thing is, in metres, as "
 			+ "longest_metres. A guess within half is enough — this is "
 			+ "about which scale, not about the decimal.")
+	# At minifigure scale, as long as real sets build its kind: the shortened
+	# length, kept within the official models' tenth to ninetieth
+	# percentile. A formula fitted to six sets made a 20 m tug 31 studs and
+	# guessed at everything else.
+	var official: Array = _official_models(subject) \
+		if _studs_at(SCALES[0], metres) >= TOO_SMALL else []
+	var minifig: float = _studs_at(SCALES[0], metres)
+	var measured: String = ""
+	if not official.is_empty():
+		var lengths: Array[float] = official[0]
+		var low: float = _percentile(lengths, 0.1 if lengths.size() >= 5 else 0.0)
+		var high: float = _percentile(lengths, 0.9 if lengths.size() >= 5 else 1.0)
+		var shortened: float = minifig
+		minifig = clampf(minifig, low, high)
+		measured = ("\n\nOfficial minifigure-scale models of it, measured from LDraw's "
+			+ "official models: %d, %s to %s studs long, half of them under %s (%s). "
+			% [lengths.size(), Placement._num(snappedf(lengths[0], 1.0)),
+				Placement._num(snappedf(lengths[lengths.size() - 1], 1.0)),
+				Placement._num(snappedf(_percentile(lengths, 0.5), 1.0)),
+				"; ".join(official[1])]
+			+ ("Its length at minifigure scale is within what they are."
+				if is_equal_approx(shortened, minifig) else
+				"At minifigure scale it is built as long as they are: %s studs, not %s."
+				% [Placement._num(snappedf(minifig, 0.1)), Placement._num(snappedf(shortened, 0.1))]))
 
 	var rows := PackedStringArray()
 	var best: Dictionary = {}
 	for one: Variant in SCALES:
 		var scale: Dictionary = one
-		var across: float = _studs_at(scale, metres)
+		var across: float = minifig if scale == SCALES[0] else _studs_at(scale, metres)
 		var fits: String = ""
 		if across < TOO_SMALL:
 			fits = "too small to read"
@@ -19706,7 +19827,7 @@ func _plan_scale(args: Dictionary) -> String:
 
 	var chosen: String = ""
 	if not best.is_empty():
-		var across: float = _studs_at(best, metres)
+		var across: float = minifig if best == SCALES[0] else _studs_at(best, metres)
 		var shortened: bool = across < metres * float(best["studs_per_metre"]) - 0.5
 		# A plate is a third of a brick, so height in plates is what
 		# actually gets placed and is worth saying out loud.
@@ -19775,7 +19896,7 @@ func _plan_scale(args: Dictionary) -> String:
 	var named: String = subject.substr(0, 1).to_upper() + subject.substr(1)
 	return ("%s is %s metres along its longest side. At each scale "
 		% [named, Placement._num(metres)]
-		+ "builders use, the model would be:\n" + "\n".join(rows) + chosen)
+		+ "builders use, the model would be:\n" + "\n".join(rows) + chosen + measured)
 
 
 ## Pictures of the thing it has been asked to build.

@@ -153,7 +153,8 @@ static func choose(library: PartLibrary, slot: String, wanted: String) -> String
 		if plain.has(slot):
 			return plain[slot]
 	var words: Array[PackedStringArray] = []
-	for word: String in asked.replace(",", " ").replace("-", " ").split(" ", false):
+	for word: String in asked.replace("'s ", " ").replace("'", "").replace(",", " ") \
+			.replace("-", " ").split(" ", false):
 		if not FILLER.has(word) and word.length() >= 3:
 			var forms := PackedStringArray([_singular(word)])
 			for other: String in SAID_AS.get(forms[0], []):
@@ -208,7 +209,8 @@ static func _whose(library: PartLibrary, info: PartLibrary.PartInfo, slot: Strin
 ## A name's words, lower case, each as said and in the singular.
 static func _words_of(name: String) -> PackedStringArray:
 	var out := PackedStringArray()
-	for word: String in name.to_lower().replace("/", " ").replace("-", " ").replace(",", " ") \
+	for word: String in name.to_lower().replace("'s ", " ").replace("'", "").replace("/", " ") \
+			.replace("-", " ").replace(",", " ") \
 			.replace("(", " ").replace(")", " ").split(" ", false):
 		out.append(word)
 		var one: String = _singular(word)
@@ -228,6 +230,7 @@ static func _singular(word: String) -> String:
 ## A word a description says a face with -> the words LDraw names prints by:
 ## its heads say Smile, Grin, Frown, Scowl, Open Mouth, Raised Eyebrows.
 const SAID_AS: Dictionary = {
+	"smile": ["grin", "smiling"], "grin": ["smile"],
 	"happy": ["smile", "grin", "smiling"], "smiling": ["smile", "grin"],
 	"smiley": ["smile"], "cheerful": ["smile", "grin"], "friendly": ["smile"],
 	"laughing": ["laugh", "laughing", "open"], "laugh": ["laughing", "open"],
