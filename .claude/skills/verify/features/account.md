@@ -351,12 +351,16 @@ they have. A Claude connector belongs to the account that switched it on.
   A person can always delete their account (site-attest's L1): orangecheck
   refusing for good (`holds_earnings`, `not_deletable`) deletes ours anyway
   and the answer says theirs stays at ochk.app (`orangecheck: {kept, said}`,
-  shown on /settings); an outage (`unavailable`, `rate_limited`) holds it,
-  503 "try again"; no Connect key (a unit's preview; nothing asked) or a key
-  orangecheck does not know holds it too, Brickworks' setup fault
-  (orangecheck's final ruling): 503 "Deleting is paused while Brickworks
-  fixes a setup problem. Nothing has been deleted." The canary's (d) hears
-  of that by the next morning. An account that never ticked the box asks
+  shown on /settings). It is an allow-list in Brickworks' own `unprovision`
+  (site-attest): only `unknown_user`, `deleted`, `detached`,
+  `already_deleted`, `holds_earnings` and `not_deletable` let the deletion
+  go. An outage (`unavailable`, `rate_limited`, a network failure, a throw)
+  holds it, 503 "try again in a minute"; anything else (no Connect key, a
+  unit's preview, nothing asked; `invalid_api_key`; `bad_request`; any
+  answer not named) is Brickworks' setup fault (orangecheck's final
+  ruling): 503 "Deleting is paused while Brickworks fixes a setup problem.
+  Nothing has been deleted." The canary's (d) hears of a key problem by the
+  next morning. An account that never ticked the box asks
   orangecheck nothing, and is deleted whatever Connect's state.
 
 Decisions, so they can be changed: the gate is a client gate (the desktop is
@@ -423,7 +427,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (133 since step 4; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (136 since step 4; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -471,11 +475,14 @@ consent and the key, orangecheck down or never answering, never for an
 account with orangecheck, deletion held while orangecheck is down and
 calling `connectDelete` when it can, deleted anyway with orangecheck's kept
 said when it refuses for good (`holds_earnings`, `not_deletable`), paused
-(503, in its words, nothing deleted) without the key (no call) or with a key
-orangecheck does not know, and an account that never ticked the box deleted
-with orangecheck down or no key, 0 calls; a stale code's session refused 403 with no call at all; the address sent as verified for a fresh emailed code's
+(503, in its words, nothing deleted) without the key (no call), with a key
+orangecheck does not know or on `bad_request`, held on a reason nobody
+knows, and `unprovision` given 14 answers straight, past me-client's
+mapping, deleting on the six it allows alone; an account that never ticked
+the box deleted with orangecheck down or no key, 0 calls; a stale code's session refused 403 with no call at all; the address sent as verified for a fresh emailed code's
 session, and never for a password's, an address the request names, a code's
-past five minutes or an orangecheck session's).
+past five minutes or an orangecheck session's, which is answered
+`has_orangecheck`).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
 for everybody with nothing on the address, the dialog at 390 and 1280 in
 both themes with orangecheck's button (its mark, its stylesheet from this

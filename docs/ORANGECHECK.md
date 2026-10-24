@@ -47,12 +47,16 @@ tools/web/vendor_orangecheck.sh.
   `connectDelete` first. A person can always delete their Brickworks
   account (site-attest's L1): when orangecheck refuses for good
   (`holds_earnings`, `not_deletable`) ours is deleted anyway and they are
-  told theirs stays at ochk.app. An outage holds the deletion (503, try
-  again). So does Connect not set up here, without the key (no call is
-  made) or with one orangecheck does not know: that is our setup fault,
-  and deleting would leave their orangecheck account behind, so it is
-  paused, 503, "Deleting is paused while Brickworks fixes a setup problem.
-  Nothing has been deleted." (orangecheck's final ruling). The daily
+  told theirs stays at ochk.app. That is an allow-list in our own
+  `unprovision`, whatever me-client makes of an answer (site-attest): the
+  account goes only on `unknown_user`, `deleted`, `detached`,
+  `already_deleted`, `holds_earnings` or `not_deletable`. An outage
+  (`unavailable`, `rate_limited`, a network failure, a throw) holds it, 503,
+  try again. Anything else (no key, so no call; `invalid_api_key`;
+  `bad_request`; an answer not named) is our setup fault, and deleting
+  would leave their orangecheck account behind, so it is paused, 503,
+  "Deleting is paused while Brickworks fixes a setup problem. Nothing has
+  been deleted." (orangecheck's final ruling). The daily
   canary's (d) asks `connectDelete` for a made-up user and wants
   `unknown_user`, so a key gone or replaced is heard of by morning. An
   account that never ticked the box never asks, and is always deleted.

@@ -338,11 +338,13 @@ async function deleteAccount(request, response) {
   // it (oc_connected): nobody else ever waits on orangecheck to leave. A
   // person can always delete their Brickworks account (site-attest's L1):
   // orangecheck refusing for good leaves theirs with them at ochk.app, said
-  // plainly. An outage holds the deletion (try again), and so does Connect
-  // not set up here (no key, or one orangecheck does not know): that is
-  // Brickworks' own fault, and deleting would leave their orangecheck
-  // account behind (orangecheck's final ruling, 2026-10-24). The daily
-  // canary asks Connect with the key (api/_canary.js, d).
+  // plainly. Every other answer holds the deletion, 503 (api/_oc.js
+  // unprovision, an allow-list): an outage asks them to try again, and
+  // Connect not set up here (no key, one orangecheck does not know, any
+  // answer not known) is paused as Brickworks' own fault, since deleting
+  // would leave their orangecheck account behind (orangecheck's final
+  // ruling, 2026-10-24). The daily canary asks Connect with the key
+  // (api/_canary.js, d).
   let connected;
   let kept = "";
   try {
@@ -353,19 +355,9 @@ async function deleteAccount(request, response) {
   }
   if (connected) {
     const { unprovision } = await import("./_oc.js");
-    const there = await unprovision(account);
-    if (there === "outage") {
-      return response.status(503).json({ error: "orangecheck could not delete the orangecheck account made for you just now, "
-        + "so nothing is deleted yet. Try again in a minute." });
-    }
-    if (there === "kept") {
-      kept = "orangecheck could not delete the orangecheck account made for you, so it stays yours at ochk.app, "
-        + "to claim or delete there.";
-    }
-    if (there === "unset") {
-      console.error("account: a Connect account's deletion is paused: OC_CONNECT_KEY is missing, or orangecheck does not know it");
-      return response.status(503).json({ error: "Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted." });
-    }
+    const decided = await unprovision(account);
+    if (!decided.go) return response.status(decided.status).json({ error: decided.error });
+    kept = decided.kept || "";
   }
   try {
     // The files of the build photos it posted, and of those posted of its

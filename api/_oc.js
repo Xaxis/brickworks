@@ -246,32 +246,49 @@ export async function provision(account, emailed = null) {
 }
 
 /// The orangecheck account Connect made for [account], asked to be deleted
-/// before the account itself is (site-attest's L1, 2026-10-24: a person can
-/// always delete their Brickworks account):
-///   "gone"    deleted, the person's own now they claimed it, or never made;
-///   "kept"    orangecheck refuses for good (it holds earnings, or cannot be
-///             erased): it stays theirs at ochk.app, and ours goes all the
-///             same;
-///   "outage"  orangecheck could not be asked, or asks us to wait: try again;
-///   "unset"   no Connect key here (nothing is asked), or orangecheck does not
-///             know it: Brickworks' setup fault, so nothing is deleted until
-///             it is fixed (orangecheck's final ruling).
-const CONNECT_OUTAGES = new Set(["unavailable", "rate_limited"]);
-const CONNECT_UNSET = new Set(["invalid_api_key"]);
-export async function unprovision(account) {
-  if (!connectConfigured()) return "unset";
-  let gone;
+/// before the account itself is, and whether the account may go: {go: true}
+/// (and kept: words to tell, when theirs stays at ochk.app), or {go: false,
+/// status: 503, error} and nothing is deleted. An allow-list, in Brickworks'
+/// own hands (site-attest, 2026-10-24), whatever me-client makes of an
+/// answer: the account goes only when orangecheck's is gone (unknown_user,
+/// deleted, detached: the person's own now they claimed it, already_deleted)
+/// or orangecheck refuses for good (holds_earnings, not_deletable: it stays
+/// theirs at ochk.app, said plainly; a person can always delete their
+/// Brickworks account). An outage (unavailable, rate_limited, a network
+/// failure, a throw) asks them to try again. Anything else (no key here, a
+/// key orangecheck does not know, bad_request, any answer not named here)
+/// is Brickworks' setup fault, and deleting would leave their orangecheck
+/// account behind unsaid: paused (orangecheck's final ruling). [ask] is
+/// connectDelete, or a stand-in for tools/web/orangecheck_check.mjs.
+const PAUSED = "Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted.";
+const TRY_AGAIN = "orangecheck could not delete the orangecheck account made for you just now, so nothing is deleted yet. "
+  + "Try again in a minute.";
+const KEPT = "orangecheck could not delete the orangecheck account made for you, so it stays yours at ochk.app, "
+  + "to claim or delete there.";
+const GONE_RESULTS = new Set(["deleted", "detached", "already_deleted"]);
+const KEPT_REASONS = new Set(["holds_earnings", "not_deletable"]);
+const OUTAGE_REASONS = new Set(["unavailable", "rate_limited"]);
+export async function unprovision(account, ask = connectDelete) {
+  const held = (error, why) => {
+    console.error(`orangecheck: a Connect account's deletion is held: ${why}`);
+    return { go: false, status: 503, error };
+  };
+  if (!connectConfigured()) return held(PAUSED, "no OC_CONNECT_KEY here");
+  let answer;
   try {
-    gone = await connectDelete({ apiKey: process.env.OC_CONNECT_KEY, userId: account });
+    answer = await ask({ apiKey: process.env.OC_CONNECT_KEY, userId: account });
   } catch (trouble) {
-    console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return "outage";
+    return held(TRY_AGAIN, `Connect threw: ${String(trouble?.message || trouble).slice(0, 120)}`);
   }
-  if (gone.ok || gone.reason === "unknown_user") return "gone";
-  console.error(`orangecheck: Connect did not delete an account: ${gone.reason} ${gone.status}`);
-  if (CONNECT_OUTAGES.has(gone.reason)) return "outage";
-  if (CONNECT_UNSET.has(gone.reason)) return "unset";
-  return "kept";
+  if (answer?.ok === true && GONE_RESULTS.has(answer.result)) return { go: true };
+  if (answer?.ok === false && answer.reason === "unknown_user") return { go: true };
+  if (answer?.ok === false && KEPT_REASONS.has(answer.reason)) {
+    console.error(`orangecheck: Connect keeps an account (${answer.reason}); ours is deleted all the same`);
+    return { go: true, kept: KEPT };
+  }
+  const said = String(answer?.ok === true ? `ok ${answer.result}` : `${answer?.reason} ${answer?.status}`).slice(0, 80);
+  if (answer?.ok === false && OUTAGE_REASONS.has(answer.reason)) return held(TRY_AGAIN, said);
+  return held(PAUSED, said);
 }
 
 /// The token ended at orangecheck once it has been taken, so it is good for

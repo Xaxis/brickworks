@@ -143,6 +143,18 @@ const anywhere = () => `2001:db8::${randomBytes(4).toString("hex").replace(/(.{4
 // after the wait, with a token of its own like the first's, as the person
 // would: the first was spent.
 const BUSY = /A lot of people are signing in/;
+
+/// A code redeemed at Supabase as a page redeems one, tried again after
+/// the wait while the same limit answers 429: {status, body}.
+async function redeemCode(email, token) {
+  for (let attempt = 0; ; attempt += 1) {
+    const reply = await real(`${SB}/auth/v1/verify`, { method: "POST", headers: PUBLIC,
+      body: JSON.stringify({ type: "email", email, token }) });
+    const body = await reply.json().catch(() => ({}));
+    if (reply.status !== 429 || attempt >= 8) return { status: reply.status, body };
+    await new Promise((done) => setTimeout(done, 11000));
+  }
+}
 async function call(handler, body, { method = "POST", op = "signin", ip = anywhere() } = {}) {
   for (let attempt = 0; ; attempt += 1) {
     let status = 0;
@@ -772,12 +784,12 @@ try {
       const asked = await route2(otp, { method: "POST", body: { email } });
       const letter = hooks.mail.filter((one) => one.to?.[0] === email).pop();
       const code = /code is (\d+)/.exec(letter?.text || "")?.[1];
-      const verified = code ? await (await real(`${SB}/auth/v1/verify`, { method: "POST", headers: PUBLIC,
-        body: JSON.stringify({ type: "email", email, token: code }) })).json().catch(() => ({})) : {};
+      const redeemed = code ? await redeemCode(email, code) : { status: 0, body: {} };
+      const verified = redeemed.body;
       if (verified.user?.id) made.add(verified.user.id);
       check(`a new person signs in by a code from api/otp.js, ${how}`, asked.status === 200 && amrOf(verified.access_token)[0] === "otp"
         && (await whoIs(verified.access_token)).body?.signed_in === true && !hooks.signupOff.has(email),
-        `${asked.status} ${asked.body?.error || ""} ${code ? "" : "no code mailed"}`);
+        `${asked.status} ${asked.body?.error || ""} ${code ? `redeemed ${redeemed.status} ${verified.error_code || ""}` : "no code mailed"}`);
     }
   }
 
@@ -982,6 +994,62 @@ try {
         `${left.status} ${JSON.stringify(left.body)}`);
       await deleteAccount(email).catch(() => false);
     }
+    // site-attest: deleting without connectDelete's success is an allow-list.
+    // Through the route, with orangecheck stood in: bad_request is paused in
+    // those words, and a reason nobody knows holds the deletion too (me-client
+    // reads it as unavailable, so it says to try again). Nothing deleted.
+    for (const [why, answer, words] of [["bad_request", [400, { ok: false, reason: "bad_request" }], PAUSED],
+      ["a reason nobody knows", [409, { ok: false, reason: "made_up_reason" }], null]]) {
+      const email = `delivered+bw-oc-${why === "bad_request" ? "badreq" : "oddreason"}-${tag}@resend.dev`;
+      const leaving = await mintSession(email, { age: true });
+      await rpc("oc_connect_asked", { account: leaving.kept.user_id });
+      ochk.remove = () => answer;
+      const left = await quit(leaving.access_token, { confirm: email });
+      ochk.remove = () => [200, { ok: true, result: "deleted" }];
+      check(`Connect, allow-list: orangecheck answering ${why}, the deletion is held, 503${words ? ", in those words" : ""}, nothing deleted`,
+        left.status === 503 && (words ? left.body?.error === words : typeof left.body?.error === "string")
+        && (await adminUser(leaving.kept.user_id)).status === 200 && (await connected(leaving.kept.user_id)) !== null,
+        `${left.status} ${JSON.stringify(left.body)}`);
+      await deleteAccount(email).catch(() => false);
+    }
+    // And in Brickworks' own code, past me-client's mapping: unprovision
+    // given each answer straight. Only unknown_user, deleted, detached,
+    // already_deleted, holds_earnings and not_deletable let the deletion go.
+    {
+      const { unprovision } = await import("../../api/_oc.js");
+      const TRY = /Try again in a minute/;
+      const cases = [
+        ["an unrecognised reason", { ok: false, reason: "made_up_reason", status: 409 }, { go: false, error: PAUSED }],
+        ["an unrecognised ok result", { ok: true, result: "archived" }, { go: false, error: PAUSED }],
+        ["ok with no result", { ok: true }, { go: false, error: PAUSED }],
+        ["invalid_api_key", { ok: false, reason: "invalid_api_key", status: 401 }, { go: false, error: PAUSED }],
+        ["bad_request", { ok: false, reason: "bad_request", status: 400 }, { go: false, error: PAUSED }],
+        ["unavailable", { ok: false, reason: "unavailable", status: 0 }, { go: false, error: TRY }],
+        ["rate_limited", { ok: false, reason: "rate_limited", status: 429 }, { go: false, error: TRY }],
+        ["a throw", new Error("orangecheck_check: thrown"), { go: false, error: TRY }],
+        ["unknown_user", { ok: false, reason: "unknown_user", status: 404 }, { go: true }],
+        ["deleted", { ok: true, result: "deleted" }, { go: true }],
+        ["detached", { ok: true, result: "detached" }, { go: true }],
+        ["already_deleted", { ok: true, result: "already_deleted" }, { go: true }],
+        ["holds_earnings", { ok: false, reason: "holds_earnings", status: 409 }, { go: true, kept: true }],
+        ["not_deletable", { ok: false, reason: "not_deletable", status: 409 }, { go: true, kept: true }],
+      ];
+      const wrong = [];
+      for (const [name, answer, wanted] of cases) {
+        let asked = 0;
+        const decided = await unprovision(randomUUID(), async () => {
+          asked += 1;
+          if (answer instanceof Error) throw answer;
+          return answer;
+        }).catch((trouble) => ({ threw: String(trouble?.message || trouble) }));
+        const right = asked === 1 && decided?.go === wanted.go
+          && (wanted.go ? Boolean(decided.kept) === Boolean(wanted.kept)
+            : decided.status === 503 && (wanted.error instanceof RegExp ? wanted.error.test(decided.error || "") : decided.error === wanted.error));
+        if (!right) wrong.push(`${name}: ${JSON.stringify(decided)} (${asked} asked)`);
+      }
+      check(`Connect, allow-list in Brickworks' own unprovision: ${cases.length} answers fed straight in, only the six known ones delete, the rest 503`,
+        wrong.length === 0, wrong.join("; "));
+    }
 
     // Somebody who never ticked the box never waits on orangecheck to leave:
     // with orangecheck down, and with no Connect key, their account is
@@ -1021,8 +1089,7 @@ try {
     const unverified = (one) => one.sent.every((body) => !("email" in body) && !("email_verified" in body));
     const codedEmail = `bw-oc-verified-${tag}@example.invalid`;
     const code = await mintCode(codedEmail);
-    const coded = await (await real(`${SB}/auth/v1/verify`, { method: "POST", headers: PUBLIC,
-      body: JSON.stringify({ type: "email", email: codedEmail, token: code }) })).json().catch(() => ({}));
+    const coded = (await redeemCode(codedEmail, code)).body;
     if (coded.user?.id) made.add(coded.user.id);
     const fromCode = await sentFor(coded.access_token);
     const verifiedOwn = amrOf(coded.access_token)[0] === "otp" && fromCode.answer.status === 200 && fromCode.sent.length === 1
@@ -1062,8 +1129,10 @@ try {
     const viaOc = await call(handler, { token: token({ did_oc: await rpc("oc_did_of", { account: coded.user?.id }) }).jwt });
     const fromItsOc = await sentFor(viaOc.body.access_token);
     check("Connect: an orangecheck session never provisions with email_verified, where a fresh code does",
-      verifiedOwn && viaOc.status === 200 && viaOc.body.user?.id === coded.user?.id && unverified(fromItsOc),
-      `${viaOc.status} ${fromItsOc.answer.status} ${JSON.stringify(fromItsOc.sent)}`);
+      // Answered "has orangecheck" first: what keeps it from sending, said.
+      verifiedOwn && viaOc.status === 200 && viaOc.body.user?.id === coded.user?.id && unverified(fromItsOc)
+      && fromItsOc.answer.status === 200 && fromItsOc.answer.body?.made === false && fromItsOc.answer.body?.reason === "has_orangecheck",
+      `${viaOc.status} ${fromItsOc.answer.status} ${JSON.stringify(fromItsOc.answer.body)} ${JSON.stringify(fromItsOc.sent)}`);
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.
