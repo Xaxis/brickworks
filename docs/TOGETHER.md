@@ -265,8 +265,14 @@ takes turns. Here:
   second whether or not anything had moved. It looks only when the mouse,
   the view or the model moved now (`Main`'s `pointer_at`); the timing
   tool's "+ undo" row went from p50 842 ms, p95 1,365 ms to p50 551 ms,
-  p95 910 ms in the next run. Whether that was all of the owner's 27
-  frames is the flow's next run on a preview to say.
+  p95 910 ms in the next run. On the 91db1843 preview the owner's page
+  drew 59.5 frames a second while idle, the other's 60.2: the 27 was that.
+  But the rich measure stayed p50 1,873 ms, p95 4,249 ms (owner to guest
+  p50 2,194), against p50 383, p95 516 ms before the seven kinds in the
+  same run. So in the flow's rich state the time is in the frames that
+  follow a change, not in idle ones, and the timing tool's two pages do not
+  reach that state (its rich rows: p50 452 to 890 ms). Next: the timing
+  tool's stages logged inside the flow itself, at its second measure.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
@@ -274,7 +280,8 @@ takes turns. Here:
   tracks. The desktop's half now writes its file as of the change it last
   put down beside its line (`desktop.json.ldr`), and the flow reads it
   again for up to 5 s before calling it apart, then prints the lines that
-  differ: a stale read passes, and a real difference is named.
+  differ: a stale read passes, and a real difference is named. On the
+  91db1843 preview every check of the desktop passed, the reload's too.
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
