@@ -61,8 +61,16 @@ const NAMED := 3
 ## How much of a test's reason the site keeps (api/_tested.js MOST_WHY).
 const MOST_WHY := 300
 ## How long the tests may take before the model goes untested, ms: a
-## 2,042-part set takes about 2.2 s here.
+## 2,042-part set takes about 2.2 s here. A bigger model may take longer
+## ([method most_ms]): before its first step is built, the Wizard's Tower's
+## 10,101 parts take 7.5 s to read what holds what and their exact shapes,
+## and each step that adds to one of its piers, columns held to each other
+## by what rests on what, weighs that pier again: 568 steps, about 90 s
+## (orthsteps212).
 const MOST_MS := 15000
+## ...the parts past which it may, and how much longer for each.
+const MOST_MS_FROM := 2000
+const MS_A_PART := 15
 ## LDraw's direct colours, 0x2RRGGBB: a colour typed in, not one parts are made in.
 const DIRECT_FROM := 0x2000000
 
@@ -522,7 +530,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		# Past its time a model's steps are built no further, rather than hold
 		# its share: a 3,457-part ship took 38 s, most of it weighed at 676
 		# steps. What it failed already is said ([method _unfinished]).
-		if Time.get_ticks_msec() - began > MOST_MS:
+		if Time.get_ticks_msec() - began > most_ms(bricks.size()):
 			built_to = step.index
 			break
 		asked.count(step.index, steps.size())
@@ -680,6 +688,11 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			% _counted(bricks.size(), "part"), "parts": bricks.size(), "steps": steps.size()}
 	return {"v": VERSION, "app": BuildInfo.version(), "parts": bricks.size(), "steps": steps.size(),
 		"tests": tests, "ms": Time.get_ticks_msec() - began}
+
+
+## How long the tests of a model of [param parts] parts may take, ms.
+static func most_ms(parts: int) -> int:
+	return MOST_MS + maxi(0, parts - MOST_MS_FROM) * MS_A_PART
 
 
 ## A model whose steps were built only to step [param built_to] of [param
