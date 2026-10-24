@@ -106,7 +106,7 @@ async function whoIs(access) {
   let status = 0;
   let answer = null;
   const response = { setHeader() { return this; }, status(code) { status = code; return this; }, json(value) { answer = value; return this; } };
-  await account({ method: "GET", query: {}, headers: { authorization: `Bearer ${access}` } }, response);
+  await account({ method: "GET", query: {}, headers: access ? { authorization: `Bearer ${access}` } : {} }, response);
   return { status, body: answer };
 }
 
@@ -258,10 +258,16 @@ try {
     && back.body.user?.id !== signedUp.body.user?.id, `${back.status}`);
 
   // Without the project's key or secret, nobody signs in with orangecheck.
+  const offered = (await whoIs(undefined)).body?.orangecheck;
+  check("/api/account says orangecheck takes a token here, offered to a flagged tab only", offered?.ready === true
+    && offered?.everyone === false, JSON.stringify(offered));
   const key = process.env.OC_SIGNING_SECRET;
   delete process.env.OC_SIGNING_SECRET;
   const unset = await call(await route(), { token: token().jwt });
-  check("without the project's secret, nobody signs in with orangecheck", unset.status === 503, `${unset.status}`);
+  check("without the project's secret, nobody signs in with orangecheck, and it says it is unavailable", unset.status === 503
+    && unset.body.error === "Signing in with orangecheck is unavailable here. Sign in with your email instead.", `${unset.status} ${unset.body.error}`);
+  const unsetOffer = (await whoIs(undefined)).body?.orangecheck;
+  check("and /api/account says so, for the button to say it", unsetOffer?.ready === false, JSON.stringify(unsetOffer));
   process.env.OC_SIGNING_SECRET = key;
   delete process.env.OC_AUDIENCE;
   const noAudience = await call(await route(), { token: token().jwt });

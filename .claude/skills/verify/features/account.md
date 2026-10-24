@@ -237,7 +237,13 @@ they have. A Claude connector belongs to the account that switched it on.
   Needs `OC_PROJECT_KEY` and `OC_SIGNING_SECRET` (Vercel: the secret in
   Production alone); without either nobody signs in with orangecheck. Step 1
   of orangecheck's brief: linking from `/settings` and ending sessions on
-  "Sign out everywhere" come with steps 2-3 (branch oc188). In the web
+  "Sign out everywhere" come with steps 2-3 (branch oc188-steps23). Until
+  then the button is offered only to a tab opened with `?oc=1` (kept in
+  sessionStorage `brickworks.oc`, the app's sign-in screen reads the same)
+  and to a test account's browser: `ORANGECHECK_FOR_EVERYONE` in
+  `api/_oc_config.js` is the one switch, told to pages and the app by
+  `/api/account` as `orangecheck: {ready, everyone}`. Every server path
+  works either way. Where the docs fell short: `docs/ORANGECHECK.md`. In the web
   app the sign-in screen has **Sign in with orangecheck** too
   (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
   `/profile?then=/app…`, which opens the dialog by itself and, signed in,
@@ -310,7 +316,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (39: a first sign-in is a new
+`orangecheck_check` ends "N passed, 0 failed" (41: a first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
 ended at orangecheck and never in the answer; refused a second time, here and
 on another instance; the same did is the same account; no `rh`, another
@@ -323,9 +329,11 @@ leave none over; three at once all get in; an orangecheck account is not
 deleted by its made-up address or somebody else's sign-in, is by a fresh one of
 its own, which is then spent, and signing in again makes a new one; twenty
 tries from one address, the next 429). `oc_flow` (a preview check, `oc`) needs
-no orangecheck account: the dialog at 390 and 1280 in both themes, the window
-opened at me.ochk.io and closed, a blocked one said in words, the headers,
-the server's refusals. A finished sign-in through orangecheck's real window
+no orangecheck account: not drawn without `?oc=1` until everybody is offered
+it, the dialog at 390 and 1280 in both themes, the window opened at
+me.ochk.io and closed, a blocked one said in words, or on a unit's preview
+(no signing secret) the button saying it is unavailable, the headers, the
+server's refusals. A finished sign-in through orangecheck's real window
 runs only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
 
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every

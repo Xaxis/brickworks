@@ -96,15 +96,20 @@ try {
   const offered = Object.keys(await controls());
   check(offered.length > 0 && offered.every((name) => name.startsWith("signin_")),
     `nothing but the sign-in form can be pressed: ${offered.join(", ")}`);
-  check(offered.includes("signin_orangecheck"), "Sign in with orangecheck is offered beside the email");
+  // Offered to everybody once the deployment says so (api/_oc_config.js),
+  // and until then only to a tab opened with ?oc=1.
+  const offer = (await (await fetch(new URL("/api/account", url), {
+    headers: bypass ? { "x-vercel-protection-bypass": bypass } : {} })).json()).orangecheck || {};
+  check(offered.includes("signin_orangecheck") === Boolean(offer.everyone),
+    offer.everyone ? "Sign in with orangecheck is offered beside the email" : "Sign in with orangecheck is not offered without ?oc=1");
   await shot("1_first_visit");
 
-  // Sign in with orangecheck goes to the site's sign-in, which says it
-  // brings the person back (web/profile.js): the app's page cannot hear
-  // orangecheck's window. Looked at in a page of its own.
+  // Sign in with orangecheck (with ?oc=1) goes to the site's sign-in,
+  // which says it brings the person back (web/profile.js): the app's page
+  // cannot hear orangecheck's window. Looked at in a page of its own.
   {
     const other = await context.newPage();
-    await other.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await other.goto(`${first}${first.includes("?") ? "&" : "?"}oc=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
     await until((s) => s.state === "signed_out" && s.gated, "showed the sign-in screen again", 300, other);
     for (let i = 0; i < 60 && !(await controls(other)).signin_orangecheck; i++) await other.waitForTimeout(500);
     await click("signin_orangecheck", other);

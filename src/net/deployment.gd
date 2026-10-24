@@ -35,6 +35,9 @@ var accounts: bool = false
 ## rotated key reaches a desktop build without anyone reinstalling.
 var accounts_url: String = ""
 var accounts_key: String = ""
+## Whether everybody is offered Sign in with orangecheck (api/_oc_config.js):
+## until then only a tab opened with ?oc=1 is (SignInForm).
+var orangecheck_for_everyone: bool = false
 
 ## Emitted once, when the question is over, whether or not anything
 ## answered. Anyone waiting on it needs to hear that it failed, too.
@@ -112,6 +115,9 @@ func _read(result: Array) -> bool:
 			accounts_key = str(body.get("key", ""))
 			# Enabled with nowhere to sign in is no accounts at all.
 			accounts = not accounts_url.is_empty() and not accounts_key.is_empty()
+		var orangecheck: Variant = body.get("orangecheck")
+		orangecheck_for_everyone = typeof(orangecheck) == TYPE_DICTIONARY \
+			and bool((orangecheck as Dictionary).get("everyone", false))
 	return answered
 
 

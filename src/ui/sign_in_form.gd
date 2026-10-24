@@ -120,6 +120,12 @@ func setup(with_account: Account) -> void:
 
 
 func focus_first() -> void:
+	# Shown again now the deployment has answered whether it offers
+	# orangecheck to everybody.
+	if _orangecheck != null and _step == Step.ADDRESS:
+		var offered: bool = _orangecheck_offered()
+		_orangecheck.visible = offered
+		_orangecheck_why.visible = offered
 	if _step == Step.ADDRESS:
 		_email.grab_focus()
 	else:
@@ -145,8 +151,9 @@ func _show(step: int) -> void:
 	_again.visible = not asking
 	_resend.visible = not asking
 	if _orangecheck != null:
-		_orangecheck.visible = asking
-		_orangecheck_why.visible = asking
+		var offered: bool = asking and _orangecheck_offered()
+		_orangecheck.visible = offered
+		_orangecheck_why.visible = offered
 	_why.text = ("Your email address is your account. We email you a code "
 		+ "to type here — there is no password, and nothing else to make."
 		if asking else
@@ -206,6 +213,17 @@ func _redeem() -> void:
 		return
 	_say(problem, false)
 	_code.grab_focus()
+
+
+## Whether this tab is offered orangecheck: everybody, once the deployment
+## says so, and until then a tab opened with ?oc=1 (kept for the tab, as
+## the site keeps it: web/account.js orangecheckOffer).
+func _orangecheck_offered() -> bool:
+	if account != null and account.deployment != null and account.deployment.orangecheck_for_everyone:
+		return true
+	return bool(JavaScriptBridge.eval("(function () { try {"
+		+ " if (new URLSearchParams(location.search).get('oc') === '1') sessionStorage.setItem('brickworks.oc', '1');"
+		+ " return sessionStorage.getItem('brickworks.oc') === '1'; } catch (e) { return false; } })()", true))
 
 
 ## To the site's sign-in, which comes back to this very address.

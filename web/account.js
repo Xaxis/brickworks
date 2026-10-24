@@ -44,7 +44,7 @@ async function where() {
   if (project) return project;
   const said = await json(await fetch("/api/account"));
   if (!said.enabled || !said.url || !said.key) throw new Error("Brickworks cannot sign anyone in just now.");
-  project = { url: said.url, key: said.key };
+  project = { url: said.url, key: said.key, orangecheck: said.orangecheck || { ready: false, everyone: false } };
   return project;
 }
 
@@ -177,6 +177,24 @@ function popupCode() {
   return popup;
 }
 
+/// Whether Sign in with orangecheck is offered on this page: to everybody
+/// once the deployment says so (api/_oc_config.js, the one switch), and
+/// until then to a tab opened with ?oc=1, kept for that tab, and to a test
+/// account's browser (api/_auth.js isTestAccount). {offered, ready}: ready
+/// false is a deployment without the signing secret, where the button says
+/// so rather than open orangecheck's window.
+export async function orangecheckOffer() {
+  let tab = false;
+  try {
+    if (new URLSearchParams(location.search).get("oc") === "1") sessionStorage.setItem("brickworks.oc", "1");
+    tab = sessionStorage.getItem("brickworks.oc") === "1";
+  } catch {
+    tab = new URLSearchParams(location.search).get("oc") === "1";
+  }
+  const said = (await where()).orangecheck;
+  return { offered: said.everyone === true || tab || /@resend\.dev$/i.test(email()), ready: said.ready === true };
+}
+
 /// Whether an address is an orangecheck account's, made up by the server
 /// (api/orangecheck.js): nobody's inbox, never to be shown as theirs.
 export function madeUp(address) {
@@ -293,7 +311,14 @@ export function askToSignIn(why) {
     ocSaid.className = "note";
     ocSaid.textContent = "A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.";
     other.append(oc, ocSaid);
-    popupCode().catch(() => null);
+    // Drawn once the deployment has said it is offered here.
+    other.hidden = true;
+    let offer = { offered: false, ready: false };
+    orangecheckOffer().then((known) => {
+      offer = known;
+      other.hidden = !known.offered || Boolean(address);
+      if (known.offered && known.ready) popupCode().catch(() => null);
+    }).catch(() => null);
     dialog.append(title, said, form, other);
     document.body.append(dialog);
     let address = "";
@@ -308,6 +333,10 @@ export function askToSignIn(why) {
     close.addEventListener("click", () => end(false));
     dialog.addEventListener("cancel", () => end(false));
     oc.addEventListener("click", async () => {
+      if (!offer.ready) {
+        note.textContent = "Signing in with orangecheck is unavailable here. Sign in with your email instead.";
+        return;
+      }
       oc.disabled = true;
       go.disabled = true;
       note.textContent = "Signing in with orangecheck, in its own window.";

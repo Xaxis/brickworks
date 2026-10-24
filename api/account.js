@@ -3,8 +3,9 @@
 //
 //   No token  — where the part geometry the build did not ship is served
 //               from, whether this deployment has accounts, and where to
-//               sign in. The same answer for everybody, so any cache may
-//               keep it. Enough to draw the sign-in screen.
+//               sign in, with orangecheck too ({ready, everyone}). The
+//               same answer for everybody, so any cache may keep it.
+//               Enough to draw the sign-in screen.
 //   A token   — the same, and who that token belongs to: the address,
 //               and whether it is the owner's (MASTER_EMAIL), which is
 //               what puts the admin page in the account panel; and its age
@@ -57,6 +58,7 @@
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
+import { orangecheckOffer } from "./_oc_config.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
 
 export default async function handler(request, response) {
@@ -101,6 +103,9 @@ export default async function handler(request, response) {
     // so the parts cannot live beside the app. Null means "next to the
     // app", which is what a deployment carrying its own parts wants.
     parts_url: process.env.PARTS_URL || null,
+    // Sign in with orangecheck (api/orangecheck.js): whether it works here,
+    // and whether everybody is offered it (api/_oc_config.js).
+    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false },
   };
 
   const token = bearer(request);
