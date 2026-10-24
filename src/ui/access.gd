@@ -1,5 +1,12 @@
-## Names a screen reader would otherwise be without, in the parts of the
-## interface Godot builds itself.
+## Every button within reach of the keys, and names a screen reader would
+## otherwise be without, in the parts of the interface Godot builds itself.
+##
+## A button made with no focus (FOCUS_NONE, as most of the app's are, so a
+## click did not leave the space bar on it) joins the keyboard's order as it
+## is made (FocusGuard.by_keyboard): Tab and the arrows reach it, Return
+## presses it, and a click still leaves the keys with the model. So every
+## dialog's buttons and the sign-in screen's can be used without a mouse,
+## whoever made them and whenever.
 ##
 ## Every control the app makes says its own name (accessibility_name, or its
 ## words). Godot's own file dialog, which the desktop shows to choose a
@@ -13,11 +20,29 @@ extends Node
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_added)
+	# And those made before this was.
+	_reach_all.call_deferred(get_tree().root)
+
+
+static func _reach_all(node: Node) -> void:
+	for child: Node in node.get_children(true):
+		if child is BaseButton:
+			_within_reach(child)
+		_reach_all(child)
 
 
 func _on_added(node: Node) -> void:
 	if node is FileDialog:
 		_name_dialog.call_deferred(node)
+	elif node is BaseButton:
+		_within_reach.call_deferred(node)
+
+
+## After whoever made it has set it up: a focus set once it was added counts.
+static func _within_reach(button: BaseButton) -> void:
+	if is_instance_valid(button) and not button.has_meta(FocusGuard.BY_KEYBOARD) \
+			and button.focus_mode in [Control.FOCUS_NONE, Control.FOCUS_ACCESSIBILITY]:
+		FocusGuard.by_keyboard(button)
 
 
 static func _name_dialog(dialog: FileDialog) -> void:

@@ -7391,6 +7391,8 @@ func _inset(panel: Control, wants_wide: float, wants_tall: float) -> void:
 	if panel == null:
 		return
 	const MARGIN := 24.0
+	# Over the frame: while it shows, Tab and F6 go into it (FocusGuard).
+	panel.add_to_group(FocusGuard.OVER)
 	var room: Vector2 = get_viewport().get_visible_rect().size
 	var wide: float = minf(wants_wide, room.x - MARGIN * 2.0)
 	var tall: float = minf(wants_tall, room.y - MARGIN * 2.0)

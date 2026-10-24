@@ -27,6 +27,12 @@ extends Node
 
 ## Marks a control that Tab and the arrows reach, and a click does not keep.
 const BY_KEYBOARD := &"by_keyboard"
+## The group of what lies over the frame and has the keys while it shows: the
+## sign-in screen, and every dialog Main insets over the model. Tab and F6 go
+## into the one showing rather than the frame behind it, and Tab in one of
+## its fields goes on to its next control: there is no model to give the
+## keys back to there.
+const OVER := &"over_the_frame"
 
 
 ## [param control] in the keyboard's order: Tab and the arrows reach it, and
@@ -173,7 +179,7 @@ func _input(event: InputEvent) -> void:
 			# A field of more than one line may want Tab; a one-line field
 			# never does here. The keys go back to the model, which is the
 			# stop after the field: the next Tab goes on from it.
-			if focused is LineEdit:
+			if focused is LineEdit and _over(focused) == null:
 				_left = focused
 				focused.release_focus()
 				get_viewport().set_input_as_handled()
@@ -201,13 +207,15 @@ func _tab_in(event: InputEvent) -> void:
 		return
 	var back: Control = _back_to if is_instance_valid(_back_to) else null
 	_back_to = null
-	if back != null and back.is_visible_in_tree() and back.focus_mode != Control.FOCUS_NONE:
+	var showing: Control = _showing_over()
+	if back != null and back.is_visible_in_tree() and back.focus_mode != Control.FOCUS_NONE \
+			and _over(back) == showing:
 		back.grab_focus()
 		_left = null
 		get_viewport().set_input_as_handled()
 		return
-	var from: Control = interface_top
-	if is_instance_valid(_left) and _left.is_visible_in_tree():
+	var from: Control = showing if showing != null else interface_top
+	if is_instance_valid(_left) and _left.is_visible_in_tree() and _over(_left) == showing:
 		from = _left
 	_left = null
 	if from == null or not from.is_visible_in_tree():
@@ -217,6 +225,25 @@ func _tab_in(event: InputEvent) -> void:
 	if next != null:
 		next.grab_focus()
 		get_viewport().set_input_as_handled()
+
+
+## What lies over the frame and shows, the last made of them: or null.
+func _showing_over() -> Control:
+	var showing: Control = null
+	for node: Node in get_tree().get_nodes_in_group(OVER):
+		if node is Control and (node as Control).is_visible_in_tree():
+			showing = node
+	return showing
+
+
+## The holder over the frame [param control] is in, or null.
+static func _over(control: Control) -> Control:
+	var up: Node = control
+	while up != null:
+		if up is Control and up.is_in_group(OVER):
+			return up
+		up = up.get_parent()
+	return null
 
 
 ## Where Tab goes in from: the interface's outermost control (Shell).

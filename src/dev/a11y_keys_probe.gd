@@ -4,6 +4,20 @@
 ## down on the model with keys alone.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/a11y_keys_probe.gd
+##   BRICKWORKS_API=http://127.0.0.1:9091 \
+##     godot --path . --resolution 1400x900 --script src/dev/a11y_keys_probe.gd -- live
+##
+## First the way in, the sign-in screen, as a screen reader's user meets it.
+## Offline (in the suite: the deployment at a port nobody answers): Try
+## again reached and pressed; then the form, the keys in its email field,
+## Tab on to Email me a code and Sign in with orangecheck (the browser's
+## form, drawn here too); the code's step, its field, Sign in, Send a new
+## code and Use a different address; the age question, the keys on its first month,
+## a month chosen with Return, the year typed, Carry on. Live (with
+## tools/web/relay_server.mjs on 9091 and .env): signed in by keys alone, a
+## throwaway address typed, Return, the code minted on this side (a probe
+## has no inbox) typed, Tab to Sign in and Return, the age answered by keys
+## if asked; the account deleted at the end.
 ##
 ## Every press is a key event sent to the real scene, as a keyboard sends
 ## it; nothing is clicked and nothing is called on the app to move the
@@ -34,13 +48,19 @@ func _check(what: String, ok: bool) -> void:
 
 
 func _run() -> void:
+	var live: bool = OS.get_cmdline_user_args().has("live")
+	if not live:
+		OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	SignInForm.offers_orangecheck = true
 	_main = load("res://src/main.tscn").instantiate()
+	_main.set("gate_for_probe", true)
 	root.add_child(_main)
 	for _n: int in 120:
 		await process_frame
+	await _way_in(live)
 	var playback: BuildPlayback = _main.get("_playback")
 	if playback != null:
 		playback.stop()
@@ -179,6 +199,143 @@ func _run() -> void:
 	_finish()
 
 
+## The sign-in screen, by keys alone: offline its every control reached,
+## live signed in through it.
+func _way_in(live: bool) -> void:
+	var account: Account = _main.get("_account")
+	var gate: SignInGate = _main.get("_gate")
+	_check("the app has its sign-in screen", gate != null and account != null)
+	if gate == null:
+		return
+	while account.state == Account.State.CHECKING:
+		await account.changed
+	await _frames(10)
+	if live:
+		await _sign_in_live(account, gate)
+		return
+	print("  the way in, offline")
+	var named: Dictionary = gate.controls_by_name()
+	await _key(KEY_F6)
+	var retry: Control = await _tab_until(func(c: Control) -> bool:
+		return c == named.get("signin_retry"), 10)
+	_check("nowhere to sign in: F6 reaches Try again (%s)" % _said(retry), retry != null)
+	var asked: Array[int] = [0]
+	var count: Callable = func() -> void: asked[0] += 1
+	account.changed.connect(count)
+	await _key(KEY_ENTER)
+	await _frames(20)
+	account.changed.disconnect(count)
+	_check("...and Return on it asks again (%d answers)" % asked[0], asked[0] > 0)
+	while account.state == Account.State.CHECKING:
+		await account.changed
+
+	# Signed out, with somewhere to sign in: the form.
+	if account.deployment != null:
+		account.deployment.orangecheck_for_everyone = true
+	account.state = Account.State.SIGNED_OUT
+	account.changed.emit()
+	await _frames(10)
+	named = gate.controls_by_name()
+	_check("the form shows with the keys in its email field (%s)" % _said(_focused()),
+		_focused() == named["signin_email"])
+	await _type("someone@example.com")
+	_check("...an address typed there", (named["signin_email"] as LineEdit).text
+		== "someone@example.com")
+	for name: String in ["signin_send", "signin_orangecheck"]:
+		var reached: Control = await _tab_until(func(c: Control) -> bool:
+			return c == named[name], 12)
+		_check("Tab reaches %s (%s)" % [name, _said(reached)], reached != null)
+	# The code's step, as Email me a code leaves it.
+	(gate.get("_form") as SignInForm)._show(1)
+	await _frames(4)
+	for name: String in ["signin_code", "signin_go"]:
+		var reached: Control = await _tab_until(func(c: Control) -> bool:
+			return c == named[name], 12)
+		_check("...then %s (%s)" % [name, _said(reached)], reached != null)
+	for words: String in ["Use a different address", "Send a new code"]:
+		var reached: Control = await _tab_until(func(c: Control) -> bool:
+			return c is BaseButton and str(c.get("text")).begins_with(words), 12)
+		_check("...and %s" % words, reached != null)
+
+	# Signed in, and asked its age once.
+	account.email = "probe@example.com"
+	account._access = "probe.signed.in"
+	account._expires_at = Time.get_unix_time_from_system() + 3600.0
+	account.age_ask = true
+	account.state = Account.State.SIGNED_IN
+	account.changed.emit()
+	await _frames(10)
+	await _answer_age(gate, false)
+	account.age_ask = false
+	account.changed.emit()
+	await _frames(10)
+	_check("let in, the screen goes", not gate.visible)
+
+
+## The age question by keys: the first month has them, Right to March and
+## Return, Tab to the year typed, Tab to Carry on and Return when [param go].
+func _answer_age(gate: SignInGate, go: bool) -> void:
+	var named: Dictionary = gate.controls_by_name()
+	_check("the age question shows with the keys on its first month (%s)" % _said(_focused()),
+		_focused() == named.get("age_month_1"))
+	await _key(KEY_RIGHT)
+	await _key(KEY_RIGHT)
+	await _key(KEY_ENTER)
+	_check("...Right to March and Return chooses it",
+		(named["age_month_3"] as Button).button_pressed)
+	var year: Control = await _tab_until(func(c: Control) -> bool:
+		return c == named["age_year"], 12)
+	_check("Tab reaches the year (%s)" % _said(year), year != null)
+	await _type(str(int(Time.get_datetime_dict_from_system()["year"]) - 30))
+	var carry: Control = await _tab_until(func(c: Control) -> bool:
+		return c == named["age_go"], 6)
+	_check("...and Carry on (%s)" % _said(carry), carry != null)
+	if go and carry != null:
+		await _key(KEY_ENTER)
+
+
+## Signed in for real, by keys alone: the address, Return, the code minted
+## here typed, Tab to Sign in, Return; the age by keys if asked.
+func _sign_in_live(account: Account, gate: SignInGate) -> void:
+	print("  the way in, against %s" % Deployment.api_base())
+	var named: Dictionary = gate.controls_by_name()
+	_check("signed out, the keys are in the email field (%s)" % _said(_focused()),
+		account.state == Account.State.SIGNED_OUT and _focused() == named["signin_email"])
+	var email: String = SignInHelper.throwaway("keys")
+	await _type(email)
+	await _key(KEY_ENTER)
+	for _n: int in 900:
+		await process_frame
+		if (named["signin_code"] as Control).is_visible_in_tree():
+			break
+	_check("Return asks for a code, and the keys are in its field (%s)" % _said(_focused()),
+		_focused() == named["signin_code"])
+	var code: String = await SignInHelper.mint(email, root)
+	_check("a code minted for it (%s)" % ("yes" if not code.begins_with("!") else code),
+		not code.begins_with("!"))
+	await _type(code)
+	var go: Control = await _tab_until(func(c: Control) -> bool:
+		return c == named["signin_go"], 6)
+	_check("Tab reaches Sign in (%s)" % _said(go), go != null)
+	await _key(KEY_ENTER)
+	for _n: int in 900:
+		await process_frame
+		if not gate.visible or account.age_ask:
+			break
+	if account.age_ask and gate.visible:
+		await _frames(10)
+		await _answer_age(gate, true)
+		for _n: int in 600:
+			await process_frame
+			if not gate.visible:
+				break
+	await _frames(20)
+	_check("signed in by keys alone, and the screen goes (%s)" % account.email,
+		account.signed_in() and account.email == email and not gate.visible)
+	var gone: int = await SignInHelper.delete_accounts("delivered+bwkeys", root)
+	print("    (removed %d throwaway account(s))" % gone)
+
+
 ## Tab, until the focus is on a control [param wanted] says yes to, or
 ## [param most] presses have found none. Tab in a field gives the keys back
 ## to the model (FocusGuard), and F6 goes on from it, as a person does.
@@ -231,6 +388,17 @@ func _wait_for(done: Callable, most: int) -> void:
 		if bool(done.call()):
 			return
 		await process_frame
+
+
+func _type(text: String) -> void:
+	for character: String in text:
+		for down: bool in [true, false]:
+			var event := InputEventKey.new()
+			event.unicode = character.unicode_at(0)
+			event.pressed = down
+			Input.parse_input_event(event)
+			await process_frame
+	await _frames(3)
 
 
 func _key(code: Key) -> void:

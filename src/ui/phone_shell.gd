@@ -137,6 +137,7 @@ func _build() -> void:
 	for tool: Array in TOOLS:
 		var button: Button = _tool(str(tool[0]), str(tool[1]), str(tool[2]))
 		tools.add_child(button)
+	_share_row()
 
 	# What a finger does now, over the model's foot.
 	_pill = PanelContainer.new()
@@ -258,15 +259,16 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	var button := Button.new()
 	button.name = "phone_" + what
 	button.text = word
+	# Said by its word, shown or not (_share_row).
+	button.accessibility_name = word
+	button.set_meta("word", word)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# A fingertip wide, or its share of the row (_share_row), the word cut
-	# short with an ellipsis before it runs over.
+	# A fingertip wide, or its share of the row (_share_row).
 	button.custom_minimum_size = Vector2(_row_share(), p(ROW - 10))
 	button.add_theme_font_size_override("font_size", ceili(p(12)))
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	button.clip_text = true
-	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_faces(button, p(10))
 	if not icon.is_empty():
 		button.icon = Icons.texture_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
@@ -301,11 +303,27 @@ func _row_share() -> float:
 	return minf(p(Phone.TARGET), floorf(inside / TOOLS.size()))
 
 
+## Each its share, and its word under its picture where the word fits the
+## share; where one does not, the row is pictures alone, each still said by
+## its word (accessibility_name) and named in its tooltip. "Colo" and
+## "Selec", cut short at 150%, read as typos.
 func _share_row() -> void:
+	var share: float = _row_share()
+	var fits: bool = true
+	for tool: Array in TOOLS:
+		var button: Button = _tool_buttons.get(str(tool[0]))
+		if button == null:
+			continue
+		button.custom_minimum_size.x = share
+		var font: Font = button.get_theme_font("font")
+		var wide: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			button.get_theme_font_size("font_size")).x + p(2) * 2.0
+		fits = fits and wide <= share
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
 		if button != null:
-			button.custom_minimum_size.x = _row_share()
+			button.text = str(tool[1]) if fits else ""
+			button.tooltip_text = "" if fits else str(tool[1])
 
 
 ## What a button of the row does: the desktop's own command or verb.

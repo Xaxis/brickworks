@@ -61,6 +61,10 @@ const MONTHS: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 func setup(with_account: Account) -> void:
 	account = with_account
+	# Over the frame: Tab and F6 go into it, and Tab in its fields goes on to
+	# the next control (FocusGuard). Every button here is in the keys' reach
+	# (Access), so the way in needs no mouse.
+	add_to_group(FocusGuard.OVER)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -217,6 +221,12 @@ func _build_age(column: VBoxContainer) -> void:
 
 
 ## The month chosen, 1 to 12, or 0 for none.
+## Whether the age question, and the thanks after it, were showing at the
+## last _follow: the keys are put on them once, as each shows.
+var _asked_shown: bool = false
+var _thanks_shown: bool = false
+
+
 func _month() -> int:
 	for at: int in _months.size():
 		if _months[at].button_pressed:
@@ -306,6 +316,15 @@ func _follow() -> void:
 		_form.focus_first.call_deferred()
 	if not _form.visible:
 		_shown_form = false
+	# The keys on the question's first control, as they are on the form's
+	# field, so the keyboard alone carries on (the focus not drawn till a
+	# key moves it).
+	if asking_age and not _asked_shown:
+		_months[0].grab_focus.call_deferred(true)
+	if _thanks.visible and not _thanks_shown:
+		_thanks_go.grab_focus.call_deferred(true)
+	_asked_shown = asking_age
+	_thanks_shown = _thanks.visible
 
 
 ## Every click and key that reaches here while it is up stops here: they
