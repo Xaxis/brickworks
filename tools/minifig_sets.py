@@ -17,11 +17,15 @@ and hands' colours ("Torso, Black Arms, Yellow Hands [Plain]"), so the
 pairs are counted from every figure inventory there is.
 
 Reads vendor/rebrickable/*.csv.gz and assets/generated/{catalogue,colors}.json;
-writes assets/knowledge/minifig_sets.json. Run it after refresh_catalogue.
+writes assets/knowledge/minifig_sets.json. tools/refresh_catalogue.py runs it
+after each refresh.
+
+    tools/minifig_sets.py [--generated DIR] [--out FILE]
 """
 
 from __future__ import annotations
 
+import argparse
 import collections
 import json
 import re
@@ -62,8 +66,13 @@ ARMS = re.compile(r",\s*([A-Za-z][A-Za-z -]*?) Arms\b")
 
 
 def main() -> None:
-    catalogue = json.loads((ROOT / "assets/generated/catalogue.json").read_text())
-    colours = json.loads((ROOT / "assets/generated/colors.json").read_text())
+    ask = argparse.ArgumentParser(description="Which minifigure parts real sets use.")
+    ask.add_argument("--generated", type=Path, default=ROOT / "assets" / "generated",
+                     help="the catalogue.json and colors.json to join with")
+    ask.add_argument("--out", type=Path, default=OUT)
+    args = ask.parse_args()
+    catalogue = json.loads((args.generated / "catalogue.json").read_text())
+    colours = json.loads((args.generated / "colors.json").read_text())
     ldraw_of_colour = {int(c["rebrickable_id"]): int(c["code"]) for c in colours
                        if c.get("rebrickable_id") is not None}
     rb_colour_named = {r["name"].lower(): int(r["id"]) for r in rb._rows("colors")}
@@ -128,7 +137,7 @@ def main() -> None:
 
     arms = {str(torso): [[code, n] for code, n in pairs.most_common(6)]
             for torso, pairs in sorted(arm_pairs.items())}
-    OUT.write_text(json.dumps({
+    args.out.write_text(json.dumps({
         "format": 1,
         "about": "Minifigure part -> [sets that carry it, of which not a licence or a "
                  "named cast]; plain torso colour -> [[arm colour, figures]], "
@@ -137,7 +146,7 @@ def main() -> None:
         "plain_arms": arms,
     }, separators=(",", ":")) + "\n")
     print(f"{len(out_parts)} parts, {sum(1 for v in out_parts.values() if v[1] == 0)} "
-          f"only in character themes; {len(arms)} torso colours with arms -> {OUT}")
+          f"only in character themes; {len(arms)} torso colours with arms -> {args.out}")
 
 
 if __name__ == "__main__":

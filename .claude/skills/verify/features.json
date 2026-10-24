@@ -42,7 +42,8 @@
         "tests/test_cadtask.py",
         "tests/test_collection.py",
         "tests/test_designers.py",
-        "tests/test_library.py"
+        "tests/test_library.py",
+        "tests/test_refresh_catalogue.py"
       ]
     },
     {
@@ -1145,7 +1146,7 @@
       "id": "cli:refresh the catalogue",
       "kind": "cli",
       "entry": "tools/refresh_catalogue.py",
-      "reach": "tools/refresh_catalogue.py",
+      "reach": "tools/refresh_catalogue.py --dry-run   (all of it, minifig_sets.json and set_sizes.json too, in a scratch folder; writes nothing)",
       "area": "pipeline",
       "tests": []
     },

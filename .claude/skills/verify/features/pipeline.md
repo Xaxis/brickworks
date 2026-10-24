@@ -17,7 +17,18 @@ The Python side: LDraw in, mesh cache and catalogue out.
   line (210 LDraw colours with a Rebrickable colour, 77 current, 185 with a LEGO®
   number, 197 a BrickLink number). `--colours` writes `colors.json` alone,
   without reading or rewriting the catalogue. See [parts](parts.md) for what each
-  colour carries.
+  colour carries. After the catalogue it makes the knowledge from the same
+  tables again (`knowledge`, `KNOWLEDGE`: `tools/minifig_sets.py` and
+  `tools/set_sizes.py`, each into a `.new` beside its file, replaced only when
+  the tool succeeded with something in its list), and fails, exit 1 and
+  `refresh_catalogue FAILED: tools/X.py exited N: why, so X.json is the one
+  from before this refresh`, when either cannot be made; the other is still
+  made. `--dry-run` does all of it in a scratch folder (`TMPDIR`) and says
+  what each file would change, writing nothing: on 2026-10-24, 3938 parts and
+  1771 models, every file unchanged. `tests/test_refresh_catalogue.py` holds
+  the knowledge step over stand-in tools (each made from the catalogue it was
+  given; one failing, or writing an empty list, raised by name with its old
+  file kept).
 - `update the parts`: `tools/update_parts.py` brings the library and the
   catalogue up to a month of LDraw without the full build. It fetches the
   official updates newer than the library's release notes (`models/NoteYYRRCA.txt`)
@@ -40,7 +51,8 @@ The Python side: LDraw in, mesh cache and catalogue out.
   assemblies' names (3 minutes). `tools/set_sizes.py` writes
   `assets/knowledge/set_sizes.json`: every sub-model of each OMR set with a
   minifigure, measured in studs and plates (style.py's reader, 2 minutes).
-  Both after refresh_catalogue; `tools/export.sh` copies both beside the web
+  `tools/refresh_catalogue.py` runs both after each refresh (`--generated DIR`
+  and `--out FILE` say which catalogue and where); `tools/export.sh` copies both beside the web
   build, which fetches them (`SetKnowledge.ensure`). Proves it when
   `part_choice_probe` reads them ("3938 parts", "1771").
 - `check the gear table`: `assets/ldraw/gears.json`, the tooth counts, kinds and
@@ -101,7 +113,8 @@ tools/update_parts.py                 # apply them: the new and changed parts on
 tools/update_parts.py --zip Z... --ldraw DIR --out DIR   # given zips, on a copy
 tools/gears.py check                  # the gear table against names, holes and sizes, ~3s
 tools/gears.py measure                # spacing in every OMR Technic set (heavy: a minute or two)
-tools/refresh_catalogue.py            # also joins colour availability, ~10s of it
+tools/refresh_catalogue.py            # also joins colour availability, ~10s of it; then minifig_sets and set_sizes, ~5 min
+tools/refresh_catalogue.py --dry-run  # all of it in a scratch folder: what would change, nothing written
 tools/refresh_catalogue.py --colours  # colors.json alone (after tools/bricklink_colours.py)
 tools/web_pack.py --list              # say what would be included, write nothing
 tools/web_pack.py --budget 40         # stop at 40 MB
