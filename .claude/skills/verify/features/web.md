@@ -797,6 +797,11 @@ plan with Claude as the client.
   site.css, directory.css, each page's `<style>` and the embed's; tokens
   are made only in `:root`. And no count of none on a page ("0 likes",
   "following 0"): a count a press can change is on the page `hidden`.
+  Since 2026-10-24 (copy252) `.table`, a table of facts in a named region
+  that scrolls inside itself (the FAQ's dimensions, moved off its own
+  copy), and `.table.wide`, /compare's field, whose row names stay in view
+  as a phone scrolls it; design_flow and a11y_flow judge both on /faq and
+  /compare.
 - `model card` (`web/card.js`, 2026-10-22): one renderer, `cardHtml(model,
   {earned})`, a pure string function; `modelCard` parses it in the
   browser (gallery, landing strip, /profile), and the server's pages
@@ -2037,14 +2042,16 @@ plan with Claude as the client.
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
   system"). It shows rather than says: the hero is one line ("A complete CAD
-  for LEGO® models", `h1.display`), one sub-line (in your browser, nothing to
-  install, free), one primary action (Open Brickworks) and a quiet link to the
+  for LEGO® models", `h1.display`), one sub-line (in your browser or on your
+  phone, nothing to install, free), one primary action (Open Brickworks) and a quiet link to the
   desktop download, over the builder at work on the castle
   (`img/hero-*.webp`) under a window's bar with the app's address; `#features`,
   six pictures from the app of what a Studio or LDD user cannot do there, one
   line each (Will it stand?, gears at their real ratios on the orrery,
   grabbing a boom on its hinges, Studio `.io` both ways, booklets, every part
-  at true size) and one sentence of the rest, with a link to /compare;
+  at true size) and one sentence of the rest (building together, models on
+  every device, worked constructions, 3D export, renders, what your sets can
+  build; 2026-10-24, each a feature in this map), with a link to /compare;
   `#made`, a strip from the live gallery (`landing.js`: Top builds from
   `/api/share?op=list&sort=top`, asked as it nears the screen, a card put in
   only once its picture has decoded and the strip shown only once three are,
@@ -2077,7 +2084,14 @@ plan with Claude as the client.
   146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
   its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
   as numbered steps with what it costs (`#claude`), the questions (FAQPage
-  JSON-LD), the dimensions. `privacy page` (`web/privacy.html`): what an account
+  JSON-LD, the same answers), the dimensions (a `.table`). Since 2026-10-24:
+  signing in (`#sign-in`: `ui:sign in with orangecheck`, and on the desktop
+  `ui:sign in with orangecheck on the desktop`, said to be its next
+  release), building together (`#together`, `ui:build together`), Tested
+  (`#tested`, `lib:the Tested mark's four tests`), a phone (`phone layout`
+  in [building](building.md)) and a screen reader or the keys alone
+  (`#access`, `ui:accessibility`: the desktop's next release, never the
+  browser's canvas). `privacy page` (`web/privacy.html`): what an account
   holds and what Brickworks never sees — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
   the CSP in `deploy.sh`; change one, change the page. `changelog page`
@@ -2107,19 +2121,53 @@ plan with Claude as the client.
   found. About four minutes on SwiftShader.
 - `compare page` (`web/compare.html`, `web/compare.js`, `img/compare-*`): the
   answer to "Studio exists, LDD exists… why?" (a builder on Reddit), linked from
-  the home page's first sentence and the FAQ's first question (`#studio`). Under
-  400 words: Studio's strengths in one line, then six points, each one claim on
-  a real model with what Studio or LDD does, sourced at the foot (Studio's help
-  centre; the LEGO Group's and The Brothers Brick's notices that LDD is retired;
-  a page saying LDD has no stability check), checked 2026-10-13. Studio has
-  project tabs and an instruction maker, so neither is claimed as ours alone;
-  its stability check exists, so the claim is what ours adds (loads per joint,
-  the margin, every pose the hinges reach). A claim about Studio or LDD that
-  cannot be sourced is cut, not softened. The clips are muted, looping, `preload
+  the home page's features ("How it compares") and the FAQ's first question
+  (`#studio`). Since 2026-10-24 (copy252) three parts, each short. Six points,
+  each one claim on a real model with what Studio (or LDD, or LDCad) does.
+  Then the field, row by row (`.table.wide`, site.css): Brickworks, Studio,
+  Mecabricks, LeoCAD and LDCad, from docs/COMPETITIVE.md's matrix, "—" where
+  none was found. Then where the others still lead, plainly: renders, prices,
+  new parts, instructions as files, rubber bands and springs, years. Every
+  claim about another tool is sourced at the foot (their own pages and forum
+  threads, read 2026-10-12 and 13, versions rechecked 2026-10-24); a claim
+  that cannot be sourced is cut, not softened. Studio has project tabs and an
+  instruction maker, so neither is claimed as ours alone; its stability check
+  exists, so the claim is what ours adds. What is not yet in a desktop
+  release is said so ("in the next desktop release"). Each Brickworks claim
+  and the feature that proves it:
+  - in a browser, on a phone, every tab a project, models on every device:
+    `cli:web build and deploy`, [building](building.md) `phone layout`,
+    `ui:new tab or window`, `lib:models kept with the account`,
+    `ui:download page`;
+  - will it stand: `lib:stability`, `lib:balance`, `ui:stress view`;
+  - gears: `ui:gears put in mesh by hand`, `ui:simulate mechanism`;
+  - Studio files: `ui:open a studio model` (its own parts carried),
+    `ui:save as a studio model`, `ui:open an ldd model`;
+  - STL, OBJ, GLB: `ui:3d model export`;
+  - instructions: `ui:the booklet` (a big one opens in seconds, 0.7.0),
+    `ui:the booklet by hand`, `ui:the booklet page by hand`;
+  - the field's rows: connections `lib:occupancy lattice`,
+    `lib:placing a part by its connectors`, `ui:snap onto a joint`; finding a
+    part `lib:part search`, `ui:find a part from a photo`,
+    `ui:techniques in the bin`; rendering `ui:photo-real render`; flexible
+    parts `lib:flexible parts along a path`, `ui:hoses and chains by hand`;
+    making parts `lib:element maker`, `lib:change a part`,
+    `ui:print designer`, `lib:stickers`; files `lib:ldr read and write`,
+    `ui:brickify a 3d model` and the Studio, LDD and 3D ones above; shops
+    and collections `ui:parts lists for shops`, `ui:my collection`;
+    building together `ui:build together`, `lib:building together`;
+    sharing `ui:gallery page`, `lib:directory`,
+    `lib:comments on a shared model`, `ui:shared model page and card`,
+    `lib:the Tested mark kept and shown`; accessibility `ui:accessibility`;
+    AI `lib:design loop`, `ui:assistant on or off`;
+  - where the others lead: `ui:photo-real render`, `ui:parts lists for
+    shops`, `cli:update the parts`, `ui:the booklet`, `ui:tour`.
+  The clips are muted, looping, `preload
   ="none"` with a poster, WebM then MP4 (Playwright's Chromium has no H.264, so
   a check there plays the WebM), and `compare.js` plays each only while it is on
   screen and never for `prefers-reduced-motion`. Judge it at 390 and 1280 px
-  (site check's shots) and with Lighthouse on the preview (performance at least
+  (site check's shots: the field scrolls inside its region on a phone, its row
+  names held) and with Lighthouse on the preview (performance at least
   95 on mobile): `npx lighthouse@12 <preview>/compare --form-factor=mobile ...`
   as for the landing page.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
