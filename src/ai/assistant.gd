@@ -8950,7 +8950,10 @@ const GRILLE_EVERY := 2
 ## the middle of every face reads as a rib, as 10237's columns of round
 ## plates and grille do; scattered over it, tiles, round tiles and cheese
 ## slopes read as speckle, and the run that had them was called noise.
-const RIB_PART := "4073"
+## 6141, not 4073: LDraw moved 4073 to 6141, and what a design places goes
+## by the number made now (_current_parts, 2026-10-24), so a rib laid as
+## 4073 stood as 6141, and ribs counted by this number came to none.
+const RIB_PART := "6141"
 const RIB_EVERY := 4
 
 
@@ -10657,7 +10660,7 @@ func _panel(brick: Dictionary, facing: String) -> Dictionary:
 
 
 ## The parts a studs_out band's studs carry, by the kind of band asked.
-const DRESSES: Dictionary = {"tiles": ["3070b"], "rivets": ["4073"],
+const DRESSES: Dictionary = {"tiles": ["3070b"], "rivets": ["6141"],
 	"round": ["98138"], "lights": ["98138"]}
 
 
@@ -10711,10 +10714,10 @@ func _dress(brick: Dictionary, facing: String, tone: int = -1,
 	var point: Vector3 = placed * connector.position
 	var axis: Vector3 = (placed.basis * connector.axis).normalized()
 	var corner: Vector3 = _corner_on(point, axis, facing)
-	var faces: Array = ["3070b", "98138", "4073", "54200", "3024"]
+	var faces: Array = ["3070b", "98138", "6141", "54200", "3024"]
 	if facing in ["-x", "-z"]:
 		# Thicker than a plate hangs the other way on these sides.
-		faces = ["3070b", "98138", "4073", "3024"]
+		faces = ["3070b", "98138", "6141", "3024"]
 	if not only.is_empty():
 		faces = only
 	var x: float = float(brick["x"])
