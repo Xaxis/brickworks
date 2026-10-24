@@ -94,9 +94,12 @@ create trigger no_password_sign_in
 -- The account a refused password sign-up leaves: Supabase commits it
 -- before it hands out the session the trigger above refuses. Only a
 -- public sign-up writes an account whose user data says phone_verified
--- (measured: no account Brickworks makes, by code or by the admin API,
--- has it), so such an account, not at a test address, is refused when its
--- making commits, and the sign-up makes nothing at all.
+-- (measured: no account Brickworks makes, by the admin API or by a code,
+-- has it), so such an account is refused when its making commits, and the
+-- sign-up makes nothing at all. A test address too: the tests' accounts
+-- are the admin API's, and a public one there would be a stranger's
+-- password session. Until Supabase takes no sign-ups at all (its
+-- disable_signup, which orangecheck turns on once oc205's release is live).
 create or replace function public.auth_users_no_public_sign_up()
 returns trigger
 language plpgsql
@@ -104,8 +107,7 @@ set search_path = ''
 as $$
 begin
     if exists (select 1 from auth.users u
-                where u.id = new.id and u.raw_user_meta_data ? 'phone_verified'
-                  and coalesce(u.email, '') !~* '@resend[.]dev$') then
+                where u.id = new.id and u.raw_user_meta_data ? 'phone_verified') then
         raise exception 'Brickworks makes accounts itself: sign in with a code we email you' using errcode = '42501';
     end if;
     return null;

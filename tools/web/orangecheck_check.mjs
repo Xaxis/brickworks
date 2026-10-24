@@ -69,10 +69,12 @@ globalThis.fetch = async (input, init = {}) => {
     hooks.mail.push(JSON.parse(init.body));
     return json(200, { id: "caught-by-orangecheck-check" });
   }
-  // Supabase taking no sign-ups, for one new address: its first code.
+  // Supabase taking no sign-ups, for the addresses named: generate_link
+  // makes no account, so it answers only for an account that is there.
   if (url === `${SB}/auth/v1/admin/generate_link` && hooks.signupOff.has(JSON.parse(init.body || "{}").email)) {
-    hooks.signupOff.delete(JSON.parse(init.body).email);
-    return json(422, { code: 422, error_code: "signup_disabled", msg: "Signups not allowed for this instance" });
+    const asked = JSON.parse(init.body).email;
+    if (!(await accountAt(asked))) return json(422, { code: 422, error_code: "signup_disabled", msg: "Signups not allowed for this instance" });
+    hooks.signupOff.delete(asked);
   }
   if (url === `${SB}/rest/v1/rpc/oc_bind_session` && hooks.beforeBind) {
     const before = hooks.beforeBind;
@@ -701,10 +703,13 @@ try {
     check("enrolling a second factor (an authenticator app) from a session is refused at Supabase", enrol.status >= 400, String(enrol.status));
   }
 
-  // N2: public sign-up is open, and Supabase confirms an address itself,
-  // so a sign-up with a password handed out a session at once. Supabase
-  // now refuses it (supabase/no_new_ways_in.sql). Should one ever be
-  // handed out, api/_auth.js refuses it (403) and ends it.
+  // N2: public sign-up was open, and Supabase confirmed an address
+  // itself, so a sign-up with a password handed out a session at once.
+  // Whatever Supabase does with one (supabase/no_new_ways_in.sql refuses
+  // it; once orangecheck turns sign-up off, Supabase itself does, which
+  // tools/web/signup_check.mjs holds), /api takes no such session: none is
+  // handed out, or api/_auth.js refuses it, 403, and ends it (run while
+  // nothing at Supabase refused it, 2026-10-24: 403, and ended).
   {
     const email = `bw-oc-signup-${tag}@example.invalid`;
     const reply = await real(`${SB}/auth/v1/signup`, { method: "POST", headers: PUBLIC,
@@ -712,19 +717,17 @@ try {
     const signedUp = await reply.json().catch(() => ({}));
     const left = await accountAt(email);
     if (left) made.add(left.id);
-    check("N2: a public sign-up with a password is refused at Supabase, with no session handed out", reply.status >= 400
-      && !signedUp.access_token, `${reply.status} ${amrOf(signedUp.access_token)}`);
-    check("N2: and it leaves no account behind", !left);
-    if (signedUp.access_token) {
-      const write = await theme(signedUp.access_token);
-      check("N2: the session it handed out is refused at /api, 403, and ended", write.status === 403
-        && !(await refreshed(signedUp.refresh_token)), `${write.status} ${write.body.error || ""}`);
-    }
+    const write = signedUp.access_token ? await theme(signedUp.access_token) : null;
+    check("N2: a public sign-up with a password gives /api no session: none handed out, or refused there (403) and ended",
+      !signedUp.access_token || (write.status === 403 && !(await refreshed(signedUp.refresh_token))),
+      `${reply.status} ${write ? `${write.status} ${write.body.error || ""}` : "no session"}`);
   }
 
   // A new person signs in by a code from api/otp.js itself (its mail
-  // caught above, never sent), as Supabase is now and once it takes no
-  // sign-ups (its disable_signup): then the server makes the account first.
+  // caught above, never sent): the account made by the admin API, then
+  // generate_link asked for an account that is there. So as Supabase is
+  // now, and as it will be once it takes no sign-ups (its disable_signup),
+  // when generate_link makes no account (stood in for above).
   {
     const otp = (await import("../../api/otp.js")).default;
     for (const [how, off] of [["as Supabase is now", false], ["once Supabase takes no sign-ups", true]]) {

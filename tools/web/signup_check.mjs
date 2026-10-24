@@ -4,9 +4,10 @@
 //   node tools/web/signup_check.mjs [--url=https://brickworks.diy]
 //
 // The only way in is a code sent to the address (api/otp.js), and every
-// account is made on the server: api/otp.js by Supabase's admin
-// generate_link, orangecheck's sign-in and the test sessions by the admin
-// users API. None of them needs Supabase's public sign-up. Yet on
+// account is made on the server, by the admin users API: api/otp.js (then
+// its code by the admin generate_link, since 2026-10-24), orangecheck's
+// sign-in and the test sessions. None of them needs Supabase's public
+// sign-up. Yet on
 // 2026-10-23 it was open with "Confirm email" off (mailer_autoconfirm): a
 // POST to /auth/v1/signup with an address and a password made a confirmed
 // account at any address not yet used, and handed back a session the site
