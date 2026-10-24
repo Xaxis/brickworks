@@ -59,6 +59,12 @@ the pages say what the site does.
   `--again=supabase/replies.sql,supabase/collection_follows.sql`). Until
   then a collection's page has no Follow and no count, and a model's page
   says no collection.
+- `supabase/list_follow_counts.sql` after follow_counts.sql and
+  collection_follows.sql: it replaces follow_counts.sql's `feed_new_count`
+  (marked REPLACED LATER there), so a model put in a collection you follow,
+  after you followed it, is counted as new on your avatar, by when it was
+  put in; a person's rows as before. Until then the feed shows them and the
+  count leaves them out.
 - `supabase/replies.sql` after comments, follows, challenges, designers,
   gallery_tabs and notifications (it replaces a function of each, marked
   REPLACED LATER there; `tools/apply_sql.mjs` refuses any of those files
@@ -201,7 +207,9 @@ every profile (`/u/<handle>`) and beside "Shared by" on a model's page.
 docs/SOCIAL.md U11): Follow on a public collection's page (`/c/<id>`), by
 the same rules and the same limits, counted with following people; not
 your own (409). Its page counts its followers; nobody's are listed, and
-its owner is told nothing. What is put in it is in the follower's feed.
+its owner is told nothing. What is put in it is in the follower's feed,
+and new on their avatar when it was put in after they followed it,
+however long before it was published (`supabase/list_follow_counts.sql`).
 
 **Following is not a way to reach anybody.** Nobody is told they were
 followed, no feed row says who followed whom, and there is no message of
