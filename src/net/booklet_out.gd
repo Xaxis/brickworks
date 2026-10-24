@@ -34,6 +34,8 @@ var _pieces: Array[PackedByteArray] = []
 var _readers: Array[Reader] = []
 var _done: bool = false
 var _asked: bool = false
+## The file could not be opened to be written.
+var _unwritable: bool = false
 
 
 ## A browser reading the booklet over HTTP: its request, then how far
@@ -58,6 +60,7 @@ func begin(to: String, show: bool, name: String) -> void:
 		return
 	if not _path.is_empty():
 		_file = FileAccess.open(_part(), FileAccess.WRITE)
+		_unwritable = _file == null
 	if show:
 		_server = TCPServer.new()
 		if _server.listen(0, "127.0.0.1") == OK:
@@ -116,7 +119,7 @@ func finish(whole: bool) -> bool:
 		elif not whole:
 			BookletMaker.close_tab()
 		return true
-	var written: bool = true
+	var written: bool = not _unwritable
 	if _file != null:
 		written = _file.get_error() == OK
 		_file.close()
