@@ -82,7 +82,7 @@ func _what_if() -> void:
 		joints.is_empty() or joints.contains(" #"))
 	said = await _call("check_design", {"edit": {"remove": [987654]}})
 	_check("a number not there is refused: %s" % _text(said).left(60),
-		_text(said).begins_with("No brick has 987654"))
+		_text(said).begins_with("No brick has number 987654"))
 	said = await _call("check_design", {"bricks": [{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0}]})
 	_check("a check of bricks from outside says why it is not drawn",
 		_text(said).contains("Not drawn") and _images(said) == 0)
