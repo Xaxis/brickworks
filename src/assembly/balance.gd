@@ -916,8 +916,9 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 				for t: int in carries[child]:
 					taken[t] = true
 		# And each piece the tree does not reach from the floor.
+		var by_upper: Dictionary = _by_upper(under)
 		for piece: Array in _unreached():
-			var standing: Array = _standing_on(piece, under, weighted)
+			var standing: Array = _standing_on(piece, under, weighted, by_upper)
 			if not (standing[0] as Array).is_empty() and float(standing[1]) >= -1.0:
 				for t: int in standing[0]:
 					taken[t] = true
@@ -945,12 +946,13 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 	# a clip no connector names, and so that bar's side stud carries it, at
 	# 1.35 times its working load, and not the bar alone at 0.13.
 	var held_there: Dictionary = {}      ## node -> true
+	var on_top: Dictionary = _by_upper(under)
 	for piece: Array in _unreached():
 		if not piece.all(_studs_only):
 			for n: int in piece:
 				held_there[n] = true
 			continue
-		var standing: Array = _standing_on(piece, under, weighted)
+		var standing: Array = _standing_on(piece, under, weighted, on_top)
 		if not (standing[0] as Array).is_empty():
 			_tipping.append([piece, -float(standing[1]), standing[2]])
 	if held_there.is_empty():
@@ -973,22 +975,42 @@ func _studs_only(n: int) -> bool:
 	return true
 
 
+## Each of [param under]'s touches by the part on it: node -> the touches'
+## indices, in order.
+static func _by_upper(under: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for t: int in under.size():
+		var high: int = under[t][0]
+		if not out.has(high):
+			out[high] = []
+		(out[high] as Array).append(t)
+	return out
+
+
 ## What [param piece] (nodes) stands on of [param under]'s touches: [the
 ## touches' indices, how far its centre of mass is inside where they meet,
-## LDU (negative past it), the node under the largest].
-func _standing_on(piece: Array, under: Array, weighted: Array[Vector2]) -> Array:
+## LDU (negative past it), the node under the largest]. [param by_upper]
+## is [method _by_upper] of them: each piece asked of every touch, a tower's
+## thousand pieces resting on tiles were most of a weighing (orthsteps212).
+func _standing_on(piece: Array, under: Array, weighted: Array[Vector2],
+		by_upper: Dictionary) -> Array:
 	var members: Dictionary = {}
 	var grams: float = 0.0
 	var centre := Vector2.ZERO
+	var asked: Array = []
 	for n: int in piece:
 		members[n] = true
 		grams += _mass[n]
 		centre += weighted[n]
+		if by_upper.has(n):
+			asked.append_array(by_upper[n])
+	# In the touches' order, as every touch was asked in turn.
+	asked.sort()
 	var used: Array = []
 	var corners := PackedVector2Array()
 	var most: int = -1
 	var widest: float = -1.0
-	for t: int in under.size():
+	for t: int in asked:
 		var one: Array = under[t]
 		if not members.has(int(one[0])) or members.has(int(one[1])):
 			continue
