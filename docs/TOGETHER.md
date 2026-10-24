@@ -67,13 +67,20 @@ Measured before choosing, 2026-10-24:
 | Supabase Realtime (Broadcast or Postgres changes) | Each page and the app opening a websocket to Supabase with the publishable key and the person's session, and row security policies for `authenticated` on `realtime.messages` | Ruled out without building it: since `supabase/no_client_access.sql` (2026-10-24) pages reach Supabase only to sign in, and the page's content security policy names nothing else there. It would reopen exactly what that file closed |
 | A websocket server | Something that holds a connection open | Vercel functions do not hold websockets; it would be a new host to run |
 
-The cost of the chosen way is the wait: a poll looks every 150 ms, so a
-change reaches the other side in about one round trip to Vercel plus up to
-150 ms. Measured on this machine against the deployment's code with the
-tables in memory (`tools/web/together_probe.mjs`): 152 ms p50, 155 ms p95
-from send to the other side's poll answering. The browser numbers include
-the frames each page draws (SwiftShader, two pages at once); the preview's
-are in the unit's report.
+The cost of the chosen way is the wait: a poll looks every 100 ms, so a
+change reaches the other side in about two round trips to Vercel and the
+database plus up to 100 ms. Measured on a preview with the project's tables
+(2026-10-24):
+
+| What | p50 | p95 |
+|---|---|---|
+| A send to the other side's waiting poll answering (`together_probe.mjs`, 30 changes, from this box) | 224 ms | 302 ms |
+| ...the first version: a send that checked the session first, and polls 150 ms apart | 344 ms | 573 ms |
+| An edit asked of one browser to the other browser's frame having it (`together_flow.mjs`, 38 changes, both ways, two SwiftShader pages drawing at once) | 519 ms | 688 ms |
+
+A browser drawing in software takes a few hundred milliseconds a frame, so
+the last row is mostly frames on both sides; on a real graphics card it
+should come close to the first row, which is not measured yet.
 
 ## Who may
 
