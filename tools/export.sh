@@ -124,11 +124,13 @@ build_web() {
   compress_web "$dir" || return 1
   # The real-set index beside the build, not in the pack every visitor
   # waits for: the app fetches it the first time a design asks for a
-  # technique (src/ai/real_snippets.gd), and our own scored designs when a
-  # design starts (src/ai/design_memory.gd).
+  # technique (src/ai/real_snippets.gd), our own scored designs when a
+  # design starts (src/ai/design_memory.gd), and real sets' figures and
+  # sizes when a design asks for a figure or a scale (src/ai/set_knowledge.gd).
   mkdir -p "$dir/knowledge"
   cp assets/knowledge/snippets.json.gz assets/knowledge/part_looks.json \
-    assets/knowledge/designs.json.gz "$dir/knowledge/" \
+    assets/knowledge/designs.json.gz assets/knowledge/minifig_sets.json \
+    assets/knowledge/set_sizes.json "$dir/knowledge/" \
     || { echo "export FAILED: no assets/knowledge to put beside $dir"; return 1; }
   report_web "$dir"
 }

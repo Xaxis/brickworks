@@ -620,6 +620,9 @@ func load_catalogue(path: String = "") -> bool:
 	_index_prints()
 	_read_names()
 	_search_index = null
+	_current_lock.lock()
+	_current_of.clear()
+	_current_lock.unlock()
 
 	_load_colors()
 	loaded.emit(parts.size())
@@ -1554,7 +1557,18 @@ func staples(most: int = 30) -> Array[PartInfo]:
 ## a part and never hides it. With [param every_word], only the parts that
 ## have every word.
 func search(query: String, limit: int = 100, every_word: bool = false) -> Array[PartInfo]:
-	return _finder().find(in_ldraw_words(query), limit, every_word)
+	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word)
+	# A number LDraw keeps only for old files, typed: the part made now in its
+	# shape, first (current), as the index leaves the old one out.
+	var typed: String = query.strip_edges().to_lower()
+	if superseded(typed):
+		var twin: PartInfo = parts.get(current(typed))
+		if twin != null:
+			found.erase(twin)
+			found.push_front(twin)
+			if found.size() > limit:
+				found.resize(limit)
+	return found
 
 
 ## The words of [param query] that no part has, by name, keyword or the
@@ -1573,7 +1587,13 @@ var _search_lock := Mutex.new()
 func _finder() -> PartSearch:
 	_search_lock.lock()
 	if _search_index == null:
-		_search_index = PartSearch.new(parts, _ordered_ids)
+		# Not a part LDraw keeps only for old files where one made now is
+		# the same shape (current): search offered 3660a beside 3660c.
+		var offered := PackedStringArray()
+		for id: String in _ordered_ids:
+			if not superseded(id):
+				offered.append(id)
+		_search_index = PartSearch.new(parts, offered)
 	var index: PartSearch = _search_index
 	_search_lock.unlock()
 	return index
@@ -1622,6 +1642,183 @@ func moved_by(part_id: String) -> Transform3D:
 		by = by * info.moved_by
 		at = info.moved_to
 	return by
+
+
+## The part a design places for [param part_id]: [method resolve]'s, and for
+## one LDraw keeps only for old files, the part made now of the same shape
+## and size. A design that knew 3660 from memory built a tug of nineteen
+## 3660a, "~Slope Brick 45 2 x 2 Inverted without Inner Stopper Ring
+## (Obsolete)", which the parts list and the BrickLink order then carried
+## (walk180, 2026-10-23); 3660c is that slope as it is moulded today. An
+## alias ("=Tail 2 x 3 x 2 Fin") is the part it names, drawn the same; an
+## obsolete mould or a "~" part is the current part of its family (its name
+## up to "with") in the same box, the closest named, then the most used.
+## One with no such twin is itself. Only for what a design places: a file
+## opened keeps the numbers its maker wrote.
+func current(part_id: String) -> String:
+	var at: String = resolve(part_id)
+	# A stub that turns its part (3139 a quarter round to 3139b) is placed
+	# through BrickWorld, which turns it; renamed here it would not be.
+	if moved_by(part_id) != Transform3D.IDENTITY:
+		return part_id
+	_current_lock.lock()
+	if _current_of.is_empty():
+		_index_current()
+	var twin: String = str(_current_of.get(at, at))
+	_current_lock.unlock()
+	return twin
+
+
+## Whether [param part_id] is a part LDraw keeps only for old files that
+## [method current] places as another: what a search leaves out.
+func superseded(part_id: String) -> bool:
+	_current_lock.lock()
+	if _current_of.is_empty():
+		_index_current()
+	var twin: String = str(_current_of.get(part_id, part_id))
+	_current_lock.unlock()
+	return twin != part_id
+
+
+## Whether LDraw keeps [param info] only for old files: an alias, an
+## obsolete mould, a "~" part (which LDraw files as not to be used alone).
+static func is_stale(info: PartInfo) -> bool:
+	if info == null or info.is_redirect() or info.custom:
+		return false
+	var name: String = info.name.strip_edges()
+	return name.begins_with("~") or name.begins_with("=") \
+		or info.category == "Obsolete" or name.contains("(Obsolete)")
+
+
+## What a part is before what it is with: "slope brick 45 2 x 2 inverted" for
+## every 3660, "window 1 x 3 x 2 classic" for 31b and 31bc01.
+static func family_of(info: PartInfo) -> String:
+	var name: String = info.name.to_lower().replace("(obsolete)", "").replace("(complete)", "")
+	name = name.lstrip("~=_ ")
+	for cut: String in [" with ", " without ", " ("]:
+		var found: int = name.find(cut)
+		if found > 0:
+			name = name.substr(0, found)
+	return " ".join(name.split(" ", false))
+
+
+var _current_of: Dictionary = {}
+var _current_lock := Mutex.new()
+
+
+func _index_current() -> void:
+	# The stale parts first, by a look at their names, so that only a current
+	# part sharing one's mesh or box is read further: a second's work over
+	# every part's name was a tenth of that.
+	var stale: Array[PartInfo] = []
+	var meshes: Dictionary = {}
+	var boxes: Dictionary = {}
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		if is_stale(info):
+			stale.append(info)
+			meshes[info.mesh_hash] = true
+			for key: String in _sizes_near(info):
+				boxes[key] = true
+	var by_mesh: Dictionary = {}
+	var by_family: Dictionary = {}
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		if info.is_redirect() or info.custom or not info.reachable or is_stale(info):
+			continue
+		if meshes.has(info.mesh_hash):
+			if not by_mesh.has(info.mesh_hash):
+				by_mesh[info.mesh_hash] = []
+			(by_mesh[info.mesh_hash] as Array).append(info)
+		if boxes.has(_size_key(info.size)):
+			var family: String = family_of(info)
+			if not by_family.has(family):
+				by_family[family] = []
+			(by_family[family] as Array).append(info)
+	for info: PartInfo in stale:
+		var id: String = info.id
+		var twins: Array = by_mesh.get(info.mesh_hash, [])
+		# A print only by its drawing: another print of the mould in the same
+		# box is another picture (3626bp30's messy hair is not 3626bp7g's glasses).
+		if twins.is_empty() and info.decor() == 0:
+			for other: PartInfo in by_family.get(family_of(info), []):
+				if other.decor() == 0 \
+						and other.bounds.position.distance_to(info.bounds.position) <= 1.0 \
+						and other.bounds.end.distance_to(info.bounds.end) <= 1.0:
+					twins.append(other)
+		var best: PartInfo = null
+		var best_score: float = -1.0
+		var words: PackedStringArray = _name_words(info)
+		var says: PackedStringArray = _clauses(info)
+		for other: PartInfo in twins:
+			var theirs: PackedStringArray = _name_words(other)
+			var shared: int = 0
+			for word: String in words:
+				if theirs.has(word):
+					shared += 1
+			# What it is with or without first: 3660a is "without Inner
+			# Stopper Ring", as 3660c is and 7261, "with Inner Stopper
+			# Ring without Bottom Stud", is not, though its words are closer.
+			var agreed: int = 0
+			for clause: String in _clauses(other):
+				if says.has(clause):
+					agreed += 1
+			var score: float = agreed + float(shared) / float(maxi(1, words.size() + theirs.size() - shared))
+			# Of two named alike, the one sets use, and the one made now.
+			score += (0.01 if other.in_sets > 0 else 0.0) + (0.005 if other.still_made() else 0.0)
+			if score > best_score or (is_equal_approx(score, best_score) and best != null
+					and other.in_sets > best.in_sets):
+				best_score = score
+				best = other
+		_current_of[id] = best.id if best != null else id
+	# Marked as built even where nothing is stale.
+	_current_of[""] = ""
+
+
+## A size to four LDU, and the sizes a part within one LDU of [param info]'s
+## may be filed under.
+static func _size_key(size: Vector3) -> String:
+	return "%d %d %d" % [floori(size.x / 4.0), floori(size.y / 4.0), floori(size.z / 4.0)]
+
+
+static func _sizes_near(info: PartInfo) -> PackedStringArray:
+	var out := PackedStringArray()
+	for dx: float in [-2.0, 0.0, 2.0]:
+		for dy: float in [-2.0, 0.0, 2.0]:
+			for dz: float in [-2.0, 0.0, 2.0]:
+				var key: String = _size_key(info.size + Vector3(dx, dy, dz))
+				if not out.has(key):
+					out.append(key)
+	return out
+
+
+## What a name says a part is with and without, a clause each: "without
+## inner stopper ring", "with flat bottom pin", "with small holes".
+static func _clauses(info: PartInfo) -> PackedStringArray:
+	var out := PackedStringArray()
+	var name: String = " ".join(info.name.to_lower().replace("(obsolete)", "").replace(",", " ")
+		.lstrip("~=_ ").split(" ", false))
+	var keyword: String = ""
+	var clause := PackedStringArray()
+	for word: String in (name + " with").split(" ", false):
+		if word == "with" or word == "without" or (word == "and" and not keyword.is_empty()):
+			if not keyword.is_empty() and not clause.is_empty():
+				out.append(keyword + " " + " ".join(clause))
+			clause = PackedStringArray()
+			if word != "and":
+				keyword = word
+		elif not keyword.is_empty():
+			clause.append(word)
+	return out
+
+
+static func _name_words(info: PartInfo) -> PackedStringArray:
+	var out := PackedStringArray()
+	var name: String = info.name.to_lower().replace("(obsolete)", "").lstrip("~=_ ")
+	for word: String in name.split(" ", false):
+		if not word in ["x", "with", "and", "the"] and not out.has(word):
+			out.append(word)
+	return out
 
 
 func ids() -> PackedStringArray:

@@ -1001,6 +1001,12 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 			continue
 		if not info.reachable:
 			continue  # no geometry anywhere in this build
+		# A part LDraw keeps only for old files, where the part made now in
+		# its shape and size is shown instead (PartLibrary.current): "slope
+		# inverted 2x2" showed 3660a, obsolete, beside 3660c. Still there in
+		# its own category, for whoever looks for it.
+		if wanted_category == "all" and library.superseded(id):
+			continue
 		if wanted_category == "all":
 			# Stickers and superseded parts are still findable by name or
 			# by their own button; they are just not what anyone means by

@@ -105,11 +105,33 @@ static func figure_for(args: Dictionary, library: PartLibrary) -> Array:
 	for slot: Variant in colours:
 		if Minifig.SLOTS.has(str(slot)):
 			figure.colours[str(slot)] = int(colours[slot])
+	# Arms as official figures wear them with that torso, unless their colour
+	# was asked for: told only that its torso was black, a deckhand kept the
+	# red arms every figure starts in, which no set puts with black (walk180).
+	if not colours.has("arms") and Minifig._family(figure.part("arms")) == Minifig.ARM_RIGHT:
+		var torso: String = figure.part("torso")
+		var worn: int = int(figure.colours["torso"])
+		if torso == "973":
+			var paired: int = SetKnowledge.plain_arms(worn)
+			figure.colours["arms"] = paired if paired >= 0 else worn
+		elif MinifigData.TORSO_HANDS.has(torso):
+			var printed: int = int((MinifigData.TORSO_HANDS[torso] as Array)[0])
+			figure.colours["arms"] = worn if printed < 0 or printed == 16 else printed
 	return [figure, unmatched]
 
 
 ## The part that best answers some words for a slot: "" for none, "?"
 ## for nothing that matched.
+##
+## By the words of its name, whole: "cap" is not a captain. Never a part only
+## a licence or a named cast wears, nor a head of another mould than the
+## classic one, for words that a part of anybody's would answer: matched by
+## their names, "smile" was a baby's head, "grin" SpongeBob's and "beard"
+## Tony Stark's (walk180, 2026-10-23), since the names say what is printed
+## and not whose face it is. The set inventories say whose (SetKnowledge).
+## Such a part is the answer only to words no other part has: "spongebob".
+## Of the rest, the most words, then the part more sets use, then the one
+## that says least besides ("Hat Wizard" before "Hat Wizard with Stars").
 static func choose(library: PartLibrary, slot: String, wanted: String) -> String:
 	var asked: String = wanted.to_lower().strip_edges()
 	if asked.is_empty() or asked == "none" or asked == "nothing":
@@ -130,35 +152,122 @@ static func choose(library: PartLibrary, slot: String, wanted: String) -> String
 			"hips": Minifig.PLAIN_HIPS, "legs": Minifig.PLAIN_LEGS}
 		if plain.has(slot):
 			return plain[slot]
-	var words: PackedStringArray = PackedStringArray()
-	for word: String in asked.replace(",", " ").split(" ", false):
+	var words: Array[PackedStringArray] = []
+	for word: String in asked.replace("'s ", " ").replace("'", "").replace(",", " ") \
+			.replace("-", " ").split(" ", false):
 		if not FILLER.has(word) and word.length() >= 3:
-			words.append(word.trim_suffix("s") if word.length() > 4 else word)
+			var forms := PackedStringArray([_singular(word)])
+			for other: String in SAID_AS.get(forms[0], []):
+				forms.append(other)
+			words.append(forms)
 	if words.is_empty():
 		return "?"
-	var best: String = "?"
-	var best_score: float = 0.0
+	var best: PartLibrary.PartInfo = null
+	var best_key: Array = []
 	for info: PartLibrary.PartInfo in all:
-		var name: String = info.name.to_lower()
-		var score: float = 0.0
-		for word: String in words:
-			if name.contains(word):
-				score += 1.0
-		if score <= 0.0:
+		var own: PackedStringArray = _words_of(info.name)
+		var matched: int = 0
+		for forms: PackedStringArray in words:
+			for form: String in forms:
+				if own.has(form):
+					matched += 1
+					break
+		if matched == 0:
 			continue
-		# Of two that say as much, the one that says less besides: "Hat
-		# Wizard" before "Hat Wizard with Stars and Moon Pattern".
-		score -= name.length() * 0.001
-		if score > best_score:
-			best_score = score
-			best = info.id
-	return best
+		var whose: int = _whose(library, info, slot, words)
+		var key: Array = [1 if whose > 0 else 0, matched, whose,
+			maxi(SetKnowledge.carried(info.id), info.in_sets), -info.name.length()]
+		if best == null or _before(key, best_key):
+			best = info
+			best_key = key
+	return best.id if best != null else "?"
+
+
+## Lexicographic: [param a] is the better key.
+static func _before(a: Array, b: Array) -> bool:
+	for n: int in a.size():
+		if a[n] != b[n]:
+			return a[n] > b[n]
+	return false
+
+
+## 2 for a part anybody's figure wears, 1 where no set is known to carry it,
+## 0 for a licence's or a named cast's, or a head of another mould than the
+## classic one (a baby's, SpongeBob's, a creature's) unless the words name it.
+static func _whose(library: PartLibrary, info: PartLibrary.PartInfo, slot: String,
+		words: Array[PackedStringArray]) -> int:
+	if slot == "head" and not Minifig._family(info.id).begins_with("3626"):
+		var mould: PartLibrary.PartInfo = library.parts.get(Minifig._family(info.id))
+		var named: PackedStringArray = _words_of(mould.name if mould != null else info.name)
+		for forms: PackedStringArray in words:
+			if forms[0] not in ["minifig", "head"] and named.has(forms[0]):
+				return SetKnowledge.generic(info.id)
+		return 0
+	var whose: int = SetKnowledge.generic(info.id)
+	# Where no set inventory says, LDraw's own name may: it files a licence's
+	# prints under its initials ("Torso with SW Dark Red Robe Pattern").
+	if whose == 1:
+		for word: String in _words_of(info.name):
+			if LICENCE_WORDS.has(word):
+				return 0
+	return whose
+
+
+## The words LDraw names a licence's parts by.
+const LICENCE_WORDS: Array[String] = ["sw", "hp", "lotr", "lor", "potc", "batman", "marvel",
+	"spongebob", "simpsons", "disney", "ninjago", "chima", "nexo", "minecraft", "jurassic",
+	"avengers", "superman", "spider", "stark", "vader", "hobbit", "muppet", "mario"]
+
+
+## A name's words, lower case, each as said and in the singular.
+static func _words_of(name: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for word: String in name.to_lower().replace("'s ", " ").replace("'", "").replace("/", " ") \
+			.replace("-", " ").replace(",", " ") \
+			.replace("(", " ").replace(")", " ").split(" ", false):
+		out.append(word)
+		var one: String = _singular(word)
+		if one != word:
+			out.append(one)
+	return out
+
+
+static func _singular(word: String) -> String:
+	if word.length() > 4 and word.ends_with("es") and word.substr(word.length() - 3, 1) in ["s", "x", "h"]:
+		return word.left(-2)
+	if word.length() > 3 and word.ends_with("s") and not word.ends_with("ss"):
+		return word.left(-1)
+	return word
+
+
+## A word a description says a face with -> the words LDraw names prints by:
+## its heads say Smile, Grin, Frown, Scowl, Open Mouth, Raised Eyebrows.
+const SAID_AS: Dictionary = {
+	"smile": ["grin", "smiling"], "grin": ["smile"],
+	"happy": ["smile", "grin", "smiling"], "smiling": ["smile", "grin"],
+	"smiley": ["smile"], "cheerful": ["smile", "grin"], "friendly": ["smile"],
+	"laughing": ["laugh", "laughing", "open"], "laugh": ["laughing", "open"],
+	"angry": ["scowl", "frown", "frowning"], "cross": ["angry", "scowl", "frown"],
+	"grumpy": ["frown", "scowl", "annoyed"], "stern": ["determined", "frown"],
+	"serious": ["stern", "neutral", "determined"], "sad": ["frown", "worried"],
+	"scared": ["worried", "open"], "frightened": ["scared", "worried"],
+	"afraid": ["scared", "worried"], "surprised": ["open", "raised", "scared"],
+	"shocked": ["scared", "open"], "nervous": ["worried", "scared"],
+	"sleepy": ["closed"], "tired": ["closed"], "winking": ["wink"],
+	"woman": ["female"], "girl": ["female"], "lady": ["female"],
+	"old": ["wrinkles", "grey"], "elderly": ["wrinkles", "grey"],
+	"bearded": ["beard"], "mustache": ["moustache"], "moustache": ["mustache"],
+	"grey": ["gray"], "gray": ["grey"],
+}
 
 
 ## Stand the figure the arguments describe in the world. A coroutine: a
 ## part not yet to hand is fetched first. Returns {ok, text, ids, box}.
 static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 		builder: Builder) -> Dictionary:
+	# Whose parts are whose, and the arms each torso is worn with: fetched on
+	# the web the first time a figure is asked for.
+	await SetKnowledge.ensure(builder)
 	var made: Array = figure_for(args, library)
 	var figure: Minifig = made[0]
 	var unmatched: PackedStringArray = made[1]
@@ -211,13 +320,25 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 				"text": "Not placed: %s is already standing at x %s, z %s."
 					% [world.get_brick(under).group, _n(x), _n(z)]}
 	if not builder.figure_fits(parts, at):
+		var why: String = _in_the_way(parts, at, Vector2(x, z), library, world, builder)
+		# Bare-headed it would stand: a lower hat of the kind asked for, which
+		# is what a designer reaches for under a wheelhouse roof. Told only to
+		# go bare-headed, a session put its captain in a knit cap by guessing,
+		# after five refusals (walk180).
+		if why.contains(" Without headwear"):
+			var lower: String = await _lower_headwear(figure, str(args.get("headwear", "")),
+				at, library, builder)
+			var info: PartLibrary.PartInfo = library.parts.get(lower)
+			if info != null:
+				why = why.replace(" Without headwear", (" A lower one stands there: headwear "
+					+ "\"%s\" (%s). Without headwear") % [lower, " ".join(info.name.split(" ", false))])
 		return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 			"text": ("Not placed: something is in the way of a figure standing "
 				+ "at x %s, z %s, y %s. A figure is two studs wide, one deep "
 				% [_n(x), _n(z), _n(resting_plates)]
 				+ "and five plates and a head tall; it needs that clear "
 				+ "above its feet, and its arms and what it holds a stud "
-				+ "either side.") + _in_the_way(parts, at, Vector2(x, z), library, world, builder)}
+				+ "either side.") + why}
 	var ids: PackedInt64Array = builder.put_figure(parts, figure.name, at)
 	var group: String = world.get_brick(ids[0]).group if not ids.is_empty() else figure.name
 	figure.name = group
@@ -292,6 +413,48 @@ static func _in_the_way(parts: Array[Dictionary], at: Transform3D, spot: Vector2
 		return said + " The nearest spot it stands is x %s, z %s." % [
 			_n(spot.x + nearest.x / STUD), _n(spot.y + nearest.z / STUD)]
 	return said
+
+
+## The headgear lower than the figure's that stands at [param at], or "":
+## of those anybody's figure wears, the ones that say most of what was asked
+## ("captain hat": a hat), then of its kind (LDraw's first word: Hat, Cap,
+## Helmet, Hair), then the most worn. A coroutine: the few tried are fetched.
+static func _lower_headwear(figure: Minifig, asked: String, at: Transform3D,
+		library: PartLibrary, builder: Builder) -> String:
+	var worn: PartLibrary.PartInfo = library.parts.get(figure.part("headwear"))
+	if worn == null:
+		return ""
+	var kind: String = Minifig.group_of(worn, "headwear")
+	var words: PackedStringArray = _words_of(asked)
+	var ranked: Array = []
+	for info: PartLibrary.PartInfo in Minifig.choices(library, "headwear"):
+		if info.id == worn.id or info.bounds.end.y >= worn.bounds.end.y - 2.0 \
+				or not PartsOnly.allows(info.id, library) or SetKnowledge.generic(info.id) == 0:
+			continue
+		var own: PackedStringArray = _words_of(info.name)
+		var said: int = 0
+		for word: String in words:
+			if not FILLER.has(word) and own.has(word):
+				said += 1
+		ranked.append([said, 1 if Minifig.group_of(info, "headwear") == kind else 0,
+			maxi(SetKnowledge.carried(info.id), info.in_sets), info.id])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool: return _before(a, b))
+	var tried := PackedStringArray()
+	for row: Array in ranked.slice(0, LOWER_TRIED):
+		tried.append(str(row[3]))
+	await _fetch(library, tried)
+	for id: String in tried:
+		if library.mesh_for(id) == null:
+			continue
+		var trial: Minifig = figure.copy()
+		trial.choose(library, "headwear", id)
+		if builder.figure_fits(seated_exactly(library, trial.assemble(library)), at):
+			return id
+	return ""
+
+
+## How many lower headgear a refused figure tries on.
+const LOWER_TRIED := 24
 
 
 ## What each slot's part sits on, by its connectors: a hat on the head's stud,

@@ -141,7 +141,8 @@ func _run() -> void:
 		var after_a_print: bool = false
 		for info: PartLibrary.PartInfo in found:
 			after_a_print = after_a_print or _decorated(info)
-			crowded = crowded or (after_a_print and not _decorated(info))
+			crowded = crowded or (after_a_print and not _decorated(info)
+				and _as_good(info, asked, found[0]))
 		if led != row[1] or binned != by_name or crowded:
 			_fail("%s -> %s (the bin %s), wanted %s first, the bin what names alone give, %s%s"
 				% [asked, str(searched), str(binned), row[1], str(by_name),
@@ -220,13 +221,28 @@ static func _by_name_alone(library: PartLibrary, query: String) -> Array[PartLib
 	var found: Array[PartLibrary.PartInfo] = []
 	for id: String in library.ids():
 		var info: PartLibrary.PartInfo = library.parts[id]
-		if info.is_redirect() or not info.reachable:
+		# As the bin: not a part LDraw keeps only for old files that one made
+		# now stands for (PartLibrary.superseded), 30069 beside 4070.
+		if info.is_redirect() or not info.reachable or library.superseded(id):
 			continue
 		var text: String = ("%s %s %s" % [info.id, info.name, info.category]).to_lower()
 		if Array(needles).all(func(needle: String) -> bool: return text.contains(needle)):
 			found.append(info)
 	PartsBin._sort_for(found, asked)
 	return found
+
+
+## Whether a plain part answers [param asked] as well as the first answer
+## does: every word of it in its name, and the first's size. With the aliases
+## of 4070 left out of the search (PartLibrary.superseded), "headlight brick"
+## reaches u609, a 1 x 4 bell, and 3005, a plain 1 x 1, after 4070's prints,
+## and rightly.
+static func _as_good(info: PartLibrary.PartInfo, asked: String, first: PartLibrary.PartInfo) -> bool:
+	var name: String = info.name.to_lower()
+	for word: String in asked.to_lower().split(" ", false):
+		if not name.contains(word):
+			return false
+	return info.footprint_studs() == first.footprint_studs()
 
 
 ## Whether a part carries a print or a sticker, read from what LDraw says
