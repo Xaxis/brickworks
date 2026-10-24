@@ -24,7 +24,8 @@
 --   together_people    who has joined, the name the others are shown (their
 --                      profile's, when a visitor may be shown it, else none:
 --                      never an email, never an under-13's), when each was
---                      last heard from, and whether the owner took them out
+--                      last heard from, where they are working now (pointer,
+--                      pointer_at), and whether the owner took them out
 --                      of it (removed_at: refused from then on, by the same
 --                      link too).
 --
@@ -77,6 +78,12 @@ create table if not exists public.together_people (
 -- So applying this again over a first draft of it, which had no name, adds it.
 alter table public.together_people add column if not exists name text not null default ''
   check (char_length(name) <= 40);
+
+-- 2026-10-24, the second part: where each person is working, shown in the
+-- others' view. A point in the model's own space (LDU), sent a few times a
+-- second while it moves, and when; never kept past the session.
+alter table public.together_people add column if not exists pointer    jsonb;
+alter table public.together_people add column if not exists pointer_at timestamptz;
 
 alter table public.together_sessions enable row level security;
 alter table public.together_ops      enable row level security;
