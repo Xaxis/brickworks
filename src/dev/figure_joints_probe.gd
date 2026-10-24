@@ -90,7 +90,13 @@ func _run() -> void:
 		and first.contains("\"attach\": {\"to\""),
 		"a statue stacked square is told each joint's call, an attach written out: %s"
 			% _around(first, "nothing in it is on a joint"))
-	_ok(first.find("nothing in it is on a joint") < first.find("Look at it"),
+	# The answer's last word: the look in a design, and from outside, as
+	# here, the note that nothing was drawn, which took the look's place
+	# there in f34e7a14 (2026-10-24). Against "Look at it" alone this read
+	# -1 from then on.
+	var closing: int = maxi(first.find("Look at it"), first.find("Not drawn"))
+	var joints: int = first.find("nothing in it is on a joint")
+	_ok(joints >= 0 and closing > joints,
 		"...before the look, among the first advice")
 	var second: String = _text(await _assistant.use_tool("check_design", {"bricks": stacked}))
 	var third: String = _text(await _assistant.use_tool("check_design", {"bricks": stacked}))
