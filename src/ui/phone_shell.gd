@@ -51,7 +51,7 @@ var _said_until: int = 0
 var _all_colours: bool = false
 
 const TOP := 52.0
-const ROW := 62.0
+const ROW := 72.0
 const BACK := Color(0.11, 0.12, 0.14, 0.97)
 const LIT := Color(0.36, 0.6, 1.0, 0.38)
 
@@ -292,8 +292,10 @@ func _chose(what: String) -> void:
 		"parts":
 			_toggle(_parts, "half")
 		"colour":
+			# All of them at once, without scrolling: a colour is a quick
+			# choice, and the sheet goes with it.
 			_fill_colours()
-			_toggle(_colours, "half")
+			_toggle(_colours, "full")
 		"more":
 			_fill_more()
 			_toggle(_more, "full")
