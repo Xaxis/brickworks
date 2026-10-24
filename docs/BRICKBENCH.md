@@ -3632,6 +3632,43 @@ tops and the fin's mount (statue, rabbit, boy) and 2 of 12 where they capped
 round rings and side studs (potato, dog, toilet). A rule that tiled flat tops
 only was not judged.
 
+## 2026-10-24: testing the proportions lever
+
+gap228's third lever, untested until now: proportions and level of detail set by
+the subject. BrickAgent's potato, statue and rabbit are 1.5 to 4.4 times the box
+of every arm of ours, and the judge's reasons name proportion and "reads as".
+This runs gap228's own test of it with no change to the designer: sculpt170's
+designer (`55eee104`) designs the statue, the rabbit and the potato once each,
+with one sentence added to the brief, as a new arm `lever-size`.
+
+### The sizing rule, written down before any design
+
+1. Name the narrowest feature the subject is known for that must stand apart
+   from its body to read: a limb, an ear, a tail, from the brief and from what
+   the subject is.
+2. Give it 2 studs across: the least that is a mass of its own in bricks, not
+   a stick one stud wide.
+3. Scale the whole subject from that feature by the real subject's
+   proportions: N = 2 x (the subject's height / that feature's width),
+   rounded to an even number of studs.
+4. At most 24 studs (five minifigures, what 400 pieces cover with limbs one or
+   two studs wide: BrickAgent's 24-stud statue is 352 parts), and at least 16
+   (the top of the designer's own "about 6 to 16 studs tall" for a figure,
+   below which the sentence asks nothing new).
+
+The sentence, the same for every subject but its N, goes between the prompt
+and "Use at most 400 pieces.":
+
+> Build it about N studs tall, so each feature the subject is known for has room to read.
+
+| prompt | narrowest feature it is known for | the real proportion | N by the rule | sculpt170's height | BrickAgent's height |
+|---|---|---|---|---|---|
+| potato (042) | its arms (every toy of its kind has them) | a toy about 18 cm to its hat's top, an arm about 1.8 cm across: 10 | 20 | 14.4 | 19.2 |
+| statue (049) | the forearm across the knee | a seated man about 126 cm from the ground to his crown (0.72 of 175 cm), a forearm about 7 cm: 18 | 36, held to 24 | 15.6 | 24.0 |
+| rabbit (078) | its ears and hanging arms | an ear or an arm about a tenth of its height across: 10 | 20 | 16.8 | 24.0 |
+
+(Heights in studs, 20 LDU each; a brick is 1.2 studs.)
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
