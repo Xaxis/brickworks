@@ -64,18 +64,27 @@ const address = addressFromPrivateKey(key, "p2wpkh");
 appendFileSync(keys, `${new Date().toISOString()} ${site} address ${address}\n`);
 console.log(`  --    throwaway wallet ${address} (written to ${keys})`);
 
-/// orangecheck's window, signed in with the throwaway wallet.
+/// orangecheck's window, signed in with the throwaway wallet, by the
+/// controls /me/sdk "a Bitcoin wallet in the popup" names (2026-10-24), or
+/// the placeholders oc188 found before it named them.
 async function walletSignIn(popup, name) {
-  await popup.waitForLoadState("domcontentloaded", { timeout: 60000 });
-  await popup.getByText("Bitcoin wallet", { exact: true }).click({ timeout: 60000 });
-  await popup.getByPlaceholder("bc1q").fill(address);
+  await popup.waitForLoadState("load", { timeout: 60000 });
+  // A click before the window's script has taken over leaves it on Email
+  // (seen 2026-10-24): clicked again until the address field shows.
+  const field = popup.getByLabel("Bitcoin address").or(popup.getByPlaceholder("bc1q")).first();
+  for (let tries = 0; tries < 10 && !(await field.isVisible()); tries++) {
+    await popup.getByText("Bitcoin wallet", { exact: true }).click({ timeout: 60000 });
+    await popup.waitForTimeout(1000);
+  }
+  await field.fill(address);
   await popup.getByRole("button", { name: "Get the message to sign" }).click();
-  const message = popup.locator("textarea[readonly]").first();
+  const message = popup.getByLabel("Message to sign").or(popup.locator("textarea[readonly]")).first();
   await message.waitFor({ timeout: 30000 });
   const text = await message.inputValue();
   check(`${name}: orangecheck asks the wallet to sign its message for this address`,
     text.startsWith("orangecheck-auth\n") && text.includes(`address: ${address}\n`) && text.endsWith("\n"), text.slice(0, 80));
-  await popup.getByPlaceholder("paste the signature").fill(signMessage(address, text, key));
+  await popup.getByLabel("Signature", { exact: true }).or(popup.getByPlaceholder("paste the signature")).first()
+    .fill(signMessage(address, text, key));
   await shot(popup, `${name}_window.png`);
   await popup.getByRole("button", { name: "Sign me in" }).click();
 }

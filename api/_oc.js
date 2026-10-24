@@ -70,9 +70,9 @@ function endedSessions() {
 // minutes, and after that no token is taken until it can.
 let rule = { at: 0, tried: 0, value: undefined };
 
-/// {kind: "everyone"} or {kind: "backed", minSats, minDays}, or null when it
-/// is not known. A floor is {min_sats, min_days}, and nothing else, as
-/// orangecheck answered oc188's review (docs/ORANGECHECK.md, 4).
+/// {kind: "everyone"} or {kind: "backed", minSats, minDays, maxAgeSecs}, or
+/// null when it is not known. orangecheck's answer is {min_sats, min_days}
+/// (/me/require-bond); max_age_secs is read only if it is ever there.
 async function whoMaySignIn() {
   const now = Date.now();
   const known = rule.value !== undefined;
@@ -88,7 +88,8 @@ async function whoMaySignIn() {
       let value;
       if (bond === null) value = { kind: "everyone" };
       else if (bond && Number.isFinite(bond.min_sats) && Number.isFinite(bond.min_days)) {
-        value = { kind: "backed", minSats: bond.min_sats, minDays: bond.min_days };
+        value = { kind: "backed", minSats: bond.min_sats, minDays: bond.min_days,
+          ...(Number.isFinite(bond.max_age_secs) ? { maxAgeSecs: bond.max_age_secs } : {}) };
       } else throw new Error("a rule it does not state plainly");
       rule = { at: now, tried: now, value };
       return value;
@@ -133,7 +134,8 @@ export async function checkToken(token) {
   }
   const allowed = await whoMaySignIn();
   if (!allowed) return { status: 503, error: "orangecheck could not be asked just now. Try again in a minute, or sign in with your email." };
-  if (allowed.kind === "backed" && !bondMeets(session, { minSats: allowed.minSats, minDays: allowed.minDays })) {
+  if (allowed.kind === "backed"
+    && !bondMeets(session, { minSats: allowed.minSats, minDays: allowed.minDays, maxAgeSecs: allowed.maxAgeSecs })) {
     return { status: 403, error: "Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.", more: { back_url: BACK_URL } };
   }
   let state;

@@ -259,11 +259,11 @@ try {
   const unbacked = await call(handler, { token: token({ aud: "http://127.0.0.1:8844" }).jwt });
   check("a rule asking for a backed account refuses one that is not", unbacked.status === 403
     && unbacked.body.back_url === "https://ochk.app/me/account#backing", `${unbacked.status} ${unbacked.body.error || ""}`);
-  // The floor is {min_sats, min_days} and nothing more (oc188's review, 4).
+  // A floor without max_age_secs, as orangecheck answers one (/me/require-bond).
   const bond = { v: 1, sats_floor: 250000, days_floor: 90, height: 900000, checked_at: Math.floor(Date.now() / 1000) - 60,
     nullifier: randomBytes(32).toString("hex") };
   const backed = await call(handler, { token: token({ aud: "http://127.0.0.1:8844", oc_bond: bond }).jwt });
-  check("4: a rule of {min_sats, min_days} alone is read, and lets an account backed above it in", backed.status === 200,
+  check("a floor of {min_sats, min_days} alone, without max_age_secs, is read, and lets an account backed above it in", backed.status === 200,
     `${backed.status} ${backed.body.error || ""}`);
   ochk.ruleStatus = 503;
   ochk.rule = { ok: false };

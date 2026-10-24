@@ -66,10 +66,28 @@ which now passes.
 - **Packages.** me-client 0.42.0 and auth-core 2.17.0, pinned in
   tools/web/vendor_orangecheck.sh. `checkOcToken` tells a token that is no
   good from a key set that cannot be read, which answers 503, never 401.
-- **4.** The rule's floor is `{min_sats, min_days}`, read in exactly those
-  names; nothing asks for `max_age_secs`.
+- **4.** The parser was right already: it reads `{min_sats, min_days}` and
+  takes `max_age_secs` only if it is there (orangecheck's correction). A
+  check now covers a floor without it.
+
+The exchange stays Brickworks' own rather than `withOcAuth`. orangecheck's
+updated /me/sdk ("If your own session replaces the token") asks for what it
+does: the project's rule, the list of ended sessions with the exchange
+counted as a write, `rh` required, the `jti` spent in a shared store, and
+the token ended right after. `withOcAuth` reads the token from a header and
+runs before the handler, so it would ask orangecheck before the per-address
+limit is counted, and the link and delete routes, which take a token in
+their body, would still need their own check.
+
+orangecheck's checklist asks a server to refuse to start without
+`OC_PROJECT_KEY` and `OC_SIGNING_SECRET`. Brickworks keeps serving, since
+email sign-in needs neither, takes no orangecheck token, and says so in its
+log at every start.
 
 ## Where the docs fell short
+
+orangecheck answered most of these in its docs on 2026-10-24; each says so
+where it did.
 
 1. **/me/sdk → "Full reference" (/sdk/me-client): missing.** The generated pages cover only
    the main entry. Nothing is generated for `/server` (`verifyOcToken`, `getOcSession`,
@@ -90,25 +108,31 @@ which now passes.
    *Did:* read the rule from `GET me.ochk.io/api/integrator/<key>/sign-in` (named on
    /me/require-bond). I re-read it at most once a minute, keep the last answer for ten
    minutes, then refuse. When it asks for a backed account, I apply `bondMeets`.
+   *Answered:* the wrappers apply it; read it directly only where no wrapper runs, as here.
 
 4. **/me/require-bond: missing.** The `/api/integrator/<key>/sign-in` answer has no
    documented shape. With "Everyone" set it is `{"ok":true,"require_bond":null}`. The shape
    of `require_bond` when a floor is set was a guess until orangecheck's review said it:
    `{min_sats, min_days}`, no `max_age_secs`.
-   *Did:* read exactly those two names, and refuse every sign-in when the answer doesn't
-   state them.
+   *Did:* read those two names (and `max_age_secs` if it is ever there), and refuse every
+   sign-in when the answer doesn't state them.
+   *Answered:* /me/require-bond gives the shapes; the floor is `{min_sats, min_days}`, with no
+   age field, and any other key is to be ignored.
 
 5. **/me/sdk "Anything else" (revocation list answer): unclear.** In
    `{ v, at, tokens, accounts, handles }`, the unit of `at` isn't stated. It is Unix
    seconds: a list built with milliseconds reads as stale, and every check answers
    `unverified`. What `tokens` and `accounts` hold isn't said either.
    *Did:* found the unit by testing auth-core's check against a stub list.
+   *Answered:* "the list of ended sessions, without an SDK": `tokens` and `accounts` are always
+   empty.
 
 6. **/me/sdk "If your own session replaces the token": unclear.** It doesn't say whether the
    exchange itself counts as a write. If it does, it must wait while the list is
    `unverified`.
    *Did:* treat it as a write. While the list can't be read, nobody signs in with
    orangecheck (503 in words). Email sign-in is untouched.
+   *Answered:* "The exchange is a write."
 
 7. **/me/quickstart step 5 ("The token") versus "Ending sessions": contradictory.** One line
    says the token is "spent once and never stored". Another says "Signing out clears your
@@ -118,6 +142,7 @@ which now passes.
    session you just started.
    *Did:* end it right after the exchange (the brief's rule). Its effect on the handles list
    is to be tested live once brickworks.diy is verified.
+   *Answered:* "End the token right after the exchange."
 
 8. **/me/quickstart step 1 and /me/sdk "when someone ends every session": missing.** The list
    is served only for the verified domain's origins. So on a preview host (`*.vercel.app`),
@@ -125,13 +150,17 @@ which now passes.
    production. No staging or preview guidance is given.
    *Did:* the preview proves everything up to the list. The full flow runs live on
    brickworks.diy (tools/web/oc_live_flow.mjs).
+   *Answered:* test on a subdomain of the domain, or on localhost with a test project. The
+   domain's DNS is at Namecheap, out of this project's reach, so the full flow is still
+   proven live after a release.
 
 9. **/me/quickstart step 2: missing.** It names the COOP header but not CSP. Under
    `script-src 'self'`, the popup module has to come from your own origin (the "No bundler?"
    paragraph covers that). Whether the page needs any orangecheck origin in
    `connect-src`/`frame-src` isn't said.
-   *Did:* served `dist/popup.mjs` from our origin and added nothing to connect-src. This
-   still has to be confirmed on the preview.
+   *Did:* served `dist/popup.mjs` from our origin and added nothing to connect-src.
+   *Answered:* the popup needs no orangecheck origin in `connect-src` or `frame-src`; the flows
+   see no refusal from the page's policy.
 
 10. **/me/sdk intro ("That is all sign-in needs"): wrong for this case.** me-client's
     `/server` doesn't export `integratorRevocationCheck`, so a site whose own session
@@ -158,6 +187,7 @@ which now passes.
    *Did:* keep a fixed list, pick the entry that equals the token's `aud` and pass that one
    string. In production the list is brickworks.diy alone (the review's step 1 L1): a
    release checked at its own address takes no token there.
+   *Answered:* `audience` is one origin or a list of exact origins, never `'*'`.
 
 14. **/me/sdk "a Bitcoin wallet in the popup": missing.** It shows how to sign the message with
     a throwaway key, but not how to reach the message in a test. Nothing documents the window's
@@ -165,6 +195,10 @@ which now passes.
     sign", the read-only message box, the signature box and "Sign me in".
    *Did:* read the window's controls in Playwright and drove them by their labels
    (tools/web/oc_live_flow.mjs).
+   *Answered:* the section names them: "Bitcoin wallet", "Bitcoin address", "Get the message to
+   sign", "Message to sign", "Signature", "Sign me in". The flow finds each by that label, or
+   the placeholder it was found by first, and clicks the tab until the address field shows:
+   a click before the window's script runs leaves it on Email.
 
 15. **/me/sdk "verify without the SDK" (`iat`): unclear.** It doesn't say whether `iat` is when
     the popup minted the token or when the ochk.io session began. That matters to a site
@@ -177,6 +211,7 @@ which now passes.
     "Fresh" isn't given a number. /me/sdk says "within the last few minutes".
    *Did:* an emailed code from the last 5 minutes, and never a session the orangecheck id itself
    started.
+   *Answered:* /me/quickstart: "a sign-in with your own login from the last five minutes".
 
 17. **/me/sdk "when someone ends every session": missing.** No page says where on ochk.app a
     person (or a tester) finds "Sign out everywhere", so the two-minute promise can't be checked
@@ -187,6 +222,7 @@ which now passes.
     `valid`, `invalid` (with `no_session_handle`) and `unavailable` (`key_set_unavailable`)
     apart, is in the package's types but on no page; the README names only `checkOcSession`.
    *Did:* read its type declaration, and answer `unavailable` 503.
+   *Answered:* /me/sdk's session route sample now uses it, with 503 on `unavailable`.
 
 19. **/me/sdk "your own accounts": missing.** It says to bind the token's `rh` to the
     session you mint, but not that your identity provider may let that session add a way in
