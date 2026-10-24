@@ -2509,6 +2509,72 @@ const GROUPS: Array[String] = ["basics", "walls and stone",
 	"furniture and interiors", "lights", "creative touches"]
 
 
+## The construction as LDraw lines, which a paste takes (Carry.from_ldraw):
+## the parts bin's Techniques hold one in hand this way. Read as a design's
+## own words are ([param reader]'s _read_model), so a section is turned, a
+## part said by its connectors is put on them and a repeat is said again,
+## and placed where a design's would be. [param colour] stands in for its
+## main colour (main_colour), unless it is -1. Each part's geometry must be
+## to hand first (parts_of names them): a part not drawn yet is left out.
+##
+## [param reader] is an assistant of its own, not the one designing: reading
+## a model resets what it says of the last one it read.
+static func as_ldraw(technique: Dictionary, reader: Assistant, colour: int = -1) -> String:
+	var model: Assistant.Model = reader._read_model({"bricks": technique["bricks"],
+		"sections": technique.get("sections", []),
+		"repeat_section": technique.get("repeat_section", [])})
+	var main: int = main_colour(technique)
+	var items: Array = []
+	for placement: Assistant.Placement in model.placements:
+		var part: Lbm.PartMesh = reader.library.mesh_for(placement.part)
+		if part == null:
+			continue
+		items.append({"part": placement.part,
+			"color": colour if colour >= 0 and placement.color == main else placement.color,
+			"at": reader._transform(placement, part, model.section_for(placement))})
+	return "0 %s\n%s" % [technique["name"], Carry.as_ldraw(items)]
+
+
+## The colour most of its parts are in: what the colour in hand replaces.
+## The first written, of two as common.
+static func main_colour(technique: Dictionary) -> int:
+	var counts: Dictionary = {}
+	var order: Array[int] = []
+	for raw: Variant in technique["bricks"]:
+		var code: int = int((raw as Dictionary).get("color", 16))
+		if not counts.has(code):
+			order.append(code)
+		counts[code] = int(counts.get(code, 0)) + 1
+	var best: int = -1
+	for code: int in order:
+		if best < 0 or int(counts[code]) > int(counts[best]):
+			best = code
+	return best
+
+
+## Every part it names, once each.
+static func parts_of(technique: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	for raw: Variant in technique["bricks"]:
+		var part: String = str((raw as Dictionary)["part"])
+		if not out.has(part):
+			out.append(part)
+	return out
+
+
+## Why it works, in one line: the first sentence of what it says.
+static func reason(technique: Dictionary) -> String:
+	var said: String = str(technique.get("why", "")).get_slice("\n", 0)
+	var cut: int = said.length()
+	for mark: String in [". ", ": ", "; ", " — "]:
+		var at: int = said.find(mark)
+		if at > 0:
+			cut = mini(cut, at)
+	said = said.substr(0, cut).strip_edges().trim_suffix(".").trim_suffix(":") \
+		.trim_suffix(";")
+	return said + "."
+
+
 ## Every name, by group: "basics: a, b; walls and stone: c, d".
 static func listing() -> String:
 	var out := PackedStringArray()

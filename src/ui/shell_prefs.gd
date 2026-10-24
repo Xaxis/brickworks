@@ -41,6 +41,9 @@ const DEFAULTS: Dictionary = {
 	# Whether the warning that this browser may clear the person's models
 	# has been shown (StorageOffer): once on a device, and never again.
 	"storage_warned": false,
+	# Whether finding a part from a photo has said, once, that the photo goes
+	# to Brickognize, a third party (PartsBin._ask_photo).
+	"photo_told": false,
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",

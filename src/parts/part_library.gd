@@ -205,6 +205,42 @@ func shop_part(part_id: String, shop: String) -> String:
 	return part_id
 
 
+## The part here a shop's number names, or "": the part that carries it as
+## its "BrickLink 3062" keyword (3062b; LDraw records the shop's number where
+## it is not LDraw's own), else the part numbered so, else the same mould
+## under a letter, as the part made now in that shape (current). How a
+## photo's BrickLink numbers become parts (Brickognize).
+func by_shop(number: String, shop: String = "BrickLink") -> String:
+	var wanted: String = number.strip_edges().to_lower()
+	if wanted.is_empty():
+		return ""
+	if not _by_shop.has(shop):
+		var named: Dictionary = {}
+		var prefix: String = shop.to_lower() + " "
+		for id: String in parts:
+			var info: PartInfo = parts[id]
+			if info.is_redirect():
+				continue
+			for word: String in info.keywords:
+				if word.to_lower().begins_with(prefix) and word.get_slice_count(" ") == 2:
+					var theirs: String = word.get_slice(" ", 1).to_lower()
+					# Two parts named so: the shorter number, the plain mould.
+					if not named.has(theirs) or id.length() < str(named[theirs]).length():
+						named[theirs] = id
+		_by_shop[shop] = named
+	var found: String = str((_by_shop[shop] as Dictionary).get(wanted, ""))
+	if found.is_empty():
+		for id: String in [wanted, wanted + "b", wanted + "a", wanted + "c"]:
+			if parts.has(id):
+				found = id
+				break
+	return "" if found.is_empty() else current(found)
+
+
+## Shop -> {its number, in lower case -> the part here} (by_shop).
+var _by_shop: Dictionary = {}
+
+
 ## What a part is, without its geometry.
 class PartInfo extends RefCounted:
 	var id: String              ## LDraw number, e.g. "3001"

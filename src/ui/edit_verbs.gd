@@ -679,6 +679,19 @@ func paste() -> int:
 	return parts.size()
 
 
+## A worked construction from the parts bin in hand, whole (PartsBin's
+## Techniques): put down as a paste is, one undo, R turning it first.
+func hold(parts: Array, what: String) -> int:
+	if parts.is_empty():
+		return 0
+	builder.cancel_carry()
+	builder.hold_copy(parts)
+	aim_again.call()
+	say.call("holding %s, %s — click to put it down, R turns, Esc puts away"
+		% [what, _parts(parts.size())])
+	return parts.size()
+
+
 ## A copy of the selection in hand at once: copy and paste in one key,
 ## leaving the clipboard as it was.
 func duplicate_selection() -> int:
