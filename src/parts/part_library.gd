@@ -1562,9 +1562,10 @@ const ALSO_KNOWN_AS: Dictionary = {
 	# plate wedges, the ones a saucer or a swept wing is made of, are all
 	# filed as "Wing": 61 of them, Wing 2 x 2 through Wing 6 x 12. So
 	# "wedge plate" pointed at the wrong family entirely, and the word
-	# that reaches the right one is one no builder says out loud.
+	# that reaches the right one is one no builder says out loud. A wedge
+	# brick is asked as it is said: the Wedge family, brick tall (PartSearch
+	# reads brick, plate and tile as a height in another family).
 	"wedge plate": "wing",
-	"wedge brick": "wedge",
 	"minifigure": "minifig",
 	"cheese slope": "slope brick 31 1 x 1",
 	"jumper plate": "with 1 centre stud",

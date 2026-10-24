@@ -156,6 +156,12 @@ var _print_of := PackedInt32Array()
 ## name says what it has, and "Technic Wedge Belt Wheel" is filed a Technic
 ## part, where Wedge 4 x 2 is a wedge.
 var _lead := PackedStringArray()
+## The families that are a height, and how tall each is in plates, its body
+## without a stud: what "wedge brick" or "round plate" asks of a part filed in
+## another family. A tile is a plate with nothing on top.
+const HEIGHTS: Dictionary = {"brick": 3, "plate": 1, "tile": 1}
+## A height word -> the parts of another family that are that tall.
+var _by_height: Dictionary = {}
 ## A first letter -> the parts with a word of their names that it begins.
 var _by_letter: Dictionary = {}
 ## Every part's number in lower case, in order, and the part each is.
@@ -190,6 +196,28 @@ func _init(parts: Dictionary, ids: PackedStringArray) -> void:
 		_plainness.append(15 - mini(15, own.size()))
 		var kind: PackedStringArray = words_of(info.family_category())
 		_lead.append(kind[0] if not kind.is_empty() else "")
+		# What BrickLink files as a brick, plate or tile Modified (Rebrickable,
+		# Special): one with something on it, LDraw's "with", and not a round
+		# one, nor a tile with only the groove every tile has. 15573, the
+		# jumper, for "plate modified"; 4070, the headlight brick, for "brick
+		# modified".
+		if not kind.is_empty() and HEIGHTS.has(kind[0]) \
+				and PartLibrary.decor_of(info.name, info.category) == 0:
+			var named: String = info.name.to_lower().replace("with groove", "")
+			if named.contains(" with ") and not named.contains("round"):
+				_index(_also, PackedStringArray(["modified", "special"]), at)
+		# Brick, plate and tile are each a family and a height. A part of
+		# another family is the height it is: 6564, Wedge 3 x 2 Right, is a
+		# wedge brick; 45677, Wedge 4 x 4 x 0.667 Curved, is not.
+		if not kind.is_empty() and not HEIGHTS.has(kind[0]):
+			var plates: int = roundi((info.size.y - (4.0 if info.stud_count > 0 else 0.0)) / 8.0)
+			for word: String in HEIGHTS:
+				if plates == int(HEIGHTS[word]) and (word == "tile") == (info.stud_count == 0):
+					if not _by_height.has(word):
+						_by_height[word] = PackedInt32Array()
+					var tall: PackedInt32Array = _by_height[word]
+					tall.append(at)
+					_by_height[word] = tall
 		_plain.append(1 if PartLibrary.decor_of(info.name, info.category) == 0
 			and not info.name.begins_with("=") and not _other_line(info) else 0)
 	_named_words = _in_order(_named)
@@ -661,6 +689,11 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 				for at: int in count_of:
 					if _infos[at].stud_count == 0:
 						_raise(by_name, named_list, at, 1.0)
+			# A family that is a height, asked of a part of another family:
+			# answered by how tall it is, as fully as by its name.
+			for form: String in _forms(said):
+				for at: int in _by_height.get(form, PackedInt32Array()):
+					_raise(by_name, named_list, at, 1.0)
 			var by_number: Dictionary = _numbered(said)
 			for at: int in by_number:
 				_raise(by_name, named_list, at, 1.0)

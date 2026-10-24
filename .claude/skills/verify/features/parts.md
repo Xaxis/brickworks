@@ -84,14 +84,22 @@ geometry in front of them.
   none. A part's number typed leads among those with as many words. A word
   begun matches the words it starts ("doo", as typed), one a letter off a
   word no part has is taken for the word ("tyle", "hindge", "axel"), and two
-  run together are both ("doorframe"); `select_by` asks without these
+  run together are both ("doorframe"). Brick, plate and tile are each a
+  family and a height: asked of a part of another family, it answers by how
+  tall it is (`PartSearch.HEIGHTS`): "wedge brick" is a 3.5-plate Wedge, not
+  45677, the curved 4 x 4 x 0.667. A brick, plate or tile "with" something,
+  not round, is BrickLink's Modified and Rebrickable's Special: "plate
+  modified" is 15573, the jumper. `select_by` asks without these
   (`loose = false`). Keys are sorted as whole numbers over dense arrays, and
   the index is made on a worker once the bin is filled
   (`PartLibrary.prepare_search`), so a first key typed answers in about
-  30 ms. `search_rank_probe` holds 63 queries written before the change
+  30 ms on a quiet box (54 ms the slowest letter at load 13, twice that at
+  38). `search_rank_probe` holds 63 queries written before the change
   (names, sizes, numbers, misspellings) to the parts an expert wants in the
   first three, in the bin and in search_parts: base 78% and 81%, now 98%
-  both; and a first keystroke under 50 ms.
+  both; five more of a family and its kind ("round brick", "plate
+  modified"), 3 of 5 before the height and Modified rules, 5 after; and a
+  first keystroke said against 50 ms, failing past 150.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. It searches through `PartSearch`
   (every word, ranked as search_parts ranks), and folds each print, sticker
