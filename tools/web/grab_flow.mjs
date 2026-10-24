@@ -183,13 +183,33 @@ async function open(file) {
     }
     const picker = page.choosers.shift();
     if (picker) {
+      const before = (await state()).said;
       await picker.setFiles(file);
+      await dontSave(before);
       return;
     }
     await page.keyboard.press("Escape");
     await page.waitForTimeout(3000);
   }
   throw new Error("no file picker came up");
+}
+// An open over a model with changes not saved asks first whether to save
+// them (ModelBar.ask_to_replace), as the crane has by the time the tube
+// opens: its turns are this run's, so Don't save. When nothing is asked,
+// waits only until the status bar says, in place of [before], that the open
+// has begun or ended.
+async function dontSave(before) {
+  for (let n = 0; n < 40; n++) {
+    const asked = (await controls()).replace_discard;
+    if (asked) {
+      console.log("        asked to save the model first: Don't save");
+      await page.mouse.click(asked.x, asked.y);
+      return;
+    }
+    const said = (await state()).said || "";
+    if (said !== before && /open|read/i.test(said)) return;
+    await page.waitForTimeout(500);
+  }
 }
 // The app's own work at the let-go and at the keep of the swing that came to
 // rest as [rested], and at the reading of the model's joints after it

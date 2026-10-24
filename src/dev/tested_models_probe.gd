@@ -6,8 +6,9 @@
 ##
 ## models175 found the whole test held a part whenever it touched a held one
 ## and never asked about collisions, so Orthanc (145 pairs through each other,
-## 72 pieces by the exact check, as it was at rel-m155) could have been marked. Here: Orthanc is not
-## Tested and says both; the kart, the castle and the orrery the app ships
+## 72 pieces by the exact check, as it was at rel-m155) could have been marked.
+## Rebuilt in one piece (m157), it passes the whole test and is still not
+## Tested, saying why: its steps, its colours and a share's time. The kart, the castle and the orrery the app ships
 ## are Tested (the orrery's steps are its own since orrery190: worked out,
 ## its top deck went up before the spine that carries it, and twelve gears
 ## went in behind what hides them); two bricks stacked with a tile on top
@@ -31,9 +32,8 @@ const AMBULANCE := "res://vendor/omr/files/6680-1.mpd"
 const MISPLACED := "1 16 30 -16 150 0 0 1 0 1 0 -1 0 0 3023.dat"
 ## Real sets of a vehicle with a figure standing beside it.
 const TWO_BUILDS: Array[String] = ["res://vendor/omr/files/620-1.mpd", "res://vendor/omr/files/6511-1.mpd"]
-## Orthanc as models175 measured it (models/orthanc.ldr at rel-m155), kept
-## here: orthanc177 mends the shipped one.
-const ORTHANC := "res://src/dev/fixtures/orthanc_models175.ldr.gz"
+## The tower as it ships, rebuilt in one piece by orthanc177 and orthanc182.
+const ORTHANC := "res://models/orthanc.ldr"
 const BENCH := "res://src/dev/fixtures/bench/"
 
 var _failures: int = 0
@@ -143,17 +143,27 @@ func _run() -> void:
 	_ok(designs.size() == 6 and marked >= 1, "%d of %d designs stand, and %d are Tested" % [
 		stood, designs.size(), marked])
 
+	# Its whole test passes: no part in another, every one held. It is not
+	# Tested for its other three (measured 2026-10-23): built to step 321 of
+	# 1,420 in a share's time, 221 parts put down in the air at their steps,
+	# and a staff and a spiked ball in colours never made.
 	print("\nOrthanc")
-	var packed: PackedByteArray = FileAccess.get_file_as_bytes(ORTHANC)
-	var orthanc: Dictionary = await _test(packed.decompress_dynamic(-1,
-		FileAccess.COMPRESSION_GZIP).get_string_from_utf8())
+	var orthanc: Dictionary = await _test(FileAccess.get_file_as_string(ORTHANC))
 	print("  %s" % _said(orthanc))
-	var whole: String = _why(orthanc, "whole")
-	_ok(not Tested.passed(orthanc) and orthanc.has("tests") and not _passes(orthanc, "whole")
-		and whole.contains("pass into each other") and whole.contains("pieces are held by nothing"),
-		"Orthanc is not Tested, and says why: %s" % whole)
-	_ok(whole.length() <= Tested.MOST_WHY, "...in the %d characters the site keeps (%d)" % [
-		Tested.MOST_WHY, whole.length()])
+	_ok(orthanc.has("tests") and _passes(orthanc, "whole")
+		and _why(orthanc, "whole").begins_with("One piece"),
+		"Orthanc goes together: %s" % _why(orthanc, "whole"))
+	var why: PackedStringArray = []
+	for test: String in ["stands", "steps", "parts"]:
+		if not _passes(orthanc, test):
+			why.append(_why(orthanc, test))
+	_ok(not Tested.passed(orthanc) and not why.is_empty(),
+		"Orthanc is not Tested, and says why: %s" % "; ".join(why).left(300))
+	var longest: int = 0
+	for one: String in why:
+		longest = maxi(longest, one.length())
+	_ok(longest <= Tested.MOST_WHY, "...each in the %d characters the site keeps (%d at most)"
+		% [Tested.MOST_WHY, longest])
 	_ok(Tested.words(orthanc).begins_with("Not marked Tested (only you see why)"),
 		"...and its owner is told so: \"%s\"" % Tested.words(orthanc).left(200))
 
