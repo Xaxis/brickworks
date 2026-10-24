@@ -181,6 +181,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.library = library
 	stress.scenery = store.scenery
 	stress.say = bar.say
+	stress.panel = StressPanel.new()
+	stress.panel.view = stress
 	add_child(stress)
 	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
 	sections = SectionsUi.new()
@@ -237,6 +239,14 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	over_model.add_child(see_inside.bar)
 	see_inside.below.append(app.get("_hint"))
 	see_inside.below.append(app.get("_steps"))
+	# View, Stress's legend, count and weakest joints, down the model's right
+	# edge under the view cube, clear of the panels that open at its left.
+	stress.panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	stress.panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	stress.panel.offset_right = -14.0
+	stress.panel.offset_left = -14.0 - StressPanel.WIDE
+	stress.panel.offset_top = ViewCube.size_for().y + 26.0
+	over_model.add_child(stress.panel)
 
 	grid = StudGrid.new()
 	grid.world = world
@@ -2207,6 +2217,8 @@ func controls_by_name() -> Dictionary:
 		out.merge((parts_list as InventoryPanel).controls_by_name())
 	if see_inside != null:
 		out.merge(see_inside.controls_by_name())
+	if stress != null and stress.panel != null:
+		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
 	return out

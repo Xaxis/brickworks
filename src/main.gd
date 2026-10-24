@@ -4554,6 +4554,7 @@ func _build_ui() -> void:
 	# View, Stress: weighed with the status bar's check, at once when it is
 	# turned on, and the part under the pointer said.
 	_shell.stress.hovered = func() -> int: return _hovered
+	_shell.stress.panel.show_part = _show_weak
 	_shell.stress.wanted.connect(func() -> void:
 		_stability_revision = -1
 		_stability_at = 0)
@@ -5586,6 +5587,22 @@ func _find_parts() -> void:
 		_bar.say("nothing to find yet")
 
 
+## A weak joint View, Stress's panel steps to (StressPanel): the part past
+## it selected, and in view with [param around], what holds it, so the joint
+## is seen between them.
+func _show_weak(ids: Array, around: Array) -> void:
+	if _verbs.select_found(ids) == 0:
+		_bar.say("it is hidden or locked — Alt-H shows everything, Shift-L unlocks it")
+		return
+	var box: AABB = _selection_bounds()
+	for id: Variant in around:
+		var brick: BrickWorld.Brick = _world.get_brick(int(id))
+		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id) if brick != null else null
+		if part != null and not _store.scenery.has(int(id)):
+			box = box.merge((brick.transform * part.bounds).abs())
+	_camera.frame(box, 1.6)
+
+
 ## The parts the parts list was asked for, selected and in view
 ## (InventoryPanel.chosen): where they are in the model. [param what] says
 ## what they are.
@@ -6209,10 +6226,13 @@ func _weigh() -> void:
 	_stability_at = now
 	_stability_revision = _world.revision
 	var scenery: Dictionary = _store.scenery if _store != null else {}
+	var stress: StressView = _shell.stress if _shell != null else null
 	if _world.brick_count() <= scenery.size() and not _stats_shown:
 		_stability_text = ""
+		# Nothing left to list: what was weak went with the parts.
+		if stress != null and stress.on:
+			stress.show_report(Stability.Report.new())
 		return
-	var stress: StressView = _shell.stress if _shell != null else null
 	var margins: bool = stress != null and stress.on
 	_weighing = true
 	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))

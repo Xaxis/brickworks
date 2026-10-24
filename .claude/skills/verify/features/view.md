@@ -449,7 +449,19 @@ picture the assistant is shown.
   amber part's right-click menu has Ask Claude to brace this under Ask Claude
   about this… (only then, and never with the assistant off): it selects the
   part and what holds it and writes the request with the joint's numbers into
-  the assistant. Drawn only: no paint, no history step, no revision. Off, it
+  the assistant. Its panel (`src/ui/stress_panel.gd`, `StressPanel`), down
+  the model's right edge under the view cube while Stress is on, has the
+  legend (red past its working load, amber within twice it, faded the rest),
+  the count ("6 past working load · 0 near it", "0 past working load · 0
+  near it" on a model that holds; `StressView.ranked`/`count_words`, which
+  `weakest_joints` says too), and the weakest, worst first (a piece on a
+  touch past it first, then by margin; every red and amber one, and the
+  weakest of the rest to make 8): a row, Next or Previous selects its part
+  and frames it with what holds it (`Main._show_weak`), and says why in the
+  words pointing at it says and what would fix it (`StressView.fix_words`:
+  "It needs 1.4 times the hold it has: brace it, give it more studs, or move
+  weight back over the Brick 1 x 1"). Close turns Stress off. Drawn only: no
+  paint, no history step, no revision. Off, it
   costs nothing; on, each change's weighing takes longer (1 s after turning it
   on for 75969-1's 925 parts, 3 s for Orthanc's 9,541, on the GPU box).
   Known gaps: a part standing on the floor or a baseplate is held by the
@@ -461,7 +473,12 @@ picture the assistant is shown.
   the app the verdict, the view and `weakest_joints` agreeing) and
   `stress_view_probe` (the menu, the
   tint, the hover, the brace offer, two OMR sets and Orthanc pictured in
-  shots/stress/); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
+  shots/stress/), `stress_list_probe` (the panel on hand-worked cantilevers
+  and a plate on a touch: the count as `weakest_joints` says it, the worst
+  first, every row clicked and stepped selecting and framing its part; then
+  10297-1's 3,164 parts reading "0 past working load · 0 near it"; pictures
+  in shots/stress_list/; `-- time FILE RUNS` times Stress coming on, for a
+  base checkout too); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
   `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
@@ -1678,7 +1695,9 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude
 # to brace this only on a weak part, 75969-1 and 21318-1 (one part red at most)
 # and Orthanc pictured in shots/stress/ — look at what reads red.
-tools/probe.sh stress_probe && tools/probe.sh stress_view_probe
+# The panel: the count as weakest_joints says it, the weakest first, each row
+# and Next selecting and framing its part, the hotel 0 past working load.
+tools/probe.sh stress_probe && tools/probe.sh stress_view_probe && tools/probe.sh stress_list_probe
 # In a browser, on a preview (with .env sourced): an .lxf through Open > From
 # a file, Orthanc cut from the toolbar and its slider clicked to just over
 # Saruman's head, a double-click on him through the cut, I, K off, and a click

@@ -37,3 +37,4 @@ find_part
 save_dialog
 kart_steer
 booklet_stream
+stress_list

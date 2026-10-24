@@ -107,8 +107,11 @@ class Report extends RefCounted:
 	## its load with others is in none: statics alone cannot say what it
 	## carries, and it is never the one that gives first.
 	var margins: Dictionary = {}
-	## ...and how each part none of them holds is held (Balance.Report.held).
+	## ...and how each part none of them holds is held (Balance.Report.held),
+	## and the pieces standing on a touch alone past where they touch
+	## (Balance.Report.tipping), heaviest first.
 	var held: Dictionary = {}
+	var tipping: Array = []
 
 	func is_stable() -> bool:
 		return risks.is_empty()
@@ -221,6 +224,7 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 				if float(piece["past"]) < 1000.0 else "on an edge too thin to stand on"]
 		report.risks.append(risk)
 	report.held = weighed.held
+	report.tipping = weighed.tipping
 
 
 ## Whether the whole tips over on what it stands on: its centre of mass
