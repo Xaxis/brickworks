@@ -282,7 +282,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	## once for every step.
 	var overlaps: Dictionary = {}
 	var known: Dictionary = {}
-	asked.say("Testing it: building its %d steps…" % steps.size())
+	asked.say("Testing it: building its %s…" % _counted(int(Instructions.count(steps)["steps"]), "step"))
 	asked.count(0, steps.size())
 	for step: Instructions.Step in steps:
 		if asked.due():
@@ -420,10 +420,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		never[key][2] = int(never[key][2]) + 1
 
 	var tests: Dictionary = {}
-	var main_steps: int = 0
-	for step: Instructions.Step in steps:
-		if not step.in_callout():
-			main_steps += 1
+	var main_steps: int = int(Instructions.count(steps)["steps"])
 	if tips.is_empty():
 		tests["stands"] = {"ok": weighed > 0, "why": ("Stands at every one of its %s"
 			% _counted(main_steps, "step")) if weighed > 0 else "Nothing in it stands on anything to weigh"}

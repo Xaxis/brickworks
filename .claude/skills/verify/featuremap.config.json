@@ -1443,6 +1443,13 @@
     },
     {
       "kind": "cli",
+      "label": "step count probe",
+      "entry": "src/dev/step_count_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/step_count_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "build browser flow",
       "entry": "tools/web/build_flow.mjs",
       "reach": "node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web   (serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr)",

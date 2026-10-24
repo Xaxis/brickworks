@@ -197,7 +197,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	var entries: Array[Booklet.Entry] = _entries(steps, lots)
 	_find_apart(entries)
-	document.steps = entries.size()
+	# As the timeline and the model's page count them (Instructions.count):
+	# two sub-assemblies put on in one step are two entries of one number.
+	document.steps = int(Instructions.count(steps)["steps"])
 	await _choose_views(entries)
 	_lap("views chosen")
 	if _stopped():
