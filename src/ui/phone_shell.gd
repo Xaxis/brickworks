@@ -84,6 +84,10 @@ func p(points: float) -> float:
 func _rebuild() -> void:
 	var k: float = Phone.per_point(get_viewport())
 	if absf(k - _k) < 0.01 * _k:
+		# The same points to the unit, as after Settings, Interface size,
+		# which scales the window and its units alike: only the row's share
+		# of the width has changed.
+		_share_row()
 		return
 	if bin.get_parent() != null:
 		bin.get_parent().remove_child(bin)
@@ -255,12 +259,9 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.name = "phone_" + what
 	button.text = word
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# The row shares the window's width: a fingertip each, or an equal share
-	# where seven fingertips are wider than the phone (a big Settings,
-	# Interface size ran Delete and More off its right edge), the word cut
+	# A fingertip wide, or its share of the row (_share_row), the word cut
 	# short with an ellipsis before it runs over.
-	var share: float = get_viewport().get_visible_rect().size.x / TOOLS.size()
-	button.custom_minimum_size = Vector2(minf(p(Phone.TARGET), share), p(ROW - 10))
+	button.custom_minimum_size = Vector2(_row_share(), p(ROW - 10))
 	button.add_theme_font_size_override("font_size", ceili(p(12)))
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
@@ -288,6 +289,20 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.pressed.connect(_chose.bind(what))
 	_tool_buttons[what] = button
 	return button
+
+
+## A fingertip each, or an equal share of the window's width where seven
+## fingertips are wider than the phone: a big Settings, Interface size ran
+## Delete and More off its right edge (app_a11y_flow).
+func _row_share() -> float:
+	return minf(p(Phone.TARGET), get_viewport().get_visible_rect().size.x / TOOLS.size())
+
+
+func _share_row() -> void:
+	for tool: Array in TOOLS:
+		var button: Button = _tool_buttons.get(str(tool[0]))
+		if button != null:
+			button.custom_minimum_size.x = _row_share()
 
 
 ## What a button of the row does: the desktop's own command or verb.

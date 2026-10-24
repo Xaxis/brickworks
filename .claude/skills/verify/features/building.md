@@ -323,7 +323,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   size (85 to 150%, `ShellPrefs.interface_size`) multiplies
   `Main.screen_factor`, as far as the frame keeps 620 units down
   (`Main.sized_factor`: 150% is 140% on a 1280 x 800 laptop); a phone's
-  point-sized controls too (`Phone.per_point`). Settings, Reduce motion: no
+  point-sized controls too (`Phone.per_point`; the row of tools shares its
+  width, `PhoneShell._tool`). Settings, Reduce motion: no
   build animation, no shimmer on a waiting picture, no camera easing.
   Checks: `tools/probe.sh a11y_names_probe` (every operable control in the
   frame, the bin's tabs, a selection and 30-odd dialogs and panels has a

@@ -949,7 +949,8 @@ building it showed:
   150% draws at 140% (at 150% the colours ran under the status bar and
   Settings' Done off the window). Settings scrolls where a window is too
   short for it, and the key strip drops a hint wider than the model's
-  column. On a phone the point-sized controls grow with it.
+  column. On a phone the point-sized controls grow with it, and the row of
+  seven tools shares the phone's width where seven fingertips are wider.
 - Reduce motion stops the build animation, the shimmer on a waiting
   picture and the camera's easing (`a11y_motion_probe` sees each move, then
   each still).
