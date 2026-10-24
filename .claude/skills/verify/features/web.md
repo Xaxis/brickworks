@@ -1381,7 +1381,7 @@ plan with Claude as the client.
   so the pictures are the panel's own; the node half publishes those bodies to a
   deployment's `/api/share`, updating at its link any model that account
   already shares under the same title. The list is
-  `tools/web/gallery_seeds/seeds.json`, beside the four files that are not in
+  `tools/web/gallery_seeds/seeds.json`, beside the files that are not in
   `models/`: each model's file, title, what its page says (a sentence or two,
   its tags, its kind, its licence, CC BY 4.0 for all) and, for two, the way
   the view is turned for its picture (`turn`, [yaw, pitch] in degrees: the
@@ -1427,7 +1427,21 @@ plan with Claude as the client.
   read-only before and after) and `live_shot.mjs`. Proved 2026-10-24: the
   committed `finish.sh --steps` on the tractor's design wrote the file the
   published tractor was made from, line for line, and `tested_check.gd` on
-  the twelve seed files said TESTED for each.
+  the twelve seed files said TESTED for each. Four of the older seven went
+  up as version 2 on 2026-10-24 (house227), Tested: Wizard's Tower as
+  `models/orthanc.ldr` stands, and the barn owl, the rocket and the corner
+  shop fixed by hand into `models/` (their originals gone from
+  `tools/web/gallery_seeds/`). `fixsteps.gd` now names every part of the
+  whole test's findings by its line (each pair that passes into the other,
+  each loose piece with all its parts), and when a part is hidden even
+  beside what holds it, the parts in front of it wait for it (the shop's
+  wall studs). The sports car followed as its version 2, Tested
+  (`models/sports_car.ldr`; its sub-model original stays in
+  `tools/web/gallery_seeds/` for the step count probe): each fender was a
+  brick body over a wheel with nothing under it, and now sits a stud in and
+  a plate up on the chassis brick, over the hood's grille tiles and the
+  rear deck's black slopes it replaced; its floor bricks go in first, so no
+  step tips.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory

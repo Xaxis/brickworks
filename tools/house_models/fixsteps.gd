@@ -8,15 +8,20 @@
 ## what holds it is carried to the first step where, with that step's parts, it
 ## is held by something that stands; a part hanging past what its studs hold,
 ## and a step the build so far tips over at, wait for the step that relieves
-## them; a part hidden behind what is built goes in with the part that holds it.
+## them; a part hidden behind what is built goes in with the part that holds it,
+## and when it is hidden even there, the parts in front of it wait for it.
 ## OUT is flat, its steps the author's (AUTHORED_STEPS), and the run ends with
 ## the Tested mark's own four findings on it, each part still named with its
-## line in OUT. What it cannot mend (a part hidden even beside its holder, a
-## joint over its load in the finished model) is said, for a hand to settle.
+## line in OUT, the "whole" test's too (each pair that passes into the other,
+## each loose piece with all its parts). What it cannot mend (a part still
+## hidden, a joint over its load, a part held by nothing in the finished model)
+## is said, for a hand to settle.
 ##
 ## Used by seed211 (2026-10-24) on the twelve house models designed for the
 ## gallery: every design but the cactus failed "steps" as designed (the fox
-## put 122 parts in the air), and each passed all four tests after it. The
+## put 122 parts in the air), and each passed all four tests after it. Used by
+## house227 (2026-10-24) on the older house models: the corner shop's wall
+## studs were hidden until what stood in front of them waited. The
 ## Tested check is not copied here: an id-reporting copy is made from
 ## src/assembly/tested.gd as it stands when this runs ([method _tested_copy]).
 extends SceneTree
@@ -134,10 +139,18 @@ func _run() -> void:
 		for one: Array in T.found_ids.get("tipsover", []):
 			tipping[int(one[0])] = true
 		var added: int = 0
+		# Hidden even beside what holds it: what hides it waits for it.
+		var hiders: Dictionary = T.found_ids.get("hidden_by", {})
 		for one: Array in T.found_ids.get("hidden", []):
-			if not early.has(int(one[1])):
-				early[int(one[1])] = true
+			var h: int = int(one[1])
+			if not early.has(h):
+				early[h] = true
 				added += 1
+				continue
+			for o: Variant in hiders.get(h, []):
+				if int(o) != h and line_of.has(int(o)) and not (after.get(int(o), []) as Array).has(h):
+					after.get_or_add(int(o), []).append(h)
+					added += 1
 		if last.is_empty() and tipping.is_empty() and added == 0:
 			break
 		# A step the build so far tips over at goes in with the first step after it that stands.
@@ -191,6 +204,18 @@ func _run() -> void:
 		for one: Array in T.found_ids.get(kind, []):
 			var id: int = int(one[1])
 			print("    %s at step %d: line %d %s" % [kind, int(one[0]), int(new_line.get(id, -1)), raw[line_of[id]]])
+	# The whole test's pairs and loose pieces, every part by its line.
+	var bricks: Array = T.found_ids.get("bricks", [])
+	var at_line := func(k: int) -> String:
+		var id: int = (bricks[k] as BrickWorld.Brick).id
+		return "line %d %s" % [int(new_line.get(id, -1)), raw[line_of[id]]]
+	for one: Array in (T.found_ids.get("whole", {}) as Dictionary).get("into", []):
+		print("    into by %.1f LDU: %s\n                   into %s" % [float(one[2]), at_line.call(int(one[0])),
+			at_line.call(int(one[1]))])
+	for one: Dictionary in (T.found_ids.get("whole", {}) as Dictionary).get("apart", []):
+		print("    apart, %s, %d parts:" % [str(one["kind"]), int(one["size"])])
+		for k: Variant in (one["all"] as Array).slice(0, 40):
+			print("      %s" % at_line.call(int(k)))
 	quit(0)
 
 
@@ -389,6 +414,12 @@ func _tested_copy() -> GDScript:
 			"\t\t\t\tfound_ids.get_or_add(\"tips\", []).append([step.number, one.beyond, one.held_by])\n\t\t\t\ttips.append([step.number, \"%s %s %s on"],
 		["\t\t\ttips.append([step.number, \"it tips over",
 			"\t\t\tfound_ids.get_or_add(\"tipsover\", []).append([step.number])\n\t\t\ttips.append([step.number, \"it tips over"],
+		["\"size\": (members[key] as Array).size(), \"key\": key})",
+			"\"size\": (members[key] as Array).size(), \"key\": key, \"all\": members[key]})"],
+		["\t\tif float(open.size()) / float(mine.size()) >= SEEN:\n\t\t\treturn false\n\treturn true",
+			"\t\tif float(open.size()) / float(mine.size()) >= SEEN:\n\t\t\treturn false\n\t\tfound_ids.get_or_add(\"hidden_by\", {})[thing[0]] = before.keys()\n\treturn true"],
+		["\ttests[\"whole\"] = _whole_said(whole, bricks, library)",
+			"\tfound_ids[\"whole\"] = whole\n\tfound_ids[\"bricks\"] = bricks\n\ttests[\"whole\"] = _whole_said(whole, bricks, library)"],
 	]
 	for edit: Array in edits:
 		if s.find(str(edit[0])) < 0:
