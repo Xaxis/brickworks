@@ -34,7 +34,7 @@ const KINDS: Dictionary = {
 	"io": "BrickLink Studio model", "glb": "glTF binary", "gltf": "glTF",
 	"obj": "OBJ with its colours", "stl": "STL", "png": "PNG picture",
 	"xml": "BrickLink wanted list", "csv": "Parts list (CSV)", "txt": "Parts list (text)",
-	"html": "Instructions (web page)", "zip": "Zip archive",
+	"html": "Instructions (web page)", "pdf": "PDF document", "zip": "Zip archive",
 }
 
 

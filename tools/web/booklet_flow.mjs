@@ -17,13 +17,23 @@
 // or no parts list, or a script error reaches either console. Leaves
 // OUT/app.png, OUT/page-N.png and OUT/booklet.pdf.
 //
+// Then presses the booklet's own Save as PDF and Save pages as PNG, as a
+// person does, and reads what each downloads (OUT/saved.pdf, OUT/saved_
+// pages.zip) with tools/booklet_pdf_check.py against the booklet as the
+// tab has it (OUT/booklet.html): poppler (and pypdf, where BOOKLET_PYPDF
+// names it) finds its pages, its step pictures the booklet's own JPEGs,
+// its words, and the zip a PNG a page; the pages photographed here are
+// held against the PDF's.
+//
 // --model=FILE opens that model first (Open… > From a file, as
 // steps_flow.mjs does) and makes its booklet instead of the car's; a
 // model with no steps of its own gets the planner's. --pages=1,4,9 or
 // --pages=all photographs those pages, as a reader turns them; the first
 // three and the last by default.
 import { controlsWith, launch } from "./browser.mjs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 // Until the booklet in the tab is whole, or ms have gone: it is written in
@@ -210,7 +220,7 @@ try {
       const printed = await tab.evaluate(() => window.printed);
       check(`Print prints (${printed})`, printed === 1);
       await tab.setViewportSize({ width: 1060, height: 800 });
-      await tab.addStyleTag({ content: ".bar { display: none !important; }" });
+      const barHidden = await tab.addStyleTag({ content: ".bar { display: none !important; }" });
       const wanted = args.pages === "all"
         ? [...Array(pages).keys()].map((n) => n + 1)
         : args.pages ? String(args.pages).split(",").map(Number) : [1, 2, 3, pages];
@@ -223,7 +233,46 @@ try {
       await tab.emulateMedia({ media: "print" });
       await tab.pdf({ path: path.join(out, "booklet.pdf"), format: "A4", landscape: true,
         printBackground: true, preferCSSPageSize: true });
+      await tab.emulateMedia({ media: "screen" });
       console.log(`  (${facts.title}; pages and booklet.pdf in ${out})`);
+
+      // Save as PDF and Save pages as PNG, pressed in the booklet: the app
+      // writes each from the booklet in the tab and downloads it. The bar
+      // shown again, as the pages were photographed without it.
+      await barHidden.evaluate((style) => style.remove());
+      const html = path.join(out, "booklet.html");
+      writeFileSync(html, await tab.evaluate(() => "<!doctype html>\n" + document.documentElement.outerHTML));
+      const saved = {};
+      for (const [id, file] of [["save-pdf", "saved.pdf"], ["save-png", "saved_pages.zip"]]) {
+        const shown = await tab.evaluate((id) => {
+          const button = document.getElementById(id);
+          return Boolean(button && !button.hidden && button.offsetWidth > 0);
+        }, id).catch(() => false);
+        check(`the booklet shows ${id === "save-pdf" ? "Save as PDF" : "Save pages as PNG"}`, shown);
+        if (!shown) continue;
+        const started = Date.now();
+        const downloaded = page.waitForEvent("download", { timeout: 300000 });
+        await tab.click(`#${id}`);
+        try {
+          const download = await downloaded;
+          saved[id] = path.join(out, file);
+          await download.saveAs(saved[id]);
+          const said = await tab.evaluate(() => document.getElementById("saved").textContent);
+          check(`...which downloads ${download.suggestedFilename()} in `
+            + `${((Date.now() - started) / 1000).toFixed(1)} s, and says so (${said})`,
+            said.startsWith("downloaded "));
+        } catch (error) {
+          check(`...which downloads it (${String(error).split("\n")[0].slice(0, 120)})`, false);
+        }
+      }
+      if (saved["save-pdf"]) {
+        const checker = fileURLToPath(new URL("../booklet_pdf_check.py", import.meta.url));
+        const run = spawnSync("python3", [checker, html, saved["save-pdf"], "--out", out,
+          "--shots", out, ...(saved["save-png"] ? ["--zip", saved["save-png"]] : [])],
+          { encoding: "utf8" });
+        for (const line of (run.stdout + run.stderr).trim().split("\n")) console.log(`      ${line}`);
+        check("the PDF and the pages are the booklet (tools/booklet_pdf_check.py)", run.status === 0);
+      }
     }
   }
   const said = await page.evaluate(() => document.title);

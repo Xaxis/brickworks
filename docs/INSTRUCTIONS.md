@@ -1934,6 +1934,64 @@ print_after, page 3): step 3, then step 2, alone, turned, its picture where
 it was placed, the arrow, the words and the picture with it. Blue, now step
 3, is on the next page, seen as usual, with nothing of yellow's.
 
+## Saved as a PDF and as pictures (2026-10-24, pdf249)
+
+A booklet became a PDF only by printing its page from a browser: on the
+desktop the app handed the page to the system browser, and a person had to
+know that Print, Save as PDF was the way (walk180 D7, D9). Studio's
+Instruction Maker saves PDF and PNG itself. Now the booklet's bar has
+**Save as PDF** and **Save pages as PNG** beside Print, in its look.
+
+**Where they are.** In the booklet, because that is where a person reads
+it. On the desktop the app serves the booklet to the browser (BookletOut),
+so the page asks the app (`POST /save?pdf`), the app opens the Save dialog
+every export opens (SaveTo), writes the file there, and the page and the
+status bar say where it went. On the web the app wires the buttons in its
+own tab (its policy runs no script of the booklet's) and the file is a
+download. A booklet opened from its file has no app to ask, and shows Print
+alone, as before.
+
+**What is written.** The booklet is read back from itself a page at a time
+(`BookletRead`: the file on the desktop, the tab's pages on the web), one
+page held at once, and nothing is drawn again:
+
+- the PDF (`BookletPdf`, written by hand: no library, no browser) has the
+  booklet's own JPEGs as they are, so a step's picture in the PDF is the
+  booklet's byte for byte; each part's picture once, however many pages
+  show it; the boxes, arrows, turn signs and progress bar as paths; and the
+  words as words, in Helvetica (the page's own font), so the title, the
+  step numbers and every element number can be found and copied. The page
+  is the booklet's, 269 x 199 mm, which fits A4 and US Letter turned on its
+  side; the booklet has no size of its own to choose, so neither does this.
+- the pictures (`BookletPng`) are a PNG a page, at the booklet's own
+  pictures' size (so a step's pixels are not stretched), in one zip on both
+  kinds of build: a browser asked for hundreds of downloads gives one.
+
+**Measured** (`booklet_pdf_probe`, pressing Instructions and then each
+Save as the browser does; read by `tools/booklet_pdf_check.py` with poppler
+and pypdf 6.21, desktop, RX 6700 XT):
+
+| | pages | booklet | PDF | written in | PNG zip | drawn in |
+|---|---|---|---|---|---|---|
+| Castle (2,506 parts) | 324 | 63.4 MB | 49.5 MB | 6.8 s | 252 MB | 67 s |
+| Wizard's Tower (10,119) | 590 | 50.9 MB | 39.7 MB | 7.3 s | 188 MB | 65 s |
+
+Every page's step pictures are the booklet's own JPEGs byte for byte (pypdf,
+0 pages differ), the title is words on page 1 and every element number on
+the last parts page is words there, and the zip's first and last pages are
+the PDF's drawn by poppler (castle 2.2 and 2.4 of 255 apart, tower 1.0 and
+1.7, at 400 px wide; a page of another step is 24 apart). The PDF is written
+in seconds because nothing is drawn: the tower's 7.3 s include a frame for
+the window every eight pages. The browser's own pictures of the castle's
+pages (`booklet_print.mjs --shots-only`) against the PDF's: 1.1 to 6.3
+apart, the most on the cover, whose picture the two place half a pixel
+apart.
+
+Not done: A4 or Letter pages of their own (the booklet's page already fits
+both); the text is Helvetica, not embedded, so a reader without it draws a
+font of the same widths; a PNG page is the booklet's pictures' density
+(4.2 px a mm on the castle, 107 dpi), which is the most there is to show.
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of

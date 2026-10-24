@@ -1,13 +1,15 @@
 // Print a booklet the way a person would, and photograph its pages.
 //
-//   node tools/web/booklet_print.mjs BOOKLET.html OUT_DIR [--pages=1,2,5]
+//   node tools/web/booklet_print.mjs BOOKLET.html OUT_DIR [--pages=1,2,5] [--shots-only]
 //
 // Writes OUT_DIR/a4.pdf and OUT_DIR/letter.pdf (printed by Chromium with
 // the booklet's own print styles, landscape) and OUT_DIR/page-N.png for
 // the pages asked for (all of them by default, up to 40), drawn on screen
 // at the size the page is printed at. Then checks what printing must not
 // lose: the page count is the booklet's, every page fits its sheet, and
-// every picture decoded.
+// every picture decoded. --shots-only photographs the pages and prints
+// nothing: the browser's own pictures of the pages, to hold the PDF that
+// Brickworks writes itself against (tools/booklet_pdf_check.py --shots).
 import { launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -39,7 +41,7 @@ try {
   console.log(`${facts.pages} pages, ${facts.images} pictures, ${facts.broken} broken`);
   if (facts.broken > 0) failed++;
 
-  for (const [name, format] of [["a4", "A4"], ["letter", "Letter"]]) {
+  for (const [name, format] of rest.includes("--shots-only") ? [] : [["a4", "A4"], ["letter", "Letter"]]) {
     const file = path.join(outDir, `${name}.pdf`);
     await page.emulateMedia({ media: "print" });
     await page.pdf({ path: file, format, landscape: true, printBackground: true,
