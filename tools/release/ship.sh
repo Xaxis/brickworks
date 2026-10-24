@@ -60,7 +60,29 @@ if [ -z "$URL" ]; then
 fi
 run_checks "$URL" ${TAG}_pv "$@" || exit 1
 cut -c1-160 $S/${TAG}_pv.out
-passed $S/${TAG}_pv.out $# || { echo "SHIP: held, a check failed or did not run on the preview"; exit 1; }
+# A check that failed in the battery, two at a time beside other previews'
+# batteries, runs once more alone before the release holds. m162's oc, and
+# m164's oc and cloud_library, each stalled under load and passed alone on
+# the same deployment (2026-10-24), and each time the rerun was done by
+# hand. Timing checks never get a second go: alone they would pass what the
+# load showed. Both answers are kept: TAG_pv.out keeps the first, and
+# TAG_alone_NAME.out the second.
+if ! passed $S/${TAG}_pv.out $#; then
+  failed=$(grep -E ' exit=[^0]' $S/${TAG}_pv.out | awk '{print $1}')
+  timing=$(echo "$failed" | grep -xE 'frames|play|progress|placing|grab|drag_cost' || true)
+  ran=$(grep -cE ' exit=' $S/${TAG}_pv.out)
+  if [ -z "$timing" ] && [ -n "$failed" ] && [ "$ran" -eq $# ]; then
+    for name in $failed; do
+      echo "SHIP: $name failed beside others; once more, alone"
+      "$HERE/preview_checks.sh" "$URL" "$W" ${TAG}_alone_$name $name >/dev/null 2>&1
+      cut -c1-160 $S/${TAG}_alone_$name.out | head -1
+      passed $S/${TAG}_alone_$name.out 1 || { echo "SHIP: held, $name failed alone too"; exit 1; }
+    done
+    echo "SHIP: every check that failed beside others passed alone"
+  else
+    echo "SHIP: held, a check failed or did not run on the preview"; exit 1
+  fi
+fi
 # A hold set by hand stops a release here, before main moves, even one
 # already under way: $S/HOLD for every release, $S/<tag>.hold for this one.
 # Stopping the waiter that queued it does not stop a ship already started:

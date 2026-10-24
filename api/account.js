@@ -42,7 +42,10 @@
 //   collections, follows, its collection of sets and its Claude
 //   connections). Model files no row owns any longer go with the daily
 //   sweep (api/share.js). The site owner's account is refused: it holds
-//   the admin page.
+//   the admin page. An orangecheck account Connect made for it, at its
+//   tick (2026-10-24), is deleted at orangecheck before anything here; one
+//   orangecheck will not delete stays the person's at ochk.app, and the
+//   answer says so ({orangecheck: {kept, said}}).
 //
 // Everyone who uses Brickworks signs in (2026-10-11). There were
 // accounts before, until 2026-10-09, so that one of them could design on
@@ -107,7 +110,7 @@ export default async function handler(request, response) {
     parts_url: process.env.PARTS_URL || null,
     // Sign in with orangecheck (api/orangecheck.js): whether it works here,
     // and whether everybody is offered it (api/_oc_config.js).
-    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false },
+    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false, connect: false },
   };
 
   const token = bearer(request);
@@ -328,6 +331,34 @@ async function deleteAccount(request, response) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });
   }
   const account = claims.sub;
+  // The orangecheck account Connect made for it, at its own tick
+  // (api/orangecheck.js ?op=connect), deleted first: until the person
+  // claims it, deleting it is Brickworks' to do, and once this account is
+  // gone nothing could. Only for an account whose person ticked the box for
+  // it (oc_connected): nobody else ever waits on orangecheck to leave. A
+  // person can always delete their Brickworks account (site-attest's L1):
+  // orangecheck refusing for good leaves theirs with them at ochk.app, said
+  // plainly. Every other answer holds the deletion, 503 (api/_oc.js
+  // unprovision, an allow-list): an outage asks them to try again, and
+  // Connect not set up here (no key, one orangecheck does not know, any
+  // answer not known) is paused as Brickworks' own fault, since deleting
+  // would leave their orangecheck account behind (orangecheck's final
+  // ruling, 2026-10-24). The daily canary asks Connect with the key
+  // (api/_canary.js, d).
+  let connected;
+  let kept = "";
+  try {
+    connected = await db("rpc/oc_connected_of", { method: "POST", body: { account } });
+  } catch (trouble) {
+    console.error(`account: whether Connect made an account: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+  }
+  if (connected) {
+    const { unprovision } = await import("./_oc.js");
+    const decided = await unprovision(account);
+    if (!decided.go) return response.status(decided.status).json({ error: decided.error });
+    kept = decided.kept || "";
+  }
   try {
     // The files of the build photos it posted, and of those posted of its
     // models (their rows go with the models), by name: storage keeps no
@@ -369,7 +400,8 @@ async function deleteAccount(request, response) {
     const gone = await fetch(`${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
-    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length });
+    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length,
+      ...(kept ? { orangecheck: { kept: true, said: kept } } : {}) });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });

@@ -18,11 +18,21 @@
 //     which touches nobody signing in by email.
 // OC_PROJECT_KEY and OC_SIGNING_SECRET are the project's (ochk.app). Without
 // either, or without an audience, no token is taken here.
+//
+// Step 4 (2026-10-24): every token's rh is kept with its id (oc_handles,
+// supabase/orangecheck_merge_connect.sql), so that once somebody merges two
+// orangecheck accounts, the one they keep signs in to the Brickworks
+// account the other had (merged). And orangecheck Connect, with
+// OC_CONNECT_KEY: an orangecheck account made at the person's tick
+// (provision), and deleted with their Brickworks account (unprovision).
 
 import { isTestAccount } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, ocConfigured } from "./_oc_config.js";
-import { _resetJwksCachesForTests, bondMeets, checkOcToken, integratorRevocationCheck } from "./_orangecheck.js";
+import {
+  _resetJwksCachesForTests, bondMeets, checkOcToken, connectDelete, connectProvision, integratorRevocationCheck, matchMergedUser,
+  mergedHandles,
+} from "./_orangecheck.js";
 
 export { audiences, ocConfigured };
 
@@ -157,6 +167,130 @@ export async function spendToken(jti, exp) {
   return (await db("rpc/oc_spend", { method: "POST", body: { token_id: jti, until: new Date(exp * 1000).toISOString() } })) === true;
 }
 
+/// [session]'s rh kept with its id, for a merge to find later (merged).
+/// Never in the way of the sign-in or link it came with: not kept is said
+/// in the log, and only a later merge misses it.
+export async function keepHandle(session) {
+  try {
+    const kept = await db("rpc/oc_keep_handle", { method: "POST", body: { did: session.did_oc, rh: session.rh, aud: session.aud } });
+    if (kept !== true) console.error("orangecheck: a handle was not kept: its id is linked to no account");
+  } catch (trouble) {
+    console.error(`orangecheck: a handle was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+  }
+}
+
+/// The Brickworks account a merged orangecheck account had, for a checked
+/// token whose id has none here: its merged_rh, our handle for each account
+/// merged into it (read from the checked token alone), looked up among the
+/// handles kept, by orangecheck's matchMergedUser. {account, email, was}
+/// when they name one account, which is now the token's id's
+/// (oc_follow_merge: was is the id it had, whose sessions there are ended;
+/// email, the account's address); {conflict} when they name
+/// two, and neither is picked; null when they name none, and the id is a
+/// new person. Throws with again when the account changed under it (the
+/// person tries again), or when the database cannot be asked.
+export async function merged(session) {
+  const handles = mergedHandles(session);
+  if (!handles.length) return null;
+  const rows = await db("rpc/oc_accounts_of_handles", { method: "POST", body: { handles, aud: session.aud } });
+  const whose = new Map((Array.isArray(rows) ? rows : []).map((row) => [row.rh, row.account]));
+  const match = await matchMergedUser(session, (rh) => whose.get(rh) || null);
+  if (match.kind === "none") return null;
+  if (match.kind === "conflict") {
+    console.error(`orangecheck: merged handles name ${match.users.length} accounts; signed in to none`);
+    return { conflict: match.users };
+  }
+  const moved = await db("rpc/oc_follow_merge", { method: "POST",
+    body: { did: session.did_oc, account: match.user, handles, aud: session.aud } });
+  if (!moved?.account) throw Object.assign(new Error("the merge no longer held"), { again: true });
+  return { account: moved.account, email: moved.email || "", was: moved.was };
+}
+
+/// Whether orangecheck Connect is set up here: its key (ochk.app, the
+/// project's Sign-in, Your own login). A unit's preview has none
+/// (tools/deploy.sh --unit).
+export function connectConfigured() {
+  return Boolean(process.env.OC_CONNECT_KEY);
+}
+
+/// An orangecheck account made for [account], which ticked the box for it:
+/// {made, did} or {made: false, reason}. Asked of orangecheck with consent
+/// and the account's id; and with [emailed], when the request is a fresh
+/// emailed code's for that address (codeOf), the address as verified, so
+/// that signing in to ochk.app with it offers the account to claim. Written
+/// down first, so deleting the account deletes that one too whatever the
+/// answer. Never throws: a refusal or an outage is an answer, as Connect's
+/// own calls give them.
+export async function provision(account, emailed = null) {
+  try {
+    await db("rpc/oc_connect_asked", { method: "POST", body: { account } });
+  } catch (trouble) {
+    console.error(`orangecheck: Connect not asked, nothing kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { made: false, reason: "unavailable" };
+  }
+  let made;
+  try {
+    made = await connectProvision({ apiKey: process.env.OC_CONNECT_KEY, userId: account, consent: true,
+      ...(emailed ? { email: emailed, emailVerified: true } : {}) });
+  } catch (trouble) {
+    console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { made: false, reason: "unavailable" };
+  }
+  if (!made.ok) {
+    console.error(`orangecheck: Connect made no account: ${made.reason} ${made.status}`);
+    return { made: false, reason: made.reason };
+  }
+  await db("rpc/oc_connect_made", { method: "POST", body: { account, did: made.did_oc } })
+    .catch((trouble) => console.error(`orangecheck: Connect's id not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  return { made: true, did: made.did_oc };
+}
+
+/// The orangecheck account Connect made for [account], asked to be deleted
+/// before the account itself is, and whether the account may go: {go: true}
+/// (and kept: words to tell, when theirs stays at ochk.app), or {go: false,
+/// status: 503, error} and nothing is deleted. An allow-list, in Brickworks'
+/// own hands (site-attest, 2026-10-24), whatever me-client makes of an
+/// answer: the account goes only when orangecheck's is gone (unknown_user,
+/// deleted, detached: the person's own now they claimed it, already_deleted)
+/// or orangecheck refuses for good (holds_earnings, not_deletable: it stays
+/// theirs at ochk.app, said plainly; a person can always delete their
+/// Brickworks account). An outage (unavailable, rate_limited, a network
+/// failure, a throw) asks them to try again. Anything else (no key here, a
+/// key orangecheck does not know, bad_request, any answer not named here)
+/// is Brickworks' setup fault, and deleting would leave their orangecheck
+/// account behind unsaid: paused (orangecheck's final ruling). [ask] is
+/// connectDelete, or a stand-in for tools/web/orangecheck_check.mjs.
+const PAUSED = "Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted.";
+const TRY_AGAIN = "orangecheck could not delete the orangecheck account made for you just now, so nothing is deleted yet. "
+  + "Try again in a minute.";
+const KEPT = "orangecheck could not delete the orangecheck account made for you, so it stays yours at ochk.app, "
+  + "to claim or delete there.";
+const GONE_RESULTS = new Set(["deleted", "detached", "already_deleted"]);
+const KEPT_REASONS = new Set(["holds_earnings", "not_deletable"]);
+const OUTAGE_REASONS = new Set(["unavailable", "rate_limited"]);
+export async function unprovision(account, ask = connectDelete) {
+  const held = (error, why) => {
+    console.error(`orangecheck: a Connect account's deletion is held: ${why}`);
+    return { go: false, status: 503, error };
+  };
+  if (!connectConfigured()) return held(PAUSED, "no OC_CONNECT_KEY here");
+  let answer;
+  try {
+    answer = await ask({ apiKey: process.env.OC_CONNECT_KEY, userId: account });
+  } catch (trouble) {
+    return held(TRY_AGAIN, `Connect threw: ${String(trouble?.message || trouble).slice(0, 120)}`);
+  }
+  if (answer?.ok === true && GONE_RESULTS.has(answer.result)) return { go: true };
+  if (answer?.ok === false && answer.reason === "unknown_user") return { go: true };
+  if (answer?.ok === false && KEPT_REASONS.has(answer.reason)) {
+    console.error(`orangecheck: Connect keeps an account (${answer.reason}); ours is deleted all the same`);
+    return { go: true, kept: KEPT };
+  }
+  const said = String(answer?.ok === true ? `ok ${answer.result}` : `${answer?.reason} ${answer?.status}`).slice(0, 80);
+  if (answer?.ok === false && OUTAGE_REASONS.has(answer.reason)) return held(TRY_AGAIN, said);
+  return held(PAUSED, said);
+}
+
 /// The token ended at orangecheck once it has been taken, so it is good for
 /// nothing anywhere else either. Its id is spent here whatever orangecheck
 /// answers.
@@ -252,8 +386,11 @@ export async function sessionStanding(claims, method) {
 const FRESH_SECONDS = 300;
 
 /// The session behind [claims], as linking, unlinking and deleting ask
-/// after it: {bound, fresh}. bound, when orangecheck started it; fresh,
-/// when it is an emailed code of the last five minutes. A session
+/// after it: {bound, fresh, emailed}. bound, when orangecheck started it;
+/// fresh, when it is an emailed code of the last five minutes; emailed, the
+/// address that code went to, when it is one (amr otp alone, never a test
+/// account's password), which Connect may send orangecheck as verified
+/// (orangecheck's answer, 2026-10-24). A session
 /// orangecheck started says "otp" too (it is minted from a one-time link),
 /// so it is told apart by its binding, and is never fresh. Nor is a
 /// password, but a test account's (tools/web/session.mjs), whose address
@@ -262,12 +399,14 @@ const FRESH_SECONDS = 300;
 /// refuses it). Throws when the binding cannot be read.
 export async function codeOf(claims) {
   const session = claims.session_id ? await sessionOf(claims.session_id) : null;
-  const code = (Array.isArray(claims.amr) ? claims.amr : [])
-    .find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims)));
+  const amr = Array.isArray(claims.amr) ? claims.amr : [];
   const bound = Boolean(session && session.bound);
-  const fresh = Boolean(code && session && session.exists && !bound
-    && Date.now() / 1000 - Number(code.timestamp) <= FRESH_SECONDS);
-  return { bound, fresh };
+  const recent = (one) => Boolean(one && session && session.exists && !bound
+    && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
+  const fresh = recent(amr.find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims))));
+  const address = String(claims.email || "").trim().toLowerCase();
+  const emailed = recent(amr.find((one) => one?.method === "otp")) && address && !madeUp(address) ? address : null;
+  return { bound, fresh, emailed };
 }
 
 /// Whether a Claude connection approved while signed in with orangecheck

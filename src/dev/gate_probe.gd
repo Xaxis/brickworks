@@ -19,6 +19,12 @@
 ## screen is back. A throwaway account at a Resend test address, deleted
 ## at the end.
 ##
+## Signed out again, the form as a browser draws it (SignInForm's
+## offers_orangecheck, set here before the app is made): Sign in with
+## orangecheck under the email, offered as the deployment says, with
+## orangecheck's mark before its words, drawn at the screen's pixels, and a
+## 44 px target (2026-10-24), in orangecheck.png.
+##
 ## Pictures in shots/signin/. A window is needed: the screen is drawn.
 extends SceneTree
 
@@ -40,6 +46,9 @@ func _run() -> void:
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	# The browser's form, with Sign in with orangecheck (only ever drawn
+	# there), so that it is looked at here too.
+	SignInForm.offers_orangecheck = true
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("gate_for_probe", true)
 	root.add_child(_main)
@@ -100,12 +109,35 @@ func _run() -> void:
 		"the same click places a brick (%d, %d before)" % [world.brick_count(), before])
 	await _key(KEY_BRACKETRIGHT)
 	_ok(builder.held_color != colour, "the same key picks the next colour: %d" % builder.held_color)
+	# As a deployment offering orangecheck to everybody says it.
+	if account.deployment != null:
+		account.deployment.orangecheck_for_everyone = true
 	account.state = Account.State.SIGNED_OUT
 	account.changed.emit()
 	await _settle()
 	_ok(gate.visible and _text_on(gate).contains("Your email address is your account"),
 		"signed out, the screen is back, asking for an address")
 	_save("signed_out.png")
+
+	print("\nSign in with orangecheck, as a browser draws it")
+	var named: Dictionary = gate.controls_by_name()
+	var oc: Button = named.get("signin_orangecheck")
+	_ok(oc != null and oc.is_visible_in_tree() and oc.text == "Sign in with orangecheck",
+		"offered under the email, with its words")
+	if oc != null:
+		var send: Button = named["signin_send"]
+		var density: float = Icons.density(oc)
+		var icon: Texture2D = oc.icon
+		var tall: int = icon.get_height() if icon != null else 0
+		var wide: int = icon.get_width() if icon != null else 0
+		_ok(icon != null and wide == 2 * tall and absi(tall - roundi(14.0 * density)) <= 1,
+			"orangecheck's mark is on it, 2:1, drawn %dx%d for a density of %.2f" % [wide, tall, density])
+		_ok(oc.get_theme_constant("icon_max_width") == 28 and oc.get_theme_constant("h_separation") >= 7,
+			"...shown 28 units wide, a quarter of that clear of the words")
+		_ok(oc.size.y >= 44.0, "its target is at least 44 px tall: %d" % roundi(oc.size.y))
+		_ok(oc.global_position.y > send.global_position.y and absf(oc.size.x - send.size.x) < 1.0,
+			"...under Email me a code, as wide")
+	_save("orangecheck.png")
 	_finish()
 
 

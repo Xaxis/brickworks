@@ -15,6 +15,9 @@
 //   undeletable         no account can be deleted
 //   resendDown          Resend refuses every mail
 //   recordDown          the run's record cannot be written
+//   connectKeyBad       orangecheck Connect does not know the key
+//                       (ochk.io/api/connect/delete answers invalid_api_key);
+//                       as it should be, a made-up user is unknown_user
 
 import { generateKeyPairSync, randomBytes, randomUUID, sign } from "node:crypto";
 
@@ -29,6 +32,7 @@ export function standIn(faults = {}) {
   const codes = new Map();
   const mail = [];
   const rows = [];
+  const connect = [];
 
   const json = (status, body) => new Response(body === null ? null : JSON.stringify(body),
     { status, headers: { "content-type": "application/json" } });
@@ -69,6 +73,10 @@ export function standIn(faults = {}) {
     if (url.origin === "https://api.resend.com") {
       mail.push(body);
       return faults.resendDown ? json(500, { message: "stood in: Resend down" }) : json(200, { id: `stand-in-${mail.length}` });
+    }
+    if (url.href === "https://ochk.io/api/connect/delete") {
+      connect.push(JSON.parse(init?.body || "{}"));
+      return faults.connectKeyBad ? json(401, { ok: false, reason: "invalid_api_key" }) : json(404, { ok: false, reason: "unknown_user" });
     }
     if (url.origin !== STAND_IN) throw new Error(`canary stand-in: nothing leaves this process (${url.origin})`);
     const path = url.pathname;
@@ -136,5 +144,5 @@ export function standIn(faults = {}) {
     throw new Error(`canary stand-in: not stood in for: ${method} ${path}`);
   }
 
-  return { fetch: fetchStandIn, users, mail, rows, make };
+  return { fetch: fetchStandIn, users, mail, rows, connect, make };
 }

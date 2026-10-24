@@ -400,6 +400,10 @@ dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
 /* Sign in's other way, orangecheck, under the email and apart from it. */
 dialog .elsewhere { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 dialog .elsewhere .note { margin: 8px 0 0; }
+/* Under it, orangecheck Connect's box: the box and its words, then
+   orangecheck's line under the words. */
+dialog .consent { margin-top: 10px; }
+dialog .consent .note { margin: 0 0 0 28px; }
 /* The age question's month and year, side by side. */
 dialog .when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
 /* First steps after a first sign-in (first-steps.js): wider, for a row of

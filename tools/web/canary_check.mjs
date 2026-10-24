@@ -23,7 +23,8 @@
 // --stand-in: the cron's route (api/otp.js, op=canary) against a Supabase
 // in memory (tools/web/canary_stand_in.mjs), wrong in one way at a time:
 // sign-up open, an unconfirmed address signing in by its password, the
-// code refused, TOTP enrolment on, an account that will not delete. Each
+// code refused, TOTP enrolment on, an account that will not delete,
+// orangecheck Connect not knowing the key (d, 2026-10-24). Each
 // must fail its own check and only that, mail the owner once naming it and
 // what came back (caught here, never sent), and be recorded; as it should
 // be, it passes and mails nobody. Nothing leaves this process.
@@ -118,6 +119,7 @@ async function standInRun() {
   Object.assign(process.env, {
     SUPABASE_URL: STAND_IN, SUPABASE_PUBLISHABLE_KEY: "sb_publishable_stand_in", SUPABASE_SECRET_KEY: "sb_secret_stand_in",
     RESEND_API_KEY: "re_stand_in", MASTER_EMAIL: "owner@stand-in.invalid", CRON_SECRET: "stand-in-cron",
+    OC_CONNECT_KEY: "ock_stand_in",
   });
   for (const name of ["EMAIL_FROM", "EMAIL_FROM_FALLBACK", "VERCEL_URL"]) delete process.env[name];
   const otp = (await import("../../api/otp.js")).default;
@@ -144,6 +146,7 @@ async function standInRun() {
     ["the emailed code refused", { codeRefused: true }, ["c"]],
     ["TOTP enrolment on", { totpOn: true }, ["c"]],
     ["an account that will not delete", { undeletable: true }, ["gone"]],
+    ["orangecheck Connect not knowing the key (invalid_api_key)", { connectKeyBad: true }, ["d"]],
     ["all of them wrong, Resend refusing and the record unwritable", { ...all, resendDown: true, recordDown: true }, ["a", "b", "c"]],
   ];
 
@@ -185,6 +188,9 @@ async function standInRun() {
     } else {
       check(toOwner.length === 0 && body?.mailed === "none", `no mail to the owner (${toOwner.length}, mailed ${body?.mailed})`);
     }
+    // (d): one ask of Connect, for a made-up user id, never an account's.
+    check(fake.connect.length === 1 && /^canary-\d+-[0-9a-f]+$/.test(fake.connect[0]?.user_id || ""),
+      `(d) asks orangecheck Connect once, to delete a made-up user (${fake.connect.length}, ${fake.connect[0]?.user_id || "none"})`);
     const codes = fake.mail.filter((one) => /@resend\.dev$/.test(one.to?.[0] || ""));
     check(codes.length === 1 && /is your Brickworks sign-in code/.test(codes[0].subject || ""),
       `(c)'s code mailed once, as api/otp.js mails one, to its test address (${codes.length}, caught)`);

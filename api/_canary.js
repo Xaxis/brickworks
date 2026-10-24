@@ -17,6 +17,13 @@
 //   (c) a new address given a code by api/otp.js's own mint and deliver,
 //       the code redeemed: a session the site takes (api/_auth.js verify),
 //       which enrols no authenticator app (mfa_totp_enroll_not_enabled).
+//   (d) orangecheck Connect's key works (2026-10-24): connectDelete for a
+//       made-up user id answers unknown_user. Without it, deleting an
+//       account Connect made one for is paused (api/account.js), so a key
+//       gone or replaced must be heard of the next morning. A deployment
+//       with neither orangecheck key (a unit's preview, a checkout) skips
+//       it and says so; one with the signing secret and no Connect key
+//       fails it.
 //
 // Each is judged by Supabase's own word for the setting, so a trigger that
 // refuses the same call (supabase/no_new_ways_in.sql) cannot pass for it.
@@ -41,6 +48,7 @@ export const CHECKS = {
   a: "a public sign-up is refused, and leaves no account",
   b: "an unconfirmed address cannot sign in",
   c: "a new address signs in by an emailed code",
+  d: "orangecheck Connect's key works",
   gone: "every account the canary made is gone",
 };
 
@@ -179,6 +187,24 @@ export async function canary({ mint, deliver }, { askSite = null } = {}) {
       step("c", factor.body.error_code === "mfa_totp_enroll_not_enabled",
         "it enrols no authenticator app, TOTP being off", said(factor));
       await auth("/logout", { headers: bearer }).catch(() => null);
+    });
+
+    await guarded("d", async () => {
+      if (!process.env.OC_CONNECT_KEY) {
+        const setUp = Boolean(process.env.OC_SIGNING_SECRET);
+        step("d", !setUp, setUp ? "orangecheck is set up here, and so is its Connect key"
+          : "not asked: this deployment has neither orangecheck key (a unit's preview, or a checkout)",
+          setUp ? "no OC_CONNECT_KEY" : "skipped");
+        return;
+      }
+      // Loaded here only: the route every sign-in code asks carries none
+      // of orangecheck's code.
+      const { connectDelete } = await import("./_orangecheck.js");
+      const nobody = `canary-${Date.now()}-${randomBytes(4).toString("hex")}`;
+      const asked = await connectDelete({ apiKey: process.env.OC_CONNECT_KEY, userId: nobody });
+      step("d", !asked.ok && asked.reason === "unknown_user",
+        "deleting a made-up user is answered unknown_user, so the key is orangecheck's",
+        asked.ok ? `ok, ${asked.result}` : `${asked.reason} ${asked.status}`);
     });
   } finally {
     const left = [];

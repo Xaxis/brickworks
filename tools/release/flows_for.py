@@ -77,7 +77,13 @@ def routed_to(api_name: str) -> set[str]:
     return found
 
 
-def addresses(path: str) -> set[str]:
+def addresses(path: str, seen: set[str] | None = None) -> set[str]:
+    # api/_auth.js and api/_oc.js import each other: each file is followed
+    # once (2026-10-24; a change to _oc.js recursed until Python gave up).
+    seen = set() if seen is None else seen
+    if path in seen:
+        return set()
+    seen.add(path)
     p = Path(path)
     if p.parts[:1] == ("web",):
         if p.suffix == ".html":
@@ -93,7 +99,7 @@ def addresses(path: str) -> set[str]:
         pattern = re.compile(rf"""["']\./{re.escape(p.name)}["']""")
         for api in API.glob("*.js"):
             if api.name != p.name and pattern.search(api.read_text(errors="ignore")):
-                found |= addresses(f"api/{api.name}")
+                found |= addresses(f"api/{api.name}", seen)
         return found
     return set()
 

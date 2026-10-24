@@ -2,7 +2,7 @@
 // (api/otp.js).
 //
 //   POST ?op=signin, {token}: the token orangecheck's sign-in window gave
-//   the page (web/account.js, web/oc-popup.mjs). Checked (api/_oc.js),
+//   the page (web/account.js, web/oc-button.mjs). Checked (api/_oc.js),
 //   spent, and exchanged for a Brickworks session: Supabase's, the same as
 //   an emailed code gives, so the page keeps it where the app finds it and
 //   the app is signed in too. The answer is that session, as Supabase's own
@@ -19,12 +19,24 @@
 //                        no other account has. The address is told.
 //   POST ?op=unlink      the same fresh code: the id unlinked, and every
 //                        session it started on the account ended. Told too.
+//   POST ?op=connect     {consent: true}, right after a sign-in by emailed
+//                        code with the box under Sign in with orangecheck
+//                        ticked (2026-10-24): orangecheck Connect makes the
+//                        person an orangecheck account (api/_oc.js
+//                        provision), with the address as verified when
+//                        this session is a fresh emailed code's for it.
+//                        Never for an account that has orangecheck already. No tick, no call: the page
+//                        sends nothing, and this refuses anything but true.
+//                        It never holds up the sign-in, which is done.
 //
 // The token is never kept, here or in the page. What is (supabase/
 // orangecheck.sql): which account the person's orangecheck id signs in to,
 // the token's id until it expires so it signs in once, and the token's rh,
 // aud and iat beside the session it started, so that ending every session
-// on orangecheck can end this one.
+// on orangecheck can end this one. And each rh with its id (supabase/
+// orangecheck_merge_connect.sql): an id new here whose token says which
+// accounts were merged into it signs in to the account they had (api/_oc.js
+// merged), the account's address told.
 //
 // A new orangecheck id is a new account, made through Supabase's admin API
 // with an address of 32 random hex digits at oc.brickworks.diy. Never one
@@ -36,7 +48,9 @@
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
-import { checkToken, codeOf, endToken, madeUp, ocConfigured, spendToken } from "./_oc.js";
+import {
+  checkToken, codeOf, connectConfigured, endToken, keepHandle, madeUp, merged, ocConfigured, provision, spendToken,
+} from "./_oc.js";
 
 function supabase() {
   return String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -177,9 +191,27 @@ async function signIn(request, response) {
 
   let account;
   let made = false;
+  let followed = null;
   let minted;
   try {
     account = await db("rpc/oc_account_of", { method: "POST", body: { did } });
+    // New here: an account merged into this one on orangecheck may have had
+    // a Brickworks account, and then this is that one's now.
+    if (!account) {
+      followed = await merged(checked.session);
+      if (followed?.conflict) {
+        return say(response, 409, "This orangecheck account was merged from two that each have a Brickworks account, "
+          + "so Brickworks cannot tell which one is yours. If one has your email, sign in with it and link orangecheck in Settings.");
+      }
+      account = followed?.account || null;
+      // Told now: the account is the kept id's from here, whether or not
+      // this sign-in goes on to finish.
+      if (followed) {
+        await tell(followed.email, "orangecheck signs you in to Brickworks with the account you kept",
+          `You merged orangecheck accounts, and the one you kept (${did}) now signs you in to your Brickworks account, `
+          + `in place of ${followed.was}. ${AFTER}`);
+      }
+    }
     if (!account) {
       const fresh = await newAccount();
       try {
@@ -197,6 +229,7 @@ async function signIn(request, response) {
     minted = await sessionFor(account);
   } catch (trouble) {
     console.error(`orangecheck: no session: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    if (trouble?.again) return say(response, 409, "Your Brickworks account changed just now. Sign in with orangecheck again.");
     if (trouble?.busy) return say(response, 503, "A lot of people are signing in just now. Try again in a minute.");
     return say(response, 502, "Brickworks could not finish the sign-in just now. Try again in a minute.");
   }
@@ -217,7 +250,7 @@ async function signIn(request, response) {
     await endSession(minted.session.access_token);
     return say(response, 409, "orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.");
   }
-  await endToken(token);
+  await Promise.all([endToken(token), keepHandle(checked.session)]);
 
   const s = minted.session;
   return response.status(200).json({
@@ -226,19 +259,20 @@ async function signIn(request, response) {
     expires_in: s.expires_in,
     token_type: s.token_type,
     user: { id: s.user.id, email: s.user.email },
-    orangecheck: { did, new_account: made },
+    orangecheck: { did, new_account: made, merged: Boolean(followed) },
   });
 }
 
-/// The account asking, from its sign-in: {claims, did, only, fresh}.
+/// The account asking, from its sign-in: {claims, did, only, fresh,
+/// emailed} (api/_oc.js codeOf).
 /// Throws AuthError when there is none.
 async function asking(request) {
   const claims = await verify(bearer(request), request);
-  const [{ fresh }, did] = await Promise.all([
+  const [{ fresh, emailed }, did] = await Promise.all([
     codeOf(claims),
     db("rpc/oc_did_of", { method: "POST", body: { account: claims.sub } }),
   ]);
-  return { claims, did: did || null, only: madeUp(claims.email), fresh };
+  return { claims, did: did || null, only: madeUp(claims.email), fresh, emailed };
 }
 
 /// orangecheck's mark on the account (app_metadata.orangecheck), which is
@@ -318,7 +352,7 @@ async function link(request, response) {
     console.error(`orangecheck: not linked: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return say(response, 502, "Brickworks could not link orangecheck just now. Try again in a minute.");
   }
-  await endToken(token);
+  await Promise.all([endToken(token), keepHandle(checked.session)]);
   const told = await tell(who.claims.email, "orangecheck now signs you in to Brickworks",
     `orangecheck (${did}) was linked to your Brickworks account just now, so it can sign you in too. ${AFTER}`);
   return response.status(200).json({ did, told });
@@ -346,6 +380,23 @@ async function unlink(request, response) {
   return response.status(200).json({ did: gone.did, ended: gone.ended, told });
 }
 
+async function connect(request, response) {
+  if (!connectConfigured()) return say(response, 503, "Making an orangecheck account is not set up here.");
+  const who = await signedInAs(request, response);
+  if (!who) return;
+  if (bodyOf(request)?.consent !== true) return say(response, 422, "An orangecheck account is made only when you tick the box for it.");
+  // Their sign-in gave them one: never a second (ochk.io/docs/connect,
+  // "Both on one project").
+  if (who.only || who.did) return response.status(200).json({ made: false, reason: "has_orangecheck" });
+  // The tick goes with the sign-in it was given at: a code just now, never
+  // a session left open.
+  if (!who.fresh) return say(response, 403, "Tick the box as you sign in with a code we email you.", { fresh: false });
+  // Its address as verified only from this session's own fresh code: never
+  // a password's, an orangecheck session's, a stale code's, or one the
+  // request names (orangecheck's answer, 2026-10-24).
+  return response.status(200).json(await provision(who.claims.sub, who.emailed));
+}
+
 export default async function handler(request, response) {
   // Asked only by the site's own pages: no cross-origin answer, and nothing
   // kept by any cache.
@@ -355,5 +406,6 @@ export default async function handler(request, response) {
   if (request.method === "GET" && op === "status") return status(request, response);
   if (request.method === "POST" && op === "link") return link(request, response);
   if (request.method === "POST" && op === "unlink") return unlink(request, response);
-  return say(response, 405, "POST ?op=signin, ?op=link or ?op=unlink, or GET ?op=status");
+  if (request.method === "POST" && op === "connect") return connect(request, response);
+  return say(response, 405, "POST ?op=signin, ?op=link, ?op=unlink or ?op=connect, or GET ?op=status");
 }

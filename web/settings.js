@@ -8,7 +8,9 @@
 // Signed in with the app's own sign-in in this browser (account.js). Every
 // word goes on the page as text, never as markup. Each part asks for its
 // own and draws what came, so one that cannot be read leaves the others.
-import { age, askAgeIfAsked, askToSignIn, call, email, madeUp, orangecheckToken, redeem, sendCode, signOut, signedIn } from "/account.js";
+import {
+  age, askAgeIfAsked, askToSignIn, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
+} from "/account.js";
 import { showFeedCount } from "/follow.js";
 
 const $ = (id) => document.getElementById(id);
@@ -62,8 +64,9 @@ async function claude() {
 }
 
 /// orangecheck on this account: linked or not, and the way to change it.
-/// Linking and unlinking each ask for a code emailed just now, then the
-/// click that opens orangecheck's window (one opened later is blocked).
+/// Linking and unlinking each ask for a code emailed just now; then Link
+/// orangecheck, orangecheck's button (account.js orangecheckButton), opens
+/// its window from the click (one opened later is blocked).
 let ocState = null;
 async function orangecheck() {
   const answer = await call("/api/orangecheck?op=status").catch(() => null);
@@ -76,56 +79,72 @@ async function orangecheck() {
     : did ? `orangecheck (${did}) is linked: it signs you in here as well as your email.`
       : "Link orangecheck to sign in with it as well as your email: a Bitcoin wallet, email, Google or GitHub. "
         + "Brickworks gets an id for you, not your address.";
-  $("oc-go").hidden = ocState.only;
-  $("oc-go").textContent = did ? "Unlink" : "Link orangecheck";
-  $("oc-go").classList.toggle("danger", Boolean(did));
+  $("oc-go").hidden = ocState.only || Boolean(did) || !linkReady;
+  $("oc-unlink").hidden = ocState.only || !did;
 }
 
-$("oc-go").addEventListener("click", async () => {
-  const unlinking = Boolean(ocState && ocState.did);
-  $("oc-status").textContent = "";
-  if (!ocState || !ocState.fresh) {
-    // A code first, so a tab left open is not enough to change how this
-    // account signs in.
-    $("oc-go").disabled = true;
-    try {
-      const to = await sendCode(email());
-      $("oc-code-said").textContent = `The code we emailed to ${to}`;
-      $("oc-code").hidden = false;
-      $("oc-code-field").value = "";
-      $("oc-code-field").focus();
-      $("oc-status").textContent = unlinking ? "Confirm it is you, then press Unlink." : "Confirm it is you, then press Link orangecheck.";
-    } catch (trouble) {
-      $("oc-status").textContent = trouble.message;
-    } finally {
-      $("oc-go").disabled = false;
-    }
-    return;
-  }
-  $("oc-go").disabled = true;
+/// A code to this account's own address, the first time Link or Unlink is
+/// pressed: a tab left open is not enough to change how it signs in.
+async function askForCode(unlinking, button) {
+  button.disabled = true;
   try {
-    if (unlinking) {
-      const answer = await call("/api/orangecheck?op=unlink", { method: "POST", body: {} });
-      $("oc-status").textContent = answer.status === 200
-        ? "Unlinked. The sign-ins orangecheck started here are ended, and your email is told."
-        : answer.body.error || "That did not work just now.";
-    } else {
-      $("oc-status").textContent = "Signing in with orangecheck, in its own window.";
-      const token = await orangecheckToken();
-      if (!token) {
-        $("oc-status").textContent = "";
-        return;
-      }
-      const answer = await call("/api/orangecheck?op=link", { method: "POST", body: { token } });
-      $("oc-status").textContent = answer.status === 200
-        ? "Linked. orangecheck signs you in here now, and your email is told."
-        : answer.body.error || "That did not work just now.";
+    const to = await sendCode(email());
+    $("oc-code-said").textContent = `The code we emailed to ${to}`;
+    $("oc-code").hidden = false;
+    $("oc-code-field").value = "";
+    $("oc-code-field").focus();
+    $("oc-status").textContent = unlinking ? "Confirm it is you, then press Unlink." : "Confirm it is you, then press Link orangecheck.";
+  } catch (trouble) {
+    $("oc-status").textContent = trouble.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// Shown once orangecheck's button code is in.
+let linkReady = false;
+orangecheckButton($("oc-go"), {
+  label: "Link orangecheck",
+  before: () => {
+    $("oc-status").textContent = "";
+    if (!ocState || !ocState.fresh) {
+      askForCode(false, $("oc-go"));
+      return false;
     }
+    $("oc-status").textContent = "Signing in with orangecheck, in its own window.";
+    return true;
+  },
+  onToken: async (token) => {
+    const answer = await call("/api/orangecheck?op=link", { method: "POST", body: { token } });
+    $("oc-status").textContent = answer.status === 200
+      ? "Linked. orangecheck signs you in here now, and your email is told."
+      : answer.body.error || "That did not work just now.";
+    await orangecheck();
+  },
+  say: (words) => {
+    $("oc-status").textContent = words;
+  },
+}).then(() => {
+  linkReady = true;
+  if (ocState) $("oc-go").hidden = ocState.only || Boolean(ocState.did);
+}).catch((trouble) => {
+  $("oc-status").textContent = trouble.message;
+});
+
+$("oc-unlink").addEventListener("click", async () => {
+  $("oc-status").textContent = "";
+  if (!ocState || !ocState.fresh) return askForCode(true, $("oc-unlink"));
+  $("oc-unlink").disabled = true;
+  try {
+    const answer = await call("/api/orangecheck?op=unlink", { method: "POST", body: {} });
+    $("oc-status").textContent = answer.status === 200
+      ? "Unlinked. The sign-ins orangecheck started here are ended, and your email is told."
+      : answer.body.error || "That did not work just now.";
     await orangecheck();
   } catch (trouble) {
     $("oc-status").textContent = trouble.message;
   } finally {
-    $("oc-go").disabled = false;
+    $("oc-unlink").disabled = false;
   }
 });
 
@@ -139,7 +158,7 @@ $("oc-code").addEventListener("submit", async (event) => {
     $("oc-status").textContent = ocState && ocState.fresh
       ? `Thank you. Now press ${ocState.did ? "Unlink" : "Link orangecheck"}.`
       : "That did not confirm it just now. Try again.";
-    $("oc-go").focus();
+    $(ocState && ocState.did ? "oc-unlink" : "oc-go").focus();
   } catch (trouble) {
     $("oc-status").textContent = trouble.message;
   } finally {
@@ -171,7 +190,8 @@ async function load() {
   $("delete-confirm").placeholder = ocOnly ? "" : email();
   $("delete-confirm").required = !ocOnly;
   $("delete-confirm").closest("label").hidden = ocOnly;
-  $("delete-go").textContent = ocOnly ? "Sign in with orangecheck to delete" : "Delete my account";
+  $("delete-go").hidden = ocOnly;
+  $("delete-oc").hidden = !ocOnly;
   orangecheck().catch(() => null);
   // The age question, if this account has not answered it; and under 13,
   // no public profile here (the server refuses one too).
@@ -290,47 +310,9 @@ $("sign-out").addEventListener("click", () => {
   showFeedCount().catch(() => null);
   load();
 });
-$("delete-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  let body;
-  if (madeUp(email())) {
-    // The window first, while the click still counts: one opened after a
-    // question is blocked.
-    $("delete-go").disabled = true;
-    $("delete-said").textContent = "Signing in with orangecheck, in its own window.";
-    try {
-      body = { orangecheck: await orangecheckToken() };
-    } catch (trouble) {
-      $("delete-said").textContent = trouble.message;
-      return;
-    } finally {
-      $("delete-go").disabled = false;
-    }
-    $("delete-said").textContent = "";
-    if (!body.orangecheck) return;
-  } else {
-    const typed = $("delete-confirm").value.trim();
-    if (typed.toLowerCase() !== email().toLowerCase()) {
-      $("delete-said").textContent = "That is not the address this account signs in with.";
-      return;
-    }
-    body = { confirm: typed };
-    // Asked for below, when this browser signed in with orangecheck: the
-    // code redeemed is a sign-in of its own, by email, just now.
-    if (!$("delete-code-part").hidden) {
-      $("delete-go").disabled = true;
-      try {
-        await redeem(email(), $("delete-code").value);
-        $("delete-code-part").hidden = true;
-        $("delete-code").required = false;
-      } catch (trouble) {
-        $("delete-said").textContent = trouble.message;
-        return;
-      } finally {
-        $("delete-go").disabled = false;
-      }
-    }
-  }
+/// The account deleted, with [body] as its confirmation: its address typed
+/// again, or a fresh sign-in with orangecheck. Asked first, for good.
+async function deleteAccount(body) {
   if (!confirm("Delete this account and everything in it, for good?")) return;
   $("delete-go").disabled = true;
   const answer = await call("/api/account?op=delete", { method: "POST", body });
@@ -359,8 +341,54 @@ $("delete-form").addEventListener("submit", async (event) => {
   showFeedCount().catch(() => null);
   document.documentElement.dataset.deleted = "yes";
   await load();
-  $("signed-out").querySelector(".lede").textContent = "Your account is deleted, and everything in it. "
+  // An orangecheck account Connect made that orangecheck would not delete
+  // stays the person's, and they are told where (api/account.js).
+  const kept = answer.body.orangecheck && answer.body.orangecheck.kept ? `${answer.body.orangecheck.said} ` : "";
+  $("signed-out").querySelector(".lede").textContent = `Your account is deleted, and everything in it. ${kept}`
     + "Sign in again with any address to start a new one.";
+}
+
+// An orangecheck account, whose address is made up, signs in with
+// orangecheck again instead of typing it: orangecheck's button, whose
+// window opens from the click (one opened after a question is blocked).
+orangecheckButton($("delete-oc"), {
+  label: "Sign in with orangecheck to delete",
+  before: () => {
+    $("delete-said").textContent = "Signing in with orangecheck, in its own window.";
+    return true;
+  },
+  onToken: async (token) => {
+    $("delete-said").textContent = "";
+    await deleteAccount({ orangecheck: token });
+  },
+  say: (words) => {
+    $("delete-said").textContent = words;
+  },
+}).catch(() => null);
+
+$("delete-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const typed = $("delete-confirm").value.trim();
+  if (typed.toLowerCase() !== email().toLowerCase()) {
+    $("delete-said").textContent = "That is not the address this account signs in with.";
+    return;
+  }
+  // Asked for below, when this browser signed in with orangecheck: the
+  // code redeemed is a sign-in of its own, by email, just now.
+  if (!$("delete-code-part").hidden) {
+    $("delete-go").disabled = true;
+    try {
+      await redeem(email(), $("delete-code").value);
+      $("delete-code-part").hidden = true;
+      $("delete-code").required = false;
+    } catch (trouble) {
+      $("delete-said").textContent = trouble.message;
+      return;
+    } finally {
+      $("delete-go").disabled = false;
+    }
+  }
+  await deleteAccount({ confirm: typed });
 });
 
 load();

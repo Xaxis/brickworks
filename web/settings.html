@@ -43,6 +43,7 @@
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/oc-button.css">
 <style>
 /* Laid out here; every control is site.css's. */
 .settings-page { max-width: 820px; }
@@ -155,7 +156,10 @@
 						<h2>orangecheck</h2>
 						<p id="oc-said"></p>
 					</div>
-					<button class="cta ghost" type="button" id="oc-go" hidden>Link orangecheck</button>
+					<div class="actions">
+						<button class="cta ghost" type="button" id="oc-go" data-oc-sign-in hidden><span data-oc-mark></span>Link orangecheck</button>
+						<button class="cta ghost danger" type="button" id="oc-unlink" hidden>Unlink</button>
+					</div>
 					<form class="wide code-form" id="oc-code" hidden>
 						<label><span id="oc-code-said">The code we emailed you</span>
 							<input id="oc-code-field" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
@@ -213,7 +217,8 @@
 								<input id="delete-confirm" type="email" autocomplete="off" required></label>
 							<label id="delete-code-part" hidden><span id="delete-code-said">The code we emailed you</span>
 								<input id="delete-code" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
-							<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button></div>
+							<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button>
+								<button class="cta ghost danger" type="button" id="delete-oc" data-oc-sign-in hidden><span data-oc-mark></span>Sign in with orangecheck to delete</button></div>
 							<p class="said" id="delete-said" role="status"></p>
 						</form>
 					</details>
