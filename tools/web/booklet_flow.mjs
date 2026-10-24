@@ -220,7 +220,7 @@ try {
       const printed = await tab.evaluate(() => window.printed);
       check(`Print prints (${printed})`, printed === 1);
       await tab.setViewportSize({ width: 1060, height: 800 });
-      await tab.addStyleTag({ content: ".bar { display: none !important; }" });
+      const barHidden = await tab.addStyleTag({ content: ".bar { display: none !important; }" });
       const wanted = args.pages === "all"
         ? [...Array(pages).keys()].map((n) => n + 1)
         : args.pages ? String(args.pages).split(",").map(Number) : [1, 2, 3, pages];
@@ -237,7 +237,9 @@ try {
       console.log(`  (${facts.title}; pages and booklet.pdf in ${out})`);
 
       // Save as PDF and Save pages as PNG, pressed in the booklet: the app
-      // writes each from the booklet in the tab and downloads it.
+      // writes each from the booklet in the tab and downloads it. The bar
+      // shown again, as the pages were photographed without it.
+      await barHidden.evaluate((style) => style.remove());
       const html = path.join(out, "booklet.html");
       writeFileSync(html, await tab.evaluate(() => "<!doctype html>\n" + document.documentElement.outerHTML));
       const saved = {};
