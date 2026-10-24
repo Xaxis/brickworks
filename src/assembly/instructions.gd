@@ -636,9 +636,9 @@ static var laps: Array = []
 static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		regions: Dictionary, job: Working.Job, authored: bool = false) -> Array[Step]:
 	laps.clear()
-	# The author's steps are read, not worked out: nothing to pace.
+	# The author's steps are read, not worked out, from what holds what.
 	if authored and AuthorSteps.any(world, skip):
-		return _authored_plan(world, library, skip)
+		return await _authored_plan_paced(world, library, skip, job)
 	var clock: Array[int] = [Time.get_ticks_msec()]
 	var lap := func(what: String) -> void:
 		var now: int = Time.get_ticks_msec()
@@ -3267,6 +3267,64 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 	_find_joints(nodes, world, library)
 	_tidy_needs(nodes)
 	_find_hangers(nodes)
+	return _authored_from(nodes, _find_assemblies(_stepped(nodes, world), world, library),
+		world, library, skip)
+
+
+## [method _authored_plan] a slice at a time with a [param job], as the
+## worked-out plan is read (plan_paced). Read in one go, the Wizard's
+## Tower's own steps held Timeline's frame for 1.7 s (orthsteps212).
+static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary, job: Working.Job) -> Array[Step]:
+	var nodes: Array[Node2] = []
+	await _survey_into(nodes, world, library, skip, job)
+	if nodes.is_empty() or job.cancelled:
+		return []
+	var count: String = Working.comma(nodes.size())
+	job.say("Finding what %s parts rest on…" % count)
+	job.count(0, nodes.size())
+	await _supports_of(nodes, world, library, job)
+	if job.cancelled:
+		return []
+	job.say("Finding the joints between %s parts…" % count)
+	job.count(0, 0)
+	await job.next()
+	await _joints_of(nodes, world, library, job)
+	if job.due():
+		await job.next()
+	_tidy_needs(nodes)
+	await job.next()
+	if job.cancelled:
+		return []
+	job.say("Finding what hangs off %s parts…" % count)
+	await _hangers_of(nodes, job)
+	await job.next()
+	if job.cancelled:
+		return []
+	job.say("Finding what is built on the side…")
+	var found: Array[Assembly] = []
+	await _find_assemblies_into(found, _stepped(nodes, world), world, library, job)
+	await job.next()
+	if job.cancelled:
+		for made: Assembly in found:
+			made.node = null
+		return []
+	return _authored_from(nodes, found, world, library, skip)
+
+
+## The parts of [param nodes] the author gave a step.
+static func _stepped(nodes: Array[Node2], world: BrickWorld) -> Array[Node2]:
+	var out: Array[Node2] = []
+	for node: Node2 in nodes:
+		if world.get_brick(node.id).step >= 0:
+			out.append(node)
+	return out
+
+
+## The author's steps of [param nodes], read and joined, with [param found]
+## the sub-assemblies built on the side.
+static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: BrickWorld,
+		library: PartLibrary, skip: Dictionary) -> Array[Step]:
 	var lowest: Dictionary = AuthorSteps.lowest_under(world, skip)
 	var first: Dictionary = AuthorSteps.first_under(world, skip)
 	var stepped: Array[Node2] = []
@@ -3285,7 +3343,7 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 	# The sub-assemblies built on the side: whole, every part of one stepped.
 	var callouts: Array[Assembly] = []
 	var in_callout: Dictionary = {}
-	for made: Assembly in _find_assemblies(stepped, world, library):
+	for made: Assembly in found:
 		callouts.append(made)
 		for member: Node2 in made.members:
 			in_callout[member.id] = true

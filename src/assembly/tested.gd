@@ -123,6 +123,9 @@ class Pile extends RefCounted:
 ## each step, as weighing the whole build said it. The margin is the whole
 ## build's, kept as each step adds to it.
 class Weighing extends RefCounted:
+	## What Stability.stud_joints says of a pair, each by its kind.
+	const KINDS: Array[String] = ["studs", "under", "sideways", "seated", "overlapped", "pivots",
+		"beside", "resting"]
 	var library: PartLibrary
 	var lattice: BrickLattice
 	var contacts: Dictionary
@@ -133,6 +136,9 @@ class Weighing extends RefCounted:
 	## Balance reads them: studs, seated, pins and the rest (links).
 	var _adjacent: Dictionary = {}     ## id -> Array of ids
 	var _keys: Dictionary = {}         ## id -> Array of its pairs' keys in the joints
+	## Each pair's entries in the joints, [kind, value, ...]: looked up once
+	## here, not in all eight kinds each time the pair is weighed.
+	var _entries: Dictionary = {}      ## key -> Array
 	var _links: Dictionary = {}        ## id -> Array of [a, b]
 	var _joints: Dictionary = {}
 	var placed: Dictionary = {}
@@ -163,8 +169,14 @@ class Weighing extends RefCounted:
 			for key: int in (_joints[kind] as Dictionary):
 				var a: int = key >> 32
 				var b: int = key & 0xFFFFFFFF
-				if not by_id.has(a) or not by_id.has(b):
+				if not by_id.has(a) or not by_id.has(b) or _entries.has(key):
 					continue
+				var entries: Array = []
+				for each: String in KINDS:
+					var from: Dictionary = _joints[each]
+					if from.has(key):
+						entries.append_array([each, from[key]])
+				_entries[key] = entries
 				(_keys[a] as Array).append(key)
 				(_keys[b] as Array).append(key)
 				(_adjacent[a] as Array).append(b)
@@ -246,8 +258,7 @@ class Weighing extends RefCounted:
 			bricks.append(by_id[id])
 			weighed[id] = true
 		var joints: Dictionary = {}
-		for kind: String in ["studs", "under", "sideways", "seated", "overlapped", "pivots",
-				"beside", "resting"]:
+		for kind: String in KINDS:
 			joints[kind] = {}
 		var links: Array = []
 		var taken: Dictionary = {}
@@ -259,10 +270,9 @@ class Weighing extends RefCounted:
 				if not weighed.has(other):
 					continue
 				taken[key] = true
-				for kind: String in joints:
-					var from: Dictionary = _joints[kind]
-					if from.has(key):
-						(joints[kind] as Dictionary)[key] = from[key]
+				var entries: Array = _entries[key]
+				for at: int in range(0, entries.size(), 2):
+					(joints[entries[at]] as Dictionary)[key] = entries[at + 1]
 			for pair: Array in (_links[id] as Array):
 				if weighed.has(int(pair[0])) and weighed.has(int(pair[1])):
 					links.append(pair)
