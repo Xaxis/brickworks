@@ -151,6 +151,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } finally {
     await browser.close();
   }
-  console.log(failed ? `\n${failed} FAILED` : "\nits pictures sit in both themes");
+  console.log(failed ? `\n${failed} FAILED` : args.old ? "\nits pictures as published before are shown in both themes"
+    : "\nits pictures sit in both themes");
   process.exit(failed ? 1 : 0);
 }
