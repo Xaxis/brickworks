@@ -939,7 +939,13 @@ building it showed:
   next F6 goes on: the toolbar, the bin's buttons, tabs, parts and colours,
   the view cube's buttons. Tab and Shift-Tab go along them, the arrows walk
   a row or the grid, Return presses, F6 goes back to the model; a click
-  still leaves the keys with the model. A part taken with Return has its
+  still leaves the keys with the model. Every button there is is in the
+  keys' reach, whoever made it (`Access`): the menus, each dialog's, and the
+  sign-in screen's. While the sign-in screen or a dialog is up, F6 (and Tab
+  with a screen reader) go into it, and Tab in its fields goes on to the
+  next control: the email, Email me a code, Sign in with orangecheck, the
+  code, Sign in, the age question's months, year and Carry on, by keys
+  alone (`a11y_keys_probe`, and signed in for real with `-- live`). A part taken with Return has its
   ghost at the middle of the view, the view's keys move it, and Return puts
   it down: a model built without the mouse (`a11y_keys_probe`).
 - The status line is a live region: Orca says "opened Car — 61 bricks" as
@@ -950,7 +956,9 @@ building it showed:
   Settings' Done off the window). Settings scrolls where a window is too
   short for it, and the key strip drops a hint wider than the model's
   column. On a phone the point-sized controls grow with it, and the row of
-  seven tools shares the phone's width where seven fingertips are wider.
+  seven tools shares the phone's width where seven fingertips are wider;
+  where their words no longer fit it is pictures alone, each still said by
+  its word.
 - Reduce motion stops the build animation, the shimmer on a waiting
   picture and the camera's easing (`a11y_motion_probe` sees each move, then
   each still).

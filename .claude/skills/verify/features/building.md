@@ -317,14 +317,22 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the next F6 goes on) the toolbar, the bin's buttons, tabs, parts and
   colours, the view cube's buttons; Tab goes along, arrows walk a row or
   the grid, Return presses, F6 goes back to the model. A click never keeps
-  the keys on these (`FocusGuard.by_keyboard`). Return on a part takes it with its
+  the keys on these (`FocusGuard.by_keyboard`), and `Access` puts every
+  button made with no focus in reach as it is made: menus, dialogs, the
+  sign-in screen. The sign-in screen and Main's inset dialogs are
+  `FocusGuard.OVER`: while one shows, F6 and Tab go into it and Tab in its
+  fields goes on (`a11y_keys_probe` walks the sign-in screen offline;
+  `BRICKWORKS_API=http://127.0.0.1:PORT tools/probe.sh a11y_keys_probe live`,
+  with `tools/web/relay_server.mjs PORT` and .env, signs in by keys alone
+  with a minted code and deletes the account). Return on a part takes it with its
   ghost at the middle of the view; W, A, S, D and the arrows move the view
   under it, Return puts it down (`Main._aim_by_keys`). Settings, Interface
   size (85 to 150%, `ShellPrefs.interface_size`) multiplies
   `Main.screen_factor`, as far as the frame keeps 620 units down
   (`Main.sized_factor`: 150% is 140% on a 1280 x 800 laptop); a phone's
   point-sized controls too (`Phone.per_point`; the row of tools shares its
-  width, `PhoneShell._tool`). Settings, Reduce motion: no
+  width and goes to pictures alone where its words do not fit,
+  `PhoneShell._share_row`). Settings, Reduce motion: no
   build animation, no shimmer on a waiting picture, no camera easing.
   Checks: `tools/probe.sh a11y_names_probe` (every operable control in the
   frame, the bin's tabs, a selection and 30-odd dialogs and panels has a
