@@ -373,7 +373,10 @@ run() {
 # oc drives orangecheck's real window: beside another browser on a loaded
 # box its close stalled in m162's and m164's batteries and never alone, so
 # orangecheck asked that popup checks not run side by side (2026-10-24).
-SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery oc "
+# together measures how fast a change crosses between two browsers: with
+# placing beside it its plain p95 read 1,123 ms against 516-864 alone
+# (2026-10-24).
+SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery oc together "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # Two at a time, a slot taking the next check as soon as it is free. Two
