@@ -38,8 +38,9 @@
 --     a session at once. The account's own row cannot tell that password
 --     from the random one every account is made with, so the refusal is
 --     where a password signs in: the row Supabase writes of how a session
---     began (auth.mfa_amr_claims, 'password'). The sign-up's one
---     transaction goes with it, account and all.
+--     began (auth.mfa_amr_claims, 'password'). Supabase commits the
+--     account before that, so the account a public sign-up makes is
+--     refused too, when its making commits (below).
 --   - enrolling a second factor (auth.mfa_factors: an authenticator app, a
 --     phone, a key), on any account. Brickworks asks for none, and a
 --     stolen session could enrol one of its own.
@@ -90,6 +91,33 @@ create trigger no_password_sign_in
     before insert or update of authentication_method on auth.mfa_amr_claims
     for each row execute function public.auth_sessions_no_password();
 
+-- The account a refused password sign-up leaves: Supabase commits it
+-- before it hands out the session the trigger above refuses. Only a
+-- public sign-up writes an account whose user data says phone_verified
+-- (measured: no account Brickworks makes, by code or by the admin API,
+-- has it), so such an account, not at a test address, is refused when its
+-- making commits, and the sign-up makes nothing at all.
+create or replace function public.auth_users_no_public_sign_up()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+    if exists (select 1 from auth.users u
+                where u.id = new.id and u.raw_user_meta_data ? 'phone_verified'
+                  and coalesce(u.email, '') !~* '@resend[.]dev$') then
+        raise exception 'Brickworks makes accounts itself: sign in with a code we email you' using errcode = '42501';
+    end if;
+    return null;
+end;
+$$;
+
+drop trigger if exists no_public_sign_up on auth.users;
+create constraint trigger no_public_sign_up
+    after insert on auth.users
+    deferrable initially deferred
+    for each row execute function public.auth_users_no_public_sign_up();
+
 create or replace function public.auth_no_second_factor()
 returns trigger
 language plpgsql
@@ -108,4 +136,4 @@ create trigger no_second_factor
 -- Run by Supabase's own role when it writes: granted it by name, so they
 -- run whatever is taken from PUBLIC (supabase/no_client_access.sql).
 grant execute on function public.auth_users_no_new_ways_in(), public.auth_sessions_no_password(),
-    public.auth_no_second_factor() to supabase_auth_admin;
+    public.auth_users_no_public_sign_up(), public.auth_no_second_factor() to supabase_auth_admin;

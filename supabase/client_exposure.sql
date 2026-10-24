@@ -12,10 +12,11 @@
 --                             each thing anon, authenticated or PUBLIC can
 --                             reach (a table or view, a column, a sequence, a
 --                             policy, a function), and each default that
---                             would grant one to the next made; tables and
---                             functions, every one in public, for
---                             tools/web/orangecheck_check.mjs to ask
---                             PostgREST about, as a session and as anon.
+--                             would grant one to the next made; tables (with
+--                             their columns, since a column may be granted
+--                             where its table is not) and functions, every
+--                             one in public, for tools/web/orangecheck_check.mjs
+--                             to ask PostgREST about, as a session and as anon.
 --
 -- supabase/no_client_access.sql takes the reach away; this only reads.
 -- Security definer, so it reads the catalogue as its owner, and granted to
@@ -80,7 +81,11 @@ as $$
     )
     select jsonb_build_object(
         'bad', coalesce((select jsonb_agg(line order by line) from bad), '[]'::jsonb),
-        'tables', coalesce((select jsonb_agg(relname order by relname) from relations where relkind <> 'S'), '[]'::jsonb),
+        'tables', coalesce((
+            select jsonb_agg(jsonb_build_object('name', r.relname, 'columns', (
+                       select coalesce(jsonb_agg(t.attname order by t.attnum), '[]'::jsonb) from pg_catalog.pg_attribute t
+                        where t.attrelid = r.oid and t.attnum > 0 and not t.attisdropped)) order by r.relname)
+              from relations r where r.relkind <> 'S'), '[]'::jsonb),
         'functions', coalesce((
             select jsonb_agg(jsonb_build_object('name', f.proname, 'args', coalesce(i.names, '[]'::jsonb),
                        'named', f.pronargs = 0 or coalesce(jsonb_array_length(i.names), 0) = f.pronargs,

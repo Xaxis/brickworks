@@ -671,16 +671,20 @@ try {
     const functions = (exposure?.functions || []).filter((one) => !one.trigger && one.named);
     const inTurn = async (items, ask) => {
       const open = [];
-      for (let at = 0; at < items.length; at += 8) open.push(...(await Promise.all(items.slice(at, at + 8).map(ask))).filter(Boolean));
+      for (let at = 0; at < items.length; at += 12) open.push(...(await Promise.all(items.slice(at, at + 12).map(ask))).filter(Boolean));
       return open;
     };
     for (const [who, as] of [["an emailed code's session", { authorization: `Bearer ${visitor.access_token}` }], ["anon", {}]]) {
-      const openTables = await inTurn(tables, async (table) => {
-        const reply = await real(`${SB}/rest/v1/${encodeURIComponent(table)}?select=*&limit=1`, { headers: { ...PUBLIC, ...as } });
-        return closed(reply.status) ? null : `${table} ${reply.status}`;
+      // Each column on its own: a column may be granted where its table is
+      // not, and a select of them all is refused for the one that is not.
+      const asks = tables.flatMap((table) => ["*", ...table.columns].map((column) => [table.name, column]));
+      const openTables = await inTurn(asks, async ([table, column]) => {
+        const reply = await real(`${SB}/rest/v1/${encodeURIComponent(table)}?select=${encodeURIComponent(column)}&limit=1`,
+          { headers: { ...PUBLIC, ...as } });
+        return closed(reply.status) ? null : `${table}.${column} ${reply.status}`;
       });
-      check(`N1: as ${who}, every table and view in public is refused (${tables.length})`, tables.length > 0 && openTables.length === 0,
-        `${openTables.length} answered: ${openTables.slice(0, 8).join(", ")}`);
+      check(`N1: as ${who}, every table and view in public, and each of its columns, is refused (${tables.length}, ${asks.length} asked)`,
+        tables.length > 0 && openTables.length === 0, `${openTables.length} answered: ${openTables.slice(0, 8).join(", ")}`);
       const openFunctions = await inTurn(functions, async (fn) => {
         const reply = await real(`${SB}/rest/v1/rpc/${fn.name}`, { method: "POST", headers: { ...PUBLIC, ...as },
           body: JSON.stringify(Object.fromEntries(fn.args.map((name) => [name, null]))) });

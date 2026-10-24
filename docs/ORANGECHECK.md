@@ -67,8 +67,12 @@ last piece waits on its release (below).
   carries a random password hash, so its row cannot tell a chosen password
   from that, and the refusal is where a password signs in:
   `supabase/no_new_ways_in.sql` refuses Supabase's record of a password
-  sign-in (`auth.mfa_amr_claims`) but for a test account, and the sign-up
-  goes with it. Turning sign-up off (Supabase's `disable_signup`) is the
+  sign-in (`auth.mfa_amr_claims`) but for a test account. Supabase commits
+  the account before it hands out that session, so the account too is
+  refused as its making commits: only a public sign-up writes user data
+  that says `phone_verified` (measured against every account Brickworks
+  makes), and such an account, not at a test address, is not made. A
+  password sign-up now answers 500 and leaves nothing. Turning sign-up off (Supabase's `disable_signup`) is the
   owner's setting, which nothing here reaches; the owner has been asked.
   `api/otp.js` makes the account itself when Supabase answers that it takes
   no sign-ups, so a new person still signs in by code then.

@@ -272,8 +272,9 @@ they have. A Claude connector belongs to the account that switched it on.
   refuses setting a password on any account but a `@resend.dev` test
   account's, and any change of address (`supabase/no_new_ways_in.sql`, a
   trigger on `auth.users`; its dry run `tools/no_new_ways_in_try.sql`), a
-  sign-in by password on such an account (`auth.mfa_amr_claims`, which
-  closes public sign-up with a password) and any second factor. The keys a
+  sign-in by password on such an account (`auth.mfa_amr_claims`), the
+  account a public sign-up makes (its user data says `phone_verified`;
+  refused as it commits) and any second factor. The keys a
   page holds reach nothing in the database (`supabase/no_client_access.sql`,
   then `no_client_access_models.sql` once oc205's release is live; read by
   `supabase/client_exposure.sql`); `api/otp.js` makes a new person's account
