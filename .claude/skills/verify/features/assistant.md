@@ -1753,11 +1753,21 @@ fixing what it got wrong.
   words, plurals and simple stems (`SubjectWords`), and a word made of a
   kind and one of `SubjectWords.COMPOUND_ENDS` (a spaceship is space); of
   one whose two words are both kinds the second goes first, as what it is
-  (`SubjectWords.kinds_of_word`: a firetruck is a truck, then fire's), unless
-  `SubjectWords.IS_A` says which (a speedboat a boat, a spaceship space).
-  `kinds_probe`: held out, a speedboat is read as a boat, a racecar a car
-  then race, a firetruck a truck then fire, a sailboat a boat, a police car
-  police then car, a spaceship space (speed's sets are high-speed trains); every
+  (`SubjectWords.kinds_of_two`: a firetruck is a truck, then fire's), unless
+  `SubjectWords.IS_A` says which, in its order (a speedboat a boat, a
+  spaceship space, a seaplane a plane then sea), or the first is a place
+  (`SubjectWords.PLACES`: a castle tower is a castle's first). Two or more
+  words side by side, each a kind, in one phrase (`SubjectWords.phrases`,
+  cut at a comma or a full stop) are read the same, as the word made of them
+  (`SubjectWords.kinds_of_phrase`): a speed boat is a boat, a police car a car
+  then police; "a castle, tower and moat" stays castle then tower.
+  `kinds_probe`: a speedboat is read as a boat, a racecar a car then race, a
+  firetruck a truck then fire, a sailboat a boat, a spaceship space (speed's
+  sets are high-speed trains), and the same said as two words; held out,
+  thirteen two-word subjects (police helicopter, fire boat, cargo train,
+  monster truck, arctic helicopter, space rover, ice castle, golden dragon,
+  tow truck, passenger train, stunt plane, desert buggy, farm tractor), all
+  read as expected; every
   other vocabulary that reads a brief (`Style.GROUP_WORDS`, `Style.TRAITS`,
   `Style.TOWER_WORDS`, `Rooms.SAID`, `Techniques.named`) goes through the
   same. The owner's orrery was reviewed as an aeroplane: "planet" began with

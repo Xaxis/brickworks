@@ -65,24 +65,26 @@ func kinds_for(words: String, most: int = 3) -> Array:
 	var found: Array = []
 	var seen: Dictionary = {}
 	var place: int = 0
-	for word: String in SubjectWords.of(words):
-		place += 1
-		# A brief says castles and the catalogue says castle; it says
-		# spaceship where the catalogue, reading real set names, says space.
-		# Whole words only (SubjectWords): any kind a word began with was
-		# taken, so a planetarium and an orrery's planets were the plane
-		# kind, tail planes and jet engines. A word made of two may be two
-		# kinds, what it is first: a firetruck is a truck, then fire's.
-		var within: float = 0.0
-		for form: String in SubjectWords.kinds_of_word(word, kinds):
-			if seen.has(form):
-				continue
-			seen[form] = true
-			var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
-			entry["kind"] = form
-			entry["place"] = place + within
-			within += 0.5
-			found.append(entry)
+	# A brief says castles and the catalogue says castle; it says spaceship
+	# where the catalogue, reading real set names, says space. Whole words
+	# only (SubjectWords): any kind a word began with was taken, so a
+	# planetarium and an orrery's planets were the plane kind, tail planes
+	# and jet engines. A word made of two may be two kinds, what it is
+	# first: a firetruck is a truck, then fire's; and so are two words side
+	# by side, a fire truck, in a phrase: "a castle, tower" is two things.
+	for phrase: PackedStringArray in SubjectWords.phrases(words):
+		for read: PackedStringArray in SubjectWords.kinds_of_phrase(phrase, kinds):
+			place += 1
+			var within: float = 0.0
+			for form: String in read:
+				if seen.has(form):
+					continue
+				seen[form] = true
+				var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
+				entry["kind"] = form
+				entry["place"] = place + within
+				within += 1.0 / (read.size() + 1)
+				found.append(entry)
 	# In the order the brief names them, because a brief names its subject
 	# first and its features after. Fewest sets first was the rule, and
 	# "a large space cruiser with ... two engine pods" came back as engine,
