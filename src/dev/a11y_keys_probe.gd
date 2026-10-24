@@ -54,7 +54,6 @@ func _run() -> void:
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
-	SignInForm.offers_orangecheck = true
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("gate_for_probe", true)
 	root.add_child(_main)
@@ -230,8 +229,13 @@ func _way_in(live: bool) -> void:
 		await account.changed
 
 	# Signed out, with somewhere to sign in: the form.
+	# As a deployment that offers orangecheck to everybody, and says where
+	# the desktop opens it (oc237: the form asks the deployment now, where
+	# this probe once set SignInForm.offers_orangecheck).
 	if account.deployment != null:
 		account.deployment.orangecheck_for_everyone = true
+		account.deployment.orangecheck_native = {"project": "pk_test_a11y_keys",
+			"auth": "https://ochk.io", "audience": "https://brickworks.diy"}
 	account.state = Account.State.SIGNED_OUT
 	account.changed.emit()
 	await _frames(10)
