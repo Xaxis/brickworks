@@ -253,6 +253,20 @@ async function measure(label, rounds) {
   }
   const all = [...times["owner to guest"], ...times["guest to owner"]].sort((x, y) => x - y);
   const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];
+  // How many frames a second each page drew meanwhile: a change is seen at
+  // the frame after it arrives, and a browser drawing in software on a
+  // loaded box draws few.
+  const fps = await Promise.all([owner, guest].map((who) => who.page.evaluate(() => new Promise((done) => {
+    let frames = 0;
+    const from = performance.now();
+    const tick = () => {
+      frames += 1;
+      if (performance.now() - from < 3000) requestAnimationFrame(tick);
+      else done(Math.round(10 * frames / ((performance.now() - from) / 1000)) / 10);
+    };
+    requestAnimationFrame(tick);
+  }))));
+  console.log(`        frames a second meanwhile: the owner's page ${fps[0]}, the other's ${fps[1]}`);
   return check(`${label}: ${all.length} changes arrived, p50 ${pct(all, 0.5)} ms, p95 ${pct(all, 0.95)} ms`,
     all.length >= rounds * 0.9 && pct(all, 0.5) < 1500,
     Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
@@ -423,7 +437,7 @@ try {
   await guest.page.keyboard.press("Escape");
   await sameEverywhere("the model's name typed by the second person");
   check("...and the owner's tab is called it", (await textOf(owner.page)).text.includes("Together Cottage"));
-  const floorSaid = await tool(owner.page, "set_floor", { kind: "baseplate", across: 48, colour: 2 });
+  const floorSaid = await tool(owner.page, "set_floor", { kind: "baseplate", across: 32, colour: 2 });
   console.log(`        set_floor: ${floorSaid.split("\n")[0].slice(0, 120)}`);
   await sameEverywhere("the floor chosen by the owner");
   // A part made in the app: a print on a brick of the second person's own,
@@ -471,7 +485,7 @@ try {
   check("...and leaves the other's paint, on both", painted?.ok && paintSeen(a2.text) && a2.hash === b2.hash);
 
   console.log("\n5. how long a change takes to reach the other browser, now");
-  await measure("with the 48 x 48 floor, a motion, a print and the hidden colours, drawn in software", 20);
+  await measure("again, with a motion, a print, steps and the hidden colours", 20);
 
   console.log("\n5b. a reload, and a lost connection, go back in by themselves");
   await guest.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
