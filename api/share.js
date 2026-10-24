@@ -151,6 +151,7 @@ import {
 import { namesTrouble } from "./_names.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
+import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
@@ -260,12 +261,14 @@ export class Refusal extends Error {
 /// custom part), so it counts once wherever it is placed; so does a
 /// submodel that is a hose laid along a bend (FLEX_PIECES).
 ///
-/// And what the gallery filters on, read from the same lines: how many
-/// build steps the model has (its own file's, split by 0 STEP and 0
-/// ROTSTEP), whether they are its builder's (LdrModel.steps_are_authored:
-/// steps there, and either marked so by Brickworks or written by another
-/// tool), and how many of its parts are Technic and how many make it move
-/// (partFacts), counted through its submodels as its parts are.
+/// And what the gallery filters on, read from the same lines: whether its
+/// steps are its builder's (LdrModel.steps_are_authored: steps there, not
+/// marked worked out, and either marked so by Brickworks or written by
+/// another tool), and how many of its parts are Technic and how many make
+/// it move (partFacts), counted through its submodels as its parts are.
+/// And its steps, every page the step player turns to (stepCount, the
+/// steps it carries), which a comment is on: null when it carries none;
+/// and [count], the steps as a person is told of them (api/_steps.js).
 export function checkModel(text) {
   if (typeof text !== "string" || text.trim() === "") {
     throw new Refusal("there is no model to share");
@@ -287,6 +290,7 @@ export function checkModel(text) {
   let lineNo = 0;
   let stepped = false;
   let markedAuthored = false;
+  let markedWorked = false;
   // A file is known once it has a name or places something: an .ldr
   // has no 0 FILE line, and an .mpd starts with one.
   const keep = () => {
@@ -333,6 +337,8 @@ export function checkModel(text) {
         current.author = line.replace(/^0\s+Author:\s*/i, "").trim();
       } else if (meta === "!BRICKWORKS" && (tokens[2] || "").toUpperCase() === "AUTHORED_STEPS") {
         markedAuthored = true;
+      } else if (meta === "!BRICKWORKS" && (tokens[2] || "").toUpperCase() === "WORKED_STEPS") {
+        markedWorked = true;
       }
       continue;
     }
@@ -385,8 +391,10 @@ export function checkModel(text) {
   if (parts < 1) throw new Refusal("that model has no parts in it", 415);
   if (parts > 200000) throw new Refusal("that model has more parts than a shared model can have", 413);
   const top = files.get(main);
-  const steps = Math.max(1, top.steps + (top.open ? 1 : 0));
-  const ownSteps = stepped && (markedAuthored || top.author !== "Brickworks");
+  const ownSteps = stepped && !markedWorked && (markedAuthored || top.author !== "Brickworks");
+  const oneModel = top.placed.every((ref) => !files.has(ref) || files.get(ref).isPart);
+  const stepsCount = stepCount(text, { own: ownSteps, oneModel, steps: top.steps + (top.open ? 1 : 0) });
+  const steps = stepsCount?.pages ?? null;
   // What it needs, by part and colour, for Build with what I own
   // (api/_owned.js): every part line the tally counts, through its
   // sub-models in the colour each is placed in (16 is that colour). A
@@ -417,7 +425,7 @@ export function checkModel(text) {
     const [part, colour] = lot.split("\n");
     return [part, Number(colour), qty];
   });
-  return { parts, bytes, steps, ownSteps, technic: isTechnic(parts, technicParts, movingParts), needs };
+  return { parts, bytes, steps, count: stepsCount, ownSteps, technic: isTechnic(parts, technicParts, movingParts), needs };
 }
 
 /// The picture, from the base64 the app sends, or null for none.
@@ -805,13 +813,13 @@ ${rows.join("\n")}
 /// The Tested mark, for a version that passed (api/_tested.js publicMark):
 /// small, the four results on hover (its title) and on a tap (it opens),
 /// and whose finding it is. Nothing for any other version.
-function testedMark(mark) {
+function testedMark(mark, counted = null) {
   if (!mark) return "";
   return `<details class="tested-mark" data-tested="yes"><summary class="pill good" title="${escapeHtml(mark.line)}">`
     + `<span class="tick" aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
     + `<ul>${mark.said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
     + `<p class="note">Worked out by the Brickworks app ${escapeHtml(mark.app)} as it was published, `
-    + `building it by its own ${count(mark.steps, "step")}.</p></div></details>`;
+    + `building it by its own ${counted ? countSaid(counted) : count(mark.steps, "step")}.</p></div></details>`;
 }
 
 /// Who made it, at the head of its page: their avatar, name and handle, a
@@ -931,7 +939,10 @@ function actionBar(origin, id, model) {
 /// gallery's. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
-function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] }) {
+/// [counted] is the shown version's steps, counted from its file as it is
+/// read (api/_steps.js), or null where they are not known.
+function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] },
+  counted = null) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -959,12 +970,16 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       + `${fromVersion ? `, <a class="from-version" href="/m/${parent.id}/v/${fromVersion}">version ${fromVersion}</a>` : ""}`
       + `${parent.author ? `, by ${escapeHtml(parent.author)}` : ""}</p>`
     : `<p class="from">Remixed from a model shared by link</p>`;
-  // What it is, as pills, each said once there is one. A model shared
-  // before the directory was not counted: its steps are not known, and are
-  // not said.
+  // What it is, as pills, each said once there is one. Its steps are the
+  // ones its step player and booklet number, counted from the file shown;
+  // a file that carries none has them worked out as it opens, and they are
+  // not said. What is built on the side is said apart: the orrery's 87
+  // steps, and its 12 sub-assemblies' 64.
+  const side = counted ? sideSaid(counted) : "";
   const facts = [
     `<li class="pill">${escapeHtml(count(shownModel.parts, "part"))}</li>`,
-    model.steps ? `<li class="pill">${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}</li>` : "",
+    counted ? `<li class="pill" data-steps="${counted.steps}">${stepsSaid(counted)}${model.own_steps ? ", laid out by its builder" : ""}</li>` : "",
+    side ? `<li class="pill" data-side="${counted.side}">${side}</li>` : "",
     model.technic ? `<li class="pill">Technic or a mechanism</li>` : "",
     // What it does: its own motions' names, else what its app found moves.
     movesWords(model) ? `<li class="pill">${escapeHtml(`Moves: ${movesWords(model)}`)}</li>` : "",
@@ -1017,7 +1032,7 @@ ${header}
         <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
       </div>
       ${actionBar(origin, id, model)}
-      <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark)}</li>` : ""}${facts}</ul>
+      <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
       ${fromLine}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
@@ -1027,7 +1042,7 @@ ${header}
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
     <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
-  ${commentsSection(id, version.n, newest, version.steps ?? model.steps ?? null)}
+  ${commentsSection(id, version.n, newest, counted ? counted.pages : null)}
   ${buildsSection(id, model, photos)}
   <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
     ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
@@ -1132,11 +1147,12 @@ function buildsSection(id, model, photos) {
 /// itself is the same for everybody and kept by the CDN. The step picker has the steps of
 /// the version shown; a model of more than a thousand has a number to type.
 function commentsSection(id, shown, newest, steps) {
-  const many = Number(steps) > 1000;
+  // Steps not known: any step, by number.
+  const many = !steps || Number(steps) > 1000;
   const options = !steps || many ? "" : Array.from({ length: Number(steps) },
     (_, at) => `<option value="${at + 1}">step ${at + 1}</option>`).join("");
   const picker = many
-    ? `<input id="comment-step" type="number" min="1" max="${Number(steps)}" inputmode="numeric" placeholder="the whole model">`
+    ? `<input id="comment-step" type="number" min="1"${steps ? ` max="${Number(steps)}"` : ""} inputmode="numeric" placeholder="the whole model">`
     : `<select id="comment-step"><option value="">the whole model</option>${options}</select>`;
   return `<section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
     data-version="${shown}" data-newest="${newest}" hidden>
@@ -1333,6 +1349,20 @@ async function missing(id) {
 
 /// A model's page, read as the server: directory_model says for itself
 /// that it is published, and names only what a visitor may know.
+/// The steps of the model in the bucket's file [name], counted as it is
+/// read (checkModel's count): what was counted when it was published was
+/// the 0 STEP lines of its first model until steps206, and is not shown.
+/// Null for none known, or no file.
+async function countedOf(name) {
+  const file = await getFile(name).catch(() => null);
+  if (!file) return null;
+  try {
+    return checkModel(file.toString("utf8")).count;
+  } catch {
+    return null;
+  }
+}
+
 async function modelPage(id) {
   if (!ID.test(id || "")) return null;
   const page = await db("rpc/directory_model", { method: "POST", body: { model_id: id } });
@@ -1370,15 +1400,16 @@ async function read(request, response) {
     // Whose it is: their own pictures lead its strip, and the page leads on
     // to the rest of their work. The database not answering is no owner.
     const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
-    const [mark, photos, next] = await Promise.all([markOf(db, id, shown.n),
-      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own)]);
+    const [mark, photos, next, counted] = await Promise.all([markOf(db, id, shown.n),
+      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own),
+      countedOf(versionFile(id, shown.n, versions[0].n, "mpd"))]);
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
     const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
       .sort((a, b) => Number(b.own) - Number(a.own));
     // Each person on it with their own picture, where they have one.
     await withFaces([page, ordered, next]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next));
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted));
   }
 
   const row = await publishedRow(id);

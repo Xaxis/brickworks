@@ -175,7 +175,7 @@ func _run() -> void:
 		if str(block.get("type", "")) == "image":
 			image = block
 	_check("opened: %s" % said.get_slice("\n", 0).left(100), said.contains("/m/%s" % id) and said.contains(" parts."))
-	for wanted: String in ["Licence:", "sub-assemblies", "Size:", "Its parts by kind:", "The most used:", "Read-only"]:
+	for wanted: String in ["Licence:", "sub-model", "Size:", "Its parts by kind:", "The most used:", "Read-only"]:
 		_check("...%s" % wanted, said.contains(wanted))
 	_check("...and its picture, as an image block (%s, %d characters)" % [image.get("mimeType", "none"),
 		str(image.get("data", "")).length()], str(image.get("mimeType", "")).begins_with("image/")
