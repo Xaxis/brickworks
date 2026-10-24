@@ -37,6 +37,7 @@ find_part
 save_dialog
 kart_steer
 booklet_stream
+booklet_pdf   # Save as PDF and Save pages as PNG from the castle's booklet, read by poppler and pypdf (pdf249)
 stress_list
 viewer_steps   # Build it at step 1, the viewer timeline framing its steps, the play pill only for what moves (viewer218)
 bin_techniques   # the parts bin's Techniques: a construction held whole, turned, put down on a wall, one undo (bin238)

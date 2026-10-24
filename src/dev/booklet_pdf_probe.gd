@@ -1,6 +1,6 @@
 ## Does Save as PDF in the booklet save the booklet, page for page?
 ##
-##   godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- [--model=FILE] [--out=DIR] [--html=FILE]
+##   godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- [--model=FILE] [--into=DIR] [--html=FILE]
 ##
 ## Needs a window: the booklet's pictures are drawn, and so are its pages
 ## as PNGs. FILE is res://models/castle.ldr unless named; DIR is where
@@ -50,8 +50,8 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--model="):
 			model = arg.trim_prefix("--model=")
-		elif arg.begins_with("--out="):
-			out = arg.trim_prefix("--out=")
+		elif arg.begins_with("--into="):
+			out = arg.trim_prefix("--into=")
 		elif arg.begins_with("--html="):
 			html = arg.trim_prefix("--html=")
 	DirAccess.make_dir_recursive_absolute(out)
@@ -241,6 +241,12 @@ func _check(what: String, ok: bool) -> bool:
 	return ok
 
 
+## Every way out: the system's own opener put back first, as a lambda of
+## this script's left in SaveTo's static breaks the heap at exit.
 func _quit() -> void:
+	SaveTo.open_with = Callable(OS, "shell_open")
 	print("booklet_pdf_probe: %s" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
+	if _main != null:
+		_main.queue_free()
+		await process_frame
 	quit(0 if _failures == 0 else 1)

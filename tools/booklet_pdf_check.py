@@ -83,10 +83,14 @@ def rendered(pdf, number, dpi, into):
 
 def differ(a, b):
     """How far apart two pictures of one page are: the mean difference of a
-    channel out of 255, the second drawn at the first's size."""
+    channel out of 255, both at 400 px wide. Small enough that two ways of
+    smoothing one picture's pixels agree; big enough that a box, a line of
+    words or a picture out of place by a millimetre does not."""
     from PIL import Image, ImageChops, ImageStat
     one = Image.open(a).convert("RGB")
-    two = Image.open(b).convert("RGB").resize(one.size, Image.LANCZOS)
+    size = (400, round(400 * one.size[1] / one.size[0]))
+    one = one.resize(size, Image.LANCZOS)
+    two = Image.open(b).convert("RGB").resize(size, Image.LANCZOS)
     return sum(ImageStat.Stat(ImageChops.difference(one, two)).mean) / 3.0
 
 

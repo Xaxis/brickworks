@@ -1093,6 +1093,26 @@ picture the assistant is shown.
   the castle and reads the HTTP stream as a browser does: the cover within
   5 s, the first page of steps long before the last, what it read the file
   written, the page opened again whole, no frame of the app's over 500 ms.
+  **Save as PDF** and **Save pages as PNG** sit beside Print in the
+  booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
+  while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with
+  `POST /save?pdf|png`; `BookletOut.save_wanted`, `Main.save_booklet_as`
+  opens the Save dialog and answers with where it went), on the web in the
+  app's tab (`BookletOut.finish` wires them; a download); from the file
+  alone, Print only. The booklet is read back from itself a page at a time
+  (`BookletRead`: the file on the desktop, the tab's sections on the web)
+  into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
+  own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,
+  words as Helvetica text, 269 x 199 mm pages) or a zip of a PNG a page at
+  the pictures' own density (`BookletPng`, drawn with `force_draw`, as the
+  web's app tab is out of view and gets no frames). `booklet_pdf_probe`
+  presses Instructions and then both Saves as the browser does, and
+  `tools/booklet_pdf_check.py` reads the result with poppler and pypdf:
+  page count, page size, every step picture byte for byte, the title and
+  the element numbers as words, the zip's first and last pages against the
+  PDF drawn by poppler (`--shots` against the browser's own pictures, from
+  `booklet_print.mjs --shots-only`). `booklet_flow.mjs` presses both in a
+  browser and runs the same check on the downloads.
   The browser flows wait for the tab's document to close (`bookletWhole` in
   `booklet_flow.mjs`, `booklet_edit_flow.mjs`, `brickify_flow.mjs`), and
   `booklet_flow` says when the first page and the first page of steps came.
@@ -1674,6 +1694,7 @@ node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/a
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
+godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --into=DIR  # the castle's booklet saved as a PDF and as PNG pages from its own Save buttons; --model=res://models/orthanc.ldr for the tower
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's
