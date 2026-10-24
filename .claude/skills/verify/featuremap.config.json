@@ -3115,6 +3115,20 @@
       "area": "account"
     },
     {
+      "kind": "api",
+      "label": "GET /api/otp/canary",
+      "entry": "api/_canary.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/otp/canary   (401 without CRON_SECRET; Vercel's cron runs it daily at 04:47 UTC)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "canary check",
+      "entry": "tools/web/canary_check.mjs",
+      "reach": "node tools/web/canary_check.mjs --url=https://brickworks.diy   (.env sourced; --route for a deployment's own run, --stand-in for the canary itself)",
+      "area": "account"
+    },
+    {
       "kind": "cli",
       "label": "mcp lean probe",
       "entry": "src/dev/mcp_lean_probe.gd",

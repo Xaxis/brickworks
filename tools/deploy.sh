@@ -163,8 +163,11 @@ fi
 # query and all, so it needs no route of its own. Vercel's cron calls /api/share/sweep at
 # 04:17 UTC every day, with CRON_SECRET (set on the project, and in .env
 # for share_probe): it takes away the files of models whose row went with
-# a deleted account. Its pages send their own security policy; the app's below
-# does not change, since the viewer talks only to its own site.
+# a deleted account. At 04:47 it calls /api/otp/canary (api/_canary.js), the
+# same way: a public sign-up, an unconfirmed address and a new person's code
+# played through, the owner mailed if one fails. Its pages send their own
+# security policy; the app's below does not change, since the viewer talks
+# only to its own site.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)
@@ -337,7 +340,8 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
-  "crons": [ { "path": "/api/share/sweep", "schedule": "17 4 * * *" } ],
+  "crons": [ { "path": "/api/share/sweep", "schedule": "17 4 * * *" },
+             { "path": "/api/otp/canary", "schedule": "47 4 * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -345,6 +349,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
+    { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },

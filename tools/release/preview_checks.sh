@@ -232,9 +232,15 @@ declare -A CMD=(
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
   # local only: signup_check.mjs. It asks the Supabase project, not a
   # deployment, whether anybody can make an account without the code:
-  # public sign-up off, confirmation on (account.md). It fails until the
-  # owner changes those settings; name it here once it passes, so a setting
-  # turned back on holds a release.
+  # public sign-up off, confirmation on (account.md). canary below holds
+  # the same settings by behaviour on every preview.
+  # The daily sign-in canary (api/_canary.js), from here and as the
+  # deployment's own run (/api/otp/canary, with CRON_SECRET): a public
+  # sign-up refused, an unconfirmed address signing in by no way, a new
+  # address signing in by a code api/otp.js made and enrolling no second
+  # factor; the run recorded. Throwaway accounts at Resend test addresses,
+  # deleted and checked gone.
+  [canary]="tools/web/canary_check.mjs --url=$P --route"
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"

@@ -53,8 +53,9 @@ function asServer() {
 /// sign-up with a password made an account and a session at any address),
 /// and the admin API makes one either way. Confirmed, since only the code
 /// redeemed signs anybody in to it. An address that has its account
-/// already is answered 422, and asked its code all the same.
-async function mint(email) {
+/// already is answered 422, and asked its code all the same. The daily
+/// canary (api/_canary.js) signs in by this, and by deliver below.
+export async function mint(email) {
   const made = await fetch(`${project()}/auth/v1/admin/users`, {
     method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
     signal: AbortSignal.timeout(10000),
@@ -129,7 +130,7 @@ async function post(key, from, email, code) {
 // (api/_auth.js isTestAccount). Mail sent there reaches nobody.
 const TEST_INBOX = /@resend\.dev$/i;
 
-async function deliver(email, code) {
+export async function deliver(email, code) {
   const key = process.env.RESEND_API_KEY;
   // A unit's preview runs without the mail key (tools/deploy.sh --unit), so
   // unreviewed code can never send from brickworks.diy. A test inbox would
@@ -206,6 +207,11 @@ export default async function handler(request, response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Cache-Control", "no-store");
 
+  // Vercel's cron, once a day (/api/otp/canary): signing in played through.
+  if (request.method === "GET" && request.query?.op === "canary") {
+    const { canaryRoute } = await import("./_canary.js");
+    return canaryRoute(request, response, { mint, deliver });
+  }
   if (request.method !== "POST") {
     return response.status(405).json({ error: "POST only" });
   }

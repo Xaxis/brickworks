@@ -72,6 +72,14 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/otp/canary",
+      "kind": "api",
+      "entry": "api/_canary.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/otp/canary   (401 without CRON_SECRET; Vercel's cron runs it daily at 04:47 UTC)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:GET/POST /api/people",
       "kind": "api",
       "entry": "api/people.js",
@@ -369,6 +377,14 @@
       "entry": "tools/bench/cadtask.py",
       "reach": "python3 tools/bench/cadtask.py all   (run bare: it puts each run under heavy; real sets' files round-tripped, frames timed, three sets built in a browser, REPORT.md in bench/results/cadtask-<date>/ of the main checkout; docs/CADTASK.md)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:canary check",
+      "kind": "cli",
+      "entry": "tools/web/canary_check.mjs",
+      "reach": "node tools/web/canary_check.mjs --url=https://brickworks.diy   (.env sourced; --route for a deployment's own run, --stand-in for the canary itself)",
+      "area": "account",
       "tests": []
     },
     {
