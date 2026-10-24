@@ -743,7 +743,7 @@ static func _fetch_copied(library: PartLibrary, model: LdrModel) -> void:
 	if tree == null:
 		return
 	var wanted := PackedStringArray()
-	for made: String in _copied_parts(library, model):
+	for made: String in copied_parts(library, model):
 		# Read from the build's pack where it is there, or asked for.
 		if library.mesh_for(made) == null and library.is_on_its_way(made):
 			wanted.append(made)
@@ -758,7 +758,7 @@ static func _fetch_copied(library: PartLibrary, model: LdrModel) -> void:
 
 ## The parts LEGO made that [param model]'s parts not yet read as copies are
 ## named for, each once.
-static func _copied_parts(library: PartLibrary, model: LdrModel) -> PackedStringArray:
+static func copied_parts(library: PartLibrary, model: LdrModel) -> PackedStringArray:
 	var out := PackedStringArray()
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
