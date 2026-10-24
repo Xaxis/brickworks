@@ -14,12 +14,20 @@ cd "$W"
 # is still checking, as m26 was shipped while its tool list was (2026-10-14).
 LOCK="$(git rev-parse --git-dir)/merging"; touch "$LOCK"; trap 'rm -f "$LOCK"' EXIT
 ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
-# Untracked files Godot's import made (.uid) that the branch also carries,
-# byte for byte, would stop the merge: take them out first.
+# Untracked files Godot's import made (.uid) that the branch also carries
+# would stop the merge: take them out first. The branch's committed one
+# wins even when it differs: the import here made its own for a script the
+# release already had untracked, and git refused lib219 silently (m164,
+# 2026-10-24). The import below writes any that are missing.
 for f in $(git diff --name-only HEAD...$REF -- '*.uid' 2>/dev/null); do
-  if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1       && cmp -s <(git show "$REF:$f" 2>/dev/null) "$f"; then rm "$f"; fi
+  if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then rm "$f"; fi
 done
-merged=0; git "${ID[@]}" merge --no-ff --no-commit "$REF" >/dev/null 2>&1 && merged=1
+merged=0; out=$(git "${ID[@]}" merge --no-ff --no-commit "$REF" 2>&1) && merged=1
+# A merge that would not start (an untracked file in the way) leaves no
+# conflicts to resolve: say why rather than commit nothing.
+if [ $merged = 0 ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  echo "MERGE: did not start"; echo "$out" | tail -5; exit 3
+fi
 # A unit begun before a version was cut: its changelog entries go under
 # [Unreleased], not the dated section git merges them into, with or
 # without a conflict. Before the docs union below, which would keep both.
