@@ -25,7 +25,7 @@ set -u
 [ $# -ge 6 ] && [ "$5" = "--" ] || { sed -n 2,20p "$0"; exit 2; }
 BASE=$(cd "$1" && pwd) || exit 2; NEW=$(cd "$2" && pwd) || exit 2
 ROUNDS=$3; OUT=$4; shift 5
-SHOW=${AB_SHOW:-"drag frames|drag frame stays"}
+SHOW=${AB_SHOW:-"drag frames on a CPU|in a drag frame"}
 read -r P_BASE P_NEW <<< "${AB_PORTS:-8871 8872}"
 SERVE=${AB_SERVE:-"--share Pl4yFl0w01=vendor/omr/files/8808-1.mpd"}
 mkdir -p "$OUT"

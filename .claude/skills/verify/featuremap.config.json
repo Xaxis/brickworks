@@ -3099,6 +3099,13 @@
       "entry": "src/dev/save_dialog_probe.gd",
       "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "step count probe",
+      "entry": "src/dev/step_count_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/step_count_probe.gd",
+      "area": "web"
     }
   ]
 }

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow -->
 
 ## Sub-features
 
@@ -3001,14 +3001,22 @@ judged by its parts' shapes as on a deployment: without them it stopped by
 its covers, at 95° rather than 108°, and its stop cost half as much (G14a).
 Proves it when it ends "a shared model's steering turns by its wheel, by
 mouse and by finger, and Reset puts it back" (34 checks, about 100 s), at
-1280 x 800 by the mouse and at 390 x 844 by a finger (index 1, the CPU
-slowed four times for the drag), in SwiftShader: what moves said inside the
+1280 x 800 by the mouse and at 390 x 844 by a finger (index 1), in
+SwiftShader: what moves said inside the
 page, the joints read on a worker, the steering wheel's handle (`play:
 "steering"`) turned 10° or more with the view still (85° and 107°), the
 finger taken as the steering's (`brickworksShare.finger` "part"), the pill
-saying what turns, the app's own work in a drag frame under 33 ms (3.5 ms
-mean and 9.2 worst; slowed, 6.9 and 23; the page's frame gaps said beside
-it; and, said, its worst frame checking the way while the finger rested,
+saying what turns, the app's own work in a drag frame under 36 ms on
+average on a CPU (2026-10-23: each engine frame after a move of the
+pointer, its `tdur` in Chrome's trace, the dearest apart, the frame it
+takes hold in; on the phone each counted four times, as on a phone that
+much slower; m158 and m159 22.6 to 28.9 ms on the phone at load 14 to 35,
+about 6.5 on the laptop; the drag runs at the box's speed, since CDP's
+CPU throttle spins a slowed thread as long as the clock says, so a slowed
+frame's CPU time grows with the load; the app's own figures by the page's
+clock, which held m147 and m159 at load 35 to 40 on the old bar of 33 ms,
+and the page's frame gaps said beside it; and, said, its worst frame
+checking the way while the finger rested,
 `worst_pause_ms`, where a loop's joints' own parts are asked, Grab 15:
 by a finger slowed four times 18.8 and 22.9 ms on Grab 16, 34.7 to 42.3 on
 m101), Reset offered and inside the page, the pill clear of the view cube,
@@ -3303,6 +3311,26 @@ on the baseplate, the parts to pick up). Then never used: the text edited by
 one part, an old link with none, a part fewer in the world; and written
 twice, the second replaces the first. `-- --write IN OUT ...` writes each IN
 with its steps carried (the share steps flow shares those).
+
+A model's step count, the server's and the app's alike, headless, about five
+minutes (it needs `node`):
+
+```sh
+godot --headless --path . --script src/dev/step_count_probe.gd
+```
+
+Proves it when it ends "the server counts a model's steps as the app counts
+them, in the same words" with no `FAIL`: the orrery, the castle, the kart,
+the sports car and 6680-1, each shared as the app shares it and opened as the
+viewer opens it; its steps (`Instructions.count`: the numbers the booklet
+prints, "87 steps", and what is built on the side said apart, "12
+sub-assemblies built on the side in 64 steps of their own") the same as its
+timeline works out, its last step's "of", the step player's cover and the
+text read alone (`SharedPages.count`); and `api/share.js` run on the very
+text (`checkModel`, `api/_steps.js stepCount`) counting the same, in the same
+words, keeping every page as the model's `steps`. The model page says them
+from its file as it is read, never the stored count (`share_probe`: "3 steps
+as its booklet numbers them, its tower built on the side said apart").
 
 The player in the real scene is the last part of `share_view_probe` above
 (`shots/share/9_build_cover.png` to `11_build_again.png`): Build it pressed on

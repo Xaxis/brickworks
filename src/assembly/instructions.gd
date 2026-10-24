@@ -620,6 +620,46 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	return steps
 
 
+## How many steps [param steps] has, as a person building it is told:
+## {"steps", "side", "builds", "pages"}. A step is what the booklet numbers,
+## the timeline's "Step 12 of 87" and the booklet cover's "87 steps"; a
+## sub-assembly built on the side, in a box beside the step it goes on in,
+## is built in steps of its own inside that one ("Earth, 3 of 6"): "side"
+## counts those, "builds" the sub-assemblies, and "pages" every step the
+## step player turns to. api/_steps.js counts the steps a shared file
+## carries by this same rule, so its page says what the app says (steps206:
+## the castle's page said 65 steps of its 399, the orrery's 5 of its 87).
+## Two sub-assemblies put on in one of an author's steps are two pages of
+## one number ("Step 14 of 14 · minifig 2, put on"), so the steps are the
+## numbers, not the pages outside a box.
+static func count(steps: Array) -> Dictionary:
+	var numbers: Dictionary = {}
+	var boxes: Dictionary = {}
+	var side: int = 0
+	for step: Step in steps:
+		if step.in_callout():
+			side += 1
+			boxes[step.callout] = true
+		else:
+			numbers[step.number] = true
+	return {"steps": numbers.size(), "side": side, "builds": boxes.size(), "pages": steps.size()}
+
+
+## [method count]'s words: "87 steps, and 12 sub-assemblies built on the
+## side in 64 steps of their own"; "399 steps" with none built on the side.
+## The same words as api/_steps.js countSaid.
+static func count_words(counted: Dictionary) -> String:
+	var steps: int = int(counted.get("steps", 0))
+	var side: int = int(counted.get("side", 0))
+	var builds: int = int(counted.get("builds", 0))
+	var said: String = "%s step%s" % [Working.comma(steps), "" if steps == 1 else "s"]
+	if side == 0:
+		return said
+	return "%s, and %s %s built on the side in %s step%s of %s own" % [said, Working.comma(builds),
+		"sub-assembly" if builds == 1 else "sub-assemblies", Working.comma(side), "" if side == 1 else "s",
+		"its" if builds == 1 else "their"]
+
+
 ## How long each part of the last [method plan_paced] took: [what, ms].
 static var laps: Array = []
 

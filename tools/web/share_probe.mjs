@@ -62,8 +62,9 @@
 // sessions are minted here), deleted at the end with every row of theirs.
 // Every model this publishes is unpublished or swept before that, so no
 // file is left in the bucket.
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { fingerprint, partsOf } from "../../api/_versions.js";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { placed } from "./gallery_order.mjs";
 
@@ -173,6 +174,23 @@ const emailG = `delivered+bw-share-g-${rand}@resend.dev`;
 const emailH = `delivered+bw-share-h-${rand}@resend.dev`;
 const emailI = `delivered+bw-share-i-${rand}@resend.dev`;
 const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
+
+/// [text] carrying [pages] as the app carries the steps it worked out
+/// (src/net/shared_pages.gd): a head naming the text and its parts in
+/// order, and a line a step, each naming its parts by their place in that
+/// order and a callout's step by [callout, its step in it, how many].
+function carrying(text, pages) {
+  const parts = partsOf(text);
+  const head = { v: 1, model: fingerprint(text), parts: parts.length, mode: 0, steps: pages.length,
+    order: createHash("sha256").update(parts.map((p) => `${p.part}:${p.colour}`).join("|"), "utf8").digest("hex") };
+  return `${text.trimEnd()}\r\n0 !BRICKWORKS PAGES ${JSON.stringify(head)}\r\n`
+    + pages.map((page, at) => `0 !BRICKWORKS PAGE ${JSON.stringify({ i: at + 1, ...page })}\r\n`).join("");
+}
+// The probe tower's steps as the app would carry them: its two towers built
+// on the side in one step of their own and put on, then two steps on the
+// model. Three steps, as its booklet numbers them, and four pages.
+const TOWER_PAGES = [{ n: 1, b: [0, 1, 2, 3, 4, 5], a: "Tower", t: 2, c: [1, 1, 1] }, { n: 1, b: [], a: "Tower", t: 2, c: [1, 0, 1] },
+  { n: 2, b: [6] }, { n: 3, b: [7, 8] }];
 const ID = /^[A-Za-z0-9]{10}$/;
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const CRON = process.env.CRON_SECRET || "";
@@ -646,7 +664,7 @@ async function theDirectory(tokenA) {
   const word = `zebrafinch${rand}`;
   // A file of its own: the gallery's part, as the site's owner, took the
   // probe's model out, and with it that very file at any other link.
-  const GATE = MODEL.replace("0 Probe Tower", `0 Probe Gate ${rand}`);
+  const GATE = carrying(MODEL.replace("0 Probe Tower", `0 Probe Gate ${rand}`), TOWER_PAGES);
   const list = (query = "") => call(`/api/share?op=list&page=1&tests=1${query}`);
   const ids = (l) => (l.json?.models || []).map((m) => m.id);
 
@@ -672,8 +690,8 @@ async function theDirectory(tokenA) {
   check(JSON.stringify(r.json?.tags) === JSON.stringify(["castle", "tower", "b gate b"]),
     `tags in lower case, the same one once, the too short left out (${JSON.stringify(r.json?.tags)})`);
   check(r.json?.kind === "castle" && r.json?.licence === "cc-by-sa-4.0", `its kind and licence (${r.json?.kind}, ${r.json?.licence})`);
-  check(r.json?.steps === 2 && r.json?.own_steps === false && r.json?.technic === false,
-    `counted from the file: 2 steps, Brickworks's own, not Technic (${r.json?.steps}, ${r.json?.own_steps}, ${r.json?.technic})`);
+  check(r.json?.steps === 4 && r.json?.own_steps === false && r.json?.technic === false,
+    `counted from the file: the 4 pages of the steps it carries, worked out by Brickworks, not Technic (${r.json?.steps}, ${r.json?.own_steps}, ${r.json?.technic})`);
 
   for (const [what, body, status] of [
     ["a description over 1000 characters", { description: "x".repeat(1001) }, 400],
@@ -694,23 +712,25 @@ async function theDirectory(tokenA) {
     kind: "castle", tags: "castle" } });
   const own = r.json?.id || "";
   if (own) published.add(own);
-  check(r.status === 201 && r.json?.own_steps === true && r.json?.steps === 2,
-    `a file not written by Brickworks, with steps: its builder's own (${r.status}, ${r.json?.own_steps})`);
+  // Its steps carried by none, and through a sub-model: the app sets them
+  // out as it opens it, and they are not counted here (api/_steps.js).
+  check(r.status === 201 && r.json?.own_steps === true && r.json?.steps === null,
+    `a file not written by Brickworks, with steps: its builder's own, not counted here (${r.status}, ${r.json?.own_steps}, ${r.json?.steps})`);
   const GEARS = ["0 Probe Gears", "1 71 0 0 0 1 0 0 0 1 0 0 0 1 3743.dat", "1 71 40 0 0 1 0 0 0 1 0 0 0 1 3647.dat",
     "1 71 80 0 0 1 0 0 0 1 0 0 0 1 3648.dat", "1 15 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat", ""].join("\r\n");
   r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Gear Train", model: GEARS,
     listed: true, kind: "mechanism", licence: "all-rights-reserved" } });
   const gears = r.json?.id || "";
   if (gears) published.add(gears);
-  check(r.status === 201 && r.json?.technic === true && r.json?.own_steps === false && r.json?.steps === 1,
-    `three gears (one by its old number) and a brick: Technic or a mechanism; no steps, so one (${r.json?.technic}, ${r.json?.steps})`);
+  check(r.status === 201 && r.json?.technic === true && r.json?.own_steps === false && r.json?.steps === null,
+    `three gears (one by its old number) and a brick: Technic or a mechanism; no steps, so none counted (${r.json?.technic}, ${r.json?.steps})`);
 
   // The list: asked, filtered, sorted.
   console.log("the gallery's search, filters and sorts");
   l = await list();
   const card = (l.json?.models || []).find((m) => m.id === gate) || {};
   check(card.kind === "castle" && JSON.stringify(card.tags) === JSON.stringify(["castle", "tower", "b gate b"])
-    && card.licence === "cc-by-sa-4.0" && card.steps === 2 && card.own_steps === false && card.views === 0
+    && card.licence === "cc-by-sa-4.0" && card.steps === 4 && card.own_steps === false && card.views === 0
     && card.likes === 0 && card.remixes === 0 && !("owner" in card) && !("description" in card),
     "a card: kind, tags, licence, steps, counts; no owner, no description");
   check(String(card.thumb || "").startsWith(`${base}/m/${gate}.webp?v=`) && card.image === `${base}/m/${gate}.png`,
@@ -822,8 +842,9 @@ async function theDirectory(tokenA) {
   check(page.includes("<b>CC BY-SA 4.0.</b>") && page.includes('href="https://creativecommons.org/licenses/by-sa/4.0/"')
     && page.includes("credit Probe Builder"), "its licence, with whom to credit and the licence itself");
   // A count is said once there is one: no "0 views" (docs/SOCIAL.md).
-  check(page.includes("2 steps") && !page.includes("0 views") && page.includes(">1 remix<"),
-    "its steps and counts: 2 steps, no views said, 1 remix");
+  check(page.includes('data-steps="3">3 steps</li>') && page.includes(">1 sub-assembly built on the side, in 1 step of its own</li>")
+    && !page.includes("0 views") && page.includes(">1 remix<"),
+    "its steps and counts: 3 steps as its booklet numbers them, its tower built on the side said apart, no views said, 1 remix");
   check(page.includes(`href="/m/${remix}"`) && page.includes("Probe Gate Remix"), "what was remixed from it, a card linking its page");
   check(page.includes('<link rel="stylesheet" href="/site.css">') && page.includes('class="site-head"')
     && page.includes('class="site-foot"') && /LEGO® is a trademark of the LEGO Group/.test(page),

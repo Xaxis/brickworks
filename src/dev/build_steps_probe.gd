@@ -82,7 +82,12 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 	_ok(pages.shown(0).size() == every.size() and pages.faded(0).is_empty()
 		and pages.fresh(0).is_empty() and pages.lots(0).is_empty() and pages.note(0).is_empty(),
 		"the cover is the whole model, nothing faded and no parts listed")
-	_ok(pages.caption(0) == "%d steps" % steps.size(), "...and says how many steps (%s)" % pages.caption(0))
+	# As many as its pages say "of": the steps the booklet numbers, with
+	# what is built on the side said apart (Instructions.count).
+	var numbered: int = steps[-1].number if not steps.is_empty() else 0
+	_ok(pages.caption(0).begins_with("%s step" % Working.comma(numbered))
+		and (pages.caption(0).contains(" built on the side in ") == (numbered < steps.size())),
+		"...and says how many steps, the %d its pages say \"of\" (%s)" % [numbered, pages.caption(0)])
 
 	var picked: Dictionary = {}
 	var twice: int = 0
