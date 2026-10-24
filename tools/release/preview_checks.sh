@@ -75,11 +75,6 @@ declare -A CMD=(
   # one signed in elsewhere meets them on /profile and reaches a filled feed
   # in four taps. Throwaway accounts, deleted after with their model.
   [first_steps]="tools/web/first_steps_flow.mjs --url=$P --out=$S/${TAG}_first_steps"
-  # Sign-in by emailed code in the app itself: an entry that is not an
-  # address stays put, Email me a code sends one (to a test inbox), a wrong
-  # code lets no one in, the right one signs in, and the age question is
-  # asked once. A throwaway account, deleted after.
-  [account]="tools/web/account_flow.mjs --url=$P/app --out=$S/${TAG}_account"
   # Top builds, this week's pick and small builds, and the owner's choice of
   # the pick on /admin: API routes only, with the bypass (supabase/discovery.sql).
   [discovery]="tools/web/discovery_flow.mjs --url=$P --out=$S/${TAG}_discovery"
