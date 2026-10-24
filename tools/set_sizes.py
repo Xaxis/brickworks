@@ -126,7 +126,10 @@ def main() -> None:
     ask.add_argument("--out", type=Path, default=OUT)
     args = ask.parse_args()
     parts = style.Parts(args.generated / "catalogue.json")
-    index = {r["number"]: r for r in json.loads((style.OMR / "index.json").read_text())}
+    # The repository's index (tools/omr.py): each set's row by its number,
+    # every field of it a string, as a set's name falls back to its row's.
+    index: dict[str, dict[str, str]] = {
+        r["number"]: r for r in json.loads((style.OMR / "index.json").read_text())}
     rows = []
     for path in sorted((style.OMR / "files").glob("*")):
         number = style._number(path)
