@@ -98,11 +98,13 @@ class Entry extends RefCounted:
 	## a copy of their own.
 	var example: bool = false
 
+	## "Harbour Tug — 253 bricks, today at 07:48:46": saved when this
+	## computer's clock says, as File, Versions… says it. It said the time in
+	## UTC, 15:48:46 for a save at 07:48 in Alaska (walk180, D4).
 	func describe() -> String:
 		if example:
 			return "%s — %d bricks" % [name, bricks]
-		var when: String = Time.get_datetime_string_from_unix_time(modified)
-		return "%s — %d bricks, %s" % [name, bricks, when.replace("T", " ")]
+		return "%s — %d bricks, %s" % [name, bricks, ModelVersions.when_saved(modified)]
 
 
 var world: BrickWorld
@@ -1502,13 +1504,8 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		model = LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
-	# The geometry this build has not got, asked for now: fetched while the
-	# rest of the open goes on, and waited for before the model is drawn
-	# (_await_geometry). The parts the file's own copies are of first, as
-	# its carried parts wait for those alone (CustomParts._fetch_copied).
 	if job != null:
-		library.want(_parts_named_in(model))
-		library.want(CustomParts.copied_parts(library, model), true)
+		ask_geometry(model)
 	if job != null and not model.generated.is_empty():
 		await CustomParts.warm_skins(library, model)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
@@ -1534,6 +1531,16 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 ## A file this long or longer is read on a worker when it is opened over
 ## frames: 8466-1's 36 MB took 1.2 s of a desktop's frame to read.
 const READ_OFF_FRAME_FROM := 262144
+
+
+## The geometry of [param model]'s parts this build has not got, asked for
+## as soon as the file is read: fetched while the rest of the open goes on,
+## and waited for before the model is drawn (_await_geometry). The parts the
+## file's own copies are of first, as its carried parts wait for those alone
+## (CustomParts._fetch_copied). Asked again, nothing is asked twice.
+func ask_geometry(model: LdrModel) -> void:
+	library.want(_parts_named_in(model))
+	library.want(CustomParts.copied_parts(library, model), true)
 
 
 ## Every part [param model] places, by the library's name for it, each once:

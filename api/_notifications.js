@@ -214,12 +214,19 @@ export async function notificationsRead(request, response) {
 }
 
 /// What is new for [asker]: {count, notifications, feed}; before the file,
-/// the feed's count alone, as count, and null for each apart.
+/// the feed's count alone, as count, and null for each apart. The feed's
+/// counts only what came after each follow (supabase/follow_counts.sql): a
+/// new follow's backlog counted, and a new account that followed the house
+/// in First steps had 7 on its avatar at once (walk180, W7). The count of
+/// before until that file is applied.
 export async function newCounts(asker) {
-  const both = await call("notification_counts", { viewer: asker }, () => ({ missing: true }));
+  const [both, since] = await Promise.all([
+    call("notification_counts", { viewer: asker }, () => ({ missing: true })),
+    call("feed_new_count", { viewer: asker }, () => null),
+  ]);
   if (both && !both.missing) {
     const notices = Number(both.notifications) || 0;
-    const feed = Number(both.feed) || 0;
+    const feed = since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0;
     return { count: Math.min(notices + feed, 99), notifications: notices, feed, ready: true };
   }
   const count = await call("feed_count", { viewer: asker }, () => null);

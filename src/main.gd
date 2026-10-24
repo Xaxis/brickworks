@@ -2969,8 +2969,9 @@ func _maybe_open_library() -> void:
 		return
 	var id: String = _from_library
 	_from_library = ""
+	# Asked for at once, not once the bar is drawn: the network holds no
+	# frame, and a browser drawing in software drew it a second later.
 	var job: Working.Job = Working.begin("Fetching %s from the library…" % id)
-	await job.shown()
 	var got: Dictionary = await _model_library.fetch_model(id, job)
 	var entry: Dictionary = got["entry"]
 	job.end()
