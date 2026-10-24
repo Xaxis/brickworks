@@ -3196,14 +3196,27 @@ func _tool_answer(block: Dictionary) -> Variant:
 			return _search(query, int(args.get("limit", 15)))
 		"check_design":
 			await _sculpt_ready(args)
-			var trial: Model = _read_model(args)
+			# What if: the model as it stands with an edit_model change made
+			# to a copy (edit=), so a session asks "what if I swap these two"
+			# of the model it has, not a copy of it typed out again: walk180's
+			# "what breaks first" typed 53 to 89 of the tug's parts into four
+			# checks, 7.3 minutes of a session most of it writing them out.
+			var what_if: bool = args.get("edit") is Dictionary
+			var trial: Model = _edit(args["edit"]) if what_if else _read_model(args)
 			# Fetch what the check will need first. Without this the web
 			# build tells the model that real catalogue parts do not
 			# exist — they are simply not loaded yet — and it goes off
 			# and picks something else.
 			await _ready_to_check(trial)
 			var running: bool = _busy
-			var report: Dictionary = await _checked(trial, false, true)
+			if what_if and not _bad_colours.is_empty():
+				return "Not checked — %s. " % "; ".join(_bad_colours) + _colour_advice()
+			if what_if and not _unknown.is_empty():
+				return ("No brick has %s. Call look_at_model — the " % _numbers(_unknown)
+					+ "numbers change when a model is opened or rebuilt.")
+			# A what-if is asked of the change: its faults and its weighing,
+			# not the whole model's design advice again.
+			var report: Dictionary = await _checked(trial, what_if, true, not what_if)
 			# This app's own run, stopped while it was checked.
 			if running and not _busy:
 				return ""
@@ -3243,8 +3256,23 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if trial.placements.is_empty():
 				return report["feedback"]
 			var weighed: String = _balance_said(report, trial, applied)
-			return await _with_a_look(str(report["feedback"])
-				+ ("" if weighed.is_empty() else "\n\n" + weighed),
+			var checked: String = str(report["feedback"]) \
+				+ ("" if weighed.is_empty() else "\n\n" + weighed)
+			if what_if:
+				var asked: String = _what_changed(args["edit"])
+				checked = ("What if, on a copy of the model as it stands%s: nothing on the "
+					% ("" if asked.is_empty() else " (" + asked.trim_suffix(".").to_lower() + ")")
+					+ "baseplate changed. #N is a part standing; edit_model makes it.\n" + checked)
+			# From outside nothing a check is given goes on the baseplate,
+			# so a picture is of what stands there, not of what was checked:
+			# walk180's four checks of a bow were handed the same picture of
+			# the whole tug four times, and its sizes, as if they were the
+			# bow's.
+			if not running:
+				return checked + ("" if what_if else "\n\nNot drawn: a check changes nothing "
+					+ "on the baseplate, so a picture would be of what stands there. "
+					+ "submit_design or edit_model builds it and shows it.")
+			return await _with_a_look(checked,
 				"Look at it. Does it read as the thing it is meant to "
 				+ "be? If not, that is worth more than another brick. "
 				+ "view_model gives any other side.")
@@ -3403,7 +3431,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 					progress.emit("tried a change outside the selection")
 					return _refused_beyond(beyond)
 			var running: bool = _busy
-			var verdict: Dictionary = await _checked(edited, true)
+			# A session's own change, said as what it changed and broke
+			# (_lean_edit_answer): weighed with the check, so what it broke
+			# is known before anything lands.
+			var lean: bool = not running and not scoped and not _quiet_edit \
+				and not _laying_whole and _look_after_edit.is_empty() and _detailing.is_empty()
+			var verdict: Dictionary = await _checked(edited, true, lean)
 			if running and not _busy:
 				return ""
 			if not bool(verdict["ok"]):
@@ -3439,6 +3472,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 				focus.before = await _shot.take(world, "corner", scenery, focus.region)
 			var standing_was: Dictionary = SelectionScope.snapshot(world, scenery) \
 				if scoped else {}
+			# Where what it takes off stood, for the picture of what changed.
+			var gone: AABB = _bounds_of(_bricks_numbered(args.get("remove", []))) \
+				if lean else AABB()
 			_apply_edit(edited)
 			_name_assemblies(edited.assemblies)
 			_pending = null
@@ -3466,6 +3502,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# afterwards (SurfacePass): a picture per edit is time thrown away.
 			if _quiet_edit:
 				return said
+			if lean:
+				return await _lean_edit_answer(args, edited, verdict, said, gone)
 			# Set before the picture, dropped after it: a magenta
 			# brick in a check_design render a minute later would read
 			# as a colour somebody chose.
@@ -4138,6 +4176,177 @@ func _after_an_edit(model: Model) -> String:
 		+ "them.")
 
 
+## A session's edit, answered with what the caller needs for its next
+## decision: that it landed, what it changed, what that broke, the sizes if
+## they changed, and a small picture of what changed, not the whole design
+## again (mcpcost215, 2026-10-23). walk180's "move the fenders up, roof dark
+## blue" on its 241-part tug was handed the whole massing table, unchanged,
+## and a megapixel picture of the whole model, and the session then asked
+## view_model for the front anyway; its check_design and view_model answers
+## carried the same table again. A conversation re-reads every answer it was
+## given on every turn after, so an answer's size is paid for again each
+## turn. The picture is a close look at what changed, a quarter of the
+## pixels, with what was added or moved in magenta as before;
+## picture=true is the whole model as it was, picture=false none. The
+## in-app design loop's edits are answered as they were.
+func _lean_edit_answer(args: Dictionary, edited: Model, verdict: Dictionary, said: String,
+		gone: AABB) -> Variant:
+	var lines := PackedStringArray([said])
+	var changed: String = _what_changed(args)
+	if not changed.is_empty():
+		lines.append(changed)
+	var broke: String = _what_broke(verdict.get("balance"), edited)
+	if not broke.is_empty():
+		lines.append(broke)
+	var wanted: Variant = args.get("picture")
+	if (wanted is bool and not bool(wanted)) or not ModelShot.possible():
+		var sizes: String = _sizes_once(_measured())
+		if not sizes.is_empty():
+			lines.append(sizes)
+		return "\n".join(lines)
+	var ask: String = _after_an_edit(edited)
+	if wanted is bool and bool(wanted):
+		var whole: Variant = await _with_a_look("\n".join(lines), ask)
+		_shot.highlight = {}
+		return whole
+	# Framed on what it changed: what it added or moved, what it recoloured,
+	# and where what it took off stood.
+	var box: AABB = gone
+	var touched: Array[BrickWorld.Brick] = _bricks_numbered(_changed_ids)
+	for raw: Variant in args.get("recolor", []):
+		if raw is Dictionary:
+			touched.append_array(_bricks_numbered((raw as Dictionary).get("bricks", [])))
+	var near: AABB = _bounds_of(touched)
+	if near.size.length() > 0.0:
+		box = near if box.size.length() <= 0.0 else box.merge(near)
+	if box.size.length() <= 0.0:
+		_shot.highlight = {}
+		var sizes: String = _sizes_once(_measured())
+		if not sizes.is_empty():
+			lines.append(sizes)
+		return "\n".join(lines)
+	var picked: int = _shot.highlight.size()
+	ask = ("Close up on what changed%s. picture=true shows the whole model, view_model any side."
+		% ("" if picked == 0 else (": the %d added or moved in magenta, only in the picture; "
+			% picked + "they keep the colours you gave")))
+	var answer: Variant = await _with_a_look("\n".join(lines), ask, "corner",
+		box.grow(2.0 * STUD), CLOSE_UP)
+	_shot.highlight = {}
+	return answer
+
+
+## A close look's side, in pixels: a quarter of a whole picture's pixels,
+## so a quarter of what it costs the conversation (Claude counts an image
+## as its width times its height over 750 tokens).
+const CLOSE_UP := 512
+
+
+## The bricks standing with these numbers, those there are.
+func _bricks_numbered(ids: Variant) -> Array[BrickWorld.Brick]:
+	var out: Array[BrickWorld.Brick] = []
+	if world == null or not (ids is Array or ids is PackedInt64Array):
+		return out
+	for raw: Variant in ids:
+		var brick: BrickWorld.Brick = world.get_brick(int(raw))
+		if brick != null:
+			out.append(brick)
+	return out
+
+
+## What an edit asked for, in one line: "Moved 36 by dy 1; put down 12;
+## recoloured 12 Dark Blue (272)."
+func _what_changed(args: Dictionary) -> String:
+	var said := PackedStringArray()
+	for raw: Variant in args.get("move", []):
+		if not raw is Dictionary:
+			continue
+		var order: Dictionary = raw
+		var by := PackedStringArray()
+		for axis: String in ["dx", "dy", "dz"]:
+			if float(order.get(axis, 0.0)) != 0.0:
+				by.append("%s %s" % [axis, Placement._num(float(order[axis]))])
+		if not by.is_empty():
+			said.append("moved %d by %s" % [(order.get("bricks", []) as Array).size(),
+				", ".join(by)])
+	for raw: Variant in args.get("turn", []):
+		if raw is Dictionary:
+			said.append("turned %d" % ((raw as Dictionary).get("bricks", []) as Array).size())
+	var added: int = (args.get("add", []) as Array).size() if args.get("add") is Array else 0
+	if added > 0:
+		said.append("put down %d" % added)
+	var taken: int = (args.get("remove", []) as Array).size() if args.get("remove") is Array else 0
+	if taken > 0:
+		said.append("took off %d" % taken)
+	for raw: Variant in args.get("recolor", []):
+		if raw is Dictionary and (raw as Dictionary).has("color"):
+			said.append("recoloured %d %s (%d)" % [((raw as Dictionary).get("bricks", []) as Array).size(),
+				_colour_name(int(raw["color"])), int(raw["color"])])
+	for key: String in ["sections", "repeat_section", "assemblies"]:
+		if args.get(key) is Array and not (args[key] as Array).is_empty():
+			said.append("%d %s" % [(args[key] as Array).size(), key.replace("_", " ")])
+	if said.is_empty():
+		return ""
+	var line: String = "; ".join(said)
+	return line.left(1).to_upper() + line.substr(1) + "."
+
+
+## What a change broke, weighed as check_design weighs (Balance): whether the
+## model now tips, and each stud joint past its working load, by the numbers
+## look_at_model gives. One short line when nothing did.
+func _what_broke(report: Variant, model: Model) -> String:
+	if not report is Balance.Report or (report as Balance.Report).empty:
+		return ""
+	var balance: Balance.Report = report
+	var name_of: Callable = func(id: int) -> String:
+		if id <= 0 or id > model.placements.size():
+			return "a part"
+		var placement: Placement = model.placements[id - 1]
+		return "#%d (%s)" % [placement.id, placement.part] if placement.id != 0 \
+			else "the new %s at %s" % [placement.part, placement.where()]
+	var bad := PackedStringArray()
+	if balance.margin < 0.0:
+		bad.append("it tips over, %s studs past the %s edge" % [Balance.studs(-balance.margin),
+			balance.edge])
+	for one: Balance.JointLoad in balance.joints:
+		if one.ratio <= 1.0 or bad.size() >= WORTH_SAYING:
+			continue
+		bad.append("%s %s %s on %d stud%s at %sx its working load (%s N·cm against %s; lets go at %s)"
+			% [str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
+				str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
+				Balance.tidy(one.ratio), Balance.tidy(one.moment), Balance.tidy(one.capacity),
+				Balance.tidy(one.ultimate)])
+	if bad.is_empty():
+		return "It stands, and no stud joint is past its working load."
+	return ("As it stands now: %s. check_design edit= tries a fix on a copy first."
+		% "; ".join(bad))
+
+
+## The model's sizes, said to a session once for each time they change: the
+## same table after every look and edit was most of what an answer said
+## (walk180's tug, the same seven rows nine times in two turns). Empty when it
+## is what the session was last told, to the nearest stud and plate: a tenth
+## of a stud is no change to the sizes a design planned.
+func _sizes_once(sizes: String) -> String:
+	if _sizes_key(sizes) == _sizes_key(_sizes_said):
+		return ""
+	_sizes_said = sizes
+	return sizes
+
+
+static func _sizes_key(sizes: String) -> String:
+	var number := RegEx.create_from_string("-?\\d+(\\.\\d+)?")
+	var out: String = ""
+	var at: int = 0
+	for found: RegExMatch in number.search_all(sizes):
+		out += sizes.substr(at, found.get_start() - at) + str(roundi(float(found.get_string())))
+		at = found.get_end()
+	return out + sizes.substr(at)
+
+
+## The sizes last said to a session (_sizes_once).
+var _sizes_said: String = ""
+
+
 ## How big the model actually came out, in studs.
 ##
 ## The one question a critique most needs answered — is this the size I
@@ -4397,7 +4606,7 @@ func _subject_pictures() -> Array:
 
 
 func _with_a_look(said: String, ask: String,
-		from: String = "corner", only: AABB = AABB()) -> Variant:
+		from: String = "corner", only: AABB = AABB(), small: int = 0) -> Variant:
 	_ensure_shot()
 
 	# Whether this is part of a design run, settled before the picture is
@@ -4410,7 +4619,16 @@ func _with_a_look(said: String, ask: String,
 	# view_model, edit_model, three of the nine, silent.
 	var during_a_run: bool = _busy
 
-	var picture: Dictionary = await _shot.block(world, from, scenery, only)
+	var picture: Dictionary = {}
+	if small <= 0:
+		picture = await _shot.block(world, from, scenery, only)
+	else:
+		# A close look at what changed, drawn as any picture is and handed
+		# over smaller (_lean_edit_answer).
+		var image: Image = await _shot.take(world, from, scenery, only)
+		if image != null:
+			image.resize(small, small, Image.INTERPOLATE_LANCZOS)
+			picture = await _shot.encode(image)
 	# Cancelled while the picture was being taken. Saying anything now
 	# would be answering a turn that no longer exists.
 	if during_a_run and not _busy:
@@ -4418,8 +4636,10 @@ func _with_a_look(said: String, ask: String,
 	# How big it came out, which is the thing a picture is worst at and
 	# is wanted every time one is taken — not only at the critique.
 	# A trial checked at twelve studs across when the plan said twenty
-	# is cheaper to find out now than after the detail goes on.
-	var sizes: String = _measured()
+	# is cheaper to find out now than after the detail goes on. To a
+	# session, once each time they change (_sizes_once); the design loop is
+	# told every time, as before.
+	var sizes: String = _measured() if during_a_run else _sizes_once(_measured())
 
 	if picture.is_empty():
 		# Said, because the run is otherwise silent about it: a design
@@ -5356,6 +5576,12 @@ func _describe_world(args: Dictionary = {}) -> String:
 	var where: Dictionary = args.get("where", {}) if typeof(
 		args.get("where")) == TYPE_DICTIONARY else {}
 	var skip: int = maxi(int(args.get("skip", 0)), 0)
+	# Asked of a section or a part: its parts and colours are those asked
+	# about, not the whole model's. walk180's tug was asked where its 15
+	# fenders were and was told the 100 kinds of part in the whole model
+	# first, three quarters of the answer, before the fifteen it wanted.
+	var narrowed: bool = not where.is_empty() or not str(args.get("part", "")).strip_edges().is_empty() \
+		or args.has("color")
 	# part= and color=: where a part is, as Edit, Select by, Part number or
 	# name finds it for the person (SelectBy.wanted).
 	var wanted: SelectBy.Wanted = null
@@ -5389,18 +5615,20 @@ func _describe_world(args: Dictionary = {}) -> String:
 			maxf(high.z, reaches.z))
 
 		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
-		tally[key] = int(tally.get(key, 0)) + 1
 		counted += 1
 
 		# Outside the section being worked on.
 		#
-		# Counted and tallied first, so the totals and the span always
-		# describe the whole model however narrow the question — a
-		# section listed as though it were everything is how a model
-		# rebuilds something it already has.
+		# Counted first, so the totals and the span always describe the
+		# whole model however narrow the question — a section listed as
+		# though it were everything is how a model rebuilds something it
+		# already has.
 		if not _inside(at, where) \
 				or (wanted != null and not wanted.takes(brick.part_id, brick.color_code)):
+			if not narrowed:
+				tally[key] = int(tally.get(key, 0)) + 1
 			continue
+		tally[key] = int(tally.get(key, 0)) + 1
 		matched += 1
 		if matched <= skip:
 			continue
@@ -5430,19 +5658,21 @@ func _describe_world(args: Dictionary = {}) -> String:
 		% [Placement._num(low.x), Placement._num(high.x),
 			Placement._num(low.z), Placement._num(high.z),
 			Placement._num(low.y), Placement._num(high.y)])
-	lines.append("")
-	lines.append("Parts and colours, most first:")
-	var keys: Array = tally.keys()
-	keys.sort_custom(func(a: String, b: String) -> bool:
-		return int(tally[a]) > int(tally[b]))
-	for key: String in keys:
-		var bits: PackedStringArray = key.split(":")
-		lines.append("  %d x %s in colour %s" % [int(tally[key]), bits[0], bits[1]])
-
-	lines.append("")
 	# Of those asked about: a section or a part listed whole said "the first
 	# 5 of 3,164" and "0 more here".
 	var unlisted: int = matched - skip - rows.size()
+	# And of a section listed whole, nothing the rows below do not say.
+	if not narrowed or unlisted > 0:
+		lines.append("")
+		lines.append("Parts and colours%s, most first:" % (" of those" if narrowed else ""))
+		var keys: Array = tally.keys()
+		keys.sort_custom(func(a: String, b: String) -> bool:
+			return int(tally[a]) > int(tally[b]))
+		for key: String in keys:
+			var bits: PackedStringArray = key.split(":")
+			lines.append("  %d x %s in colour %s" % [int(tally[key]), bits[0], bits[1]])
+
+	lines.append("")
 	if unlisted > 0:
 		lines.append("Where the first %d of them are (of %d):"
 			% [rows.size(), matched - skip])
@@ -12175,12 +12405,13 @@ func _written_at(model: Model, placement: Placement, mesh: Lbm.PartMesh, at: Tra
 ## be adding to; and the tables filled on first use — the style norms, the
 ## minifigure name patterns — are filled here. The probes call [method
 ## _check] itself, on their own thread, as before.
-func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Dictionary:
+func _checked(model: Model, alone: bool = false, weigh: bool = false,
+		advise: bool = true) -> Dictionary:
 	# One worker at a time: a second check while one is out (the design
 	# loop and a connector both checking) is done here, as before.
 	if model.placements.size() < CHECK_OFF_THREAD_FROM or _standing_held \
 			or OS.has_feature("nothreads") or library == null:
-		return _check(model, alone, weigh)
+		return _check(model, alone, weigh, false, advise)
 	_standing_held = true
 	await _ensure_parts(model)
 	Style.norms()
@@ -12203,7 +12434,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	library.begin_reading()
 	var report: Dictionary = {}
 	var task: int = WorkerTasks.add(func() -> void:
-		report.merge(_check(model, alone, weigh)), false, "check a design")
+		report.merge(_check(model, alone, weigh, false, advise)), false, "check a design")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task):
 		await Engine.get_main_loop().process_frame
@@ -12215,7 +12446,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	if report.is_empty():
 		# A worker that failed leaves nothing. Checked here instead: slow,
 		# but an answer.
-		return _check(model, alone, weigh)
+		return _check(model, alone, weigh, false, advise)
 	return report
 
 
@@ -13047,6 +13278,9 @@ func _balance_said(report: Dictionary, trial: Model, applied: bool) -> String:
 		if id <= 0 or id > trial.placements.size():
 			return "a part already standing"
 		var placement: Placement = trial.placements[id - 1]
+		# A part standing, in a check of the model as it stands (edit=).
+		if placement.id != 0 and not placement.moved:
+			return "#%d (%s)" % [placement.id, placement.part]
 		return "brick %d (%s at %s)" % [id - 1, placement.part, placement.where()]
 	if applied and assemblies != null and builder != null and world != null:
 		var poser := Poser.new()
@@ -22041,15 +22275,19 @@ func _tools() -> Array:
 				+ "what it stands on, in every pose its hinges and turntables "
 				+ "reach), the counterweight that would hold it, and its most "
 				+ "loaded stud joints. Safe to call on a partial design while "
-				+ "you work."),
+				+ "you work. Or edit= instead of bricks: the model as it stands "
+				+ "with that change made to a copy, to ask what if."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"bricks": {"type": "array", "items": brick},
 					"patterns": {"type": "array", "items": pattern},
 					"sections": {"type": "array", "items": section},
+					"edit": {"type": "object", "description":
+						"an edit_model change (remove, move, recolor, turn, add), made "
+						+ "to a copy of the model as it stands and checked; {} checks "
+						+ "the model as it is. Nothing on the baseplate changes."},
 				},
-				"required": ["bricks"],
 				"additionalProperties": false,
 			},
 		},
@@ -22578,6 +22816,9 @@ func _tools() -> Array:
 						},
 					},
 					"add": {"type": "array", "items": brick},
+					"picture": {"type": "boolean", "description":
+						"true: the whole model; false: no picture. Left out, a close "
+						+ "look at what changed."},
 					"sections": {"type": "array", "items": section_change,
 						"description":
 							"add a section, or give one that already "
