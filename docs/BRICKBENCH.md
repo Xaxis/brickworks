@@ -2666,6 +2666,167 @@ lost to sculpt170 name its two pieces.
   each, each one piece by verify.py.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-23, evening: the face planned from the brief, on the same six
+
+face201 (`a9231631`) is rel-m160 (`11b66f4f`, which has sculpt170's sculpt and
+connect166's check of what holds together) and one lever: `git log
+11b66f4f..a9231631 -- src/ai` is its commits. It does not carry pose174's lever.
+A brief with a face to read (a person, an animal, a bird, a robot, a thing given
+eyes or a grin; never a statue, a sculpture or a balloon animal) is planned once,
+in the figures guide or the first check: the eyes first, placed by the kind's
+proportion, white with a black pupil from real parts (98138p07, 14769px3, 98138
+on 18674), then the nose, a mouth in few parts, ears, brows and hair at the
+head's scale, and the subject's colours. Every check, edit and view after it
+measures the eyes off the parts' boxes, a mirrored pair level on the head, and
+says what is off with its numbers. It designed the same six prompts, one design
+each, in the m147 round's folder. Its builds were drawn on the GPU by the same
+renderer and judged against sculpt170's, m147's and BrickAgent's, every pair both
+orders twice: 72 new verdicts, with the other three pairs' 72 read back
+(`compare-face201.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every log,
+`a9231631` in every `design.json`. **Every build is one piece**, by verify.py's
+graph and by our check (`src/dev/pieces_agree.gd` at `8ee0b64a`,
+`pieces-face201.txt`).
+
+| build | parts | pieces, verify.py | pieces, ours | what the plan and the measure said in its session, and the saved build's eyes |
+|---|---|---|---|---|
+| potato (042) | 226 | 1 | 1 | the plan at its first check (a thing's eyes: "in the upper half of the head, big and set close"); "no eyes found" in 4 replies; two printed 2 x 2 round tiles (14769p0r) at its 16th call, then a black 98138 on a white 18674 each, kept |
+| balloon dog (043) | 376 | 1 | 1 | nothing: a balloon animal has no face to read. Ten capsules, 283 parts laid by Brickify, kept, in 2.0 minutes and 13 replies |
+| toilet (044) | 127 | 1 | 1 | the plan in the figures guide; two 98138p07 at its first check, none at its first submit, back from its 13th call, kept: 57% up a head 17 plates tall |
+| statue (049) | 191 | 1 | 1 | nothing: a statue has no face to read |
+| rabbit (078) | 273 | 1 | 1 | the plan at its first check; "no eyes found" in 7 replies; at its 19th call a black 98138 on a white 18674 each, kept: 67% up a head 13 plates tall |
+| boy (080) | 137 | 1 | 1 | the plan in the figures guide; two 98138p07 from its first check, kept |
+
+**Four sessions of four with a face to read laid real eyes**, and two did so
+because the measure told them they had none: the potato after 4 replies saying
+so, the rabbit after 7. Each saved build has a mirrored pair, level and on the
+head's middle, by face201's own measure (`face_plan_probe --models` over the
+six builds of five arms, `face-final-face201.txt`). On these six the measure
+flags 1 of 30: sculpt170's rabbit, its eyes recoloured black slopes. So against
+sculpt170 the rabbit's eyes are the only ones that are new; pose174, m147 and
+BrickAgent had real eyes on all four faces already.
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| face201 | 8.9 (2.0-19.1) | 2.74 (19.74 for six) | 40 | 209 |
+| sculpt170 | 7.2 (5.2-12.8) | 2.33 (15.06) | 35 | 195 |
+| m147 | 12.7 (8.1-14.2) | 3.14 (19.18) | 50 | 202 |
+
+face201 costs 18% more a design than sculpt170 and 31% more over the six, and
+13% less a design than m147 (3% more over the six). Two designs are most of it:
+the statue ($6.00, 78 calls, 8 edits refused) and the boy ($6.06, 91 calls, 12
+edits refused), 61% of the six. Neither is the face. The statue heard nothing of
+it, and the boy's eyes were found at its first check: its calls went on fitting
+its arms on ball shoulders and clips, as pose174's boy's did. Its builds are 58%
+stacked and 28% shaped, against sculpt170's 69% and 26%.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| face201 vs sculpt170 | 11 of 24 (46%) | 28-65% | 1 / 4 / 1 |
+| face201 vs m147 | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+| face201 vs BrickAgent | 0 of 24 (0%) | 0-14% | 0 / 0 / 6 |
+| pose174 vs sculpt170 (the pose round's verdicts) | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+| sculpt170 vs BrickAgent (the sculpt round's verdicts) | 4 of 24 (17%) | 7-36% | 1 / 0 / 5 |
+
+| dimension | face201 ELO (95%) | sculpt170 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|---|
+| likeness | 866 (670-950) | 934 (749-1108) | 900 (709-1045) | 1300 (1187-1617) |
+| surface | 954 (735-1101) | 891 (678-1013) | 1022 (810-1213) | 1133 (978-1499) |
+| colour | 867 (621-1037) | 965 (811-1126) | 973 (810-1154) | 1194 (1113-1363) |
+| technique | 977 (763-1120) | 873 (717-970) | 1007 (814-1189) | 1143 (1022-1390) |
+| creativity | 869 (556-1050) | 1088 (970-1329) | 903 (721-1029) | 1139 (993-1369) |
+| buildability | 1044 (934-1170) | 1037 (847-1263) | 904 (764-1007) | 1015 (846-1175) |
+| **overall** | **874 (699-974)** | **934 (747-1101)** | **892 (709-1026)** | **1300 (1186-1613)** |
+
+Overall face201 is 60 ELO under sculpt170, well inside the intervals, and about
+430 behind BrickAgent. Against sculpt170 it has technique 16 of 24 and surface
+16, likeness 11 and colour 8. Against BrickAgent it won no likeness verdict and
+no overall verdict, 0 of 24 each, the fewest of any arm on these six (m147 had
+2, pose174 1, sculpt170 4).
+
+| prompt | vs sculpt170 | vs m147 | vs BrickAgent | what the judge said of face201's |
+|---|---|---|---|---|
+| potato (042) | 3-1 | 0-4 | 0-4 | "clean round white eyes with black pupils" and the bowler hat in all three wins over sculpt170's "gear-shaped eye whites"; m147's "expressive printed eyes" and "smooth oval" beat its "stepped dark-brown body"; against BrickAgent "a stepped octagonal block with pink lips, which reads as a mouth rather than an ear", in 4 of 4 |
+| balloon dog (043) | 0-4 | 0-4 | 0-4 | "a blocky generic dog", "stacked boxy bricks", in all 12. Its session kept the sculpt, where sculpt170's laid the dog again by hand |
+| toilet (044) | 2-2 | 4-0 | 0-4 | "the head clearly rising out of an open bowl" in both wins over sculpt170's "drum"; over m147 one piece and "a clean, readable grinning face"; sculpt170's grin and plunger, and BrickAgent's tall tank and pedestal, beat "a squat tank" with "an upright holed plate" for a lid |
+| statue (049) | 1-3 | 2-2 | 0-4 | "a compact brown lump" where figure and block "run together": the block is the figure's dark brown, with "stray dark-grey stripes"; the hunch and the arm to the chin named in its three wins |
+| rabbit (078) | 4-0 | 2-2 | 0-4 | its face in all four over sculpt170 ("big round eyes, a smile, buck teeth" against "dark slope eyes that look like sunglasses") and both over m147 ("charming face"); m147's and BrickAgent's beat "a slim boxy body", arms "raised on hinges", teeth that "read as black squares" |
+| boy (080) | 1-3 | 4-0 | 0-4 | "the toothy grin", the colour and "an expressive face" in all four over m147's "grey, robot-like" boy; sculpt170's and BrickAgent's beat an arm that "sticks out sideways like a wave", "a square, unturned torso", hair "a flat cap" |
+
+**The bar is missed** on two counts of three. Against sculpt170, 11 of 24 where
+it asked 15: an even match (28-65%), the rabbit won every time and the balloon
+dog lost every time. Against BrickAgent, 0 of 24 where it asked 6. Six of six
+valid and every build one piece is met.
+
+### What the lever reached
+
+The plan and the measure spoke to four sessions; the balloon dog's and the
+statue's heard neither, as the lever means (`scripts/face_said.py`,
+`face-said-face201.txt`). On the four it spoke to, face201 won 10 of 16
+against sculpt170 and 10 of 16 against m147; on the two it never spoke to, 1 of
+8 and 2 of 8. Against BrickAgent 0 of 16 and 0 of 8. One design a prompt does
+not tell a lever from a session's choices, and the two silent prompts were lost
+on choices: the dog kept a sculpt sculpt170's dog had laid again by hand, and
+the statue's block is the figure's own colour.
+
+- **The rabbit is the lever working.** It was told seven times it had no eyes,
+  then laid two white round plates with black pupils on its face, a pink nose
+  and a printed smile. The judge named its face in all four wins over sculpt170
+  and both over m147, and its eyes in 3 of 4 colour verdicts against BrickAgent,
+  the only colour verdicts face201 won from it. It lost to BrickAgent on its
+  body (slim, not "enormously fat"), its arms out on hinges, and its teeth, read
+  as black squares. pose174's rabbit, with the pose lever, had its arms hanging.
+- **The potato's eyes are named in every win.** Its eyes and hat beat
+  sculpt170's three times of four. Its body is a sculpt as sculpt170's is (an
+  egg 10 across, 197 parts laid by Brickify), "a stepped octagonal block" to
+  the judge every time it lost. Its ear, two pinks where the mouth goes, is read
+  as lips in all four verdicts against BrickAgent.
+- **The toilet and the boy had eyes from their first check**, so the measure
+  only said so. Their wins over m147 name the face, the grin and the colour;
+  their losses name the toilet's tank and the boy's sideways fist.
+- **No verdict holds the eyes against any build of face201's.**
+
+### What the judge holds against it now
+
+The 24 verdicts lost to BrickAgent, by what their overall and likeness reasons
+hold against it (one verdict can hold more than one):
+
+1. **A body that does not read as the thing. 16 of 24.** The potato a stepped
+   octagonal block (4), the balloon dog boxy bricks with no balloon in them (4),
+   the toilet a squat tank with a holed plate for a lid (4), the statue a brown
+   lump with figure and block run together (4). pose174 had 12 of 23 here,
+   sculpt170 4 of 20.
+2. **The pose. 12 of 24.** The rabbit's arms raised or out to the sides (4), the
+   boy's fist out sideways from an unturned torso (4), the statue's seat and
+   pose unreadable (4, all within the 16). pose174 had 7 of 23.
+3. **The face. 11 of 24**, none of them the eyes: the potato's ear read as lips
+   (4), the rabbit's teeth read as black squares (4), the boy's hair a flat cap
+   or block (3). sculpt170 had 8 of 20, the rabbit's black-slope eyes among
+   them.
+4. **The proportions. 4 of 24**, the rabbit slim where the brief says
+   enormously fat.
+
+Colour is 3 of 24 against BrickAgent and 8 of 24 against sculpt170, won where
+the face is the colour (the potato's and the rabbit's, 4-0 each against
+sculpt170) and lost on bodies of one flat colour: the dog, the toilet's white,
+the statue's brown block, the boy's grey torso.
+
+### The next lever: the pose and the face in one build, and the body's colours
+
+- **What changes.** pose174's lever and face201's together: they are on
+  separate branches, and each fixed half of the rabbit (its arms, its eyes).
+  The face plan reads a brief's feature put somewhere odd ("a pink ear where
+  its mouth should be") as the thing named, built in that thing's shape. And
+  the plan's fifth step, each region its own colour, is said for every subject,
+  not only one with a face: a statue's block in stone greys apart from its
+  bronze, a toilet's water, seat and button.
+- **Proof in the unit** (minutes): the rabbit, the boy and the statue briefs in
+  a short design each: the rabbit's arms hang and its eyes are real, the boy's
+  fist is forward, the statue's block is not its brown; each one piece by
+  verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -2790,6 +2951,23 @@ each `design.ldr` and its brief (`pose-final-pose174.txt`); the pieces
 `src/dev/pieces_agree.gd` at `9a835523` (`pieces-pose174.txt`); the reasons
 `scripts/reasons.py` (`reasons-pose174-*.txt`), with the sheets in
 `sheets-pose174/`.
+
+The face round (2026-10-23, evening) is the pose round's commands with `--arm
+face201` and `--app` a locked `release_wt.sh face201-bench a9231631` worktree
+(imported by `tools/fresh_import.sh`; retired after). Export, verify, views and
+pairs ran from an imported worktree of `8ee0b64a`, three, two and one prompts at
+a time with `--tasks` as the designs finished, then `pairs` once over all six,
+which asked nothing new: `pairs --arms face201,sculpt170,m147` and `compare
+--arms face201,sculpt170,m147 --runs 1 --out .../compare-face201.md`, the m147
+round's `compare.md` copied aside first and put back. What each session was told
+of its face is `scripts/face_said.py` on its transcripts (Claude Code's project
+folder for the face201-bench worktree, `face-said-face201.txt`); each saved
+build's eyes face201's own `tools/probe.sh face_plan_probe --models=LIST.json`
+in its checkout, a JSON of each build of face201, sculpt170, pose174, m147 and
+BrickAgent and its prompt (`face-final-face201.txt`); the pieces
+`src/dev/pieces_agree.gd` at `8ee0b64a` (`pieces-face201.txt`); the reasons
+`scripts/reasons.py` (`reasons-face201-*.txt`), with the sheets in
+`sheets-face201/`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
