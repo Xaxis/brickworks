@@ -2882,10 +2882,22 @@ func _print_part(input: Dictionary) -> String:
 		return done if put == null or not (done.begins_with("Swapped") or done.begins_with("Stuck")) \
 			else "%s It is #%d, %s." % [done, put.id, put.part_id]
 	var picture: Image = null
+	var lettered: String = ""
 	if input.has("svg"):
+		# Its words are drawn as outlines in the app's font (SvgText), and a
+		# word that cannot be is refused: walk239's menu board printed
+		# blank, said to be printed.
+		var text: Dictionary = SvgText.outline(str(input["svg"]))
+		var undrawn: PackedStringArray = text["undrawn"]
+		if not undrawn.is_empty():
+			return ("Not printed: some of the svg's text cannot be drawn here: %s. Draw those "
+				+ "words as <path> outlines and print again.") % ", ".join(undrawn)
 		picture = PictureFile.decode(str(input["svg"]).to_utf8_buffer(), "svg")
 		if picture == null:
 			return "That svg could not be drawn: give a whole <svg> with a viewBox."
+		if not (text["words"] as PackedStringArray).is_empty():
+			lettered = " Its text was drawn as outlines in the app's font: %s." % ", ".join(
+				Array(text["words"]).map(func(one: String) -> String: return "\"%s\"" % one.left(60)))
 	elif input.has("picture_data"):
 		# A picture the person gave in the conversation, handed over as its
 		# own bytes: what neither a link nor an svg can carry.
@@ -2909,6 +2921,10 @@ func _print_part(input: Dictionary) -> String:
 					% [printed, studio.plain_of(brick.part_id)]
 					+ "versions=\"\" lists them, versions=\"words\" those with the words on them.")
 					if printed > 0 else ""))
+	# Nothing to print is not printed: an svg whose shapes all fell away
+	# came out a clear picture, and was said to be printed.
+	if picture.is_invisible():
+		return "Not printed: that picture is empty (every pixel clear), so nothing would show on the part."
 	var sticker: bool = bool(input.get("sticker", false))
 	var title: String = str(input.get("name", "My Sticker" if sticker else "My Print")) \
 		.strip_edges().left(60)
@@ -2922,7 +2938,7 @@ func _print_part(input: Dictionary) -> String:
 	var placed: BrickWorld.Brick = (app.get("_world") as BrickWorld).get_brick(studio.last_placed)
 	if placed == null:
 		return said
-	return "%s It is #%d, %s." % [said, placed.id, placed.part_id]
+	return "%s It is #%d, %s.%s" % [said, placed.id, placed.part_id, lettered]
 
 
 ## The printed and stickered versions of [param brick]'s part, those with

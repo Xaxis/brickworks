@@ -22,6 +22,12 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- The words in an SVG print. A sign, a menu board or a name plate drawn
+  with SVG text, by a person or by Claude, printed without its words: the
+  app's SVG renderer draws no text. Its words are now set in the app's font
+  and drawn as outlines, with their size, weight, colour and alignment. Text
+  that cannot be drawn is refused with why, and a picture with nothing in it
+  is refused rather than said to be printed.
 - Putting a part down never moves the rest of the model. A part that
   reaches below the floor, a gear on an axle in a Technic brick on the
   baseplate or a car's wheel under its chassis, goes where its ghost shows,

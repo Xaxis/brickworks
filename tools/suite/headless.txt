@@ -173,3 +173,4 @@ open_list_time   # File › Open says when each model was saved by the local clo
 made_with   # who laid a model's parts, said as it is published (social230)
 photo_search_stub   # the bin's camera: said before the first photo, nothing sent without one, every failure in words, Brickognize stubbed (bin238)
 floor_gears
+svg_text
