@@ -559,7 +559,7 @@ func _orthanc() -> void:
 		for format: String in ["glb", "gltf", "stl", "obj"]:
 			await _time_from_here()
 			began = Time.get_ticks_msec()
-			said = await _say("export_model", {"format": format})
+			said = await _answered(await _say("export_model", {"format": format}))
 			var took: int = Time.get_ticks_msec() - began
 			_timing = false
 			var path: String = _written(said)
@@ -625,6 +625,21 @@ func _say(tool: String, arguments: Dictionary) -> String:
 	for block: Dictionary in result.get("content", []):
 		text += str(block.get("text", ""))
 	return text
+
+
+## A call still going after 20 s is a job (ToolJobs): its answer, asked for
+## as a session asks. Orthanc's OBJ past its cap took 20 s on the tower
+## rebuilt in one piece (m157, 10,094 parts), and the capped OBJ asked
+## next was told the app was busy with it.
+func _answered(said: String) -> String:
+	var job: RegExMatch = RegEx.create_from_string("Call job \\{\"id\": (\\d+)\\}").search(said)
+	if job == null:
+		return said
+	for _n: int in 30:
+		var polled: String = await _say("job", {"id": int(job.get_string(1))})
+		if not polled.contains(" is still going"):
+			return polled
+	return said
 
 
 func _check(what: String, ok: bool) -> void:
