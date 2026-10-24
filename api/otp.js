@@ -235,13 +235,14 @@ export default async function handler(request, response) {
   if (!EMAIL.test(email) || email.length > 320) {
     return response.status(422).json({ error: "That is not an email address." });
   }
-  if (!process.env.RESEND_API_KEY && !TEST_INBOX.test(email)) {
-    return response.status(503).json({ error: "Email is not configured here." });
-  }
   // Where orangecheck accounts' made-up addresses are (api/orangecheck.js):
-  // no mail is delivered there, and a code is never the way into one.
+  // no mail is delivered there, and a code is never the way into one,
+  // whether or not this deployment can send mail (a unit's preview cannot).
   if (/@oc\.brickworks\.diy$/.test(email)) {
     return response.status(422).json({ error: "That address takes no email. Sign in with orangecheck instead." });
+  }
+  if (!process.env.RESEND_API_KEY && !TEST_INBOX.test(email)) {
+    return response.status(503).json({ error: "Email is not configured here." });
   }
 
   const ip =
