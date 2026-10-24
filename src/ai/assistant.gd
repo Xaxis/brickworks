@@ -7116,7 +7116,9 @@ func _read_model(args: Dictionary) -> Model:
 ## the part made now of that shape and size (PartLibrary.current), and the
 ## design told once a part what it was given: 3660, which a session knew from
 ## memory, is LDraw's 3660a, obsolete, and was nineteen of a tug's hull, on
-## its parts list and its BrickLink order (walk180, 2026-10-23).
+## its parts list and its BrickLink order (walk180, 2026-10-23). One LDraw
+## draws in one colour only is placed in that colour (303923 is 3039 in blue,
+## whatever colour the design gave it), as it was drawn.
 func _current_parts(model: Model) -> void:
 	if library == null:
 		return
@@ -7128,13 +7130,18 @@ func _current_parts(model: Model) -> void:
 		if now == placement.part:
 			continue
 		var was: String = library.resolve(placement.part)
+		var colour: int = library.current_colour(placement.part)
 		if now != was and not told.has(placement.part):
 			told[placement.part] = true
 			var info: PartLibrary.PartInfo = library.parts.get(now)
-			_pattern_advice.append("%s is placed as %s%s: LDraw keeps %s only for old files, "
+			_pattern_advice.append("%s is placed as %s%s%s: LDraw keeps %s only for old files, "
 				% [placement.part, now, " (%s)" % _part_called(now) if info != null else "",
-					was] + "and %s is the part made now in its shape and size." % now)
+					" in %s (%d), the one colour it is drawn in" % [_colour_name(colour), colour]
+					if colour >= 0 else "", was]
+				+ "and %s is the part made now in its shape and size." % now)
 		placement.part = now
+		if colour >= 0:
+			placement.color = colour
 
 
 ## Each part a design puts in a colour the catalogue knows it was never made
@@ -20759,14 +20766,98 @@ func _exact_save_gate() -> String:
 	if _exact_save_refusals >= MOST_EXACT_REFUSALS or world == null or world.brick_count() == 0:
 		return ""
 	_strict_mine = true
-	var report: Dictionary = await _checked(_model_from_world())
+	var model: Model = _model_from_world()
+	var report: Dictionary = await _checked(model)
 	_strict_mine = false
 	var faults: String = _exact_faults_said(report)
 	if faults.is_empty():
-		return ""
+		var apart: PackedStringArray = _held_in_the_hand(model)
+		if apart.is_empty():
+			return ""
+		_exact_save_refusals += 1
+		progress.emit("not saved: BrickBench counts %d pieces" % (apart.size() + 1))
+		return ("Not saved yet: BrickBench counts it as %d pieces, by BrickNet's connection "
+			% (apart.size() + 1) + "graph, which joins two parts only where a stud meets "
+			+ "its hole, a hinge its half, an axle its hole; the judge is told the count. "
+			+ "Each of these stays on only by studs gripped in its tube or caught where it "
+			+ "is:\n  - %s\nJoin each to the rest by its studs as said, then save again."
+			% "\n  - ".join(apart))
 	_exact_save_refusals += 1
 	progress.emit("not saved: parts collide or hang loose")
 	return "Not saved yet. %s\nThen save again." % faults
+
+
+## The pieces of [param model] past its largest, by BrickNet's connection graph,
+## that stand on another piece and not on the floor, each said with where it
+## would be seated; none for a model of one piece. The check passes them: a
+## dish's tube gripping four studs, a part caught where it is, stay on in the
+## hand (connect166). BrickBench counts each a piece, and its judge is told:
+## critique221's balloon dog, laid again in round domes on studs, came out in
+## five and lost every verdict to sculpt170's one ("comes apart into five
+## pieces"), its look even. Things that stand on the floor apart from each
+## other (a scene's separate items) are not said.
+func _held_in_the_hand(model: Model) -> PackedStringArray:
+	var exact: ExactCheck = _exact_check_for(model, true)
+	for i: int in model.placements.size():
+		var p: Placement = model.placements[i]
+		exact.place(i, p.part, p.exact_at(_joined_at(p, library.mesh_for(p.part), model)))
+	var root: PackedInt32Array = exact.pieces([])
+	var members: Dictionary = {}    ## root -> its items with a shape
+	for i: int in mini(root.size(), model.placements.size()):
+		if exact.items[i] != null:
+			var listed: Array = members.get(root[i], [])
+			listed.append(i)
+			members[root[i]] = listed
+	var largest: Variant = null
+	for key: Variant in members:
+		if largest == null or (members[key] as Array).size() > (members[largest] as Array).size():
+			largest = key
+	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	var mover: Callable = func(item: int, move: Vector3) -> String:
+		return _moved_where(model, item, move)
+	var out := PackedStringArray()
+	for key: Variant in members:
+		var those: Array = members[key]
+		if key == largest or those.any(func(i: int) -> bool: return exact.on_ground(i)):
+			continue
+		var tube: Array = exact.tube_among_studs(those)
+		out.append(exact.resting_said(those, namer, mover) if tube.is_empty()
+			else _onto_a_jumper(model, exact, tube, those.size() - 1))
+	return out
+
+
+## A piece held in the hand by [param tube] ([method ExactCheck.tube_among_studs]:
+## its part, the part whose studs it stands among, its middle), said with how
+## to join it: a stud at the tube's middle, which only a jumper's is. Laid
+## half a stud across instead, as the seat would have it, the part is refused
+## as off its studs. So the part under it, a 2 x 2 plate centred there, is
+## swapped for a 2 x 2 jumper; or a jumper is laid under the tube and the part
+## stood on it a plate higher, with the [param on_it] parts of its piece.
+func _onto_a_jumper(model: Model, exact: ExactCheck, tube: Array, on_it: int) -> String:
+	var held: int = tube[0]
+	var under: int = tube[1]
+	var middle: Vector3 = tube[2]
+	var said: String = ("%s on %s: its tube stands between that part's studs, and BrickNet "
+		% [_exact_name(model, exact, held), _exact_name(model, exact, under)]
+		+ "joins a tube only by a stud at its middle")
+	var below: Exact.Item = exact.items[under]
+	var size: Vector3 = below.hi - below.lo
+	if under < model.placements.size() and absf(size.x - 2.0 * BrickLattice.STUD) <= 1.0 \
+			and absf(size.z - 2.0 * BrickLattice.STUD) <= 1.0 and size.y <= 12.5 \
+			and Vector2(below.lo.x + below.hi.x, below.lo.z + below.hi.z).distance_to(
+				2.0 * Vector2(middle.x, middle.z)) <= 1.0:
+		return said + ("; swap %s for a 2 x 2 jumper plate (87580) in its place, whose one "
+			% _exact_name(model, exact, under) + "middle stud the tube takes")
+	var p: Placement = model.placements[held]
+	if not p.section.is_empty() or p.face != "up":
+		return said + "; stand it on a jumper plate's middle stud (87580, 2 x 2), under its tube"
+	return said + ("; lay a 2 x 2 jumper plate (87580) at %s,%s,%s under it and stand it on "
+		% [Placement._num(middle.x / BrickLattice.STUD - 1.0), Placement._num(p.y),
+			Placement._num(middle.z / BrickLattice.STUD - 1.0)]
+		+ "the jumper's middle stud, a plate higher, at %s,%s,%s" % [Placement._num(p.x),
+			Placement._num(p.y + 1.0), Placement._num(p.z)]
+		+ (", with the %d parts on it" % on_it if on_it > 1 else ", with the part on it"
+			if on_it == 1 else ""))
 
 
 ## [param said] and then [param then], or [param then] alone.

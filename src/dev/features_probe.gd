@@ -254,6 +254,65 @@ func _run() -> void:
 		+ "it is saved."), "after the whole review, a change's answer says to save: %s"
 		% touched.right(90))
 
+	print("\nsaving waits once on a part BrickBench counts as a piece of its own")
+	# A 4 x 4 dish on a round plate's studs stays on in the hand (its tube
+	# grips them), and BrickNet's graph joins it to nothing: critique221's
+	# potato saved so, in two pieces, and its dog in five.
+	world.clear()
+	builder.lattice.clear()
+	var dish: Array = [{"part": "3003", "color": 72, "x": 1, "y": 0, "z": 1, "rot": 0},
+		{"part": "4032a", "color": 72, "x": 1, "y": 3, "z": 1, "rot": 0},
+		{"part": "3960", "color": 15, "x": 0, "y": 4, "z": 0, "rot": 0}]
+	var stood: String = _blocks_text(await assistant.use_tool("submit_design",
+		{"name": "Lamp", "description": "a lamp", "bricks": dish}))
+	var held_back: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
+	_ok(stood.begins_with("Built.") and held_back.begins_with("Not saved yet: BrickBench counts "
+		+ "it as 2 pieces") and held_back.contains("3960"),
+		"a dish held only by a stud in its tube holds the save, named: %s / %s"
+			% [stood.left(60), held_back.left(140)])
+	# Said with what to do, so the design can act on it: the seat half a stud
+	# across was said first, and laid there the dish was refused as off its
+	# studs. A stud at its tube's middle joins it, which is a jumper's.
+	var swap: String = "swap #2 (4032a plate 2 x 2 round with axlehole at 1,3,1) for a 2 x 2 " \
+		+ "jumper plate (87580) in its place"
+	_ok(held_back.contains("its tube stands between that part's studs") and held_back.contains(swap),
+		"...with how to join it: %s" % held_back.get_slice("\n", 1))
+	var swapped: Array = dish.duplicate(true)
+	swapped[1]["part"] = "87580"
+	await assistant.use_tool("submit_design", {"name": "Lamp", "description": "a lamp",
+		"bricks": swapped})
+	var fixed: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
+	_ok(fixed == "This app cannot do that from outside.",
+		"...and the plate under it swapped as said, it saves: %s" % fixed.left(140))
+	# A dome on a wide plate: a jumper laid under its tube, it a plate higher.
+	var dome: Array = [{"part": "3001", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3020", "color": 72, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "24947", "color": 15, "x": 2, "y": 4, "z": 0, "rot": 0}]
+	await assistant.use_tool("submit_design", {"name": "Lamp", "description": "a lamp",
+		"bricks": dome})
+	var on_plate: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
+	var laid: RegExMatch = RegEx.create_from_string("24947 .*; lay a 2 x 2 jumper plate \\(87580\\) "
+		+ "at (-?[\\d.]+),(-?[\\d.]+),(-?[\\d.]+) under it and stand it on the jumper's middle "
+		+ "stud, a plate higher, at (-?[\\d.]+),(-?[\\d.]+),(-?[\\d.]+)").search(on_plate)
+	_ok(laid != null, "a dome on a 2 x 4's studs: a jumper laid under it, said: %s"
+		% on_plate.get_slice("\n", 1))
+	if laid != null:
+		var raised: Array = dome.duplicate(true)
+		raised[2].merge({"x": float(laid.get_string(4)), "y": float(laid.get_string(5)),
+			"z": float(laid.get_string(6))}, true)
+		raised.append({"part": "87580", "color": 72, "x": float(laid.get_string(1)),
+			"y": float(laid.get_string(2)), "z": float(laid.get_string(3)), "rot": 0})
+		var stood_up: String = _blocks_text(await assistant.use_tool("submit_design",
+			{"name": "Lamp", "description": "a lamp", "bricks": raised}))
+		var kept: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
+		_ok(stood_up.begins_with("Built.") and kept == "This app cannot do that from outside.",
+			"...and laid as said, it saves: %s / %s" % [stood_up.left(60), kept.left(140)])
+	dish.pop_back()
+	await assistant.use_tool("submit_design", {"name": "Lamp", "description": "a lamp",
+		"bricks": dish})
+	_ok(_blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
+		== "This app cannot do that from outside.", "...and in one piece it saves")
+
 	print("\neach feature is offered a piece that is that feature, or none")
 	# The walk180 tug: its features were offered a tugboat's funnel, every one,
 	# because "harbour tug boat" ran together as "tugboat" in the search.

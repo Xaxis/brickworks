@@ -276,7 +276,7 @@
       "kind": "cli",
       "label": "refresh the catalogue",
       "entry": "tools/refresh_catalogue.py",
-      "reach": "tools/refresh_catalogue.py",
+      "reach": "tools/refresh_catalogue.py --dry-run   (all of it, minifig_sets.json and set_sizes.json too, in a scratch folder; writes nothing)",
       "area": "pipeline"
     },
     {

@@ -101,8 +101,18 @@ var refused: Dictionary = {}
 ## account_models_delete.sql.
 var room: Dictionary = {}
 ## Whether the models here are all kept with the account too, as the last
-## look found: what StorageKeep says in Account and whether it warns.
+## look found.
 static var keeping: bool = false
+## How the models here stand with the account, for what StorageKeep says of
+## them in Account and whether it warns: "out" (signed out, or a run that
+## keeps none), "looking" (signed in, not yet looked), "kept" (all of them),
+## "full" (all but those it had no room for), "refused" (all but some it
+## would not take), "offline", "away" (it could not be reached), "none" (this
+## deployment keeps no models). Each said true in every one, where "Your
+## account keeps no copy" was said of a full account that had all but two.
+static var standing: String = "out"
+## How many models here the account would not take, for "full" and "refused".
+static var left_out: int = 0
 
 var _syncing: bool = false
 var _again: bool = false
@@ -155,11 +165,15 @@ func _notification(what: int) -> void:
 func _on_account() -> void:
 	if not _on():
 		keeping = false
+		standing = "offline" if keeps and account != null and account.signed_in() \
+			and account.offline else "out"
 		if account != null and account.state != Account.State.CHECKING:
 			state = "off"
 		return
 	if state != "kept" and state != "":
 		state = ""
+	if standing == "out" or standing == "offline":
+		standing = "looking"
 	sync()
 
 
@@ -194,11 +208,13 @@ func _sync_once() -> void:
 			or not (listed["body"] as Dictionary).get("models") is Array:
 		state = "not_here" if int(listed["code"]) == 503 else "away"
 		keeping = false
+		standing = "none" if state == "not_here" else "away"
 		return
 	# This deployment keeps no models for this account (api/models.js off).
 	if (listed["body"] as Dictionary).get("off") is String:
 		state = "not_here"
 		keeping = false
+		standing = "none"
 		return
 	var there: Dictionary = {}
 	for one: Variant in (listed["body"] as Dictionary)["models"]:
@@ -284,6 +300,10 @@ func _sync_once() -> void:
 		away = got == AWAY
 	state = "away" if trouble else "kept"
 	keeping = not trouble and refused.is_empty()
+	left_out = refused.size()
+	standing = "away" if trouble else "kept" if refused.is_empty() else "full" \
+		if refused.values().any(func(why: Variant) -> bool: return str(why).begins_with(FULL)) \
+		else "refused"
 	last = {"sent": sent, "fetched": fetched, "deleted": gone, "names": _known().keys()}
 	if fetched > 0:
 		said.emit(("%d model from your account is in File › Open" if fetched == 1

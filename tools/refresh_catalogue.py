@@ -8,16 +8,23 @@ correct a field is forty-five minutes spent to move some strings.
 
 This reads the existing catalogue for the mesh hashes and per-part
 geometry facts, and refreshes everything that comes from the library
-headers and LDConfig around them.
+headers and LDConfig around them. Then the knowledge made from the same
+Rebrickable tables and the catalogue (KNOWLEDGE: the figure parts real
+sets carry, the sizes of real models), so neither falls a refresh behind;
+it fails, saying which and why, when either cannot be made.
 
-    tools/refresh_catalogue.py            both
+    tools/refresh_catalogue.py            both, then the knowledge
     tools/refresh_catalogue.py --colours  colors.json alone
+    tools/refresh_catalogue.py --dry-run  all of it in a scratch folder: says
+                                          what would change, writes nothing
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -30,6 +37,16 @@ from ldraw.library import Library         # noqa: E402
 
 GENERATED = ROOT / "assets" / "generated"
 LDRAW = ROOT / "vendor" / "ldraw"
+KNOWN = ROOT / "assets" / "knowledge"
+# Made after the catalogue from the same tables (figs217): the tool, the
+# file it writes into KNOWN, and the list in it that is never empty.
+KNOWLEDGE = (("minifig_sets.py", "minifig_sets.json", "parts"),
+             ("set_sizes.py", "set_sizes.json", "models"))
+
+
+class Behind(Exception):
+    """A knowledge file the refresh could not make again: said, and the one
+    from before kept."""
 
 
 def main() -> int:
@@ -44,10 +61,84 @@ def main() -> int:
         return 1
 
     document = json.loads(path.read_text())
+    if "--dry-run" in sys.argv[1:]:
+        return dry_run(document)
     for line in refresh(document, GENERATED, LDRAW):
         print(line)
     path.write_text(json.dumps(document, separators=(",", ":")))
+    try:
+        for line in knowledge(GENERATED, KNOWN):
+            print(line)
+    except Behind as behind:
+        print(f"refresh_catalogue FAILED: {behind}", file=sys.stderr)
+        return 1
     return 0
+
+
+def dry_run(document: dict) -> int:
+    """The whole refresh, the knowledge too, into a scratch folder: says what
+    each would change, writes nothing here."""
+    with tempfile.TemporaryDirectory(prefix="refresh_catalogue.") as scratch:
+        out = Path(scratch)
+        for line in refresh(document, out, LDRAW):
+            print(line)
+        (out / "catalogue.json").write_text(json.dumps(document, separators=(",", ":")))
+        try:
+            for line in knowledge(out, out):
+                print(line)
+        except Behind as behind:
+            print(f"refresh_catalogue FAILED: {behind}", file=sys.stderr)
+            return 1
+        for name, here in [("catalogue.json", GENERATED), ("colors.json", GENERATED),
+                           ("elements.json", GENERATED)] + [
+                (name, KNOWN) for _tool, name, _listed in KNOWLEDGE]:
+            made, had = out / name, here / name
+            if not made.exists():
+                continue
+            same = had.exists() and had.read_bytes() == made.read_bytes()
+            if not same and had.exists() and name == "catalogue.json":
+                # Its time is always new: the same but for that is unchanged.
+                same = ({**json.loads(had.read_text()), "generated": 0}
+                        == {**json.loads(made.read_text()), "generated": 0})
+            print(f"{name}: " + ("unchanged" if same else "would change, "
+                  f"{had.stat().st_size if had.exists() else 0:,} -> {made.stat().st_size:,} bytes"))
+    print("dry run: nothing written")
+    return 0
+
+
+def knowledge(generated: Path, out: Path, tools: Path = ROOT / "tools") -> list[str]:
+    """Make each of KNOWLEDGE again, from the catalogue and colours in
+    ``generated``, into ``out``: each tool writes beside its file and the
+    file is replaced only when the tool succeeded with something in its
+    list. Every one runs; then those that did not are raised as Behind,
+    each named with why, the file from before kept. Returns what each said."""
+    said: list[str] = []
+    failed: list[str] = []
+    for tool, name, listed in KNOWLEDGE:
+        target = out / name
+        made = target.with_name(name + ".new")
+        run = subprocess.run([sys.executable, str(tools / tool), "--generated", str(generated),
+                              "--out", str(made)], capture_output=True, text=True)
+        why = ""
+        if run.returncode != 0:
+            why = f"exited {run.returncode}: " + (run.stderr.strip().splitlines() or ["(nothing said)"])[-1]
+        else:
+            try:
+                kept = json.loads(made.read_text())
+            except (OSError, ValueError) as unreadable:
+                kept, why = {}, f"wrote no readable {name} ({unreadable})"
+            if not why and not kept.get(listed):
+                why = f"wrote {name} with no {listed}"
+        if why:
+            made.unlink(missing_ok=True)
+            failed.append(f"tools/{tool} {why}, so {name} is the one from before this refresh")
+            continue
+        made.replace(target)
+        said.append(f"{name}: " + (run.stdout.strip().splitlines() or ["made"])[-1]
+                    .replace(str(made), str(target)))
+    if failed:
+        raise Behind("; ".join(failed))
+    return said
 
 
 def refresh(document: dict, out: Path, ldraw: Path) -> list[str]:

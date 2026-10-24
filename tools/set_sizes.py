@@ -13,11 +13,15 @@ station apart from its fire engine — with its name and its size in studs.
 A design is then sized against the real models of its kind: plan_scale
 finds the fire engines, the cottages or the boats here by their names.
 
-Writes assets/knowledge/set_sizes.json.
+Writes assets/knowledge/set_sizes.json. tools/refresh_catalogue.py runs it
+after each refresh.
+
+    tools/set_sizes.py [--generated DIR] [--out FILE]
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -116,7 +120,12 @@ def _size(placed: list[tuple[str, Matrix]], parts: style.Parts) -> tuple[list[fl
 
 
 def main() -> None:
-    parts = style.Parts()
+    ask = argparse.ArgumentParser(description="How big real minifigure-scale models are.")
+    ask.add_argument("--generated", type=Path, default=ROOT / "assets" / "generated",
+                     help="the catalogue.json to read parts' sizes from")
+    ask.add_argument("--out", type=Path, default=OUT)
+    args = ask.parse_args()
+    parts = style.Parts(args.generated / "catalogue.json")
     index = {r["number"]: r for r in json.loads((style.OMR / "index.json").read_text())}
     rows = []
     for path in sorted((style.OMR / "files").glob("*")):
@@ -151,7 +160,7 @@ def main() -> None:
             rows.append([number, row["name"], row["theme"], title, counted] + size)
         if whole is not None and len(models) != 1:
             rows.append([number, row["name"], row["theme"], "", whole[1]] + whole[0])
-    OUT.write_text(json.dumps({
+    args.out.write_text(json.dumps({
         "format": 1,
         "about": "Minifigure-scale models of LDraw's Official Model Repository, each "
                  "sub-model on its own and, with \"\" for its model, the whole set: "
@@ -159,7 +168,7 @@ def main() -> None:
                  "tall] (tools/set_sizes.py).",
         "models": rows,
     }, separators=(",", ":")) + "\n")
-    print(f"{len(rows)} models of {len({r[0] for r in rows})} sets -> {OUT}")
+    print(f"{len(rows)} models of {len({r[0] for r in rows})} sets -> {args.out}")
 
 
 if __name__ == "__main__":

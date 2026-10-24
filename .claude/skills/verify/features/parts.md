@@ -487,7 +487,18 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
   file opened keeps its numbers. `part_choice_probe -- stale` scans every
   number (758 such parts have a current twin): base 778 placed as a part
   kept for old files, 23 offered by search_parts, 25 shown by the palette; the
-  branch 0, 0, 0.
+  branch 0, 0, 0. A part LDraw draws in one colour only (its "physical
+  colour" parts, `PartInfo.fixed_colour`: 303923, "~_Slope Brick 45 2 x 2
+  Blue") is the part it draws, in that colour (`current_colour`, from
+  `_index_colours`: the part of the same box and triangles that takes any
+  colour, current and plain first, named most alike): 3039 in blue, for a
+  design (its colour set to that one, and said) and for a file opened
+  (`ModelStore._open_into`), which otherwise keeps its numbers.
+  `part_choice_probe -- colours`: 206 of the 208 placed so, the two left with
+  no part made now drawn as they are; a design's 303923 in red and a file's
+  are 3039 in blue; search_parts offers none. Before, none had its colour,
+  and 67 were placed as their part in the colour a design gave (241901, a
+  white 3 x 6 plate, as 2419 in red).
 - **Which moulding a bare part number means is settled by LDraw's redirects, not
   by the alphabet.** `3023a` and `3023b` are both "Plate 1 x 2" and both reduce
   to `3023`, so whichever was indexed first took the number — and every `3023`

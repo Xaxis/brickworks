@@ -21,6 +21,12 @@
 ##
 ## Always kept off the web, where the models are files on the computer, and
 ## signed in, kept with the account too (lib219, 2026-10-24).
+##
+## Each line is true in every way the models stand with the account
+## (CloudModels.standing): signed out, kept with it, full, refused, offline,
+## not reached, or a deployment that keeps none. Signed in with the account
+## full, the warning said "Your account keeps no copy" of an account that
+## had all but the two it had no room for (tidy232).
 class_name StorageKeep
 extends RefCounted
 
@@ -68,43 +74,60 @@ static func state() -> Dictionary:
 	return _read
 
 
-## Whether this browser may clear the models: it was asked and would not
-## agree, or it cannot be asked, or it is Safari, which deletes after seven
-## days without a visit whatever it agreed to.
+## Whether this browser may clear models the account does not have: it was
+## asked and would not agree, or it cannot be asked, or it is Safari, which
+## deletes after seven days without a visit whatever it agreed to.
 static func at_risk() -> bool:
 	var now: Dictionary = state()
-	if not bool(now["web"]) or (CloudModels.keeping and _pretended.is_empty()):
+	if not bool(now["web"]) or _account() == "kept":
 		return false
 	if bool(now["safari"]):
 		return true
 	return bool(now["answered"]) and not bool(now["kept"])
 
 
-## The one quiet line the Account panel shows about where the models are.
+## The one quiet line the Account panel shows about where the models are:
+## where this browser or computer keeps them, then what the account has.
 static func words() -> String:
 	var now: Dictionary = state()
-	# Signed in, the desktop keeps them with the account too (CloudModels).
-	if not bool(now["web"]):
-		return ("Your models are kept with your account, and on this computer: they are in "
-			+ "File › Open in any browser or desktop app you sign in to.") if CloudModels.keeping \
-			else ("Your models are kept on this computer, not with your account — export one as "
-			+ "LDraw to take it elsewhere.")
-	if CloudModels.keeping and _pretended.is_empty():
-		return ("Your models are kept with your account, and in this browser: they are in "
-			+ "File › Open in any browser or desktop app you sign in to.")
-	if bool(now["safari"]):
-		return ("Your models are kept on this device, in this browser, and may be cleared by the "
-			+ "browser: Safari deletes a site's data after seven days without a visit. Your "
-			+ "account keeps no copy, so download yours (File, Export, All my models).")
-	if bool(now["kept"]):
-		return ("Your models are kept on this device: this browser has agreed not to clear them. "
-			+ "Your account keeps no copy — File, Export, All my models downloads them.")
-	if bool(now["answered"]):
-		return ("Your models are kept on this device, and may be cleared by the browser when it "
-			+ "runs short of space: it would not agree to keep them. Your account keeps no copy, "
-			+ "so download yours (File, Export, All my models).")
-	return ("Your models are kept on this device, in this browser, not with your account — "
-		+ "File, Export, All my models downloads them.")
+	var web: bool = bool(now["web"])
+	var standing: String = _account()
+	if standing == "kept":
+		return ("Your models are kept with your account, and %s: they are in " % ("in this browser"
+			if web else "on this computer") + "File › Open in any browser or desktop app you "
+			+ "sign in to.")
+	var here: String = "Your models are kept on this computer."
+	if web and bool(now["safari"]):
+		here = ("Your models are kept on this device, in this browser, and may be cleared by the "
+			+ "browser: Safari deletes a site's data after seven days without a visit.")
+	elif web and bool(now["kept"]):
+		here = "Your models are kept on this device: this browser has agreed not to clear them."
+	elif web and bool(now["answered"]):
+		here = ("Your models are kept on this device, and may be cleared by the browser when it "
+			+ "runs short of space: it would not agree to keep them.")
+	elif web:
+		here = "Your models are kept on this device, in this browser."
+	var mine: String = "download yours (File, Export, All my models)" if web \
+		else "export one as LDraw to take it elsewhere"
+	var account: String
+	match standing:
+		"none":
+			account = "Your account keeps no copy, so %s." % mine
+		"full":
+			account = ("Your account is full: %s kept only here, the rest with your account too. "
+				% _left_out() + "Delete models you no longer need to make room, or %s." % mine)
+		"refused":
+			account = ("Your account would not take %s: those are kept only here, the rest with "
+				% _left_out(false) + "your account too.")
+		"offline":
+			account = "You are offline: a model saved now goes to your account when you are back online."
+		"looking", "away":
+			account = ("Your account has not been reached yet: a model it does not have goes to it "
+				+ "when it is.")
+		_:
+			account = ("Your account keeps no copy of a model saved while you are signed out: sign "
+				+ "in and it is kept there too, or %s." % mine)
+	return "%s %s" % [here, account]
 
 
 ## The warning, once (StorageOffer): what to say, or "" when there is
@@ -115,12 +138,48 @@ static func warning() -> String:
 	var why: String = ("Safari deletes a site's data after seven days without a visit"
 		if bool(state()["safari"])
 		else "it would not agree to keep them, so it may clear them when it runs short of space")
-	return ("Your models are kept only in this browser, and %s. " % why
-		+ "Your account keeps no copy. Download your models to keep a copy of your own.")
+	var mine: String = "Download your models to keep a copy of your own"
+	match _account():
+		"none":
+			return ("Your models are kept only in this browser, and %s. " % why
+				+ "Your account keeps no copy. %s." % mine)
+		"full":
+			return ("Your account is full, so %s kept only in this browser, and %s. " % [_left_out(),
+				why] + "%s, or delete those you no longer need to make room." % mine)
+		"refused":
+			return ("Your account would not take %s, so those are kept only in this browser, and "
+				% _left_out(false) + "%s. %s." % [why, mine])
+		"offline":
+			return ("You are offline, so a model saved now is kept only in this browser until you "
+				+ "are back online, and %s. %s." % [why, mine])
+		"looking", "away":
+			return ("Your account has not been reached yet, so a model it does not have is kept "
+				+ "only in this browser until it is, and %s. %s." % [why, mine])
+	return ("Your models are kept in this browser, and %s. Your account keeps no copy of a "
+		% why + "model saved while you are signed out. %s, or sign in and they are kept with "
+		% mine + "your account too.")
+
+
+## How the models stand with the account (CloudModels.standing), or what a
+## probe pretends ("account", signed out when it says none).
+static func _account() -> String:
+	return str(_pretended.get("account", "out")) if not _pretended.is_empty() \
+		else CloudModels.standing
+
+
+## The models the account would not take, counted: "2 of your models are",
+## or without [param verb] "2 of your models".
+static func _left_out(verb: bool = true) -> String:
+	var many: int = int(_pretended.get("left_out", 0)) if not _pretended.is_empty() \
+		else CloudModels.left_out
+	return ("%d of your models%s" % [many, (" is" if many == 1 else " are") if verb else ""]) \
+		if many > 0 else ("some of your models%s" % (" are" if verb else ""))
 
 
 ## Be told what the page would say, for a probe: {asked, answered, kept,
-## safari}, web assumed. Empty is the real page again.
+## safari}, web assumed unless "web": false; and how the models stand with
+## the account ({account, left_out}, CloudModels.standing), signed out
+## unless said. Empty is the real page again.
 static func pretend(said: Dictionary) -> void:
 	_pretended = {}
 	_asked = false

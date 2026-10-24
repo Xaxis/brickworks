@@ -156,7 +156,8 @@ func _run() -> void:
 	await _until(func() -> bool: return account.storage_words().begins_with(
 		"Your models are kept on this device: this browser has agreed"), 2.0)
 	_check("the browser agrees while Account is open, and Account says so: %s"
-		% account.storage_words().left(70), asking.contains("not with your account")
+		% account.storage_words().left(70), asking.contains("Your account keeps no copy of a model "
+			+ "saved while you are signed out")
 		and account.storage_words().begins_with(
 			"Your models are kept on this device: this browser has agreed"))
 	account.visible = false
@@ -183,6 +184,42 @@ func _run() -> void:
 	ShellPrefs.put("storage_warned", false)
 	StorageKeep.pretend({"asked": true, "answered": true, "kept": false})
 	_check("...and with no saved models there is nothing to warn of", not offer.offer_if_due(false))
+
+	# Every line about where the models are, true in each way they can stand
+	# with the account. Signed in with the account full, the warning said
+	# "Your account keeps no copy", which was false: it had all but those it
+	# had no room for. Each said with the browser refusing to keep them (so
+	# the warning shows), agreeing, and on the desktop.
+	var told: Dictionary = {
+		"out": ["Your account keeps no copy of a model saved while you are signed out",
+			"sign in"],
+		"full": ["Your account is full", "2 of your models are kept only"],
+		"offline": ["You are offline", "back online"],
+		"none": ["Your account keeps no copy"],
+		"kept": ["kept with your account"],
+	}
+	for standing: String in told:
+		for browser: Dictionary in [{"answered": true, "kept": false}, {"answered": true,
+				"kept": true}, {"web": false}]:
+			var as_if: Dictionary = {"asked": true, "account": standing, "left_out": 2}
+			as_if.merge(browser, true)
+			StorageKeep.pretend(as_if)
+			var lines: PackedStringArray = [StorageKeep.words()]
+			if not StorageKeep.warning().is_empty():
+				lines.append(StorageKeep.warning())
+			var where: String = "on the desktop" if browser.has("web") else (
+				"agreed" if browser["kept"] else "refused")
+			for line: String in lines:
+				var says: bool = (told[standing] as Array).all(func(w: String) -> bool:
+					return line.contains(w))
+				# "keeps no copy" said bare is true only where it keeps none.
+				var false_copy: bool = standing != "none" and line.contains("Your account keeps no copy") \
+					and not line.contains("while you are signed out")
+				_check("%s, %s: %s" % [standing, where, line.left(110)], says and not false_copy)
+			_check("...%s, %s: warned only where the browser may clear them and the account "
+				% [standing, where] + "lacks some", (lines.size() == 2) == (standing != "kept"
+				and not browser.has("web") and not browser["kept"]))
+	StorageKeep.pretend({"asked": true, "answered": true, "kept": false})
 
 	# Over MCP: the same versions, and every saved model in one .zip.
 	var tools := AppTools.new()

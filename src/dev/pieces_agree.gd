@@ -14,7 +14,9 @@
 ## each part apart from the largest with where it is. Last, a verdict a
 ## build: BrickNet's pieces, and those that stay on in the hand (a dish held
 ## by its tube between four studs, a part caught where it is) against whether
-## the check holds it together, and how many of the builds agree.
+## the check holds it together, and how many of the builds agree; and what
+## saving it from outside would say (the save gate: each piece apart that
+## stands on another, with where to seat it).
 extends SceneTree
 
 var _agreed: int = 0
@@ -139,6 +141,11 @@ func _run() -> void:
 		for piece: Array in lattice_pieces.slice(1):
 			print("  lattice apart: %s" % ", ".join(PackedStringArray(piece.map(func(i: int) -> String:
 				return "%s %s" % [model.placements[i].part, _where(exact, model, i)]))))
+		# What saving from outside says of it (Assistant._held_in_the_hand):
+		# each piece apart that stands on another, with where to seat it.
+		var held: PackedStringArray = assistant._held_in_the_hand(model)
+		print("  the save gate: %s" % ("lets it save" if held.is_empty() else "holds it, %d apart: %s"
+			% [held.size(), " | ".join(held)]))
 		for sentence: Variant in found.get("not held", []):
 			print("  not held: %s" % str(sentence).left(700))
 		for line: Variant in report.get("advice", []):
