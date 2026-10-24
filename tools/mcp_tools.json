@@ -29,7 +29,7 @@
       "readOnlyHint": true,
       "title": "Check a design"
     },
-    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model, and weigh it: whether it stands (its centre of mass against the edge of what it stands on, in every pose its hinges and turntables reach), the counterweight that would hold it, and its most loaded stud joints. Safe to call on a partial design while you work.",
+    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model, and weigh it: whether it stands (its centre of mass against the edge of what it stands on, in every pose its hinges and turntables reach), the counterweight that would hold it, and its most loaded stud joints. Safe to call on a partial design while you work. Or edit= instead of bricks: the model as it stands with that change made to a copy, to ask what if.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -167,6 +167,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "edit": {
+          "description": "an edit_model change (remove, move, recolor, turn, add), made to a copy of the model as it stands and checked; {} checks the model as it is. Nothing on the baseplate changes.",
+          "type": "object"
         },
         "patterns": {
           "items": {
@@ -791,9 +795,6 @@
           "type": "array"
         }
       },
-      "required": [
-        "bricks"
-      ],
       "type": "object"
     },
     "name": "check_design"
@@ -1611,6 +1612,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "picture": {
+          "description": "true: the whole model; false: no picture. Left out, a close look at what changed.",
+          "type": "boolean"
         },
         "recolor": {
           "items": {
@@ -3658,6 +3663,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "picture": {
+          "description": "true: the whole model; false: no picture. Left out, a close look at what changed.",
+          "type": "boolean"
         },
         "recolor": {
           "items": {
