@@ -102,11 +102,7 @@ static func finished() -> void:
 		return
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var until: int = Time.get_ticks_msec() + LONGEST_MS
-	_listen(tree)
-	if _holding == 0:
-		_held_from = Time.get_ticks_msec()
-	_holding += 1
-	RenderingServer.render_loop_enabled = _answering()
+	hold()
 	var drawn: int = Engine.get_frames_drawn()
 	while Time.get_ticks_msec() < until:
 		await tree.process_frame
@@ -116,6 +112,27 @@ static func finished() -> void:
 			break
 		fence = put()
 		drawn = Engine.get_frames_drawn()
+	let_go()
+
+
+## Hold the drawing, as [method finished] holds it while it waits, a
+## person's input still drawn; [method let_go] once for each. In a browser
+## only. For work that draws nothing over many frames where a frame is
+## slow: the castle's booklet was planned over 23 frames in a browser
+## drawing in software, each a second of the model drawn again, unchanged.
+static func hold() -> void:
+	if not OS.has_feature("web"):
+		return
+	_listen(Engine.get_main_loop() as SceneTree)
+	if _holding == 0:
+		_held_from = Time.get_ticks_msec()
+	_holding += 1
+	RenderingServer.render_loop_enabled = _answering()
+
+
+static func let_go() -> void:
+	if not OS.has_feature("web") or _holding == 0:
+		return
 	_holding -= 1
 	if _holding == 0:
 		RenderingServer.render_loop_enabled = true

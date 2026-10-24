@@ -140,11 +140,21 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_apart.clear()
 	# In the author's steps, when the model has them.
 	var steps: Array[Instructions.Step] = []
+	# Planned and staged with the drawing held (GpuFence) while the booklet's
+	# own tab is in front and says how it goes (tell_tab), a person's input
+	# still drawn. Nothing is drawn meanwhile but the model again, as it
+	# was, and in a browser drawing in software each of those frames is a
+	# second: the castle's plan took 23 of them.
+	var held: bool = not dry and only.is_empty() and tab_open()
+	if held:
+		GpuFence.hold()
 	if job != null:
 		steps = await Instructions.plan_paced(world, library, scenery, {}, job, true)
 	else:
 		steps = Instructions.plan(world, library, scenery, {}, true)
 	if steps.is_empty() or _stopped():
+		if held:
+			GpuFence.let_go()
 		return ""
 	plan = steps
 	_say("Setting out %d steps…" % steps.size(), 0)
@@ -176,6 +186,8 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_main = _stage(order)
 	_order = order
 	await get_tree().process_frame
+	if held:
+		GpuFence.let_go()
 
 	document = Booklet.Document.new()
 	document.title = title
@@ -1373,6 +1385,14 @@ static func tell_tab(line: String) -> void:
 			if (said) said.textContent = %s;
 		})();
 	""" % JSON.stringify(line), true)
+
+
+## Whether the tab opened for the booklet is there, in a browser.
+static func tab_open() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return bool(JavaScriptBridge.eval(
+		"!!(window.brickworksBooklet && !window.brickworksBooklet.closed)", true))
 
 
 ## Close the tab opened for a booklet that was stopped or came to nothing.
