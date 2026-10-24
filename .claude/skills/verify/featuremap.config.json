@@ -3099,6 +3099,13 @@
       "entry": "src/dev/save_dialog_probe.gd",
       "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "signup check",
+      "entry": "tools/web/signup_check.mjs",
+      "reach": "node tools/web/signup_check.mjs --url=https://brickworks.diy   (.env sourced)",
+      "area": "account"
     }
   ]
 }

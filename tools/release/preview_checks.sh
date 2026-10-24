@@ -218,6 +218,11 @@ declare -A CMD=(
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
+  # local only: signup_check.mjs. It asks the Supabase project, not a
+  # deployment, whether anybody can make an account without the code:
+  # public sign-up off, confirmation on (account.md). It fails until the
+  # owner changes those settings; name it here once it passes, so a setting
+  # turned back on holds a release.
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"
