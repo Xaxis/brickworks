@@ -4913,7 +4913,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	_booklet_out = BookletOut.new()
 	add_child(_booklet_out)
 	var show: bool = not given and BookletMaker.open_when_written
-	_booklet_out.begin(to, show, file_name)
+	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(_booklet_out.take)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.

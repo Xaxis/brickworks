@@ -242,7 +242,10 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 				return _forget_all()
 			_subjects(entries, decided, upto)
 			decided = upto
-		for page: Booklet.Page in layout.next():
+		# A step's callout's own pages come before its page, and their
+		# pictures are drawn with the step's: so they go out together, after.
+		var some: Array[Booklet.Page] = layout.next()
+		for page: Booklet.Page in some:
 			pages.append(page)
 			for entry: Booklet.Entry in page.entries:
 				_adds(entry)
@@ -265,8 +268,8 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 					await _keep_up(0)
 					return _forget_all()
 				await _soon(_draw.bind(entry))
-			if cover != null:
-				_soon_then(func() -> void: _emit(Booklet.page_html(page, document)))
+		for page: Booklet.Page in some if cover != null else []:
+			_soon_then(func() -> void: _emit(Booklet.page_html(page, document)))
 	await _soon(Callable(), 1)
 	await _keep_up(0)
 	_lap("steps drawn")

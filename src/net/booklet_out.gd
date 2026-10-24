@@ -33,6 +33,7 @@ var _name: String = ""
 var _pieces: Array[PackedByteArray] = []
 var _readers: Array[Reader] = []
 var _done: bool = false
+var _asked: bool = false
 
 
 ## A browser reading the booklet over HTTP: its request, then how far
@@ -90,7 +91,9 @@ func take(piece: String) -> void:
 		_file.store_string(piece)
 	if _server != null:
 		_pieces.append(piece.to_utf8_buffer())
-		if not shown and not _url.is_empty():
+		# Asked once: with no browser to open it, the file is said at the end.
+		if not _asked and not _url.is_empty():
+			_asked = true
 			shown = SaveTo.open_with.call(_url) == OK
 
 
