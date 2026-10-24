@@ -255,11 +255,17 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.name = "phone_" + what
 	button.text = word
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.custom_minimum_size = Vector2(p(Phone.TARGET), p(ROW - 10))
+	# The row shares the window's width: a fingertip each, or an equal share
+	# where seven fingertips are wider than the phone (a big Settings,
+	# Interface size ran Delete and More off its right edge), the word cut
+	# short with an ellipsis before it runs over.
+	var share: float = get_viewport().get_visible_rect().size.x / TOOLS.size()
+	button.custom_minimum_size = Vector2(minf(p(Phone.TARGET), share), p(ROW - 10))
 	button.add_theme_font_size_override("font_size", ceili(p(12)))
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-	button.clip_text = false
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_faces(button, p(10))
 	if not icon.is_empty():
 		button.icon = Icons.texture_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
