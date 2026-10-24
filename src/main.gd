@@ -295,6 +295,8 @@ var _update_offer: UpdateOffer
 var _storage_offer: StorageOffer
 ## The person's models kept with their account too, signed in on the web.
 var _cloud: CloudModels
+var _saved_models: SavedModelsDialog
+var _full_offer: AccountFullOffer
 ## The working model could not be opened at start-up: where it is kept.
 var _restore_notice: RestoreNotice
 ## When the files other tabs and windows share with this one were last
@@ -711,6 +713,10 @@ func _tell_page() -> void:
 		# The models kept with the account, as the last look found them
 		# (CloudModels, tools/web/cloud_library_flow.mjs).
 		"cloud": _cloud.page_state() if _cloud != null else {},
+		# File, Open, Rename or delete saved models…, and the full account's
+		# offer of it (tools/web/cloud_library_flow.mjs).
+		"saved_models": _saved_models.page_state() if _saved_models != null else {},
+		"room_offer": _full_offer.words() if _full_offer != null else "",
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -856,6 +862,10 @@ func _page_controls() -> Dictionary:
 		named.merge(_update_offer.controls_by_name())
 	if _storage_offer != null:
 		named.merge(_storage_offer.controls_by_name())
+	if _saved_models != null:
+		named.merge(_saved_models.controls_by_name())
+	if _full_offer != null:
+		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
 	if _brickify != null:
@@ -3787,6 +3797,19 @@ func _view_hover() -> void:
 ## design assistant on the right. Both are built in code rather than in
 ## the scene because they are data-driven — 24,731 parts and 322 colours
 ## are not things to lay out by hand.
+## The saved model called [param from] is called [param to] now (renamed,
+## here or elsewhere, or kept beside the account's as "Castle 2"): so is
+## the model on the baseplate, when it is that one.
+func _called_now(from: String, to: String) -> void:
+	if _store.title != from or _store.example:
+		return
+	_store.title = to
+	_store.know(ModelStore.SAVE_DIR + to + ".ldr")
+	_store.touch()
+	_bar._name.text = to
+	_bar.model_named.emit(to)
+
+
 func _build_ui() -> void:
 	# Before anything reads it: /app?assistant=on.
 	_assistant_from_address()
@@ -4619,16 +4642,29 @@ func _build_ui() -> void:
 	_cloud.keeps = _account.keeps
 	_cloud.said.connect(_bar.say)
 	# A save made from an older version than the account's is kept beside it
-	# under a name of its own: the model on the baseplate takes that name.
-	_cloud.kept_as.connect(func(from: String, to: String) -> void:
-		if _store.title != from:
-			return
-		_store.title = to
-		_store.know(ModelStore.SAVE_DIR + to + ".ldr")
-		_store.touch()
-		_bar._name.text = to
-		_bar.model_named.emit(to))
+	# under a name of its own, or a saved model was renamed, here or
+	# elsewhere: the model on the baseplate takes that name when it is that
+	# one.
+	_cloud.kept_as.connect(_called_now)
+	_store.renamed_save.connect(_called_now)
+	_cloud.deleted_elsewhere.connect(func(name: String) -> void:
+		if _store.title == name and not _store.example:
+			_bar.say(("“%s” was deleted in another browser or on another device. The one on "
+				+ "the baseplate is kept: Save keeps it again.") % name))
 	add_child(_cloud)
+	# File, Open, Rename or delete saved models… (src/ui/saved_models_dialog.gd),
+	# and the offer of it when the account is full (src/ui/account_full_offer.gd).
+	_saved_models = SavedModelsDialog.new()
+	_saved_models.store = _store
+	_saved_models.cloud = _cloud
+	_saved_models.say = _bar.say
+	add_child(_saved_models)
+	_bar.saved_models_wanted.connect(func() -> void: _saved_models.open())
+	_full_offer = AccountFullOffer.new()
+	_full_offer.make_room = func() -> void: _saved_models.open(true)
+	_full_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_full_offer)
+	_cloud.short_of_room.connect(_full_offer.tell)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).

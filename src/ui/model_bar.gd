@@ -43,6 +43,9 @@ var _picker: ModelFilePicker
 const IMPORT := 1 << 30
 ## And the row for the library (LibraryDialog), beside it.
 const LIBRARY := IMPORT + 1
+## And the one after the saved models, to rename or delete them
+## (SavedModelsDialog, which Main owns).
+const MANAGE := IMPORT + 2
 
 signal cleared()
 ## A new model: an empty baseplate, no name and a fresh conversation.
@@ -64,6 +67,8 @@ signal account_wanted()
 ## Someone wants the library: LDraw's models of real sets and the
 ## community's (LibraryDialog, which Shell owns).
 signal library_wanted()
+## Someone wants to rename or delete saved models (SavedModelsDialog).
+signal saved_models_wanted()
 signal opened(bricks: int)
 
 
@@ -567,6 +572,8 @@ func _on_open() -> void:
 	else:
 		for n: int in _entries.size():
 			_saves.add_item(_entries[n].describe(), n)
+		if not _entries.is_empty():
+			_saves.add_item("Rename or delete saved models…", MANAGE)
 		if not examples.is_empty():
 			if not _entries.is_empty():
 				_saves.add_separator("Examples")
@@ -586,6 +593,9 @@ func _on_pick(id: int) -> void:
 		return
 	if id == LIBRARY:
 		library_wanted.emit()
+		return
+	if id == MANAGE:
+		saved_models_wanted.emit()
 		return
 	if id < 0 or id >= _entries.size():
 		return

@@ -722,6 +722,132 @@ func delete(path: String) -> bool:
 	return DirAccess.remove_absolute(path) == OK
 
 
+## A saved model the person deleted, renamed or put back (File, Open, Rename
+## or delete saved models…; SavedModelsDialog): the account is told too
+## (CloudModels).
+signal removed_save(name: String)
+signal renamed_save(from: String, to: String)
+signal put_back_save(name: String)
+
+## Where a deleted model is kept for Undo: in this tab's own folder, the
+## newest [constant OPENS_KEPT].
+const DELETED := "deleted/"
+
+
+## Delete the saved model called [param name] (its file's name, as Open
+## lists it): the copy kept for Undo ([method put_back]), or "" when
+## nothing was deleted. Its versions stay (File, Versions…).
+func delete_saved(name: String) -> String:
+	var path: String = SAVE_DIR + name + ".ldr"
+	if read_only or not FileAccess.file_exists(path) or not NewerBuild.may_write(path):
+		return ""
+	DirAccess.make_dir_recursive_absolute(TabSession.path(DELETED))
+	var kept: String = TabSession.path(DELETED + "%d-%s.ldr" % [
+		int(Time.get_unix_time_from_system() * 1000.0), name])
+	# Written, not moved: on the web a written file is what makes the
+	# browser store user:// again, the delete with it (src/boot/shell.html).
+	var text: String = FileAccess.get_file_as_string(path)
+	var file: FileAccess = FileAccess.open(kept, FileAccess.WRITE)
+	if file == null:
+		return ""
+	file.store_string(text)
+	file.close()
+	if DirAccess.remove_absolute(path) != OK:
+		DirAccess.remove_absolute(kept)
+		return ""
+	_tell_page_wrote(kept, text.to_utf8_buffer().size())
+	var held: PackedStringArray = DirAccess.get_files_at(TabSession.path(DELETED))
+	held.sort()
+	for n: int in maxi(held.size() - OPENS_KEPT, 0):
+		DirAccess.remove_absolute(TabSession.path(DELETED + held[n]))
+	removed_save.emit(name)
+	return kept
+
+
+## The model [method delete_saved] kept at [param kept] saved again, under
+## its own name or, when a model has that now, the next free one: the name
+## it has, or "" when it could not be.
+func put_back(kept: String) -> String:
+	var text: String = FileAccess.get_file_as_string(kept) if FileAccess.file_exists(kept) else ""
+	if text.is_empty() or read_only:
+		return ""
+	var stem: String = kept.get_file().get_basename()
+	var was: String = stem.substr(stem.find("-") + 1)
+	var name: String = _free_name(was)
+	var path: String = SAVE_DIR + name + ".ldr"
+	if not NewerBuild.may_write(path) \
+			or not _write_saved(path, text if name == was else retitled(text, name)):
+		return ""
+	DirAccess.remove_absolute(kept)
+	put_back_save.emit(name)
+	return name
+
+
+## The saved model called [param from] called [param to] now, the name in
+## its file and its versions (File, Versions…) going with it: "" when it is,
+## or why not, in words.
+func rename_saved(from: String, to: String) -> String:
+	var wanted: String = to.strip_edges()
+	var path: String = SAVE_DIR + from + ".ldr"
+	if read_only or not FileAccess.file_exists(path):
+		return "“%s” is not saved here any more." % from
+	if wanted.is_empty() or wanted == UNTITLED or _safe_name(wanted) != wanted:
+		return "A name is letters, numbers, spaces, - and _, at most 60."
+	if wanted == from:
+		return ""
+	var target: String = SAVE_DIR + wanted + ".ldr"
+	# By the folder's own list: a name that differs only in case is the
+	# same file on Windows and macOS, and another model on Linux.
+	if DirAccess.get_files_at(SAVE_DIR).has(wanted + ".ldr"):
+		return "“%s” is a saved model already. Choose another name." % wanted
+	if not NewerBuild.may_write(target):
+		return NewerBuild.REFUSAL
+	if not _write_saved(target, retitled(FileAccess.get_file_as_string(path), wanted)):
+		return "“%s” could not be written." % wanted
+	var listed: PackedStringArray = DirAccess.get_files_at(SAVE_DIR)
+	if listed.has(from + ".ldr") and listed.has(wanted + ".ldr"):
+		DirAccess.remove_absolute(path)
+	var versions: String = ModelVersions.folder(from)
+	if DirAccess.dir_exists_absolute(versions) and not DirAccess.dir_exists_absolute(ModelVersions.folder(wanted)):
+		DirAccess.rename_absolute(versions, ModelVersions.folder(wanted))
+	# The model on the baseplate takes the name when it is this one (Main).
+	renamed_save.emit(from, wanted)
+	return ""
+
+
+## [param text] written as the saved model at [param path], the page told:
+## not a save of the model on the baseplate ([method _store]), so this tab
+## goes on knowing its own file as it did.
+static func _write_saved(path: String, text: String) -> bool:
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(text)
+	file.close()
+	_tell_page_wrote(path, text.to_utf8_buffer().size())
+	return true
+
+
+## [param text] with its model called [param name]: the first line that
+## names it, or the line a save of someone else's file names it with
+## ([constant TITLE_META]), or that line put in. A saved model opens under
+## the name in its file, so a file renamed alone opened, and saved, under
+## its old one: over the model that has it.
+static func retitled(text: String, name: String) -> String:
+	if not title_meta_in(text).is_empty():
+		var lines: PackedStringArray = text.split("\n")
+		for n: int in lines.size():
+			if lines[n].begins_with(TITLE_META):
+				lines[n] = TITLE_META + name
+		return "\n".join(lines)
+	var was: String = title_in(text, "")
+	var cut: int = text.find("\n")
+	var first: String = (text if cut < 0 else text.left(cut)).strip_edges()
+	if not was.is_empty() and first == "0 " + was:
+		return "0 " + name + (text.substr(cut) if cut >= 0 else "\n")
+	return _after_first_line(text, TITLE_META + name)
+
+
 ## Replace what is on screen with a model from disk. Returns how many
 ## bricks landed.
 ## Open a saved model from a path.

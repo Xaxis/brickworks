@@ -1,15 +1,18 @@
 ## A signed-in person's saved models, kept with their account as well as in
-## this browser (api/models.js, supabase/account_models.sql; walk180's A4,
-## 2026-10-23).
+## this browser or on this computer (api/models.js,
+## supabase/account_models.sql; walk180's A4, 2026-10-23).
 ##
 ## On the web a saved model was in the site's storage in that browser and
 ## nowhere else: another device or browser had none of them, and a browser
 ## that cleared the site's storage took them. Mecabricks keeps every model
 ## with the account. Now, signed in, each save is sent to the account once
-## it is made, and every browser the person signs in to puts the account's
-## models in File, Open, beside the ones it has. The browser's own copy is
-## kept as it always was (ModelStore), so the app works as before offline
-## and signed out; a save made then is sent at the next sign-in.
+## it is made, and every browser and desktop app the person signs in to
+## puts the account's models in File, Open, beside the ones it has. Its own
+## copy is kept as it always was (ModelStore), so the app works as before
+## offline and signed out; a save made then is sent at the next sign-in.
+## The desktop app keeps its models in step the same way (lib219,
+## 2026-10-24): a model saved in a browser is in its Open, and one saved in
+## it is in every browser's.
 ##
 ## In step ([method sync]): asked as somebody signs in, after each save,
 ## when the window is come back to, and every few minutes. The account's
@@ -22,6 +25,13 @@
 ##   one the account has newer, unchanged here      fetched over it
 ##   one only the account has                       fetched
 ##   one here the account never had                 sent, as new
+##   one the account had and has no more,           deleted elsewhere:
+##     unchanged here                                 deleted here too
+##   one the account had and has no more,           kept: sent as new
+##     changed here since
+##   one deleted here                                deleted with the
+##                                                    account, from the
+##                                                    version it had
 ##
 ## Never a save lost to another. A save is sent with the version it was
 ## made from, and only a save of the version there replaces it; one made
@@ -31,14 +41,23 @@
 ## account's model comes here under its own, and both are in Open.
 ## Nothing is fetched over a model changed here and not sent.
 ##
+## Nor a save lost to a delete. A delete is sent with the version deleted,
+## and the account deletes only that one: a newer save, from another
+## browser, is kept and comes back here as a saved model. And a model
+## changed here after another browser deleted it is sent again as new. A
+## delete made offline or signed out is kept in the manifest of each
+## account that had the model ("deleted") and sent at the next look, so a
+## model deleted is never fetched back unasked. A rename is a delete of the
+## old name and a save under the new; another browser with the old name
+## open has it called the new one (its file, renamed, is the new one's).
+##
 ## A model of another account signed in in this browser before is never
 ## sent to this one: what each account has had here is in its own manifest.
 ##
-## Web only: on the desktop the models are files on the computer, as
-## Studio's are. Off for a run nobody is sitting at ([member keeps]). The
-## one test account every browser flow signs in as is kept out by the
-## deployment (api/models.js), which answers it as one without the table
-## does: a list that says off.
+## Off for a run nobody is sitting at ([member keeps]). The one test
+## account every browser flow signs in as is kept out by the deployment
+## (api/models.js), which answers it as one without the table does: a list
+## that says off.
 class_name CloudModels
 extends Node
 
@@ -49,6 +68,8 @@ const EVERY := 300.0
 const AGAIN_AFTER_MS := 20000
 ## Most a model fetched may come to, as api/models.js keeps them.
 const MOST_RAW := 32 * 1024 * 1024
+## How full the account is when Save says so: of its models, or of its bytes.
+const NEAR := 0.9
 
 var account: Account
 var store: ModelStore
@@ -59,8 +80,15 @@ var keeps: bool = true
 ## Something to tell the person, on the status bar.
 signal said(text: String)
 ## The model called [param from] here is called [param to] now: a save of
-## it made from an older version than the account's, kept beside that one.
+## it made from an older version than the account's, kept beside that one;
+## or a rename made elsewhere.
 signal kept_as(from: String, to: String)
+## The saved model called [param name] was deleted in another browser or on
+## another device, and so here.
+signal deleted_elsewhere(name: String)
+## The account is full or nearly, said after a save: [param words] say
+## how full, plainly, for an offer to delete old models (AccountFullOffer).
+signal short_of_room(words: String)
 
 ## How the last look went: "" not yet, "off", "kept" (in step with the
 ## account), "away" (could not reach it), "not_here" (this deployment keeps
@@ -68,6 +96,10 @@ signal kept_as(from: String, to: String)
 var state: String = ""
 ## The models the account refused, by name, and why in words.
 var refused: Dictionary = {}
+## How much the account keeps, as its list last said: {models, bytes,
+## most_models, most_bytes}, bytes left out by a deployment without
+## account_models_delete.sql.
+var room: Dictionary = {}
 ## Whether the models here are all kept with the account too, as the last
 ## look found: what StorageKeep says in Account and whether it warns.
 static var keeping: bool = false
@@ -76,8 +108,11 @@ var _syncing: bool = false
 var _again: bool = false
 var _looked_at: int = -1000000
 var _clock: Timer
-## What the last look did, for a browser check: {sent, fetched, names},
-## names those of the account's models this browser has.
+## A save was made since the last look: that look says whether the account
+## is near full ([signal short_of_room]).
+var _saved: bool = false
+## What the last look did, for a browser check: {sent, fetched, names,
+## deleted}, names those of the account's models this browser has.
 var last: Dictionary = {}
 ## Each saved model's sum as last read, by path: [modified, size, sum]. A
 ## look reads only the files changed since; a person with a hundred models
@@ -96,12 +131,23 @@ func _ready() -> void:
 	if store != null:
 		store.kept_save.connect(func(path: String) -> void:
 			_sums.erase(path)
+			_saved = true
+			sync())
+		store.removed_save.connect(func(name: String) -> void:
+			_deleted_here(name)
+			sync())
+		# A rename is the old name deleted and the new one saved, as new.
+		store.renamed_save.connect(func(from: String, _to: String) -> void:
+			_deleted_here(from)
+			sync())
+		store.put_back_save.connect(func(name: String) -> void:
+			_put_back_here(name)
 			sync())
 	_on_account()
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_IN \
+	if (what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_WM_WINDOW_FOCUS_IN) \
 			and Time.get_ticks_msec() - _looked_at > AGAIN_AFTER_MS:
 		sync()
 
@@ -119,7 +165,7 @@ func _on_account() -> void:
 
 ## Whether models are kept with the account here and now.
 func _on() -> bool:
-	if not keeps or account == null or store == null or not OS.has_feature("web"):
+	if not keeps or account == null or store == null:
 		return false
 	return account.signed_in() and not account.offline and not account.user_id.is_empty()
 
@@ -158,12 +204,36 @@ func _sync_once() -> void:
 	for one: Variant in (listed["body"] as Dictionary)["models"]:
 		if one is Dictionary and fits(str((one as Dictionary).get("name", ""))):
 			there[str(one["name"])] = one
+	var kept: Variant = (listed["body"] as Dictionary).get("kept")
+	room = kept if kept is Dictionary else {}
 	var sent: int = 0
 	var fetched: int = 0
+	var gone: int = 0
 	var trouble: bool = false
+	# Deleted here first: the account deletes each as it was, unless it was
+	# saved since elsewhere, and then it comes back here below.
+	var deleted: Dictionary = _manifest(_manifest_path()).get("deleted", {})
+	for name: String in deleted:
+		if not there.has(name):
+			_undelete(_manifest_path(), name, false)
+			continue
+		var reply: Dictionary = await _ask("DELETE", "/api/models?name=%s&version=%d"
+			% [name.uri_encode(), int((deleted[name] as Dictionary).get("v", 0))])
+		var body: Variant = reply["body"]
+		if int(reply["code"]) != 200 or not body is Dictionary:
+			# Asked again at the next look; until then not fetched back.
+			trouble = trouble or int(reply["code"]) != 503
+			continue
+		_undelete(_manifest_path(), name, false)
+		if (body as Dictionary).has("kept"):
+			said.emit(("“%s” was saved in another browser or on another device after it was "
+				+ "deleted here, so that save is kept: it is in File › Open.") % name)
+		else:
+			there.erase(name)
+	deleted = _manifest(_manifest_path()).get("deleted", {})
 	var known: Dictionary = _known()
-	# What is here first: sent where it changed, fetched over where only the
-	# account's changed.
+	# What is here: sent where it changed, fetched over where only the
+	# account's changed, deleted where the account deleted it.
 	for name: String in _local_names():
 		var path: String = _path(name)
 		var sum: String = _sum_of(path)
@@ -178,25 +248,107 @@ func _sync_once() -> void:
 				fetched += maxi(got, 0)
 				trouble = trouble or got < 0
 			continue
+		if not had.is_empty() and theirs.is_empty():
+			if str(had.get("sum", "")) == sum:
+				gone += 1 if _gone_elsewhere(name, there, known) else 0
+				continue
+			# Changed here since: kept, and sent as a model of its own.
+			_forget(name)
+			had = {}
+			said.emit(("“%s” was deleted in another browser or on another device after it was "
+				+ "changed here, so this one is kept, with your account too.") % name)
 		if had.is_empty() and _claimed_elsewhere(name):
 			continue
 		var went: String = await _send(name, FileAccess.get_file_as_string(path),
 			int(had.get("v", 0)) if not had.is_empty() else 0)
 		sent += 1 if went == "kept" else 0
 		trouble = trouble or went == "away"
-	# Then what only the account has.
+	# Then what only the account has, but for what was deleted here and has
+	# not reached it yet.
 	for name: String in there:
-		if FileAccess.file_exists(_path(name)):
+		if FileAccess.file_exists(_path(name)) or deleted.has(name):
 			continue
 		var got: int = await _fetch_model(name, "")
 		fetched += maxi(got, 0)
 		trouble = trouble or got < 0
 	state = "away" if trouble else "kept"
 	keeping = not trouble and refused.is_empty()
-	last = {"sent": sent, "fetched": fetched, "names": _known().keys()}
+	last = {"sent": sent, "fetched": fetched, "deleted": gone, "names": _known().keys()}
 	if fetched > 0:
 		said.emit(("%d model from your account is in File › Open" if fetched == 1
 			else "%d models from your account are in File › Open") % fetched)
+	if _saved:
+		_saved = false
+		var words: String = short_words()
+		if not words.is_empty():
+			short_of_room.emit(words)
+
+
+## How full the account is, plainly, when it is full or nearly: "" when it
+## has room. From its list, as the last look had it, and what it refused.
+func short_words() -> String:
+	if room.is_empty():
+		return ""
+	var models: int = int(room.get("models", 0))
+	var most: int = int(room.get("most_models", 500))
+	var bytes: float = float(room.get("bytes", 0))
+	var most_bytes: float = float(room.get("most_bytes", 64 * 1024 * 1024))
+	var refusal: String = ""
+	for name: String in refused:
+		if str(refused[name]).begins_with(FULL):
+			refusal = str(refused[name]).trim_prefix(FULL)
+	var full: bool = not refusal.is_empty() or models >= most or bytes >= most_bytes
+	if not full and models < int(most * NEAR) and bytes < most_bytes * NEAR:
+		return ""
+	var by_bytes: bool = refusal == "too big" \
+		or (refusal.is_empty() and models < int(most * NEAR))
+	var which: String = ("%.1f MB of the %d MB of models it keeps" % [bytes / 1048576.0,
+		int(most_bytes / 1048576.0)]) if by_bytes and room.has("bytes") \
+		else ("the %d MB of models it keeps" % int(most_bytes / 1048576.0)) if by_bytes \
+		else ("%d of the %d models it keeps" % [models, most])
+	if full:
+		return ("Your account is full: it has %s, so new saves are kept only %s. "
+			+ "Delete models you no longer need to make room.") % [which, here()]
+	return ("Your account is nearly full: it has %s. Delete models you no longer need, "
+		+ "or new saves will be kept only %s.") % [which, here()]
+
+
+## Where a model is kept when not with the account, in words.
+static func here() -> String:
+	return "in this browser" if OS.has_feature("web") else "on this computer"
+
+
+## The model called [param name], unchanged here, was deleted with the
+## account elsewhere: deleted here too, the model on the baseplate kept. A
+## rename when the account has a model it had not that is this one called
+## something else ([method ModelStore.retitled]): the model on the
+## baseplate takes that name, and the new one is fetched below. Whether it
+## was deleted.
+func _gone_elsewhere(name: String, there: Dictionary, known: Dictionary) -> bool:
+	var path: String = _path(name)
+	if not NewerBuild.may_write(path):
+		return false
+	var text: String = FileAccess.get_file_as_string(path)
+	var renamed: String = ""
+	for other: String in there:
+		if known.has(other) or FileAccess.file_exists(_path(other)):
+			continue
+		if ModelStore.retitled(text, other).sha256_text() == str((there[other] as Dictionary).get("sum", "")):
+			renamed = other
+			break
+	if DirAccess.remove_absolute(path) != OK:
+		return false
+	_sums.erase(path)
+	# Written: on the web, what makes the browser store the delete too.
+	_forget(name)
+	if not renamed.is_empty():
+		var versions: String = ModelVersions.folder(name)
+		if DirAccess.dir_exists_absolute(versions) and not DirAccess.dir_exists_absolute(ModelVersions.folder(renamed)):
+			DirAccess.rename_absolute(versions, ModelVersions.folder(renamed))
+		kept_as.emit(name, renamed)
+		return true
+	deleted_elsewhere.emit(name)
+	return true
 
 
 ## The sum of the file at [param path], read again only when it changed.
@@ -242,6 +394,11 @@ func _local_names() -> PackedStringArray:
 	return out
 
 
+## What the account says when it is full (api/models.js), the start of
+## what [member refused] holds for a model it would not keep for that.
+const FULL := "full: "
+
+
 ## Send the model called [param name], made from [param base]: "kept" when
 ## the account keeps it, "refused" when it will not (too big, or the
 ## account full: said, and in [member refused]), "away" when it could not be
@@ -253,7 +410,12 @@ func _send(name: String, text: String, base: int) -> String:
 	var body: Variant = reply["body"]
 	if int(reply["code"]) == 413 or int(reply["code"]) == 422:
 		var why: String = str((body as Dictionary).get("error", "")) if body is Dictionary else ""
-		if str(refused.get(name, "")) != why:
+		var full: String = str((body as Dictionary).get("full", "")) if body is Dictionary else ""
+		if not full.is_empty():
+			why = FULL + full
+			if str(refused.get(name, "")) != why:
+				_saved = true
+		elif str(refused.get(name, "")) != why:
 			said.emit("“%s” is not kept with your account: %s" % [name, why])
 		refused[name] = why
 		return "refused"
@@ -267,14 +429,16 @@ func _send(name: String, text: String, base: int) -> String:
 		_record(name, version, sum)
 		return "kept"
 	# Made from an older version than the account's, and kept beside it: this
-	# copy takes the name it is kept under, and the account's comes here as
-	# it is there.
+	# copy takes the name it is kept under, in its file too, so it opens and
+	# saves under that one (sent again so at the next look), and the
+	# account's comes here as it is there.
 	var path: String = _path(kept)
 	if FileAccess.file_exists(path) and FileAccess.get_file_as_string(path).sha256_text() != sum:
 		return "kept"
-	if not _write(path, text):
+	if not _write(path, ModelStore.retitled(text, kept)):
 		return "away"
 	_record(kept, version, sum)
+	_again = true
 	kept_as.emit(name, kept)
 	var mine: String = _path(name)
 	if FileAccess.get_file_as_string(mine).sha256_text() == sum:
@@ -330,50 +494,95 @@ func _write(path: String, text: String) -> bool:
 	return true
 
 
-## What this browser last had of each of the account's models: name ->
-## {v, sum}. Read from the file each time, since every tab keeps it.
-func _known() -> Dictionary:
-	var text: String = FileAccess.get_file_as_string(_manifest_path()) \
-		if FileAccess.file_exists(_manifest_path()) else ""
+## A manifest as kept: {models: name -> {v, sum}, what this browser last
+## had of each of the account's models; deleted: name -> {v, sum}, those
+## deleted here and not yet with the account}. Read from the file each
+## time, since every tab keeps it.
+static func _manifest(path: String) -> Dictionary:
+	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
 	var parsed: Variant = JSON.parse_string(text) if not text.is_empty() else null
-	var models: Variant = (parsed as Dictionary).get("models") if parsed is Dictionary else null
-	return models if models is Dictionary else {}
+	var out: Dictionary = {"models": {}, "deleted": {}}
+	if parsed is Dictionary:
+		for part: String in out:
+			if (parsed as Dictionary).get(part) is Dictionary:
+				out[part] = (parsed as Dictionary)[part]
+	return out
+
+
+func _known() -> Dictionary:
+	return _manifest(_manifest_path())["models"]
 
 
 func _record(name: String, version: int, sum: String) -> void:
-	var known: Dictionary = _known()
-	var had: Dictionary = known.get(name, {})
+	var manifest: Dictionary = _manifest(_manifest_path())
+	var had: Dictionary = (manifest["models"] as Dictionary).get(name, {})
 	if int(had.get("v", -1)) == version and str(had.get("sum", "")) == sum:
 		return
-	known[name] = {"v": version, "sum": sum}
-	_keep_known(known)
+	manifest["models"][name] = {"v": version, "sum": sum}
+	_keep_manifest(_manifest_path(), manifest)
 
 
 func _forget(name: String) -> void:
-	var known: Dictionary = _known()
-	if known.erase(name):
-		_keep_known(known)
+	var manifest: Dictionary = _manifest(_manifest_path())
+	if (manifest["models"] as Dictionary).erase(name):
+		_keep_manifest(_manifest_path(), manifest)
 
 
-func _keep_known(known: Dictionary) -> void:
-	_write(_manifest_path(), JSON.stringify({"models": known}))
+func _keep_manifest(path: String, manifest: Dictionary) -> void:
+	_write(path, JSON.stringify(manifest))
 
 
 func _manifest_path() -> String:
 	return MANIFEST + account.user_id + ".json"
 
 
+## Every account's manifest kept here: a model deleted signed out is
+## deleted from whichever account had it, at its next sign-in.
+static func _manifests() -> PackedStringArray:
+	var out := PackedStringArray()
+	if DirAccess.dir_exists_absolute(MANIFEST):
+		for file: String in DirAccess.get_files_at(MANIFEST):
+			if file.ends_with(".json"):
+				out.append(MANIFEST + file)
+	return out
+
+
+## The person deleted the model called [param name] here: each account that
+## had it is to delete it too, from the version it had.
+func _deleted_here(name: String) -> void:
+	_sums.erase(_path(name))
+	for path: String in _manifests():
+		var manifest: Dictionary = _manifest(path)
+		if (manifest["models"] as Dictionary).has(name):
+			manifest["deleted"][name] = manifest["models"][name]
+			(manifest["models"] as Dictionary).erase(name)
+			_keep_manifest(path, manifest)
+
+
+## The model called [param name] is back (Undo): not to be deleted with an
+## account it has not reached yet, and had from it as before.
+func _put_back_here(name: String) -> void:
+	for path: String in _manifests():
+		_undelete(path, name, true)
+
+
+## No longer to be deleted with the account of the manifest at [param path]:
+## [param had] puts it back among the models had from it.
+func _undelete(path: String, name: String, had: bool) -> void:
+	var manifest: Dictionary = _manifest(path)
+	if not (manifest["deleted"] as Dictionary).has(name):
+		return
+	if had:
+		manifest["models"][name] = manifest["deleted"][name]
+	(manifest["deleted"] as Dictionary).erase(name)
+	_keep_manifest(path, manifest)
+
+
 ## Whether another account signed in here has had [param name] from its own
 ## models: then it is that account's, and never sent to this one.
 func _claimed_elsewhere(name: String) -> bool:
-	if not DirAccess.dir_exists_absolute(MANIFEST):
-		return false
-	for file: String in DirAccess.get_files_at(MANIFEST):
-		if not file.ends_with(".json") or file == account.user_id + ".json":
-			continue
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(MANIFEST + file))
-		if parsed is Dictionary and (parsed as Dictionary).get("models") is Dictionary \
-				and ((parsed as Dictionary)["models"] as Dictionary).has(name):
+	for path: String in _manifests():
+		if path != _manifest_path() and (_manifest(path)["models"] as Dictionary).has(name):
 			return true
 	return false
 
@@ -381,7 +590,7 @@ func _claimed_elsewhere(name: String) -> bool:
 ## What a browser check reads (Main's page state).
 func page_state() -> Dictionary:
 	return {"state": state, "keeping": keeping, "refused": refused, "last": last,
-		"syncing": _syncing}
+		"syncing": _syncing, "room": room, "short": short_words()}
 
 
 ## One request as the person: {code, body}, code 0 when nothing came back.
@@ -396,8 +605,9 @@ func _ask(method: String, route: String, body: String = "") -> Dictionary:
 	var headers := PackedStringArray(["authorization: Bearer " + token])
 	if method == "POST":
 		headers.append("content-type: application/json")
-	if http.request(Deployment.api_base() + route, headers,
-			HTTPClient.METHOD_POST if method == "POST" else HTTPClient.METHOD_GET, body) != OK:
+	var how: int = {"POST": HTTPClient.METHOD_POST, "DELETE": HTTPClient.METHOD_DELETE}.get(
+		method, HTTPClient.METHOD_GET)
+	if http.request(Deployment.api_base() + route, headers, how, body) != OK:
 		http.queue_free()
 		return {"code": 0, "body": null}
 	var result: Array = await http.request_completed
