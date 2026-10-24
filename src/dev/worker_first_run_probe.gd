@@ -70,16 +70,19 @@ func _operators_at_once(rounds: int, cold: bool) -> void:
 		var run: Callable = func() -> void: script.call("run", obj, other)
 		if not cold:
 			WorkerTasks.first_here("probe round %d" % r, run)
-		var go: Array = [0]
+		# Let go at one instant on the clock, which every worker reads and
+		# nothing writes. A flag in an Array set here while they read it came
+		# back null to some now and then, as an int written over an int
+		# there passes through Nil: "Trying to assign value of type 'Nil'",
+		# once a full suite at load 30 (suite236), 6 runs of 30 two at a
+		# time (race244).
+		var at: int = Time.get_ticks_usec() + 1500
 		var results: Array = []
 		results.resize(threads)
 		var task: int = WorkerThreadPool.add_group_task(func(n: int) -> void:
-			var at: int = go[0]
-			while at == 0:
-				at = go[0]
+			while Time.get_ticks_usec() < at:
+				pass
 			results[n] = script.call("run", obj, other), threads, -1, true, "probe operators")
-		OS.delay_usec(1500)
-		go[0] = 1
 		WorkerThreadPool.wait_for_group_task_completion(task)
 		for got: Variant in results:
 			if got != sites * 2:

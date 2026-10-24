@@ -2308,7 +2308,13 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
 --effort low`, then `tools/texture.py <the .ldr> --brief "<the brief>"` once the
 run has *ended* — parts, shapes, colours, lots, the commonest piece, one-off
 shapes, main colour and the share of big pieces against a real set of its size,
-and how many of the brief's kind parts it uses. `tools/layout.py <the .ldr>` says
+and how many of the brief's kind parts it uses. Which kinds a brief names is the
+app's own reading, `PartLibrary.kinds_for`, asked of Godot through
+`src/dev/brief_kinds.gd` (a few seconds): texture.py's Python copy of the rule
+missed both of 2026-10-24's fixes to it, and read 5 of 17 held-out briefs as the
+app does against 16 of 17 now ("sailboat" names no kind in the designer's
+reading either; only the set-knowledge lookup falls back to IS_A, race244).
+`tools/layout.py <the .ldr>` says
 how it stands: footprint, height, towers over walls, against real sets measured
 from LDraw's model repository (numbers in its docstring). `tools/style.py <the
 .ldr> --against castle` says how it is built: the share of parts not studs-up

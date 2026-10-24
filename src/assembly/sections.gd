@@ -380,23 +380,34 @@ func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionar
 	var ids := PackedInt64Array()
 	for brick: BrickWorld.Brick in bricks:
 		ids.append(brick.id)
-	var phase: Array = [0]
-	var stopped: Array = [false]
+	# The phase the worker is at and whether to stop, each written on one
+	# thread and read on the other, under a lock: an Array's element read
+	# while the other thread writes it can come back null, and int(null) is
+	# a script error (race244).
+	var sharing := Mutex.new()
+	var shared: Array = [0, false]
+	var at_phase := func(k: int) -> bool:
+		sharing.lock()
+		shared[0] = k
+		var stop: bool = shared[1]
+		sharing.unlock()
+		return stop
 	var out: Array = [{}]
 	library.begin_reading()
 	var task: int = WorkerTasks.add(func() -> void:
 		var mine: Array = []
 		for brick_id: int in ids:
 			mine.append(still.get_brick(brick_id))
-		out[0] = _cut(mine, wanted, still, lattice,
-			func() -> bool: return bool(stopped[0]), phase), false, "suggest sections")
+		out[0] = _cut(mine, wanted, still, lattice, at_phase), false, "suggest sections")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task):
 		await Engine.get_main_loop().process_frame
 		if job != null:
-			job.count(int(phase[0]), PHASES)
-			if job.cancelled:
-				stopped[0] = true
+			sharing.lock()
+			var phase: int = shared[0]
+			shared[1] = job.cancelled
+			sharing.unlock()
+			job.count(phase, PHASES)
 	at = Time.get_ticks_usec()
 	WorkerTasks.collect(task)
 	library.end_reading(task)
@@ -586,15 +597,14 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 ## parts before to the parts after, near every bag's worth; each run is
 ## then its pieces, by the joint graph, so each section is one piece.
 func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLattice = null,
-		stop: Callable = Callable(), phase: Array = []) -> Dictionary:
+		stop_at: Callable = Callable()) -> Dictionary:
 	if model == null:
 		model = world
 	if lattice == null:
 		lattice = builder.lattice
+	# Told each phase it reaches, and stopped there when that says so.
 	var at_phase := func(k: int) -> bool:
-		if not phase.is_empty():
-			phase[0] = k
-		return stop.is_valid() and bool(stop.call())
+		return stop_at.is_valid() and bool(stop_at.call(k))
 	var count: int = bricks.size()
 	var index_of: Dictionary = {}
 	for n: int in count:

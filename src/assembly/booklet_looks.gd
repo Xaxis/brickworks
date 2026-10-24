@@ -275,20 +275,26 @@ static func _usual(field: String, value: Variant) -> bool:
 ## looks with them after it ([method follow]): definition -> {item: step},
 ## read from the first copy of each sub-model. Taken before anything numbers
 ## the steps again, AuthorSteps.ensure included: a look is the step's, and
-## the step is its parts, not its number.
+## the step is its parts, not its number. Nothing when no step has a look
+## of its own, as then there is nothing to carry: read anyway, it was most
+## of a step edit on the Wizard's Tower, which has none (race244).
 static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
+	if not any_step_look(world):
+		return out
 	var turns: Dictionary = {}
 	var own: Dictionary = {}
-	for section: String in first_copies(world, skip):
+	var sections: Array = first_copies(world, skip)
+	var items_in: Dictionary = AuthorSteps.items_in(world, sections, skip)
+	for section: String in sections:
 		var definition: String = definition_of(section)
 		var items: Dictionary = {}
-		for item: Dictionary in AuthorSteps.items_of(world, section, skip):
+		for item: Dictionary in items_in[section]:
 			items[item_name(item)] = int(item["step"])
 		out[definition] = items
 		var seen: Dictionary = {}
 		var turned: Dictionary = {}
-		for step: int in AuthorSteps.steps_in(world, section, skip):
+		for step: int in AuthorSteps.steps_of(items_in[section]):
 			var turn: Dictionary = turn_at(world, section, step)
 			if not turn.is_empty():
 				seen[step] = turn
@@ -302,6 +308,15 @@ static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionar
 	out["@turns"] = turns
 	out["@own"] = own
 	return out
+
+
+## Whether any step has a look of its own: not the booklet's, nor a
+## sub-model's for all its copies.
+static func any_step_look(world: BrickWorld) -> bool:
+	for name: String in world.step_looks:
+		if not name.ends_with("|*") and name != BOOKLET and name != DATA:
+			return true
+	return false
 
 
 ## The section each step look's definition is read from: the model's own ("")
@@ -339,12 +354,7 @@ static func item_name(item: Dictionary) -> String:
 ## whatever step now has its number. Returns the undo.
 static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 		taken: Dictionary = {}) -> Array:
-	var any_step: bool = false
-	for name: String in world.step_looks:
-		if not name.ends_with("|*") and name != BOOKLET and name != DATA:
-			any_step = true
-			break
-	if not any_step:
+	if not any_step_look(world):
 		return []
 	var after: Dictionary = items_by_step(world, skip)
 	var was: Dictionary = world.step_looks.duplicate(true)
@@ -512,8 +522,10 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	if looks.is_empty():
 		return looks
 	var gapped: Dictionary = {}     ## definition -> [its first copy, its steps in order]
-	for section: String in first_copies(world, skip):
-		var steps: Array = AuthorSteps.steps_in(world, section, skip)
+	var sections: Array = first_copies(world, skip)
+	var items_in: Dictionary = AuthorSteps.items_in(world, sections, skip)
+	for section: String in sections:
+		var steps: Array = AuthorSteps.steps_of(items_in[section])
 		if not steps.is_empty() and int(steps[steps.size() - 1]) + 1 != steps.size():
 			gapped[definition_of(section)] = [section, steps]
 	if gapped.is_empty():

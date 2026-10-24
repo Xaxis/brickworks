@@ -22,8 +22,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
+import os
+import subprocess
 import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -32,6 +34,7 @@ from rebrickable import BIG_PIECE, piece_size
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = ROOT / "assets" / "generated" / "catalogue.json"
+BRIEF_KINDS = "src/dev/brief_kinds.gd"
 
 
 def read_ldr(path: Path) -> list[tuple[str, int]]:
@@ -69,48 +72,26 @@ def without_figures(parts: list[tuple[str, int]], by_id: dict) -> list[tuple[str
     return [(p, c) for p, c in parts if not body(p)]
 
 
-# Words that end a word made of two, after a kind: SubjectWords.COMPOUND_ENDS.
-COMPOUND_ENDS = ("ship", "craft", "port", "station", "truck", "car", "boat", "plane",
-                 "house", "copter", "bike", "mobile", "man", "men")
-
-
-def _forms(word: str) -> list[str]:
-    """A word and the singular it may be: SubjectWords.forms."""
-    from snippets import stem
-    out = [word]
-    if stem(word) not in out:
-        out.append(stem(word))
-    if len(word) > 4 and word.endswith("es") and word[:-2] not in out:
-        out.append(word[:-2])
-    return out
-
-
-def kind_of_word(word: str, kinds: dict) -> str:
-    """The kind one word of a brief is, or "": SubjectWords.kind_of_word.
-    Whole words only — a planet is not a plane — and a word made of a kind
-    and one of COMPOUND_ENDS ("spaceship") is the kind."""
-    for form in _forms(word):
-        if len(form) >= 3 and form in kinds:
-            return form
-    for end in COMPOUND_ENDS:
-        for form in _forms(word):
-            if len(form) > len(end) + 3 and form.endswith(end):
-                for head in _forms(form[:-len(end)]):
-                    if head in kinds:
-                        return head
-    return ""
-
-
-def kinds_for(brief: str, kinds: dict, most: int = 3) -> list[str]:
-    """The kinds a brief names, the way PartLibrary.kinds_for reads it."""
-    found: list[tuple[int, str]] = []
-    seen: set[str] = set()
-    for place, word in enumerate(re.findall(r"[a-z0-9]+", brief.lower())):
-        form = kind_of_word(word, kinds)
-        if form and form not in seen:
-            seen.add(form)
-            found.append((place, form))     # in the order the brief names them
-    return [kind for _, kind in sorted(found)[:most]]
+def kinds_for(brief: str) -> list[str]:
+    """The kinds of set a brief names, what it is first first: the app's own
+    reading of it (PartLibrary.kinds_for), asked of Godot by
+    src/dev/brief_kinds.gd.  This kept a Python copy of the rule, and it
+    missed both of a day's fixes to it: "speedboat" and "speed boat" were
+    still the speed kind here, high-speed trains, after the app read each
+    as a boat (race244)."""
+    subprocess.run([str(ROOT / "tools" / "fresh_import.sh")], cwd=ROOT, check=True,
+                   stdout=subprocess.DEVNULL)
+    with tempfile.TemporaryDirectory() as scratch:
+        out = Path(scratch) / "kinds.json"
+        env = dict(os.environ, XDG_DATA_HOME=str(Path(scratch) / "data"))
+        done = subprocess.run(["godot", "--headless", "--path", str(ROOT), "--script",
+                               BRIEF_KINDS, "--", f"--out={out}", brief],
+                              cwd=ROOT, env=env, capture_output=True, text=True, timeout=300)
+        # Godot exits 0 when the script fails to load, so the file says.
+        if done.returncode != 0 or not out.exists():
+            raise SystemExit(f"texture: the app did not read the brief's kinds "
+                             f"(exit {done.returncode}):\n{done.stdout[-2000:]}{done.stderr[-2000:]}")
+        return json.loads(out.read_text())[brief]
 
 
 def main() -> int:
@@ -176,7 +157,7 @@ def main() -> int:
 
     if args.brief:
         kinds = catalogue["kinds"]["kinds"]
-        named = kinds_for(args.brief, kinds)
+        named = kinds_for(args.brief)
         if not named:
             print("  the brief names no kind of set")
         wanted: dict[str, None] = {}
