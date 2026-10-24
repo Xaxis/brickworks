@@ -17,8 +17,11 @@
 //      file chooser; tests/fixtures/photos/3001.jpg (drawn by the app's own
 //      renderer, src/dev/photo_search_probe.gd) goes to Brickognize, live,
 //      and Brick 2 x 4, 3001, comes first in the bin.
+//   4. 3008, 3001, 3039 and 3069b typed: the part itself is the first tile, its
+//      prints and stickers folded under it behind a count (search242); the
+//      count pressed opens them after it, and pressed again folds them.
 // At 390 x 844, by a finger, as phone_flow.mjs has a phone: the parts sheet,
-// Techniques there, and the camera again with the same photo.
+// Techniques there, the folding, and the camera again with the same photo.
 //
 // Brickognize answers from the internet, so this needs it up; its failures
 // are proved with it stood in for (src/dev/photo_search_stub_probe.gd).
@@ -153,6 +156,35 @@ for (const phone of [false, true]) {
     await page.keyboard.press("Control+z");
     const undone = await until((s) => s.bricks === before, 30);
     check(`one Ctrl-Z takes it all back (${undone.bricks} of ${before})`, undone.bricks === before);
+  }
+
+  // 4. Prints and stickers folded under their part, opened by its count.
+  await press("all parts", 30);
+  for (const number of ["3008", "3001", "3039", "3069b"]) {
+    const box = await where("part search");
+    if (!box) break;
+    await hit(box);
+    await page.keyboard.press("Control+a");
+    await page.waitForTimeout(150);
+    await page.keyboard.type(number, { delay: 40 });
+    const s = await until((now) => (now.found || [])[0] === number, 30);
+    const found = s.found || [];
+    const fold = await where("first fold", 10);
+    check(`${number}: the part itself leads, its prints folded behind a count (${found.slice(0, 4).join(", ")})`,
+      found[0] === number && Boolean(fold) && !found.slice(1).some((id) => id.startsWith(number) && /[pd]/.test(id.slice(number.length))));
+    await page.waitForTimeout(phone ? 6000 : 3000);
+    await picture(`6_${number}_folded`);
+    if (!fold) continue;
+    await hit(fold);
+    const opened = await until((now) => (now.found || []).slice(1).some((id) => id.startsWith(number) && /[pd]/.test(id.slice(number.length))), 20);
+    check(`${number}: the count opens them after it (${(opened.found || []).slice(0, 4).join(", ")})`,
+      (opened.found || [])[0] === number && (opened.found || []).slice(1).some((id) => id.startsWith(number)));
+    await page.waitForTimeout(phone ? 6000 : 3000);
+    await picture(`7_${number}_open`);
+    const again = await where("first fold", 10);
+    if (again) await hit(again);
+    const closed = await until((now) => !(now.found || []).slice(1).some((id) => id.startsWith(number) && /[pd]/.test(id.slice(number.length))), 20);
+    check(`${number}: and folds them again`, (closed.found || [])[0] === number);
   }
 
   // 3. A part from a photo.

@@ -82,7 +82,7 @@ static func wanted(library: PartLibrary, said: String, colours: Dictionary) -> W
 ## The parts with every word of [param words], by id.
 static func _parts_named(library: PartLibrary, words: String) -> Dictionary:
 	var out: Dictionary = {}
-	for info: PartLibrary.PartInfo in library.search(words, library.parts.size(), true):
+	for info: PartLibrary.PartInfo in library.search(words, library.parts.size(), true, false):
 		out[info.id] = true
 	return out
 

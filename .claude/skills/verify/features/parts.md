@@ -73,8 +73,45 @@ geometry in front of them.
   searches that found their part to the same first answer, and the batch's
   time; run it as is and with `-- --parts-only=` BrickNet's list. Base
   (`dec645b3`) met 17 of 42 and none of the seven, at 108 ms a search.
+  Then by how much real sets use a part (search242, walk239 A13: "door frame"
+  led with 80400a, in 24 sets, over 60596, in 850): among the parts that
+  answer as well (every word in the part's own name; else bands of how well),
+  a part filed under a word asked first (its category: "wedge" is Wedge 4 x 4
+  Curved, not Technic Wedge Belt Wheel), then `PartInfo.commonness`, the sets
+  and pieces the set inventories hold it in (`assets/ldraw/part_usage.json`,
+  made by `tools/part_usage.py` from `assets/generated/sets/`; run it after
+  `tools/collection_data.py`), the catalogue's `in_sets` where that has
+  none. A part's number typed leads among those with as many words. A word
+  begun matches the words it starts ("doo", as typed), one a letter off a
+  word no part has is taken for the word ("tyle", "hindge", "axel"), and two
+  run together are both ("doorframe"). Brick, plate and tile are each a
+  family and a height: asked of a part of another family, it answers by how
+  tall it is (`PartSearch.HEIGHTS`): "wedge brick" is a 3.5-plate Wedge, not
+  45677, the curved 4 x 4 x 0.667. A brick, plate or tile "with" something,
+  not round, is BrickLink's Modified and Rebrickable's Special: "plate
+  modified" is 15573, the jumper. `select_by` asks without these
+  (`loose = false`). Keys are sorted as whole numbers over dense arrays, and
+  the index is made on a worker once the bin is filled
+  (`PartLibrary.prepare_search`), so a first key typed answers in about
+  30 ms on a quiet box (54 ms the slowest letter at load 13, twice that at
+  38). `search_rank_probe` holds 63 queries written before the change
+  (names, sizes, numbers, misspellings) to the parts an expert wants in the
+  first three, in the bin and in search_parts: base 78% and 81%, now 98%
+  both; five more of a family and its kind ("round brick", "plate
+  modified"), 3 of 5 before the height and Modified rules, 5 after; and a
+  first keystroke said against 50 ms, failing past 150.
 - `parts bin`: the panel that shows the results, with a category filter and the
-  current colour applied to the thumbnails. A part dragged out of it is in hand
+  current colour applied to the thumbnails. It searches through `PartSearch`
+  (every word, ranked as search_parts ranks), and folds each print, sticker
+  and assembly of a part that is listed too under that part's tile, behind a
+  count in its corner (`PartsBin._fold`, `_fold_badge`): pressed, they follow
+  the tile, pressed again they fold; typed with "print" or "sticker" they are
+  listed as themselves, which is how the keys reach them (no tile takes the
+  keys, and a field gives them back at Tab, `FocusGuard`). One assembly LDraw
+  draws whole is put beside its part instead (60593c01, the window with its
+  glass, after 60593; `PartLibrary.wholes_of`). `bin_fold_probe` types 3008,
+  3001, 3039 and 3069b and opens and folds each; `bin_flow.mjs` does the same
+  in a browser at 1280 and 390. A part dragged out of it is in hand
   from the start of the drag, its ghost follows the pointer over the model and
   it is put down where it is let go (`PartsBin._cell_input`, `part_dropped`);
   let go over a panel, it stays in hand. Its tooltip hides while it is carried.
@@ -282,6 +319,8 @@ node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # t
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
+godot --headless --path . --script src/dev/search_rank_probe.gd   # 63 held-out queries, bin and search_parts, top 3 at 90% at least; a first keystroke under 50 ms
+godot --path . --resolution 1280x860 --script src/dev/bin_fold_probe.gd  # prints folded under their part, opened, folded, typed; shots/bin_fold/ (PROBE_SIZE=390x844 too)
 godot --headless --path . --script src/dev/kinds_probe.gd         # whether a castle knows it is arches
 tools/check.sh --network    # adds remote_probe: geometry over the wire
 ```

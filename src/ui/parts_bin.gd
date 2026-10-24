@@ -118,6 +118,19 @@ var _make_button: Button
 var _print_button: Button
 var _stickers_button: Button
 var _results: Array[PartLibrary.PartInfo] = []
+## The tiles, in order: the results with each print, sticker and assembly of
+## a part that is among them folded under it (_fold), and those of the parts
+## opened (_open) after it.
+var _display: Array[PartLibrary.PartInfo] = []
+## Part id -> the prints, stickers and assemblies of it folded under its tile.
+var _folds: Dictionary = {}
+## Part id -> true, for each part whose folded tiles are shown.
+var _open: Dictionary = {}
+var _folded: int = 0
+var _listing: int = 0
+## The last results _find marked as listed, and under which listing.
+var _listed: Array[PartLibrary.PartInfo] = []
+var _listed_as: int = 0
 var _shown: int = 0
 var _categories: Array[String] = []
 var _cells: Dictionary = {}            ## part id -> ThumbTile
@@ -355,6 +368,7 @@ func populate() -> void:
 		if not entry.is_redirect() and entry.reachable:
 			offerable += 1
 	_offerable = offerable
+	library.prepare_search()
 	_search.placeholder_text = "Search %s parts…" % _comma(offerable)
 	_build_categories()
 	_build_swatches()
@@ -592,8 +606,8 @@ func _take_found_colour(text: String) -> void:
 ## of the list (brickworksState.found, for tools/web/cad_task_flow.mjs).
 func first_found(most: int = 6) -> PackedStringArray:
 	var out := PackedStringArray()
-	for n: int in mini(most, _results.size()):
-		out.append(_results[n].id)
+	for n: int in mini(most, _display.size()):
+		out.append(_display[n].id)
 	return out
 
 
@@ -977,6 +991,8 @@ func controls_by_name() -> Dictionary:
 	for child: Node in _category_row.get_children():
 		if str(child.get_meta("category", "")) == TECHNIQUES:
 			named["techniques"] = child
+		elif str(child.get_meta("category", "")) == "All":
+			named["all parts"] = child
 	for child: Node in _grid.get_children():
 		if child.has_meta("technique"):
 			named["technique " + str(child.get_meta("technique"))] = child
@@ -985,6 +1001,14 @@ func controls_by_name() -> Dictionary:
 	named["palette"] = _palette_scroll
 	if _grid.get_child_count() > 0:
 		named["first part"] = _grid.get_child(0)
+	# The first tile's count of what is folded under it (_fold_badge).
+	for child: Node in _grid.get_children():
+		for inner: Node in child.get_children():
+			if inner is Button:
+				named["first fold"] = inner
+				break
+		if named.has("first fold"):
+			break
 	if _make_button != null:
 		named["make part"] = _make_button
 	if _print_button != null:
@@ -1007,10 +1031,17 @@ func _on_category(name: String) -> void:
 	_run_search(_search.text)
 
 
-func _on_search_typed(_text: String) -> void:
+func _on_search_typed(text: String) -> void:
 	# Debounced: a held key would otherwise scan the library per character.
-	_search_at = Time.get_ticks_msec()
-	_pending = true
+	# A first key after a pause is answered at once, and the keys that follow
+	# it quickly once they stop.
+	var now: int = Time.get_ticks_msec()
+	var quiet: bool = not _pending and now - _search_at >= SEARCH_DEBOUNCE
+	_search_at = now
+	if quiet:
+		_run_search(text)
+	else:
+		_pending = true
 
 
 func _process(_delta: float) -> void:
@@ -1021,10 +1052,11 @@ func _process(_delta: float) -> void:
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
 	# existing page no longer fills it.
-	if _shown < _results.size() and _scroll != null:
+	if _shown < _display.size() and _scroll != null:
 		var bar: VScrollBar = _scroll.get_v_scroll_bar()
 		if bar.max_value > 0.0 and bar.max_value - bar.value - bar.page < 260.0:
-			_show_more()
+			# A page a frame at most, so no one frame makes them all.
+			_show_more(FIRST_PAGE)
 
 	# And say what is in sight, for the same reason: a scroll, a resize,
 	# a page added and the dock folding all change it, and only the last
@@ -1050,6 +1082,7 @@ func _run_search(query: String) -> void:
 		return
 	_results = _find(query.strip_edges(), _category)
 	_guesses.clear()
+	_open.clear()
 	_fill_grid()
 
 
@@ -1070,19 +1103,46 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	if category == RECENT or category == FAVOURITES:
 		return _from_shelf(category, needles)
 	var wanted_category: String = category.to_lower()
+	if needles.is_empty():
+		return _unasked(wanted_category)
+	# The assistant's search, every word asked (PartSearch): ranked by how
+	# well a part answers and then by how much real sets use it, so "door
+	# frame" is 60596, in 850 sets, before 80400a, in 24 (walk239 A13). It
+	# leaves out what LDraw keeps only for old files where the part made now
+	# stands for it (PartLibrary.current): "slope inverted 2x2" showed 3660a,
+	# obsolete, beside 3660c. Still there in its own category.
+	var found: Array[PartLibrary.PartInfo] = []
+	# Each marked as listed as it is kept, for _fold.
+	_listing += 1
+	for info: PartLibrary.PartInfo in library.search(query, -1, true):
+		if not info.reachable:
+			continue  # no geometry anywhere in this build
+		if wanted_category != "all" and info.category.to_lower() != wanted_category:
+			continue
+		info.listed_in = _listing
+		found.append(info)
+	_set_aside = 0
+	_listed = found
+	_listed_as = _listing
+	return found
+
+
+## A category's parts with nothing typed, staples first: worked out once a
+## category, since sorting twenty thousand parts by their names is most of a
+## second, and asked again each time the search is cleared.
+func _unasked(wanted_category: String) -> Array[PartLibrary.PartInfo]:
+	var key: String = "%s %d" % [wanted_category, library.ids().size()]
+	if _unasked_cache.has(key):
+		_set_aside = int(_unasked_cache[key][1])
+		return _unasked_cache[key][0]
 	var found: Array[PartLibrary.PartInfo] = []
 	var set_aside: int = 0
-
 	for id: String in library.ids():
 		var info: PartLibrary.PartInfo = library.parts[id]
 		if info.is_redirect():
 			continue
 		if not info.reachable:
 			continue  # no geometry anywhere in this build
-		# A part LDraw keeps only for old files, where the part made now in
-		# its shape and size is shown instead (PartLibrary.current): "slope
-		# inverted 2x2" showed 3660a, obsolete, beside 3660c. Still there in
-		# its own category, for whoever looks for it.
 		if wanted_category == "all" and library.superseded(id):
 			continue
 		if wanted_category == "all":
@@ -1091,23 +1151,20 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 			# "show me the parts". Counted as they are skipped so the
 			# status line can say how many and where they went — silently
 			# dropping 7,738 parts is indistinguishable from losing them.
-			if needles.is_empty() and _is_buried(info.category):
+			if _is_buried(info.category):
 				set_aside += 1
 				continue
 		elif info.category.to_lower() != wanted_category:
 			continue
-
-		# The same words the assistant's search matches, keywords and
-		# prints included.
-		if not needles.is_empty() \
-				and PartLibrary.matched(info, needles) == PartLibrary.NOT_MATCHED:
-			continue
-
 		found.append(info)
-
 	_set_aside = set_aside
-	_sort_for(found, asked)
+	_sort_for(found, "")
+	_unasked_cache[key] = [found, set_aside]
 	return found
+
+
+## Category and catalogue size -> [its parts with nothing typed, set aside].
+var _unasked_cache: Dictionary = {}
 
 
 ## Sort results for a query: match quality first, then staple-ness.
@@ -1525,22 +1582,112 @@ func _fill_grid() -> void:
 	_shown = 0
 	_scroll.scroll_vertical = 0
 	_grid.columns = COLUMNS
-	_show_more()
+	_fold()
+	_show_more(FIRST_PAGE)
+
+
+## How many tiles a search shows at once, before the rest are added as the
+## grid is scrolled (_process): the rows in sight and more, where a full page
+## took longer to make than the search took to run.
+const FIRST_PAGE := 32
+
+
+## The results as tiles: each print, sticker and assembly of a part that is
+## among them folded under its part's tile, which counts them and opens them
+## (_make_cell). A search for 3008 or "slope 45 2 x 4" listed the plain part
+## and then dozens of its stickered versions, "Showing 120 of 315" (walk239
+## A13); Studio keeps a decorated part behind its plain one. One assembly LDraw
+## draws whole is put beside its part instead, as the window with its glass is
+## what a house is built of: 60593c01 after 60593. Not when a print or a
+## sticker is asked for, nor for a shelf's or a photo's parts, each chosen.
+func _fold() -> void:
+	_display = []
+	_folds = {}
+	_folded = 0
+	var asked: String = " %s " % PartLibrary.in_ldraw_words(_search.text)
+	if not _guesses.is_empty() or _category == RECENT or _category == FAVOURITES \
+			or asked.contains(" print ") or asked.contains(" sticker "):
+		_display = _results.duplicate()
+		return
+	# Each listed part marked as this listing's, and each folded one as its
+	# folded, where a dictionary entry for each of twenty thousand took
+	# longer than the search.
+	_listing += 1
+	if not is_same(_listed, _results):
+		for info: PartLibrary.PartInfo in _results:
+			info.listed_in = _listing
+	else:
+		_listing = _listed_as
+	var groups: Dictionary = {}     ## PartInfo -> [its prints and assemblies listed]
+	for info: PartLibrary.PartInfo in _results:
+		var of: PartLibrary.PartInfo = info.folds_under()
+		if of == null or of.listed_in != _listing:
+			continue
+		info.listed_in = -_listing
+		var into: Variant = groups.get(of)
+		if into == null:
+			into = []
+			groups[of] = into
+		(into as Array).append(info)
+	for info: PartLibrary.PartInfo in _results:
+		if info.listed_in == -_listing:
+			continue
+		_display.append(info)
+		if groups.is_empty() or not groups.has(info):
+			continue
+		var under: Array = groups[info]
+		for n: int in under.size():
+			var one: PartLibrary.PartInfo = under[n]
+			if not one.whole_of.is_empty():
+				_display.append(one)
+				under.remove_at(n)
+				break
+		if under.is_empty():
+			continue
+		_folds[info.id] = under
+		_folded += under.size()
+		if _open.has(info.id):
+			for one: PartLibrary.PartInfo in under:
+				_display.append(one)
+
+
+## Open the tiles folded under [param part_id], or fold them again, where the
+## grid stands.
+func toggle_fold(part_id: String) -> void:
+	if not _folds.has(part_id):
+		return
+	if _open.has(part_id):
+		_open.erase(part_id)
+	else:
+		_open[part_id] = true
+	var at: int = _scroll.scroll_vertical
+	var keep: int = _shown
+	for child: Node in _grid.get_children():
+		_grid.remove_child(child)
+		child.queue_free()
+	_cells.clear()
+	_shown = 0
+	_fold()
+	var through: int = _display.find(library.parts.get(part_id)) + 1
+	if _open.has(part_id):
+		through += (_folds[part_id] as Array).size()
+	_show_more(maxi(keep, through))
+	_scroll.set_deferred("scroll_vertical", at)
 
 
 ## Add the next page of cells. Called on first fill and again whenever
 ## the scroll reaches the end, so the whole result set is reachable
 ## without ever building 28,000 controls.
-func _show_more() -> void:
-	var limit: int = mini(_shown + PAGE, _results.size())
+func _show_more(most: int = PAGE) -> void:
+	var limit: int = mini(_shown + most, _display.size())
 	while _shown < limit:
-		_grid.add_child(_make_cell(_results[_shown]))
+		_grid.add_child(_make_cell(_display[_shown]))
 		_shown += 1
 	_update_status()
 
 
 func _update_status() -> void:
-	var total: int = _results.size()
+	var total: int = _display.size()
 	if not _guesses.is_empty():
 		_status.text = "From your photo, most likely first, as Brickognize sees it"
 		_status.tooltip_text = _guessed_note
@@ -1561,6 +1708,9 @@ func _update_status() -> void:
 	else:
 		_status.text = "Showing %s of %s — scroll for more" % [
 			_comma(_shown), _comma(total)]
+	# What the tiles hold folded: said where nothing else is, on one line.
+	if _folded > 0 and _set_aside == 0:
+		_status.text += "\n%s more folded under their parts: press +" % _comma(_folded)
 
 	# Where the rest went. Only on the default view, since that is the
 	# only place anything is held back.
@@ -1650,6 +1800,8 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	star.visible = PartShelf.is_favourite(info.id)
 	button.add_child(star)
 	button.set_meta("star", star)
+	if _folds.has(info.id):
+		button.add_child(_fold_badge(info))
 
 	_cells[info.id] = image
 	if thumbnails:
@@ -1657,6 +1809,29 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 		if ready_now:
 			image.show_picture(ready_now, false)
 	return button
+
+
+## The count in a tile's corner of the prints, stickers and assemblies folded
+## under it, which opens them after it and folds them again: a fingertip
+## square on a phone. Not a stop for the keys, as no tile is (a field gives
+## them back at Tab, FocusGuard); typed, "3008 print" and "3008 sticker" list
+## them, unfolded, and its tooltip says so.
+func _fold_badge(info: PartLibrary.PartInfo) -> Button:
+	var count: int = (_folds[info.id] as Array).size()
+	var opened: bool = _open.has(info.id)
+	var badge := Button.new()
+	badge.text = "%s%d" % ["−" if opened else "+", count]
+	badge.tooltip_text = "%s %s print%s, sticker%s and assembl%s of %s; typed, \"%s print\" lists them" % [
+		"Fold away" if opened else "Show", _comma(count), "" if count == 1 else "s",
+		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id, info.id]
+	badge.focus_mode = Control.FOCUS_NONE
+	badge.add_theme_font_size_override("font_size", ceili(_z(10)))
+	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	badge.offset_left = _z(2.0)
+	badge.offset_top = _z(2.0)
+	badge.custom_minimum_size = Vector2(maxf(least, _z(24.0)), maxf(least, _z(18.0)))
+	badge.pressed.connect(toggle_fold.bind(info.id))
+	return badge
 
 
 ## A part pressed and dragged out of the bin: picked up, its ghost after

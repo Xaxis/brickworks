@@ -297,6 +297,37 @@ class PartInfo extends RefCounted:
 	## is in 4,496 sets and 71075a is in seventeen, and both are named
 	## like the ordinary thing.
 	var in_sets: int = 0
+	## In how many sets the set inventories have it, and how many pieces of
+	## it they hold in all (assets/ldraw/part_usage.json): prints and a
+	## figure's parts too, which in_sets does not reach. Zero is silence.
+	var used_in: int = 0
+	var pieces: int = 0
+	## For an assembly LDraw draws whole ("Window 1 x 2 x 3 without Sill w/
+	## Trans-Clear Glass (Complete)", 60593c01), the part it is built on:
+	## 60593. Empty for every other part.
+	var whole_of: String = ""
+	var _whole: PartInfo = null
+	## Which listing of the parts bin it was last in (PartsBin._fold), so a
+	## print is folded under its part only when the part is listed too.
+	var listed_in: int = 0
+
+	## The part it is a print, a stickered version or an assembly of, or null.
+	func folds_under() -> PartInfo:
+		return _plain if _plain != null else _whole
+
+	## How much real sets use it: the sets it is in and, for half as much,
+	## the pieces of it they hold, each counted logarithmically, since a part
+	## in ten sets against one in a hundred matters and five thousand against
+	## nine does not. 2780, the black friction pin, is in as many sets as
+	## 43093 and in two and a half times its pieces. An assembly no set lists
+	## whole, which the inventories list as its parts, is used as its part is.
+	## Zero when nothing is known, which is never evidence of disuse.
+	func commonness() -> float:
+		var sets: int = maxi(used_in, in_sets)
+		if sets <= 0:
+			# A hair under its part's, so the part itself is listed first.
+			return 0.0 if _whole == null else _whole.commonness() * 0.999
+		return log(1.0 + sets) + 0.5 * log(1.0 + maxi(pieces, sets))
 	## The years this part first and last appeared in a catalogued set.
 	var first_year: int = 0
 	var last_year: int = 0
@@ -414,13 +445,19 @@ class PartInfo extends RefCounted:
 	## names say as Pattern and Sticker and a builder says as print.
 	func own_words() -> String:
 		if _own.is_empty():
-			var words: String = "%s %s %s" % [id, name, category]
-			if decor() & PRINTED:
-				words += " print"
-			if decor() & (STICKERED | STICKER):
-				words += " sticker"
-			_own = words.to_lower()
+			_own = own_words_now()
 		return _own
+
+	## [method own_words] worked out and not kept: what the search's index is
+	## made of on a thread of its own, which must write nothing a part holds.
+	func own_words_now() -> String:
+		var on: int = PartLibrary.decor_of(name, category)
+		var words: String = "%s %s %s" % [id, name, category]
+		if on & PRINTED:
+			words += " print"
+		if on & (STICKERED | STICKER):
+			words += " sticker"
+		return words.to_lower()
 
 	## Its !KEYWORDS, lowercase: what it was made for ("Porsche", "Speed
 	## Champions"), the sets it came in and its numbers at the shops, less
@@ -428,16 +465,20 @@ class PartInfo extends RefCounted:
 	## a search for "brick" found 17,039 parts where it had found 3,633.
 	func keyword_words() -> String:
 		if _keyed.is_empty() and not keywords.is_empty():
-			var words := PackedStringArray()
-			for keyword: String in keywords:
-				var word: String = keyword.to_lower()
-				for shop: String in NOT_WORDS:
-					if word.begins_with(shop):
-						word = word.substr(shop.length())
-						break
-				words.append(word)
-			_keyed = " ".join(words)
+			_keyed = keyword_words_now()
 		return _keyed
+
+	## [method keyword_words] worked out and not kept (own_words_now).
+	func keyword_words_now() -> String:
+		var words := PackedStringArray()
+		for keyword: String in keywords:
+			var word: String = keyword.to_lower()
+			for shop: String in NOT_WORDS:
+				if word.begins_with(shop):
+					word = word.substr(shop.length())
+					break
+			words.append(word)
+		return " ".join(words)
 
 	const NOT_WORDS: Array[String] = ["bricklink ", "rebrickable ", "brickowl ",
 		"brick owl ", "brickset ", "set "]
@@ -694,6 +735,8 @@ func load_catalogue(path: String = "") -> bool:
 		_ordered_ids.append(info.id)
 	_index_prints()
 	_read_names()
+	_read_usage()
+	_index_wholes()
 	_search_index = null
 	_current_lock.lock()
 	_current_of.clear()
@@ -720,6 +763,62 @@ func _read_names() -> void:
 		var info: PartInfo = parts.get(id)
 		if info != null:
 			info.also_called = str(words[id])
+
+
+## How much the set inventories use each part (tools/part_usage.py). Without
+## the file the catalogue's in_sets is all a search knows.
+const USAGE := "res://assets/ldraw/part_usage.json"
+
+
+func _read_usage() -> void:
+	if not FileAccess.file_exists(USAGE):
+		return
+	var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(USAGE))
+	if typeof(raw) != TYPE_DICTIONARY:
+		return
+	var used: Dictionary = (raw as Dictionary).get("parts", {})
+	for id: Variant in used:
+		var info: PartInfo = parts.get(id)
+		var pair: Variant = used[id]
+		if info != null and pair is Array and (pair as Array).size() == 2:
+			info.used_in = int(pair[0])
+			info.pieces = int(pair[1])
+
+
+## A part with the number of another and cNN after it is that part made
+## whole: 60593c01 the window 60593 with its glass, 56145c03 a rim with its
+## tyre, 73194c01 a door with its glass. Only of a plain part LDraw keeps for
+## use, and not of a sticker (a sticker "formed" to a slope is one too).
+static var WHOLE_NUMBER := RegEx.create_from_string("^(.+?)c\\d\\d$")
+
+## Part -> the assemblies built on it, by number.
+var _wholes: Dictionary = {}
+
+
+func _index_wholes() -> void:
+	_wholes.clear()
+	for id: String in _ordered_ids:
+		if not id.contains("c"):
+			continue
+		var found: RegExMatch = WHOLE_NUMBER.search(id)
+		if found == null:
+			continue
+		var info: PartInfo = parts[id]
+		var base: PartInfo = parts.get(found.get_string(1))
+		if base == null or base.is_redirect() or info.is_redirect() or base.decor() != 0 \
+				or is_stale(base) or is_stale(info) or base.category.begins_with("Sticker"):
+			continue
+		info.whole_of = base.id
+		info._whole = base
+		if not _wholes.has(base.id):
+			_wholes[base.id] = []
+		(_wholes[base.id] as Array).append(id)
+
+
+## The assemblies LDraw draws whole that are built on [param id]: 60593c01
+## for 60593. Empty for most parts.
+func wholes_of(id: String) -> PackedStringArray:
+	return PackedStringArray(_wholes.get(id, []))
 
 
 func _read_part(entry: Dictionary) -> PartInfo:
@@ -1465,9 +1564,10 @@ const ALSO_KNOWN_AS: Dictionary = {
 	# plate wedges, the ones a saucer or a swept wing is made of, are all
 	# filed as "Wing": 61 of them, Wing 2 x 2 through Wing 6 x 12. So
 	# "wedge plate" pointed at the wrong family entirely, and the word
-	# that reaches the right one is one no builder says out loud.
+	# that reaches the right one is one no builder says out loud. A wedge
+	# brick is asked as it is said: the Wedge family, brick tall (PartSearch
+	# reads brick, plate and tile as a height in another family).
 	"wedge plate": "wing",
-	"wedge brick": "wedge",
 	"minifigure": "minifig",
 	"cheese slope": "slope brick 31 1 x 1",
 	"jumper plate": "with 1 centre stud",
@@ -1572,6 +1672,10 @@ func _index_prints() -> void:
 				or info.is_redirect():
 			continue
 		var plain: PartInfo = parts.get(found.get_string(1))
+		# A print whose own code starts with its p or d: 3039pd0 reads as a
+		# print of a 3039p no catalogue has, and is a print of 3039.
+		if plain == null and found.get_string(1).right(1) in ["p", "d"]:
+			plain = parts.get(found.get_string(1).left(-1))
 		if plain == null or plain.is_redirect() or plain.decor() != 0:
 			continue
 		info.print_of = plain.id
@@ -1653,10 +1757,14 @@ func staples(most: int = 30) -> Array[PartInfo]:
 
 ## The parts that answer a builder's query, best first (PartSearch): ranked
 ## by how much of it each has, so a word the catalogue does not use lowers
-## a part and never hides it. With [param every_word], only the parts that
-## have every word.
-func search(query: String, limit: int = 100, every_word: bool = false) -> Array[PartInfo]:
-	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word)
+## a part and never hides it, and then by how much sets use it. With
+## [param every_word], only the parts that have every word; a [param limit]
+## under zero is every part that answers. Without [param loose], a word is
+## matched whole and as written, never as the start of one or misspelt.
+func search(query: String, limit: int = 100, every_word: bool = false,
+		loose: bool = true) -> Array[PartInfo]:
+	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word, loose)
+	_collect_preparing()
 	# A number LDraw keeps only for old files, typed: the part made now in its
 	# shape, first (current), as the index leaves the old one out.
 	var typed: String = query.strip_edges().to_lower()
@@ -1665,7 +1773,7 @@ func search(query: String, limit: int = 100, every_word: bool = false) -> Array[
 		if twin != null:
 			found.erase(twin)
 			found.push_front(twin)
-			if found.size() > limit:
+			if limit >= 0 and found.size() > limit:
 				found.resize(limit)
 	return found
 
@@ -1678,6 +1786,36 @@ func unknown_words(query: String) -> PackedStringArray:
 
 var _search_index: PartSearch = null
 var _search_lock := Mutex.new()
+
+
+## Whether the search's index is made: a search asked now does not wait.
+func search_ready() -> bool:
+	_search_lock.lock()
+	var made: bool = _search_index != null
+	_search_lock.unlock()
+	if made:
+		_collect_preparing()
+	return made
+
+
+## Make the search's index now, on a thread of its own where there are
+## threads, so the first key typed in the parts bin is not the one that waits
+## the second it takes. A search asked meanwhile waits for it (_finder).
+func prepare_search() -> void:
+	if (OS.has_feature("web") and not OS.has_feature("threads")) or _preparing >= 0 \
+			or search_ready():
+		return
+	_preparing = WorkerTasks.add(func() -> void: _finder(), false, "index the parts for search")
+
+
+## The task making the index (prepare_search), until it is let go of.
+var _preparing: int = -1
+
+
+func _collect_preparing() -> void:
+	if _preparing >= 0 and _on_main_thread() and WorkerThreadPool.is_task_completed(_preparing):
+		WorkerTasks.collect(_preparing)
+		_preparing = -1
 
 
 ## The word index, made at the first search: under a second over the whole

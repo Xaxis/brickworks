@@ -16,6 +16,14 @@
 ## quarter, dome bottom, spiky) are read as the catalogue's as well as their
 ## own; and the words set inventories name a part by are read beside its
 ## name (PartInfo.also_called).
+##
+## And then by how much real sets use it (PartInfo.commonness), within the
+## parts that answer equally well: "door frame" led with 80400a, a 2 x 8 x 6
+## frame in 24 sets, for its name beginning with the words, over 60596, the
+## 1 x 4 x 6 in 850 (walk239 A13, 2026-10-24). A word as it is being typed is
+## the start of the part's ("doo"), one a letter off is the word it misses
+## ("tyle", "hindge", "axel"), and two run together are both ("doorframe"):
+## each answers a little less than the word itself.
 class_name PartSearch
 extends RefCounted
 
@@ -103,6 +111,14 @@ const OTHER_WORDS_SHARE := 0.8
 ## name says them come first. "round brick 2 x 2" is 3941, Brick 2 x 2 Round,
 ## before 98100, a truncated cone the inventories call a round brick.
 const ALSO_SHARE := 0.9
+## A word a part's has only the start of, as one being typed: "doo" in Door.
+const PREFIX_SHARE := 0.85
+## A word one letter off a word the catalogue has, which it is taken for:
+## "tyle" a tile, "hindge" a hinge, "axel" an axle. Only a word no part has.
+const FUZZY_SHARE := 0.6
+## How much each set a part is in, and each piece, counts towards how much it
+## is used (PartInfo.commonness), as a whole number in a sort key.
+const USAGE_SCALE := 150.0
 
 static var SIZE := RegEx.create_from_string(
 	"(\\d+(?:\\.\\d+)?) x (\\d+(?:\\.\\d+)?)(?: x (\\d+(?:\\.\\d+)?))?")
@@ -124,6 +140,33 @@ var _also: Dictionary = {}
 var _keyed: Dictionary = {}
 var _sized: Dictionary = {}
 var _tall: Dictionary = {}
+## Each index's words in order, for the words a typed start begins.
+var _named_words := PackedStringArray()
+var _also_words := PackedStringArray()
+var _keyed_words := PackedStringArray()
+## Per part: how much real sets use it, and how plain its name is (fewer
+## words), each as a sort key's whole number.
+var _usage := PackedInt32Array()
+var _plainness := PackedInt32Array()
+## Per part: 1 for a plain part, not a print, a sticker, an alias or another
+## system's; and the index of the part it is a print of, or -1.
+var _plain := PackedByteArray()
+var _print_of := PackedInt32Array()
+## Per part: the first word of its category, what kind of part it is: a
+## name says what it has, and "Technic Wedge Belt Wheel" is filed a Technic
+## part, where Wedge 4 x 2 is a wedge.
+var _lead := PackedStringArray()
+## The families that are a height, and how tall each is in plates, its body
+## without a stud: what "wedge brick" or "round plate" asks of a part filed in
+## another family. A tile is a plate with nothing on top.
+const HEIGHTS: Dictionary = {"brick": 3, "plate": 1, "tile": 1}
+## A height word -> the parts of another family that are that tall.
+var _by_height: Dictionary = {}
+## A first letter -> the parts with a word of their names that it begins.
+var _by_letter: Dictionary = {}
+## Every part's number in lower case, in order, and the part each is.
+var _numbers := PackedStringArray()
+var _number_at := PackedInt32Array()
 
 
 func _init(parts: Dictionary, ids: PackedStringArray) -> void:
@@ -135,17 +178,91 @@ func _init(parts: Dictionary, ids: PackedStringArray) -> void:
 		_infos.append(info)
 		_at[info.id] = at
 		# The number and the category say no size, so the name's is the first.
-		var own: PackedStringArray = words_of(info.own_words())
+		# Read, never written: the index may be made on a thread of its own
+		# (PartLibrary.prepare_search), so the parts' kept words are not
+		# filled in from here.
+		var own: PackedStringArray = words_of(info.own_words_now())
 		_index(_named, own, at)
 		if not info.also_called.is_empty():
 			_index(_also, words_of(info.also_called), at)
 		if not info.keywords.is_empty():
-			_index(_keyed, words_of(info.keyword_words()), at)
+			_index(_keyed, words_of(info.keyword_words_now()), at)
 		var size: PackedStringArray = _size_key(own)
 		if not size.is_empty():
 			_index(_sized, PackedStringArray([size[0]]), at)
 			if size.size() > 1:
 				_index(_tall, PackedStringArray([size[1]]), at)
+		_usage.append(mini(4095, roundi(info.commonness() * USAGE_SCALE)))
+		_plainness.append(15 - mini(15, own.size()))
+		var kind: PackedStringArray = words_of(info.family_category())
+		_lead.append(kind[0] if not kind.is_empty() else "")
+		# What BrickLink files as a brick, plate or tile Modified (Rebrickable,
+		# Special): one with something on it, LDraw's "with", and not a round
+		# one, nor a tile with only the groove every tile has. 15573, the
+		# jumper, for "plate modified"; 4070, the headlight brick, for "brick
+		# modified".
+		if not kind.is_empty() and HEIGHTS.has(kind[0]) \
+				and PartLibrary.decor_of(info.name, info.category) == 0:
+			var named: String = info.name.to_lower().replace("with groove", "")
+			if named.contains(" with ") and not named.contains("round"):
+				_index(_also, PackedStringArray(["modified", "special"]), at)
+		# Brick, plate and tile are each a family and a height. A part of
+		# another family is the height it is: 6564, Wedge 3 x 2 Right, is a
+		# wedge brick; 45677, Wedge 4 x 4 x 0.667 Curved, is not.
+		if not kind.is_empty() and not HEIGHTS.has(kind[0]):
+			var plates: int = roundi((info.size.y - (4.0 if info.stud_count > 0 else 0.0)) / 8.0)
+			for word: String in HEIGHTS:
+				if plates == int(HEIGHTS[word]) and (word == "tile") == (info.stud_count == 0):
+					if not _by_height.has(word):
+						_by_height[word] = PackedInt32Array()
+					var tall: PackedInt32Array = _by_height[word]
+					tall.append(at)
+					_by_height[word] = tall
+		_plain.append(1 if PartLibrary.decor_of(info.name, info.category) == 0
+			and not info.name.begins_with("=") and not _other_line(info) else 0)
+	_named_words = _in_order(_named)
+	_also_words = _in_order(_also)
+	_keyed_words = _in_order(_keyed)
+	# The parts with a word of their names begun by each first letter: what
+	# a first key typed asks, and the start of thousands of words.
+	var seen := PackedInt32Array()
+	seen.resize(_infos.size())
+	for word: String in _named_words:
+		if word.is_valid_float():
+			continue
+		var letter: String = word[0]
+		if not _by_letter.has(letter):
+			_by_letter[letter] = PackedInt32Array()
+		var into: PackedInt32Array = _by_letter[letter]
+		var mark: int = letter.unicode_at(0) + 1
+		for at: int in _named[word]:
+			if seen[at] != mark:
+				seen[at] = mark
+				into.append(at)
+		_by_letter[letter] = into
+	_print_of.resize(_infos.size())
+	var numbers := PackedStringArray()
+	for at: int in _infos.size():
+		_print_of[at] = int(_at.get(_infos[at].print_of, -1))
+		numbers.append("%s %d" % [_infos[at].id.to_lower(), at])
+	numbers.sort()
+	for entry: String in numbers:
+		_numbers.append(entry.get_slice(" ", 0))
+		_number_at.append(int(entry.get_slice(" ", 1)))
+
+
+static func _in_order(index: Dictionary) -> PackedStringArray:
+	var words := PackedStringArray(index.keys())
+	words.sort()
+	return words
+
+
+func _words_of_index(index: Dictionary) -> PackedStringArray:
+	if is_same(index, _named):
+		return _named_words
+	if is_same(index, _also):
+		return _also_words
+	return _keyed_words
 
 
 ## A part under each of its words. A word twice in a name is listed twice,
@@ -297,12 +414,78 @@ static func _forms(word: String) -> PackedStringArray:
 	return forms
 
 
-## The parts that have [param word] in any of its forms, in [param index].
-static func _having(index: Dictionary, word: String) -> Dictionary:
+## The parts that have [param word] in any of its forms, in [param index],
+## each -> how fully: 1 for the word itself; and [param loose], for the
+## start of a longer word (PREFIX_SHARE) and for a word one letter off it
+## when no part has it (FUZZY_SHARE).
+func _having(index: Dictionary, word: String, loose: bool = false) -> Dictionary:
 	var out: Dictionary = {}
 	for form: String in _forms(word):
 		for at: int in index.get(form, []):
-			out[at] = true
+			out[at] = 1.0
+	if not loose or word.is_valid_float():
+		return out
+	var words: PackedStringArray = _words_of_index(index)
+	var n: int = words.bsearch(word)
+	while n < words.size() and words[n].begins_with(word):
+		for at: int in index[words[n]]:
+			if not out.has(at):
+				out[at] = PREFIX_SHARE
+		n += 1
+	if word.length() >= 3 and not named(word):
+		for near: String in _near(word):
+			for at: int in index.get(near, []):
+				if not out.has(at):
+					out[at] = FUZZY_SHARE
+	return out
+
+
+## Whether some part has [param word], in any of its forms, by name or by the
+## words sets name it by. Keywords are not asked: they hold misspellings of
+## their own ("axel"), and a word only they have is one a builder misspelt.
+func named(word: String) -> bool:
+	for form: String in _forms(word):
+		if _named.has(form) or _also.has(form):
+			return true
+	return false
+
+
+const LETTERS := "abcdefghijklmnopqrstuvwxyz"
+
+
+## The words of the catalogue's names one letter off [param word]: a letter
+## left out, one too many, one wrong or two swapped. Only words of letters.
+func _near(word: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var seen: Dictionary = {}
+	var tries := PackedStringArray()
+	for n: int in word.length():
+		tries.append(word.substr(0, n) + word.substr(n + 1))
+		if n + 1 < word.length():
+			tries.append(word.substr(0, n) + word[n + 1] + word[n] + word.substr(n + 2))
+		for letter: String in LETTERS:
+			tries.append(word.substr(0, n) + letter + word.substr(n + 1))
+	for n: int in word.length() + 1:
+		for letter: String in LETTERS:
+			tries.append(word.substr(0, n) + letter + word.substr(n))
+	for near: String in tries:
+		if near != word and not seen.has(near) and (_named.has(near) or _also.has(near)):
+			seen[near] = true
+			out.append(near)
+	return out
+
+
+## A word no part has that is two a part has, run together: "doorframe" is
+## door and frame. Each half three letters at the least.
+func _apart(word: String) -> Array:
+	var out: Array = []
+	if word.length() < 6 or word.is_valid_float() or named(word):
+		return out
+	for n: int in range(3, word.length() - 2):
+		var first: String = word.substr(0, n)
+		var second: String = word.substr(n)
+		if _named.has(first) and _named.has(second):
+			out.append(PackedStringArray([first, second]))
 	return out
 
 
@@ -310,13 +493,13 @@ static func _having(index: Dictionary, word: String) -> Dictionary:
 ## option, each with every word of it, the builder's own words in full and
 ## the catalogue's for them a little less ("tile 1 x 2 rounded ends" is
 ## 1126, Tile 1 x 2 with Rounded Ends, before 1748, Tile 1 x 2 Half Round).
-func _matching(index: Dictionary, term: Dictionary) -> Dictionary:
+func _matching(index: Dictionary, term: Dictionary, loose: bool = false) -> Dictionary:
 	var out: Dictionary = {}
 	var share: float = 1.0
 	for option: PackedStringArray in term["options"]:
 		var found: Dictionary = {}
 		for n: int in option.size():
-			var having: Dictionary = _having(index, option[n])
+			var having: Dictionary = _having(index, option[n], loose)
 			if n == 0:
 				found = having
 				continue
@@ -325,14 +508,71 @@ func _matching(index: Dictionary, term: Dictionary) -> Dictionary:
 			var other: Dictionary = found if smaller == having else having
 			for at: int in smaller:
 				if other.has(at):
-					both[at] = true
+					both[at] = minf(float(smaller[at]), float(other[at]))
 			found = both
 			if found.is_empty():
 				break
 		for at: int in found:
-			out[at] = maxf(float(out.get(at, 0.0)), share)
+			out[at] = maxf(float(out.get(at, 0.0)), share * float(found[at]))
 		share = OTHER_WORDS_SHARE
 	return out
+
+
+## [method _matching] into [param out], a share a part, for the parts
+## [param touched] lists: the same answer, without a dictionary entry a part,
+## since a first letter typed is the start of words thousands of parts have.
+func _matching_into(index: Dictionary, term: Dictionary, loose: bool,
+		out: PackedFloat32Array, touched: PackedInt32Array) -> void:
+	var share: float = 1.0
+	for option: PackedStringArray in term["options"]:
+		if option.size() == 1:
+			_having_into(index, option[0], loose, share, out, touched)
+		else:
+			var found: Dictionary = _matching(index, {"options": [option]}, loose)
+			for at: int in found:
+				_raise(out, touched, at, share * float(found[at]))
+		share = OTHER_WORDS_SHARE
+
+
+## [method _having] into [param out], each share times [param share].
+func _having_into(index: Dictionary, word: String, loose: bool, share: float,
+		out: PackedFloat32Array, touched: PackedInt32Array) -> void:
+	for form: String in _forms(word):
+		for at: int in index.get(form, []):
+			_raise(out, touched, at, share)
+	# A word begun is looked for by its start; one or two letters only in
+	# the names, where they are what is being typed and keywords are noise.
+	if not loose or word.is_valid_float() or (word.length() < 3 and not is_same(index, _named)):
+		return
+	var begun: float = share * PREFIX_SHARE
+	if word.length() == 1 and is_same(index, _named):
+		for at: int in _by_letter.get(word, PackedInt32Array()):
+			if out[at] < begun:
+				if out[at] == 0.0:
+					touched.append(at)
+				out[at] = begun
+		return
+	var words: PackedStringArray = _words_of_index(index)
+	var n: int = words.bsearch(word)
+	while n < words.size() and words[n].begins_with(word):
+		for at: int in index[words[n]]:
+			if out[at] < begun:
+				if out[at] == 0.0:
+					touched.append(at)
+				out[at] = begun
+		n += 1
+	if word.length() >= 3 and not named(word):
+		for near: String in _near(word):
+			for at: int in index.get(near, []):
+				_raise(out, touched, at, share * FUZZY_SHARE)
+
+
+static func _raise(out: PackedFloat32Array, touched: PackedInt32Array, at: int,
+		share: float) -> void:
+	if out[at] < share:
+		if out[at] == 0.0:
+			touched.append(at)
+		out[at] = share
 
 
 ## The parts a number asked for names: 3023 asked, 3023b meant, and not
@@ -341,10 +581,11 @@ func _numbered(said: String) -> Dictionary:
 	var out: Dictionary = {}
 	if PART_NUMBER.search(said) == null:
 		return out
-	for at: int in _infos.size():
-		var id: String = _infos[at].id.to_lower()
-		if id.begins_with(said) and not id.substr(said.length(), 1).is_valid_int():
-			out[at] = 1.0
+	var n: int = _numbers.bsearch(said)
+	while n < _numbers.size() and _numbers[n].begins_with(said):
+		if not _numbers[n].substr(said.length(), 1).is_valid_int():
+			out[_number_at[n]] = 1.0
+		n += 1
 	return out
 
 
@@ -361,18 +602,48 @@ func unknown(asked: String) -> PackedStringArray:
 
 ## The parts that answer [param asked] (in PartLibrary.in_ldraw_words'
 ## words), best first, at most [param limit]. With [param every_word], only
-## parts that have every one.
-func find(asked: String, limit: int, every_word: bool = false) -> Array[PartLibrary.PartInfo]:
-	var terms: Array[Dictionary] = terms_of(asked)
+## parts that have every one; with [param loose], a word's start, a word a
+## letter off and two run together answer it too.
+func find(asked: String, limit: int, every_word: bool = false,
+		loose: bool = true) -> Array[PartLibrary.PartInfo]:
 	var found: Array[PartLibrary.PartInfo] = []
+	for at: int in ranked(asked, limit, every_word, loose):
+		found.append(_infos[at])
+	return found
+
+
+## [method find]'s parts as indexes into the index's own list, best first.
+func ranked(asked: String, limit: int, every_word: bool = false,
+		loose: bool = true) -> PackedInt32Array:
+	var terms: Array[Dictionary] = terms_of(asked)
+	# A word being typed that reads as one that says nothing yet ("a", on
+	# its way to arch) is looked for as itself.
+	if terms.is_empty() and loose and not asked.strip_edges().is_empty():
+		var typed: PackedStringArray = words_of(asked)
+		if not typed.is_empty():
+			terms.append(_term(typed[typed.size() - 1]))
 	if terms.is_empty():
-		return found
+		return PackedInt32Array()
+	if loose:
+		for term: Dictionary in terms:
+			if not term.has("sizes"):
+				(term["options"] as Array).append_array(_apart(str(term["said"])))
+	var count_of: int = _infos.size()
 	var decor_asked: bool = false
-	var score: Dictionary = {}      ## index -> what its matched words are worth
-	var matched: Dictionary = {}    ## index -> terms matched
-	var literal: Dictionary = {}    ## index -> terms matched in the builder's own words
-	var numbered: Dictionary = {}   ## index -> asked for by its number
-	var total: float = float(_infos.size() + 1)
+	var score := PackedFloat32Array()   ## what its matched words are worth
+	var shares := PackedFloat32Array()  ## its terms' shares multiplied
+	var matched := PackedInt32Array()   ## terms matched
+	var literal := PackedInt32Array()   ## terms matched in the builder's own words
+	var flags := PackedByteArray()      ## 1 asked for by its number, 2 its number typed
+	score.resize(count_of)
+	shares.resize(count_of)
+	shares.fill(1.0)
+	matched.resize(count_of)
+	literal.resize(count_of)
+	flags.resize(count_of)
+	var touched := PackedInt32Array()   ## every part a term matched
+	var possible: float = 0.0           ## what every word asked is worth
+	var total: float = float(count_of + 1)
 	# Two words a name runs together: "air tank" is LDraw's Airtank, "lift
 	# arm" its Liftarm, which the words matched whole no longer find inside.
 	var joined: Array[Dictionary] = []
@@ -387,8 +658,12 @@ func find(asked: String, limit: int, every_word: bool = false) -> Array[PartLibr
 	for n: int in terms.size():
 		var term: Dictionary = terms[n]
 		var said: String = term["said"]
-		var by_name: Dictionary = {}
-		var by_keyword: Dictionary = {}
+		var by_name := PackedFloat32Array()
+		var by_keyword := PackedFloat32Array()
+		by_name.resize(count_of)
+		by_keyword.resize(count_of)
+		var named_list := PackedInt32Array()
+		var keyed_list := PackedInt32Array()
 		if term.has("sizes"):
 			# A height asked and not the part's is the right footprint and
 			# still not quite the part: 60032, Window 1 x 2 x 2, for "window
@@ -396,111 +671,156 @@ func find(asked: String, limit: int, every_word: bool = false) -> Array[PartLibr
 			var share: float = 1.0 if (term["tall"] as Array).is_empty() else OTHER_WORDS_SHARE
 			for key: String in term["sizes"]:
 				for at: int in _sized.get(key, []):
-					by_name[at] = share
+					_raise(by_name, named_list, at, share)
 			for key: String in term["tall"]:
 				for at: int in _tall.get(key, []):
-					by_name[at] = 1.0
-			by_keyword = _matching(_keyed, term)
+					_raise(by_name, named_list, at, 1.0)
+			_matching_into(_keyed, term, false, by_keyword, keyed_list)
 		else:
 			decor_asked = decor_asked or said == "print" or said == "sticker"
-			by_name = _matching(_named, term)
-			for at: int in _matching(_also, term):
-				if not by_name.has(at):
-					by_name[at] = ALSO_SHARE
+			_matching_into(_named, term, loose, by_name, named_list)
+			var by_also := PackedFloat32Array()
+			by_also.resize(count_of)
+			var also_list := PackedInt32Array()
+			_matching_into(_also, term, loose, by_also, also_list)
+			for at: int in also_list:
+				_raise(by_name, named_list, at, ALSO_SHARE * by_also[at])
 			if STUDLESS.has(said):
-				for at: int in _infos.size():
+				for at: int in count_of:
 					if _infos[at].stud_count == 0:
-						by_name[at] = 1.0
+						_raise(by_name, named_list, at, 1.0)
+			# A family that is a height, asked of a part of another family:
+			# answered by how tall it is, as fully as by its name.
+			for form: String in _forms(said):
+				for at: int in _by_height.get(form, PackedInt32Array()):
+					_raise(by_name, named_list, at, 1.0)
 			var by_number: Dictionary = _numbered(said)
-			numbered.merge(by_number)
-			by_name.merge(by_number, true)
-			by_name.merge(joined[n], true)
-			by_keyword = _matching(_keyed, term)
-		var count: int = by_name.size()
-		for at: int in by_keyword:
-			if not by_name.has(at):
+			for at: int in by_number:
+				_raise(by_name, named_list, at, 1.0)
+				flags[at] |= 1
+				if _infos[at].id.to_lower() == said:
+					flags[at] |= 2
+			for at: int in joined[n]:
+				_raise(by_name, named_list, at, 1.0)
+			_matching_into(_keyed, term, loose, by_keyword, keyed_list)
+		var count: int = named_list.size()
+		for at: int in keyed_list:
+			if by_name[at] == 0.0:
 				count += 1
 		if count == 0:
 			continue
 		# A word few parts have says more about which one: macaroni, ovoid,
 		# a part number. "tile" or "brick" is said of thousands.
 		var worth: float = log(total / float(count + 1))
-		for at: int in by_name:
+		possible += worth
+		for at: int in named_list:
 			# Its name or its keywords: either saying it says it, and both
 			# say it more. 85080 is a corner round by name and macaroni by
 			# its keywords, 67810 a curved corner only by name.
-			var share: float = 1.0 - (1.0 - float(by_name[at])) \
-				* (1.0 - float(by_keyword.get(at, 0.0)) * KEYWORD_SHARE)
-			score[at] = float(score.get(at, 0.0)) + worth * share
-			matched[at] = int(matched.get(at, 0)) + 1
-			if by_name[at] >= 1.0 or float(by_keyword.get(at, 0.0)) >= 1.0:
-				literal[at] = int(literal.get(at, 0)) + 1
-		for at: int in by_keyword:
-			if not by_name.has(at):
-				score[at] = float(score.get(at, 0.0)) + worth * by_keyword[at] * KEYWORD_SHARE
-				matched[at] = int(matched.get(at, 0)) + 1
-				if by_keyword[at] >= 1.0:
-					literal[at] = int(literal.get(at, 0)) + 1
+			var share: float = 1.0 - (1.0 - by_name[at]) * (1.0 - by_keyword[at] * KEYWORD_SHARE)
+			if matched[at] == 0:
+				touched.append(at)
+			score[at] += worth * share
+			matched[at] += 1
+			shares[at] *= share
+			if by_name[at] >= 1.0:
+				literal[at] += 1
+		for at: int in keyed_list:
+			if by_name[at] == 0.0:
+				if matched[at] == 0:
+					touched.append(at)
+				score[at] += worth * by_keyword[at] * KEYWORD_SHARE
+				matched[at] += 1
+				shares[at] *= by_keyword[at] * KEYWORD_SHARE
 
 	# A print has the words of what is printed on it as well as its shape's:
 	# "round corner plate macaroni large" found 25269p04, a 1 x 1 tile with
 	# a pattern that says plate and large. Asked for by shape, it has no
-	# more of the words than the part it is a print of.
+	# more of the words than the part it is a print of. One its part has none
+	# of is found by what is printed on it: "Å" is 3005pwc.
 	if not decor_asked:
-		for at: int in matched.keys():
-			var plain_at: int = _at.get(_infos[at].print_of, -1)
-			if plain_at >= 0:
-				matched[at] = mini(int(matched[at]), int(matched.get(plain_at, 0)))
-				literal[at] = mini(int(literal.get(at, 0)), int(literal.get(plain_at, 0)))
-				score[at] = minf(float(score.get(at, 0.0)), float(score.get(plain_at, 0.0)))
-	# Grouped by what decides the order: a part asked for by its number
-	# ("2x2 bracket inverted 99207" is 99207, a 1 x 2 - 2 x 2 bracket LDraw
-	# calls Up), then how many of the words it has, then plain before
-	# prints, stickers and other systems' parts, then how many of the words
-	# in the builder's own (85080, macaroni in its keywords, before 67810, a
-	# curved corner). Within a group, by what its words are worth: parts
-	# within a tenth of each other are ordered as the catalogue orders them
-	# (PartsBin._sort_for), so 27925, the macaroni tile in a thousand sets,
-	# is not put after 7836, its trans light blue variant with an understud,
-	# for a share of one word. Only the groups that will be listed are sorted.
-	var groups: Dictionary = {}     ## group -> {worth -> [PartInfo]}
-	for at: int in matched:
-		if every_word and int(matched[at]) < terms.size():
+		for at: int in touched:
+			var plain_at: int = _print_of[at]
+			if plain_at >= 0 and matched[plain_at] > 0:
+				matched[at] = mini(matched[at], matched[plain_at])
+				literal[at] = mini(literal[at], literal[plain_at])
+				score[at] = minf(score[at], score[plain_at])
+	# One key a part, the larger the better, in fields that decide the order
+	# one after another: a part asked for by its number ("2x2 bracket
+	# inverted 99207" is 99207, a 1 x 2 - 2 x 2 bracket LDraw calls Up), then
+	# how many of the words it has, then the number typed itself (3001 before
+	# 3001b, and "3623 print" its prints), then plain before
+	# prints, stickers and other systems' parts, then how well it has them:
+	# all in the builder's own words in its own name (a wedge brick for
+	# "wedge" before a wing that says it only in its keywords), then by its
+	# words' shares multiplied, in three
+	# bands: as good as a word begun, as one a letter off, and less; then a
+	# part filed under a word asked, the thing itself. Then, among the
+	# parts that answer as well, how much real sets use it: 60596,
+	# the door frame in 850 sets, before 80400a, in 24. Then the plainer name,
+	# what its words are worth, and the catalogue's order. Sorted as numbers.
+	# The words a category may begin with for the part to be the thing asked
+	# for, and not a part that has it ("wedge" is Wedge 4 x 2, not Technic
+	# Wedge Belt Wheel, in more sets): each word asked, its forms and the
+	# words one letter off it, and the start of any word asked, as typed.
+	var leads: Dictionary = {}
+	var begun := PackedStringArray()
+	for term: Dictionary in terms:
+		if term.has("sizes"):
 			continue
-		var info: PartLibrary.PartInfo = _infos[at]
-		var plain: int = 1 if (decor_asked or (info.decor() == 0
-			and not info.name.begins_with("="))) and not _other_line(info) else 0
-		var group: int = (1 if numbered.has(at) else 0) * 1000000 + int(matched[at]) * 10000 \
-			+ plain * 1000 + int(literal.get(at, 0))
-		var worth: int = roundi(float(score.get(at, 0.0)) * 1000.0)
-		if not groups.has(group):
-			groups[group] = {}
-		var by_worth: Dictionary = groups[group]
-		if not by_worth.has(worth):
-			by_worth[worth] = []
-		(by_worth[worth] as Array).append(info)
-	var keys: Array = groups.keys()
+		for option: PackedStringArray in term["options"]:
+			for word: String in option:
+				for form: String in _forms(word):
+					leads[form] = true
+				if loose and not word.is_valid_float():
+					begun.append(word)
+					if word.length() >= 3 and not named(word):
+						for near: String in _near(word):
+							leads[near] = true
+	var keys := PackedInt64Array()
+	var needed: int = terms.size()
+	for at: int in touched:
+		var has: int = matched[at]
+		if has == 0 or (every_word and has < needed):
+			continue
+		var tier: int = 3
+		if literal[at] < has:
+			var product: float = shares[at]
+			tier = 2 if product >= PREFIX_SHARE - 0.01 else (1 if product >= FUZZY_SHARE - 0.01 else 0)
+		var worth: int = mini(1023, roundi(1023.0 * score[at] / maxf(possible, 0.001)))
+		var lead: String = _lead[at]
+		var named_for: int = 1 if leads.has(lead) else 0
+		if named_for == 0:
+			for start: String in begun:
+				if lead.begins_with(start):
+					named_for = 1
+					break
+		var key: int = flags[at] & 1
+		key = key * 16 + mini(15, has)
+		key = key * 2 + ((flags[at] >> 1) & 1)
+		# A print or a sticker asked for is a part with it on: a sticker
+		# itself, off its sheet, after them.
+		key = key * 2 + ((0 if _infos[at].category == "Sticker" else 1) if decor_asked
+			else _plain[at])
+		key = key * 4 + tier
+		key = key * 2 + named_for
+		key = key * 4096 + _usage[at]
+		key = key * 16 + _plainness[at]
+		key = key * 1024 + worth
+		key = key * 65536 + (65535 - at)
+		keys.append(key)
 	keys.sort()
-	keys.reverse()
-	for group: int in keys:
-		var by_worth: Dictionary = groups[group]
-		var worths: Array = by_worth.keys()
-		worths.sort()
-		worths.reverse()
-		var n: int = 0
-		while n < worths.size() and found.size() < limit:
-			var near: Array[PartLibrary.PartInfo] = []
-			var top: int = worths[n]
-			while n < worths.size() and int(worths[n]) * 10 >= top * 9:
-				near.append_array(by_worth[worths[n]])
-				n += 1
-			PartsBin._sort_for(near, asked)
-			found.append_array(near)
-		if found.size() >= limit:
-			break
-	if found.size() > limit:
-		found.resize(limit)
-	return found
+	var out := PackedInt32Array()
+	var n: int = keys.size() - 1
+	while n >= 0 and (limit < 0 or out.size() < limit):
+		out.append(65535 - int(keys[n] % 65536))
+		n -= 1
+	return out
+
+
+## The part at [param at] of [method ranked]'s list.
+func info_at(at: int) -> PartLibrary.PartInfo:
+	return _infos[at]
 
 
 ## Duplo, Modulex and the other systems filed in the same library, which
