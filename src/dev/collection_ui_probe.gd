@@ -124,10 +124,13 @@ func _run() -> void:
 		if float(ranked[n]["cover"]["exact"]) > float(ranked[n - 1]["cover"]["exact"]) + 0.0001:
 			ordered = false
 	_check("most owned first", ordered)
+	# The car by its file's name: "car.ldr" at the end of a path also found
+	# sports_car.ldr (674cdc65, 2026-10-24), and the last found was taken.
 	var car_at: int = -1
 	for n: int in ranked.size():
-		if str(ranked[n].get("path", "")).ends_with("car.ldr"):
+		if str(ranked[n].get("path", "")).get_file() == "car.ldr":
 			car_at = n
+			break
 	_check("the car, half owned, is near the top (%d of %d: %s)" % [car_at + 1, ranked.size(),
 		str(ranked[0]["name"])], car_at >= 0 and car_at < 10)
 	await _shot("collection_build")
