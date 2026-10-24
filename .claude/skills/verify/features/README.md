@@ -93,6 +93,9 @@ Never driven from here:
 - [prints](prints.md): printed parts and stickers of one's own on any face —
   drawn, or brought in from a picture — LDraw TEXMAP files with their pictures
   in the model, and the sticker sheet printed at true size.
+- [together](together.md): two people building one model at once, live, in
+  browsers and the desktop app: File, Build together…, the session's server
+  half, per-person undo, and the flow that proves them byte-identical.
 - [collection](collection.md): what a person owns, kept with their account —
   imported from Rebrickable or BrickLink or typed in — what the open model needs
   that they do not have and what could stand in, the shortfall as a wanted

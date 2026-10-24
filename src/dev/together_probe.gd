@@ -91,6 +91,8 @@ func _side(email: String) -> Dictionary:
 	together.store = store
 	together.account = account
 	together.base_url = _api
+	if not OS.get_environment("BW_BYPASS").is_empty():
+		together.extra_headers = PackedStringArray(["x-vercel-protection-bypass: " + OS.get_environment("BW_BYPASS")])
 	together.said.connect(func(words: String) -> void: print("        [%s] %s" % [email.get_slice("+", 1).get_slice("@", 0), words]))
 	root.add_child(together)
 	return {"world": world, "builder": builder, "store": store, "account": account, "together": together}

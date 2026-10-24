@@ -104,8 +104,10 @@ built in other worktrees and are not on `next3`.
    - Mecabricks has a public library with an embed [mb-model], and
      Rebrickable has more than 200,000 MOCs [rb-wiki].
    - Brickworks has share links, a public gallery with remixing, likes and
-     moderation, and people's pages and lists; nothing live and shared
-     ([web]). A link keeps its versions: publishing again keeps the old one
+     moderation, and people's pages and lists ([web]); and Build together,
+     two people editing one model live by a link, in a browser or the
+     desktop, each Undo their own, the model byte-identical on every side
+     once nothing is on its way ([together], 2026-10-24). A link keeps its versions: publishing again keeps the old one
      at `/m/<id>/v/<n>`, says what changed by part and step, and keeps a
      builder's place when the steps they built did not change ([web]).
 4. **Buying the parts.**
@@ -174,7 +176,7 @@ Versions are the latest found:
 | **Flexible parts** | the Flex tool bends most chains, hoses and stud strings, with control points since 2.25 [st-flex] [st-rn]; "pseudo-physics" complaints before that [st-flex-forum] | its own path system since 2019: several paths, springs, live geometry [mb-flex] | the Flex tool fails with other parts attached [ldd-flex] | generated hoses, flex axles, strings, shock absorbers, Flex-System hoses, pneumatic tubes [lc-history] | the deepest: Bézier paths, rubber bands round circles, springs, skins of donor parts, length mapped to a real part number [ld-meta] [ld-advedit] | LSynth built in: hoses and bands [bs-lsynth] | tube, ribbed hose, flex hose, flex axle, string, chain, tread laid by their ends, reshaped later, bought as one part; no bands or springs ([geometry] [model-io]) |
 | **Custom parts, prints, stickers** | PartDesigner, a separate app: parts and connections, OBJ/DAT import, decals on 28 parts [st-pd] [st-pd-decal] | Part Manager paints a PNG over the UV map, with metal ink, chrome and stickers; no custom shapes [mb-partmgr] [mb-nocustom] | none official; mods [ldd-custom] | texture mapping, a Minifig Wizard [lc-texmap] [lc-releases] | embedded textures; new flexible parts by template [ld-17b1] [ld-meta] | planar texture mapping, a minifig generator [bs-history] | element maker (7 families, any size), change any part, paint or import prints, stickers with a PDF sheet, sculpted moulds ([elements] [prints] [minifig]) |
 | **Import, export** | in: io, ldr/mpd, lxf, a wanted list, a set, OBJ/STL as a sculpture, mosaics. out: ldr/mpd, lxfml, POV, dae, csv, a wanted list, Sketchfab; no OBJ/STL [st-import] [st-export] | in: LDD, Studio. out: OBJ, DAE, STL, `.zmbx` for Blender; no LDraw out [mb-lddimport] [mb-farm] [mb-addon] [mb-eb9] | lxf; LDraw through ldraw.xml [ldd-ldraw] | ldr/mpd; LDD in; out OBJ, 3DS, COLLADA, CSV, HTML, images, a BrickLink XML [lc-history] [lc-cli] | LDraw; out PNG, POV-Ray, glTF2, Collada (partial) [ld-features] [ld-17b1] | LDraw; a part list [bs-history] | in: ldr/mpd, io (locked ones too), lxf, OBJ/STL/glTF to brickify. out: ldr/mpd, io (not yet seen opening in Studio), glTF/GLB, OBJ, STL, PNG, a BrickLink XML, a Rebrickable CSV, the booklet, a sticker PDF. Another tool's LDraw file comes back exactly as it went in (54 of 54 measured, author, licence and LDCad's flexible parts kept), and a part it cannot draw is kept, not dropped ([model-io] [brickify] [cadtask]) |
-| **Collaboration, sharing** | Build Together, live co-editing; a Gallery; the Designer Program [st-bt] [st-gallery] | a public library with likes, comments and an embed [mb-model] [mb-eb4] | Design byME ended 2012 [ldd-wiki] | by file | not found | none | a link `/m/<id>` that keeps its versions and says what changed, an embed card, a read-only viewer with steps and booklet, a copy to edit; no co-editing ([web] [account]) |
+| **Collaboration, sharing** | Build Together, live co-editing; a Gallery; the Designer Program [st-bt] [st-gallery] | a public library with likes, comments and an embed [mb-model] [mb-eb4] | Design byME ended 2012 [ldd-wiki] | by file | not found | none | a link `/m/<id>` that keeps its versions and says what changed, an embed card, a read-only viewer with steps and booklet, a copy to edit; Build together: two people co-edit one model live by a link, in browsers and the desktop, each with their own Undo ([web] [account] [together]) |
 | **Collection, BrickLink, Rebrickable** | Price Guide prices, a one-click wanted list, a My Collection palette; no Rebrickable [st-price] [st-wanted] [st-collection] | inventory as CSV or BrickLink XML [mb-model] | ordering ended 2012 [ldd-wiki] | a BrickLink XML [lc-history] | Rebrickable inventories as part bins [ld-rb] | a part list only | a collection from Rebrickable, a BrickLink XML or typing; what is short and what could stand in; what you can build; a wanted list or Rebrickable CSV; no prices ([collection]) |
 | **Platforms, price** | Windows, macOS; free; LEGO account sign-in [st-platform] [st-wiki] [st-signin] | browser only, on purpose; free; render credits; Patreon $1–50 [mb-online] [mb-patreon] | Windows, old macOS; free; withdrawn [ldd-wiki] [ldd-end] | Windows, macOS, Linux (AppImage, Flatpak, Snap); free, open source [lc-download] [lc-2609] | Windows, Linux; macOS under Wine; free for personal use, closed source [ld-download] [ld-mac] [ld-faq] | macOS 10.11+; free [bs-home] | browser (any desktop, phones), Linux, macOS, Windows; free, open source; email sign-in required; AI on your own key or Claude plan ([web] [release]) |
 | **Big models** | collision "can take a lot of resources"; detail level trades for speed [st-collide] | very large sets crashed it (2013); a ~17,000-brick render failed (2020) [mb-eb4] [mb-eb9] | 32-bit; "slows to a crawl" at 6,000 [ldd-big] | "optimized for large models"; faster than LDView on Datsville [lc-home] [lc-datsville] | redraws only what changed; snapping slows large sub-models [ld-17b1] [ld-advedit] | a threaded parser; speed work through 3.1 [bs-history] | instanced: 200,000 bricks in 14 draw calls at 131 fps (M3 Max); nothing drawn while idle; an 8,603-part build order in 5 s ([README] [view]) |
@@ -957,10 +959,6 @@ lies outside this code, or the decision is the owner's.
   agreement to its terms ([collection]). Studio is BrickLink's own app, so
   this stays a gap until someone holds those keys. Rebrickable can push a
   list to BrickOwl [rb-bl]; BrickOwl's API terms were not checked.
-- **Live co-editing like Studio's Build Together** [st-bt]. The connector's
-  relay (`api/mcp.js`) could carry it later. No complaint about the lack
-  was found, and LEGO's own version takes turns rather than editing at once
-  [legobuilder].
 - **A native iPad app.** The web build already runs on a tablet. Measure it
   on one before building anything.
 - **Letting people in without signing in.**
@@ -989,6 +987,7 @@ Brickworks' own claims link into this repository.
 [view]: ../.claude/skills/verify/features/view.md
 [web]: ../.claude/skills/verify/features/web.md
 [account]: ../.claude/skills/verify/features/account.md
+[together]: TOGETHER.md
 [elements]: ../.claude/skills/verify/features/elements.md
 [mcp]: ../.claude/skills/verify/features/mcp.md
 [release]: ../.claude/skills/verify/features/release.md

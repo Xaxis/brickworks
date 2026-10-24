@@ -37,6 +37,9 @@ var store: ModelStore
 var account: Account
 var bar: ModelBar
 var base_url: String = ""
+## More headers for every request: a probe's pass through a protected
+## preview deployment (src/dev/together_probe.gd).
+var extra_headers: PackedStringArray = PackedStringArray()
 
 ## In a session now.
 var live: bool = false
@@ -84,6 +87,12 @@ var _heard: Array = []
 var _polling: int = 0
 var _seen: String = ""
 var _sending: bool = false
+## uid -> when this side's last change to it came back numbered: another's
+## change to it numbered within [constant OVERTAKEN_MS] of it was made
+## without seeing it (a change takes about that long to reach the other
+## side), and is said, so a change overtaken is never silent.
+var _mine_at: Dictionary = {}
+const OVERTAKEN_MS := 1500
 
 ## A step left open this long with nothing more to it is closed: a change
 ## that kept no history step of the builder's (a pose, a tool's).
@@ -282,6 +291,7 @@ func _reset() -> void:
 	_open_forward.clear()
 	_seen = ""
 	_polling += 1
+	_mine_at.clear()
 	round_trips.clear()
 
 
@@ -605,19 +615,31 @@ func _take(ops: Array) -> void:
 						round_trips.pop_front()
 			for uid: String in changes:
 				_confirm(uid, changes[uid])
+				_mine_at[uid] = Time.get_ticks_msec()
 			continue
 		for uid: String in changes:
 			_confirm(uid, changes[uid])
 			shown_again[uid] = true
-	var overtaken: int = 0
+			# Mine came back a moment ago and theirs was numbered after it:
+			# theirs stands, and the person is told so.
+			if Time.get_ticks_msec() - int(_mine_at.get(uid, -OVERTAKEN_MS)) < OVERTAKEN_MS:
+				_mine_at.erase(uid)
+				said.emit("%s changed a part you had just changed; theirs came after yours, so it stands."
+					% _name_of(str(op.get("who", ""))))
 	for uid: String in shown_again:
 		if _mine_on_the_way(uid):
-			overtaken += 1
 			continue
 		_put(uid, _confirmed.get(uid))
 	if not shown_again.is_empty():
 		_heard = _model_now()
 		builder._living_selection()
+
+
+func _name_of(who: String) -> String:
+	for person: Variant in people:
+		if str((person as Dictionary).get("who", "")) == who:
+			return str((person as Dictionary).get("name", "Someone"))
+	return "Someone"
 
 
 func _confirm(uid: String, given: Variant) -> void:
@@ -866,8 +888,10 @@ func _ask(op: String, body: Dictionary, timeout: float = 20.0) -> Array:
 	var http := HTTPRequest.new()
 	http.timeout = timeout
 	add_child(http)
-	var sent: int = http.request("%s/api/together?op=%s" % [base_url, op], PackedStringArray([
-		"authorization: Bearer " + session, "content-type: application/json"]),
+	var headers := PackedStringArray(["authorization: Bearer " + session,
+		"content-type: application/json"])
+	headers.append_array(extra_headers)
+	var sent: int = http.request("%s/api/together?op=%s" % [base_url, op], headers,
 		HTTPClient.METHOD_POST, JSON.stringify(body, "", false, true))
 	if sent != OK:
 		http.queue_free()

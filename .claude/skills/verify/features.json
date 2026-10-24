@@ -130,6 +130,16 @@
       "tests": []
     },
     {
+      "id": "api:POST /api/together",
+      "kind": "api",
+      "entry": "api/together.js",
+      "reach": "node tools/web/together_probe.mjs --url=<a relay server or a preview>   (with .env sourced; BW_BYPASS for a preview)",
+      "area": "together",
+      "tests": [
+        "tests/test_steps_score.py"
+      ]
+    },
+    {
       "id": "cli:LDraw files in storage",
       "kind": "cli",
       "entry": "tools/storage_ldraw.py",
@@ -1491,6 +1501,30 @@
       "tests": []
     },
     {
+      "id": "cli:together browser flow",
+      "kind": "cli",
+      "entry": "tools/web/together_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 9011 --static=build/web --hold=together_sessions,together_ops,together_people, then node tools/web/together_flow.mjs --url=http://127.0.0.1:9011 --out=shots/together   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "together",
+      "tests": []
+    },
+    {
+      "id": "cli:together desktop probe",
+      "kind": "cli",
+      "entry": "src/dev/together_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/together_probe.gd -- --api=<relay or preview> [--join=<link> --out=FILE --edits=N --email=<resend.dev address>]   (with .env sourced)",
+      "area": "together",
+      "tests": []
+    },
+    {
+      "id": "cli:together probe",
+      "kind": "cli",
+      "entry": "tools/web/together_probe.mjs",
+      "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then node tools/web/together_probe.mjs --url=http://127.0.0.1:9011   (with .env sourced; or --url=<preview> with BW_BYPASS once supabase/together.sql is applied)",
+      "area": "together",
+      "tests": []
+    },
+    {
       "id": "cli:two chats browser flow",
       "kind": "cli",
       "entry": "tools/web/tabpair_flow.mjs",
@@ -1821,6 +1855,16 @@
       "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool); the SQL in tools/discovery_try.sql; the page in the discovery browser flow, signed in with a collection",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "lib:building together",
+      "kind": "lib",
+      "entry": "src/net/together.gd",
+      "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then godot --headless --path . --script src/dev/together_probe.gd -- --api=http://127.0.0.1:9011   (with .env sourced)",
+      "area": "together",
+      "tests": [
+        "tests/test_steps_score.py"
+      ]
     },
     {
       "id": "lib:change a part",
@@ -2710,6 +2754,14 @@
       "entry": "src/ui/steps_bar.gd",
       "reach": "godot --headless --path . --script src/dev/instructions_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:build together",
+      "kind": "ui",
+      "entry": "src/ui/together_dialog.gd",
+      "reach": "File, Build together\u2026: Start a session (a link to send) or paste a link and Join; in one, the link, who is in it, Remove, End the session or Leave. A link opened in a browser (/app?together=<secret>) or --together=<secret> joins at start",
+      "area": "together",
       "tests": []
     },
     {
