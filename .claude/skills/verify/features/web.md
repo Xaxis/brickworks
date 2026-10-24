@@ -419,10 +419,12 @@ plan with Claude as the client.
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) that opens the link in a tab — the threaded engine
   cannot run in somebody else's page, which cannot be cross-origin isolated.
-  **Who can do what:** a visitor's read goes through the publishable key, so
-  row security (`shared_models_read_published`, select only, `published`) is
-  what says a row is public, and the key's roles are granted every column but
-  `owner`; the bucket `shared-models` is private with no policies, and the
+  **Who can do what:** a visitor's read asks, as the server, for a published
+  row's public columns alone (`api/share.js` `publishedRow`; until oc205 it
+  went through the publishable key and `shared_models_read_published`, and
+  `supabase/no_client_access_models.sql` takes that away once oc205's release
+  is live: the key a page holds then reaches nothing in the database,
+  `supabase/no_client_access.sql`); the bucket `shared-models` is private with no policies, and the
   function reads a file with the secret key only after that read; every write
   is the function's, after the session is verified and the row found to be the
   caller's. Rows (and the publish log) go with the account. Its files cannot
@@ -2161,8 +2163,9 @@ answer lists it with its account, takes it out (200), it leaves the list, its
 link works, its owner listing it again 409 and publishing it unlisted 200, an
 unknown or malformed id 404 or 400; six listings an hour then 429, a listed
 model republished still listed, and publishing unlisted unaffected; with the
-publishable key, `listed`, `listed_at` and `remixed_from` readable, `barred`
-not, the listing log closed and `may_list` not callable. 120 checks with
+publishable key, `listed`, `listed_at` and `remixed_from` refused (readable
+before `no_client_access_models.sql`), `barred` not, the listing log closed
+and `may_list` not callable. 120 checks with
 `--master`, about a minute locally.
 
 The directory's part of it (since 2026-10-13, one more throwaway account):
@@ -3124,8 +3127,8 @@ itself 415, a picture that is not a PNG 415, no name 400; republished in place
 (10 parts, new name, author gone, picture gone and the page falling back to the
 site's); another account updating or unpublishing 403, signed out 401, an
 unknown id 404, none of it changing anything; the owner's list and nobody
-else's; with the publishable key straight at Supabase: the row readable, its
-`owner` not, no insert, no update, the publish log closed, the file not in a
+else's; with the publishable key straight at Supabase: the row refused
+(readable before `no_client_access_models.sql`), its `owner` not, no insert, no update, the publish log closed, the file not in a
 public bucket; unpublished — the model 410, the page and the card 410 saying
 so and no longer naming it, no picture, the row unreadable; a link that never
 was 404; republished, the same link back; the sweep refused with no secret and

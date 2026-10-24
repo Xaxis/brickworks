@@ -24,7 +24,8 @@ screen.
 ## The review, and what was done
 
 Each finding has its failing case in tools/web/orangecheck_check.mjs,
-which now passes.
+which now passes. H1, N1 and N2 are fixed as of oc205's last commit; N1's
+last piece waits on its release (below).
 
 - **H1, password sessions.** Anybody signed in can set a password on their
   account at Supabase (`PUT /auth/v1/user`) and sign in with it: a session
@@ -43,6 +44,40 @@ which now passes.
   so a stolen session can no longer sign the person out that way. Accounts
   are made as before: Supabase gives every one a random password hash when
   it makes it, and no sign-in by code changes it (measured).
+- **N1, the database straight from a page.** Row security let any live
+  session, and the publishable key every page holds, use tables through
+  PostgREST, past everything `api/_auth.js` checks: a session ended on
+  orangecheck still read and wrote what its policies allowed. Nothing here
+  needs that (every route asks as the server, and the site and the app
+  reach Supabase only to sign in), so `supabase/no_client_access.sql` drops
+  every policy for anon, authenticated or everyone in public, takes back
+  every table, column and sequence privilege of anon and authenticated and
+  the right of anon, authenticated and PUBLIC to run any function, and
+  changes postgres's defaults so nothing made later is granted them.
+  `api/share.js` reads published rows as the server. The last piece,
+  shared_models' published read, which the release before oc205's still
+  asks for, is `supabase/no_client_access_models.sql`, applied once oc205's
+  release is live. `supabase/client_exposure.sql` reads the catalogue, and
+  orangecheck_check holds it empty and has PostgREST refuse every table and
+  function to an emailed-code session and to anon.
+- **N2, public sign-up.** Sign-up is open and Supabase confirms an address
+  itself, so `POST /auth/v1/signup` with a password made an account and
+  handed out a password session at once (`api/_auth.js` refused it, 403,
+  and ended it: checked before the fix below). Every account Supabase makes
+  carries a random password hash, so its row cannot tell a chosen password
+  from that, and the refusal is where a password signs in:
+  `supabase/no_new_ways_in.sql` refuses Supabase's record of a password
+  sign-in (`auth.mfa_amr_claims`) but for a test account, and the sign-up
+  goes with it. Turning sign-up off (Supabase's `disable_signup`) is the
+  owner's setting, which nothing here reaches; the owner has been asked.
+  `api/otp.js` makes the account itself when Supabase answers that it takes
+  no sign-ups, so a new person still signs in by code then.
+- **Second factors.** Brickworks asks for none, and Supabase's setting is
+  out of reach here, so `no_new_ways_in.sql` refuses enrolling one
+  (`auth.mfa_factors`) on any account.
+- **Left as it is: global logout.** Any session can end every session of its
+  account at Supabase (`POST /auth/v1/logout?scope=global`). It gains the
+  holder nothing and signs the person out; orangecheck accepted it.
 - **M1, an unlink racing a sign-in.** `oc_bind_session` binds only while
   the did is still the account's, holding the identity's row while it
   writes, and answers whether it bound; when not, the sign-in ends the

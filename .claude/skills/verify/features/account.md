@@ -271,7 +271,13 @@ they have. A Claude connector belongs to the account that switched it on.
   account's, is refused (403) and deleted (`api/_auth.js`), and Supabase
   refuses setting a password on any account but a `@resend.dev` test
   account's, and any change of address (`supabase/no_new_ways_in.sql`, a
-  trigger on `auth.users`; its dry run `tools/no_new_ways_in_try.sql`). A connection approved in one carries its `rh`
+  trigger on `auth.users`; its dry run `tools/no_new_ways_in_try.sql`), a
+  sign-in by password on such an account (`auth.mfa_amr_claims`, which
+  closes public sign-up with a password) and any second factor. The keys a
+  page holds reach nothing in the database (`supabase/no_client_access.sql`,
+  then `no_client_access_models.sql` once oc205's release is live; read by
+  `supabase/client_exposure.sql`); `api/otp.js` makes a new person's account
+  itself once Supabase takes no sign-ups. A connection approved in one carries its `rh`
   (`oauth_grants.oc_*`), and its code is refused once the did is unlinked. Site pages send
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
   answer; `/app` and `/b/` keep `same-origin`.
@@ -361,7 +367,13 @@ orangecheck sign-in refused at Supabase, none signing in, the account's
 other session not signed out, an address change refused, both sessions 401
 after Sign out everywhere, and the same refusal for an account with its own
 email (H1); a new person signing in by a code asked for twice, again, and a
-test account by its password, as before; an
+test account by its password, as before; the catalogue holding nothing in
+public for anon, authenticated or PUBLIC (`client_exposure()`), and PostgREST
+refusing every table and function to an emailed-code session and to anon
+(N1); a public sign-up with a password refused at Supabase, leaving no
+account (N2); a second factor refused; a new person signing in by a code
+from `api/otp.js` itself (its mail caught, never sent), as Supabase is now
+and once it takes no sign-ups; an
 unlink racing a sign-in leaves no session (409), and a binding whose did
 is gone is ended (M1); an unmarked account's session carries the mark
 (L1); a code approved in an orangecheck sign-in refused once its did is

@@ -46,7 +46,7 @@ const made = new Set();
 // Brickworks' own answers, reached into for the review's races (oc205): run
 // once just before a session is bound; the last session Supabase minted;
 // what the database says of a session, changed.
-const hooks = { beforeBind: null, minted: null, sessionOf: null };
+const hooks = { beforeBind: null, minted: null, sessionOf: null, mail: [], signupOff: new Set() };
 // Two email accounts, at Resend's test addresses, which reach nobody.
 const tag = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-oc-ada-${tag}@resend.dev`;
@@ -63,6 +63,17 @@ globalThis.fetch = async (input, init = {}) => {
     return json(200, { ok: true, revoked: 1 });
   }
   if (/^https:\/\/([a-z0-9-]+\.)*ochk\.(io|app)\//.test(url)) throw new Error(`orangecheck_check: unexpected ${url}`);
+  // Mail is caught here, never sent: api/otp.js's codes, and the notices
+  // linking sends.
+  if (url === "https://api.resend.com/emails") {
+    hooks.mail.push(JSON.parse(init.body));
+    return json(200, { id: "caught-by-orangecheck-check" });
+  }
+  // Supabase taking no sign-ups, for one new address: its first code.
+  if (url === `${SB}/auth/v1/admin/generate_link` && hooks.signupOff.has(JSON.parse(init.body || "{}").email)) {
+    hooks.signupOff.delete(JSON.parse(init.body).email);
+    return json(422, { code: 422, error_code: "signup_disabled", msg: "Signups not allowed for this instance" });
+  }
   if (url === `${SB}/rest/v1/rpc/oc_bind_session` && hooks.beforeBind) {
     const before = hooks.beforeBind;
     hooks.beforeBind = null;
@@ -130,10 +141,16 @@ async function whoIs(access) {
 
 let passed = 0;
 let failed = 0;
+/// [text] with every token in it taken out: a JWT (a session's, or
+/// orangecheck's), a Brickworks key, and any field that holds one.
+const redact = (text) => String(text)
+  .replace(/eyJ[\w-]+\.[\w-]+\.[\w-]*/g, "[token]")
+  .replace(/\bbw[a-z]_[\w-]{16,}/g, "[token]")
+  .replace(/"(access_token|refresh_token|token|code|password)"\s*:\s*"[^"]*"/g, '"$1":"[token]"');
 function check(name, ok, said = "") {
   if (ok) passed += 1;
   else failed += 1;
-  console.log(`${ok ? "pass" : "FAIL"} ${name}${said ? `: ${said}` : ""}`);
+  console.log(`${ok ? "pass" : "FAIL"} ${name}${said ? `: ${redact(said)}` : ""}`);
 }
 
 /// A session renewed, as a page does: a new access token, which carries the
@@ -158,6 +175,14 @@ const claimsOf = (jwt) => {
   }
 };
 const amrOf = (jwt) => (claimsOf(jwt).amr || []).map((one) => one.method);
+
+const closed = (status) => status === 401 || status === 403;
+
+/// The account at [email], from Supabase's own list, or null.
+async function accountAt(email) {
+  const listed = await (await real(`${SB}/auth/v1/admin/users?page=1&per_page=1000`, { headers: ADMIN })).json();
+  return (listed.users || []).find((one) => (one.email || "").toLowerCase() === email.toLowerCase()) || null;
+}
 
 async function rpc(name, body) {
   const reply = await real(`${SB}/rest/v1/rpc/${name}`, { method: "POST", headers: { ...ADMIN, "content-type": "application/json" },
@@ -628,6 +653,89 @@ try {
     const byCode = await quit(eveCode.access_token, { confirm: eveEmail });
     check("an emailed code's session deletes the account with its address typed, as before", byCode.status === 200
       && byCode.body?.deleted === true, `${byCode.status} ${byCode.body?.error || ""}`);
+  }
+
+  // orangecheck's second re-check, N1: the keys a page holds, the
+  // publishable key and a session's token, reach nothing in the database:
+  // the catalogue says so (supabase/client_exposure.sql), and PostgREST
+  // refuses every table and every function, to a throwaway emailed-code
+  // session and to anon alike.
+  {
+    const exposure = await rpc("client_exposure", {});
+    const bad = Array.isArray(exposure?.bad) ? exposure.bad : ["client_exposure() could not be read"];
+    check("N1: nothing in public for anon, authenticated or PUBLIC, and no default that would grant it", bad.length === 0,
+      `${bad.length}: ${bad.slice(0, 8).join("; ")}${bad.length > 8 ? "; ..." : ""}`);
+    const visitor = await mintSession(`bw-oc-n1-${tag}@example.invalid`, { age: false });
+    if (visitor.kept.user_id) made.add(visitor.kept.user_id);
+    const tables = exposure?.tables || [];
+    const functions = (exposure?.functions || []).filter((one) => !one.trigger && one.named);
+    const inTurn = async (items, ask) => {
+      const open = [];
+      for (let at = 0; at < items.length; at += 8) open.push(...(await Promise.all(items.slice(at, at + 8).map(ask))).filter(Boolean));
+      return open;
+    };
+    for (const [who, as] of [["an emailed code's session", { authorization: `Bearer ${visitor.access_token}` }], ["anon", {}]]) {
+      const openTables = await inTurn(tables, async (table) => {
+        const reply = await real(`${SB}/rest/v1/${encodeURIComponent(table)}?select=*&limit=1`, { headers: { ...PUBLIC, ...as } });
+        return closed(reply.status) ? null : `${table} ${reply.status}`;
+      });
+      check(`N1: as ${who}, every table and view in public is refused (${tables.length})`, tables.length > 0 && openTables.length === 0,
+        `${openTables.length} answered: ${openTables.slice(0, 8).join(", ")}`);
+      const openFunctions = await inTurn(functions, async (fn) => {
+        const reply = await real(`${SB}/rest/v1/rpc/${fn.name}`, { method: "POST", headers: { ...PUBLIC, ...as },
+          body: JSON.stringify(Object.fromEntries(fn.args.map((name) => [name, null]))) });
+        const said = await reply.json().catch(() => ({}));
+        return closed(reply.status) || said?.code === "42501" ? null : `${fn.name} ${reply.status}`;
+      });
+      check(`N1: as ${who}, every function in public is refused (${functions.length}, triggers aside)`, functions.length > 0
+        && openFunctions.length === 0, `${openFunctions.length} ran or were not refused: ${openFunctions.slice(0, 8).join(", ")}`);
+    }
+
+    // And no second factor can be enrolled from a session.
+    const enrol = await real(`${SB}/auth/v1/factors`, { method: "POST", headers: { ...PUBLIC, authorization: `Bearer ${visitor.access_token}` },
+      body: JSON.stringify({ factor_type: "totp", friendly_name: "orangecheck check" }) });
+    check("enrolling a second factor (an authenticator app) from a session is refused at Supabase", enrol.status >= 400, String(enrol.status));
+  }
+
+  // N2: public sign-up is open, and Supabase confirms an address itself,
+  // so a sign-up with a password handed out a session at once. Supabase
+  // now refuses it (supabase/no_new_ways_in.sql). Should one ever be
+  // handed out, api/_auth.js refuses it (403) and ends it.
+  {
+    const email = `bw-oc-signup-${tag}@example.invalid`;
+    const reply = await real(`${SB}/auth/v1/signup`, { method: "POST", headers: PUBLIC,
+      body: JSON.stringify({ email, password: `${randomBytes(18).toString("base64url")}-Aa1` }) });
+    const signedUp = await reply.json().catch(() => ({}));
+    const left = await accountAt(email);
+    if (left) made.add(left.id);
+    check("N2: a public sign-up with a password is refused at Supabase, with no session handed out", reply.status >= 400
+      && !signedUp.access_token, `${reply.status} ${amrOf(signedUp.access_token)}`);
+    check("N2: and it leaves no account behind", !left);
+    if (signedUp.access_token) {
+      const write = await theme(signedUp.access_token);
+      check("N2: the session it handed out is refused at /api, 403, and ended", write.status === 403
+        && !(await refreshed(signedUp.refresh_token)), `${write.status} ${write.body.error || ""}`);
+    }
+  }
+
+  // A new person signs in by a code from api/otp.js itself (its mail
+  // caught above, never sent), as Supabase is now and once it takes no
+  // sign-ups (its disable_signup): then the server makes the account first.
+  {
+    const otp = (await import("../../api/otp.js")).default;
+    for (const [how, off] of [["as Supabase is now", false], ["once Supabase takes no sign-ups", true]]) {
+      const email = `bw-oc-otp-${off ? "off" : "on"}-${tag}@example.invalid`;
+      if (off) hooks.signupOff.add(email);
+      const asked = await route2(otp, { method: "POST", body: { email } });
+      const letter = hooks.mail.filter((one) => one.to?.[0] === email).pop();
+      const code = /code is (\d+)/.exec(letter?.text || "")?.[1];
+      const verified = code ? await (await real(`${SB}/auth/v1/verify`, { method: "POST", headers: PUBLIC,
+        body: JSON.stringify({ type: "email", email, token: code }) })).json().catch(() => ({})) : {};
+      if (verified.user?.id) made.add(verified.user.id);
+      check(`a new person signs in by a code from api/otp.js, ${how}`, asked.status === 200 && amrOf(verified.access_token)[0] === "otp"
+        && (await whoIs(verified.access_token)).body?.signed_in === true && !hooks.signupOff.has(email),
+        `${asked.status} ${asked.body?.error || ""} ${code ? "" : "no code mailed"}`);
+    }
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.

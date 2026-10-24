@@ -30,7 +30,21 @@
 -- updating user"); nothing is changed and no session is ended. api/_auth.js
 -- refuses a password session all the same, for any hash set before this.
 --
--- Only additions: a function and a trigger. Applying it again changes
+-- And two more, at orangecheck's second re-check (N2, 2026-10-24):
+--
+--   - a sign-in by password, on any account but a test account's. Public
+--     sign-up is open, and Supabase confirms an address by itself, so
+--     POST /auth/v1/signup with a password made an account and handed out
+--     a session at once. The account's own row cannot tell that password
+--     from the random one every account is made with, so the refusal is
+--     where a password signs in: the row Supabase writes of how a session
+--     began (auth.mfa_amr_claims, 'password'). The sign-up's one
+--     transaction goes with it, account and all.
+--   - enrolling a second factor (auth.mfa_factors: an authenticator app, a
+--     phone, a key), on any account. Brickworks asks for none, and a
+--     stolen session could enrol one of its own.
+--
+-- Only additions: functions and triggers. Applying it again changes
 -- nothing.
 
 create or replace function public.auth_users_no_new_ways_in()
@@ -51,10 +65,47 @@ begin
 end;
 $$;
 
--- Nobody can call it but as the trigger (Postgres refuses a trigger
--- function called any other way), so its grants stay as made: Supabase's
--- own role runs it when it writes.
 drop trigger if exists no_new_ways_in on auth.users;
 create trigger no_new_ways_in
     before update of encrypted_password, email, email_change on auth.users
     for each row execute function public.auth_users_no_new_ways_in();
+
+create or replace function public.auth_sessions_no_password()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+    if new.authentication_method = 'password' and not exists (
+        select 1 from auth.sessions s join auth.users u on u.id = s.user_id
+         where s.id = new.session_id and u.email ~* '@resend[.]dev$') then
+        raise exception 'Brickworks signs nobody in with a password' using errcode = '42501';
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists no_password_sign_in on auth.mfa_amr_claims;
+create trigger no_password_sign_in
+    before insert or update of authentication_method on auth.mfa_amr_claims
+    for each row execute function public.auth_sessions_no_password();
+
+create or replace function public.auth_no_second_factor()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+    raise exception 'Brickworks enrols no second factor' using errcode = '42501';
+end;
+$$;
+
+drop trigger if exists no_second_factor on auth.mfa_factors;
+create trigger no_second_factor
+    before insert on auth.mfa_factors
+    for each row execute function public.auth_no_second_factor();
+
+-- Run by Supabase's own role when it writes: granted it by name, so they
+-- run whatever is taken from PUBLIC (supabase/no_client_access.sql).
+grant execute on function public.auth_users_no_new_ways_in(), public.auth_sessions_no_password(),
+    public.auth_no_second_factor() to supabase_auth_admin;

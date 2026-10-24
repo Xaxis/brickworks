@@ -39,26 +39,50 @@ function project() {
   return (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 }
 
+function asServer() {
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  return { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" };
+}
+
 /// Ask Supabase for a code without asking it to send one.
 async function mint(email) {
-  const secret = process.env.SUPABASE_SECRET_KEY;
-  const reply = await fetch(`${project()}/auth/v1/admin/generate_link`, {
+  const link = () => fetch(`${project()}/auth/v1/admin/generate_link`, {
     method: "POST",
-    headers: {
-      apikey: secret,
-      authorization: `Bearer ${secret}`,
-      "content-type": "application/json",
-    },
+    headers: asServer(),
     // magiclink covers both cases: Supabase creates the account if the
     // address is new and signs it in if it is not, so there is no
     // separate sign-up path to keep in step with this one.
     body: JSON.stringify({ type: "magiclink", email }),
     signal: AbortSignal.timeout(10000),
   });
+  let reply = await link();
+  // Unless Supabase takes no sign-ups (its disable_signup, which public
+  // sign-up with a password made worth turning on, 2026-10-24): then it
+  // makes no account for a new address, so this server makes it, as the
+  // admin API may, and asks again.
+  if (!reply.ok && signupsOff(await reply.clone().json().catch(() => ({}))) && (await makeAccount(email))) {
+    reply = await link();
+  }
   if (!reply.ok) return null;
   const body = await reply.json();
   // Top level in current GoTrue, nested in older ones.
   return body.email_otp || body.properties?.email_otp || null;
+}
+
+/// Whether Supabase refused for taking no sign-ups.
+function signupsOff(said) {
+  return said?.error_code === "signup_disabled" || /signups? not allowed/i.test(String(said?.msg || said?.message || ""));
+}
+
+/// An account made for [email], confirmed, since only a code redeemed
+/// signs anybody in to it: true when it is there (made just now, or by a
+/// request a moment ago).
+async function makeAccount(email) {
+  const reply = await fetch(`${project()}/auth/v1/admin/users`, {
+    method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
+    signal: AbortSignal.timeout(10000),
+  });
+  return reply.ok || reply.status === 422;
 }
 
 function letter(code) {
@@ -145,14 +169,9 @@ async function deliver(email, code) {
 }
 
 async function allowed(email, ip) {
-  const secret = process.env.SUPABASE_SECRET_KEY;
   const reply = await fetch(`${project()}/rest/v1/rpc/may_ask_for_code`, {
     method: "POST",
-    headers: {
-      apikey: secret,
-      authorization: `Bearer ${secret}`,
-      "content-type": "application/json",
-    },
+    headers: asServer(),
     body: JSON.stringify({ for_email: email, from_ip: ip }),
     signal: AbortSignal.timeout(8000),
   });

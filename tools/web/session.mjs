@@ -55,12 +55,19 @@ export function canSignIn() {
 export async function mintCode(email = TEST_EMAIL) {
   const p = project();
   if (!p) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY — source .env");
-  const reply = await fetch(`${p.url}/auth/v1/admin/generate_link`, {
-    method: "POST",
-    headers: { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" },
-    body: JSON.stringify({ type: "magiclink", email }),
+  const headers = { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" };
+  const link = () => fetch(`${p.url}/auth/v1/admin/generate_link`, {
+    method: "POST", headers, body: JSON.stringify({ type: "magiclink", email }),
   });
-  const body = await reply.json();
+  let reply = await link();
+  let body = await reply.json().catch(() => ({}));
+  // Once Supabase takes no sign-ups, the account is made first, as
+  // api/otp.js makes it.
+  if (!reply.ok && (body.error_code === "signup_disabled" || /signups? not allowed/i.test(String(body.msg || "")))) {
+    await fetch(`${p.url}/auth/v1/admin/users`, { method: "POST", headers, body: JSON.stringify({ email, email_confirm: true }) });
+    reply = await link();
+    body = await reply.json().catch(() => ({}));
+  }
   const code = body.email_otp || body.properties?.email_otp;
   if (!code) throw new Error(`no code minted: ${reply.status}`);
   return code;

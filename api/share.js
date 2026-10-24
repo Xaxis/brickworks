@@ -67,10 +67,11 @@
 //                            CRON_SECRET): files no published row owns
 //
 // Where it is kept and who may touch it is in supabase/shared_models.sql.
-// In short: a visitor's read goes through the publishable key, so row
-// security is what decides that a row is published, and the files are
-// read with the secret key only after that. Every write is here, after
-// the session has been verified and the row found to be the caller's.
+// In short: a visitor's read asks for a published row and its public
+// columns alone (the key a page holds reaches nothing in the database
+// since supabase/no_client_access.sql), and the files are read only after
+// that. Every write is here, after the session has been verified and the
+// row found to be the caller's.
 //
 // The upload is checked at this edge, before anything is stored: LDraw
 // text only (every line one of LDraw's six kinds, well formed, at least
@@ -458,17 +459,13 @@ function cleanText(given, limit) {
 // ---------------------------------------------------------------------------
 // The database and the bucket.
 
-/// A published row, read as a visitor reads it: through the publishable
-/// key, so row security is what says it is published.
+/// A published row, as a visitor may see it: only while it is published,
+/// and only the columns anybody may read. Asked as the server: the key a
+/// page holds reaches nothing in the database (supabase/no_client_access.sql,
+/// 2026-10-24), where row security used to say what was published.
 async function publishedRow(id) {
   if (!ID.test(id || "")) return null;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  const answer = await fetch(`${project()}/rest/v1/shared_models?id=eq.${id}&select=${PUBLIC}`, {
-    headers: { apikey: key },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!answer.ok) throw new Error(`database GET shared_models: ${answer.status}`);
-  const rows = await answer.json();
+  const rows = await db(`shared_models?id=eq.${id}&published=is.true&select=${PUBLIC}`);
   return rows[0] || null;
 }
 

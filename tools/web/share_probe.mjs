@@ -186,6 +186,13 @@ async function fileStatus(name) {
 }
 const published = new Set();
 
+/// Whether [d], a published row's public columns asked for with the
+/// publishable key, is answered as it may be: refused, once
+/// supabase/no_client_access_models.sql is applied after oc205's release
+/// (the key a page holds then reaches nothing in the database); until
+/// then, by row security, as [before] says.
+const closedOr = (d, before) => d.status === 401 || d.status === 403 || before(d);
+
 async function anonRest(path, { method = "GET", body } = {}) {
   const reply = await fetch(`${SUPABASE}/rest/v1/${path}`, {
     method,
@@ -336,7 +343,8 @@ async function main() {
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
   let d = await anonRest(`shared_models?id=eq.${id}&select=id,name,parts`);
-  check(d.status === 200 && d.json?.length === 1, `a published row is readable (${d.status}, ${d.json?.length})`);
+  check(closedOr(d, (x) => x.status === 200 && x.json?.length === 1),
+    `a published row: refused, or before no_client_access_models.sql readable (${d.status}, ${d.json?.length})`);
   d = await anonRest(`shared_models?id=eq.${id}&select=owner`);
   check(d.status === 401 || d.status === 403, `its owner is not (${d.status})`);
   d = await anonRest("shared_models", { method: "POST", body: { id: "AAAAAAAAAA", owner: a.kept.user_id, name: "x", parts: 1, bytes: 1 } });
@@ -348,7 +356,8 @@ async function main() {
   d = await anonRest("share_listings?select=id");
   check(d.status === 401 || d.status === 403, `so is the listing log (${d.status})`);
   d = await anonRest(`shared_models?id=eq.${id}&select=listed,listed_at,remixed_from`);
-  check(d.status === 200 && d.json?.length === 1, `whether it is listed, and what it was remixed from, are readable (${d.status})`);
+  check(closedOr(d, (x) => x.status === 200 && x.json?.length === 1),
+    `whether it is listed, and what it was remixed from: refused, or before then readable (${d.status})`);
   d = await anonRest(`shared_models?id=eq.${id}&select=barred`);
   check(d.status === 401 || d.status === 403, `whether the site's owner barred it is not (${d.status})`);
   d = await anonRest("rpc/may_list", { method: "POST", body: { account: a.kept.user_id } });
@@ -374,7 +383,7 @@ async function main() {
   r = await call(`/m/${id}/embed`);
   check(r.status === 410, `the card says so too (${r.status})`);
   d = await anonRest(`shared_models?id=eq.${id}&select=id`);
-  check(d.status === 200 && d.json?.length === 0, "the row is not readable with the publishable key");
+  check(closedOr(d, (x) => x.status === 200 && x.json?.length === 0), `the row is not readable with the publishable key (${d.status})`);
   r = await call("/api/share?id=QQQQQQQQQQ");
   check(r.status === 404 && r.json?.unpublished === false, `a link that never was: 404 (${r.status}) "${r.json?.error}"`);
   r = await call("/m/QQQQQQQQQQ");
@@ -859,7 +868,8 @@ async function theDirectory(tokenA) {
 
   // The database, with the key every page has.
   let d = await anonRest(`shared_models?id=eq.${own}&select=description,tags,licence,kind,steps,own_steps,technic,has_thumb`);
-  check(d.status === 200 && d.json?.length === 1, `what a model says about itself is readable with the publishable key (${d.status})`);
+  check(closedOr(d, (x) => x.status === 200 && x.json?.length === 1),
+    `what a model says about itself: refused with the publishable key, or before then readable (${d.status})`);
   d = await anonRest(`shared_models?id=eq.${own}&select=search`);
   check(d.status === 401 || d.status === 403, `its search words are not (${d.status})`);
   d = await anonRest(`shared_models?id=eq.${own}&select=test`);
