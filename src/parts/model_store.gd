@@ -86,6 +86,20 @@ const CREDIT_META := "0 !BRICKWORKS CREDIT "
 ## The hidden parts' colours chosen for this model (HiddenColours.Plan
 ## .scheme), for the booklet to show; empty when none were.
 var hidden_scheme: Dictionary = {}
+## Who laid its parts, as far as this app knows (2026-10-24): "hand" for a
+## model begun empty here with every part laid by a person, "assistant"
+## once Claude laid any (the panel's designer, a session's tools), and
+## "brickify" once Brickify did and Claude never; empty for a model that
+## came from a file or a link saying nothing, which nobody here can vouch
+## for. Sent when it is published, so its card says Hand-built or With the
+## assistant from the app and not from its tags (docs/SOCIAL.md D7, U16).
+## Kept the same way as [member share_id], and once said it stays said: a
+## part taken off again was still laid.
+var made_with: String = "hand"
+const MADE_META := "0 !BRICKWORKS MADE "
+## The ways [member made_with] says, the strongest last: the assistant over
+## Brickify over a person's hands.
+const MADE_WAYS: Array[String] = ["hand", "brickify", "assistant"]
 
 
 class Entry extends RefCounted:
@@ -188,6 +202,16 @@ var emptied: bool = false
 ## The person cleared the baseplate (File, Clear the baseplate).
 func cleared_by_person() -> void:
 	emptied = true
+	# Nothing is left of whoever laid what was there.
+	made_with = "hand"
+
+
+## [param way], "assistant" or "brickify", laid parts in this model: the
+## assistant's says so for good, Brickify's unless the assistant's had, and
+## a model nobody could vouch for is now at least that.
+func laid_by(way: String) -> void:
+	if way != "hand" and MADE_WAYS.find(way) > MADE_WAYS.find(made_with):
+		made_with = way
 
 
 func _is_empty() -> bool:
@@ -553,6 +577,10 @@ func _begin_as(named: String) -> void:
 	credit = {}
 	from_set = ""
 	hidden_scheme = {}
+	# Begun empty here, who lays each part from now on is known. Named as a
+	# design stands, its parts are still whoever laid them.
+	if world == null or _is_empty():
+		made_with = "hand"
 	# Nobody's file: written whole, where it stands.
 	_source = null
 	_opened_in = -1
@@ -972,8 +1000,10 @@ func _model_text(paced: bool) -> String:
 		await _text_into(made, title, false, {}, FramePace.new())
 		# Changed meanwhile: made again, as it is now.
 		if world.revision == revision:
-			return with_share(str(made[0]), share_id, remixed_from, remixed_from_version, credit)
-	return with_share(to_text(title), share_id, remixed_from, remixed_from_version, credit)
+			return with_share(str(made[0]), share_id, remixed_from, remixed_from_version, credit,
+				made_with)
+	return with_share(to_text(title), share_id, remixed_from, remixed_from_version, credit,
+		made_with)
 
 
 ## The copies of [param kept] past the newest [param leaving], deleted.
@@ -1454,6 +1484,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	remixed_from = read["remix"]
 	remixed_from_version = read["remix_version"] if not remixed_from.is_empty() else 0
 	credit = read["credit"]
+	made_with = read["made"]
 	var said: ModelFloor = read["floor"]
 	model_floor = said if said != null else ModelFloor.preferred()
 	from_set = read["set"]
@@ -1515,6 +1546,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"remix": remix_in(text),
 		"remix_version": remix_version_in(text),
 		"credit": credit_in(text),
+		"made": made_in(text),
 		"floor": ModelFloor.read(text),
 		"set": set_in(text),
 		"hidden": HiddenColours.read(text),
@@ -1795,6 +1827,7 @@ static func _without_app_lines(text: String) -> String:
 	for line: String in text.split("\n"):
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
 				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
+				or line.begins_with(MADE_META) \
 				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
@@ -2408,7 +2441,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 		refused = NewerBuild.REFUSAL
 		return false
 	var text: String = with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version, credit)
+		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version, credit,
+		made_with)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate
@@ -2453,13 +2487,15 @@ static func _has_parts(text: String) -> bool:
 
 ## [param text] with the link it is shared at and the link it was copied
 ## from, each on a line after its first (inside the model itself, for an
-## .mpd); as it is for neither.
+## .mpd), and who laid its parts ([member made_with]) when that is known;
+## as it is for none.
 static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0,
-		credited: Dictionary = {}) -> String:
+		credited: Dictionary = {}, made: String = "") -> String:
 	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
 		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "") \
 		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "") \
-		+ (CREDIT_META + JSON.stringify(credited) + "\n" if not credited.is_empty() else "")
+		+ (CREDIT_META + JSON.stringify(credited) + "\n" if not credited.is_empty() else "") \
+		+ (MADE_META + made + "\n" if made in MADE_WAYS else "")
 	if lines.is_empty():
 		return text
 	var cut: int = text.find("\n")
@@ -2486,6 +2522,14 @@ static func credit_in(text: String) -> Dictionary:
 	if not str(out.get("page", "")).begins_with("https://"):
 		out.erase("page")
 	return out
+
+
+## Who a model's text says laid its parts ([member made_with]), or empty
+## when it does not say.
+static func made_in(text: String) -> String:
+	var found: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS MADE ([a-z]+)\\s*$").search(text)
+	return found.get_string(1) if found != null and found.get_string(1) in MADE_WAYS else ""
 
 
 ## The link a model's text says it is shared at, or empty.

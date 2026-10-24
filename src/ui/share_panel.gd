@@ -54,8 +54,10 @@ const TALL := 780.0
 const CARD := Vector2i(1200, 630)
 ## Under the server's 600 KB, with room to spare.
 const MOST_PNG := 560 * 1024
-## The gallery's cards, at twice the size a phone shows one.
-const THUMB := Vector2i(480, 252)
+## The gallery's cards, four to three as every card is (docs/SOCIAL.md D3),
+## at twice the size a phone shows one. Drawn at twice that and made
+## smaller, for its edges.
+const THUMB := Vector2i(480, 360)
 ## Under the server's 64 KB.
 const MOST_THUMB := 60 * 1024
 ## As api/share.js keeps them.
@@ -582,8 +584,14 @@ func publish() -> void:
 		body["author"] = author
 	if not png.is_empty():
 		body["image"] = Marshalls.raw_to_base64(png)
+	if not (pictures["cutout"] as PackedByteArray).is_empty():
+		body["cutout"] = Marshalls.raw_to_base64(pictures["cutout"])
 	if not (pictures["thumb"] as PackedByteArray).is_empty():
 		body["thumb"] = Marshalls.raw_to_base64(pictures["thumb"])
+	# Who laid its parts, when this app knows (ModelStore.made_with): its card
+	# says Hand-built or With the assistant from that, not from its tags.
+	if store.made_with in ModelStore.MADE_WAYS:
+		body["made_with"] = store.made_with
 	# What its page and the gallery say about it: said every time, so a
 	# box emptied empties it there too.
 	body["description"] = _about.text.strip_edges()
@@ -681,37 +689,46 @@ func _fail(words: String) -> void:
 	_status.text = words
 
 
-## The link's pictures: the model from where the view is looking, on a
-## plain ground — a PNG small enough to send, for link previews and the
-## model's page, and a small WebP of the same for the gallery's cards.
-## {png, thumb}, either empty when there is none to be had (a run with
-## nothing to draw with).
+## The link's pictures: the model from where the view is looking. For link
+## previews on other sites, a PNG on a plain ground (Picture.on_ground),
+## whatever their theme. For the site's own pages (2026-10-24, docs/SOCIAL.md
+## U15), the same with nothing behind it, so the model sits on the page's
+## own ground in its light theme and its dark one alike, and a WebP four
+## to three, drawn so, for the cards. {png, cutout, thumb}, each empty when
+## there is none to be had (a run with nothing to draw with), or when it
+## came out too large to send.
 func _pictures() -> Dictionary:
-	var none := {"png": PackedByteArray(), "thumb": PackedByteArray()}
+	var none := {"png": PackedByteArray(), "cutout": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
 		return none
 	var shot: Image = await picture.take(CARD)
 	if shot == null or shot.is_empty():
 		return none
 	shot.convert(Image.FORMAT_RGBA8)
-	var card := Image.create(CARD.x, CARD.y, false, Image.FORMAT_RGBA8)
-	# A soft ground, lighter at the top, so the model reads on any site.
-	for y: int in CARD.y:
-		var t: float = float(y) / float(CARD.y - 1)
-		card.fill_rect(Rect2i(0, y, CARD.x, 1), Color(0.93, 0.94, 0.96).lerp(Color(0.80, 0.83, 0.87), t))
-	card.blend_rect(shot, Rect2i(Vector2i.ZERO, shot.get_size()), Vector2i.ZERO)
-	card.convert(Image.FORMAT_RGB8)
-	var small: Image = card.duplicate()
-	small.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
-	var thumb: PackedByteArray = small.save_webp_to_buffer(true, 0.8)
-	if thumb.size() > MOST_THUMB:
-		thumb = small.save_webp_to_buffer(true, 0.55)
-	var png: PackedByteArray = card.save_png_to_buffer()
-	if png.size() > MOST_PNG:
-		card.resize(800, 420, Image.INTERPOLATE_LANCZOS)
-		png = card.save_png_to_buffer()
-	return {"png": png if png.size() <= MOST_PNG else PackedByteArray(),
+	var card: Image = Picture.on_ground(shot)
+	var png: PackedByteArray = _png_under(card)
+	var cutout: PackedByteArray = _png_under(shot)
+	var thumb := PackedByteArray()
+	var framed: Image = await picture.take(THUMB * 2)
+	if framed != null and not framed.is_empty():
+		framed.convert(Image.FORMAT_RGBA8)
+		framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
+		thumb = framed.save_webp_to_buffer(true, 0.8)
+		if thumb.size() > MOST_THUMB:
+			thumb = framed.save_webp_to_buffer(true, 0.55)
+	return {"png": png, "cutout": cutout,
 		"thumb": thumb if thumb.size() <= MOST_THUMB else PackedByteArray()}
+
+
+## [param image] as a PNG under the server's limit: smaller if it must be,
+## empty if even that is too large.
+static func _png_under(image: Image) -> PackedByteArray:
+	var png: PackedByteArray = image.save_png_to_buffer()
+	if png.size() > MOST_PNG:
+		var smaller: Image = image.duplicate()
+		smaller.resize(800, 420, Image.INTERPOLATE_LANCZOS)
+		png = smaller.save_png_to_buffer()
+	return png if png.size() <= MOST_PNG else PackedByteArray()
 
 
 ## Its controls, for the page to find.
@@ -746,6 +763,7 @@ func page_state() -> Dictionary:
 		"author": _author.text if _author != null else "",
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
+		"made_with": store.made_with if store != null else "",
 		"kind": _kind_id() if _kind != null else "",
 		"licence": _licence_id() if _licence != null else "",
 		"note": _note.text if _note != null else "",

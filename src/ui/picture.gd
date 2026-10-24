@@ -114,6 +114,30 @@ static func keep(image: Image, file_name: String, into: String = "") -> String:
 	return "wrote %s" % path
 
 
+## The ground a link's picture is on (SharePanel), lighter at the top.
+const GROUND_TOP := Color(0.93, 0.94, 0.96)
+const GROUND_FOOT := Color(0.80, 0.83, 0.87)
+
+
+## [param shot], a picture with nothing behind it, on a soft ground lighter
+## at the top, so the model reads on a page of any colour and with a viewer
+## that shows no transparency: a link's preview on another site, and a
+## model shown to a session (GalleryTool). No transparency left in it.
+static func on_ground(shot: Image) -> Image:
+	var size: Vector2i = shot.get_size()
+	var card := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	for y: int in size.y:
+		var t: float = float(y) / float(maxi(size.y - 1, 1))
+		card.fill_rect(Rect2i(0, y, size.x, 1), GROUND_TOP.lerp(GROUND_FOOT, t))
+	var model: Image = shot
+	if model.get_format() != Image.FORMAT_RGBA8:
+		model = shot.duplicate()
+		model.convert(Image.FORMAT_RGBA8)
+	card.blend_rect(model, Rect2i(Vector2i.ZERO, size), Vector2i.ZERO)
+	card.convert(Image.FORMAT_RGB8)
+	return card
+
+
 ## The scene's own environment, clearing to nothing instead of the sky.
 ## The sky is still what the plastic reflects and what lights it.
 func _clear_environment() -> Environment:

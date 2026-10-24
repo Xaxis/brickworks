@@ -894,6 +894,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 			int(before["depth"]))
 		builder.fold_since(int(before["depth"]))
 		_mark(builder, chat)
+		_laid(builder.last_step())
 		return
 	var last: Dictionary = builder.last_step()
 	if not last.is_empty() and is_same(last, before["last"]) \
@@ -905,6 +906,15 @@ func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 		builder.record(steps, "Claude's %s (%s)" % [name.replace("_", " "),
 			SelectionScope.words_for(steps)])
 		_mark(builder, chat)
+		_laid(builder.last_step())
+
+
+## A call that put parts down makes the model one made with the assistant
+## (ModelStore.made_with): a session's parts are Claude's, as the panel's are.
+func _laid(step: Dictionary) -> void:
+	var store: ModelStore = app.get("_store") if app != null else null
+	if store != null and ClaudeStep.lays(step):
+		store.laid_by("assistant")
 
 
 ## Which Claude chat made the newest step (the relay names the chat on a

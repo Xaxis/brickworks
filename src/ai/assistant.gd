@@ -387,6 +387,10 @@ signal said(text: String)
 signal progress(note: String)
 signal finished(ok: bool, summary: String)
 signal built(brick_count: int)
+## Claude put parts down that stay, in a request's one step or a change to
+## the selection: the model is one made with the assistant
+## (ModelStore.made_with), whatever it was before.
+signal laid_parts
 ## The design standing calls itself this: the name submit_design gave it.
 signal titled(name: String)
 ## What the design said it stands on (submit_design's floor): {"kind":
@@ -1472,7 +1476,8 @@ var _run_mark: Dictionary = {}
 func _record_run() -> void:
 	var mark: Dictionary = _run_mark
 	_run_mark = {}
-	ClaudeStep.record(builder, world, scenery, mark)
+	if ClaudeStep.record(builder, world, scenery, mark) and ClaudeStep.lays(builder.last_step()):
+		laid_parts.emit()
 
 
 func _start(text: String) -> void:
@@ -21717,6 +21722,8 @@ func _gather_focus_step(was: Dictionary) -> String:
 		focus.own_steps = own
 		builder.record(steps, "Claude's change to the selection (%s)" % words)
 		focus.step = builder.last_step()
+	if ClaudeStep.lays({"steps": steps}):
+		laid_parts.emit()
 	if focus.followed > 0:
 		var named: String = Assemblies.definition(Assemblies.leaf(focus.path))
 		words += "; %d other cop%s of %s followed it" % [focus.followed,
