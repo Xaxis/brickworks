@@ -732,8 +732,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `navigator.storage.persist()` at the first save, or as somebody with saved
   models arrives, once a page, and the page keeps the answer in localStorage
   (`brickworks.storage`). Account says which it is ("Your models are kept on
-  this device…" or "…may be cleared by the browser"), and that the account
-  keeps no copy. Refused, unsupported, or Safari (seven days without a visit),
+  this device…" or "…may be cleared by the browser"), then what the account
+  has of them, true in each way they stand with it (`CloudModels.standing`):
+  signed out, it keeps no copy of a model saved while signed out (sign in and
+  it does); kept, all of them; full, how many are kept only here; refused,
+  how many it would not take; offline, a save goes to it when back online;
+  not reached yet; a deployment that keeps none, no copy. The warning says
+  the same. `versions_probe` reads every line in each, the browser refusing,
+  agreeing, and on the desktop, and none says "keeps no copy" of an account
+  that has some (a full one did, tidy232). Refused, unsupported, or Safari (seven days without a visit),
   a strip above the model warns once a device (`ShellPrefs` `storage_warned`),
   with Download my models (the .zip) and This one for Studio (.io).
   `brickworksState.storage` carries all of it for a browser check.
@@ -749,7 +756,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   model changed here and not sent. 500 models and 64 MB as stored per
   account, held by `save_account_model` under one lock per account. While
   the account has them all, Account says "Your models are kept with your
-  account…" and the clear-warning is not shown (`CloudModels.keeping`). The
+  account…" and the clear-warning is not shown (`CloudModels.standing`
+  "kept"). The
   shared test account every flow signs in as is answered 503, so those flows
   keep their models in the browser alone; `brickworksState.cloud` says how
   the last look went. Save on a model nobody has named (Untitled) asks what
