@@ -295,7 +295,10 @@ func _tool(what: String, word: String, icon: String) -> Button:
 ## fingertips are wider than the phone: a big Settings, Interface size ran
 ## Delete and More off its right edge (app_a11y_flow).
 func _row_share() -> float:
-	return minf(p(Phone.TARGET), get_viewport().get_visible_rect().size.x / TOOLS.size())
+	# The row inside its bar's margins (_bar_panel), in whole units: a share
+	# of the window's whole width put More 14 px past its edge.
+	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
+	return minf(p(Phone.TARGET), floorf(inside / TOOLS.size()))
 
 
 func _share_row() -> void:
