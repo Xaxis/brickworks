@@ -19,7 +19,9 @@
 //
 //   ... supabase/follows.sql --again=supabase/challenges.sql
 //
-// applies both in the one transaction, the later one second.
+// applies both in the one transaction, the later one second. Several later
+// files go comma-separated, in the order they were made
+// (--again=supabase/replies.sql,supabase/collection_follows.sql).
 //
 // The file runs in one transaction, so a statement that fails leaves the
 // database as it was. When the project has Supabase's migration table
@@ -44,7 +46,7 @@ const lookOnly = process.argv.includes("--look");
 const dry = process.argv.includes("--dry");
 const trial = (process.argv.find((a) => a.startsWith("--try=")) || "").slice(6);
 const table = (process.argv.find((a) => a.startsWith("--table=")) || "--table=collections").slice(8);
-const again = (process.argv.find((a) => a.startsWith("--again=")) || "").slice(8);
+const again = (process.argv.find((a) => a.startsWith("--again=")) || "").slice(8).split(",").filter(Boolean);
 
 // Functions a later file replaced: [the earlier file, the function, the
 // later file, words only the later one's body has].
@@ -60,6 +62,7 @@ const LATER = [
   ["notifications.sql", "notification_read", "replies.sql", "k.author = viewer"],
   ["designers.sql", "designer_said", "replies.sql", "comment_parent_shown"],
   ["gallery_tabs.sql", "directory_card", "replies.sql", "comment_parent_shown"],
+  ["notifications.sql", "follow_rows", "collection_follows.sql", "list_rows("],
 ];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");
@@ -125,7 +128,7 @@ async function look() {
 /// replaced, live, and that file not applied again after it. Null if none.
 async function replacedLater() {
   for (const [earlier, name, later, mark] of LATER) {
-    if (!file || basename(file) !== earlier || basename(again) === later) continue;
+    if (!file || basename(file) !== earlier || again.some((one) => basename(one) === later)) continue;
     const live = await rows(
       `select p.prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public' and p.proname = $1`, [name]);
@@ -141,9 +144,9 @@ async function replacedLater() {
 /// The file, and the one asked to go again after it.
 async function run() {
   await client.query(readFileSync(file, "utf8"));
-  if (again) {
-    await client.query(readFileSync(again, "utf8"));
-    console.log(`and ${again} again after it`);
+  for (const one of again) {
+    await client.query(readFileSync(one, "utf8"));
+    console.log(`and ${one} again after it`);
   }
 }
 

@@ -122,6 +122,10 @@ $$;
 
 -- What the people [viewer] follows made, from after [since] up to [until]:
 -- feed_rows without what notification_rows tells.
+-- REPLACED LATER: collection_follows.sql replaces this function (the
+-- collections followed, too). Apply collection_follows.sql again right after
+-- this file: tools/apply_sql.mjs refuses it alone, unless
+-- --again=supabase/collection_follows.sql.
 create or replace function public.follow_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, item jsonb)
 language sql
