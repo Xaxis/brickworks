@@ -1396,7 +1396,16 @@ plan with Claude as the client.
   version 1 kept at `/m/<id>/v/1`. The Godot half waits for the app's own
   sign-in check to give up before it signs the panel in: since that check
   asks again (2026-10-20) its answer signed the panel out after the first
-  model.
+  model. Twelve more seeded 2026-10-24 (seed211), after the seven in
+  seeds.json, their files beside them: each designed on the subscription
+  by the app's own designer (`--ask-claude-code`), then its steps put in an
+  order a person can follow (nothing put down before what holds it, hidden
+  behind what is built, or hanging past what its studs hold), a part printed
+  here put back as its real part, a colour no part was made in changed, and
+  Tested by the panel: 37 to 678 parts across nine kinds. The site lists six
+  models an hour from one account (`may_list`, `supabase/gallery.sql`), so
+  more than six go up as node-half runs an hour apart, each on a DIR of at
+  most six bodies; a seventh is refused 429 and nothing of it is kept.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory
