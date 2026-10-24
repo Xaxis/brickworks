@@ -574,20 +574,26 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 	# the file carries are built here, and in the model before it opens.
 	var skins_begun: Array = begin_skins(library, model, problems)
 	wanted = _to_build(library, model)
+	var texts: Dictionary = {}
+	for file_name: String in wanted:
+		texts[file_name] = model.embedded_parts[file_name]
+	# Built on workers while the geometry of the parts its own copies are of
+	# comes, not after (_fetch_copied, on the web): what that geometry is
+	# needed for is matching each copy once it is built (add).
+	var going: Array = _build_begun(texts, carried) if pace != null else []
+	if pace != null:
+		await _fetch_copied(library, model)
 	# One built before as it is, and not read as a copy then: its part's
-	# geometry may be here now (_fetch_copied, on the web).
+	# geometry may be here now.
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
 		var info: PartLibrary.PartInfo = library.parts.get(id)
 		if info != null and info.custom and info.copy_of.is_empty() \
 				and not wanted.has(file_name) and not named_for(library, id).is_empty():
 			read_as_copy(library, info, library.mesh_for(id))
-	var texts: Dictionary = {}
-	for file_name: String in wanted:
-		texts[file_name] = model.embedded_parts[file_name]
 	var built: Dictionary
 	if pace != null:
-		built = await _built_off_frame(texts, carried)
+		built = await _built_by(going)
 	else:
 		built = _built_at_once(texts, carried)
 	for file_name: String in wanted:
@@ -719,12 +725,16 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 ## drawn from it is said not shown when the file opens, with why. Nothing
 ## to do, and nothing waited for, on the desktop or for a file that needs
 ## nothing.
-static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
+## With [param copies] false, the geometry of the parts the file's own
+## copies are of is not waited for here: an open over frames waits for it
+## while its carried parts are built ([method take_into]).
+static func fetch_sources(library: PartLibrary, model: LdrModel, copies: bool = true) -> void:
 	if model == null or (model.embedded_parts.is_empty() and model.generated.is_empty()):
 		return
 	await _fetch_until(library, func() -> PackedStringArray:
 		return unreached_by(library, model))
-	await _fetch_copied(library, model)
+	if copies:
+		await _fetch_copied(library, model)
 
 
 ## How long a file waits for the geometry of the parts its own copies are of
@@ -1245,9 +1255,9 @@ static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
 	return _build_ended(going)
 
 
-## [method _built_at_once], waited for a frame at a time.
-static func _built_off_frame(texts: Dictionary, others: Dictionary) -> Dictionary:
-	var going: Array = _build_begun(texts, others)
+## The builds [method _build_begun] set going ([method _built_at_once]'s),
+## waited for a frame at a time.
+static func _built_by(going: Array) -> Dictionary:
 	if going.is_empty():
 		return {}
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
