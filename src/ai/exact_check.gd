@@ -600,6 +600,34 @@ func _runs_into(members: Array, across: Array, axis: int, sign: float) -> bool:
 ## middle, where it takes one stud, so a dish over four studs is a piece of its
 ## own in its graph and held in the hand.
 static func _tube_grips(a: Exact.Item, b: Exact.Item) -> bool:
+	return not _gripped_tube(a, b).is_empty()
+
+
+## The tube of a part of [param members] that stands between studs of a part
+## outside them ([method _tube_grips]): [the part with the tube, the part with
+## the studs, the tube's middle], or []. What holds a dish or a dome over four
+## studs in the hand, which BrickNet joins to nothing: a stud at the tube's
+## middle, a jumper's, would join it.
+func tube_among_studs(members: Array) -> Array:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null:
+			continue
+		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+			if mine.has(j) or items[j] == null:
+				continue
+			var tube: Array = _gripped_tube(items[j], item)
+			if not tube.is_empty():
+				return [int(i), j, tube[0]]
+	return []
+
+
+## The middle of the tube of [param b] that stands between studs of [param a],
+## as one item: [where], or [].
+static func _gripped_tube(a: Exact.Item, b: Exact.Item) -> Array:
 	for tube: Array in b.world():
 		var k: int = tube[0]
 		if b.shape.kind[k] != Exact.HOLE or b.shape.sub[k] != Exact.S_TUBE:
@@ -615,8 +643,8 @@ static func _tube_grips(a: Exact.Item, b: Exact.Item) -> bool:
 			if absf(along) <= 1.0 and absf((d - way * along).length() - DIAGONAL) <= 1.0:
 				touching += 1
 		if touching >= 2:
-			return true
-	return false
+			return [at]
+	return []
 
 
 ## How far a part's origin may be off a post's axis, or past its ends, and

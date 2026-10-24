@@ -1969,9 +1969,15 @@ fixing what it got wrong.
   the next-best, accept with a move laying it a stud back and handing the
   beak, a reason-less rejection refused, the last settle naming the next
   step, save going ahead, the whole review's record; then "beak, ear tufts"
-  skipped and "all" built in two calls with save going ahead, and the
-  walk180 tug's features each offered only pieces that name them (none for
-  its towing bitts). Windowed (`xvfb-run -a
+  skipped and "all" built in two calls with save going ahead, a dish held
+  on a round plate only by its tube holding the save as a piece BrickBench
+  counts apart (`Assistant._held_in_the_hand`, at most twice with the exact
+  check's refusals; a scene's items standing apart on the floor are not
+  said), said with the fix (`_onto_a_jumper`: the 2 x 2 under it swapped
+  for a jumper, 87580, or a jumper laid under a dome on a 2 x 4 and the dome
+  a plate higher), each fix laid as said saving, and saving once the dish is
+  gone, and the walk180 tug's features each offered only pieces that name
+  them (none for its towing bitts). Windowed (`xvfb-run -a
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.
   Needs the index; SKIP without.
@@ -2546,7 +2552,7 @@ names a drawer `godot --script res://src/dev/draw_shots.gd`.
 godot --headless --path . --script src/dev/exact_probe.gd        # one case a pair kind BrickBench refused, and builds that are right
 godot --headless --path . --script src/dev/exact_cost_probe.gd   # station (535) and Orthanc (9,427): as standing, an edit, a whole design
 godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd B.mpd   # pairs and pieces, to set beside verify.py
-godot --headless --path . --script src/dev/pieces_agree.gd -- A.ldr B.ldr   # the check's verdict and count of pieces, beside BrickNet's; ends "agree on N of M"
+godot --headless --path . --script src/dev/pieces_agree.gd -- A.ldr B.ldr   # the check's verdict and count of pieces, beside BrickNet's, and "the save gate:" what saving from outside says of each; ends "agree on N of M"
 godot --headless --path . --script src/dev/joint_check_probe.gd  # real sets' joints pass, joints turned too far and folded hinges do not
 godot --headless --path . --script src/dev/known_fits_probe.gd   # official sets' figure fits forgiven; a brick 2 LDU into a brick and a torso 6 LDU into a wall are not
 python3 tools/known_fits.py scan --out DIR && python3 tools/known_fits.py build --out DIR && python3 tools/known_fits.py report --out DIR   # learn the table from every OMR set (about 30 min, 3 shards under heavy)
