@@ -460,7 +460,12 @@ func _lit(what: String, on: bool) -> void:
 func say(words: String) -> void:
 	if words.strip_edges().is_empty():
 		return
-	_said = Phone.touch_words(words)
+	var said: String = Phone.touch_words(words)
+	# How many are selected and nothing more: the hint says it, and what a
+	# finger does with them.
+	if said.ends_with(" selected") and said.trim_suffix(" selected").is_valid_int():
+		return
+	_said = said
 	_said_until = Time.get_ticks_msec() + 4000
 
 
@@ -516,7 +521,25 @@ func _lay_pill() -> void:
 	# A phone's sheets cover it; a tablet's panels stand beside it.
 	_pill.visible = not words.is_empty() and (wide or not _any_open())
 	if wide:
-		_fit.position.x = free.end.x - p(12 + 48)
+		_lay_beside(free)
+
+
+## A tablet's Fit and the notices strip over the model kept in the model's
+## room: Fit beside the panel on the right and under the strip, and what
+## the strip says in the middle of the room rather than under a panel.
+func _lay_beside(free: Rect2) -> void:
+	var notices: Control = app.get("_notices")
+	var top: float = p(TOP + 12)
+	if notices != null:
+		var face: StyleBoxFlat = notices.get_theme_stylebox("panel") as StyleBoxFlat
+		var room: float = get_viewport().get_visible_rect().size.x
+		if face != null and (face.content_margin_left != free.position.x
+				or face.content_margin_right != room - free.end.x):
+			face.content_margin_left = free.position.x
+			face.content_margin_right = room - free.end.x
+		if notices.is_visible_in_tree():
+			top = maxf(top, notices.get_global_rect().end.y + p(8))
+	_fit.position = Vector2(free.end.x - p(12 + 48), top)
 
 
 func _any_open() -> bool:

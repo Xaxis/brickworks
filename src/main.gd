@@ -7589,7 +7589,11 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 					"box": box, "off": off})
 		for child: Node in node.get_children():
 			walk.append([child, clip])
+	# And the model's room between a tablet's panels, where a finger turns it.
+	var room: Rect2 = to_window * _phone.model_room(screen)
 	return {"targets": targets, "texts": texts, "phone": _phone.state(),
+		"room": [roundi(room.position.x / per_css), roundi(room.position.y / per_css),
+			roundi(room.size.x / per_css), roundi(room.size.y / per_css)],
 		"screen": [roundi((to_window * screen).size.x / per_css), roundi((to_window * screen).size.y / per_css)]}
 
 

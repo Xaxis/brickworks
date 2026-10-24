@@ -26,7 +26,8 @@
 //      swatches; blue tapped paints it (the part's colour read from the page).
 //   8. Undo: the paint undone.
 //   9. A finger held on a part: its actions, the desktop's right-click menu.
-//  10. Two fingers dragged across the model turn the view; spread, they zoom.
+//  10. Two fingers dragged across the model turn the view, its tilt kept;
+//      spread, they zoom.
 //  11. The tablet turned the other way round: laid out again.
 //
 // At every one of those the app is asked (window.brickworksAskPhone) for
@@ -132,15 +133,16 @@ try {
         off.length === 0);
       return told;
     };
-    const sheetNow = async () => {
+    const ask = async () => {
       await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
       for (let n = 0; n < 40; n++) {
         await page.waitForTimeout(250);
         const told = await page.evaluate(() => window.brickworksPhone);
-        if (told) return told.phone || {};
+        if (told) return told;
       }
       return {};
     };
+    const sheetNow = async () => (await ask()).phone || {};
     const open = async () => (await sheetNow()).sheets || [];
     // A part searched for and picked: the panel opened first if it is not.
     const take = async (query) => {
@@ -323,10 +325,13 @@ try {
       check(`and nothing was taken off by the hold (${s.bricks} parts)`, s.bricks >= 8);
     }
 
-    // 10. Two fingers turn the view and spread to zoom.
-    const view = (await controls()).view;
+    // 10. Two fingers turn the view and spread to zoom, on the model: in
+    // the middle of the room the panels leave it, as the app says it.
+    await page.waitForTimeout(1000);
+    const room = (await ask()).room || [0, 0, width, height];
     const before = (await state()).view || {};
-    const c = view ? { x: view.x, y: view.y } : { x: width / 2, y: height / 2 };
+    const c = { x: room[0] + room[2] / 2, y: room[1] + room[3] / 2 };
+    say(`the model's room ${room.join(", ")}: two fingers at ${Math.round(c.x)}, ${Math.round(c.y)}`);
     await touch("touchStart", [{ x: c.x - 40, y: c.y }, { x: c.x + 40, y: c.y }]);
     for (let n = 1; n <= 10; n++) {
       await touch("touchMove", [{ x: c.x - 40 + n * 12, y: c.y }, { x: c.x + 40 + n * 12, y: c.y }]);
@@ -337,6 +342,8 @@ try {
     const turned = (await state()).view || {};
     check(`two fingers across: the view turned (yaw ${before.yaw?.toFixed?.(2)} to ${turned.yaw?.toFixed?.(2)})`,
       Math.abs((turned.yaw || 0) - (before.yaw || 0)) > 0.15);
+    check(`drawn level, it kept its tilt (pitch ${before.pitch?.toFixed?.(2)} to ${turned.pitch?.toFixed?.(2)})`,
+      Math.abs((turned.pitch || 0) - (before.pitch || 0)) < 0.1);
     await touch("touchStart", [{ x: c.x - 30, y: c.y }, { x: c.x + 30, y: c.y }]);
     for (let n = 1; n <= 10; n++) {
       await touch("touchMove", [{ x: c.x - 30 - n * 8, y: c.y }, { x: c.x + 30 + n * 8, y: c.y }]);

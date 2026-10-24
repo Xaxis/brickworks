@@ -34,6 +34,7 @@ const TABLET := 1100.0
 
 static var _on: int = -1
 static var _wide: bool = false
+static var _keys: RegEx
 
 
 ## Whether the phone layout is wanted: decided once, at start.
@@ -87,6 +88,13 @@ static func px(viewport: Viewport, points: float) -> float:
 ## The desktop's words for a mouse and keys said for a finger.
 static func touch_words(text: String) -> String:
 	var out: String = text
+	# A tail of keys to press, where there are none ("1 selected — Ctrl-C
+	# copies, X moves..."): what it says before them.
+	if _keys == null:
+		_keys = RegEx.create_from_string("\\b(Ctrl|Cmd|Alt|Shift|Esc|Enter|Space|Tab)\\b|(^|[ ,(])[A-Z]([ ,)]|$)")
+	var dash: int = out.find(" — ")
+	if dash != -1 and _keys.search(out.substr(dash + 3)) != null:
+		out = out.substr(0, dash)
 	for pair: Array in [["Right-click", "Hold"], ["right-click", "hold"], ["right click", "hold"],
 			["Double-click", "Double-tap"], ["double-click", "double-tap"],
 			["Shift-click", "Tap"], ["Shift-drag", "Two fingers"], ["Ctrl-drag", "Drag"],
