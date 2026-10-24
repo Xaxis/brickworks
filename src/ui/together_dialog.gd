@@ -131,7 +131,7 @@ func fill() -> void:
 		var who: String = str(person.get("name", ""))
 		if bool(person.get("me", false)):
 			who += " (you)"
-		elif bool(person.get("owner", false)):
+		elif bool(person.get("owner", false)) and who != "The owner":
 			who += " (its owner)"
 		words.text = "%s  ·  %s" % [who, "here" if bool(person.get("here", false)) else "away"]
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL

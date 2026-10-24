@@ -208,6 +208,9 @@ func join(address: String) -> String:
 	_generation = world.generation()
 	store._lift_unsure = false
 	_lay_snapshot(snapshot as Dictionary)
+	# Its floor laid and the view framed on it, as any model opened is.
+	if bar != null:
+		bar.opened.emit(world.brick_count())
 	builder.forget_history()
 	people = body.get("people", []) as Array
 	_seen = str(body.get("seen", ""))
