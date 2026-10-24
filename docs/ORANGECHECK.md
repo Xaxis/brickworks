@@ -148,18 +148,29 @@ real builds, and the live rollout waits on its site-attest's review.
   `connectProvision` was still in flight: deleting asked orangecheck to
   delete one not made yet (`unknown_user`), the account and its
   `oc_connected` row went, and the answer that came after made an
-  orangecheck account nothing here knew of. Now deleting marks the row as
-  leaving as it reads it (`oc_connect_leaving`), and provision keeps
-  orangecheck's answer only while the row is there and not marked since its
-  ask (`oc_connect_kept`, false otherwise); on false it calls
-  `connectDelete` at once (`unprovision`, the same allow-list) and answers
-  `{made: false, reason: "account_deleted"}`. Both take the row's lock, so
-  either order ends with orangecheck's account deleted; a tick after a
-  deletion that was held is a later ask, and kept.
-  `supabase/orangecheck_connect_leaving.sql` adds a column and the two
-  functions; until it is applied the code reads and writes as before
-  (`oc_connected_of`, `oc_connect_made`). Dry run with
-  `tools/orangecheck_connect_leaving_try.sql`.
+  orangecheck account nothing here knew of. Now deleting marks the account
+  as leaving as it reads it (`oc_connect_leaving`), and provision keeps
+  orangecheck's answer only while the row is there and not marked
+  (`oc_connect_kept`, false otherwise); on false it calls `connectDelete`
+  at once (`unprovision`, the same allow-list) and answers `{made: false,
+  reason: "account_deleted"}`. Each takes the row's lock, so either order
+  ends with orangecheck's account deleted. site-attest's race (its PGlite
+  proof, on our first version): the mark found no row yet, a first tick
+  then wrote one, its answer was kept, and the account went with the row.
+  So the mark writes a row of its own when there is none (`asked_at`
+  `-infinity`, read as never asked, so a deletion of an account that never
+  ticked still asks orangecheck nothing), `oc_connect_kept` asks only
+  whether the mark is there, and a deletion that does not go through (held,
+  paused, or failing after the mark) takes it off again
+  (`oc_connect_stays`, which also deletes a row of the mark alone), so a
+  tick after a held deletion is kept. `supabase/orangecheck_connect_leaving.sql`
+  holds the column and the three functions, replaced in place and
+  idempotent; dry run with `tools/orangecheck_connect_leaving_try.sql`,
+  which walks the race's four steps.
+- **The listener reads the whole request** (site-attest's nit). It answers
+  once the headers have ended (or 16 KB came without an end), so a
+  request line a browser sends in two pieces is never answered 404 from
+  its first piece (`src/dev/oc_listener_probe.gd`, in the suite).
 - **A token ended by its id** (site-attest, 2026-10-24). The exchange
   (`checkToken`, so `?op=signin`, `?op=native`, link and delete) asks the
   list of ended sessions with the token's `jti` too: a token orangecheck

@@ -345,25 +345,28 @@ async function deleteAccount(request, response) {
   // would leave their orangecheck account behind (orangecheck's final
   // ruling, 2026-10-24). The daily canary asks Connect with the key
   // (api/_canary.js, d).
-  // Marked as leaving as it is read (supabase/orangecheck_connect_leaving.sql),
-  // so a Connect ask still in flight deletes what it makes rather than
-  // keep it (api/_oc.js provision, orangecheck's review, L2).
+  // Marked as leaving as it is read, whether or not Connect was ever asked
+  // (supabase/orangecheck_connect_leaving.sql), so a Connect ask in flight,
+  // or one that starts while this goes on, deletes what it makes rather
+  // than keep it (api/_oc.js provision, orangecheck's review, L2). A
+  // deletion that does not go through takes the mark off again.
   let connected;
   let kept = "";
   try {
-    connected = await db("rpc/oc_connect_leaving", { method: "POST", body: { account } }).catch((trouble) => {
-      // Until that file is applied, read as before.
-      if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
-      return db("rpc/oc_connected_of", { method: "POST", body: { account } });
-    });
+    connected = await db("rpc/oc_connect_leaving", { method: "POST", body: { account } });
   } catch (trouble) {
     console.error(`account: whether Connect made an account: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
   }
+  const stays = () => db("rpc/oc_connect_stays", { method: "POST", body: { account } })
+    .catch((trouble) => console.error(`account: the mark of a deletion that did not go was not taken off: ${String(trouble?.message || trouble).slice(0, 120)}`));
   if (connected) {
     const { unprovision } = await import("./_oc.js");
     const decided = await unprovision(account);
-    if (!decided.go) return response.status(decided.status).json({ error: decided.error });
+    if (!decided.go) {
+      await stays();
+      return response.status(decided.status).json({ error: decided.error });
+    }
     kept = decided.kept || "";
   }
   try {
@@ -411,6 +414,7 @@ async function deleteAccount(request, response) {
       ...(kept ? { orangecheck: { kept: true, said: kept } } : {}) });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    await stays();
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
   }
 }

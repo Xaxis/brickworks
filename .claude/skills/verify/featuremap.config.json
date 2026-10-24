@@ -624,6 +624,13 @@
     },
     {
       "kind": "cli",
+      "label": "orangecheck listener probe",
+      "entry": "src/dev/oc_listener_probe.gd",
+      "reach": "tools/probe.sh oc_listener_probe   (headless, nothing beyond 127.0.0.1; in tools/suite/headless.txt)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
       "label": "account browser flow",
       "entry": "tools/web/account_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",

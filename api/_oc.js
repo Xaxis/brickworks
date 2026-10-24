@@ -271,8 +271,10 @@ export function connectConfigured() {
 /// that signing in to ochk.app with it offers the account to claim. Written
 /// down first, so deleting the account deletes that one too whatever the
 /// answer. And once orangecheck has answered, kept only while the account
-/// is not being deleted (supabase/orangecheck_connect_leaving.sql): one
-/// deleted while orangecheck was asked would leave an orangecheck account
+/// is neither marked as leaving nor gone
+/// (supabase/orangecheck_connect_leaving.sql): one deleted while
+/// orangecheck was asked, even on a first tick that began after its
+/// deletion did (site-attest's race), would leave an orangecheck account
 /// nothing here could ever delete (orangecheck's review, L2), so that one
 /// is deleted at once. Never throws: a refusal or an outage is an answer,
 /// as Connect's own calls give them.
@@ -295,16 +297,8 @@ export async function provision(account, emailed = null) {
     console.error(`orangecheck: Connect made no account: ${made.reason} ${made.status}`);
     return { made: false, reason: made.reason };
   }
-  let kept;
-  try {
-    kept = await db("rpc/oc_connect_kept", { method: "POST", body: { account, did: made.did_oc } });
-  } catch (trouble) {
-    // Until supabase/orangecheck_connect_leaving.sql is applied, as before.
-    if (/: 404$/.test(String(trouble?.message || ""))) {
-      kept = await db("rpc/oc_connect_made", { method: "POST", body: { account, did: made.did_oc } }).then(() => true, () => null);
-    }
-    if (kept !== true) console.error(`orangecheck: Connect's id not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
-  }
+  const kept = await db("rpc/oc_connect_kept", { method: "POST", body: { account, did: made.did_oc } })
+    .catch((trouble) => console.error(`orangecheck: Connect's id not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
   if (kept === false) {
     const gone = await unprovision(account);
     if (!gone.go) console.error(`orangecheck: Connect made ${made.did_oc} for an account deleted meanwhile, and it is not deleted: delete it at orangecheck`);

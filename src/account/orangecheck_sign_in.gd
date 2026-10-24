@@ -31,8 +31,14 @@ var open_browser: bool = true
 
 const CALLBACK_PATH := "/oc/callback"
 
+## Past this, a request is no browser's coming back: answered 404, and closed.
+const MOST_BYTES := 16384
+
 var _server: TCPServer
 var _peers: Array[StreamPeerTCP] = []
+## What each peer has sent so far: a browser's request arrives in as many
+## pieces as it likes, and is answered once its headers have ended.
+var _heads: Dictionary = {}
 var _verifier: String = ""
 var _state: String = ""
 var _redirect_uri: String = ""
@@ -99,13 +105,20 @@ func _process(_delta: float) -> void:
 		peer.poll()
 		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 			_peers.erase(peer)
+			_heads.erase(peer)
 			continue
 		var available: int = peer.get_available_bytes()
 		if available <= 0:
 			continue
-		var head: String = peer.get_utf8_string(available)
+		var head: PackedByteArray = _heads.get(peer, PackedByteArray())
+		head.append_array(peer.get_data(available)[1])
+		var text: String = head.get_string_from_utf8()
+		if not text.contains("\r\n\r\n") and head.size() < MOST_BYTES:
+			_heads[peer] = head
+			continue
 		_peers.erase(peer)
-		_answer(peer, head)
+		_heads.erase(peer)
+		_answer(peer, text)
 		if _server == null:
 			return
 
@@ -138,6 +151,7 @@ func _stop() -> void:
 	for peer: StreamPeerTCP in _peers:
 		peer.disconnect_from_host()
 	_peers.clear()
+	_heads.clear()
 	if _server != null:
 		_server.stop()
 		_server = null

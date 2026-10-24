@@ -1071,6 +1071,14 @@
       "tests": []
     },
     {
+      "id": "cli:orangecheck listener probe",
+      "kind": "cli",
+      "entry": "src/dev/oc_listener_probe.gd",
+      "reach": "tools/probe.sh oc_listener_probe   (headless, nothing beyond 127.0.0.1; in tools/suite/headless.txt)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:own copies read as their parts",
       "kind": "cli",
       "entry": "src/dev/own_copies_probe.gd",

@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -380,12 +380,14 @@ they have. A Claude connector belongs to the account that switched it on.
   next morning. An account that never ticked the box asks
   orangecheck nothing, and is deleted whatever Connect's state. An account
   deleted while Connect is still asked (orangecheck's L2, oc237): deleting
-  marks the row leaving as it reads it (`oc_connect_leaving`), provision
-  keeps the answer only if the row is there and unmarked since its ask
+  marks the account leaving as it reads it (`oc_connect_leaving`, writing a
+  row of the mark alone when there is none, `asked_at` `-infinity`, so a
+  first tick that starts meanwhile is caught too: site-attest's race),
+  provision keeps the answer only while there is a row and no mark
   (`oc_connect_kept`), and otherwise deletes what orangecheck made at once
-  (`unprovision`), answering `{made: false, reason: "account_deleted"}`
-  (`supabase/orangecheck_connect_leaving.sql`; before it is applied, read
-  and written as before).
+  (`unprovision`), answering `{made: false, reason: "account_deleted"}`; a
+  deletion that does not go through takes the mark off (`oc_connect_stays`)
+  (`supabase/orangecheck_connect_leaving.sql`).
 - `sign in with orangecheck on the desktop` (2026-10-24, oc237;
   `src/account/orangecheck_sign_in.gd`, `Account.sign_in_with_orangecheck`,
   `api/orangecheck.js` POST `?op=native`, `api/_oc.js` `tradeCode`): the
@@ -398,7 +400,8 @@ they have. A Claude connector belongs to the account that switched it on.
   challenge, `state` and the loopback redirect (`Account.opens_browser`
   false in a probe, which reads `orangecheck_link`), and the form's note
   says to finish in the browser; the browser comes back to
-  `/oc/callback?code&state` ("Back to Brickworks to finish signing in"), the
+  `/oc/callback?code&state` ("Back to Brickworks to finish signing in"; read
+  until the headers end, however the browser splits them, `oc_listener_probe`), the
   app posts `{code, code_verifier, redirect_uri}`, and keeps the session as
   an emailed code's. A second press starts again; an email sign-in stops
   the listener. The server refuses a malformed ask 422 before counting or
@@ -475,7 +478,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (159 since oc237; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (161 since oc237; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -532,9 +535,12 @@ session, and never for a password's, an address the request names, a code's
 past five minutes or an orangecheck session's, which is answered
 `has_orangecheck`; oc237: Connect's L2, an account deleted whole, or only
 marked as going, while orangecheck was making it one leaving no orangecheck
-account behind, and a tick after a held deletion kept, with
-`supabase/orangecheck_connect_leaving.sql`'s two functions answered in the
-check over the real rows until it is applied (it says so); the desktop's
+account behind, site-attest's race in its four steps (the mark before any
+row, a first tick, the answer, the account gone) leaving none either, a
+deletion that fails after its mark leaving nothing of it, and a tick after a
+held deletion kept, with `supabase/orangecheck_connect_leaving.sql`'s three
+functions answered in the check over the real rows until the file as it is
+now is applied (it says so); the desktop's
 `?op=native` against a stand-in token endpoint: not offered without
 `OC_NATIVE`, `/api/account`'s `native` offer, a code signing in a new account
 traded once with the configured key (never the app's) and never redirected,
@@ -587,6 +593,12 @@ access token, `/api/account` signed in, signed out) and, as the app from Node,
 the same id signing in to that account, then a code used twice, a wrong
 verifier and the right one after it, another `redirect_uri`, and a code traded
 by a server at another origin, each 401.
+
+The listener alone, headless and in the suite (`tools/probe.sh
+oc_listener_probe`, a few seconds): another path or state 404 while it waits
+on, a request line and then headers split across two writes read whole (200,
+the code, a 43-letter verifier and the redirect; a no is `access_denied`), and
+a cancel answered once. Proves it when it ends "all passed" (8 checks).
 
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
 refusal (same server; a throwaway account, deleted at the end; about 90 s, 31 of

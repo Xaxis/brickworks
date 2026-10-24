@@ -6,10 +6,9 @@
 --     node tools/apply_sql.mjs supabase/orangecheck_connect_leaving.sql --dry \
 --     --try=tools/orangecheck_connect_leaving_try.sql --table=oc_connected
 --
--- Made-up accounts, made and gone with the transaction: Ann, Ben, Cy and
--- Di. now() is the transaction's one time throughout, so a later ask is
--- written as one by hand. Each statement is on one line: the dry run splits
--- at a semicolon that ends a line.
+-- Made-up accounts, made and gone with the transaction: Ann, Ben, Cy, Di
+-- and Eve. Each statement is on one line: the dry run splits at a
+-- semicolon that ends a line.
 create function pg_temp.tries(statement text) returns text language plpgsql as $$ begin execute statement; return 'allowed'; exception when others then return 'refused: ' || sqlerrm; end $$;
 grant execute on function pg_temp.tries(text) to anon, authenticated, service_role;
 insert into auth.users (id, instance_id, aud, role, email) values ('00000000-0000-4000-8000-0000000000f1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oc-try-ann@example.invalid'), ('00000000-0000-4000-8000-0000000000f2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oc-try-ben@example.invalid'), ('00000000-0000-4000-8000-0000000000f3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oc-try-cy@example.invalid'), ('00000000-0000-4000-8000-0000000000f4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oc-try-di@example.invalid');
@@ -25,22 +24,35 @@ select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f2', 'did:oc:' 
 -- Cy: the account deleted while orangecheck was asked (the row goes with it): not kept, false.
 delete from auth.users where id = '00000000-0000-4000-8000-0000000000f3';
 select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f3', 'did:oc:' || repeat('c', 32)) = false as cy_gone_not_kept, public.oc_connected_of('00000000-0000-4000-8000-0000000000f3') is null as cy_row_gone;
--- Ben again: a deletion that was held, then a new tick later than the mark: kept, true.
-update public.oc_connected set leaving_at = now() - interval '1 hour', asked_at = now() - interval '2 hours' where account = '00000000-0000-4000-8000-0000000000f2';
+-- Ben again: his deletion held (orangecheck down), so the mark is taken off; a new tick then: kept, true, and his row stays his.
+select public.oc_connect_stays('00000000-0000-4000-8000-0000000000f2');
 select public.oc_connect_asked('00000000-0000-4000-8000-0000000000f2');
 select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f2', 'did:oc:' || repeat('b', 32)) as ben_ticked_again_kept;
--- Di: never asked: leaving is null, kept is false.
-select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f4') is null as di_never_asked, public.oc_connect_kept('00000000-0000-4000-8000-0000000000f4', 'did:oc:' || repeat('d', 32)) = false as di_not_kept;
+select public.oc_connected_of('00000000-0000-4000-8000-0000000000f2')->>'did' = 'did:oc:' || repeat('b', 32) as ben_row_kept;
+-- Di: never asked: her mark reads null (twice), a row of the mark alone is written, and nothing is kept for her.
+select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f4') is null as di_never_asked;
+select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f4') is null as di_marked_again_still_never_asked, public.oc_connected_of('00000000-0000-4000-8000-0000000000f4') is not null as di_mark_row_written;
+select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f4', 'did:oc:' || repeat('d', 32)) = false as di_not_kept;
+-- Di's deletion fails after the mark: the row of the mark alone goes, and nothing of her is left.
+select public.oc_connect_stays('00000000-0000-4000-8000-0000000000f4');
+select public.oc_connected_of('00000000-0000-4000-8000-0000000000f4') is null as di_nothing_left;
+-- Eve, site-attest's race (bw237/l2_race.mjs): (a) the deletion marks her before any row; (b) a first tick asks, writing the row; (c) orangecheck answers: not kept; (d) the account deleted, the row with it.
+insert into auth.users (id, instance_id, aud, role, email) values ('00000000-0000-4000-8000-0000000000f5', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oc-try-eve@example.invalid');
+select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f5') is null as eve_a_mark_reads_never_asked;
+select public.oc_connect_asked('00000000-0000-4000-8000-0000000000f5');
+select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f5', 'did:oc:' || repeat('f', 32)) = false as eve_c_answer_not_kept;
+delete from auth.users where id = '00000000-0000-4000-8000-0000000000f5';
+select public.oc_connected_of('00000000-0000-4000-8000-0000000000f5') is null as eve_d_row_gone;
 -- The old calls are as they were: oc_connect_made writes, oc_connected_of reads.
 select public.oc_connect_made('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('e', 32));
 select public.oc_connected_of('00000000-0000-4000-8000-0000000000f1')->>'did' = 'did:oc:' || repeat('e', 32) as old_made_still_writes;
 -- Only the service role may ask.
 set local role anon;
-select pg_temp.tries($q$select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f1')$q$) as anon_leaving, pg_temp.tries($q$select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('a', 32))$q$) as anon_kept;
+select pg_temp.tries($q$select public.oc_connect_stays('00000000-0000-4000-8000-0000000000f1')$q$) as anon_stays, pg_temp.tries($q$select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f1')$q$) as anon_leaving, pg_temp.tries($q$select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('a', 32))$q$) as anon_kept;
 reset role;
 set local role authenticated;
-select pg_temp.tries($q$select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f1')$q$) as user_leaving, pg_temp.tries($q$select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('a', 32))$q$) as user_kept;
+select pg_temp.tries($q$select public.oc_connect_stays('00000000-0000-4000-8000-0000000000f1')$q$) as user_stays, pg_temp.tries($q$select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f1')$q$) as user_leaving, pg_temp.tries($q$select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('a', 32))$q$) as user_kept;
 reset role;
 set local role service_role;
-select pg_temp.tries($q$select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f1')$q$) as service_leaving, pg_temp.tries($q$select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('a', 32))$q$) as service_kept, pg_temp.tries('select * from public.oc_connected') as service_reads_table;
+select pg_temp.tries($q$select public.oc_connect_stays('00000000-0000-4000-8000-0000000000f1')$q$) as service_stays, pg_temp.tries($q$select public.oc_connect_leaving('00000000-0000-4000-8000-0000000000f1')$q$) as service_leaving, pg_temp.tries($q$select public.oc_connect_kept('00000000-0000-4000-8000-0000000000f1', 'did:oc:' || repeat('a', 32))$q$) as service_kept, pg_temp.tries('select * from public.oc_connected') as service_reads_table;
 reset role;
