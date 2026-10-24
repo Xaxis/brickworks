@@ -18,7 +18,10 @@
 //     count of none, Follow, Share and More; at 390 px the avatar, the
 //     name, the numbers and Follow on the first screen;
 //   the models they pinned, in their order, above the tabs; a banner of
-//     one of their models' pictures when they chose one;
+//     one of their models' pictures when they chose one, the one with
+//     nothing behind the model (/m/<id>.cutout.png, the picture itself for
+//     a model published before) on the theme's own ground, as a card's
+//     picture is: no light box in the dark;
 //   the tabs, Models · Builds · Collections, one shown, each with its count
 //     once there is one, and what goes there said when it has nothing;
 //   every model reached: a person with 60 has three pages, Show more
@@ -126,6 +129,9 @@ const drawn = (page) => page.evaluate(() => {
       text: a.textContent })),
     banner: document.querySelector(".profile .banner img")?.getAttribute("src") || "",
     bannerLoaded: Boolean(document.querySelector(".profile .banner img")?.naturalWidth),
+    bannerGround: document.querySelector(".profile .banner")
+      ? getComputedStyle(document.querySelector(".profile .banner")).backgroundImage : "",
+    cardGround: document.querySelector(".model .frame") ? getComputedStyle(document.querySelector(".model .frame")).backgroundImage : "",
     pins: [...document.querySelectorAll(".pinned .model")].map((card) => card.dataset.id),
     tabs: [...document.querySelectorAll(".profile .tabs a")].map((a) => ({ tab: a.dataset.tab, current: a.getAttribute("aria-current") === "page",
       n: a.querySelector(".n")?.textContent || "" })),
@@ -235,7 +241,9 @@ async function local() {
           kinds === "builds,remixes,models,likes,followers,following" && said.numbers[0].n === "77");
         check(`${label}: two links, said as their domain (${said.links.map((one) => one.text).join(", ")})`,
           said.links.map((one) => one.text).join(",") === "robin-castell.example/castles,flickr.com/photos/robin-castell");
-        check(`${label}: the watchtower across the top (${said.banner}), loaded`, said.banner === `/m/${stand.MODEL_ID}.png` && said.bannerLoaded);
+        check(`${label}: the watchtower across the top, cut out (${said.banner}), loaded, on the cards' ground (${said.bannerGround.slice(0, 60)})`,
+          said.banner === `/m/${stand.MODEL_ID}.cutout.png` && said.bannerLoaded
+          && /gradient/.test(said.bannerGround) && said.bannerGround === said.cardGround);
         check(`${label}: pinned in Robin's order: ${said.pins.join(", ")}`, said.pins.join(",") === `DesignGea1,${stand.MODEL_ID},DesignFox1`);
         check(`${label}: achievements ${said.awards.map((one) => one.text).join(" · ")}, the win a link to the watchtower, each with its icon and what it means`,
           said.awards.map((one) => one.id).join(",") === "won,ten,tested,listed,built"
@@ -509,7 +517,8 @@ async function deployed() {
             && said.awardsAfter);
           check(applied ? `${label}: links, the lighthouse across the top, pins in her order`
             : `${label}: no links, banner or pins before profile_shows.sql`, applied
-            ? said.links.length === 2 && said.banner === `/m/${made[1]}.png` && said.pins.join(",") === `${made[1]},${made[0]}`
+            ? said.links.length === 2 && said.banner === `/m/${made[1]}.cutout.png` && said.bannerLoaded
+              && /gradient/.test(said.bannerGround) && said.pins.join(",") === `${made[1]},${made[0]}`
             : said.links.length === 0 && !said.banner && said.pins.length === 0);
           await shot(page, `ada_${width}_${theme}_${who}.png`);
           await context.close();

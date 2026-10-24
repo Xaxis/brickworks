@@ -43,7 +43,8 @@
         "tests/test_collection.py",
         "tests/test_designers.py",
         "tests/test_library.py",
-        "tests/test_refresh_catalogue.py"
+        "tests/test_refresh_catalogue.py",
+        "tests/test_update_parts.py"
       ]
     },
     {
@@ -345,7 +346,8 @@
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
       "area": "mcp",
       "tests": [
-        "tests/test_brickbench.py"
+        "tests/test_brickbench.py",
+        "tests/test_update_parts.py"
       ]
     },
     {

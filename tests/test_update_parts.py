@@ -149,3 +149,80 @@ def test_a_second_run_finds_nothing_to_do(library, capsys, tmp_path):
     assert "nothing to build" in said["text"][0]
     assert (out / "catalogue.json").read_text() == before
     assert not (out / update_parts.PENDING).exists()
+
+
+# The knowledge made from the catalogue (refresh_catalogue.KNOWLEDGE), as
+# a refresh makes it after its catalogue: by stand-ins of its two tools,
+# each writing the --generated folder it was given into its list, or
+# failing as told.
+STAND_IN = '''
+import argparse, json, sys
+from pathlib import Path
+ask = argparse.ArgumentParser()
+ask.add_argument("--generated", type=Path)
+ask.add_argument("--out", type=Path)
+args = ask.parse_args()
+if {fails!r}:
+    print("no vendor/rebrickable/inventories.csv.gz", file=sys.stderr)
+    sys.exit(1)
+args.out.write_text(json.dumps({{"format": 1, {listed!r}: [str(args.generated)]}}))
+'''
+
+
+@pytest.fixture
+def building(library, monkeypatch, tmp_path):
+    """A run that builds what it names, without numpy: each part's build
+    stands in for build_meshes', the refresh for the Rebrickable joins, and
+    the knowledge's tools for minifig_sets and set_sizes. Returns the
+    knowledge folder, each file in it as it was before, and the tools
+    folder, whose set_sizes.py a test may make fail."""
+    import refresh_catalogue
+    ldraw, out = library
+    known, tools = tmp_path / "knowledge", tmp_path / "tools"
+    known.mkdir()
+    tools.mkdir()
+    for tool, name, listed in refresh_catalogue.KNOWLEDGE:
+        (known / name).write_text(json.dumps({"format": 1, listed: ["before"]}))
+        (tools / tool).write_text(STAND_IN.format(fails=False, listed=listed))
+    monkeypatch.setattr(update_parts, "build", lambda _ldraw, names, _jobs: [
+        (n[:-4], b"mesh", {"id": n[:-4], "mesh": f"new{n[:-4]}"}) for n in names])
+    monkeypatch.setattr(refresh_catalogue, "refresh", lambda *_given: ["refreshed"])
+    made = refresh_catalogue.knowledge
+    monkeypatch.setattr(refresh_catalogue, "knowledge",
+                        lambda generated, into: made(generated, into, tools))
+    return ldraw, out, known, tools
+
+
+def test_a_run_makes_the_knowledge_again_from_its_catalogue(building, capsys, tmp_path):
+    import refresh_catalogue
+    ldraw, out, known, _tools = building
+    update = make_zip(tmp_path / "lcad2602.zip", {"ldraw/parts/b.dat": "0 Plate B\n" + TRIANGLE * 2})
+    args = ["--zip", str(update), "--ldraw", str(ldraw), "--out", str(out), "--knowledge", str(known)]
+    assert update_parts.main(args + ["--jobs", "2"]) == 0
+    said = capsys.readouterr().out
+    meshes = {e["id"]: e["mesh"] for e in json.loads((out / "catalogue.json").read_text())["parts"]}
+    assert meshes["b"] == "newb" and meshes["c"] == "newc"
+    for _tool, name, listed in refresh_catalogue.KNOWLEDGE:
+        assert json.loads((known / name).read_text())[listed] == [str(out)], name
+        assert name in said
+        assert not (known / (name + ".new")).exists()
+
+
+def test_knowledge_that_cannot_be_made_fails_the_run_and_keeps_the_old_file(building, capsys, tmp_path):
+    import refresh_catalogue
+    ldraw, out, known, tools = building
+    (tools / "set_sizes.py").write_text(STAND_IN.format(fails=True, listed="models"))
+    update = make_zip(tmp_path / "lcad2602.zip", {"ldraw/parts/b.dat": "0 Plate B\n" + TRIANGLE * 2})
+    args = ["--zip", str(update), "--ldraw", str(ldraw), "--out", str(out), "--knowledge", str(known)]
+    assert update_parts.main(args + ["--jobs", "2"]) == 1
+    said = capsys.readouterr()
+    # Loudly, as a refresh fails: which tool, why, and which file is behind.
+    assert "update_parts FAILED: tools/set_sizes.py exited 1" in said.err
+    assert "no vendor/rebrickable/inventories.csv.gz" in said.err and "set_sizes.json" in said.err
+    assert json.loads((known / "set_sizes.json").read_text())["models"] == ["before"]
+    # The other is still made, and the parts built are still in the
+    # catalogue, with what to upload said.
+    assert json.loads((known / "minifig_sets.json").read_text())["parts"] == [str(out)]
+    assert {e["id"]: e["mesh"] for e in json.loads((out / "catalogue.json").read_text())["parts"]}["b"] == "newb"
+    assert "To put them live" in said.out
+    assert not any((known / (name + ".new")).exists() for _t, name, _l in refresh_catalogue.KNOWLEDGE)

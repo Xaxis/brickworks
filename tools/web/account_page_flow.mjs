@@ -246,7 +246,7 @@ try {
         said.bio === "Castles and small machines.\nFor the account page flow."
         && said.links.map((one) => one.href).join(" ") === LINKS.join(" ")
         && said.links.every((one) => /\bugc\b/.test(one.rel) && /\bnofollow\b/.test(one.rel))
-        && said.banner === `/m/${made[1]}.png` && said.pins.join(",") === `${made[1]},${made[0]}`);
+        && said.banner === `/m/${made[1]}.cutout.png` && said.pins.join(",") === `${made[1]},${made[0]}`);
       check(`${label}: numbers ${said.numbers.join(" · ")}, none of none`, said.numbers.join() === "5 models");
       check(`${label}: tabs ${said.tabs.map((t) => `${t.tab}${t.n ? ` ${t.n}` : ""}${t.current ? "*" : ""}`).join(" · ")}, `
         + `Models open with ${said.cards.length} of her 5 models and Show more`,

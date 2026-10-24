@@ -507,13 +507,14 @@ try {
   listen(blog, "blog");
   await blog.goto(`http://127.0.0.1:${blogServer.address().port}/post.html`, { waitUntil: "load", timeout: 60000 });
   let cardText = "";
-  for (let n = 0; n < 30 && !cardText.includes("View in 3D"); n++) {
+  for (let n = 0; n < 30 && !cardText.includes("Build it"); n++) {
     const framed = blog.frames().find((f) => f.url().includes(`/m/${id}/embed`));
     cardText = framed ? await framed.evaluate(() => document.body.innerText).catch(() => "") : "";
-    if (!cardText.includes("View in 3D")) await blog.waitForTimeout(2000);
+    if (!cardText.includes("Build it")) await blog.waitForTimeout(2000);
   }
   blogServer.close();
-  check(`it renders in an iframe: "${cardText.replace(/\s+/g, " ").trim()}"`, cardText.includes(NAME) && cardText.includes("View in 3D"));
+  check(`it renders in an iframe, Build it and View in 3D: "${cardText.replace(/\s+/g, " ").trim()}"`,
+    cardText.includes(NAME) && cardText.includes("Build it") && cardText.includes("View in 3D"));
   await shot(blog, "7_embed.png");
   await blog.close();
 

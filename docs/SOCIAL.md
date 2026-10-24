@@ -587,7 +587,9 @@ model begun empty in it, assistant once Claude laid any, by the panel or a
 session's tools, brickify once Brickify did; nothing for a file that does not
 say), kept in the model's text and sent; `supabase/made_with.sql` keeps it
 for the server alone, and the card and the filter read it before the tags,
-which a model the app said nothing of still goes by.
+which a model the app said nothing of still goes by. A profile's banner
+(/u/ and /profile) is the cut-out on the same ground since tidy240; it was
+the PNG, a light box across the top of a page in the dark theme.
 *U11 built (2026-10-24, `supabase/collection_follows.sql`, applied by the
 lead):* a collection's page is headed as a playlist's or a board's, its
 cover (up to four of its models' pictures) beside its name, whose, its

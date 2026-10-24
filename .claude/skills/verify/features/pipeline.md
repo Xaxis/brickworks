@@ -39,9 +39,17 @@ The Python side: LDraw in, mesh cache and catalogue out.
   so an unofficial file an official one shadows changes nothing), and builds
   those with `build_meshes._convert`. Meshes are added beside the others,
   entries merged, exact shapes carried, and `refresh_catalogue.refresh` run
-  over the whole. It prints "N new parts: ..." for `CHANGELOG.md` and what to
-  upload. `--dry-run` says all of it and writes nothing. Proves it when
-  `tests/test_update_parts.py` passes, a second run says "0 new or changed",
+  over the whole. Then the knowledge made from the catalogue again, as a
+  refresh makes it (`refresh_catalogue.knowledge`: `minifig_sets.json` and
+  `set_sizes.json`, into `--knowledge DIR`, `assets/knowledge` unless told):
+  when either cannot be made the run still reports, then ends on
+  `update_parts FAILED: tools/X.py exited N: why, so X.json is the one from
+  before this refresh` and exits 1. It prints "N new parts: ..." for
+  `CHANGELOG.md` and what to upload. `--dry-run` says all of it and writes
+  nothing. Proves it when `tests/test_update_parts.py` passes (with the build
+  and refresh stood in, a run remakes both knowledge files from the
+  catalogue it wrote, and one tool failing fails the run, its old file
+  kept), a second run says "0 new or changed",
   and `tools/probe.sh new_parts_probe N N N` places three of the new parts.
 - `measure real sets' figures and sizes`: `tools/minifig_sets.py` writes
   `assets/knowledge/minifig_sets.json` from Rebrickable's inventories: each

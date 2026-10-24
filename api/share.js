@@ -1301,7 +1301,9 @@ ${footer || `<footer><small>${NOTICE}</small></footer>`}
 /// /m/X/embed: a card sized for an iframe. The app itself cannot run in
 /// somebody else's page — its threaded engine needs the page to be
 /// cross-origin isolated, which only the top window can ask for — so the
-/// card opens the viewer in a tab of its own.
+/// card opens it in a tab of its own: Build it, the guided build at step 1
+/// as the model's page's Build it is, and View in 3D quietly beside it
+/// where the frame has room. Its picture and name open the model's page.
 ///
 /// In the theme whoever looks at it chose (docs/SOCIAL.md U14): web/theme.js,
 /// as on every page, sets the one they chose on brickworks.diy where their
@@ -1319,20 +1321,28 @@ ${siteChrome().head}
 <style>
   /* The site's colours, type and corners (site.css); only the card's layout here. */
   body { background: var(--panel); }
-  a.whole { display: flex; flex-direction: column; height: 100vh; color: inherit; text-decoration: none; }
-  a.whole img { flex: 1; min-height: 0; width: 100%; object-fit: cover; background: var(--bg-soft); }
+  main { display: flex; flex-direction: column; height: 100vh; }
+  a.picture { flex: 1; min-height: 0; display: block; }
+  a.picture img { width: 100%; height: 100%; object-fit: cover; background: var(--bg-soft); }
   .embed-bar { display: flex; align-items: center; gap: var(--s-3); padding: 10px 14px; }
-  .embed-bar .words { flex: 1; min-width: 0; display: grid; }
+  .embed-bar .words { flex: 1; min-width: 0; display: grid; color: inherit; text-decoration: none; }
+  .embed-bar .words:hover b { text-decoration: underline; }
   .embed-bar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .embed-bar small { color: var(--ink-soft); font-size: var(--t-small); }
+  .embed-bar a.link { flex: none; font-size: var(--t-small); }
+  /* A phone's column: the name and Build it, the viewer a click on from it. */
+  @media (max-width: 400px) { .embed-bar a.link { display: none; } }
 </style>
 </head>
 <body>
 <main>
-<a class="whole" href="${escapeHtml(link.url)}" target="_blank" rel="noopener">
-  <img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt="">
-  <span class="embed-bar"><span class="words"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small></span><span class="cta small">View in 3D<span class="visually-hidden"> (opens in a new tab)</span></span></span>
-</a>
+<a class="picture" href="${escapeHtml(link.url)}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">
+  <img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt=""></a>
+<div class="embed-bar">
+  <a class="words" href="${escapeHtml(link.url)}" target="_blank" rel="noopener"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small><span class="visually-hidden"> (opens in a new tab)</span></a>
+  <a class="link" href="${escapeHtml(link.viewer)}" target="_blank" rel="noopener">View in 3D<span class="visually-hidden"> (opens in a new tab)</span></a>
+  <a class="cta small" href="${escapeHtml(`${link.viewer}&build`)}" target="_blank" rel="noopener" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it<span class="visually-hidden"> (opens in a new tab)</span></a>
+</div>
 </main>
 </body>
 </html>`;

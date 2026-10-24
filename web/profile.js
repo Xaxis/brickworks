@@ -144,7 +144,8 @@ function drawHead() {
   banner.replaceChildren();
   if (pictured) {
     const img = make("img");
-    img.src = `/m/${pictured}.png`;
+    // As /u/ draws it (api/people.js): cut out, on the theme's ground.
+    img.src = `/m/${pictured}.cutout.png`;
     img.alt = "";
     img.width = 1200;
     img.height = 630;

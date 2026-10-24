@@ -28,7 +28,11 @@ unofficial zip, which changes daily. So this
    there is touched and older builds keep working), merges the entries
    into catalogue.json, and runs tools/refresh_catalogue.py's refresh over
    it, so the new parts carry the same fields a full build and a refresh
-   give them.
+   give them;
+6. makes the knowledge made from the catalogue again, as a refresh does
+   (refresh_catalogue.knowledge: minifig_sets.json and set_sizes.json in
+   assets/knowledge, or --knowledge DIR), and exits 1 saying which and why,
+   the file from before kept, when either cannot be made.
 
 A second run finds every member matching and builds nothing. A run that
 dies after writing into the library leaves update_parts.pending.json in
@@ -60,6 +64,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from ldraw.library import Library, search_roots  # noqa: E402
 from ldraw.parser import decode, normalise_filename  # noqa: E402
+import refresh_catalogue  # noqa: E402
 
 DEFAULT_LDRAW = ROOT / "vendor" / "ldraw"
 DEFAULT_OUT = ROOT / "assets" / "generated"
@@ -307,6 +312,8 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument("--ldraw", type=Path, default=DEFAULT_LDRAW)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--downloads", type=Path, default=DEFAULT_DOWNLOADS)
+    parser.add_argument("--knowledge", type=Path, default=ROOT / "assets" / "knowledge",
+                        help="where the knowledge made from the catalogue goes")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
     parser.add_argument("--dry-run", action="store_true",
                         help="say what would change and be built, write nothing")
@@ -378,6 +385,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         print("new: " + " ".join(new_ids))
         print("rebuilt: " + " ".join(n[:-4] for n in names if n[:-4] in entries))
         print("through a subpart or primitive: " + " ".join(n[:-4] for n in through))
+        print("then, from the catalogue: " + ", ".join(
+            name for _tool, name, _listed in refresh_catalogue.KNOWLEDGE) + f" made again in {args.knowledge}")
         return 0
     if not names and not files:
         print(f"nothing to build ({time.time() - started:.0f}s)")
@@ -421,11 +430,19 @@ def main(argv: Iterable[str] | None = None) -> int:
     document["counts"]["meshes"] = len({e["mesh"] for e in document["parts"]})
 
     from merge_subbuild import carry_exact
-    from refresh_catalogue import refresh
     carried, lacking = carry_exact(before_mesh, after_mesh, out / "exact")
-    said = refresh(document, out, ldraw)
+    said = refresh_catalogue.refresh(document, out, ldraw)
     write_atomic(catalogue_path, json.dumps(document, separators=(",", ":")).encode())
     pending_path.unlink(missing_ok=True)
+    # The figure parts and real models' sizes, made from this catalogue as a
+    # refresh makes them, or neither falls a month behind the parts. One that
+    # cannot be made fails the run after its report, which still says what
+    # was built and what to upload.
+    behind = ""
+    try:
+        said += refresh_catalogue.knowledge(out, args.knowledge)
+    except refresh_catalogue.Behind as why:
+        behind = str(why)
 
     changed_entries = sum(1 for i in before_mesh if before_mesh[i] != after_mesh[i])
     print("\n".join("  " + line for line in said))
@@ -452,6 +469,9 @@ def main(argv: Iterable[str] | None = None) -> int:
           f"{written:,} new meshes, and exact shapes carried), tools/storage_ldraw.py "
           "(official LDraw files the bucket lacks), then a deploy and a release, "
           "which carry the catalogue.")
+    if behind:
+        print(f"update_parts FAILED: {behind}", file=sys.stderr)
+        return 1
     return 0
 
 

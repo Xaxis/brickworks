@@ -471,9 +471,12 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
    words, links and one row of numbers; the models they pinned; then the
    tabs, Models · Builds · Collections, each a page of its own. */
 .person.profile { padding-top: var(--s-6); }
+/* Its model's cut-out on the theme's own ground (site.css --picture-ground),
+   as a card's picture is: a picture carrying its own light ground was a
+   light box across a page in the dark theme. */
 .profile .banner {
 	aspect-ratio: 3 / 1; margin: 0 0 var(--s-3); border-radius: var(--radius); overflow: hidden;
-	border: 1px solid var(--line); background: var(--bg-soft);
+	border: 1px solid var(--line); background: var(--picture-ground);
 }
 .profile .banner img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; }
 .profile-head {

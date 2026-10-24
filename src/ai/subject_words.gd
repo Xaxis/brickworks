@@ -18,6 +18,18 @@ extends RefCounted
 const COMPOUND_ENDS: Array[String] = ["ship", "craft", "port", "station", "truck",
 	"car", "boat", "plane", "house", "copter", "bike", "mobile", "man", "men"]
 
+## Kinds of set that say where a thing is rather than which kind of thing it
+## is: a castle tower is a tower in a castle, a space rover a rover in
+## space. Said before what the thing is, a place is what the brief is
+## about — the world it is built for, whose sets say how a thing there is
+## built — so it goes first; any other word before says which kind of the
+## thing it is (a speed boat, a fire truck) and goes after. Not city, town,
+## street or road, which say which kind as often as where: a city bus is a
+## bus, a road bike a bike.
+const PLACES: Array[String] = ["castle", "palace", "fortress", "space", "lunar", "sky", "sea",
+	"coast", "beach", "island", "jungle", "forest", "desert", "arctic", "swamp", "mountain",
+	"farm", "village", "garden"]
+
 
 ## What a subject is a kind of, where real sets' names do not say it: the
 ## kinds of set (PartLibrary.kinds, the words of real sets' names) a word is
@@ -41,7 +53,8 @@ const IS_A: Dictionary = {
 	"garbage": ["truck"], "dustcart": ["truck"], "wrecker": ["tow", "truck"],
 	"motorbike": ["motorcycle", "bike"], "moped": ["scooter", "motorcycle"],
 	"dirtbike": ["motorcycle", "bike"], "quad": ["bike", "off"], "atv": ["bike", "off"],
-	"bicycle": ["bike"], "tricycle": ["bike"], "chopper": ["motorcycle", "helicopter"],
+	"bicycle": ["bike"], "tricycle": ["bike"], "mountain bike": ["bike"],
+	"chopper": ["motorcycle", "helicopter"],
 	"gokart": ["kart"],
 	# the building site and the farm
 	"bulldozer": ["construction", "loader"], "dozer": ["construction", "loader"],
@@ -149,6 +162,19 @@ static func of(text: String) -> PackedStringArray:
 	return out
 
 
+## [param text]'s words in its phrases, the words between one mark and the
+## next (a comma, a full stop, a bracket): "a castle, tower and moat" is two,
+## the castle and then its tower and moat, where "a castle tower" is one.
+static func phrases(text: String) -> Array[PackedStringArray]:
+	var out: Array[PackedStringArray] = []
+	var marked: String = RegEx.create_from_string("[^a-z0-9\\s'’-]+").sub(text.to_lower(), "|", true)
+	for part: String in marked.split("|", false):
+		var said: PackedStringArray = of(part)
+		if not said.is_empty():
+			out.append(said)
+	return out
+
+
 ## The forms a word of a brief may be of a vocabulary's word: itself, the
 ## singular of a plural ("castles", "buses", "bodies"), the possessive's root.
 static func forms(word: String) -> PackedStringArray:
@@ -208,15 +234,12 @@ static func kind_of_word(word: String, vocabulary: Dictionary) -> String:
 ## first: itself or a form of it; or, made of two, a word of the vocabulary
 ## of four letters or more and one of [constant COMPOUND_ENDS] — "spaceship"
 ## is space, "planetarium" is nothing. Of a word made of two that are both
-## the vocabulary's, the second is what the thing is and the first says
-## which kind of it, so the second goes first: a speedboat is a boat before
-## it is speed, whose sets are high-speed trains and chases, and a firetruck
-## a truck, then a fire set's. Unless what the word is a kind of (IS_A) says
-## which: a spaceship is space, and no sea ship.
+## the vocabulary's, [method kinds_of_two] says which first: a speedboat is
+## a boat, a firetruck a truck, then a fire set's.
 static func kinds_of_word(word: String, vocabulary: Dictionary) -> PackedStringArray:
-	for form: String in forms(word):
-		if form.length() >= 3 and vocabulary.has(form):
-			return PackedStringArray([form])
+	var itself: String = _itself(word, vocabulary)
+	if not itself.is_empty():
+		return PackedStringArray([itself])
 	for end: String in COMPOUND_ENDS:
 		for form: String in forms(word):
 			if form.length() > end.length() + 3 and form.ends_with(end):
@@ -225,8 +248,80 @@ static func kinds_of_word(word: String, vocabulary: Dictionary) -> PackedStringA
 						continue
 					if not vocabulary.has(end):
 						return PackedStringArray([one])
-					var is_a: Array = IS_A.get(form, IS_A.get(word, []))
-					if is_a.has(one) != is_a.has(end):
-						return PackedStringArray([one if is_a.has(one) else end])
-					return PackedStringArray([end, one])
+					return kinds_of_two(PackedStringArray([form, word]), one, end)
 	return PackedStringArray()
+
+
+## The kinds a thing named by two of a vocabulary's words is, what it is
+## first, as one word ("speedboat", [param said] the ways the brief says
+## it, each as IS_A may be keyed) or two ("speed boat"). The second word is
+## what the thing is and the first says which kind of it, so the second
+## goes first: a speedboat is a boat before it is speed, whose sets are
+## high-speed trains and chases, and a fire truck a truck, then a fire
+## set's. Unless what it is a kind of (IS_A) says which, in its order: a
+## spaceship is space, and no sea ship; a seaplane a plane, then the sea's.
+## Or the first is a place (PLACES): a castle tower is a castle's, first.
+static func kinds_of_two(said: PackedStringArray, first: String, second: String) -> PackedStringArray:
+	for key: String in said:
+		var is_a: Array = IS_A.get(key, [])
+		if is_a.has(first) or is_a.has(second):
+			var out := PackedStringArray()
+			for kind: Variant in is_a:
+				if (kind == first or kind == second) and not out.has(str(kind)):
+					out.append(str(kind))
+			return out
+	if PLACES.has(first):
+		return PackedStringArray([first, second])
+	return PackedStringArray([second, first])
+
+
+## What each word of [param phrase] (one of [method phrases]) is of
+## [param vocabulary], what it is first, a list for each word: as [method
+## kinds_of_word] reads it alone, but for words side by side that are each
+## the vocabulary's own. Those name one thing, and are read as the word
+## made of them is: "speed boat" as "speedboat", a boat. Of more than two,
+## the last is what it is ("off road truck": a truck, then off-road), after
+## a place that leads them. A run's kinds are its first word's, its other
+## words' none.
+static func kinds_of_phrase(phrase: PackedStringArray, vocabulary: Dictionary) -> Array[PackedStringArray]:
+	var out: Array[PackedStringArray] = []
+	var start: int = 0
+	while start < phrase.size():
+		var end: int = start
+		while end < phrase.size() and not _itself(phrase[end], vocabulary).is_empty():
+			end += 1
+		if end - start < 2:
+			out.append(kinds_of_word(phrase[start], vocabulary))
+			start += 1
+			continue
+		out.append(_kinds_of_run(phrase.slice(start, end), vocabulary))
+		for _other: int in range(end - start - 1):
+			out.append(PackedStringArray())
+		start = end
+	return out
+
+
+## The kinds of a run of words each a word of [param vocabulary] itself.
+static func _kinds_of_run(run: PackedStringArray, vocabulary: Dictionary) -> PackedStringArray:
+	var kinds := PackedStringArray()
+	for word: String in run:
+		kinds.append(_itself(word, vocabulary))
+	if run.size() == 2:
+		return kinds_of_two(PackedStringArray(["%s %s" % [run[0], run[1]], run[0] + run[1],
+			"%s %s" % [run[0], kinds[1]], run[0] + kinds[1]]), kinds[0], kinds[1])
+	if PLACES.has(kinds[0]):
+		var rest: PackedStringArray = _kinds_of_run(run.slice(1), vocabulary)
+		rest.insert(0, kinds[0])
+		return rest
+	var led := PackedStringArray([kinds[kinds.size() - 1]])
+	led.append_array(kinds.slice(0, -1))
+	return led
+
+
+## The form of [param word] that is a word of [param vocabulary] itself, of
+## three letters or more, or "".
+static func _itself(word: String, vocabulary: Dictionary) -> String:
+	for form: String in forms(word):
+		if form.length() >= 3 and vocabulary.has(form):
+			return form
+	return ""

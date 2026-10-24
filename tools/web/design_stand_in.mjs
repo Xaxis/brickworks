@@ -1917,9 +1917,13 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
     if (/^\/(m|u|c)\//.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
-      // With the security policy the server sends with it.
+      // With the security policy the server sends with it. A picture the
+      // server makes (/m/X.cutout.png) as the bytes and type it answered:
+      // sent as an empty page, every cut-out failed to draw, and a model's
+      // page and a profile's banner said "No picture".
       const policy = made.headers?.["content-security-policy"];
-      return route.fulfill({ status: made.status, contentType: "text/html; charset=utf-8", body: made.html,
+      return route.fulfill({ status: made.status, body: made.bytes ?? made.html,
+        contentType: made.bytes ? made.headers["content-type"] : "text/html; charset=utf-8",
         headers: policy ? { "content-security-policy": policy } : {} });
     }
     const file = staticFile(web, url.pathname);

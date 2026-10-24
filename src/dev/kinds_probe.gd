@@ -89,14 +89,32 @@ func _initialize() -> void:
 	# (SubjectWords.IS_A: a spaceship is space, no sea ship). Held out: none
 	# of these was looked at while the rule was written but the speedboat.
 	for pair: Array in [["speedboat", ["boat"]], ["racecar", ["car", "race"]],
-			["firetruck", ["truck", "fire"]], ["sailboat", ["boat"]],
-			["police car", ["police", "car"]], ["spaceship", ["space"]]]:
-		var read: Array = []
-		for line: String in str(assistant._how_real_sets_build_this(str(pair[0]))["content"]).split("\n"):
-			if line.contains(" — measured over "):
-				read.append(line.get_slice(" — ", 0).to_lower())
-		_ok(read == pair[1], "\"%s\" is read as %s (%s)" % [pair[0], " then ".join(pair[1]),
-			", ".join(PackedStringArray(read)) if not read.is_empty() else "nothing"])
+			["firetruck", ["truck", "fire"]], ["sailboat", ["boat"]], ["spaceship", ["space"]]]:
+		_reads_as(assistant, str(pair[0]), pair[1])
+
+	print("\nand so are two words that name one thing")
+	# "speed boat" was still the speed kind: two words were read in the
+	# brief's order. Said as two they are read as the word made of them is:
+	# the second first, as what it is, unless what it is a kind of (IS_A)
+	# says otherwise; and a place first (SubjectWords.PLACES), since a
+	# castle tower is a tower in a castle, and castle sets say how one is
+	# built there. Two words a mark parts are two things, the brief's
+	# subject first. The first eight are the rule's own cases; the thirteen
+	# after were written down, each with what it should be read as, before
+	# the rule was, and first run after it.
+	for pair: Array in [["speed boat", ["boat"]], ["race car", ["car", "race"]],
+			["fire truck", ["truck", "fire"]], ["police car", ["car", "police"]],
+			["space ship", ["space"]], ["castle tower", ["castle", "tower"]],
+			["a castle, tower and moat", ["castle", "tower"]],
+			["a castle with a tall tower", ["castle", "tower"]],
+			["police helicopter", ["helicopter", "police"]], ["fire boat", ["boat", "fire"]],
+			["cargo train", ["train", "cargo"]], ["monster truck", ["truck", "monster"]],
+			["arctic helicopter", ["arctic", "helicopter"]], ["space rover", ["space", "rover"]],
+			["ice castle", ["castle", "ice"]], ["golden dragon", ["dragon", "golden"]],
+			["tow truck", ["truck", "tow"]], ["passenger train", ["train", "passenger"]],
+			["stunt plane", ["plane", "stunt"]], ["desert buggy", ["desert", "buggy"]],
+			["farm tractor", ["farm", "tractor"]]]:
+		_reads_as(assistant, str(pair[0]), pair[1])
 
 	print("\nwhat it is built from, and what it carries")
 	var pirate: Array = library.kinds_for("pirate")
@@ -227,6 +245,17 @@ func _has_colour(kind: Dictionary, code: int) -> bool:
 		if int((entry as Array)[0]) == code:
 			return true
 	return false
+
+
+## Checks that [param subject] is read as the kinds [param wanted], in order,
+## as how_real_sets_build_this says them.
+func _reads_as(assistant: Assistant, subject: String, wanted: Array) -> void:
+	var read: Array = []
+	for line: String in str(assistant._how_real_sets_build_this(subject)["content"]).split("\n"):
+		if line.contains(" — measured over "):
+			read.append(line.get_slice(" — ", 0).to_lower())
+	_ok(read == wanted, "\"%s\" is read as %s (%s)" % [subject, " then ".join(PackedStringArray(wanted)),
+		", ".join(PackedStringArray(read)) if not read.is_empty() else "nothing"])
 
 
 func _ok(passed: bool, said: String) -> void:
