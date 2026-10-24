@@ -707,6 +707,42 @@ async function theDirectory(tokenA) {
     check(r.status === status, `${what}: ${status} (${r.status}) "${r.json?.error}"`);
   }
 
+  // Its page's picture with nothing behind the model, and who laid its
+  // parts as its app says (docs/SOCIAL.md U15, U16; supabase/made_with.sql).
+  console.log("the page's picture, and who laid its parts");
+  const CUTOUT = Buffer.concat([Buffer.from(PICTURE, "base64"), Buffer.from("cutout")]).toString("base64");
+  r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Made By Hand", model: SMALL,
+    image: PICTURE, cutout: CUTOUT, thumb: THUMB, tags: "ai-designed", made_with: "hand" } });
+  const madeId = r.json?.id || "";
+  if (madeId) published.add(madeId);
+  const kept = r.json?.made_with;
+  check(r.status === 201 && (kept === "hand" || kept === null),
+    `published saying it was laid by hand: ${r.status}, kept as ${kept === null ? "nothing (supabase/made_with.sql not applied)" : kept}`);
+  r = await call(`/m/${madeId}.cutout.png`);
+  check(r.status === 200 && r.headers.get("content-type") === "image/png" && r.bytes.equals(Buffer.from(CUTOUT, "base64")),
+    `its page's picture, /m/X.cutout.png: 200 image/png, the cut-out published (${r.status})`);
+  r = await call(`/m/${gate}.cutout.png`);
+  check(r.status === 200 && r.headers.get("content-type") === "image/png" && r.bytes.equals(Buffer.from(PICTURE, "base64")),
+    `a model published with no cut-out: its picture in its place (${r.status})`);
+  r = await call(`/m/${madeId}`);
+  check(r.text.includes(`<img src="/m/${madeId}.cutout.png"`) && r.text.includes(`<meta property="og:image" content="${base}/m/${madeId}.png">`),
+    "its page shows the cut-out; a link's preview keeps the picture");
+  r = await call("/api/share", { method: "POST", token: tokenF, body: { id: madeId, name: "Probe Made By Hand", model: SMALL,
+    image: PICTURE } });
+  const after = await call(`/m/${madeId}.cutout.png`);
+  check(r.status === 200 && after.status === 200 && after.bytes.equals(Buffer.from(PICTURE, "base64")),
+    `published again by an app before cut-outs: the old cut-out goes, and its picture is shown (${r.status}, ${after.status})`);
+  r = await call(`/m/${madeId}/v/1.cutout.png`);
+  check(r.status === 200 && r.bytes.equals(Buffer.from(CUTOUT, "base64")),
+    `version 1 keeps its own cut-out at /m/X/v/1.cutout.png (${r.status})`);
+  for (const [what, body, status] of [
+    ["who laid its parts said as something else", { made_with: "robots" }, 400],
+    ["a page's picture that is not a PNG", { cutout: THUMB }, 415],
+  ]) {
+    r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Refused", model: SMALL, ...body } });
+    check(r.status === status, `${what}: ${status} (${r.status}) "${r.json?.error}"`);
+  }
+
   // Its own steps, and Technic: counted from the file, not said by it.
   const OWN = MODEL.replace("0 Author: Brickworks", "0 Author: Probe Person");
   r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Own Steps", model: OWN, listed: true,

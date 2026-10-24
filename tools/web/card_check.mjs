@@ -65,6 +65,14 @@ const SAMPLES = [
     by: { handle: "robin-castell", name: "Robin Castell", picture: "/api/people?op=avatar&id=FaceRobin1" } }, {}],
   [{ id: "CardAbcde8", name: "A face from elsewhere", parts: 88, author: "Mallory", thumb: "/m/CardAbcde8.webp",
     by: { handle: "mallory-m", name: "Mallory", picture: "https://tracker.example/pixel.png" } }, {}],
+  // Who laid its parts, as its app said (supabase/made_with.sql), over its
+  // tags: hand-built though tagged ai-designed; Claude's though untagged;
+  // Brickify's.
+  [{ id: "CardMade01", name: "Hand-built, tagged", parts: 40, thumb: "/m/CardMade01.webp", tags: ["ai-designed"],
+    made_with: "hand" }, {}],
+  [{ id: "CardMade02", name: "Claude's, untagged", parts: 40, thumb: "/m/CardMade02.webp", tags: ["tower"],
+    made_with: "assistant" }, {}],
+  [{ id: "CardMade03", name: "Brickify's", parts: 40, thumb: "/m/CardMade03.webp", made_with: "brickify" }, {}],
 ];
 
 const cardsOf = (html) => [...html.matchAll(/<article class="model"[\s\S]*?<\/article>/g)].map((m) => m[0]);
@@ -122,6 +130,17 @@ try {
   const [linked, odd] = await drawn([SAMPLES[4][0], SAMPLES[5][0]], { like: true });
   check(/href="\/u\/robin-castell"/.test(linked) && /Robin &lt;Castell&gt;/.test(linked) && /aria-pressed="true"/.test(linked)
     && !/href="\/u\//.test(odd) && /Brickify/.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
+  // How it was made: as its app said, over its tags; by its tags where the
+  // app did not say (the Liked sample).
+  const [handTagged, claudes, brickified, tagged] = await drawn([SAMPLES[8][0], SAMPLES[9][0], SAMPLES[10][0],
+    SAMPLES[4][0]], {});
+  check(!/class="pill made"/.test(handTagged) && !/data-made=/.test(handTagged),
+    "hand-built as its app said: no Assistant mark, though it is tagged ai-designed");
+  check(/class="pill made" title="Designed with the assistant, as the app said when it was published">Assistant</.test(claudes)
+    && /data-made="assistant"/.test(claudes), "Claude's as its app said: the Assistant mark, though it is not tagged");
+  check(/>Brickify</.test(brickified) && /as the app said/.test(brickified), "Brickify's as its app said: the Brickify mark");
+  check(/title="Designed with the assistant, as its designer tagged it">Assistant</.test(tagged),
+    "the app said nothing: its ai-designed tag gives the mark, as before");
   // Their own picture only from this site's address for one.
   const [face, elsewhere] = await drawn([SAMPLES[6][0], SAMPLES[7][0]], {});
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)

@@ -170,3 +170,4 @@ part_choice   # held-out figures, obsolete parts, plan_scale and real-set kinds 
 held_steps   # worked-out steps put each part on what holds it (steps223)
 default_view   # View > Default view frames what is built, an empty baseplate too (viewer218)
 open_list_time   # File › Open says when each model was saved by the local clock (walk180 D4)
+made_with   # who laid a model's parts, said as it is published (social230)

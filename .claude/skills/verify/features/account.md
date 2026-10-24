@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -200,6 +200,23 @@ they have. A Claude connector belongs to the account that switched it on.
   `/guidelines` on the deployment). For an account under 13 List it in the
   gallery and Show who made it are off, with a line why; `page_state` says
   `list_disabled`, `credit_disabled`, `young` and `guidelines`.
+  **Pictures for both themes** (2026-10-24, docs/SOCIAL.md U15): beside that
+  PNG, which link previews on other sites keep, the same render with nothing
+  behind the model (`cutout`, a PNG under the same limit) for the model's
+  page, and the cards' picture drawn again framed four to three (`thumb`,
+  480 x 360 WebP with alpha, at most 60 KB), so the site draws each on its
+  theme's own ground; `Picture.on_ground` is the light ground, which
+  `GalleryTool` also puts a cut-out on before a session is shown it.
+  **Who laid its parts** (U16): `made_with`, sent when the app knows
+  (`ModelStore.made_with`: "hand" for a model begun empty here, "assistant"
+  once Claude laid parts — `Assistant.built`/`laid_parts`, a session's call
+  through `CommandSocket._one_step`, `BestOfTwo` — "brickify" once Brickify
+  did, `ClaudeStep.lays` says whether a step put a part down; "" for a file
+  that does not say, which sends nothing). Kept as `0 !BRICKWORKS MADE <way>`
+  with the autosave and saves (`with_share`, `made_in`), never in what is
+  published; Clear and a model begun empty make it "hand" again. Proved by
+  `made_with_probe` (headless, the app as it opens, a session's real call)
+  and `share_view_probe` (the three pictures and what is sent; red on base).
 - `Open in Brickworks` (`main._maybe_copy`, `/app?copy=<id>`): the viewer's
   button. The app as everyone gets it, sign-in screen and all; once somebody
   is signed in and what was on the baseplate is back, the shared model is

@@ -391,8 +391,16 @@ func _open(id: String, with_picture: bool) -> Variant:
 		kind = "image/png"
 	if int(picture["code"]) != 200 or (picture["bytes"] as PackedByteArray).is_empty():
 		return text + "\nIt has no picture."
+	var bytes: PackedByteArray = picture["bytes"]
+	# The cards' picture has nothing behind the model since 2026-10-24, for
+	# the site's two themes: put on the ground a link's picture has, as a
+	# session would otherwise see black where it is clear.
+	if kind == "image/webp":
+		var seen := Image.new()
+		if seen.load_webp_from_buffer(bytes) == OK and seen.detect_alpha() != Image.ALPHA_NONE:
+			bytes = Picture.on_ground(seen).save_webp_to_buffer(true, 0.85)
 	return [{"type": "text", "text": text}, {"type": "image", "source": {"type": "base64",
-		"media_type": kind, "data": Marshalls.raw_to_base64(picture["bytes"])}}]
+		"media_type": kind, "data": Marshalls.raw_to_base64(bytes)}}]
 
 
 ## Its comments and the photos of real builds of it, as its page shows them

@@ -92,6 +92,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- The list, as play.sql made directory_models, and days, following and made.
 
+-- REPLACED LATER: made_with.sql replaces this function (made read from who
+-- laid the model's parts, as its app said, before its tags). Apply
+-- made_with.sql again right after this file: tools/apply_sql.mjs refuses it
+-- alone, unless --again=supabase/made_with.sql.
 create or replace function public.gallery_models(query jsonb)
 returns setof jsonb
 language sql

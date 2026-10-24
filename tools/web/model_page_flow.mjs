@@ -520,7 +520,7 @@ try {
       const held = new Promise((done) => { release = done; });
       let asked = 0;
       const failOnce = width === widths[0] && theme === themes[0];
-      await context.route((url) => url.pathname === `/m/${id}.png`, async (route) => {
+      await context.route((url) => url.pathname === `/m/${id}.cutout.png`, async (route) => {
         asked += 1;
         // The first view's, failed once where this checks the asking again,
         // and held until this lets it go.

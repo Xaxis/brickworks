@@ -9,7 +9,7 @@
 
 import { createHash, createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { ASSISTANT_TAGS } from "./_card.js";
+import { ASSISTANT_TAGS, MADE_WITH } from "./_card.js";
 
 /// The kinds of model the gallery filters by. The same ids, in the same
 /// order, as src/net/model_kinds.gd, which guesses one from a model's name
@@ -73,8 +73,9 @@ export const SORTS = {
 /// time is none.
 export const WINDOWS = { week: { days: 7, label: "This week" }, month: { days: 30, label: "This month" } };
 
-/// How a model was made, as its tags say until the app says it as it
-/// publishes (D7): with the assistant or Brickify (web/card.js
+/// How a model was made (D7): as its app said when it was published
+/// (supabase/made_with.sql, web/card.js madeOf), and for a model whose app
+/// did not, as its tags say: with the assistant or Brickify (web/card.js
 /// ASSISTANT_TAGS, the same two the SQL reads), or by hand, every other.
 export const MADES = { hand: "Hand-built", assistant: "With the assistant" };
 export { ASSISTANT_TAGS };
@@ -419,6 +420,9 @@ export function cardOf(origin, row) {
     steps: row.steps ?? null, own_steps: row.own_steps === true, technic: row.technic === true,
     // Its newest version passed the app's four tests (supabase/tested.sql).
     tested: row.tested === true,
+    // Who laid its parts, as its app said (supabase/made_with.sql); null
+    // where it did not, and its tags say.
+    made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null,
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     // How many have built it to the last step (supabase/builds.sql).
     builds: Number(row.builds) || 0,

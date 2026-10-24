@@ -45,6 +45,7 @@
 import { launch, allPictures } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { placed } from "./gallery_order.mjs";
+import { pictureThemes } from "./picture_themes.mjs";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import http from "node:http";
@@ -318,6 +319,21 @@ try {
   const tagged = await galleryCards("1d_gallery_tag.png", "?tag=flow%20test&sort=likes", (shown) => shown.some((c) => c.id === id));
   check(`and by its tag, most viewed first: ${tagged.map((c) => c.name).join(", ")}`,
     tagged.some((c) => c.id === id));
+
+  // Its pictures in the light theme and the dark one (docs/SOCIAL.md U15):
+  // drawn with nothing behind the model, on the theme's own ground, never a
+  // light box on the dark page; the card's four to three.
+  console.log("its pictures in the light theme and the dark one");
+  mkdirSync(path.join(out, "themes"), { recursive: true });
+  await pictureThemes(browser, { site, id, name: WORD, headers, out: path.join(out, "themes"), check, tests: true });
+  // Who laid its parts, as the app said (docs/SOCIAL.md U16): the example
+  // opened from a file says nothing, and its card goes by its tags. Kept
+  // once supabase/made_with.sql is applied; before, nothing is.
+  const madeSaid = String(panel.made_with || "");
+  const listedJson = JSON.parse((await fetchText(`${site}/api/share?op=list&page=1&tests=1&q=${WORD}`)).bytes.toString("utf8") || "{}");
+  const madeKept = ((listedJson.models || []).find((m) => m.id === id) || {}).made_with ?? null;
+  check(`who laid its parts: the app said ${madeSaid || "nothing"}, its card says ${madeKept || "nothing"}`,
+    madeKept === null || madeKept === madeSaid);
 
   // --- 2. Somebody with no account opens it
   console.log("a browser that never signed in opens the link");

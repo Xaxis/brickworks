@@ -16,6 +16,11 @@
 //                            older version's, marked as older
 //   GET  ?op=image&id=X      /m/X.png: that picture, rendered by the app
 //                            when it published; with v=N, /m/X/v/N.png
+//   GET  ?op=cutout&id=X     /m/X.cutout.png: the same with nothing behind
+//                            the model, which its page shows on the theme's
+//                            own ground; the picture itself for a model
+//                            published before there was one; with v=N,
+//                            /m/X/v/N.cutout.png
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
 //   GET  ?op=thumb&id=X      /m/X.webp: the small picture the gallery's
@@ -42,11 +47,14 @@
 //                            newest version, every test and why, passed
 //                            or not (with v=N, version N's)
 //   POST                     publish, with the session: {name, author?,
-//                            model, image?, thumb?, id?, listed?,
+//                            model, image?, cutout?, thumb?, id?, listed?,
 //                            remixed_from?, remixed_from_version?,
 //                            description?, tags?, kind?, licence?, note?,
-//                            tested?}. tested is what the app found of the
-//                            model as it published it (api/_tested.js).
+//                            tested?, made_with?}. tested is what the app
+//                            found of the model as it published it
+//                            (api/_tested.js); made_with who laid its parts,
+//                            as the app knows it: hand, assistant or
+//                            brickify (supabase/made_with.sql).
 //                            With an id, the owner's own link gets its
 //                            next version, and the one before is kept.
 //                            listed puts it in the gallery; remixed_from
@@ -158,7 +166,7 @@ import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { cardHtml } from "./_card.js";
+import { MADE_WITH, cardHtml } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
@@ -429,18 +437,28 @@ export function checkModel(text) {
   return { parts, bytes, steps, count: stepsCount, ownSteps, technic: isTechnic(parts, technicParts, movingParts), needs };
 }
 
-/// The picture, from the base64 the app sends, or null for none.
-export function checkImage(given) {
+/// The picture, from the base64 the app sends, or null for none: [what]
+/// names it in a refusal.
+export function checkImage(given, what = "the picture") {
   if (given === undefined || given === null || given === "") return null;
   if (typeof given !== "string" || !/^[A-Za-z0-9+/]+=*$/.test(given)) {
-    throw new Refusal("the picture is not readable", 415);
+    throw new Refusal(`${what} is not readable`, 415);
   }
   const bytes = Buffer.from(given, "base64");
-  if (bytes.length > MAX_IMAGE_BYTES) throw new Refusal("the picture is too large", 413);
+  if (bytes.length > MAX_IMAGE_BYTES) throw new Refusal(`${what} is too large`, 413);
   if (bytes.length < PNG.length || !bytes.subarray(0, PNG.length).equals(PNG)) {
-    throw new Refusal("the picture is not a PNG", 415);
+    throw new Refusal(`${what} is not a PNG`, 415);
   }
   return bytes;
+}
+
+/// Who laid a model's parts, as its app says (supabase/made_with.sql,
+/// web/card.js MADE_WITH): undefined when it does not say, which a
+/// republish keeps as it was.
+export function checkMadeWith(given) {
+  if (given === undefined || given === null) return undefined;
+  if (!MADE_WITH.includes(given)) throw new Refusal(`made_with is one of ${MADE_WITH.join(", ")}`);
+  return given;
 }
 
 /// The small picture for the gallery's cards, from the base64 the app
@@ -950,8 +968,14 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const viewer = `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
   const copyLink = `/app?copy=${id}${old ? `&v=${version.n}` : ""}`;
   const shownModel = old ? { ...model, parts: version.parts } : model;
-  const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.png` : "")
-    : (model.has_image ? `/m/${id}.png` : "");
+  // Its picture with nothing behind the model, on the theme's own ground
+  // (?op=cutout: the picture itself for a model published before there were
+  // cut-outs). In the strip, whose frames are four to three, the cards'
+  // picture, which is too since 2026-10-24.
+  const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.cutout.png` : "")
+    : (model.has_image ? `/m/${id}.cutout.png` : "");
+  const small = !old && model.has_thumb
+    ? `/m/${id}.webp?v=${(Date.parse(model.updated_at || "") || 0).toString(36)}` : picture;
   const { head, header, footer } = siteChrome();
   const kind = kindLabel(model.kind);
   const about = model.description
@@ -1019,7 +1043,7 @@ ${header}
     <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
       ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
-    ${mediaStrip(model, picture, photos)}
+    ${mediaStrip(model, picture, photos, small)}
     </div>
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
@@ -1069,12 +1093,13 @@ ${footer}
 /// builds, each a link to its place under Builds; web/model-page.js shows
 /// the one chosen in the picture's place. With no photo it is drawn hidden,
 /// for its owner to add the first: model-page.js shows it to them alone.
-function mediaStrip(model, picture, photos) {
+/// [small] is the published picture as the strip shows it.
+function mediaStrip(model, picture, photos, small = picture) {
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="lazy" decoding="async"></a>`;
   const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
   return `<div class="media-strip" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
-    + (picture ? thumb(picture, `${model.name}, as it was published`,
+    + (picture ? thumb(small, `${model.name}, as it was published`,
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
     + photos.map((photo) => thumb(file(photo), photo.own ? `${model.name}, a photo by its designer`
       : `A real build of ${model.name}${photo.by ? `, by ${photo.by.name}` : ""}`,
@@ -1383,7 +1408,7 @@ async function read(request, response) {
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
   // v of its own (cardOf), which is not a version.
-  const asked = ["page", "image", ""].includes(op) ? askedVersion(request) : null;
+  const asked = ["page", "image", "cutout", ""].includes(op) ? askedVersion(request) : null;
 
   if (op === "page") {
     const page = await modelPage(id);
@@ -1419,19 +1444,22 @@ async function read(request, response) {
     return html(response, 200, embedCard(origin, id, { ...row, by: await profileOf(id, row.author) }), { embed: true });
   }
 
-  if (op === "image" || op === "thumb") {
-    let name = op === "image" ? `${id}.png` : `${id}.webp`;
-    let has = row && (op === "image" ? row.has_image : row.has_thumb);
+  if (op === "image" || op === "cutout" || op === "thumb") {
+    let name = op === "thumb" ? `${id}.webp` : `${id}.png`;
+    let has = row && (op === "thumb" ? row.has_thumb : row.has_image);
     // An older version's own picture, kept with it.
-    if (row && op === "image" && asked !== null) {
+    if (row && op !== "thumb" && asked !== null) {
       const versions = await versionsOf(id, row);
       const one = versions.find((version) => version.n === asked);
       has = Boolean(one && one.has_image);
       if (one) name = versionFile(id, one.n, versions[0].n, "png");
     }
-    const picture = has ? await getFile(name) : null;
+    // The cut-out its page shows, where its app made one, and the picture
+    // itself for a model published before there were any.
+    const cut = has && op === "cutout" ? await getFile(name.replace(/[.]png$/, ".cutout.png")) : null;
+    const picture = cut || (has ? await getFile(name) : null);
     if (!picture) return response.status(404).setHeader("Cache-Control", "no-store").end("");
-    response.setHeader("Content-Type", op === "image" ? "image/png" : "image/webp");
+    response.setHeader("Content-Type", op === "thumb" ? "image/webp" : "image/png");
     // A link preview on any site may show it.
     response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     // Kept as briefly as the pages (SHARED_CACHE). The small picture's
@@ -1653,6 +1681,22 @@ async function keepMoves(id, owner, moves, motions) {
   }
 }
 
+/// Who laid its parts, as its app said, kept with its row: the card's
+/// Hand-built or With the assistant mark, and the gallery's filter, read it
+/// before the tags (supabase/made_with.sql). Not said, it stays as it was.
+/// What was kept, or null for nothing. Never stops the publish: before
+/// made_with.sql there is nowhere to keep it, and the card goes on reading
+/// the tags.
+async function keepMadeWith(id, owner, madeWith) {
+  if (madeWith === undefined) return null;
+  try {
+    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { made_with: madeWith } });
+    return madeWith;
+  } catch {
+    return null;
+  }
+}
+
 async function keepNeeds(id, needs) {
   try {
     await db("rpc/owned_keep_needs", { method: "POST", body: { model_id: id, needs: keyed(needs || []) } });
@@ -1819,7 +1863,10 @@ async function publish(request, response) {
   // or stored, so a refused upload costs nobody a publish.
   const { parts, bytes, steps, ownSteps, technic, needs } = checkModel(body.model);
   const picture = checkImage(body.image);
+  // The same with nothing behind the model, for its page in either theme.
+  const cutout = checkImage(body.cutout, "the picture for its page");
   const thumb = checkThumb(body.thumb);
+  const madeWith = checkMadeWith(body.made_with);
   // What the app found, checked against this very file (api/_tested.js).
   const finding = checkTested(body.tested, body.model);
   // And what moves in it, from its joints (supabase/play.sql), and its own
@@ -1922,7 +1969,10 @@ async function publish(request, response) {
   // A new link whose row is never written leaves no files behind: they go
   // as the publish fails, rather than wait a day for the sweep.
   const dropNew = (trouble) => {
-    if (!existing) return deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`]).catch(() => {}).then(() => { throw trouble; });
+    if (!existing) {
+      return deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`]).catch(() => {})
+        .then(() => { throw trouble; });
+    }
     throw trouble;
   };
 
@@ -1950,6 +2000,8 @@ async function publish(request, response) {
     }
     const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
     if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");
+    const cutBefore = picturedBefore ? await getFile(`${id}.cutout.png`) : null;
+    if (cutBefore) await putFile(`${id}.v${last.n}.cutout.png`, cutBefore, "image/png");
   } else if (existing) {
     await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
   }
@@ -1968,6 +2020,9 @@ async function publish(request, response) {
   await putFile(`${id}.mpd`, body.model, "text/plain").catch(dropNew);
   if (picture) await putFile(`${id}.png`, picture, "image/png").catch(dropNew);
   else if (existing) await deleteFiles([`${id}.png`]).catch(() => {});
+  // An app before cut-outs leaves none, and the picture is shown in its place.
+  if (cutout && picture) await putFile(`${id}.cutout.png`, cutout, "image/png").catch(dropNew);
+  else if (existing) await deleteFiles([`${id}.cutout.png`]).catch(() => {});
   if (thumb) await putFile(`${id}.webp`, thumb, "image/webp").catch(dropNew);
   else if (existing) await deleteFiles([`${id}.webp`]).catch(() => {});
 
@@ -2005,6 +2060,7 @@ async function publish(request, response) {
   // supabase/discovery.sql there is nowhere to keep it.
   await keepNeeds(id, needs);
   const movesKept = await keepMoves(id, owner, moves, motions);
+  const madeKept = await keepMadeWith(id, owner, madeWith);
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
@@ -2013,7 +2069,7 @@ async function publish(request, response) {
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    ...links(origin, id),
+    made_with: madeKept, ...links(origin, id),
   });
 }
 
@@ -2032,8 +2088,8 @@ async function unpublish(request, response) {
   // republish from the same model keeps the same link. The files go, every
   // version's, and then the versions themselves.
   const versions = await db(`share_versions?model=eq.${id}&select=n`);
-  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`,
-    ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`])]);
+  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`,
+    ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`])]);
   await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
   return response.status(200).json({ id, published: false, versions: versions.length });
 }

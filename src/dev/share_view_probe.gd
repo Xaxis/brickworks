@@ -1132,6 +1132,24 @@ func _the_panel(text: String) -> void:
 	if read == OK:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOTS))
 		picture.save_png(ProjectSettings.globalize_path(SHOTS + "7_og_image.png"))
+	_ok(read == OK and picture.detect_alpha() == Image.ALPHA_NONE,
+		"...on a ground of its own, nothing clear in it, for another site's page of any colour")
+	# The site's own pictures: nothing behind the model, so it sits on the
+	# page's ground in the light theme and the dark one (docs/SOCIAL.md U15).
+	var cutout := Image.new()
+	var cut_png: PackedByteArray = Marshalls.base64_to_raw(str(sent.get("cutout", "")))
+	var cut_read: int = cutout.load_png_from_buffer(cut_png) if not cut_png.is_empty() else ERR_FILE_EOF
+	_ok(cut_read == OK and cutout.get_size() == picture.get_size() and cut_png.size() <= SharePanel.MOST_PNG
+		and _clear_round(cutout) and _drawn_in_middle(cutout),
+		"and the same with nothing behind the model, for its page in either theme: %s, %d KB, its edges clear"
+		% [cutout.get_size(), cut_png.size() / 1024])
+	if cut_read == OK:
+		cutout.save_png(ProjectSettings.globalize_path(SHOTS + "7b_cutout.png"))
+	# Opened from a file that says nothing of who laid its parts: nothing
+	# said, and its card goes by its tags (docs/SOCIAL.md D7, U16).
+	_ok(store.made_with == "" and not sent.has("made_with"),
+		"opened from a file that does not say who laid its parts, it says nothing of it (%s)"
+		% sent.get("made_with", "nothing"))
 	_ok(panel.url == "https://brickworks.diy/m/NewL1nk001" and panel.embed.begins_with("<iframe"),
 		"the panel shows the link and the embed code")
 	_save("8_published.png")
@@ -1142,6 +1160,11 @@ func _the_panel(text: String) -> void:
 	var small_read: int = small.load_webp_from_buffer(webp) if not webp.is_empty() else ERR_FILE_EOF
 	_ok(small_read == OK and small.get_size() == SharePanel.THUMB and webp.size() <= SharePanel.MOST_THUMB,
 		"and a small WebP for the gallery's cards: %s, %d KB" % [small.get_size(), webp.size() / 1024])
+	_ok(small_read == OK and SharePanel.THUMB.x * 3 == SharePanel.THUMB.y * 4 and _clear_round(small)
+		and _drawn_in_middle(small),
+		"...four to three, the cards' own shape, framed so and clear round the model for either theme")
+	if small_read == OK:
+		small.save_png(ProjectSettings.globalize_path(SHOTS + "7c_card.png"))
 	_ok(str(sent.get("description", "?")) == "" and str(sent.get("tags", "?")) == ""
 		and str(sent.get("kind", "")) == "town" and str(sent.get("licence", "")) == "cc-by-4.0",
 		"said the first time: no words, no tags, the kind its name says (a house: %s), CC BY (%s)"
@@ -1153,8 +1176,12 @@ func _the_panel(text: String) -> void:
 	panel._tags.text_changed.emit(panel._tags.text)
 	panel._licence.select(1)
 	panel._licence.item_selected.emit(1)
+	# Claude laid a part in it (ClaudeStep.lays, Assistant.laid_parts).
+	store.laid_by("assistant")
 	await panel.publish()
 	var words: Dictionary = fake.published[-1]
+	_ok(str(words.get("made_with", "")) == "assistant",
+		"once Claude laid parts in it, it says made with the assistant (%s)" % words.get("made_with", "nothing"))
 	_ok(str(words.get("description", "")) == "A small house.\nTwo windows and a door."
 		and str(words.get("tags", "")) == "house, town" and str(words.get("licence", "")) == "cc-by-sa-4.0"
 		and str(words.get("kind", "")) == "town",
@@ -1438,6 +1465,28 @@ func _save(name: String) -> void:
 	if image != null and not image.is_empty():
 		image.save_png(ProjectSettings.globalize_path(SHOTS + name))
 		print("  wrote shots/share/%s" % name)
+
+
+## Whether nothing is drawn round [param image]'s edge: its four corners
+## and the middle of each side clear.
+static func _clear_round(image: Image) -> bool:
+	var w: int = image.get_width() - 1
+	var h: int = image.get_height() - 1
+	for at: Vector2i in [Vector2i(0, 0), Vector2i(w, 0), Vector2i(0, h), Vector2i(w, h),
+			Vector2i(w / 2, 0), Vector2i(0, h / 2), Vector2i(w, h / 2)]:
+		if image.get_pixelv(at).a > 0.02:
+			return false
+	return true
+
+
+## Whether the model is in [param image]: some of its middle is solid.
+static func _drawn_in_middle(image: Image) -> bool:
+	var solid: int = 0
+	for y: int in range(image.get_height() / 4, image.get_height() * 3 / 4, 4):
+		for x: int in range(image.get_width() / 4, image.get_width() * 3 / 4, 4):
+			if image.get_pixel(x, y).a > 0.98:
+				solid += 1
+	return solid > 20
 
 
 func _forget(dir: String) -> void:

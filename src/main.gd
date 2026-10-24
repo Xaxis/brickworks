@@ -4500,6 +4500,7 @@ func _build_ui() -> void:
 			_brickify.assemblies = _shell.assemblies
 		_make_room(name))
 	_brickify.brickified.connect(func(_ids: PackedInt64Array, summary: String) -> void:
+		_store.laid_by("brickify")
 		_ground_for_the_model()
 		_camera.frame(_selection_bounds(), 1.4)
 		_on_model_edited()
@@ -4891,6 +4892,13 @@ func _build_ui() -> void:
 	_assistant.floor_kind = func() -> String:
 		return _store.model_floor.kind if _store.model_floor != null else ""
 
+	# What Claude lays makes the model one made with the assistant, said as
+	# it is published (ModelStore.made_with, SharePanel): a design laid
+	# whole, and the one step a request or a change to the selection keeps.
+	_assistant.built.connect(func(n: int) -> void:
+		if n > 0:
+			_store.laid_by("assistant"))
+	_assistant.laid_parts.connect(_store.laid_by.bind("assistant"))
 	_assistant.built.connect(func(_n: int) -> void:
 		# A design can be bigger than the ground it was given.
 		#

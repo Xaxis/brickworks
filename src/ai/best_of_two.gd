@@ -375,6 +375,8 @@ func _put_down(text: String) -> bool:
 	builder.clear_selection()
 	var steps: Array = builder.swap_bricks(first, items)
 	builder.record(steps, "Claude's design (%s)" % SelectionScope.words_for(steps))
+	if ClaudeStep.lays({"steps": steps}):
+		store.laid_by("assistant")
 	return true
 
 

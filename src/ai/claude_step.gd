@@ -79,6 +79,19 @@ static func record(builder: Builder, world: BrickWorld, scenery: Dictionary,
 	return true
 
 
+## Whether the history step [param step] put any part down: the step that
+## takes one back off is a "remove". What a step of Claude's lays makes the
+## model one made with the assistant (ModelStore.laid_by); a part it only
+## moved or painted is still whoever laid it.
+static func lays(step: Dictionary) -> bool:
+	if str(step.get("undo", "")) == "remove":
+		return true
+	for inner: Variant in step.get("steps", []):
+		if inner is Dictionary and lays(inner):
+			return true
+	return false
+
+
 ## The bricks the steps taken, undone or redone between [param then] and
 ## [param now] (each Builder.steps_now) name: by number, and by part and place
 ## for one taken off.
