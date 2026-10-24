@@ -172,6 +172,9 @@ import { MADE_WITH, cardHtml } from "./_card.js";
 import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
 // Whose picture to show beside their name (supabase/avatars.sql).
 import { withFaces } from "./_faces.js";
+// The public collections a model is in, each a card with its cover
+// (supabase/collection_follows.sql).
+import { coversOf, listCardHtml, listsOf } from "./_lists.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -917,21 +920,21 @@ function nextRow(key, title, cards) {
 /// The action bar: Like, Save, Share, Comment, I built it and More, each an
 /// icon button that says its name and count (web/kit.js), never a count of
 /// none. web/model-page.js makes them work, asking to sign in first where
-/// one must be; it counts the comments as it lists them.
-function actionBar(origin, id, model) {
-  const embed = links(origin, id).embed;
+/// one must be; it counts the comments as it lists them. [url] is the
+/// page's own address, an older version's its own.
+function actionBar(origin, id, model, url = links(origin, id).url) {
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
     + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false,
       attrs: 'data-mark="like" title="Like it"' })
     + `<button type="button" class="icon-btn" data-mark="save" aria-label="Save" aria-expanded="false" `
       + `aria-controls="save-panel" title="Save it to your favourites or a collection">${iconHtml("save")}</button>`
-    + iconButtonHtml({ icon: "share", name: "Share", attrs: 'data-share title="Share it: copy its link"' })
+    + iconButtonHtml({ icon: "share", name: "Share",
+      attrs: 'data-share aria-haspopup="dialog" aria-controls="share-sheet" title="Share it: its link, and the code to embed it"' })
     + iconButtonHtml({ icon: "comment", name: "Comment", attrs: 'data-mark="comment" title="Comments on it and its steps"' })
     + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build",
       attrs: 'data-mark="built" title="I built it: add a photo of your build"' })
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
       + `${iconHtml("more")}</summary><div class="menu-list">`
-      + `<button type="button" data-embed="${escapeHtml(embed)}">Copy the embed code</button>`
       + `<button type="button" data-report="this model" data-report-model="${id}" hidden>Report it</button>`
       + `<a href="/takedown">Takedown requests</a></div></details>`
     + `</div>`
@@ -942,7 +945,28 @@ function actionBar(origin, id, model) {
     + `<form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>`
     + `<input id="new-list" maxlength="80" placeholder="A new collection">`
     + `<button class="cta ghost" type="submit">Make it</button></form></div>`
-    + `<p class="said marks-said" role="status"></p>`;
+    + `<p class="said marks-said" role="status"></p>`
+    + shareSheet(origin, id, model, url);
+}
+
+/// Share's sheet (docs/SOCIAL.md U14), the site's dialog: the page's link
+/// and the code that embeds its card (/m/X/embed) in somebody else's page,
+/// each with Copy, and on a phone its own share sheet too (web/model-page.js
+/// shows that button where the browser has one). Closed, with no script.
+function shareSheet(origin, id, model, url) {
+  return `<dialog class="share-sheet" id="share-sheet" aria-labelledby="share-h">`
+    + `<h2 id="share-h">Share ${escapeHtml(model.name)}</h2>`
+    + `<p>Its link opens this page, where anybody can turn it in 3D and build it, with no account.</p>`
+    + `<form method="dialog">`
+    + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
+    + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
+    + `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, light or dark to suit whoever looks at it</small>`
+    + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(links(origin, id).embed)}</textarea></label>`
+    + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>`
+    + `<p class="said" role="status"></p>`
+    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
+    + `<button class="cta ghost" value="close">Close</button></div>`
+    + `</form></dialog>`;
 }
 
 /// /m/X: the model's own page. Its picture first, with the strip of its
@@ -957,7 +981,7 @@ function actionBar(origin, id, model) {
 /// [counted] is the shown version's steps, counted from its file as it is
 /// read (api/_steps.js), or null where they are not known.
 function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] },
-  counted = null) {
+  counted = null, lists = { count: 0, lists: [], covers: new Map() }) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -1008,6 +1032,9 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     `<li class="pill">${model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link"}</li>`,
     newest > 1 ? `<li><a class="pill version-line" href="#versions">Version ${version.n}${old ? ` of ${newest}` : ""}</a></li>` : "",
     Number(model.remixes) ? `<li><a class="pill" href="#remixes">${count(model.remixes, "remix", "remixes")}</a></li>` : "",
+    // In the public collections it is in (docs/SOCIAL.md U11), each a card
+    // under Collections.
+    Number(lists.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">In ${count(lists.count, "collection")}</a></li>` : "",
   ].join("");
   const tags = (model.tags || []).map((tag) =>
     `<li><a class="pill tag" href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
@@ -1052,13 +1079,13 @@ ${header}
         <a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
         <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
       </div>
-      ${actionBar(origin, id, model)}
+      ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
       ${fromLine}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
-  ${pageTabs(model, newest)}
+  ${pageTabs(model, newest, lists.count)}
   <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
@@ -1075,6 +1102,7 @@ ${header}
       : `<p class="note none">Nobody has remixed it yet. <a href="${escapeHtml(copyLink)}">Open it in Brickworks</a>
         to make a copy of your own to change; share that, and it shows here.</p>`}
   </section>
+  ${listsSection(lists)}
   ${versionsSection(id, versions, version)}
     </div>
   </div>
@@ -1111,12 +1139,26 @@ function mediaStrip(model, picture, photos, small = picture) {
 /// count once there is one, kept on screen as the page scrolls; the one
 /// being read is marked by web/model-page.js, which also counts the
 /// comments as it lists them. Versions only once there are two.
-function pageTabs(model, newest) {
+function pageTabs(model, newest, inLists = 0) {
   const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${name}`
     + `${Number(n) ? ` <span class="n">${Number(n).toLocaleString("en-US")}</span>` : ""}</a>`;
   return `<nav class="tabs page-tabs" id="page-tabs" aria-label="On this page">${tab("about", "About")}`
     + `${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`
+    + `${Number(inLists) ? tab("collections", "Collections", inLists) : ""}`
     + `${newest > 1 ? tab("versions", "Versions", newest) : ""}</nav>`;
+}
+
+/// The public collections it is in (docs/SOCIAL.md U11, [PR-C]), each a card
+/// with its cover and whose it is, the one it was put in last first; only
+/// once it is in one, since a part that says nothing is a dead end.
+function listsSection(lists) {
+  if (!Number(lists.count) || !lists.lists.length) return "";
+  const more = Number(lists.count) - lists.lists.length;
+  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">In collections</h2>`
+    + `<p class="note">People put it in ${count(lists.count, "public collection")}.</p>`
+    + `<div class="list-cards">${lists.lists.map((list) => listCardHtml(list, lists.covers, { by: true })).join("")}</div>`
+    + (more > 0 ? `<p class="note">And ${count(more, "collection")} more.</p>` : "")
+    + `</section>`;
 }
 
 /// One photo of a real build, as the strip shows it: the photo, the line
@@ -1260,12 +1302,19 @@ ${footer || `<footer><small>${NOTICE}</small></footer>`}
 /// somebody else's page — its threaded engine needs the page to be
 /// cross-origin isolated, which only the top window can ask for — so the
 /// card opens the viewer in a tab of its own.
+///
+/// In the theme whoever looks at it chose (docs/SOCIAL.md U14): web/theme.js,
+/// as on every page, sets the one they chose on brickworks.diy where their
+/// browser lets the frame read it; where it keeps a frame's storage apart
+/// from the site's own (most do, inside somebody else's page), their
+/// device's light or dark. data-embed: it never asks their account.
 function embedCard(origin, id, row) {
   const link = links(origin, id);
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-embed>
 <head>
 ${pageHead(origin, row, id, `${row.name} — a Brickworks model`)}
+${siteChrome().head}
 <link rel="stylesheet" href="/site.css">
 <style>
   /* The site's colours, type and corners (site.css); only the card's layout here. */
@@ -1337,8 +1386,9 @@ function pageCsp() {
   return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
     + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
-// The site's stylesheet ('self'), so the card is drawn in the site's colours.
-const EMBED_CSP = "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
+// The site's stylesheet ('self'), so the card is drawn in the site's colours,
+// and its theme's script (web/theme.js), so in the colours its viewer chose.
+const EMBED_CSP = "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors *";
 
 /// What the CDN may keep, and for how long: what every visitor is shown
@@ -1422,16 +1472,21 @@ async function read(request, response) {
     // Whose it is: their own pictures lead its strip, and the page leads on
     // to the rest of their work. The database not answering is no owner.
     const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
-    const [mark, photos, next, counted] = await Promise.all([markOf(db, id, shown.n),
+    // The collections it is in, with their covers: a test model's own page
+    // counts a test account's too, as it offers test models.
+    const tests = own?.test === true;
+    const [mark, photos, next, counted, lists] = await Promise.all([markOf(db, id, shown.n),
       photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own),
-      countedOf(versionFile(id, shown.n, versions[0].n, "mpd"))]);
+      countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
+      listsOf(id, tests).then(async (found) => ({ ...found,
+        covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() }))]);
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
     const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
       .sort((a, b) => Number(b.own) - Number(a.own));
     // Each person on it with their own picture, where they have one.
     await withFaces([page, ordered, next]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted));
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted, lists));
   }
 
   const row = await publishedRow(id);

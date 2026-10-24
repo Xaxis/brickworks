@@ -161,7 +161,7 @@
 .model-page .earlier { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
-.model-page .tree { max-width: none; }
+.model-page .tree, .model-page .in-lists { max-width: none; }
 .model-page .line { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .line li { margin: 3px 0; overflow-wrap: anywhere; }
 .model-page .line a { color: var(--ink); }
@@ -517,7 +517,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .build-grid figcaption q { display: block; color: var(--ink); margin-bottom: 4px; }
 .build-grid figcaption a { color: var(--ink); }
 
-/* A public collection as a card: up to four of its pictures, its name. */
+/* A public collection as a card: its cover, up to four of its pictures,
+   and its name. */
 .list-cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
 .list-card {
 	display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: inherit;
@@ -525,16 +526,48 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 }
 .list-card:hover { border-color: var(--ink-faint); }
 .list-card:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
-.list-card .mosaic {
-	aspect-ratio: 4 / 3; display: grid; gap: 2px; background: var(--bg-soft);
-	grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+/* A collection's cover (api/_lists.js mosaicHtml), on its card and at the
+   head of its page. */
+/* Its shape holds whatever its pictures' own: a wide picture across both
+   columns would make its row taller than the cover's half. */
+.mosaic {
+	aspect-ratio: 4 / 3; min-height: 0; overflow: hidden; display: grid; gap: 2px; background: var(--bg-soft);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
 }
-.list-card .mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; background: var(--picture-ground); }
-.list-card .mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; }
+.mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; background: var(--picture-ground); }
+.mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; }
 /* Kept wide, as the pictures are: two one above the other, three a wide
    one over two. */
-.list-card .mosaic.n2 img, .list-card .mosaic.n3 img:first-child { grid-column: 1 / -1; }
-.list-card .mosaic.n0 { place-items: center; grid-template-columns: 1fr; grid-template-rows: 1fr; color: var(--ink-faint); font-size: var(--t-small); }
+.mosaic.n2 img, .mosaic.n3 img:first-child { grid-column: 1 / -1; }
+.mosaic.n0 { place-items: center; grid-template-columns: 1fr; grid-template-rows: 1fr; color: var(--ink-faint); font-size: var(--t-small); }
 .list-card .words { display: grid; gap: 2px; padding: 12px 16px 14px; }
 .list-card b { font-weight: 640; overflow-wrap: anywhere; }
 .list-card span { color: var(--ink-soft); font-size: var(--t-small); }
+
+/* A collection's page, /c/<id> (api/people.js listPage, docs/SOCIAL.md
+   U11), headed as a playlist's or a board's: its cover beside its name,
+   whose it is, its words and numbers, Follow, Share and More; on a phone
+   the cover across the top, kept short. Then its models. */
+.list-head {
+	display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); align-items: end; gap: var(--s-5);
+	margin: 0 0 var(--s-6);
+}
+.list-head .cover { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.list-head .eyebrow { margin-bottom: var(--s-1); }
+.list-head h1 { margin: 0 0 var(--s-1); overflow-wrap: anywhere; }
+.list-head .numbers { margin-bottom: var(--s-3); }
+.list-head .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.list-head .follow-line { margin: 0; }
+.list-head .follow-line .said:empty { display: none; }
+@media (max-width: 640px) {
+	.list-head { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
+	.list-head .mosaic { aspect-ratio: 2 / 1; }
+}
+
+/* Share's sheet on a model's page (api/share.js shareSheet, docs/SOCIAL.md
+   U14): the site's dialog, wide enough for the embed code; each field with
+   its Copy beside it, under it on a phone. */
+dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
+.share-sheet .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-4); }
+.share-sheet .copy-row label { flex: 1 1 16em; margin: 0; }
+.share-sheet .actions { margin-top: var(--s-4); }

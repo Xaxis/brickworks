@@ -110,7 +110,14 @@ def test_the_action_bar_says_each_name_and_count_and_never_a_count_of_none() -> 
         # What the buttons do is in their names and the FAQ, not a paragraph.
         assert "View in 3D turns it" not in html
         assert '>Build it</a>' in html and ">Open in Brickworks</a>" in html
-        assert 'data-embed="&lt;iframe src=&quot;http://design.test/m/' in html
+        # Share opens its sheet: the link and the embed code, each with Copy.
+        assert 'aria-controls="share-sheet"' in html
+        sheet = re.search(r'<dialog class="share-sheet" id="share-sheet"[\s\S]*?</dialog>', html).group(0)
+        assert re.search(r'<input id="share-link" value="http://design\.test/m/[A-Za-z0-9]{10}" readonly', sheet)
+        assert '<textarea id="share-embed" rows="4" readonly spellcheck="false">&lt;iframe src=&quot;http://design.test/m/' in sheet
+        assert 'data-copy="share-link">Copy link</button>' in sheet and 'data-copy="share-embed">Copy code</button>' in sheet
+        # The embed code is in the sheet, not in More.
+        assert "data-embed" not in html
     # The fox has no remix and nobody has seen 0 of anything: no pill says so.
     assert "remixes</a>" not in fox
 
@@ -171,12 +178,56 @@ def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
         return
     tower, bakery = (one["html"] for one in said)
     # Comments are counted as they are listed, in the page (model-page.js).
-    assert tabs(tower) == ["About", "Comments", "Builds 37", "Remixes 3", "Versions 2"]
+    assert tabs(tower) == ["About", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"]
     assert tabs(bakery) == ["About", "Comments", "Builds", "Remixes"]
     for html in (tower, bakery):
         for key in ("about", "comments", "builds", "remixes"):
             assert f'id="{key}"' in html, key
     assert 'id="versions"' in tower and 'id="versions"' not in bakery
+    # In no collection: no tab, no part, no pill.
+    assert 'id="collections"' not in bakery and 'href="#collections"' not in bakery
+
+
+def test_a_model_says_how_many_collections_it_is_in_and_links_them() -> None:
+    """docs/SOCIAL.md U11: "In 2 collections", a pill linked to its part of
+    the page, where each public collection it is in is a card with its
+    cover and whose it is; a private one is neither counted nor shown."""
+    said = pages("/m/DesignAbc1", "/m/PriyaSpc01")
+    if said is None:
+        return
+    tower, rover = (one["html"] for one in said)
+    assert '<a class="pill" href="#collections" data-lists="2">In 2 collections</a>' in tower
+    part = re.search(r'<section class="in-lists" id="collections"[\s\S]*?</section>', tower).group(0)
+    cards = re.findall(r'<a class="list-card" href="/c/([A-Za-z0-9]{10})"', part)
+    # Sam's was put in last (updated last), then Robin's.
+    assert cards == ["SamListAa1", "ListAbcde1"]
+    # The footbridge has no picture yet: Sam's cover is of two.
+    assert re.findall(r'<div class="mosaic n(\d)">', part) == ["2", "3"]
+    assert "Castles to build" in part and "3 models · Sam Okafor" in part
+    # The Lunar Rover is only in Sam's private list.
+    assert 'href="#collections"' not in rover and 'id="collections"' not in rover
+
+
+def test_a_collection_page_leads_with_its_cover_follow_and_share() -> None:
+    """/c/<id> (api/people.js listPage): its cover of its models' pictures
+    beside its name, whose, its numbers (followers once there are some),
+    Follow (shown by web/follow.js), Share and More with Report it."""
+    said = pages("/c/ListAbcde1", "/c/ListSmall1")
+    if said is None:
+        return
+    castles, small = (one["html"] for one in said)
+    head = re.search(r'<header class="list-head">[\s\S]*?</header>', castles).group(0)
+    assert '<div class="cover"><div class="mosaic n3">' in head
+    assert "<h1>Castles worth a weekend</h1>" in head and 'Collected by <a href="/u/design-tester">Robin Castell</a>' in head
+    assert '<li data-stat="models"><b>3</b> <span>models</span></li>' in head
+    assert '<li data-stat="followers" data-list-followers="ListAbcde1"><b>3</b> <span>followers</span></li>' in head
+    assert 'data-follow-list="ListAbcde1" hidden>Follow</button>' in head
+    assert 'data-share="http://design.test/c/ListAbcde1" hidden' in head and 'data-report-collection="ListAbcde1"' in head
+    assert '<script src="/person.js" type="module"></script>' in castles
+    # Nobody follows the small one: its count is on the page for the
+    # script, hidden, never "0 followers".
+    assert '<li data-stat="followers" data-list-followers="ListSmall1" hidden><b>0</b>' in small
+    assert not re.search(r">0 followers<", small)
 
 
 def test_a_model_nobody_has_built_or_remixed_says_so_once_with_the_way_in() -> None:

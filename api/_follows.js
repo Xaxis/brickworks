@@ -24,7 +24,8 @@
 //
 // Since supabase/notifications.sql the feed is what the people you follow
 // made; what happened to your own models is Notifications, and the count
-// is api/_notifications.js's.
+// is api/_notifications.js's. Since supabase/collection_follows.sql, also
+// what was put in the collections you follow (api/_lists.js).
 //
 // Who may follow and who may be followed is the database's to say
 // (follow_trouble), and its trigger says it again whatever writes: an
@@ -97,7 +98,9 @@ const quoted = (text, most) => {
 /// {kind, at, who, did, name, said, link, by}. [who] is the name of whoever
 /// did it (or "A builder", with no profile); [did] what, up to the model's
 /// name; [after] the rest of the line, if any (only a challenge's, which no
-/// email tells of); [said] their words, if any; [link] the thing itself.
+/// email tells of); [list] the collection it was put in, {id, name, link}
+/// (only a collection's, which no email tells of either); [said] their
+/// words, if any; [link] the thing itself.
 export function feedSaid(row, origin = "") {
   const name = quoted(row.name || "a model", 80);
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40),
@@ -122,6 +125,12 @@ export function feedSaid(row, origin = "") {
   if (row.kind === "remix") {
     return { ...base, did: `remixed your model “${quoted(row.of_name || "a model", 80)}” as`,
       link: `${origin}/m/${row.model}` };
+  }
+  // A model put in a collection the reader follows (supabase/collection_follows.sql):
+  // whose collection, and which, a link of its own.
+  if (row.kind === "collection") {
+    return { ...base, did: "added", link: `${origin}/m/${row.model}`,
+      list: { id: String(row.collection || ""), name: quoted(row.list_name || "a collection", 80), link: `${origin}/c/${row.collection}` } };
   }
   if (row.kind === "challenge") {
     return { ...base, did: "entered",

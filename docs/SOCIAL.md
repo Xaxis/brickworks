@@ -588,6 +588,25 @@ session's tools, brickify once Brickify did; nothing for a file that does not
 say), kept in the model's text and sent; `supabase/made_with.sql` keeps it
 for the server alone, and the card and the filter read it before the tags,
 which a model the app said nothing of still goes by.
+*U11 built (2026-10-24, `supabase/collection_follows.sql`, applied by the
+lead):* a collection's page is headed as a playlist's or a board's, its
+cover (up to four of its models' pictures) beside its name, whose, its
+words, its models and followers, Follow, Share and More. Follow by
+follows.sql's rules (13 or over, not taken out, not your own; counted with
+following people); its owner is told nothing, its followers are a count.
+What is put in it is in the follower's feed as a post with the model's
+card ("Robin added “…” to their collection “…”"), counted on the avatar;
+not in the day's email. A model's page says "In N collections", a pill
+and a tab to a part of their cards; the public ones only, while the model
+is in the gallery, a test account's only on a test model's page.
+
+*U14 built (2026-10-24):* Share on a model's page opens a sheet, the
+site's dialog, with its link and the embed code, each with Copy, what was
+copied said in the sheet; on a phone the phone's own sheet offered too.
+The embed loads `web/theme.js`, so it is in the theme its viewer chose
+where their browser lets a frame inside somebody else's page read the
+site's storage (most keep it apart: then their device's light or dark).
+The embed's button still says View in 3D, and opens the model's page.
 
 What we will not build: messages between people, lists of followers,
 "X followed you", view counts as a ranking, streaks, or anything that

@@ -13,6 +13,14 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+- On brickworks.diy, a public collection can be followed: its page leads
+  with a cover of its models' pictures, Follow and how many follow it, and
+  what is put in it shows in the follower's feed. A model's page says how
+  many collections it is in, each a card a click away. Share on a model's
+  page opens a sheet with its link and the code to embed it, each with
+  Copy, and the embed is drawn in the light or dark its viewer chose.
+
 ### Fixed
 - A big set from the library is on the screen in seconds. Its parts the
   build has not got are fetched as soon as its file is read, sixteen at a

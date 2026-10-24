@@ -46,6 +46,16 @@ export function sitePages({ remote = "" } = {}) {
           : () => !document.getElementById("comments")?.hidden)
         : () => !document.querySelector('[data-report="this model"]')?.hidden),
       open: async (page, { signedIn, judge }) => {
+        // Share's sheet (web/model-page.js, docs/SOCIAL.md U14): the link and
+        // the embed code, judged open, then closed as a person closes it.
+        await page.click("#marks [data-share]");
+        const sheet = await until(page, () => document.querySelector("dialog.share-sheet[open]"));
+        await page.waitForTimeout(200);
+        await judge(sheet ? "share" : "share (missing)", "dialog.share-sheet");
+        if (sheet) {
+          await page.keyboard.press("Escape");
+          await until(page, () => !document.querySelector("dialog.share-sheet[open]"));
+        }
         if (!signedIn) {
           await page.click("#more > summary");
           const shown = await until(page, () => document.querySelector("#more[open]"));
@@ -102,7 +112,17 @@ export function sitePages({ remote = "" } = {}) {
     // a Likes tab of their cards, and Robin's own picture as the avatar.
     { name: "person-likes", path: `/u/${stand.HANDLE}?tab=likes`, local: true },
     { name: "person-new", path: "/u/new-here", local: true },
-    { name: "collection", path: `/c/${stand.LIST_ID}` },
+    // A public collection (docs/SOCIAL.md U11): its cover, Follow (Following,
+    // signed in as Sam, who follows it) and its count, Share and More. On a
+    // deployment, whose collection the stand-in does not know, Follow is
+    // not waited for.
+    { name: "collection", path: `/c/${stand.LIST_ID}`,
+      ready: (page, { signedIn }) => (signedIn && !remote ? until(page, () => document.querySelector("[data-follow-list]")?.hidden === false) : true),
+      open: async (page) => {
+        await page.click(".list-head .more-menu summary");
+        const opened = await until(page, () => document.querySelector(".list-head .more-menu[open]"));
+        return [[opened ? "more" : "more (missing)", ".list-head .more-menu"]];
+      } },
     { name: "challenge", path: "/challenge",
       ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
     // The feed as posts with pictures (docs/SOCIAL.md U9): signed in, what

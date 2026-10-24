@@ -215,12 +215,27 @@ is on the page, `hidden`, for the script to show.
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
   one row across the column on a phone. `api/share.js` `actionBar`,
   `web/model-page.js`.
+- **Share's sheet** (docs/SOCIAL.md U14): `dialog.share-sheet`, the site's
+  dialog made wider for the embed code, opened by Share: the page's link
+  (selected as it opens) and the embed code, each a field in a `.copy-row`
+  with its Copy beside it (under it on a phone), Copy link the primary;
+  what was copied said in the sheet's own `.said` status line, since the
+  toast is behind a modal dialog for a screen reader too; Share with
+  another app (the phone's own sheet, given the link) only where the
+  browser has one; Close, and Escape, back on Share. `api/share.js`
+  `shareSheet`, `web/model-page.js`. The embed (`/m/<id>/embed`) loads
+  `web/theme.js` as every page does, so it is in the theme its viewer chose
+  where their browser lets a frame read the site's own storage, else their
+  device's; `<html data-embed>`, so it never asks their account.
 - **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
   `.media`, the picture and under it `.media-strip`, a row of thumbnails
   that scrolls inside itself, the one shown large `aria-current` and edged
   in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
   and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
-  sticky under the header, with a ground of its own only once stuck. Its
+  sticky under the header, with a ground of its own only once stuck. The
+  public collections it is in (docs/SOCIAL.md U11) are a fact `a.pill`
+  ("In 2 collections"), a tab and `.in-lists`, a `.list-cards` of their
+  covers, each saying whose; none of the three while it is in none. Its
   comments (docs/SOCIAL.md U8) are threads: each comment a `--panel` card
   with its writer's 40 px avatar beside it, Designer (`.pill`) on the
   owner's and its step as `a.pill`, then `.replies` under a 2 px `--line`
@@ -244,9 +259,21 @@ is on the page, `hidden`, for the script to show.
   Follow, Share and More; on your own page Edit profile where Follow
   would be), `.numbers` (one row of counts, each `<b>` and
   its word, hidden at none), `.pinned` (a `.models.row`), the `.tabs`, and
-  two cards of its own: `.list-card` (a collection, a `.mosaic` of up to
-  four pictures kept wide) and `.build-grid` (photos of builds in columns,
-  any shape).
+  two cards of its own: `.list-card` (a collection, its cover) and
+  `.build-grid` (photos of builds in columns, any shape).
+- **A collection's cover**: `.mosaic` (`api/_lists.js` `mosaicHtml`), up
+  to four of its models' pictures kept wide (one whole, two one over the
+  other, three a wide one over two), 4:3 whatever its pictures' own shape,
+  "No pictures yet" with none. On a `.list-card` and at the head of a
+  collection's page.
+- **A collection's page** (`/c/<id>`, `api/people.js` `listPage`,
+  docs/SOCIAL.md U11), headed as a playlist's or a board's: `.list-head`,
+  its `.cover` beside `.who` (the `.eyebrow`, the name, whose and when in
+  `.handle`, its words, `.numbers`: models and followers, each hidden at
+  none) and `.acts` (Follow as on a person's page, `.cta.ghost.follow`
+  with `data-follow-list`, its words in `.said`; Share; More with Report
+  it); on a phone the cover across the top at 2:1. Then its models as
+  `.models`, or a `.state`.
 - **Your profile** (`/profile`, `web/profile.html`, docs/SOCIAL.md U6):
   your page as a person's page draws it (the same `.profile-head`,
   `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share

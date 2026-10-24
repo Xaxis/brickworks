@@ -21,13 +21,16 @@
 //   2. One action bar: Like, Save, Share, Comment, I built it and More,
 //      each named for a screen reader with its count ("Like, 96 likes"),
 //      the count beside its icon, and never a count of none.
-//   3. Share puts the page's link on the clipboard and says "Link copied";
-//      where the browser has a share sheet (navigator.share), the sheet
-//      instead, given the link, and nothing copied.
+//   3. Share opens its sheet (docs/SOCIAL.md U14), the site's dialog: the
+//      page's link, selected, and Copy link puts it on the clipboard and
+//      says "Link copied" in the sheet; the embed code, and Copy code puts
+//      the iframe on the clipboard; Escape closes it, back on Share. Where
+//      the browser has a share sheet of its own (navigator.share), the
+//      sheet offers it too, given the link, and nothing copied.
 //   4. Save, signed out, asks to sign in; signed in, it opens the lists,
 //      Favourites first and ticked when it is a favourite.
-//   5. More holds Copy the embed code (the iframe on the clipboard), Report
-//      it and Takedown requests.
+//   5. More holds Report it and Takedown requests (the embed code is in
+//      Share's sheet).
 //   6. More by and Similar models show only with three cards or more, six
 //      at most. On the stand-in: the watchtower has More by Robin Castell
 //      (3) and no Similar (2 found); its remix at dusk has Similar (3: kind
@@ -54,6 +57,13 @@
 //      viewer); the box shown to everybody, and Reply on each comment
 //      opening a box under its thread; signed out, sending asks to sign
 //      in and keeps what was typed; signed in, the reply goes.
+//  14. In N collections (docs/SOCIAL.md U11): a pill among its facts, and a
+//      tab, both going to its Collections part, a card for each public
+//      collection it is in; none when it is in none. The watchtower is in
+//      two (Robin's and Sam's public ones), the dusk in one.
+//  15. The embed (/m/<id>/embed) in the theme its viewer chose: light
+//      chosen on a dark computer is light, dark chosen on a light one dark,
+//      and with no choice the computer's.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
 // Save's lists and More open.
@@ -102,12 +112,12 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Comments 6", "Builds 37", "Remixes 3", "Versions 2"], thumbs: 3, threads: true },
+    tabs: ["About", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
-    tabs: ["About", "Comments 1", "Builds 3", "Remixes", "Versions"].slice(0, 4), thumbs: 0 },
+    tabs: ["About", "Comments 1", "Builds 3", "Remixes", "Collections 1"], thumbs: 0, lists: 1 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
   { name: "bakery", path: "/m/SamModel02", by: 0, like: 0, gallery: true, favourite: false, designer: null,
-    tabs: ["About", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true },
+    tabs: ["About", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
 ];
 let remoteDb = "";
 const asProject = (text) => (remoteDb ? text.split(stand.DB).join(remoteDb) : text);
@@ -435,27 +445,65 @@ try {
             await page.waitForTimeout(150);
             if (out) await page.screenshot({ path: path.join(out, `${stem}.png`), fullPage: true, timeout: 60000 }).catch(() => {});
 
-            // 3. Share: the link copied, and said.
+            // 3. Share: its sheet, the link and the embed code each copied,
+            // and said in the sheet.
             await page.click("#marks [data-share]");
-            const shared = await until(page, () => document.querySelector("body > .toast.shown"), null, 4000);
-            const copied = await page.evaluate(() => ({ copied: window.__copied, toast: document.querySelector("body > .toast")?.textContent || "",
-              url: `${location.origin}${location.pathname}` }));
-            check(`${label}: Share copies the link (${copied.copied[0] || "nothing"}) and says "${copied.toast}"`,
-              shared && copied.toast === "Link copied" && copied.copied[0] === copied.url);
+            const opened = await until(page, () => document.querySelector("dialog.share-sheet[open]"), null, 4000);
+            const sheetNow = await page.evaluate(() => {
+              const link = document.getElementById("share-link");
+              return { link: link?.value || "", selected: document.activeElement === link
+                && link.selectionStart === 0 && link.selectionEnd === link.value.length,
+              app: !document.querySelector("[data-share-app]")?.hidden, url: `${location.origin}${location.pathname}` };
+            });
+            check(`${label}: Share opens its sheet, the link ${sheetNow.link} selected, no other app's sheet offered here`,
+              opened && sheetNow.link === sheetNow.url && sheetNow.selected && !sheetNow.app);
+            if (out) await page.screenshot({ path: path.join(out, `${stem}_share.png`) });
+            await page.click('dialog.share-sheet [data-copy="share-link"]');
+            await until(page, () => document.querySelector("dialog.share-sheet .said")?.textContent, null, 4000);
+            const copied = await page.evaluate(() => ({ copied: window.__copied.at(-1) || "",
+              said: document.querySelector("dialog.share-sheet .said")?.textContent || "", url: `${location.origin}${location.pathname}` }));
+            check(`${label}: Copy link copies it (${copied.copied || "nothing"}) and says "${copied.said}"`,
+              copied.copied === copied.url && copied.said === "Link copied");
+            await page.click('dialog.share-sheet [data-copy="share-embed"]');
+            await until(page, () => /Embed/.test(document.querySelector("dialog.share-sheet .said")?.textContent || ""), null, 4000);
+            const embedded = await page.evaluate(() => ({ copied: window.__copied.at(-1) || "",
+              shown: document.getElementById("share-embed")?.value || "", said: document.querySelector("dialog.share-sheet .said")?.textContent || "" }));
+            check(`${label}: Copy code puts the iframe on the clipboard, as the sheet shows it, and says "${embedded.said}"`,
+              /^<iframe src="https?:\/\/[^"]+\/m\/[A-Za-z0-9]{10}\/embed"/.test(embedded.copied) && embedded.copied === embedded.shown
+                && /^Embed code copied/.test(embedded.said));
+            await page.keyboard.press("Escape");
+            const closed = await until(page, () => !document.querySelector("dialog.share-sheet[open]")
+              && document.activeElement?.matches("#marks [data-share]"), null, 4000);
+            check(`${label}: Escape closes it, back on Share`, closed);
 
             // 5. More.
             await page.click("#more > summary");
             const more = await page.evaluate(() => [...document.querySelectorAll("#more .menu-list > *")]
               .filter((el) => !el.hidden && el.getClientRects().length).map((el) => el.textContent.trim()));
             const owns = signedIn && one.owner;
-            check(`${label}: More holds ${more.join(" | ")}`, ["Copy the embed code", owns ? "How your models are doing" : "Report it",
-              "Takedown requests"].every((want) => more.includes(want)) && (!owns || !more.includes("Report it")));
+            check(`${label}: More holds ${more.join(" | ")}`, [owns ? "How your models are doing" : "Report it",
+              "Takedown requests"].every((want) => more.includes(want)) && (!owns || !more.includes("Report it"))
+              && !more.includes("Copy the embed code"));
             if (out) await page.screenshot({ path: path.join(out, `${stem}_more.png`) });
-            await page.click("#more [data-embed]");
-            await page.waitForTimeout(150);
-            const embed = await page.evaluate(() => window.__copied.at(-1) || "");
-            check(`${label}: Copy the embed code puts the iframe on the clipboard`,
-              /^<iframe src="https?:\/\/[^"]+\/m\/[A-Za-z0-9]{10}\/embed"/.test(embed));
+            await page.keyboard.press("Escape");
+
+            // 14. In N collections: the pill and the tab, to a card each.
+            const lists = await page.evaluate(() => ({
+              pill: document.querySelector('.facts a[href="#collections"]')?.textContent || "",
+              tab: (document.querySelector('#page-tabs a[data-tab="collections"]')?.textContent || "").replace(/\s+/g, " ").trim(),
+              cards: [...document.querySelectorAll("#collections .list-card")].map((card) => card.getAttribute("href")) }));
+            const n = one.lists ?? Number((/^In (\d+) collections?$/.exec(lists.pill) || [])[1] || 0);
+            check(`${label}: "${lists.pill || "no collections"}", ${lists.cards.length} cards (${lists.cards.join(" ")})`,
+              n ? lists.pill === `In ${n} collection${n === 1 ? "" : "s"}` && lists.tab === `Collections ${n}`
+                && lists.cards.length === Math.min(n, 12) && lists.cards.every((href) => /^\/c\/[A-Za-z0-9]{10}$/.test(href))
+                : !lists.pill && !lists.tab && lists.cards.length === 0);
+            if (n) {
+              await page.click('.facts a[href="#collections"]');
+              await settled(page);
+              const at = await page.evaluate(() => Math.round(document.getElementById("collections").getBoundingClientRect().top));
+              check(`${label}: the pill brings its collections into view (${at} px down)`, at >= 0 && at < 300);
+              await page.evaluate(() => window.scrollTo(0, 0));
+            }
 
             // 4. Save.
             await page.click('#marks [data-mark="save"]');
@@ -478,7 +526,8 @@ try {
               if (out) await page.screenshot({ path: path.join(out, `${stem}_save.png`) });
             }
 
-            // 3b. A browser with a share sheet: the sheet, with the link.
+            // 3b. A browser with a share sheet of its own, a phone's: the
+            // sheet offers it, and gives it the link.
             await page.evaluate(() => {
               window.__sheet = null;
               navigator.share = async (data) => { window.__sheet = data; };
@@ -486,17 +535,54 @@ try {
               window.__copied = [];
             });
             await page.click("#marks [data-share]");
+            const offered = await until(page, () => !document.querySelector("dialog.share-sheet[open] [data-share-app]")?.hidden, null, 4000);
+            if (offered) await page.click("dialog.share-sheet [data-share-app]");
             await page.waitForTimeout(200);
             const sheet = await page.evaluate(() => ({ sheet: window.__sheet, copied: window.__copied.length,
-              url: `${location.origin}${location.pathname}` }));
-            check(`${label}: with a share sheet, Share opens it with the link (${sheet.sheet?.url}) and copies nothing`,
-              sheet.sheet?.url === sheet.url && sheet.copied === 0);
+              open: Boolean(document.querySelector("dialog.share-sheet[open]")), url: `${location.origin}${location.pathname}` }));
+            check(`${label}: with a share sheet of its own, Share offers it, gives it the link (${sheet.sheet?.url}), copies nothing and closes`,
+              offered && sheet.sheet?.url === sheet.url && sheet.copied === 0 && !sheet.open);
           } catch (trouble) {
             check(`${label}: visited (${String(trouble).split("\n")[0]})`, false);
           } finally {
             await context.close();
           }
         }
+      }
+    }
+  }
+
+  // 15. The embed in the theme its viewer chose: on a computer set to one,
+  // the other chosen on the site (web/theme.js), and none chosen.
+  {
+    const id = PAGES[0]?.path.split("/")[2];
+    const ground = {};
+    for (const [system, chosen] of [["light", null], ["dark", null], ["dark", "light"], ["light", "dark"]]) {
+      const label = `the embed, ${system} computer, ${chosen ? `${chosen} chosen` : "nothing chosen"}`;
+      const context = await browser.newContext({ viewport: { width: 560, height: 420 }, colorScheme: system, extraHTTPHeaders: headers });
+      await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb });
+      if (chosen) await context.addInitScript((theme) => { try { localStorage.setItem("brickworks.theme", theme); } catch {} }, chosen);
+      const page = await context.newPage();
+      page.on("pageerror", (e) => errors.push(`${label}: ${String(e).slice(0, 200)}`));
+      page.on("console", (m) => {
+        if (m.type() === "error" && /Content Security Policy|Refused/.test(m.text())) errors.push(`${label}: ${m.text().slice(0, 200)}`);
+      });
+      try {
+        await page.goto(`${base}/m/${id}/embed`, { waitUntil: "load", timeout: 60000 });
+        const seen = await page.evaluate(() => ({ ground: getComputedStyle(document.body).backgroundColor,
+          ink: getComputedStyle(document.querySelector(".embed-bar b")).color, theme: document.documentElement.dataset.theme || "" }));
+        if (!chosen) {
+          ground[system] = seen;
+          check(`${label}: the computer's (${seen.ground}, its name in ${seen.ink})`, seen.theme === "");
+        } else {
+          check(`${label}: ${chosen} (${seen.ground}, its name in ${seen.ink})`, seen.theme === chosen
+            && seen.ground === ground[chosen]?.ground && seen.ink === ground[chosen]?.ink && ground.light?.ground !== ground.dark?.ground);
+        }
+        if (out) await page.screenshot({ path: path.join(out, `embed_${system}_${chosen || "none"}.png`) });
+      } catch (trouble) {
+        check(`${label}: visited (${String(trouble).split("\n")[0]})`, false);
+      } finally {
+        await context.close();
       }
     }
   }

@@ -1,5 +1,6 @@
 // /feed (2026-10-18, supabase/follows.sql): what the people the signed-in
-// account follows made, newest first, from /api/people?op=feed. What
+// account follows made, and what was put in the collections it follows
+// (supabase/collection_follows.sql), newest first, from /api/people?op=feed. What
 // happened to your own models is Notifications (2026-10-22,
 // web/notifications.js), a tab beside it. Opening the feed is what clears
 // its count (the server marks the first page as seen).
@@ -103,6 +104,14 @@ function row(one) {
   name.textContent = `“${String(one.name || "")}”`;
   what.append(toProfile(one.by, who, { class: "who" }), ` ${String(one.did || "")} `, name);
   if (one.after) what.append(` ${String(one.after)}`);
+  // Put in a collection you follow: which, to its page.
+  if (one.list && one.list.name) {
+    const list = document.createElement("a");
+    list.className = "list";
+    list.href = here(one.list.link);
+    list.textContent = `“${String(one.list.name)}”`;
+    what.append(" to their collection ", list);
+  }
   if (one.new) {
     const tag = document.createElement("span");
     tag.className = "pill new";

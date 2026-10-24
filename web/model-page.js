@@ -20,7 +20,7 @@
 // words.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
-import { avatarHtml, toast } from "/kit.js";
+import { avatarHtml } from "/kit.js";
 
 // The comments' own loader, once they are listed (startComments), for
 // Comment in the action bar to list them again after signing in.
@@ -785,19 +785,61 @@ async function copy(text) {
   return done;
 }
 
+/// Share's sheet (api/share.js shareSheet, docs/SOCIAL.md U14): the site's
+/// dialog with the page's link and the embed code, each copied by its own
+/// button and said so in the sheet (the toast, outside a dialog that is
+/// open, is behind it for a screen reader too); and where the browser has a
+/// share sheet of its own, a phone's, a way to it, given the link. The
+/// link is selected as it opens, so a keyboard's copy takes it too.
+/// Escape and Close close it, back on Share.
+function shareSheet(share, sheet) {
+  const said = sheet.querySelector(".said");
+  const link = sheet.querySelector("#share-link");
+  const app = sheet.querySelector("[data-share-app]");
+  const url = link.value;
+  const title = document.querySelector("main h1")?.textContent || document.title;
+  share.addEventListener("click", () => {
+    app.hidden = !(typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url })));
+    said.textContent = "";
+    sheet.showModal();
+    document.documentElement.dataset.shared = "open";
+    link.focus();
+    link.select();
+  });
+  const COPIED = { "share-link": ["Link copied", "copied"], "share-embed": ["Embed code copied: paste it into your page", "embed"] };
+  for (const button of sheet.querySelectorAll("[data-copy]")) {
+    button.addEventListener("click", async () => {
+      const field = sheet.querySelector(`#${button.dataset.copy}`);
+      const [words, mark] = COPIED[button.dataset.copy];
+      const done = await copy(field.value);
+      said.textContent = done ? words : "It did not copy just now: select it and copy it yourself";
+      document.documentElement.dataset.shared = done ? mark : "failed";
+      if (!done) field.select();
+    });
+  }
+  app.addEventListener("click", async () => {
+    try {
+      await navigator.share({ title, url });
+      document.documentElement.dataset.shared = "sheet";
+      sheet.close();
+    } catch (trouble) {
+      // Closed without sharing: the sheet stays.
+      if (trouble && trouble.name !== "AbortError") said.textContent = "That did not open just now: copy the link instead";
+    }
+  });
+}
+
 /// The action bar (api/share.js actionBar): Like; Save, which opens your
-/// lists, Favourites first (docs/SOCIAL.md D2); Share, the phone's share
-/// sheet where there is one and else the link copied; Comment and I built
-/// it, which go to their sections; and More: the embed code, Report it,
-/// Takedown requests, and the owner's own. Like and Save ask to sign in
-/// first when this browser is not.
+/// lists, Favourites first (docs/SOCIAL.md D2); Share, which opens its sheet
+/// (shareSheet); Comment and I built it, which go to their sections; and
+/// More: Report it, Takedown requests, and the owner's own. Like and Save
+/// ask to sign in first when this browser is not.
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
   const save = marks.querySelector('[data-mark="save"]');
   const share = marks.querySelector("[data-share]");
   const comment = marks.querySelector('[data-mark="comment"]');
   const built = marks.querySelector('[data-mark="built"]');
-  const embed = marks.querySelector("[data-embed]");
   const panel = document.getElementById("save-panel");
   const lists = panel.querySelector(".collect-list");
   const make = panel.querySelector("form.collect-new");
@@ -926,31 +968,8 @@ function start() {
     await load();
   });
 
-  // The page's own address (an older version's is its own), to the phone's
-  // share sheet where the browser has one, else onto the clipboard.
-  share.addEventListener("click", async () => {
-    const url = `${location.origin}${location.pathname}`;
-    const title = document.querySelector("main h1")?.textContent || document.title;
-    if (typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url }))) {
-      try {
-        await navigator.share({ title, url });
-        document.documentElement.dataset.shared = "sheet";
-        return;
-      } catch (trouble) {
-        // Closed without sharing: nothing more to do.
-        if (trouble && trouble.name === "AbortError") return;
-      }
-    }
-    const done = await copy(url);
-    document.documentElement.dataset.shared = done ? "copied" : "failed";
-    toast(done ? "Link copied" : "Copy this page's address to share it");
-  });
-
-  embed.addEventListener("click", async () => {
-    embed.closest("details").open = false;
-    const done = await copy(embed.dataset.embed);
-    toast(done ? "Embed code copied: paste it into a page" : "The embed code did not copy just now");
-  });
+  const sheet = document.getElementById("share-sheet");
+  if (sheet) shareSheet(share, sheet);
 
   // The box is everybody's: sending it signs a visitor in.
   comment.addEventListener("click", () => {

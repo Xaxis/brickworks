@@ -42,7 +42,13 @@
 //   POST ?op=collect              (session) {collection, model, on}
 //   GET  ?op=collection&id=X      a list and a page of its models: public,
 //                                 or the caller's own (&page=N)
-//   GET  ?op=list_page&id=X       /c/X: a public list's page
+//   GET  ?op=list_page&id=X       /c/X: a public list's page: its cover,
+//                                 Follow, Share and its models
+//   GET  ?op=list_follows&id=X    X's followers, and whether the caller
+//                                 follows it and may (api/_lists.js)
+//   POST ?op=list_follow          (session) {id, on}: follow a public list,
+//                                 or let it go; what is put in it is then
+//                                 in the caller's feed
 //   POST ?op=report               {model | handle | collection | comment | photo,
 //                                 reason, note?, contact?}: somebody saying
 //                                 it should not be there, to the site's
@@ -186,6 +192,7 @@ import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
 import { feedCount, notifications, notificationsRead } from "./_notifications.js";
+import { coversOf, getListFollows, listCardHtml, listFollow, listFollowsOf, mosaicHtml } from "./_lists.js";
 import { designerOf, designs } from "./_designers.js";
 import {
   AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
@@ -194,7 +201,7 @@ import {
 import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
-import { cardHtml, pictureOf } from "./_card.js";
+import { cardHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
 import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
@@ -988,7 +995,7 @@ function html(response, status, body, { tests = false } = {}) {
   return response.status(status).end(body);
 }
 
-function head(origin, { title, about, url, image, robots = "", mine = false }) {
+function head(origin, { title, about, url, image, robots = "", mine = false, share = false }) {
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
@@ -1011,16 +1018,16 @@ ${siteChrome().head}
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
 <script src="/follow.js" type="module"></script>${mine ? `
-<script src="/designs.js" type="module"></script>
+<script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
 <script src="/person.js" type="module"></script>` : ""}`;
 }
 
-function page(origin, { title, about, url, image, robots, main, mine = false }) {
+function page(origin, { title, about, url, image, robots, main, mine = false, share = false }) {
   const { header, footer } = siteChrome();
   return `<!doctype html>
 <html lang="en">
 <head>
-${head(origin, { title, about, url, image, robots, mine })}
+${head(origin, { title, about, url, image, robots, mine, share })}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -1041,6 +1048,7 @@ function missingPage(origin, what) {
 }
 
 const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const SINCE_DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /// A count is said once there is one: never "0 likes" (docs/SOCIAL.md).
 /// Kept on the page, hidden, where web/follow.js counts it again.
@@ -1081,31 +1089,6 @@ function stripHtml(photos, { by = false } = {}) {
 /// its lists, and the models they liked when they chose to show them, each
 /// with its count once there is one.
 const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Collections"], ["likes", "Likes"]];
-
-/// The pictures on each public list's card: up to four of its models in
-/// the gallery, the newest put in first. id -> [picture].
-async function coversOf(lists, tests) {
-  const shown = lists.filter((list) => ID.test(String(list.id))).slice(0, 24);
-  const items = await Promise.all(shown.map((list) =>
-    db(`model_collection_items?collection=eq.${list.id}&select=model&order=at.desc&limit=12`).catch(() => [])));
-  const ids = [...new Set(items.flat().map((row) => row.model).filter((id) => ID.test(String(id))))];
-  const rows = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&published=is.true&listed=is.true`
-    + "&barred=is.false&select=id,has_image,has_thumb,updated_at,test") : [];
-  const pictures = new Map(rows.filter((row) => tests || !row.test)
-    .map((row) => [row.id, pictureOf({ id: row.id, thumb: row.has_thumb ? `?v=${(Date.parse(row.updated_at || "") || 0).toString(36)}` : null,
-      image: row.has_image })]));
-  return new Map(shown.map((list, at) => [list.id, items[at].map((row) => pictures.get(row.model)).filter(Boolean).slice(0, 4)]));
-}
-
-/// A public list as a card: its pictures, its name, how many.
-function listCardHtml(list, covers) {
-  const pictures = covers.get(list.id) || [];
-  return `<a class="list-card" href="/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
-    + `<div class="mosaic n${pictures.length}">${pictures.length ? pictures.map((src) =>
-      `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" loading="lazy" decoding="async">`).join("")
-      : "<span>No pictures yet</span>"}</div>`
-    + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(count(list.count, "model"))}</span></div></a>`;
-}
 
 /// /u/X: a person's page, the same for everybody it shows, the house's
 /// too. Their avatar, name, handle, words, links and numbers, Follow, Share
@@ -1264,32 +1247,58 @@ async function profilePage(request, response) {
 }
 
 /// /c/X: a public list's page. A private one is not shown here to anybody;
-/// its owner sees it on /profile.
+/// its owner sees it on /profile. Its head as a playlist's or a board's
+/// is (docs/SOCIAL.md U11): its cover, up to four of its models' pictures,
+/// beside its name, whose it is, its words and numbers, Follow, Share and
+/// More; then its models, the last put in first. How many follow it, never
+/// who; Follow is shown by web/follow.js once it knows who is asking.
 async function listPage(request, response) {
   const origin = originOf(request);
   const id = String(request.query?.id || "");
   const tests = testsAsked(request.query);
   const list = await listFor(id, null, tests);
   if (!list) return html(response, 404, missingPage(origin, "There is no collection here"), { tests });
-  const shown = await withFaces(await models(origin, { collection: id, sort: "added", tests }, 1));
+  const [shown, covers, follows] = await Promise.all([
+    withFaces(await models(origin, { collection: id, sort: "added", tests }, 1)),
+    coversOf([list], tests),
+    listFollowsOf(id).catch(() => null),
+  ]);
   const url = `${origin}/c/${id}`;
   const by = list.by ? `<a href="/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : "a Brickworks builder";
   const first = shown.models[0];
+  const updated = Date.parse(list.updated_at || "");
+  const stat = (kind, n, one, many, extra = "") => `<li data-stat="${kind}"${extra}${zero(n)}>`
+    + `<b>${escapeHtml((Number(n) || 0).toLocaleString("en-US"))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
+  const ready = follows && follows.ready;
+  const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More" title="More">${iconHtml("more")}</summary>`
+    + `<div class="menu-list"><button type="button" data-report="this collection" data-report-collection="${id}" hidden>`
+    + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
   const main = `<div class="wrap person list" data-id="${id}">
-  <p class="eyebrow">Collection</p>
-  <h1>${escapeHtml(list.name)}</h1>
-  <p class="handle">${escapeHtml(count(list.count, "model"))}, collected by ${by}</p>
-  ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
+  <header class="list-head">
+    <div class="cover">${mosaicHtml(covers.get(id) || [])}</div>
+    <div class="who">
+      <p class="eyebrow">Collection</p>
+      <h1>${escapeHtml(list.name)}</h1>
+      <p class="handle">Collected by ${by}${Number.isFinite(updated) ? ` · updated ${SINCE_DAY.format(updated)}` : ""}</p>
+      ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
+      <ul class="numbers" aria-label="Its numbers">${stat("models", list.count, "model", "models")}${ready
+        ? stat("followers", follows.followers, "follower", "followers", ` data-list-followers="${id}"`) : ""}</ul>
+      <div class="acts">
+        ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>Follow</button>`
+          + `<span class="said" role="status"></span></p>` : ""}
+        ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
+        ${more}
+      </div>
+    </div>
+  </header>
   ${shown.models.length ? `<div class="models">${shown.models.map((card) => cardHtml(card)).join("")}</div>`
-    : `<p class="note">Nothing in it is in the gallery just now.</p>`}
-  <p class="note report-line"><button type="button" class="link" data-report="this collection"
-    data-report-collection="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
+    : `<p class="state">Nothing in it is in the gallery just now. The models put in it show here once they are.</p>`}
 </div>`;
   return html(response, 200, page(origin, {
     title: `${list.name} — a collection in the Brickworks gallery`,
     about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)
       : `${count(list.count, "model")} built in Brickworks, collected by ${list.by ? list.by.name : "a builder"}.`,
-    url, image: first && first.image ? first.image : "", main,
+    url, image: first && first.image ? first.image : "", main, share: true,
   }), { tests });
 }
 
@@ -1320,6 +1329,7 @@ export default async function handler(request, response) {
       if (op === "photos") return await photos(request, response);
       if (op === "photo_file") return await photoServe(request, response);
       if (op === "follows") return await getFollows(request, response);
+      if (op === "list_follows") return await getListFollows(request, response);
       if (op === "following") return await getFollowing(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "latest") return await latest(request, response, { origin: originOf(request) });
@@ -1350,6 +1360,7 @@ export default async function handler(request, response) {
       if (op === "comments_open") return await setCommentsOpen(request, response);
       if (op === "mail") return await chooseMail(request, response);
       if (op === "follow") return await follow(request, response);
+      if (op === "list_follow") return await listFollow(request, response);
       if (op === "follow_choice") return await followChoice(request, response);
       if (op === "notifications_read") return await notificationsRead(request, response);
       if (op === "enter") return await enter(request, response);
