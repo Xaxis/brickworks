@@ -22,6 +22,10 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- When Claude asks for a change that changes nothing, such as painting a
+  part the colour it already is, or one its part was never made in, the
+  answer says nothing changed and why, instead of "Done" with an empty
+  list of changes.
 - On brickworks.diy, /challenges goes to the challenge page instead of
   "not found", and every page's footer links the challenge.
 - The sign-in screen says your models are kept with your account as well

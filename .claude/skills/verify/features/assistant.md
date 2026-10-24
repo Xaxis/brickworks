@@ -3051,6 +3051,15 @@ Their VQA and ELO need Gemma 4 31B in about 62 GB of GPU memory: not run here.
   mark's parts test; recoloured so, all eighteen pass it, same parts in the
   same places. `availability_probe` checks 3030 in 484 Dark Orange goes in 70
   Reddish Brown, added and recoloured, and is said.
+- **An edit that changes nothing says so, and why** (`Assistant._edit`,
+  `_unchanged_why`, 2026-10-24). A recolour to the colour a part is, or to
+  one its part was never made in whose nearest is the colour it is, changes
+  nothing: edit_model and edit_selection answer "Nothing changed: #14 is
+  Trans Yellow (46) already" or "#1, 3641, was never made in Blue (1): the
+  nearest it was made in is Black (0), which it is already", and no step is
+  made. A selection's tyre painted blue had answered "Done … Changed: . One
+  undo takes the whole request back." Probe: `nothing_changed_probe` (red on
+  the base for the tyre and for why).
 - **The palette in the rules is the data's.** `_palette_lines()` lists the
   current colours in 100+ sets, plain, see-through and metallic, commonest
   first, with names — 62 of them, about 1,300 characters. The hand-kept list it
