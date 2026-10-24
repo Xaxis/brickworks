@@ -3027,6 +3027,18 @@ Their VQA and ELO need Gemma 4 31B in about 62 GB of GPU memory: not run here.
   judged, not ones already standing. A brick that names no colour is 71, Light
   Bluish Grey (`DEFAULT_COLOUR`); it was 7, which LEGO stopped using in 2007.
   `availability_probe` asserts all four.
+- **A part is placed only in a colour it was made in** (steps223,
+  2026-10-24). A part a design places, or an edit recolours, in a colour the
+  catalogue knows it was never made in (`PartInfo.never_made_in`, as the
+  Tested mark asks it) goes in the nearest colour it was made in
+  (`PartLibrary.made_nearest`: CIEDE2000, a transparent colour for a
+  transparent one), and the answer says so, in an edit's first line and in a
+  design's advice (`Assistant._made_colours`, after `_current_parts`). A part
+  already standing keeps its colour. Advice alone had left four of seed211's
+  twelve house models and three of sculpt170's six bench designs failing the
+  mark's parts test; recoloured so, all eighteen pass it, same parts in the
+  same places. `availability_probe` checks 3030 in 484 Dark Orange goes in 70
+  Reddish Brown, added and recoloured, and is said.
 - **The palette in the rules is the data's.** `_palette_lines()` lists the
   current colours in 100+ sets, plain, see-through and metallic, commonest
   first, with names — 62 of them, about 1,300 characters. The hand-kept list it
