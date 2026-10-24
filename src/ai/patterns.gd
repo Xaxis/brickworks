@@ -854,7 +854,7 @@ static func _face_steps(steps: Array, y: float, colour: int, mix_colour: int,
 					made.append({"part": "54200", "color": tone,
 						"x": cell.x, "y": top_y, "z": cell.y, "rot": rot})
 				elif pick < 0.68:
-					made.append({"part": "4073", "color": tone,
+					made.append({"part": "6141", "color": tone,
 						"x": cell.x, "y": top_y, "z": cell.y, "rot": 0})
 				elif pick < 0.82:
 					made.append({"part": "3070b", "color": tone,

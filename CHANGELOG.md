@@ -22,6 +22,10 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- Saving, exporting or moving parts between steps on a big model with its
+  own steps says so on the status bar before the app is held, as it does on
+  any other big model. The Wizard's Tower's Save held the window for up to a
+  second, and a step edit for up to three, with nothing said.
 - A big set from the library is on the screen in seconds. Its parts the
   build has not got are fetched as soon as its file is read, sixteen at a
   time, and it is drawn once they are there, before the rest of its open is

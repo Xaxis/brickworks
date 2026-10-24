@@ -397,10 +397,13 @@ func attend(name: String, work: Callable) -> void:
 	var size: int = work_size(name)
 	var slow: bool = size >= int(SLOW_FROM.get(name,
 		FLOOR_SLOW_FROM if name.begins_with("floor_") else 1 << 30))
-	# A step edit is slow only the first time, when the model is given the
-	# worked-out steps (AuthorSteps.ensure).
-	if name.begins_with("step_") and world != null:
-		slow = slow and not AuthorSteps.any(world, store.scenery)
+	# A step edit is slow the first time, when the model is given the
+	# worked-out steps (AuthorSteps.ensure); once it has steps of its own,
+	# only on a big model: 22 to 50 ms at a thousand parts, and 1.4 to 2.6 s
+	# on the Wizard's Tower's 10,105, taken for quick and never said once it
+	# had its own (9d7c5ba3, command_probe).
+	if name.begins_with("step_") and world != null and AuthorSteps.any(world, store.scenery):
+		slow = size >= STEPPED_SLOW_FROM
 	var asks: bool = name in ASKS_WHERE and SaveTo.asks()
 	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks, slow, size)
 
@@ -450,6 +453,8 @@ const ASKS_WHERE: Array[String] = ["save_as", "export_ldraw", "export_io", "expo
 
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
+## A step edit on a model with steps of its own (attend).
+const STEPPED_SLOW_FROM := 2000
 
 ## Known to be slow from this much to do ([method work_size]), before they
 ## have ever been timed here. From src/dev/command_probe.gd on Orthanc

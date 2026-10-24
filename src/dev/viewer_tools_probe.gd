@@ -235,6 +235,11 @@ func _run() -> void:
 func _as_jobs(parts: int) -> void:
 	print("── a call that became a job answers, once done, as it would have at once ──")
 	var tools: Array[String] = ["view_model", "look_at_model"]
+	# The sizes are said to a session once each time they change (f34e7a14,
+	# 2026-10-24): the first look of all says them and the looks after it
+	# do not. So the answers at once are taken after one look, as the jobs'
+	# are, and each is the same call in the same state.
+	await _call("view_model", {"from": "front"})
 	var asked_inline: Dictionary = {}
 	for tool: String in tools:
 		asked_inline[tool] = await _rpc("tools/call", {"name": tool, "arguments": {"from": "front"},

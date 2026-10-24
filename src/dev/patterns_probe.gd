@@ -390,7 +390,7 @@ func _holds_up() -> void:
 
 	# A band of one kind of detail: rivets down a hull plate, portholes,
 	# lights, a smooth panel. Each stud carries the kind asked, and it holds.
-	for dress: Array in [["rivets", "4073"], ["lights", "98138"], ["tiles", "3070b"]]:
+	for dress: Array in [["rivets", "6141"], ["lights", "98138"], ["tiles", "3070b"]]:
 		var band: Assistant.Model = assistant._read_model({"patterns": [
 			{"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0}, "length": 6,
 				"courses": 2, "facing": "+z", "color": 0, "dress": dress[0],

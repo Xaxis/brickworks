@@ -94,9 +94,13 @@ func _run() -> void:
 	_ok(every, "selection names each roof part by number")
 	_ok(said.contains("The room a change may use: x "), "...and the room a change may use")
 	_ok(said.contains("edit_selection"), "...and how to change it")
+	# A wheel's rim, made in blue: its tyre, 3641, is made only in black, and
+	# since 101c4e40 (2026-10-24) a part asked for in a colour it was never
+	# made in is put in the nearest it was, so a tyre painted blue stayed
+	# black, an edit of nothing, neither refused nor painted.
 	var wheel: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
-		if brick.part_id == "3641" and wheel == 0:
+		if brick.part_id == "4624" and wheel == 0:
 			wheel = brick.id
 	_ok(not said.contains("#%d " % wheel), "...and not a wheel (#%d)" % wheel)
 

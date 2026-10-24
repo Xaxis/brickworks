@@ -2427,12 +2427,26 @@ func paces() -> bool:
 		and _source_text(title) == null
 
 
+## Whether writing this model (a save, an export, a share) is said on the
+## bar before it begins: one paced, and one this big however it is written.
+## A model with its author's steps is written in one go, and the Wizard's
+## Tower's 10,105 parts held a frame for 0.4 to 0.9 s with nothing said once
+## it had them (9d7c5ba3, command_probe). At a thousand parts that is 26 to
+## 46 ms here, and a browser drawing in software takes several times longer.
+func says_writing() -> bool:
+	return paces() or (world.library != null
+		and world.brick_count() - scenery.size() >= SAID_WRITING_FROM)
+
+
+const SAID_WRITING_FROM := 2000
+
+
 ## The model's text with its build order, for an export or a share: on a
 ## big model worked out a slice at a time, the status bar saying
 ## [param doing] and counting, with Cancel ([method to_text_paced]). ""
 ## when it was cancelled.
 func text_for_file(title: String, doing: String) -> String:
-	if not paces():
+	if not says_writing():
 		return to_text(title, true)
 	var job: Working.Job = Working.begin(doing, 0, true)
 	await job.shown()

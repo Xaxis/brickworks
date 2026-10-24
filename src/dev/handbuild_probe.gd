@@ -1344,6 +1344,16 @@ func _studio_file() -> void:
 	CustomParts.dir = OS.get_user_data_dir().path_join("handbuild_probe_parts/")
 	CustomParts.keeps = false
 	picker.take(bytes, "bay_2025.io")
+	await _frames(1)
+	# Over the parts built by hand so far, none of them saved, it asks first
+	# (ModelBar.ask_to_replace, e84e1141, 2026-10-23), and a person opening
+	# the file says Don't save. Unanswered, the file never opened, and the
+	# question still up stopped the next open as well.
+	var asked: Dictionary = bar.controls_by_name()
+	_check("...and over parts not saved, asks first: Save, Don't save or Cancel",
+		asked.has("replace_save") and asked.has("replace_discard") and asked.has("replace_cancel"))
+	if asked.has("replace_discard"):
+		(asked["replace_discard"] as Button).pressed.emit()
 	await _frames(10)
 	CustomParts.dir = kept_in
 	CustomParts.keeps = keeping
@@ -1394,6 +1404,11 @@ func _author_steps() -> void:
 	var green: int = _part_id("3022")
 
 	await _key(KEY_B)
+	# The author's steps are read over frames, as the worked-out ones are
+	# (13fa0aae, 2026-10-24): five frames after the key, it was still reading.
+	var since: int = Time.get_ticks_msec()
+	while steps.is_starting() and Time.get_ticks_msec() - since < 30000:
+		await process_frame
 	_check("B opens the timeline in the author's steps (%s), at \"%s\"" % [
 		steps._order_button.text, steps._caption.text], steps.is_playing_back()
 		and steps.mode() == StepsBar.AUTHORS and steps._caption.text.begins_with("Step 1 of 6"))
