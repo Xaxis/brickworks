@@ -4361,6 +4361,14 @@ func _build_ui() -> void:
 	_together.bar = _bar
 	_together.base_url = Deployment.api_base()
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
+	# Where this person is working, for the others' view: the part under the
+	# mouse, a few times a second while in a session.
+	_together.pointer_at = func() -> Variant:
+		if _verbs == null or _over_panel_at(get_viewport().get_mouse_position()):
+			return null
+		var under: int = _verbs.brick_at(get_viewport().get_mouse_position())
+		var brick: BrickWorld.Brick = _world.get_brick(under) if under != 0 else null
+		return brick.transform.origin if brick != null else null
 	# A check's change made as Claude makes one: the same tools, answered here.
 	_together.run_tool = func(name: String, arguments: Dictionary) -> String:
 		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,
@@ -5889,6 +5897,10 @@ func _maybe_join_together() -> void:
 	var trouble: String = await _together.join(secret, secret == kept)
 	if not trouble.is_empty():
 		_bar.say(trouble)
+		return
+	# Gone back into after a reload: said, not a panel over the model.
+	if secret == kept:
+		_bar.say("Back in the session: %s" % _store.title)
 		return
 	open_together()
 

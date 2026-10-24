@@ -13,9 +13,18 @@ desktop app. Started 2026-10-24 (unit together233).
    their baseplate has changes not saved, they are asked first, as opening
    any model asks.
 3. Each sees the other's parts go down, move, change colour and come off as
-   it happens, and who is in the session (here or away). **Undo** and
-   **Redo** are each person's own.
-4. The owner presses **End the session**; the model stays theirs and saves
+   it happens, and everything else the model is: its name, the floor,
+   motions, build steps, the booklet's looks, the colours of hidden parts,
+   sections broken out, and parts made in the app (a print, a sticker, a
+   made part). Each sees who is in the session (here or away), and where
+   each other person is working: a dot with their name in the view, on the
+   part under their pointer or where the part in their hand would go.
+   **Undo** and **Redo** are each person's own.
+4. A short chat in the panel, for people 13 and over (below).
+5. A reload, a browser restarted, the desktop app started again, or the
+   connection lost for a while: the tab goes back into the session by
+   itself and catches up, both ways.
+6. The owner presses **End the session**; the model stays theirs and saves
    as it always does. Anyone else presses **Leave**, or is told the owner
    ended it; what was built stays on their baseplate, theirs to keep or not.
    The owner can **Remove** a person: the link no longer lets them in.
@@ -50,10 +59,54 @@ desktop app. Started 2026-10-24 (unit together233).
   Nobody's undo takes back anybody else's part. Steps from before the
   session are forgotten when it starts, and the session's when it ends, for
   the same reason.
+- **What the model is besides its parts** goes the same way, a key each with
+  its words as the file has them (`Together._meta_now`): `~title`,
+  `~floor`, `~hidden` (the colours of hidden parts), `~motions`, `~looks`
+  (the booklet's), `~unit_steps` (the steps of sub-assembly copies) and
+  `~broken` (sections broken out, their parts named by uid). Each is read
+  a few times a second while in a session, and on every builder step, and
+  is numbered, undone and overtaken as a part is. A part made in the app (a
+  print, a sticker, a part from Make a part…) goes with the first change
+  that puts one down, as `~part:<id>` and its LDraw files, so the other
+  side can draw it. Hide and Isolate are not carried: they are each
+  person's view, as the camera is, and an app-made model's file does not
+  keep them. A floor's own plate made part of the model on one side is the
+  same plate on the other, not a second one on it.
+- **Sent twice is put down once.** A send whose answer was lost is sent
+  again; every side skips a copy's change it has had already (by its count,
+  `cid`), the same everywhere.
 - **Joining** opens the session's text as any model opens (so sub-models,
   motions, the floor and the booklet's looks come with it), then matches its
   parts to the session's ids and sets each exactly as the owner's, the
   height too; then every change since is put down in order.
+- **Going back in.** A tab keeps the session it is in with its own working
+  state (`TabSession.path("together.txt")`). Reloaded, restarted, or opened
+  again, it joins again by itself without asking: its model is the
+  session's, opened again from the session and every change since. A lost
+  connection needs nothing: the waiting request is asked again every second
+  until it answers, and what was changed meanwhile is sent then. Ended or
+  taken out meanwhile, it is told so and forgets the session.
+- **Pointers.** A few times a second, while it moves, each side sends where
+  it is working (`op=point`: the ghost of the part in hand, or the part
+  under the mouse), kept on its row of `together_people`; a waiting request
+  answers as soon as someone's moves, and each side draws the others' as a
+  dot and their name in a colour each, over the parts.
+- **Chat** is a line of words in the same numbered log (`~chat`), shown in
+  the panel and on the status line. Who may: comments' rule
+  (`supabase/comments.sql`, `comments_guard`): an account that answered
+  the age question 13 or over and was not taken out of the gallery; the
+  words a stranger may not be shown are refused (`api/_names.js`), at most
+  280 characters. Stricter than comments for under-13s, by choice: a
+  comment is public, moderated and can be reported, where a chat is
+  private and live with someone met by a link, so an account under 13 can
+  neither say anything nor read the others' lines (its copy of each chat op
+  comes with the words taken out), and the panel tells it why. Building
+  together itself stays theirs, as a link is (`trust.sql`: an account under
+  13 shares by link like anyone).
+- **Claude in a session tab.** A connected Claude's edits change the model
+  in that tab like any other, so they reach everyone (proven with a real MCP
+  `edit_model` through the deployment's relay). Its `undo` presses the same
+  Undo, so it takes back only that side's parts.
 - **Nothing runs outside a session**: `Together._process` returns at once
   (on the web it says its state to the page twice a second for checks).
 
@@ -94,7 +147,7 @@ should come close to the first row, which is not measured yet.
   like anyone, as it shares a model by link like anyone. Its name is never
   shown: everyone appears by their profile's name only when a visitor may
   be shown it (`shown_publicly`), and otherwise as "Builder 2", never by an
-  email.
+  email. It has no chat (above).
 
 ## Against the best named tool
 
@@ -107,7 +160,11 @@ takes turns. Here:
   person whose move was overtaken;
 - Undo is each person's own and never takes back another's part;
 - every way of editing is carried, read off the model as it changes rather
-  than from each tool.
+  than from each tool, and everything the model is besides its parts;
+- each person's pointer in the others' view, and a chat with the trust
+  rules a children's audience needs;
+- a reload or a dropped connection goes back in and catches up by itself;
+- a person's own Claude, connected to their tab, builds for everyone.
 
 [st-bt]: https://studiohelp.bricklink.com/hc/en-us/articles/6477757327767
 
@@ -118,29 +175,24 @@ takes turns. Here:
   the same part moved by both, each undo its own, the end); with `--join`
   the desktop's half of the flow.
 - `tools/web/together_flow.mjs`: two browsers and the desktop in one
-  session: 50 random edits interleaved, byte-identical after, Ctrl+Z per
-  person, the time a change takes each way, a stranger refused, the owner
-  ending it. Red on m165 (no Build together in the File menu).
+  session: 50 random edits interleaved, byte-identical after; then each
+  kind of the model's own state from either side (the name typed, the
+  floor, a printed part made in the app, a build step, a booklet look, a
+  motion, the hidden parts coloured), byte-identical in both browsers and
+  the desktop after each; Ctrl+Z per person; the time a change takes each
+  way; a reload and a lost connection going back in; the owner's pointer
+  drawn in the other's view; the chat, and an under-13 refused it; a real
+  MCP `edit_model` from the owner's connected Claude reaching the other
+  browser; a stranger refused; the owner ending it. Red on m165 (no Build
+  together in the File menu).
 
 ## Not done yet
 
-- **A reload leaves the session.** The page forgets it; the link joins
-  again (the model is opened again from the session). The owner's tab
-  reloaded cannot end it from the panel; it ends a week after its last
-  change (`together_sweep`).
-- **Only parts are carried.** A motion, the floor, hidden colours, the
-  booklet's looks and a section broken out change on one side only; the
-  file the session began with has them as they were.
-- **Seeing where the other is working**: their selection and pointer are not
-  shown, only what they change.
-- **Chat.** Studio's Build Together has one [st-bt]; this has none yet, and
-  for under-13 accounts any chat would have to follow trust.sql's comment
-  rules.
+- **Changes still on their way when a page goes** (the last half second
+  or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
   request); the session's changes are paged 500 at a time when joining.
-- **Claude in a session's tab** is not yet tried with a real chat. Its
-  edits are read off the model like any other, and its `undo` tool presses
-  the same Undo (`EditVerbs.press`), so it takes back only that side's
-  parts; but the words it answers with still name the builder's step.
 - **A conflict is told by time**: a change of another's numbered within
   1.5 s of one's own on the same part is said to have overtaken it.
+- **Chat has no report button** and no history past the session; a session
+  ends a day after it ends (`together_sweep`).

@@ -13,7 +13,9 @@ app, joined by a link (docs/TOGETHER.md).
   **Join** (Enter on an empty field does nothing). In one: the link with
   **Copy link**, each person with "here" or "away" (the owner's view has
   **Remove** beside the others), and **End the session** (owner) or
-  **Leave**. A browser opened at `/app?together=<secret>` (the shell maps it
+  **Leave**, and a short chat (`together_chat_field`, `together_chat_send`;
+  for an account under 13 or not yet asked its age, a line saying why
+  instead). A browser opened at `/app?together=<secret>` (the shell maps it
   to `--together=`) joins once signed in and the first model is down
   (`Main._maybe_join_together`), then shows the panel. Controls for checks:
   `together_start`, `together_join_field`, `together_join`, `together_copy`,
@@ -24,8 +26,18 @@ app, joined by a link (docs/TOGETHER.md).
   since the last revision; every part when a builder step changed), send
   (one request in flight, up to 200 changes), poll (long-poll, ~20 s), take
   (numbered changes in order; another's change to a part with one of mine on
-  its way waits until mine is numbered), per-person undo/redo (puts a part
-  back only where it is still as the step left it). In a session
+  its way waits until mine is numbered; a copy's change seen twice put down
+  once), per-person undo/redo (puts a part back only where it is still as
+  the step left it). The model's own state as keys of their own
+  (`_meta_now`: `~title`, `~floor`, `~hidden`, `~motions`, `~looks`,
+  `~unit_steps`, `~broken`), read every 250 ms and on each builder step;
+  a part made in the app sent as `~part:<id>` with its files. Chat as
+  `~chat` ops (`messages`, `chat_words`). Pointers: `op=point` four times a
+  second while the part under the mouse or the ghost moves
+  (`Main`'s `pointer_at`), the others' drawn as a dot and a name
+  (`pointers_shown`). Going back in: the session kept in
+  `TabSession.path("together.txt")`; `Main._maybe_join_together` rejoins
+  without asking after a reload or a restart. In a session
   `EditVerbs.press("undo"/"redo")` and `go_back` route here. Leaves the
   session when the model is replaced (Open, New, Clear). On the web it says
   its state to `window.brickworksTogether` (live, owner, link, seq, waiting,
@@ -33,7 +45,9 @@ app, joined by a link (docs/TOGETHER.md).
   `window.brickworksTogetherAsk` (edits for `check_edit`, or `{text:true}`
   for the file, its hash and the uids).
 - `POST /api/together` (`api/together.js`, `supabase/together.sql`): ops
-  `start`, `join`, `send`, `poll`, `end`, `leave`, `remove`. Numbers come
+  `start`, `join`, `send`, `poll`, `end`, `leave`, `remove`, `point`. Chat
+  follows comments' rule (13 or over, not barred, words filtered); an
+  under-13 reader's copy of a chat op has the words taken out. Numbers come
   from `together_append` under the session row's lock. Names: the profile's
   when `shown_publicly`, else "Builder N"; never an email.
 - `together probe` (`tools/web/together_probe.mjs`), `together browser flow`
@@ -67,8 +81,14 @@ signed in as someone else.
 - Whole thing, about 6 minutes, one SwiftShader browser and a headless
   desktop copy: `node tools/web/together_flow.mjs --url=http://127.0.0.1:9011
   --out=DIR` (`--desktop=no` without the desktop's half). Expect
-  `together_flow: all ok`, with the edits made, the hash equal in both
-  browsers and the desktop, the Ctrl+Z check, and latency p50/p95 printed.
+  `together_flow: all ok`: the edits made and the hash equal in both
+  browsers and the desktop; then each kind of the model's own state (name
+  typed, floor, printed part, step, booklet look, motion, hidden colours)
+  byte-identical after each; Ctrl+Z; latency p50/p95; a reload and an
+  offline spell rejoining; the owner's pointer drawn in the other view;
+  chat heard by the desktop and refused to the under-13; a real MCP
+  `edit_model` from the owner's Claude reaching the other browser. A
+  mismatch writes both files to DIR and prints the first lines that differ.
   On a build without the feature it fails at "File, Build together… opens
   its panel".
 - In the preview battery: `together_probe` and `together`
@@ -87,3 +107,10 @@ signed in as someone else.
   its boxes reach below the ground: checks place their parts 48 LDU up.
 - Nothing runs outside a session; the frames gate is unaffected but for the
   web's twice-a-second state line.
+- Two copies in one process share a tab: the pair probe sets
+  `keeps_place = false`, or each would rejoin the other's session.
+- The owner's Claude must be connected before the owner's tab opens (the
+  flow mints it first): a tab opened earlier listens only once reloaded.
+- `ModelStore._in_file_order` breaks a tie of one part in one place by its
+  turn: two copies built in another order wrote turned twins the other way
+  round.

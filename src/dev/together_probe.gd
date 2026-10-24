@@ -317,7 +317,9 @@ func _join_alone() -> void:
 			written = Time.get_ticks_msec()
 			var file := FileAccess.open(out, FileAccess.WRITE)
 			file.store_string(JSON.stringify({"live": true, "seq": together.seq, "waiting": together.waiting(),
-				"hash": together.model_hash(), "made": made, "parts": together.uids().size()}))
+				"hash": together.model_hash(), "made": made, "parts": together.uids().size(),
+				"messages": together.messages.map(func(m: Dictionary) -> String: return "%s: %s" % [m["name"], m["text"]]),
+				"chat_words": together.chat_words}))
 			file.close()
 	if not out.is_empty():
 		var file := FileAccess.open(out, FileAccess.WRITE)

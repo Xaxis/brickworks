@@ -915,6 +915,7 @@ func _put_meta(key: String, words: String) -> void:
 				if bar != null:
 					bar._name.text = words
 					bar.model_named.emit(words)
+				changed.emit()
 		"~floor":
 			if builder.floor_hook.is_valid():
 				builder.floor_hook.call(words)
@@ -1022,18 +1023,25 @@ func _heard_chat(op: Dictionary, mine: bool) -> void:
 
 # -- where each person is working ----------------------------------------------
 
+## Where the pointer is on the model, or null: Main's, which looks under the
+## mouse. Without it, the part under the builder's own aim.
+var pointer_at: Callable = Callable()
+
+
 ## Where this person is working, in the model's space: the part in hand's
 ## ghost, or the part under the pointer; null when neither.
 func _pointer_now() -> Variant:
+	var at: Variant = null
 	if builder.has_preview():
-		var ghost: Vector3 = builder.ghost_transform().origin
-		return [snappedf(ghost.x, 0.1), snappedf(ghost.y, 0.1), snappedf(ghost.z, 0.1)]
-	var hovered: int = builder.hovered_brick()
-	var brick: BrickWorld.Brick = world.get_brick(hovered) if hovered != 0 else null
-	if brick == null:
+		at = builder.ghost_transform().origin
+	elif pointer_at.is_valid():
+		at = pointer_at.call()
+	elif builder.hovered_brick() != 0 and world.get_brick(builder.hovered_brick()) != null:
+		at = world.get_brick(builder.hovered_brick()).transform.origin
+	if not at is Vector3:
 		return null
-	var at: Vector3 = brick.transform.origin
-	return [snappedf(at.x, 0.1), snappedf(at.y, 0.1), snappedf(at.z, 0.1)]
+	var point: Vector3 = at
+	return [snappedf(point.x, 0.1), snappedf(point.y, 0.1), snappedf(point.z, 0.1)]
 
 
 ## Sent a few times a second while it moves.
@@ -1347,8 +1355,13 @@ func _answer_page() -> void:
 			if one.has("op"):
 				answers.append(await check_edit(one))
 			elif bool(one.get("text", false)):
+				var parts: Dictionary = {}
+				for uid: String in _ids:
+					var brick: BrickWorld.Brick = world.get_brick(int(_ids[uid]))
+					if brick != null:
+						parts[uid] = brick.part_id
 				answers.append({"ok": true, "hash": model_hash(), "text": model_text(),
-					"uids": uids(), "seq": seq, "waiting": waiting()})
+					"uids": uids(), "parts": parts, "seq": seq, "waiting": waiting()})
 		JavaScriptBridge.eval("window.brickworksTogetherDone = %s" % JSON.stringify(answers), true)
 		_answering = false
 

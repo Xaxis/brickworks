@@ -12,10 +12,10 @@
 // ones at Resend's test addresses, deleted at the end); the second is under
 // 13, who builds together like anyone and is never shown by name:
 //
-//   1. The owner opens the house, and File, Build together… (the menu typed
+//   1. The owner opens the car, and File, Build together… (the menu typed
 //      to, as a person does), and presses Start a session: a link.
 //   2. The second person opens the link, signed in: they join, and have the
-//      house byte for byte; each sees who is in it ("Builder 2", never an
+//      car byte for byte; each sees who is in it ("Builder 2", never an
 //      email). The desktop app joins the same session too
 //      (src/dev/together_probe.gd --join), and makes edits of its own.
 //   3. 50 random edits from the two browsers, interleaved, as the keys make
@@ -37,8 +37,8 @@
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -131,9 +131,52 @@ async function menu(page, title, words, shown, seconds = 30) {
 // page (Together._tell_page).
 async function ask(page, asks) {
   await page.evaluate((a) => { window.brickworksTogetherDone = undefined; window.brickworksTogetherAsk = a; }, asks);
-  return until(() => page.evaluate(() => window.brickworksTogetherDone), "the page's answer", 30);
+  return until(() => page.evaluate(() => window.brickworksTogetherDone), "the page's answer", 180);
 }
 const textOf = async (page) => (await ask(page, [{ text: true }]))[0];
+
+
+// The owner's Claude, signed in to their account as claude.ai does it
+// (tabs_flow.mjs): its published identity, PKCE, the person's yes with their
+// session, the code traded.
+async function claudeToken(who) {
+  const client = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+  const back = "https://claude.ai/api/mcp/auth_callback";
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const yes = await (await fetch(`${site}/api/oauth?op=approve`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json", authorization: `Bearer ${who.token}` },
+    body: JSON.stringify({ response_type: "code", client_id: client, redirect_uri: back,
+      code_challenge: challenge, code_challenge_method: "S256", state: "together", resource: `${site}/api/mcp` }),
+  })).json().catch(() => ({}));
+  const code = new URL(String(yes.redirect || "x:")).searchParams.get("code");
+  if (!code) return "";
+  const tokens = await (await fetch(`${site}/oauth/token`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: back, client_id: client,
+      code_verifier: verifier, resource: `${site}/api/mcp` }).toString(),
+  })).json().catch(() => ({}));
+  return tokens.access_token || "";
+}
+let mcpSent = 0;
+// One MCP request as Claude makes it: [status, body, the session id handed out].
+async function mcp(token, session, method, params) {
+  const answer = await fetch(`${site}/api/mcp`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json", accept: "application/json, text/event-stream",
+      authorization: `Bearer ${token}`, ...(session ? { "mcp-session-id": session } : {}) },
+    body: JSON.stringify({ jsonrpc: "2.0", id: ++mcpSent, method, params }),
+  });
+  const raw = await answer.text();
+  let body = {};
+  try { body = JSON.parse(raw); } catch {
+    const data = raw.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5)).pop();
+    try { body = JSON.parse(data || "{}"); } catch {}
+  }
+  return [answer.status, body, answer.headers.get("mcp-session-id") || ""];
+}
 
 const browser = await launch({ signedOut: true });
 async function person(email, { under13 = false } = {}) {
@@ -145,7 +188,7 @@ async function person(email, { under13 = false } = {}) {
   }, [STORAGE_KEY, JSON.stringify(session.kept)]);
   const page = await context.newPage();
   page.on("pageerror", (e) => console.log(`        [page error] ${String(e).slice(0, 160)}`));
-  return { context, page, token: session.access_token, email };
+  return { context, page, token: session.access_token, email, kept: session.kept };
 }
 async function opened(who, query) {
   await who.page.goto(`${site}/app?${query}`, { waitUntil: "domcontentloaded", timeout: 180000 });
@@ -170,11 +213,25 @@ async function settled(pages, desktopFile = null, seconds = 60) {
     return again.every((one) => one.seq === top && one.waiting === 0) ? top : null;
   }, "nothing on its way", seconds);
 }
+// Both files and the lines that differ, for a check that found them apart.
+function dumpTexts(what, mine, theirs) {
+  const name = what.replace(/\W+/g, "_").slice(0, 40);
+  writeFileSync(path.join(out, `${name}_owner.ldr`), mine);
+  writeFileSync(path.join(out, `${name}_guest.ldr`), theirs);
+  const a = mine.split("\n");
+  const b = theirs.split("\n");
+  const differ = [];
+  for (let n = 0; n < Math.max(a.length, b.length) && differ.length < 6; n++) {
+    if (a[n] !== b[n]) differ.push(`        line ${n + 1}: ${String(a[n]).slice(0, 90)} | ${String(b[n]).slice(0, 90)}`);
+  }
+  console.log(differ.join("\n"));
+}
 function readDesktop(file) {
   try { return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { return null; }
 }
 
 let desktop = null;
+let claude = "";
 const desktopFile = path.join(out, "desktop.json");
 const people = {};
 try {
@@ -187,7 +244,12 @@ try {
   }
 
   console.log("\n1. the owner starts a session");
-  await opened(owner, "model=res://models/house.ldr");
+  // The owner's Claude connected first, as a person connects it before
+  // asking it to build: their tab then listens by itself when it opens.
+  claude = await claudeToken(owner);
+  check("the owner's Claude signs in with OAuth", claude.startsWith("bwa_"));
+  // The car, the app's own first model: its doors move.
+  await opened(owner, "model=res://models/car.ldr&assistant=on");
   const panel = await menu(owner.page, "file", "Build tog", "together_start");
   check("File, Build together… opens its panel", Boolean(panel));
   if (!panel) throw new Error("no Build together in the File menu");
@@ -208,9 +270,9 @@ try {
     return now.live ? now : null;
   }, "the second browser in the session", 240);
   check("the link joins the second person (under 13)", joined.live && !joined.owner);
-  await until(async () => (await state(guest.page)).awaited === 0, "the house whole there", 120);
+  await until(async () => (await state(guest.page)).awaited === 0, "the car whole there", 120);
   const [a0, b0] = [await textOf(owner.page), await textOf(guest.page)];
-  check("both have the house, byte for byte", a0.hash === b0.hash && a0.text.length > 1000,
+  check("both have the car, byte for byte", a0.hash === b0.hash && a0.text.length > 1000,
     `${a0.uids.length} parts, ${a0.text.length} bytes`);
   const names = (await until(async () => {
     const now = await together(owner.page);
@@ -285,6 +347,7 @@ try {
   check(`${made} edits made (${together_moves} times the same part moved by both at once); all numbered`, Boolean(top) && made >= EDITS * 0.6,
     `seq ${top}`);
   const [a1, b1] = [await textOf(owner.page), await textOf(guest.page)];
+  if (a1.hash !== b1.hash) dumpTexts("after the edits", a1.text, b1.text);
   check("the model is byte-identical in both browsers", a1.hash === b1.hash, `${a1.uids.length} parts, ${a1.text.length} bytes`);
   if (withDesktop) {
     const desk = readDesktop(desktopFile);
@@ -292,6 +355,68 @@ try {
   }
   await shot(owner.page, "3_owner.png");
   await shot(guest.page, "3_guest.png");
+
+
+  console.log("\n3b. what the model is besides its parts, each kind from either side");
+  // Each through the app's own code: the name typed into its field, the rest
+  // through the tools Claude calls (Together.check_edit "tool").
+  const sameEverywhere = async (what) => {
+    const top = await settled([owner.page, guest.page], withDesktop ? desktopFile : null, 90).catch(() => null);
+    const [a, b] = [await textOf(owner.page), await textOf(guest.page)];
+    const desk = withDesktop ? readDesktop(desktopFile) : null;
+    if (a.hash !== b.hash) dumpTexts(what, a.text, b.text);
+    return check(`${what}: byte-identical in both browsers${withDesktop ? " and the desktop" : ""}`,
+      Boolean(top) && a.hash === b.hash && (!withDesktop || desk?.hash === a.hash),
+      `seq ${top}, ${a.text.length} bytes`);
+  };
+  // A tool's answer; one that became a job (a long one) waited on until done.
+  const tool = async (page, name, args) => {
+    let words = (await ask(page, [{ op: "tool", name, arguments: args }]))[0]?.words || "";
+    const job = /Started job (\d+)/.exec(words);
+    for (let n = 0; job && n < 30; n++) {
+      words = (await ask(page, [{ op: "tool", name: "job", arguments: { id: Number(job[1]), wait_s: 10 } }]))[0]?.words || "";
+      if (/ is done/.test(words) || !/^Job \d+/.test(words)) break;
+    }
+    return words;
+  };
+  // The name, typed by the second person as a person types it.
+  const field = await until(async () => (await controls(guest.page)).model_name, "the name field", 60);
+  await guest.page.mouse.click(field.x, field.y);
+  await guest.page.keyboard.press("Control+A");
+  await guest.page.keyboard.type("Together Cottage", { delay: 40 });
+  await guest.page.keyboard.press("Enter");
+  await guest.page.keyboard.press("Escape");
+  await sameEverywhere("the model's name typed by the second person");
+  check("...and the owner's tab is called it", (await textOf(owner.page)).text.includes("Together Cottage"));
+  const floorSaid = await tool(owner.page, "set_floor", { kind: "baseplate", across: 48, colour: 2 });
+  console.log(`        set_floor: ${floorSaid.split("\n")[0].slice(0, 120)}`);
+  await sameEverywhere("the floor chosen by the owner");
+  // A part made in the app: a print on a brick of the second person's own,
+  // a part of its own from then on, which the other side has to be sent.
+  const [printed] = await ask(guest.page, [{ op: "place", part: "3004", colour: 15, x: 1200, y: 48, z: 1200 }]);
+  const printSaid = await tool(guest.page, "print_part", { brick: `uid:${printed?.uid}`,
+    svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 24"><rect width="40" height="24" fill="#ffd500"/>'
+      + '<circle cx="20" cy="12" r="8" fill="#d01012"/></svg>' });
+  console.log(`        print_part: ${printSaid.split("\n")[0].slice(0, 140)}`);
+  await sameEverywhere("a part printed by the second person, made in the app");
+  const someUid = (await textOf(guest.page)).uids[3];
+  const stepSaid = await tool(guest.page, "edit_steps", { op: "new", bricks: [`uid:${someUid}`] });
+  console.log(`        edit_steps: ${stepSaid.split("\n")[0].slice(0, 120)}`);
+  await sameEverywhere("a build step made by the second person");
+  const lookSaid = await tool(owner.page, "edit_booklet", { step: 1, zoom: 1.5 });
+  console.log(`        edit_booklet: ${lookSaid.split("\n")[0].slice(0, 120)}`);
+  await sameEverywhere("the booklet's look of a step, set by the owner");
+  // A motion: the car's door swung open, kept by the second person.
+  const partsNow = (await textOf(guest.page)).parts || {};
+  const hinge = Object.keys(partsNow).find((uid) => /^3938/.test(partsNow[uid]));
+  const motionSaid = await tool(guest.page, "define_motion", { name: "Open the door",
+    tracks: [{ joint: `#uid:${hinge}`, keys: [{ t: 0, place: 0 }, { t: 1, place: 45 }] }] });
+  console.log(`        define_motion: ${motionSaid.split("\n")[0].slice(0, 140)}`);
+  await sameEverywhere("a motion kept by the second person");
+  check("...and the owner's file has it", (await textOf(owner.page)).text.includes("Open the door"));
+  const hiddenSaid = await tool(owner.page, "colour_hidden_parts", { mode: "stages", stages: 2, apply: true, agreed: true });
+  console.log(`        colour_hidden_parts: ${hiddenSaid.split("\n")[0].slice(0, 160)}`);
+  await sameEverywhere("the hidden parts coloured by the owner");
 
   console.log("\n4. each undo is its own");
   const [placed] = await ask(owner.page, [{ op: "place", part: "3001", colour: 4, x: -1200, y: 96, z: -1200 }]);
@@ -312,6 +437,10 @@ try {
 
   console.log("\n5. how long a change takes to reach the other browser");
   const times = { "owner to guest": [], "guest to owner": [] };
+  // One part of its own, painted by each side in turn, a colour that is
+  // always a change.
+  const [swatch] = await ask(owner.page, [{ op: "place", part: "3005", colour: 4, x: -2400, y: 48, z: 2400 }]);
+  await settled([owner.page, guest.page]);
   for (let n = 0; n < 40; n++) {
     const [from, to, label] = n % 2 === 0 ? [owner, guest, "owner to guest"] : [guest, owner, "guest to owner"];
     const before = (await together(to.page)).seq;
@@ -321,7 +450,7 @@ try {
     await from.page.evaluate(() => { window.brickworksTogetherDone = undefined; });
     const t0 = Date.now();
     await from.page.evaluate((a) => { window.brickworksTogetherAsk = a; },
-      [{ op: "paint", uid: uids[n % uids.length], colour: n % 2 ? 1 : 4 }]);
+      [{ op: "paint", uid: swatch.uid, colour: n % 2 ? 4 : 1 }]);
     let got = null;
     for (const end = Date.now() + 20000; Date.now() < end && !got;) {
       if ((await together(to.page)).seq > before) got = Date.now();
@@ -335,6 +464,81 @@ try {
   const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];
   check(`${all.length} changes arrived: p50 ${pct(all, 0.5)} ms, p95 ${pct(all, 0.95)} ms`, all.length >= 36 && pct(all, 0.5) < 1500,
     Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
+
+
+  console.log("\n5b. a reload, and a lost connection, go back in by themselves");
+  await guest.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
+  for (let n = 0; n < 3; n++) {
+    await ask(owner.page, [{ op: "place", part: "3003", colour: 14, x: -1600 + 80 * n, y: 48, z: 1200 }]);
+  }
+  const back = await until(async () => (await together(guest.page)).live, "the second browser back in", 300).catch(() => null);
+  check("the reloaded browser went back into the session by itself", Boolean(back));
+  await sameEverywhere("what the owner did while it was reloading");
+  await guest.context.setOffline(true);
+  for (let n = 0; n < 3; n++) {
+    await ask(guest.page, [{ op: "place", part: "3001", colour: 1, x: 1600, y: 48 + 24 * n, z: -1600 + 80 * n }]);
+    await ask(owner.page, [{ op: "place", part: "3001", colour: 4, x: -1600, y: 48 + 24 * n, z: -1600 + 80 * n }]);
+  }
+  await wait(8000);
+  const offlineSeq = (await together(guest.page)).seq;
+  await guest.context.setOffline(false);
+  check("offline, the second browser held its changes", (await together(guest.page)).waiting >= 1, `seq ${offlineSeq}`);
+  await sameEverywhere("both sides' changes made while the second was offline");
+
+  console.log("\n5c. where each person is working, shown in the others' view");
+  await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
+  const layout = await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30);
+  const aim = (layout.targets || [])[0];
+  if (aim) await owner.page.mouse.move(aim.x, aim.y, { steps: 4 });
+  const seen = await until(async () => {
+    const now = await together(guest.page);
+    const them = (now.people || []).find((one) => one.owner);
+    return them?.at && now.pointers >= 1 ? them : null;
+  }, "the owner's pointer in the second browser", 20).catch(() => null);
+  check("the owner's pointer is drawn in the second browser's view, with their name", Boolean(seen),
+    seen ? `${seen.name} at ${seen.at.join(", ")}` : "");
+  await shot(guest.page, "5c_pointer.png");
+
+  console.log("\n5d. a short chat");
+  const chatPanel = await menu(owner.page, "file", "Build tog", "together_chat_field");
+  check("the owner's panel has a chat", Boolean(chatPanel));
+  if (chatPanel) {
+    await owner.page.mouse.click(chatPanel.x, chatPanel.y);
+    await owner.page.keyboard.type("Roof next?", { delay: 40 });
+    await owner.page.keyboard.press("Enter");
+  }
+  const said = await until(async () => ((await together(owner.page)).messages || []).find((m) => m.text === "Roof next?"),
+    "the owner's line numbered", 20).catch(() => null);
+  check("the owner's line is in the chat", Boolean(said));
+  await shot(owner.page, "5d_chat.png");
+  if (withDesktop) {
+    const heard = await until(async () => (readDesktop(desktopFile)?.messages || []).includes("The owner: Roof next?"),
+      "the desktop hearing it", 20).catch(() => null);
+    check("the desktop app (13 or over) hears it", Boolean(heard));
+  }
+  const kid = await together(guest.page);
+  check("the second person, under 13, is not shown the chat, and is told why",
+    !(kid.messages || []).some((m) => m.text === "Roof next?") && /13/.test(kid.chat_words || ""), kid.chat_words);
+  const [kidSays] = await ask(guest.page, [{ op: "chat", text: "hi" }]);
+  check("...and cannot say anything in it", !kidSays.ok && /13/.test(kidSays.words || ""), kidSays.words);
+  await press(owner.page, "together_close").catch(() => {});
+
+  console.log("\n5e. Claude in the owner's tab, building for both");
+  const listening = await until(() => owner.page.evaluate(() => window.brickworksConnector || ""), "the owner's connector", 180)
+    .catch(() => null);
+  check("the owner's tab listens for Claude", Boolean(listening));
+  const before5e = (await state(guest.page)).bricks;
+  const [, , mcpSession] = await mcp(claude, "", "initialize", { protocolVersion: "2025-06-18", capabilities: {},
+    clientInfo: { name: "together_flow", version: "1" } });
+  const edited = await mcp(claude, mcpSession, "tools/call", { name: "edit_model",
+    arguments: { add: [{ part: "3003", color: 1, x: 30, y: 0, z: 30, rot: 0 }] } });
+  const words = (edited[1].result?.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
+  console.log(`        edit_model: ${edited[0]} ${words.slice(0, 160)}`);
+  const grew = await until(async () => (await state(guest.page)).bricks === before5e + 1, "Claude's part in the second browser", 60)
+    .catch(() => null);
+  check("a real MCP edit by the owner's Claude shows in the other person's browser", Boolean(grew),
+    `${(await state(guest.page)).bricks} parts, was ${before5e}`);
+  await sameEverywhere("Claude's edit");
 
   console.log("\n6. an account not invited");
   people.stranger = await person(emails.stranger);
