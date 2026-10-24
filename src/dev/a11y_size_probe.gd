@@ -118,6 +118,12 @@ func _within(named: String, factor: float) -> void:
 		_shell.run(opener)
 		await _frames(12)
 		await _shot("%s_%s" % [named, opener])
+		if opener == "settings" and named == "100%":
+			# Where it always fitted, all of it in sight: a flow clicks
+			# Assistant (AI) at the foot by where it is drawn (fit_check).
+			var held: ScrollContainer = (_main.get("_controls") as Node).get("_settings")
+			_check("...at 100%, every setting in sight without scrolling",
+				held == null or not held.get_v_scroll_bar().visible)
 		var inside: Array[String] = []
 		var count: int = _outside(root, room, inside)
 		_check("...%s open: %d controls, none off the window or cut off%s" % [opener, count,

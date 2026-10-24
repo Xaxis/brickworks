@@ -65,10 +65,19 @@ func _ready() -> void:
 	get_viewport().gui_focus_changed.connect(_on_focus)
 
 
+## A keyboard control a click gave the keys to, to give them back to the
+## model once the click is over. Let go while the button was still down,
+## the click was no click: a button cancels a press when it loses the keys
+## (BaseButton, NOTIFICATION_FOCUS_EXIT), and the bin's tabs did nothing
+## (bin_techniques_probe).
+var _clicked: Control
+
+
 func _on_focus(control: Control) -> void:
-	# Taken by a click (its focus hidden), a keyboard control lets go again.
+	# Taken by a click (its focus hidden), a keyboard control lets go again
+	# when the button comes up.
 	if control.has_meta(BY_KEYBOARD) and not control.has_focus(true):
-		_let_go.call_deferred(control)
+		_clicked = control
 		return
 	var field: LineEdit = control as LineEdit
 	if field == null:
@@ -108,6 +117,12 @@ func _let_go(control: Control) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# The click that gave a keyboard control the keys is over once its button
+	# comes up, and that release is the control's first.
+	var up: InputEventMouseButton = event as InputEventMouseButton
+	if up != null and not up.pressed and is_instance_valid(_clicked):
+		_let_go.call_deferred(_clicked)
+		_clicked = null
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	if focused == null:
 		_tab_in(event)
@@ -119,7 +134,7 @@ func _input(event: InputEvent) -> void:
 	if key_pressed != null and key_pressed.pressed and not key_pressed.echo \
 			and key_pressed.keycode == KEY_F6 \
 			and (focused.has_meta(BY_KEYBOARD) or focused is LineEdit or focused is TextEdit):
-		_left = focused
+		_back_to = focused
 		focused.release_focus()
 		get_viewport().set_input_as_handled()
 		return
@@ -175,6 +190,7 @@ func _input(event: InputEvent) -> void:
 func _tab_in(event: InputEvent) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		_left = null
+		_back_to = null
 		return
 	var key: InputEventKey = event as InputEventKey
 	if key == null or not key.pressed or key.echo \
@@ -182,6 +198,13 @@ func _tab_in(event: InputEvent) -> void:
 		return
 	if not (key.keycode == KEY_F6
 			or (key.keycode == KEY_TAB and get_tree().is_accessibility_enabled())):
+		return
+	var back: Control = _back_to if is_instance_valid(_back_to) else null
+	_back_to = null
+	if back != null and back.is_visible_in_tree() and back.focus_mode != Control.FOCUS_NONE:
+		back.grab_focus()
+		_left = null
+		get_viewport().set_input_as_handled()
 		return
 	var from: Control = interface_top
 	if is_instance_valid(_left) and _left.is_visible_in_tree():
@@ -200,3 +223,5 @@ func _tab_in(event: InputEvent) -> void:
 var interface_top: Control
 ## The field Tab gave the keys back from, for the next Tab to go on from.
 var _left: Control
+## The control F6 took the keys from, for the next F6 to give them back to.
+var _back_to: Control

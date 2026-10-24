@@ -168,20 +168,26 @@ func _run() -> void:
 	await _frames(4)
 	var some_tile: Button = _first_tile()
 	if some_tile != null:
+		var clicked: String = str(some_tile.get_meta("part"))
 		await _click(some_tile.get_global_rect().get_center())
-		_check("a click on a part takes it and leaves the keys with the model (%s)"
-			% _said(_focused()), _focused() == null)
+		# A control that let go of the keys while the button was down had its
+		# click cancelled: the bin's tabs did nothing (bin_techniques_probe).
+		_check("a click on a part takes it (%s in hand)" % _builder.held_part,
+			_builder.held_part == clicked)
+		_check("...and leaves the keys with the model (%s)" % _said(_focused()),
+			_focused() == null)
 	_finish()
 
 
 ## Tab, until the focus is on a control [param wanted] says yes to, or
-## [param most] presses have found none.
+## [param most] presses have found none. Tab in a field gives the keys back
+## to the model (FocusGuard), and F6 goes on from it, as a person does.
 func _tab_until(wanted: Callable, most: int) -> Control:
 	for _n: int in most:
 		var on: Control = _focused()
 		if on != null and bool(wanted.call(on)):
 			return on
-		await _key(KEY_TAB)
+		await _key(KEY_TAB if on != null else KEY_F6)
 	var last: Control = _focused()
 	return last if last != null and bool(wanted.call(last)) else null
 

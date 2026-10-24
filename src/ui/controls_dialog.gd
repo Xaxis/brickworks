@@ -84,7 +84,7 @@ func _build() -> void:
 
 	# The settings, as they were, where the window has room for them all; in
 	# a window too short (a big Interface size on a laptop) they scroll,
-	# with a few rows of keys above them and Done below (_fit_settings).
+	# with Done below (_fit_settings).
 	_settings = ScrollContainer.new()
 	_settings.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(_settings)
@@ -94,6 +94,8 @@ func _build() -> void:
 	_settings.add_child(lower)
 	lower.minimum_size_changed.connect(_fit_settings)
 	resized.connect(_fit_settings)
+	# And when the window's scale changes, after Main has inset it again.
+	get_viewport().size_changed.connect(_fit_settings, CONNECT_DEFERRED)
 
 	_toggle(lower, "Invert zoom direction",
 		"Scroll away from you to zoom out instead of in.",
@@ -128,9 +130,10 @@ func _build() -> void:
 
 
 ## The settings under the keys: all their height, or what the dialog has
-## left over its title, KEYS_LEAST of keys and Done.
+## left over its title and Done. The keys' list has what is left after them,
+## as it always had (at 1100 x 700 that is a few rows): a row of keys kept
+## for it pushed Assistant (AI) out of sight there (fit_check, 2026-10-24).
 var _settings: ScrollContainer
-const KEYS_LEAST := 90.0
 
 
 func _fit_settings() -> void:
@@ -139,8 +142,13 @@ func _fit_settings() -> void:
 	var panel: StyleBox = get_theme_stylebox("panel")
 	var column: Control = _settings.get_parent()
 	var others: float = column.get_combined_minimum_size().y - _settings.custom_minimum_size.y
-	var room: float = size.y - panel.get_minimum_size().y - others - KEYS_LEAST
-	var fits: float = clampf(room, minf(wants, KEYS_LEAST), wants)
+	# The height Main._inset gave it, not the height it grew to: a panel is
+	# never smaller than what it holds, so asked of its size this kept the
+	# room it had at 100% when the window's scale went up.
+	var tall: float = offset_bottom - offset_top \
+		if is_equal_approx(anchor_top, anchor_bottom) else size.y
+	var room: float = tall - panel.get_minimum_size().y - others
+	var fits: float = clampf(room, 0.0, wants)
 	if not is_equal_approx(_settings.custom_minimum_size.y, fits):
 		_settings.custom_minimum_size.y = fits
 
