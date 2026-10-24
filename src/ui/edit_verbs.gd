@@ -28,6 +28,9 @@ var reopen: Callable = func(_again: bool) -> bool: return false
 ## What that would take back, or do again, in words; "" for nothing
 ## (ModelStore.reopen_words).
 var reopen_words: Callable = func(_again: bool) -> String: return ""
+## Building together (Together): while in a session, Undo and Redo are this
+## person's own, and take back none of anybody else's parts.
+var together: Together = null
 
 ## What this app last put on the system clipboard, so a paste can tell
 ## LDraw another program put there from its own copy coming back.
@@ -161,6 +164,13 @@ func _say_first(count: int, words: String) -> Working.Job:
 
 ## A button on the edit bar, by name: the same thing its key does.
 func press(name: String) -> void:
+	if together != null and together.live and (name == "undo" or name == "redo"):
+		var words: String = together.undo(name == "redo")
+		if not words.is_empty():
+			edited.call()
+		say.call(words if not words.is_empty() else "nothing of yours to %s" % name)
+		aim_again.call()
+		return
 	match name:
 		"undo":
 			var job: Working.Job = await _say_first(builder.next_change_size(),
@@ -473,6 +483,16 @@ func make_unique(path: String = "") -> String:
 
 ## Back through the history to before the step ``count`` steps ago.
 func go_back(count: int) -> int:
+	# A session's history is each person's own: steps back are Undo's.
+	if together != null and together.live:
+		var went: int = 0
+		while went < count and not together.undo().is_empty():
+			went += 1
+		if went > 0:
+			edited.call()
+		say.call("went back %d of your steps" % went)
+		aim_again.call()
+		return went
 	# To before the open they followed: its model back at once, these
 	# changes kept with the model it took off, for Redo.
 	var opened: String = reopen_words.call(false)

@@ -58,6 +58,12 @@ var _driven: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
 var _connector: ClaudeConnector
+## File, Build together…: this model built with somebody else, live
+## (src/net/together.gd, src/ui/together_dialog.gd).
+var _together: Together
+var _together_dialog: TogetherDialog
+## A Build together link's secret from the page's address (?together=).
+var _together_wanted: String = ""
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
@@ -922,6 +928,8 @@ func _page_controls() -> Dictionary:
 	# viewer opens — the timeline and the parts list.
 	if _share_panel != null:
 		named.merge(_share_panel.controls_by_name())
+	if _together_dialog != null:
+		named.merge(_together_dialog.controls_by_name())
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
 	if _build_mode != null:
@@ -1381,6 +1389,8 @@ func _ready() -> void:
 		_copying = _argument("--copy")
 	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
 		_from_library = _argument("--library")
+	if _together_wanted.is_empty():
+		_together_wanted = Together.secret_in(_argument("--together"))
 	# And which version of it, a number or nothing.
 	if _viewing_version == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--v")) != null:
 		_viewing_version = _argument("--v").to_int()
@@ -1459,6 +1469,7 @@ func _ready() -> void:
 	_first_open_done = true
 	_maybe_copy()
 	_maybe_open_library()
+	_maybe_join_together()
 	# Somebody with saved models: the browser is asked to keep them, as it
 	# is at a first save (StorageKeep, ModelStore._write).
 	if ModelStore.any_saved():
@@ -2123,6 +2134,7 @@ func _on_account_changed() -> void:
 	if _connector == null or not _viewing.is_empty():
 		return
 	_maybe_copy()
+	_maybe_join_together()
 	if _account.signed_in() and not _connector_resumed:
 		_connector_resumed = true
 		_connector.resume()
@@ -4339,6 +4351,15 @@ func _build_ui() -> void:
 	_connector.held = not ShellPrefs.assistant_shown()
 	add_child(_connector)
 	_chat.use_connector(_connector)
+	_together = Together.new()
+	_together.world = _world
+	_together.builder = _builder
+	_together.store = _store
+	_together.account = _account
+	_together.bar = _bar
+	_together.base_url = Deployment.api_base()
+	_together.said.connect(func(words: String) -> void: _bar.say(words))
+	add_child(_together)
 	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
 	# as the chats in it change, and twice a minute for their "2 min ago".
 	var badge := func() -> void:
@@ -4621,6 +4642,7 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	_verbs.together = _together
 	add_child(_verbs)
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
@@ -5831,6 +5853,30 @@ func can_reshape_flex() -> bool:
 
 
 ## Build, Motions….
+func open_together() -> void:
+	if _together_dialog == null:
+		_together_dialog = TogetherDialog.new()
+		_together_dialog.together = _together
+		add_child(_together_dialog)
+	_together_dialog.open()
+
+
+## A Build together link opened: joined once whatever was here is back and
+## somebody is signed in (_on_account_changed asks again then).
+func _maybe_join_together() -> void:
+	if _together_wanted.is_empty() or not _first_open_done or _account == null \
+			or not _account.signed_in():
+		return
+	var secret: String = _together_wanted
+	_together_wanted = ""
+	_set_address("")
+	var trouble: String = await _together.join(secret)
+	if not trouble.is_empty():
+		_bar.say(trouble)
+		return
+	open_together()
+
+
 func open_pose() -> void:
 	_builder.hide_preview()
 	if _simulate.visible:
