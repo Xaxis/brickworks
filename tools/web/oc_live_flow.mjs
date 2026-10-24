@@ -182,7 +182,11 @@ try {
   await page.locator("#sign-in").click({ timeout: 60000 });
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
   const answered = nextAnswer();
-  const theirs = await page.evaluate(() => Boolean(document.querySelector("#oc-sign-in[data-oc-sign-in] svg[data-oc-mark=mono]")));
+  // orangecheck's button script dresses the button after the dialog opens:
+  // on brickworks.diy its mark was drawn 184 ms in (2026-10-24), and asked
+  // at once the check read "not drawn".
+  const theirs = await page.waitForSelector("#oc-sign-in[data-oc-sign-in] svg[data-oc-mark=mono]", { timeout: 15000 })
+    .then(() => true).catch(() => false);
   check("the button is orangecheck's own, its mark drawn", theirs);
   const [popup] = await Promise.all([page.waitForEvent("popup", { timeout: 30000 }), page.locator("#oc-sign-in").click()]);
   await walletSignIn(popup, "sign_in");
