@@ -73,11 +73,16 @@ const check = (what, ok) => {
 };
 const say = (what) => console.log(`  --    ${what}`);
 
-// The lowest [n] parts of Orthanc's own model, its minifigures left out.
+// The lowest [n] parts of Orthanc's own model, its minifigures left out: its
+// file builds it from the bottom, a section at a time, each placed where it
+// stands (orthsteps212).
 function model(n) {
   const text = readFileSync(path.join(root, "models/orthanc.ldr"), "utf8");
-  const main = text.split(/\r?\n0 FILE /)[0].split(/\r?\n/);
-  const parts = main.filter((line) => /^1 /.test(line) && /\.dat\s*$/i.test(line)).slice(0, n);
+  const sections = text.split(/\r?\n0 FILE /);
+  const own = [sections[0], ...sections.slice(1).filter((section) =>
+    sections[0].includes(`1 16 0 0 0 1 0 0 0 1 0 0 0 1 ${section.split(/\r?\n/)[0].trim()}`))];
+  const parts = own.flatMap((section) => section.split(/\r?\n/))
+    .filter((line) => /^1 /.test(line) && /\.dat\s*$/i.test(line)).slice(0, n);
   if (parts.length < n) throw new Error(`Orthanc has only ${parts.length} parts of its own`);
   return [`0 FILE steps_${n}.ldr`, `0 Steps ${n}`, `0 Name: steps_${n}.ldr`, "0 Author: Brickworks",
     "", ...parts, ""].join("\r\n");

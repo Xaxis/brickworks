@@ -61,8 +61,16 @@ const NAMED := 3
 ## How much of a test's reason the site keeps (api/_tested.js MOST_WHY).
 const MOST_WHY := 300
 ## How long the tests may take before the model goes untested, ms: a
-## 2,042-part set takes about 2.2 s here.
+## 2,042-part set takes about 2.2 s here. A bigger model may take longer
+## ([method most_ms]): before its first step is built, the Wizard's Tower's
+## 10,101 parts take 7.5 s to read what holds what and their exact shapes,
+## and each step that adds to one of its piers, columns held to each other
+## by what rests on what, weighs that pier again: 568 steps, about 90 s
+## (orthsteps212).
 const MOST_MS := 15000
+## ...the parts past which it may, and how much longer for each.
+const MOST_MS_FROM := 2000
+const MS_A_PART := 15
 ## LDraw's direct colours, 0x2RRGGBB: a colour typed in, not one parts are made in.
 const DIRECT_FROM := 0x2000000
 
@@ -107,6 +115,240 @@ class Pile extends RefCounted:
 
 	func stands(id: int) -> bool:
 		return _stands.has(root(id))
+
+
+## The build so far weighed at each step as Balance weighs it, without
+## weighing again what already stands fast. Weighed whole, each of the
+## Wizard's Tower's 1,420 steps read its build afresh, 0.6 s a step at its
+## end and ten minutes in all, and a share's time ran out at step 340
+## (orthsteps212). What stands fast is the core: the parts held to the floor
+## two ways or more by what always holds them (Balance.core), weighed from
+## then on as the floor is (Balance.rigid), since no joint inside it is a
+## bridge and a bridge outside it carries what it would in the whole build.
+## And once weighed, each piece hanging off the core is settled: it carries
+## what it carried, and is weighed no more until a part put in joins or
+## touches it. A piece with a joint that gave stays, and is said again at
+## each step, as weighing the whole build said it. The margin is the whole
+## build's, kept as each step adds to it.
+class Weighing extends RefCounted:
+	## What Stability.stud_joints says of a pair, each by its kind.
+	const KINDS: Array[String] = ["studs", "under", "sideways", "seated", "overlapped", "pivots",
+		"beside", "resting"]
+	var library: PartLibrary
+	var lattice: BrickLattice
+	var contacts: Dictionary
+	var by_id: Dictionary
+	var overlaps: Dictionary = {}
+	var known: Dictionary = {}
+	## Every part each is joined to or touches in the finished model, as
+	## Balance reads them: studs, seated, pins and the rest (links).
+	var _adjacent: Dictionary = {}     ## id -> Array of ids
+	var _keys: Dictionary = {}         ## id -> Array of its pairs' keys in the joints
+	## Each pair's entries in the joints, [kind, value, ...]: looked up once
+	## here, not in all eight kinds each time the pair is weighed.
+	var _entries: Dictionary = {}      ## key -> Array
+	var _links: Dictionary = {}        ## id -> Array of [a, b]
+	var _joints: Dictionary = {}
+	var placed: Dictionary = {}
+	var core: Dictionary = {}
+	## Put in, not in the core, not settled: what each step weighs.
+	var loose: Dictionary = {}
+	## Settled: id -> the piece it was settled in, its ids.
+	var settled: Dictionary = {}
+	var _lowest: int = 0x7FFFFFFF
+	var _points := PackedVector2Array()
+	var _hull := PackedVector2Array()
+	var _grams: float = 0.0
+	var _weighted := Vector3.ZERO
+
+	func _init(given_library: PartLibrary, given_lattice: BrickLattice, given: Dictionary,
+			bricks: Dictionary, links: Array) -> void:
+		library = given_library
+		lattice = given_lattice
+		contacts = given
+		by_id = bricks
+		_joints = Stability.stud_joints(contacts, library, lattice)
+		Stability.beside(contacts, library, lattice)
+		for id: int in by_id:
+			_adjacent[id] = []
+			_keys[id] = []
+			_links[id] = []
+		for kind: String in ["studs", "seated"]:
+			for key: int in (_joints[kind] as Dictionary):
+				var a: int = key >> 32
+				var b: int = key & 0xFFFFFFFF
+				if not by_id.has(a) or not by_id.has(b) or _entries.has(key):
+					continue
+				var entries: Array = []
+				for each: String in KINDS:
+					var from: Dictionary = _joints[each]
+					if from.has(key):
+						entries.append_array([each, from[key]])
+				_entries[key] = entries
+				(_keys[a] as Array).append(key)
+				(_keys[b] as Array).append(key)
+				(_adjacent[a] as Array).append(b)
+				(_adjacent[b] as Array).append(a)
+		for pair: Array in links:
+			var a: int = pair[0]
+			var b: int = pair[1]
+			if not by_id.has(a) or not by_id.has(b):
+				continue
+			(_links[a] as Array).append(pair)
+			(_links[b] as Array).append(pair)
+			(_adjacent[a] as Array).append(b)
+			(_adjacent[b] as Array).append(a)
+
+	## [param ids] put in: {"empty": nothing to stand on yet, "margin": studs
+	## inside the edge it would tip over, "edge", "joints": the stud joints
+	## that carry what is past them, as Balance.Report.joints}.
+	func add(ids: Array[int]) -> Dictionary:
+		var boxes: Dictionary = contacts["boxes"]
+		var lower: bool = false
+		for id: int in ids:
+			placed[id] = true
+			loose[id] = true
+			for other: int in (_adjacent[id] as Array):
+				var piece: Variant = settled.get(other)
+				if piece != null:
+					for one: int in (piece as Array):
+						settled.erase(one)
+						loose[one] = true
+			var brick: BrickWorld.Brick = by_id[id]
+			var it: Array = known.get(id, [])
+			if it.is_empty() or it[0] != brick.part_id:
+				var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+				var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+				if info == null or part == null:
+					continue
+				it = [brick.part_id, Stability.grams(info), part.bounds.get_center(), part,
+					Assemblies.path_of(brick), info.stud_count > 0]
+				known[id] = it
+			var middle: Vector3 = brick.transform * (it[2] as Vector3)
+			_grams += float(it[1])
+			_weighted += middle * float(it[1])
+			var packed: PackedInt32Array = boxes.get(id, PackedInt32Array())
+			for at: int in range(0, packed.size(), 6):
+				if packed[at + 1] < _lowest:
+					_lowest = packed[at + 1]
+					lower = true
+		# A new lowest point is a new floor: what stands on it is read again.
+		if lower:
+			_points.clear()
+			core.clear()
+			settled.clear()
+			for id: int in placed:
+				loose[id] = true
+				_add_points(boxes.get(id, PackedInt32Array()))
+		else:
+			for id: int in ids:
+				_add_points(boxes.get(id, PackedInt32Array()))
+		var out: Dictionary = {"empty": _hull.size() < 3, "margin": 0.0, "edge": "", "joints": []}
+		if out["empty"]:
+			return out
+		var centre: Vector3 = _weighted / maxf(_grams, 0.000001)
+		var standing: Dictionary = Balance.margin_in(_hull, Vector2(centre.x, centre.z))
+		out["margin"] = float(standing["margin"]) / BrickLattice.STUD
+		out["edge"] = standing["edge"]
+
+		# The loose parts, and the parts of the core they are joined to.
+		var rigid: Dictionary = {}
+		for id: int in loose:
+			for other: int in (_adjacent[id] as Array):
+				if core.has(other):
+					rigid[other] = true
+		var bricks: Array = []
+		var weighed: Dictionary = {}
+		for id: int in loose:
+			bricks.append(by_id[id])
+			weighed[id] = true
+		for id: int in rigid:
+			bricks.append(by_id[id])
+			weighed[id] = true
+		var joints: Dictionary = {}
+		for kind: String in KINDS:
+			joints[kind] = {}
+		var links: Array = []
+		var taken: Dictionary = {}
+		for id: int in loose:
+			for key: int in (_keys[id] as Array):
+				if taken.has(key):
+					continue
+				var other: int = (key >> 32) if (key & 0xFFFFFFFF) == id else (key & 0xFFFFFFFF)
+				if not weighed.has(other):
+					continue
+				taken[key] = true
+				var entries: Array = _entries[key]
+				for at: int in range(0, entries.size(), 2):
+					(joints[entries[at]] as Dictionary)[key] = entries[at + 1]
+			for pair: Array in (_links[id] as Array):
+				if weighed.has(int(pair[0])) and weighed.has(int(pair[1])):
+					links.append(pair)
+		joints["beside read"] = true
+		var balance := Balance.new()
+		balance.library = library
+		balance.lattice = lattice
+		balance.overlaps = overlaps
+		balance.known = known
+		balance.rigid = rigid
+		balance.floor_cell = _lowest
+		balance.finds_core = true
+		var report: Balance.Report = balance.measure(bricks, [], links,
+			{"boxes": boxes, "joints": joints})
+		out["joints"] = report.joints
+		for id: Variant in balance.core:
+			core[id] = true
+			loose.erase(id)
+		# What hangs off the core, settled, but for a piece where a joint gave.
+		var gave: Dictionary = {}
+		for one: Balance.JointLoad in report.joints:
+			if one.moment > one.ultimate:
+				gave[one.beyond] = true
+				gave[one.held_by] = true
+		_settle(gave)
+		return out
+
+	func _add_points(packed: PackedInt32Array) -> void:
+		var more: bool = false
+		for at: int in range(0, packed.size(), 6):
+			if packed[at + 1] > _lowest + Balance.ON_FLOOR:
+				continue
+			var x0: float = packed[at] * BrickLattice.CELL
+			var z0: float = packed[at + 2] * BrickLattice.CELL
+			var x1: float = packed[at + 3] * BrickLattice.CELL
+			var z1: float = packed[at + 5] * BrickLattice.CELL
+			_points.append_array([Vector2(x0, z0), Vector2(x1, z0), Vector2(x1, z1),
+				Vector2(x0, z1)])
+			more = true
+		if more:
+			_hull = Geometry2D.convex_hull(_points)
+			if _hull.size() > 1 and _hull[0].is_equal_approx(_hull[_hull.size() - 1]):
+				_hull.resize(_hull.size() - 1)
+
+	## Each piece of the loose parts settled, but one with a part of [param
+	## gave] in it.
+	func _settle(gave: Dictionary) -> void:
+		var seen: Dictionary = {}
+		for start: int in loose.keys():
+			if seen.has(start):
+				continue
+			var piece: Array[int] = [start]
+			seen[start] = true
+			var keep: bool = false
+			var k: int = 0
+			while k < piece.size():
+				var here: int = piece[k]
+				k += 1
+				keep = keep or gave.has(here)
+				for other: int in (_adjacent[here] as Array):
+					if loose.has(other) and not seen.has(other):
+						seen[other] = true
+						piece.append(other)
+			if keep:
+				continue
+			for id: int in piece:
+				loose.erase(id)
+				settled[id] = piece
 
 
 ## The four tests of [param world]'s parts as [param steps] build them.
@@ -276,12 +518,8 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	var tips: Array = []               ## [step number, words]
 	## How many steps were built when the time ran out; -1 when every one was.
 	var built_to: int = -1
-	var standing: Array = []
 	var weighed: int = 0
-	## What each stud joint's studs are, and what each part is, worked out
-	## once for every step.
-	var overlaps: Dictionary = {}
-	var known: Dictionary = {}
+	var weighing := Weighing.new(library, lattice, contacts, by_id, links)
 	asked.say("Testing it: building its %s…" % _counted(int(Instructions.count(steps)["steps"]), "step"))
 	asked.count(0, steps.size())
 	for step: Instructions.Step in steps:
@@ -292,7 +530,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		# Past its time a model's steps are built no further, rather than hold
 		# its share: a 3,457-part ship took 38 s, most of it weighed at 676
 		# steps. What it failed already is said ([method _unfinished]).
-		if Time.get_ticks_msec() - began > MOST_MS:
+		if Time.get_ticks_msec() - began > most_ms(bricks.size()):
 			built_to = step.index
 			break
 		asked.count(step.index, steps.size())
@@ -374,24 +612,17 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		if in_hand:
 			continue
 		# Weighed as the build check weighs it, the build so far.
-		for id: int in new_ids:
-			standing.append(by_id[id])
 		var weigh_from: int = Time.get_ticks_usec()
-		var balance := Balance.new()
-		balance.library = library
-		balance.lattice = lattice
-		balance.overlaps = overlaps
-		balance.known = known
-		var report: Balance.Report = balance.measure(standing, [], links, contacts)
+		var report: Dictionary = weighing.add(new_ids)
 		laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
-		if report.empty:
+		if report["empty"]:
 			continue
 		weighed += 1
-		if report.margin < 0.0:
+		if float(report["margin"]) < 0.0:
 			tips.append([step.number, "it tips over, %s studs past the %s edge" % [
-				Balance.studs(-report.margin), report.edge]])
+				Balance.studs(-float(report["margin"])), report["edge"]]])
 			continue
-		for one: Balance.JointLoad in report.joints:
+		for one: Balance.JointLoad in report["joints"]:
 			if one.moment > one.ultimate:
 				tips.append([step.number, "%s %s %s on %d stud%s past where it lets go" % [
 					_named(one.beyond_part, library), "hangs from" if one.hangs else "is held by",
@@ -454,6 +685,11 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			% _counted(bricks.size(), "part"), "parts": bricks.size(), "steps": steps.size()}
 	return {"v": VERSION, "app": BuildInfo.version(), "parts": bricks.size(), "steps": steps.size(),
 		"tests": tests, "ms": Time.get_ticks_msec() - began}
+
+
+## How long the tests of a model of [param parts] parts may take, ms.
+static func most_ms(parts: int) -> int:
+	return MOST_MS + maxi(0, parts - MOST_MS_FROM) * MS_A_PART
 
 
 ## A model whose steps were built only to step [param built_to] of [param

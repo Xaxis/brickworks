@@ -7,8 +7,11 @@
 ## models175 found the whole test held a part whenever it touched a held one
 ## and never asked about collisions, so Orthanc (145 pairs through each other,
 ## 72 pieces by the exact check, as it was at rel-m155) could have been marked.
-## Rebuilt in one piece (m157), it passes the whole test and is still not
-## Tested, saying why: its steps, its colours and a share's time. The kart, the castle and the orrery the app ships
+## Rebuilt in one piece (m157), it passed the whole test and was still not
+## Tested: its worked-out steps put parts down in the air, a staff and a
+## flail were in colours never made, and weighing every step's build afresh
+## ran past a share's time at step 340 of 1,420. Its steps are its own since
+## orthsteps212, and it is Tested. The kart, the castle and the orrery the app ships
 ## are Tested (the orrery's steps are its own since orrery190: worked out,
 ## its top deck went up before the spine that carries it, and twelve gears
 ## went in behind what hides them); two bricks stacked with a tile on top
@@ -143,29 +146,19 @@ func _run() -> void:
 	_ok(designs.size() == 6 and marked >= 1, "%d of %d designs stand, and %d are Tested" % [
 		stood, designs.size(), marked])
 
-	# Its whole test passes: no part in another, every one held. It is not
-	# Tested for its other three (measured 2026-10-23): built to step 321 of
-	# 1,420 in a share's time, 221 parts put down in the air at their steps,
-	# and a staff and a spiked ball in colours never made.
+	# Its steps are its own (orthsteps212): the base, the guards at the door,
+	# the tower in eight stages a course at a time round the ring, the upper
+	# works, each horn's tip built in the hand, and the wizards on the roof.
 	print("\nOrthanc")
-	var orthanc: Dictionary = await _test(FileAccess.get_file_as_string(ORTHANC))
+	var orthanc_text: String = FileAccess.get_file_as_string(ORTHANC)
+	var orthanc: Dictionary = await _test(orthanc_text)
 	print("  %s" % _said(orthanc))
+	_ok(orthanc_text.contains(LdrModel.AUTHORED_META), "Orthanc's steps are its own")
 	_ok(orthanc.has("tests") and _passes(orthanc, "whole")
 		and _why(orthanc, "whole").begins_with("One piece"),
 		"Orthanc goes together: %s" % _why(orthanc, "whole"))
-	var why: PackedStringArray = []
-	for test: String in ["stands", "steps", "parts"]:
-		if not _passes(orthanc, test):
-			why.append(_why(orthanc, test))
-	_ok(not Tested.passed(orthanc) and not why.is_empty(),
-		"Orthanc is not Tested, and says why: %s" % "; ".join(why).left(300))
-	var longest: int = 0
-	for one: String in why:
-		longest = maxi(longest, one.length())
-	_ok(longest <= Tested.MOST_WHY, "...each in the %d characters the site keeps (%d at most)"
-		% [Tested.MOST_WHY, longest])
-	_ok(Tested.words(orthanc).begins_with("Not marked Tested (only you see why)"),
-		"...and its owner is told so: \"%s\"" % Tested.words(orthanc).left(200))
+	_ok(Tested.passed(orthanc), "Orthanc is Tested, in a share's time (%s ms): %s" % [
+		Working.comma(int(orthanc.get("ms", 0))), Tested.words(orthanc)])
 
 	print("%d FAILED" % _failures if _failures else
 		"a model is Tested when it goes together, and one that does not says why")

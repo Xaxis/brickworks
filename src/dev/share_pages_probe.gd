@@ -71,17 +71,25 @@ func _run() -> void:
 
 
 ## The lowest [param count] parts of Orthanc's own model, as the share steps
-## flow makes them.
+## flow makes them: its file builds it from the bottom, a section at a time,
+## each placed where it stands (orthsteps212), and its figures are left out.
 func _lowest_of_orthanc(count: int) -> String:
 	var text: String = FileAccess.get_file_as_string("res://models/orthanc.ldr")
 	var lines := PackedStringArray(["0 FILE steps_%d.ldr" % count, "0 Steps %d" % count,
 		"0 Name: steps_%d.ldr" % count, "0 Author: Brickworks", ""])
-	for line: String in text.split("\n0 FILE ")[0].split("\n"):
-		var trimmed: String = line.strip_edges()
-		if trimmed.begins_with("1 ") and trimmed.to_lower().ends_with(".dat"):
-			lines.append(trimmed)
-			if lines.size() - 5 >= count:
-				break
+	var sections: PackedStringArray = text.split("\n0 FILE ")
+	var own: Array = [sections[0]]
+	for section: String in sections.slice(1):
+		var name: String = section.get_slice("\n", 0).strip_edges()
+		if sections[0].contains("1 16 0 0 0 1 0 0 0 1 0 0 0 1 " + name):
+			own.append(section)
+	for section: String in own:
+		for line: String in section.split("\n"):
+			var trimmed: String = line.strip_edges()
+			if trimmed.begins_with("1 ") and trimmed.to_lower().ends_with(".dat"):
+				lines.append(trimmed)
+				if lines.size() - 5 >= count:
+					return "\r\n".join(lines) + "\r\n"
 	return "\r\n".join(lines) + "\r\n"
 
 

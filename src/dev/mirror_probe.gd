@@ -13,7 +13,8 @@
 ## stud over, on the 2 x 8s beside them. Here, as a person does it: Orthanc
 ## opened as File, Open opens it, all of it mirrored left to right and front
 ## to back, and its figures one at a time, each taken back by one undo; its
-## first step on the timeline mirrored where it stands; the same two bricks
+## first step on the timeline, its author's since orthsteps212, refused, its
+## reflection landing on parts the step does not show; the same two bricks
 ## built between their neighbours; a half turn of each, which went round the
 ## same point and a stud over too, and the pair turned half round and then a
 ## quarter, on the studs; and a mirror whose reflection lands on a part not
@@ -69,14 +70,16 @@ func _run() -> void:
 	print("Orthanc's figures, one at a time")
 	await _figures()
 
+	# Its first step is its author's since orthsteps212: the plinth's first
+	# course, twenty parts in a cross, whose reflection lands on parts the
+	# step does not show. The pair its worked-out first step was is built
+	# alone below (_between).
 	print("Orthanc on the timeline, at its first step: Ctrl-A takes what it shows")
 	await _main.call("_toggle_steps")
 	await _quiet()
 	for axis: int in [0, 2]:
 		_verbs.select_by("all")
-		await _in_place(axis, "its first step", true)
-	_verbs.select_by("all")
-	await _half_turn("its first step")
+		await _onto_hidden(axis, "its first step")
 	await _main.call("_toggle_steps")
 	await _quiet()
 
@@ -121,6 +124,18 @@ func _in_place(axis: int, name: String, exact: bool = false) -> void:
 	_check("...and one undo puts it back", _snapshot() == before)
 
 
+## The selection, what the timeline shows of a model, mirrored across [param
+## axis] onto parts it does not show: refused, and nothing changed.
+func _onto_hidden(axis: int, name: String) -> void:
+	var chosen: int = _builder.selection.size()
+	var before: Dictionary = _snapshot()
+	var made: int = _builder.mirror_selection(axis)
+	_check("%s, %d parts selected of %d, mirrored across %s onto parts it does not show: refused (%d)"
+		% [name, chosen, _world.brick_count(), "x" if axis == 0 else "z", made],
+		chosen > 0 and chosen < _world.brick_count() and made == 0)
+	_check("...and nothing changed", _snapshot() == before)
+
+
 ## The selection turned half round where it stands, as the properties
 ## panel's Turn of 180 does: like a mirror both ways, onto its own footprint.
 func _half_turn(name: String) -> void:
@@ -141,13 +156,19 @@ func _half_turn(name: String) -> void:
 
 
 ## Each minifigure of Orthanc, a sub-model standing apart, mirrored where it
-## stands.
+## stands. Its other sub-models are the stages its file builds it in
+## (orthsteps212), parts of the tower, which a reflection in place would put
+## through their neighbours.
 func _figures() -> void:
 	var units: Dictionary = {}
 	for brick: BrickWorld.Brick in _world.bricks():
 		if not _store.scenery.has(brick.id) and not brick.unit.is_empty():
-			units[brick.unit] = int(units.get(brick.unit, 0)) + 1
+			if not units.has(brick.unit):
+				units[brick.unit] = []
+			(units[brick.unit] as Array).append(brick)
 	for unit: String in units:
+		if not Minifig.is_figure(units[unit], _builder.library):
+			continue
 		_builder.selection.clear()
 		for brick: BrickWorld.Brick in _world.bricks():
 			if brick.unit == unit:

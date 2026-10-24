@@ -101,6 +101,22 @@ var overlaps: Dictionary = {}
 ## same dictionary to each, as Tested does. Read afresh each step it was a
 ## quarter of weighing the castle's 2,497 parts at its 400 steps (2026-10-23).
 var known: Dictionary = {}
+## Parts that stand as the floor does (id -> true), for weighing only the
+## part of a build that is not yet held fast (Tested.Weighing): each is held
+## to the floor two ways or more by what always holds it (no touch), so no
+## joint inside them is a bridge, and a bridge outside them carries what it
+## would carry in the whole build. Weighed whole at each of its 1,420 steps,
+## the Wizard's Tower took ten minutes, 0.6 s a step at its end (orthsteps212).
+var rigid: Dictionary = {}
+## The floor's cell, when the parts weighed are not the whole build: what is
+## within ON_FLOOR of it stands on the floor, and the weighing goes on with
+## no support polygon of its own (the caller has the whole build's).
+var floor_cell: int = 0x7FFFFFFF
+## Once [method prepare] has read the joints, the parts held to the floor two
+## ways or more by what always holds them, id -> true: what a caller may weigh
+## as [member rigid] from then on. Found only when [member finds_core].
+var finds_core: bool = false
+var core: Dictionary = {}
 
 
 ## One stud joint and what it carries.
@@ -440,7 +456,7 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 	for n: Variant in _grounded:
 		report.held[_ids[int(n)]] = "floor"
 
-	if report.margin < SPARE:
+	if report.margin < SPARE and floor_cell == 0x7FFFFFFF:
 		_advise(report, weighed, worst)
 	return report
 
@@ -473,13 +489,15 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 			if all.has(id):
 				boxes[id] = all[id]
 	_ground(boxes)
-	if _hull.size() < 3:
+	if _hull.size() < 3 and floor_cell == 0x7FFFFFFF:
 		return false
 	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)
 	Stability.beside(graph, library, lattice)
 	_sideways = joints["sideways"]
 	_join(joints, links if links != null else _links())
 	_grow()
+	if finds_core:
+		_find_core()
 	_stand_on_touches(boxes)
 	_find_bridges(boxes)
 	return true
@@ -556,7 +574,7 @@ func _read(bricks: Array) -> void:
 ## Where it touches the floor: every box within ON_FLOOR of the lowest cell
 ## of the model, and the hull round them.
 func _ground(boxes: Dictionary) -> void:
-	var found: Dictionary = Balance.support_of(boxes)
+	var found: Dictionary = Balance.support_of(boxes, floor_cell)
 	_hull = found["hull"]
 	_floor_y = found["floor_y"]
 	_grounded = {}
@@ -570,13 +588,14 @@ var _grounded: Dictionary = {}
 ## Where a model touches the floor, from its parts' boxes (id -> boxes, the
 ## floor's own left out): every box within ON_FLOOR of the lowest cell, and
 ## the hull round them. {"hull": x and z in LDU in order round it,
-## "floor_y": LDU, "grounded": id -> true for each part touching}.
-static func support_of(boxes: Dictionary) -> Dictionary:
-	var lowest: int = 0x7FFFFFFF
-	for id: Variant in boxes:
-		var packed: PackedInt32Array = boxes[id]
-		for at: int in range(0, packed.size(), 6):
-			lowest = mini(lowest, packed[at + 1])
+## "floor_y": LDU, "grounded": id -> true for each part touching}. [param
+## lowest] is the floor's cell when these are not the whole build.
+static func support_of(boxes: Dictionary, lowest: int = 0x7FFFFFFF) -> Dictionary:
+	if lowest == 0x7FFFFFFF:
+		for id: Variant in boxes:
+			var packed: PackedInt32Array = boxes[id]
+			for at: int in range(0, packed.size(), 6):
+				lowest = mini(lowest, packed[at + 1])
 	var grounded: Dictionary = {}
 	if lowest == 0x7FFFFFFF:
 		return {"hull": PackedVector2Array(), "floor_y": 0.0, "grounded": grounded}
@@ -721,9 +740,18 @@ func _grow() -> void:
 	var clock: int = 0
 	found[ground] = clock
 	low[ground] = clock
-	clock += 1
 	_parent[ground] = -1
 	var stack := PackedInt32Array([ground])
+	# The parts that stand as the floor are reached with it, as one with it.
+	if not rigid.is_empty():
+		for n: int in count:
+			if rigid.has(_ids[n]):
+				found[n] = clock
+				low[n] = clock
+				_parent[n] = ground
+				_reached.append(n)
+				stack.append(n)
+	clock += 1
 	while not stack.is_empty():
 		var v: int = stack[stack.size() - 1]
 		var mine: Array = _adjacent[v]
@@ -750,6 +778,25 @@ func _grow() -> void:
 				low[p] = mini(low[p], low[v])
 				if low[v] > found[p]:
 					_bridge_edges[by_edge[v]] = v
+
+
+## What [member core] says, from the tree [method _grow] grew of the joints
+## alone: the parts no bridge stands between and the floor.
+func _find_core() -> void:
+	core.clear()
+	var count: int = _ids.size()
+	var past: Dictionary = {}
+	for e: Variant in _bridge_edges:
+		past[_bridge_edges[e]] = true
+	var inside := PackedByteArray()
+	inside.resize(count + 1)
+	inside[count] = 1
+	# Reached in turn: each after the part it was reached from.
+	for v: int in _reached:
+		var p: int = _parent[v]
+		if p >= 0 and inside[p] == 1 and not past.has(v):
+			inside[v] = 1
+			core[_ids[v]] = true
 
 
 ## Pairs that only touch ([method _join]): [one, other, the one under or -1],
@@ -869,8 +916,9 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 				for t: int in carries[child]:
 					taken[t] = true
 		# And each piece the tree does not reach from the floor.
+		var by_upper: Dictionary = _by_upper(under)
 		for piece: Array in _unreached():
-			var standing: Array = _standing_on(piece, under, weighted)
+			var standing: Array = _standing_on(piece, under, weighted, by_upper)
 			if not (standing[0] as Array).is_empty() and float(standing[1]) >= -1.0:
 				for t: int in standing[0]:
 					taken[t] = true
@@ -898,12 +946,13 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 	# a clip no connector names, and so that bar's side stud carries it, at
 	# 1.35 times its working load, and not the bar alone at 0.13.
 	var held_there: Dictionary = {}      ## node -> true
+	var on_top: Dictionary = _by_upper(under)
 	for piece: Array in _unreached():
 		if not piece.all(_studs_only):
 			for n: int in piece:
 				held_there[n] = true
 			continue
-		var standing: Array = _standing_on(piece, under, weighted)
+		var standing: Array = _standing_on(piece, under, weighted, on_top)
 		if not (standing[0] as Array).is_empty():
 			_tipping.append([piece, -float(standing[1]), standing[2]])
 	if held_there.is_empty():
@@ -926,22 +975,42 @@ func _studs_only(n: int) -> bool:
 	return true
 
 
+## Each of [param under]'s touches by the part on it: node -> the touches'
+## indices, in order.
+static func _by_upper(under: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for t: int in under.size():
+		var high: int = under[t][0]
+		if not out.has(high):
+			out[high] = []
+		(out[high] as Array).append(t)
+	return out
+
+
 ## What [param piece] (nodes) stands on of [param under]'s touches: [the
 ## touches' indices, how far its centre of mass is inside where they meet,
-## LDU (negative past it), the node under the largest].
-func _standing_on(piece: Array, under: Array, weighted: Array[Vector2]) -> Array:
+## LDU (negative past it), the node under the largest]. [param by_upper]
+## is [method _by_upper] of them: each piece asked of every touch, a tower's
+## thousand pieces resting on tiles were most of a weighing (orthsteps212).
+func _standing_on(piece: Array, under: Array, weighted: Array[Vector2],
+		by_upper: Dictionary) -> Array:
 	var members: Dictionary = {}
 	var grams: float = 0.0
 	var centre := Vector2.ZERO
+	var asked: Array = []
 	for n: int in piece:
 		members[n] = true
 		grams += _mass[n]
 		centre += weighted[n]
+		if by_upper.has(n):
+			asked.append_array(by_upper[n])
+	# In the touches' order, as every touch was asked in turn.
+	asked.sort()
 	var used: Array = []
 	var corners := PackedVector2Array()
 	var most: int = -1
 	var widest: float = -1.0
-	for t: int in under.size():
+	for t: int in asked:
 		var one: Array = under[t]
 		if not members.has(int(one[0])) or members.has(int(one[1])):
 			continue
@@ -1252,6 +1321,9 @@ func _load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector
 ## How far a point is inside the support polygon, LDU (negative past it),
 ## the nearest edge's name and its ends.
 func _margin(point: Vector2) -> Dictionary:
+	# Weighing a build's loose parts (floor_cell), whose caller has the margin.
+	if _hull.size() < 3:
+		return {"margin": 0.0, "edge": "", "ends": PackedVector2Array(), "way": Vector2.ZERO}
 	return Balance.margin_in(_hull, point)
 
 

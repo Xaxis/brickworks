@@ -226,11 +226,15 @@ func _run() -> void:
 	var laps: PackedStringArray = PackedStringArray(Instructions.laps.map(
 		func(lap: Array) -> String: return "%s %d" % [lap[0], int(lap[1])]))
 	print("    (ms: %s)" % ", ".join(laps))
-	var plain: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery)
+	# In the timeline's own order: the tower's steps are its author's since
+	# orthsteps212, read a slice at a time as the worked-out ones are.
+	var authored: bool = AuthorSteps.any(world, store.scenery)
+	var plain: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery, {},
+		authored)
 	var at: Vector2i = steps.timeline_at()
-	_check("the same %d steps as Instructions.plan, the timeline at %d of %d"
-		% [plain.size(), at.x, at.y], plain.size() == steps._steps.size()
-		and _same_order(plain, steps._steps))
+	_check("the same %d steps as Instructions.plan%s, the timeline at %d of %d"
+		% [plain.size(), " (its author's)" if authored else "", at.x, at.y],
+		plain.size() == steps._steps.size() and _same_order(plain, steps._steps))
 	steps.stop()
 	await _frames(5)
 

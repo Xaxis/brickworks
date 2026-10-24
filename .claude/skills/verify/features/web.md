@@ -3457,9 +3457,14 @@ its lower and upper decks, crank, planets and Sun built in the hand, each
 drive gear in before the ring round it); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
 the whole test, and are Tested where their other three pass (one, model-043:
 the rest fail steps or parts); Orthanc as it ships (`models/orthanc.ldr`,
-rebuilt in one piece in m157) passes the whole test ("One piece") and is not
-Tested, saying why (a share's time, parts put down in the air, colours never
-made), each reason in at most 300 characters.
+rebuilt in one piece in m157) is Tested in a share's time: its steps are its
+own since orthsteps212 (the base, the guards, the tower in eight stages a
+course at a time round the ring, the upper works, each horn's tip built in
+the hand, the wizards), its staffs and flail are in colours they are made
+in, and the steps are weighed as they go (`Tested.Weighing`: what is held
+to the floor two ways or more is weighed as the floor, a piece hanging off
+it again only when a part joins it), where every step's build was weighed
+afresh and its 1,420 steps took ten minutes.
 
 The SQL, dry (never applied by an agent):
 
