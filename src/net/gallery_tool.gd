@@ -435,7 +435,12 @@ func _reading(text: String) -> PackedStringArray:
 	var known: Dictionary = library.parts if library != null else {}
 	var placed: Array[LdrModel.Placement] = parsed.flatten(known)
 	var assemblies: int = maxi(0, parsed.submodels.size() - 1)
-	lines.append("%d sub-assemblies, %d steps." % [assemblies, parsed.main.step_count])
+	# Its steps as its page and the step player count them, from the steps
+	# it carries; its first model's 0 STEP lines were not those (steps206).
+	var counted: Dictionary = SharedPages.count(text)
+	lines.append("%d sub-model%s; %s." % [assemblies, "" if assemblies == 1 else "s",
+		Instructions.count_words(counted) if not counted.is_empty()
+		else "its steps are set out when it is opened"])
 	var box := AABB()
 	var first: bool = true
 	var by_kind: Dictionary = {}

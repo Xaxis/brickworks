@@ -214,6 +214,38 @@ static func read(text: String, world: BrickWorld, scenery: Dictionary) -> Dictio
 	return {"mode": int(head.get("mode", 0)), "steps": steps}
 
 
+## How many steps the steps carried in [param text] are, as a person is
+## told (Instructions.count), read from the text alone, as api/_steps.js
+## reads them: {} when it carries none, or none for this text.
+static func count(text: String) -> Dictionary:
+	var at: int = text.find(HEAD)
+	if at < 0:
+		return {}
+	var lines: PackedStringArray = text.substr(at).split("\n")
+	var head: Variant = JSON.parse_string(lines[0].strip_edges().trim_prefix(HEAD.strip_edges()).strip_edges())
+	if not (head is Dictionary) or int((head as Dictionary).get("v", 0)) != VERSION \
+			or str(head.get("model", "")) != fingerprint(text):
+		return {}
+	var steps: Array = []
+	for n: int in range(1, lines.size()):
+		var line: String = lines[n].strip_edges()
+		if not line.begins_with(PAGE.strip_edges()):
+			continue
+		var said: Variant = JSON.parse_string(line.trim_prefix(PAGE.strip_edges()).strip_edges())
+		if not (said is Dictionary):
+			return {}
+		var step := Instructions.Step.new()
+		step.number = int((said as Dictionary).get("n", 0))
+		var callout: Variant = (said as Dictionary).get("c", [])
+		if callout is Array and (callout as Array).size() == 3:
+			step.callout = int(callout[0])
+			step.callout_step = int(callout[1])
+		steps.append(step)
+	if steps.size() != int(head.get("steps", -1)):
+		return {}
+	return Instructions.count(steps)
+
+
 ## A world never drawn, let go once its deferred rebuild has been and gone.
 static func _let_go(world: BrickWorld) -> void:
 	world.queue_free()

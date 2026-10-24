@@ -156,7 +156,10 @@ func _steps(busy: bool) -> Dictionary:
 			"assembly": step.assembly, "times": step.times, "callout": step.callout,
 			"callout_step": step.callout_step, "callout_steps": step.callout_steps,
 			"figure": step.figure})
-	return _said("%d steps, as the booklet sets them out." % out.size(), {"of": _now(), "steps": out})
+	# Counted as the booklet and the step player number them; every page is
+	# here, a sub-assembly's own steps with the step it goes on in.
+	return _said("%s, as the booklet sets them out: %d pages in all." % [
+		Instructions.count_words(Instructions.count(steps)), out.size()], {"of": _now(), "steps": out})
 
 
 func _parts() -> Dictionary:

@@ -1261,6 +1261,14 @@
       "tests": []
     },
     {
+      "id": "cli:step count probe",
+      "kind": "cli",
+      "entry": "src/dev/step_count_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/step_count_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:step link probe",
       "kind": "cli",
       "entry": "src/dev/step_link_probe.gd",

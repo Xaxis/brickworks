@@ -265,11 +265,14 @@ func pieces(page: int) -> int:
 
 
 ## "Step 3 of 24", as the timeline and the booklet number it; a callout's
-## steps say which, "Step 12 of 40 · Window (2x), 1 of 3".
+## steps say which, "Step 12 of 40 · Window (2x), 1 of 3". The cover says
+## how many, as the booklet and the model's page count them: "87 steps, and
+## 12 sub-assemblies built on the side in 64 steps of their own"
+## (Instructions.count). It said every page, 151, where its pages said "of 87".
 func caption(page: int) -> String:
 	var step: Instructions.Step = step_of(page)
 	if step == null:
-		return "%d steps" % steps.size()
+		return Instructions.count_words(Instructions.count(steps))
 	return step.caption(steps[-1].number)
 
 
