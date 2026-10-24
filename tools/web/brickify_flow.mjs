@@ -25,6 +25,21 @@ import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// Until the booklet in the tab is whole, or ms have gone: it is written in
+// as it is drawn (BookletOut, 2026-10-23), its first pages read while the
+// rest are drawn, and whole once the app closes the document. Its first
+// page is not the booklet: read then, it has no parts pages. Says whether
+// it came whole.
+async function bookletWhole(tab, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const state = await tab.evaluate(() => document.readyState).catch(() => "");
+    if (state === "complete") return true;
+    await tab.waitForTimeout(2000);
+  }
+  return false;
+}
+
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
@@ -212,6 +227,8 @@ if (args.after !== "no") {
         if (pages > 0) break;
         await tab.waitForTimeout(3000);
       }
+      ok(await bookletWhole(tab, Math.max(0, Number(args.wait || 900) * 1000 - (Date.now() - started))),
+        `its booklet is whole (${Math.round((Date.now() - started) / 1000)} s)`);
       const numbers = await tab.evaluate(() => new Set([...document.querySelectorAll("section.page.steps")]
         .map((p) => (p.getAttribute("data-steps") || "").split(" ").filter(Boolean)).flat()).size)
         .catch(() => 0);

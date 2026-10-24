@@ -96,8 +96,6 @@ func _run() -> void:
 	var longest: Array = [0, Time.get_ticks_usec(), 0.0]
 	var watch := func() -> void:
 		var now: int = Time.get_ticks_usec()
-		if now - int(longest[1]) > 150000:
-			print("SLOW frame %d ms ending at %d" % [(now - int(longest[1])) / 1000, Time.get_ticks_msec()])
 		if now - int(longest[1]) > int(longest[0]):
 			longest[0] = now - int(longest[1])
 			longest[2] = (Time.get_ticks_msec() - _pressed) / 1000.0
@@ -105,7 +103,6 @@ func _run() -> void:
 		_poll()
 	process_frame.connect(watch)
 	_pressed = Time.get_ticks_msec()
-	print("PRESSED at %d" % _pressed)
 	dialog.get_ok_button().pressed.emit()
 	var said: String = ""
 	until = Time.get_ticks_msec() + 600000

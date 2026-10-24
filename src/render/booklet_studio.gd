@@ -434,11 +434,32 @@ class Twin extends RefCounted:
 	var ids: Array[PackedInt64Array] = []
 	var in_codes: Node3D
 	var in_alone: Node3D
+	## In a measuring lane, the new parts alone have MultiMeshes of their
+	## own, holding only them (show_new), each batch's slots copied from
+	## [member buffers]: drawn as the codes with the rest thrown away, they
+	## cost a castle's whole model a picture for the few parts a step adds.
+	var alone: Array[MultiMesh] = []
+	var buffers: Array[PackedFloat32Array] = []
 
 	## As BrickWorld.show_first.
 	func show_first(upto: int) -> void:
 		for index: int in multimeshes.size():
 			multimeshes[index].visible_instance_count = ids[index].bsearch(upto)
+
+	## The bricks numbered [param from] to [param upto] alone in [member alone].
+	func show_new(from: int, upto: int) -> void:
+		for index: int in alone.size():
+			var low: int = ids[index].bsearch(from)
+			var high: int = maxi(low, ids[index].bsearch(upto + 1))
+			var copy: MultiMesh = alone[index]
+			if high == low and copy.instance_count == 0:
+				continue
+			var stride: int = buffers[index].size() / maxi(1, ids[index].size())
+			# Taken afresh, not written over: see BrickWorld._fresh_slots.
+			copy.instance_count = 0
+			copy.instance_count = high - low
+			if high > low:
+				copy.buffer = buffers[index].slice(low * stride, high * stride)
 
 
 ## How much of each step's new parts each of [param asks] shows, as
@@ -542,6 +563,7 @@ func _aim_lane(lane: Lane, ask: Array) -> Color:
 		twin.in_codes.visible = other == made
 		twin.in_alone.visible = other == made
 	(lane.twins[made] as Twin).show_first(int(ask[1]) + 1)
+	(lane.twins[made] as Twin).show_new(int(ask[2]), int(ask[1]))
 	for material: ShaderMaterial in [lane.codes_material, lane.alone_material]:
 		material.set_shader_parameter("new_from", float(ask[2]))
 	for viewport: SubViewport in [lane.codes, lane.alone]:
@@ -561,15 +583,19 @@ func _twin(lane: Lane, made: Stage) -> Twin:
 	twin.in_alone = Node3D.new()
 	for drawn: Array in made.codes.drawing():
 		var copy: MultiMesh = _copied(drawn[0])
-		for pair: Array in [[twin.in_codes, lane.codes_material],
-				[twin.in_alone, lane.alone_material]]:
+		var alone: MultiMesh = _copied(drawn[0])
+		alone.instance_count = 0
+		for pair: Array in [[twin.in_codes, lane.codes_material, copy],
+				[twin.in_alone, lane.alone_material, alone]]:
 			var instance := MultiMeshInstance3D.new()
-			instance.multimesh = copy
+			instance.multimesh = pair[2]
 			instance.material_override = pair[1]
 			instance.custom_aabb = drawn[2]
 			(pair[0] as Node3D).add_child(instance)
 		twin.multimeshes.append(copy)
 		twin.ids.append(drawn[1])
+		twin.alone.append(alone)
+		twin.buffers.append((drawn[0] as MultiMesh).buffer)
 	lane.codes.add_child(twin.in_codes)
 	lane.alone.add_child(twin.in_alone)
 	return twin

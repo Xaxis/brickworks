@@ -425,7 +425,8 @@ try {
       await tab.waitForTimeout(2000);
     }
     ok(pages > 0, `the booklet arrives (${pages} pages, ${Math.round((Date.now() - started) / 1000)} s)`);
-    await tab.waitForLoadState("load").catch(() => {});
+    ok(await bookletWhole(tab, Math.max(0, Number(args.wait || 900) * 1000 - (Date.now() - started))),
+      `...and is whole (${Math.round((Date.now() - started) / 1000)} s)`);
     const facts = await tab.evaluate(() => [...document.querySelectorAll("section.page.steps")].map((s) => ({
       id: s.id,
       steps: (s.dataset.steps || "").split(" ").filter(Boolean).map(Number),
@@ -479,6 +480,21 @@ try {
     await download.saveAs(saved);
     const lines = execFileSync("python3", ["-I", "-c", `
 import json, sys
+
+// Until the booklet in the tab is whole, or ms have gone: it is written in
+// as it is drawn (BookletOut, 2026-10-23), its first pages read while the
+// rest are drawn, and whole once the app closes the document. Its first
+// page is not the booklet: read then, it has no parts pages. Says whether
+// it came whole.
+async function bookletWhole(tab, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const state = await tab.evaluate(() => document.readyState).catch(() => "");
+    if (state === "complete") return true;
+    await tab.waitForTimeout(2000);
+  }
+  return false;
+}
 text = open(sys.argv[1], encoding="utf-8").read()
 want = ["0 ROTSTEP 0 45 0 REL", "0 !BRICKWORKS ZOOM 1.25", "0 !BRICKWORKS PAGE NEW",
         "0 !BRICKWORKS PAGE ALONE", "0 !BRICKWORKS PARTS OFF", "0 !BRICKWORKS PER_PAGE 2"]
