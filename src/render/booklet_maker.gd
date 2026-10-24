@@ -235,8 +235,10 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 			if drawn % 5 == 1:
 				_say("Drawing the steps…", total, drawn - 1)
 			if _stopped():
+				await _keep_up(0)
 				return _forget_all()
 			await _draw(entry)
+	await _keep_up(0)
 
 	_lap("steps drawn")
 	if not only.is_empty():
@@ -345,6 +347,7 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		if count % 10 == 1:
 			_say("Drawing the parts…", stock.lots.size(), count - 1)
 		if _stopped():
+			await _keep_up(0)
 			return lots
 		var key: String = "%s:%d" % [lot.part_id, lot.color_code]
 		var made := Booklet.Lot.new()
@@ -361,7 +364,7 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		made.size = Booklet.part_size(extent.size)
 		if dry or not only.is_empty() and not _wanted_lots.has(key):
 			made.size += Vector2(1.0, 1.0)
-			lots[key] = made
+			_later([], func() -> void: lots[key] = made)
 			continue
 		var stage: BookletStudio.Stage = _studio.stage(
 			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
@@ -370,11 +373,15 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
 		var scale: float = (made.size.x / maxf(extent.size.x, 0.1)) * px_per_mm * 2.0
 		var view := BookletStudio.View.new(BookletStudio.FRONT, extent.get_center(), scale)
-		var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels)
+		var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels,
+			false, _encoded.bind(Color(0, 0, 0, 0)))
 		_studio.forget(stage)
 		made.size += Vector2(1.0, 1.0)
-		document.parts[key] = _data_uri(shot.image)
-		lots[key] = made
+		_later([shot], func() -> void:
+			document.parts[key] = _uri(shot)
+			lots[key] = made)
+		await _keep_up()
+	await _keep_up(0)
 	return lots
 
 
@@ -897,50 +904,92 @@ func _adds(entry: Booklet.Entry) -> void:
 # -- pictures ------------------------------------------------------------------
 
 
+## The pictures of [param entry], and of its callout: each drawn here, and
+## what is made of it put in place once its worker is done (_later), in the
+## order they were drawn.
 func _draw(entry: Booklet.Entry) -> void:
 	var where: Array = _where(entry)
 	var size: Vector2i = entry.pixels(px_per_mm)
 	var view: BookletStudio.View = entry.view(px_per_mm)
 	_studio.fade = (5.0 * px_per_mm) if entry.cropped else 0.0
-	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
-		int(where[1]), view, size)
-	_studio.fade = 0.0
 	# Clear behind the model on a page laid out by hand, where a thing may sit
 	# in the picture's box and must not be painted over.
-	entry.image = _data_uri(shot.image, Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR)
-	_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
-	# Where the new parts were laid out to be (booklet_layout), and where the
-	# picture drew them, for a probe to hold the one to the other.
-	if shot.new_rect.size.x > 0.0:
-		measured.append({"what": "new parts of step %d" % entry.number, "laid": entry.adds,
-			"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
-				shot.new_rect.size / px_per_mm)})
-	_point_at_small(entry, shot)
-	if entry.callout == null:
-		return
-	var callout: Booklet.Callout = entry.callout
-	var stage: BookletStudio.Stage = _callouts[callout][0]
-	var spans: Array = _callouts[callout][1]
-	if not callout.inline:
-		for sub: Booklet.Entry in callout.steps:
-			var part: Array = spans[sub.number - 1]
-			var sub_size: Vector2i = sub.pixels(px_per_mm)
-			var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
-				int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size)
-			sub.image = _data_uri(sub_shot.image, Color(0, 0, 0, 0) if sub.clear else CALLOUT_PAGE_COLOUR)
-			_note("step %d, %s step %d" % [entry.number, callout.name, sub.number],
-				sub_size, sub_shot, sub.free, sub.rect)
-	callout.images.clear()
-	for index: int in callout.cells.size():
-		var part: Array = spans[index] if callout.inline else spans[-1]
-		var cell_size := Vector2i(callout.cells[index].size * px_per_mm)
-		var cell_shot: BookletStudio.Shot = await _studio.shoot(stage,
-			int(part[1]), int(part[0]) if callout.inline else int(part[1]) + 1,
-			callout.cell_view(index, px_per_mm), cell_size)
-		callout.images.append(_data_uri(cell_shot.image, CALLOUT_COLOUR))
-		_note("step %d, %s box %d" % [entry.number, callout.name, index + 1],
-			cell_size, cell_shot, Rect2(), callout.cells[index])
-	_arrows(entry, view, size)
+	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
+		int(where[1]), view, size, false,
+		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR))
+	_studio.fade = 0.0
+	_later([shot], func() -> void:
+		entry.image = _uri(shot)
+		_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
+		# Where the new parts were laid out to be (booklet_layout), and where the
+		# picture drew them, for a probe to hold the one to the other.
+		if shot.new_rect.size.x > 0.0:
+			measured.append({"what": "new parts of step %d" % entry.number, "laid": entry.adds,
+				"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
+					shot.new_rect.size / px_per_mm)})
+		_point_at_small(entry, shot))
+	if entry.callout != null:
+		var callout: Booklet.Callout = entry.callout
+		var stage: BookletStudio.Stage = _callouts[callout][0]
+		var spans: Array = _callouts[callout][1]
+		if not callout.inline:
+			for sub: Booklet.Entry in callout.steps:
+				var part: Array = spans[sub.number - 1]
+				var sub_size: Vector2i = sub.pixels(px_per_mm)
+				var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
+					int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size, false,
+					_encoded.bind(Color(0, 0, 0, 0) if sub.clear else CALLOUT_PAGE_COLOUR))
+				_later([sub_shot], func() -> void:
+					sub.image = _uri(sub_shot)
+					_note("step %d, %s step %d" % [entry.number, callout.name, sub.number],
+						sub_size, sub_shot, sub.free, sub.rect))
+		_later([], func() -> void: callout.images.clear())
+		for index: int in callout.cells.size():
+			var part: Array = spans[index] if callout.inline else spans[-1]
+			var cell_size := Vector2i(callout.cells[index].size * px_per_mm)
+			var cell_shot: BookletStudio.Shot = await _studio.shoot(stage,
+				int(part[1]), int(part[0]) if callout.inline else int(part[1]) + 1,
+				callout.cell_view(index, px_per_mm), cell_size, false,
+				_encoded.bind(CALLOUT_COLOUR))
+			_later([cell_shot], func() -> void:
+				callout.images.append(_uri(cell_shot))
+				_note("step %d, %s box %d" % [entry.number, callout.name, index + 1],
+					cell_size, cell_shot, Rect2(), callout.cells[index]))
+		_arrows(entry, view, size)
+	await _keep_up()
+
+
+## Pictures drawn and still with their workers, each with what is to be done
+## with it once they are done: [[shots], Callable], oldest first.
+var _pending: Array = []
+
+
+func _later(shots: Array, then: Callable) -> void:
+	_pending.append([shots, then])
+
+
+## Put in place what the workers have done, oldest first, until no more than
+## [param most] are left: a castle's pictures drawn ahead of their workers
+## are megabytes each, so only so many are let wait.
+func _keep_up(most: int = -1) -> void:
+	if most < 0:
+		most = maxi(4, OS.get_processor_count())
+	while _pending.size() > most:
+		var next: Array = _pending.pop_front()
+		for shot: BookletStudio.Shot in next[0]:
+			await _studio.finished(shot)
+		(next[1] as Callable).call()
+
+
+## What a worker made of [param shot]: its data URI, or "" for a picture
+## that was not drawn.
+static func _uri(shot: BookletStudio.Shot) -> String:
+	return str(shot.made) if shot.made is String else ""
+
+
+## On a worker: a picture as [method _data_uri] has it, laid on [param on].
+static func _encoded(image: Image, on: Color) -> String:
+	return _data_uri(image, on)
 
 
 ## A red arrow down onto what the step adds, when that is small enough to
@@ -1048,9 +1097,10 @@ func _whole(from: Vector3, area: Rect2, fill: float) -> String:
 	scale = minf(scale, Booklet.MOST_SCALE * 1.5 * px_per_mm)
 	var view := BookletStudio.View.new(from, extent.get_center(), scale)
 	var shot: BookletStudio.Shot = await _studio.shoot(_main, _main.count,
-		_main.count + 1, view, size)
-	return _data_uri(shot.image, PAGE_COLOUR if from == BookletStudio.FRONT
-		and area.size.x > 100.0 else Color.WHITE)
+		_main.count + 1, view, size, false, _encoded.bind(PAGE_COLOUR
+			if from == BookletStudio.FRONT and area.size.x > 100.0 else Color.WHITE))
+	await _studio.finished(shot)
+	return _uri(shot)
 
 
 ## A picture as a data URI. A step's picture is laid on the colour it

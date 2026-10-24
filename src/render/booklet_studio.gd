@@ -77,6 +77,11 @@ class Stage extends RefCounted:
 ## What a picture shows, read off its codes.
 class Shot extends RefCounted:
 	var image: Image
+	## What [method shoot]'s [code]finish[/code] made of the picture.
+	var made: Variant = null
+	## The worker reading the picture, and cutting it down, until
+	## [method finished] says it is done; -1 when there is none.
+	var task: int = -1
 	## Of this step's new parts, the share of pixels the picture shows
 	## against what they would cover with nothing in front: 1 is all in
 	## view, 0 hidden. -1 when it was not measured.
@@ -286,8 +291,15 @@ static func code_colour(number: int) -> Color:
 ## numbered from [param new_from] on marked as new, from [param view],
 ## [param size] pixels. With [param measure] the share of the new parts
 ## in view is worked out too, which costs a second drawing of the codes.
+##
+## A picture is read back here, and what comes of it is worked out on a
+## worker thread ([method finished] waits for it): where the model and the
+## new parts are, the picture cut down to [param size], and [param finish]
+## (Image -> anything, in [member Shot.made]), which is how the maker
+## turns it into a JPEG. That was a tenth of a second a picture on the one
+## thread, three quarters of a castle's booklet, while the card waited.
 func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
-		measure: bool = false) -> Shot:
+		measure: bool = false, finish: Callable = Callable()) -> Shot:
 	var shot := Shot.new()
 	var big: Vector2i = size * supersample
 	_aim(made, upto, new_from, view, big)
@@ -316,15 +328,39 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	_code_material.set_shader_parameter("only_new", false)
 	if drawn == null:
 		return shot
-	_read_rects(codes, shot, 1.0 / float(supersample))
+	# A measure is wanted for its share seen alone.
+	if measure:
+		return shot
+	shot.task = WorkerThreadPool.add_task(
+		_develop.bind(shot, drawn, codes, size, supersample, finish), false,
+		"booklet picture")
+	return shot
+
+
+## Until [param shot]'s worker is done with it, the window going on meanwhile.
+func finished(shot: Shot) -> void:
+	if shot.task < 0:
+		return
+	# A build without threads does the work when it is waited for.
+	while OS.has_feature("threads") and not WorkerThreadPool.is_task_completed(shot.task):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(shot.task)
+	shot.task = -1
+
+
+## On a worker: [method shoot]'s picture read, cut down and finished.
+static func _develop(shot: Shot, drawn: Image, codes: Image, size: Vector2i,
+		times: int, finish: Callable) -> void:
+	_read_rects(codes, shot, 1.0 / float(times))
 	# The tokens out of the corner, then down to the size asked for.
 	if drawn.get_format() != Image.FORMAT_RGBA8:
 		drawn.convert(Image.FORMAT_RGBA8)
 	drawn.fill_rect(Rect2i(0, 0, 12, 12), Color(0, 0, 0, 0))
-	if supersample > 1:
+	if times > 1:
 		drawn.resize(size.x, size.y, Image.INTERPOLATE_CUBIC)
 	shot.image = drawn
-	return shot
+	if finish.is_valid():
+		shot.made = finish.call(drawn)
 
 
 ## How much of the new parts this view shows, against how much of them
@@ -376,7 +412,7 @@ static func _is_new(data: PackedByteArray, at: int) -> bool:
 ## sixth of their size: a walk over every pixel of a page-sized picture
 ## in GDScript was a second and a half a step, most of a castle's ten
 ## minutes.
-func _read_rects(full: Image, shot: Shot, factor: float) -> void:
+static func _read_rects(full: Image, shot: Shot, factor: float) -> void:
 	const SHRINK := 6
 	var codes: Image = full.duplicate()
 	codes.resize(maxi(1, full.get_width() / SHRINK), maxi(1, full.get_height() / SHRINK),
