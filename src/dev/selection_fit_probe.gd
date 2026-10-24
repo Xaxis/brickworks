@@ -102,8 +102,12 @@ func _run() -> void:
 			"...and the next two, together: %s" % two.get_slice("\n", 0).left(60))
 
 	print("\na plate put inside a part is refused with where it fits, and that lands")
-	# A 1 x 1 plate seated on a free stud pointing up, then sunk a plate
-	# into what that stud is on.
+	# A 1 x 1 plate seated on a free stud pointing up, then sunk two plates
+	# into what that stud is on: past the 8 LDU the exact check seats a part
+	# from (ExactCheck.SEAT_REACH). One plate was refused while the old
+	# horn's first free stud stood on a 1 x 1 plate; on the rebuilt tower's
+	# (m157) it stands on a 1 x 2 brick, and a plate one plate into a brick
+	# is seated back on its stud and lands, as it should.
 	var plate: Assistant.Placement = null
 	var read: OpenPoints = OpenPoints.read(assistant)
 	for point: OpenPoints.Point in read.points_of(assistant.focus.ids.keys()):
@@ -115,7 +119,7 @@ func _run() -> void:
 	_ok(plate != null, "a 1 x 1 plate on a stud of the horn: %s" % (
 		OpenPoints.as_json(plate) if plate != null else "none"))
 	if plate != null:
-		var sunk: Dictionary = {"part": "3024", "color": 72, "x": plate.x, "y": plate.y - 1,
+		var sunk: Dictionary = {"part": "3024", "color": 72, "x": plate.x, "y": plate.y - 2,
 			"z": plate.z, "face": plate.face, "section": plate.section}
 		count = world.brick_count()
 		var refused: String = _text(await assistant.use_tool("edit_selection", {"add": [sunk]}))

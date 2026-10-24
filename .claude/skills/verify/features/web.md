@@ -3414,10 +3414,10 @@ are Tested (the orrery's steps are its own, `0 !BRICKWORKS AUTHORED_STEPS`:
 its lower and upper decks, crank, planets and Sun built in the hand, each
 drive gear in before the ring round it); the six sculpt170 bench designs (`src/dev/fixtures/bench/`) pass
 the whole test, and are Tested where their other three pass (one, model-043:
-the rest fail steps or parts); Orthanc as models175 found it
-(`src/dev/fixtures/orthanc_models175.ldr.gz`) is not, its whole test saying
-"pass into each other" and "pieces are held by nothing" in at most 300
-characters.
+the rest fail steps or parts); Orthanc as it ships (`models/orthanc.ldr`,
+rebuilt in one piece in m157) passes the whole test ("One piece") and is not
+Tested, saying why (a share's time, parts put down in the air, colours never
+made), each reason in at most 300 characters.
 
 The SQL, dry (never applied by an agent):
 

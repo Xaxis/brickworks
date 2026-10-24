@@ -323,9 +323,13 @@ func _orthanc() -> void:
 		int(before["marks"]) > 100 and int(before["scattered"]) * 5 < int(before["marks"]))
 	_check("dressed again, no plainer: %d%% plain black, %d%% before" % [after["plain"],
 		before["plain"]], int(after["plain"]) <= int(before["plain"]))
-	_check("...no more scattered: %d of %d marks, %d before"
-		% [after["scattered"], after["marks"], before["scattered"]],
-		int(after["scattered"]) <= int(before["scattered"])
+	# A share of its marks, not a count: dressing adds marks, and the tower
+	# rebuilt in one piece (m157) dressed again had 39 of 731 scattered, 37 of
+	# 690 before, a count 2 higher and a share lower (5.3% to 5.4%).
+	_check("...no more scattered: %d of %d marks, %d of %d before"
+		% [after["scattered"], after["marks"], before["scattered"], before["marks"]],
+		int(after["scattered"]) * int(before["marks"])
+			<= int(before["scattered"]) * int(after["marks"])
 			and int(after["scattered"]) * 10 < int(after["marks"]))
 	_check("...in no more pieces: %s, %d, %d before" % [after["summary"], after["pieces"],
 		before["pieces"]], bool(after["ok"]) and int(after["pieces"]) <= int(before["pieces"]))

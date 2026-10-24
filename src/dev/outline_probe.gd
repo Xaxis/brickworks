@@ -263,10 +263,14 @@ func _orthanc() -> void:
 	_builder.select_brick(guard[0], false)
 	await _frames(4)
 	var whole_guard: int = _coloured(await _picture())
-	# The plane through his middle: the line goes round what is left of him.
+	# The plane through his neck: the line goes round what is left of him.
+	# It went through his middle until the rebuilt tower (m157) gave him his
+	# shield held up at his side: cut there, its top stands apart, an outline
+	# of its own longer than the one his legs lost (1,163 pixels to 1,156).
 	var see: Object = _shell.get("see_inside")
 	see.call("set_cut", true)
-	see.call("move_to", roundf(_bounds(guard).get_center().y * 0.5) * 2.0 + 1.0)
+	var him: AABB = _bounds(guard)
+	see.call("move_to", roundf((him.position.y + him.size.y * 0.75) * 0.5) * 2.0 + 1.0)
 	await _settled()
 	var cut: Image = await _picture()
 	_save(cut, "orthanc_cut")
