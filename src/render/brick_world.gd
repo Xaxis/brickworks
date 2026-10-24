@@ -1160,17 +1160,18 @@ func reveal_upto(order: PackedInt64Array, count: int, key: int) -> bool:
 	if _cut_on or not _xray.is_empty():
 		return false
 	if key != _reveal_key or _reveal_order.is_empty():
-		show_only({})
-		# Ranked by the place in the order, gaps and all, so a count of the
-		# order is a count of each batch's ranks.
-		_reveal_order = order
-		for n: int in order.size():
-			var brick: Brick = get_brick(order[n])
-			if brick == null or _reveal_rank.has(order[n]):
-				continue
-			_reveal_rank[order[n]] = n
-			brick.hidden = true
-		_write_revealing()
+		if not _reranked(order):
+			show_only({})
+			# Ranked by the place in the order, gaps and all, so a count of
+			# the order is a count of each batch's ranks.
+			_reveal_order = order
+			for n: int in order.size():
+				var brick: Brick = get_brick(order[n])
+				if brick == null or _reveal_rank.has(order[n]):
+					continue
+				_reveal_rank[order[n]] = n
+				brick.hidden = true
+			_write_revealing()
 		_reveal_key = key
 	for batch: Batch in _revealing:
 		var upto: int = batch.ranks.bsearch(count)
@@ -1182,6 +1183,67 @@ func reveal_upto(order: PackedInt64Array, count: int, key: int) -> bool:
 				brick.hidden = n >= upto
 		batch.revealed = upto
 		batch.multimesh.visible_instance_count = batch.shown + upto
+	return true
+
+
+## The timeline's order worked out again with the same parts in it, as a
+## step edit leaves it (a part moved a step): each part ranked by its new
+## place, and only a batch whose own parts changed order between them
+## written again, as [method reveal_upto] writes one. Every batch written
+## whole for one part moved was 60 ms of a step edit on the Wizard's
+## Tower's (race244). False, with nothing changed, when the parts are not
+## the same, a batch waits to be rebuilt, or the reveal is the build
+## animation's (which ends on a new order): every batch is written then.
+func _reranked(order: PackedInt64Array) -> bool:
+	if _reveal_key < 0 or _reveal_order.is_empty() or _revealing.is_empty() or _rebuild_queued:
+		return false
+	var rank: Dictionary = {}
+	for n: int in order.size():
+		var brick_id: int = order[n]
+		if rank.has(brick_id):
+			continue
+		# A brick ranked before is in the world still: a change to it ends
+		# the reveal (_touching).
+		if not _reveal_rank.has(brick_id):
+			if get_brick(brick_id) != null:
+				return false
+			continue
+		rank[brick_id] = n
+	if rank.size() != _reveal_rank.size():
+		return false
+	var moved: Array[Batch] = []
+	for batch: Batch in _revealing:
+		var ranks := PackedInt64Array()
+		ranks.resize(batch.ranks.size())
+		var kept: bool = true
+		for k: int in ranks.size():
+			ranks[k] = int(rank[batch.brick_ids[batch.shown + k]])
+			if k > 0 and ranks[k] < ranks[k - 1]:
+				kept = false
+		if kept:
+			batch.ranks = ranks
+		else:
+			moved.append(batch)
+	_reveal_rank = rank
+	_reveal_order = order
+	for batch: Batch in moved:
+		var ranks := PackedInt64Array()
+		for k: int in range(batch.shown, batch.brick_ids.size()):
+			var brick_id: int = batch.brick_ids[k]
+			ranks.append(int(rank[brick_id]))
+			_bricks[brick_id].hidden = true
+		ranks.sort()
+		var ordered: PackedInt64Array = batch.brick_ids.slice(0, batch.shown)
+		for at: int in ranks:
+			ordered.append(order[at])
+		batch.brick_ids = ordered
+		batch.ranks = ranks
+		batch.revealed = 0
+		for key: String in _batches:
+			if _batches[key] == batch:
+				_write_in_order(batch, key)
+				_dirty.erase(key)
+				break
 	return true
 
 

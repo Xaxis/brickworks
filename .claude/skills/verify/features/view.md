@@ -1047,7 +1047,18 @@ picture the assistant is shown.
   (`restep`/`unitstep` in `Builder._apply`, `AuthorSteps.squash`: an undo
   group is applied in the order kept, so a part renumbered after a move came
   back to its middle step). The first edit of a model with no steps copies the
-  worked-out order in, in the same undo (`AuthorSteps.ensure`). A part put
+  worked-out order in, in the same undo (`AuthorSteps.ensure`). An edit reads
+  only what it changes: every sub-model's steps in one pass
+  (`AuthorSteps.items_in`; the steps' looks only when a step has one), and the
+  timeline's plan after it from what the last plan read of the model's shape
+  (`Instructions._shaped`: what rests on and is joined to what, and the
+  sub-assemblies, kept while no part moves, is recoloured or changes sub-model),
+  and the timeline's new order drawn by re-ranking its batches in place
+  (`BrickWorld._reranked`; a batch is written again only where its own parts
+  changed order). A one-part edit on the Wizard's Tower held the window
+  2.2-4.7 s and now 0.14-0.2 s at load 24, the saved file the same to the
+  byte (race244); `step_edit_cost_probe` holds it under 300 ms of its own
+  work, and checks the timeline draws what writing every batch draws. A part put
   down, pasted or a figure placed while the timeline shows a step goes in it
   (`Builder.place_step`); moved, a part keeps its step; replaced or mirrored,
   the new part has the old one's. A design's own build keeps the worked-out
@@ -1679,6 +1690,15 @@ godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  #
 # author made them and the timeline the same; a part moved a step, saved,
 # reopened, and undone. Ends "...an author's steps survive open, edit and save".
 godot --headless --path . --script src/dev/io_probe.gd
+# A one-part step edit on the Wizard's Tower (next, previous, a new step):
+# under 300 ms of its own work each, the least of three tries (its time less
+# what the main thread waited for a CPU; 900 ms at a load past the cores,
+# where the work itself slows: 277-353 ms at load 30-48, 125-264 at 26-27,
+# base 2.6-4.5 s), the plan after it the plan read afresh, the timeline
+# drawn as writing every batch again draws it, the undo the file to the byte;
+# the gatehouse's alongside (~2 ms). -- --into=DIR writes
+# each edit's file, to cmp against another checkout's. Ends "every check passed".
+godot --headless --path . --script src/dev/step_edit_cost_probe.gd
 # ...and changed by hand: B, Next, Shift-] / Shift-[ / Ctrl-Z, Edit > Build
 # steps > New step from selection, the timeline's Back, Merge with next,
 # Earlier, Delete step, a copy pasted into the step showing, and ] alone still

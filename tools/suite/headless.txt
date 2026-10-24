@@ -172,3 +172,4 @@ default_view   # View > Default view frames what is built, an empty baseplate to
 open_list_time   # File › Open says when each model was saved by the local clock (walk180 D4)
 made_with   # who laid a model's parts, said as it is published (social230)
 photo_search_stub   # the bin's camera: said before the first photo, nothing sent without one, every failure in words, Brickognize stubbed (bin238)
+step_edit_cost   # a one-part step edit on the Wizard's Tower under 300 ms of its own work, its plan the plan read afresh, the undo exact (race244)

@@ -30,14 +30,28 @@ static func any(world: BrickWorld, skip: Dictionary = {}) -> bool:
 ## the step a sub-assembly made by hand from stepped parts goes on in,
 ## until it is given one.
 static func lowest_under(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
-	var out: Dictionary = {}
+	var by_path: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		if brick.step < 0 or skip.has(brick.id):
 			continue
+		var path: String = Assemblies.path_of(brick)
+		by_path[path] = mini(int(by_path.get(path, brick.step)), brick.step)
+	return _up_paths(by_path)
+
+
+## Each of [param by_path]'s numbers (a part's path -> the least of its
+## parts') taken up to every path above it, the least of them: walked once
+## a path, not once a part. Walked once a part, the three readings of the
+## model each step edit makes were most of what it did on the Wizard's
+## Tower (race244).
+static func _up_paths(by_path: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for leaf: String in by_path:
+		var least: int = by_path[leaf]
 		var path: String = ""
-		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+		for segment: String in Assemblies.segments(leaf):
 			path = Assemblies.join(path, segment)
-			out[path] = mini(int(out.get(path, brick.step)), brick.step)
+			out[path] = mini(int(out.get(path, least)), least)
 	return out
 
 
@@ -45,15 +59,13 @@ static func lowest_under(world: BrickWorld, skip: Dictionary = {}) -> Dictionary
 ## the file places it among the copies its step places, since a model is
 ## read in the order its file lists it.
 static func first_under(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
-	var out: Dictionary = {}
+	var by_path: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id):
 			continue
-		var path: String = ""
-		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
-			path = Assemblies.join(path, segment)
-			out[path] = mini(int(out.get(path, brick.id)), brick.id)
-	return out
+		var path: String = Assemblies.path_of(brick)
+		by_path[path] = mini(int(by_path.get(path, brick.id)), brick.id)
+	return _up_paths(by_path)
 
 
 ## The step the copy at [param path] goes on in, within its parent: as
@@ -95,14 +107,13 @@ static func before(a: Array, b: Array) -> bool:
 
 ## Every path in the model, ancestors included.
 static func paths_in(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
-	var found: Dictionary = {}
+	var leaves: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id):
-			continue
-		var path: String = ""
-		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
-			path = Assemblies.join(path, segment)
-			found[path] = true
+		if not skip.has(brick.id):
+			leaves[Assemblies.path_of(brick)] = 0
+	var found: Dictionary = {}
+	for path: String in _up_paths(leaves):
+		found[path] = true
 	return found
 
 
@@ -110,18 +121,32 @@ static func paths_in(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 ## ({"brick": id}) and the copies of sub-models it puts on ({"unit": path}).
 ## Only those that have a step.
 static func items_of(world: BrickWorld, section: String, skip: Dictionary = {}) -> Array:
-	var out: Array = []
+	return items_in(world, [section], skip)[section]
+
+
+## [method items_of] for each of [param sections], in one reading of the
+## model: section -> its items. Read a section at a time, the Wizard's
+## Tower's 19 sub-models were 19 readings of its 10,101 parts, three passes
+## each, twice: 1.4 s of a step edit's 2.6 (BookletLooks.items_by_step,
+## race244).
+static func items_in(world: BrickWorld, sections: Array, skip: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	for section: String in sections:
+		out[section] = []
 	for brick: BrickWorld.Brick in world.bricks():
-		if brick.step >= 0 and not skip.has(brick.id) \
-				and Assemblies.path_of(brick) == section:
-			out.append({"brick": brick.id, "step": brick.step})
+		if brick.step < 0 or skip.has(brick.id):
+			continue
+		var items: Variant = out.get(Assemblies.path_of(brick))
+		if items != null:
+			(items as Array).append({"brick": brick.id, "step": brick.step})
 	var lowest: Dictionary = lowest_under(world, skip)
 	for path: String in paths_in(world, skip):
-		if Assemblies.parent_of(path) != section:
+		var items: Variant = out.get(Assemblies.parent_of(path))
+		if items == null:
 			continue
 		var at: int = unit_step(world, path, lowest)
 		if at >= 0:
-			out.append({"unit": path, "step": at})
+			(items as Array).append({"unit": path, "step": at})
 	return out
 
 
@@ -150,7 +175,8 @@ static func squash(undo: Array) -> Array:
 	var out: Array = []
 	var seen: Dictionary = {}
 	for entry: Dictionary in undo:
-		var name: String = "b%d" % int(entry["brick"]) if entry.has("brick") \
+		# A part by its number, which no name of a copy or an undo can be.
+		var name: Variant = int(entry["brick"]) if entry.has("brick") \
 			else ("u" + str(entry["unit"]) if entry.has("unit") else str(entry.get("undo", "")))
 		if seen.has(name):
 			continue
@@ -168,14 +194,22 @@ static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Ar
 		used[int(item["step"])] = true
 	var order: Array = used.keys()
 	order.sort()
+	var place: Dictionary = {}
+	for index: int in order.size():
+		place[order[index]] = index
 	for item: Dictionary in items:
-		_put(world, item, order.find(int(item["step"])), undo)
+		_put(world, item, int(place[int(item["step"])]), undo)
 
 
 ## The steps in a section, in order.
 static func steps_in(world: BrickWorld, section: String, skip: Dictionary = {}) -> Array:
+	return steps_of(items_of(world, section, skip))
+
+
+## The steps [param items] (a section's, [method items_of]) are in, in order.
+static func steps_of(items: Array) -> Array:
 	var used: Dictionary = {}
-	for item: Dictionary in items_of(world, section, skip):
+	for item: Dictionary in items:
 		used[int(item["step"])] = true
 	var order: Array = used.keys()
 	order.sort()
@@ -192,6 +226,8 @@ static func steps_in(world: BrickWorld, section: String, skip: Dictionary = {}) 
 static func ensure(world: BrickWorld, library: PartLibrary, skip: Dictionary = {}) -> Array:
 	if not any(world, skip):
 		return adopt_plan(world, library, skip)
+	if _all_given(world, skip):
+		return []
 	var undo: Array = []
 	var numbers: Dictionary = numbers_for_file(world, library, skip, true)
 	var bricks: Dictionary = numbers["bricks"]
@@ -214,6 +250,20 @@ static func ensure(world: BrickWorld, library: PartLibrary, skip: Dictionary = {
 		for section: String in sections:
 			_tidy(world, section, skip, undo)
 	return squash(undo)
+
+
+## Whether every part and every copy of a sub-model has its step already,
+## so [method ensure] has nothing to give: read in two passes, where working
+## out every part's number to find none missing was 80 ms of each step edit
+## on the Wizard's Tower (race244).
+static func _all_given(world: BrickWorld, skip: Dictionary) -> bool:
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step < 0 and not skip.has(brick.id):
+			return false
+	for path: String in paths_in(world, skip):
+		if not world.unit_steps.has(path):
+			return false
+	return true
 
 
 ## The worked-out order made the author's: every part given the step the
@@ -396,7 +446,9 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 ## selects whole. section -> Array of items.
 static func _selected(world: BrickWorld, ids: Array, level: String,
 		skip: Dictionary) -> Dictionary:
-	var lowest: Dictionary = lowest_under(world, skip)
+	# Read only for a copy: a part of its own section needs none of it.
+	var lowest: Dictionary = {}
+	var read: bool = false
 	var out: Dictionary = {}
 	var seen: Dictionary = {}
 	for brick_id: int in ids:
@@ -410,6 +462,9 @@ static func _selected(world: BrickWorld, ids: Array, level: String,
 			var child: String = Assemblies.join(level,
 				Assemblies.segments(path)[Assemblies.segments(level).size()])
 			section = level
+			if not read:
+				lowest = lowest_under(world, skip)
+				read = true
 			item = {"unit": child, "step": maxi(unit_step(world, child, lowest), 0)}
 		else:
 			item = {"brick": brick_id, "step": maxi(brick.step, 0)}
