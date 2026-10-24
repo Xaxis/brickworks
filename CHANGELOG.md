@@ -41,6 +41,13 @@ whole cycle.
   itself. A Claude connected to one person's tab builds for everyone. The
   owner ends the session; the model stays theirs.
 
+### Changed
+- A first visit to brickworks.diy/app downloads half as much before the
+  parts bin is usable: 17 MB where it was 31. The engine and its pack are
+  sent compressed harder, the pack leaves out the developers' own scripts
+  and carries only the parts the first screen draws, and the rest of the
+  parts come in one piece while the app starts.
+
 ### Fixed
 - Saving, exporting or moving parts between steps on a big model with its
   own steps says so on the status bar before the app is held, as it does on

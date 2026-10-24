@@ -985,9 +985,9 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 
 ## Where the web build keeps the part of its working set the first screen
 ## does not draw, once the page has fetched it: index.parts.bin beside the
-## build (tools/web_pack.py), each part written into the engine's files here
-## as it arrives (src/boot/shell.html). Read as the pack is, so a part of it
-## is to hand from then on, offline too; before, it is fetched on its own.
+## build (tools/web_pack.py), each part of it written into the engine's files
+## here once the engine has started (src/boot/shell.html). Read as the pack
+## is, so a part of it is to hand from then on, offline too.
 const LATER := "/later/"
 
 
