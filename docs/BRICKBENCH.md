@@ -2966,6 +2966,154 @@ the statue's brown block, the boy's grey torso.
   verify.py.
 - **The bar on this bench:** this round's, unchanged.
 
+## 2026-10-24, before dawn: the look a stranger gives it, on the same six
+
+critique210 (`c6899364`) is rel-m160's designer, face201's base (`git log
+11b66f4f..c8feaaea -- src/ai` is empty), and one lever: `git log
+c8feaaea..c6899364 -- src/ai` is its commits. A design from outside that holds
+together has its first save held. The app draws it from the four sides the judge
+sees and asks what a stranger would call it and what most makes it read as
+something else. The session answers with `review_model` `reads_as` and
+`reads_wrong`, changes what it listed, and is shown it again; after two looks
+the save goes ahead whatever they said. In its own unit a fresh reader preferred
+its four held-out designs to its base's 16 times of 16. It designed the same six
+prompts, one design each, in the m147 round's folder. Its builds were drawn by
+the same renderer and judged against sculpt170's, m147's and BrickAgent's, every
+pair both orders twice: 72 new verdicts, with the other three pairs' 72 read
+back (`compare-critique210.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every log,
+`c6899364` in every `design.json`. **Every build is one piece**, by verify.py's
+graph and by our check (`src/dev/pieces_agree.gd` at `1ef56fd2`,
+`pieces-critique210.txt`). Every look was drawn: 12 looks, four pictures each,
+none given up.
+
+| build | parts | the first look: what a stranger would call it, and what reads wrong | changes, then the second look |
+|---|---|---|---|
+| potato (042) | 196 | "a potato-head toy ... or a chocolate egg with a face": the mustache a lopsided stick, the body faceted ("acceptable at this size"), no arms ("the brief didn't ask") | 1 edit; nothing wrong |
+| balloon dog (043) | 147 | "a balloon dog first, then a balloon giraffe or a llama": the neck as long as a leg, the knots square plates, the ears and tail dead upright | 1; the neck a segment shorter, the knots and the ears "not fixed" |
+| toilet (044) | 129 | "... or a yellow LEGO head on a pole": the bowl a drum, the head a square block, the cistern a wall | 1; the head "still a square block", the bowl "still a straight-sided drum" |
+| statue (049) | 163 | "from the front, maybe a seated robot or a gorilla": the fist and head one column, the shoulders a plank, the crossing arm lost | 5; the head a flat cap, the torso a flat-fronted box, the arm still faint, the legs columns |
+| rabbit (078) | 338 | "a grey bunny ... or a cartoon hamster with ears": the arms out on bars, not enormously fat, the face "fine for the scale" | 2; the arms "still hang from short level hinge plates", the belly flat |
+| boy (080) | 170 | "a cartoon boy in grey armour ... or a robot kid": the head a hard cube, the fin a chimney, the hair a crown of traffic cones | 2; the fin reads from the side, the head "still a hard cube" |
+
+**Every session looked twice, and five of six saved with what the second look
+still listed.** Between the looks a session made 1 to 5 changes (median 1.5).
+Each of the five second looks that found anything named a fault from the first
+as still there. The potato's found nothing, though its mustache was still a thin
+bar (`likeness-said-critique210.txt`).
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| critique210 | 14.0 (5.5-17.8) | 4.53 (26.82 for six) | 56 | 167 |
+| sculpt170 | 7.2 (5.2-12.8) | 2.33 (15.06) | 35 | 195 |
+| m147 | 12.7 (8.1-14.2) | 3.14 (19.18) | 50 | 202 |
+
+critique210 costs 94% more a design than sculpt170 and 78% more over the six,
+and takes 94% longer; its own unit measured 56% more and 13.4 against 5.7
+minutes. The looks are not most of it. From the first held save to the kept one
+took 0.4 to 2.0 minutes (median 1.2) and 7 to 17 calls, 19-26% of a session's
+tokens at the API's prices (`look-time-critique210.txt`). The rest is the design
+before them: the dog made 72 calls before its first look, seven of them sculpts,
+where sculpt170's dog took 17 replies in all.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| critique210 vs sculpt170 | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+| critique210 vs m147 | 16 of 24 (67%) | 47-82% | 3 / 2 / 1 |
+| critique210 vs BrickAgent | 0 of 24 (0%) | 0-14% | 0 / 0 / 6 |
+| face201 vs sculpt170 (the face round's verdicts) | 11 of 24 (46%) | 28-65% | 1 / 4 / 1 |
+| sculpt170 vs BrickAgent (the sculpt round's verdicts) | 4 of 24 (17%) | 7-36% | 1 / 0 / 5 |
+
+| dimension | critique210 ELO (95%) | sculpt170 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|---|
+| likeness | 909 (781-985) | 934 (734-1148) | 857 (645-1011) | 1300 (1196-1608) |
+| surface | 977 (850-1076) | 916 (768-1026) | 977 (721-1196) | 1131 (988-1384) |
+| colour | 1014 (890-1142) | 896 (651-1053) | 928 (700-1128) | 1162 (1066-1310) |
+| technique | 999 (891-1106) | 891 (698-1045) | 977 (749-1167) | 1133 (1022-1334) |
+| creativity | 1034 (926-1173) | 1050 (893-1258) | 819 (577-964) | 1097 (969-1262) |
+| buildability | 986 (846-1137) | 1036 (876-1186) | 935 (794-1059) | 1044 (881-1204) |
+| **overall** | **917 (801-976)** | **926 (685-1157)** | **857 (647-1008)** | **1300 (1195-1610)** |
+
+Overall critique210 is 9 ELO under sculpt170, well inside the intervals, and
+about 380 behind BrickAgent. Against sculpt170 it has colour 17 of 24, technique
+14, surface 13 and likeness 11. Against BrickAgent it won no likeness verdict
+and no overall verdict, 0 of 24 each, as face201 did on the same base.
+
+| prompt | vs sculpt170 | vs m147 | vs BrickAgent | what the judge said of critique210's |
+|---|---|---|---|---|
+| potato (042) | 2-2 | 0-4 | 0-4 | "expressive printed eyes", the pink ear and the hatband in both wins over sculpt170; "a thin black bar for a mustache" on a squarer body in both losses; against BrickAgent a lump or a block, beside BrickAgent's white arms, in all four |
+| balloon dog (043) | 0-4 | 4-0 | 0-4 | "bulky square plate-and-brick blocks that break the balloon look" in all four against sculpt170; over m147 the pinched segments and the plaque; against BrickAgent "lanky", "stilt-like", "more like a giraffe", in all four |
+| toilet (044) | 0-4 | 4-0 | 0-4 | "a yellow minifig-style head" under "a black dome", "a hatted robot", in all eight against sculpt170 and BrickAgent; over m147 one piece and "a convincing round toilet" |
+| statue (049) | 4-0 | 2-2 | 0-4 | its hunched, rounded back in three and "a textured stone block" of masonry greys in all four over sculpt170; against BrickAgent "a boxy brown mass with a cylinder head and no clear fist-to-chin pose", in all four |
+| rabbit (078) | 4-0 | 2-2 | 0-4 | its face (printed eyes, a pink nose, a buck tooth) and round body in all four over sculpt170's "robot"; against BrickAgent arms that "jut sideways into odd clip-shaped hands", "one tooth and no smile", in all four |
+| boy (080) | 2-2 | 4-0 | 0-4 | the fist forward, the turned torso and "a tall dorsal fin that shows even from the front" in both wins over sculpt170 and all four over m147; sculpt170's shark-mouth chest, face and colour in both losses, where critique210's is "almost all grey and black"; against BrickAgent "flat-topped hair" on "a block head", a grin "more like a stripe" |
+
+**The bar is missed** on two counts of three. Against sculpt170, 12 of 24 where
+it asked 15: an even match (31-69%), the statue and the rabbit won every time,
+the dog and the toilet lost every time. Against BrickAgent, 0 of 24 where it
+asked 6. Six of six valid and every build one piece is met.
+
+### What the look saw, and what it changed
+
+**The look sees what the judge sees.** For five prompts of six, the first thing
+the judge holds against the build beside BrickAgent's was on the first look's
+list before it was saved: the potato's faceted body and missing arms, the dog's
+long neck and square knots, the statue's box and lost pose, the rabbit's arms
+out on bars, the boy's cube head. The sixth, the toilet's head, was on it as a
+square block; its yellow, which all eight lost verdicts name, was in its reading
+("a yellow LEGO head on a pole") but never on its list. Three first readings'
+second guesses are the judge's own: the dog's "balloon giraffe" ("more like a
+giraffe"), the toilet's "yellow LEGO head" ("a yellow minifig-style head"), the
+boy's "robot kid" ("a robot mascot").
+
+**It does not get them changed.** The 24 verdicts lost to BrickAgent, by what
+their overall and likeness reasons hold against it (one verdict can hold more
+than one), and what the looks had said of it:
+
+1. **A body that does not read as the thing. 15 of 24.** The potato a blocky
+   lump (4), the dog lanky with blocky joints (4), the statue a box with no
+   pose (4), the toilet's tank apart from its bowl (3). The looks named all but
+   where the tank stands. The potato's body was waved off ("acceptable at this
+   size"); the dog's knots and the statue's box were still there at the second
+   look.
+2. **The face and head. 14 of 24.** The toilet's yellow head (4), the rabbit's
+   one tooth and no smile (4), the boy's block head and flat hair (4), the
+   potato's mustache a thin bar (2). The looks named the boy's head (twice) and
+   hair, and the mustache once (one edit, still a bar); the rabbit's face was
+   "fine for the scale"; the yellow was never named.
+3. **The pose. 9 of 24.** The rabbit's arms out (4), the statue's (4, within
+   the 15), the boy's arms held at the side (1). The rabbit's arms were named
+   at both looks.
+4. **The potato's arms. 4 of 24**, BrickAgent's named in all four, "armless"
+   in one: named at the first look and left off because the brief did not ask
+   for them.
+
+Once a change reached the judge: the boy's fin, "a chimney" at the first look
+and a swept blade at the second, is named in three likeness verdicts won over
+sculpt170 and in all four overall verdicts over m147. What the looks name is the
+body and its outline, laid in a session's first minutes. Asked at the save to
+change it, a session makes one to five edits, and saves when the second look's
+list is the first one's.
+
+### The next lever: the look while the body is laid, and its other readings as faults
+
+- **What changes.** The look is given at the first submit_design that holds
+  together, not at the save: there laying the outline again is one call (the
+  sculpt), not a dozen edits. A second look that lists a fault the first
+  listed is answered with the body laid again, not edited, and looks go on
+  while each one changes something. A stranger's other readings ("a balloon
+  giraffe", "a yellow LEGO head", "a robot kid") are faults, each with what
+  makes it read so.
+- **Proof in the unit** (minutes): the dog, the toilet and the rabbit briefs in
+  a short design each: the last look lists none of the first's faults, the
+  dog's knots are round, the toilet's head is not yellow, the rabbit's arms
+  hang; each one piece by verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
+**Verdict: do not merge critique210.** It is even with sculpt170 (12 of 24) and
+won nothing from BrickAgent (0 of 24), at 94% more a design.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -3107,6 +3255,23 @@ BrickAgent and its prompt (`face-final-face201.txt`); the pieces
 `src/dev/pieces_agree.gd` at `8ee0b64a` (`pieces-face201.txt`); the reasons
 `scripts/reasons.py` (`reasons-face201-*.txt`), with the sheets in
 `sheets-face201/`.
+
+The likeness round (2026-10-24, before dawn) is the face round's commands with
+`--arm critique210`, `--app` a locked `release_wt.sh critique210-bench c6899364`
+worktree (imported by `tools/fresh_import.sh`) and `BENCH_PORTS` the unit's
+ports. Export, verify, views and pairs ran from an imported worktree of main
+(`1ef56fd2`), a prompt or two at a time with `--tasks` as the designs finished,
+then `pairs` once over all six, which asked nothing new: `pairs --arms
+critique210,sculpt170,m147` and `compare --arms critique210,sculpt170,m147 --runs
+1 --out .../compare-critique210.md`, the m147 round's `compare.md` copied aside
+first and put back. What each session's looks said and what it changed between
+them is `scripts/likeness_said.py` on its transcripts (Claude Code's project
+folder for the critique210-bench worktree, `likeness-said-critique210.txt`); the
+minutes, calls and share of the cost in the looks `scripts/look_time.py` and
+`scripts/look_share.py` (`look-time-critique210.txt`); the pieces
+`src/dev/pieces_agree.gd` at `1ef56fd2` (`pieces-critique210.txt`); the reasons
+`scripts/reasons.py` (`reasons-critique210-*.txt`), with the sheets in
+`sheets-critique210/`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
