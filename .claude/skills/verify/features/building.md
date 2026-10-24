@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
 
 ## Sub-features
 
@@ -303,6 +303,48 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
+- `accessibility` (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings,
+  2026-10-24; docs/COMPETITIVE.md item 14). A screen reader hears every
+  control by its name (Godot 4.7's AccessKit: `accessibility_name`, or a
+  button's words, a field's placeholder): the toolbar's words and key
+  ("Select, V"), a part tile's title and number ("Brick 2 x 4, 3001"), a
+  colour's name, a technique's, every dialog's sliders, numbers and fields;
+  `Access` names the parts of Godot's own file dialog it leaves unnamed. The
+  status line is a live region, read out as it is said. F6 from the model
+  goes into the frame, and Tab does while a screen reader runs (without one
+  Tab folds the panels, as before: `FocusGuard._tab_in`): the name field,
+  then (Tab in a field gives the keys back to the model, as the owner asked;
+  the next F6 goes on) the toolbar, the bin's buttons, tabs, parts and
+  colours, the view cube's buttons; Tab goes along, arrows walk a row or
+  the grid, Return presses, F6 goes back to the model. A click never keeps
+  the keys on these (`FocusGuard.by_keyboard`). Return on a part takes it with its
+  ghost at the middle of the view; W, A, S, D and the arrows move the view
+  under it, Return puts it down (`Main._aim_by_keys`). Settings, Interface
+  size (85 to 150%, `ShellPrefs.interface_size`) multiplies
+  `Main.screen_factor`, as far as the frame keeps 620 units down
+  (`Main.sized_factor`: 150% is 140% on a 1280 x 800 laptop); a phone's
+  point-sized controls too (`Phone.per_point`). Settings, Reduce motion: no
+  build animation, no shimmer on a waiting picture, no camera easing.
+  Checks: `tools/probe.sh a11y_names_probe` (every operable control in the
+  frame, the bin's tabs, a selection and 30-odd dialogs and panels has a
+  name: 0 of 1,895 without; 666 of 1,888 on m166), `a11y_keys_probe` (from
+  launch by keys alone: toolbar, a part, put down, a colour, the view cube),
+  `a11y_motion_probe` (each of the three moving, then still),
+  `a11y_size_probe` (85% and 150% at 1280 x 800, nothing off the window,
+  pictures in shots/a11y_size/); `tools/web/app_a11y_flow.mjs` (preview
+  check `app_a11y`: both sizes at 1280 and on a phone at 390, and whether a
+  screen reader in the browser hears the app: it does not, Godot builds no
+  AccessKit for the web). Orca on the desktop: in a private
+  `dbus-run-session` (never the owner's bus) start an Xvfb,
+  `/usr/libexec/at-spi-bus-launcher --launch-immediately`, `orca --replace
+  --debug-file=FILE -u PREFS` with HOME and XDG_* in a scratch folder, and
+  `godot --path . --accessibility always --script HOLD.gd` (a script that
+  instantiates `src/main.tscn` and waits: under `--script` there is no
+  sign-in); give its window the keyboard with `XSetInputFocus` (no window
+  manager) and press Tab through XTest. FILE's `SPEECH OUTPUT:` lines are
+  what Orca says: "Model name entry", "New, Ctrl+N push button", ...,
+  "Select, V toggle button pressed", and the status line's "opened Car — 61
+  bricks" as it is said.
 - `what the app is busy with` (`src/ui/working.gd`, `Working`, 2026-10-12): the
   one progress pattern for every slow thing, at the left of the status bar in
   place of the hint while it lasts — the words ("Laying out 9,429 parts in

@@ -918,6 +918,51 @@ turns the 8 through 360°. The 24 reads −120°.
 *No tool surveyed shows any evidence of accessibility work. Reviews of
 LEGO's own app say VoiceOver reads unlabeled buttons [legobuilder].*
 
+**Done, 2026-10-24** (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings
+in `src/ui/controls_dialog.gd`; the recipe is "accessibility" in
+`.claude/skills/verify/features/building.md`). As specified, with what
+building it showed:
+- Every control a person can operate has a name a screen reader says: the
+  toolbar's words and key ("Select, V", the rest of its tooltip the
+  description), a part's title and number ("Brick 2 x 4, 3001"), a colour's
+  name, a technique's, and every dialog's fields, sliders, numbers and
+  previews. Godot reads a button with no name by its tooltip, which here is
+  a paragraph of help, so that counts as no name. `a11y_names_probe` walks
+  the frame, the bin's tabs, a selection's properties and 30-odd dialogs and
+  panels the menus open: 666 of 1,888 had none on m166, 0 now.
+- The keys go from the model into the frame with F6, the key desktop apps
+  and browsers move between their panes with, and with Tab while a screen
+  reader is running (Godot's own Tab starts from a control at the window's
+  top, the 3D scene here, so it did nothing). Without one Tab stays the
+  app's: the panels folded and back. The name field first; Tab there gives
+  the keys back to the model, as the owner asked of every field, and the
+  next F6 goes on: the toolbar, the bin's buttons, tabs, parts and colours,
+  the view cube's buttons. Tab and Shift-Tab go along them, the arrows walk
+  a row or the grid, Return presses, F6 goes back to the model; a click
+  still leaves the keys with the model. A part taken with Return has its
+  ghost at the middle of the view, the view's keys move it, and Return puts
+  it down: a model built without the mouse (`a11y_keys_probe`).
+- The status line is a live region: Orca says "opened Car — 61 bricks" as
+  the app says it.
+- Interface size is 85 to 150%, on top of `Main.screen_factor`, as far as
+  the frame keeps the 620 units of height it needs: on a 1280 x 800 laptop
+  150% draws at 140% (at 150% the colours ran under the status bar and
+  Settings' Done off the window). Settings scrolls where a window is too
+  short for it, and the key strip drops a hint wider than the model's
+  column. On a phone the point-sized controls grow with it.
+- Reduce motion stops the build animation, the shimmer on a waiting
+  picture and the camera's easing (`a11y_motion_probe` sees each move, then
+  each still).
+- Orca, on the desktop, in a private `dbus-run-session`: "New, Ctrl+N push
+  button. Start a new model on an empty baseplate." ... "Select, V toggle
+  button pressed."
+- The WebAssembly build: no. Godot 4.7 builds AccessKit for Windows, macOS
+  and Linux only (`platform/web` has no accessibility driver), and
+  Chromium's accessibility tree of the app's page holds none of its
+  controls (`tools/web/app_a11y_flow.mjs`, which also checks both sizes at
+  1280 and on a phone). A screen reader in the browser hears the page, not
+  the app: the website's own pages pass their a11y and keyboard flows.
+
 Godot 4.5 and later speak to screen readers through AccessKit on the
 desktop [godot45]. Brickworks sets no accessible names and has no interface
 size setting (nothing in `src/ui`).

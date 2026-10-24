@@ -14,6 +14,13 @@ whole cycle.
 ## [Unreleased]
 
 ### Added
+- Brickworks works with a screen reader on the desktop. Every button, part,
+  colour and field says its name ("Select, V", "Brick 2 x 4, 3001"), and
+  what the status line says is read out. F6 (or Tab, with a screen reader
+  running) goes from the model into the toolbar, the parts and the colours;
+  Return takes a part, and Return again puts it down where the middle of the
+  view is. Settings has Interface size
+  (85 to 150%) and Reduce motion.
 - On brickworks.diy, a public collection can be followed: its page leads
   with a cover of its models' pictures, Follow and how many follow it, and
   what is put in it shows in the follower's feed. A model's page says how

@@ -883,6 +883,13 @@
     },
     {
       "kind": "ui",
+      "label": "accessibility",
+      "entry": "src/ui/access.gd",
+      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "snap and turn step",
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (Snap and Turn on the toolbar; then place, nudge with the arrows, R)",

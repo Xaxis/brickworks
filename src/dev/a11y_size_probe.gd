@@ -24,10 +24,15 @@ func _initialize() -> void:
 	_run()
 
 
-func _check(what: String, ok: bool) -> void:
+## Settings, Interface size's rows, top down (ShellPrefs.INTERFACE_SIZES).
+const SIZES: Array[float] = [0.85, 1.0, 1.15, 1.3, 1.5]
+
+
+func _check(what: String, ok: bool) -> bool:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
+	return ok
 
 
 func _run() -> void:
@@ -53,7 +58,8 @@ func _run() -> void:
 	for size: float in [0.85, 1.5]:
 		await _choose(size)
 		# All of it, or as much as leaves the frame its height (Main.LEAST_DOWN).
-		var wanted: float = _main.call("sized_factor", window.x, window.y, false, size)
+		var wanted: float = _main.call("sized_factor", window.x, window.y, false, size) \
+			if _main.has_method("sized_factor") else screen * size
 		_check("at %d%% the window is drawn at %.3f (%.3f x %.2f, %.0f%% of it%s)" % [
 			roundi(size * 100.0), root.content_scale_factor, screen, size,
 			100.0 * wanted / screen, "" if is_equal_approx(wanted, screen * size)
@@ -71,19 +77,23 @@ func _choose(size: float) -> void:
 	_shell.run("settings")
 	await _frames(10)
 	var settings: ControlsDialog = _main.get("_controls")
-	var choice: OptionButton = settings.interface_choice
+	# Asked by name, so this runs on a build without it and fails there.
+	var choice: OptionButton = settings.get("interface_choice") as OptionButton
+	if not _check("Settings has Interface size", choice != null):
+		settings.visible = false
+		return
 	await _click(choice.get_global_rect().get_center())
 	await _frames(6)
 	var menu: PopupMenu = choice.get_popup()
 	# The list opens with no row lit; Down lights the first.
-	var want: int = ShellPrefs.INTERFACE_SIZES.find(size)
+	var want: int = SIZES.find(size)
 	for _n: int in want + 1:
 		await _key(KEY_DOWN)
 	await _key(KEY_ENTER)
 	await _frames(20)
 	_check("Interface size %d%% chosen from its list (%s, the list %s)" % [roundi(size * 100.0),
 		choice.get_item_text(choice.selected), "shut" if not menu.visible else "open"],
-		is_equal_approx(ShellPrefs.interface_size(), size) and not menu.visible)
+		is_equal_approx(float(ShellPrefs.value("interface_size")), size) and not menu.visible)
 	settings.visible = false
 	await _frames(10)
 

@@ -56,15 +56,16 @@ func _run() -> void:
 	shell.run("settings")
 	await _frames(10)
 	var settings: ControlsDialog = _main.get("_controls")
-	var box: CheckBox = settings.reduce_motion if settings != null else null
+	# Asked by name, so this runs on a build without it and fails there.
+	var box: CheckBox = settings.get("reduce_motion") as CheckBox if settings != null else null
 	_check("Settings has Reduce motion (%s)" % (box.text if box != null else "none"),
 		box != null and box.is_visible_in_tree())
 	if box == null:
 		_finish()
 		return
 	await _click(box.get_global_rect().get_center())
-	_check("...and ticking it is kept (%s)" % ShellPrefs.reduce_motion(),
-		ShellPrefs.reduce_motion() and box.button_pressed)
+	var kept: bool = bool(ShellPrefs.value("reduce_motion"))
+	_check("...and ticking it is kept (%s)" % kept, kept and box.button_pressed)
 	settings.visible = false
 	await _frames(4)
 

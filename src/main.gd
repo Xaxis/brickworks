@@ -387,11 +387,13 @@ const LEAST_DOWN := 620.0
 ## [method screen_factor], times Settings, Interface size: bigger or smaller
 ## than the window would draw it, for eyes that want it so. Bigger only as
 ## far as the frame still fits the window's height: on a laptop's 1280 x 800
-## 150% draws at 140%, and a taller screen gets all of it.
-static func sized_factor(across: float, down: float, web: bool, size: float) -> float:
+## 150% draws at 140%, and a taller screen gets all of it. A phone's frame is
+## its own (PhoneShell), laid out in points, and gets all of it too.
+static func sized_factor(across: float, down: float, web: bool, size: float,
+		phone: bool = false) -> float:
 	var screen: float = screen_factor(across, down, web)
 	var factor: float = screen * size
-	if factor > screen:
+	if factor > screen and not phone:
 		var stretched: float = minf(across / 1600.0, down / 900.0)
 		factor = maxf(screen, minf(factor, down / (stretched * LEAST_DOWN)))
 	return factor
@@ -403,7 +405,7 @@ func _match_screen_density() -> void:
 	if across <= 0.0 or down <= 0.0:
 		return
 	var factor: float = sized_factor(across, down, OS.has_feature("web"),
-		ShellPrefs.interface_size())
+		ShellPrefs.interface_size(), Phone.on())
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:

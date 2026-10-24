@@ -112,6 +112,17 @@ func _input(event: InputEvent) -> void:
 	if focused == null:
 		_tab_in(event)
 		return
+	# F6, the key every desktop app and browser moves between its panes
+	# with: from a control the keys go back to the model, and the next F6
+	# comes back to where they were.
+	var key_pressed: InputEventKey = event as InputEventKey
+	if key_pressed != null and key_pressed.pressed and not key_pressed.echo \
+			and key_pressed.keycode == KEY_F6 \
+			and (focused.has_meta(BY_KEYBOARD) or focused is LineEdit or focused is TextEdit):
+		_left = focused
+		focused.release_focus()
+		get_viewport().set_input_as_handled()
+		return
 	if focused.has_meta(BY_KEYBOARD):
 		# A press of the pointer anywhere gives the keys back to the model.
 		var click: InputEventMouseButton = event as InputEventMouseButton
@@ -153,18 +164,24 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-## Tab with nothing focused, as it is from launch and after a click on the
-## model: into the interface at its first control (Shift-Tab, its last), or
-## on from the field Tab last left. The window's own Tab starts from a
-## control at its top, and the app's top is the 3D scene, so without this
-## Tab did nothing.
+## Into the interface with nothing focused, as it is from launch and after a
+## click on the model: at its first control (with Shift, its last), or on
+## from the control the keys last left. The window's own Tab starts from a
+## control at its top, and the app's top is the 3D scene, so it did nothing.
+##
+## F6 does it always. Tab does it while a screen reader is running
+## (AccessKit active): otherwise Tab is the app's own key, the panels folded
+## and brought back, as it has been (Main._tab_columns).
 func _tab_in(event: InputEvent) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		_left = null
 		return
 	var key: InputEventKey = event as InputEventKey
-	if key == null or not key.pressed or key.keycode != KEY_TAB \
+	if key == null or not key.pressed or key.echo \
 			or key.ctrl_pressed or key.alt_pressed or key.meta_pressed:
+		return
+	if not (key.keycode == KEY_F6
+			or (key.keycode == KEY_TAB and get_tree().is_accessibility_enabled())):
 		return
 	var from: Control = interface_top
 	if is_instance_valid(_left) and _left.is_visible_in_tree():

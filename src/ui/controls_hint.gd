@@ -196,6 +196,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["M"], "minifigure"),
 		Binding.new(["I"], "brickify a 3D model"),
 		Binding.new(["Tab"], "panels"),
+		Binding.new(["F6"], "the keys to the toolbar, the parts and the colours, and back"),
 		Binding.new(["/"], "search"),
 		Binding.new([",", "F1"], "this list"),
 		Binding.new(["F11"], "full screen"),

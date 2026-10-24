@@ -1,6 +1,7 @@
-## Building without the mouse: from launch, Tab and the arrows reach the
-## toolbar, the bin's parts, a colour and the view cube's buttons, and a
-## part is taken from the bin and put down on the model with keys alone.
+## Building without the mouse: from launch, F6 (Tab, with a screen reader
+## running), Tab and the arrows reach the toolbar, the bin's parts, a colour
+## and the view cube's buttons, and a part is taken from the bin and put
+## down on the model with keys alone.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/a11y_keys_probe.gd
 ##
@@ -55,18 +56,20 @@ func _run() -> void:
 
 	_check("from launch nothing has the keys", _focused() == null)
 
-	# Tab goes into the interface, and on along it to the toolbar.
-	await _key(KEY_TAB)
+	# F6 goes into the interface (Tab does with a screen reader running; here
+	# Tab is the app's own, the panels folded), and Tab along it to the
+	# toolbar.
+	await _key(KEY_F6)
 	var first: Control = _focused()
-	_check("Tab from the model goes into the interface (%s)" % _said(first), first != null)
+	_check("F6 from the model goes into the interface (%s)" % _said(first), first != null)
 	if first is LineEdit:
 		# A field gives the keys back to the model on Tab, as the owner asked
-		# (FocusGuard), and the next Tab goes on from it.
+		# (FocusGuard), and the next F6 goes on from it.
 		await _key(KEY_TAB)
 		_check("Tab from a field gives the keys back to the model", _focused() == null)
-		await _key(KEY_TAB)
+		await _key(KEY_F6)
 		var after: Control = _focused()
-		_check("...and the next goes on past it (%s)" % _said(after),
+		_check("...and F6 goes on past it (%s)" % _said(after),
 			after != null and after != first)
 	var tool: Control = await _tab_until(func(c: Control) -> bool:
 		return _shell.toolbar.is_ancestor_of(c), 80)
@@ -132,8 +135,8 @@ func _run() -> void:
 	_check("...the part it was, where its ghost was",
 		placed != null and placed.part_id == part)
 
-	# A colour, from the keyboard: Tab back in, on to the palette.
-	await _key(KEY_TAB)
+	# A colour, from the keyboard: F6 back in, Tab on to the palette.
+	await _key(KEY_F6)
 	var swatch: Button = await _tab_until(func(c: Control) -> bool:
 		return c is PartsBin.Swatch, 400)
 	_check("Tab reaches a colour (%s)" % _said(swatch), swatch != null)
