@@ -311,7 +311,8 @@ func _weakest_joint(report: Stability.Report) -> int:
 		if _store.scenery.has(int(id)) or _world.get_brick(int(id)) == null:
 			continue
 		var ratio: float = (report.margins[id] as Balance.JointLoad).ratio
-		if ratio > most:
+		# Of joints as weak as each other, the first part put down.
+		if ratio > most or (ratio == most and int(id) < found):
 			most = ratio
 			found = int(id)
 	return found

@@ -49,6 +49,8 @@ var _previous: Button
 var _next: Button
 var _at: Label
 var _chips: Dictionary = {}
+## A row's looks, one of each for every row.
+var _faces: Dictionary = {}
 
 
 func _ready() -> void:
@@ -80,16 +82,20 @@ func show_weak(weak: Array) -> void:
 			if risk.kind == "tips":
 				_tips.text = "The whole model tips over: %s." % risk.message
 				_tips.visible = true
-	var joints: int = weak.filter(func(one: StressView.Weak) -> bool: return one.joint != null).size()
+	var joints: int = StressView.joints_in(view.report, view.world, view.scenery) if weighed else 0
 	_of.visible = weighed
 	_of.text = "Weakest first, of %d joint%s that each alone hold what is past them." % [joints,
 		"" if joints == 1 else "s"] if joints > 0 \
 		else "No joint alone holds what is past it: every part is held more than one way."
-	for button: Button in _row_buttons:
-		button.queue_free()
-	_row_buttons.clear()
-	for n: int in entries.size():
-		_row_buttons.append(_row(entries[n], n))
+	# The rows kept from one weighing to the next, each said again: made
+	# afresh after every change, they were most of the time it took to show.
+	while _row_buttons.size() < entries.size():
+		_row_buttons.append(_row(_row_buttons.size()))
+	for n: int in _row_buttons.size():
+		_row_buttons[n].visible = n < entries.size()
+		_row_buttons[n].set_pressed_no_signal(false)
+		if n < entries.size():
+			_say_row(_row_buttons[n], entries[n])
 	var left: int = counted[0] + counted[1] - entries.filter(func(one: StressView.Weak) -> bool:
 		return one.margin < StressView.CLOSE).size()
 	_more.visible = left > 0
@@ -137,7 +143,8 @@ func _say_chosen() -> void:
 	_fix.visible = not _fix.text.is_empty()
 
 
-func _row(one: StressView.Weak, n: int) -> Button:
+## The row for the [param n]th listed.
+func _row(n: int) -> Button:
 	var button := Button.new()
 	button.toggle_mode = true
 	button.button_group = _picks
@@ -147,6 +154,25 @@ func _row(one: StressView.Weak, n: int) -> Button:
 	button.clip_text = true
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.add_theme_font_size_override("font_size", 12)
+	if _faces.is_empty():
+		for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
+			var face := StyleBoxFlat.new()
+			face.bg_color = {"normal": Color(1, 1, 1, 0.0), "hover": Color(1, 1, 1, 0.08),
+				"pressed": Color(0.36, 0.6, 1.0, 0.35), "hover_pressed": Color(0.36, 0.6, 1.0, 0.45)}[state]
+			face.set_corner_radius_all(4)
+			face.content_margin_left = 6
+			face.content_margin_right = 6
+			face.content_margin_top = 2
+			face.content_margin_bottom = 2
+			_faces[state] = face
+	for state: String in _faces:
+		button.add_theme_stylebox_override(state, _faces[state])
+	button.pressed.connect(func() -> void: _choose(n))
+	_rows.add_child(button)
+	return button
+
+
+func _say_row(button: Button, one: StressView.Weak) -> void:
 	button.icon = _chip(_colour_of(one))
 	var brick: BrickWorld.Brick = view.world.get_brick(one.id) if view != null else null
 	var name: String = StressView._named(view.library, brick.part_id) if brick != null else "#%d" % one.id
@@ -154,19 +180,6 @@ func _row(one: StressView.Weak, n: int) -> Button:
 	button.text = "%s · %s" % ["on a touch" if one.joint == null
 		else "margin " + StressView.margin_words(one.margin), name]
 	button.tooltip_text = view.words(one.id) if view != null else ""
-	for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
-		var face := StyleBoxFlat.new()
-		face.bg_color = {"normal": Color(1, 1, 1, 0.0), "hover": Color(1, 1, 1, 0.08),
-			"pressed": Color(0.36, 0.6, 1.0, 0.35), "hover_pressed": Color(0.36, 0.6, 1.0, 0.45)}[state]
-		face.set_corner_radius_all(4)
-		face.content_margin_left = 6
-		face.content_margin_right = 6
-		face.content_margin_top = 2
-		face.content_margin_bottom = 2
-		button.add_theme_stylebox_override(state, face)
-	button.pressed.connect(func() -> void: _choose(n))
-	_rows.add_child(button)
-	return button
 
 
 static func _colour_of(one: StressView.Weak) -> Color:
@@ -305,8 +318,8 @@ func _button(into: Control, words: String, action: Callable, tip: String) -> But
 ## What it shows, for a probe to read as a person would.
 func fields() -> Dictionary:
 	var rows: Array = []
-	for button: Button in _row_buttons:
-		rows.append(button.text)
+	for n: int in entries.size():
+		rows.append(_row_buttons[n].text)
 	return {"count": _count.text, "tips": _tips.text if _tips.visible else "", "of": _of.text,
 		"rows": rows, "more": _more.text if _more.visible else "",
 		"why": _why.text if _why.visible else "", "fix": _fix.text if _fix.visible else "",
@@ -319,6 +332,6 @@ func controls_by_name() -> Dictionary:
 		return {}
 	var out: Dictionary = {"stress_close": _close, "stress_previous": _previous,
 		"stress_next": _next}
-	for n: int in mini(_row_buttons.size(), 12):
+	for n: int in mini(entries.size(), 12):
 		out["stress_row_%d" % n] = _row_buttons[n]
 	return out

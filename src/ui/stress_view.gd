@@ -108,14 +108,18 @@ func show_report(weighed: Stability.Report) -> void:
 			tints[int(id)] = RED
 	world.set_stress(true, tints)
 	if panel != null:
-		panel.show_weak(ranked(weighed, world, scenery))
+		panel.show_weak(ranked(weighed, world, scenery, StressPanel.AT_LEAST))
 
 
 ## The places [param weighed] is weak, worst first (Weak): each piece standing
 ## on a touch alone past where it touches, heaviest first, since it falls;
-## then every joint that alone holds what is past it, nearest its working
-## load first. What the panel lists and a session's weakest_joints says.
-static func ranked(weighed: Stability.Report, world: BrickWorld, scenery: Dictionary) -> Array:
+## then the joints that alone hold what is past them, nearest their working
+## load first, a tie by the part's id. What the panel lists and a session's
+## weakest_joints says. Every one red or amber, and the weakest of the rest
+## to make [param least] joints in all; every joint when it is -1. Sorting
+## all of the hotel's 581 was most of the 6 ms a weighing took to show.
+static func ranked(weighed: Stability.Report, world: BrickWorld, scenery: Dictionary,
+		least: int = -1) -> Array:
 	var out: Array = []
 	if weighed == null:
 		return out
@@ -130,12 +134,26 @@ static func ranked(weighed: Stability.Report, world: BrickWorld, scenery: Dictio
 		weak.around = int(piece["on"])
 		weak.margin = 0.0
 		out.append(weak)
-	var joints: Array = []
+	var ratios := PackedFloat64Array()
+	var loads: Array = []
 	for id: Variant in weighed.margins:
 		if not scenery.has(int(id)) and world.get_brick(int(id)) != null:
-			joints.append(weighed.margins[id])
+			loads.append(weighed.margins[id])
+			ratios.append((weighed.margins[id] as Balance.JointLoad).ratio)
+	# Under a margin of CLOSE is a ratio over 1 / CLOSE.
+	var cut: float = 1.0 / CLOSE
+	if least < 0 or ratios.size() <= least:
+		cut = -INF
+	elif least > 0:
+		var sorted: PackedFloat64Array = ratios.duplicate()
+		sorted.sort()
+		cut = minf(cut, sorted[sorted.size() - least])
+	var joints: Array = []
+	for n: int in loads.size():
+		if ratios[n] >= cut or ratios[n] > 1.0 / CLOSE:
+			joints.append(loads[n])
 	joints.sort_custom(func(a: Balance.JointLoad, b: Balance.JointLoad) -> bool:
-		return a.ratio > b.ratio)
+		return a.ratio > b.ratio or (a.ratio == b.ratio and a.beyond < b.beyond))
 	for one: Balance.JointLoad in joints:
 		var weak := Weak.new()
 		weak.id = one.beyond
@@ -145,6 +163,16 @@ static func ranked(weighed: Stability.Report, world: BrickWorld, scenery: Dictio
 		weak.margin = 1.0 / maxf(one.ratio, 0.000001)
 		out.append(weak)
 	return out
+
+
+## How many joints alone hold what is past them in [param weighed].
+static func joints_in(weighed: Stability.Report, world: BrickWorld, scenery: Dictionary) -> int:
+	var count: int = 0
+	if weighed != null:
+		for id: Variant in weighed.margins:
+			if not scenery.has(int(id)) and world.get_brick(int(id)) != null:
+				count += 1
+	return count
 
 
 ## Of [param weak] (as [method ranked] gives), how many are past their
@@ -295,15 +323,16 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 			else "There is no part #%d in the model." % part)
 		return "\n".join(lines)
 	# As the panel counts and lists them (ranked), so the two agree.
-	var weak: Array = ranked(weighed, world, scenery)
+	var weak: Array = ranked(weighed, world, scenery, count)
 	lines.append("%s (red past the studs' working load, amber within twice it)." % count_words(weak))
 	var joints: Array = weak.filter(func(one: Weak) -> bool: return one.joint != null)
-	if joints.is_empty():
+	var all: int = joints_in(weighed, world, scenery)
+	if all == 0:
 		lines.append("No joint alone holds what is past it: every part is held more than one way.")
 	else:
 		lines.append(("%d joint%s each hold alone what is past them, levered about the edge "
 			+ "each would turn on (1 N a stud working, about 3 N lets go); the weakest:") % [
-			joints.size(), "" if joints.size() == 1 else "s"])
+			all, "" if all == 1 else "s"])
 	# A piece on a touch past where it touches first: it falls.
 	for risk: Stability.Risk in weighed.risks:
 		if risk.kind == "rests on a touch":
