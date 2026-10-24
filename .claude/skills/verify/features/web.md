@@ -1425,8 +1425,13 @@ plan with Claude as the client.
   whole test's findings by its line (each pair that passes into the other,
   each loose piece with all its parts), and when a part is hidden even
   beside what holds it, the parts in front of it wait for it (the shop's
-  wall studs). The sports car stays untested: its fenders are a brick body
-  over each wheel with nothing under it, and holding them moves them.
+  wall studs). The sports car followed as its version 2, Tested
+  (`models/sports_car.ldr`; its sub-model original stays in
+  `tools/web/gallery_seeds/` for the step count probe): each fender was a
+  brick body over a wheel with nothing under it, and now sits a stud in and
+  a plate up on the chassis brick, over the hood's grille tiles and the
+  rear deck's black slopes it replaced; its floor bricks go in first, so no
+  step tips.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory
