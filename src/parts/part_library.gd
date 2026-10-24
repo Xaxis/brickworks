@@ -161,26 +161,27 @@ static var ELEMENT_NUMBER := RegEx.create_from_string("^\\d{6,8}$")
 
 
 ## elements.json, the first time anything asks: the element to order for each
-## part and colour, and every other element of one (its "also").
+## part and colour, and every other element of one (its "also"). Read with the
+## search's index where there are threads (prepare_search): a seventh of a
+## second, which the first element number typed waited.
 func _read_elements() -> void:
-	if _looked_for_elements:
-		return
-	_looked_for_elements = true
-	var path: String = _resolve_root() + "elements.json"
-	if not FileAccess.file_exists(path):
-		return
-	var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(raw) != TYPE_DICTIONARY:
-		return
-	var pairs: Variant = (raw as Dictionary).get("pairs", {})
-	if typeof(pairs) == TYPE_DICTIONARY:
-		_elements = pairs
-		for key: Variant in _elements:
-			_by_element[str(_elements[key])] = str(key)
-	var also: Variant = (raw as Dictionary).get("also", {})
-	if typeof(also) == TYPE_DICTIONARY:
-		for element: Variant in also:
-			_by_element[str(element)] = str(also[element])
+	_elements_lock.lock()
+	if not _looked_for_elements:
+		_looked_for_elements = true
+		var path: String = _resolve_root() + "elements.json"
+		var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) \
+			if FileAccess.file_exists(path) else null
+		if typeof(raw) == TYPE_DICTIONARY:
+			var pairs: Variant = (raw as Dictionary).get("pairs", {})
+			if typeof(pairs) == TYPE_DICTIONARY:
+				_elements = pairs
+				for key: Variant in _elements:
+					_by_element[str(_elements[key])] = str(key)
+			var also: Variant = (raw as Dictionary).get("also", {})
+			if typeof(also) == TYPE_DICTIONARY:
+				for element: Variant in also:
+					_by_element[str(element)] = str(also[element])
+	_elements_lock.unlock()
 
 
 ## The colour a part in this code is filed under by LEGO and Rebrickable:
@@ -729,6 +730,7 @@ var _elements: Dictionary = {}
 ## Element number -> "part/colour", every element known (part_of_element).
 var _by_element: Dictionary = {}
 var _looked_for_elements: bool = false
+var _elements_lock := Mutex.new()
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
 ## hash -> the part ids that asked for it, while it is fetched or waits to be
@@ -1847,11 +1849,14 @@ var _search_index: PartSearch = null
 var _search_lock := Mutex.new()
 
 
-## Whether the search's index is made: a search asked now does not wait.
+## Whether the search's index is made, and the element numbers read with it:
+## a search asked now does not wait.
 func search_ready() -> bool:
 	_search_lock.lock()
 	var made: bool = _search_index != null
 	_search_lock.unlock()
+	if made and _preparing >= 0 and not WorkerThreadPool.is_task_completed(_preparing):
+		return false
 	if made:
 		_collect_preparing()
 	return made
@@ -1864,7 +1869,9 @@ func prepare_search() -> void:
 	if (OS.has_feature("web") and not OS.has_feature("threads")) or _preparing >= 0 \
 			or search_ready():
 		return
-	_preparing = WorkerTasks.add(func() -> void: _finder(), false, "index the parts for search")
+	_preparing = WorkerTasks.add(func() -> void:
+		_finder()
+		_read_elements(), false, "index the parts for search")
 
 
 ## The task making the index (prepare_search), until it is let go of.

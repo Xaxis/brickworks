@@ -166,6 +166,8 @@ const KEYSTROKE_MS := 50.0
 const KEYSTROKE_GUARD_MS := 150.0
 
 var _failures: int = 0
+## search_parts, whose answer to an element number must say its colour.
+var _assistant: Assistant = null
 
 
 func _initialize() -> void:
@@ -184,6 +186,9 @@ func _run() -> void:
 	var bin := PartsBin.new()
 	bin.library = library
 	get_root().add_child(bin)
+	_assistant = Assistant.new()
+	_assistant.library = library
+	get_root().add_child(_assistant)
 	await process_frame
 	bin.populate()
 	if only != "time":
@@ -192,6 +197,7 @@ func _run() -> void:
 	if only != "quality":
 		await _time(library, bin)
 	bin.queue_free()
+	_assistant.queue_free()
 	print("")
 	print("search ranks as an expert would" if _failures == 0
 		else "%d FAILURE(S)" % _failures)
@@ -227,7 +233,10 @@ func _quality(library: PartLibrary, bin: PartsBin, queries: Array, title: String
 				tiles = PackedStringArray()
 			var read: Array = library.call("part_of_element", asked) \
 				if library.has_method("part_of_element") else []
-			if read.size() != 2 or int(read[1]) != colour:
+			# And search_parts says it, so a design places it in that colour.
+			var told: String = _assistant._search(asked, 3)
+			if read.size() != 2 or int(read[1]) != colour \
+					or not told.contains("(colour %d)" % colour):
 				searched = PackedStringArray()
 		var hits: Array = [1,
 			1 if not tiles.is_empty() and wanted.has(tiles[0]) else 0,
@@ -284,6 +293,10 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 	var started: int = Time.get_ticks_usec()
 	cold_bin._run_search("d")
 	var cold: float = float(Time.get_ticks_usec() - started) / 1000.0
+	# The first element number typed reads elements.json, once.
+	started = Time.get_ticks_usec()
+	cold_bin._run_search("4142135")
+	var element: float = float(Time.get_ticks_usec() - started) / 1000.0
 	cold_bin.queue_free()
 
 	var times: Array[float] = []
@@ -310,7 +323,8 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 		% [library.parts.size(), median, worst, slowest, cold, ready])
 	print("  whole queries: %s ms" % ", ".join(whole.map(func(ms: float) -> String:
 		return "%.1f" % ms)))
-	var slowest_ms: float = maxf(worst, cold)
+	print("  the session's first element number: %.1f ms (elements.json is read with the index)" % element)
+	var slowest_ms: float = maxf(maxf(worst, cold), element)
 	if slowest_ms > KEYSTROKE_GUARD_MS:
 		_failures += 1
 		print("  FAIL  a first keystroke takes %.1f ms, over %d" % [slowest_ms,
