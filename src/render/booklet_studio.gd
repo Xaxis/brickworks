@@ -42,27 +42,19 @@ var supersample: int = 2
 ## Outline the parts a step adds in a band of their own colour (booklet_ink);
 ## see Booklet.
 var mark_new: bool = false
-## Fade the picture to the page over this many of its own pixels at the
-## edges, for a picture whose model runs off them; 0 for none.
-var fade: float = 0.0
 ## How strongly to draw the creases inside a part: see booklet_ink.
 var crease: float = 1.0
 
-var _colour: SubViewport
-var _codes: SubViewport
-var _ink: SubViewport
-var _colour_camera: Camera3D
-var _codes_camera: Camera3D
-var _ink_rect: ColorRect
-var _ink_material: ShaderMaterial
-var _code_material: ShaderMaterial
-var _colour_token: ColorRect
-var _codes_token: ColorRect
-var _token: int = 0
-var _stages: Array[Stage] = []
-## The codes' world's light, which is none: see [method measure_all].
+## The colour pictures' light, and the codes', which is none.
+var _lit: Environment
 var _flat: Environment
+var _code_material: ShaderMaterial
+## Where the stages are kept, drawn by nothing: each picture is drawn from
+## a copy of its stage in a lane of its own (_twin, _picture_twin).
+var _held: SubViewport
+var _stages: Array[Stage] = []
 var _lanes: Array[Lane] = []
+var _pictures: Array[PictureLane] = []
 
 
 ## A stage: the same bricks twice, once in the colour world and once in
@@ -148,67 +140,75 @@ static func extent(boxes: Array, direction: Vector3) -> Rect2:
 func _ready() -> void:
 	if OS.has_feature("web"):
 		supersample = 1
-	_colour = _viewport(true)
-	var world := World3D.new()
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_CLEAR_COLOR
+	_lit = Environment.new()
+	_lit.background_mode = Environment.BG_CLEAR_COLOR
 	# Flatter than the main view's light: a booklet is read, not admired,
 	# and a face in deep shadow is a face whose colour cannot be told.
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.9, 0.9, 0.91)
-	environment.ambient_light_energy = BrickWorld.light_energy(0.8)
-	world.environment = environment
-	_colour.world_3d = world
-	add_child(_colour)
-	_colour_camera = _camera()
-	_colour.add_child(_colour_camera)
+	_lit.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	_lit.ambient_light_color = Color(0.9, 0.9, 0.91)
+	_lit.ambient_light_energy = BrickWorld.light_energy(0.8)
+	_flat = Environment.new()
+	_flat.background_mode = Environment.BG_COLOR
+	_flat.background_color = Color(0, 0, 0)
+	_flat.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	_flat.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	_code_material = ShaderMaterial.new()
+	_code_material.shader = preload("res://src/render/booklet_codes.gdshader")
+	_code_material.set_shader_parameter("linearise",
+		RenderingServer.get_current_rendering_method() != "gl_compatibility")
+	_held = _viewport(false)
+	_held.world_3d = World3D.new()
+	add_child(_held)
+
+
+## A lane for [method shoot]: three viewports of its own, as the booklet
+## had one of each.
+func _picture_lane() -> PictureLane:
+	var lane := PictureLane.new()
+	lane.colour = _viewport(true)
+	lane.colour.world_3d = World3D.new()
+	lane.colour.world_3d.environment = _lit
+	add_child(lane.colour)
+	lane.colour_camera = _camera()
+	lane.colour.add_child(lane.colour_camera)
 	# The key from over the reader's left shoulder, so the tops are the
 	# lightest faces and the side facing right the darkest, as in print.
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-50.0, -20.0, 0.0)
 	key.light_energy = BrickWorld.light_energy(0.75)
 	key.light_specular = BrickWorld.light_specular(0.15)
-	_colour.add_child(key)
+	lane.colour.add_child(key)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20.0, 140.0, 0.0)
 	fill.light_energy = BrickWorld.light_energy(0.3)
 	fill.light_specular = 0.0
-	_colour.add_child(fill)
-	_colour_token = _token_rect()
-	_colour.add_child(_colour_token)
+	lane.colour.add_child(fill)
+	lane.colour_token = _token_rect()
+	lane.colour.add_child(lane.colour_token)
 
-	_codes = _viewport(false)
-	var flat := World3D.new()
-	var black := Environment.new()
-	_flat = black
-	black.background_mode = Environment.BG_COLOR
-	black.background_color = Color(0, 0, 0)
-	black.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
-	black.tonemap_mode = Environment.TONE_MAPPER_LINEAR
-	flat.environment = black
-	_codes.world_3d = flat
-	add_child(_codes)
-	_codes_camera = _camera()
-	_codes.add_child(_codes_camera)
-	_codes_token = _token_rect()
-	_codes.add_child(_codes_token)
-	_code_material = ShaderMaterial.new()
-	_code_material.shader = preload("res://src/render/booklet_codes.gdshader")
-	_code_material.set_shader_parameter("linearise",
-		RenderingServer.get_current_rendering_method() != "gl_compatibility")
+	lane.codes = _viewport(false)
+	lane.codes.world_3d = World3D.new()
+	lane.codes.world_3d.environment = _flat
+	add_child(lane.codes)
+	lane.codes_camera = _camera()
+	lane.codes.add_child(lane.codes_camera)
+	lane.codes_token = _token_rect()
+	lane.codes.add_child(lane.codes_token)
+	lane.code_material = _code_material.duplicate()
 
-	_ink = SubViewport.new()
-	_ink.transparent_bg = true
-	_ink.disable_3d = true
-	_ink.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	add_child(_ink)
-	_ink_rect = ColorRect.new()
-	_ink_material = ShaderMaterial.new()
-	_ink_material.shader = preload("res://src/render/booklet_ink.gdshader")
-	_ink_material.set_shader_parameter("colour_tex", _colour.get_texture())
-	_ink_material.set_shader_parameter("code_tex", _codes.get_texture())
-	_ink_rect.material = _ink_material
-	_ink.add_child(_ink_rect)
+	lane.ink = SubViewport.new()
+	lane.ink.transparent_bg = true
+	lane.ink.disable_3d = true
+	lane.ink.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(lane.ink)
+	lane.ink_rect = ColorRect.new()
+	lane.ink_material = ShaderMaterial.new()
+	lane.ink_material.shader = preload("res://src/render/booklet_ink.gdshader")
+	lane.ink_material.set_shader_parameter("colour_tex", lane.colour.get_texture())
+	lane.ink_material.set_shader_parameter("code_tex", lane.codes.get_texture())
+	lane.ink_rect.material = lane.ink_material
+	lane.ink.add_child(lane.ink_rect)
+	return lane
 
 
 func _viewport(lit: bool) -> SubViewport:
@@ -260,8 +260,8 @@ func stage(bricks: Array) -> Stage:
 		made.number[int(entry[0])] = made.count
 		var part: Lbm.PartMesh = library.mesh_for(str(entry[1]))
 		made.boxes.append((entry[3] as Transform3D) * part.bounds)
-	_colour.add_child(made.colour)
-	_codes.add_child(made.codes)
+	_held.add_child(made.colour)
+	_held.add_child(made.codes)
 	made.codes.draw_as(_code_material, func(number: int) -> Color:
 		return code_colour(number))
 	made.colour.visible = false
@@ -275,6 +275,12 @@ func forget(made: Stage) -> void:
 	made.colour.queue_free()
 	made.codes.queue_free()
 	for lane: Lane in _lanes:
+		if lane.twins.has(made):
+			var twin: Twin = lane.twins[made]
+			twin.in_codes.queue_free()
+			twin.in_alone.queue_free()
+			lane.twins.erase(made)
+	for lane: PictureLane in _pictures:
 		if lane.twins.has(made):
 			var twin: Twin = lane.twins[made]
 			twin.in_codes.queue_free()
@@ -295,8 +301,9 @@ static func code_colour(number: int) -> Color:
 
 ## Draw [param made] with its first [param upto] bricks showing, those
 ## numbered from [param new_from] on marked as new, from [param view],
-## [param size] pixels. How much of the new parts a view shows is
-## [method measure_all]'s.
+## [param size] pixels, faded to the page over [param fade] of its pixels
+## at the edges, for a picture whose model runs off them (0 for none). How
+## much of the new parts a view shows is [method measure_all]'s.
 ##
 ## A picture is read back here, and what comes of it is worked out on a
 ## worker thread ([method finished] waits for it): where the model and the
@@ -304,37 +311,84 @@ static func code_colour(number: int) -> Color:
 ## (Image -> anything, in [member Shot.made]), which is how the maker
 ## turns it into a JPEG. That was a tenth of a second a picture on the one
 ## thread, three quarters of a castle's booklet, while the card waited.
+##
+## Each picture is drawn in a lane of its own, [constant PICTURE_LANES] of
+## them, so as many are drawn in a frame when the maker asks for them
+## together (BookletMaker._draw_all): one at a time, a castle's 560
+## pictures were 560 frames, each one the main window drawn as well.
 func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
-		finish: Callable = Callable()) -> Shot:
+		finish: Callable = Callable(), fade: float = 0.0) -> Shot:
+	# Read now: another picture may be set going while this one waits for
+	# a lane.
+	var times: int = supersample
+	var lane: PictureLane = null
+	while lane == null:
+		for free: PictureLane in _pictures:
+			if not free.busy:
+				lane = free
+				break
+		if lane == null and _pictures.size() < PICTURE_LANES:
+			lane = _picture_lane()
+			_pictures.append(lane)
+		if lane == null:
+			await get_tree().process_frame
+	lane.busy = true
 	var shot := Shot.new()
-	var big: Vector2i = size * supersample
-	_aim(made, upto, new_from, view, big)
-	_ink.size = big
-	_ink_rect.size = Vector2(big)
-	_ink_material.set_shader_parameter("pixel", Vector2(1.0 / big.x, 1.0 / big.y))
+	var big: Vector2i = size * times
+	_aim(lane, made, upto, new_from, view, big, times)
+	lane.ink.size = big
+	lane.ink_rect.size = Vector2(big)
+	var ink: ShaderMaterial = lane.ink_material
+	ink.set_shader_parameter("pixel", Vector2(1.0 / big.x, 1.0 / big.y))
 	# A third of a millimetre of ink at the booklet's resolution.
-	_ink_material.set_shader_parameter("ink", maxf(2.0, 1.5 * supersample))
-	_ink_material.set_shader_parameter("mark_new", mark_new and new_from <= upto)
+	ink.set_shader_parameter("ink", maxf(2.0, 1.5 * times))
+	ink.set_shader_parameter("mark_new", mark_new and new_from <= upto)
 	# A band of about two thirds of a millimetre round the new parts.
-	_ink_material.set_shader_parameter("halo", maxf(3.0, 3.0 * supersample))
-	_ink_material.set_shader_parameter("fade", fade * supersample)
-	_ink_material.set_shader_parameter("crease", crease)
+	ink.set_shader_parameter("halo", maxf(3.0, 3.0 * times))
+	ink.set_shader_parameter("fade", fade * times)
+	ink.set_shader_parameter("crease", crease)
 
-	_colour.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_codes.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_ink.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	var drawn: Image = await _drawn(_ink, [Vector2i(1, 1), Vector2i(4, 1)],
-		[_codes_token.color, _colour_token.color])
-	var codes: Image = _codes.get_texture().get_image() if drawn != null else null
-	_colour.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	_codes.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	_ink.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.colour.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	lane.codes.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	lane.ink.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	var drawn: Image = await _drawn(lane.ink, [Vector2i(1, 1), Vector2i(4, 1)],
+		[lane.codes_token.color, lane.colour_token.color])
+	var codes: Image = lane.codes.get_texture().get_image() if drawn != null else null
+	lane.colour.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.codes.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.ink.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.busy = false
 	if drawn == null:
 		return shot
 	shot.task = WorkerThreadPool.add_task(
-		_develop.bind(shot, drawn, codes, size, supersample, finish), false,
+		_develop.bind(shot, drawn, codes, size, times, finish), false,
 		"booklet picture")
 	return shot
+
+
+## How many pictures [method shoot] draws at once.
+const PICTURE_LANES := 4
+
+
+## Three viewports of [method shoot]'s own, as the booklet had one of each:
+## the colour, the codes and the ink drawn from the two, with a copy of
+## each stage it has drawn on.
+class PictureLane extends RefCounted:
+	var colour: SubViewport
+	var codes: SubViewport
+	var ink: SubViewport
+	var colour_camera: Camera3D
+	var codes_camera: Camera3D
+	var colour_token: ColorRect
+	var codes_token: ColorRect
+	var ink_rect: ColorRect
+	var ink_material: ShaderMaterial
+	var code_material: ShaderMaterial
+	## Counted on by one each picture: see [method BookletStudio._next_token].
+	var token: int = 0
+	var busy: bool = false
+	## Stage -> Twin, its colour in [member Twin.in_alone]'s place.
+	var twins: Dictionary = {}
 
 
 ## Until [param shot]'s worker is done with it, the window going on meanwhile.
@@ -367,6 +421,8 @@ class Lane extends RefCounted:
 	var alone_token: ColorRect
 	var codes_material: ShaderMaterial
 	var alone_material: ShaderMaterial
+	## Counted on by one each picture: see [method BookletStudio._next_token].
+	var token: int = 0
 	## Stage -> Twin.
 	var twins: Dictionary = {}
 
@@ -478,7 +534,7 @@ func _lane(index: int) -> Lane:
 ## token its pictures will carry.
 func _aim_lane(lane: Lane, ask: Array) -> Color:
 	var made: Stage = ask[0]
-	var big: Vector2i = (ask[4] as Vector2i) * supersample
+	var big: Vector2i = ask[4]
 	if not lane.twins.has(made):
 		lane.twins[made] = _twin(lane, made)
 	for other: Stage in lane.twins:
@@ -492,11 +548,11 @@ func _aim_lane(lane: Lane, ask: Array) -> Color:
 		viewport.size = big
 		viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	for camera: Camera3D in [lane.codes_camera, lane.alone_camera]:
-		_point(camera, made, ask[3], big)
-	_bump_token()
-	lane.codes_token.color = _codes_token.color
-	lane.alone_token.color = _codes_token.color
-	return _codes_token.color
+		_point(camera, made, ask[3], big, 1)
+	var token: Color = _next_token(lane)
+	lane.codes_token.color = token
+	lane.alone_token.color = token
+	return token
 
 
 func _twin(lane: Lane, made: Stage) -> Twin:
@@ -504,14 +560,7 @@ func _twin(lane: Lane, made: Stage) -> Twin:
 	twin.in_codes = Node3D.new()
 	twin.in_alone = Node3D.new()
 	for drawn: Array in made.codes.drawing():
-		var source: MultiMesh = drawn[0]
-		var copy := MultiMesh.new()
-		copy.transform_format = source.transform_format
-		copy.use_colors = source.use_colors
-		copy.use_custom_data = source.use_custom_data
-		copy.mesh = source.mesh
-		copy.instance_count = source.instance_count
-		copy.buffer = source.buffer
+		var copy: MultiMesh = _copied(drawn[0])
 		for pair: Array in [[twin.in_codes, lane.codes_material],
 				[twin.in_alone, lane.alone_material]]:
 			var instance := MultiMeshInstance3D.new()
@@ -548,6 +597,39 @@ static func _count_marked(mask: Image) -> int:
 	var half: Image = moved.get_region(Rect2i(0, 2, width / 2, height / 2 - 2))
 	half.convert(Image.FORMAT_L8)
 	return half.get_data().count(255)
+
+
+## [param made] copied into [param lane]: its colour, drawn as its own world
+## draws it, and its codes in the lane's codes material.
+func _picture_twin(lane: PictureLane, made: Stage) -> Twin:
+	var twin := Twin.new()
+	twin.in_codes = Node3D.new()
+	twin.in_alone = Node3D.new()
+	for pair: Array in [[made.colour, twin.in_alone, null], [made.codes, twin.in_codes,
+			lane.code_material]]:
+		for drawn: Array in (pair[0] as BrickWorld).drawing():
+			var copy: MultiMesh = _copied(drawn[0])
+			var instance := MultiMeshInstance3D.new()
+			instance.multimesh = copy
+			instance.material_override = pair[2] if pair[2] != null else drawn[3]
+			instance.custom_aabb = drawn[2]
+			(pair[1] as Node3D).add_child(instance)
+			twin.multimeshes.append(copy)
+			twin.ids.append(drawn[1])
+	lane.codes.add_child(twin.in_codes)
+	lane.colour.add_child(twin.in_alone)
+	return twin
+
+
+static func _copied(source: MultiMesh) -> MultiMesh:
+	var copy := MultiMesh.new()
+	copy.transform_format = source.transform_format
+	copy.use_colors = source.use_colors
+	copy.use_custom_data = source.use_custom_data
+	copy.mesh = source.mesh
+	copy.instance_count = source.instance_count
+	copy.buffer = source.buffer
+	return copy
 
 
 ## [param viewport]'s picture when it carries [param token], else null.
@@ -626,23 +708,28 @@ static func _read_rects(full: Image, shot: Shot, factor: float) -> void:
 			Vector2(new_high - new_low + Vector2i.ONE) * factor)
 
 
-func _aim(made: Stage, upto: int, new_from: int, view: View, big: Vector2i) -> void:
-	for other: Stage in _stages:
-		other.colour.visible = other == made
-		other.codes.visible = other == made
-	made.colour.show_first(upto + 1)
-	made.codes.show_first(upto + 1)
-	_code_material.set_shader_parameter("new_from", float(new_from))
-	_colour.size = big
-	_codes.size = big
-	for camera: Camera3D in [_colour_camera, _codes_camera]:
-		_point(camera, made, view, big)
-	_bump_token()
+func _aim(lane: PictureLane, made: Stage, upto: int, new_from: int, view: View,
+		big: Vector2i, times: int) -> void:
+	if not lane.twins.has(made):
+		lane.twins[made] = _picture_twin(lane, made)
+	for other: Stage in lane.twins:
+		var twin: Twin = lane.twins[other]
+		twin.in_codes.visible = other == made
+		twin.in_alone.visible = other == made
+	(lane.twins[made] as Twin).show_first(upto + 1)
+	lane.code_material.set_shader_parameter("new_from", float(new_from))
+	lane.colour.size = big
+	lane.codes.size = big
+	for camera: Camera3D in [lane.colour_camera, lane.codes_camera]:
+		_point(camera, made, view, big, times)
+	var token: Color = _next_token(lane)
+	lane.colour_token.color = token
+	lane.codes_token.color = token
 
 
 ## Point [param camera] at [param made] from [param view], for a picture
 ## [param big] pixels.
-func _point(camera: Camera3D, made: Stage, view: View, big: Vector2i) -> void:
+func _point(camera: Camera3D, made: Stage, view: View, big: Vector2i, times: int) -> void:
 	var turn: Basis = view.basis()
 	var reach: float = 0.0
 	var middle := Vector3.ZERO
@@ -655,16 +742,18 @@ func _point(camera: Camera3D, made: Stage, view: View, big: Vector2i) -> void:
 	var at: Vector3 = (turn.x * view.centre.x + turn.y * view.centre.y
 		+ turn.z * (middle.dot(turn.z) + reach))
 	camera.transform = Transform3D(turn, at)
-	camera.size = float(big.y) / (view.scale * float(supersample))
+	camera.size = float(big.y) / (view.scale * float(times))
 	camera.far = reach * 2.0 + 1000.0
 
 
-func _bump_token() -> void:
-	# Light values only: see booklet_codes for what the dark ones go through.
-	_token = (_token + 1) % 81
-	var colour := Color8(16 * (_token % 9) + 96, 16 * (_token / 9) + 96, 136)
-	_colour_token.color = colour
-	_codes_token.color = colour
+## The next token of [param lane], whose pictures carry it in their corner
+## (see [method _drawn]): one on from its last, so never the one its last
+## picture carried. Light values only: see booklet_codes for what the dark
+## ones go through.
+static func _next_token(lane: RefCounted) -> Color:
+	var token: int = (int(lane.get("token")) + 1) % 81
+	lane.set("token", token)
+	return Color8(16 * (token % 9) + 96, 16 * (token / 9) + 96, 136)
 
 
 ## Wait for [param viewport] to draw the picture asked for: its corner

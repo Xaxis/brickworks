@@ -237,6 +237,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 				if decided == 0 else 48))
 			await _choose_views(entries, decided, upto)
 			if _stopped():
+				await _soon(Callable(), 1)
 				await _keep_up(0)
 				return _forget_all()
 			_subjects(entries, decided, upto)
@@ -260,11 +261,13 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 				if drawn % 5 == 1:
 					_say("Drawing the steps…", entries.size(), drawn - 1)
 				if _stopped():
+					await _soon(Callable(), 1)
 					await _keep_up(0)
 					return _forget_all()
-				await _draw(entry)
+				await _soon(_draw.bind(entry))
 			if cover != null:
-				_later([], func() -> void: _emit(Booklet.page_html(page, document)))
+				_soon_then(func() -> void: _emit(Booklet.page_html(page, document)))
+	await _soon(Callable(), 1)
 	await _keep_up(0)
 	_lap("steps drawn")
 	if dry or not only.is_empty():
@@ -388,6 +391,7 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		if count % 10 == 1:
 			_say("Drawing the parts…", stock.lots.size(), count - 1)
 		if _stopped():
+			await _soon(Callable(), 1)
 			await _keep_up(0)
 			return lots
 		var key: String = "%s:%d" % [lot.part_id, lot.color_code]
@@ -405,25 +409,33 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		made.size = Booklet.part_size(extent.size)
 		if dry or not only.is_empty() and not _wanted_lots.has(key):
 			made.size += Vector2(1.0, 1.0)
-			_later([], func() -> void: lots[key] = made)
+			_soon_then(func() -> void: lots[key] = made)
 			continue
-		var stage: BookletStudio.Stage = _studio.stage(
-			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
-		# Twice the page's resolution: a part is small on the page and
-		# read closely.
-		var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
-		var scale: float = (made.size.x / maxf(extent.size.x, 0.1)) * px_per_mm * 2.0
-		var view := BookletStudio.View.new(BookletStudio.FRONT, extent.get_center(), scale)
-		var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels,
-			_encoded.bind(Color(0, 0, 0, 0)))
-		_studio.forget(stage)
-		made.size += Vector2(1.0, 1.0)
-		_later([shot], func() -> void:
-			document.parts[key] = _uri(shot)
-			lots[key] = made)
-		await _keep_up()
+		await _soon(_part_picture.bind(lot, made, extent, lots))
+	await _soon(Callable(), 1)
 	await _keep_up(0)
 	return lots
+
+
+## The picture of [param lot]'s part, into the parts' pictures ([param lots]
+## and the document's), the work done with it put in [param into].
+func _part_picture(into: Array, lot: Inventory.Lot, made: Booklet.Lot, extent: Rect2,
+		lots: Dictionary) -> void:
+	var key: String = made.key
+	var stage: BookletStudio.Stage = _studio.stage(
+		[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
+	# Twice the page's resolution: a part is small on the page and
+	# read closely.
+	var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
+	var scale: float = (made.size.x / maxf(extent.size.x, 0.1)) * px_per_mm * 2.0
+	var view := BookletStudio.View.new(BookletStudio.FRONT, extent.get_center(), scale)
+	var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels,
+		_encoded.bind(Color(0, 0, 0, 0)))
+	_studio.forget(stage)
+	made.size += Vector2(1.0, 1.0)
+	_later([shot], func() -> void:
+		document.parts[key] = _uri(shot)
+		lots[key] = made, into)
 
 
 ## The parts list at the end, by colour: the whites, the greys and black,
@@ -691,8 +703,6 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 			_sign(entry, index > 0 and _round_from(_before, entry.from))
 			_before = entry.from
 		return
-	var keep: int = _studio.supersample
-	_studio.supersample = 1
 	var last: int = -1
 	for number: Variant in only:
 		last = maxi(last, int(number))
@@ -711,7 +721,6 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 		keys.append([entry, BookletStudio.FRONT])
 	await _measure(asks, keys, _seen)
 	if _stopped():
-		_studio.supersample = keep
 		return
 	asks.clear()
 	keys.clear()
@@ -724,7 +733,6 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 	for index: int in range(from, upto):
 		var entry: Booklet.Entry = entries[index]
 		if _stopped():
-			_studio.supersample = keep
 			return
 		# Past the steps being drawn: seen as laid out, from the front.
 		if last >= 0 and entry.number > last:
@@ -761,7 +769,6 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 		entry.from = _turned_to
 		_sign(entry, turn or _round_from(_before, entry.from))
 		_before = entry.from
-	_studio.supersample = keep
 
 
 ## Where the walk of [method _choose_views] has got to: the way the model
@@ -906,6 +913,8 @@ var _apart: Dictionary = {}
 ## before it (docs/INSTRUCTIONS.md). What it touches is read off the parts'
 ## boxes, grown by a hair.
 func _find_apart(entries: Array[Booklet.Entry]) -> void:
+	_grid.clear()
+	_gridded = 0
 	var at: int = 0
 	while at < entries.size():
 		var first: Booklet.Entry = entries[at]
@@ -924,23 +933,34 @@ func _find_apart(entries: Array[Booklet.Entry]) -> void:
 
 
 ## Whether the bricks ranked [param from] to [param upto] touch any ranked
-## before them.
+## before them. The bricks before are put in a grid as the sections go on,
+## each once: a grid of every brick before each section, made afresh, was
+## 0.3 s of the castle's window held still.
 func _touches(from: int, upto: int) -> bool:
 	const CELL := 40.0
-	var grid: Dictionary = {}
-	for rank: int in range(1, from):
+	if from <= _gridded:
+		_grid.clear()
+		_gridded = 0
+	for rank: int in range(_gridded + 1, from):
 		var box: AABB = (_main.boxes[rank - 1] as AABB).grow(1.0)
 		for cell: Vector3i in _cells_of(box, CELL):
-			if not grid.has(cell):
-				grid[cell] = []
-			(grid[cell] as Array).append(box)
+			if not _grid.has(cell):
+				_grid[cell] = []
+			(_grid[cell] as Array).append(box)
+	_gridded = from - 1
 	for rank: int in range(from, upto + 1):
 		var box: AABB = _main.boxes[rank - 1]
 		for cell: Vector3i in _cells_of(box, CELL):
-			for other: AABB in grid.get(cell, []):
+			for other: AABB in _grid.get(cell, []):
 				if other.intersects(box):
 					return true
 	return false
+
+
+## The bricks ranked up to [member _gridded] by the cells they are in, for
+## [method _touches].
+var _grid: Dictionary = {}
+var _gridded: int = 0
 
 
 static func _cells_of(box: AABB, size: float) -> Array[Vector3i]:
@@ -1051,19 +1071,18 @@ func _adds(entry: Booklet.Entry) -> void:
 
 
 ## The pictures of [param entry], and of its callout: each drawn here, and
-## what is made of it put in place once its worker is done (_later), in the
-## order they were drawn.
-func _draw(entry: Booklet.Entry) -> void:
+## what is made of it put in place once its worker is done (_later, into
+## [param into]), in the order they were drawn.
+func _draw(into: Array, entry: Booklet.Entry) -> void:
 	var where: Array = _where(entry)
 	var size: Vector2i = entry.pixels(px_per_mm)
 	var view: BookletStudio.View = entry.view(px_per_mm)
-	_studio.fade = (5.0 * px_per_mm) if entry.cropped else 0.0
 	# Clear behind the model on a page laid out by hand, where a thing may sit
 	# in the picture's box and must not be painted over.
 	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
 		int(where[1]), view, size,
-		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR))
-	_studio.fade = 0.0
+		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR),
+		(5.0 * px_per_mm) if entry.cropped else 0.0)
 	_later([shot], func() -> void:
 		entry.image = _uri(shot)
 		_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
@@ -1073,7 +1092,7 @@ func _draw(entry: Booklet.Entry) -> void:
 			measured.append({"what": "new parts of step %d" % entry.number, "laid": entry.adds,
 				"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
 					shot.new_rect.size / px_per_mm)})
-		_point_at_small(entry, shot))
+		_point_at_small(entry, shot), into)
 	if entry.callout != null:
 		var callout: Booklet.Callout = entry.callout
 		var stage: BookletStudio.Stage = _callouts[callout][0]
@@ -1088,8 +1107,8 @@ func _draw(entry: Booklet.Entry) -> void:
 				_later([sub_shot], func() -> void:
 					sub.image = _uri(sub_shot)
 					_note("step %d, %s step %d" % [entry.number, callout.name, sub.number],
-						sub_size, sub_shot, sub.free, sub.rect))
-		_later([], func() -> void: callout.images.clear())
+						sub_size, sub_shot, sub.free, sub.rect), into)
+		_later([], func() -> void: callout.images.clear(), into)
 		for index: int in callout.cells.size():
 			var part: Array = spans[index] if callout.inline else spans[-1]
 			var cell_size := Vector2i(callout.cells[index].size * px_per_mm)
@@ -1100,9 +1119,8 @@ func _draw(entry: Booklet.Entry) -> void:
 			_later([cell_shot], func() -> void:
 				callout.images.append(_uri(cell_shot))
 				_note("step %d, %s box %d" % [entry.number, callout.name, index + 1],
-					cell_size, cell_shot, Rect2(), callout.cells[index]))
+					cell_size, cell_shot, Rect2(), callout.cells[index]), into)
 		_arrows(entry, view, size)
-	await _keep_up()
 
 
 ## Pictures drawn and still with their workers, each with what is to be done
@@ -1110,8 +1128,50 @@ func _draw(entry: Booklet.Entry) -> void:
 var _pending: Array = []
 
 
-func _later(shots: Array, then: Callable) -> void:
-	_pending.append([shots, then])
+func _later(shots: Array, then: Callable, into: Array) -> void:
+	into.append([shots, then])
+
+
+## Pictures being drawn alongside each other, as many as the studio has
+## lanes (BookletStudio.shoot): each [method _soon]'s work, whether it is
+## done, and what is to be done with its pictures, in the order it was
+## asked for: {"done", "later": [[shots], Callable], ...}.
+var _going: Array = []
+
+
+## Set [param work] (Array -> nothing, the work to be done with its
+## pictures put in the Array) going alongside what is going already, once
+## fewer than [param most] are (the studio's lanes, unless said); work done
+## at the front handed on to _pending, in order, and what the workers have
+## done with it put in place. No work, only the waiting: [code]_soon(
+## Callable(), 1)[/code] is until all of it is done.
+func _soon(work: Callable, most: int = BookletStudio.PICTURE_LANES) -> void:
+	while true:
+		while not _going.is_empty() and bool(_going[0]["done"]):
+			_pending.append_array(_going.pop_front()["later"])
+		var busy: int = 0
+		for one: Dictionary in _going:
+			if not bool(one["done"]):
+				busy += 1
+		if busy < most:
+			break
+		await get_tree().process_frame
+	await _keep_up()
+	if not work.is_valid():
+		return
+	var one: Dictionary = {"done": false, "later": []}
+	_going.append(one)
+	_run_soon.call(work, one)
+
+
+func _run_soon(work: Callable, one: Dictionary) -> void:
+	await work.call(one["later"])
+	one["done"] = true
+
+
+## [param then] done once all asked for before it is.
+func _soon_then(then: Callable) -> void:
+	_going.append({"done": true, "later": [[[], then]]})
 
 
 ## Put in place what the workers have done, oldest first, until no more than

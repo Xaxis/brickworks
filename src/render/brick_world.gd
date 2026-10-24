@@ -564,7 +564,7 @@ func repaint_in_place(changes: Dictionary) -> void:
 
 ## What draws the bricks, batch by batch, for a copy of the picture drawn
 ## somewhere else (BookletStudio's lanes): [[MultiMesh, the batch's brick
-## ids, its bounds], ...], in the order the batches were made.
+## ids, its bounds, its material], ...], in the order the batches were made.
 func drawing() -> Array:
 	if _rebuild_queued:
 		_flush()
@@ -572,7 +572,8 @@ func drawing() -> Array:
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
 		if batch.multimesh.instance_count > 0:
-			out.append([batch.multimesh, batch.brick_ids, batch.instance.custom_aabb])
+			out.append([batch.multimesh, batch.brick_ids, batch.instance.custom_aabb,
+				batch.instance.material_override])
 	return out
 
 
