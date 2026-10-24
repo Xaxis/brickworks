@@ -13,9 +13,10 @@
 //     cannot be read, a token is neither good nor bad, and is answered 503;
 //   - the project's rule for who may sign in, even while it lets everyone;
 //   - a token with no rh is refused, since nothing could end what it starts;
-//   - the list of sessions people ended: an ended one is refused, and while
-//     the list cannot be read no token is taken (taking one is a write),
-//     which touches nobody signing in by email.
+//   - the list of sessions people ended: an ended one is refused, and so,
+//     at the exchange alone, is a token ended by its own id (site-attest,
+//     2026-10-24); while the list cannot be read no token is taken (taking
+//     one is a write), which touches nobody signing in by email.
 // OC_PROJECT_KEY and OC_SIGNING_SECRET are the project's (ochk.app). Without
 // either, or without an audience, no token is taken here.
 //
@@ -157,9 +158,14 @@ export async function checkToken(token) {
     && !bondMeets(session, { minSats: allowed.minSats, minDays: allowed.minDays, maxAgeSecs: allowed.maxAgeSecs })) {
     return { status: 403, error: "Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.", more: { back_url: BACK_URL } };
   }
+  // With the token's own id here, at the exchange: a token orangecheck
+  // ended by itself (its revoke) before it reached us is refused
+  // (site-attest). Never on the requests after (sessionStanding,
+  // grantStanding): endToken revokes this very token right after the
+  // exchange, and its id on the list must sign nobody out.
   let state;
   try {
-    state = await endedSessions().status({ rh: session.rh, aud, iat });
+    state = await endedSessions().status({ rh: session.rh, aud, iat, jti });
   } catch {
     state = "unverified";
   }

@@ -180,6 +180,20 @@ function token(claims = {}, { key = privateKey, kid = KID, alg = "EdDSA" } = {})
   return { jwt: `${signed}.${sign(null, Buffer.from(signed), key).toString("base64url")}`, claims: body };
 }
 
+/// What orangecheck's authorize page sends the app's listener once the
+/// person signs in: a code for a token of [claims], given for the challenge
+/// of the verifier made here and for [redirect].
+function nativeCode(claims = {}, redirect = "http://127.0.0.1:53111/oc/callback") {
+  const verifier = randomBytes(32).toString("base64url");
+  const code = randomBytes(32).toString("base64url");
+  ochk.codes.set(code, { challenge: createHash("sha256").update(verifier).digest("base64url"), redirect, claims });
+  return { code, code_verifier: verifier, redirect_uri: redirect };
+}
+
+/// A token's id as the list of ended sessions names it (auth-core's
+/// revocationKey): its first 16 bytes of SHA-256, base64url.
+const endedJti = (jti) => createHash("sha256").update(`ocrev1:jti:${jti}`).digest().subarray(0, 16).toString("base64url");
+
 const { forgetForTests } = await import("../../api/_oc.js");
 const signInRoute = (await import("../../api/orangecheck.js")).default;
 /// The route, with what it read from orangecheck (the rule, the list)
@@ -1270,15 +1284,6 @@ try {
   // then taken as ?op=signin takes one. Each refusal is beside a case that
   // signs in, so none passes by refusing everything.
   {
-    /// What orangecheck's authorize page sends the app's listener once the
-    /// person signs in: a code for a token of [claims], given for the
-    /// challenge of the verifier made here and for [redirect].
-    const nativeCode = (claims = {}, redirect = "http://127.0.0.1:53111/oc/callback") => {
-      const verifier = randomBytes(32).toString("base64url");
-      const code = randomBytes(32).toString("base64url");
-      ochk.codes.set(code, { challenge: createHash("sha256").update(verifier).digest("base64url"), redirect, claims });
-      return { code, code_verifier: verifier, redirect_uri: redirect };
-    };
     const native = async (body) => call(await route(), body, { op: "native" });
     /// A sign-in from the app that should get in, signed in again with a
     /// new code of the same [claims] while Supabase's redemption limit
@@ -1365,6 +1370,46 @@ try {
     const wrongMethod = await call(await route(), nativeCode(), { op: "native", method: "GET" });
     check("native: only POST", wrongMethod.status === 405, `${wrongMethod.status}`);
     delete process.env.OC_NATIVE;
+  }
+
+  // site-attest: a token orangecheck ended by its id (POST /api/auth/revoke,
+  // the list's `tokens`) before it reached us is refused at the exchange,
+  // by the window and by the app alike. The requests after are asked
+  // without the id: our own revoke of the token right after the exchange
+  // puts its id on the list, and must sign nobody out.
+  {
+    const listWith = (jtis) => () => ({ v: 1, at: Math.floor(Date.now() / 1000), tokens: jtis.map(endedJti), accounts: {}, handles: {} });
+    const listWas = ochk.list;
+    try {
+      const ended = token();
+      const other = token({ rh: ended.claims.rh });
+      ochk.list = listWith([ended.claims.jti]);
+      const refused = await call(await route(), { token: ended.jwt });
+      check("an orangecheck token whose id was ended before sign-in is refused at the exchange, 401 in words",
+        refused.status === 401 && /ended/.test(refused.body?.error || "") && !refused.body?.access_token,
+        `${refused.status} ${refused.body?.error || ""}`);
+      const sibling = await call(await route(), { token: other.jwt });
+      check("...where a token of the same sign-in (rh) with an id not ended gets in", sibling.status === 200,
+        `${sibling.status} ${sibling.body?.error || ""}`);
+      process.env.OC_NATIVE = "1";
+      const appCode = nativeCode({ jti: ended.claims.jti, rh: ended.claims.rh });
+      const fromApp = await call(await route(), appCode, { op: "native" });
+      delete process.env.OC_NATIVE;
+      check("...and from the app (?op=native), a code whose token's id was ended is refused, 401",
+        fromApp.status === 401 && !fromApp.body?.access_token, `${fromApp.status} ${fromApp.body?.error || ""}`);
+      ochk.list = listWith([]);
+      const fresh = await call(await route(), { token: token().jwt });
+      ochk.list = listWith([claimsOf(ochk.revoked.at(-1)).jti]);
+      forgetForTests();
+      const after = await whoIs(fresh.body.access_token);
+      const wrote = await theme(fresh.body.access_token);
+      check("our own revoke of the token right after the exchange puts its id on the list, and its session still reads and writes",
+        fresh.status === 200 && claimsOf(ochk.revoked.at(-1)).did_oc === fresh.body.orangecheck?.did
+        && after.body?.signed_in === true && wrote.status === 200, `${fresh.status} ${after.body?.signed_in} ${wrote.status}`);
+    } finally {
+      delete process.env.OC_NATIVE;
+      ochk.list = listWas;
+    }
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.

@@ -160,6 +160,15 @@ real builds, and the live rollout waits on its site-attest's review.
   functions; until it is applied the code reads and writes as before
   (`oc_connected_of`, `oc_connect_made`). Dry run with
   `tools/orangecheck_connect_leaving_try.sql`.
+- **A token ended by its id** (site-attest, 2026-10-24). The exchange
+  (`checkToken`, so `?op=signin`, `?op=native`, link and delete) asks the
+  list of ended sessions with the token's `jti` too: a token orangecheck
+  ended by itself (`POST /api/auth/revoke`) before it reached us is
+  refused, 401; anything but `live`, 503. The requests after
+  (`sessionStanding`, `grantStanding`) ask without it: `endToken` revokes
+  our own token right after the exchange, and its id on the list must sign
+  nobody out. (`exchangeNativeCode` already asked with the `jti`, so the
+  app's path refused it before; the window's did not.)
 
 ## The review, and what was done
 

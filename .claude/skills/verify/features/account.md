@@ -475,7 +475,7 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 ```
 
-`orangecheck_check` ends "N passed, 0 failed" (155 since oc237; a sign-in
+`orangecheck_check` ends "N passed, 0 failed" (159 since oc237; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
 first sign-in is a new
 account at a random address whose session `/api/account` takes; the token
@@ -542,7 +542,11 @@ its token ended and spent (`?op=signin` with it 409), the same id signing in
 to the same account from the app and the window, and a code used twice, a
 wrong verifier and the right one after, another `redirect_uri`, a token for
 another audience (no account made) or without `rh`, each 401; six malformed
-asks 422 with nothing asked; orangecheck down 503; GET 405).
+asks 422 with nothing asked; orangecheck down 503; GET 405; site-attest: a
+token whose own id orangecheck ended before sign-in refused at the exchange,
+401, from the window and the app, while one of the same `rh` with another id
+gets in, and our own revoke of the token after the exchange signs nobody out,
+since the requests after ask the list without the id).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
 for everybody with nothing on the address, the dialog at 390 and 1280 in
 both themes with orangecheck's button (its mark, its stylesheet from this
