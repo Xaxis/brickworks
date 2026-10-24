@@ -337,9 +337,12 @@ async function deleteAccount(request, response) {
   // gone nothing could. Only for an account whose person ticked the box for
   // it (oc_connected): nobody else ever waits on orangecheck to leave. A
   // person can always delete their Brickworks account (site-attest's L1):
-  // orangecheck refusing for good, or Connect not set up on this deployment
-  // (no key, or one orangecheck does not know), leaves theirs with them at
-  // ochk.app, said plainly; only an outage holds the deletion.
+  // orangecheck refusing for good leaves theirs with them at ochk.app, said
+  // plainly. An outage holds the deletion (try again), and so does Connect
+  // not set up here (no key, or one orangecheck does not know): that is
+  // Brickworks' own fault, and deleting would leave their orangecheck
+  // account behind (orangecheck's final ruling, 2026-10-24). The daily
+  // canary asks Connect with the key (api/_canary.js, d).
   let connected;
   let kept = "";
   try {
@@ -360,8 +363,8 @@ async function deleteAccount(request, response) {
         + "to claim or delete there.";
     }
     if (there === "unset") {
-      kept = "orangecheck Connect is not set up here, so any orangecheck account made for you stays yours at ochk.app, "
-        + "to claim or delete there.";
+      console.error("account: a Connect account's deletion is paused: OC_CONNECT_KEY is missing, or orangecheck does not know it");
+      return response.status(503).json({ error: "Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted." });
     }
   }
   try {

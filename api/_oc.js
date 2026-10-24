@@ -254,8 +254,8 @@ export async function provision(account, emailed = null) {
 ///             same;
 ///   "outage"  orangecheck could not be asked, or asks us to wait: try again;
 ///   "unset"   no Connect key here (nothing is asked), or orangecheck does not
-///             know it: Connect is not set up on this deployment, theirs
-///             stays at ochk.app, and ours goes all the same.
+///             know it: Brickworks' setup fault, so nothing is deleted until
+///             it is fixed (orangecheck's final ruling).
 const CONNECT_OUTAGES = new Set(["unavailable", "rate_limited"]);
 const CONNECT_UNSET = new Set(["invalid_api_key"]);
 export async function unprovision(account) {

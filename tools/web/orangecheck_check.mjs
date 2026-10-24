@@ -928,11 +928,13 @@ try {
     // site-attest's L1: a person can always delete their Brickworks account.
     // orangecheck refusing for good (the account holds earnings, or cannot
     // be erased) deletes ours all the same, and says plainly that theirs
-    // stays at ochk.app; only an outage holds it (503, above). A deployment
-    // without the Connect key, or with one orangecheck does not know,
-    // deletes it too, asking nothing without a key, and says Connect is not
-    // set up here, so theirs stays at ochk.app.
+    // stays at ochk.app; only an outage holds it (503, above). orangecheck's
+    // final ruling: a Connect account with no Connect key here, or one
+    // orangecheck does not know, is our setup fault, and deleting would
+    // leave their orangecheck account behind unsaid, so it is paused: 503,
+    // nothing deleted, in those words.
     const deleteCalls = () => ochk.connect.filter((one) => one.path === "/api/connect/delete").length;
+    const PAUSED = "Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted.";
     for (const reason of ["holds_earnings", "not_deletable"]) {
       const email = `delivered+bw-oc-${reason.replace("_", "")}-${tag}@resend.dev`;
       const leaving = await mintSession(email, { age: true });
@@ -961,11 +963,10 @@ try {
       } finally {
         process.env.OC_CONNECT_KEY = keyWas;
       }
-      const said = left.body?.orangecheck?.said || "";
-      check("Connect, L1: without the Connect key, the account is deleted all the same, asking orangecheck nothing, and says Connect is not set up here and theirs stays at ochk.app",
-        left.status === 200 && left.body?.deleted === true && left.body?.orangecheck?.kept === true && /not set up here/.test(said)
-        && /stays yours at ochk\.app/.test(said) && deleteCalls() === asked && (await adminUser(leaving.kept.user_id)).status === 404,
-        `${left.status} ${JSON.stringify(left.body)} ${deleteCalls() - asked}`);
+      check("Connect, L1: without the Connect key, a Connect account's deletion is paused: 503, in those words, nothing deleted, orangecheck asked nothing",
+        left.status === 503 && left.body?.error === PAUSED && deleteCalls() === asked
+        && (await adminUser(leaving.kept.user_id)).status === 200 && (await connected(leaving.kept.user_id)) !== null,
+        `${left.status} ${JSON.stringify(left.body)} ${deleteCalls() - asked} calls`);
       await deleteAccount(email).catch(() => false);
     }
     {
@@ -975,10 +976,10 @@ try {
       ochk.remove = () => [401, { ok: false, reason: "invalid_api_key" }];
       const left = await quit(leaving.access_token, { confirm: email });
       ochk.remove = () => [200, { ok: true, result: "deleted" }];
-      const said = left.body?.orangecheck?.said || "";
-      check("Connect, L1: with a key orangecheck does not know, the account is deleted all the same, and says Connect is not set up here",
-        left.status === 200 && left.body?.deleted === true && /not set up here/.test(said) && /stays yours at ochk\.app/.test(said)
-        && (await adminUser(leaving.kept.user_id)).status === 404, `${left.status} ${JSON.stringify(left.body)}`);
+      check("Connect, L1: with a key orangecheck does not know, a Connect account's deletion is paused: 503, in those words, nothing deleted",
+        left.status === 503 && left.body?.error === PAUSED
+        && (await adminUser(leaving.kept.user_id)).status === 200 && (await connected(leaving.kept.user_id)) !== null,
+        `${left.status} ${JSON.stringify(left.body)}`);
       await deleteAccount(email).catch(() => false);
     }
 

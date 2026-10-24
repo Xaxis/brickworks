@@ -43,7 +43,7 @@
 //      anybody an orangecheck account (oc_live_flow.mjs does, on
 //      brickworks.diy). Deleting an account Connect made one for asks
 //      orangecheck first: without the key nothing is asked, and it is
-//      deleted all the same, saying Connect is not set up here.
+//      paused (503), nothing deleted.
 // A finished orangecheck sign-in needs a wallet and orangecheck's list of
 // ended sessions for the domain, which a preview's address is not:
 // tools/web/oc_live_flow.mjs does that on brickworks.diy.
@@ -514,9 +514,9 @@ try {
       check("Connect: deleting an account Connect made one for asks orangecheck to delete it, then deletes the account",
         asked.ok && quit.status === 200 && still.status === 404, `${asked.status} ${quit.status} ${said.error || ""} ${still.status}`);
     } else {
-      check("Connect: deleting an account Connect made one for, with no Connect key here, deletes it all the same and says Connect is not set up here",
-        asked.ok && quit.status === 200 && said.deleted === true && /not set up here/.test(said.orangecheck?.said || "")
-        && /stays yours at ochk\.app/.test(said.orangecheck?.said || "") && still.status === 404,
+      check("Connect: deleting an account Connect made one for, with no Connect key here, is paused: 503, in its words, nothing deleted",
+        asked.ok && quit.status === 503
+        && said.error === "Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted." && still.status === 200,
         `${asked.status} ${quit.status} ${JSON.stringify(said)} ${still.status}`);
     }
     await deleteAccount(leaver).catch(() => false);

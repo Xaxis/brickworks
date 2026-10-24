@@ -235,7 +235,12 @@ they have. A Claude connector belongs to the account that switched it on.
   for it), redeemed, the session taken by `api/_auth.js` `verify` (amr
   `otp`), TOTP enrolment refused `mfa_totp_enroll_not_enabled`. Each judged
   by Supabase's own error code, so a trigger refusing the same call cannot
-  pass for the setting. Its accounts deleted whatever happens, a cut-off
+  pass for the setting. And (d), orangecheck Connect's key works:
+  `connectDelete` for a made-up user id (`canary-<ms>-<hex>`) answers
+  `unknown_user` (an `invalid_api_key`, an outage or no key where the signing
+  secret is fails it; a deployment with neither orangecheck key, a unit's
+  preview or a checkout, skips it and says so), since without the key a
+  Connect account's deletion is paused. Its accounts deleted whatever happens, a cut-off
   run's at the next start (`delivered+canary-[abc]-<ms>-<hex>@resend.dev`
   only). 200 or 500; each run a row of `canary_runs` (`supabase/canary.sql`,
   server only); a failed run mails `MASTER_EMAIL` once, naming each failed
@@ -346,10 +351,13 @@ they have. A Claude connector belongs to the account that switched it on.
   A person can always delete their account (site-attest's L1): orangecheck
   refusing for good (`holds_earnings`, `not_deletable`) deletes ours anyway
   and the answer says theirs stays at ochk.app (`orangecheck: {kept, said}`,
-  shown on /settings); no Connect key (a unit's preview; nothing asked) or a
-  key orangecheck does not know deletes it too, saying Connect is not set up
-  here; only an outage (`unavailable`, `rate_limited`) holds it, 503 "try
-  again". An account that never ticked the box asks orangecheck nothing.
+  shown on /settings); an outage (`unavailable`, `rate_limited`) holds it,
+  503 "try again"; no Connect key (a unit's preview; nothing asked) or a key
+  orangecheck does not know holds it too, Brickworks' setup fault
+  (orangecheck's final ruling): 503 "Deleting is paused while Brickworks
+  fixes a setup problem. Nothing has been deleted." The canary's (d) hears
+  of that by the next morning. An account that never ticked the box asks
+  orangecheck nothing, and is deleted whatever Connect's state.
 
 Decisions, so they can be changed: the gate is a client gate (the desktop is
 open source and runs on the person's machine); the server enforces accounts
@@ -462,9 +470,10 @@ without its key, unticked or not `true`, without a sign-in, ticked once with
 consent and the key, orangecheck down or never answering, never for an
 account with orangecheck, deletion held while orangecheck is down and
 calling `connectDelete` when it can, deleted anyway with orangecheck's kept
-said when it refuses for good (`holds_earnings`, `not_deletable`), without
-the key (no call) or with a key orangecheck does not know, and an account
-that never ticked the box deleted with orangecheck down or no key, 0 calls; a stale code's session refused 403 with no call at all; the address sent as verified for a fresh emailed code's
+said when it refuses for good (`holds_earnings`, `not_deletable`), paused
+(503, in its words, nothing deleted) without the key (no call) or with a key
+orangecheck does not know, and an account that never ticked the box deleted
+with orangecheck down or no key, 0 calls; a stale code's session refused 403 with no call at all; the address sent as verified for a fresh emailed code's
 session, and never for a password's, an address the request names, a code's
 past five minutes or an orangecheck session's).
 `oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
@@ -478,8 +487,8 @@ headers, the server's refusals, Link orangecheck on /settings orangecheck's
 button; then Connect with orangecheck's side stood in for in the browser on
 every deployment: unticked no ask, ticked one with consent, a failed ask
 still signed in, and an account Connect was asked for deleted only once
-orangecheck has answered (on a unit's preview, with no key, deleted all
-the same, saying Connect is not set up here).
+orangecheck has answered (on a unit's preview, with no key, paused: 503,
+nothing deleted).
 A finished sign-in through orangecheck's real window, and Connect for real
 (`--connect` alone), run only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
 
@@ -545,10 +554,11 @@ Proves it when it ends "all ok" (13 checks, 14 with `--url`, 29 with `--route`):
 and (c) as above, each step's answer in brackets, and no canary account left
 in Supabase; with `--route` the route refusing a call without the secret, the
 deployment's run all held and recorded, and how its mail went. `--stand-in`
-(43 checks) runs the route against `tools/web/canary_stand_in.mjs`, a
+(57 checks) runs the route against `tools/web/canary_stand_in.mjs`, a
 Supabase and Resend in memory: sign-up open fails (a) and (b), an unconfirmed
 password signing in (b), the code refused and TOTP on (c), an undeletable
-account `gone`, all at once with Resend down and the record unwritable (a),
+account `gone`, Connect not knowing the key (d), with one ask of Connect for a
+made-up user each run, all at once with Resend down and the record unwritable (a),
 (b), (c); each the owner's mail attempted once naming each failed step and
 what it got (caught), the run recorded; right, it passes with no mail, and a
 cut-off run's account is deleted while another run's and one only named
