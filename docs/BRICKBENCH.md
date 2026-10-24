@@ -3114,6 +3114,135 @@ list is the first one's.
 **Verdict: do not merge critique210.** It is even with sculpt170 (12 of 24) and
 won nothing from BrickAgent (0 of 24), at 94% more a design.
 
+## 2026-10-24, morning: the look while the body is laid, on the same six
+
+critique221 (`a0030c02`; the six ran on `64bc7f7a`, the same tree, before the
+branch's merge of main was re-made as the user) is critique210 (`c6899364`)
+with main merged (`91129987`) and the look moved, bench216's lever: its commits
+are `97b5ed28`, `b8517e42`, `1b5dfe25` and `a0030c02`. The look now comes with the first submit_design that holds
+together, not with the save; what it finds is answered by laying the design
+again with one submit, which is looked at again (three looks at most); a fault
+the last look listed that is still there is laid another way; the stranger's
+other readings ("a balloon giraffe") are faults; a feature not laid yet ("not
+yet: the ears") is not one. The steps after a design stands wait for the body
+to settle, the look standing for the whole review, and saving is no longer held
+for it. It was tuned on held-out briefs only (a cat, a penguin, a snowman, a
+frog, in `brickbench-critique221-tune/`): the penguin went from "a black blob"
+to "a penguin's body" in one re-laying, the frog from "a green turtle shell" to
+"a frog with its mouth wide open". It designed the same six prompts, one design
+each, in the m147 round's folder, judged against sculpt170's, m147's and
+BrickAgent's, every pair both orders twice: 72 new verdicts, the other 72 read
+back (`compare-critique221.md`; that round's `compare.md` is as it was).
+
+**Valid: 6 of 6** by verify.py, geometry reproduced, `parts only` in every
+log, `64bc7f7a` in every `design.json`. **Four of six are one piece.** The
+potato is two (its hat's 4 x 4 dish held on a round plate by its tube) and the
+balloon dog five (its legs and ears laid again in inverted ovoid domes, each
+on studs by its tube): our check holds both together, as they hold in the
+hand, and BrickNet's graph joins none of those (`pieces-critique221.txt`).
+
+| build | parts | pieces | the first look: what a stranger would call it | the last look | looks | submits refused between them |
+|---|---|---|---|---|---|---|
+| potato (042) | 240 | 2 | "a brown ball or egg on blue feet, or a chocolate egg" | "a brown potato-shaped toy in a black top hat and blue shoes" | 2 | 2 |
+| balloon dog (043) | 82 | 5 | "a blocky blue llama or dog, or a pixel-art horse" | "a blue balloon dog sculpture on a white plinth" | 3 | 0 |
+| toilet (044) | 350 | 1 | "a lollipop or a tree in a pot, or a block on a stick" | "a toilet with a blocky head on a pole popping out of it" | 3 | 6 |
+| statue (049) | 345 | 1 | "a brown box robot waving its arms on a pedestal" | "a hunched man sitting on a stone block (Rodin's Thinker)" | 3 | 3 |
+| rabbit (078) | 309 | 1 | "a grey stone idol or a squat robot, or a penguin-like blob" | "a fat grey pear-shaped creature with a white belly: a penguin, a seal pup, or a fat bunny once its ears go on" | 2 | 2 |
+| boy (080) | 116 | 1 | "a grey robot box with a face, or a vending machine with arms" | "a cartoon boy in silver armour with a shark-mouth chest throwing a punch" | 3 | 3 |
+
+**Every session was looked at within its first two minutes (0.2 to 1.6) and
+answered at its next call, every one laid the design again, and in every one
+the reading moved toward the subject** (`likeness-said-critique221.txt`). The
+rabbit's second look took longer to draw than a call waits and came back by
+`job`, its pictures with it; it went on in edits, still "a penguin, a seal pup,
+or a fat bunny once its ears go on". Re-laying cost 16 refused submits between
+looks, 0 to 6 a session (the toilet 11 in all).
+
+| a design, the median of six | minutes | API dollars | replies | parts |
+|---|---|---|---|---|
+| critique221 | 9.1 (5.6-15.2) | 2.69 (18.57 for six) | 40 | 276 |
+| critique210 | 14.0 (5.5-17.8) | 4.53 (26.82) | 56 | 167 |
+| sculpt170 | 7.2 (5.2-12.8) | 2.33 (15.06) | 35 | 195 |
+
+critique221 costs 15% more a design than sculpt170 (23% over the six), 41% less
+than critique210. The toilet ($4.46, 59 replies) and the boy ($4.70) are the
+dear ones, each with three looks and refused re-layings between them.
+
+| head to head, overall | verdicts for the first | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| critique221 vs sculpt170 | 8 of 24 (33%) | 18-53% | 2 / 0 / 4 |
+| critique221 vs m147 | 12 of 24 (50%) | 31-69% | 1 / 4 / 1 |
+| critique221 vs BrickAgent | 1 of 24 (4%) | 1-20% | 0 / 1 / 5 |
+| critique210 vs sculpt170 (the likeness round's verdicts) | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+
+| dimension | critique221 ELO (95%) | sculpt170 ELO (95%) | m147 ELO (95%) | BrickAgent ELO (95%) |
+|---|---|---|---|---|
+| likeness | 861 (664-961) | 946 (768-1168) | 912 (730-1034) | 1281 (1182-1498) |
+| colour | 858 (717-960) | 941 (742-1120) | 1005 (843-1175) | 1196 (1071-1362) |
+| technique | 913 (708-1047) | 929 (766-1083) | 998 (773-1152) | 1161 (1034-1455) |
+| buildability | 933 (752-1064) | 1082 (960-1235) | 948 (807-1091) | 1037 (873-1202) |
+| **overall** | **860 (643-969)** | **963 (768-1211)** | **895 (690-1024)** | **1282 (1181-1502)** |
+
+| prompt | vs sculpt170 | vs m147 | vs BrickAgent | what the judge said of critique221's |
+|---|---|---|---|---|
+| potato (042) | 0-4 | 0-4 | 0-4 | "a tall, narrow, boxy column", "a brown pillar wearing a hat", beside sculpt170's "wide, rounded oval", and its "loose second piece"; its first look had asked for "taller than wide (about 9 wide, 32 plates tall)" |
+| balloon dog (043) | 0-4 | 4-0 | 0-4 | likeness even with sculpt170 (2-2, "the extra bulb at the back of the head"), every overall to sculpt170's one piece: "comes apart into five pieces" |
+| toilet (044) | 0-4 | 2-2 | 0-4 | "boxy and less clear" beside sculpt170's curved bowl, lid and plunger; against BrickAgent "a box-shaped bowl", "its black-bar mouth does not read as a grin" |
+| statue (049) | 4-0 | 2-2 | 1-3 | "reads clearly as the hunched seated statue on a rough plinth" over sculpt170's "crude block"; one verdict over BrickAgent, "a smoother outline and a sturdier build"; the other three "a blobby mass", "a pose that cannot be read" |
+| rabbit (078) | 4-0 | 2-2 | 0-4 | "a proper face and angled ears and arms", "a rounded belly" over sculpt170's T-shaped arms; against BrickAgent "arms stick out like flared wings", "a single tooth set low and no smile" |
+| boy (080) | 0-4 | 2-2 | 0-4 | "grey, sparser", "monotonous" beside sculpt170's shark-mouth chest and colour |
+
+**The bar is missed** on three counts of four: 8 of 24 against sculpt170 where
+it asked 15, 1 of 24 against BrickAgent where it asked 6, and four builds of six
+in one piece where it asked six. The cost is met: +15% a design where it allowed
++40%.
+
+### What the look did, and what it cost
+
+**The look changes the body now.** Given at the save, five of six sessions
+saved with the faults the second look still listed. Given at the submit, all six
+laid the design again and every reading moved: the statue from "a box robot"
+to "Rodin's Thinker", the toilet from "a lollipop" to "a toilet with a head".
+The statue's is the first verdict won from BrickAgent since pose174's (face201
+and critique210 won none), and the statue and the rabbit won every verdict over
+sculpt170.
+
+**But a session's reading of its own pictures is not the judge's.** The potato's
+first look called its wide body "a ball, not a potato" and asked for it taller
+than wide; the judge then preferred sculpt170's wide oval in all four verdicts.
+The toilet and the boy came out of their re-layings boxier and greyer than
+sculpt170's, which kept the gags (a plunger, a shark-mouth chest) a re-laid
+design dropped. A look that judges its build alone can talk it out of what was
+right.
+
+**Re-laying in other parts brought pieces BrickBench counts apart.** The dog's
+round legs and ears are inverted ovoid domes on studs, held by their tubes: the
+check passed them, verify.py counted five pieces, the judge was told so, and
+gave sculpt170's one-piece dog every overall verdict with the likeness even.
+Saving now waits on that (`b24d707c`, after this round, not benched): a piece
+BrickNet's graph joins to nothing, standing on another and not on the floor, is
+named with where to seat it, at most twice, as a collision is. On the six
+builds it names the potato's dish and the dog's four domes, and nothing in the
+other four (`features_probe`: a dish held by its tube on a round plate holds
+the save, and saves once it is gone).
+
+### The next lever: the look as a choice between two
+
+What the look got right was the stranger's reading of each build; what it got
+wrong was keeping the re-laid build whether or not it read better. So: at each
+re-laying, the look is shown the build before and the build after side by side
+(the judge's own question, "which reads more as a potato?"), and the design
+that reads better is kept, the other undone.
+
+- **Proof in the unit:** on held-out briefs, a re-laying that a side-by-side
+  look prefers is kept and one it does not is undone; each one piece by
+  verify.py.
+- **The bar on this bench:** this round's, unchanged.
+
+**Verdict: do not merge critique221's look** as it stands: 8 of 24 against
+sculpt170 and 1 of 24 against BrickAgent. The pieces gate (`b24d707c`) stands
+on its own and could go in alone.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -3272,6 +3401,23 @@ minutes, calls and share of the cost in the looks `scripts/look_time.py` and
 `src/dev/pieces_agree.gd` at `1ef56fd2` (`pieces-critique210.txt`); the reasons
 `scripts/reasons.py` (`reasons-critique210-*.txt`), with the sheets in
 `sheets-critique210/`.
+
+The round of the look while the body is laid (2026-10-24, morning) is the
+likeness round's commands with `--arm critique221`, `--app` a locked
+`release_wt.sh critique221-bench 64bc7f7a` worktree (imported by
+`tools/fresh_import.sh`) and `BENCH_PORTS` the unit's ports. Export, verify,
+views and pairs ran from the unit's imported worktree (main's tools and
+renderer), two prompts at a time with `--tasks` as the designs finished, then
+`pairs` once over all six, which asked nothing new: `pairs --arms
+critique221,sculpt170,m147` and `compare --arms critique221,sculpt170,m147
+--runs 1 --out .../compare-critique221.md`, the m147 round's `compare.md`
+copied aside first and put back. What each session's looks said and did
+between them is `scripts/looks_said.py` on its transcripts (Claude Code's
+project folder for the critique221-bench worktree,
+`likeness-said-critique221.txt`); the pieces `src/dev/pieces_agree.gd` at
+`b24d707c` (`pieces-critique221.txt`); the reasons `scripts/reasons.py`
+(`reasons-critique221-*.txt`). The held-out tuning briefs and their designs are
+`brickbench-critique221-tune/` (arms `critique221` and `critique221b`).
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
