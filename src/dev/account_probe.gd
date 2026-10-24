@@ -77,6 +77,14 @@ func _run() -> void:
 		bool(anyone.get("enabled", false)) and str(anyone.get("url", "")).begins_with("https://")
 		and not str(anyone.get("key", "")).is_empty() and anyone.has("parts_url")
 		and not bool(anyone.get("signed_in", true)))
+	# The desktop's Sign in with orangecheck (on since m167): offered
+	# wherever orangecheck takes a token, which a deployment without the
+	# project's keys (a local relay without them, a unit's preview) does not.
+	var oc: Dictionary = anyone.get("orangecheck", {}) if anyone.get("orangecheck") is Dictionary else {}
+	var offered: bool = not account.deployment.orangecheck_native.is_empty()
+	_check("...and the desktop is offered orangecheck exactly where it takes a token: %s (ready %s)"
+		% ["offered" if offered else "not offered", oc.get("ready")],
+		offered == bool(oc.get("ready", false)) and offered == (oc.get("native") is Dictionary))
 	var admin: int = await _status("/api/admin", token)
 	_check("the admin page's data is not theirs: %d, as if it were not there" % admin,
 		admin == 404)

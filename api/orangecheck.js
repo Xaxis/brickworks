@@ -200,7 +200,7 @@ const LOOPBACK = /^http:\/\/127\.0\.0\.1:\d{1,5}\/[A-Za-z0-9._~/-]*$/;
 
 async function native(request, response) {
   if (!nativeOffered()) {
-    return say(response, 503, "Signing in with orangecheck from the app is not offered here yet. Sign in with your email instead.");
+    return say(response, 503, "Signing in with orangecheck from the app is not offered here. Sign in with your email instead.");
   }
   const body = bodyOf(request);
   const [code, verifier, redirect] = ["code", "code_verifier", "redirect_uri"].map((name) => (typeof body?.[name] === "string" ? body[name] : ""));

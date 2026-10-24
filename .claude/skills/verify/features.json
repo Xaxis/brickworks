@@ -3511,7 +3511,7 @@
       "id": "ui:sign in with orangecheck on the desktop",
       "kind": "ui",
       "entry": "src/account/orangecheck_sign_in.gd",
-      "reach": "tools/web/relay_server.mjs 8790 on orangecheck's test stack (OC_NATIVE=1, OC_ISSUER, OC_ME_ORIGIN, the test key), then BRICKWORKS_API=http://127.0.0.1:8790 godot --path . signed out, Sign in with orangecheck",
+      "reach": "godot --path . signed out, Sign in with orangecheck (brickworks.diy, since m167); or tools/web/relay_server.mjs 8790 on orangecheck's test stack (OC_ISSUER, OC_ME_ORIGIN, the test key), then BRICKWORKS_API=http://127.0.0.1:8790 godot --path .",
       "area": "account",
       "tests": []
     },

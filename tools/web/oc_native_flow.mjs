@@ -25,6 +25,18 @@
 // The throwaway's address and orangecheck id, and the Brickworks account it
 // made (deleted at the end), are added to --keys for orangecheck to purge.
 // One line a check, then "oc_native_flow: N passed, M failed".
+//
+// The test project it was proven on in oc237 (pk_test_WlwvYN8n055vuMCm) was
+// deleted by orangecheck once the live project was proven (2026-10-24);
+// OC_TEST_PROJECT, OC_TEST_AUTH and OC_TEST_ME name another.
+//
+// --url=https://brickworks.diy (m167): the same against a deployment and
+// orangecheck's own live project, as /api/account offers them (ochk.io, the
+// project, the audience): no servers here and no secret, the app and this
+// flow both posting to the deployment's ?op=native. The case of another
+// audience, which needs a server of our own, is the test stack's alone.
+//
+//   BIP322_MODULE=... node tools/web/oc_native_flow.mjs --url=https://brickworks.diy --keys=oc_throwaways.txt
 
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
@@ -33,12 +45,21 @@ import http from "node:http";
 import { createInterface } from "node:readline";
 import { launch } from "./browser.mjs";
 
-const PROJECT = process.env.OC_TEST_PROJECT || "pk_test_WlwvYN8n055vuMCm";
-const AUTH = process.env.OC_TEST_AUTH || "https://oc-www-test.vercel.app";
+const LIVE = (process.argv.find((a) => a.startsWith("--url=")) || "").slice(6).replace(/\/+$/, "");
+const offer = LIVE ? (await (await fetch(`${LIVE}/api/account`)).json().catch(() => ({}))).orangecheck?.native : null;
+if (LIVE && !offer) {
+  console.error(`oc_native_flow: ${LIVE} offers the desktop no Sign in with orangecheck`);
+  process.exit(2);
+}
+const PROJECT = LIVE ? offer.project : process.env.OC_TEST_PROJECT || "pk_test_WlwvYN8n055vuMCm";
+const AUTH = LIVE ? offer.auth : process.env.OC_TEST_AUTH || "https://oc-www-test.vercel.app";
 const ME = process.env.OC_TEST_ME || "https://oc-me-test.vercel.app";
-// The test project's development origin, which its tokens are bound to.
+// The test project's development origin, which its tokens are bound to;
+// or the deployment's own audience.
 const PORT = 8790;
-const AUD = `http://127.0.0.1:${PORT}`;
+const AUD = LIVE ? offer.audience : `http://127.0.0.1:${PORT}`;
+// Where the app, and this flow as the app, post their codes.
+const SITE = LIVE || AUD;
 // Another origin, for a server whose audience is not the token's.
 const OTHER = 9051;
 // Where the browser comes back to for the codes asked from here, listened
@@ -47,11 +68,11 @@ const BACK = 9052;
 const ROOT = new URL("../..", import.meta.url).pathname;
 const keys = (process.argv.find((a) => a.startsWith("--keys=")) || "--keys=oc_throwaways.txt").slice(7);
 
-if (!process.env.BIP322_MODULE || !process.env.OC_TEST_SECRET_FILE || !process.env.SUPABASE_SECRET_KEY) {
-  console.error("oc_native_flow: BIP322_MODULE, OC_TEST_SECRET_FILE and .env's SUPABASE_* are needed");
+if (!process.env.BIP322_MODULE || (!LIVE && !process.env.OC_TEST_SECRET_FILE) || !process.env.SUPABASE_SECRET_KEY) {
+  console.error("oc_native_flow: BIP322_MODULE, OC_TEST_SECRET_FILE (but with --url) and .env's SUPABASE_* are needed");
   process.exit(2);
 }
-const said = JSON.parse(readFileSync(process.env.OC_TEST_SECRET_FILE, "utf8"));
+const said = LIVE ? {} : JSON.parse(readFileSync(process.env.OC_TEST_SECRET_FILE, "utf8"));
 const SECRET = said.signing_secret ?? said.secret;
 const { addressFromPrivateKey, signMessage } = await import(process.env.BIP322_MODULE);
 const SB = process.env.SUPABASE_URL.replace(/\/+$/, "");
@@ -67,11 +88,11 @@ function check(name, ok, note = "") {
 }
 
 /// This machine's deployment functions, as on the test project: its key and
-/// secret, orangecheck's test hosts, the desktop's sign-in on, and never
-/// Connect's key or a mail key.
+/// secret and orangecheck's test hosts, and never Connect's key or a mail
+/// key.
 function server(port) {
   const env = { ...process.env, OC_PROJECT_KEY: PROJECT, OC_SIGNING_SECRET: SECRET, OC_AUDIENCE: `http://127.0.0.1:${port}`,
-    OC_ISSUER: AUTH, OC_ME_ORIGIN: ME, OC_NATIVE: "1" };
+    OC_ISSUER: AUTH, OC_ME_ORIGIN: ME };
   for (const name of ["OC_CONNECT_KEY", "RESEND_API_KEY", "VERCEL_ENV"]) delete env[name];
   const child = spawn(process.execPath, [`${ROOT}tools/web/relay_server.mjs`, String(port)], { env, stdio: ["ignore", "pipe", "pipe"] });
   child.stderr.on("data", (chunk) => process.stderr.write(redact(chunk)));
@@ -87,11 +108,12 @@ const servers = [];
 let browser;
 let throwaway = null;
 try {
-  servers.push(await server(PORT), await server(OTHER));
+  if (!LIVE) servers.push(await server(PORT), await server(OTHER));
+  console.log(`against ${SITE}: orangecheck at ${AUTH}, project ${PROJECT}, audience ${AUD}`);
 
-  // A throwaway orangecheck account at the test stack: a new key, signed in
-  // there as orangecheck's own sign-in page does, its session put in the
-  // browser for the test auth host.
+  // A throwaway orangecheck account at orangecheck's sign-in host: a new
+  // key, signed in there as orangecheck's own sign-in page does, its
+  // session put in the browser for that host.
   const key = randomBytes(32);
   const address = addressFromPrivateKey(key, "p2wpkh");
   const same = { origin: AUTH, "sec-fetch-site": "same-origin" };
@@ -101,7 +123,7 @@ try {
     body: JSON.stringify({ message: challenge.message, signature: signMessage(address, challenge.message, key),
       expectedNonce: challenge.nonce, expectedAudience: "https://ochk.io", expectedPurpose: "login" }) });
   const session = signedIn.headers.getSetCookie().find((one) => /^oc_session=ey/.test(one))?.split(";")[0].slice("oc_session=".length);
-  if (!session) throw new Error(`the throwaway did not sign in at the test stack: ${signedIn.status}`);
+  if (!session) throw new Error(`the throwaway did not sign in at ${AUTH}: ${signedIn.status}`);
   const did = JSON.parse(Buffer.from(session.split(".")[1], "base64url").toString()).did_oc;
   throwaway = { address, did };
   console.log(`throwaway ${address} ${did}`);
@@ -120,7 +142,7 @@ try {
   };
 
   // 1. The app.
-  const probe = spawn(`${ROOT}tools/probe.sh`, ["oc_native_probe"], { env: { ...process.env, BRICKWORKS_API: AUD }, stdio: ["ignore", "pipe", "pipe"] });
+  const probe = spawn(`${ROOT}tools/probe.sh`, ["oc_native_probe"], { env: { ...process.env, BRICKWORKS_API: SITE }, stdio: ["ignore", "pipe", "pipe"] });
   const out = [];
   createInterface({ input: probe.stderr }).on("line", (line) => out.push(line));
   let account = null;
@@ -168,8 +190,8 @@ try {
     if (!back || back.searchParams.get("state") !== state || !back.searchParams.get("code")) throw new Error(`no code came back: ${back}`);
     return { code: back.searchParams.get("code"), code_verifier: verifier, redirect_uri: redirect };
   };
-  const post = async (body, port = PORT) => {
-    const reply = await fetch(`http://127.0.0.1:${port}/api/orangecheck?op=native`, { method: "POST",
+  const post = async (body, at = SITE) => {
+    const reply = await fetch(`${at}/api/orangecheck?op=native`, { method: "POST",
       headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     return { status: reply.status, body: await reply.json().catch(() => ({})) };
   };
@@ -194,10 +216,12 @@ try {
   check("a redirect_uri other than the one the code was given for is refused", refused(otherRedirect),
     `${otherRedirect.status} ${otherRedirect.body.error || ""}`);
 
-  const fourth = await askCode();
-  const otherAudience = await post(fourth, OTHER);
-  check(`a code whose token is for ${AUD}, traded by a server whose audience is http://127.0.0.1:${OTHER}, is refused`,
-    refused(otherAudience), `${otherAudience.status} ${otherAudience.body.error || ""}`);
+  if (!LIVE) {
+    const fourth = await askCode();
+    const otherAudience = await post(fourth, `http://127.0.0.1:${OTHER}`);
+    check(`a code whose token is for ${AUD}, traded by a server whose audience is http://127.0.0.1:${OTHER}, is refused`,
+      refused(otherAudience), `${otherAudience.status} ${otherAudience.body.error || ""}`);
+  }
 } catch (trouble) {
   check("the run finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {

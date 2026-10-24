@@ -46,16 +46,18 @@ export function ocHosts() {
 
 /// Whether the desktop app is offered Sign in with orangecheck
 /// (api/orangecheck.js ?op=native): the person's own browser, and a
-/// one-time code back to the app on 127.0.0.1. orangecheck offers it to
-/// test projects alone while it is proven on real builds, so every
-/// deployment leaves it off until orangecheck's site-attest has reviewed
-/// ours and brickworks.diy's project has it (then true here, as
-/// ORANGECHECK_FOR_EVERYONE is). On this machine OC_NATIVE=1 turns it on,
-/// for a test project.
-export const NATIVE_FOR_EVERYONE = false;
+/// one-time code back to the app on 127.0.0.1. On since m167 (2026-10-24):
+/// orangecheck's site-attest reviewed it (oc237), and orangecheck proved it
+/// on brickworks.diy's live project, 19 of 19, that evening (its consent
+/// page naming the app Brickworks and the website brickworks.diy, the token
+/// for https://brickworks.diy, azp native). Wherever orangecheck sign-in
+/// works (ocConfigured), so a deployment without the project's keys, as a
+/// unit's preview, offers it to nobody. False turns it off for everybody,
+/// as ORANGECHECK_FOR_EVERYONE does the window's.
+export const NATIVE_FOR_EVERYONE = true;
 
 export function nativeOffered() {
-  return ocConfigured() && (NATIVE_FOR_EVERYONE || (!process.env.VERCEL_ENV && process.env.OC_NATIVE === "1"));
+  return NATIVE_FOR_EVERYONE && ocConfigured();
 }
 
 export function ocConfigured() {
