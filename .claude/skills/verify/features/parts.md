@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo -->
 
 ## Sub-features
 
@@ -217,6 +217,30 @@ geometry in front of them.
   model with G) goes to the front of Recent, 24 kept; right-click any part to
   keep it in Favourites, marked with a star. Kept in `user://part_shelf.cfg`,
   never under a probe (`PartShelf.keeps`), which points it at a file of its own.
+- `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
+  *Techniques* sits beside Recent and Favourites, the assistant's worked
+  constructions (`Techniques.all()`, 91 on 2026-10-24) under their
+  `Techniques.GROUPS`, one a row with its picture (`PartThumbnails.offer_group`,
+  drawn once a colour and cached as a part's is) and its one-line reason
+  (`Techniques.reason`, the first sentence of its *why*). What is typed in the
+  search narrows them. A row chosen is read as a design's words are, by an
+  assistant of the bin's own (`Techniques.as_ldraw`, never the one designing),
+  into LDraw lines and back (`Carry.from_ldraw`, the path a paste takes), and
+  held whole (`EditVerbs.hold`): R turns it, a click puts it down, one undo
+  takes it all back. The colour in hand stands in for its main colour
+  (`Techniques.main_colour`, the colour most of its parts are in).
+- `find a part from a photo` (`src/net/brickognize.gd`): the camera in the
+  bin's search field. The first press says the photo goes to Brickognize, a
+  third party that may keep it and train on it (their terms, read 2026-10-24),
+  and that nothing is sent until a photo is chosen (`ShellPrefs` `photo_told`,
+  once a device); then the picker (`PickImage`, the camera on a phone). The
+  photo, at most 1024 px, is posted to `api.brickognize.com/predict/parts/`
+  from wherever the app runs (CORS `*`, no key; `connect-src` in
+  `tools/deploy.sh`); its BrickLink numbers become parts here by
+  `PartLibrary.by_shop` (LDraw's "BrickLink 3062" keyword, else the number,
+  else the mould under a letter) and show as the bin's results, each with how
+  sure Brickognize is. Offline, refused, garbled or empty, the status line says
+  so in words.
 - `a part asked for by number` lists its own family first: `3023` gives 3023b,
   3023a and the 3023 prints before 30236 or the 30239 spider (`NUMBER` in
   `_match_score`).
@@ -243,6 +267,10 @@ Runtime:
 godot --headless --path . --script src/dev/search_probe.gd          # what it returns; names as LDraw writes them (Théoden, 90°)
 godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
+godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
+godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
+godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
+node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=prints_by_their_print  # typed into the bin; shots/handbuild/prints_by_their_print.png
@@ -257,6 +285,18 @@ godot --headless --path . --script src/dev/usage_probe.gd         # whether sear
 godot --headless --path . --script src/dev/kinds_probe.gd         # whether a castle knows it is arches
 tools/check.sh --network    # adds remote_probe: geometry over the wire
 ```
+
+Techniques prove it when `bin_techniques_probe` exits 0: every construction
+listed under its group, "window in a wall" held whole (17 parts) with the
+colour in hand where its red was, R turning it through four quarters, a click
+putting it on the wall's top in the wall's line, the model checking as a design
+does, and one undo taking all 17 back; then "smooth diagonal", "round tower"
+and "corner on a turntable" likewise on the ground. Look at
+`shots/bin_techniques/tab.png`: each row's picture is the whole construction.
+The photo search proves it when `photo_search_stub_probe` exits 0 and
+`photo_search_probe` says at least 4 of 5 (5 of 5 on 2026-10-24: 3001, 3039,
+3062b, 3069b, 3700); the live one needs Brickognize up, so it is in
+`tools/suite/out.txt`. The photos it draws are kept in `tests/fixtures/photos/`.
 
 Proves it when: each exits 0 with no `FAIL`. `search` prints its answers for a
 handful of queries — read them, they are the point. `vocab` is the one that fails

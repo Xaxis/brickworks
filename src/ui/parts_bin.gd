@@ -79,6 +79,8 @@ const NOT_A_COLOUR: Array[int] = [16, 24]
 
 var library: PartLibrary
 var thumbnails: PartThumbnails
+## Asked how a part's cells lie, to read a worked construction (_reader).
+var builder: Builder
 ## How much bigger than on a desktop the bin is drawn, set before it is
 ## shown: a phone's parts sheet (PhoneShell) draws it in points.
 var zoom: float = 1.0
@@ -140,6 +142,9 @@ signal make_wanted
 ## "Stickers…": the model's sticker sheet (PrintStudio).
 signal print_wanted
 signal stickers_wanted
+## A worked construction chosen under Techniques, to hold whole: its parts
+## as Carry holds them, and its name.
+signal construction_chosen(parts: Array, name: String)
 
 
 ## [param units] of the desktop's bin, drawn at its zoom.
@@ -222,6 +227,7 @@ func _build() -> void:
 		_search.add_theme_font_size_override("font_size", ceili(_z(14)))
 	_search.custom_minimum_size.y = least
 	root.add_child(_search)
+	_add_photo_button()
 
 	# Built from the catalogue once it is loaded, not from a fixed list.
 	var category_scroll := ScrollContainer.new()
@@ -377,8 +383,9 @@ func _build_categories() -> void:
 		return int(counts[a]) > int(counts[b]))
 
 	# The parts reached for lately and the ones kept, beside All: the bin
-	# is searched once per part and then wanted again and again.
-	_categories = ["All", RECENT, FAVOURITES]
+	# is searched once per part and then wanted again and again. And the
+	# assistant's worked constructions, each with why it works.
+	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES]
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -400,6 +407,10 @@ func _build_categories() -> void:
 			button.tooltip_text = ("The parts you chose lately, newest first"
 				if category == RECENT
 				else "The parts you keep: right-click any part to add it or take it out")
+		if category == TECHNIQUES:
+			button.text = "%s %d" % [TECHNIQUES, Techniques.all().size()]
+			button.tooltip_text = ("Worked constructions, each with why it works: choose one "
+				+ "to hold it whole, R turns it, a click puts it down")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		button.focus_mode = Control.FOCUS_NONE
@@ -743,6 +754,7 @@ func _on_colour(code: int) -> void:
 	# The same tiles, so what is in sight is told again: they wait on new pictures.
 	if _sight != null:
 		_sight.forget()
+	_techniques_seen = []
 
 
 ## How many lines the note under the palette always takes.
@@ -957,6 +969,17 @@ func controls_by_name() -> Dictionary:
 	# The search and the first part it found: how a browser check takes a
 	# part by its number, as a person does (tools/web/assembly_flow.mjs).
 	named["part search"] = _search
+	named["photo search"] = _photo_button
+	# Its question before the first photo, and the Techniques tab and its
+	# rows by name (tools/web/bin_flow.mjs).
+	if _telling != null:
+		named["photo choose"] = _telling.get_ok_button()
+	for child: Node in _category_row.get_children():
+		if str(child.get_meta("category", "")) == TECHNIQUES:
+			named["techniques"] = child
+	for child: Node in _grid.get_children():
+		if child.has_meta("technique"):
+			named["technique " + str(child.get_meta("technique"))] = child
 	named["colour find"] = _colour_find
 	named["all colours"] = _all_colours
 	named["palette"] = _palette_scroll
@@ -1006,14 +1029,27 @@ func _process(_delta: float) -> void:
 	# And say what is in sight, for the same reason: a scroll, a resize,
 	# a page added and the dock folding all change it, and only the last
 	# has a signal.
-	if thumbnails != null and _sight != null and _sight.changed():
+	if thumbnails != null and _category == TECHNIQUES:
+		var count: int = _grid.get_child_count()
+		var now: Array = [_scroll.scroll_vertical, _scroll.size, _grid.size, count,
+			_grid.get_child(0).get_instance_id() if count > 0 else 0]
+		if now != _techniques_seen:
+			_techniques_seen = now
+			thumbnails.watch(self, _technique_tiles())
+	elif thumbnails != null and _sight != null and _sight.changed():
 		thumbnails.watch(self, _sight.tiles())
 
 
 func _run_search(query: String) -> void:
 	if library == null:
 		return
+	_guesses.clear()
+	if _category == TECHNIQUES:
+		_results = []
+		_fill_techniques(query.strip_edges())
+		return
 	_results = _find(query.strip_edges(), _category)
+	_guesses.clear()
 	_fill_grid()
 
 
@@ -1094,6 +1130,10 @@ static var NUMBER: RegEx = RegEx.create_from_string("^[0-9]+[a-z]*$")
 ## The two shelves, shown as categories (see PartShelf).
 const RECENT := "Recent"
 const FAVOURITES := "Favourites"
+## The worked constructions (Techniques), shown as a category beside them.
+const TECHNIQUES := "Techniques"
+## What a construction's picture is asked for by: this and its name.
+const TECHNIQUE := "technique:"
 const STAR := "res://assets/ui/tools/star.svg"
 
 
@@ -1484,6 +1524,7 @@ func _fill_grid() -> void:
 	_cells.clear()
 	_shown = 0
 	_scroll.scroll_vertical = 0
+	_grid.columns = COLUMNS
 	_show_more()
 
 
@@ -1500,6 +1541,15 @@ func _show_more() -> void:
 
 func _update_status() -> void:
 	var total: int = _results.size()
+	if not _guesses.is_empty():
+		_status.text = "From your photo, most likely first, as Brickognize sees it"
+		_status.tooltip_text = _guessed_note
+		return
+	if _category == TECHNIQUES:
+		_status.text = "nothing matches" if _techniques_shown == 0 else (
+			"%d worked constructions: choose one to hold it whole" % _techniques_shown)
+		_status.tooltip_text = "R turns what is held, a click puts it down, Esc puts it away"
+		return
 	if total == 0 and _category == RECENT and _search.text.strip_edges().is_empty():
 		_status.text = "The parts you choose will be here, newest first."
 	elif total == 0 and _category == FAVOURITES and _search.text.strip_edges().is_empty():
@@ -1577,6 +1627,10 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	var label := Label.new()
 	var given: String = PartPrints.given_name(info.name) if info.id.begins_with("bw-") else ""
 	label.text = given if not given.is_empty() else info.id
+	if _guesses.has(info.id):
+		label.text = "%s  %d%%" % [info.id, roundi(float(_guesses[info.id]) * 100.0)]
+		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
+			roundi(float(_guesses[info.id]) * 100.0), button.tooltip_text]
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.clip_text = true
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1683,8 +1737,8 @@ func _on_part(part_id: String) -> void:
 	# the one just pressed, so choosing a part looked like choosing
 	# nothing — the only sign anything had happened was the ghost.
 	for child: Node in _grid.get_children():
-		var button: Button = child
-		button.button_pressed = str(button.get_meta("part", "")) == part_id
+		if child is Button:
+			(child as Button).button_pressed = str(child.get_meta("part", "")) == part_id
 	_mark_swatches()
 	part_chosen.emit(part_id)
 
@@ -1703,8 +1757,8 @@ func show_held(part_id: String, color_code: int) -> void:
 	if color_code != _selected_color:
 		_on_colour(color_code)
 	for child: Node in _grid.get_children():
-		var button: Button = child
-		button.button_pressed = str(button.get_meta("part", "")) == part_id
+		if child is Button:
+			(child as Button).button_pressed = str(child.get_meta("part", "")) == part_id
 	_mark_swatches()
 
 
@@ -1727,3 +1781,293 @@ static func _comma(value: int) -> String:
 func focus_search() -> void:
 	_search.grab_focus()
 	_search.select_all()
+
+
+# -- worked constructions -----------------------------------------------------
+
+
+## How many constructions the Techniques show, for what is typed.
+var _techniques_shown: int = 0
+## What was in sight when the Techniques' tiles were last told (_process).
+var _techniques_seen: Array = []
+## An assistant of the bin's own that reads a construction as a design's
+## words are read (Techniques.as_ldraw): never the one designing, whose
+## reading of its own model that would reset.
+var _reading: Assistant
+
+
+func _reader() -> Assistant:
+	if _reading == null:
+		_reading = Assistant.new()
+		_reading.library = library
+		_reading.builder = builder
+		add_child(_reading)
+	return _reading
+
+
+## The worked constructions, in the order show_technique lists them: by what
+## they are for, and under that one a row, with its picture and why it
+## works. What is typed narrows them by their names and uses.
+func _fill_techniques(query: String) -> void:
+	for child: Node in _grid.get_children():
+		_grid.remove_child(child)
+		child.queue_free()
+	_cells.clear()
+	_shown = 0
+	_scroll.scroll_vertical = 0
+	_grid.columns = 1
+	_techniques_seen = []
+	var words: PackedStringArray = query.to_lower().split(" ", false)
+	_techniques_shown = 0
+	for group: String in Techniques.GROUPS:
+		var titled: bool = false
+		for one: Variant in Techniques.all():
+			var technique: Dictionary = one
+			if str(technique.get("group", "")) != group:
+				continue
+			var said: String = ("%s %s %s" % [technique["name"], technique["when"],
+				group]).to_lower()
+			if not Array(words).all(func(word: String) -> bool: return said.contains(word)):
+				continue
+			if not titled:
+				titled = true
+				var title := Label.new()
+				title.text = group.capitalize()
+				title.add_theme_font_size_override("font_size", ceili(_z(11)))
+				title.modulate = Color(1, 1, 1, 0.7)
+				_grid.add_child(title)
+			_grid.add_child(_technique_cell(technique))
+			_techniques_shown += 1
+	_update_status()
+
+
+func _technique_cell(technique: Dictionary) -> Control:
+	var name: String = str(technique["name"])
+	var id: String = TECHNIQUE + name
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(0, _z(64))
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.toggle_mode = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.set_meta("technique", name)
+	button.tooltip_text = "%s: %s.\n\n%s\n\n%d parts: choose it to hold it whole" % [
+		name.capitalize(), technique["when"], technique["why"],
+		(technique["bricks"] as Array).size()]
+	button.pressed.connect(_on_technique.bind(name))
+
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = _z(2)
+	row.offset_right = -_z(6)
+	row.add_theme_constant_override("separation", int(_z(8)))
+	button.add_child(row)
+	var image := ThumbTile.new(id, _selected_color)
+	image.custom_minimum_size = Vector2(_z(60), _z(60))
+	image.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(image)
+	button.set_meta("tile", image)
+	_cells[id] = image
+
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", 0)
+	row.add_child(words)
+	var title := Label.new()
+	title.text = name.capitalize()
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.clip_text = true
+	title.add_theme_font_size_override("font_size", ceili(_z(12)))
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(title)
+	var reason := Label.new()
+	reason.text = Techniques.reason(technique)
+	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	reason.max_lines_visible = 2
+	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	reason.add_theme_font_size_override("font_size", ceili(_z(11)))
+	reason.modulate = Color(1, 1, 1, 0.75)
+	reason.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(reason)
+
+	if thumbnails:
+		thumbnails.offer_group(id, Techniques.parts_of(technique), func(colour: int) -> Array:
+			return Carry.from_ldraw(Techniques.as_ldraw(technique, _reader(), colour), library))
+		var ready_now: ImageTexture = thumbnails.peek(id, _selected_color)
+		if ready_now:
+			image.show_picture(ready_now, false)
+	return button
+
+
+## The Techniques' tiles, those in sight first and top down, then those
+## below and those above. Its rows are not all one height, as a grid of
+## parts' are, so ThumbTile.Sight cannot say.
+func _technique_tiles() -> Array[ThumbTile]:
+	var window := Rect2(Vector2(0, _scroll.scroll_vertical), _scroll.size)
+	var seen: Array[ThumbTile] = []
+	var below: Array[ThumbTile] = []
+	var above: Array[ThumbTile] = []
+	for cell: Node in _grid.get_children():
+		if not cell.has_meta("tile"):
+			continue
+		var tile: ThumbTile = cell.get_meta("tile")
+		var box := Rect2((cell as Control).position, (cell as Control).size)
+		tile.in_sight = box.intersects(window)
+		if tile.in_sight:
+			seen.append(tile)
+		elif box.position.y >= window.end.y:
+			below.append(tile)
+		else:
+			above.push_front(tile)
+	seen.append_array(below)
+	seen.append_array(above)
+	return seen
+
+
+## A construction chosen: its parts, in the colour in hand where its main
+## colour was, held whole once each one's geometry is here (Main).
+func _on_technique(name: String) -> void:
+	for child: Node in _grid.get_children():
+		if child is Button:
+			(child as Button).button_pressed = str(child.get_meta("technique", "")) == name
+	var parts: Array = await technique_parts(name, _selected_color)
+	if parts.is_empty():
+		_status.text = "%s could not be had: its parts did not load" % name
+		return
+	construction_chosen.emit(parts, name)
+
+
+## A construction's parts as Carry holds them, in [param colour] where its
+## main colour was: written as LDraw lines and read back, the path a paste
+## takes. Waits for any part not here yet, which the web fetches.
+func technique_parts(name: String, colour: int) -> Array:
+	var technique: Dictionary = Techniques.named(name)
+	if technique.is_empty():
+		return []
+	var reader: Assistant = _reader()
+	await reader._ensure_parts(reader._read_model({"bricks": technique["bricks"],
+		"sections": technique.get("sections", []),
+		"repeat_section": technique.get("repeat_section", [])}))
+	return Carry.from_ldraw(Techniques.as_ldraw(technique, reader, colour), library)
+
+
+# -- a part from a photo ------------------------------------------------------
+
+
+## The camera in the search field.
+const PHOTO := "res://assets/ui/tools/photo.svg"
+var _photo_button: Button
+var _picker: PickImage
+var _brickognize: Brickognize
+var _telling: ConfirmationDialog
+## The parts a photo was answered with, by id -> how sure Brickognize is:
+## the bin's results while they are shown, and empty once anything else is.
+var _guesses: Dictionary = {}
+## What of the answer the bin has no part for, said on the status line's tooltip.
+var _guessed_note: String = ""
+
+
+## A button in the search field, at its end, as the field's own clear button
+## is: the field keeps its text clear of it.
+func _add_photo_button() -> void:
+	_photo_button = Button.new()
+	_photo_button.flat = true
+	_photo_button.focus_mode = Control.FOCUS_NONE
+	_photo_button.tooltip_text = "Find a part from a photo of it"
+	_photo_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var wide: float = maxf(_z(26), least)
+	_photo_button.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	_photo_button.offset_left = -wide
+	_photo_button.offset_right = 0
+	_photo_button.pressed.connect(_ask_photo)
+	_search.add_child(_photo_button)
+	var picture: TextureRect = Icons.picture(PHOTO, _z(16.0), Icons.density(self))
+	picture.set_anchors_preset(Control.PRESET_CENTER)
+	picture.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	picture.grow_vertical = Control.GROW_DIRECTION_BOTH
+	picture.modulate = Color(1, 1, 1, 0.8)
+	_photo_button.add_child(picture)
+	for kind: String in ["normal", "read_only"]:
+		var style: StyleBox = _search.get_theme_stylebox(kind).duplicate()
+		style.content_margin_right = maxf(style.content_margin_right, 0.0) + wide
+		_search.add_theme_stylebox_override(kind, style)
+
+	_picker = PickImage.new()
+	_picker.camera = by_finger
+	_picker.picked.connect(_identify)
+	_picker.failed.connect(func(why: String) -> void:
+		if why != "no picture chosen":
+			_status.text = why)
+	add_child(_picker)
+	_brickognize = Brickognize.new()
+	_brickognize.answered.connect(show_guesses)
+	_brickognize.failed.connect(func(why: String) -> void:
+		_status.text = why
+		_status.tooltip_text = why)
+	add_child(_brickognize)
+
+
+## The camera pressed: the photo goes to Brickognize, a third party, which
+## is said before the first one and never sent without one chosen.
+func _ask_photo() -> void:
+	if bool(ShellPrefs.value("photo_told")):
+		# Straight from the press: a browser opens its picker only while a
+		# real click is still being handled (PickImage).
+		_picker.ask()
+		return
+	if _telling == null:
+		_telling = ConfirmationDialog.new()
+		_telling.title = "Find a part from a photo"
+		_telling.dialog_text = ("The photo you choose is sent to Brickognize "
+			+ "(brickognize.com), a third party that identifies LEGO® parts. Under its "
+			+ "terms it may keep the photo and use it to train its recognition.\n\n"
+			+ "Nothing is sent until you choose a photo.")
+		_telling.dialog_autowrap = true
+		_telling.ok_button_text = "Choose a photo"
+		_telling.confirmed.connect(func() -> void:
+			ShellPrefs.put("photo_told", true)
+			_picker.ask())
+		add_child(_telling)
+	_telling.popup_centered(Vector2i(roundi(_z(420)), 0))
+
+
+func _identify(photo: Image) -> void:
+	_status.text = "Asking Brickognize what part this is…"
+	_status.tooltip_text = ""
+	_brickognize.identify(photo)
+
+
+## A photo's answer as the bin's results: each guess's BrickLink number as
+## the part here, most likely first, with how sure Brickognize is.
+func show_guesses(guesses: Array) -> void:
+	var found: Array[PartLibrary.PartInfo] = []
+	var scores: Dictionary = {}
+	var none: PackedStringArray = PackedStringArray()
+	for guess: Dictionary in guesses:
+		var id: String = library.by_shop(str(guess["bricklink"]))
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info == null or not info.reachable:
+			none.append(str(guess["bricklink"]))
+			continue
+		if scores.has(id):
+			continue
+		scores[id] = float(guess["score"])
+		found.append(info)
+	_guessed_note = "" if none.is_empty() else (
+		"Also named, and not parts here: BrickLink %s" % ", ".join(none))
+	if found.is_empty():
+		_status.text = ("Brickognize saw no part it knows in that photo: try another, the part "
+			+ "alone on a plain background") if guesses.is_empty() \
+			else "Brickognize named parts this build has not got: %s" % ", ".join(none)
+		_status.tooltip_text = _status.text
+		return
+	# Parts, not constructions: what was shown under Techniques gives way.
+	if _category == TECHNIQUES:
+		_category = "All"
+		for child: Node in _category_row.get_children():
+			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
+	_results = found
+	_guesses = scores
+	_fill_grid()

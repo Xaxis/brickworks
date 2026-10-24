@@ -4101,6 +4101,7 @@ func _build_ui() -> void:
 	_bin = PartsBin.new()
 	_bin.library = _library
 	_bin.thumbnails = _thumbnails
+	_bin.builder = _builder
 	# On a phone the bin is the parts sheet's, drawn in points (PhoneShell).
 	if _phone_wanted():
 		var per_point: float = Phone.per_point(get_viewport())
@@ -4116,6 +4117,8 @@ func _build_ui() -> void:
 		_bar.say("picked %s" % part_id))
 
 	_bin.part_chosen.connect(_on_part_chosen)
+	_bin.construction_chosen.connect(func(parts: Array, what: String) -> void:
+		_verbs.hold(parts, what))
 	_bin.color_chosen.connect(_on_color_chosen)
 	_bin.swatch_pressed.connect(_on_swatch_pressed)
 	# A part dragged out of the bin: in hand from the start of the drag

@@ -744,6 +744,30 @@ design after it.
 *Studio 2.26.6 added a palette of pre-built sub-assemblies [st-rn]. This
 goes further: each entry is a technique, with the reason it works.*
 
+**Done, 2026-10-24** (the bin's Techniques, `src/ui/parts_bin.gd` and
+`Techniques.as_ldraw` in `src/ai/techniques.gd`; the recipe is "techniques in
+the bin" in `.claude/skills/verify/features/parts.md`). As specified, with
+what building it showed:
+- There are 91 now, under 15 groups, one a row: its picture, drawn once a
+  colour and cached as a part's is (`PartThumbnails.offer_group`), its name,
+  and its reason, the first sentence of its *why* (`Techniques.reason`). What
+  is typed in the search narrows them, which is how one of 91 is found.
+- A construction is read as a design's words are, by an assistant of the
+  bin's own: the one designing would lose what it says of its own model.
+  Read so, a section is turned, a part said by its connectors is put on them,
+  and on the web its parts are fetched first. Then LDraw lines and back
+  (`Carry.from_ldraw`), and held as a paste is (`EditVerbs.hold`).
+- The main colour is the one most of its parts are in: a window's red walls
+  take the colour in hand, its white frame and clear glass stay.
+- `bin_techniques_probe` (windowed, in the suite) puts "window in a wall" on
+  a two-course wall: 17 parts in hand, R through four quarters, the window's
+  bottom course on the wall's top in its line, the model checking as a
+  design does, one undo taking all 17 back. Then "smooth diagonal", "round
+  tower" and "corner on a turntable" (angles, 20 parts) on the ground. On
+  m165 it fails at once: no Techniques tab.
+  `tools/web/bin_flow.mjs` does the window in a browser at 1280, and opens
+  the tab on a phone at 390.
+
 The assistant has 77 worked constructions with real parts and coordinates
 (`src/ai/techniques.gd`, `show_technique`). Among them: a window in a wall,
 a smooth diagonal, a round tower, an eye with a highlight, a roof ridge.
@@ -770,6 +794,35 @@ The check passes, and the brick count rises by the technique's part count.
 
 *Brickit recognises about 1,600 shapes in a pile [brickit-abc], and
 Rebrickable built RebrickNet [rb-wiki]. Neither runs inside a CAD.*
+
+**Done, 2026-10-24** (`src/net/brickognize.gd`, the camera in the bin's
+search field; the recipe is "find a part from a photo" in
+`.claude/skills/verify/features/parts.md`). As specified, but for adding to
+the collection: the brief allowed the bin two additions, the tab and the
+camera, and a button per result would be a third. What building it showed:
+- Brickognize's terms (brickognize.com/terms-of-service, read 2026-10-24)
+  govern its website. What is uploaded is licensed to it for good: to store,
+  publish and train models on. Nothing in them forbids an app calling the
+  API, which asks for no key and answers any origin (`Access-Control-Allow-
+  Origin: *`). So the browser asks it directly, no `api/identify.js`, and
+  `connect-src` gains `https://api.brickognize.com`. The first press says the
+  photo goes to Brickognize, a third party that may keep it and train on it,
+  and that nothing is sent until a photo is chosen; `photo_told` in
+  `ShellPrefs` keeps that it was said.
+- `/predict/parts/` is marked legacy in their `openapi.json`; their own site
+  has moved to an internal endpoint. Should it go, the bin says it could not
+  reach Brickognize, as it does offline.
+- Its numbers are BrickLink's, mapped by `PartLibrary.by_shop`: LDraw's
+  "BrickLink 3062" keyword first (3062 is 3062b, 4073 is 6141), then the
+  number, then the mould under a letter.
+- Photos are the app's own renders (`ModelShot`), kept in
+  `tests/fixtures/photos/`. `photo_search_probe` sent five, live: 3001, 3039,
+  3062b, 3069b and 3700, each first, at 70 to 83% (5 of 5; the bar is 4).
+  `bin_flow.mjs` sends the 3001 from the page's own chooser at 1280 and at
+  390 on a phone, and Brick 2 x 4 comes first. `photo_search_stub_probe`
+  (headless, in the suite) stands Brickognize in on a port of its own: said
+  first, nothing sent without a photo, and offline, 503, 429, 422, a page
+  that is not JSON and an empty answer each said in words.
 
 "What is this piece?" is the most common question a builder has.
 Brickognize's API is public and accepts calls from any origin. It has

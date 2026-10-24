@@ -19,6 +19,10 @@ const MAX_BYTES := 24 * 1024 * 1024
 signal picked(image: Image)
 signal failed(why: String)
 
+## On a phone, the camera rather than the photos already taken: a part in
+## the hand is photographed there and then.
+var camera: bool = false
+
 var _dialog: FileDialog
 var _bridge: JavaScriptObject
 var _on_bytes: JavaScriptObject
@@ -65,10 +69,11 @@ func _ask_browser() -> void:
 		return
 	window.brickworksPickImage = _on_bytes
 	JavaScriptBridge.eval("""
-		(function () {
+		(function (camera) {
 			var input = document.createElement('input');
 			input.type = 'file';
 			input.accept = 'image/*';
+			if (camera) { input.capture = 'environment'; }
 			input.style.display = 'none';
 			document.body.appendChild(input);
 			input.addEventListener('change', function () {
@@ -87,8 +92,8 @@ func _ask_browser() -> void:
 				reader.readAsDataURL(file);
 			});
 			input.click();
-		})();
-	""", true)
+		})(%s);
+	""" % ("true" if camera else "false"), true)
 
 
 func _from_browser(arguments: Array) -> void:

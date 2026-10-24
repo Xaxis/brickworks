@@ -259,6 +259,11 @@ declare -A CMD=(
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"
   [placing]="tools/web/placing_flow.mjs --url=$P/app $B --out=$S/${TAG}_placing_web"
+  # The parts bin's Techniques and its camera, at 1280 and on a phone at
+  # 390: a worked construction held whole, put down and undone, and a photo
+  # of a 3001 to Brickognize, live, with Brick 2 x 4 first. Brickognize is
+  # a third party, so it is not in ORDER: run when the bin changes.
+  [bin]="tools/web/bin_flow.mjs --url=$P/app $B --out=$S/${TAG}_bin_web"
   # The app on a phone, built for a finger: a small house built by touch at
   # 390 x 844 and 430 x 932 (three to the point), every target 44 points or
   # more and no text under 12, the parts sheet swiped, a part's actions by a

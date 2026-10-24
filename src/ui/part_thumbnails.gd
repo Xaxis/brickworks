@@ -104,6 +104,12 @@ var _look: bool = false
 ## Fetches have been asked for, or the tiles in sight have changed, since
 ## the library's queue was last put in their order.
 var _reorder: bool = false
+## Pictures of several parts together, under an id of their own: a worked
+## construction in the parts bin's Techniques. Id -> [the parts it names,
+## a Callable(colour) that places them in that colour: [{part, color, at}]].
+var _groups: Dictionary = {}
+## The groups whose parts are on their way, by id.
+var _group_waits: Dictionary = {}
 
 
 func _ready() -> void:
@@ -370,6 +376,7 @@ static func key_for(part_id: String, color_code: int, printed: bool = false) -> 
 
 
 func _on_geometry_arrived(part_id: String) -> void:
+	_group_part_came(part_id, true)
 	if not _awaiting.has(part_id):
 		return
 	_awaiting.erase(part_id)
@@ -380,7 +387,21 @@ func _on_geometry_arrived(part_id: String) -> void:
 
 
 func _on_fetch_failed(part_id: String, _why: String) -> void:
+	_group_part_came(part_id, false)
 	_fail(part_id)
+
+
+## A part a waiting group names has come, or is not coming: the group is
+## drawn again, or cannot be.
+func _group_part_came(part_id: String, came: bool) -> void:
+	for id: String in _group_waits.keys():
+		if not (_groups[id][0] as PackedStringArray).has(part_id):
+			continue
+		_group_waits.erase(id)
+		_awaiting.erase(id)
+		if not came:
+			_fail(id)
+		_look = true
 
 
 ## No picture can be had for this part. The tiles waiting on it say so
@@ -417,6 +438,9 @@ func _render(job: Dictionary, stage: Stage) -> void:
 	if library == null or _cache.has(key) or _drawing.has(key):
 		return
 
+	if _groups.has(job["part"]):
+		_render_group(job, stage)
+		return
 	var part: Lbm.PartMesh = library.mesh_for(job["part"])
 	if part == null:
 		# On the web most parts are a request away rather than absent, and
@@ -479,7 +503,11 @@ func _render(job: Dictionary, stage: Stage) -> void:
 			holder.visible = true
 
 	_frame(stage.camera, part.bounds, printed)
+	_draw_and_keep(stage, key)
 
+
+## Draw what the stage holds and keep the picture under [param key].
+func _draw_and_keep(stage: Stage, key: String) -> void:
 	stage.busy = true
 	_drawing[key] = true
 	stage.viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -494,6 +522,9 @@ func _render(job: Dictionary, stage: Stage) -> void:
 
 	var image: Image = stage.viewport.get_texture().get_image()
 	stage.busy = false
+	# A group's picture brings its own materials; the next part takes the
+	# stage's tint again.
+	stage.holder.material_override = stage.material
 	_drawing.erase(key)
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
 
@@ -507,6 +538,78 @@ func _render(job: Dictionary, stage: Stage) -> void:
 	# also where the next job is found: every tile waiting on this key,
 	# in every view, gets it.
 	_look = true
+
+
+## Parts drawn together, as one picture: once each one's geometry is here,
+## placed in the colour the job asks, each colour in its own plastic.
+func offer_group(id: String, parts: PackedStringArray, placed: Callable) -> void:
+	_groups[id] = [parts, placed]
+
+
+func _render_group(job: Dictionary, stage: Stage) -> void:
+	var id: String = job["part"]
+	var entry: Array = _groups[id]
+	var coming: bool = false
+	for part_id: String in entry[0]:
+		# From disk first, where the build has it (Assistant._ensure_parts).
+		if not library.is_resident(part_id):
+			library.mesh_for(part_id)
+		if library.is_resident(part_id):
+			continue
+		if not library.request_mesh(part_id):
+			_fail(id)
+			return
+		coming = true
+	if coming:
+		_awaiting[id] = true
+		_group_waits[id] = true
+		_reorder = true
+		return
+	var mesh: ArrayMesh = group_mesh((entry[1] as Callable).call(int(job["color"])), library)
+	if mesh.get_surface_count() == 0:
+		_fail(id)
+		return
+	stage.holder.mesh = mesh
+	stage.holder.material_override = null
+	for holder: MeshInstance3D in stage.print_holders:
+		holder.visible = false
+	_light_for(stage, library.color(int(job["color"])).shown)
+	_frame(stage.camera, mesh.get_aabb())
+	_draw_and_keep(stage, job["key"])
+
+
+## One mesh of placed parts, [{part, color, at}], a surface per colour in
+## that colour's plastic, as the model draws it.
+static func group_mesh(items: Array, from: PartLibrary) -> ArrayMesh:
+	var by_colour: Dictionary = {}
+	for item: Dictionary in items:
+		var part: Lbm.PartMesh = from.mesh_for(str(item["part"]))
+		if part == null:
+			continue
+		for s: int in part.surface_count():
+			var code: int = part.surface_colors[s] if s < part.surface_colors.size() \
+				else Lbm.COLOR_INHERIT
+			if code == Lbm.COLOR_INHERIT:
+				code = int(item["color"])
+			var tool: SurfaceTool = by_colour.get(code)
+			if tool == null:
+				tool = SurfaceTool.new()
+				tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+				by_colour[code] = tool
+			tool.append_from(part.surfaces[s], 0, item["at"])
+	var mesh := ArrayMesh.new()
+	for code: int in by_colour:
+		(by_colour[code] as SurfaceTool).commit(mesh)
+		var colour: PartLibrary.BrickColor = from.color(code)
+		var material := ShaderMaterial.new()
+		material.shader = BrickWorld.SHADERS["trans" if colour.is_transparent() else "opaque"]
+		material.set_shader_parameter("linearise", BrickWorld._linearise_colors())
+		material.set_shader_parameter("tint_override", colour.shown)
+		material.set_shader_parameter("finish_override", colour.instance_custom)
+		if colour.is_transparent():
+			material.render_priority = 1
+		mesh.surface_set_material(mesh.get_surface_count() - 1, material)
+	return mesh
 
 
 ## Point the camera at the part from a three-quarter view, sized so the

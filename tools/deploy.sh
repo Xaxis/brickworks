@@ -287,7 +287,8 @@ echo "deploy: pages at /${pages//|/, /}"
 # for that is a short list of places the page can talk to at all: itself,
 # Anthropic, Wikimedia (reference pictures), Rebrickable (a person's own
 # sets and parts lists, read with their own Rebrickable key: My collection),
-# the parts store and the sign-in service — so even a script that should
+# Brickognize (a photo the person chose, to find the part in it: the parts
+# bin's camera, src/net/brickognize.gd), the parts store and the sign-in service — so even a script that should
 # never have run has nowhere to send a key. The page's one inline script is allowed by its
 # hash, not by allowing inline scripts; 'unsafe-eval' stays because
 # Godot's JavaScript bridge evaluates what the app asks of the browser
@@ -316,7 +317,7 @@ signin_origin=""
 [ -n "${SUPABASE_URL:-}" ] && signin_origin="$(origin_of "$SUPABASE_URL")"
 # Once each, even when they are the same place, as they are today.
 connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes} https://overlook.technology; worker-src 'self' blob:; connect-src 'self' https://overlook.technology https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes} https://overlook.technology; worker-src 'self' blob:; connect-src 'self' https://overlook.technology https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com https://api.brickognize.com ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
 # And none of the cross-origin isolation headers: the app's threaded build
