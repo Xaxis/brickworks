@@ -35,7 +35,7 @@
 // tools/web/oc_live_flow.mjs does that on brickworks.diy.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 
@@ -71,6 +71,9 @@ function listen(page, who) {
 }
 const shot = (page, name) => page.screenshot({ path: path.join(out, name), timeout: 90000 })
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
+// A step that must answer within [ms], or fail saying which step it was.
+const within = (ms, what, promise) => Promise.race([promise,
+  new Promise((_, no) => setTimeout(() => no(new Error(`${what}: no answer in ${ms / 1000} s`)), ms).unref())]);
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 
 async function api(pathname, { method = "GET", body, raw } = {}) {
@@ -326,16 +329,38 @@ try {
       await page.locator("#oc-part").scrollIntoViewIfNeeded();
       await shot(page, `settings_${width}_${theme}.png`);
       if (width === 1280 && theme === "light") {
+        // m162's battery sat an hour after this window opened, under load,
+        // and kept nothing to say why (2026-10-24). Each step now has a
+        // bound, and the window's requests, its console and what the page
+        // was posted are kept for orangecheck to read if one stalls.
+        const trail = [];
+        const note = (line) => trail.push(`${new Date().toISOString()} ${line}`);
+        await page.evaluate(() => {
+          window.__ocHeard = [];
+          addEventListener("message", (e) => window.__ocHeard.push(`${new Date().toISOString()} ${e.origin} ${typeof e.data}`));
+        });
         const [popup] = await Promise.all([
           page.waitForEvent("popup", { timeout: 30000 }),
           page.locator("#oc-go").click(),
         ]);
+        note(`opened ${popup.url()}`);
+        popup.on("console", (m) => note(`console ${m.type()}: ${m.text().slice(0, 200)}`));
+        popup.on("request", (r) => note(`${r.method()} ${r.url().slice(0, 160)}`));
+        popup.on("requestfailed", (r) => note(`failed ${r.url().slice(0, 160)}: ${r.failure()?.errorText}`));
         check("with a code just redeemed, Link orangecheck opens orangecheck's window", new URL(popup.url()).origin === "https://me.ochk.io",
           popup.url());
-        await popup.close();
-        await page.waitForFunction(() => !document.querySelector("#oc-go")?.disabled, null, { timeout: 15000 }).catch(() => null);
-        check("closed, nothing is linked and nothing said", (await page.locator("#oc-status").textContent()) === ""
-          && (await page.locator("#oc-go").textContent()) === "Link orangecheck");
+        try {
+          await within(60000, "closing orangecheck's window", popup.close());
+          note("closed");
+          await page.waitForFunction(() => !document.querySelector("#oc-go")?.disabled, null, { timeout: 15000 }).catch(() => null);
+          const status = await within(60000, "reading #oc-status", page.locator("#oc-status").textContent());
+          const label = await within(60000, "reading #oc-go", page.locator("#oc-go").textContent());
+          check("closed, nothing is linked and nothing said", status === "" && label === "Link orangecheck");
+        } catch (trouble) {
+          const heard = await within(10000, "reading what the page heard", page.evaluate(() => window.__ocHeard)).catch(() => ["(page did not answer)"]);
+          writeFileSync(path.join(out, "popup_trail.txt"), [...trail, "-- the page heard:", ...heard, `-- ${trouble.message}`].join("\n") + "\n");
+          check("closed, nothing is linked and nothing said", false, `${trouble.message}; trail in ${path.join(out, "popup_trail.txt")}`);
+        }
       }
       await made.close();
     }
