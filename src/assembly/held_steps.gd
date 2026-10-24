@@ -243,9 +243,12 @@ static func _mended(slots: Array, holding: Dictionary, by_id: Dictionary, nodes:
 	var last: Dictionary = first
 	while rounds < ROUNDS:
 		var more: int = 0
+		# Hidden still beside what holds it, it goes in with the first of
+		# what holds it.
 		for one: Array in (last["test"] as Tested.Steps).hidden:
-			if not sooner.has(int(one[1])):
-				sooner[int(one[1])] = true
+			var level: int = int(sooner.get(int(one[1]), 0))
+			if level < 2:
+				sooner[int(one[1])] = level + 1
 				more += 1
 		if more == 0:
 			break
@@ -284,46 +287,57 @@ static func _faults(carried: Dictionary) -> int:
 
 ## The steps of [param slots] built as the steps test builds them, each part
 ## that would not stand where it is put waiting for the first step where it
-## would: {"slots", "test": the Tested.Steps that built them, with what it
-## found}.
+## would, and each sub-assembly put on so too: {"slots", "test": the
+## Tested.Steps that built them, with what it found}.
 static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes: Dictionary,
 		library: PartLibrary) -> Dictionary:
 	var test := Tested.Steps.new(by_id, holding, library)
 	test.nodes = nodes
 	var out: Array = []
 	var waiting: Array[int] = []
+	## Slots whose sub-assemblies wait, their parts put on beside them gone on.
+	var held_back: Array = []
 	var section: String = ""
 	for slot: Dictionary in slots:
-		for entry: Dictionary in slot["before"]:
-			var things: Array = []
-			for unit: Array[int] in entry["units"]:
-				things.append(PackedInt64Array([unit[0]]))
-			if not things.is_empty():
-				test.take(entry["step"], things)
 		var step: Instructions.Step = slot["step"]
 		if step == null:
+			_in_hand_taken(test, slot)
 			out.append(slot)
 			continue
 		section = step.section
 		var ids: Array[int] = waiting.duplicate()
 		ids.append_array(slot["ids"])
 		waiting = []
+		if not step.copies.is_empty() and not _copies_stand(test, step):
+			waiting = ids
+			held_back.append({"step": step, "ids": [] as Array[int], "other": slot["other"],
+				"before": slot["before"]})
+			continue
+		_in_hand_taken(test, slot)
 		out.append({"step": step, "ids": _put(test, step, ids, waiting), "other": slot["other"],
 			"before": slot["before"]})
+		_put_back(test, held_back, out, waiting)
 	# What still waits after the last step, in steps of its own.
 	var after: int = 0
-	while not waiting.is_empty() and after < MOST_AFTER:
+	while (not waiting.is_empty() or not held_back.is_empty()) and after < MOST_AFTER:
 		after += 1
-		var step := Instructions.Step.new()
-		step.section = section
-		var ids: Array[int] = waiting
-		waiting = []
-		var kept: Array[int] = _put(test, step, ids, waiting)
-		if kept.is_empty():
+		var kept: Array[int] = []
+		if not waiting.is_empty():
+			var step := Instructions.Step.new()
+			step.section = section
+			var ids: Array[int] = waiting
+			waiting = []
+			kept = _put(test, step, ids, waiting)
+			if not kept.is_empty():
+				out.append({"step": step, "ids": kept, "other": [] as Array[int], "before": []})
+		if not _put_back(test, held_back, out, waiting) and kept.is_empty():
 			break
-		out.append({"step": step, "ids": kept, "other": [] as Array[int], "before": []})
+	# Held by nothing that stands even then: last, as planned.
+	for slot: Dictionary in held_back:
+		_in_hand_taken(test, slot)
+		test.take(slot["step"], test.copies_of(slot["step"]))
+		out.append(slot)
 	if not waiting.is_empty():
-		# Held by nothing that stands even then: in the last step, as planned.
 		var step := Instructions.Step.new()
 		step.section = section
 		var things: Array = []
@@ -332,6 +346,41 @@ static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes
 		test.take(step, things)
 		out.append({"step": step, "ids": waiting, "other": [] as Array[int], "before": []})
 	return {"slots": out, "test": test}
+
+
+## The steps in the hand of the sub-assembly [param slot] puts on, built.
+static func _in_hand_taken(test: Tested.Steps, slot: Dictionary) -> void:
+	for entry: Dictionary in slot["before"]:
+		var things: Array = []
+		for unit: Array[int] in entry["units"]:
+			things.append(PackedInt64Array([unit[0]]))
+		if not things.is_empty():
+			test.take(entry["step"], things)
+
+
+## Whether every copy of a sub-assembly [param step] puts on would stand.
+static func _copies_stand(test: Tested.Steps, step: Instructions.Step) -> bool:
+	return not test.stands_if(step, test.copies_of(step)).has(false)
+
+
+## Each of [param held_back] whose sub-assemblies would stand now put on, in
+## a step of its own after what is built, as often as one put on lets
+## another: whether any was.
+static func _put_back(test: Tested.Steps, held_back: Array, out: Array, waiting: Array[int]) -> bool:
+	var any: bool = false
+	var more: bool = true
+	while more:
+		more = false
+		for slot: Dictionary in held_back.duplicate():
+			if not _copies_stand(test, slot["step"]):
+				continue
+			_in_hand_taken(test, slot)
+			_put(test, slot["step"], [] as Array[int], waiting)
+			out.append(slot)
+			held_back.erase(slot)
+			more = true
+			any = true
+	return any
 
 
 ## [param ids] tried as [param step]'s parts, after the sub-assemblies it puts
@@ -360,14 +409,21 @@ static func _put(test: Tested.Steps, step: Instructions.Step, ids: Array[int],
 
 ## [param slots] with each part of [param sooner] in the step of what holds
 ## it: the latest of the steps before its own that put in a part it is joined
-## to ([param near]).
+## to ([param near]), or at its second time asked the first of them. A part
+## of a sub-assembly built in the hand, so among the steps of its box.
 static func _sooner(slots: Array, sooner: Dictionary, near: Dictionary) -> Array:
 	var out: Array = []
 	var at: Dictionary = {}           ## id -> its slot
 	for n: int in slots.size():
 		var slot: Dictionary = slots[n]
 		var ids: Array[int] = (slot["ids"] as Array[int]).duplicate()
-		out.append({"step": slot["step"], "ids": ids, "other": slot["other"], "before": slot["before"]})
+		var box: Array = []
+		for entry: Dictionary in slot["before"]:
+			var copy: Dictionary = entry.duplicate()
+			copy["units"] = (entry["units"] as Array).duplicate()
+			box.append(copy)
+		_sooner_within(box, "units", sooner, near, func(unit: Array) -> int: return int(unit[0]))
+		out.append({"step": slot["step"], "ids": ids, "other": slot["other"], "before": box})
 		for id: int in ids:
 			at[id] = n
 		var step: Instructions.Step = slot["step"]
@@ -375,20 +431,43 @@ static func _sooner(slots: Array, sooner: Dictionary, near: Dictionary) -> Array
 			for copy: PackedInt64Array in step.copies:
 				for id: int in copy:
 					at[id] = n
-	for id: int in sooner:
-		if not at.has(id) or not (out[at[id]]["ids"] as Array).has(id):
-			continue
-		var here: int = at[id]
-		var best: int = -1
-		for other: int in (near.get(id, {}) as Dictionary):
-			if at.has(other) and int(at[other]) < here:
-				best = maxi(best, int(at[other]))
-		if best < 0:
-			continue
-		(out[here]["ids"] as Array).erase(id)
-		(out[best]["ids"] as Array).append(id)
-		at[id] = best
+	_sooner_within(out, "ids", sooner, near, func(id: int) -> int: return id, at)
 	return out
+
+
+## Each of [param sooner] in [param places] (each its [param key] list of
+## things, [param id_of] a thing's id) moved into the place of what holds it,
+## as [method _sooner] says. [param at]: where each id is, among things that
+## do not move too (a sub-assembly put on); worked out when not given.
+static func _sooner_within(places: Array, key: String, sooner: Dictionary, near: Dictionary,
+		id_of: Callable, at: Dictionary = {}) -> void:
+	var thing_of: Dictionary = {}     ## id -> the thing
+	for n: int in places.size():
+		for thing: Variant in (places[n] as Dictionary)[key]:
+			var id: int = id_of.call(thing)
+			at[id] = n
+			thing_of[id] = thing
+	# Again while one moved lets another: a hand goes in with the arm it is
+	# on once the arm goes in sooner with the body.
+	for sweep: int in 3:
+		var moved: bool = false
+		for id: int in sooner:
+			if not thing_of.has(id):
+				continue
+			var here: int = at[id]
+			var best: int = -1
+			for other: int in (near.get(id, {}) as Dictionary):
+				if at.has(other) and int(at[other]) < here:
+					var there: int = int(at[other])
+					best = there if best < 0 else (maxi(best, there) if int(sooner[id]) < 2 else mini(best, there))
+			if best < 0:
+				continue
+			((places[here] as Dictionary)[key] as Array).erase(thing_of[id])
+			((places[best] as Dictionary)[key] as Array).append(thing_of[id])
+			at[id] = best
+			moved = true
+		if not moved:
+			break
 
 
 ## The steps of [param slots], numbered again as the planner numbers them
