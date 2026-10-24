@@ -80,6 +80,8 @@ func _run() -> void:
 	get_root().add_child(_cloud)
 	await _settled()
 	_check("CloudModels is on, off the web: %s" % _cloud.state, _cloud.state == "kept")
+	_check("...and Account says so: “%s”" % StorageKeep.words(),
+		StorageKeep.words().begins_with("Your models are kept with your account, and on this computer"))
 	await _steps()
 	var gone: int = await SignInHelper.delete_accounts(email, get_root())
 	_check("the throwaway account deleted, its models with it: %d" % gone, gone == 1)

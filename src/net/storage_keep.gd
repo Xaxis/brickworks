@@ -19,7 +19,8 @@
 ## 2026-10-23): while it has them all, Account says so and nothing is
 ## warned, since a browser clearing them loses nothing.
 ##
-## Always kept off the web, where the models are files on the computer.
+## Always kept off the web, where the models are files on the computer, and
+## signed in, kept with the account too (lib219, 2026-10-24).
 class_name StorageKeep
 extends RefCounted
 
@@ -82,12 +83,15 @@ static func at_risk() -> bool:
 ## The one quiet line the Account panel shows about where the models are.
 static func words() -> String:
 	var now: Dictionary = state()
+	# Signed in, the desktop keeps them with the account too (CloudModels).
 	if not bool(now["web"]):
-		return ("Your models are kept on this computer, not with your account — export one as "
+		return ("Your models are kept with your account, and on this computer: they are in "
+			+ "File › Open in any browser or desktop app you sign in to.") if CloudModels.keeping \
+			else ("Your models are kept on this computer, not with your account — export one as "
 			+ "LDraw to take it elsewhere.")
 	if CloudModels.keeping and _pretended.is_empty():
 		return ("Your models are kept with your account, and in this browser: they are in "
-			+ "File › Open in any browser you sign in to.")
+			+ "File › Open in any browser or desktop app you sign in to.")
 	if bool(now["safari"]):
 		return ("Your models are kept on this device, in this browser, and may be cleared by the "
 			+ "browser: Safari deletes a site's data after seven days without a visit. Your "
