@@ -64,6 +64,12 @@
 //                                        makes it a test one, which only a
 //                                        page asked with tests=1 shows
 //   POST /api/admin?op=end_challenge&challenge=N  challenge N ended now
+//   POST /api/admin?op=plan              {themes: [{month: "2026-11", title,
+//                                        brief}]}: a year of themes at once, up
+//                                        to twelve, each its whole month, told
+//                                        to visitors a month before it opens
+//                                        (supabase/challenge_year.sql); all or
+//                                        none; &tests=1 as for one
 //
 // Challenges (2026-10-19, supabase/challenges.sql): GET lists them, newest
 // first, with their entries, votes and winners (&tests=1: the flows' test
@@ -138,7 +144,7 @@ export default async function handler(request, response) {
   }
   const op = String(request.query?.op || "");
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
-    remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge };
+    remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
@@ -150,7 +156,7 @@ export default async function handler(request, response) {
   }
   if (request.method !== "GET") {
     return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "remove_avatar, pick, unpick, challenge or end_challenge" });
+      + "remove_avatar, pick, unpick, challenge, end_challenge or plan" });
   }
   if (op === "photo") {
     const file = await photoFileForAdmin(String(request.query?.photo || "")).catch(() => null);
@@ -372,11 +378,25 @@ async function challengesListed(tests) {
   }
 }
 
+/// Whether a year of themes can be set: supabase/challenge_year.sql applied.
+async function yearReady() {
+  try {
+    await db("rpc/challenge_next", { method: "POST", body: { tests: false } });
+    return true;
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return false;
+    throw trouble;
+  }
+}
+
+/// A brief as the owner typed it: its lines kept, at most 600 characters.
+const briefOf = (given) => String(given ?? "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, " ")
+  .replace(/\n{3,}/g, "\n\n").trim().slice(0, 600).trim();
+
 /// What the owner's form says, checked, before the database checks it again.
 function challengeAsked(given) {
   const title = line(given.title, 80);
-  const brief = String(given.brief ?? "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n").trim().slice(0, 600).trim();
+  const brief = briefOf(given.brief);
   if (!title) return { error: "Give it a title." };
   if (!brief) return { error: "Give it a brief: a line or two of what to build." };
   const starts = String(given.starts_on || "");
@@ -441,6 +461,52 @@ async function setChallenge(request, response) {
   if (made?.refused) return response.status(422).json({ error: CHALLENGE_REFUSED[made.refused] || "That was refused." });
   return response.status(200).json({ challenge: made.challenge, starts_on: made.starts_on, ends_on: made.ends_on,
     set: setName ? { number: asked.set_number, name: setName, lots: setParts.length } : null, test: tests });
+}
+
+const MONTH = /^(\d{4})-(\d{2})$/;
+const MONTH_SAID = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+
+/// A year of themes, each its whole month and told a month before it opens:
+/// refused whole, in words that name the month.
+async function planYear(request, response) {
+  const given = request.body && typeof request.body === "object" ? request.body : {};
+  const asked = Array.isArray(given.themes) ? given.themes : [];
+  if (!asked.length) return response.status(400).json({ error: "Give at least one month a theme." });
+  if (asked.length > 12) return response.status(400).json({ error: "A year is twelve themes at most." });
+  const themes = [];
+  for (const one of asked) {
+    const [, year, month] = MONTH.exec(String(one?.month || "")) || [];
+    if (!year || Number(month) < 1 || Number(month) > 12) {
+      return response.status(400).json({ error: "Each theme names its month, as 2026-11." });
+    }
+    const said = MONTH_SAID.format(Date.UTC(Number(year), Number(month) - 1, 1));
+    const title = line(one.title, 80);
+    const brief = briefOf(one.brief);
+    if (!title || !brief) return response.status(400).json({ error: `${said}: give it a title and a brief.` });
+    const last = new Date(Date.UTC(Number(year), Number(month), 0)).toISOString().slice(0, 10);
+    themes.push({ said, title, brief, starts_on: `${year}-${month}-01`, ends_on: last });
+  }
+  const tests = String(request.query?.tests || "") === "1";
+  let made;
+  try {
+    made = await db("rpc/challenge_plan", { method: "POST", body: { lead_days: 31, test: tests,
+      themes: themes.map(({ title, brief, starts_on: starts, ends_on: ends }) => ({ title, brief, starts_on: starts, ends_on: ends })) } });
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) {
+      return response.status(503).json({ error: "A year of themes is not open yet: supabase/challenge_year.sql is not applied." });
+    }
+    throw trouble;
+  }
+  if (made?.refused) {
+    const month = themes[Number(made.at)]?.said || "A month";
+    const words = { none: "Give at least one month a theme.",
+      words: `${month}: a title of up to 80 characters and a brief of up to 600.`,
+      past: `${month} has ended already.`,
+      overlap: made.with ? `${month} shares days with “${made.with.title}”: end it first, or leave ${month} out.`
+        : `Two themes share ${month}.` }[made.refused] || "That was refused.";
+    return response.status(made.refused === "overlap" ? 409 : 422).json({ error: words, refused: made.refused });
+  }
+  return response.status(200).json({ planned: made.planned || [], test: tests });
 }
 
 /// Challenge N ended now: its winners are counted the next time it is shown.
@@ -513,7 +579,7 @@ const REPORTS = "/rest/v1/reports?resolved_at=is.null&select=id,model,handle,col
   + "shared_models(name,owner,listed,published)&order=at.desc&limit=300";
 
 async function report(tests = false) {
-  const [listed, tabs, gallery, reports, barred, tested, pickNow, challenges] = await Promise.all([
+  const [listed, tabs, gallery, reports, barred, tested, pickNow, challenges, year] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
     asServer("/rest/v1/relay_tabs?select=owner,seen_at,open&owner=not.is.null"),
     // What strangers can see in /gallery right now, and whose it is.
@@ -526,6 +592,7 @@ async function report(tests = false) {
     marks(),
     picks(),
     challengesListed(tests),
+    yearReady(),
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
@@ -597,6 +664,8 @@ async function report(tests = false) {
     picks: pickNow,
     // The monthly challenges (supabase/challenges.sql); null before it.
     challenges,
+    // Whether a year of themes can be set (supabase/challenge_year.sql).
+    year,
   };
 }
 

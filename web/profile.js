@@ -15,7 +15,7 @@
 // and draws what came, so one that cannot be read leaves the others.
 import { askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { showFeedCount } from "/follow.js";
-import { avatarHtml, toast } from "/kit.js";
+import { avatarHtml, awardsHtml, toast } from "/kit.js";
 
 // What only a signed-in page draws (card.js, designs.js), fetched as the
 // page starts when this browser has a sign-in, and not at all when not:
@@ -133,6 +133,11 @@ function drawHead() {
     }));
   links.hidden = links.children.length === 0;
   $("numbers").replaceChildren(...numbersOf(body));
+  // What you earned, as your page shows everybody (docs/SOCIAL.md U13):
+  // none under 13, whose page is shown to nobody.
+  const awards = document.createElement("template");
+  awards.innerHTML = awardsHtml(Array.isArray(body.achievements) ? body.achievements : []);
+  $("awards-shown").replaceChildren(document.importNode(awards.content, true));
   const banner = $("banner-shown");
   const pictured = body.banner && ID.test(String(body.banner)) ? String(body.banner) : "";
   banner.replaceChildren();

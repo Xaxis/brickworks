@@ -60,6 +60,9 @@ const LATER = [
   ["notifications.sql", "notification_read", "replies.sql", "k.author = viewer"],
   ["designers.sql", "designer_said", "replies.sql", "comment_parent_shown"],
   ["gallery_tabs.sql", "directory_card", "replies.sql", "comment_parent_shown"],
+  ["challenges.sql", "challenge_shown", "challenge_year.sql", "challenge_announced(c)"],
+  ["challenges.sql", "challenge_list", "challenge_year.sql", "'announced_at'"],
+  ["challenges.sql", "challenge_page", "challenge_year.sql", "challenge_page_at("],
 ];
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");

@@ -85,6 +85,14 @@
 #challenge-form fieldset.rules label input:not([type="checkbox"]) { width: 9em; }
 #challenge-form .days { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 #challenge-form .row { margin-top: 0; flex-wrap: wrap; }
+/* A year of themes (supabase/challenge_year.sql): a month a row, its title and its brief. */
+#year-form { display: grid; gap: 12px; max-width: 640px; margin-top: 12px; }
+#year-form h3 { margin: 0; }
+#year-form label { display: grid; gap: 4px; }
+#year-form .row { margin-top: 0; flex-wrap: wrap; }
+#year-months { display: grid; gap: 16px; }
+#year-months fieldset { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+#year-months legend { padding: 0; margin: 0 0 6px; font-weight: 600; }
 </style>
 
 <main class="wrap">
@@ -237,6 +245,20 @@
         <label class="choice"><input type="checkbox" name="tested"> Marked Tested</label>
       </fieldset>
       <div class="row"><button type="submit">Set it</button><span class="note" id="challenge-note"></span></div>
+    </form>
+    <form id="year-form" class="card">
+      <h3>Set a year of themes</h3>
+      <p class="note">A theme a month, each running its whole month with no rule
+         but its brief. Visitors are told of each a month before it opens, so
+         the next is known while one runs, and the rest stay yours. Leave a
+         month empty to skip it. All are set, or none.</p>
+      <p class="note" id="year-not-yet" hidden>Not open yet: supabase/challenge_year.sql is not applied.</p>
+      <fieldset class="date" data-date="year_from">
+        <legend>The first month</legend>
+        <div class="dropdowns"></div>
+      </fieldset>
+      <div id="year-months"></div>
+      <div class="row"><button type="submit">Set the year</button><span class="note" id="year-note"></span></div>
     </form>
 
     <h2>In the gallery</h2>

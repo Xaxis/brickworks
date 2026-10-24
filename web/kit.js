@@ -6,7 +6,7 @@
 // them on every card and which a deployment copies alone beside its
 // functions, so a server page draws them as a browser does: passed on from
 // here, so a page asks the kit for the whole kit.
-export { ICONS, avatarHtml, avatarTone, iconButtonHtml, iconHtml } from "./card.js";
+export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml } from "./card.js";
 
 const AGO = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });

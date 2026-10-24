@@ -587,8 +587,10 @@ summary.pill::-webkit-details-marker { display: none; }
 .pill.new { color: var(--ink); border-color: var(--accent-edge); }
 .pill.tag { gap: 0; }
 .pill.tag::before { content: "#"; color: var(--ink-faint); }
-/* Its quieter part: a handle after a name. */
+/* Its quieter part: a handle after a name. An icon before its words is
+   the words' size (a profile's achievements). */
 .pill small { color: var(--ink-faint); font-size: inherit; }
+.pill .icon { width: 1.15em; height: 1.15em; margin-left: -2px; }
 .pills { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
 /* One row of them that scrolls sideways inside itself (the gallery's
    kinds), never the page. A pressed one is chosen, edged in the accent. */

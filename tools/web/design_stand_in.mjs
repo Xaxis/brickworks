@@ -482,7 +482,26 @@ const CHALLENGE = { id: 3, title: "Off-world October", brief: "Build something t
   rules: { most_parts: 1500, set: null, tested: true },
   entries: [[MODEL_ID, "hand"], ["MikaRobot1", "hand"], ["PriyaSpc01", "assistant"], ["DesignGea1", "assistant"]],
   you: { voted: { hand: null, assistant: "PriyaSpc01" }, entries: [] } };
+// Between months (supabase/challenge_year.sql): what ran before, September's
+// won by Robin's watchtower by hand, August's that nobody entered, and
+// November's theme, told a month ahead from the owner's year of themes.
+const PAST = [
+  { id: 2, title: "Castle September", starts_on: "2026-09-01", ends_on: "2026-09-30", entries: 5,
+    winners: [[MODEL_ID, "hand", 7]], rules: { most_parts: null, set_number: "6080-1", set_name: "King's Castle", tested: false },
+    brief: "Build a castle from the parts of one set: King's Castle, 6080." },
+  { id: 1, title: "Small and quick", starts_on: "2026-08-01", ends_on: "2026-08-31", entries: 0, winners: [],
+    rules: { most_parts: 200, set_number: null, set_name: null, tested: false }, brief: "Anything at all, in 200 parts or fewer." },
+];
+const NEXT = { id: 4, title: "Winter village", brief: "A street of houses under snow: a bakery, a station, lights in the windows.",
+  starts_on: "2026-11-01", ends_on: "2026-11-30", announced_at: "2026-10-01T00:00:00Z" };
 const CHALLENGES_LISTED = [
+  { id: NEXT.id, title: NEXT.title, test: false, starts_on: NEXT.starts_on, ends_on: NEXT.ends_on, announced_at: NEXT.announced_at,
+    state: "upcoming", settled: false, rules: { most_parts: null, set_number: null, set_name: null, tested: false },
+    entries: { hand: 0, assistant: 0 }, votes: { hand: 0, assistant: 0 }, winners: [] },
+  { id: 5, title: "Ships and harbours", test: false, starts_on: "2026-12-01", ends_on: "2026-12-31",
+    announced_at: "2026-10-31T00:00:00Z", state: "upcoming", settled: false,
+    rules: { most_parts: null, set_number: null, set_name: null, tested: false },
+    entries: { hand: 0, assistant: 0 }, votes: { hand: 0, assistant: 0 }, winners: [] },
   { id: 3, title: CHALLENGE.title, test: false, starts_on: CHALLENGE.starts_on, ends_on: CHALLENGE.ends_on, state: "open",
     settled: false, rules: { most_parts: 1500, set_number: null, set_name: null, tested: true },
     entries: { hand: 2, assistant: 2 }, votes: { hand: 5, assistant: 3 }, winners: [] },
@@ -1151,17 +1170,45 @@ function feedRow(row) {
 
 const CHALLENGE_RULES = ["At most 1,500 parts", "Marked Tested: it stands at every step, and every step can be built"];
 
+/// "1 to 30 September 2026", as api/_challenges.js daysSaid says it.
+const monthDays = (from, to) => `${Number(from.slice(8, 10))} to ${Number(to.slice(8, 10))} ${new Intl.DateTimeFormat("en-GB",
+  { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${to}T00:00:00Z`))}`;
+
 /// /api/people?op=challenge (api/_challenges.js challenge): the challenge,
-/// its entries the gallery's cards in their two groups, and [who]'s votes.
-function challengePage(who) {
+/// its entries the gallery's cards in their two groups, and [who]'s votes;
+/// the next one told and the ones that ran. With [asked], that one alone.
+function challengePage(who, asked = null) {
+  const cardFor = (id) => apiCard(listModels({ size: 1000 }).find((one) => one.id === id));
+  if (asked) {
+    const past = PAST.find((one) => one.id === Number(asked));
+    if (!past) return answer(404, { error: "There is no challenge at that number to show." });
+    const entries = past.winners.map(([id, way, votes]) => ({ ...cardFor(id), way, entered_at: `${past.starts_on}T10:00:00Z`,
+      keeps: true, votes, winner: true, won: [] }));
+    return answer(200, { ready: true, challenge: { id: past.id, title: past.title, brief: past.brief, starts_on: past.starts_on,
+      ends_on: past.ends_on, state: "ended", test: false, settled: true, rules: past.rules,
+      rules_said: past.rules.most_parts ? [`At most ${past.rules.most_parts} parts`]
+        : [`Only parts of set ${past.rules.set_number}, ${past.rules.set_name}: no more of each, in its colour, than the set has`],
+      days_said: monthDays(past.starts_on, past.ends_on),
+      groups: [["hand", "Built by hand"], ["assistant", "Built with the assistant"]].map(([way, label]) => ({ way, label,
+        entries: entries.filter((one) => one.way === way) })),
+      winners: past.winners.map(([model, way, votes]) => ({ way, label: way === "hand" ? "Built by hand" : "Built with the assistant",
+        model, votes })) }, ...(who ? { you: { signed_in: true, voted: { hand: null, assistant: null }, entries: [],
+      may_vote: false, why_not: "Voting has closed." } } : {}) });
+  }
   const c = CHALLENGE;
-  const entryOf = ([id, way], at) => ({ ...apiCard(listModels({ size: 1000 }).find((one) => one.id === id)), way,
+  const entryOf = ([id, way], at) => ({ ...cardFor(id), way,
     entered_at: `2026-10-0${at + 2}T10:00:00Z`, keeps: true, votes: null, winner: false, won: [] });
   const challenge = { id: c.id, title: c.title, brief: c.brief, starts_on: c.starts_on, ends_on: c.ends_on, state: c.state,
     test: c.test, settled: c.settled, rules: c.rules, rules_said: CHALLENGE_RULES, days_said: "1 Oct 2026 to 31 Oct 2026",
     groups: [["hand", "Built by hand"], ["assistant", "Built with the assistant"]].map(([way, label]) => ({ way, label,
       entries: c.entries.map(entryOf).filter((one) => one.way === way) })), winners: [] };
-  return answer(200, { ready: true, challenge,
+  const past = PAST.map((one) => ({ id: one.id, title: one.title, starts_on: one.starts_on, ends_on: one.ends_on, test: false,
+    entries: one.entries, days_said: monthDays(one.starts_on, one.ends_on),
+    winners: one.winners.map(([id, way, votes]) => ({ ...cardFor(id), way, votes,
+      label: way === "hand" ? "Built by hand" : "Built with the assistant" })) }));
+  return answer(200, { ready: true, challenge, year: true,
+    next: { id: NEXT.id, title: NEXT.title, brief: NEXT.brief, starts_on: NEXT.starts_on, ends_on: NEXT.ends_on, test: false,
+      days_said: monthDays(NEXT.starts_on, NEXT.ends_on) }, past,
     ...(who ? { you: { signed_in: true, ...c.you, may_vote: true, why_not: null } } : {}) });
 }
 
@@ -1366,7 +1413,7 @@ function people(method, params, body, who, state) {
         read_at: null, reads: { SamModel01: "2026-10-15T00:00:00Z", SamModel02: "2026-10-03T00:00:00Z" } }) });
     }
     if (op === "designs") return designs(params);
-    if (op === "challenge") return challengePage(who);
+    if (op === "challenge") return challengePage(who, params.get("id"));
     if (op === "challenge_entry") {
       // api/_challenges.js challengeEntry: the tram's designer, Sam, may enter it.
       if (id !== "SamModel01" || who !== ME) return answer(200, { mine: false });
@@ -1612,6 +1659,7 @@ function admin(method, params, who, state) {
       choices: ADMIN.choices.map((one) => ({ ...one, name: modelOf(one.model).name, shown: Boolean(shownModel(one.model)?.listed) })),
       week: WEEK.map((one) => ({ week: one.week, model: small(modelOf(one.model)) })) },
     challenges: CHALLENGES_LISTED,
+    year: true,
   });
 }
 

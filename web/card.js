@@ -83,6 +83,22 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
     + `${iconHtml(icon)}${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
 }
 
+/// What a person earned, as the row of pills under their numbers on their
+/// page and on yours (docs/SOCIAL.md U13): each the award icon and its
+/// name, what it means on hover; a challenge won is a link to the model that
+/// won it. [awards] as api/people.js achievementsOf makes them: [{id, name,
+/// said, model?}]. "" when there is none.
+export function awardsHtml(awards, { id = "" } = {}) {
+  const shown = (awards || []).filter((one) => one && one.name);
+  if (!shown.length) return "";
+  return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="Achievements">${shown.map((one) => {
+    const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
+    const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
+    return `<li data-award="${escapeHtml(one.id)}"${one.model ? ` data-won="${escapeHtml(one.model)}"` : ""}>${one.model
+      ? `<a class="pill new" href="/m/${escapeHtml(one.model)}"${said}>${inside}</a>` : `<span class="pill"${said}>${inside}</span>`}</li>`;
+  }).join("")}</ul>`;
+}
+
 /// A card's like, as a screen reader says it: "Like Watchtower".
 export const likeName = (name) => `Like ${String(name || "").trim() || "it"}`;
 

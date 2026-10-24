@@ -3,7 +3,9 @@
 // their two groups, built by hand and with the assistant, from
 // /api/people?op=challenge. Signed in (web/account.js), each entry has a vote
 // button: one vote in each group, never for your own, for people 13 and over.
-// When it ends, the winners first, and each entry's votes.
+// When it ends, the winners first, and each entry's votes. Under it, the next
+// one told and the challenges that ran with their winners (?id=N draws one of
+// those as this one is, its entries and its winners).
 //
 // Names and credits were typed by strangers, so every one goes on the page
 // as text, never as markup; a link is built from a model's id alone.
@@ -13,6 +15,10 @@ import { counted, modelCard } from "/card.js";
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
 const tests = new URLSearchParams(location.search).get("tests") === "1";
+// One challenge of the past (or the next) by its number, else the one shown now.
+const asked = /^[1-9][0-9]{0,15}$/.test(new URLSearchParams(location.search).get("id") || "")
+  ? new URLSearchParams(location.search).get("id") : null;
+const pageOf = (id) => `/challenge?id=${id}${tests ? "&tests=1" : ""}`;
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
 let state = null;
@@ -78,18 +84,67 @@ async function castVote(c, entry, button) {
   say(`Your vote is for “${entry.name}”, ${c.groups.find((g) => g.way === entry.way)?.label.toLowerCase()}.`);
 }
 
+/// The next challenge told, under the one shown: its theme and its days.
+function drawNext(next) {
+  $("next").hidden = !next;
+  if (!next) return;
+  $("next").dataset.next = String(next.id);
+  $("next-title").textContent = next.title;
+  $("next-days").textContent = `Opens on ${dayOf(next.starts_on)}, until ${dayOf(next.ends_on)}`;
+  $("next-brief").textContent = next.brief;
+}
+
+/// The challenges that ran, the last first: each its name (a link to its
+/// own page), its days and how many entered, and its winners as the
+/// gallery's cards.
+function drawPast(past) {
+  $("past").hidden = !past.length;
+  $("past-list").replaceChildren(...past.map((one) => {
+    const item = document.createElement("article");
+    item.className = "past-one";
+    item.dataset.past = String(one.id);
+    const head = document.createElement("h3");
+    const link = document.createElement("a");
+    link.href = pageOf(one.id);
+    link.textContent = one.title;
+    head.append(link);
+    const days = document.createElement("p");
+    days.className = "note";
+    days.textContent = `${one.days_said}${one.entries ? ` · ${counted(one.entries, "entry", "entries")}` : ""}`;
+    item.append(head, days);
+    const won = (one.winners || []).filter((w) => ID.test(String(w.id)));
+    if (won.length) {
+      const grid = document.createElement("div");
+      grid.className = "models";
+      grid.append(...won.map((w) => card(w, [`Winner, ${w.label.toLowerCase()} · ${counted(w.votes, "vote")}`])));
+      item.append(grid);
+    } else {
+      const none = document.createElement("p");
+      none.className = "note";
+      none.textContent = one.entries ? "Nobody won: no entry had a vote." : "Nobody entered.";
+      item.append(none);
+    }
+    return item;
+  }));
+}
+
 function draw() {
   const c = state.challenge;
   $("loading").hidden = true;
   $("none").hidden = Boolean(c);
   for (const id of ["rules-part", "how", "winners"]) $(id).hidden = true;
   $("groups").replaceChildren();
+  document.documentElement.dataset.year = state.year ? "yes" : "no";
+  drawNext(asked ? null : state.next || null);
+  drawPast(asked ? [] : state.past || []);
   if (!c) {
     document.documentElement.dataset.challenge = state.ready === false ? "not-yet" : "none";
     return;
   }
+  $("crumbs").hidden = !asked;
+  $("crumb").textContent = c.title;
   $("eyebrow").textContent = c.state === "open" ? "This month’s challenge" : c.state === "upcoming" ? "The next challenge"
-    : "The last challenge";
+    : asked ? "A past challenge" : "The last challenge";
   $("title").textContent = c.title;
   document.title = `${c.title} · a Brickworks challenge`;
   $("days").textContent = c.state === "open" ? `Open from ${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}, the last day included`
@@ -104,7 +159,7 @@ function draw() {
   }));
   $("no-rules").hidden = (c.rules_said || []).length > 0;
   $("rules-part").hidden = false;
-  $("how").hidden = c.state === "ended";
+  $("how").hidden = c.state !== "open" && (c.state === "ended" || Boolean(asked));
 
   const entries = new Map();
   for (const group of c.groups || []) for (const one of group.entries || []) entries.set(`${one.way}/${one.id}`, one);
@@ -159,7 +214,7 @@ function draw() {
 }
 
 async function load() {
-  const path = `/api/people?op=challenge${tests ? "&tests=1" : ""}`;
+  const path = `/api/people?op=challenge${asked ? `&id=${asked}` : ""}${tests ? "&tests=1" : ""}`;
   try {
     let answer;
     if (signedIn()) {
@@ -170,6 +225,13 @@ async function load() {
     if (!answer) {
       const reply = await fetch(path, { headers: { accept: "application/json" } });
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
+    }
+    if (answer.status === 404 && asked) {
+      $("loading").hidden = true;
+      $("none").textContent = "There is no challenge at that number to show: it may be one still to come.";
+      $("none").hidden = false;
+      document.documentElement.dataset.challenge = "gone";
+      return;
     }
     if (answer.status !== 200) throw new Error(String(answer.status));
     state = answer.body;
