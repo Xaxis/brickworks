@@ -817,6 +817,19 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the last look went. Save on a model nobody has named (Untitled) asks what
   to call it first, in a dialog like Save as's, and refuses a name a saved
   model has (`ModelBar.ask_name`; controls `save_name`, `save_name_ok`).
+- `a returning person opens on their latest model` (`Main._open_theirs`,
+  `CloudModels.looked` and `newest`, 2026-10-24, walk239's A16 and walk180's
+  D2): a start with no working model on this device opens the model saved
+  here last, not the example car (not for a probe); and where it opened the
+  car, the account's first look (its list, newest saved first) opens the one
+  the account saved last in the car's place, once, while the car is
+  untouched and nothing else (a copy, a library link) is being opened. An
+  account with no models keeps the car: a first visit sees it dimmed behind
+  the sign-in screen, and every browser flow starts from it (the shared test
+  account's models are off). Probes: `returning_probe` (two models of theirs:
+  the newer replaces the car, saved and unchanged; none keeps the car; a
+  touched car stays; red on the base); `cloud_library_flow` step 2 (browser B
+  opens on the model by itself).
 - `rename or delete saved models`, `account full offer` and `desktop cloud
   probe` (`src/ui/saved_models_dialog.gd`, `src/ui/account_full_offer.gd`,
   `ModelStore.delete_saved`/`rename_saved`/`put_back`,

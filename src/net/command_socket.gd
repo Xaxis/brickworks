@@ -799,10 +799,12 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			# the next feature back laid, and clearing takes everything off.
 			await _until_whole()
 			var before: Dictionary = _before_change(name)
+			var held: Dictionary = _held()
 			_at_work += 1
 			var said: Variant = await _run_own(name, input)
 			_at_work -= 1
 			_one_step(name, before, chat)
+			_hand_and_view_back(held)
 			return said, doing, entry), true]
 	if not await _take_a_turn():
 		holding = jobs.running()
@@ -837,6 +839,7 @@ func _heard(note: String) -> void:
 ## it changes is one step of the history (see [method _one_step]).
 func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "") -> Variant:
 	var before: Dictionary = _before_change(name)
+	var held: Dictionary = _held()
 	var answer: Variant
 	_at_work += 1
 	if _the_app_tools().has(name):
@@ -847,7 +850,21 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "")
 		answer = await assistant.use_tool(name, input)
 	_at_work -= 1
 	_one_step(name, before, chat)
+	_hand_and_view_back(held)
 	return answer
+
+
+## What the person holds and sees as a call begins (Main.hand_and_view), {}
+## with no window.
+func _held() -> Dictionary:
+	return app.call("hand_and_view") if app != null and app.has_method("hand_and_view") else {}
+
+
+## Nothing of the call's left in the person's hand, and a model it changed
+## in view (Main.after_session_call).
+func _hand_and_view_back(held: Dictionary) -> void:
+	if not held.is_empty():
+		app.call("after_session_call", held)
 
 
 ## The ones whose change is no step of the history: undo walks it, and

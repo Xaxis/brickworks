@@ -1360,20 +1360,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   before. Probe: `placing_probe -- only=parts` (the two corner plates
   beside a 6157, as the set has them, aimed at their corner studs; the
   4488 on its wedge; each fails with its rule undone).
-- `held below the ground` (`Builder._held_below_ground`,
-  `_stand_on_the_ground`, 2026-10-17): a part the model holds below the
-  ground (resting on a part of it with what hangs past it lower, on a
-  joint, hung under it, on its side studs) has its ghost there, the floor's
-  baseplate not in its way (`room_for(..., held)`, `_not_scenery`); put
-  down, everything but the floor rises by whole cells to stand on it, in
-  the same undo step as the put, and the status line says so
-  (`Builder.risen`). A model is built up from its first part on the ground,
+- `held below the ground` (`Builder._held_below_ground`, `place`,
+  2026-10-17, never moving the model since 2026-10-24): a part the model
+  holds below the ground (resting on a part of it with what hangs past it
+  lower, on a joint, hung under it, on its side studs) has its ghost there,
+  the floor's baseplate not in its way (`room_for(..., held)`,
+  `_not_scenery`); put down, it goes there through the floor and nothing
+  else moves, and the status line says how far below the floor it reaches
+  (`Builder.below`). A model is built up from its first part on the ground,
   and 8643-1's front bracket hangs 4 LDU below that part, its wheels 3 and
-  its tyres 8: none could go on. Never under the floor's own baseplate.
-  Probe: `placing_probe -- only=parts` (a 2436a on the edge of the plate a
-  model stands on: its ghost below the ground, the model up 4 LDU after the
-  click, one undo back; fails with the rule undone). In the build flow the
-  model's rise is read from where the part went (`followRise`).
+  its tyres 8. Until walk239 the model rose to stand on such a part: a 24
+  on an axle in a Technic brick on the baseplate lifted the brick off the
+  baseplate's studs, and the gears could not be turned by hand. Never under
+  the floor's own baseplate. Probes: `placing_probe -- only=parts` (a 2436a
+  on the edge of the plate a model stands on: its ghost below the ground,
+  put there with the plate unmoved, one undo back); `floor_gears_probe`
+  (two 24s on axles in a Technic brick on the floor: nothing moves as they
+  go down, they mesh, a press grabs the first on its axle and turning it
+  turns the other; red with the rise put back).
 - `on studs off the grid, by its own studs, against a side`
   (`Builder._on_studs_off_the_grid`, `_on_its_own_grid`, `_out_from_face`,
   2026-10-18): a part aimed at the top of a part sits on that part's studs

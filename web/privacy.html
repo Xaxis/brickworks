@@ -3,7 +3,8 @@
   What Brickworks keeps about a person, and what it never sees.
 
   Moved off the home page on 2026-10-13. Each claim is in the code:
-  src/account/account.gd, api/otp.js, api/mcp.js, src/ai/own_key.gd and
+  src/account/account.gd, src/account/cloud_models.gd, api/models.js,
+  api/otp.js, api/mcp.js, src/ai/own_key.gd and
   the content security policy in tools/deploy.sh. Change one, change this.
 -->
 <html lang="en">
@@ -12,7 +13,7 @@
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Privacy · Brickworks</title>
-<meta name="description" content="What Brickworks keeps about you, which is your email address and little else, and what it never sees: your API key, your Claude login, your models.">
+<meta name="description" content="What Brickworks keeps about you, which is your email address and little else, and what it never sees: your API key and your Claude login.">
 <link rel="canonical" href="https://brickworks.diy/privacy">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
@@ -95,7 +96,7 @@
 	<p>A small relay carries Claude’s tool calls to your open tab and the answers back, and deletes each message the moment it is answered. Claude’s tokens are kept only as hashes.</p>
 
 	<h2>Your models</h2>
-	<p>Saved in your browser or on your computer, not on a server. A model is put online only when you share it by link, and taken down when you say.</p>
+	<p>Saved in your browser or on your computer and, while you are signed in, kept with your account on the server too, so they open wherever you sign in. Only you can open them there, and deleting your account deletes them. A model is put online for others only when you share it by link, and taken down when you say.</p>
 	<p>A photo you add on a model’s page, of your build, or on your own model of the model itself, is public on that page. It is made anew from its pixels, so nothing else in the file is kept: not where or when it was taken, nor the phone. A model’s designer can hide any photo on their model.</p>
 
 	<h2>Your public page</h2>
@@ -113,7 +114,7 @@
 	<h2>Your visit</h2>
 	<p>We count visits with our own privacy-friendly analytics. It sets no cookies and stores nothing on your device; your IP address is used only to make a daily anonymous count and is never stored. To opt out on this site, open any page with <a href="/?ov_ignore=1">?ov_ignore=1</a>. Shared models, people’s pages and signing in are never counted.</p>
 
-	<p class="note">Every line of it is <a href="https://github.com/Xaxis/brickworks">on GitHub</a>, so none of this has to be taken on trust. Updated 22 October 2026.</p>
+	<p class="note">Every line of it is <a href="https://github.com/Xaxis/brickworks">on GitHub</a>, so none of this has to be taken on trust. Updated 24 October 2026.</p>
 </main>
 
 <footer class="site-foot">
@@ -121,6 +122,7 @@
 		<div class="foot-top">
 			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 			<nav class="foot-links" aria-label="More">
+				<a href="/challenge">Challenge</a>
 				<a href="/compare">Compare</a>
 				<a href="/faq">FAQ</a>
 				<a href="/changelog">Changelog</a>

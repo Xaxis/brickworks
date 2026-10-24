@@ -143,6 +143,25 @@ down, ±x, ±z; `PrintStudio.sticker_on` aims at that face from just outside
 it, as a click does, `span` as Shift does not). One undo step; the answer
 names the new part's number. `app_tools_probe` covers it.
 
+An SVG's words (2026-10-24, walk239's M12): Godot's ThorVG has no font
+loader and drops every `<text>`, so a session's menu board printed blank and
+was said to be printed. `SvgText.outline` (`src/prints/svg_text.gd`) sets
+each `<text>` and its `<tspan>`s in the app's own font through the text
+server (kerning, font-size and its units, bold and italic, text-anchor,
+dominant-baseline, letter-spacing, x/y/dx/dy, inherited from the groups
+round it) and writes each glyph's outline as a `<path>` in its place, with
+its fill, stroke and transform, before `PictureFile` draws any SVG (svg=,
+picture_data=, picture_url=, a file). What cannot be drawn (a character no
+font here has, `<textPath>`) is listed in `undrawn`, and `print_part`
+refuses it ("Not printed: some of the svg's text cannot be drawn here: …");
+an answer that printed words names them ("Its text was drawn as outlines in
+the app's font: \"MENU\""). A picture with every pixel clear is refused
+("Not printed: that picture is empty"), never "Printed it". Probe:
+`svg_text_probe` (a black "TACOS" is ink centred on its anchor and on its
+baseline; a menu board's three white lines; print_part over the session's
+tool call: printed and named, textPath and an empty picture refused; red on
+the base).
+
 A picture from the conversation (2026-10-14): `picture_data=` is the
 picture's own bytes, base64 (wrapped or not, URL-safe or not, padding left
 off or not) or a `data:` URI (`data:image/png;base64,…`, or an SVG

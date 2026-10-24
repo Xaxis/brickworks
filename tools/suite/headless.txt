@@ -175,3 +175,9 @@ photo_search_stub   # the bin's camera: said before the first photo, nothing sen
 search_rank   # 63 held-out queries, the part an expert expects in the bin's first three tiles and search_parts'; a first keystroke under 50 ms (search242)
 oc_listener       # the desktop's orangecheck listener: split requests, 404s, a no, a cancel (oc237)
 step_edit_cost   # a one-part step edit on the Wizard's Tower under 300 ms of its own work, its plan the plan read afresh, the undo exact (race244)
+floor_gears
+svg_text
+session_hand
+returning
+gate_line
+nothing_changed

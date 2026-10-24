@@ -3414,10 +3414,14 @@ func _tool_answer(block: Dictionary) -> Variant:
 					+ _colour_advice())
 			if _touched == 0:
 				# Nothing changed, and saying "done" to that ends the
-				# run as a success with the model untouched.
+				# run as a success with the model untouched; said why.
+				if _unknown.is_empty() and not _unchanged_why.is_empty():
+					return "Nothing changed: %s." % "; ".join(_unchanged_why.slice(0, 8)) \
+						+ (" And %d more like that." % (_unchanged_why.size() - 8)
+							if _unchanged_why.size() > 8 else "")
 				if _unknown.is_empty():
-					return ("Nothing in that changed anything. Check "
-						+ "the brick numbers against look_at_model.")
+					return ("Nothing changed: nothing in that differs from the model as it "
+						+ "stands. Check the brick numbers against look_at_model.")
 				return ("No brick has %s. Call look_at_model — the "
 					% _numbers(_unknown)
 					+ "numbers change when a model is opened or rebuilt.")
@@ -3928,7 +3932,9 @@ func _edit(args: Dictionary) -> Model:
 		model.placements = kept
 
 	_bad_colours = PackedStringArray()
+	_unchanged_why = PackedStringArray()
 	var recoloured: Dictionary = {}
+	var was_colour: Dictionary = {}
 	for raw: Variant in args.get("recolor", []):
 		var order: Dictionary = raw
 		if not order.has("color"):
@@ -3944,9 +3950,13 @@ func _edit(args: Dictionary) -> Model:
 			if placement == null:
 				_unknown.append(int(id_raw))
 			elif placement.color != colour:
+				was_colour[placement.id] = [placement.color, colour]
 				placement.color = colour
 				recoloured[placement.id] = true
 				_touched += 1
+			else:
+				_unchanged_why.append("#%d is %s (%d) already" % [placement.id,
+					_colour_name(colour), colour])
 
 	for raw: Variant in args.get("move", []):
 		var order: Dictionary = raw
@@ -4040,7 +4050,22 @@ func _edit(args: Dictionary) -> Model:
 	_touched += gone.size()
 	_current_parts(model)
 	_made_colours(model, recoloured)
+	# Painted a colour its part was never made in, and put back in the
+	# nearest it was, which is the colour it was: no change (suite236's tyre,
+	# "Changed: ." with nothing in the list).
+	for placement: Placement in model.placements:
+		if was_colour.has(placement.id) and placement.color == int(was_colour[placement.id][0]):
+			_touched -= 1
+			var asked: int = int(was_colour[placement.id][1])
+			_unchanged_why.append(("#%d, %s, was never made in %s (%d): the nearest it was made in "
+				% [placement.id, placement.part, _colour_name(asked), asked]
+				+ "is %s (%d), which it is already") % [_colour_name(placement.color), placement.color])
 	return model
+
+
+## Why an edit changed nothing, a part at a time: painted the colour it is,
+## or a colour its part was never made in whose nearest is the colour it is.
+var _unchanged_why: PackedStringArray = PackedStringArray()
 
 
 ## What shorthand a design used, for the run's own log.

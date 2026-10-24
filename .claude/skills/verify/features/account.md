@@ -25,6 +25,14 @@ they have. A Claude connector belongs to the account that switched it on.
   that is somebody's session. Nor when the deployment answers `enabled: false`
   (a local `serve.py`, somebody's own copy): there is nothing to sign in to. A
   probe about the screen sets `gate_for_probe` on the scene.
+  Its line about what an account is (`SignInGate.keeps_words`, 2026-10-24,
+  walk239's A12) follows `CloudModels.standing` in every state it is shown
+  in: "saved on this device and kept with your account, so they open
+  wherever you sign in", and "not with your account" only on a deployment
+  that keeps none (`none`); it said "not with your account" to somebody whose
+  account had their model. The site's FAQ ("Where are my models saved?") and
+  privacy page ("Your models") say the same since. Probe: `gate_line_probe`
+  (four states of the screen by six standings; red on the base).
 - `account session` (`src/account/account.gd`): `request_code` posts
   `/api/otp`; `verify_code` redeems with Supabase directly (`/auth/v1/verify`,
   type `email`); `sign_out` revokes this session only (`/logout?scope=local`)

@@ -1474,6 +1474,12 @@ func _ready() -> void:
 			_store.begin(ModelStore.UNTITLED)
 			_store.touch()
 			_store.write_now()
+		# No working model here, but models saved here: the one saved last,
+		# not the example car (walk239's A16). Not for a probe, as above.
+		if placed == 0 and not empty and not OS.get_cmdline_args().has("--script"):
+			var saved: Array[ModelStore.Entry] = _store.list_saved()
+			if not saved.is_empty():
+				placed = _open(saved[0].path)
 		if placed == 0 and not empty:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
@@ -4460,10 +4466,12 @@ func _build_ui() -> void:
 	_builder.placed.connect(func(id: int, _part: String) -> void:
 		_last_put = id
 		_sample_untouched = false
-		# A part the model holds below the ground: the model stood up on it.
-		if _builder.risen > 0.0:
-			_bar.say("the model rose %d LDU to stand on what you put down" % roundi(_builder.risen))
-			_ground_for_the_model())
+		# A part the model holds below the ground goes through the floor,
+		# and the model stays where it stands: said, as the reason it looks
+		# sunk into the baseplate.
+		if _builder.below >= 1.0:
+			_bar.say("it reaches %d LDU below the floor; the model stays where it stands"
+				% roundi(_builder.below)))
 	_builder.removed.connect(func(_id: int) -> void:
 		_sample_untouched = false)
 	# Designing on the person's own Claude subscription, when this
@@ -4870,6 +4878,7 @@ func _build_ui() -> void:
 	_full_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_full_offer)
 	_cloud.short_of_room.connect(_full_offer.tell)
+	_cloud.looked.connect(_open_theirs)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -7043,6 +7052,76 @@ func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
 		_builder.drop_figure()
 		_verbs.set_mode("select")
 	_refresh_preview()
+
+
+## What the person holds and where their view is going, as a session's
+## call begins (CommandSocket._run): for [method after_session_call].
+func hand_and_view() -> Dictionary:
+	return {"part": _builder.held_part, "colour": _builder.held_color,
+		"figure": not _builder.held_figure.is_empty(), "carrying": _builder.is_carrying(),
+		"mode": _verbs.mode if _verbs != null else "", "revision": _world.revision,
+		"aim": _camera_aim()}
+
+
+## A session's call ended: nothing it put in the person's hand stays
+## there, and a model it changed is framed, unless the person turned the
+## view meanwhile. walk239 (M13, M4): a session's print_part left its print
+## in hand ("click puts one down", as a person's own new print is), so the
+## first click dropped a stray panel, and after a session built a taco truck
+## the view was still framed on the empty baseplate it began on, a corner
+## of the truck filling it.
+func after_session_call(before: Dictionary) -> void:
+	if before.is_empty() or _verbs == null:
+		return
+	var handed: bool = _builder.held_part != str(before["part"]) \
+		or _builder.held_color != int(before["colour"]) or _verbs.mode != str(before["mode"]) \
+		or (_builder.is_carrying() and not bool(before["carrying"])) \
+		or (not _builder.held_figure.is_empty() and not bool(before["figure"]))
+	if handed:
+		if _builder.is_carrying() and not bool(before["carrying"]):
+			_verbs.put_away()
+		if not bool(before["figure"]):
+			_builder.drop_figure()
+		_builder.held_part = str(before["part"])
+		_builder.held_color = int(before["colour"])
+		_verbs.set_mode(str(before["mode"]))
+		if _bin != null and not _builder.held_part.is_empty():
+			_bin.show_held(_builder.held_part, _builder.held_color)
+		_refresh_preview()
+	if _world.revision != int(before["revision"]) and _camera_aim() == before["aim"]:
+		_camera.frame(_built_bounds())
+
+
+## Where the view is going: its turn, tilt, distance and focus.
+func _camera_aim() -> Array:
+	return [_camera.get("_target_yaw"), _camera.get("_target_pitch"),
+		_camera.get("_target_distance"), _camera.get("_target_focus")]
+
+
+## The example car of a first visit is on the baseplate, untouched, and the
+## account signed in keeps models: the one saved last is opened in its
+## place, once a start. walk239 (A16) and walk180 (D2): signed in on a new
+## browser, a phone or a fresh desktop, a person was shown the example car,
+## not their own work. An account with none keeps the car, which is what a
+## first visit sees dimmed behind the sign-in screen and what every browser
+## flow starts from; a person who had a model on the screen here gets it
+## back from this device's own copy before any of this (ModelStore.restore).
+func _open_theirs() -> void:
+	if _theirs_opened or not _sample_untouched or _cloud.newest.is_empty() \
+			or not _copying.is_empty() or not _from_library.is_empty() or _store.read_only:
+		return
+	var path: String = ModelStore.SAVE_DIR + _cloud.newest + ".ldr"
+	if not FileAccess.file_exists(path):
+		return
+	_theirs_opened = true
+	var placed: int = await _bar.open_with_progress(path)
+	if placed >= 0:
+		_bar.opened.emit(placed)
+		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+
+
+## Whether [method _open_theirs] has opened one this start.
+var _theirs_opened: bool = false
 
 
 ## The end of a drag that carried a part: down where the pointer is, if it
