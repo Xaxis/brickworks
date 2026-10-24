@@ -562,6 +562,20 @@ func repaint_in_place(changes: Dictionary) -> void:
 	_flush()
 
 
+## What draws the bricks, batch by batch, for a copy of the picture drawn
+## somewhere else (BookletStudio's lanes): [[MultiMesh, the batch's brick
+## ids, its bounds], ...], in the order the batches were made.
+func drawing() -> Array:
+	if _rebuild_queued:
+		_flush()
+	var out: Array = []
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		if batch.multimesh.instance_count > 0:
+			out.append([batch.multimesh, batch.brick_ids, batch.instance.custom_aabb])
+	return out
+
+
 ## The instances that draw see-through plastic, glass and the like: what
 ## SeenParts leaves out, because a part behind a window is seen.
 func see_through_instances() -> Array[MultiMeshInstance3D]:

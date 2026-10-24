@@ -374,7 +374,7 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		var scale: float = (made.size.x / maxf(extent.size.x, 0.1)) * px_per_mm * 2.0
 		var view := BookletStudio.View.new(BookletStudio.FRONT, extent.get_center(), scale)
 		var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view, pixels,
-			false, _encoded.bind(Color(0, 0, 0, 0)))
+			_encoded.bind(Color(0, 0, 0, 0)))
 		_studio.forget(stage)
 		made.size += Vector2(1.0, 1.0)
 		_later([shot], func() -> void:
@@ -649,16 +649,40 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		return
 	var keep: int = _studio.supersample
 	_studio.supersample = 1
-	var count: int = 0
-	var before: Vector3 = BookletStudio.FRONT
 	var last: int = -1
 	for number: Variant in only:
 		last = maxi(last, int(number))
+	# Every step is measured from the front: from there when it is seen from
+	# the front, and to turn back to when it is turned round. So all of them
+	# are, first, many at once (BookletStudio.measure_all), and from the back
+	# those the front shows too little of; the rest from the back as the
+	# walk below comes to them. The walk is the one it was, step by step.
+	var seen: Dictionary = {}
+	var asks: Array = []
+	var keys: Array = []
+	for entry: Booklet.Entry in entries:
+		if entry.fixed or last >= 0 and entry.number > last:
+			continue
+		asks.append(_ask(_where(entry), BookletStudio.FRONT))
+		keys.append([entry, BookletStudio.FRONT])
+	await _measure(asks, keys, seen, entries.size())
+	if _stopped():
+		_studio.supersample = keep
+		return
+	asks.clear()
+	keys.clear()
+	for entry: Booklet.Entry in entries:
+		if seen.has([entry, BookletStudio.FRONT]) and float(seen[[entry, BookletStudio.FRONT]]) < 0.4:
+			asks.append(_ask(_where(entry), BookletStudio.BACK))
+			keys.append([entry, BookletStudio.BACK])
+	await _measure(asks, keys, seen, entries.size())
+	facing = BookletStudio.FRONT
+	var count: int = 0
+	var before: Vector3 = BookletStudio.FRONT
 	for entry: Booklet.Entry in entries:
 		count += 1
-		if count % 10 == 1:
-			_say("Choosing how each step is seen…", entries.size(), count - 1)
 		if _stopped():
+			_studio.supersample = keep
 			return
 		# Past the steps being drawn: seen as laid out, from the front.
 		if last >= 0 and entry.number > last:
@@ -675,19 +699,18 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
 				"other": -1.0, "turned": entry.turned, "fixed": true})
 			continue
-		var span: Array = _where(entry)
-		var here: float = await _seen(span, facing)
 		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
 			else BookletStudio.FRONT
+		var here: float = await _seen_from(entry, facing, seen)
 		var turn: bool = false
 		var there: float = -1.0
 		if here < 0.4:
-			there = await _seen(span, other)
+			there = await _seen_from(entry, other, seen)
 			turn = there > here + 0.25
 		elif facing == BookletStudio.BACK:
 			# Turned round: back to the front as soon as the front shows
 			# the work as well.
-			there = await _seen(span, other)
+			there = await _seen_from(entry, other, seen)
 			turn = there >= 0.7
 		measured.append({"what": "view of step %d" % entry.number, "seen": here,
 			"other": there, "turned": turn})
@@ -697,6 +720,84 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		_sign(entry, turn or _round_from(before, entry.from))
 		before = entry.from
 	_studio.supersample = keep
+
+
+## How much of [param entry]'s new parts [param from] shows: as measured
+## already into [param seen], or measured now.
+func _seen_from(entry: Booklet.Entry, from: Vector3, seen: Dictionary) -> float:
+	if not seen.has([entry, from]):
+		await _measure([_ask(_where(entry), from)], [[entry, from]], seen, 0)
+	return float(seen.get([entry, from], -1.0))
+
+
+## Measure [param asks] (BookletStudio.measure_all), a few frames' worth at
+## a time, saying how far along out of [param total] steps (0: say nothing),
+## into [param seen] under [param keys].
+func _measure(asks: Array, keys: Array, seen: Dictionary, total: int) -> void:
+	const AT_ONCE := 48
+	for from: int in range(0, asks.size(), AT_ONCE):
+		if total > 0:
+			_say("Choosing how each step is seen…", total, mini(from, total))
+		if _stopped():
+			return
+		var some: Array = await _studio.measure_all(asks.slice(from, from + AT_ONCE))
+		for index: int in some.size():
+			seen[keys[from + index]] = some[index]
+
+
+## What [method BookletStudio.measure_all] is asked for how much of a
+## step's new parts [param from] shows: [param where] as [method _where]
+## gives it.
+func _ask(where: Array, from: Vector3) -> Array:
+	var stage: BookletStudio.Stage = where[0]
+	var extent: Rect2 = _extent_upto(stage, int(where[2]), from)
+	var size := Vector2i(360, 270)
+	var scale: float = minf(size.x * 0.9 / maxf(extent.size.x, 1.0),
+		size.y * 0.9 / maxf(extent.size.y, 1.0))
+	var view := BookletStudio.View.new(from, extent.get_center(), scale)
+	return [stage, int(where[2]), int(where[1]), view, size]
+
+
+## BookletStudio.extent of the first [param upto] boxes of [param stage]
+## from [param from], read off the extents of every first so many, worked
+## out once: each in turn over all the boxes before it was a castle's 400
+## steps times its 2,500 boxes.
+func _extent_upto(stage: BookletStudio.Stage, upto: int, from: Vector3) -> Rect2:
+	var key: Array = [stage, from]
+	if not _prefixes.has(key):
+		var turn: Basis = BookletStudio.basis_for(from)
+		var lows := PackedVector2Array()
+		var highs := PackedVector2Array()
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		lows.append(low)
+		highs.append(high)
+		# The corners as BookletStudio.extent takes them, so the answer is its
+		# to the last bit.
+		for box: AABB in stage.boxes:
+			for n: int in 8:
+				var corner: Vector3 = box.position + Vector3(
+					box.size.x if n & 1 else 0.0,
+					box.size.y if n & 2 else 0.0,
+					box.size.z if n & 4 else 0.0)
+				var at := Vector2(corner.dot(turn.x), corner.dot(turn.y))
+				low = low.min(at)
+				high = high.max(at)
+			lows.append(low)
+			highs.append(high)
+		_prefixes[key] = [lows, highs]
+	var both: Array = _prefixes[key]
+	var at: int = clampi(upto, 0, stage.boxes.size())
+	var low: Vector2 = (both[0] as PackedVector2Array)[at]
+	var high: Vector2 = (both[1] as PackedVector2Array)[at]
+	if low.x > high.x:
+		return Rect2()
+	return Rect2(low, high - low)
+
+
+## Stage and view -> the extents of its first so many boxes ([method
+## _extent_upto]).
+var _prefixes: Dictionary = {}
 
 
 ## The turn sign on [param entry] where it is [param due], unless its
@@ -733,21 +834,6 @@ static func _round_from(from: Vector3, to: Vector3) -> bool:
 	if a.length() < 0.01 or b.length() < 0.01:
 		return false
 	return absf(a.angle_to(b)) > deg_to_rad(TURN_ROUND)
-
-
-## How much of a step's new parts [param from] shows: [param where] as
-## [method _where] gives it.
-func _seen(where: Array, from: Vector3) -> float:
-	var stage: BookletStudio.Stage = where[0]
-	var boxes: Array = stage.boxes.slice(0, int(where[2]))
-	var extent: Rect2 = BookletStudio.extent(boxes, from)
-	var size := Vector2i(360, 270)
-	var scale: float = minf(size.x * 0.9 / maxf(extent.size.x, 1.0),
-		size.y * 0.9 / maxf(extent.size.y, 1.0))
-	var view := BookletStudio.View.new(from, extent.get_center(), scale)
-	var shot: BookletStudio.Shot = await _studio.shoot(stage, int(where[2]),
-		int(where[1]), view, size, true)
-	return shot.seen
 
 
 ## The stage a step is drawn on and its new parts' ranks there: [stage,
@@ -915,7 +1001,7 @@ func _draw(entry: Booklet.Entry) -> void:
 	# Clear behind the model on a page laid out by hand, where a thing may sit
 	# in the picture's box and must not be painted over.
 	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
-		int(where[1]), view, size, false,
+		int(where[1]), view, size,
 		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR))
 	_studio.fade = 0.0
 	_later([shot], func() -> void:
@@ -937,7 +1023,7 @@ func _draw(entry: Booklet.Entry) -> void:
 				var part: Array = spans[sub.number - 1]
 				var sub_size: Vector2i = sub.pixels(px_per_mm)
 				var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
-					int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size, false,
+					int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size,
 					_encoded.bind(Color(0, 0, 0, 0) if sub.clear else CALLOUT_PAGE_COLOUR))
 				_later([sub_shot], func() -> void:
 					sub.image = _uri(sub_shot)
@@ -949,7 +1035,7 @@ func _draw(entry: Booklet.Entry) -> void:
 			var cell_size := Vector2i(callout.cells[index].size * px_per_mm)
 			var cell_shot: BookletStudio.Shot = await _studio.shoot(stage,
 				int(part[1]), int(part[0]) if callout.inline else int(part[1]) + 1,
-				callout.cell_view(index, px_per_mm), cell_size, false,
+				callout.cell_view(index, px_per_mm), cell_size,
 				_encoded.bind(CALLOUT_COLOUR))
 			_later([cell_shot], func() -> void:
 				callout.images.append(_uri(cell_shot))
@@ -1097,7 +1183,7 @@ func _whole(from: Vector3, area: Rect2, fill: float) -> String:
 	scale = minf(scale, Booklet.MOST_SCALE * 1.5 * px_per_mm)
 	var view := BookletStudio.View.new(from, extent.get_center(), scale)
 	var shot: BookletStudio.Shot = await _studio.shoot(_main, _main.count,
-		_main.count + 1, view, size, false, _encoded.bind(PAGE_COLOUR
+		_main.count + 1, view, size, _encoded.bind(PAGE_COLOUR
 			if from == BookletStudio.FRONT and area.size.x > 100.0 else Color.WHITE))
 	await _studio.finished(shot)
 	return _uri(shot)
