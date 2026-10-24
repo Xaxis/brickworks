@@ -33,10 +33,27 @@
 //   4. Reset tapped: the steering is back where it was built, Reset gone.
 //
 // The app's own work in each drag frame (GrabDrag: following the pointer,
-// drawing, weighing) is held under --work ms (33); the page's frame gaps
-// during the drag, which are mostly SwiftShader drawing, are said beside it.
-// On the phone the CPU is slowed --slow times (4, as a mid-range phone's,
-// CDP Emulation.setCPUThrottlingRate) for the drag.
+// drawing, weighing) is its time on a CPU, from Chrome's trace (tdur): the
+// engine frame begun after each move of the pointer, with the move's own
+// handlers. Their average, all but the dearest (the frame it takes hold
+// in, once a drag: 157 to 289 ms on the phone), is held under --work ms
+// (36). On the phone each counts --slow times (4), as on a mid-range phone
+// that much slower than this box. The drag itself runs at the box's speed:
+// CDP's Emulation.setCPUThrottlingRate slows a thread by spinning it for as
+// long as the clock says, so on a busy box a slowed frame's CPU time grows
+// with the load as its clock does (m158's and m159's middle drag frames,
+// slowed, 36 to 53 ms at load 25 to 46; at the box's speed, counted 4
+// times, 29 to 35 at load 15 to 35). The bar: their averages were 22.6 to
+// 28.9 ms in twelve runs at load 14 to 35, and 36 is a quarter over the
+// most, so a drag that does 5 ms more on this box, 20 on the phone, fails
+// from any of them; m159 with 5 ms more in each drag frame by its clock
+// failed at 39.6 and 39.8, and with 20 ms more at 86 and 87. The old bar,
+// 33 ms on the app's own figure by the page's clock, held m147 and m159 at
+// load 35 to 40, m159 faster than m158 when the two were played side by
+// side (bench/results/release-out/m159_play_ab.txt). That figure and the
+// page's frame gaps, mostly SwiftShader drawing, are said beside it, not
+// judged.
+// --trace-drag keeps each drag's trace, <size>_drag_trace.json in --out.
 // With --publish the gallery is asked too: its list, asked with tests and
 // Technic or mechanism, finds the model with "steering" on its card, once
 // supabase/play.sql is applied there (before, that is said and not judged).
@@ -89,7 +106,7 @@ const root = path.resolve(here, "../..");
 const site = String(args.url || "http://127.0.0.1:8771").replace(/\/$/, "");
 const out = String(args.out || "shots/play_web");
 const bypass = String(args.bypass || process.env.BW_BYPASS || "");
-const workLimit = Number(args.work || 33);
+const workLimit = Number(args.work || 36);
 const slow = Number(args.slow || 4);
 const SIZES = {
   laptop: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
@@ -134,12 +151,12 @@ async function startGaps(page) {
     window.__gaps = [];
     window.__gapsOn = true;
     let last = performance.now();
-    const tick = (now) => {
+    const playFlowTick = (now) => {
       window.__gaps.push(now - last);
       last = now;
-      if (window.__gapsOn) requestAnimationFrame(tick);
+      if (window.__gapsOn) requestAnimationFrame(playFlowTick);
     };
-    requestAnimationFrame(tick);
+    requestAnimationFrame(playFlowTick);
   });
 }
 async function readGaps(page) {
@@ -151,6 +168,60 @@ async function readGaps(page) {
     return { frames: gaps.length, mean: Math.round(total / Math.max(gaps.length, 1)),
       median: Math.round(gaps[Math.floor(gaps.length / 2)] || 0), worst: Math.round(gaps[gaps.length - 1] || 0) };
   });
+}
+
+// The drag's frames, timed on a CPU: Chrome's trace says how long each
+// callback ran on the page's thread (tdur), which the box's load does not
+// stretch. The page's clock, which the app's own figures are read by,
+// counts the time the thread waited for a core too. The page stamps the
+// trace where the drag begins and ends.
+const MOVES = new Set(["touchmove", "pointermove", "mousemove"]);
+async function traceStart(page) {
+  try {
+    await browser.startTracing(page, { categories: ["devtools.timeline"] });
+  } catch {
+    return null;
+  }
+  return page.evaluate(() => {
+    const t = performance.now();
+    console.timeStamp(`play drag ${t}`);
+    return t;
+  });
+}
+// Each drag frame, as [ms on a CPU, ms by the page's clock]: the first
+// engine frame begun after a move of the pointer, with the move's handlers
+// before it (the app is handed the move there, and works on it in the
+// frame), or null where nothing was traced. [file] keeps the trace.
+async function traceEnd(page, mark, file) {
+  if (mark === null) return null;
+  let events;
+  try {
+    await page.evaluate((m) => console.timeStamp(`play let go ${m}`), mark);
+    const raw = await browser.stopTracing();
+    if (file) writeFileSync(file, raw);
+    events = JSON.parse(raw.toString()).traceEvents;
+  } catch {
+    return null;
+  }
+  const stamp = (words) => events.find((e) => e.name === "TimeStamp" && e.args?.data?.message === `${words} ${mark}`);
+  const from = stamp("play drag");
+  const to = stamp("play let go");
+  if (!from || !to) return null;
+  const own = events.filter((e) => e.ph === "X" && e.pid === from.pid && e.tid === from.tid
+    && e.ts >= from.ts && e.ts <= to.ts && e.tdur !== undefined);
+  // The flow's own frame counter (startGaps) is a frame callback too.
+  const counter = own.filter((e) => e.name === "FunctionCall" && e.args?.data?.functionName === "playFlowTick");
+  const frames = own.filter((e) => e.name === "FireAnimationFrame"
+    && !counter.some((c) => c.ts >= e.ts && c.ts <= e.ts + e.dur)).sort((a, b) => a.ts - b.ts);
+  const moves = own.filter((e) => e.name === "EventDispatch" && MOVES.has(e.args?.data?.type));
+  const drag = new Map();
+  for (const move of moves) {
+    const next = frames.findIndex((e) => e.ts >= move.ts + move.dur);
+    if (next < 0) continue;
+    const [cpu, ms] = drag.get(next) || [frames[next].tdur / 1000, frames[next].dur / 1000];
+    drag.set(next, [cpu + move.tdur / 1000, ms + move.dur / 1000]);
+  }
+  return [...drag.keys()].sort((a, b) => a - b).map((n) => drag.get(n));
 }
 
 // Points round the handle's joint line on the page, from the handle, by
@@ -482,7 +553,11 @@ try {
     const points = arc(handle, finger ? -50 : 50, 12);
     await startGaps(page);
     let most = 0;
-    if (finger && slow > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: slow });
+    if (!finger) {
+      await page.mouse.move(handle.x, handle.y, { steps: 2 });
+      await page.waitForTimeout(300);
+    }
+    const mark = await traceStart(page);
     if (finger) {
       await touch("touchStart", handle);
       await page.waitForTimeout(120);
@@ -492,8 +567,6 @@ try {
         most = Math.max(most, Math.abs(Number((await grab(page)).angle) || 0));
       }
     } else {
-      await page.mouse.move(handle.x, handle.y, { steps: 2 });
-      await page.waitForTimeout(300);
       await page.mouse.down();
       for (const at of points) {
         await page.mouse.move(at.x, at.y);
@@ -502,6 +575,7 @@ try {
       }
     }
     await page.waitForTimeout(800);
+    const traced = await traceEnd(page, mark, args["trace-drag"] ? path.join(out, `${size}_drag_trace.json`) : "");
     const mid = await grab(page);
     const midPlay = await play(page);
     if (finger) {
@@ -518,18 +592,31 @@ try {
     if (finger) await touch("touchEnd", null);
     else await page.mouse.up();
     const gaps = await readGaps(page);
-    if (finger && slow > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
     const after = await until(page, () => {
       const g = window.brickworksGrab || {};
       return !g.grabbing && !g.swinging ? g : null;
     }, "let go", 60);
-    say(`drag frames${finger && slow > 1 ? `, the CPU slowed ${slow} times` : ""}: the app's own work ${after.mean_ms} ms a frame on average, ${after.worst_ms} ms at worst, `
+    say(`drag frames, at the box's own speed: the app's own work ${after.mean_ms} ms a frame on average, ${after.worst_ms} ms at worst, `
       + `over ${after.frames}; the page's frames ${gaps.median} ms median, ${gaps.mean} mean, ${gaps.worst} worst `
       + `(${gaps.frames} frames); its worst following ${after.worst_follow_ms} ms (${after.worst_follow_said}), `
       + `weighing ${after.worst_weigh_ms} ms; checking its way while the finger rested ${after.worst_pause_ms} ms `
-      + `at worst, and let go ${after.worst_settle_ms} ms (said, not judged)`);
-    check(`the app's own work in a drag frame stays under ${workLimit} ms (${after.worst_ms} ms worst)`,
-      Number(after.frames) > 0 && Number(after.worst_ms) < workLimit);
+      + `at worst, and let go ${after.worst_settle_ms} ms (by the page's clock: said, not judged)`);
+    // Judged: the drag frames on a CPU, on average, all but the dearest:
+    // the frame it takes hold in, which is once a drag. On the phone each
+    // is counted [slow] times, as on a phone that much slower.
+    const times = finger ? slow : 1;
+    const frames = (traced || []).map(([cpu, ms]) => [cpu * times, ms * times]).sort((a, b) => a[0] - b[0]);
+    const rest = frames.slice(0, -1);
+    const mean = (n) => rest.reduce((sum, frame) => sum + frame[n], 0) / Math.max(rest.length, 1);
+    const round = (ms) => Math.round(ms * 10) / 10;
+    if (frames.length) {
+      say(`drag frames on a CPU${times > 1 ? `, each counted ${times} times` : ""}: ${round(mean(0))} ms on average `
+        + `over ${rest.length}, the dearest apart, ${round(frames[frames.length - 1][0])} ms (by the page's clock `
+        + `${round(mean(1))} on average; ${JSON.stringify(traced.map(([cpu]) => round(cpu * times)))})`);
+    }
+    check(`the app's own work in a drag frame, on a CPU${times > 1 ? ` ${times} times slower` : ""}, stays under `
+      + `${workLimit} ms on average (${rest.length ? `${round(mean(0))} ms` : "the drag was not traced"})`,
+      rest.length > 0 && mean(0) < workLimit);
 
     // 3. Let go: kept for this visit, nothing written.
     const kept = await until(page, () => {
