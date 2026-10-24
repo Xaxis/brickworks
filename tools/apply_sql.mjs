@@ -49,27 +49,10 @@ const table = (process.argv.find((a) => a.startsWith("--table=")) || "--table=co
 const again = (process.argv.find((a) => a.startsWith("--again=")) || "").slice(8).split(",").filter(Boolean);
 
 // Functions a later file replaced: [the earlier file, the function, the
-// later file, words only the later one's body has].
-const LATER = [
-  ["follows.sql", "feed_rows", "challenges.sql", "'challenge'::text"],
-  ["comments.sql", "comments_on", "replies.sql", "'threads', true"],
-  ["comments.sql", "comment_as", "replies.sql", "'parent', c.parent"],
-  ["comments.sql", "admin_comments", "replies.sql", "'parent', c.parent"],
-  ["comments.sql", "comments_guard", "replies.sql", "comments:parent"],
-  ["comments.sql", "claim_comment_digest", "replies.sql", "comment_parent_shown"],
-  ["follows.sql", "claim_comment_digest", "replies.sql", "comment_parent_shown"],
-  ["notifications.sql", "notification_rows", "replies.sql", "'reply'::text"],
-  ["notifications.sql", "notification_read", "replies.sql", "k.author = viewer"],
-  ["designers.sql", "designer_said", "replies.sql", "comment_parent_shown"],
-  ["gallery_tabs.sql", "directory_card", "replies.sql", "comment_parent_shown"],
-  ["replies.sql", "directory_card", "made_with.sql", "'made_with', m.made_with"],
-  ["gallery_tabs.sql", "gallery_models", "made_with.sql", "m.made_with in ('assistant', 'brickify')"],
-  ["notifications.sql", "follow_rows", "collection_follows.sql", "list_rows("],
-  ["challenges.sql", "challenge_shown", "challenge_year.sql", "challenge_announced(c)"],
-  ["challenges.sql", "challenge_list", "challenge_year.sql", "'announced_at'"],
-  ["challenges.sql", "challenge_page", "challenge_year.sql", "challenge_page_at("],
-  ["orangecheck_merge_connect.sql", "oc_connected_of", "orangecheck_connect_leaving.sql", "c.asked_at <> '-infinity'"],
-];
+// later file, words only the later one's body has], one a line in
+// supabase/later.tsv, kept apart so units adding one never conflict.
+const LATER = readFileSync(new URL("../supabase/later.tsv", import.meta.url), "utf8")
+  .split("\n").filter((line) => line.trim() && !line.startsWith("#")).map((line) => line.split("\t"));
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");
   process.exit(2);

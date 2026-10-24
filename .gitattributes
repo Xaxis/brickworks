@@ -1,3 +1,5 @@
 .claude/skills/verify/featuremap.config.json merge=featuremap
 # One probe a line: a union keeps both sides' new lines (tools/check.sh).
 tools/suite/*.txt merge=union
+# Functions a later SQL file replaced, one a line: a union keeps both sides.
+supabase/later.tsv merge=union
