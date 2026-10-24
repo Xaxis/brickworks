@@ -300,7 +300,7 @@ async function send(request, me) {
       method: "POST",
       body: { p_session: id, p_author: me, p_client: client, p_ops: body.ops.map(({ cid, changes }) => ({ cid, changes })) },
     });
-    return { seqs };
+    return { seqs, at: Date.now() };
   } catch (trouble) {
     // Ended, or not in it: said as such.
     await inSession(id, me);
@@ -342,7 +342,7 @@ async function poll(request, me) {
         ended: false,
         ops: rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), client: row.client,
           cid: row.cid, changes: noChat && row.changes?.["~chat"] !== undefined ? {} : row.changes })),
-        people, seen: signature, chat: noChat ? CHAT_WORDS.under_13 : "",
+        people, seen: signature, chat: noChat ? CHAT_WORDS.under_13 : "", at: Date.now(),
       };
     }
     await sleep(POLL_MS);

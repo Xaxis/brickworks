@@ -319,7 +319,8 @@ func _join_alone() -> void:
 			file.store_string(JSON.stringify({"live": true, "seq": together.seq, "waiting": together.waiting(),
 				"hash": together.model_hash(), "made": made, "parts": together.uids().size(),
 				"messages": together.messages.map(func(m: Dictionary) -> String: return "%s: %s" % [m["name"], m["text"]]),
-				"chat_words": together.chat_words}))
+				"chat_words": together.chat_words, "healed": together.timing.get("healed", 0),
+				"healed_last": together.timing.get("healed_last", [])}))
 			file.close()
 	if not out.is_empty():
 		var file := FileAccess.open(out, FileAccess.WRITE)

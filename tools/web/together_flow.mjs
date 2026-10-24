@@ -268,7 +268,7 @@ async function measure(label, rounds) {
   }))));
   console.log(`        frames a second meanwhile: the owner's page ${fps[0]}, the other's ${fps[1]}`);
   return check(`${label}: ${all.length} changes arrived, p50 ${pct(all, 0.5)} ms, p95 ${pct(all, 0.95)} ms`,
-    all.length >= rounds * 0.9 && pct(all, 0.5) < 1500,
+    all.length >= rounds * 0.9 && pct(all, 0.95) < 1000,
     Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
 }
 function readDesktop(file) {
@@ -414,6 +414,7 @@ try {
     const [a, b] = [await textOf(owner.page), await textOf(guest.page)];
     const desk = withDesktop ? readDesktop(desktopFile) : null;
     if (a.hash !== b.hash) dumpTexts(what, a.text, b.text);
+    if (desk?.healed) console.log(`        (the desktop put back ${desk.healed} parts so far: ${(desk.healed_last || []).join(", ")})`);
     return check(`${what}: byte-identical in both browsers${withDesktop ? " and the desktop" : ""}`,
       Boolean(top) && a.hash === b.hash && (!withDesktop || desk?.hash === a.hash),
       `seq ${top}, ${a.text.length} bytes`);

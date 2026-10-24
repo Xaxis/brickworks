@@ -133,27 +133,107 @@ const MARKER_COLOURS: Array[Color] = [Color("#e8590c"), Color("#1c7ed6"), Color(
 var keeps_place: bool = true
 const KEPT_FILE := "together.txt"
 
+## Where the time of a change goes, for tools/web/together_timing.mjs and
+## the page: the last change sent (queued, sent, answered, unix ms) and the
+## last taken (the poll answered, the changes put down, how long that took),
+## and the most a frame, a capture and a read of the model's own state took
+## lately (ms).
+var timing: Dictionary = {}
+var _worst: Dictionary = {}
+var _worst_at: int = 0
+
 ## A step left open this long with nothing more to it is closed: a change
 ## that kept no history step of the builder's (a pose, a tool's).
 const STEP_IDLE_MS := 1500
 const STATE_PARTS := 6
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if OS.has_feature("web"):
 		_tell_page()
 	if not live:
 		return
+	_note_worst("frame_ms", delta * 1000.0)
 	# The model was replaced under the session: another opened, New, Clear.
 	if world.generation() != _generation:
 		_stop("You opened another model, so you left the session." if not owns
 			else "You opened another model, so the session ended.", true)
 		return
+	var began: int = Time.get_ticks_usec()
 	_capture()
+	_note_worst("capture_ms", (Time.get_ticks_usec() - began) / 1000.0)
 	if not _open_back.is_empty() and Time.get_ticks_msec() - _open_at > STEP_IDLE_MS:
 		_close_step()
 	_flush()
 	_point()
+	if Time.get_ticks_msec() - _healed_at > HEAL_MS:
+		_healed_at = Time.get_ticks_msec()
+		_heal()
+
+
+## How often what this side shows is checked against what the numbered
+## changes say it should be.
+const HEAL_MS := 2000
+var _healed_at: int = 0
+## What the last pass put back: not tried again straight after, so a state
+## this side cannot show as given (a part it has no geometry for) is not put
+## down every two seconds.
+var _healed: Dictionary = {}
+
+
+## Put back whatever this side shows that the numbered changes say otherwise
+## and that no change of its own on the way explains: a part whose geometry
+## came after it was put down (a part made in the app on the other side,
+## built after its first part arrived), or anything else that slipped. Said
+## on the console and kept in [member timing] ("healed"), so it can be named.
+func _heal() -> void:
+	var mended: PackedStringArray = PackedStringArray()
+	var tried: Dictionary = _healed
+	_healed = {}
+	for uid: String in _confirmed:
+		if _mine_on_the_way(uid) or _open_back.has(uid) or tried.has(uid):
+			continue
+		var wanted: Variant = _confirmed[uid]
+		if uid.begins_with("~"):
+			if _shown.get(uid) != wanted and str(wanted) != "":
+				_put_meta(uid, str(wanted))
+				if _shown.get(uid) == wanted:
+					mended.append(uid)
+			continue
+		var brick_id: int = int(_ids.get(uid, 0))
+		var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
+		var now: Variant = state_of(brick) if brick != null else null
+		if now != wanted:
+			_put(uid, wanted)
+			mended.append(uid)
+	for uid: String in _shown.keys():
+		if not uid.begins_with("~") and not _confirmed.has(uid) and not _mine_on_the_way(uid) \
+				and not _open_back.has(uid) and _ids.has(uid) and not tried.has(uid):
+			_put(uid, null)
+			mended.append(uid)
+	if mended.is_empty():
+		return
+	for uid: String in mended:
+		_healed[uid] = true
+	_heard = _model_now()
+	timing["healed"] = int(timing.get("healed", 0)) + mended.size()
+	timing["healed_last"] = Array(mended.slice(0, 8))
+	print("together: put back %d part%s the numbered changes say otherwise of: %s" % [mended.size(),
+		"" if mended.size() == 1 else "s", ", ".join(mended.slice(0, 8))])
+
+
+## The most [param what] took in the last two seconds, kept in [member timing].
+func _note_worst(what: String, ms: float) -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _worst_at > 2000:
+		timing["worst"] = _worst
+		_worst = {}
+		_worst_at = now
+	_worst[what] = maxf(float(_worst.get(what, 0.0)), snappedf(ms, 0.1))
+
+
+static func _unix_ms() -> int:
+	return int(Time.get_unix_time_from_system() * 1000.0)
 
 
 # -- starting, joining, ending ---------------------------------------------
@@ -583,7 +663,9 @@ func _diff(touched: Variant) -> Dictionary:
 	# And what the model is besides its parts, when it may have changed.
 	if touched == null or Time.get_ticks_msec() - _meta_at > META_MS:
 		_meta_at = Time.get_ticks_msec()
+		var reading: int = Time.get_ticks_usec()
 		var meta: Dictionary = _meta_now()
+		_note_worst("meta_ms", (Time.get_ticks_usec() - reading) / 1000.0)
 		for key: String in meta:
 			if _shown.get(key) != meta[key]:
 				changes[key] = meta[key]
@@ -623,7 +705,7 @@ func _close_step() -> void:
 
 
 func _queue(changes: Dictionary) -> void:
-	_pending.append({"cid": _cid, "changes": changes, "at": Time.get_ticks_msec()})
+	_pending.append({"cid": _cid, "changes": changes, "at": Time.get_ticks_msec(), "queued": _unix_ms()})
 	_cid += 1
 
 
@@ -644,7 +726,16 @@ func _flush() -> void:
 			break
 	_in_flight += going.size()
 	var token: String = _token
+	var keys: Dictionary = {}
+	for op: Dictionary in going:
+		for key: String in op["changes"]:
+			keys[key.left(12) if key.begins_with("~") else "part"] = true
+	var sent: Dictionary = {"cid": going[-1]["cid"], "queued": int((_pending[_in_flight - 1] as Dictionary)
+		.get("queued", 0)), "sent": _unix_ms(), "ops": going.size(), "keys": keys.keys(),
+		"bytes": JSON.stringify(going).length()}
 	var got: Array = await _ask("send", {"s": token, "client": _client, "ops": going})
+	sent["answered"] = _unix_ms()
+	timing["sent"] = sent
 	if token != _token or not live:
 		_sending = false
 		return
@@ -692,6 +783,7 @@ func _poll_loop() -> void:
 		var code: int = int(got[0])
 		if code == 200:
 			var body: Dictionary = got[1]
+			var polled: int = _unix_ms()
 			if bool(body.get("ended", false)):
 				_stop("The owner ended the session. What was built is still here: a copy, yours to keep or not."
 					if not owns else "The session has ended.")
@@ -709,7 +801,13 @@ func _poll_loop() -> void:
 				_show_pointers()
 				if _people_words(people) != before:
 					changed.emit()
-			_take(body.get("ops", []) as Array)
+			var ops: Array = body.get("ops", []) as Array
+			var taking: int = Time.get_ticks_usec()
+			_take(ops)
+			if not ops.is_empty():
+				timing["taken"] = {"seq": int((ops[-1] as Dictionary).get("seq", 0)), "polled": polled,
+					"applied": _unix_ms(), "take_ms": snappedf((Time.get_ticks_usec() - taking) / 1000.0, 0.1),
+					"server": body.get("at", 0)}
 			continue
 		if code == 410 or code == 403 or code == 404:
 			_stop(_refused_words(code, got))
@@ -910,6 +1008,9 @@ func _meta_now() -> Dictionary:
 
 ## Set the model's own state [param key] to [param words], past the history.
 func _put_meta(key: String, words: String) -> void:
+	var counts: Dictionary = timing.get("meta_put", {})
+	counts[key] = int(counts.get(key, 0)) + 1
+	timing["meta_put"] = counts
 	match key:
 		"~title":
 			if words.is_empty() or words == store.title:
@@ -1340,7 +1441,7 @@ func _tell_page() -> void:
 		"live": live, "owner": owns, "link": link, "seq": seq, "waiting": waiting(),
 		"people": people, "parts": _ids.size(), "trips": trips, "ended": ended_words,
 		"can_undo": can_undo(), "messages": messages.slice(maxi(0, messages.size() - 20)),
-		"chat_words": chat_words, "pointers": pointers_shown()}), true)
+		"chat_words": chat_words, "pointers": pointers_shown(), "timing": timing}), true)
 
 
 ## The page's asks, answered in order; one batch at a time.
@@ -1376,6 +1477,8 @@ func _ask(op: String, body: Dictionary, timeout: float = 20.0) -> Array:
 	var session: String = await account.access_token() if account != null else ""
 	if session.is_empty():
 		return [401, {"error": "Sign in to build together."}]
+	if OS.has_feature("web"):
+		return await _ask_page(op, body, session, timeout)
 	var http := HTTPRequest.new()
 	http.timeout = timeout
 	add_child(http)
@@ -1392,6 +1495,46 @@ func _ask(op: String, body: Dictionary, timeout: float = 20.0) -> Array:
 	var parsed: Variant = JSON.parse_string((done[3] as PackedByteArray).get_string_from_utf8())
 	return [int(done[1]) if int(done[0]) == HTTPRequest.RESULT_SUCCESS else 0,
 		parsed if parsed is Dictionary else {}]
+
+
+## In a browser, the page's own fetch, answered the moment the answer is in.
+## HTTPRequest is polled once a frame and takes a frame for each of its
+## states (sent, the head, the body), so a change from the other side waited
+## two or three frames after it had arrived: in a browser drawing in software,
+## at 150 ms a frame, half a second of every change (tools/web/
+## together_timing.mjs, 2026-10-24).
+var _page_answers: Dictionary = {}
+var _page_answer: JavaScriptObject = null
+var _page_asked: int = 0
+signal _page_answered(id: int)
+
+
+func _ask_page(op: String, body: Dictionary, session: String, timeout: float) -> Array:
+	if _page_answer == null:
+		_page_answer = JavaScriptBridge.create_callback(_on_page_answer)
+		JavaScriptBridge.get_interface("window").brickworksTogetherAnswer = _page_answer
+	_page_asked += 1
+	var id: int = _page_asked
+	var headers: Dictionary = {"authorization": "Bearer " + session, "content-type": "application/json"}
+	for line: String in extra_headers:
+		headers[line.get_slice(":", 0).strip_edges()] = line.substr(line.find(":") + 1).strip_edges()
+	JavaScriptBridge.eval(("(() => { const stop = new AbortController(); setTimeout(() => stop.abort(), %d);"
+		+ " fetch(%s, {method: 'POST', headers: %s, body: %s, signal: stop.signal})"
+		+ ".then(async (r) => window.brickworksTogetherAnswer(%d, r.status, await r.text()))"
+		+ ".catch(() => window.brickworksTogetherAnswer(%d, 0, '')); })()") % [int(timeout * 1000.0),
+		JSON.stringify("%s/api/together?op=%s" % [base_url, op]), JSON.stringify(headers),
+		JSON.stringify(JSON.stringify(body, "", false, true)), id, id], true)
+	while not _page_answers.has(id):
+		await _page_answered
+	var got: Array = _page_answers[id]
+	_page_answers.erase(id)
+	var parsed: Variant = JSON.parse_string(str(got[1]))
+	return [int(got[0]), parsed if parsed is Dictionary else {}]
+
+
+func _on_page_answer(args: Array) -> void:
+	_page_answers[int(args[0])] = [int(args[1]), str(args[2])]
+	_page_answered.emit(int(args[0]))
 
 
 static func _trouble(got: Array, doing: String) -> String:

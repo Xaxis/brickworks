@@ -72,6 +72,16 @@ desktop app. Started 2026-10-24 (unit together233).
   person's view, as the camera is, and an app-made model's file does not
   keep them. A floor's own plate made part of the model on one side is the
   same plate on the other, not a second one on it.
+- **What slips is put back.** Every two seconds each side compares what it
+  shows with what the numbered changes say (`Together._heal`) and puts back
+  any part or state that no change of its own on the way explains: a part
+  made in the app whose geometry was built after its first part arrived,
+  or anything else that slipped. Each one is said on the console and
+  counted (`timing.healed`); the desktop's half of the flow reports them.
+  This is what keeps the desktop's lag once seen after the hidden parts
+  were coloured (the copy matched again at the next check, not within the
+  check's 90 s) to two seconds; its cause did not come back in the timed
+  runs, so it is not named yet.
 - **Sent twice is put down once.** A send whose answer was lost is sent
   again; every side skips a copy's change it has had already (by its count,
   `cid`), the same everywhere.
@@ -138,6 +148,24 @@ A browser drawing in software takes a few hundred milliseconds a frame, so
 the browser rows are mostly frames on both sides; on a real graphics card
 they should come close to the first rows, which is not measured yet.
 
+**Where the time went, and the fix (2026-10-24, `tools/web/together_timing.mjs`).**
+Each of the seven kinds of change made in turn on the car, ten paints after
+each, every paint timed stage by stage from the app's own clocks. Before:
+the send's round trip alone ("number") was 150 to 520 ms against a server
+that answers in a few, and the whole change 0.5 to 1.4 s p50 with p95s to
+5.6 s, rising and falling with the frames rather than with any one kind
+of change: no part of the session re-read, rewrote or re-measured the
+model per change (a capture took at most 13 ms, a read of the model's own
+state under 5 ms; ops carried only the part changed). The cause was the
+browser's HTTPRequest, which the engine polls once a frame and which takes
+a frame for each of its states: every request, and above all every
+answer of the waiting poll, sat two or three frames after its bytes had
+arrived, and a software-drawn frame on this box is about 150 ms. In a
+browser the session now asks with the page's own fetch, answered the
+moment the answer is in (`Together._ask_page`). After: the send's round
+trip 42 to 199 ms, and the whole change p50 193 to 701 ms, p95 under a
+second for every kind but one outlier round (the printed part, 1.4 s).
+
 The flow measures again later, once the model has a motion, a printed
 part, steps of its own and its hidden parts coloured, and says how many
 frames a second each page drew meanwhile. Before it said so, with the car
@@ -199,19 +227,6 @@ takes turns. Here:
   together in the File menu).
 
 ## Not done yet
-
-- **A change takes about 2 s to cross once the model has a motion, a
-  printed part, steps of its own and its hidden parts coloured** (the
-  flow's second measure on the 2026-10-24 preview: p50 2,145 ms, p95
-  3,088 ms, with both pages drawing 60 frames a second when idle), against
-  under half a second before those (p50 488 ms, p95 614 ms in the same
-  run). Not frames, then, and not found yet: the next unit measures each
-  of the seven changes in turn to find which one makes every later change
-  slow, on both sides.
-- **The desktop once fell behind after the hidden parts were coloured**
-  (the same run): both browsers matched, the desktop's file did not within
-  the check's 90 s, and it matched again at the next check. Not
-  reproduced on this box (three runs passed it).
 
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
