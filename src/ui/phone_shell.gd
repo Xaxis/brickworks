@@ -24,12 +24,22 @@
 ## the bin's own pick and swatch), so building behaves the same: only the
 ## controls change. Every target is at least Phone.TARGET points and no
 ## text under Phone.LEAST_TEXT.
+##
+## On a tablet (Phone.wide) the same, laid out wide: the sheets are panels
+## down the sides between the bars, as the desktop's columns are, the parts
+## on the left and the colours, More and a part's actions on the right. The
+## parts stay open while the model is built beside them, and the model is
+## framed in the room they leave (model_room); where there is no room for
+## both sides, one opening puts the other away until it goes. The row's
+## buttons keep their size, in the middle.
 class_name PhoneShell
 extends Control
 
 var app: Node
 var shell: Shell
 var bin: PartsBin
+## Laid out wide, for a tablet (Phone.wide).
+var wide: bool = false
 
 ## Points to units, when the chrome was last laid out.
 var _k: float = 1.0
@@ -49,9 +59,19 @@ var _context: Sheet
 var _said: String = ""
 var _said_until: int = 0
 var _all_colours: bool = false
+## The sheet opened last, which the page is told of first.
+var _newest: Sheet
+var _look_again_at: int = 0
 
 const TOP := 52.0
 const ROW := 72.0
+## A tablet's panel, across: the parts bin's own width and its margins.
+const SIDE := 400.0
+## The least a tablet's panels leave the model across.
+const MODEL_LEAST := 300.0
+## A tablet's row button, across, and its name field.
+const WIDE_TOOL := 96.0
+const WIDE_NAME := 320.0
 const BACK := Color(0.11, 0.12, 0.14, 0.97)
 const LIT := Color(0.36, 0.6, 1.0, 0.38)
 
@@ -89,16 +109,30 @@ func _rebuild() -> void:
 		bin.get_parent().remove_child(bin)
 	if _name.get_parent() != null:
 		_name.get_parent().remove_child(_name)
+	# What was open opens again, laid out for the new size.
+	var was: Array = []
+	for sheet: Sheet in _sheets:
+		if sheet.is_open() and sheet != _context:
+			was.append([sheet.title, sheet.state])
 	for child: Node in get_children():
 		remove_child(child)
 		child.queue_free()
 	_sheets.clear()
 	_tool_buttons.clear()
 	_build()
+	for one: Array in was:
+		var sheet: Sheet = {"Parts": _parts, "Colour": _colours, "More": _more}.get(one[0])
+		if sheet == _colours:
+			_fill_colours()
+		elif sheet == _more:
+			_fill_more()
+		_make_room(sheet)
+		sheet.open(str(one[1]))
 
 
 func _build() -> void:
 	_k = Phone.per_point(get_viewport())
+	wide = Phone.wide()
 	_name = (app.get("_bar") as ModelBar).get("_name")
 
 	# Along the top: the name, Undo, Redo.
@@ -110,11 +144,16 @@ func _build() -> void:
 	_top.add_child(top_row)
 	if _name.get_parent() != null:
 		_name.get_parent().remove_child(_name)
-	_name.custom_minimum_size = Vector2(p(120), p(Phone.TARGET))
-	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name.custom_minimum_size = Vector2(p(WIDE_NAME if wide else 120.0), p(Phone.TARGET))
+	_name.size_flags_horizontal = Control.SIZE_FILL if wide else Control.SIZE_EXPAND_FILL
 	_name.add_theme_font_size_override("font_size", ceili(p(16)))
 	_name.tooltip_text = ""
 	top_row.add_child(_name)
+	if wide:
+		var gap := Control.new()
+		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top_row.add_child(gap)
 	for one: Array in [["undo", "undo"], ["redo", "redo"]]:
 		var button: Button = _icon_button(str(one[1]), p(Phone.TARGET + 4.0))
 		button.name = "phone_" + str(one[0])
@@ -129,9 +168,14 @@ func _build() -> void:
 	add_child(_row)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 0)
+	if wide:
+		tools.alignment = BoxContainer.ALIGNMENT_CENTER
 	_row.add_child(tools)
 	for tool: Array in TOOLS:
 		var button: Button = _tool(str(tool[0]), str(tool[1]), str(tool[2]))
+		if wide:
+			button.size_flags_horizontal = Control.SIZE_FILL
+			button.custom_minimum_size.x = p(WIDE_TOOL)
 		tools.add_child(button)
 
 	# What a finger does now, over the model's foot.
@@ -164,6 +208,9 @@ func _build() -> void:
 	for state: String in ["normal", "hover", "pressed"]:
 		_fit.add_theme_stylebox_override(state, round_face)
 	_pin(_fit, 1.0, 0.0, 1.0, 0.0, Rect2(-p(12 + 48), p(TOP + 12), -p(12), p(TOP + 12 + 48)))
+	# A tablet's beside the panel on the right, when it is open (_lay_pill).
+	if wide:
+		_pin(_fit, 0.0, 0.0, 0.0, 0.0, Rect2(0, p(TOP + 12), p(48), p(TOP + 12 + 48)))
 	_fit.pressed.connect(func() -> void: shell.run("fit"))
 	add_child(_fit)
 
@@ -197,6 +244,9 @@ static func _pin(control: Control, left: float, top: float, right: float, bottom
 
 
 func _part_picked(_part_id: String) -> void:
+	# A tablet's stays, beside the model, for the next.
+	if wide:
+		return
 	if _parts != null and _parts.is_open() and not bin.is_dragging_part():
 		_parts.close()
 
@@ -322,10 +372,24 @@ func _toggle(sheet: Sheet, how: String) -> void:
 	if sheet.is_open():
 		sheet.close()
 		return
-	for other: Sheet in _sheets:
-		if other != sheet and other.is_open():
-			other.close(false)
+	_make_room(sheet)
 	sheet.open(how)
+
+
+## The other sheets put away for one about to open: every one on a phone;
+## on a tablet the one on its side, and the far side's too where the model
+## would be left too little between them, kept to come back as this goes.
+func _make_room(sheet: Sheet) -> void:
+	for other: Sheet in _sheets:
+		if other == sheet or not other.is_open():
+			continue
+		if not wide or other.edge == sheet.edge:
+			if wide and sheet.set_aside == null:
+				sheet.set_aside = other.set_aside
+			other.close(false)
+		elif get_viewport().get_visible_rect().size.x - other.size.x - p(SIDE) < p(MODEL_LEAST):
+			other.close(false)
+			sheet.set_aside = other
 
 
 ## A sheet from the foot of the screen, over the row.
@@ -334,12 +398,22 @@ func _sheet(title: String, scrolls: bool) -> Sheet:
 	sheet.phone = self
 	sheet.title = title
 	sheet.scrolls = scrolls
+	if wide:
+		sheet.edge = "left" if title == "Parts" else "right"
 	add_child(sheet)
 	_sheets.append(sheet)
 	return sheet
 
 
 func _process(_delta: float) -> void:
+	# Turned round, the browser can give its new width (Room) a moment
+	# after the canvas has its new size, and a layout made between them is
+	# in the wrong points: a tablet's came out three quarters size. Looked
+	# at again twice a second, which does nothing while nothing changed.
+	if Time.get_ticks_msec() >= _look_again_at:
+		_look_again_at = Time.get_ticks_msec() + 500
+		app.call("_match_screen_density")
+		_rebuild()
 	_lay_pill()
 	_show_tools()
 	# A tooltip a finger raised: the desktop's words for a mouse, over what
@@ -423,20 +497,26 @@ func _lay_pill() -> void:
 	if _pill_words.text != words:
 		_pill_words.text = words
 	var room: Vector2 = get_viewport().get_visible_rect().size
-	var wide: float = minf(room.x - p(24), p(380))
+	# Over the model's own room: on a tablet, between its panels.
+	var free: Rect2 = model_room(Rect2(Vector2.ZERO, room))
+	var widest: float = minf(free.size.x - p(24), p(380))
 	_pill_words.custom_minimum_size.x = 0.0
 	var font: Font = _pill_words.get_theme_font("font")
 	var line: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
-	var inner: float = minf(line + p(2), wide - p(24))
+	var inner: float = minf(line + p(2), widest - p(24))
 	_pill_words.custom_minimum_size.x = inner
 	_pill.reset_size()
 	var size_now: Vector2 = _pill.get_combined_minimum_size()
 	_pill.size = size_now
-	_pill.position = Vector2((room.x - size_now.x) * 0.5, room.y - p(ROW) - p(10) - size_now.y)
+	_pill.position = Vector2(free.position.x + (free.size.x - size_now.x) * 0.5,
+		room.y - p(ROW) - p(10) - size_now.y)
 	var steps: Control = app.get("_steps")
 	if steps != null and steps.is_visible_in_tree():
 		_pill.position.y = minf(_pill.position.y, steps.get_global_rect().position.y - size_now.y - p(6))
-	_pill.visible = not words.is_empty() and not _any_open()
+	# A phone's sheets cover it; a tablet's panels stand beside it.
+	_pill.visible = not words.is_empty() and (wide or not _any_open())
+	if wide:
+		_fit.position.x = free.end.x - p(12 + 48)
 
 
 func _any_open() -> bool:
@@ -444,6 +524,24 @@ func _any_open() -> bool:
 		if sheet.is_open():
 			return true
 	return false
+
+
+## The part of [param rect] a tablet's open panels leave the model: all of
+## it on a phone, whose sheets come and go over it.
+func model_room(rect: Rect2) -> Rect2:
+	if not wide:
+		return rect
+	for sheet: Sheet in _sheets:
+		if not sheet.is_open():
+			continue
+		var side: Rect2 = sheet.get_global_rect()
+		if sheet.edge == "left":
+			var cut: float = clampf(side.end.x - rect.position.x, 0.0, rect.size.x)
+			rect.position.x += cut
+			rect.size.x -= cut
+		elif sheet.edge == "right":
+			rect.size.x = clampf(side.position.x - rect.position.x, 0.0, rect.size.x)
+	return rect
 
 
 ## Whether a point is on the phone's own controls, for Main to leave alone.
@@ -470,9 +568,8 @@ func foot_height() -> float:
 ## A finger held on the model: the desktop's menu on a part, as a sheet.
 func open_context(words: String) -> void:
 	_fill_context(words)
-	for other: Sheet in _sheets:
-		if other != _context and other.is_open():
-			other.close(false)
+	if not _context.is_open():
+		_make_room(_context)
 	_context.open("fit")
 
 
@@ -588,6 +685,7 @@ func controls_by_name() -> Dictionary:
 		var key: String = "phone_sheet_" + sheet.title.to_lower().replace(" ", "_")
 		out[key] = sheet.handle
 		out[key + "_done"] = sheet.done
+		out[key.replace("phone_sheet_", "phone_panel_")] = sheet
 		for row: Control in sheet.rows():
 			out["phone_row_" + str(row.get_meta("command", row.name))] = row
 		for swatch: Control in sheet.swatches():
@@ -600,11 +698,17 @@ func controls_by_name() -> Dictionary:
 func state() -> Dictionary:
 	var open: String = ""
 	var how: String = ""
+	var titles: Array = []
 	for sheet: Sheet in _sheets:
 		if sheet.is_open():
 			open = sheet.title
 			how = sheet.state
-	return {"sheet": open, "sheet_state": how, "hint": hint()}
+			titles.append(sheet.title)
+	# Two at once, on a tablet: the one opened last.
+	if _newest != null and _newest.is_open():
+		open = _newest.title
+		how = _newest.state
+	return {"sheet": open, "sheet_state": how, "sheets": titles, "wide": wide, "hint": hint()}
 
 
 ## A picture drawn over a row button's word, where there is no icon: the
@@ -633,13 +737,17 @@ class RowPicture extends Control:
 ## A sheet that comes up from the foot of the screen: half of it, all of
 ## it, or as tall as what it holds. Its handle is dragged up and down, and
 ## let go it settles at the nearest, or goes if it was pulled most of the
-## way down.
+## way down. On a tablet, a panel down one side between the bars instead.
 class Sheet extends PanelContainer:
 	var phone: PhoneShell
 	var title: String = ""
 	var scrolls: bool = true
-	## closed, half, full or fit.
+	## closed, half, full or fit; side for a tablet's panel.
 	var state: String = "closed"
+	## foot, or a tablet's left or right.
+	var edge: String = "foot"
+	## The panel this one put away for its room, back when this goes.
+	var set_aside: Sheet
 	var body: VBoxContainer
 	var handle: Control
 	var done: Button
@@ -655,9 +763,14 @@ class Sheet extends PanelContainer:
 		var face := StyleBoxFlat.new()
 		face.bg_color = Color(0.12, 0.13, 0.155, 0.985)
 		face.border_color = Color(1, 1, 1, 0.12)
-		face.border_width_top = 1
-		face.corner_radius_top_left = ceili(phone.p(14))
-		face.corner_radius_top_right = ceili(phone.p(14))
+		if edge == "foot":
+			face.border_width_top = 1
+			face.corner_radius_top_left = ceili(phone.p(14))
+			face.corner_radius_top_right = ceili(phone.p(14))
+		else:
+			# Its edge to the model, as a desktop column has.
+			face.border_width_right = 1 if edge == "left" else 0
+			face.border_width_left = 1 if edge == "right" else 0
 		face.content_margin_left = phone.p(10)
 		face.content_margin_right = phone.p(10)
 		face.content_margin_bottom = phone.p(8)
@@ -672,11 +785,13 @@ class Sheet extends PanelContainer:
 		head.gui_input.connect(_head_input)
 		column.add_child(head)
 		handle = head
-		# The grip: a short rounded line at its top middle.
-		head.draw.connect(func() -> void:
-			var wide: float = phone.p(36)
-			head.draw_rect(Rect2(Vector2((head.size.x - wide) * 0.5, phone.p(3)),
-				Vector2(wide, phone.p(5))), Color(1, 1, 1, 0.35)))
+		# The grip: a short rounded line at its top middle. A tablet's
+		# panel is not dragged.
+		if edge == "foot":
+			head.draw.connect(func() -> void:
+				var wide: float = phone.p(36)
+				head.draw_rect(Rect2(Vector2((head.size.x - wide) * 0.5, phone.p(3)),
+					Vector2(wide, phone.p(5))), Color(1, 1, 1, 0.35)))
 		_title = Label.new()
 		_title.text = title
 		_title.add_theme_font_size_override("font_size", ceili(phone.p(17)))
@@ -706,6 +821,11 @@ class Sheet extends PanelContainer:
 			_list.add_theme_constant_override("separation", ceili(phone.p(2)))
 			scroll.add_child(_list)
 		get_viewport().size_changed.connect(_place, CONNECT_DEFERRED)
+		# A panel is as tall as the room between the bars, which what it
+		# holds is laid out to only once it is shown: hidden, the bin's
+		# rows of parts wanted 1,800 units, and the panel kept that.
+		if edge != "foot":
+			minimum_size_changed.connect(_place, CONNECT_DEFERRED)
 
 	func set_title(words: String) -> void:
 		title = words
@@ -719,14 +839,21 @@ class Sheet extends PanelContainer:
 		return state != "closed"
 
 	func open(how: String = "half") -> void:
-		state = how
+		state = how if edge == "foot" else "side"
 		visible = true
 		_height = _height_for(how)
+		phone._newest = self
 		_place()
 
-	func close(_animate: bool = true) -> void:
+	## Put away, and what it put away for its room given back unless
+	## [param give_back] is false (another taking its place).
+	func close(give_back: bool = true) -> void:
 		state = "closed"
 		visible = false
+		var back: Sheet = set_aside
+		set_aside = null
+		if give_back and back != null and not back.is_open():
+			back.open("side")
 
 	func _room() -> Vector2:
 		return get_viewport().get_visible_rect().size
@@ -749,12 +876,21 @@ class Sheet extends PanelContainer:
 			return
 		var room: Vector2 = _room()
 		PhoneShell._pin(self, 0.0, 0.0, 0.0, 0.0, Rect2())
+		if state == "side":
+			var top: float = phone.p(PhoneShell.TOP)
+			var tall: float = room.y - top - phone.p(PhoneShell.ROW)
+			custom_minimum_size = Vector2(phone.p(PhoneShell.SIDE), tall)
+			size = Vector2(get_combined_minimum_size().x, tall)
+			position = Vector2(0.0 if edge == "left" else room.x - size.x, top)
+			return
 		var wide: float = minf(room.x, phone.p(560))
 		position = Vector2((room.x - wide) * 0.5, room.y - _height)
 		size = Vector2(wide, _height)
 		custom_minimum_size = Vector2(wide, _height)
 
 	func _head_input(event: InputEvent) -> void:
+		if edge != "foot":
+			return
 		var button: InputEventMouseButton = event as InputEventMouseButton
 		if button != null and button.button_index == MOUSE_BUTTON_LEFT:
 			if button.pressed:

@@ -9,6 +9,13 @@
 ## Only where touch is the main input and the screen is narrow both ways
 ## round: a laptop with a touchscreen has a mouse beside it and keeps the
 ## desktop layout to the pixel, and a phone held sideways is still a phone.
+##
+## A tablet too (tablet247): it was given the desktop driven by fingers,
+## targets 24 to 37 points, tooltips that never come and nothing for a
+## right click, and the desktop's toolbar alone at 44 points a button is
+## wider than any tablet. So it gets this layout laid out wide ([method
+## wide]): the parts down the left, the rest down the right, the model
+## between them.
 class_name Phone
 extends RefCounted
 
@@ -21,7 +28,12 @@ const TARGET := 44.0
 ## The smallest text a phone shows, in points.
 const LEAST_TEXT := 12.0
 
+## A short side from NARROW up to this is a tablet's: an iPad mini's 744
+## to an iPad Pro's 1032, Android's 800. Past it, the desktop.
+const TABLET := 1100.0
+
 static var _on: int = -1
+static var _wide: bool = false
 
 
 ## Whether the phone layout is wanted: decided once, at start.
@@ -29,6 +41,20 @@ static func on() -> bool:
 	if _on == -1:
 		_on = 1 if _wanted() else 0
 	return _on == 1
+
+
+## Whether it is laid out wide, for a tablet: decided with [method on].
+static func wide() -> bool:
+	return on() and _wide
+
+
+## The content scale for a tablet this many points across and down: 720
+## units across its short side whichever way round it is held, as a
+## portrait one has (Main.screen_factor), so a point is as many units
+## turned as it was, and what was laid out in points stays in points.
+static func tablet_factor(across: float, down: float) -> float:
+	var stretched: float = minf(across / 1600.0, down / 900.0)
+	return clampf(minf(across, down) / 720.0 / stretched, 1.0, 3.0)
 
 
 static func _wanted() -> bool:
@@ -39,7 +65,9 @@ static func _wanted() -> bool:
 		"matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches", true)
 	if not bool(coarse):
 		return false
-	return minf(Room.across(), Room.down()) < NARROW
+	var short: float = minf(Room.across(), Room.down())
+	_wide = short >= NARROW
+	return short < TABLET
 
 
 ## Interface units to the point now: the window's width in units over its

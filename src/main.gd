@@ -394,6 +394,9 @@ func _match_screen_density() -> void:
 	if across <= 0.0 or down <= 0.0:
 		return
 	var factor: float = screen_factor(across, down, OS.has_feature("web"))
+	# A tablet's layout for a finger is in points, and turned it keeps them.
+	if Phone.wide():
+		factor = Phone.tablet_factor(across, down)
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:
@@ -5571,7 +5574,8 @@ func _fit_panels() -> void:
 	# the threshold and kept both panels open across a screen with room
 	# for neither.
 	var across: float = Room.across()
-	var phone: bool = across < ROOMY
+	# A tablet's layout for a finger has drawers too, however wide it is.
+	var phone: bool = across < ROOMY or _phone != null
 
 	# A drawer leaves the far rail showing, so the way out is visible
 	# from inside it. Measured in the interface's own units, which a
@@ -5621,6 +5625,9 @@ func _model_rect() -> Rect2:
 		if _simulate_column != null and _simulate_column.visible:
 			rect.position.x = maxf(rect.position.x, _simulate_column.get_global_rect().end.x)
 		rect.size.x = across - SideDock.RAIL_WIDTH - rect.position.x
+	# A tablet's panels stand beside the model, as the desktop's columns do.
+	if _phone != null:
+		rect = _phone.model_room(rect)
 	return rect
 
 
