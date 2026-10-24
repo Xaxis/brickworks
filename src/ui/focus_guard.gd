@@ -145,35 +145,41 @@ func _input(event: InputEvent) -> void:
 			# (the minifigure builder's search) as it always did.
 		KEY_TAB:
 			# A field of more than one line may want Tab; a one-line field
-			# never does here. It goes on to the next control, or gives the
-			# keys back to the model when there is none.
+			# never does here. The keys go back to the model, which is the
+			# stop after the field: the next Tab goes on from it.
 			if focused is LineEdit:
-				var next: Control = focused.find_prev_valid_focus() if key.shift_pressed \
-					else focused.find_next_valid_focus()
+				_left = focused
 				focused.release_focus()
-				if next != null and next != focused:
-					next.grab_focus()
 				get_viewport().set_input_as_handled()
 
 
 ## Tab with nothing focused, as it is from launch and after a click on the
-## model: into the interface at its first control (Shift-Tab, its last).
-## The window's own Tab starts from a control at its top, and the app's
-## top is the 3D scene, so without this Tab did nothing.
+## model: into the interface at its first control (Shift-Tab, its last), or
+## on from the field Tab last left. The window's own Tab starts from a
+## control at its top, and the app's top is the 3D scene, so without this
+## Tab did nothing.
 func _tab_in(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		_left = null
+		return
 	var key: InputEventKey = event as InputEventKey
 	if key == null or not key.pressed or key.keycode != KEY_TAB \
 			or key.ctrl_pressed or key.alt_pressed or key.meta_pressed:
 		return
-	var top: Control = interface_top
-	if top == null or not top.is_visible_in_tree():
+	var from: Control = interface_top
+	if is_instance_valid(_left) and _left.is_visible_in_tree():
+		from = _left
+	_left = null
+	if from == null or not from.is_visible_in_tree():
 		return
-	var first: Control = top.find_prev_valid_focus() if key.shift_pressed \
-		else top.find_next_valid_focus()
-	if first != null:
-		first.grab_focus()
+	var next: Control = from.find_prev_valid_focus() if key.shift_pressed \
+		else from.find_next_valid_focus()
+	if next != null:
+		next.grab_focus()
 		get_viewport().set_input_as_handled()
 
 
 ## Where Tab goes in from: the interface's outermost control (Shell).
 var interface_top: Control
+## The field Tab gave the keys back from, for the next Tab to go on from.
+var _left: Control

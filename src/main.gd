@@ -377,15 +377,33 @@ static func screen_factor(across: float, down: float, web: bool) -> float:
 	return 1.0
 
 
+## The interface's height, in its own units, below which the frame runs off
+## the window: the menus, the toolbar, a row of parts, the properties, the
+## colours and the status bar, one under another (a11y_size_probe found the
+## colours under the status bar at 579).
+const LEAST_DOWN := 620.0
+
+
+## [method screen_factor], times Settings, Interface size: bigger or smaller
+## than the window would draw it, for eyes that want it so. Bigger only as
+## far as the frame still fits the window's height: on a laptop's 1280 x 800
+## 150% draws at 140%, and a taller screen gets all of it.
+static func sized_factor(across: float, down: float, web: bool, size: float) -> float:
+	var screen: float = screen_factor(across, down, web)
+	var factor: float = screen * size
+	if factor > screen:
+		var stretched: float = minf(across / 1600.0, down / 900.0)
+		factor = maxf(screen, minf(factor, down / (stretched * LEAST_DOWN)))
+	return factor
+
+
 func _match_screen_density() -> void:
 	var across: float = Room.across()
 	var down: float = Room.down()
 	if across <= 0.0 or down <= 0.0:
 		return
-	# And Settings, Interface size, on top: bigger or smaller than the
-	# window would draw it, for eyes that want it so.
-	var factor: float = screen_factor(across, down, OS.has_feature("web")) \
-		* ShellPrefs.interface_size()
+	var factor: float = sized_factor(across, down, OS.has_feature("web"),
+		ShellPrefs.interface_size())
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:

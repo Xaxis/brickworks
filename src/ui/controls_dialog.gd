@@ -82,14 +82,27 @@ func _build() -> void:
 
 	column.add_child(HSeparator.new())
 
-	_toggle(column, "Invert zoom direction",
+	# The settings, as they were, where the window has room for them all; in
+	# a window too short (a big Interface size on a laptop) they scroll,
+	# with a few rows of keys above them and Done below (_fit_settings).
+	_settings = ScrollContainer.new()
+	_settings.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(_settings)
+	var lower := VBoxContainer.new()
+	lower.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lower.add_theme_constant_override("separation", 12)
+	_settings.add_child(lower)
+	lower.minimum_size_changed.connect(_fit_settings)
+	resized.connect(_fit_settings)
+
+	_toggle(lower, "Invert zoom direction",
 		"Scroll away from you to zoom out instead of in.",
 		ViewPrefs.invert_zoom,
 		func(on: bool) -> void: ViewPrefs.invert_zoom = on)
-	_presets(column)
-	_interface(column)
-	_new_floor(column)
-	_assistant(column)
+	_presets(lower)
+	_interface(lower)
+	_new_floor(lower)
+	_assistant(lower)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -100,7 +113,7 @@ func _build() -> void:
 	_version.add_theme_font_size_override("font_size", 11)
 	_version.modulate = Color(1, 1, 1, 0.6)
 	_version.text = BuildInfo.describe()
-	column.add_child(_version)
+	lower.add_child(_version)
 	if OS.has_feature("web"):
 		_read_version.call_deferred()
 
@@ -112,6 +125,24 @@ func _build() -> void:
 	done.pressed.connect(func() -> void: visible = false)
 	column.add_child(done)
 	_done = done
+
+
+## The settings under the keys: all their height, or what the dialog has
+## left over its title, KEYS_LEAST of keys and Done.
+var _settings: ScrollContainer
+const KEYS_LEAST := 90.0
+
+
+func _fit_settings() -> void:
+	var lower: Control = _settings.get_child(0)
+	var wants: float = lower.get_combined_minimum_size().y
+	var panel: StyleBox = get_theme_stylebox("panel")
+	var column: Control = _settings.get_parent()
+	var others: float = column.get_combined_minimum_size().y - _settings.custom_minimum_size.y
+	var room: float = size.y - panel.get_minimum_size().y - others - KEYS_LEAST
+	var fits: float = clampf(room, minf(wants, KEYS_LEAST), wants)
+	if not is_equal_approx(_settings.custom_minimum_size.y, fits):
+		_settings.custom_minimum_size.y = fits
 
 
 ## The bindings, read from the one place they are written down.

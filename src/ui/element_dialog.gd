@@ -192,6 +192,7 @@ func _build() -> void:
 	# other, changed from its own geometry.
 	var from_row := _row(column, "Start from a part")
 	_from = LineEdit.new()
+	_from.accessibility_name = "Start from a part"
 	_from.placeholder_text = "a part number: 3001, 3700, 3062b…"
 	_from.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_from.text_submitted.connect(func(_t: String) -> void: _start_from(_from.text))
@@ -370,6 +371,7 @@ func _build() -> void:
 
 	var name_row := _row(column, "Name")
 	_name = LineEdit.new()
+	_name.accessibility_name = "Name"
 	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name.text_changed.connect(func(text: String) -> void:
 		if not _filling:

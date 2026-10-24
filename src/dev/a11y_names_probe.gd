@@ -50,6 +50,9 @@ func _run() -> void:
 	var playback: BuildPlayback = _main.get("_playback")
 	if playback != null:
 		playback.stop()
+	# Godot's own Save dialog, never the platform's: this shell's session
+	# bus is the owner's, and theirs would open on their screen.
+	SaveTo.native = false
 	_shell = _main.get("_shell")
 	_bin = _main.get("_bin")
 	var store: ModelStore = _main.get("_store")
@@ -67,6 +70,8 @@ func _run() -> void:
 	builder.select_brick(brick, false)
 	await _frames(6)
 	_walk_all("a selection")
+	for name: String in WITH_A_SELECTION:
+		await _open_and_walk(name)
 
 	# The bin's tabs, each in turn.
 	for tab: String in [PartsBin.RECENT, PartsBin.FAVOURITES, PartsBin.TECHNIQUES]:
@@ -79,7 +84,7 @@ func _run() -> void:
 	# Every dialog and panel the menus open, one at a time, put away
 	# before the next.
 	# A few by name, after --: openers=settings,keys.
-	var openers: Array[String] = OPENERS
+	var openers: Array[String] = OPENERS.duplicate()
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("openers="):
 			openers.assign(arg.trim_prefix("openers=").split(",", false))
@@ -104,12 +109,14 @@ func _run() -> void:
 const OPENERS: Array[String] = [
 	"settings", "keys", "about", "save_as", "library", "versions", "render",
 	"pose", "instructions", "share", "clear", "account", "select_find",
-	"printed_versions", "flex", "timeline", "parts_list", "collection",
+	"timeline", "parts_list", "collection",
 	"collection_need", "collection_build", "minifig", "mosaic", "brickify",
 	"part_maker", "print_part", "sticker", "measure", "simulate",
-	"hidden_colours", "panel_outliner", "stress", "cut", "make_submodel",
-	"rename_assembly", "evaluate_section", "floor_custom",
+	"hidden_colours", "panel_outliner", "stress", "cut", "floor_custom",
 ]
+
+## And those that ask for a part selected first.
+const WITH_A_SELECTION: Array[String] = ["make_submodel", "printed_versions", "flex"]
 
 
 func _open_and_walk(name: String) -> void:
@@ -119,15 +126,22 @@ func _open_and_walk(name: String) -> void:
 		return
 	await _frames(12)
 	_walk_all(name)
+	# Its work done before it is put away (Colour the hidden parts draws its
+	# pictures): a coroutine still waiting at quit broke the heap on exit.
+	await _idle()
 	# Put away: Escape first, as a person would; then anything still up
-	# that was not before.
+	# that was not before. A dialog is closed as its window's close button
+	# closes it, so whoever awaits its answer hears "cancelled" (SaveTo.ask
+	# left waiting held its dialog in a static, and the heap broke at exit).
 	_key(KEY_ESCAPE)
 	await _frames(4)
 	for id: int in _shown():
 		if before.has(id):
 			continue
 		var thing: Object = instance_from_id(id)
-		if thing is Window:
+		if thing is AcceptDialog and (thing as Window).visible:
+			(thing as Window).close_requested.emit()
+		if thing is Window and (thing as Window).visible:
 			(thing as Window).hide()
 		elif thing is CanvasItem:
 			(thing as CanvasItem).visible = false
@@ -273,6 +287,16 @@ func _key(code: Key) -> void:
 		event.physical_keycode = code
 		event.pressed = pressed
 		Input.parse_input_event(event)
+
+
+## Until the app says it is busy with nothing (Working), and Colour the
+## hidden parts has drawn its pictures, a minute at most.
+func _idle() -> void:
+	var hidden: HiddenColoursPanel = _main.get("_hidden_colours")
+	for _n: int in 3600:
+		if not Working.is_busy() and (hidden == null or not bool(hidden.get("_working"))):
+			return
+		await process_frame
 
 
 func _frames(n: int) -> void:

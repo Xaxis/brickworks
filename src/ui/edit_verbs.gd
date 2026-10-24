@@ -360,6 +360,7 @@ func _ask_name(purpose: String, title: String, button: String, words_said: Strin
 		words.name = "Words"
 		column.add_child(words)
 		_name_field = LineEdit.new()
+		_name_field.accessibility_name = "Name"
 		_name_field.custom_minimum_size = Vector2(300, 0)
 		_name_field.text_submitted.connect(func(_text: String) -> void:
 			_naming.hide()
