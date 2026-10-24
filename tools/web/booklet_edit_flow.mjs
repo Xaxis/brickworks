@@ -440,8 +440,9 @@ try {
       await tab.waitForTimeout(2000);
     }
     ok(pages > 0, `the booklet arrives (${pages} pages, ${Math.round((Date.now() - started) / 1000)} s)`);
-    ok(await bookletWhole(tab, Math.max(0, Number(args.wait || 900) * 1000 - (Date.now() - started))),
-      `...and is whole (${Math.round((Date.now() - started) / 1000)} s)`);
+    const whole = await bookletWhole(tab, Math.max(0, Number(args.wait || 900) * 1000 - (Date.now() - started)));
+    pages = await tab.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0);
+    ok(whole, `...and is whole (${pages} pages, ${Math.round((Date.now() - started) / 1000)} s)`);
     const facts = await tab.evaluate(() => [...document.querySelectorAll("section.page.steps")].map((s) => ({
       id: s.id,
       steps: (s.dataset.steps || "").split(" ").filter(Boolean).map(Number),

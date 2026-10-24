@@ -229,6 +229,8 @@ if (args.after !== "no") {
       }
       ok(await bookletWhole(tab, Math.max(0, Number(args.wait || 900) * 1000 - (Date.now() - started))),
         `its booklet is whole (${Math.round((Date.now() - started) / 1000)} s)`);
+      pages = await tab.evaluate(() => document.querySelectorAll("section.page.steps").length)
+        .catch(() => 0);
       const numbers = await tab.evaluate(() => new Set([...document.querySelectorAll("section.page.steps")]
         .map((p) => (p.getAttribute("data-steps") || "").split(" ").filter(Boolean)).flat()).size)
         .catch(() => 0);
