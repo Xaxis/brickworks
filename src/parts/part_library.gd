@@ -1669,6 +1669,10 @@ func _index_prints() -> void:
 				or info.is_redirect():
 			continue
 		var plain: PartInfo = parts.get(found.get_string(1))
+		# A print whose own code starts with its p or d: 3039pd0 reads as a
+		# print of a 3039p no catalogue has, and is a print of 3039.
+		if plain == null and found.get_string(1).right(1) in ["p", "d"]:
+			plain = parts.get(found.get_string(1).left(-1))
 		if plain == null or plain.is_redirect() or plain.decor() != 0:
 			continue
 		info.print_of = plain.id
