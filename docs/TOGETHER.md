@@ -252,17 +252,28 @@ takes turns. Here:
   the connected assistant and an account under 13, the other extras, were
   not timed alone: the script stopped at the desktop's (since fixed).
   On the e2c43adb preview the flow's rich measure was p50 1,907 ms, p95
-  3,464 ms, and its frame count named the side: the owner's page drew 27
-  frames a second while idle, the other's 60, and owner to guest was the
-  slower way (p50 2,379 against 1,607 ms). The owner's page is the only one
-  with the assistant open and Claude connected (its connector polling the
-  relay); in the timing tool, where it is not, the owner's page kept 60.
-  That extra is the next to time alone.
+  3,464 ms, the owner's page drawing 27 frames a second while idle and the
+  other's 60. Timed alone (2026-10-24), the connected assistant is not it:
+  the owner's page with the assistant open, Claude connected, its
+  connector listening and a session live drew 60 frames a second, with the
+  pointer on the model too. (The timing tool's "+ assistant" row, 1.5
+  frames a second, is a page in its first seconds after the reload that
+  turns the assistant on: the same page drew 7.6 a second just after
+  loading with nothing else on.) What the owner's page did have, and the
+  other's did not, was the pointer left on the model after Ctrl+Z: the
+  session looked for the part under the mouse four times a second whether
+  or not anything had moved, on a model of 150 parts. It looks only when
+  the mouse, the view or the model moved now (`Main`'s `pointer_at`),
+  and the timing tool's "+ undo" row went from 842 ms p50, p95 1,365 ms to
+  551 ms, p95 910 ms.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
   stayed 0), so what differed was not a part or a state the session
-  tracks.
+  tracks. The desktop's half now writes its file as of the change it last
+  put down beside its line (`desktop.json.ldr`), and the flow reads it
+  again for up to 5 s before calling it apart, then prints the lines that
+  differ: a stale read passes, and a real difference is named.
 - **Changes still on their way when a page goes** (the last half second
   or so before a reload) are not sent; the session's own copy comes back.
 - **A model over 4 MB of text** cannot start a session (Vercel's limit for a
