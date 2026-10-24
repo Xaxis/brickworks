@@ -890,7 +890,11 @@ def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     the thing a warehouse picks.  Rebrickable's elements table carries
     them, keyed by their part number and colour.
 
-    Returns {"pairs": {"<id>/<code>": "<element>"}, "counts": {...}}.
+    Returns {"pairs": {"<id>/<code>": "<element>"}, "also": {"<element>":
+    "<id>/<code>"}, "counts": {...}}: "also" every other element of a pair,
+    by which a search finds a part in its colour from the number a booklet
+    prints (PartLibrary.part_of_element), and which a pair's first is not
+    always (300123 and 300173 are both a blue 2 x 4).
     Only exact and corroborated matches go in: ordering the wrong brick
     is worse than ordering from a description, so a part whose number
     only matches after a mould suffix is dropped has to agree by name
@@ -930,6 +934,7 @@ def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
             loose[low.lstrip("0") or low] = current
 
     pairs: dict[str, str] = {}
+    also: dict[str, str] = {}
     how = {"exact": 0, "by mould variant": 0, "not a colour": 0,
            "no colour": 0, "no part": 0}
     for row in _rows("elements"):
@@ -962,7 +967,9 @@ def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
         if key not in pairs:
             pairs[key] = row["element_id"]
             how[route] += 1
-    return {"source": "Rebrickable elements", "counts": how, "pairs": pairs}
+        elif pairs[key] != row["element_id"]:
+            also[row["element_id"]] = key
+    return {"source": "Rebrickable elements", "counts": how, "pairs": pairs, "also": also}
 
 
 def _matcher(rb_parts: Iterable[str]) -> Callable[[dict], str | None]:

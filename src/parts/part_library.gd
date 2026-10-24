@@ -72,8 +72,16 @@ func kinds_for(words: String, most: int = 3) -> Array:
 	# and jet engines. A word made of two may be two kinds, what it is
 	# first: a firetruck is a truck, then fire's; and so are two words side
 	# by side, a fire truck, in a phrase: "a castle, tower" is two things.
+	# A word that is no kind is what it is a kind of, where that is known
+	# (SubjectWords.IS_A): a sailboat a boat, a forklift cargo's and a
+	# loader's, each marked "is_a" with the word it was read from.
 	for phrase: PackedStringArray in SubjectWords.phrases(words):
-		for read: PackedStringArray in SubjectWords.kinds_of_phrase(phrase, kinds):
+		var reads: Array[PackedStringArray] = SubjectWords.kinds_of_phrase(phrase, kinds)
+		for n: int in reads.size():
+			var read: PackedStringArray = reads[n]
+			var is_a: PackedStringArray = SubjectWords.kinds_it_is(phrase[n], kinds)
+			if not is_a.is_empty():
+				read = is_a
 			place += 1
 			var within: float = 0.0
 			for form: String in read:
@@ -82,6 +90,8 @@ func kinds_for(words: String, most: int = 3) -> Array:
 				seen[form] = true
 				var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
 				entry["kind"] = form
+				if not is_a.is_empty():
+					entry["is_a"] = phrase[n]
 				entry["place"] = place + within
 				within += 1.0 / (read.size() + 1)
 				found.append(entry)
@@ -117,18 +127,7 @@ func normal_for(parts: int) -> Dictionary:
 ## perfectly buildable without one. It must never be shown as though the
 ## element did not exist.
 func element_for(part_id: String, code: int) -> String:
-	if not _looked_for_elements:
-		_looked_for_elements = true
-		var path: String = _resolve_root() + "elements.json"
-		if FileAccess.file_exists(path):
-			var file: FileAccess = FileAccess.open(path, FileAccess.READ)
-			if file != null:
-				var raw: Variant = JSON.parse_string(file.get_as_text())
-				file.close()
-				if typeof(raw) == TYPE_DICTIONARY:
-					var pairs: Variant = (raw as Dictionary).get("pairs", {})
-					if typeof(pairs) == TYPE_DICTIONARY:
-						_elements = pairs
+	_read_elements()
 	var found: String = str(_elements.get("%s/%d" % [part_id, plain_code(code)], ""))
 	# LDraw draws cloth twice, flat as it is sold (50231) and as it is
 	# worn (50231c01 "Cape Cloth (Formed)"); Rebrickable lists the element
@@ -138,6 +137,51 @@ func element_for(part_id: String, code: int) -> String:
 			and part_id.length() > 3 and part_id[-3] == "c" and part_id.right(2).is_valid_int():
 		return element_for(part_id.left(-3), code)
 	return found
+
+
+## The part and colour a LEGO element number names, as an instruction booklet
+## prints it beside each part: ["32316", 0] for 4142135, a black 1 x 5 beam;
+## or [] for a number that is no element known, or the number of a part
+## offered as itself (LDraw numbers a few as LEGO numbered an element). One it
+## keeps for old files is its element: 4121715, a black 2780. Every element of
+## a part and colour, not only the one a parts list orders.
+func part_of_element(number: String) -> Array:
+	var wanted: String = number.strip_edges()
+	if ELEMENT_NUMBER.search(wanted) == null or parts.has(wanted) and not superseded(wanted):
+		return []
+	_read_elements()
+	var pair: String = str(_by_element.get(wanted, ""))
+	if pair.is_empty():
+		return []
+	return [current(pair.get_slice("/", 0)), int(pair.get_slice("/", 1))]
+
+
+## Six to eight digits: 300121 then, 4142135 now. Fewer are part numbers.
+static var ELEMENT_NUMBER := RegEx.create_from_string("^\\d{6,8}$")
+
+
+## elements.json, the first time anything asks: the element to order for each
+## part and colour, and every other element of one (its "also"). Read with the
+## search's index where there are threads (prepare_search): a seventh of a
+## second, which the first element number typed waited.
+func _read_elements() -> void:
+	_elements_lock.lock()
+	if not _looked_for_elements:
+		_looked_for_elements = true
+		var path: String = _resolve_root() + "elements.json"
+		var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) \
+			if FileAccess.file_exists(path) else null
+		if typeof(raw) == TYPE_DICTIONARY:
+			var pairs: Variant = (raw as Dictionary).get("pairs", {})
+			if typeof(pairs) == TYPE_DICTIONARY:
+				_elements = pairs
+				for key: Variant in _elements:
+					_by_element[str(_elements[key])] = str(key)
+			var also: Variant = (raw as Dictionary).get("also", {})
+			if typeof(also) == TYPE_DICTIONARY:
+				for element: Variant in also:
+					_by_element[str(element)] = str(also[element])
+	_elements_lock.unlock()
 
 
 ## The colour a part in this code is filed under by LEGO and Rebrickable:
@@ -361,6 +405,9 @@ class PartInfo extends RefCounted:
 	## (assets/ldraw/part_names.json): "curved macaroni" on 27507, Tile 4 x 4
 	## Corner Round. Searched as its name is.
 	var also_called: String = ""
+	## And the size they name it by, where its name gives none or another:
+	## "1 x 5" for 32316, Technic Beam 5. Searched as its name's is.
+	var also_size: String = ""
 	## Counts by connector kind. The connectors themselves live in the
 	## .lbm beside the geometry and arrive with it; keeping them here took
 	## the catalogue past 25 MB, to answer questions about parts nobody
@@ -680,7 +727,10 @@ var kinds_measured_over: int = 0
 ## on demand because it is 0.8 MB that only a parts list needs, where
 ## the catalogue is loaded at start-up by everything.
 var _elements: Dictionary = {}
+## Element number -> "part/colour", every element known (part_of_element).
+var _by_element: Dictionary = {}
 var _looked_for_elements: bool = false
+var _elements_lock := Mutex.new()
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
 ## hash -> the part ids that asked for it, while it is fetched or waits to be
@@ -763,6 +813,11 @@ func _read_names() -> void:
 		var info: PartInfo = parts.get(id)
 		if info != null:
 			info.also_called = str(words[id])
+	var sizes: Dictionary = (raw as Dictionary).get("sizes", {})
+	for id: Variant in sizes:
+		var info: PartInfo = parts.get(id)
+		if info != null:
+			info.also_size = str(sizes[id])
 
 
 ## How much the set inventories use each part (tools/part_usage.py). Without
@@ -1768,13 +1823,19 @@ func search(query: String, limit: int = 100, every_word: bool = false,
 	# A number LDraw keeps only for old files, typed: the part made now in its
 	# shape, first (current), as the index leaves the old one out.
 	var typed: String = query.strip_edges().to_lower()
+	var first: PartInfo = null
 	if superseded(typed):
-		var twin: PartInfo = parts.get(current(typed))
-		if twin != null:
-			found.erase(twin)
-			found.push_front(twin)
-			if limit >= 0 and found.size() > limit:
-				found.resize(limit)
+		first = parts.get(current(typed))
+	# An element number, as a booklet prints it: its part (part_of_element
+	# says in which colour).
+	var element: Array = part_of_element(typed)
+	if not element.is_empty():
+		first = parts.get(element[0])
+	if first != null:
+		found.erase(first)
+		found.push_front(first)
+		if limit >= 0 and found.size() > limit:
+			found.resize(limit)
 	return found
 
 
@@ -1788,11 +1849,14 @@ var _search_index: PartSearch = null
 var _search_lock := Mutex.new()
 
 
-## Whether the search's index is made: a search asked now does not wait.
+## Whether the search's index is made, and the element numbers read with it:
+## a search asked now does not wait.
 func search_ready() -> bool:
 	_search_lock.lock()
 	var made: bool = _search_index != null
 	_search_lock.unlock()
+	if made and _preparing >= 0 and not WorkerThreadPool.is_task_completed(_preparing):
+		return false
 	if made:
 		_collect_preparing()
 	return made
@@ -1805,7 +1869,9 @@ func prepare_search() -> void:
 	if (OS.has_feature("web") and not OS.has_feature("threads")) or _preparing >= 0 \
 			or search_ready():
 		return
-	_preparing = WorkerTasks.add(func() -> void: _finder(), false, "index the parts for search")
+	_preparing = WorkerTasks.add(func() -> void:
+		_finder()
+		_read_elements(), false, "index the parts for search")
 
 
 ## The task making the index (prepare_search), until it is let go of.
