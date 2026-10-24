@@ -159,6 +159,7 @@ stress
 sculpt
 tested_models
 unsaved_open
+save_name    # Save asks a new model's name, never over a saved one (cloud214)
 door
 known_fits
 gear_mesh

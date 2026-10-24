@@ -203,6 +203,10 @@ declare -A CMD=(
   # model asking its name; then the throwaway account deleted, and its rows
   # with it.
   [cloud_library]="tools/web/cloud_library_flow.mjs --url=$P/app $B --out=$S/${TAG}_cloud_library"
+  # Signing in as a person does: a first visit's sign-in screen, an emailed
+  # code typed (minted, sent nowhere), a reload still signed in, Account
+  # saying who, the admin page refused, and Sign out; a throwaway account.
+  [account]="tools/web/account_flow.mjs --url=$P/app --out=$S/${TAG}_account"
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"
   # ext-apps' basic-host, built: BW_APP_HOST names its examples/basic-host.
