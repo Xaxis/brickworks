@@ -66,6 +66,9 @@ var _together_dialog: TogetherDialog
 var _together_wanted: String = ""
 ## Whether the session this tab was in before a reload has been gone back to.
 var _together_tried: bool = false
+## Where the pointer was last looked for (mouse, view, model) and what it found.
+var _pointer_key: Array = []
+var _pointer_found: Variant = null
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
@@ -4363,12 +4366,22 @@ func _build_ui() -> void:
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
 	# Where this person is working, for the others' view: the part under the
 	# mouse, a few times a second while in a session.
+	# Looked for again only when the mouse, the view or the model moved: a
+	# look under the mouse four times a second on a model standing still
+	# was the owner's page held to 27 frames a second (the flow, 2026-10-24).
 	_together.pointer_at = func() -> Variant:
-		if _verbs == null or _over_panel_at(get_viewport().get_mouse_position()):
+		var mouse: Vector2 = get_viewport().get_mouse_position()
+		var looked: Array = [mouse, _camera.global_transform, _world.revision]
+		if looked == _pointer_key:
+			return _pointer_found
+		_pointer_key = looked
+		_pointer_found = null
+		if _verbs == null or _over_panel_at(mouse):
 			return null
-		var under: int = _verbs.brick_at(get_viewport().get_mouse_position())
+		var under: int = _verbs.brick_at(mouse)
 		var brick: BrickWorld.Brick = _world.get_brick(under) if under != 0 else null
-		return brick.transform.origin if brick != null else null
+		_pointer_found = brick.transform.origin if brick != null else null
+		return _pointer_found
 	# A check's change made as Claude makes one: the same tools, answered here.
 	_together.run_tool = func(name: String, arguments: Dictionary) -> String:
 		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,

@@ -412,8 +412,19 @@ try {
   const sameEverywhere = async (what) => {
     const top = await settled([owner.page, guest.page], withDesktop ? desktopFile : null, 90).catch(() => null);
     const [a, b] = [await textOf(owner.page), await textOf(guest.page)];
-    const desk = withDesktop ? readDesktop(desktopFile) : null;
+    let desk = withDesktop ? readDesktop(desktopFile) : null;
     if (a.hash !== b.hash) dumpTexts(what, a.text, b.text);
+    // The desktop's file is written twice a second: read again for up to 5 s
+    // before it is called apart, and then shown how.
+    for (let n = 0; withDesktop && desk?.hash !== a.hash && n < 10; n++) {
+      await wait(500);
+      desk = readDesktop(desktopFile);
+    }
+    if (withDesktop && desk?.hash !== a.hash) {
+      const deskText = existsSync(`${desktopFile}.ldr`) ? readFileSync(`${desktopFile}.ldr`, "utf8") : "";
+      console.log(`        the desktop at seq ${desk?.seq}, the owner's at ${top}:`);
+      dumpTexts(`${what}_desktop`, a.text, deskText);
+    }
     if (desk?.healed) console.log(`        (the desktop put back ${desk.healed} parts so far: ${(desk.healed_last || []).join(", ")})`);
     return check(`${what}: byte-identical in both browsers${withDesktop ? " and the desktop" : ""}`,
       Boolean(top) && a.hash === b.hash && (!withDesktop || desk?.hash === a.hash),

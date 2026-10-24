@@ -193,6 +193,19 @@ try {
         for (const [what, ms] of Object.entries(timing?.worst || {})) worst[who][what] = Math.max(worst[who][what] || 0, ms);
       }
     }
+    // And how many frames a second each page draws now, idle.
+    const fps = await Promise.all([owner, guest].map((who) => who.page.evaluate(() => new Promise((done) => {
+      let frames = 0;
+      const from = performance.now();
+      const tick = () => {
+        frames += 1;
+        if (performance.now() - from < 2000) requestAnimationFrame(tick);
+        else done(Math.round(10 * frames / ((performance.now() - from) / 1000)) / 10);
+      };
+      requestAnimationFrame(tick);
+    }))));
+    worst.owner.fps = fps[0];
+    worst.guest.fps = fps[1];
     const row = { kind, ...Object.fromEntries(Object.entries(stages).map(([k, v]) => [k, median(v)])),
       p95: [...stages.total].sort((a, b) => a - b)[Math.floor(0.95 * stages.total.length)] ?? NaN, worst };
     rows.push(row);

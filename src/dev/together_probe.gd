@@ -315,9 +315,15 @@ func _join_alone() -> void:
 			next_edit = Time.get_ticks_msec() + 700
 		if not out.is_empty() and Time.get_ticks_msec() - written > 500:
 			written = Time.get_ticks_msec()
+			# The file as of the change it last put down, beside the line, so
+			# a check that finds it apart can say how.
+			var text_now: String = together.model_text()
+			var beside := FileAccess.open(out + ".ldr", FileAccess.WRITE)
+			beside.store_string(text_now)
+			beside.close()
 			var file := FileAccess.open(out, FileAccess.WRITE)
 			file.store_string(JSON.stringify({"live": true, "seq": together.seq, "waiting": together.waiting(),
-				"hash": together.model_hash(), "made": made, "parts": together.uids().size(),
+				"hash": text_now.sha256_text(), "made": made, "parts": together.uids().size(),
 				"messages": together.messages.map(func(m: Dictionary) -> String: return "%s: %s" % [m["name"], m["text"]]),
 				"chat_words": together.chat_words, "healed": together.timing.get("healed", 0),
 				"healed_last": together.timing.get("healed_last", [])}))
