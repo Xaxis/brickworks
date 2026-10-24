@@ -557,7 +557,8 @@ try {
   const [placed] = await ask(owner.page, [{ op: "place", part: "3001", colour: 4, x: -1200, y: 96, z: -1200 }]);
   await settled([owner.page, guest.page]);
   const target = (await uidsOf(guest.page)).find((uid) => uid !== placed.uid);
-  const [painted] = await ask(guest.page, [{ op: "paint", uid: target, colour: 14 }]);
+  // Orange: a colour none of the edits above use, so the paint is a change.
+  const [painted] = await ask(guest.page, [{ op: "paint", uid: target, colour: 25 }]);
   await settled([owner.page, guest.page]);
   // The owner's own key, in the owner's page.
   const view = (await controls(owner.page)).view;
@@ -567,8 +568,9 @@ try {
   const [a2, b2] = [await textOf(owner.page), await textOf(guest.page)];
   check("the owner's Ctrl+Z takes back the owner's part, on both sides", placed?.ok && !a2.uids.includes(placed.uid)
     && !b2.uids.includes(placed.uid));
-  const paintSeen = (text) => text.includes(" 14 ") ;
-  check("...and leaves the other's paint, on both", painted?.ok && paintSeen(a2.text) && a2.hash === b2.hash);
+  const paintSeen = (text) => /^1 25 /m.test(text);
+  check("...and leaves the other's paint, on both", painted?.ok && paintSeen(a2.text) && a2.hash === b2.hash,
+    `painted ${painted?.ok}, orange in the owner's file ${paintSeen(a2.text)}, the same file ${a2.hash === b2.hash}`);
 
   console.log("\n5. how long a change takes to reach the other browser, now");
   await measure("again, with a motion, a print, steps and the hidden colours", 20, true);
