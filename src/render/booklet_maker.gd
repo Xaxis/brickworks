@@ -23,6 +23,9 @@ extends Node
 
 ## Said as the work goes, for the status line.
 signal progress(said: String)
+## The booklet's file, a piece at a time as it is drawn: the pieces one
+## after another are the file. See [method _make].
+signal wrote(piece: String)
 
 ## The colours the pictures are laid on: see Booklet's stylesheet.
 const PAGE_COLOUR := Color8(220, 236, 248)
@@ -73,6 +76,14 @@ static var shown_button: Button = null
 static var open_when_written: bool = not OS.has_feature("web")
 
 
+## Keep the pieces sent out ([signal wrote]) and answer [method make] with
+## the whole file, as a probe wants it; off, [method make] answers with its
+## last piece, or "" when it came to nothing, and the file is what was
+## sent out (Main._export_booklet writes it as it comes).
+var keep_html: bool = true
+
+
+## The booklet's file, or "" when it came to nothing (see [member keep_html]).
 func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	busy = true
 	var html: String = await _make(world, scenery, title)
@@ -168,6 +179,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	document = Booklet.Document.new()
 	document.title = title
+	# As the timeline and the model's page count them (Instructions.count):
+	# two sub-assemblies put on in one step are two entries of one number.
+	document.steps = int(Instructions.count(steps)["steps"])
 	var stock: Inventory = Inventory.of(world, library, scenery)
 	_stock = stock
 	document.pieces = stock.pieces
@@ -190,62 +204,74 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 				var brick: BrickWorld.Brick = world.get_brick(brick_id)
 				if brick != null:
 					_wanted_lots[stock.key_of(brick)] = true
+	# The whole booklet goes out as it is drawn ([signal wrote]): the cover
+	# first, which is the finished model and needs nothing else, then each
+	# page as soon as its pictures are, so the first are read while the last
+	# are drawn. The parts' pictures come after the cover, in a stylesheet
+	# of their own.
+	var cover: Booklet.Page = null
+	if not dry and only.is_empty():
+		cover = await _cover()
+		_emit(Booklet.head(document, false))
+		_emit(Booklet.page_html(cover, document))
+		_lap("cover")
 	var lots: Dictionary = await _part_pictures(stock)
 	_lap("parts drawn")
 	if _stopped():
 		return _forget_all()
+	if cover != null:
+		_emit(Booklet.parts_style(document))
 
 	var entries: Array[Booklet.Entry] = _entries(steps, lots)
 	_find_apart(entries)
-	# As the timeline and the model's page count them (Instructions.count):
-	# two sub-assemblies put on in one step are two entries of one number.
-	document.steps = int(Instructions.count(steps)["steps"])
-	await _choose_views(entries)
-	_lap("views chosen")
-	if _stopped():
-		return _forget_all()
-	_subjects(entries)
-
-	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2,
+	var layout := Booklet.Layout.new(entries, 2,
 		int(BookletLooks.booklet(world).get("per_page", 0)))
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
-			_adds(entry)
-	if dry:
-		document.pages = pages
-		_forget_all()
-		return ""
+	var pages: Array[Booklet.Page] = []
+	var decided: int = 0
 	var drawn: int = 0
-	var total: int = 0
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
-			if not entry.in_callout:
-				total += 1
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
-			# A callout too big to sit beside its step has pages of its own
-			# (Booklet._callout_pages), and its steps are drawn with the step
-			# it belongs to (_draw, from its callout's stage). Drawn here as
-			# well, as a step of the model's own, they had no rank on the
-			# main stage and stopped the booklet with a script error (8022
-			# Tow Truck, 2026-10-16).
-			if entry.in_callout or not only.is_empty() and not only.has(entry.number):
-				continue
-			drawn += 1
-			if drawn % 5 == 1:
-				_say("Drawing the steps…", total, drawn - 1)
+	while not layout.done():
+		# The views of the steps the next page may take, a few at a time: the
+		# first page is drawn after its own steps are seen, not the booklet's.
+		while decided < layout.reach():
+			var upto: int = mini(entries.size(), decided + (BookletStudio.LANES
+				if decided == 0 else 48))
+			await _choose_views(entries, decided, upto)
 			if _stopped():
 				await _keep_up(0)
 				return _forget_all()
-			await _draw(entry)
+			_subjects(entries, decided, upto)
+			decided = upto
+		for page: Booklet.Page in layout.next():
+			pages.append(page)
+			for entry: Booklet.Entry in page.entries:
+				_adds(entry)
+			if dry:
+				continue
+			for entry: Booklet.Entry in page.entries:
+				# A callout too big to sit beside its step has pages of its own
+				# (Booklet._callout_pages), and its steps are drawn with the step
+				# it belongs to (_draw, from its callout's stage). Drawn here as
+				# well, as a step of the model's own, they had no rank on the
+				# main stage and stopped the booklet with a script error (8022
+				# Tow Truck, 2026-10-16).
+				if entry.in_callout or not only.is_empty() and not only.has(entry.number):
+					continue
+				drawn += 1
+				if drawn % 5 == 1:
+					_say("Drawing the steps…", entries.size(), drawn - 1)
+				if _stopped():
+					await _keep_up(0)
+					return _forget_all()
+				await _draw(entry)
+			if cover != null:
+				_later([], func() -> void: _emit(Booklet.page_html(page, document)))
 	await _keep_up(0)
-
 	_lap("steps drawn")
-	if not only.is_empty():
+	if dry or not only.is_empty():
 		document.pages = pages
 		_forget_all()
 		return ""
-	document.pages.append(await _cover())
+	document.pages.append(cover)
 	document.pages.append_array(pages)
 	var finished: Booklet.Page = await _finished(pages.size() + 2)
 	document.pages.append(finished)
@@ -254,10 +280,25 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	_forget_all()
 	_say("Writing the booklet…", 0)
-	await get_tree().process_frame
-	var html: String = Booklet.html(document)
+	for page: Booklet.Page in document.pages.slice(pages.size() + 1):
+		_emit(Booklet.page_html(page, document))
+	_emit(Booklet.TAIL, "")
 	_lap("written")
-	return html
+	if keep_html:
+		return "".join(_written)
+	return Booklet.TAIL
+
+
+## Send [param text] out ([signal wrote]), and keep it for [method make]'s
+## answer when [member keep_html]: the booklet's pieces, each followed by
+## [param then].
+func _emit(text: String, then: String = "\n") -> void:
+	if keep_html:
+		_written.append(text + then)
+	wrote.emit(text + then)
+
+
+var _written := PackedStringArray()
 
 
 ## Say how it is going: to the status line (progress), and to the job with
@@ -637,15 +678,18 @@ func _facing(attach: Instructions.Step) -> Vector3:
 ## and can from the back. A real booklet turns the model round with a
 ## sign, and turns it back with another; so does this, and it stays
 ## turned while the back is still where the work is.
-func _choose_views(entries: Array[Booklet.Entry]) -> void:
-	var facing: Vector3 = BookletStudio.FRONT
+##
+## For [param entries] from [param from] up to [param upto], after those
+## before them: the pages are laid out and drawn as the views are chosen,
+## so the first is read while the last are still to be seen (_make).
+func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 	if dry:
-		var was: Vector3 = BookletStudio.FRONT
-		for entry: Booklet.Entry in entries:
+		for index: int in range(from, upto):
+			var entry: Booklet.Entry = entries[index]
 			if not entry.fixed:
 				entry.from = BookletStudio.FRONT
-			_sign(entry, entry != entries[0] and _round_from(was, entry.from))
-			was = entry.from
+			_sign(entry, index > 0 and _round_from(_before, entry.from))
+			_before = entry.from
 		return
 	var keep: int = _studio.supersample
 	_studio.supersample = 1
@@ -657,30 +701,28 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	# are, first, many at once (BookletStudio.measure_all), and from the back
 	# those the front shows too little of; the rest from the back as the
 	# walk below comes to them. The walk is the one it was, step by step.
-	var seen: Dictionary = {}
 	var asks: Array = []
 	var keys: Array = []
-	for entry: Booklet.Entry in entries:
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
 		if entry.fixed or last >= 0 and entry.number > last:
 			continue
 		asks.append(_ask(_where(entry), BookletStudio.FRONT))
 		keys.append([entry, BookletStudio.FRONT])
-	await _measure(asks, keys, seen, entries.size())
+	await _measure(asks, keys, _seen)
 	if _stopped():
 		_studio.supersample = keep
 		return
 	asks.clear()
 	keys.clear()
-	for entry: Booklet.Entry in entries:
-		if seen.has([entry, BookletStudio.FRONT]) and float(seen[[entry, BookletStudio.FRONT]]) < 0.4:
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
+		if float(_seen.get([entry, BookletStudio.FRONT], 1.0)) < 0.4:
 			asks.append(_ask(_where(entry), BookletStudio.BACK))
 			keys.append([entry, BookletStudio.BACK])
-	await _measure(asks, keys, seen, entries.size())
-	facing = BookletStudio.FRONT
-	var count: int = 0
-	var before: Vector3 = BookletStudio.FRONT
-	for entry: Booklet.Entry in entries:
-		count += 1
+	await _measure(asks, keys, _seen)
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
 		if _stopped():
 			_studio.supersample = keep
 			return
@@ -693,51 +735,56 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		# than a glance round from the step before.
 		if entry.fixed:
 			# The first step is where the reader starts: nothing to turn from.
-			_sign(entry, count > 1 and _round_from(before, entry.from))
-			before = entry.from
-			facing = BookletStudio.FRONT
+			_sign(entry, index > 0 and _round_from(_before, entry.from))
+			_before = entry.from
+			_turned_to = BookletStudio.FRONT
 			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
 				"other": -1.0, "turned": entry.turned, "fixed": true})
 			continue
-		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
+		var other: Vector3 = BookletStudio.BACK if _turned_to == BookletStudio.FRONT \
 			else BookletStudio.FRONT
-		var here: float = await _seen_from(entry, facing, seen)
+		var here: float = await _seen_from(entry, _turned_to)
 		var turn: bool = false
 		var there: float = -1.0
 		if here < 0.4:
-			there = await _seen_from(entry, other, seen)
+			there = await _seen_from(entry, other)
 			turn = there > here + 0.25
-		elif facing == BookletStudio.BACK:
+		elif _turned_to == BookletStudio.BACK:
 			# Turned round: back to the front as soon as the front shows
 			# the work as well.
-			there = await _seen_from(entry, other, seen)
+			there = await _seen_from(entry, other)
 			turn = there >= 0.7
 		measured.append({"what": "view of step %d" % entry.number, "seen": here,
 			"other": there, "turned": turn})
 		if turn:
-			facing = other
-		entry.from = facing
-		_sign(entry, turn or _round_from(before, entry.from))
-		before = entry.from
+			_turned_to = other
+		entry.from = _turned_to
+		_sign(entry, turn or _round_from(_before, entry.from))
+		_before = entry.from
 	_studio.supersample = keep
 
 
+## Where the walk of [method _choose_views] has got to: the way the model
+## faces, the view of the step before, and every measure so far, by
+## [entry, from].
+var _turned_to: Vector3 = BookletStudio.FRONT
+var _before: Vector3 = BookletStudio.FRONT
+var _seen: Dictionary = {}
+
+
 ## How much of [param entry]'s new parts [param from] shows: as measured
-## already into [param seen], or measured now.
-func _seen_from(entry: Booklet.Entry, from: Vector3, seen: Dictionary) -> float:
-	if not seen.has([entry, from]):
-		await _measure([_ask(_where(entry), from)], [[entry, from]], seen, 0)
-	return float(seen.get([entry, from], -1.0))
+## already, or measured now.
+func _seen_from(entry: Booklet.Entry, from: Vector3) -> float:
+	if not _seen.has([entry, from]):
+		await _measure([_ask(_where(entry), from)], [[entry, from]], _seen)
+	return float(_seen.get([entry, from], -1.0))
 
 
 ## Measure [param asks] (BookletStudio.measure_all), a few frames' worth at
-## a time, saying how far along out of [param total] steps (0: say nothing),
-## into [param seen] under [param keys].
-func _measure(asks: Array, keys: Array, seen: Dictionary, total: int) -> void:
+## a time, into [param seen] under [param keys].
+func _measure(asks: Array, keys: Array, seen: Dictionary) -> void:
 	const AT_ONCE := 48
 	for from: int in range(0, asks.size(), AT_ONCE):
-		if total > 0:
-			_say("Choosing how each step is seen…", total, mini(from, total))
 		if _stopped():
 			return
 		var some: Array = await _studio.measure_all(asks.slice(from, from + AT_ONCE))
@@ -913,13 +960,20 @@ static func _cells_of(box: AABB, size: float) -> Array[Vector3i]:
 ##
 ## "Too big" is the whole finished model not fitting a page at four
 ## millimetres a stud.
-func _subjects(entries: Array[Booklet.Entry]) -> void:
-	var area: Vector2 = Booklet.content().size
-	var whole: Rect2 = BookletStudio.extent(_main.boxes, BookletStudio.FRONT)
-	var fits: bool = minf(area.x / maxf(whole.size.x, 1.0),
-		area.y / maxf(whole.size.y, 1.0)) >= 0.2
-	var placed: Dictionary = {}
-	for entry: Booklet.Entry in entries:
+##
+## For [param entries] from [param from] up to [param upto], after those
+## before them, as [method _choose_views].
+func _subjects(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
+	if from == 0:
+		var area: Vector2 = Booklet.content().size
+		var whole: Rect2 = BookletStudio.extent(_main.boxes, BookletStudio.FRONT)
+		_fits = minf(area.x / maxf(whole.size.x, 1.0),
+			area.y / maxf(whole.size.y, 1.0)) >= 0.2
+		_placed.clear()
+	var fits: bool = _fits
+	var placed: Dictionary = _placed
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
 		var span: Array = _ranks[int(entry.get_meta("step"))]
 		var key: String = "" if fits else entry.section
 		if not placed.has(key):
@@ -934,6 +988,12 @@ func _subjects(entries: Array[Booklet.Entry]) -> void:
 				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from)
 			entry.cropped = false
 		_zoomed(entry)
+
+
+## Whether the whole model fits a page, and each section's boxes so far:
+## see [method _subjects].
+var _fits: bool = true
+var _placed: Dictionary = {}
 
 
 ## A step its designer zoomed: in, framed on what it adds, the rest of the

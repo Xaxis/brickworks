@@ -266,45 +266,79 @@ static func content() -> Rect2:
 ## alone.
 static func lay_out(entries: Array[Entry], first_page: int = 2,
 		per_page: int = 0) -> Array[Page]:
-	var most: int = per_page if per_page in [1, 2, 4] else 4
+	var layout := Layout.new(entries, first_page, per_page)
 	var pages: Array[Page] = []
+	while not layout.done():
+		pages.append_array(layout.next())
+	return pages
+
+
+## [method lay_out] a page at a time, for a booklet drawn as it is laid
+## out, its first pages read while the rest are drawn (BookletMaker): the
+## next page, and the callout pages before it, need only the steps from
+## [member at] to [method reach] seen and sized.
+class Layout extends RefCounted:
+	var entries: Array[Entry]
+	var first_page: int
+	## The most steps a page may have.
+	var most: int
+	## The first step not on a page yet.
 	var at: int = 0
-	var section: String = ""
-	var total: int = maxi(1, entries.size())
-	while at < entries.size():
+	## Pages laid out so far.
+	var made: int = 0
+	var _section: String = ""
+	var _total: int
+
+	func _init(steps: Array[Entry], first: int = 2, per_page: int = 0) -> void:
+		entries = steps
+		first_page = first
+		most = per_page if per_page in [1, 2, 4] else 4
+		_total = maxi(1, entries.size())
+
+	func done() -> bool:
+		return at >= entries.size()
+
+	## The steps the next page may take are those before this.
+	func reach() -> int:
+		return mini(at + most, entries.size())
+
+	## The next page, after the pages of its step's callout when it has any.
+	func next() -> Array[Page]:
+		var pages: Array[Page] = []
 		var entry: Entry = entries[at]
 		var banner: String = ""
-		if entry.section != section:
-			section = entry.section
-			banner = section
+		if entry.section != _section:
+			_section = entry.section
+			banner = _section
 		if entry.callout != null:
-			entry.callout.inline = _fits_inline(entry.callout) and not entry.callout.own_pages
+			entry.callout.inline = Booklet._fits_inline(entry.callout) and not entry.callout.own_pages
 			if not entry.callout.inline:
-				for page: Page in _callout_pages(entry.callout,
-						float(at) / float(total)):
+				for page: Page in Booklet._callout_pages(entry.callout,
+						float(at) / float(_total)):
 					pages.append(page)
-		var area: Rect2 = content()
+		var area: Rect2 = Booklet.content()
 		if not banner.is_empty():
 			area = Rect2(area.position + Vector2(0.0, BANNER),
 				area.size - Vector2(0.0, BANNER))
 		var run: Array[Entry] = []
 		for index: int in range(at, mini(at + most, entries.size())):
-			var next: Entry = entries[index]
-			if index > at and (next.section != section or next.callout != null
-					or not next.page_break.is_empty() or entries[index - 1].page_break == "alone"):
+			var next_one: Entry = entries[index]
+			if index > at and (next_one.section != _section or next_one.callout != null
+					or not next_one.page_break.is_empty() or entries[index - 1].page_break == "alone"):
 				break
-			run.append(next)
-		var page := _best_page(run, area, false, most)
+			run.append(next_one)
+		var page := Booklet._best_page(run, area, false, most)
 		page.banner = banner
-		_settle(page)
-		page.progress = float(at + page.entries.size()) / float(total)
+		Booklet._settle(page)
+		page.progress = float(at + page.entries.size()) / float(_total)
 		pages.append(page)
 		at += page.entries.size()
-	for index: int in pages.size():
-		pages[index].number = first_page + index
-		for entry: Entry in pages[index].entries:
-			entry.page = pages[index].number
-	return pages
+		for laid: Page in pages:
+			laid.number = first_page + made
+			made += 1
+			for one: Entry in laid.entries:
+				one.page = laid.number
+		return pages
 
 
 ## The fullest page the run can make that is still big enough to read.
@@ -923,18 +957,45 @@ static func part_size(extent: Vector2) -> Vector2:
 
 static func html(document: Document) -> String:
 	var out := PackedStringArray()
-	out.append(_head(document))
+	out.append(head(document))
 	for page: Page in document.pages:
-		out.append(_page(page, document))
-	out.append("</main>\n</html>\n")
+		out.append(page_html(page, document))
+	out.append(TAIL)
 	return "\n".join(out)
 
 
-static func _head(document: Document) -> String:
+## How the file ends.
+const TAIL := "</main>\n</html>\n"
+
+
+## The file up to its first page: its title, its stylesheet, the bar with
+## Print. With [param parts] the parts' pictures' rules in the stylesheet;
+## without, they come in [method parts_style] after the first pages, which
+## a booklet being read as it is drawn shows first.
+static func head(document: Document, parts: bool = true) -> String:
+	return _head(document, parts)
+
+
+## The parts' pictures' rules in a stylesheet of their own: see [method head].
+static func parts_style(document: Document) -> String:
+	return "<style>\n%s\n</style>" % "\n".join(_part_rules(document))
+
+
+## One page of the file.
+static func page_html(page: Page, document: Document) -> String:
+	return _page(page, document)
+
+
+static func _part_rules(document: Document) -> PackedStringArray:
 	var parts := PackedStringArray()
 	for key: String in document.parts:
 		parts.append(".%s{background-image:url(%s)}" % [_class_of(key, document),
 			document.parts[key]])
+	return parts
+
+
+static func _head(document: Document, with_parts: bool = true) -> String:
+	var parts: PackedStringArray = _part_rules(document) if with_parts else PackedStringArray()
 	return """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
