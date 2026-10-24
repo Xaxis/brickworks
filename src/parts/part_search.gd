@@ -103,7 +103,7 @@ const SAME_WORD: Dictionary = {
 	"modified": ["special"], "special": ["modified"],
 	"connector": ["joiner"], "connectors": ["joiner"], "joiner": ["connector"],
 	"bushing": ["bush"], "bushings": ["bush"],
-	"half bush": ["bush 0.5"], "half bushing": ["bush 0.5"], "half pin": ["pin 0.5"],
+	"half bush": ["bush 1/2"], "half bushing": ["bush 1/2"], "half pin": ["pin 1/2"],
 	"3l pin": ["pin long"], "pin 3l": ["pin long"], "3l pins": ["pin long"],
 }
 ## Words that tell a part's versions apart, which rank it and which the bin,
@@ -439,8 +439,9 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 
 static func _term(said: String) -> Dictionary:
 	var options: Array = [said.split(" ", false)]
+	# In the index's words: 1/2 as LDraw's 1/2 is read, 0.500.
 	for other: String in SAME_WORD.get(said, []):
-		options.append(other.split(" ", false))
+		options.append(words_of(other))
 	var length: RegExMatch = LENGTH.search(said)
 	if length != null:
 		options.append(PackedStringArray([length.get_string(1)]))

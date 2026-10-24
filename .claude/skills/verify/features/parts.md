@@ -100,6 +100,34 @@ geometry in front of them.
   both; five more of a family and its kind ("round brick", "plate
   modified"), 3 of 5 before the height and Modified rules, 5 after; and a
   first keystroke said against 50 ms, failing past 150.
+  And in the names builders use, BrickLink's and Rebrickable's (names248:
+  "liftarm 5" missed 32316, LDraw's Technic Beam 5). Rebrickable's words for
+  a part (`also_called`) and its size where LDraw's name gives none or
+  another (`PartInfo.also_size`, part_names.json's "sizes": 32316 is a 1 x 5
+  there) are its own name, matched as fully as LDraw's, so usage decides
+  between the parts either answers. BrickLink's words for LDraw's
+  (`PartSearch.SAME_WORD`: liftarm a beam, Modified Special, connector
+  joiner, bushing bush, a half bush Bush 1/2, a 3L pin Pin Long) count in
+  full too, as do a length and a gear's teeth as builders write them (3L is
+  3, 24t and z24 are 24 Tooth). In the bin, which wants every word, the words
+  a name puts in brackets and its Modified (`QUALIFIERS`) tell versions apart
+  and are not required: "Technic, Gear 24 Tooth (2nd Version - 1 Axle
+  Hole)" is 3648b. An element number as a booklet prints it (six to eight
+  digits, `PartLibrary.part_of_element`, from elements.json's pairs and its
+  "also", every other element of a pair, made by `rebrickable.elements`)
+  puts its part first; the bin takes its colour in hand, so its tile is
+  drawn and placed in it, and search_parts says "Element 4142135 is 32316 in
+  Black (colour 0)". A number LDraw keeps as an obsolete part in one colour
+  (4121715, a black 2780) is its element. elements.json is read with the
+  index on its worker (`prepare_search`), so the first element number typed
+  takes 3 ms, not 155. `search_rank_probe` holds 31 more queries written
+  before the change (BrickLink names short and in full, Rebrickable's,
+  Technic words, a BrickLink number, four element numbers each in its
+  colour): base 39% in the bin and 55% in search_parts, now 100% both
+  (top 1, 97%); search242's 68 at 99% top 1 and 100% top 3. elements.json's
+  "also" is in the shared data only once `tools/refresh_catalogue.py` has
+  run with this `tools/rebrickable.py`; until then 300123 (a blue 2 x 4 only
+  "also" has) finds nothing.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. It searches through `PartSearch`
   (every word, ranked as search_parts ranks), and folds each print, sticker
@@ -319,7 +347,7 @@ node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # t
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
-godot --headless --path . --script src/dev/search_rank_probe.gd   # 63 held-out queries, bin and search_parts, top 3 at 90% at least; a first keystroke under 50 ms
+godot --headless --path . --script src/dev/search_rank_probe.gd   # 68 held-out queries and 31 in builders' names (BrickLink, Rebrickable, Technic, element numbers in their colour), bin and search_parts, top 3 at 90% each; a first keystroke under 50 ms
 godot --path . --resolution 1280x860 --script src/dev/bin_fold_probe.gd  # prints folded under their part, opened, folded, typed; shots/bin_fold/ (PROBE_SIZE=390x844 too)
 godot --headless --path . --script src/dev/kinds_probe.gd         # whether a castle knows it is arches
 tools/check.sh --network    # adds remote_probe: geometry over the wire

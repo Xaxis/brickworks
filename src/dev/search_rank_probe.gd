@@ -293,7 +293,7 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 	var started: int = Time.get_ticks_usec()
 	cold_bin._run_search("d")
 	var cold: float = float(Time.get_ticks_usec() - started) / 1000.0
-	# The first element number typed reads elements.json, once.
+	# The first element number typed: elements.json is read once, with the index.
 	started = Time.get_ticks_usec()
 	cold_bin._run_search("4142135")
 	var element: float = float(Time.get_ticks_usec() - started) / 1000.0
