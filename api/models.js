@@ -3,8 +3,9 @@
 //
 //   GET  /api/models          the account's models: {models: [{name,
 //                             version, parts, bytes, sum, saved_at}],
-//                             kept: {models, bytes, most_models,
-//                             most_bytes}}, never the files themselves
+//                             kept: {models, most_models, most_bytes}},
+//                             never the files themselves; {models: [],
+//                             off: <why>} where none are kept here
 //   GET  /api/models?name=X   one model: {name, version, parts, sum, model},
 //                             model the .ldr gzipped, in base64
 //   POST /api/models          a save: {name, base, model}, model the same
@@ -31,15 +32,17 @@
 //
 // The database is reached as the server alone (api/_db.js): no key a page
 // holds can read or write the table. Until account_models.sql is applied
-// every answer is 503, and the app keeps its models in the browser as
-// before.
+// the list says off and the rest 503, and the app keeps its models in the
+// browser as before.
 //
 // A test account (a Resend test address, api/_auth.js isTestAccount) keeps
 // models like any other, but for the one every browser flow's pages are
 // signed in as (tools/web/session.mjs): dozens of pages at once, each of
-// which would be sent every model the others saved. It is answered 503, as
-// a deployment without the table is, and its pages keep their models in
-// the browser alone. tools/web/cloud_library_flow.mjs signs in as an
+// which would be sent every model the others saved. Its list is answered
+// as a deployment without the table answers it, {models: [], off}, and its
+// pages keep their models in the browser alone. Not an error status: a
+// page check fails on any request answered with one (tools/web/check.mjs),
+// and nothing is wrong. tools/web/cloud_library_flow.mjs signs in as an
 // account of its own.
 const SHARED_TEST = "delivered+brickworks-tests@resend.dev";
 
@@ -166,14 +169,21 @@ export default async function handler(request, response) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
   }
+  // Kept nowhere here: the list says so, and the app keeps them in the
+  // browser alone, as before (CloudModels).
+  const off = (why) => response.status(200).json({ models: [], off: why });
   if (String(claims.email || "").trim().toLowerCase() === SHARED_TEST) {
-    return response.status(503).json({ error: "The shared test account keeps its models in the browser." });
+    return request.method === "GET" ? off("The shared test account keeps its models in the browser.")
+      : response.status(409).json({ error: "The shared test account keeps its models in the browser." });
   }
   const owner = claims.sub;
   const unreached = (trouble, doing) => {
     const words = String(trouble?.message || trouble);
     if (NOT_HERE.test(words)) {
       console.error("models: supabase/account_models.sql is not applied here; models are kept in the browser only");
+      if (request.method === "GET" && request.query?.name === undefined) {
+        return off("Your account does not keep models here yet. They are kept in this browser.");
+      }
       return response.status(503).json({ error: "Your account does not keep models here yet. They are kept in this browser." });
     }
     console.error(`models: ${doing}: ${words.slice(0, 120)}`);

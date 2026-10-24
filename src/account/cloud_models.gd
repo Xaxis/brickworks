@@ -37,7 +37,8 @@
 ## Web only: on the desktop the models are files on the computer, as
 ## Studio's are. Off for a run nobody is sitting at ([member keeps]). The
 ## one test account every browser flow signs in as is kept out by the
-## deployment (api/models.js), which answers it as one without the table.
+## deployment (api/models.js), which answers it as one without the table
+## does: a list that says off.
 class_name CloudModels
 extends Node
 
@@ -146,6 +147,11 @@ func _sync_once() -> void:
 	if int(listed["code"]) != 200 or not listed["body"] is Dictionary \
 			or not (listed["body"] as Dictionary).get("models") is Array:
 		state = "not_here" if int(listed["code"]) == 503 else "away"
+		keeping = false
+		return
+	# This deployment keeps no models for this account (api/models.js off).
+	if (listed["body"] as Dictionary).get("off") is String:
+		state = "not_here"
 		keeping = false
 		return
 	var there: Dictionary = {}
