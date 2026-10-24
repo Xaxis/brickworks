@@ -14,6 +14,19 @@ whole cycle.
 ## [Unreleased]
 
 ### Fixed
+- A big set from the library is on the screen in seconds. Its parts the
+  build has not got are fetched as soon as its file is read, sixteen at a
+  time, and it is drawn once they are there, before the rest of its open is
+  done. The Boutique Hotel's 3,164 parts took a minute or more in a
+  browser; now under a quarter of that.
+- A set's address typed into a tab with work not saved asks first, as every
+  other open does. Before, the set was not opened and only the status bar
+  said why.
+- File › Open and Open recent say when each model was saved by your
+  computer's clock ("today at 07:48:46"), as Versions does. They said the
+  time in UTC.
+- Following somebody no longer counts their older models as new on your
+  avatar; only what they publish after you follow them counts.
 - Save on a new model nobody has named asks what to call it first, as Save
   as does, and New's "Save, then start new" asks too; a name another saved
   model has is refused rather than written over. Before, it was saved as

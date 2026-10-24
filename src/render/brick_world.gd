@@ -831,7 +831,7 @@ func _flush_when_due() -> void:
 	_rebuild_queued = false
 	if _drawing_held > 0:
 		return
-	var pace := FramePace.new()
+	var pace := FramePace.new(rebuild_slice_us)
 	for key: String in _dirty.keys():
 		_dirty.erase(key)
 		var batch: Batch = _batches.get(key)
@@ -845,10 +845,20 @@ func _flush_when_due() -> void:
 	_flush()
 
 
+## The least each slice of a rebuild in slices is (FramePace). A big model
+## let go of once it is laid is drawn in long ones (ModelStore._open_into):
+## once its first batches are on the screen, a browser drawing in software
+## spends half a second on each frame, whatever the slice was.
+var rebuild_slice_us: int = FramePace.LEAST_US
+
+
 ## Holding what is drawn: changes are made but not drawn until the hold is
 ## released, so a design put down over several frames (Assistant._apply,
 ## gradually) appears whole rather than a slice at a time.
 var _drawing_held: int = 0
+## A model drawn before it is whole (ModelStore._open_into): every part
+## down and drawn, the lattice still being told of them.
+var laying: bool = false
 
 
 func hold_drawing() -> void:
@@ -864,6 +874,14 @@ func release_drawing() -> void:
 
 func is_drawing_held() -> bool:
 	return _drawing_held > 0
+
+
+## Whether what is here is not the whole model yet: parts going down with
+## the drawing held, or a model drawn and still being laid ([member laying]).
+## What reads the model as built (its weight, Grab, the pointer's part)
+## waits for it.
+func is_being_laid() -> bool:
+	return _drawing_held > 0 or laying
 
 
 func _flush() -> void:

@@ -178,8 +178,8 @@ func _case(way: String, open_by: Callable, kind: String, in_flight: bool) -> voi
 	_builder.select_brick(first.id, false)
 	await (_main.get("_verbs") as EditVerbs).press("delete")
 	_store.adopt()
-	# Saved as it is: an open asked of a tab with work not saved is refused
-	# before it begins (the library's tab), or told to discard it (Claude).
+	# Saved as it is: an open asked of a tab with work not saved asks the
+	# person first (the library's tab), or is told to discard it (Claude).
 	_store.save_as(HOUSE)
 	var house_now: int = _parts_on()
 	var house_kept: int = _file_parts(ModelStore.saved_path(HOUSE))

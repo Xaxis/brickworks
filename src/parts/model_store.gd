@@ -98,11 +98,13 @@ class Entry extends RefCounted:
 	## a copy of their own.
 	var example: bool = false
 
+	## "Harbour Tug — 253 bricks, today at 07:48:46": saved when this
+	## computer's clock says, as File, Versions… says it. It said the time in
+	## UTC, 15:48:46 for a save at 07:48 in Alaska (walk180, D4).
 	func describe() -> String:
 		if example:
 			return "%s — %d bricks" % [name, bricks]
-		var when: String = Time.get_datetime_string_from_unix_time(modified)
-		return "%s — %d bricks, %s" % [name, bricks, when.replace("T", " ")]
+		return "%s — %d bricks, %s" % [name, bricks, ModelVersions.when_saved(modified)]
 
 
 var world: BrickWorld
@@ -1160,6 +1162,17 @@ var laying: bool:
 		return world != null and _laying_in >= 0 and _laying_in == world.generation()
 ## How many of its parts are not down yet, while [member laying].
 var still_to_lay: int = 0
+## Whether the model being laid holds the world's drawing (_let_go).
+var _holding: bool = false
+## A big model laid over frames is drawn once its parts are down, before
+## the lattice is told of them ([signal shown]); the slices from then on
+## are at least this long.
+const SHOWN_SLICE_US := 250000
+
+## A big model opened over frames is on the screen, every part down whose
+## geometry is here, and is still being laid ([member laying]): the view is
+## framed on it now, not once it is whole (Main).
+signal shown
 
 
 ## [method open_text], its answer put in [param out]. With [param job] (it
@@ -1259,6 +1272,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		return
 
 	var paced: bool = job != null and known.size() >= LAID_IN_SLICES_FROM
+	if paced and not waiting.is_empty():
+		await _await_geometry(waiting, job)
+		_phase("geometry")
 	var foreign: bool = model.author.strip_edges() != "Brickworks"
 	# Someone else's file is kept, so a save writes back what nobody changed
 	# as it was (SourceFile); the app's own are written whole, as always.
@@ -1313,6 +1329,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		_laying_in = laying_in
 		still_to_lay = known.size()
 		world.hold_drawing()
+		_holding = true
 		# Nothing of it is drawn meanwhile, only the bar: long slices, as
 		# each frame given back costs its own drawing (8466-1 in a browser
 		# drawing in software was laid in 7.4 s of short slices where its
@@ -1370,6 +1387,23 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				_put_away(out, job)
 				return
 	_phase("draw")
+	if paced:
+		# Drawn now, every part down whose geometry is here, and the rest
+		# done with it on the screen: the covers, the lattice told of each
+		# part, what arrived meanwhile. The hotel's 3,164 parts were nothing
+		# to look at until all of that was (walk180, A8). Still being laid:
+		# edits, Claude's tools, the autosave and whatever reads the model as
+		# built wait (BrickWorld.is_being_laid). Once it is drawn a browser
+		# drawing in software takes half a second a frame whatever the slice,
+		# so the slices are long from here.
+		var floor_said: ModelFloor = read["floor"]
+		model_floor = floor_said if floor_said != null else ModelFloor.preferred()
+		world.laying = true
+		world.rebuild_slice_us = SHOWN_SLICE_US
+		_let_go()
+		job.slices_of(SHOWN_SLICE_US)
+		shown.emit()
+		_phase("shown")
 	# Then the lattice told of each, in the same order, once the covers are in.
 	if not lattice_later:
 		while paced and not builder.covers_ready():
@@ -1427,6 +1461,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			awaited = still
 			landed = landed or landing
 		_laying_in = -1
+		world.laying = false
+		world.rebuild_slice_us = FramePace.LEAST_US
 		still_to_lay = 0
 		job.count(known.size() * 2)
 		if landed and awaited.is_empty():
@@ -1468,10 +1504,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
 	_phase("meta")
-	if paced:
-		# Drawn from the end of this frame, a slice of the batches a frame
-		# (BrickWorld.rebuilds_in_slices).
-		world.release_drawing()
 	loaded.emit(title, placed)
 	_phase("loaded")
 	out.append({"placed": placed, "missing": missing.size(),
@@ -1539,10 +1571,21 @@ static func _off_frame(work: Callable) -> Variant:
 ## world was cleared under it. What has been done of it stays undone.
 func _put_away(out: Array, job: Working.Job) -> void:
 	still_to_lay = 0
-	world.release_drawing()
+	_let_go()
+	world.laying = false
+	world.rebuild_slice_us = FramePace.LEAST_US
 	job.count(0)
 	out.append({"placed": 0, "missing": 0, "waiting": 0,
 		"error": "it was put away before all of it was down"})
+
+
+## The model being laid let go of, to be drawn from the end of this frame a
+## slice of the batches a frame (BrickWorld.rebuilds_in_slices): once, as
+## another may hold the drawing too (Assistant._apply).
+func _let_go() -> void:
+	if _holding:
+		_holding = false
+		world.release_drawing()
 
 
 ## The lattice told of a model's parts after it is on screen, a slice at a
@@ -1587,11 +1630,13 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		model = LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
+	if job != null:
+		ask_geometry(model)
 	if job != null and not model.generated.is_empty():
 		await CustomParts.warm_skins(library, model)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
 	began = Time.get_ticks_usec()
-	await CustomParts.fetch_sources(library, model)
+	await CustomParts.fetch_sources(library, model, job == null)
 	# And the skins that waited for a file fetched just now, built the same
 	# way: built by the open, each was waited for in its frame (8466-1's
 	# zdampedshock1 spring, 1.5 s of a browser's).
@@ -1614,9 +1659,67 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 const READ_OFF_FRAME_FROM := 262144
 
 
+## The geometry of [param model]'s parts this build has not got, asked for
+## as soon as the file is read: fetched while the rest of the open goes on,
+## and waited for before the model is drawn (_await_geometry). The parts the
+## file's own copies are of first, as its carried parts wait for those alone
+## (CustomParts._fetch_copied). Asked again, nothing is asked twice.
+func ask_geometry(model: LdrModel) -> void:
+	library.want(_parts_named_in(model))
+	library.want(CustomParts.copied_parts(library, model), true)
+
+
+## Every part [param model] places, by the library's name for it, each once:
+## what its open asks the geometry of. A sub-model's name is among them, and
+## asks for nothing.
+func _parts_named_in(model: LdrModel) -> Array:
+	var named: Dictionary = {}
+	for sub: LdrModel.SubModel in model.submodels.values():
+		for placement: LdrModel.Placement in sub.placements:
+			named[placement.part_id] = true
+	var out: Dictionary = {}
+	for part_id: String in named:
+		out[library.resolve(studio_part(part_id))] = true
+	return out.keys()
+
+
+## The most a big model's open waits for the geometry on its way before it
+## is laid without it, and the most it waits with none arriving: what comes
+## after is put down as it comes (place_awaited).
+const GEOMETRY_WAIT_MS := 20000
+const GEOMETRY_STALL_MS := 4000
+
+
+## Until the geometry of [param waiting] (part id -> true) on its way has
+## come, or [constant GEOMETRY_WAIT_MS] or [constant GEOMETRY_STALL_MS], the
+## job's slices given back. While nothing of the model is drawn a browser's frames
+## are quick, and each fetch is polled once a frame: put down after the
+## model was drawn, each came in a frame of the whole model drawn in
+## software, two a second, and 10297-1's last 126 parts took 55 s to come
+## so (walk180, A8).
+func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
+	library.want(waiting.keys())
+	var began: int = Time.get_ticks_msec()
+	var came_at: int = began
+	var left: int = waiting.size()
+	while true:
+		var now_left: int = 0
+		for part_id: String in waiting:
+			if library.is_on_its_way(part_id):
+				now_left += 1
+		if now_left < left:
+			came_at = Time.get_ticks_msec()
+		left = now_left
+		if left == 0 or Time.get_ticks_msec() - began >= GEOMETRY_WAIT_MS \
+				or Time.get_ticks_msec() - came_at >= GEOMETRY_STALL_MS:
+			return
+		await job.next()
+
+
 ## What the last [method open_text] spent, phase by phase, in ms, in order:
-## parse, carried, flatten, known, source, clear, lift, covers (set going),
-## draw (the world), covered (waiting for the covers), place (the lattice),
+## parse, carried, flatten, known, geometry (waiting for what is on its way),
+## source, clear, lift, covers (set going), draw (the world), shown (the view
+## framed on it), covered (waiting for the covers), place (the lattice),
 ## meta and the store's own [signal loaded] handlers (bigmodel_probe --open
 ## says it).
 var open_phases: Dictionary = {}

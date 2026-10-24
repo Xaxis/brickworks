@@ -1026,8 +1026,29 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 
 ## How many part fetches may be open at once. Enough to keep the link
 ## busy, few enough that a scroll does not queue a hundred of them behind
-## each other in the browser's own connection limit.
-const MAX_IN_FLIGHT := 6
+## each other in the browser's own connection limit. Sixteen, not six,
+## since the store answers over HTTP/2, one connection for them all, and
+## each is polled once a frame: a big set's own parts were most of its open
+## (walk180, A8).
+const MAX_IN_FLIGHT := 16
+
+
+## Ask now for the geometry of each of [param part_ids] this build has not
+## got, ahead of the parts bin's pictures: the parts of a model being
+## opened, fetched while the rest of its open goes on (ModelStore
+## .open_text_fetched). With [param first], ahead of those too, as asked
+## already or not. A part this build has on disk is read when it is first
+## asked for, as before. How many were asked for.
+func want(part_ids: Array, first: bool = false) -> int:
+	var asked: int = 0
+	for part_id: String in part_ids:
+		var info: PartInfo = parts.get(part_id)
+		if info == null or is_resident(part_id) or (is_on_its_way(part_id) and not first) \
+				or FileAccess.file_exists(_resolve_root() + "parts/" + info.mesh_hash + ".lbm"):
+			continue
+		request_mesh(part_id, true)
+		asked += 1
+	return asked
 
 ## Seconds to wait before asking again for what failed in a way that may
 ## pass ([method may_pass]): three more tries, 20 s in all. Nothing asked

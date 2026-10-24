@@ -117,6 +117,9 @@ var _shared: SharedModels
 ## (TabSession.open_another), and the tab it was chosen in keeps its model.
 var _model_library: ModelLibrary
 var _from_library: String = ""
+## The world's generation the view was framed in as a big model was first
+## drawn (ModelStore.shown), -1 for none: not framed again once it is whole.
+var _framed_in: int = -1
 ## The comments on the link open in the viewer (api/people.js ?op=comments,
 ## StepComments): the server's last answer, shown by the viewer and the
 ## step player alike. The viewer reads nobody's account, so who is here is
@@ -3019,30 +3022,31 @@ func _maybe_copy() -> void:
 ## A model of the library opened in this tab (?library=<id>, from
 ## LibraryDialog's Open): fetched, opened on the empty baseplate a new tab
 ## begins on, and credited to whoever made it ([member ModelStore.credit]).
-## The status bar says it is coming, and why when it cannot.
+## The status bar says it is coming, and why when it cannot. Over work not
+## saved (the address typed into a tab that had some, whose reload brought
+## it back) the person is asked first, as every other open asks
+## (ModelBar.ask_to_replace): it was left on the baseplate with only a line
+## in the status bar to say the set had not opened (walk180, A8).
 func _maybe_open_library() -> void:
 	if _from_library.is_empty():
 		return
 	var id: String = _from_library
 	_from_library = ""
+	# Asked for at once, not once the bar is drawn: the network holds no
+	# frame, and a browser drawing in software drew it a second later.
 	var job: Working.Job = Working.begin("Fetching %s from the library…" % id)
-	await job.shown()
-	var entry: Dictionary = await _model_library.find(id)
+	var got: Dictionary = await _model_library.fetch_model(id, job)
+	var entry: Dictionary = got["entry"]
+	job.end()
+	_set_address("")
 	if entry.is_empty():
-		job.end()
-		_set_address("")
 		_bar.say("could not open it: %s" % _model_library.trouble)
 		return
 	var title: String = ModelLibrary.title_of(entry)
-	job.say("Fetching %s from the library…" % title)
-	var got: Dictionary = await _model_library.model_text(entry, job)
-	job.end()
-	_set_address("")
 	if not str(got["error"]).is_empty():
 		_bar.say("could not open %s: %s" % [title, got["error"]])
 		return
-	if _store.has_unsaved_work():
-		_bar.say("%s is not opened: this tab has work not saved" % title)
+	if not await _bar.ask_to_replace("“%s”" % title):
 		return
 	if _assistant != null:
 		_assistant.forget_built()
@@ -3823,7 +3827,8 @@ func _select_hover() -> void:
 	# While parts go down with the drawing held, what is under the pointer
 	# as drawn has not changed, and every slice changed the lattice, so the
 	# pointer resting on the model asked it again each frame of the work.
-	if _world.is_drawing_held():
+	# So while a model drawn before it is whole is still being laid.
+	if _world.is_being_laid():
 		return
 	var under: int = 0
 	if _verbs.mode == "select" and not _verbs.shows_ghost() and not _verbs.is_view_tool() \
@@ -4076,7 +4081,16 @@ func _build_ui() -> void:
 		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed()
-		_camera.frame(_built_bounds()))
+		# Not again for a big model framed as it was first drawn: the
+		# person may have turned the view since.
+		if _framed_in != _world.generation():
+			_camera.frame(_built_bounds()))
+	# A big model on the screen before it is whole (ModelStore.shown): its
+	# floor laid and the view framed on it then.
+	_store.shown.connect(func() -> void:
+		_lay_baseplate()
+		_camera.frame(_built_bounds())
+		_framed_in = _world.generation())
 
 	var layout := HBoxContainer.new()
 	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -6317,7 +6331,7 @@ func _weigh() -> void:
 	if not _viewing.is_empty():
 		return
 	if _stability == null or _world == null or _counts == null or _weighing \
-			or _world.revision == _stability_revision or _world.is_drawing_held():
+			or _world.revision == _stability_revision or _world.is_being_laid():
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _stability_at <= 900:

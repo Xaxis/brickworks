@@ -1685,8 +1685,8 @@ func _ready_ahead() -> void:
 	# design put down a slice at a time): half of it is not the model, and a
 	# model laid stands still between slices while its lattice is told of
 	# each part, so 10179-1 was read half laid, its parts' shapes read here,
-	# a frame of 1.4 to 1.9 s.
-	if world.is_drawing_held():
+	# a frame of 1.4 to 1.9 s. Nor while one drawn before it is whole is.
+	if world.is_being_laid():
 		_changed_at = now
 		return
 	# Read again once the shapes it was read without have come, twice a

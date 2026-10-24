@@ -645,6 +645,8 @@ func open_text_with_progress(text: String, name: String) -> Dictionary:
 	var job: Working.Job = Working.begin("Reading %s (%s)…" % [name, ModelLibrary.size_words(text.length())])
 	await job.shown()
 	var parsed: LdrModel = await read_off_frame(text, name)
+	if parsed != null:
+		store.ask_geometry(parsed)
 	if parsed != null and not parsed.generated.is_empty():
 		job.say("Building the flexible parts of %s…" % name)
 		await CustomParts.warm_skins(store.library, parsed)

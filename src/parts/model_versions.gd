@@ -48,17 +48,24 @@ class Version extends RefCounted:
 
 	## "today at 14:05:09", or "11 Oct at 09:30:00", or with its year.
 	func when() -> String:
-		var local: int = at / 1000 + int(Time.get_time_zone_from_system().get("bias", 0)) * 60
-		var then: Dictionary = Time.get_datetime_dict_from_unix_time(local)
-		var now: Dictionary = Time.get_datetime_dict_from_system()
-		var day: String = "today"
-		if then.year != now.year or then.month != now.month or then.day != now.day:
-			var months: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-				"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-			day = "%d %s" % [then.day, months[int(then.month) - 1]]
-			if then.year != now.year:
-				day += " %d" % then.year
-		return "%s at %02d:%02d:%02d" % [day, then.hour, then.minute, then.second]
+		return ModelVersions.when_saved(at / 1000)
+
+
+## A save's time, [param unix_s], as this computer's clock says it: "today at
+## 14:05:09", or "11 Oct at 09:30:00", or with its year. File, Versions…, and
+## File, Open's saved models (ModelStore.Entry).
+static func when_saved(unix_s: int) -> String:
+	var local: int = unix_s + int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+	var then: Dictionary = Time.get_datetime_dict_from_unix_time(local)
+	var now: Dictionary = Time.get_datetime_dict_from_system()
+	var day: String = "today"
+	if then.year != now.year or then.month != now.month or then.day != now.day:
+		var months: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+			"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+		day = "%d %s" % [then.day, months[int(then.month) - 1]]
+		if then.year != now.year:
+			day += " %d" % then.year
+	return "%s at %02d:%02d:%02d" % [day, then.hour, then.minute, then.second]
 
 
 ## Where the versions of the model saved as [param stem] (its file's name

@@ -244,8 +244,48 @@ static func title_of(entry: Dictionary) -> String:
 ## The model's file: {"text", "error"}, the error in words for a person.
 ## [param job], when given, counts the download in it.
 func model_text(entry: Dictionary, job: Working.Job = null) -> Dictionary:
+	return _text_of(entry, await _kept_or_fetched(str(entry["file"]), MOST_MODEL, false, job))
+
+
+## The file an index names for [param id]: an id is omr-<the file's stem>,
+## its file library/omr/<stem>.mpd (tools/library_build.py holds every index
+## to it). "" for an id of another kind.
+static func file_of(id: String) -> String:
+	if not is_id(id) or not id.begins_with("omr-"):
+		return ""
+	return ROOT + "omr/" + id.trim_prefix("omr-") + ".mpd"
+
+
+## The model [param id] and its file, the file asked for as the index is
+## read rather than after (file_of): {"entry", "text", "error"}, the entry
+## {} with [member trouble] saying why when there is no such model.
+## [param job], when given, counts the download, and names the model once
+## the index has. A set's file and the index were a second each on the web.
+func fetch_model(id: String, job: Working.Job = null) -> Dictionary:
+	var file: String = file_of(id)
+	var early: Array = []
+	if not file.is_empty():
+		(func() -> void:
+			early.append(await _kept_or_fetched(file, MOST_MODEL, false, job))).call()
+	var entry: Dictionary = await find(id)
+	if entry.is_empty():
+		return {"entry": {}, "text": "", "error": trouble}
+	if job != null:
+		job.say("Fetching %s from the library…" % title_of(entry))
+	var got: Dictionary
+	if str(entry["file"]) == file:
+		while early.is_empty():
+			await get_tree().process_frame
+		got = _text_of(entry, early[0])
+	else:
+		got = await model_text(entry, job)
+	got["entry"] = entry
+	return got
+
+
+## What came for [param entry]'s file, as [method model_text] answers.
+func _text_of(entry: Dictionary, got: Dictionary) -> Dictionary:
 	var file: String = str(entry["file"])
-	var got: Dictionary = await _kept_or_fetched(file, MOST_MODEL, false, job)
 	if int(got["code"]) == 200 and not (got["bytes"] as PackedByteArray).is_empty():
 		return {"text": (got["bytes"] as PackedByteArray).get_string_from_utf8(), "error": ""}
 	# A dev checkout has the repository's files themselves.
@@ -326,6 +366,8 @@ func fetch(url: String, most: int, job: Working.Job = null) -> Dictionary:
 	for attempt: int in 3:
 		var request := HTTPRequest.new()
 		request.body_size_limit = most
+		# Read a megabyte a frame, not 64 KB: a set's file was sixteen frames.
+		request.download_chunk_size = 1 << 20
 		# 36 MB on a slow line is minutes; the index and a cover are not.
 		request.timeout = 600.0 if most > MOST_COVER else 60.0
 		add_child(request)
@@ -339,6 +381,10 @@ func fetch(url: String, most: int, job: Working.Job = null) -> Dictionary:
 		while got.is_empty():
 			await get_tree().process_frame
 			if job != null and request.get_downloaded_bytes() > 0:
+				# In the words the job has now: the model's name, once the
+				# index read meanwhile has said it (fetch_model).
+				if not job.words.begins_with(words):
+					words = job.words.trim_suffix("…")
 				var size: int = request.get_body_size()
 				job.say("%s… %s%s" % [words, size_words(request.get_downloaded_bytes()),
 					" of " + size_words(size) if size > 0 else ""])

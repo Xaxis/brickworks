@@ -31,7 +31,8 @@
 // delivers nowhere, then one minted here), answers the age question, makes
 // his profile and follows Ada from First steps; Cy, signed in elsewhere and
 // never asked, meets the question on /profile and reaches a filled feed in
-// four taps.
+// four taps, with nothing new on the avatar for Ada's castle, listed before
+// the follow (walk180, W7), and one once she lists a tower after.
 //
 // Pictures in --out: each step at both widths, in the theme it ran in and
 // the other.
@@ -370,6 +371,14 @@ try {
     const follow = `dialog.first-steps .person-row[data-handle="${designer}"] button[data-follow]`;
     await tap(follow);
     await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true", "Following", 20, follow);
+    // A new follow's backlog is not new (walk180, W7: a new account that
+    // followed the house here had 7 on its avatar at once). Ada's castle was
+    // listed before Cy followed her, and Cy has never opened the feed.
+    if (cy) {
+      const counted = await api("/api/people?op=feed_count", { token: cy.access_token });
+      check(`...nothing new on Cy's avatar for her castle, listed before the follow: count ${counted.body.count}, `
+        + `feed ${counted.body.feed}`, counted.status === 200 && counted.body.count === 0 && counted.body.feed === 0);
+    }
     await tap("#first-feed");
     await page.waitForURL(`**/feed${T}`, { timeout: 20000 });
     await until(page, () => document.documentElement.dataset.feed === "ready" && document.querySelectorAll("#rows .feed-row").length > 0,
@@ -378,6 +387,17 @@ try {
     check(`at ${width}: Skip, Skip, Follow, See your feed: ${taps} taps to ${feed.rows.length} posts of ${designer}'s `
       + `(suggested ${drawn.designers.join(", ")})`, taps <= 4 && feed.rows.length > 0 && feed.rows.every((one) => one.who === `/u/${designer}`));
     await shots(page, `3_feed-${width}`, theme);
+    if (cy) {
+      // What she lists after the follow is new.
+      const name = `First Steps Tower ${rand}`;
+      const model = `0 ${name}\r\n0 Name: tower.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n0 STEP\r\n`
+        + `1 15 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n0 STEP\r\n0 // first steps flow ${rand}\r\n`;
+      const shared = await api("/api/share", { method: "POST", token: ada.access_token, body: { name, author: "Ada First",
+        model, image: readFileSync(path.join(root, "web/share.png")).toString("base64"), listed: true, kind: "castle" } });
+      const counted = await api("/api/people?op=feed_count", { token: cy.access_token });
+      check(`...and her tower, listed after it, is: /m/${shared.body.id || "?"} ${shared.status}, count ${counted.body.count}, `
+        + `feed ${counted.body.feed}`, shared.status === 201 && counted.body.count === 1 && counted.body.feed === 1);
+    }
     await browserOf.close();
   }
 
