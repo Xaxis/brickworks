@@ -26,6 +26,9 @@ const ROUNDS := 4
 ## stands with what is in by then.
 const MOST_AFTER := 64
 
+## Whether the planner's steps are put right: off only for a probe, to see
+## what the planner alone would have made.
+static var mends: bool = true
 ## What the last mend did, for a probe: {"waited": parts put in later than
 ## planned, "sooner": parts put in with what holds them, "floating" and
 ## "hidden": what the steps test still finds, "rounds", "ms"}.
@@ -38,6 +41,8 @@ static var said: Dictionary = {}
 static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}, job: Working.Job = null) -> void:
 	said = {}
+	if not mends:
+		return
 	var began: int = Time.get_ticks_msec()
 	var bricks: Array = []
 	var by_id: Dictionary = {}
