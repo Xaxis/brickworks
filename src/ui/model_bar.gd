@@ -445,7 +445,7 @@ func _on_save() -> bool:
 		_name.text = name
 		_name.text_changed.emit(name)
 	var saved: bool = false
-	if not store.paces():
+	if not store.says_writing():
 		saved = store.save_as(name)
 	elif _saving != null:
 		return false
