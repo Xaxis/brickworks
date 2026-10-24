@@ -3989,6 +3989,7 @@ func _edit(args: Dictionary) -> Model:
 	_onto_lines(model)
 	_touched += model.placements.size() - before
 	_touched += gone.size()
+	_current_parts(model)
 	return model
 
 
@@ -6869,7 +6870,33 @@ func _read_model(args: Dictionary) -> Model:
 	model.assemblies = _read_assemblies(args)
 	model.features = _read_features(args)
 	model.feature_spots = FeaturePass.read_spots(args)
+	_current_parts(model)
 	return model
+
+
+## Each part a design places by a number LDraw keeps only for old files, as
+## the part made now of that shape and size (PartLibrary.current), and the
+## design told once a part what it was given: 3660, which a session knew from
+## memory, is LDraw's 3660a, obsolete, and was nineteen of a tug's hull, on
+## its parts list and its BrickLink order (walk180, 2026-10-23).
+func _current_parts(model: Model) -> void:
+	if library == null:
+		return
+	var told: Dictionary = {}
+	for placement: Placement in model.placements:
+		if placement.id != 0:
+			continue
+		var now: String = library.current(placement.part)
+		if now == placement.part:
+			continue
+		var was: String = library.resolve(placement.part)
+		if now != was and not told.has(placement.part):
+			told[placement.part] = true
+			var info: PartLibrary.PartInfo = library.parts.get(now)
+			_pattern_advice.append("%s is placed as %s%s: LDraw keeps %s only for old files, "
+				% [placement.part, now, " (%s)" % _part_called(now) if info != null else "",
+					was] + "and %s is the part made now in its shape and size." % now)
+		placement.part = now
 
 
 ## A finishing pass over what stands: the plain one-wide bricks with an open
@@ -17534,8 +17561,10 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 			+ "than sets in general:")
 		for entry: Variant in kind.get("parts", []):
 			var pair: Array = entry
-			said.append("    %-9s x%-5s %s" % [str(pair[0]), str(pair[1]),
-				_part_called(str(pair[0]))])
+			# As a design places it: real sets' inventories name 3660 as LDraw
+			# drew it once, which is obsolete now (PartLibrary.current).
+			var id: String = library.current(str(pair[0]))
+			said.append("    %-9s x%-5s %s" % [id, str(pair[1]), _part_called(id)])
 		var palette: PackedStringArray = PackedStringArray()
 		for entry: Variant in kind.get("colors", []):
 			var pair: Array = entry
@@ -17549,8 +17578,8 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 			var carried: PackedStringArray = PackedStringArray()
 			for entry: Variant in props:
 				var pair: Array = entry
-				carried.append("%s (%s)" % [_part_called(str(pair[0])),
-					str(pair[0])])
+				var id: String = library.current(str(pair[0]))
+				carried.append("%s (%s)" % [_part_called(id), id])
 			said.append("  And what they carry: " + ", ".join(carried))
 	return {"content": "\n".join(said)
 		+ "\n\nA multiplier is how much more often sets of this kind use "
@@ -19294,8 +19323,12 @@ func _find_parts_like(query: String) -> String:
 			return PartsOnly.allows(str((pair as Array)[0]), library))
 		if listed.is_empty():
 			continue
-		for pair: Variant in listed.slice(0, 6):
-			parts.append("%s %s" % [(pair as Array)[0], _part_called(str((pair as Array)[0]))])
+		for pair: Variant in listed:
+			# Named as a design places it (PartLibrary.current), once.
+			var id: String = library.current(str((pair as Array)[0]))
+			var said: String = "%s %s" % [id, _part_called(id)]
+			if not parts.has(said) and parts.size() < 6:
+				parts.append(said)
 		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
 			family["looks"], "; ".join(parts)])
 	if rows.is_empty():
