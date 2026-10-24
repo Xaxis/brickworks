@@ -127,6 +127,9 @@ var _pending: bool = false
 var _autosave_is_model: bool = false
 
 signal saved(name: String)
+## A file of the person's models was written, by Save or a session's
+## save_model: the account is sent it too (CloudModels).
+signal kept_save(path: String)
 signal loaded(name: String, bricks: int)
 ## A new model, called this: see [method begin].
 signal begun(name: String)
@@ -2312,6 +2315,7 @@ func _store(path: String, text: String) -> bool:
 			_tell_page_wrote(kept, FileAccess.get_file_as_bytes(kept).size())
 		# A browser asked to keep the person's models, now that there are some.
 		StorageKeep.ask()
+		kept_save.emit(path)
 	return true
 
 
