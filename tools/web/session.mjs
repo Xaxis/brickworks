@@ -55,12 +55,14 @@ export function canSignIn() {
 export async function mintCode(email = TEST_EMAIL) {
   const p = project();
   if (!p) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY — source .env");
+  const headers = { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" };
+  // The account made first, by the admin API (422 when it is there
+  // already), as api/otp.js makes it.
+  await fetch(`${p.url}/auth/v1/admin/users`, { method: "POST", headers, body: JSON.stringify({ email, email_confirm: true }) });
   const reply = await fetch(`${p.url}/auth/v1/admin/generate_link`, {
-    method: "POST",
-    headers: { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" },
-    body: JSON.stringify({ type: "magiclink", email }),
+    method: "POST", headers, body: JSON.stringify({ type: "magiclink", email }),
   });
-  const body = await reply.json();
+  const body = await reply.json().catch(() => ({}));
   const code = body.email_otp || body.properties?.email_otp;
   if (!code) throw new Error(`no code minted: ${reply.status}`);
   return code;

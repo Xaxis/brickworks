@@ -92,6 +92,14 @@
       "tests": []
     },
     {
+      "id": "api:POST /api/orangecheck",
+      "kind": "api",
+      "entry": "api/orangecheck.js",
+      "reach": "curl -s -X POST https://brickworks.diy/api/orangecheck?op=signin -H 'content-type: application/json' -d '{\"token\":\"not.a.token\"}'",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:POST /api/otp",
       "kind": "api",
       "entry": "api/otp.js",
@@ -944,6 +952,22 @@
       "tests": []
     },
     {
+      "id": "cli:orangecheck browser flow",
+      "kind": "cli",
+      "entry": "tools/web/oc_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:orangecheck check",
+      "kind": "cli",
+      "entry": "tools/web/orangecheck_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:own copies read as their parts",
       "kind": "cli",
       "entry": "src/dev/own_copies_probe.gd",
@@ -1241,6 +1265,14 @@
       "kind": "cli",
       "entry": "src/dev/sign_in.gd",
       "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:signup check",
+      "kind": "cli",
+      "entry": "tools/web/signup_check.mjs",
+      "reach": "node tools/web/signup_check.mjs --url=https://brickworks.diy   (.env sourced)",
       "area": "account",
       "tests": []
     },
@@ -3278,6 +3310,16 @@
       "reach": "https://brickworks.diy/m/<id>  (or /app?view=<id>; godot --path . -- --view=<id> with BRICKWORKS_API set)",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "ui:sign in with orangecheck",
+      "kind": "ui",
+      "entry": "web/account.js",
+      "reach": "https://brickworks.diy/profile signed out, Sign in, then Sign in with orangecheck",
+      "area": "account",
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "ui:sign-in screen",

@@ -321,6 +321,13 @@ csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${in
 # window that opened it, which Cross-Origin-Opener-Policy would.
 authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signin_origin}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
+# The site's other pages may open a window that answers them: orangecheck's
+# sign-in window hands the page its token through window.opener, which
+# Cross-Origin-Opener-Policy: same-origin cuts (2026-10-23,
+# api/orangecheck.js). So they send same-origin-allow-popups, and only the
+# app keeps same-origin (/app and the build under /b/): cross-origin
+# isolation, which its threads need, asks for exactly that.
+
 # Addresses that are not pages, said once each. An unknown one used to be
 # redirected to the landing page, which told a mistyped link nothing and
 # told a search engine every typo was the home page. It gets the 404 page,
@@ -365,13 +372,16 @@ cat > .vercel/output/config.json <<EOF
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/(.*)",
       "headers": {
-        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
         "Cross-Origin-Embedder-Policy": "require-corp",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "Content-Security-Policy": "$csp"
       },
+      "continue": true },
+    { "src": "/(app|b/.*)",
+      "headers": { "Cross-Origin-Opener-Policy": "same-origin" },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",
       "headers": { "Cache-Control": "public, max-age=31536000, immutable",

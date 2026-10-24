@@ -118,7 +118,8 @@ which models they could build from what they have. Added 2026-10-12.
   sets or 20,000 lots (413), a file that is not what it says, with its line
   (400). The table: one row per account, `owner` → `auth.users` on delete
   cascade, `sets` and `parts` as JSON arrays with size checks, row security on
-  with four owner-only policies for `authenticated`, nothing for `anon`.
+  and, since 2026-10-24 (`supabase/no_client_access.sql`), no policy and no
+  grant for any key a page holds: only `/api/collection` reaches it.
   **Applied to the live project 2026-10-12** with `tools/apply_sql.mjs`
   (the pooler, one transaction; the project keeps no Supabase CLI migration
   table, so it is recorded here and in HANDOFF.md, not there): table
@@ -190,8 +191,8 @@ Proves it when:
   screen`; look at `shots/collection_need.png`, `collection_build.png`,
   `collection_own.png`.
 - `collection_probe.mjs` ends `every check passed` (44 checks): every import in
-  LDraw's numbers, the other account refused by the endpoint and by row
-  security straight at the database, the anonymous key reaching nothing, the
+  LDraw's numbers, the other account refused by the endpoint, and straight at
+  the database every session refused, the owner's too, and the anonymous key, the
   three size limits, ten malformed files refused with their line, and both
   accounts and their rows gone at the end.
 - `collection_flow.mjs` ends `imported, short, exported, ranked and opened in a

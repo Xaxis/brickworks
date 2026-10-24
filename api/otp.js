@@ -9,9 +9,9 @@
 // 2026-10-09; the rate limit (may_ask_for_code) and the tables behind it
 // had stayed in the database the whole time.
 //
-// The code is minted by Supabase and delivered by us. Supabase's admin
-// generate_link makes a one-time code and, asked this way, sends
-// nothing — which is what lets the email come from our own sender
+// The code is minted by Supabase and delivered by us. A new address's
+// account is made by the admin API, and Supabase's admin generate_link
+// makes a one-time code for it and, asked this way, sends nothing — which is what lets the email come from our own sender
 // through Resend rather than from a project nobody recognises. The
 // client then redeems the code against Supabase directly, so the
 // session and the token are Supabase's throughout and this server never
@@ -39,19 +39,31 @@ function project() {
   return (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 }
 
-/// Ask Supabase for a code without asking it to send one.
-async function mint(email) {
+function asServer() {
   const secret = process.env.SUPABASE_SECRET_KEY;
+  return { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" };
+}
+
+/// Ask Supabase for a code without asking it to send one: the account
+/// made first, here, as the server, then a one-time code for it.
+///
+/// Made by the admin API rather than by generate_link, which made a new
+/// address's account until 2026-10-24: that goes through Supabase's own
+/// sign-up, which is to be turned off (disable_signup, since a public
+/// sign-up with a password made an account and a session at any address),
+/// and the admin API makes one either way. Confirmed, since only the code
+/// redeemed signs anybody in to it. An address that has its account
+/// already is answered 422, and asked its code all the same.
+async function mint(email) {
+  const made = await fetch(`${project()}/auth/v1/admin/users`, {
+    method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!made.ok && made.status !== 422) return null;
   const reply = await fetch(`${project()}/auth/v1/admin/generate_link`, {
     method: "POST",
-    headers: {
-      apikey: secret,
-      authorization: `Bearer ${secret}`,
-      "content-type": "application/json",
-    },
-    // magiclink covers both cases: Supabase creates the account if the
-    // address is new and signs it in if it is not, so there is no
-    // separate sign-up path to keep in step with this one.
+    headers: asServer(),
+    // magiclink: a one-time code for the account, and nothing sent.
     body: JSON.stringify({ type: "magiclink", email }),
     signal: AbortSignal.timeout(10000),
   });
@@ -145,14 +157,9 @@ async function deliver(email, code) {
 }
 
 async function allowed(email, ip) {
-  const secret = process.env.SUPABASE_SECRET_KEY;
   const reply = await fetch(`${project()}/rest/v1/rpc/may_ask_for_code`, {
     method: "POST",
-    headers: {
-      apikey: secret,
-      authorization: `Bearer ${secret}`,
-      "content-type": "application/json",
-    },
+    headers: asServer(),
     body: JSON.stringify({ for_email: email, from_ip: ip }),
     signal: AbortSignal.timeout(8000),
   });
@@ -216,6 +223,11 @@ export default async function handler(request, response) {
   // nothing.
   if (!EMAIL.test(email) || email.length > 320) {
     return response.status(422).json({ error: "That is not an email address." });
+  }
+  // Where orangecheck accounts' made-up addresses are (api/orangecheck.js):
+  // no mail is delivered there, and a code is never the way into one.
+  if (/@oc\.brickworks\.diy$/.test(email)) {
+    return response.status(422).json({ error: "That address takes no email. Sign in with orangecheck instead." });
   }
 
   const ip =

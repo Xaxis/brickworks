@@ -50,7 +50,7 @@
 .connections li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px;
 	font-size: var(--t-small); color: var(--ink-soft); }
 .connections b { color: var(--ink); }
-.delete-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
+.delete-form, .code-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -150,6 +150,20 @@
 					</div>
 				</div>
 
+				<div class="setting" id="oc-part" hidden>
+					<div>
+						<h2>orangecheck</h2>
+						<p id="oc-said"></p>
+					</div>
+					<button class="cta ghost" type="button" id="oc-go" hidden>Link orangecheck</button>
+					<form class="wide code-form" id="oc-code" hidden>
+						<label><span id="oc-code-said">The code we emailed you</span>
+							<input id="oc-code-field" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
+						<div class="actions"><button class="cta" type="submit" id="oc-code-go">Confirm</button></div>
+					</form>
+					<p class="said wide" id="oc-status" role="status"></p>
+				</div>
+
 				<div class="setting" id="privacy-part">
 					<div class="wide">
 						<h2>Privacy</h2>
@@ -197,6 +211,8 @@
 								Claude connections are deleted with the account. It cannot be undone.</p>
 							<label>Type your email address to confirm
 								<input id="delete-confirm" type="email" autocomplete="off" required></label>
+							<label id="delete-code-part" hidden><span id="delete-code-said">The code we emailed you</span>
+								<input id="delete-code" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
 							<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button></div>
 							<p class="said" id="delete-said" role="status"></p>
 						</form>

@@ -96,7 +96,30 @@ try {
   const offered = Object.keys(await controls());
   check(offered.length > 0 && offered.every((name) => name.startsWith("signin_")),
     `nothing but the sign-in form can be pressed: ${offered.join(", ")}`);
+  // Offered to everybody, as the deployment says (api/_oc_config.js, the
+  // one switch); off, to nobody.
+  const offer = (await (await fetch(new URL("/api/account", url), {
+    headers: bypass ? { "x-vercel-protection-bypass": bypass } : {} })).json()).orangecheck || {};
+  check(offered.includes("signin_orangecheck") === Boolean(offer.everyone),
+    offer.everyone ? "Sign in with orangecheck is offered beside the email" : "Sign in with orangecheck is offered to nobody, as the deployment says");
   await shot("1_first_visit");
+
+  // Sign in with orangecheck goes to the site's sign-in, which says it
+  // brings the person back (web/profile.js): the app's page cannot hear
+  // orangecheck's window. Looked at in a page of its own.
+  if (offer.everyone) {
+    const other = await context.newPage();
+    await other.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await until((s) => s.state === "signed_out" && s.gated, "showed the sign-in screen again", 300, other);
+    for (let i = 0; i < 60 && !(await controls(other)).signin_orangecheck; i++) await other.waitForTimeout(500);
+    await click("signin_orangecheck", other);
+    await other.waitForURL(/\/profile\?then=%2Fapp/, { timeout: 60000 }).catch(() => null);
+    const there = await other.locator("dialog.sign-in #oc-sign-in").waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false);
+    check(there && /\/profile\?then=%2Fapp/.test(other.url()),
+      `...which opens the site's sign-in, with Sign in with orangecheck, to come back to the app: ${other.url().replace(/[?&]x-vercel[^&]*/g, "")}`);
+    await shot("1b_orangecheck_on_the_site", other);
+    await other.close();
+  }
 
   // The builder behind it cannot be used: a click where the model is, and
   // the keys that would change it.

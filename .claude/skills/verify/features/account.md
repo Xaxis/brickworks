@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, cli:signup check -->
 
 ## Sub-features
 
@@ -214,6 +214,87 @@ they have. A Claude connector belongs to the account that switched it on.
   checkout (`--mcp` and `tools/brick.py`, a look by hand), which opens on the
   sign-in screen like anyone's. Mints the code with the admin API (needs
   `.env`), redeems it as the app does, keeps it where the app keeps its own.
+- `signup check` (`tools/web/signup_check.mjs`, 2026-10-23): every account is
+  made on the server, by the admin users API (`api/otp.js`, then its code by
+  the admin `generate_link`, orangecheck's sign-in and the test sessions), so Supabase's own
+  public sign-up must be off and "Confirm email" on: `disable_signup: true`,
+  `mailer_autoconfirm: false`, with anonymous, phone and every other provider
+  off. Measured open on 2026-10-23 (`false`, `true`): a password sign-up at an
+  unused address came back confirmed with a session `/api/account` took as
+  signed in. Nothing here can change it (the dashboard, or a Management API
+  token, which `.env` does not hold): orangecheck turns it off with its own
+  once oc205's release is live. Until then it reads 2 FAIL, the two
+  settings; a stranger's sign-up and the public `/otp` are refused already,
+  leaving no account (`supabase/no_new_ways_in.sql`).
+
+- `sign in with orangecheck` (2026-10-23; `api/orangecheck.js` POST
+  `?op=signin`, `api/_oc.js`, `web/account.js` `signInWithOrangecheck`,
+  `supabase/orangecheck.sql`): the site's sign-in dialog has **Sign in with
+  orangecheck** under the email code ("A Bitcoin wallet, email, Google or
+  GitHub. Brickworks gets an id for you, not your address."). Its window is
+  orangecheck's own (`web/oc-popup.mjs`, served from here, made by
+  `tools/web/vendor_orangecheck.sh` with the server's checks in
+  `api/_orangecheck.js`); the token it hands back is checked (`checkOcToken`;
+  audience from configuration: brickworks.diy alone in production, a Preview
+  deployment's own `VERCEL_URL`, or a loopback `OC_AUDIENCE` on this machine;
+  orangecheck's keys unreadable is 503; `rh` required; the project's rule,
+  `{min_sats, min_days}`; the list of ended
+  sessions, which must be readable), spent once (`oc_spend`), and exchanged
+  for a Supabase session minted with the admin API (the account marked first
+  if it is not), bound to the token's `rh`, `aud` and `iat` (`oc_sessions`)
+  before it is handed out, and only while the did is still the account's
+  (else the session is ended, 409); the token is then
+  ended at orangecheck. A new did is a new account, address 32 random hex
+  `@oc.brickworks.diy` (never derived from the did), `app_metadata.orangecheck`
+  true, keyed in `oc_identities`. That address gets no code (`/api/otp` 422)
+  and no digest (`_comments.js`), is never shown (`/settings` says "Signed in
+  with orangecheck", hides the email choices), and the account is deleted
+  with a fresh orangecheck sign-in as itself instead of the typed address.
+  Needs `OC_PROJECT_KEY` and `OC_SIGNING_SECRET` (Vercel: the secret in
+  Production alone); without either nobody signs in with orangecheck, and
+  where the deployment has no signing secret (a unit's preview) the button is
+  drawn and a sign-in says it is unavailable; production without both takes
+  no token, and says so in its log at every start. Offered to everybody, on
+  every page and in the app's sign-in screen:
+  `ORANGECHECK_FOR_EVERYONE` in `api/_oc_config.js` is the one switch (step 1
+  alone kept it to a tab opened with `?oc=1`, a flag oc205 removed), told to
+  pages and the app by `/api/account` as `orangecheck: {ready, everyone}`.
+  Where the docs fell short, and orangecheck's review and its fixes:
+  `docs/ORANGECHECK.md`. In the web
+  app the sign-in screen has **Sign in with orangecheck** too
+  (`signin_orangecheck`, `src/ui/sign_in_form.gd`, web only): it goes to
+  `/profile?then=/app…`, which opens the dialog by itself and, signed in,
+  goes back (`web/profile.js`; only ever to `/app`). Linking from
+  `/settings` (`GET ?op=status`, `POST ?op=link`, `?op=unlink`) asks for a
+  code emailed in the last five minutes (`amr` `otp`; a password only for a
+  `@resend.dev` test account), never a session orangecheck started
+  (`api/_oc.js` `codeOf`); so does deleting an account with its own email
+  from a session orangecheck started (403 `fresh: false`, and /settings
+  asks for the code in the delete form); the address is told; unlinking
+  ends that id's sessions, the Claude connections it approved and their
+  codes not yet exchanged. Each authenticated request of an account
+  marked `app_metadata.orangecheck`, or at a made-up address, asks
+  `oc_session_of` (held 5 s): a gone session is refused, and one
+  orangecheck started is refused and deleted once ended everywhere or once
+  its did is no longer the account's, and reads but does not write while
+  orangecheck cannot be asked; a made-up address's session orangecheck did
+  not start is refused and deleted (`api/_auth.js` → `api/_oc.js`
+  `sessionStanding`). Any session signed in by password, but a test
+  account's, is refused (403) and deleted (`api/_auth.js`), and Supabase
+  refuses setting a password on any account but a `@resend.dev` test
+  account's, and any change of address (`supabase/no_new_ways_in.sql`, a
+  trigger on `auth.users`; its dry run `tools/no_new_ways_in_try.sql`), a
+  sign-in by password on such an account (`auth.mfa_amr_claims`), the
+  account a public sign-up makes (its user data says `phone_verified`;
+  refused as it commits) and any second factor. The keys a
+  page holds reach nothing in the database (`supabase/no_client_access.sql`,
+  then `no_client_access_models.sql` once oc205's release is live; read by
+  `supabase/client_exposure.sql`); `api/otp.js` makes a new person's account
+  through the admin API, then asks `generate_link` for its code, so it needs
+  no public sign-up (`signup check` holds that it is off). A connection approved in one carries its `rh`
+  (`oauth_grants.oc_*`), and its code is refused once the did is unlinked. Site pages send
+  `Cross-Origin-Opener-Policy: same-origin-allow-popups` so the window can
+  answer; `/app` and `/b/` keep `same-origin`.
 
 Decisions, so they can be changed: the gate is a client gate (the desktop is
 open source and runs on the person's machine); the server enforces accounts
@@ -266,6 +347,63 @@ address, presses Email me a code, types a wrong code then the minted one, signs
 in, opens Account and signs out, with pictures `shots/signin/1_form.png` to
 `6_signed_out.png`. `connector_probe` covers the relay's half.
 
+Sign in with orangecheck, the server against the real database with only
+orangecheck stood in for (tokens signed here with a key served as ochk.io's;
+its rule and list answered here; every account it makes deleted after; about
+40 s; Supabase limits redemptions per address, so give it five minutes
+between runs):
+
+```sh
+set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
+BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
+```
+
+`orangecheck_check` ends "N passed, 0 failed" (88: a first sign-in is a new
+account at a random address whose session `/api/account` takes; the token
+ended at orangecheck and never in the answer; refused a second time, here and
+on another instance; the same did is the same account; no `rh`, another
+audience, none, another key, another issuer, expired, no or a malformed did,
+nothing, junk and `alg: none` all refused in words; a session ended
+everywhere refused, one started after the cutoff let in; no list, no rule, no
+secret or no audience: nobody signs in; a backed-only rule refuses an unbacked
+account with `back_url`; two first sign-ins at once make one account and
+leave none over; three at once all get in; an orangecheck account is not
+deleted by its made-up address or somebody else's sign-in, is by a fresh one of
+its own, which is then spent, and signing in again makes a new one; linking
+from an email account (told, marked, a second id or another's refused), the
+linked id signing in to it, a session orangecheck started never fresh enough
+to unlink, reading but not writing while the list is down, ended everywhere
+and not renewable while the email session goes on, unlinking ending what the
+id started, an orangecheck account unable to link or unlink, a Claude
+connection it approved waiting while the list is down and ended with it;
+orangecheck's review, each failing case: a password set from an
+orangecheck sign-in refused at Supabase, none signing in, the account's
+other session not signed out, an address change refused, both sessions 401
+after Sign out everywhere, and the same refusal for an account with its own
+email (H1); a new person signing in by a code asked for twice, again, and a
+test account by its password, as before; the catalogue holding nothing in
+public for anon, authenticated or PUBLIC (`client_exposure()`), and PostgREST
+refusing every table and function to an emailed-code session and to anon
+(N1); a public sign-up with a password giving `/api` no session (N2; that
+Supabase refuses it, and that sign-up is off, is `signup check`'s); a second
+factor refused; a new person signing in by a code from `api/otp.js` itself
+(its mail caught, never sent), as Supabase is now and with `generate_link`
+making no account, as once sign-up is off; an
+unlink racing a sign-in leaves no session (409), and a binding whose did
+is gone is ended (M1); an unmarked account's session carries the mark
+(L1); a code approved in an orangecheck sign-in refused once its did is
+not the owner's, and deleted by unlinking (L2); deleting from an
+orangecheck sign-in asks for a fresh code (L4); production's one audience;
+keys unreadable 503; a `{min_sats, min_days}` rule letting a backed account
+in; `/api/account`'s offer; twenty tries from one address, the next 429).
+`oc_flow` (a preview check, `oc`) needs no orangecheck account: drawn
+for everybody with nothing on the address, the dialog at 390 and 1280 in
+both themes, the window opened at me.ochk.io and closed, a blocked one said
+in words, or on a unit's preview (no signing secret) the button saying it is
+unavailable, the headers, the server's refusals, Link orangecheck on
+/settings. A finished sign-in through orangecheck's real window
+runs only on brickworks.diy (`tools/web/oc_live_flow.mjs`).
+
 Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
 refusal (same server; a throwaway account, deleted at the end; about 90 s, 31 of
 them waiting out the refresh grace):
@@ -298,6 +436,21 @@ another; revocation ending a connection and what was allowed with it;
 Disconnect ending the rest at once, and the next connection asked again, with
 `before` still true and kept beside the record's own `provider`; a refresh token replayed after the grace ending its
 connection.
+
+That nobody can make an account at an address they cannot read (Supabase
+itself, so any deployment; a few seconds; throwaway accounts at Resend test
+addresses, deleted and checked gone):
+
+```sh
+node tools/web/signup_check.mjs --url=https://brickworks.diy
+```
+
+Proves it when it ends "all ok" (14 checks, 16 with `--url`): the public
+settings say sign-up off, confirmation on, no way in but email; a password
+sign-up, the public `/otp` asked to make an account, an anonymous and a wallet sign-in
+each refused with no account left; and still a first sign-in by a minted code
+(taken as signed in and asked its age), a returning one reaching the same
+account, and an admin-made account signing in by its password.
 
 The whole of it in a real browser, on a deployment (a throwaway account, deleted
 at the end; one email to a Resend test address; about four minutes):

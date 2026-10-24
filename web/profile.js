@@ -689,12 +689,27 @@ function draw() {
   }
 }
 
+// Sent here by the app's sign-in screen to sign in with orangecheck
+// (src/ui/sign_in_form.gd), as /profile?then=/app…: the app's page keeps
+// the isolation its threads need, which orangecheck's window cannot answer,
+// so the person signs in here and is taken back, signed in there too. Only
+// ever back to the app: never an address the link itself names elsewhere.
+const back = (() => {
+  const then = new URLSearchParams(location.search).get("then") || "";
+  return /^\/app(\?[^#\s]*)?$/.test(then) ? then : "";
+})();
+
 async function load() {
   $("loading").hidden = true;
+  if (back && signedIn()) {
+    location.replace(back);
+    return;
+  }
   if (!signedIn()) {
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
     document.documentElement.dataset.profile = "signed-out";
+    if (back && await askToSignIn("Sign in with your email or with orangecheck, and you go back to the app signed in.")) location.replace(back);
     return;
   }
   const [answer] = await Promise.all([call("/api/people?op=me"), drawn()]);

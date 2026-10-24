@@ -1092,6 +1092,14 @@ async function forAccount(request, response) {
       error_description: "Sign in to Brickworks: Claude asks you to when you add this address as a connector.",
     });
   }
+  // A connection approved while signed in with orangecheck, which cannot
+  // be vouched for just now (api/_oauth.js): a moment's wait, not a sign-in.
+  if (grant.unsure) {
+    return response.status(503).setHeader("retry-after", "30").json({
+      error: "temporarily_unavailable",
+      error_description: "Brickworks could not check this connection's orangecheck sign-in just now. Try again in a minute.",
+    });
+  }
   if (request.method === "GET") return response.status(405).setHeader("allow", "POST").end();
   if (request.method === "DELETE") return response.status(204).end();
   if (request.method !== "POST") return response.status(405).end();
@@ -1113,7 +1121,7 @@ async function forAccount(request, response) {
 async function helloFromTab(channel, instance, request, response) {
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (trouble) {
     const status = trouble instanceof AuthError ? trouble.status : 401;
     return response.status(status).json({

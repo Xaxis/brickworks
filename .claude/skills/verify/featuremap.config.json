@@ -574,6 +574,34 @@
       "area": "account"
     },
     {
+      "kind": "api",
+      "label": "POST /api/orangecheck",
+      "entry": "api/orangecheck.js",
+      "reach": "curl -s -X POST https://brickworks.diy/api/orangecheck?op=signin -H 'content-type: application/json' -d '{\"token\":\"not.a.token\"}'",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "sign in with orangecheck",
+      "entry": "web/account.js",
+      "reach": "https://brickworks.diy/profile signed out, Sign in, then Sign in with orangecheck",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "orangecheck check",
+      "entry": "tools/web/orangecheck_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "orangecheck browser flow",
+      "entry": "tools/web/oc_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc",
+      "area": "account"
+    },
+    {
       "kind": "cli",
       "label": "account browser flow",
       "entry": "tools/web/account_flow.mjs",
@@ -1443,13 +1471,6 @@
     },
     {
       "kind": "cli",
-      "label": "step count probe",
-      "entry": "src/dev/step_count_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/step_count_probe.gd",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "build browser flow",
       "entry": "tools/web/build_flow.mjs",
       "reach": "node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web   (serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr)",
@@ -1866,20 +1887,6 @@
       "label": "empty save probe",
       "entry": "src/dev/empty_save_probe.gd",
       "reach": "godot --headless --path . --script src/dev/empty_save_probe.gd",
-      "area": "model-io"
-    },
-    {
-      "kind": "ui",
-      "label": "open over unsaved work",
-      "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (change the model, then File, Open and a model: Save changes to it? Save, Don't save, Cancel; after Don't save, Edit, Undo brings it back)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "unsaved open probe",
-      "entry": "src/dev/unsaved_open_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/unsaved_open_probe.gd",
       "area": "model-io"
     },
     {
@@ -3060,6 +3067,20 @@
     },
     {
       "kind": "ui",
+      "label": "open over unsaved work",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (change the model, then File, Open and a model: Save changes to it? Save, Don't save, Cancel; after Don't save, Edit, Undo brings it back)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "unsaved open probe",
+      "entry": "src/dev/unsaved_open_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unsaved_open_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
       "label": "gears put in mesh by hand",
       "entry": "src/assembly/gear_mesh.gd",
       "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
@@ -3078,6 +3099,20 @@
       "entry": "src/dev/save_dialog_probe.gd",
       "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "step count probe",
+      "entry": "src/dev/step_count_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/step_count_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "signup check",
+      "entry": "tools/web/signup_check.mjs",
+      "reach": "node tools/web/signup_check.mjs --url=https://brickworks.diy   (.env sourced)",
+      "area": "account"
     }
   ]
 }

@@ -3,8 +3,9 @@
 //
 //   No token  — where the part geometry the build did not ship is served
 //               from, whether this deployment has accounts, and where to
-//               sign in. The same answer for everybody, so any cache may
-//               keep it. Enough to draw the sign-in screen.
+//               sign in, with orangecheck too ({ready, everyone}). The
+//               same answer for everybody, so any cache may keep it.
+//               Enough to draw the sign-in screen.
 //   A token   — the same, and who that token belongs to: the address,
 //               and whether it is the owner's (MASTER_EMAIL), which is
 //               what puts the admin page in the account panel; and its age
@@ -28,7 +29,11 @@
 //   POST ?op=delete, with a token and {confirm: <the account's address>}:
 //   the account deleted, and everything of it (2026-10-20). The address
 //   typed again is the confirmation, so a stray click or a stolen page
-//   cannot do it. The files of the build photos it posted, of those
+//   cannot do it. An orangecheck account, whose address is made up
+//   (api/orangecheck.js), sends {orangecheck: <a token>} instead: a fresh
+//   sign-in with orangecheck, as the same person (2026-10-23); an account
+//   with its own email, signed in with orangecheck, a code emailed in the
+//   last five minutes first, as unlinking asks. The files of the build photos it posted, of those
 //   posted of its models, and of its own picture as its avatar
 //   (supabase/avatars.sql), are deleted from storage first, by name, since
 //   storage keeps no link to the account; then the account itself, and
@@ -55,6 +60,7 @@
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
+import { orangecheckOffer } from "./_oc_config.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
 
 export default async function handler(request, response) {
@@ -99,6 +105,9 @@ export default async function handler(request, response) {
     // so the parts cannot live beside the app. Null means "next to the
     // app", which is what a deployment carrying its own parts wants.
     parts_url: process.env.PARTS_URL || null,
+    // Sign in with orangecheck (api/orangecheck.js): whether it works here,
+    // and whether everybody is offered it (api/_oc_config.js).
+    orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false },
   };
 
   const token = bearer(request);
@@ -112,7 +121,7 @@ export default async function handler(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   let claims;
   try {
-    claims = await verify(token);
+    claims = await verify(token, request);
   } catch (error) {
     // Not an error the app should show. A token that has aged out is
     // the ordinary way a session ends, and the app renews it with
@@ -154,7 +163,7 @@ async function takeAge(request, response) {
   }
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
@@ -192,7 +201,7 @@ async function theme(request, response) {
   if (!authConfigured()) return response.status(503).json({ error: "Accounts are not configured here." });
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
@@ -252,7 +261,7 @@ async function deleteAccount(request, response) {
   }
   let claims;
   try {
-    claims = await verify(bearer(request));
+    claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
     return response.status(status).json({ error: error.message });
@@ -266,9 +275,54 @@ async function deleteAccount(request, response) {
     }
   }
   const address = String(claims.email || "").trim().toLowerCase();
-  const typed = String(body?.confirm || "").trim().toLowerCase();
-  if (!address || typed !== address) {
-    return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
+  if (/@oc\.brickworks\.diy$/.test(address)) {
+    // An orangecheck account (api/orangecheck.js) has no address of its own
+    // to type: it signs in with orangecheck again, as itself, and that
+    // sign-in is spent here. Loaded only here, so the route every start of
+    // the app asks does not carry orangecheck's code.
+    const { checkToken, endToken, spendToken } = await import("./_oc.js");
+    const checked = await checkToken(body?.orangecheck);
+    if (!checked.session) return response.status(checked.status).json({ error: checked.error });
+    let whose = null;
+    try {
+      whose = await db("rpc/oc_account_of", { method: "POST", body: { did: checked.session.did_oc } });
+    } catch (trouble) {
+      console.error(`account: whose orangecheck id: ${String(trouble?.message || trouble).slice(0, 120)}`);
+      return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+    }
+    if (whose !== claims.sub) {
+      return response.status(403).json({ error: "That orangecheck sign-in is not this account's. Sign in with the one you use here." });
+    }
+    try {
+      if (!(await spendToken(checked.session.jti, checked.session.exp))) {
+        return response.status(409).json({ error: "That sign-in was used already. Sign in with orangecheck again." });
+      }
+    } catch {
+      return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+    }
+    await endToken(String(body.orangecheck).trim());
+  } else {
+    const typed = String(body?.confirm || "").trim().toLowerCase();
+    if (!address || typed !== address) {
+      return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
+    }
+    // Signed in with orangecheck to an account that has its own email: the
+    // same fresh emailed code as unlinking asks first (api/orangecheck.js),
+    // so an orangecheck sign-in alone cannot delete the account it was
+    // linked to (oc188's review, L4).
+    if (claims.app_metadata?.orangecheck === true) {
+      const { codeOf } = await import("./_oc.js");
+      let asked;
+      try {
+        asked = await codeOf(claims);
+      } catch (trouble) {
+        console.error(`account: whose sign-in: ${String(trouble?.message || trouble).slice(0, 120)}`);
+        return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+      }
+      if (asked.bound && !asked.fresh) {
+        return response.status(403).json({ error: "Confirm it is you first, with a code we email you.", fresh: false });
+      }
+    }
   }
   if (isMaster(claims)) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });

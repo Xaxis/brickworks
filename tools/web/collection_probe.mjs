@@ -152,12 +152,15 @@ try {
   const stillThere = await call(a.access_token);
   check(stillThere.body.sets.length === 1 && lot(stillThere.body, "3001", 4)?.qty === 12,
     "...and the first account's collection is untouched");
+  // The keys a page holds reach nothing in the database (2026-10-24,
+  // supabase/no_client_access.sql): a collection is reached only through
+  // /api/collection, which asks as the server.
   const straight = await database(b.access_token, `collections?owner=eq.${idA}&select=*`);
-  check(straight.status === 200 && Array.isArray(straight.body) && straight.body.length === 0,
-    `straight at the database with the app's key, row security shows it nothing (${straight.status}, ${straight.body?.length} rows)`);
+  check(straight.status === 401 || straight.status === 403,
+    `straight at the database with the app's key and another session, it is refused (${straight.status})`);
   const own = await database(a.access_token, `collections?select=owner`);
-  check(own.status === 200 && own.body.length === 1 && own.body[0].owner === idA,
-    "...while the owner, the same way, sees exactly their own row");
+  check(own.status === 401 || own.status === 403,
+    `...and with the owner's own session too: only /api/collection reaches it (${own.status})`);
   const planted = await database(b.access_token, "collections", { method: "POST",
     body: { owner: idA, sets: [], parts: [] } });
   check(planted.status === 401 || planted.status === 403,

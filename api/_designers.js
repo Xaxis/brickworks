@@ -77,7 +77,7 @@ const KINDS = ["opens", "builds", "remixes", "comments"];
 /// GET ?op=designs: the caller's own numbers, and nobody else's.
 export async function designs(request, response, { origin }) {
   response.setHeader("Cache-Control", MINE_CACHE);
-  const account = (await verify(bearer(request))).sub;
+  const account = (await verify(bearer(request), request)).sub;
   const asked = request.query?.handle === undefined ? null : String(request.query.handle).toLowerCase();
   if (asked !== null && !HANDLE.test(asked)) throw new Unacceptable("handle is 3 to 24 letters, digits and hyphens");
   const person = (await db(`people?account=eq.${account}&select=handle,name`))[0] || null;

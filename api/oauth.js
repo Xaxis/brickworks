@@ -344,8 +344,20 @@ async function check(request, response, origin) {
   });
 }
 
-/// Where the person goes back to with a code for [asked], as [owner].
-async function codeFor(asked, owner, origin) {
+/// What a sign-in with orangecheck carries over to a connection it
+/// approves (2026-10-23, supabase/orangecheck.sql): its id, rh, aud and
+/// iat, so the connection ends when that sign-in is ended everywhere on
+/// orangecheck, or the id is unlinked. Nothing for any other sign-in.
+async function orangecheckOf(claims) {
+  if (claims.app_metadata?.orangecheck !== true || !claims.session_id) return {};
+  const session = await db("rpc/oc_session_of", { method: "POST", body: { session: claims.session_id } });
+  return session && session.bound
+    ? { oc_did: session.did, oc_rh: session.rh, oc_aud: session.aud, oc_iat: session.iat } : {};
+}
+
+/// Where the person goes back to with a code for [asked], as [owner],
+/// signed in as [claims].
+async function codeFor(asked, owner, origin, claims) {
   const code = secret("bwk");
   await db("oauth_codes", {
     method: "POST",
@@ -353,6 +365,7 @@ async function codeFor(asked, owner, origin) {
       hash: sha256(code), client_id: asked.client.client_id, owner,
       redirect_uri: asked.redirect, code_challenge: asked.challenge,
       resource: asked.resource, scope: asked.scope, expires_at: iso(CODE_TTL_S * 1000),
+      ...(await orangecheckOf(claims)),
     },
   });
   await db(`oauth_clients?client_id=eq.${encodeURIComponent(asked.client.client_id)}`, {
@@ -367,7 +380,7 @@ async function approve(request, response, origin) {
   const asked = await authorization(fields(request), origin);
   if (asked.refuse) return response.status(400).json({ refuse: asked.refuse });
   if (asked.back) return response.status(200).json({ redirect: asked.back });
-  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin) });
+  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin, claims) });
 }
 
 /// Asked by the page before it asks the person: has this account allowed
@@ -391,7 +404,7 @@ async function remembered(request, response, origin) {
     + `&redirect_uri=eq.${encodeURIComponent(asked.redirect)}`
     + `&resource=eq.${encodeURIComponent(asked.resource)}&select=id&limit=1`);
   if (!allowed || !allowed.length) return response.status(200).json({ ask: true });
-  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin) });
+  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin, claims) });
 }
 
 async function deny(request, response, origin) {
@@ -511,11 +524,19 @@ async function token(request, response, origin) {
     if (given.resource !== undefined && resourceAsked(given.resource, origin) !== row.resource) {
       return oauthError(response, 400, "invalid_target", "resource is not the one the code was issued for");
     }
+    // Approved while signed in with orangecheck: only while that id is
+    // still the account's. Unlinking deletes such codes too
+    // (supabase/orangecheck.sql oc_unlink); this is for one read before it
+    // (oc188's review, L2).
+    if (row.oc_did && (await db("rpc/oc_account_of", { method: "POST", body: { did: row.oc_did } })) !== row.owner) {
+      return oauthError(response, 400, "invalid_grant", "the orangecheck sign-in that approved this was unlinked");
+    }
     const [grant] = await db("oauth_grants", {
       method: "POST",
       body: {
         owner: row.owner, client_id: client.client_id, client_name: client.client_name,
         redirect_uri: row.redirect_uri, resource: row.resource, scope: row.scope, used_at: iso(),
+        oc_did: row.oc_did ?? null, oc_rh: row.oc_rh ?? null, oc_aud: row.oc_aud ?? null, oc_iat: row.oc_iat ?? null,
       },
       prefer: "return=representation",
     });
@@ -551,9 +572,19 @@ async function token(request, response, origin) {
         return oauthError(response, 400, "invalid_grant", "that refresh token is no longer good");
       }
     }
-    const [grant] = await db(`oauth_grants?id=eq.${grantId}&select=id,client_id,resource,scope,owner`) || [];
+    const [grant] = await db(`oauth_grants?id=eq.${grantId}&select=id,client_id,resource,scope,owner,oc_rh,oc_aud,oc_iat`) || [];
     if (!grant || grant.client_id !== client.client_id) {
       return oauthError(response, 400, "invalid_grant", "that refresh token is no longer good");
+    }
+    // Approved while signed in with orangecheck: gone with that sign-in.
+    if (grant.oc_rh) {
+      const { grantStanding } = await import("./_oc.js");
+      const standing = await grantStanding(grant);
+      if (standing === "revoked") {
+        await db(`oauth_grants?id=eq.${grant.id}`, { method: "DELETE" });
+        return oauthError(response, 400, "invalid_grant", "the Brickworks sign-in that approved this was ended");
+      }
+      if (standing !== "live") return oauthError(response, 503, "temporarily_unavailable", "try again in a minute");
     }
     if (given.resource !== undefined && resourceAsked(given.resource, origin) !== grant.resource) {
       return oauthError(response, 400, "invalid_target", "resource is not the one the token was issued for");
@@ -590,7 +621,7 @@ async function revoke(request, response) {
 
 async function signedIn(request, response) {
   try {
-    return await verify(bearer(request));
+    return await verify(bearer(request), request);
   } catch (trouble) {
     response.status(trouble instanceof AuthError ? trouble.status : 401)
       .json({ error: trouble.message });

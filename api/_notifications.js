@@ -48,7 +48,7 @@ async function call(name, body, missing) {
   }
 }
 
-const who = async (request) => (bearer(request) ? (await verify(bearer(request))).sub : null);
+const who = async (request) => (bearer(request) ? (await verify(bearer(request), request)).sub : null);
 
 const quoted = (text, most) => {
   const line = String(text ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();

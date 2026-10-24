@@ -108,7 +108,7 @@ const notYet = () => {
 };
 
 async function account(request) {
-  return (await verify(bearer(request))).sub;
+  return (await verify(bearer(request), request)).sub;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +447,9 @@ export async function sendCommentDigests({ origin, owner = null }) {
     const email = renderCommentDigest(digest, origin);
     const finish = (outcome) => db("rpc/finish_comment_digest", { method: "POST", body: {
       one: digest.digest, outcome, said_subject: email.subject, said_body: email.text, said_html: email.html } });
-    if (digest.test === true || /@resend\.dev$/i.test(String(digest.email || ""))) {
+    // A test account's, or an orangecheck account's (api/orangecheck.js): its
+    // address is made up, at a domain that takes no mail. Recorded, never sent.
+    if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))) {
       await finish("dry");
       done.push({ id: digest.digest, owner: digest.owner, state: "dry" });
       continue;

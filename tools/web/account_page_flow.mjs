@@ -27,8 +27,9 @@
 //      and words are as they were (op=me, read back).
 //   5. Saved, Sets and Insights: her favourite and collection, what she
 //      owns, how her models are doing.
-//   6. /settings: every row (Profile, Appearance, Email, Privacy, Claude,
-//      Sign out, Delete account), her choices read back as she made them;
+//   6. /settings: every row (Profile, Appearance, Email, orangecheck where
+//      the deployment signs in with it, Privacy, Claude, Sign out, Delete
+//      account), her choices read back as she made them;
 //      an email choice and the theme changed and changed back; Sign out.
 //   7. Bea, signed in with no profile: two fields, and her profile drawn at
 //      once when she makes it.
@@ -362,7 +363,10 @@ try {
         kinds: [...document.querySelectorAll("#mail-kinds input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).join(" "),
         follows: document.getElementById("shows-follows").checked,
         who: document.getElementById("who").textContent, edit: document.getElementById("edit-profile").getAttribute("href") }));
-      check(`${label}: ${rows.join(" · ")}`, rows.join(",") === "Profile,Appearance,Email,Privacy,Claude,Sign out,Delete this account…");
+      // orangecheck's row is there where the deployment signs in with it
+      // (api/orangecheck.js), and nowhere else.
+      check(`${label}: ${rows.join(" · ")}`, rows.join(",").replace("Email,orangecheck,", "Email,")
+        === "Profile,Appearance,Email,Privacy,Claude,Sign out,Delete this account…");
       check(`${label}: her choices as she made them (comments ${choices.comments}, ${choices.kinds}, follows shown ${choices.follows})`,
         (!mailReady || (choices.comments && /models:true/.test(choices.kinds) && /remixes:false/.test(choices.kinds)))
         && (!followsReady || choices.follows) && choices.who.includes(adaEmail) && choices.edit === "/profile?edit=1");

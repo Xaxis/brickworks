@@ -65,12 +65,26 @@ export async function grantOf(token, resource) {
   if (!ACCESS.test(token || "")) return null;
   const rows = await db(`oauth_tokens?hash=eq.${sha256(token)}&kind=eq.access`
     + "&select=expires_at,grant:oauth_grants(id,owner,resource,client_name,redirect_uri,"
-    + "client_info,channel,used_at)");
+    + "client_info,channel,used_at,oc_rh,oc_aud,oc_iat)");
   const row = rows && rows[0];
   if (!row || !row.grant) return null;
   if (Date.parse(row.expires_at) <= Date.now()) return null;
   if (row.grant.resource !== resource) return null;
-  return row.grant;
+  // Approved while signed in with orangecheck (supabase/orangecheck.sql):
+  // ended with that sign-in, everywhere; and while that cannot be known,
+  // marked unsure, which the relay answers with "try again" rather than
+  // "sign in". Loaded only for such a connection.
+  const { oc_rh: rh, oc_aud: aud, oc_iat: iat, ...grant } = row.grant;
+  if (rh) {
+    const { grantStanding } = await import("./_oc.js");
+    const standing = await grantStanding({ oc_rh: rh, oc_aud: aud, oc_iat: iat });
+    if (standing === "revoked") {
+      await db(`oauth_grants?id=eq.${grant.id}`, { method: "DELETE" });
+      return null;
+    }
+    if (standing !== "live") grant.unsure = true;
+  }
+  return grant;
 }
 
 /// The account's record kept by the server alone (Supabase's app_metadata,

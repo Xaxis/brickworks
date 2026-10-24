@@ -28,6 +28,18 @@ declare -A CMD=(
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [versions]="tools/web/versions_flow.mjs --url=$P --out=$S/${TAG}_versions"
   [age]="tools/web/age_flow.mjs --url=$P --out=$S/${TAG}_age"
+  # Sign in with orangecheck (2026-10-23), making nobody an orangecheck
+  # account: the button and its words in the sign-in dialog at 390 and 1280,
+  # light and dark; orangecheck's window opened from the click and closed,
+  # a blocked one said in words; the site's pages able to hear the window
+  # and /app still isolated; the server refusing nothing, junk and a GET.
+  # A finished sign-in is tools/web/oc_live_flow.mjs, on brickworks.diy.
+  [oc]="tools/web/oc_flow.mjs --url=$P --out=$S/${TAG}_oc"
+  # local only: oc_live_flow.mjs. It signs in with a new throwaway Bitcoin
+  # key through orangecheck's real window, which makes a real orangecheck
+  # account each run (the lead purges them), and orangecheck vouches for
+  # sessions only on the verified domain: it runs on brickworks.diy after a
+  # release, never on a preview.
   # Comments and their replies (docs/SOCIAL.md U8): threads newest first,
   # the step pill into the viewer, the box for a visitor (sending signs in),
   # under 13 and comments off refused; a reply under its comment, its
@@ -63,6 +75,11 @@ declare -A CMD=(
   # one signed in elsewhere meets them on /profile and reaches a filled feed
   # in four taps. Throwaway accounts, deleted after with their model.
   [first_steps]="tools/web/first_steps_flow.mjs --url=$P --out=$S/${TAG}_first_steps"
+  # Sign-in by emailed code in the app itself: an entry that is not an
+  # address stays put, Email me a code sends one (to a test inbox), a wrong
+  # code lets no one in, the right one signs in, and the age question is
+  # asked once. A throwaway account, deleted after.
+  [account]="tools/web/account_flow.mjs --url=$P/app --out=$S/${TAG}_account"
   # Top builds, this week's pick and small builds, and the owner's choice of
   # the pick on /admin: API routes only, with the bypass (supabase/discovery.sql).
   [discovery]="tools/web/discovery_flow.mjs --url=$P --out=$S/${TAG}_discovery"
@@ -207,6 +224,11 @@ declare -A CMD=(
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
+  # local only: signup_check.mjs. It asks the Supabase project, not a
+  # deployment, whether anybody can make an account without the code:
+  # public sign-up off, confirmation on (account.md). It fails until the
+  # owner changes those settings; name it here once it passes, so a setting
+  # turned back on holds a release.
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"

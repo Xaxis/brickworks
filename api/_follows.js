@@ -79,7 +79,7 @@ async function call(name, body, missing) {
   }
 }
 
-const who = async (request) => (bearer(request) ? (await verify(bearer(request))).sub : null);
+const who = async (request) => (bearer(request) ? (await verify(bearer(request), request)).sub : null);
 const handleOf = (given) => {
   const handle = String(given ?? "").trim().toLowerCase();
   return HANDLE.test(handle) && !handle.includes("--") ? handle : "";
