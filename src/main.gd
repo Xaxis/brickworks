@@ -4381,10 +4381,12 @@ func _build_ui() -> void:
 	_builder.placed.connect(func(id: int, _part: String) -> void:
 		_last_put = id
 		_sample_untouched = false
-		# A part the model holds below the ground: the model stood up on it.
-		if _builder.risen > 0.0:
-			_bar.say("the model rose %d LDU to stand on what you put down" % roundi(_builder.risen))
-			_ground_for_the_model())
+		# A part the model holds below the ground goes through the floor,
+		# and the model stays where it stands: said, as the reason it looks
+		# sunk into the baseplate.
+		if _builder.below >= 1.0:
+			_bar.say("it reaches %d LDU below the floor; the model stays where it stands"
+				% roundi(_builder.below)))
 	_builder.removed.connect(func(_id: int) -> void:
 		_sample_untouched = false)
 	# Designing on the person's own Claude subscription, when this

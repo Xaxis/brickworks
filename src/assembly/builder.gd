@@ -165,9 +165,12 @@ static func _cover_moves(part: Lbm.PartMesh, at: Transform3D) -> bool:
 	return not BrickLattice.is_square_to_grid(at.basis)
 
 
-## Place the held part where the ghost is, if the ghost is legal.
+## Place the held part where the ghost is, if the ghost is legal. Nothing
+## else moves: a part the model holds below the ground goes there, through
+## the floor's baseplate, and the model stays where it stands
+## ([member below]).
 func place() -> int:
-	risen = 0.0
+	below = 0.0
 	if is_carrying():
 		return _put_carried()
 	if not _ghost_valid:
@@ -187,47 +190,20 @@ func place() -> int:
 
 	_history.append({"undo": "remove", "brick": brick_id})
 	_redo.clear()
-	_stand_on_the_ground(brick_id, packed)
+	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
 	placed.emit(brick_id, held_part)
 	return brick_id
 
 
-## How far the model last rose to stand on a part put down below the
-## ground, in LDU, for the status line; 0 when it did not.
-var risen: float = 0.0
-
-
-## The model raised, everything but the floor, so that a part just put
-## down below the ground ([param brick_id], [param packed] its cover)
-## stands on it: by whole cells, as one step with the put, so one undo takes
-## both back (the part's own rise is not kept: the undo takes it off, and
-## the redo puts it back where it went up to). The set's own file stands on
-## its lowest part the same way when it is opened.
-func _stand_on_the_ground(brick_id: int, packed: PackedInt32Array) -> void:
-	risen = 0.0
-	var low: int = 1 << 30
-	var n: int = 1
-	while n < packed.size():
-		low = mini(low, packed[n])
-		n += 6
-	if low >= GROUND_CELL:
-		return
-	var by := Vector3i(0, GROUND_CELL - low, 0)
-	var up := Vector3(0.0, by.y * BrickLattice.CELL, 0.0)
-	var steps: Array = []
-	for brick: BrickWorld.Brick in world.bricks():
-		if scenery.has(brick.id):
-			continue
-		if brick.id != brick_id:
-			steps.append({"undo": "move", "brick": brick.id, "transform": brick.transform})
-		world.move_brick(brick.id, Transform3D(brick.transform.basis, brick.transform.origin + up))
-		lattice.shift(brick.id, by)
-	var last: Dictionary = _history.back()
-	var words: String = _words_for(last)
-	risen = up.y
-	extend_last(steps)
-	_history.back()["words"] = "%s; the model rose %s LDU to stand on it" % [words,
-		String.num(up.y, 0)]
+## How far the part last put down reaches below the ground, in LDU, for the
+## status line; 0 when it does not. A placement never moves the rest of the
+## model: until walk239 (2026-10-24) the model rose by whole cells to stand
+## on such a part, and a 24 on an axle in a Technic brick on the baseplate
+## lifted the brick off the baseplate's studs, so the build stood loose on
+## its gear, a drag on the gear carried it and the next tipped the build
+## onto its end. 8643-1's bracket, wheels and tyres still go on where its
+## booklet has them, below the plate it is built up from; the model stays.
+var below: float = 0.0
 
 
 ## Remove whatever is under the cursor.
@@ -2448,8 +2424,8 @@ func _joins_made(at: Transform3D) -> int:
 ## part on a joint can be and one on the studs never is.
 ## [param held]: the part in hand where the model holds it, on a joint,
 ## on what it rests on, under or beside a part of it. Below the ground
-## there, the floor's baseplate is not in its way: put down, the model
-## rises to stand on it ([method _stand_on_the_ground]).
+## there, the floor's baseplate is not in its way: it goes down through it,
+## and nothing else moves ([method place]).
 func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		held: bool = false) -> bool:
 	room_blocker = 0
@@ -2800,8 +2776,8 @@ func _out_from_face(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 ## ground held it up, and below the ground. Null otherwise. 8643-1's front
 ## bracket (2436a) hangs its arm 4 LDU below the plate the set is built up
 ## from, and its wheels and tyres go lower still: a model built from its
-## first part on the ground had no room for any of them. Put down, the
-## model rises to stand on it, as the set stands on its tyres.
+## first part on the ground had no room for any of them. Put down, it goes
+## there and the model stays where it stands ([method place]).
 func _held_below_ground(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 		y: float) -> Variant:
 	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
@@ -3013,7 +2989,7 @@ func _fits_on_studs(part: Lbm.PartMesh, at: Transform3D, onto: int,
 		out: Vector3i) -> bool:
 	var packed: PackedInt32Array = boxes_for(part, at)
 	# The floor's baseplate is not in the way of a part the model holds
-	# below the ground: put down, the model rises to stand on it.
+	# below the ground: put down, it goes through it (place).
 	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed))
 	if blockers.is_empty():
 		return true

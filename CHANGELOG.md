@@ -22,6 +22,12 @@ whole cycle.
   Copy, and the embed is drawn in the light or dark its viewer chose.
 
 ### Fixed
+- Putting a part down never moves the rest of the model. A part that
+  reaches below the floor, a gear on an axle in a Technic brick on the
+  baseplate or a car's wheel under its chassis, goes where its ghost shows,
+  and the status line says how far below the floor it reaches. The model
+  used to rise to stand on it, lifting the build off the baseplate, and two
+  gears put down there could not then be turned by hand.
 - Saving, exporting or moving parts between steps on a big model with its
   own steps says so on the status bar before the app is held, as it does on
   any other big model. The Wizard's Tower's Save held the window for up to a

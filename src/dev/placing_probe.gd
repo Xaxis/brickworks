@@ -272,9 +272,10 @@ func _awkward() -> void:
 	# Below the ground, held by the model: a bracket on the edge of the plate
 	# the model is built up from, its arm hanging 4 LDU past the plate's
 	# underside, as 8643-1's front bracket (2436a) hangs. Its ghost stood on
-	# its arm, a plate up; it goes where it is aimed, and the model rises to
-	# stand on it, one undo with the put (Builder._held_below_ground,
-	# _stand_on_the_ground).
+	# its arm, a plate up; it goes where it is aimed, through the floor, and
+	# nothing else moves (Builder._held_below_ground, place): until walk239
+	# the model rose to stand on it, and a gear by the floor lifted a build
+	# off the baseplate.
 	_main.call("clear_model")
 	var plate: int = _put_ldr("3031", 8, [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
 	_camera.frame(AABB(Vector3(-60, -10, -60), Vector3(120, 50, 140)))
@@ -300,15 +301,14 @@ func _awkward() -> void:
 			bracket = brick.id
 	_check("...and a click puts it down", bracket != 0)
 	if bracket != 0:
-		var up := Vector3(0, 4, 0)
 		var base_at: Vector3 = _world.get_brick(plate).transform.origin
 		var bracket_at: Vector3 = _world.get_brick(bracket).transform.origin
-		_check("...and the model rose 4 LDU to stand on it (plate at %s, bracket at %s)" % [
-			base_at, bracket_at], base_at.is_equal_approx(Vector3(0, 8, 0) + up)
-			and bracket_at.is_equal_approx(hung.origin + up))
+		_check("...where its ghost was, the plate staying where it stands (plate at %s, bracket at %s)" % [
+			base_at, bracket_at], base_at.is_equal_approx(Vector3(0, 8, 0))
+			and bracket_at.is_equal_approx(hung.origin))
 		await _key(KEY_ESCAPE)
 		await _key(KEY_Z, true)
-		_check("one undo takes the bracket off and the model down again (plate at %s, %d parts)" % [
+		_check("one undo takes the bracket off, the plate where it was (plate at %s, %d parts)" % [
 			_world.get_brick(plate).transform.origin, _world.brick_count()],
 			_world.get_brick(plate).transform.origin.is_equal_approx(Vector3(0, 8, 0))
 			and _world.get_brick(bracket) == null)
