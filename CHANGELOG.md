@@ -13,7 +13,143 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-24
+
+A release about models a person can build, and keep. The Tested mark now
+means what it says: every part held by a stud, a joint or what catches it,
+and no two parts passing into each other, by their real shapes. The
+Wizard's Tower, the orrery, the castle and every house model in the
+gallery pass. Signed in, the desktop keeps your models with your
+account, in step with every browser you use, and File › Open renames and
+deletes them. Every export asks where to save it and says where it went,
+and opening a model over work not saved always asks first, with Undo to
+bring it back. A big booklet is drawn about six times faster, and View ›
+Stress counts the weak joints and steps through them. Gears put down by
+hand mesh, a door hangs on its frame's hinge, and Claude picks a figure's
+parts as real sets do and answers an edit in a quarter of the words.
+Models saved by 0.6.0 open in 0.7.0 unchanged.
+
+### Added
+
+- View › Stress has a panel down the model's right edge: the legend, how
+  many joints are past their working load and how many near it ("0 past
+  working load · 0 near it" on a model that holds), and the weakest joints,
+  worst first. A click on a row, or Next and Previous, selects that part,
+  frames it with what holds it, and says what would fix it: "It needs 1.4
+  times the hold it has: brace it, give it more studs, or move weight back
+  over the Brick 1 x 1". Close turns Stress off. Claude reads the same list
+  with weakest_joints.
+- Your models are kept with your account. Signed in, each save goes to the
+  account as well as this computer, and every browser and desktop you sign
+  in to has them in File › Open. The computer's copy stays, so offline and
+  signed out work as before. A save made from an older version is kept
+  beside the newer one as "Name 2", never over it.
+- File › Open › Rename or delete saved models…: Rename asks the name as
+  Save does, Delete asks first and leaves Undo on its row. A rename or a
+  delete made on another device is followed here. Save says plainly when
+  the account is nearly full or full (500 models or 64 MB), with Delete old
+  models…, and Account says where your models are in each case: signed
+  out, kept, full or offline.
+- In a big set you can find where a part is. The parts list shows each
+  part's picture, a click on a row selects and frames every one of it, and
+  Select by › Part number or name… opens the list's find. Claude finds the
+  same parts with look_at_model part= and color=.
+- Gears put down by hand mesh. A gear held over an axle seats where it
+  meshes the gear beside it, and the status line says what it meshes;
+  dragged along its axle it slides and stops in mesh; turning one turns
+  the other at their teeth's ratio. When two cannot mesh the app says why:
+  too far apart, square spurs, a part in the way, or how far to slide the
+  other.
+- A door held over its frame goes into it on the frame's hinge, shut, as
+  Studio seats one, wherever the frame is pointed at; it stood beside the
+  frame or on its studs. A window's shutter and its pane go on the window's
+  hinge the same way, and swing on it as a door does.
+
+### Changed
+
+- The Tested mark means a person can build it: a shared model is marked only
+  when every part is held by a stud or a joint or caught where it is, and no
+  two parts pass into each other, by the parts' real shapes as the design
+  check reads them. A figure or a second build standing on its own beside
+  the model is fine; a part left resting on, against or inside another is
+  not. Before, a part touching a held part counted as held and collisions
+  were never asked about. A model that is not marked says
+  why on its page, to its owner; one too big to build to its last step in the
+  time a share takes still says what it failed.
+- Every export, Instructions and Save as open your system's Save dialog
+  first, in the last folder used or Documents, with the model's name, and
+  ask before writing over a file. The status bar then says where the file
+  went, with Show in folder. 0.6.0 wrote .io files and booklets straight
+  into Downloads, and Instructions with no browser did nothing you could
+  see; now it says where the booklet is. A session's export over MCP still
+  writes without asking.
+- A big booklet is drawn about six times faster, and its cover is there in
+  seconds. It is laid out a page at a time, four pictures a frame, each
+  finished on a worker thread, and opens in the browser as it is drawn.
+  The castle's booklet (2,497 parts, 400 steps) took 79 to 95 s on a
+  desktop's graphics card and now takes about 15, every page the same.
+- Claude's answers over MCP carry what its next step needs. An edit says
+  what it changed and what that broke, with a close look at the change,
+  not the whole design again: 413 tokens where it was 1,771. check_design
+  draws nothing it did not check, and edit= asks "what if" of the model as
+  it stands. A whole design over MCP finishes sooner: on four held-out
+  briefs, 10.2 minutes and 51 calls at the median, where it took 12.9 and
+  74.
+- Claude picks a figure's parts as real sets do. Whose a head, a hat or a
+  torso is comes from the official figures, so "smile" never gets a
+  licensed character's head or a baby's, and arms take the colour official
+  figures pair with the torso. Every part a design places, and every part
+  search_parts and the palette's search offer, is the part made now, never
+  an obsolete one; a file you open keeps its numbers. A part goes only in a
+  colour it was made in, and a rounded body can be laid as a sculpted solid
+  in one connected piece.
+- A design's worked-out steps put each part in at the step where something
+  holds it, so a model designed with Claude passes the Tested mark's steps
+  and colours as saved: 10 of the twelve house designs, where 4 did. Saving
+  from outside names a part held only by its tube between four studs, as a
+  dome can be, which BrickBench counts as a piece of its own, and says to
+  seat it on a jumper.
+- The Technic Go-Kart steers from its steering wheel: it turns a column
+  through a bearing, a universal joint and a 16-tooth pinion over a rack
+  pinned to the knuckles, so Grab on the wheel turns both front wheels.
+  The orrery and the Wizard's Tower carry their own steps, in an order a
+  person can follow.
+- Publish sends a picture with nothing behind the model, so it sits on the
+  site's light theme and its dark, and a 4:3 picture for the gallery's
+  cards. The app records who laid a model's parts, by hand, with Claude or
+  by Brickify, and the card's mark follows that, not the tags.
+- [brickworks.diy](https://brickworks.diy): on a phone the app has a layout
+  built for a finger, with a bar for the name and Undo, one row of tools,
+  and sheets for the parts, the colours, More and a held part's actions.
+  You can sign in there with orangecheck, beside the emailed code; the
+  desktop signs in by code, as before. The site works by keyboard alone and
+  names every control for a screen reader, and the gallery has twelve new
+  house models, every one Tested.
+- An account is reached only by its emailed code (or orangecheck, on the
+  web): the server refuses a password, a change of address and a sign-up
+  made any other way.
+
 ### Fixed
+
+- Opening a model saved with no parts opens it, empty, under its name.
+  0.5.0 and 0.6.0 said "Opened … 0 parts" with the last model still there,
+  and Save then wrote that model's parts under the new one's name. A file
+  that does not open says why, wherever it was opened from.
+- New always asks over work not saved. In a browser, an Escape pressed a
+  moment before New could reach the window after it and close its question
+  unseen, so New did nothing.
+- A part that only touches another no longer holds anything up: it carries
+  what stands on it, straight down, and nothing hangs from it or levers on
+  it. A bow hanging 66 g on four studs read safe because a ladder's foot
+  rested under it; it reads amber now. The status bar's verdict weighs the
+  joints as View › Stress does.
+- A model's step count is the same on its page, its Tested note and its
+  booklet: the castle's page said 65 steps where its booklet has 399.
+- A part LDraw keeps in one colour for old files is placed as the part it
+  draws, in that colour, so the parts list and a BrickLink order carry the
+  part made now. 241901, a white 3 x 6 plate, was placed as 2419 in red.
+- add_rooms seats its furniture on the floor's studs: the armchair turns on
+  its base, and the four-poster bed stands on the grid.
 - A big set from the library is on the screen in seconds. Its parts the
   build has not got are fetched as soon as its file is read, sixteen at a
   time, and it is drawn once they are there, before the rest of its open is
@@ -46,10 +182,6 @@ whole cycle.
   open can be undone: Edit › Undo, or History, brings back the model it
   replaced as it stood. Before, the model went with no question and Undo
   had nothing to undo.
-- A door held over its frame goes into it on the frame's hinge, shut, as
-  Studio seats one, wherever the frame is pointed at; it stood beside the
-  frame or on its studs. A window's shutter and its pane go on the window's
-  hinge the same way, and swing on it as a door does.
 - A real set's figures no longer count as parts passing into each other
   where official sets build them so: a helmet under a roof, a backpack
   against a head, legs in a seat, a hand on a door. The check learns
@@ -67,15 +199,6 @@ whole cycle.
 - A part nothing joins but that cannot slide out any way, as the orrery's
   planet rings are caught round its core, is no longer said to come away in
   the hand.
-- The Tested mark means a person can build it: a shared model is marked only
-  when every part is held by a stud or a joint or caught where it is, and no
-  two parts pass into each other, by the parts' real shapes as the design
-  check reads them. A figure or a second build standing on its own beside
-  the model is fine; a part left resting on, against or inside another is
-  not. Before, a part touching a held part counted as held and collisions
-  were never asked about. A model that is not marked says
-  why on its page, to its owner; one too big to build to its last step in the
-  time a share takes still says what it failed.
 - The Wizard's Tower is one piece a person can pick up: its columns stand on
   studs and are tied to its core, and its guards hold their shields by the
   handle.
