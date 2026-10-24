@@ -1566,7 +1566,7 @@ const GEOMETRY_STALL_MS := 4000
 
 ## Until the geometry of [param waiting] (part id -> true) on its way has
 ## come, or [constant GEOMETRY_WAIT_MS] or [constant GEOMETRY_STALL_MS], the
-## job counting it. While nothing of the model is drawn a browser's frames
+## job's slices given back. While nothing of the model is drawn a browser's frames
 ## are quick, and each fetch is polled once a frame: put down after the
 ## model was drawn, each came in a frame of the whole model drawn in
 ## software, two a second, and 10297-1's last 126 parts took 55 s to come
@@ -1584,7 +1584,6 @@ func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
 		if now_left < left:
 			came_at = Time.get_ticks_msec()
 		left = now_left
-		job.count(waiting.size() - left, waiting.size())
 		if left == 0 or Time.get_ticks_msec() - began >= GEOMETRY_WAIT_MS \
 				or Time.get_ticks_msec() - came_at >= GEOMETRY_STALL_MS:
 			return
@@ -1592,8 +1591,9 @@ func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
 
 
 ## What the last [method open_text] spent, phase by phase, in ms, in order:
-## parse, carried, flatten, known, source, clear, lift, covers (set going),
-## draw (the world), covered (waiting for the covers), place (the lattice),
+## parse, carried, flatten, known, geometry (waiting for what is on its way),
+## source, clear, lift, covers (set going), draw (the world), shown (the view
+## framed on it), covered (waiting for the covers), place (the lattice),
 ## meta and the store's own [signal loaded] handlers (bigmodel_probe --open
 ## says it).
 var open_phases: Dictionary = {}
