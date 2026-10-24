@@ -172,7 +172,9 @@ func _new_colour_keeps_pictures(bin: PartsBin) -> void:
 	_check("colour %d picked, from %d (%s)" % [to, was, "its swatch clicked" if swatch != null else "by its code"],
 		bin.selected_color() == to)
 	var now: Array[ThumbTile] = _seen(bin.get("_scroll"), _tiles_of(bin.get("_grid")))
-	var blank: int = now.filter(func(tile: ThumbTile) -> bool: return tile.texture == null).size()
+	# Its own picture, or the one it had in the colour before (_was).
+	var blank: int = now.filter(func(tile: ThumbTile) -> bool:
+		return tile.texture == null and tile.get("_was") == null).size()
 	var shimmering: int = now.filter(func(tile: ThumbTile) -> bool: return tile.material != null).size()
 	_check("every tile in sight still shows a picture while the new ones are drawn (%d of %d blank, %d with the shimmer)"
 		% [blank, now.size(), shimmering], now.size() >= 8 and blank == 0 and shimmering == 0)
