@@ -276,7 +276,13 @@ for (const path of ["/parts/no-such-part.lbm", "/sets/no-such-shard.json"]) {
 // -- sitemap and robots -----------------------------------------------------
 
 console.log("sitemap and robots");
-const sitemap = await get("/sitemap.xml");
+// The CDN keeps the sitemap an hour (api/share.js), so one kept from
+// before a model was published cannot list it: m163's house models held
+// a release that way (2026-10-24). What a crawler is served must answer;
+// what lists the newest model is the sitemap made now.
+const kept = await get("/sitemap.xml");
+if (kept.status !== 200 || !/<loc>/.test(kept.body)) fail(`sitemap.xml answered ${kept.status} with no pages`);
+const sitemap = await get(`/sitemap.xml?fresh=${Date.now()}`);
 const listed = [...sitemap.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 if (sitemap.status !== 200 || !listed.length) fail(`sitemap.xml answered ${sitemap.status} with ${listed.length} pages`);
 // Every model in the gallery is in it, the newest among them.
