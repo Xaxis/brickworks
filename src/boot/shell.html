@@ -187,6 +187,15 @@ body {
 	#boot { transition: opacity 200ms linear, visibility 0s linear 200ms; }
 }
 </style>
+<!--
+  The engine and its pack asked for as the page is read, not once the
+  engine's script has come and run and this tab has chosen its session
+  (claimTab): Godot's loader fetches these very addresses the same way
+  (fetch, same-origin) and is handed what is already on its way.
+  deploy.sh points them at /b/<sha>/ with the rest.
+-->
+<link rel="preload" href="index.wasm" as="fetch" crossorigin>
+<link rel="preload" href="index.pck" as="fetch" crossorigin>
 $GODOT_HEAD_INCLUDE
 </head>
 <body>
@@ -967,6 +976,65 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		} catch (e) {}
 	}
 
+	// -- The rest of the parts ----------------------------------------
+	//
+	// The working set's geometry the first screen does not draw is not in
+	// the pack everyone waits for (tools/web_pack.py) but beside it, in
+	// index.parts.bin: asked for once the engine and its pack are here, so
+	// it never slows them, and written into the engine's files at /later/
+	// once the engine has started, where the app reads it as it reads the
+	// pack (PartLibrary.LATER). A part of it wanted before then is fetched
+	// on its own, as any part the build does not carry. What came and when
+	// is window.brickworksLater (tools/web/load_check.mjs).
+	const LATER_AT = GODOT_CONFIG.executable + ".parts.bin";
+	const later = window.brickworksLater = { asked: 0, came: 0, written: 0, files: 0, failed: "" };
+	let laterBytes = null;
+	function fetchLater(tries) {
+		if (later.asked && !tries) return;
+		later.asked = performance.now();
+		fetch(LATER_AT).then(function (answer) {
+			if (!answer.ok) throw new Error("HTTP " + answer.status);
+			return answer.arrayBuffer();
+		}).then(function (bytes) {
+			later.came = performance.now();
+			laterBytes = bytes;
+			writeLater();
+		}).catch(function (trouble) {
+			later.failed = String(trouble);
+			if (tries < 3) setTimeout(function () { fetchLater(tries + 1); }, 5000 * (tries + 1));
+		});
+	}
+	// "BWP1", the count, each file's name and size, then the files.
+	function writeLater() {
+		if (!started || !laterBytes) return;
+		const bytes = laterBytes;
+		laterBytes = null;
+		try {
+			const view = new DataView(bytes);
+			if (view.getUint32(0, true) !== 0x31505742) throw new Error("not a parts file");
+			const count = view.getUint32(4, true);
+			const text = new TextDecoder();
+			const names = [];
+			const sizes = [];
+			let at = 8;
+			for (let n = 0; n < count; n++) {
+				const length = view.getUint16(at, true);
+				names.push(text.decode(new Uint8Array(bytes, at + 2, length)));
+				sizes.push(view.getUint32(at + 2 + length, true));
+				at += 6 + length;
+			}
+			for (let n = 0; n < count; n++) {
+				engine.copyToFS("/later/" + names[n], bytes.slice(at, at + sizes[n]));
+				at += sizes[n];
+			}
+			later.files = count;
+			later.written = performance.now();
+		} catch (trouble) {
+			later.failed = String(trouble);
+			console.error("could not put the rest of the parts in place", trouble);
+		}
+	}
+
 	const engine = new Engine(GODOT_CONFIG);
 	claimTab().catch(function (trouble) {
 		console.error("could not choose this tab's session", trouble);
@@ -984,13 +1052,18 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 			onProgress: function (current, total) {
 				if (total > 0) {
 					downloaded = Math.min(1, current / total) * DOWNLOAD_SHARE;
-					if (downloaded >= DOWNLOAD_SHARE) say("Sorting the bin…");
+					if (downloaded >= DOWNLOAD_SHARE) {
+						say("Sorting the bin…");
+						fetchLater(0);
+					}
 				}
 			},
 		});
 	}).then(function () {
 		started = true;
 		pull();
+		fetchLater(0);
+		writeLater();
 		running = false;
 		downloaded = 1;
 		creep = 0;

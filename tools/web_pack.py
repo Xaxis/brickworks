@@ -21,6 +21,19 @@ The working set is chosen, not sampled:
     tools/web_pack.py                 write assets/web/
     tools/web_pack.py --budget 40     stop at 40 MB
     tools/web_pack.py --list          say what would be included, write nothing
+
+Only the first screen's geometry goes in the pack everyone waits for
+(assets/web/parts/): the sample model's parts, the palette and the
+essentials. The rest of the working set goes in one file,
+assets/web/later.bin, which tools/export.sh puts beside the build as
+index.parts.bin: the page fetches it once the engine has its own files and
+writes each part into the engine's files at /later/ (src/boot/shell.html),
+where PartLibrary reads it as it reads the pack. Until then a part of it
+is fetched on its own like any part the build does not carry.
+
+later.bin: "BWP1", the count (uint32), then for each file its name's length
+(uint16), its name and its size (uint32), then the files one after another;
+little-endian.
 """
 
 from __future__ import annotations
@@ -29,6 +42,7 @@ import argparse
 import json
 import re
 import shutil
+import struct
 import sys
 from pathlib import Path
 
@@ -144,6 +158,24 @@ def parts_used_by_models() -> set[str]:
     return used
 
 
+def parts_of(model: Path) -> set[str]:
+    """The part ids [model] places."""
+    used: set[str] = set()
+    for line in read_text(model).splitlines():
+        tokens = line.split()
+        if len(tokens) >= 15 and tokens[0] == "1":
+            stem = " ".join(tokens[14:]).replace("\\", "/").lower().rsplit("/", 1)[-1]
+            for suffix in (".dat", ".ldr"):
+                if stem.endswith(suffix):
+                    stem = stem[: -len(suffix)]
+            used.add(stem)
+    return used
+
+
+# The model a first visit opens on (Main.SAMPLE_MODEL).
+SAMPLE = ROOT / "models" / "car.ldr"
+
+
 def starter_palette() -> set[str]:
     """The parts the builder and the design assistant offer by name."""
     wanted: set[str] = set()
@@ -245,10 +277,24 @@ def main() -> int:
         shutil.rmtree(out)
     (out / "parts").mkdir(parents=True)
 
-    for mesh in meshes:
+    # What the first screen draws, in the pack; the rest of it later.
+    first_ids = (parts_of(SAMPLE) | starter_palette() | set(ESSENTIAL)) & set(chosen)
+    first = {chosen[pid]["mesh"] for pid in first_ids}
+    later: list[tuple[str, bytes]] = []
+    for mesh in sorted(meshes):
         source = GENERATED / "parts" / f"{mesh}.lbm"
-        if source.exists():
+        if not source.exists():
+            continue
+        if mesh in first:
             shutil.copy2(source, out / "parts" / f"{mesh}.lbm")
+        else:
+            later.append((f"{mesh}.lbm", source.read_bytes()))
+    with open(out / "later.bin", "wb") as bundle:
+        bundle.write(b"BWP1" + struct.pack("<I", len(later)))
+        for name, body in later:
+            bundle.write(struct.pack("<H", len(name)) + name.encode("ascii") + struct.pack("<I", len(body)))
+        for _, body in later:
+            bundle.write(body)
         # Its exact shape, for the build check (tools/build_exact.py): the
         # same name under exact/, as Exact.file_for reads it. Only asked for:
         # everyone waits for the pack, and only a check reads these, which
@@ -290,6 +336,9 @@ def main() -> int:
                   bool(_parts_url()) and not args.self_contained)
 
     written = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
+    now = sum(f.stat().st_size for f in (out / "parts").iterdir())
+    print(f"  first screen: {len(first):,} meshes, {now / 1e6:.1f} MB in the pack; "
+          f"{len(later):,} later, {(out / 'later.bin').stat().st_size / 1e6:.1f} MB (index.parts.bin)")
     print(f"  wrote {out} ({written / 1e6:.1f} MB total)")
     return 0
 

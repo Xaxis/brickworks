@@ -965,8 +965,8 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		if _arrived.has(info.mesh_hash):
 			return _arrived[info.mesh_hash]
 
-	var path: String = _resolve_root() + "parts/" + info.mesh_hash + ".lbm"
-	if not FileAccess.file_exists(path):
+	var path: String = _on_disk(info.mesh_hash)
+	if path.is_empty():
 		# Not in this build. Start fetching it; the caller gets null now
 		# and a [signal fetched] shortly.
 		request_mesh(part_id)
@@ -981,6 +981,25 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 
 	_keep(info.mesh_hash, part)
 	return part
+
+
+## Where the web build keeps the part of its working set the first screen
+## does not draw, once the page has fetched it: index.parts.bin beside the
+## build (tools/web_pack.py), each part written into the engine's files here
+## as it arrives (src/boot/shell.html). Read as the pack is, so a part of it
+## is to hand from then on, offline too; before, it is fetched on its own.
+const LATER := "/later/"
+
+
+## The file [param hash_name]'s geometry is read from in this build: the
+## pack's, or the web build's later part of it once it has come, or "".
+func _on_disk(hash_name: String) -> String:
+	var path: String = _resolve_root() + "parts/" + hash_name + ".lbm"
+	if FileAccess.file_exists(path):
+		return path
+	if OS.has_feature("web") and FileAccess.file_exists(LATER + hash_name + ".lbm"):
+		return LATER + hash_name + ".lbm"
+	return ""
 
 
 # -- read from another thread ----------------------------------------------
@@ -1122,6 +1141,15 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 			or _arrived.has(info.mesh_hash):
 		fetched.emit(part_id)
 		return true
+	# Come with the web build's later parts since it was asked for: read,
+	# not fetched again.
+	if not _fetching.has(info.mesh_hash) and OS.has_feature("web") \
+			and FileAccess.file_exists(LATER + info.mesh_hash + ".lbm"):
+		var here: Lbm.PartMesh = Lbm.load_part(LATER + info.mesh_hash + ".lbm")
+		if here != null:
+			_keep(info.mesh_hash, here)
+			fetched.emit(part_id)
+			return true
 	if _fetching.has(info.mesh_hash):
 		# Already on its way for somebody else. Join them, or this part
 		# is told "coming" and never told it came.
@@ -1192,7 +1220,7 @@ func want(part_ids: Array, first: bool = false) -> int:
 	for part_id: String in part_ids:
 		var info: PartInfo = parts.get(part_id)
 		if info == null or is_resident(part_id) or (is_on_its_way(part_id) and not first) \
-				or FileAccess.file_exists(_resolve_root() + "parts/" + info.mesh_hash + ".lbm"):
+				or not _on_disk(info.mesh_hash).is_empty():
 			continue
 		request_mesh(part_id, true)
 		asked += 1

@@ -45,8 +45,14 @@ need() {
 # falling back to it costs nothing and the build still ships its .br
 # files — which are not optional: the wasm is 40 MB raw and 9 MB
 # compressed, and a visitor downloads whichever one is there.
+#
+# Quality 11 with the largest window a browser takes (24): these are the
+# bytes a visitor waits for, since deploy.sh serves them as they are rather
+# than letting Vercel compress on the fly, which sent the wasm as 9.6 MB
+# and the pack as 21 MB where 11 makes 6.9 and 15 (load250, 2026-10-24).
+# About two minutes for the wasm, the files in parallel.
 if command -v brotli >/dev/null 2>&1; then
-  squash() { brotli -f -q 9 -o "$1.br" "$1"; }
+  squash() { brotli -f -q 11 -w 24 -o "$1.br" "$1"; }
 elif command -v node >/dev/null 2>&1; then
   squash() { node tools/web/brotli.mjs "$1" "$1.br"; }
 else
@@ -92,7 +98,7 @@ export_one() {
 # Precompressed siblings: the wasm is ~40 MB raw and ~9 MB as brotli.
 compress_web() {
   local dir="$1" pids=() f p
-  for f in "$dir"/*.wasm "$dir"/*.pck "$dir"/*.js "$dir"/*.html; do
+  for f in "$dir"/*.wasm "$dir"/*.pck "$dir"/*.bin "$dir"/*.js "$dir"/*.html; do
     [ -f "$f" ] || continue
     squash "$f" & pids+=($!)
     gzip -9 -k -f "$f" & pids+=($!)
@@ -100,7 +106,7 @@ compress_web() {
   for p in "${pids[@]}"; do
     wait "$p" || { echo "export FAILED: compressing $dir"; return 1; }
   done
-  for f in "$dir/index.wasm" "$dir/index.pck"; do
+  for f in "$dir/index.wasm" "$dir/index.pck" "$dir/index.parts.bin" "$dir/index.js"; do
     [ -f "$f.br" ] && [ -f "$f.gz" ] || { echo "export FAILED: no .br/.gz beside $f"; return 1; }
   done
 }
@@ -110,17 +116,24 @@ report_web() {
   local wasm="$dir/index.wasm" pck="$dir/index.pck"
   printf "  wasm %-9s br %-9s gz %s\n" "$(human "$(bytes "$wasm")")" "$(human "$(bytes "$wasm.br")")" "$(human "$(bytes "$wasm.gz")")"
   printf "  pck  %-9s br %-9s gz %s\n" "$(human "$(bytes "$pck")")" "$(human "$(bytes "$pck.br")")" "$(human "$(bytes "$pck.gz")")"
+  local later="$dir/index.parts.bin"
+  printf "  later  %-9s br %-9s (parts fetched after the start)\n" "$(human "$(bytes "$later")")" "$(human "$(bytes "$later.br")")"
   local total=0 f
   for f in "$dir"/*; do
-    case "$f" in *.br|*.gz) continue ;; esac
+    case "$f" in *.br|*.gz|*/index.parts.bin) continue ;; esac
     if [ -f "$f.br" ]; then total=$(( total + $(bytes "$f.br") )); else total=$(( total + $(bytes "$f") )); fi
   done
-  printf "  over the wire (brotli where it helps): %s\n" "$(human $total)"
+  printf "  over the wire to start (brotli where it helps): %s\n" "$(human $total)"
 }
 
 build_web() {
   local preset="$1" dir="$2"
   export_one "$preset" "$dir/index.html" || return 1
+  # The working set's geometry the first screen does not draw, in a file
+  # of its own (tools/web_pack.py): the page fetches it once the engine has
+  # its own files and writes it into them (src/boot/shell.html), so nobody
+  # waits for it to start.
+  cp assets/web/later.bin "$dir/index.parts.bin" || { echo "export FAILED: no assets/web/later.bin (tools/web_pack.py)"; return 1; }
   compress_web "$dir" || return 1
   # The real-set index beside the build, not in the pack every visitor
   # waits for: the app fetches it the first time a design asks for a
