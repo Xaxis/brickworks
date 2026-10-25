@@ -319,6 +319,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   it needs a base build served beside) shoots 1280 x 800 by a mouse, ready,
   3001 searched and the File menu, against a base build, 0 pixels different
   and the base against itself 0.
+  Standing still it draws nothing (2026-10-25, m174's tablet check: its first
+  picture waited 30 s for a frame). The row's colour in hand redrew itself
+  every frame (`PhoneShell.RowPicture`) and the hint was laid out every frame,
+  set to nothing and back, so the whole window was drawn every frame
+  (IdleDraw): 2 to 5 s a frame in software at 768 x 1024 at 2x, frozen from
+  the moment it showed, which since the sign-in went behind the model is the
+  moment it is used. Now each is set only when it changes. Proved by
+  `tools/probe.sh phone_idle_probe` (windowed, the tablet's layout made in a
+  window; `-- --phone` the phone's): settled, at most a frame a second standing
+  still; a new colour in hand drawn, its picture the new colour; words over the
+  model drawn, then still again. On the base standing still draws every frame.
 - `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
   phone or a tablet (`Phone.on`) every dialog and panel over the model takes
   the layout's sizing, one rule for all as `Access` is for the keys: its text
