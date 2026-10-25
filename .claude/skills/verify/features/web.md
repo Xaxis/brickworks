@@ -1019,7 +1019,13 @@ plan with Claude as the client.
   (`renderCommentDigest`, `feedSaid`). Before the file is applied every one
   answers as "not open yet" and nothing else changes.
 - `your feed page` (`web/feed.html`): with `web/feed.js`, `/feed`, signed in,
-  newest first, one link a row, New on what came since the last opening,
+  newest first, one link a row, New on what came since the last opening and
+  after the follow that brought it (`isNew` in `api/_follows.js`, from
+  `supabase/feed_new_rows.sql`'s `feed_followed_at`, 2026-10-25, walk256's W7:
+  a new follow's backlog was marked New; `since_follows` in the answer says
+  the rule is in force, and before the file New is by the last look alone;
+  `first_steps_flow` checks Cy's feed right after the follow, and
+  `tools/feed_new_rows_try.sql` the function in a dry run),
   Older for the page before; signed out, Sign in. Since 2026-10-22
   (docs/SOCIAL.md U7) what the people you follow made (`follow_page`),
   Notifications a tab beside it (`.tabs`, each with what is new in it);
@@ -1314,7 +1320,13 @@ plan with Claude as the client.
   `fieldset.date[data-date]`, `select[name=starts_on_day|_month|_year]`
   and the same for `ends_on`, this year and next; three ticks: at most N
   parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
-  and sets the flows' test ones. Then `#year-form` (`drawYear`, Set a year
+  and sets the flows' test ones. The table is at most 24 rows, the ones not
+  yet ended first, open then upcoming by their first day, then the ended,
+  the one that ended last first (`supabase/challenge_list_order.sql`, 2026-10-25: newest
+  first, a year planned ahead and the ended test challenges runs leave in
+  coming months filled all 24, and the open one and a run's own were in
+  none; `tests/test_challenge_list_order.py`,
+  `tools/challenge_list_order_try.sql`). Then `#year-form` (`drawYear`, Set a year
   of themes): the first month (`select[name=year_from_month|_year]`, by
   default the month after the last challenge not ended) and twelve
   `#year-months fieldset[data-month]`, each `theme_N_title` and

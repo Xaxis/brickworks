@@ -10,14 +10,19 @@ they have. A Claude connector belongs to the account that switched it on.
 
 - `sign-in screen` (`src/ui/sign_in_gate.gd`, with `src/ui/sign_in_form.gd`):
   over the whole window, the builder dimmed behind, until `Account.lets_in()`.
-  "Signing you in…" while a kept session is renewed; the address-then-code form
+  **Not up at all for a returning visitor** (2026-10-25, walk256's A17: about
+  18 s on "Signing you in…" at every web load): a session kept on the device,
+  with whose it is, lets them in at once, their model in front of them, and is
+  renewed behind it (`Account.renewing`); the screen comes up only if Supabase
+  refuses it. "Signing you in…" while the deployment is still asked where to
+  sign in (nothing kept), and for `/api/account` just after a code; the address-then-code form
   when signed out (with "Your sign-in has ended" when a session ended rather
   than being ended); "Cannot reach Brickworks to sign in" with Try again when
   there is nowhere to sign in. It takes every click and unhandled key, and
   `Main._steer_from_keys` stops while it is up. On the web, while it is up
   `window.brickworksControls` names only its own controls (`signin_email`,
   `signin_send`, `signin_code`, `signin_go`, `signin_retry`), and
-  `window.brickworksAccount` says `{state, email, offline, gated}`.
+  `window.brickworksAccount` says `{state, email, offline, renewing, gated}`.
   **Not shown** when nobody is in front of the window (`Main._gate_wanted`): a
   probe (`--script`), a headless run, or a command line that renders, exports
   or designs and quits (`--shot --booklet --out --ask --ask-claude-code --bench
@@ -39,7 +44,12 @@ they have. A Claude connector belongs to the account that switched it on.
   and forgets it whatever Supabase said. Only the refresh token is kept, with
   the address, the account id and where to redeem it: in `localStorage`
   (`brickworks.session`) on the web, so a reload has it at once; in
-  `user://session.json` on the desktop. A start renews it; Supabase refusing
+  `user://session.json` on the desktop. A start renews it, signed in from
+  what was kept while it does (`renewing`, 2026-10-25): `access_token()` and
+  `sign_out()` wait for the renewal's answer, so only what needs the account
+  waits, and says so where it waits (`Account.waiting_words`: Account's line,
+  Share's status before Publish, the connector's state line: "Signing you in…
+  … once that is done"). Supabase refusing
   (4xx) signs out with a reason; Supabase unreachable keeps the person signed
   in from what was kept (`offline`) — **the desktop works offline once signed
   in**. Renewal re-reads the kept token first, because another tab or window
@@ -455,6 +465,25 @@ the same click places a brick and the same key picks the next colour; signed
 out, the form is back, and drawn as a browser draws it, Sign in with
 orangecheck under the email with orangecheck's mark, 2:1 at the screen's
 pixels, and a 44 px target (`orangecheck.png`). Pictures in `shots/signin/`.
+
+A returning visitor, headless, against a host the probe runs that stands in
+for the deployment and Supabase (`/api/account` held unanswered as a slow
+start holds it):
+
+```sh
+tools/probe.sh renewal_probe
+```
+
+Proves it when (19 checks, "renewal probe: all passed"; 13 fail on 77dea6a6,
+where the kept session is still being checked, the screen up): a kept session lets them in at once with the screen down, the access
+token waits for the renewal and is the renewed one, which is kept; refused,
+they are signed out and the screen comes up with the form and "Your sign-in
+has ended", the kept session gone; Sign out while it renews waits and revokes
+the renewed session; nothing kept, a first visit meets the screen. In a
+browser, `account_flow` checks the screen never comes up across a reload, and
+the load itself is timed signed in: `serve.py --accounts` says where to sign
+in, `load_check.mjs` signs the visitor in (`tools/release/timing_ab.sh` with
+`AB_SERVE="--accounts"`).
 
 Against the real functions and Supabase (needs `.env`; makes throwaway accounts
 at `delivered+bw…@resend.dev`, Resend's test addresses, and deletes them):

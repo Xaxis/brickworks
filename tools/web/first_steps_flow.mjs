@@ -32,7 +32,9 @@
 // his profile and follows Ada from First steps; Cy, signed in elsewhere and
 // never asked, meets the question on /profile and reaches a filled feed in
 // four taps, with nothing new on the avatar for Ada's castle, listed before
-// the follow (walk180, W7), and one once she lists a tower after.
+// the follow (walk180, W7), nor marked New in the feed (walk256, W7, once
+// supabase/feed_new_rows.sql is applied), and one once she lists a tower
+// after.
 //
 // Pictures in --out: each step at both widths, in the theme it ran in and
 // the other.
@@ -153,7 +155,7 @@ const stepsDrawn = (page) => page.evaluate(() => {
 /// The feed as drawn: its posts, and whether Latest stands in for them.
 const feedDrawn = (page) => page.evaluate(() => ({
   state: document.documentElement.dataset.feed || "",
-  rows: [...document.querySelectorAll("#rows .feed-row")].map((li) => ({ kind: li.dataset.kind,
+  rows: [...document.querySelectorAll("#rows .feed-row")].map((li) => ({ kind: li.dataset.kind, isNew: li.classList.contains("new"),
     who: li.querySelector("a.who")?.getAttribute("href") || "", card: li.querySelector("article.model")?.dataset.id || "" })),
   designers: [...document.querySelectorAll("#people .person-row")].map((li) => li.dataset.handle),
   latest: [...document.querySelectorAll("#latest-models .model")].map((card) => ({ id: card.dataset.id,
@@ -387,6 +389,22 @@ try {
     check(`at ${width}: Skip, Skip, Follow, See your feed: ${taps} taps to ${feed.rows.length} posts of ${designer}'s `
       + `(suggested ${drawn.designers.join(", ")})`, taps <= 4 && feed.rows.length > 0 && feed.rows.every((one) => one.who === `/u/${designer}`));
     await shots(page, `3_feed-${width}`, theme);
+    if (cy) {
+      // Nor is it New in the feed (walk256, W7: right after the follow, the
+      // house's day-old versions were): New is what came since the feed was
+      // last opened and after the follow that brought it
+      // (supabase/feed_new_rows.sql). Before that file the API marks by the
+      // last look alone, and says so (since_follows); asked with a before,
+      // which does not count as the feed opened.
+      const marked = feed.rows.filter((one) => one.isNew).length;
+      const rule = await api("/api/people?op=feed&before=2999-01-01T00:00:00Z", { token: cy.access_token });
+      if (rule.body.since_follows) {
+        check(`...none of her posts marked New, all from before the follow: ${marked} of ${feed.rows.length}`, marked === 0);
+      } else {
+        console.log(`  --   ${marked} of ${feed.rows.length} posts marked New by the last look alone: `
+          + "supabase/feed_new_rows.sql is not applied here");
+      }
+    }
     if (cy) {
       // What she lists after the follow is new.
       const name = `First Steps Tower ${rand}`;

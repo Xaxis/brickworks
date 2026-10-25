@@ -19,7 +19,9 @@
 ## and signing out revokes it.
 ##
 ## Signed in stays signed in. A reload, or a restart of the desktop app,
-## renews the kept session with Supabase. And the desktop works offline
+## renews the kept session with Supabase, behind the model the person left:
+## they are let in at once ([member renewing]), and only what needs the
+## account itself waits for the renewal. And the desktop works offline
 ## once signed in: if Supabase cannot be reached at all, the person kept on
 ## this device is trusted until it can be, and the account panel says so.
 ## Only Supabase saying no — the session was revoked, or ran out — signs
@@ -67,6 +69,14 @@ var master: bool = false
 ## Signed in from what this device kept, because Supabase could not be
 ## reached to confirm it.
 var offline: bool = false
+## Signed in from what this device kept while Supabase is asked to renew
+## it, at start-up: a returning person is let in at once, their model in
+## front of them, rather than waiting on "Signing you in…" (walk256's A17:
+## about 18 s at every load on the web). What needs the account itself
+## (saving to it, sharing, Claude) waits for the answer in [method
+## access_token], and says so where it waits. Refused, they are signed out
+## and the sign-in screen says why, as before.
+var renewing: bool = false
 ## Why the last session ended, in words, for the gate to say. Empty when
 ## nothing ended — a first visit, or a sign-out the person asked for.
 var ended: String = ""
@@ -113,6 +123,9 @@ var _last_renewal: String = "unreachable"
 signal changed
 ## A renewal finished, so anyone waiting on one can go on.
 signal _renewed
+## The start-up renewal of a kept session ([member renewing]) is answered,
+## one way or the other.
+signal _confirmed
 
 
 func _ready() -> void:
@@ -132,15 +145,19 @@ func lets_in() -> bool:
 
 
 ## Work out who is here: wait for the deployment's answer, then renew any
-## session kept on this device. Run at start-up and by "Try again".
+## session kept on this device. Run at start-up and by "Try again". A
+## session kept here, with whose it is, lets them in at once and is renewed
+## behind the model ([member renewing]).
 func boot() -> void:
-	state = State.CHECKING
+	renewing = not _refresh.is_empty() and not email.is_empty()
+	state = State.SIGNED_IN if renewing else State.CHECKING
 	changed.emit()
 	if deployment != null:
 		await deployment.wait()
 		if deployment.answered:
 			if not deployment.accounts:
 				state = State.NOT_NEEDED
+				_confirm()
 				changed.emit()
 				return
 			_url = deployment.accounts_url
@@ -167,9 +184,23 @@ func boot() -> void:
 			# can be asked. This is what lets the desktop work offline.
 			state = State.SIGNED_IN if not email.is_empty() else State.UNREACHABLE
 			offline = state == State.SIGNED_IN
+	_confirm()
 	changed.emit()
 	if state == State.SIGNED_IN and not offline:
 		_ask_who()
+
+
+## The start-up renewal answered: whoever waits on it goes on.
+func _confirm() -> void:
+	if renewing:
+		renewing = false
+		_confirmed.emit()
+
+
+## Words for where something that needs the account waits on the
+## start-up renewal: [param what] goes on once it is done.
+static func waiting_words(what: String) -> String:
+	return "Signing you in… %s once that is done." % what
 
 
 ## Ask for a code by email. Empty when the request was accepted, or
@@ -312,6 +343,10 @@ func _signed_in_with(body: Dictionary) -> void:
 ## a sign-out that leaves the token behind because the network was down
 ## is not a sign-out.
 func sign_out() -> void:
+	# A session still being renewed is revoked once it is: signed out
+	# before then, the renewal wrote it back.
+	if renewing:
+		await _confirmed
 	if not _access.is_empty() and not _url.is_empty():
 		await _fetch(_url + "/auth/v1/logout?scope=local", PackedStringArray([
 			"content-type: application/json",
@@ -328,6 +363,10 @@ func sign_out() -> void:
 ## means nobody is signed in, or the session could not be renewed: the
 ## caller should not send the request as anyone.
 func access_token() -> String:
+	# Let in from what this device kept: the renewal's answer first, which
+	# may be that the session has ended.
+	if renewing:
+		await _confirmed
 	if state != State.SIGNED_IN:
 		return ""
 	if _access.is_empty() or _expires_at - Time.get_unix_time_from_system() < REFRESH_MARGIN:
@@ -398,6 +437,11 @@ func _ask_who(hold: bool = false) -> void:
 		PackedStringArray(["authorization: Bearer " + _access]),
 		HTTPClient.METHOD_GET, "")
 	asking_who = false
+	# Signed out while it was asked (a sign-out just after a start's
+	# renewal): the answer is about nobody here now.
+	if state != State.SIGNED_IN or _refresh.is_empty():
+		changed.emit()
+		return
 	var body: Variant = reply.get("body")
 	if int(reply.get("code", 0)) == 200 and typeof(body) == TYPE_DICTIONARY \
 			and bool((body as Dictionary).get("signed_in", false)):

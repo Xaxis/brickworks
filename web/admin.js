@@ -393,7 +393,8 @@ function drawPicks(picks) {
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
 
-/// The challenges, newest first, each with its entries, votes and winners,
+/// The challenges, the ones not yet ended first and then the ended ones,
+/// the one that ended last first (supabase/challenge_list_order.sql), each with its entries, votes and winners,
 /// and End it now on one not ended. Titles the owner typed, names strangers
 /// chose: text, never markup.
 function drawChallenges(list) {

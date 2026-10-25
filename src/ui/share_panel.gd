@@ -473,7 +473,9 @@ func open() -> void:
 		state = "idle"
 		_list.button_pressed = false
 		_list.disabled = false
-		_status.text = "" if account.signed_in() else "Sign in to Brickworks to share a model."
+		_status.text = _waiting_words()
+		if not account.changed.is_connected(_on_account):
+			account.changed.connect(_on_account)
 	else:
 		_status.text = "This model has a link. Publish again to update what it shows."
 		_check_link(store.share_id, fresh)
@@ -535,6 +537,22 @@ func _show_link(id: String) -> void:
 		"Update the link" if up else "Publish again")
 
 
+## What the panel says of a model with no link yet, as the account stands:
+## nothing signed in, that sharing waits while the session kept here is
+## renewed (Account.renewing), and that it needs a sign-in signed out.
+func _waiting_words() -> String:
+	if account.renewing:
+		return Account.waiting_words("Publish goes on")
+	return "" if account.signed_in() else "Sign in to Brickworks to share a model."
+
+
+## The account's renewal answered while the panel said it waited on it.
+func _on_account() -> void:
+	if visible and state == "idle" and store.share_id.is_empty() \
+			and _status.text == Account.waiting_words("Publish goes on"):
+		_status.text = _waiting_words()
+
+
 ## Publish the model as it stands, at its own link if it has one.
 func publish() -> void:
 	if state in ["publishing", "unpublishing"]:
@@ -543,6 +561,8 @@ func publish() -> void:
 	if name.is_empty():
 		_fail("Give the model a name first.")
 		return
+	if account.renewing:
+		_status.text = Account.waiting_words("It is published")
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_fail("Sign in to Brickworks to share a model.")

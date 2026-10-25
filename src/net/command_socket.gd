@@ -838,6 +838,11 @@ func _heard(note: String) -> void:
 ## the Working job it reports to when it is a job, or the assistant's. What
 ## it changes is one step of the history (see [method _one_step]).
 func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "") -> Variant:
+	# A design going down on the example a first visit opens on: the example
+	# off first, before the call's step begins (Assistant.make_room), so the
+	# design is a model of its own and its Undo leaves that model empty.
+	if name == "submit_design" and assistant != null:
+		assistant.make_room(str(input.get("name", "")))
 	var before: Dictionary = _before_change(name)
 	var held: Dictionary = _held()
 	var answer: Variant

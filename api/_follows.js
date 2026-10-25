@@ -264,16 +264,39 @@ export async function feed(request, response, { origin }) {
   // picture; and, with the first page, whom the caller follows, so the page
   // knows a feed empty for want of anybody followed and leaves them out of
   // the designers it suggests.
-  const [cards, photos, following] = await Promise.all([
+  const [cards, photos, following, followed] = await Promise.all([
     cardsOf(found.map((row) => row.model), origin),
     photosOf(found.filter((row) => row.kind === "photo").map((row) => row.photo), origin),
     before === null ? followingMine(asker) : null,
+    // When each follow began (supabase/feed_new_rows.sql), null before it.
+    call("feed_followed_at", { viewer: asker }, () => null).catch(() => null),
   ]);
   const rows = found.map((row) => ({ ...feedSaid(row, origin), model: row.model,
-    new: seen === null || Date.parse(row.at) > seen, card: cards.get(row.model) || null,
+    new: isNew(row, seen, followed), card: cards.get(row.model) || null,
     ...(row.kind === "photo" ? { photo: photos.get(row.photo) || null } : {}) }));
   return response.status(200).json({ ready: true, rows: await withFaces(rows), more: page?.more === true, seen_at: page?.seen_at ?? null,
+    // Whether New is reckoned from each follow too, or (before the file)
+    // from the last look alone.
+    since_follows: Boolean(followed),
     ...(before === null ? { following: following ? following.map((one) => one.handle) : null } : {}) });
+}
+
+/// Whether a feed row is New: it came after the feed was last opened
+/// ([seen], ms; null never opened) and after the follow that brought it
+/// ([followed], feed_followed_at's answer, or null before
+/// supabase/feed_new_rows.sql), as feed_new_count counts it: a collection's
+/// row by when the collection was followed, any other by when its maker
+/// was. A new follow's backlog is in the feed to read and none of it is
+/// new: a new account that followed the house saw its day-old versions
+/// marked New (walk256, W7). A row no follow brought is new by the look
+/// alone. Pure.
+export function isNew(row, seen, followed) {
+  const at = Date.parse(row?.at);
+  if (seen !== null && !(at > seen)) return false;
+  const began = row?.kind === "collection" ? followed?.collections?.[String(row.collection || "")]
+    : followed?.people?.[String(row?.by?.handle || "")];
+  const since = began ? Date.parse(began) : NaN;
+  return !Number.isFinite(since) || at > since;
 }
 
 /// The cards of the models [ids], as the gallery gives them: id -> card.

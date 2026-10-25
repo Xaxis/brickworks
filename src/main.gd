@@ -859,6 +859,8 @@ func _tell_page() -> void:
 				"not_needed"][_account.state],
 			"email": _account.email,
 			"offline": _account.offline,
+			# Let in from what this browser kept, the renewal still out.
+			"renewing": _account.renewing,
 			"gated": _gated(),
 			# The age question (supabase/trust.sql): whether it is asked,
 			# and the answer as the deployment keeps it.
@@ -2115,8 +2117,11 @@ func clear_model() -> void:
 ## the tower built in its place was "Example Car for Demonstration of LDRAW
 ## Library" and Save saved it as that. A bare baseplate nobody has named is named the
 ## same way. Anything else is somebody's model, and keeps its name.
+## Untouched means nothing done to it since it opened, by anyone: a
+## session's edit to the car is a step of the history and puts down no part
+## the builder hears as placed, and a design after it goes in beside the car.
 func _make_room(name: String) -> void:
-	if _sample_untouched:
+	if _sample_untouched and _builder.history_depth() == 0:
 		clear_model()
 		if _chat != null:
 			_chat.note("Took the example car off the baseplate to make room.")
@@ -4480,6 +4485,11 @@ func _build_ui() -> void:
 		_fresh_brief = brief
 		_make_room(ModelStore.name_for(brief)))
 	_assistant.titled.connect(_on_titled)
+	# A design over MCP, or the assistant's, going down on the example a
+	# first visit opens on: a model of its own (walk256's M15).
+	_assistant.designing.connect(func(name: String) -> void:
+		_make_room(ModelStore.name_for(name) if not name.strip_edges().is_empty() \
+			else ModelStore.UNTITLED))
 	# What the design said it stands on, laid when it stands.
 	_assistant.floor_chosen.connect(_on_floor_chosen)
 	_assistant.finished.connect(func(ok: bool, _summary: String) -> void:

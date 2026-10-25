@@ -11,7 +11,9 @@
 // nowhere), and the code typed and Sign in pressed. The code is minted
 // here with Supabase's admin API, because a test has no inbox; minting it
 // replaces the one that was emailed, so the one typed is the only one
-// that works. Then a reload must find them still signed in; the admin
+// that works. Then a reload must find them still signed in, let in at
+// once with no sign-in screen on the way while the kept session is
+// renewed behind the model (walk256's A17); the admin
 // page must refuse their account; Account on the bar must say who they
 // are; and Sign out must bring the screen back. The browser's console must
 // carry no refusal from the security policy throughout.
@@ -206,9 +208,21 @@ try {
 
   console.log("staying signed in");
   await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
-  const back = await until((s) => s.state !== "checking", "worked out who is here after a reload");
+  // Let in at once from what the browser kept, and renewed behind the
+  // model (Account.renewing): the sign-in screen never comes up on the
+  // way. walk256's A17 sat on "Signing you in…" about 18 s at every load.
+  let screened = false;
+  let back = null;
+  for (let i = 0; i < 600 && !back; i++) {
+    const s = await account().catch(() => null);
+    if (s && s.gated) screened = true;
+    if (s && s.state !== "checking" && s.renewing !== true) back = s;
+    else await page.waitForTimeout(200);
+  }
+  back ||= await until((s) => s.state !== "checking" && s.renewing !== true, "worked out who is here after a reload");
   check(back.state === "signed_in" && !back.gated && back.email === email,
     `a reload finds them still signed in, with no sign-in screen: ${back.state}`);
+  check(!screened, "...and the sign-in screen never came up while the kept session was renewed");
   await page.waitForTimeout(2000);
   await shot("6_after_reload");
 

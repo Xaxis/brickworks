@@ -41,6 +41,17 @@ Given as ID=FILE, and as often as wanted, each link plays its own file
 (share_steps_flow.mjs serves three sizes of one model at once); a plain
 FILE answers every other id.
 
+With --accounts /api/account says, too, that this deployment has accounts
+and where to sign in, as the deployment does: the Supabase project and its
+publishable key from the environment (SUPABASE_URL and
+SUPABASE_PUBLISHABLE_KEY, .env's). A browser holding a kept session then
+renews it with the real project, as a returning visitor's does, so a load
+can be timed with the sign-in in it (tools/release/timing_ab.sh with
+AB_SERVE="--accounts", load_check.mjs signs the visitor in):
+
+    set -a; . ./.env; set +a
+    tools/web/serve.py build/web 9240 --parts assets/generated/parts --delay 0 --accounts
+
 With --compressed a file with a .br beside it (tools/export.sh) is sent
 as that, to a browser that takes brotli, as the deployment sends it
 (tools/deploy.sh): what tools/web/load_check.mjs times a local export by.
@@ -87,6 +98,8 @@ class Handler(SimpleHTTPRequestHandler):
     library: Path | None = None
     omr: Path | None = None
     compressed: bool = False
+    # Where to sign in, as /api/account says it with --accounts.
+    accounts: dict[str, object] = {}
 
     def send_head(self):  # noqa: ANN201 - http.server's own signature
         """The file's .br sibling, with --compressed, to a browser taking brotli."""
@@ -117,12 +130,12 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if self.parts_url and path == "/api/account":
             self._send(200, "application/json",
-                       json.dumps({"parts_url": self.parts_url}).encode())
+                       json.dumps({"parts_url": self.parts_url, **self.accounts}).encode())
             return
         if self.parts is not None and path == "/api/account":
             host = self.headers.get("Host", "127.0.0.1")
             self._send(200, "application/json",
-                       json.dumps({"parts_url": f"http://{host}/parts/"}).encode())
+                       json.dumps({"parts_url": f"http://{host}/parts/", **self.accounts}).encode())
             return
         if self.parts is not None and path.startswith("/parts/") and path.endswith((".lbm", ".bwx")):
             time.sleep(self.delay * (1.0 + random.random()))
@@ -143,7 +156,8 @@ class Handler(SimpleHTTPRequestHandler):
         assert self.library is not None
         host = self.headers.get("Host", "127.0.0.1")
         if path == "/api/account":
-            self._send(200, "application/json", json.dumps({"parts_url": f"http://{host}/"}).encode())
+            self._send(200, "application/json",
+                       json.dumps({"parts_url": f"http://{host}/", **self.accounts}).encode())
             return True
         if path.startswith("/library/"):
             rest = path[len("/library/"):]
@@ -261,7 +275,15 @@ def main() -> int:
                         help="send a file's .br sibling to a browser that takes brotli")
     parser.add_argument("--share", action="append", default=[],
                         help="answer /api/share?id= and /m/<id> with this model (FILE, or ID=FILE)")
+    parser.add_argument("--accounts", action="store_true",
+                        help="/api/account says where to sign in (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)")
     args = parser.parse_args()
+    if args.accounts:
+        url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+        key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+        if not url or not key:
+            parser.error("--accounts needs SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (source .env)")
+        Handler.accounts = {"enabled": True, "url": url, "key": key}
     if args.parts:
         Handler.parts = Path(args.parts).resolve()
         Handler.delay = args.delay / 1000.0
@@ -282,7 +304,8 @@ def main() -> int:
     print(f"serving {args.directory} at http://127.0.0.1:{args.port}/ (COOP/COEP on)"
           + (f", parts from {args.parts} after {args.delay:.0f} ms" if args.parts else "")
           + (f", parts at {args.parts_url}" if args.parts_url else "")
-          + (", .br where there is one" if args.compressed else ""),
+          + (", .br where there is one" if args.compressed else "")
+          + (", with accounts" if args.accounts else ""),
           flush=True)
     server.serve_forever()
     return 0

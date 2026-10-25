@@ -562,6 +562,7 @@ godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, t
 godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that looks changes nothing
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
 tools/probe.sh first_design_undo_probe                              # a first design's floor and parts one step, undone and redone whole
+tools/probe.sh first_session_probe                                  # the first design on the example is a model of its own
 tools/probe.sh undo_ids_probe                                       # a part back from Undo or Redo keeps its number
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
@@ -853,6 +854,29 @@ All of these are in `tools/check.sh`.
   number 1"), the assistant's `_placed_ids` until Claude's next call, and
   the surface pass's `Finding.ids`, so settle_surface reject said the
   pieces were off while all 12 stood. Fails 4 checks on 1baf3516.
+  `first_session_probe` (2026-10-25, walk256's M15): a session's first
+  submit_design over MCP was built into the example Car a new account opens
+  on, Claude called the car's parts "placed by hand", and saved them with the
+  lighthouse; the panel took the car off only for a brief that began a
+  conversation. Now every submit_design says it is going down
+  (`Assistant.designing`) and `Main._make_room` takes the untouched example
+  off first, the design named for itself; `look_at_model` calls a baseplate
+  part of the model "(the baseplate, part of the model)", never placed by
+  hand (`Assistant._floor_plate`). Untouched means no step in the history
+  either: a session's edit_model lays no part the builder hears as placed,
+  so without it a session that added a tile to the car and then designed a
+  garage took the car off. The MCP port makes room before the call's
+  one step begins (`CommandSocket._run`), so Undo takes the first design back
+  to the empty model it began. Proves it when (17 checks, "the first
+  design on the example is a model of its own"): none of the car left, the
+  design's 8 parts on its blue plate, called by its name; nothing placed by
+  hand; the panel says the car came off; the next design replaces only the
+  first and Undo takes each back, the first to an empty model; the assistant's own design
+  after a question clears it too; a session's tile on the car's roof and then
+  a design leave all of the car (the history guard: red with it taken out);
+  a person's own part stays, placed by hand. A tile laid on the floor beside
+  the car is refused as a piece apart from the model with no name
+  (`Assistant._standing_apart`), and the world's y is up.
   `first_design_undo_probe`: a call that keeps steps of its own and changes
   the model past them too is both, one step. A session's first submit_design
   lays its parts with no step, then the floor it chose is kept

@@ -22,3 +22,4 @@ challenges.sql	challenge_list	challenge_year.sql	'announced_at'
 challenges.sql	challenge_page	challenge_year.sql	challenge_page_at(
 orangecheck_merge_connect.sql	oc_connected_of	orangecheck_connect_leaving.sql	c.asked_at <> '-infinity'
 follow_counts.sql	feed_new_count	list_follow_counts.sql	collection_follows c on
+challenge_year.sql	challenge_list	challenge_list_order.sql	when 'upcoming' then 1
