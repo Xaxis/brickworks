@@ -427,6 +427,13 @@
       "area": "release"
     },
     {
+      "kind": "ui",
+      "label": "the boot splash",
+      "entry": "assets/splash.png",
+      "reach": "godot --path .  (the mark on the app's dark face while the app loads, on the desktop)",
+      "area": "release"
+    },
+    {
       "kind": "cli",
       "label": "publish a release",
       "entry": "tools/release.py",

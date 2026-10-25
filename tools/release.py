@@ -1173,6 +1173,9 @@ def smoke(package: Path, window: bool, expect: str) -> int:
             colours = png_colours(shot) if shot.exists() else 0
             check("draws the car: %d colours in a %s picture" % (colours, "1280x800"),
                   code == 0 and clean(output) and colours > 200, output)
+            # Godot says so when the splash project.godot names is not in the
+            # package, and boots on its own logo instead (walk256 DS1).
+            check("boots on the app's own splash", "invalid boot splash" not in output, output)
             if shot.exists():
                 keep = ROOT / "shots" / ("release-%s.png" % describe_file(package.name)["os"])
                 keep.parent.mkdir(exist_ok=True)

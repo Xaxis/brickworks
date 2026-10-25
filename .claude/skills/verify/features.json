@@ -3762,6 +3762,14 @@
       "tests": []
     },
     {
+      "id": "ui:the boot splash",
+      "kind": "ui",
+      "entry": "assets/splash.png",
+      "reach": "godot --path .  (the mark on the app's dark face while the app loads, on the desktop)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "ui:the gallery's front shelves",
       "kind": "ui",
       "entry": "web/gallery.js",
