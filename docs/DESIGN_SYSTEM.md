@@ -132,6 +132,16 @@ is on the page, `hidden`, for the script to show.
   first) and, closed, gives the focus back to what opened it, or to the
   More menu's button when what opened it was folded away with the menu.
 - **Card**: `.card`, a panel of words.
+- **Table**: `.table`, a `<table>` of facts in a box that scrolls inside
+  itself where the table is wider than the page, never the page: a named
+  region the keyboard reaches and scrolls (`role="region"`, its
+  `aria-label` or `aria-labelledby`, `tabindex="0"`). Each row's name is
+  its `th scope="row"`; a number is `.n`, right-aligned in even figures.
+  `.table.wide` is many columns, /compare's field: each at least 130 px,
+  its headings in the ink, and each row's name kept in view on the page's
+  ground while the rest scrolls past it on a phone. The FAQ's dimensions
+  and /compare's field (2026-10-24, from the FAQ's own copy); /admin's
+  tables still carry theirs.
 - **Command**: `code.cmd`, a line to type in a terminal, in a box of its
   own that wraps, so a long one (a checksum check) never runs past the
   edge of a phone. The download page puts a Copy (`.cta.ghost.small`)

@@ -41,11 +41,6 @@
 .way b { color: var(--ink); font-weight: 620; }
 .way .for { font-size: var(--t-small); color: var(--ink-faint); margin: 2px 0 0; }
 .way .cost { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: var(--t-small); }
-.scroller { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: var(--t-small); }
-th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); }
-th:first-child, td:first-child { text-align: left; }
-thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -113,11 +108,15 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); 
 	<h2 id="questions">Questions people ask</h2>
 	<details class="qa" id="studio">
 		<summary>Why Brickworks, when BrickLink Studio exists?</summary>
-		<div><p>Studio is the community’s standard and does a lot well. Brickworks runs in any browser with nothing to install, weighs balance and joint strength, turns gear trains at their real ratios, opens and saves Studio <code>.io</code>, and exports STL, OBJ and GLB. <a href="/compare">See each on a real model</a>.</p></div>
+		<div><p>Studio is the community’s standard and does a lot well. Brickworks runs in any browser, a tablet’s or a phone’s too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens and saves Studio <code>.io</code>; exports STL, OBJ and GLB; and builds one model with others, live. <a href="/compare">See it beside Studio, Mecabricks, LeoCAD and LDCad</a>, with where each of them still leads.</p></div>
 	</details>
 	<details class="qa">
 		<summary>Is Brickworks free?</summary>
-		<div><p>Yes. Building, saving, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks.</p></div>
+		<div><p>Yes. Building, saving, building together, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks.</p></div>
+	</details>
+	<details class="qa" id="sign-in">
+		<summary>How do I sign in?</summary>
+		<div><p>With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0. More on <a href="/privacy">what each keeps</a>.</p></div>
 	</details>
 	<details class="qa">
 		<summary>Do I need a Claude subscription?</summary>
@@ -131,13 +130,21 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); 
 		<summary>Where are my models saved?</summary>
 		<div><p>In your browser, or on your computer in the desktop app, and kept privately with your account too, so they open in File › Open wherever you sign in. Export them as LDraw <code>.ldr</code> or Studio <code>.io</code> to keep or move. Nobody else sees a model until you share it.</p></div>
 	</details>
+	<details class="qa" id="together">
+		<summary>Can I build a model with someone else?</summary>
+		<div><p>Yes, live. <b>File › Build together…</b> gives a link to your model, and whoever opens it, signed in, builds it with you at the same time in their browser (the desktop app from 0.8.0). Each of you sees the other’s parts go down, move and change colour as it happens, and their pointer with their name; <b>Undo</b> takes back only your own changes, and there is a short chat for people 13 and over. A reload goes back into the session by itself. You end it, and the model stays yours.</p></div>
+	</details>
 	<details class="qa" id="model-page">
 		<summary>What do the buttons on a shared model’s page do?</summary>
 		<div><p><b>Build it</b> opens it in 3D: turn it, step through its build, and get its booklet and parts list, with no account. <b>Open in Brickworks</b> copies it into your own models, to change and make yours; share that, and its page shows it as a remix. Under them you can <b>like</b> it, <b>save</b> it to your favourites or a collection, <b>share</b> its link, <b>comment</b> on it or on one of its steps, and say <b>I built it</b> with a photo of your build. <b>More</b> copies the code to embed it in a page of your own, and is where to report it.</p></div>
 	</details>
+	<details class="qa" id="tested">
+		<summary>What does Tested mean on a model?</summary>
+		<div><p>That a person can build it. Brickworks tests a model as it is shared: built in its own steps, each part goes on where something holds it and the model stands at every step; every part is in a colour it was made in; and, finished, every part is held by a stud, a joint or what catches it, no two passing into each other, by the parts’ real shapes. A model that is not marked tells its owner why on its page.</p></div>
+	</details>
 	<details class="qa">
 		<summary>Can it open my BrickLink Studio, LDD or LDraw files?</summary>
-		<div><p>Yes: Studio <code>.io</code> (locked ones too), LEGO® Digital Designer <code>.lxf</code>, and LDraw <code>.ldr</code> and <code>.mpd</code>. It saves LDraw and <code>.io</code>, exports glTF, OBJ and STL, and turns OBJ, STL and glTF models into bricks.</p></div>
+		<div><p>Yes: Studio <code>.io</code> (locked ones too), LEGO® Digital Designer <code>.lxf</code>, and LDraw <code>.ldr</code> and <code>.mpd</code>. It saves LDraw and <code>.io</code>, exports glTF, OBJ and STL, saves a booklet as a PDF or PNG pages, and turns OBJ, STL and glTF models into bricks.</p></div>
 	</details>
 	<details class="qa">
 		<summary>Can I buy the parts to build it?</summary>
@@ -157,23 +164,27 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); 
 	</details>
 	<details class="qa">
 		<summary>What do I need to run it?</summary>
-		<div><p>A computer with a recent desktop browser (it runs on WebGL 2 and WebAssembly threads), or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all.</p></div>
+		<div><p>A recent browser on a computer, a tablet or a phone (it runs on WebGL 2 and WebAssembly threads). On a tablet or a phone the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, sheets over it. Or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all.</p></div>
+	</details>
+	<details class="qa" id="access">
+		<summary>Does it work with a screen reader, or the keyboard alone?</summary>
+		<div><p>In the desktop app, from 0.8.0. Every button, part, colour and field says its name (“Select, V”, “Brick 2 x 4, 3001”), and what the status line says is read out. <b>F6</b> (or <b>Tab</b>, with a screen reader running) goes from the model into the toolbar, the parts and the colours; <b>Return</b> takes a part, and <b>Return</b> again puts it down at the middle of the view. Settings has <b>Interface size</b>, 85 to 150%, and <b>Reduce motion</b>. In a browser the app draws its controls itself, where a screen reader cannot reach them; this site’s own pages work with both.</p></div>
 	</details>
 	<details class="qa">
 		<summary>How exact are the parts?</summary>
 		<div>
 			<p>1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry rather than copied from a reference. The tests assert them, so a library update cannot move them quietly.</p>
-			<div class="scroller">
+			<div class="table" role="region" aria-label="Dimensions, Brickworks against the specification" tabindex="0">
 			<table>
-				<thead><tr><th scope="col">Feature</th><th scope="col">Brickworks</th><th scope="col">Specification</th></tr></thead>
+				<thead><tr><th scope="col">Feature</th><th scope="col" class="n">Brickworks</th><th scope="col" class="n">Specification</th></tr></thead>
 				<tbody>
-					<tr><td>Stud pitch</td><td>8.00 mm</td><td>8.0</td></tr>
-					<tr><td>Brick height</td><td>9.60 mm</td><td>9.6</td></tr>
-					<tr><td>Plate height</td><td>3.20 mm</td><td>3.2</td></tr>
-					<tr><td>Stud diameter</td><td>4.80 mm</td><td>4.8</td></tr>
-					<tr><td>Wall thickness</td><td>1.60 mm</td><td>1.6</td></tr>
-					<tr><td>2 × 4 brick</td><td>32.00 × 16.00 mm</td><td>32 × 16</td></tr>
-					<tr><td>Stud height</td><td>1.60 mm</td><td>1.8</td></tr>
+					<tr><th scope="row">Stud pitch</th><td class="n">8.00 mm</td><td class="n">8.0</td></tr>
+					<tr><th scope="row">Brick height</th><td class="n">9.60 mm</td><td class="n">9.6</td></tr>
+					<tr><th scope="row">Plate height</th><td class="n">3.20 mm</td><td class="n">3.2</td></tr>
+					<tr><th scope="row">Stud diameter</th><td class="n">4.80 mm</td><td class="n">4.8</td></tr>
+					<tr><th scope="row">Wall thickness</th><td class="n">1.60 mm</td><td class="n">1.6</td></tr>
+					<tr><th scope="row">2 × 4 brick</th><td class="n">32.00 × 16.00 mm</td><td class="n">32 × 16</td></tr>
+					<tr><th scope="row">Stud height</th><td class="n">1.60 mm</td><td class="n">1.8</td></tr>
 				</tbody>
 			</table>
 			</div>
@@ -240,15 +251,19 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); 
 	"@context": "https://schema.org",
 	"@type": "FAQPage",
 	"mainEntity": [
-		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser with nothing to install, weighs balance and joint strength, turns gear trains at their real ratios, opens and saves Studio .io, and exports STL, OBJ and GLB. Each is shown on a real model at brickworks.diy/compare." } },
-		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Building, saving, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks." } },
+		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser, a tablet's or a phone's too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens and saves Studio .io; exports STL, OBJ and GLB; and builds one model with others, live. brickworks.diy/compare sets it beside Studio, Mecabricks, LeoCAD and LDCad, with where each of them still leads." } },
+		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Building, saving, building together, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks." } },
+		{ "@type": "Question", "name": "How do I sign in?", "acceptedAnswer": { "@type": "Answer", "text": "With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0." } },
 		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console." } },
 		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },
 		{ "@type": "Question", "name": "Where are my models saved?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, or on your computer in the desktop app, and kept privately with your account too, so they open in File › Open wherever you sign in. Export them as LDraw .ldr or Studio .io. Nobody else sees a model until you share it." } },
+		{ "@type": "Question", "name": "Can I build a model with someone else?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, live. File › Build together… gives a link to your model, and whoever opens it, signed in, builds it with you at the same time in their browser (the desktop app from 0.8.0). Each of you sees the other's parts go down, move and change colour as it happens, and their pointer with their name; Undo takes back only your own changes, and there is a short chat for people 13 and over. You end the session, and the model stays yours." } },
 		{ "@type": "Question", "name": "What do the buttons on a shared model’s page do?", "acceptedAnswer": { "@type": "Answer", "text": "Build it opens it in 3D: turn it, step through its build, and get its booklet and parts list, with no account. Open in Brickworks copies it into your own models, to change and make yours. You can also like it, save it to your favourites or a collection, share its link, comment on it or one of its steps, and say I built it with a photo of your build. More copies the code to embed it in a page of your own, and is where to report it." } },
-		{ "@type": "Question", "name": "Can it open my BrickLink Studio, LDD or LDraw files?", "acceptedAnswer": { "@type": "Answer", "text": "Yes: Studio .io (locked ones too), LEGO® Digital Designer .lxf, and LDraw .ldr and .mpd. It saves LDraw and .io, exports glTF, OBJ and STL, and turns OBJ, STL and glTF models into bricks." } },
+		{ "@type": "Question", "name": "What does Tested mean on a model?", "acceptedAnswer": { "@type": "Answer", "text": "That a person can build it. Brickworks tests a model as it is shared: built in its own steps, each part goes on where something holds it and the model stands at every step; every part is in a colour it was made in; and, finished, every part is held by a stud, a joint or what catches it, no two passing into each other, by the parts' real shapes. A model that is not marked tells its owner why on its page." } },
+		{ "@type": "Question", "name": "Can it open my BrickLink Studio, LDD or LDraw files?", "acceptedAnswer": { "@type": "Answer", "text": "Yes: Studio .io (locked ones too), LEGO® Digital Designer .lxf, and LDraw .ldr and .mpd. It saves LDraw and .io, exports glTF, OBJ and STL, saves a booklet as a PDF or PNG pages, and turns OBJ, STL and glTF models into bricks." } },
 		{ "@type": "Question", "name": "Can I buy the parts to build it?", "acceptedAnswer": { "@type": "Answer", "text": "Export the parts list as a BrickLink wanted list or a Rebrickable parts list, by the lot. My collection first takes off what you already own." } },
-		{ "@type": "Question", "name": "What do I need to run it?", "acceptedAnswer": { "@type": "Answer", "text": "A computer with a recent desktop browser (WebGL 2 and WebAssembly threads), or the desktop app for Linux, macOS and Windows, which builds with no network at all." } },
+		{ "@type": "Question", "name": "What do I need to run it?", "acceptedAnswer": { "@type": "Answer", "text": "A recent browser on a computer, a tablet or a phone (WebGL 2 and WebAssembly threads); on a tablet or a phone the app is laid out for a finger. Or the desktop app for Linux, macOS and Windows, which builds with no network at all." } },
+		{ "@type": "Question", "name": "Does it work with a screen reader, or the keyboard alone?", "acceptedAnswer": { "@type": "Answer", "text": "In the desktop app, from 0.8.0. Every button, part, colour and field says its name, and what the status line says is read out. F6 (or Tab, with a screen reader running) goes from the model into the toolbar, the parts and the colours; Return takes a part, and Return again puts it down at the middle of the view. Settings has Interface size, 85 to 150%, and Reduce motion. In a browser a screen reader cannot reach the app's controls; this site's own pages work with both." } },
 		{ "@type": "Question", "name": "How exact are the parts?", "acceptedAnswer": { "@type": "Answer", "text": "1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry: stud pitch 8.00 mm, brick height 9.60 mm, plate height 3.20 mm, stud diameter 4.80 mm. The stud height, 1.60 mm, is the LDraw library's own convention." } },
 		{ "@type": "Question", "name": "Is Brickworks made by the LEGO Group?", "acceptedAnswer": { "@type": "Answer", "text": "No. LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. The parts come from the community's LDraw library, and the catalogue data from Rebrickable." } }
 	]

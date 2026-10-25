@@ -493,6 +493,23 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 }
 .card p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
+/* A table of facts, in a .table that scrolls inside itself where it is
+   wider than the page, never the page: a named region the keyboard can
+   reach and scroll (role="region", aria-label, tabindex="0"). Each row's
+   name is its th[scope="row"]; a number is .n. In .table.wide, many
+   columns, the row's name stays in view as the rest scrolls past it. */
+.table { overflow-x: auto; position: relative; }
+.table table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--t-small); }
+.table th, .table td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.table thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); vertical-align: bottom; }
+.table tbody th { font-weight: 600; }
+.table td { color: var(--ink-soft); }
+.table .n { text-align: right; font-variant-numeric: tabular-nums; }
+.table.wide table { min-width: 860px; }
+.table.wide td, .table.wide thead th { min-width: 130px; }
+.table.wide thead th { color: var(--ink); font-size: var(--t-small); font-weight: 650; }
+.table.wide tr > :first-child { position: sticky; left: 0; z-index: 1; min-width: 120px; max-width: 150px; background: var(--bg); }
+
 /* A model: the one card for a shared model, wherever one is listed (the
    gallery, the landing page, a profile, a collection, a model's remixes,
    your account), drawn by web/card.js on the server and in the browser.
