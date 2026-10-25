@@ -1830,7 +1830,21 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	label.add_theme_font_size_override("font_size", ceili(_z(11)))
 	label.modulate = Color(1, 1, 1, 0.75)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(label)
+	if by_finger and _folds.has(info.id):
+		# Its "+N" has the foot's right end, a fingertip (_fold_badge): the
+		# number keeps to the room beside it.
+		var foot := HBoxContainer.new()
+		foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		foot.add_theme_constant_override("separation", 0)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		foot.add_child(label)
+		var beside := Control.new()
+		beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		beside.custom_minimum_size.x = least + _z(2.0)
+		foot.add_child(beside)
+		box.add_child(foot)
+	else:
+		box.add_child(label)
 
 	# A star in the corner for a part kept in Favourites.
 	var star: TextureRect = Icons.picture(STAR, _z(14.0), Icons.density(self))
@@ -1855,7 +1869,10 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 
 ## The count in a tile's corner of the prints, stickers and assemblies folded
 ## under it, which opens them after it and folds them again: a fingertip
-## square on a phone. Not a stop for the keys, as no tile is (a field gives
+## square on a phone or a tablet, in the tile's foot, clear of its picture.
+## In the top corner it covered the picture's middle, and the first tap on
+## a part with prints folded under it opened them rather than taking the
+## part (walk256, T1). Not a stop for the keys, as no tile is (a field gives
 ## them back at Tab, FocusGuard); typed, "3008 print" and "3008 sticker" list
 ## them, unfolded, and its tooltip says so.
 func _fold_badge(info: PartLibrary.PartInfo) -> Button:
@@ -1869,10 +1886,21 @@ func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 	badge.focus_mode = Control.FOCUS_NONE
 	# Eleven by a finger: ten came out under twelve points.
 	badge.add_theme_font_size_override("font_size", ceili(_z(11.0 if by_finger else 10.0)))
-	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	badge.offset_left = _z(2.0)
-	badge.offset_top = _z(2.0)
-	badge.custom_minimum_size = Vector2(maxf(least, _z(24.0)), maxf(least, _z(18.0)))
+	if by_finger:
+		var across: Vector2 = Vector2(maxf(least, _z(24.0)), maxf(least, _z(18.0)))
+		badge.custom_minimum_size = across
+		badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		badge.offset_right = -_z(2.0)
+		badge.offset_bottom = -_z(2.0)
+		badge.offset_left = badge.offset_right - across.x
+		badge.offset_top = badge.offset_bottom - across.y
+		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	else:
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.offset_left = _z(2.0)
+		badge.offset_top = _z(2.0)
+		badge.custom_minimum_size = Vector2(maxf(least, _z(24.0)), maxf(least, _z(18.0)))
 	badge.pressed.connect(toggle_fold.bind(info.id))
 	return badge
 
