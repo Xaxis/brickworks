@@ -319,6 +319,13 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 			return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 				"text": "Not placed: %s is already standing at x %s, z %s."
 					% [world.get_brick(under).group, _n(x), _n(z)]}
+	# What it holds, clear of the model by its real shape as well as its cover:
+	# a rod 1.2 LDU into a bollard's cone fits the lattice and fails Tested.
+	var around: Array = _model_near(library, world, at)
+	var fits: Callable = func(trial: Array[Dictionary]) -> bool:
+		return builder.figure_fits(trial, at) and _held_clear_of(library, trial, at, around)
+	if not fits.call(parts):
+		parts = turned_to_fit(library, parts, fits)
 	if not builder.figure_fits(parts, at):
 		var why: String = _in_the_way(parts, at, Vector2(x, z), library, world, builder)
 		# Bare-headed it would stand: a lower hat of the kind asked for, which
@@ -568,6 +575,74 @@ static func seated_exactly(library: PartLibrary, parts: Array[Dictionary]) -> Ar
 	return parts
 
 
+## [param parts] with what a hand holds turned about its bar in the hand,
+## the least turn first, until [param fits] says yes of the whole figure, or
+## as they were. A figure stood beside a bollard on a jetty was refused for
+## its fishing rod, which could have pointed the other way, and the session
+## stood it a stud along instead (hand264).
+static func turned_to_fit(library: PartLibrary, parts: Array[Dictionary],
+		fits: Callable) -> Array[Dictionary]:
+	var ids: Array = []
+	for item: Dictionary in parts:
+		ids.append(str(item["part"]))
+	var shapes: Dictionary = Exact.shapes_for(library, ids)
+	var items: Array = []
+	var hands := PackedInt32Array()
+	for n: int in parts.size():
+		var shape: Exact.Shape = shapes.get(str(parts[n]["part"]))
+		items.append(Exact.Item.new(shape, parts[n]["at"]) if shape != null else null)
+		if str(parts[n]["slot"]) == "hands":
+			hands.append(n)
+	for n: int in parts.size():
+		if not HELD_BY_BAR.has(str(parts[n]["slot"])) or items[n] == null:
+			continue
+		var trial: Array[Dictionary] = []
+		for item: Dictionary in parts:
+			trial.append(item.duplicate())
+		var turned: Variant = turned_in_hand(items, n, hands, func(there: Transform3D) -> bool:
+			trial[n]["at"] = there
+			return bool(fits.call(trial)))
+		if turned is Transform3D:
+			trial[n]["at"] = turned
+			return trial
+	return parts
+
+
+## The model's parts standing within a few studs of a figure at [param at],
+## by their exact shapes.
+static func _model_near(library: PartLibrary, world: BrickWorld, at: Transform3D) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.transform.origin.distance_to(at.origin) > NEAR:
+			continue
+		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+		if shape != null and shape.has_pieces():
+			out.append(Exact.Item.new(shape, brick.transform))
+	return out
+
+
+## How near a figure the model's parts are asked about, in LDU: past the
+## reach of a figure's longest held thing, a lance.
+const NEAR := 12.0 * STUD
+
+
+## Whether what [param parts]' hands hold, stood at [param at], is clear of
+## [param around] by the parts' exact shapes.
+static func _held_clear_of(library: PartLibrary, parts: Array[Dictionary], at: Transform3D,
+		around: Array) -> bool:
+	for item: Dictionary in parts:
+		if not HELD_BY_BAR.has(str(item["slot"])):
+			continue
+		var shape: Exact.Shape = Exact.shape_for(library, str(item["part"]))
+		if shape == null or not shape.has_pieces():
+			continue
+		var held := Exact.Item.new(shape, at * (item["at"] as Transform3D))
+		for other: Exact.Item in around:
+			if not Exact.clash(held, other, true).is_empty():
+				return false
+	return true
+
+
 ## What a hand holds by a bar: it may turn about the bar in the hand, as a
 ## real one does, and is seated by the bar BrickNet's connectors know.
 const HELD_BY_BAR: Array[String] = ["accessory", "accessory_left"]
@@ -610,8 +685,10 @@ static func _clear_at(items: Array, i: int, at: Transform3D) -> bool:
 ## them: the miller's sack in walk256's windmill session cost five turns.
 ## So each of its bars that a clip takes is laid in the hand's clip, nearest
 ## the grip first, and turned about the clip's line, the least turn first,
-## and slid a little along it, until it is clear and joined.
-static func turned_in_hand(items: Array, i: int, on: PackedInt32Array) -> Variant:
+## and slid a little along it, until it is clear and joined, and [param
+## also] (given the place) says yes when there is more to ask.
+static func turned_in_hand(items: Array, i: int, on: PackedInt32Array,
+		also: Callable = Callable()) -> Variant:
 	var item: Exact.Item = items[i]
 	var clips: Array = []
 	for j: int in on:
@@ -649,7 +726,7 @@ static func turned_in_hand(items: Array, i: int, on: PackedInt32Array) -> Varian
 					items[i] = Exact.Item.new(item.shape, there)
 					var joined: bool = Exact.connected(items, i, on)
 					items[i] = item
-					if joined:
+					if joined and (not also.is_valid() or bool(also.call(there))):
 						return there
 	return null
 

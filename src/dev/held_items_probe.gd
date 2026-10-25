@@ -16,7 +16,9 @@
 ## thing it holds joined to a hand and clear of the figure, and the Minifigure
 ## builder's figure (FigureTool.parts_of, what it previews and puts down) the
 ## same. A sack, which BrickNet gives no bar a hand takes, is said so when it
-## is put in the hand, not at the save. Needs BrickNet's shapes; exits
+## is put in the hand, not at the save. And an angler stood beside a bollard
+## on a jetty turns his rod in his hand rather than being refused the spot.
+## Needs BrickNet's shapes; exits
 ## non-zero when a hand does not hold what it is given.
 extends SceneTree
 
@@ -63,6 +65,7 @@ func _run() -> void:
 		return
 	for figure: Array in FIGURES:
 		await _holds(str(figure[0]), figure[1] as Dictionary)
+	await _beside_a_bollard()
 	await _said_when_not_held()
 	print("")
 	print("held items: each figure holds what it is given, Tested-held in one call, the "
@@ -119,6 +122,27 @@ func _holds(what: String, args: Dictionary) -> void:
 	var unheld: PackedStringArray = FigureTool.unheld_in_hand(_library, parts)
 	_check("the builder's figure holds them alike: %s" % ("both held" if unheld.is_empty()
 		else "not held: %s" % ", ".join(unheld)), unheld.is_empty())
+
+
+## hand264's own jetty session: its angler, asked for at x 15, z 5 facing
+## -z, was refused because his fishing rod ran into the bollard beside him,
+## and stood a stud along. The rod turns in his hand instead.
+func _beside_a_bollard() -> void:
+	print("── an angler beside a bollard on the session's jetty ──")
+	_store.open_text(FileAccess.get_file_as_string("res://tests/fixtures/mcp/hand264_jetty.ldr"),
+		"jetty.ldr")
+	var stood: Dictionary = await FigureTool.add({"name": "Angler", "x": 15, "z": 5,
+		"facing": "-z", "headwear": "fishing hat", "head": "smile", "torso": "fishing vest",
+		"accessory": "fishing rod", "colors": {"legs": 28, "hips": 28}}, _library, _world, _builder)
+	_check("stood where it was asked, the first time: %s" % str(stood.get("text", "")).left(110),
+		bool(stood.get("ok", false)))
+	if not bool(stood.get("ok", false)):
+		return
+	var text: String = await _store._model_text(false)
+	var tested: Dictionary = (await SharedPages.attach_tested(text, _library, _store))["tested"]
+	var whole: Dictionary = (tested.get("tests", {}) as Dictionary).get("whole", {})
+	_check("...its rod held in his hand: Tested's whole test: %s" % str(whole.get("why", "")).left(110),
+		bool(whole.get("ok", false)))
 
 
 func _said_when_not_held() -> void:

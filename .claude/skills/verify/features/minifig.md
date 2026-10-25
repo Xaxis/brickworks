@@ -53,6 +53,11 @@ the model, and the design assistant doing the same with `add_minifig`.
     cup, a pole and a wrench, a torch and a camera, each pair by one
     add_minifig, Tested's whole test passed, each joined and through nothing,
     the builder's alike, and the sack said; on base the cup and the camera fail.
+    Put in a model, what a figure holds is turned in the hand the same way when
+    it would run into the model, by its cover or its real shape
+    (`turned_to_fit`, `_held_clear_of`): hand264's angler, asked for beside a
+    bollard on a jetty, was refused for his rod and stood a stud along; now
+    he stands where asked with the rod turned (`tests/fixtures/mcp/hand264_jetty.ldr`).
   - what the standard joints do not fit sits where the library's own assemblies
     put it (`MinifigData.PLACES`/`HANDS`/`BODIES`): 30375cs0's battle droid,
     84638's hook on the left hand, 84637b's wooden leg, 15998's baby arms,
