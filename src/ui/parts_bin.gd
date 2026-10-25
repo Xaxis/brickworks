@@ -2264,6 +2264,7 @@ func _ask_photo() -> void:
 			+ "Nothing is sent until you choose a photo.")
 		_telling.dialog_autowrap = true
 		_telling.ok_button_text = "Choose a photo"
+		Look.dialog(_telling)
 		_telling.confirmed.connect(func() -> void:
 			ShellPrefs.put("photo_told", true)
 			_picker.ask())

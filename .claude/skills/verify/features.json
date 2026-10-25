@@ -557,6 +557,14 @@
       "tests": []
     },
     {
+      "id": "cli:dialog look probe",
+      "kind": "cli",
+      "entry": "src/dev/dialog_look_probe.gd",
+      "reach": "tools/probe.sh dialog_look_probe -- --shots=DIR",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "cli:discovery browser flow",
       "kind": "cli",
       "entry": "tools/web/discovery_flow.mjs",

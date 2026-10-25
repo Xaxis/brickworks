@@ -4,7 +4,8 @@
 ## Before a session: Start, which gives a link to send, or a link someone
 ## sent pasted in to join theirs. In one: the link, who is in it and whether
 ## each is here, and End the session (the owner's, with Remove beside each
-## person) or Leave. The look of Versions, the panel beside it in the menu.
+## person) or Leave. Laid out as Versions, the panel beside it in the menu,
+## in the look of the app's panels (Look.dialog).
 class_name TogetherDialog
 extends AcceptDialog
 
@@ -37,6 +38,7 @@ const WIDTH := 440
 func _ready() -> void:
 	title = "Build together"
 	ok_button_text = "Close"
+	Look.dialog(self)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	column.custom_minimum_size = Vector2(WIDTH, 0)

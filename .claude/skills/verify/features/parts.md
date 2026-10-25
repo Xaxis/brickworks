@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe -->
 
 ## Sub-features
 
@@ -298,7 +298,15 @@ geometry in front of them.
   bin's search field. The first press says the photo goes to Brickognize, a
   third party that may keep it and train on it (their terms, read 2026-10-24),
   and that nothing is sent until a photo is chosen (`ShellPrefs` `photo_told`,
-  once a device); then the picker (`PickImage`, the camera on a phone). The
+  once a device); then the picker (`PickImage`, the camera on a phone; on
+  the desktop Godot's file dialog, opened in the folder the last picture
+  was chosen from while it is there, else Pictures, else home:
+  `PickImage.start`, `ShellPrefs` `picture_folder`, shared with Print's
+  `PictureFile`; it opened in the install folder, walk256 DS1). The
+  question and the chooser are in the app's dialog look on the desktop
+  (`Look.dialog`: the panels' dark face, faint edge and round corners on
+  the engine's own sizes; the web's stay as they were); `dialog_look_probe`
+  reads their pixels against the Render panel's face. The
   photo, at most 1024 px, is posted to `api.brickognize.com/predict/parts/`
   from wherever the app runs (CORS `*`, no key; `connect-src` in
   `tools/deploy.sh`); its BrickLink numbers become parts here by
@@ -335,6 +343,7 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Rece
 godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
+tools/probe.sh dialog_look_probe -- --shots=DIR  # the question, the chooser, Print's chooser and Build together in the app's look; the chooser in Pictures, then where the last came from
 node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved

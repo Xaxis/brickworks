@@ -735,6 +735,13 @@
       "area": "parts"
     },
     {
+      "kind": "cli",
+      "label": "dialog look probe",
+      "entry": "src/dev/dialog_look_probe.gd",
+      "reach": "tools/probe.sh dialog_look_probe -- --shots=DIR",
+      "area": "parts"
+    },
+    {
       "kind": "ui",
       "label": "mirror a selection",
       "entry": "src/assembly/mirror.gd",

@@ -8,7 +8,9 @@ app, joined by a link (docs/TOGETHER.md).
 ## Sub-features
 
 - `build together` (`src/ui/together_dialog.gd`, `TogetherDialog`): File,
-  Build together… (`Shell` command `together`, `Main.open_together`). Out of a
+  Build together… (`Shell` command `together`, `Main.open_together`), in
+  the app's dialog look on the desktop (`Look.dialog`, `dialog_look_probe`;
+  it was the engine's grey, walk256 DS1). Out of a
   session: a note, **Start a session**, and a field to paste a link with
   **Join** (Enter on an empty field does nothing). In one: the link with
   **Copy link**, each person with "here" or "away" (the owner's view has
