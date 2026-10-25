@@ -224,18 +224,25 @@ try {
       if (!head || !panel) return check(`More is open for ${row}`, false);
       // The menu it is in opened first, as a finger opens it, each other
       // folded again (walk256 T2: More is the menus' names).
+      // Each step waited for until the page is told it (twice a second), so
+      // no menu's name is tapped where it was before the one above folded.
+      const rowsNow = async () => Object.keys(await controls()).filter((k) => k.startsWith("phone_row_"));
+      const told = async (test) => {
+        for (let n = 0; n < 16; n++) {
+          if (await test()) return true;
+          await page.waitForTimeout(250);
+        }
+        return false;
+      };
       for (const menu of ["file", "edit", "view", "build", "tools", "help"]) {
         if ((await controls())[`phone_row_${row}`]) break;
         const section = (await controls())[`phone_section_${menu}`];
         if (!section) continue;
         await tap(section);
-        // Told within a second or two: the page hears twice a second.
-        let found = false;
-        for (let n = 0; n < 12 && !found; n++) {
-          found = Boolean((await controls())[`phone_row_${row}`]);
-          if (!found) await page.waitForTimeout(250);
-        }
-        if (!found) await tap(section);
+        await told(async () => (await rowsNow()).length > 0);
+        if ((await controls())[`phone_row_${row}`]) break;
+        await tap((await controls())[`phone_section_${menu}`] || section);
+        await told(async () => (await rowsNow()).length === 0);
       }
       const top = head.y + head.h / 2 + 6;
       const bottom = panel.y + panel.h / 2 - 6;
