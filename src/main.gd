@@ -299,6 +299,9 @@ var _turning: PivotMark
 var _tools: TouchTools
 ## The phone's own bars and sheets, on a phone only (Phone.on).
 var _phone: PhoneShell
+## Every dialog and panel over the model sized and placed for a finger,
+## where the phone's layout is (TouchSizing).
+var _touch: TouchSizing
 ## The room kept under the model for the key strip, or the phone's row.
 var _hint_area: Control
 ## A finger held still on the model, on a phone: its part's actions.
@@ -4211,6 +4214,8 @@ func _build_ui() -> void:
 		_phone.app = self
 		_phone.bin = _bin
 		$HUD.add_child(_phone)
+		_touch = TouchSizing.new()
+		add_child(_touch)
 	else:
 		_stack.add_section(_bin)
 	_bin_dock = SideDock.new()
@@ -5717,6 +5722,11 @@ func _fit_panels() -> void:
 	var rails: float = 2.0 if _chat_dock.visible else 1.0
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
 	_bin_dock.set_open_width(minf(336.0, drawer) if phone else 336.0)
+	# A phone's drawer of the model tree and the properties, sized for a
+	# finger (TouchSizing), is the screen beside its rail: at the desktop's
+	# 336 units, half a phone, its rows ran off its edge.
+	if _phone != null and not Phone.wide():
+		_bin_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
 	_chat_dock.set_open_width(minf(340.0, drawer) if phone else 340.0)
 
 	# Whether both columns at their own widths leave the model its room:
@@ -5858,7 +5868,9 @@ func _show_notices() -> void:
 	var any: bool = false
 	for note: Node in _notices.get_child(0).get_children():
 		any = any or (note as Control).visible
-	_notices.visible = any
+	# On a phone the drawer down the left takes the screen beside its rail,
+	# and the strip, squeezed beside it, ran off the screen: it waits.
+	_notices.visible = any and not (_phone != null and not Phone.wide() and _bin_dock.is_open())
 	if _phone != null and any:
 		_for_a_finger(_notices)
 
@@ -5883,6 +5895,41 @@ func _for_a_finger(node: Node) -> void:
 		if control is BaseButton or control is LineEdit:
 			control.custom_minimum_size = control.custom_minimum_size.max(
 				Vector2.ONE * Phone.TARGET * per_point)
+		# A notice's words and its buttons in a row, on a phone: the words
+		# over the buttons, which wrap. The browser's warning about keeping
+		# models ran "This one for Studio" and "Got it" off the screen.
+		if control is HBoxContainer and control.get_child_count() > 1 \
+				and control.get_child(0) is Label \
+				and (control.get_child(0) as Label).autowrap_mode != TextServer.AUTOWRAP_OFF:
+			_words_over_buttons.call_deferred(control as HBoxContainer)
+
+
+## A notice's row laid as its words over its buttons (_for_a_finger): the
+## same controls, moved into a column, the buttons into a row that wraps.
+func _words_over_buttons(row: HBoxContainer) -> void:
+	if not is_instance_valid(row) or row.get_parent() == null:
+		return
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", row.get_theme_constant("separation"))
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var buttons := HFlowContainer.new()
+	buttons.alignment = FlowContainer.ALIGNMENT_END
+	buttons.add_theme_constant_override("h_separation", row.get_theme_constant("separation"))
+	buttons.add_theme_constant_override("v_separation", row.get_theme_constant("separation"))
+	var holder: Node = row.get_parent()
+	holder.add_child(column)
+	holder.move_child(column, row.get_index())
+	var words: Control = row.get_child(0)
+	# As wide as a phone has room for, the buttons wrapping under it; a
+	# tablet's as wide as the room its panels leave the model at the least.
+	(words as Label).custom_minimum_size.x = Phone.px(get_viewport(), 260.0) if Phone.wide() \
+		else get_viewport().get_visible_rect().size.x - Phone.px(get_viewport(), 56.0)
+	words.reparent(column, false)
+	column.add_child(buttons)
+	for child: Node in row.get_children():
+		child.reparent(buttons, false)
+	holder.remove_child(row)
+	row.queue_free()
 
 
 ## Show or hide the parts list. Worked out on opening rather than kept
@@ -7662,6 +7709,10 @@ func _inset(panel: Control, wants_wide: float, wants_tall: float) -> void:
 	const MARGIN := 24.0
 	# Over the frame: while it shows, Tab and F6 go into it (FocusGuard).
 	panel.add_to_group(FocusGuard.OVER)
+	# Sized and placed for a finger in the phone's layout and a tablet's.
+	if _touch != null:
+		_touch.place_panel(panel, Vector2(wants_wide, wants_tall))
+		return
 	var room: Vector2 = get_viewport().get_visible_rect().size
 	var wide: float = minf(wants_wide, room.x - MARGIN * 2.0)
 	var tall: float = minf(wants_tall, room.y - MARGIN * 2.0)
@@ -7724,6 +7775,21 @@ func _dress_for_phone() -> void:
 	_chat_dock.set_phone_rail(rail)
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
+	# The model tree and the properties, in the drawer down the left, sized
+	# for a finger as a dialog is; on a tablet the drawer takes the parts
+	# panel's place while it is open (PhoneShell.dock_toggled).
+	_touch.size_panel(_stack)
+	_bin_dock.toggled.connect(_phone.dock_toggled)
+	_bin_dock.toggled.connect(func(open: bool) -> void:
+		_show_notices()
+		if open:
+			_touch.fit_panel.call_deferred(_stack))
+	# And the panels that place themselves, placed as Main's are, and those
+	# over the model's own room (Motions, Colour the hidden parts, Stress),
+	# Simulate's column and the line saying what the app is busy with.
+	_touch.place_panel(_shell.library_dialog, Vector2(LibraryDialog.WIDE, LibraryDialog.TALL))
+	_touch.place_panel(_shell.collection, Vector2(CollectionDialog.WIDE, CollectionDialog.TALL))
+	_size_for_a_finger.call_deferred()
 	# A finger that came down on a part with the Select tool moves it, as
 	# the desktop's left drag does: the view does not turn with it.
 	_camera.finger_taken = func() -> bool:
@@ -7733,6 +7799,20 @@ func _dress_for_phone() -> void:
 	_phone_hold.wait_time = HOLD_MS / 1000.0
 	_phone_hold.timeout.connect(_on_phone_hold)
 	add_child(_phone_hold)
+
+
+## The panels over the model's own room (Motions, Colour the hidden parts,
+## Stress), Simulate's and the line saying what the app is busy with, sized
+## for a finger: made after the phone's layout is.
+func _size_for_a_finger() -> void:
+	for panel: Control in [_pose, _hidden_colours, _simulate, _shell.stress.panel, _shell.status]:
+		if panel != null:
+			_touch.size_panel(panel)
+	# What the app is busy with is one line, its end cut short where the
+	# screen is: "Drawing the steps…" ran 500 points past a tablet's edge.
+	for found: Node in _shell.status.find_children("*", "Label", true, false):
+		(found as Label).clip_text = true
+		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 
 ## A finger held still on the model, on a phone: what a right click does
@@ -7764,36 +7844,83 @@ func _context_title(brick_id: int) -> String:
 ## Every target a finger has on screen and every line of text, in points:
 ## what the phone layout promises (Phone.TARGET, Phone.LEAST_TEXT), read by
 ## tools/web/phone_flow.mjs. A control scrolled out of its list is left out.
+##
+## And what is open over the model (dialogs255): Godot's dialogs, which are
+## windows of their own drawn in this one, their title bars and close
+## buttons, a menu's items and a tree's rows, each said with the dialog it
+## is in. With the on-screen keyboard up, a dialog's part under it is off
+## the screen (TouchSizing.keyboard).
 func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 	var targets: Array = []
 	var texts: Array = []
 	var screen: Rect2 = get_viewport().get_visible_rect()
-	var walk: Array = [[get_tree().root, screen]]
+	var above: Rect2 = _touch.room() if _touch != null else screen
+	# Only the dialog being typed in waits above the keyboard; one behind it
+	# is judged against the screen.
+	var typed_in: Node = _touch.typing_dialog() if _touch != null else null
+	var dialogs: Array = []
+	var box_of := func(rect: Rect2) -> Array:
+		var on_page: Rect2 = to_window * rect
+		return [roundi(on_page.position.x / per_css), roundi(on_page.position.y / per_css),
+			roundi(on_page.size.x / per_css), roundi(on_page.size.y / per_css)]
+	var points_of := func(size: int) -> float:
+		return snappedf(float(size) * to_window.get_scale().y / per_css, 0.1)
+	# [node, what it can be seen within (its scrolls and its window), where
+	# its window is, the dialog it is in]
+	var anywhere := Rect2(-1e6, -1e6, 2e6, 2e6)
+	var walk: Array = [[get_tree().root, anywhere, Vector2.ZERO, "", null]]
 	while not walk.is_empty():
 		var next: Array = walk.pop_back()
 		var node: Node = next[0]
 		var clip: Rect2 = next[1]
-		if node is Window and node != get_window():
+		var shift: Vector2 = next[2]
+		var dialog: String = next[3]
+		var holder: Node = next[4]
+		var window := node as Window
+		if window != null and window != get_window():
+			if not window.visible or Tooltips.is_tooltip(window):
+				continue
+			dialog = window.title if not window.title.is_empty() else "%s %s" % [window.get_class(), window.name]
+			dialogs.append(dialog)
+			holder = window
+			shift = Vector2(window.position)
+			clip = clip.intersection(Rect2(shift, Vector2(window.size)))
+			_audit_window(window, box_of, points_of, dialog,
+				above if typed_in == null or typed_in == window else screen, targets, texts)
+		elif node is CanvasItem and not (node as CanvasItem).visible:
 			continue
-		if node is CanvasItem and not (node as CanvasItem).visible:
-			continue
+		elif (node.is_in_group(TouchSizing.GROUP) or node.is_in_group(TouchSizing.SIZED)) \
+				and dialog.is_empty():
+			dialog = "%s %s" % [_name_of(node as Control), node.name]
+			dialogs.append(dialog)
+			holder = node
 		var control := node as Control
 		if control != null:
 			var rect: Rect2 = control.get_global_rect()
+			rect.position += shift
 			if control.clip_contents or control is ScrollContainer:
 				clip = clip.intersection(rect)
-			var seen: bool = clip.intersects(rect) and rect.size.x > 0.5 and rect.size.y > 0.5
-			var on_page: Rect2 = to_window * rect
-			var box: Array = [roundi(on_page.position.x / per_css), roundi(on_page.position.y / per_css),
-				roundi(on_page.size.x / per_css), roundi(on_page.size.y / per_css)]
+			var shown: Rect2 = rect.intersection(clip)
+			var seen: bool = shown.intersects(screen) and rect.size.x > 0.5 and rect.size.y > 0.5
+			var box: Array = box_of.call(rect)
 			var named: String = "%s %s" % [_name_of(control), str(control.name)]
-			var takes: bool = control.mouse_filter != Control.MOUSE_FILTER_IGNORE and (
-				control is BaseButton or control is LineEdit or control is TextEdit
-				or control is Range and not control is ScrollBar)
-			# Off the screen: not inside it, and in nothing that scrolls.
-			var off: bool = clip == screen and not screen.grow(1.0).encloses(rect)
-			if seen and takes:
-				targets.append({"name": named, "box": box, "off": off})
+			# Off the screen: not inside it, and in nothing that scrolls, as the
+			# phone's layout is judged; in a dialog, what of it its scrolls show
+			# is not all inside the screen, and while the keyboard is up the
+			# dialog typed in is judged above it.
+			var off: bool = seen and clip == anywhere and not screen.grow(1.0).encloses(rect)
+			if not dialog.is_empty():
+				var bounds: Rect2 = above if typed_in == null or typed_in == holder else screen
+				off = seen and not bounds.grow(1.0).encloses(shown)
+			if seen and TouchSizing.takes(control):
+				var target: Dictionary = {"name": named, "box": box, "off": off, "in": dialog}
+				if control is BaseButton and (control as BaseButton).toggle_mode:
+					target["on"] = (control as BaseButton).button_pressed
+				if control is Button:
+					target["text"] = (control as Button).text.substr(0, 40)
+				targets.append(target)
+			if seen and control is Tree:
+				_audit_tree(control as Tree, shift, clip, box_of, named, dialog, targets)
 			var words: String = ""
 			if control is Label:
 				words = (control as Label).text
@@ -7803,18 +7930,91 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 				var field: LineEdit = control
 				words = field.text if not field.text.is_empty() else field.placeholder_text
 			if seen and not words.strip_edges().is_empty():
-				var points: float = float(control.get_theme_font_size("font_size")) \
-					* to_window.get_scale().y / per_css
-				texts.append({"name": named, "text": words.substr(0, 40), "px": snappedf(points, 0.1),
-					"box": box, "off": off})
-		for child: Node in node.get_children():
-			walk.append([child, clip])
+				texts.append({"name": named, "text": words.substr(0, 40),
+					"px": points_of.call(control.get_theme_font_size("font_size")),
+					"box": box, "off": off, "in": dialog})
+		# A dialog's own buttons are its internal children.
+		for child: Node in node.get_children(true):
+			walk.append([child, clip, shift, dialog, holder])
 	# And the model's room between a tablet's panels, where a finger turns it.
 	var room: Rect2 = to_window * _phone.model_room(screen)
-	return {"targets": targets, "texts": texts, "phone": _phone.state(),
+	# And the field being typed in, where it is: above the keyboard.
+	var typing: Array = []
+	var focus: Control = _touch.typing() if _touch != null else null
+	if focus != null:
+		var field: Rect2 = focus.get_global_rect()
+		if focus.get_viewport() != get_viewport():
+			field.position += Vector2((focus.get_viewport() as Window).position)
+		typing = box_of.call(field)
+	return {"targets": targets, "texts": texts, "phone": _phone.state(), "dialogs": dialogs,
+		"keyboard": _touch.keyboard if _touch != null else 0.0, "typing": typing,
 		"room": [roundi(room.position.x / per_css), roundi(room.position.y / per_css),
 			roundi(room.size.x / per_css), roundi(room.size.y / per_css)],
 		"screen": [roundi((to_window * screen).size.x / per_css), roundi((to_window * screen).size.y / per_css)]}
+
+
+## A window's own parts in the audit: its title and close button, or a
+## menu's items, each a row of the menu as Godot lays them out.
+func _audit_window(window: Window, box_of: Callable, points_of: Callable, dialog: String,
+		above: Rect2, targets: Array, texts: Array) -> void:
+	var at: Vector2 = Vector2(window.position)
+	var menu := window as PopupMenu
+	if menu != null:
+		var font: Font = menu.get_theme_font("font")
+		var size: int = menu.get_theme_font_size("font_size")
+		var row: float = (font.get_height(size) if font != null else 0.0) \
+			+ float(menu.get_theme_constant("v_separation"))
+		var panel: StyleBox = menu.get_theme_stylebox("panel")
+		var y: float = at.y + (panel.get_margin(SIDE_TOP) if panel != null else 0.0)
+		for n: int in menu.item_count:
+			if menu.is_item_separator(n):
+				y += row if not menu.get_item_text(n).is_empty() else \
+					float(menu.get_theme_constant("separator_outline_size")) + row * 0.5
+				continue
+			var rect := Rect2(at.x, y, float(window.size.x), row)
+			y += row
+			# Scrolled out of the menu: not on the screen to be missed.
+			var shown: Rect2 = rect.intersection(Rect2(at, Vector2(window.size)))
+			if shown.size.y < row * 0.5:
+				continue
+			var off: bool = not above.grow(1.0).encloses(shown)
+			targets.append({"name": "%s item %d" % [dialog, n], "box": box_of.call(rect), "off": off, "in": dialog})
+			texts.append({"name": "%s item %d" % [dialog, n], "text": menu.get_item_text(n).substr(0, 40),
+				"px": points_of.call(size), "box": box_of.call(rect), "off": off, "in": dialog})
+		return
+	if window.borderless or window is Popup:
+		return
+	var title: float = float(window.get_theme_constant("title_height"))
+	var bar := Rect2(at.x, at.y - title, float(window.size.x), title)
+	if not window.title.is_empty():
+		var size: int = window.get_theme_font_size("title_font_size")
+		texts.append({"name": "%s title" % dialog, "text": window.title.substr(0, 40),
+			"px": points_of.call(size if size > 0 else window.get_theme_default_font_size()),
+			"box": box_of.call(bar), "off": not above.grow(1.0).encloses(bar), "in": dialog})
+	var close: Texture2D = window.get_theme_icon("close")
+	if close != null:
+		var rect := Rect2(at + Vector2(window.size.x - window.get_theme_constant("close_h_offset"),
+			-window.get_theme_constant("close_v_offset")), close.get_size())
+		targets.append({"name": "%s close" % dialog, "box": box_of.call(rect),
+			"off": not above.grow(1.0).encloses(rect), "in": dialog, "close": true})
+
+
+## A tree's rows that show, each a target.
+func _audit_tree(tree: Tree, shift: Vector2, clip: Rect2, box_of: Callable, named: String,
+		dialog: String, targets: Array) -> void:
+	var item: TreeItem = tree.get_root()
+	if item != null and tree.hide_root:
+		item = item.get_next_visible()
+	var origin: Vector2 = tree.get_global_rect().position + shift
+	var n: int = 0
+	while item != null and n < 200:
+		var area: Rect2 = tree.get_item_area_rect(item)
+		area.position += origin
+		if clip.intersects(area):
+			targets.append({"name": "%s row %d" % [named, n], "box": box_of.call(area), "off": false,
+				"in": dialog})
+		item = item.get_next_visible()
+		n += 1
 
 
 ## A box around everything selected, for framing it.

@@ -411,7 +411,11 @@ func attend(name: String, work: Callable) -> void:
 	if name.begins_with("step_") and world != null and AuthorSteps.any(world, store.scenery):
 		slow = size >= STEPPED_SLOW_FROM
 	var asks: bool = name in ASKS_WHERE and SaveTo.asks()
-	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks, slow, size)
+	# A browser opens a page a tab only while it still answers the tap that
+	# asked: said first, Instructions waited for its busy line to be drawn,
+	# and on a slow phone the tap's leave to open the booklet's tab had gone.
+	var tab: bool = name in OPENS_A_TAB and OS.has_feature("web")
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks or tab, slow, size)
 
 
 ## How much a command has to do: the selection, for one that changes the
@@ -449,6 +453,10 @@ func doing(name: String) -> String:
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
 	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit", "new_window"]
+
+## The commands that open a tab of their own in a browser (BookletMaker):
+## run at once there, as those above are.
+const OPENS_A_TAB: Array[String] = ["instructions"]
 
 ## The commands that on the desktop ask where their file goes (SaveTo)
 ## before any slow work: run at once like those above, never said first,
@@ -2241,6 +2249,11 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
+	# Save as's question, for tools/web/dialogs_flow.mjs.
+	if _save_as != null and _save_as.visible:
+		out["save_as_name"] = _save_as_name
+		out["save_as_ok"] = _save_as.get_ok_button()
+		out["save_as_cancel"] = _save_as.get_cancel_button()
 	return out
 
 

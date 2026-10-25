@@ -1017,6 +1017,10 @@ static func _head(document: Document, with_parts: bool = true) -> String:
   .bar button { font: inherit; padding: 5px 14px; border-radius: 6px;
     border: 0; background: #e3ecf4; color: #17202a; cursor: pointer; }
 }
+@media screen and (pointer: coarse) {
+  .bar { flex-wrap: wrap; font-size: 16px; }
+  .bar button { min-height: 44px; min-width: 44px; padding: 10px 16px; }
+}
 @media print {
   @page { size: landscape; margin: 0; }
   body { background: #fff; }
