@@ -389,6 +389,9 @@ func _chose(what: String) -> void:
 			_fill_colours()
 			_toggle(_colours, "full")
 		"more":
+			# Opened as a menu bar is, every menu folded.
+			if not _more.is_open():
+				_more_open.clear()
 			_fill_more()
 			_toggle(_more, "full")
 		"turn":
@@ -716,13 +719,13 @@ func _fill_more() -> void:
 				_more_open.erase(name)
 			else:
 				_more_open[name] = true
-			_fill_more())
+			# Once the tap is done with its row, which this puts away.
+			_fill_more.call_deferred())
 		if open:
 			_more_rows(menu[1] as Array, "")
 
 
-## The menus open in More, by name: kept while the app runs, so More comes
-## back as it was left.
+## The menus open in More, by name, while it is up: each opens folded.
 var _more_open: Dictionary = {}
 
 

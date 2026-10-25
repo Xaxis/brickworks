@@ -11,11 +11,18 @@
 // At each size (walk180's P1: the desktop shrunk, 14-point buttons, 9-point
 // swatches, a drawer over half the model, "right-click" and "Shift-drag"):
 //
-//   1. The phone layout is on (window.brickworksControls names its row).
-//   2. More, File, New: a model of its own.
+//   1. The phone layout is on (window.brickworksControls names its row);
+//      Fit clear of the notices strip over the model (walk256 T2: it sat
+//      over "Show the assistant").
+//   2. More: the menus' names, File to Help, their commands folded under
+//      them (walk256 T2: every command at once, one long list); File
+//      tapped opens it, and New: a model of its own.
 //   3. Parts: the sheet comes up half the screen, the model above it; its
 //      handle swiped up takes the whole screen, and down again half.
 //   4. Searched for a 2 x 4 brick, its tile tapped: in hand, the sheet gone.
+//      A 1 x 2 brick, which has its prints folded under it: a tap on its
+//      picture takes it, and only its "+N", a fingertip, opens them
+//      (walk256 T1: the first tap opened them).
 //   5. Six of them tapped down on the baseplate.
 //   6. A door searched for and tapped down; a roof slope likewise.
 //   7. Select, then a brick tapped: selected. Colour: big swatches; blue
@@ -145,6 +152,30 @@ try {
       }
       return {};
     };
+    // A row of More: the menu it is in opened first, as a finger opens it,
+    // each other folded again.
+    const moreRow = async (row) => {
+      let at = (await controls())[`phone_row_${row}`];
+      for (const menu of ["file", "edit", "view", "build", "tools", "help"]) {
+        if (at) break;
+        const section = (await controls())[`phone_section_${menu}`];
+        if (!section) continue;
+        await tap(section);
+        await page.waitForTimeout(500);
+        at = (await controls())[`phone_row_${row}`];
+        if (!at) await tap(section);
+      }
+      return at || null;
+    };
+    const layout = async () => {
+      await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
+      for (let n = 0; n < 24; n++) {
+        await page.waitForTimeout(250);
+        const laid = await page.evaluate(() => window.brickworksLayout);
+        if (laid) return laid;
+      }
+      return null;
+    };
     const take = async (query) => {
       await press("phone_parts");
       const box = await where("part search");
@@ -183,12 +214,34 @@ try {
     }
     await until((s) => (s.awaited || 0) === 0 && s.mode, 120);
     await audit("ready");
+    const strip = ((await layout()) || {}).panels?.notices;
+    const fitBox = await where("phone_fit", 5);
+    if (check(`the notices strip is up over the model (${JSON.stringify(strip)})`, Boolean(strip && fitBox))) {
+      const fitTop = fitBox.y - fitBox.h / 2;
+      const apart = fitTop >= strip[1] + strip[3] || fitBox.y + fitBox.h / 2 <= strip[1]
+        || fitBox.x + fitBox.w / 2 <= strip[0] || fitBox.x - fitBox.w / 2 >= strip[0] + strip[2];
+      check(`Fit (${Math.round(fitTop)} to ${Math.round(fitTop + fitBox.h)}) clear of the strip `
+        + `(${strip[1]} to ${strip[1] + strip[3]})`, apart);
+    }
 
     // 2. A model of its own.
     await press("phone_more");
     check("More: a sheet with every menu's commands", (await sheetNow()).sheet === "More");
+    let named = await controls();
+    const sections = ["file", "edit", "view", "build", "tools", "help"].filter((m) => named[`phone_section_${m}`]);
+    const rowsShown = Object.keys(named).filter((k) => k.startsWith("phone_row_")).length;
+    check(`More: the menus' names, ${sections.length} of 6, their commands folded (${rowsShown} rows shown)`,
+      sections.length === 6 && rowsShown === 0);
     await audit("more");
-    const newRow = await where("phone_row_new");
+    if (named.phone_section_file) {
+      await tap(named.phone_section_file);
+      named = await controls();
+      const filed = Object.keys(named).filter((k) => k.startsWith("phone_row_")).length;
+      check(`File tapped: its commands under it (${filed} rows), the others folded`,
+        filed >= 10 && !named.phone_row_undo && Boolean(named.phone_row_new));
+      await audit("more_file");
+    }
+    const newRow = await moreRow("new");
     if (check("More has File's New", Boolean(newRow))) {
       await tap(newRow);
       const discard = await where("new_discard", 3);
@@ -220,7 +273,36 @@ try {
     await press("phone_parts");
 
     // 4. A 2 x 4 brick, by searching.
-    let held = await take("3001");
+    let held = await take("3004");
+    check(`searched "3004", a part with prints folded under it, and tapped its tile: in hand (${held})`,
+      held === "3004");
+    // Its picture, where a person taps a part, not the tile's middle: let
+    // go of it first, and the sheet opened again on the same search.
+    await press("phone_select");
+    await until((now) => now.mode === "select", 5);
+    await press("phone_parts");
+    const tile = await where("first part", 20);
+    let fold = await where("first fold", 5);
+    const folded = (await state()).found || [];
+    check(`its "+N" a fingertip (${fold ? `${fold.w} x ${fold.h}` : "none"}), the prints folded (${folded.slice(0, 3).join(", ")})`,
+      Boolean(fold) && fold.w >= 44 && fold.h >= 44 && !String(folded[1] || "").startsWith("3004p"));
+    if (tile) await tap({ x: tile.x, y: tile.y - tile.h / 2 + tile.h * 0.4 });
+    s = await until((now) => now.mode === "place" && now.held === "3004", 10);
+    check(`a tap on its picture takes it (${s.mode}, ${s.held}) and opens nothing (${(s.found || []).slice(0, 3).join(", ")})`,
+      s.mode === "place" && s.held === "3004" && !String((s.found || [])[1] || "").startsWith("3004p"));
+    if (!(await sheetNow()).sheet) await press("phone_parts");
+    fold = await where("first fold", 10);
+    if (fold) await tap(fold);
+    s = await until((now) => String((now.found || [])[1] || "").startsWith("3004p"), 10);
+    check(`its "+N" tapped opens the prints (${(s.found || []).slice(0, 3).join(", ")})`,
+      String((s.found || [])[1] || "").startsWith("3004p"));
+    await audit("prints_open");
+    fold = await where("first fold", 10);
+    if (fold) await tap(fold);
+    s = await until((now) => !String((now.found || [])[1] || "").startsWith("3004p"), 10);
+    check("and again folds them", !String((s.found || [])[1] || "").startsWith("3004p"));
+    if ((await sheetNow()).sheet) await press("phone_parts");
+    held = await take("3001");
     check(`searched "3001" and tapped its tile: in hand (${held})`, held === "3001");
     phone = await sheetNow();
     check(`the sheet went with the pick (${phone.sheet || "none"})`, !phone.sheet);

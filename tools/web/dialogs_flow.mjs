@@ -222,6 +222,15 @@ try {
       const head = await where("phone_sheet_more", 5);
       const panel = await where("phone_panel_more", 5);
       if (!head || !panel) return check(`More is open for ${row}`, false);
+      // The menu it is in opened first, as a finger opens it, each other
+      // folded again (walk256 T2: More is the menus' names).
+      for (const menu of ["file", "edit", "view", "build", "tools", "help"]) {
+        if ((await controls())[`phone_row_${row}`]) break;
+        const section = (await controls())[`phone_section_${menu}`];
+        if (!section) continue;
+        await tap(section);
+        if (!(await controls())[`phone_row_${row}`]) await tap(section);
+      }
       const top = head.y + head.h / 2 + 6;
       const bottom = panel.y + panel.h / 2 - 6;
       for (let n = 0; n < 40; n++) {
