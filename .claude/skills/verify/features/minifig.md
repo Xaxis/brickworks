@@ -43,8 +43,9 @@ the model, and the design assistant doing the same with `add_minifig`.
     the grip by the least turn only, and from the part's own lines: of the 456
     things it names, 47 were held through the figure (3899's cup 2.6 LDU into
     the torso, 3.8 into the left arm) and 44 by a grip that is not BrickNet's
-    bar (30089b's camera by its sight); now 6 and 28, those 28 parts BrickNet
-    gives only clips, which no hand's clip takes. A thing no bar of BrickNet's
+    bar (30089b's camera by its sight); now 6 and 27 (360 held and clear, from
+    302), the 27 mostly parts BrickNet gives only clips, which no hand's clip
+    takes (11096, 20612, 30340). A thing no bar of BrickNet's
     lets a hand hold (10169's sack, 33054's mug) is said when it is put in the
     hand (`unheld_in_hand`), not found at the save: walk256's windmill miller
     cost five turns. The Minifigure builder previews and puts down the same
