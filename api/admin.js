@@ -369,7 +369,7 @@ const line = (given, limit) => String(given ?? "").replace(/[\u0000-\u001f\u007f
   .slice(0, limit).trim();
 
 /// The challenges, the ones not yet ended first (open, then upcoming by
-/// their first day), then the ended ones newest first, at most 24
+/// their first day), then the ended ones, the one that ended last first, at most 24
 /// (supabase/challenge_list_order.sql); null before challenges.sql.
 async function challengesListed(tests) {
   try {

@@ -11,7 +11,9 @@
 --
 --   challenge_list   the same rows, the same columns, at most 24, in this
 --                    order: open, then upcoming by their first day, then
---                    ended, newest first
+--                    ended, the one that ended last first (as
+--                    challenge_past orders them: the day it was ended, or
+--                    its last day)
 --
 -- Only a function replaced, applied after challenge_year.sql: the same name
 -- and arguments, so api/admin.js reads it as before. Security definer and
@@ -22,7 +24,11 @@
 
 -- REPLACES challenge_year.sql's: the same rows, the ones not yet ended first:
 -- the open one, then the coming ones by their first day, so a year planned
--- ahead lists the next before the last, then the ended ones, newest first.
+-- ahead lists the next before the last; then the ended ones, the one that
+-- ended last first. By their first day instead, a challenge the owner had
+-- just ended went below the test themes runs end early in coming months,
+-- out of the 24, and End it now seemed to do nothing (challenges_flow,
+-- "the challenge ended: not within 30 s").
 -- {id, title, brief, starts_on, ends_on, announced_at, state, rules, test,
 -- entries: {hand, assistant}, votes: {hand, assistant}, winners}.
 create or replace function public.challenge_list(tests boolean default false)
@@ -51,7 +57,7 @@ as $$
      where not c.test or coalesce(challenge_list.tests, false)
      order by case public.challenge_state(c) when 'open' then 0 when 'upcoming' then 1 else 2 end,
               case when public.challenge_state(c) = 'upcoming' then c.starts_on end asc,
-              c.starts_on desc, c.id desc
+              least(c.ends_on, coalesce((c.ended_at at time zone 'utc')::date, c.ends_on)) desc, c.id desc
      limit 24
 $$;
 

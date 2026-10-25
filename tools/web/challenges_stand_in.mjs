@@ -126,12 +126,12 @@ async function card(m) {
 
 /// challenge_list's order (supabase/challenge_list_order.sql): the ones not
 /// yet ended first, open, then upcoming by their first day; then the ended
-/// ones, newest first.
+/// ones, the one that ended last first (challenge_past's endedOn).
 function listOrder(a, b) {
   const rank = { open: 0, upcoming: 1, ended: 2 };
   return rank[stateOf(a)] - rank[stateOf(b)]
     || (stateOf(a) === "upcoming" ? (a.starts_on < b.starts_on ? -1 : a.starts_on > b.starts_on ? 1 : 0) : 0)
-    || (b.starts_on < a.starts_on ? -1 : b.starts_on > a.starts_on ? 1 : 0) || b.id - a.id;
+    || (endedOn(b) < endedOn(a) ? -1 : endedOn(b) > endedOn(a) ? 1 : 0) || b.id - a.id;
 }
 
 const openFor = (tests) => challenges.filter((c) => c.test === Boolean(tests) && stateOf(c) === "open")

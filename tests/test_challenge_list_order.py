@@ -7,7 +7,7 @@ open challenge, the next to open and a test challenge a run had left open
 were in no row, so /admin could not end it and challenges_flow could not see
 the one it had just set. supabase/challenge_list_order.sql replaces it with
 the same rows in another order: open, then upcoming by their first day, then
-the ended ones newest first. tools/challenge_list_order_try.sql proves it on
+the ended ones, the one that ended last first. tools/challenge_list_order_try.sql proves it on
 the live project in a rolled-back dry run; this holds the file to that.
 """
 
@@ -56,7 +56,10 @@ def test_the_same_rows_in_another_order() -> None:
     order = " ".join(found.group(0).split())
     assert order == ("order by case public.challenge_state(c) when 'open' then 0 when 'upcoming' then 1 else 2 end, "
                      "case when public.challenge_state(c) = 'upcoming' then c.starts_on end asc, "
-                     "c.starts_on desc, c.id desc")
+                     "least(c.ends_on, coalesce((c.ended_at at time zone 'utc')::date, c.ends_on)) desc, c.id desc")
+    # The ended ones as challenge_past orders what ran: by the day each ended.
+    assert "least(c.ends_on, coalesce((c.ended_at at time zone 'utc')::date, c.ends_on)) desc, c.id desc" \
+        in body("challenge_past", EARLIER)
 
 
 def test_applying_challenge_year_again_alone_is_refused() -> None:
