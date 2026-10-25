@@ -831,15 +831,15 @@ All of these are in `tools/check.sh`.
   (`Assistant.designing`) and `Main._make_room` takes the untouched example
   off first, the design named for itself; `look_at_model` calls a baseplate
   part of the model "(the baseplate, part of the model)", never placed by
-  hand (`Assistant._floor_plate`). The MCP port makes room before the call's
+  hand (`Assistant._floor_plate`). Untouched means no step in the history
+  either: a session's edit_model lays no part the builder hears as placed
+  (not yet a check of its own). The MCP port makes room before the call's
   one step begins (`CommandSocket._run`), so Undo takes the first design back
-  to the empty model it began. Proves it when (17 checks, "the first
+  to the empty model it began. Proves it when (15 checks, "the first
   design on the example is a model of its own"): none of the car left, the
   design's 8 parts on its blue plate, called by its name; nothing placed by
   hand; the panel says the car came off; the next design replaces only the
-  first and Undo takes each back, the first to an empty model; a session's
-  edit to the car first leaves it no longer untouched (a step of the
-  history), and the design goes in beside it; the assistant's own design
+  first and Undo takes each back, the first to an empty model; the assistant's own design
   after a question clears it too; a person's own part stays, placed by hand.
   `first_design_undo_probe`: a call that keeps steps of its own and changes
   the model past them too is both, one step. A session's first submit_design
