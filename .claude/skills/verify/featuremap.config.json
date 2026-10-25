@@ -1373,6 +1373,13 @@
     },
     {
       "kind": "cli",
+      "label": "first visit load check",
+      "entry": "tools/web/load_check.mjs",
+      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=… for a preview; --profiles=broadband,slow --runs=3 --warm; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "progress check",
       "entry": "tools/web/progress_check.mjs",
       "reach": "node tools/web/progress_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=… --url=<a preview>/app; --only=timeline,booklet,…; --report-only for a build from before)",

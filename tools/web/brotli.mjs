@@ -18,11 +18,14 @@ if (!input || !output) {
 }
 
 const bytes = readFileSync(input);
-// Quality 9 and the size hint, which is what `brotli -q 9` does. Going
-// to 11 costs minutes on a 40 MB wasm for about a percent.
+// Quality 11 and the largest window a browser takes, which is what
+// `brotli -q 11 -w 24` does: these are the bytes a visitor waits for
+// (tools/export.sh). 11 makes the wasm 6.9 MB where 9 made 7.9, at about
+// a minute and a half where 9 took seven seconds (load250, 2026-10-24).
 writeFileSync(output, brotliCompressSync(bytes, {
   params: {
-    [constants.BROTLI_PARAM_QUALITY]: 9,
+    [constants.BROTLI_PARAM_QUALITY]: 11,
+    [constants.BROTLI_PARAM_LGWIN]: 24,
     [constants.BROTLI_PARAM_SIZE_HINT]: statSync(input).size,
   },
 }));

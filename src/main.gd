@@ -1363,6 +1363,15 @@ func _enable_antialiasing() -> void:
 		get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 
 
+## When each stage of the start was reached, on the page's clock (ms):
+## window.brickworksBoot, read by tools/web/load_check.mjs to say where a
+## first visit's wait goes. Web builds only.
+func _boot_mark(stage: String) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("(window.brickworksBoot = window.brickworksBoot || {})[%s] = performance.now()"
+			% JSON.stringify(stage), true)
+
+
 func _ready() -> void:
 	# What this build is, said before the catalogue costs fifteen seconds:
 	# how a person reporting a bug, and the release smoke test, ask a
@@ -1376,6 +1385,7 @@ func _ready() -> void:
 		return
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
+	_boot_mark("ready")
 	IdleDraw.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	# Before anything draws: the controls strip reads these to say what
@@ -1396,6 +1406,7 @@ func _ready() -> void:
 		set_process(false)
 		return
 	_catalogue_ms = Time.get_ticks_msec() - started
+	_boot_mark("catalogue")
 	# Parts made here before, built again from their LDraw files, so they
 	# are in the bin and so a model that uses them reopens.
 	CustomParts.load_all(_library)
@@ -1439,6 +1450,7 @@ func _ready() -> void:
 		ShellPrefs.frozen = true
 		CustomParts.keeps = false
 	_build_ui()
+	_boot_mark("ui")
 
 	if not _viewing.is_empty():
 		_enter_view()
@@ -1492,6 +1504,7 @@ func _ready() -> void:
 	_lay_baseplate()
 	# Whatever changes the model from here on is kept, by whatever path.
 	_store.listen()
+	_boot_mark("model")
 
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are

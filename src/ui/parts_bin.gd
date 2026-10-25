@@ -1253,26 +1253,45 @@ func _refresh_shelf() -> void:
 
 
 static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void:
-	var scores: Dictionary = {}
 	# Found by its name before found only through its keywords, whatever
 	# the scores: a query keeps every answer its name matching gave it,
 	# in that order, and what the keywords add comes after.
 	var needles: PackedStringArray = query.split(" ", false)
-	for info: PartLibrary.PartInfo in found:
-		scores[info.id] = _staple_score(info) + _match_score(info, query) \
+	# Each part's place worked out once, its score and then its footprint
+	# in one number, and the parts sorted by their places: the 20,000 of
+	# All with nothing typed took 1.2 s natively and most of 3 s of a first
+	# visit's start on the web, looking a part's score up and working its
+	# footprint out again in each of 300,000 comparisons (load250). The
+	# order is the one that was: score, then the smaller footprint, then
+	# the number.
+	var count: int = found.size()
+	var places := PackedInt64Array()
+	places.resize(count)
+	var ids := PackedStringArray()
+	ids.resize(count)
+	for n: int in count:
+		var info: PartLibrary.PartInfo = found[n]
+		var score: int = _staple_score(info) + _match_score(info, query) \
 			+ _usage_score(info) - (KEYWORDS_ONLY
 				if PartLibrary.matched(info, needles) == PartLibrary.BY_KEYWORDS else 0)
+		var studs: Vector2i = info.footprint_studs()
+		places[n] = score * AREA_SPAN - mini(studs.x * studs.y, AREA_SPAN - 1)
+		ids[n] = info.id
+	var order: Array = range(count)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		if places[a] != places[b]:
+			return places[a] > places[b]
+		return ids[a].naturalnocasecmp_to(ids[b]) < 0)
+	var sorted: Array[PartLibrary.PartInfo] = []
+	sorted.resize(count)
+	for n: int in count:
+		sorted[n] = found[order[n]]
+	found.assign(sorted)
 
-	found.sort_custom(func(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
-		var a_score: int = scores[a.id]
-		var b_score: int = scores[b.id]
-		if a_score != b_score:
-			return a_score > b_score
-		var a_area: int = a.footprint_studs().x * a.footprint_studs().y
-		var b_area: int = b.footprint_studs().x * b.footprint_studs().y
-		if a_area != b_area:
-			return a_area < b_area
-		return a.id.naturalnocasecmp_to(b.id) < 0)
+
+## Wider than any part's footprint in studs, so a score and a footprint
+## make one number that sorts as the two did.
+const AREA_SPAN := 1 << 20
 
 
 static func _rank_shared(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:

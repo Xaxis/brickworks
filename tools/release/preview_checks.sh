@@ -317,6 +317,16 @@ declare -A CMD=(
   # what it costs: the grab's drag handles, found twice a second, took a step
   # from 75 ms to 6.7 s and every check passed (CADTASK.md, section 6).
   [frames]="tools/web/cad_frames.mjs --url=$P/app $B --gate --arrive=300 --only=orbit,select_all,step --out=$S/${TAG}_frames_web $R/vendor/omr/files/75969-1.mpd"
+  # A first visit to /app on broadband (20 Mbps, 40 ms), three cold loads in
+  # browsers of their own: each file as sent (its encoding and cache header),
+  # the bytes and the time until the parts bin is usable, the network and the
+  # main thread apart, held to ceilings (load250: the live m167 sent 30.9 MB
+  # and was usable at 28.7 s); and 3039, which comes with the parts fetched
+  # after the start (index.parts.bin), taken from the bin as soon as it is
+  # usable, in hand with its ghost within 6 s of the click, as a part the
+  # build carries is (a part of them asked for early waits for them, 15 s
+  # at most): alone, below.
+  [load]="tools/web/load_check.mjs --url=$P/app $B --runs=3 --max-bytes=20 --max-interactive=28 --pick=3039 --max-pick=6 --out=$S/${TAG}_load"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
   # File, Render…: Quick and Good pictures, a 24-frame turntable, Best
@@ -331,7 +341,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download frames"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download frames load"
 NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and
@@ -385,7 +395,7 @@ run() {
 # together measures how fast a change crosses between two browsers: with
 # placing beside it its plain p95 read 1,123 ms against 516-864 alone
 # (2026-10-24).
-SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery oc together "
+SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery oc together load "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # Two at a time, a slot taking the next check as soon as it is free. Two

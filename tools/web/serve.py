@@ -41,6 +41,10 @@ Given as ID=FILE, and as often as wanted, each link plays its own file
 (share_steps_flow.mjs serves three sizes of one model at once); a plain
 FILE answers every other id.
 
+With --compressed a file with a .br beside it (tools/export.sh) is sent
+as that, to a browser that takes brotli, as the deployment sends it
+(tools/deploy.sh): what tools/web/load_check.mjs times a local export by.
+
 With --library it stands in for the parts store's library (src/net/
 model_library.gd) and the gallery's list, as the library screen and
 open_model library= read them: /api/account names this server as the
@@ -58,6 +62,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import re
 import time
@@ -81,6 +86,22 @@ class Handler(SimpleHTTPRequestHandler):
     shares: dict[str, Path] = {}
     library: Path | None = None
     omr: Path | None = None
+    compressed: bool = False
+
+    def send_head(self):  # noqa: ANN201 - http.server's own signature
+        """The file's .br sibling, with --compressed, to a browser taking brotli."""
+        path = self.translate_path(self.path)
+        if self.compressed and "br" in self.headers.get("Accept-Encoding", "") \
+                and os.path.isfile(path) and os.path.isfile(path + ".br"):
+            body = open(path + ".br", "rb")  # noqa: SIM115 - copied out and closed by do_GET
+            self.send_response(200)
+            self.send_header("Content-Type", self.guess_type(path))
+            self.send_header("Content-Encoding", "br")
+            self.send_header("Vary", "Accept-Encoding")
+            self.send_header("Content-Length", str(os.fstat(body.fileno()).st_size))
+            self.end_headers()
+            return body
+        return super().send_head()
 
     def end_headers(self) -> None:
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
@@ -236,6 +257,8 @@ def main() -> int:
     parser.add_argument("--delay", type=float, default=2500.0, help="milliseconds")
     parser.add_argument("--library", help="answer the store's library/ and the gallery from here")
     parser.add_argument("--omr", default="vendor/omr/files", help="where library/omr/ is read from")
+    parser.add_argument("--compressed", action="store_true",
+                        help="send a file's .br sibling to a browser that takes brotli")
     parser.add_argument("--share", action="append", default=[],
                         help="answer /api/share?id= and /m/<id> with this model (FILE, or ID=FILE)")
     args = parser.parse_args()
@@ -250,6 +273,7 @@ def main() -> int:
             Handler.share = Path(file).resolve()
     if args.parts_url:
         Handler.parts_url = args.parts_url
+    Handler.compressed = args.compressed
     if args.library:
         Handler.library = Path(args.library).resolve()
         Handler.omr = Path(args.omr).resolve()
@@ -257,7 +281,8 @@ def main() -> int:
         ("127.0.0.1", args.port), partial(Handler, directory=args.directory))
     print(f"serving {args.directory} at http://127.0.0.1:{args.port}/ (COOP/COEP on)"
           + (f", parts from {args.parts} after {args.delay:.0f} ms" if args.parts else "")
-          + (f", parts at {args.parts_url}" if args.parts_url else ""),
+          + (f", parts at {args.parts_url}" if args.parts_url else "")
+          + (", .br where there is one" if args.compressed else ""),
           flush=True)
     server.serve_forever()
     return 0

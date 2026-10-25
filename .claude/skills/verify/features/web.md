@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
 
 ## Sub-features
 
@@ -44,6 +44,63 @@ plan with Claude as the client.
   `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
   the live site). Checked by running it: `ship.sh` says `SHIP: brickworks.diy
   serves <sha>` and the live site check and share probe pass.
+- `what a first visit waits for` (load250, 2026-10-24): a browser taking
+  brotli is sent the build as `tools/export.sh` compressed it, brotli 11
+  (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js` and
+  `index.parts.bin` under `/b/<sha>/` to the `.br` beside each, with
+  `Content-Encoding: br`, `Vary` and the file's own type; any other browser
+  gets the file, compressed by Vercel as before, which sent 9.6 MB of wasm
+  and 21 MB of pack where 11 makes 6.9 and 7.4). The web presets leave
+  `src/dev/` out and keep scripts as plain binary tokens
+  (`script_export_mode=1`), which brotli squeezes to 2.9 MB where Godot's
+  own compressed tokens stayed 4.9. The pack carries the first screen's
+  geometry alone (`tools/web_pack.py`: the sample car, the palette and the
+  essentials, 48 meshes); the rest of the working set, 1,525 meshes, is
+  `index.parts.bin` beside the build ("BWP1", web_pack.py's docstring),
+  fetched by a worker of the page's once the engine and pack are in and
+  written into the engine's files at `/later/` once it has started
+  (`src/boot/shell.html`, "The rest of the parts"), where
+  `PartLibrary._on_disk` reads it as it reads the pack, offline too; a part
+  of it wanted before then is fetched from the store on its own. The page
+  preloads the wasm and pack from its head. `window.brickworksLater` says
+  when it was asked, came and was written, and how many files;
+  `window.brickworksBoot` when each stage of the start was reached
+  (`Main._boot_mark`: ready, catalogue, ui, model, on the page's clock).
+  The bin's All listing ranks each part once before sorting
+  (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
+  took 1.2.
+- `first visit load check` (`tools/web/load_check.mjs`, `[load]` in
+  preview_checks.sh, alone): three cold loads of `/app` on broadband (20
+  Mbps, 40 ms), each in a browser on a profile of its own on disk, signed
+  in: every file as sent with its encoding and cache header, and the
+  medians of when the engine started, its first frame, when the bin was
+  usable (its search and first tile told to the page, and `found`), when the
+  build's last byte came (net), the main thread's CPU before then (Chrome's
+  ThreadTime, which load does not stretch), and the bytes before it.
+  `--profiles=broadband,slow --warm` for the full table; `--laps` prints
+  every `brickworksBoot` mark. Exit 1 over `--max-bytes` or
+  `--max-interactive`. Not a flow's incognito context: its cache keeps no
+  file over a few MB, so a warm load there fetched the pack again; and the
+  visit counter is blocked, not routed, since a route turns the cache off.
+  Measured live m167 against load250's preview, three cold loads each
+  taken in turn (2026-10-24, load 12-35): 31.1 MB before interactive
+  against 17.0 (14.4 to start, the later parts 2.6 during it); net 14.5 s
+  against 6.6; interactive 30.3 s against 20.2, the bin drawn 28.0 against
+  17.7; the main thread 13.4 s on a CPU against 10.5. What is left is the
+  start itself: from the engine's banner to `Main._ready` 4-7 s (scripts),
+  the catalogue 1-2 s, the interface 2-3 s, then the frames on SwiftShader.
+  `[load]` holds 20 MB and 28 s, and `--pick=3039 --max-pick=6`: a part of
+  index.parts.bin taken from the bin as soon as it is usable, in hand with
+  its ghost within 6 s of the click (a part of it asked for before it is
+  written in waits for it, `PartLibrary._later_coming`, 15 s at most).
+  After m168, five rounds by `tools/release/timing_ab.sh` with
+  `load_check --warm --pick=3039` against live m168 and 6e3fb3f9's preview
+  (2026-10-25, load 14-40), medians (ranges): cold 33.8 s (24.3-36.9)
+  against 22.4 (17.4-24.8); warm 16.8 (9.6-20.2) against 11.0
+  (10.4-18.0); the first pick 1.2 s (0.6-1.4) against 1.3 (0.6-2.2) cold
+  and 0.3 (0.3-1.3) against 1.2 (0.7-1.6) warm, the later parts written
+  0.1 s after the bin was first drawn in all ten, so no pick waited for
+  them and none fetched 3039 alone.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways
