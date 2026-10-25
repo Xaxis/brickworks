@@ -68,32 +68,16 @@ export const LDRAW_FROM = "LDraw's Official Model Repository";
 const LDRAW_PAGE = "https://library.ldraw.org/";
 
 /// Who modelled a model its sharer did not make, as kept with its row
-/// (supabase/modelled_by.sql): {name, page}, or null for one they made.
+/// (supabase/modelled_by.sql), found in the app's own Library, never taken
+/// from the file (api/_omr_credit.js): {name, page}, and changed: true when
+/// its sharer changed it; null for a model they made.
 export function modelledByOf(said) {
   if (!said || typeof said !== "object") return null;
   const name = typeof said.name === "string" ? said.name.replace(/\s+/g, " ").trim() : "";
   const page = typeof said.page === "string" && said.page.startsWith(LDRAW_PAGE) && said.page.length <= 200
     ? said.page : "";
-  return name && name.length <= 80 && page ? { name, page } : null;
-}
-
-/// Whom a model's own file credits as the library does: the app writes
-/// "0 !BRICKWORKS CREDIT {by, licence, page, from}" when it opens a model
-/// of LDraw's Official Model Repository (ModelStore.credit_in reads it
-/// back). {name, page} for such a model with its page on LDraw's library;
-/// null for anything else, a copy of a gallery model among them (its
-/// remix line credits that).
-export function modelledByIn(text) {
-  const found = /^0 !BRICKWORKS CREDIT (\{.*\})[ \t\r]*$/m.exec(String(text || ""));
-  if (!found) return null;
-  let said;
-  try {
-    said = JSON.parse(found[1]);
-  } catch {
-    return null;
-  }
-  if (!said || said.from !== LDRAW_FROM) return null;
-  return modelledByOf({ name: said.by, page: said.page });
+  if (!name || name.length > 80 || !page) return null;
+  return { name, page, ...(said.changed === true ? { changed: true } : {}) };
 }
 
 /// The gallery's sizes, by part count.
@@ -466,8 +450,8 @@ export function cardOf(origin, row) {
     // Who laid its parts, as its app said (supabase/made_with.sql); null
     // where it did not, and its tags say.
     made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null,
-    // Who modelled it, when its sharer did not: its file's credit, from
-    // LDraw's library (supabase/modelled_by.sql); null before and for most.
+    // Who modelled it, when its sharer did not: the app's Library's model
+    // it is (api/_omr_credit.js, supabase/modelled_by.sql); null for most.
     modelled_by: modelledByOf(row.modelled_by),
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     // How many have built it to the last step (supabase/builds.sql).

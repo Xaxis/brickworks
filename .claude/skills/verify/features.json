@@ -2660,7 +2660,7 @@
       "id": "lib:who modelled a shared model",
       "kind": "lib",
       "entry": "supabase/modelled_by.sql",
-      "reach": "python3 tools/minitest.py tests/test_modelled_by.py; PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/modelled_by.sql --dry --try=tools/modelled_by_try.sql --table=shared_models   (.env sourced; rolled back; the lead applies it without --dry; then a card and /m/<id> of the LDraw shelf say Modelled by)",
+      "reach": "python3 tools/minitest.py tests/test_modelled_by.py; BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<preview>   (theLibrary); PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/modelled_by_changed.sql --dry --try=tools/modelled_by_changed_try.sql --table=shared_models   (.env sourced; rolled back; the lead applies it without --dry; then a card and /m/<id> of the LDraw shelf say Modelled by)",
       "area": "web",
       "tests": [
         "tests/test_modelled_by.py"

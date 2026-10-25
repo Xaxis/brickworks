@@ -1,0 +1,50 @@
+{
+ "version": 1,
+ "models": [
+  {
+   "id": "omr-346-2_Other",
+   "kind": "set",
+   "set": "346-2",
+   "name": "House with Car",
+   "theme": "LEGOLAND® > Building",
+   "year": 1969,
+   "parts": 165,
+   "file": "library/omr/346-2_Other.mpd",
+   "cover": "library/covers/omr-346-2.webp",
+   "author": "Someone Else",
+   "licence": "CCAL 2.0",
+   "page": "https://library.ldraw.org/omr/sets/1024",
+   "alternate_of": null
+  },
+  {
+   "id": "omr-346-2",
+   "kind": "set",
+   "set": "346-2",
+   "name": "House with Car",
+   "theme": "LEGOLAND® > Building",
+   "year": 1969,
+   "parts": 165,
+   "file": "library/omr/346-2.mpd",
+   "cover": "library/covers/omr-346-2.webp",
+   "author": "Marc Giraudet",
+   "licence": "CCAL 2.0",
+   "page": "https://library.ldraw.org/omr/sets/1024",
+   "alternate_of": null
+  },
+  {
+   "id": "omr-6080-1",
+   "kind": "set",
+   "set": "6080-1",
+   "name": "King's Castle",
+   "theme": "Castle > Lion Knights",
+   "year": 1984,
+   "parts": 691,
+   "file": "library/omr/6080-1.mpd",
+   "cover": "library/covers/omr-6080-1.webp",
+   "author": "Stefan Frenz",
+   "licence": "CCAL 2.0",
+   "page": "https://library.ldraw.org/omr/sets/1034",
+   "alternate_of": null
+  }
+ ]
+}

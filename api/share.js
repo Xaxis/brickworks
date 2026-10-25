@@ -155,10 +155,11 @@ import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
-  LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByIn, modelledByOf, motionsIn, movesWords, partFacts,
+  LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
   siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
+import { libraryCredit } from "./_omr_credit.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -204,7 +205,7 @@ const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 // and supabase/gallery.sql grant, which are all of them but the owner,
 // barred and test.
 const PUBLIC = "id,name,author,parts,bytes,has_image,published,updated_at,listed,remixed_from,"
-  + "description,tags,licence,kind,has_thumb";
+  + "description,tags,licence,kind,has_thumb,modelled_by";
 export const PER_PAGE = 24;
 const MOST_PAGES = 400;
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -749,7 +750,8 @@ function creditOf(model, nobody = "this page’s link") {
   const modeller = modelledByOf(model.modelled_by);
   if (modeller) {
     return `${escapeHtml(modeller.name)}, who modelled it for `
-      + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a>`;
+      + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a>`
+      + (modeller.changed ? `, and say ${escapeHtml(sharerOf(model))} changed it` : "");
   }
   if (!model.author) return nobody;
   if (!model.by) return escapeHtml(model.author);
@@ -866,13 +868,17 @@ function designerRow(model) {
     + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
 }
 
+/// Who shares a model, by name, as its page heads it.
+const sharerOf = (model) => (model.by && model.by.name) || model.author || "whoever shares it";
+
 /// Who modelled it, under who shares it, when that is somebody else: the
-/// person its file credits, and the page LDraw keeps of it. "" for a
-/// model its sharer made.
+/// person the app's Library credits, the page LDraw keeps of it, and, when
+/// its sharer changed it, that they did. "" for a model its sharer made.
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
   return modeller ? `<p class="from modelled-by">Modelled by <b>${escapeHtml(modeller.name)}</b> for `
-    + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a></p>` : "";
+    + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a>`
+    + `${modeller.changed ? `, changed by ${escapeHtml(sharerOf(model))}` : ""}</p>` : "";
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
@@ -1582,9 +1588,6 @@ async function read(request, response) {
   // owner's alone (?op=tested), so here it is no mark at all.
   const [mark, builds, by] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author)]);
   const tested = publicMark(mark);
-  // Who modelled it, when its sharer did not: read from this very file.
-  const text = model.toString("utf8");
-  const modelledBy = modelledByIn(text);
   return response.status(200).json({
     tested,
     // How many have built it to the last step (supabase/builds.sql).
@@ -1592,8 +1595,9 @@ async function read(request, response) {
     id,
     name: row.name,
     // Whom it credits, as its page says it: the viewer's "by".
-    author: creditName({ ...row, by, modelled_by: modelledBy }),
-    modelled_by: modelledBy,
+    author: creditName({ ...row, by }),
+    // Who modelled it, when its sharer did not: the Library's model it is.
+    modelled_by: modelledByOf(row.modelled_by),
     parts: shown.n === newest ? row.parts : shown.parts,
     updated_at: row.updated_at,
     version: shown.n,
@@ -1609,7 +1613,7 @@ async function read(request, response) {
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
     ...links(origin, id),
-    model: text,
+    model: model.toString("utf8"),
   });
 }
 
@@ -1785,12 +1789,12 @@ async function keepMadeWith(id, owner, madeWith) {
   }
 }
 
-/// Who modelled it, as its file credits them (modelledByIn), kept with its
-/// row: its card and page say "Modelled by" them, and its licence words
-/// credit them (supabase/modelled_by.sql). A republish whose file credits
-/// nobody puts it back to null. What was kept, or null. Never stops the
-/// publish: before modelled_by.sql there is nowhere to keep it, and the
-/// card credits whoever shares it, as before.
+/// Who modelled it, as the app's Library has it (api/_omr_credit.js), kept
+/// with its row: its card and page say "Modelled by" them, and its licence
+/// words credit them (supabase/modelled_by.sql; changed, once
+/// modelled_by_changed.sql allows it). A republish that is no library
+/// model puts it back to null. What was kept, or null. Never stops the
+/// publish: a row that will not take it credits whoever shares it.
 async function keepModelledBy(id, owner, modelledBy, republished) {
   if (!modelledBy && !republished) return null;
   try {
@@ -1966,6 +1970,12 @@ async function publish(request, response) {
   // Everything about the upload is checked before anything is counted
   // or stored, so a refused upload costs nobody a publish.
   const { parts, bytes, steps, ownSteps, technic, needs } = checkModel(body.model);
+  // Who modelled it, when it is a model of the app's own Library: found
+  // there and held to its file, never taken from what this file says of
+  // itself (api/_omr_credit.js). Its licence is then the library model's.
+  const library = await libraryCredit(body.model, needs, { needsOf: (text) => checkModel(text).needs });
+  const modelledBy = library
+    ? { name: library.name, page: library.page, ...(library.changed ? { changed: true } : {}) } : null;
   const picture = checkImage(body.image);
   // The same with nothing behind the model, for its page in either theme.
   const cutout = checkImage(body.cutout, "the picture for its page");
@@ -2007,10 +2017,7 @@ async function publish(request, response) {
   }
   // What a stranger may not be shown, in a name or anywhere it is said
   // (api/_names.js): before anything is counted or stored.
-  // Who modelled it, when its file credits somebody from LDraw's library.
-  const modelledBy = modelledByIn(body.model);
   const said = namesTrouble({ "The name": [name, "name"], "The credit": [author, "name"],
-    "Who modelled it": [modelledBy?.name ?? null, "name"],
     "A tag": [about.tags, "name"], "The description": [about.description, "words"],
     "What changed": [note, "words"] });
   if (said) throw new Refusal(said);
@@ -2035,7 +2042,10 @@ async function publish(request, response) {
   const description = about.description !== undefined ? about.description : existing?.description ?? null;
   const tags = about.tags !== undefined ? about.tags : existing?.tags ?? [];
   const kind = about.kind !== undefined ? about.kind : existing?.kind ?? null;
-  const licence = about.licence !== undefined ? about.licence : existing?.licence ?? null;
+  // Somebody else's CC BY work stays under its own licence, whatever was
+  // chosen: it cannot be licensed again (supabase/modelled_by.sql).
+  const licence = library ? library.licence
+    : about.licence !== undefined ? about.licence : existing?.licence ?? null;
   // What the model it came from allows. 422, never 403 (above).
   const from = parent ?? (remixedFrom ? await remixOf(remixedFrom, id) : null);
   if (from && from.owner !== owner && from.licence === "cc-by-sa-4.0" && licence !== "cc-by-sa-4.0") {

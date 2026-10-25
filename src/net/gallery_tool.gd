@@ -353,8 +353,9 @@ func _open(id: String, with_picture: bool) -> Variant:
 		", by %s" % author if not author.is_empty() else "", _count(int(shared.get("parts", 0)))])
 	var modelled: Dictionary = shared["modelled_by"] if shared.get("modelled_by") is Dictionary else {}
 	if modelled.get("name") is String:
-		lines.append("Modelled by %s for %s (%s), and shared in the gallery from the app's library." % [
-			modelled["name"], ModelLibrary.FROM, str(modelled.get("page", ""))])
+		lines.append("Modelled by %s for %s (%s), and shared in the gallery from the app's library%s." % [
+			modelled["name"], ModelLibrary.FROM, str(modelled.get("page", "")),
+			", changed by whoever shared it" if modelled.get("changed") == true else ""])
 	if shared.get("description") is String:
 		lines.append("About it: %s" % str(shared["description"]).replace("\n", " ").left(500))
 	var tags: Array = shared.get("tags", []) if shared.get("tags") is Array else []

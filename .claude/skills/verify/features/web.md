@@ -1145,33 +1145,49 @@ plan with Claude as the client.
   dry-run with `tools/house_shelf_try.sql` (296 characters, no other
   profile changed). The lead applies it with the shelf's first slice.
 - `who modelled a shared model` (`supabase/modelled_by.sql`,
-  `api/_directory.js` `modelledByIn`): a model its sharer did not make, the
-  shelf from the LDraw library (gallery261, 2026-10-25). The app keeps
+  `supabase/modelled_by_changed.sql`, `api/_omr_credit.js`
+  `libraryCredit`): a model its sharer did not make, the shelf from the
+  LDraw library (gallery261, 2026-10-25). The app keeps
   `0 !BRICKWORKS CREDIT {by, licence, page, from}` with a model its Library
   opened (`ModelLibrary.credit_of`), and the Share panel puts that line in
   the file it publishes (`SharePanel.publish`, before its steps are worked
-  out and tested, so a Tested finding is of the file sent); the server
-  reads it from the file and, when `from` is LDraw's Official Model Repository and
-  the page is on library.ldraw.org, keeps `{name, page}` as
-  `shared_models.modelled_by` (`keepModelledBy`, after the row: before the
-  SQL it is not kept and nothing fails). Then the card's who-line is
-  "Modelled by <name>" (`web/card.js`, `[data-modelled-by]`) in place of the
+  out and tested, so a Tested finding is of the file sent). The server
+  never takes a name from it, which anyone can type: it reads only its page,
+  finds that page's models in the Library the parts store holds
+  (`library/index.json`, 10 minutes kept), fetches each one's own file
+  (`library/omr/<file>.mpd`), and holds the shared file to it: the same name
+  inside (an .mpd's first FILE, or a single model's `0 Name:`), and at
+  least half of each one's parts, by part and colour, in the other. Then
+  `{name, page}` from the index, and `changed: true` when the parts are not
+  exactly the library model's, go in `shared_models.modelled_by`
+  (`keepModelledBy`, after the row), and the licence is the index's
+  (`cc-by-2.0` for CCAL 2.0, `cc-by-4.0`) whatever was chosen: somebody
+  else's CC BY work is not licensed again. No match is nobody. All 30 of
+  the shelf's bodies matched the live store, unchanged (2026-10-25). Then
+  the card's who-line is "Modelled by <name>" (`web/card.js`,
+  `[data-modelled-by]`, words that wrap on a phone's card) in place of the
   sharer's profile; the page has `.from.modelled-by` under `.shared-by`
   ("Modelled by **name** for LDraw's Official Model Repository", linked to
-  its LDraw page); the licence words credit them with that link
-  (`creditOf`), the head's description and schema.org's author name them,
-  and `/api/share?id=` says `author` and `modelled_by` as its file does, so
-  the gallery tool over MCP credits them too. The SQL also lets a licence be
-  `cc-by-2.0` (LDraw's CCAL 2.0 is CC BY 2.0, `vendor/ldraw/CAreadme.txt`),
-  which the Share panel does not offer. Held by `tests/test_modelled_by.py`
-  (the copy of made_with.sql's `directory_card` keeps every key; the
-  licence ids are one list in the SQL, the site and the gallery tool; the
-  server, the card and the page as driven); dry-run with
-  `tools/modelled_by_try.sql` (2026-10-25: CC BY 2.0 allowed, a page off
-  LDraw's library refused, the card and page return it, no other card
-  changed, no client reach) and `tools/sql_compare.mjs
-  supabase/modelled_by.sql modelled_by` (17 of 17 the same). The lead
-  applies it.
+  its LDraw page, and ", changed by <sharer>" when changed); the licence
+  words credit them with that link (and ask to say who changed it), the
+  head's description and schema.org's author name them, and `/api/share?id=`
+  says `author` and `modelled_by` from the row, so the gallery tool over
+  MCP credits them too. The SQL also lets a licence be `cc-by-2.0` (LDraw's
+  CCAL 2.0 is CC BY 2.0, `vendor/ldraw/CAreadme.txt`), which the Share panel
+  does not offer. Held by `tests/test_modelled_by.py` (against
+  `tests/fixtures/omr_credit`: 346-2 credited from the index even when its
+  line names somebody else; a forged line over a model of one's own, the
+  library model's name over other parts, a page not in the index, no line,
+  or under half its parts: nobody; a tenth taken out: changed; the copy of
+  made_with.sql's `directory_card` keeps every key; the licence ids are one
+  list in the SQL, the site and the gallery tool; the card and the page as
+  driven) and on a deployment by `share_probe` (`theLibrary`: credited,
+  CC BY 2.0 kept when CC BY 4.0 or all rights reserved is chosen, changed,
+  forged). Dry-run with `tools/modelled_by_try.sql` and
+  `tools/modelled_by_changed_try.sql` (changed: true allowed; false, a
+  word, another key, no name refused; no row refused after; no client
+  reach) and `tools/sql_compare.mjs supabase/modelled_by.sql modelled_by`
+  (17 of 17 the same). The lead applies them.
 - `first steps browser flow` (`tools/web/first_steps_flow.mjs`, preview
   check `[first_steps]`): below.
 - `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
@@ -1640,7 +1656,8 @@ plan with Claude as the client.
   with its `credit` {by, licence, page}, shared by Brickworks as
   "LEGO® set 6080 King's Castle" under `cc-by-2.0` or `cc-by-4.0`; the
   Godot half keeps the credit in the file as the Library does
-  (`store.credit`) and says the licence the panel's menu lacks in the body.
+  (`store.credit`) and says the licence the panel's menu lacks in the body
+  (the server keeps the Library's licence in any case).
   The node half's `--only=A-B` sends a slice of DIR (six an hour, twenty a
   day), and `--collection="From the LDraw library"` puts each in the house's
   public collection of that name, made when it has none. Needs
