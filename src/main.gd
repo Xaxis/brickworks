@@ -4419,6 +4419,7 @@ func _build_ui() -> void:
 	_together.store = _store
 	_together.account = _account
 	_together.bar = _bar
+	_together.camera = _camera
 	_together.base_url = Deployment.api_base()
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
 	# Where this person is working, for the others' view: the part under the

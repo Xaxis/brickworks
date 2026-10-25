@@ -29,6 +29,14 @@ var _chat_send: Button
 var _chat_note: Label
 ## The chat lines shown, the newest last.
 const CHAT_SHOWN := 8
+## Who is in it and the chat, each kept to a height of its own that does not
+## change while the session goes on: the panel grew with every line said
+## and with each person in it, and Close moved (walk256, BT1). As many
+## people and lines as these show at once; more scroll.
+const PEOPLE_TALL := 3
+const CHAT_TALL := 4
+var _people_scroll: ScrollContainer
+var _chat_scroll: ScrollContainer
 var _busy: bool = false
 
 const WIDTH := 440
@@ -81,14 +89,18 @@ func _ready() -> void:
 	column.add_child(_link_row)
 	_rows = VBoxContainer.new()
 	_rows.add_theme_constant_override("separation", 4)
-	column.add_child(_rows)
+	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_people_scroll = _scroll_for(_rows)
+	column.add_child(_people_scroll)
 	# A short chat, under who is here.
 	_chat_box = VBoxContainer.new()
 	_chat_box.add_theme_constant_override("separation", 6)
 	_chat_lines = Label.new()
 	_chat_lines.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_chat_lines.custom_minimum_size = Vector2(WIDTH, 0)
-	_chat_box.add_child(_chat_lines)
+	_chat_lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_chat_scroll = _scroll_for(_chat_lines)
+	_chat_box.add_child(_chat_scroll)
 	_chat_row = HBoxContainer.new()
 	_chat_row.add_theme_constant_override("separation", 8)
 	_chat_field = LineEdit.new()
@@ -118,10 +130,43 @@ func _ready() -> void:
 			fill())
 
 
+## A list kept to a height of its own (_hold_heights), scrolled up and down.
+func _scroll_for(inside: Control) -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(inside)
+	return scroll
+
+
 ## Show the session, or how to start or join one.
 func open() -> void:
 	fill()
 	popup_centered()
+	# Once shown: on a phone or a tablet its words are grown then (TouchSizing).
+	_hold_heights.call_deferred()
+
+
+## Who is in it and the chat their heights, from the words and buttons as
+## they are drawn now, and the chat on its newest line.
+func _hold_heights() -> void:
+	if not is_instance_valid(_rows):
+		return
+	var line: float = float(_chat_lines.get_line_height()) \
+		+ _chat_lines.get_theme_constant("line_spacing")
+	var row: float = maxf(line, _copy.get_combined_minimum_size().y)
+	var gap: float = float(_rows.get_theme_constant("separation"))
+	var people: float = PEOPLE_TALL * row + (PEOPLE_TALL - 1) * gap
+	if _people_scroll.custom_minimum_size.y != people:
+		_people_scroll.custom_minimum_size.y = people
+	var chat: float = CHAT_TALL * line
+	if _chat_scroll.custom_minimum_size.y != chat:
+		_chat_scroll.custom_minimum_size.y = chat
+	_newest_line.call_deferred()
+
+
+func _newest_line() -> void:
+	if is_instance_valid(_chat_scroll):
+		_chat_scroll.scroll_vertical = int(_chat_scroll.get_v_scroll_bar().max_value)
 
 
 ## What it says and shows, for the session as it is now.
@@ -134,6 +179,7 @@ func fill() -> void:
 	_join_row.visible = not live
 	_link_row.visible = live
 	_end.visible = live
+	_people_scroll.visible = live
 	_chat_box.visible = live
 	_start.disabled = _busy
 	_join.disabled = _busy
@@ -181,6 +227,7 @@ func fill() -> void:
 			_removes.append(take_out)
 		_rows.add_child(row)
 	_fill_chat()
+	_hold_heights()
 
 
 ## The last lines of the chat, and the field to say one; or why not.
@@ -190,8 +237,8 @@ func _fill_chat() -> void:
 	for line: Variant in shown:
 		lines.append("%s: %s" % [(line as Dictionary).get("name", ""), (line as Dictionary).get("text", "")])
 	_chat_lines.text = "\n".join(lines)
-	_chat_lines.visible = not lines.is_empty()
 	var allowed: bool = together.chat_words.is_empty()
+	_chat_scroll.visible = allowed
 	_chat_row.visible = allowed
 	_chat_note.visible = not allowed
 	_chat_note.text = together.chat_words

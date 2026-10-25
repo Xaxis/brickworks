@@ -36,6 +36,8 @@ var builder: Builder
 var store: ModelStore
 var account: Account
 var bar: ModelBar
+## The view, whose framing the owner's session carries to whoever joins.
+var camera: CadCamera
 var base_url: String = ""
 ## More headers for every request: a probe's pass through a protected
 ## preview deployment (src/dev/together_probe.gd).
@@ -274,6 +276,11 @@ func start() -> String:
 		_confirmed[key] = meta[key]
 	var snapshot: Dictionary = {"text": store.to_text(store.title), "lift": store.lift().y,
 		"bricks": bricks, "meta": meta}
+	# How the owner is looking at it, for whoever joins to open on: framed
+	# on its parts alone, a joiner opened at a stud 107 pixels across on the
+	# owner's gear (walk256, BT1).
+	if camera != null:
+		snapshot["view"] = camera.aim()
 	var got: Array = await _ask("start", {"title": store.title, "snapshot": snapshot})
 	if int(got[0]) != 200:
 		_reset()
@@ -343,9 +350,12 @@ func join(address: String, rejoining: bool = false) -> String:
 	_generation = world.generation()
 	store._lift_unsure = false
 	_lay_snapshot(snapshot as Dictionary)
-	# Its floor laid and the view framed on it, as any model opened is.
+	# Its floor laid, as any model opened is, and the view on it as the
+	# owner had it when the session began.
 	if bar != null:
 		bar.opened.emit(world.brick_count())
+	if camera != null:
+		camera.aim_at((snapshot as Dictionary).get("view"))
 	builder.forget_history()
 	people = body.get("people", []) as Array
 	_seen = str(body.get("seen", ""))

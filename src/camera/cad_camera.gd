@@ -856,6 +856,43 @@ func focus_now() -> Vector3:
 	return _target_focus
 
 
+## Where the view is going, as words another copy of the app can be given:
+## its turn, tilt, distance and focus, and its size when orthographic
+## (Together gives the owner's to whoever joins).
+func aim() -> Dictionary:
+	return {"yaw": _target_yaw, "pitch": _target_pitch, "distance": _target_distance,
+		"focus": [_target_focus.x, _target_focus.y, _target_focus.z],
+		"size": size if projection == Camera3D.PROJECTION_ORTHOGONAL else 0.0}
+
+
+## The view turned to [param given], [method aim]'s words from another copy
+## of the app. False, and the view left as it is, for anything that is not
+## them: they come over the network.
+func aim_at(given: Variant) -> bool:
+	if not given is Dictionary:
+		return false
+	var view: Dictionary = given
+	var focus: Variant = view.get("focus")
+	var numbers: Array = [view.get("yaw"), view.get("pitch"), view.get("distance")]
+	if focus is Array and (focus as Array).size() == 3:
+		numbers.append_array(focus as Array)
+	else:
+		return false
+	for number: Variant in numbers:
+		if not (number is float or number is int) or not is_finite(float(number)) \
+				or absf(float(number)) > 1e7:
+			return false
+	_target_yaw = float(view["yaw"])
+	_target_pitch = clampf(float(view["pitch"]), -_PITCH_LIMIT, _PITCH_LIMIT)
+	_target_distance = clampf(float(view["distance"]), min_distance, max_distance)
+	_target_focus = Vector3(float(focus[0]), float(focus[1]), float(focus[2]))
+	var across: Variant = view.get("size", 0.0)
+	if projection == Camera3D.PROJECTION_ORTHOGONAL and (across is float or across is int) \
+			and is_finite(float(across)) and float(across) > 0.0:
+		size = clampf(float(across), 1.0, 1e6)
+	return true
+
+
 ## One step in or out, as a wheel notch is, towards the middle of the view.
 func key_zoom(steps: int) -> void:
 	if steps == 0:
