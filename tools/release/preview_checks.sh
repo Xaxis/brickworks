@@ -292,6 +292,15 @@ declare -A CMD=(
   # more and no text under 12, the parts sheet swiped, a part's actions by a
   # held finger, two fingers turning the view.
   [phone]="tools/web/phone_flow.mjs --url=$P/app $B --out=$S/${TAG}_phone_web"
+  # The app on a tablet, built for a finger: the phone's layout laid out
+  # wide, a small house built by touch at 768 x 1024, 1024 x 768 and
+  # 1024 x 1366 (two to the point) and each turned round after, every
+  # target 44 points or more and no text under 12, the parts panel kept
+  # open beside the model.
+  [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # local only: desktop_same.mjs. It compares a build's desktop at 1280 x 800,
+  # by a mouse, with a base build's to the pixel, and a preview has no base
+  # build beside it: run it on two local exports.
   [flex_skin]="tools/web/flex_skin_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_skin_web $R/vendor/omr/files/8202-1.mpd"
   # A set's carried parts drawn from LDraw's own subparts, fetched from the
   # parts bucket as it opens (tools/storage_ldraw.py must have run).
