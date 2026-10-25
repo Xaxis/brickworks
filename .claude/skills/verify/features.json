@@ -751,6 +751,14 @@
       "tests": []
     },
     {
+      "id": "cli:held items probe",
+      "kind": "cli",
+      "entry": "src/dev/held_items_probe.gd",
+      "reach": "tools/probe.sh held_items_probe   (a figure holding a hammer and a cup, a pole and a wrench, a torch and a camera, each pair by one add_minifig: each thing joined to a hand by BrickNet's connectors and through nothing, Tested's whole test passed, the Minifigure builder's figure alike; a sack, which BrickNet gives no bar, said not held when put in the hand)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:hoses and chains by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/flex_pose_flow.mjs",

@@ -6176,7 +6176,7 @@ func _open_figures() -> void:
 ## Hold a figure from the builder the way a part is held: the next click
 ## on a stud stands it there.
 func _hold_figure(figure: Minifig) -> void:
-	_builder.hold_figure(figure.assemble(_library), figure.name)
+	_builder.hold_figure(FigureTool.parts_of(figure, _library), figure.name)
 	var fetching: int = 0
 	for part_id: String in figure.part_ids():
 		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):

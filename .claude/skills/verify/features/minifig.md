@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser, cli:held items probe -->
 
 ## Sub-features
 
@@ -35,6 +35,24 @@ the model, and the design assistant doing the same with `add_minifig`.
     pommel, so the hand is not round a blade (59, 66964, 2674a/b were, and came
     apart) or off a handle (37178-f2's). Out of the floor (6246, 51645), as far
     as that takes.
+  - then seated as the exact check reads it (`FigureTool.seated_exactly`): a held
+    thing still through the figure or held by nothing BrickNet knows is laid by
+    each of its bars in the hand's clip, nearest the grip first, turned about
+    the clip's line the least that clears it, 15° at a time, and slid up to 8
+    LDU along it, above the ground (`turned_in_hand`). `GRIPS` lays a bar along
+    the grip by the least turn only, and from the part's own lines: of the 456
+    things it names, 47 were held through the figure (3899's cup 2.6 LDU into
+    the torso, 3.8 into the left arm) and 44 by a grip that is not BrickNet's
+    bar (30089b's camera by its sight); now 6 and 28, those 28 parts BrickNet
+    gives only clips, which no hand's clip takes. A thing no bar of BrickNet's
+    lets a hand hold (10169's sack, 33054's mug) is said when it is put in the
+    hand (`unheld_in_hand`), not found at the save: walk256's windmill miller
+    cost five turns. The Minifigure builder previews and puts down the same
+    figure (`FigureTool.parts_of`, in `minifig_dialog.gd` and Main's
+    `_hold_figure`). `src/dev/held_items_probe.gd` (headless): a hammer and a
+    cup, a pole and a wrench, a torch and a camera, each pair by one
+    add_minifig, Tested's whole test passed, each joined and through nothing,
+    the builder's alike, and the sack said; on base the cup and the camera fail.
   - what the standard joints do not fit sits where the library's own assemblies
     put it (`MinifigData.PLACES`/`HANDS`/`BODIES`): 30375cs0's battle droid,
     84638's hook on the left hand, 84637b's wooden leg, 15998's baby arms,
