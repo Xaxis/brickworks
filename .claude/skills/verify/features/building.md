@@ -336,7 +336,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `window.brickworksKeyboardNow`, read while a field in a dialog has the
   focus), the field scrolled into sight. A dialog wider than the screen is
   made narrower (`TouchSizing._narrower`): a line too long wraps, and a row of
-  buttons too long flows onto a second line inside its own row. Targets in a
+  buttons too long flows onto a second line inside its own row. And again
+  whenever what it holds grows wider than it was laid out while it is open
+  (`TouchSizing._grew`, on the panel's or the window's
+  `minimum_size_changed`, fig257): Render's status line, told the picture's
+  file name once it was downloaded, ran it and its Close off a 430-point
+  phone. Targets in a
   scrolling list pass a
   finger's drag to the list (`MOUSE_FILTER_PASS`), so More's list and a
   dialog's rows scroll under a finger; they did not. A notice's words and
