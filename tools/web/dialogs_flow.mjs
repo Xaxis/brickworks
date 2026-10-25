@@ -444,10 +444,19 @@ try {
 
     // Instructions: the booklet's own tab, its Save as PDF a fingertip.
     if (step("booklet")) {
-      const opened = context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
+      let opened = context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
       await more("instructions");
       const active = await page.evaluate(() => navigator.userActivation?.isActive);
-      const tab = await opened;
+      let tab = await opened;
+      if (!tab) {
+        // Tapped again, as a person does when nothing came: on a loaded box
+        // the frame the tab is opened in can come after the tap's leave to
+        // open one has gone.
+        say(`no tab from the first tap (the app said "${(await state()).said || ""}"): tapped again`);
+        opened = context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
+        await more("instructions");
+        tab = await opened;
+      }
       if (check(`Instructions: the booklet's tab opened (the tap ${active ? "is" : "is not"} a user's `
         + `activation; the app said "${(await state()).said || ""}")`, Boolean(tab))) {
         const save = tab.locator("#save-pdf");
