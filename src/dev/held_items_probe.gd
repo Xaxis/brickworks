@@ -112,6 +112,9 @@ func _holds(what: String, args: Dictionary) -> void:
 		_check("%s: joined to a hand by BrickNet's connectors, through nothing%s" % [part_id,
 			"" if through.is_empty() else " (through %s)" % through],
 			items[i] != null and Exact.connected(items, i, hands) and through.is_empty())
+		_check("...and no lower than the figure's feet: %.1f LDU against %.1f" % [
+			(items[i] as Exact.Item).lo.y if items[i] != null else 0.0, _feet(items, held)],
+			items[i] != null and (items[i] as Exact.Item).lo.y >= _feet(items, held) - 0.5)
 	var text: String = await _store._model_text(false)
 	var tested: Dictionary = (await SharedPages.attach_tested(text, _library, _store))["tested"]
 	var whole: Dictionary = (tested.get("tests", {}) as Dictionary).get("whole", {})
@@ -143,6 +146,27 @@ func _beside_a_bollard() -> void:
 	var whole: Dictionary = (tested.get("tests", {}) as Dictionary).get("whole", {})
 	_check("...its rod held in his hand: Tested's whole test: %s" % str(whole.get("why", "")).left(110),
 		bool(whole.get("ok", false)))
+	var rod: float = INF
+	var feet: float = INF
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.group.is_empty() or not brick.group.begins_with("Angler"):
+			continue
+		var box: AABB = (brick.transform * _library.mesh_for(brick.part_id).bounds).abs()
+		if brick.part_id == "2614":
+			rod = box.position.y
+		else:
+			feet = minf(feet, box.position.y)
+	_check("...and the rod no lower than his feet: %.1f LDU against %.1f" % [rod, feet],
+		rod < INF and rod >= feet - 1.0)
+
+
+## The lowest point of the figure's parts but what it holds, in LDU, y up.
+static func _feet(items: Array, held: Dictionary) -> float:
+	var low: float = INF
+	for j: int in items.size():
+		if items[j] != null and not held.values().has(j):
+			low = minf(low, (items[j] as Exact.Item).lo.y)
+	return low
 
 
 func _said_when_not_held() -> void:

@@ -658,15 +658,17 @@ static func _held_clear(items: Array, i: int, on: PackedInt32Array) -> bool:
 	return Exact.connected(items, i, on) and _clear_at(items, i, (items[i] as Exact.Item).at)
 
 
-## And above the ground the figure stands on: its feet are the lowest of the
-## rest (LDraw's y runs down).
+## And no lower than the figure's feet, the lowest of the rest: a figure's
+## parts are in the app's axes, y up (Minifig.assemble). Asked the other way
+## round, the jetty session's fishing rod was turned to hang straight down
+## through the water (hand264).
 static func _clear_at(items: Array, i: int, at: Transform3D) -> bool:
 	var there := Exact.Item.new((items[i] as Exact.Item).shape, at)
-	var ground: float = -INF
+	var ground: float = INF
 	for j: int in items.size():
 		if j != i and items[j] != null:
-			ground = maxf(ground, (items[j] as Exact.Item).hi.y)
-	if there.hi.y > ground + 0.5:
+			ground = minf(ground, (items[j] as Exact.Item).lo.y)
+	if there.lo.y < ground - 0.5:
 		return false
 	for j: int in items.size():
 		if j != i and items[j] != null and not Exact.clash(there, items[j], true).is_empty():
