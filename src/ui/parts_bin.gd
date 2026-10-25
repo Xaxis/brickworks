@@ -1842,7 +1842,8 @@ func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 		"Fold away" if opened else "Show", _comma(count), "" if count == 1 else "s",
 		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id, info.id]
 	badge.focus_mode = Control.FOCUS_NONE
-	badge.add_theme_font_size_override("font_size", ceili(_z(10)))
+	# Eleven by a finger: ten came out under twelve points.
+	badge.add_theme_font_size_override("font_size", ceili(_z(11.0 if by_finger else 10.0)))
 	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	badge.offset_left = _z(2.0)
 	badge.offset_top = _z(2.0)
