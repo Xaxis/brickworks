@@ -4,14 +4,20 @@
 ##       --seed-list=SEEDS.json --seed-out=DIR
 ##
 ## SEEDS.json is a list of {"file", "name", "author", "about", "tags",
-## "kind", "licence", "turn", "note"}: an LDraw file (a path from the
+## "kind", "licence", "turn", "note", "credit"}: an LDraw file (a path from the
 ## project's folder, or absolute), the title it is shared under, and what its
 ## page and the gallery say about it; "turn" is [yaw, pitch] in degrees, the
 ## way the view is turned before its picture is taken (the app's own opening
 ## view when not said); "note" is what changed, as the panel's What changed?
 ## box says it for a link already up, sent only when the model is published
-## again at its link (gallery_seed.mjs). tools/web/gallery_seeds/seeds.json
-## is the project's list. Each is opened in the real app, framed as opening
+## again at its link (gallery_seed.mjs); "credit" is {"by", "licence",
+## "page"} for a model somebody else made, from LDraw's Official Model
+## Repository: kept in its file as the library's credit is
+## (ModelStore.credit), which the site credits it by, and its licence then
+## may be one the panel's menu does not offer (cc-by-2.0).
+## tools/web/gallery_seeds/seeds.json is the project's list,
+## tools/web/gallery_seeds/ldraw_library.json the shelf from the LDraw
+## library (tools/house_models/ldraw_shelf.py). Each is opened in the real app, framed as opening
 ## frames it, and published through the real Share panel — its words typed
 ## into the panel's boxes, its kind and licence chosen in its menus, List it
 ## in the gallery and Show who made it ticked — into a SharedModels that
@@ -109,6 +115,14 @@ func _run() -> void:
 		for at: int in SharePanel.LICENCES.size():
 			if str(SharePanel.LICENCES[at][0]) == licence:
 				licence_at = at
+		# Someone else's model from the library: its credit as the app keeps
+		# it when the library opens it (ModelLibrary.credit_of), and its own
+		# licence, which the panel's menu may not offer (CC BY 2.0, LDraw's
+		# CCAL 2.0): said for it, as the note is.
+		var credit: Dictionary = said.get("credit", {}) if said.get("credit") is Dictionary else {}
+		var licence_said: bool = licence_at < 0 and not credit.is_empty()
+		if licence_said:
+			licence_at = 0
 		var text: String = FileAccess.get_file_as_string(file)
 		if text.is_empty() or name.is_empty() or (not kind.is_empty() and kind_at == 0) or licence_at < 0:
 			_ok(false, "%s: nothing to read, no name, or a kind or licence the panel does not offer" % file)
@@ -118,6 +132,9 @@ func _run() -> void:
 			_ok(false, "%s: %s" % [file, opened["error"]])
 			continue
 		store.title = name
+		if not credit.is_empty():
+			store.credit = {"by": str(credit.get("by", "")), "licence": str(credit.get("licence", "")),
+				"page": str(credit.get("page", "")), "from": ModelLibrary.FROM}
 		bar.opened.emit(int(opened["placed"]))
 		for _n: int in 3600:
 			await process_frame
@@ -159,6 +176,8 @@ func _run() -> void:
 		var note: String = str(said.get("note", "")).strip_edges()
 		if not note.is_empty():
 			body["note"] = note
+		if licence_said:
+			body["licence"] = licence
 		var png: PackedByteArray = Marshalls.base64_to_raw(str(body.get("image", "")))
 		var picture := Image.new()
 		var read: int = picture.load_png_from_buffer(png) if not png.is_empty() else ERR_FILE_EOF
@@ -183,6 +202,10 @@ func _run() -> void:
 			and str(body.get("kind", "")) == kind and str(body.get("licence", "")) == licence,
 			"%s: about it \"%s\", tags \"%s\", kind %s, %s" % [name, about.left(60), tags,
 				str(body.get("kind", "")), str(body.get("licence", ""))])
+		if not credit.is_empty():
+			var carried: Dictionary = ModelStore.credit_in(str(body.get("model", "")))
+			_ok(str(carried.get("by", "")) == str(credit.get("by", "")) and carried.get("page") == credit.get("page"),
+				"%s: its file credits %s (%s)" % [name, str(carried.get("by", "nobody")), str(carried.get("page", ""))])
 		panel.visible = false
 		# The next one is new work, not a republish of this one.
 		store.share_id = ""

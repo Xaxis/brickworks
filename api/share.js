@@ -155,7 +155,8 @@ import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
-  listQuery, looksLikePerson, modelHash, motionsIn, movesWords, partFacts, siteChrome, testsAsked, visitorKey,
+  LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByIn, modelledByOf, motionsIn, movesWords, partFacts,
+  siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
@@ -671,8 +672,11 @@ function links(origin, id) {
 /// looked up by profileOf); else the name given as it was published; null
 /// when it credits nobody. The page's head said the profile while its
 /// licence credited a name the app had made from the address its designer
-/// signs in with (walk180, 2026-10-23).
-export const creditName = (model) => (model.author ? (model.by && model.by.name) || model.author : null);
+/// signs in with (walk180, 2026-10-23). A model its sharer did not make
+/// credits whoever modelled it, as its file says (modelled_by: the shelf
+/// from LDraw's library), whoever shares it.
+export const creditName = (model) => modelledByOf(model.modelled_by)?.name
+  || (model.author ? (model.by && model.by.name) || model.author : null);
 
 /// The profile a published model's credit names, for an answer made from
 /// its row alone: its owner's, while shown in public (supabase/follows.sql
@@ -742,6 +746,11 @@ const when = (iso) => {
 /// link to it, or the name the owner gave; the link itself when they gave
 /// none.
 function creditOf(model, nobody = "this page’s link") {
+  const modeller = modelledByOf(model.modelled_by);
+  if (modeller) {
+    return `${escapeHtml(modeller.name)}, who modelled it for `
+      + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a>`;
+  }
   if (!model.author) return nobody;
   if (!model.by) return escapeHtml(model.author);
   const handle = escapeHtml(model.by.handle);
@@ -781,8 +790,8 @@ function structured(origin, id, model) {
   const data = {
     "@context": "https://schema.org", "@type": "CreativeWork", name: model.name, url,
     description: model.description || describe(model), image: model.has_image ? `${url}.png` : undefined,
-    author: model.author ? { "@type": "Person", name: creditName(model),
-      url: model.by ? `${origin}/u/${model.by.handle}` : undefined } : undefined,
+    author: creditName(model) ? { "@type": "Person", name: creditName(model),
+      url: modelledByOf(model.modelled_by)?.page || (model.by ? `${origin}/u/${model.by.handle}` : undefined) } : undefined,
     license: LICENCES[model.licence]?.url || undefined, dateCreated: model.listed_at || undefined,
     keywords: (model.tags || []).join(", ") || undefined,
     isBasedOn: parent && parent.id ? `${origin}/m/${parent.id}` : undefined,
@@ -855,6 +864,15 @@ function designerRow(model) {
   if (!model.author) return "";
   return `<div class="shared-by"><span class="who">${avatarHtml({ name: model.author })}`
     + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
+}
+
+/// Who modelled it, under who shares it, when that is somebody else: the
+/// person its file credits, and the page LDraw keeps of it. "" for a
+/// model its sharer made.
+function modelledLine(model) {
+  const modeller = modelledByOf(model.modelled_by);
+  return modeller ? `<p class="from modelled-by">Modelled by <b>${escapeHtml(modeller.name)}</b> for `
+    + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a></p>` : "";
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
@@ -1075,6 +1093,7 @@ ${header}
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
+      ${modelledLine(model)}
       <div class="actions">
         <a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
         <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
@@ -1563,6 +1582,9 @@ async function read(request, response) {
   // owner's alone (?op=tested), so here it is no mark at all.
   const [mark, builds, by] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author)]);
   const tested = publicMark(mark);
+  // Who modelled it, when its sharer did not: read from this very file.
+  const text = model.toString("utf8");
+  const modelledBy = modelledByIn(text);
   return response.status(200).json({
     tested,
     // How many have built it to the last step (supabase/builds.sql).
@@ -1570,7 +1592,8 @@ async function read(request, response) {
     id,
     name: row.name,
     // Whom it credits, as its page says it: the viewer's "by".
-    author: creditName({ ...row, by }),
+    author: creditName({ ...row, by, modelled_by: modelledBy }),
+    modelled_by: modelledBy,
     parts: shown.n === newest ? row.parts : shown.parts,
     updated_at: row.updated_at,
     version: shown.n,
@@ -1586,7 +1609,7 @@ async function read(request, response) {
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
     ...links(origin, id),
-    model: model.toString("utf8"),
+    model: text,
   });
 }
 
@@ -1757,6 +1780,22 @@ async function keepMadeWith(id, owner, madeWith) {
   try {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { made_with: madeWith } });
     return madeWith;
+  } catch {
+    return null;
+  }
+}
+
+/// Who modelled it, as its file credits them (modelledByIn), kept with its
+/// row: its card and page say "Modelled by" them, and its licence words
+/// credit them (supabase/modelled_by.sql). A republish whose file credits
+/// nobody puts it back to null. What was kept, or null. Never stops the
+/// publish: before modelled_by.sql there is nowhere to keep it, and the
+/// card credits whoever shares it, as before.
+async function keepModelledBy(id, owner, modelledBy, republished) {
+  if (!modelledBy && !republished) return null;
+  try {
+    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { modelled_by: modelledBy } });
+    return modelledBy;
   } catch {
     return null;
   }
@@ -1968,7 +2007,10 @@ async function publish(request, response) {
   }
   // What a stranger may not be shown, in a name or anywhere it is said
   // (api/_names.js): before anything is counted or stored.
+  // Who modelled it, when its file credits somebody from LDraw's library.
+  const modelledBy = modelledByIn(body.model);
   const said = namesTrouble({ "The name": [name, "name"], "The credit": [author, "name"],
+    "Who modelled it": [modelledBy?.name ?? null, "name"],
     "A tag": [about.tags, "name"], "The description": [about.description, "words"],
     "What changed": [note, "words"] });
   if (said) throw new Refusal(said);
@@ -2126,6 +2168,7 @@ async function publish(request, response) {
   await keepNeeds(id, needs);
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
+  const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
@@ -2134,7 +2177,7 @@ async function publish(request, response) {
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, ...links(origin, id),
+    made_with: madeKept, modelled_by: modelledKept, ...links(origin, id),
   });
 }
 
