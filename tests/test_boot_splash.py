@@ -69,6 +69,7 @@ def test_the_web_is_left_as_it_was() -> None:
 
 @needs_pil
 def test_the_splash_is_the_mark_in_the_middle() -> None:
+    assert Image is not None
     picture = Image.open(ROOT / "assets" / "splash.png").convert("RGBA")
     width, height = picture.size
     assert (width, height) == (2560, 1440)
