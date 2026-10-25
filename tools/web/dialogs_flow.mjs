@@ -223,12 +223,13 @@ try {
       const panel = await where("phone_panel_more", 5);
       if (!head || !panel) return check(`More is open for ${row}`, false);
       // The menu it is in opened first, as a finger opens it, each other
-      // folded again (walk256 T2: More is the menus' names).
-      // Each step waited for until the page is told it (twice a second), so
-      // no menu's name is tapped where it was before the one above folded.
-      const rowsNow = async () => Object.keys(await controls()).filter((k) => k.startsWith("phone_row_"));
-      // Up to 15 s: a software-drawn page on a loaded box took more than 4
-      // to say Build was open, and the menu was folded again unread.
+      // folded again (walk256 T2: More is the menus' names). Each step
+      // waited for until the page is told it (twice a second, and slower on
+      // a loaded box), so no menu's name is tapped where it stood before the
+      // one above it folded; and a menu left open by a step before is
+      // folded first. What was tried is said if the row is never found.
+      const MENUS = ["file", "edit", "view", "build", "tools", "help"];
+      const rowsNow = async () => Object.entries(await controls()).filter(([k]) => k.startsWith("phone_row_"));
       const told = async (test) => {
         for (let n = 0; n < 60; n++) {
           if (await test()) return true;
@@ -236,12 +237,34 @@ try {
         }
         return false;
       };
-      for (const menu of ["file", "edit", "view", "build", "tools", "help"]) {
+      const tried = [];
+      // The menu whose rows are showing: the last name above the first row.
+      const openMenu = async () => {
+        const named = await controls();
+        const rows = Object.entries(named).filter(([k]) => k.startsWith("phone_row_"));
+        if (!rows.length) return null;
+        const first = Math.min(...rows.map(([, at]) => at.y));
+        const above = MENUS.filter((m) => named[`phone_section_${m}`] && named[`phone_section_${m}`].y < first);
+        return above.length ? above[above.length - 1] : null;
+      };
+      for (let n = 0; n < 6 && !(await controls())[`phone_row_${row}`]; n++) {
+        const left = await openMenu();
+        if (!left) break;
+        tried.push(`${left} left open, folded`);
+        await tap((await controls())[`phone_section_${left}`]);
+        await told(async () => (await openMenu()) !== left);
+      }
+      for (const menu of MENUS) {
         if ((await controls())[`phone_row_${row}`]) break;
         const section = (await controls())[`phone_section_${menu}`];
         if (!section) continue;
         await tap(section);
-        await told(async () => (await rowsNow()).length > 0);
+        // A tap lost under load: once more.
+        if (!(await told(async () => (await rowsNow()).length > 0))) {
+          await tap((await controls())[`phone_section_${menu}`] || section);
+          await told(async () => (await rowsNow()).length > 0);
+        }
+        tried.push(`${menu} ${(await rowsNow()).length} rows`);
         if ((await controls())[`phone_row_${row}`]) break;
         await tap((await controls())[`phone_section_${menu}`] || section);
         await told(async () => (await rowsNow()).length === 0);
@@ -251,7 +274,7 @@ try {
       for (let n = 0; n < 40; n++) {
         // Told where it is once it stands still: a flicked list glides on.
         const at = await where(`phone_row_${row}`, 8);
-        if (!at) return check(`More has ${row}`, false);
+        if (!at) return check(`More has ${row}${tried.length ? ` (${tried.join("; ")})` : ""}`, false);
         if (at.y - at.h / 2 >= top && at.y + at.h / 2 <= bottom) {
           await tap(at);
           await page.waitForTimeout(1200);
