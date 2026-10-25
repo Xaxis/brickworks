@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -478,7 +478,22 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   tug) and says why; **`check_design edit={…}`** checks a copy of the model
   as it stands with an `edit_model` change, names standing parts `#N`, gives
   no design advice, and changes nothing (`{}` checks it as it is). Checked by
-  `src/dev/mcp_lean_probe.gd` (headless, the house). Measured by
+  `src/dev/mcp_lean_probe.gd` (headless, the house). An edit's answer names
+  the parts it put down, "Put down 2 (#39, #40)." (`_added_ids`,
+  `_numbered_said`): walk256's edit asked look_at_model for the post it had
+  just laid. review_model checks the whole model as all of it, as
+  check_design edit={} does (`_checked(..., true)`, the save gate too): it
+  read the person's parts beside themselves and said "64 problems (overlap
+  64)" of walk256's example car, which check_design called buildable. A
+  design given the brief's count (submit_design `parts`, or read off a brief
+  the app was given, `count_in_brief`: "about 250 parts" a tenth past at
+  most, "at most 400 pieces" the count) is told where it stands against it
+  as it is built ("24 parts, past the about 20 asked"), every edit past it
+  says so on its first line, the surface pass lays only inside it
+  (`parts_room`, `SurfacePass.held_back`) and the creative pass is told the
+  room left: walk256's lighthouse, asked about 250, was submitted at 306 and
+  finished at 400 of its own. All checked by `src/dev/mcp_agree_probe.gd`
+  (headless, the house and the floor). Measured by
   `src/dev/replay_calls.gd --open=LDR` (a session's calls on its own model
   through `answer_rpc`, in a window under `gpu` for pictures; `--ids` maps
   its brick numbers): walk180's edit answer 1,771 tokens to 413, the turn

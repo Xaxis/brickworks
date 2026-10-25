@@ -2244,6 +2244,10 @@
         "name": {
           "type": "string"
         },
+        "parts": {
+          "description": "how many parts the person asked for, when they named a number (\"about 250 parts\"): the app holds the design to it, says the count against it, and lays its own detail only inside it",
+          "type": "integer"
+        },
         "patterns": {
           "items": {
             "additionalProperties": false,

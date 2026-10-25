@@ -214,6 +214,9 @@ var reminded: bool = false
 ## but did not lay (over MOST_FINDINGS).
 var left_alone: PackedStringArray = PackedStringArray()
 var more: int = 0
+## And how many it found and left for the brief's count of parts
+## (Assistant.parts_room).
+var held_back: int = 0
 var _numbered: int = 0
 var _offered: int = 0
 ## The model read once per reading: placements by brick id.
@@ -232,6 +235,7 @@ func reset() -> void:
 	reminded = false
 	left_alone = PackedStringArray()
 	more = 0
+	held_back = 0
 	_numbered = 0
 	_offered = 0
 
@@ -357,6 +361,12 @@ func hand() -> Variant:
 		_numbered += 1
 		one.key = "S%d" % _numbered
 		findings.append(one)
+	if laid.is_empty() and offers.is_empty() and held_back > 0:
+		assistant.progress.emit("the surface pass: nothing laid, for the brief's count")
+		return ("The surface pass found %d thing%s to finish and laid none, for the brief's "
+			% [held_back, "" if held_back == 1 else "s"] + "count: %s. Take parts out where "
+			% assistant.parts_said() + "the model is solid or repeats, then review_model "
+			+ "{\"surface\": true} again.")
 	if laid.is_empty() and offers.is_empty():
 		assistant.progress.emit("the surface pass: nothing to finish")
 		return ("The surface pass found nothing to finish: no open stud field, no stud "
@@ -385,6 +395,9 @@ func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 			one.laid])
 	if not left_alone.is_empty():
 		lines.append("Left as studs: %s." % "; ".join(left_alone))
+	if held_back > 0:
+		lines.append(("And %d more found and left as they are, for the brief's count: %s."
+			% [held_back, assistant.parts_said()]))
 	if more > 0:
 		lines.append(("And %d more found and not laid yet, the smallest (at most %d are " % [
 			more, MOST_FINDINGS]) + "laid at once): settle these, then review_model "
@@ -554,6 +567,7 @@ func close() -> void:
 func find() -> Array[Finding]:
 	left_alone = PackedStringArray()
 	more = 0
+	held_back = 0
 	var out: Array[Finding] = []
 	if _is_mosaic():
 		left_alone.append("a Brick Art mosaic: its studs are the picture")
@@ -3354,6 +3368,19 @@ func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
 			ready.append(one)
 		else:
 			_could_not(one)
+	# Inside the brief's count of parts: walk256's lighthouse, asked about
+	# 250, was 306 when this pass laid 47 more on it.
+	var room: int = assistant.parts_room()
+	if room != Assistant.NO_COUNT:
+		var kept: Array[Finding] = []
+		for one: Finding in ready:
+			var adds: int = one.add.size() - one.remove.size()
+			if adds > 0 and adds > room:
+				held_back += 1
+				continue
+			room -= adds
+			kept.append(one)
+		ready = kept
 	var add: Array = []
 	var remove: Array[int] = []
 	for one: Finding in ready:

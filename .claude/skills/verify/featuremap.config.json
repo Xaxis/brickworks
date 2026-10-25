@@ -3144,6 +3144,20 @@
     },
     {
       "kind": "cli",
+      "label": "mcp agree probe",
+      "entry": "src/dev/mcp_agree_probe.gd",
+      "reach": "tools/probe.sh mcp_agree_probe   (walk256's M18: review_model and check_design agree on the person's own house; a string hung through the baseplate leaves the status bar, check_design and an edit's answer all saying it stands; an edit names the parts it put down; a design given the brief's count is told it is past it and the surface pass lays nothing past it)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "mcp detail probe",
+      "entry": "src/dev/mcp_detail_probe.gd",
+      "reach": "tools/probe.sh mcp_detail_probe   (walk256's M17 on its own lighthouse: the cottage's door and windows offered nothing, with why, its chimney at most half the cottage; a wall with an opening left gets a real door laid in it)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
       "label": "replay calls",
       "entry": "src/dev/replay_calls.gd",
       "reach": "godot --path . --script src/dev/replay_calls.gd -- --calls=FILE --open=LDR [--ids=FILE] [--answers=FILE] [--png=DIR]   (a session's calls made again on its own model through answer_rpc, each answer's time, words and pictures; without --open, the design calls on an empty baseplate)",

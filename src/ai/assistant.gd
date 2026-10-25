@@ -3493,6 +3493,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("changed it: %d bricks%s"
 				% [edited.placements.size(), _shorthand_used(args)])
 			var said: String = "Done. %d bricks now." % edited.placements.size()
+			if parts_room() < 0:
+				said = "Done. %s." % parts_said().replace(" parts,", " bricks now,")
 			if not _made_said.is_empty():
 				said += " " + _made_said
 			if not _unknown.is_empty():
@@ -3569,6 +3571,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			await _sculpt_ready(args)
 			_pending = _read_model(args)
 			_subject_submitted(_pending)
+			if args.has("parts"):
+				_count_asked(int(args["parts"]), PARTS_ABOUT)
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
 			_say_shorthand_trouble()
@@ -3908,6 +3912,10 @@ var _touched: int = 0
 ## out. Numbers only — the recolouring happens on a copy of the world
 ## inside [ModelShot], so nothing in the model changes colour.
 var _changed_ids: PackedInt64Array = PackedInt64Array()
+## Of those, the ones it put down, in order: an edit's answer names them, or
+## the session asks look_at_model for a number it has just made (walk256's
+## edit did, for the post its rope was tied to).
+var _added_ids: PackedInt64Array = PackedInt64Array()
 
 
 func _edit(args: Dictionary) -> Model:
@@ -4310,7 +4318,7 @@ func _what_changed(args: Dictionary) -> String:
 			said.append("turned %d" % ((raw as Dictionary).get("bricks", []) as Array).size())
 	var added: int = (args.get("add", []) as Array).size() if args.get("add") is Array else 0
 	if added > 0:
-		said.append("put down %d" % added)
+		said.append("put down %d%s" % [added, _numbered_said(_added_ids)])
 	var taken: int = (args.get("remove", []) as Array).size() if args.get("remove") is Array else 0
 	if taken > 0:
 		said.append("took off %d" % taken)
@@ -4325,6 +4333,20 @@ func _what_changed(args: Dictionary) -> String:
 		return ""
 	var line: String = "; ".join(said)
 	return line.left(1).to_upper() + line.substr(1) + "."
+
+
+## Bricks by their numbers, as an answer names them: " (#4, #5)", up to
+## eight, and a run of more by its ends; "" for none.
+static func _numbered_said(ids: PackedInt64Array) -> String:
+	if ids.is_empty():
+		return ""
+	if ids.size() > 8:
+		return " (#%d to #%d)" % [ids[0], ids[-1]] if ids[-1] - ids[0] == ids.size() - 1 \
+			else " (#%d, #%d, ... #%d)" % [ids[0], ids[1], ids[-1]]
+	var said := PackedStringArray()
+	for id: int in ids:
+		said.append("#%d" % id)
+	return " (%s)" % ", ".join(said)
 
 
 ## What a change broke, weighed as check_design weighs (Balance): whether the
@@ -6076,11 +6098,68 @@ func _asked_as() -> String:
 	return _brief if not _brief.strip_edges().is_empty() else _named_as
 
 
+## The part count a brief asked for, when it named one: submit_design's
+## parts, or read off the brief this app was given (count_in_brief). walk256's
+## lighthouse, asked about 250, was submitted at 306 and finished at 400 of
+## its own, every pass after the submission adding to it with nothing said.
+## The most it may come to, and what was asked; 0 for no count.
+var _parts_most: int = 0
+var _parts_asked: int = 0
+## "About" a count is a tenth past it at most; "at most" is the count.
+const PARTS_ABOUT := 1.1
+const PARTS_AT_MOST := 1.0
+## What parts_room answers when the brief named no count.
+const NO_COUNT := -0x7FFFFFFF
+
+
+func _count_asked(count: int, over: float) -> void:
+	if count <= 0:
+		return
+	_parts_asked = count
+	_parts_most = roundi(count * over)
+
+
+## The count a brief names and how far past it a design may go: [count,
+## PARTS_ABOUT or PARTS_AT_MOST], or [0, PARTS_ABOUT] for none. "about 250
+## parts", "a 300-piece set", "Use at most 400 pieces."
+static func count_in_brief(brief: String) -> Array:
+	var found: RegExMatch = RegEx.create_from_string("(?i)\\b(at most|no more than|up to|"
+		+ "under|fewer than|less than)?\\s*(\\d{2,5})[ -]?(?:parts|pieces|bricks|"
+		+ "piece|part|brick)\\b").search(brief)
+	if found == null:
+		return [0, PARTS_ABOUT]
+	return [int(found.get_string(2)), PARTS_AT_MOST if not found.get_string(1).is_empty()
+		else PARTS_ABOUT]
+
+
+## How many more parts the design may have before it is past the brief's
+## count (negative once it is), or NO_COUNT when the brief named none. The
+## surface pass and the creative pass lay their own only inside it.
+func parts_room() -> int:
+	if _parts_most <= 0:
+		return NO_COUNT
+	return _parts_most - _bricks_inside({}).size()
+
+
+## The count against the brief's, in a phrase: "306 parts, past the about
+## 250 asked"; "" when the brief named none.
+func parts_said() -> String:
+	if _parts_most <= 0:
+		return ""
+	var standing: int = _bricks_inside({}).size()
+	return "%d parts, %s the %s %d asked" % [standing, "past" if standing > _parts_most
+		else "inside", "about" if _parts_most > _parts_asked else "at most", _parts_asked]
+
+
 ## A new design's subject, begun from [param brief]: nothing read by the last
 ## one's, nor told it once a design, carries over. The brief a session was
 ## started on stays.
 func _begin_subject(brief: String, heard_of_it: String = "") -> void:
 	_brief = brief
+	_parts_most = 0
+	_parts_asked = 0
+	var counted: Array = count_in_brief(brief)
+	_count_asked(int(counted[0]), float(counted[1]))
 	_heard = ("%s %s" % [_heard_fresh, heard_of_it]).strip_edges()
 	_heard_since = ""
 	_named = ""
@@ -11401,7 +11480,12 @@ func _creative_review() -> String:
 	_outside_creative = {"parts": _parts_in(everything), "count": everything.size()}
 	_feature_now = ""
 	progress.emit("the creative pass: proposing touches for it")
-	return _creative_brief() + "\n\nThen save_model: saving says what the pass added."
+	var counted: String = parts_said()
+	if not counted.is_empty():
+		counted = "\n\nThe brief's count: %s. %s" % [counted, "A touch goes in by taking as "
+			+ "many parts out elsewhere." if parts_room() <= 0 else "The touches have %d parts "
+			% parts_room() + "between them."]
+	return _creative_brief() + counted + "\n\nThen save_model: saving says what the pass added."
 
 
 ## What saving hands a session from outside once its features and
@@ -12545,6 +12629,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false,
 	for part_id: String in named:
 		Minifig.slot_for(library.parts.get(part_id))
 	_standing_now = _others_standing(alone)
+	_floor_top_now = _floor_top()
 	# The exact shapes read a part at a time, the frame given back between:
 	# read in one go they were 52 of the 81 ms of the desktop's frame after
 	# Brick Art, and a browser's was 355 ms (progress_check, 2026-10-15).
@@ -13466,7 +13551,25 @@ func _weighed(model: Model, lattice: BrickLattice, placed_at: Dictionary,
 	var judge := Balance.new()
 	judge.library = library
 	judge.lattice = lattice
+	judge.floor_top = _floor_top()
 	return judge.measure(bricks, [], links)
+
+
+## The top cell of the baseplate the model stands on (Balance.floor_top), or
+## unset with none: read here on the main thread, and as [method _checked]
+## read it before its worker began.
+func _floor_top() -> int:
+	if _standing_held and OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return _floor_top_now
+	if world == null or scenery.is_empty():
+		return 0x7FFFFFFF
+	var under: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			under.append(brick)
+	var judge := Balance.new()
+	judge.library = library
+	return judge.top_of(under)
 
 
 ## The overlaps between bricks already standing that [method
@@ -13506,6 +13609,8 @@ static func _between_standing(blockers: PackedInt64Array, placement: Placement,
 ## Exact shapes, part id -> Exact.Shape, as [method _checked] found them
 ## before its worker began: a worker reads, never loads.
 var _exact_now: Dictionary = {}
+## And the baseplate's top, as [method _floor_top] found it then.
+var _floor_top_now: int = 0x7FFFFFFF
 ## The whole model's parts this assistant or a session placed count as this
 ## design's for the exact check, as well as what an edit adds or moves:
 ## review_model judges a design built from outside that way.
@@ -17526,6 +17631,7 @@ static func _square_on_grid(placement: Placement) -> bool:
 ## to say: on the wrong bricks, silently.
 func _apply_edit(model: Model) -> void:
 	_changed_ids = PackedInt64Array()
+	_added_ids = PackedInt64Array()
 	var wanted: Dictionary = {}
 	var fresh: Array[Placement] = []
 	for placement: Placement in model.placements:
@@ -17602,6 +17708,7 @@ func _apply_edit(model: Model) -> void:
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
 			_changed_ids.append(brick_id)
+			_added_ids.append(brick_id)
 			_remember_section(brick_id, placement, model)
 			if placement.mine:
 				mine[brick_id] = true
@@ -20541,6 +20648,13 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	var said := PackedStringArray()
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
+	var counted: String = parts_said()
+	if parts_room() < 0:
+		said.append(counted + ": the passes after this one add their detail only inside "
+			+ "it, so bring the masses in now — fewer courses where it is solid, a hollow "
+			+ "inside, a base no bigger than it needs to be.")
+	elif not counted.is_empty():
+		said.append("%s: %d left for the detail." % [counted, parts_room()])
 	var measured: Array = report.get("advice", [])
 	if not measured.is_empty():
 		said.append("What the check measured about it:\n"
@@ -20594,7 +20708,11 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		# a design is handed over from here, and BrickBench refuses a build for
 		# one collision or one loose part (ExactCheck).
 		_strict_mine = true
-		var report: Dictionary = await _checked(_model_from_world())
+		# The model read off the baseplate is all of it, as check_design and
+		# an edit read it: checked beside what stands there as well, each part
+		# the person placed ran into itself, and walk256's lighthouse came
+		# back "64 problems (overlap 64)", the example car's every part.
+		var report: Dictionary = await _checked(_model_from_world(), true)
 		_strict_mine = false
 		var said := PackedStringArray()
 		said.append("The whole model: %s. %s." % [_texture(everything),
@@ -20828,7 +20946,7 @@ func _exact_save_gate() -> String:
 		return ""
 	_strict_mine = true
 	var model: Model = _model_from_world()
-	var report: Dictionary = await _checked(model)
+	var report: Dictionary = await _checked(model, true)
 	_strict_mine = false
 	var faults: String = _exact_faults_said(report)
 	if faults.is_empty() and not brickbench:
@@ -23362,6 +23480,10 @@ func _tools() -> Array:
 				"properties": {
 					"name": {"type": "string"},
 					"description": {"type": "string"},
+					"parts": {"type": "integer", "description": ("how many parts "
+						+ "the person asked for, when they named a number (\"about "
+						+ "250 parts\"): the app holds the design to it, says the "
+						+ "count against it, and lays its own detail only inside it")},
 					"floor": {"type": "string", "enum": ModelFloor.KINDS,
 						"description":
 							"what it stands on. \"none\" for anything that is "
