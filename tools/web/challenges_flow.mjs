@@ -53,7 +53,8 @@
 // owner also sets a year of themes, three months from next month, and reads
 // them back, the first told at once and the others from a month before each
 // opens; in 4 the hub says the first as Coming next and never names the
-// others, whose pages are refused; in 6, once it ends, the hub lists it
+// others, whose pages are refused; in 6, once it ends, the hub shows the
+// first theme, or the owner's real challenge when one is open, and lists it
 // under Past challenges with both winners' cards, its name a link to its own
 // page, which shows the winners and votes. Before that file is applied, the
 // year's form says it is not open yet, and 6 reads the hub as before.
@@ -593,6 +594,11 @@ try {
     check(`End it now: ended, shown in ${((Date.now() - pressed) / 1000).toFixed(1)} s`, true);
     await adminContext.close();
   }
+  // The hub, asked with tests=1, shows an open challenge before a coming
+  // one, a real one too: since 2026-10-25 the owner's year has one open
+  // nearly every day, and the hub shows it, not the first test theme.
+  const real = (await api("/api/people?op=challenge")).body?.challenge;
+  const hubWanted = real?.state === "open" ? { title: real.title, state: "open" } : { title: THEMES[0], state: "upcoming" };
   for (const [width, height, phone, dark] of [[1280, 900, false, false], [390, 844, true, true]]) {
     const visitor = await context({ width, height, phone, dark });
     const page = await visitor.newPage();
@@ -600,8 +606,8 @@ try {
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.challenge, "the challenge drawn");
     if (year) {
-      // The hub shows the first theme now, and this one under Past
-      // challenges with its winners; its name opens its own page.
+      // The hub shows the first theme now (or the real one open), and this
+      // one under Past challenges with its winners; its name opens its own page.
       const hub = await page.evaluate((id) => {
         const item = document.querySelector(`#past article[data-past="${id}"]`);
         return { state: document.documentElement.dataset.challenge, title: document.getElementById("title").textContent,
@@ -611,7 +617,7 @@ try {
           first: document.querySelector("#past article")?.dataset.past };
       }, ids.challenge);
       check(`at ${width} px the hub shows "${hub.title}" (${hub.state}); under Past challenges, first, ${hub.days}: ${JSON.stringify(hub.winners)}`,
-        hub.title === THEMES[0] && hub.state === "upcoming" && hub.first === String(ids.challenge)
+        hub.title === hubWanted.title && hub.state === hubWanted.state && hub.first === String(ids.challenge)
         && hub.href === `/challenge?id=${ids.challenge}&tests=1` && /2 entries/.test(hub.days)
         && hub.winners.length === 2 && hub.winners[0].id === ids.house && hub.winners[0].line === "Winner, built by hand · 2 votes"
         && hub.winners[0].by === `/u/${ADA}` && hub.winners[1].id === ids.shed && hub.winners[1].line === "Winner, built with the assistant · 1 vote");
