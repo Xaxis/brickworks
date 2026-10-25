@@ -380,6 +380,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   sign-in screen up where the test account was signed in; each step
   audited. Locally the server is given the parts bucket (`--parts-url`),
   where the live library is. On base it fails with
+  Find typed into; the booklet's tab, asked for inside the tap's activation
+  (`navigator.userActivation` read at the app's `window.open`: the headless
+  shell has no popup blocker, so any ask opened one) and heard from before
+  More is scrolled (a wait begun then ran out while More's drags took two
+  minutes under load, booklet262); its Save as PDF (its bar
+  measured in the tab, a PDF downloaded); Model tree and Properties (on a tablet the parts panel not
+  under them, and back as they fold); and Library, Account, Render, Parts
+  list, My collection, Part maker, Colour the hidden parts, Keys and
+  controls, About, Clear and Floor size opened and put away by their own
+  close buttons, each step audited. Not yet: the Minifigure builder, whose
+  two columns side by side are wider than a phone (a row with a grid in it
+  never flows: a grid that takes its columns from its width grew without end
+  in a flow). On base it fails with
   the named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
