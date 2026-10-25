@@ -3810,6 +3810,143 @@ it: the rabbit's arms hang and the potato's eyes have pupils, choices a
 re-roll of sculpt170 might also make. Height was asked and kept; footprint was
 not asked, and did not follow.
 
+## 2026-10-25: the size from the subject, built into the designer, on the same six
+
+lever253's verdict was to build its rule into the designer, said for the
+footprint as well as the height. size254 (`1d748a99`, release m168 `e7e364f1`
+and the rule) does that, as general technique, and designed the same six,
+one design each, judged against sculpt170's and BrickAgent's builds both orders
+twice by bench204's recipe. Nothing was submitted.
+
+**The bar is missed.** 5 of 20 against sculpt170 on the five prompts judged (11-47%; the bar
+15 of 24) and 0 of 20 against BrickAgent (0-16%; the bar 4 of 24). The statue
+was not judged: the subscription's session limit stopped its design twice, and
+its third waited out the time box in the box's queue. Even 4-0 on it twice over
+would leave 9 of 24 against sculpt170. Valid and one piece: 5 of 5. Median cost
+a design $2.82: +21% against sculpt170's $2.33 (+15% against its $2.45 on
+these five), the bar +60%.
+
+What the designer is told now (`src/ai/assistant.gd`):
+
+- `SIZE_RULE`, in the figures guide where "about 6 to 16 studs tall" was: name
+  the narrowest feature the subject is known for that must stand apart to read,
+  give it 2 studs, and scale the whole by the real thing's proportions, 2 x its
+  height / that feature's width, held to 16 to 24 studs tall; its length and
+  width at the same studs to the metre, a long, low one held to 32 studs.
+- `plan_scale` given `tall_metres`, `wide_metres`, `feature` and
+  `feature_metres` works it out (`sized_by_feature`); given a length alone it
+  says the rule. Nothing it said for minifigure scale changed.
+- **How a minifigure-scale scene is told apart** (`on_its_own`): a vehicle, a
+  building, a place or a mechanism named anywhere in the brief puts it, and
+  every person or animal in it, at the scale real sets of it are (figs217's
+  official models; a person there a minifigure). Otherwise a figure or a
+  creature is on its own at any size (a dragon too), and an object only under
+  the 2.7 m a scale can show. `figure_size_probe` holds 14 subjects to it.
+- Where a session hears it. None of the 69 designs of the six before this
+  called plan_scale, so the first guide a design reads (outline, figures,
+  shapes, round, subject, work) is led by the rule once, or its first check
+  when it read none.
+- Each check measures the build against the size worked out (under 80% of its
+  height, or 65% of its width side to side), or, with none worked out, against
+  16 studs every way; twice at most.
+- The outline guide let a sculpt take half the brief's pieces; a subject on its
+  own may take two thirds at its size, its height kept, narrowed before it is
+  shrunk.
+
+### Tuning, on held-out briefs only
+
+`brickbench-size254-tune/`: a cat, a penguin, an owl and a teapot, on
+`05a897ae`, then the cat again with the measure (`b6c49552`).
+
+| brief | what it planned (plan_scale) | built | parts | API $ |
+|---|---|---|---|---|
+| cat | its ears, 4 cm: 18 studs tall, 11 wide | 12.8 tall, 12 x 12 | 316 | 2.88 |
+| penguin | its flippers, 6 cm: 24 tall, 14 wide | 14.1 tall, 21 x 10 (flippers out) | 357 | 2.23 |
+| owl | its ear tufts, 3 cm: 24 tall (held from 34), 17 wide | 15.8 tall, 16 x 9 | 316 | 3.56 |
+| teapot | no plan_scale; the rule led its outline guide | 10.4 tall, 19 x 11 | 250 | 2.64 |
+| cat, with the measure | 18 tall, 13 wide | 12.4 tall, 11 x 10 | 270 | 2.29 |
+
+Earlier arms' builds of the same briefs: critique221's cat 14.0 studs tall
+(287 parts) and penguin 11.2 (267), limbs234's penguin 12.0 (252). Every
+tuning session that called plan_scale gave it sensible numbers, and none built
+to them. The penguin's first sculpt at its plan was 463 parts, over the brief's
+400, and it shrank it whole to 14 studs; the second cat, told twice it stood 35
+plates where its size was 45, cut its sculpt from 352 parts to 219 and stood 12.
+A sculpt costs about a part a stud of its surface, and the outline guide's
+"half the brief's pieces" held every body near 12 to 16 studs. That is the
+ceiling, more than any words about size: the two-thirds change came of it, and
+was benched without a tuning run of its own.
+
+### The six
+
+| prompt | parts (sculpt170 / size254 / BrickAgent) | studs tall | box, studs x studs | how it heard its size | API $ (sculpt170 / size254) |
+|---|---|---|---|---|---|
+| potato (042) | 203 / 247 / 237 | 14.8 / 19.0 / 18.6 | 10x10 / 10x10 / 17x13 | the outline guide; told twice it was under 16 | 1.93 / 1.70 |
+| balloon dog (043) | 111 / 362 / 85 | 21.8 / 21.6 / 20.2 | 17x8 / 22x10 / 16x8 | the outline guide | 2.07 / 1.08 |
+| toilet (044) | 203 / 137 / 140 | 24.8 / 26.0 / 19.2 | 12x14 / 10x12 / 8x12 | the shapes guide | 2.47 / 4.87 |
+| statue (049) | not designed in the time box | | | | |
+| rabbit (078) | 320 / 320 / 382 | 17.2 / 21.2 / 23.6 | 13x11 / 13x11 / 18x16 | plan_scale: its arms, 20 tall, 16 wide; told twice it was short | 2.45 / 2.95 |
+| boy (080) | 186 / 161 / 195 | 22.8 / 21.8 / 24.8 | 13x14 / 13x13 / 10x16 | plan_scale: its arm, 24 tall, 8 wide | 3.94 / 2.82 |
+
+(Measured off the parts' boxes by `size254/size.py`, lever253's measure.)
+Valid **5 of 5** by verify.py (geometry reproduced, 0 collisions, 0 unstable),
+`parts only` in every log, `1d748a99` in every `design.json`; **one piece each** by verify.py's graph and by `src/dev/pieces_agree.gd`
+("agree on 5 of 5", `size254/pieces-size254.txt`).
+
+| head to head, overall | potato | dog | toilet | statue | rabbit | boy | total |
+|---|---|---|---|---|---|---|---|
+| size254 vs sculpt170 | 0-4 | 0-4 | 0-4 | - | 4-0 | 1-3 | **5 of 20** |
+| size254 vs BrickAgent | 0-4 | 0-4 | 0-4 | - | 0-4 | 0-4 | **0 of 20** |
+
+By dimension against sculpt170 it won likeness 5, surface 6, technique 6 of 20;
+against BrickAgent technique 5 and surface 4 of 20, likeness none
+(`size254/compare-size254.md`). The sessions priced themselves at $1.08 to
+$4.87 (13.4 minutes and 67 replies for the toilet), 25 to 67 replies.
+
+### What the judge said
+
+- **Potato, 0-4 to sculpt170.** It grew up, not out: 19 studs tall on
+  sculpt170's own 10 x 10, where lever253's potato, as tall, had won 4-0.
+  "a slimmer, less potato-like body", against sculpt170's "rounder potato
+  shape"; to BrickAgent "a blocky, armless, studded column". The measure said it
+  was under 16 studs every way, and the session answered with height alone.
+- **Balloon dog, 0-4 and 0-4.** At its size the session left the two-stud
+  balloon parts (24947 on 3262) sculpt170 and BrickAgent both build it of, and
+  laid a dog of bricks in 362 parts: "a blocky dog that misses the balloon
+  character", "in under a third of [size254]'s parts". A subject made of one
+  part's shape is sized by that part, and the rule does not know it.
+- **Toilet, 0-4 and 0-4.** sculpt170's one win over BrickAgent is gone: "a crude
+  plate-stack face", "its bowl hardly reads as a toilet". It cost the most of
+  the six, $4.87 over 67 replies.
+- **Rabbit, 4-0 over sculpt170, 0-4 to BrickAgent.** Its arms hang and its face
+  reads ("a fat, smiling, buck-toothed rabbit with its arms down"), but on
+  sculpt170's 13 x 11 it is "smoother but less characterful" than BrickAgent's
+  "enormous fat body". Planned 16 wide, it was never short enough of it to be
+  told.
+- **Boy, 1-3 and 0-4.** The fin and the extended gauntlet are praised, "a grey
+  block figure" with "a weaker face" is not.
+
+### Verdict
+
+**Do not merge size254 as it stands.** Asked by words, in a guide or a check,
+the designer grows a figure up on the footprint it would have built anyway,
+which won where the subject is tall (the rabbit) and lost where it is round
+(the potato, the dog). Footprint did not follow on any of the six, planned or
+not. What holds the footprint is cost: a sculpt is a part a stud of its surface,
+so the tuning penguin's body at 16 studs tall was 463 parts, where BrickAgent's
+rabbit is 382 parts in an 18 x 16 x 24-stud box, 57% bricks and 8% plates against ours 29% and
+45%. The next lever is that density, not the size said: Brickify laying a big
+body's sides in bricks and its curve in larger slopes, so that the size the rule
+gives fits the brief's pieces. The rule's code (`on_its_own`, `sized_by_feature`,
+plan_scale's arguments) is general and probed, and is the place to say the size
+once a body that big can be afforded.
+
+**What this does not say.** One design a prompt, one judge. The statue was
+designed three times and never finished because the subscription's session limit stopped the
+first two (their designs are in the unit's scratch folder, not judged). The
+base is m168, which carries everything merged since sculpt170, so the verdicts
+are the lever and the base together.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -4021,6 +4158,23 @@ BrickAgent's read back), the counts `scripts/by_prompt.py`, the reasons
 lever253/compare-lever-size.md`, the m147 round's `compare.md` copied aside
 first and put back (its hash checked). The sizes are `lever253/size.py`, the
 pictures `lever253/pictures.py`.
+
+The size round (2026-10-25) designed in the m147 round itself: `BENCH_PORTS=9200-9204`
+(9205-9209 for a second process) `XDG_DATA_HOME=... heavy env -u ANTHROPIC_API_KEY
+python3 tools/bench/brickbench.py design --date 2026-10-22-m147 --arm size254 --runs
+1 --jobs 1 --tasks ... --app` a locked, imported `release_wt.sh size254-bench
+1d748a99` worktree. A design a session limit stopped was moved to the unit's scratch
+folder and designed again. Then, from the unit's imported worktree: `export` and
+`verify --which ours --arm size254`, `src/dev/pieces_agree.gd` on the `design.ldr`,
+`views --arms size254` on the GPU, `pairs --arms size254,sculpt170 --runs 1 --repeat
+2 --jobs 3` (run again after a session limit: it asks only what has no verdict),
+the counts `scripts/by_prompt.py . size254-run1 sculpt170-run1 opus55`, the reasons
+`scripts/reasons.py`, and `compare --arms size254,sculpt170 --runs 1 --out
+size254/compare-size254.md`, the round's `compare.md` copied aside first and put
+back (its hash checked). The sizes are `size254/size.py APP LABEL=FILE...`
+(lever253's, any files), what each session planned and heard of its size
+`size254/measures.py` on its transcripts (`size-said.txt`). The tuning designs are
+`brickbench-size254-tune/`, arm `size254`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
