@@ -10960,7 +10960,8 @@ func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant
 			var ids := PackedStringArray()
 			for entry: Variant in one.candidates:
 				ids.append(str((entry as Dictionary)["id"]))
-			tried = " (tried %s)" % ", ".join(ids)
+			tried = " (tried %s%s)" % [", ".join(ids), "; the last that fitted, " + one.unsuited
+				if not one.unsuited.is_empty() else ""]
 		said.append(("No real set's piece that is it lays whole where it goes%s, so build it "
 			% tried) + ("from the worked technique, %s" % technique if not technique.is_empty()
 				else "your own way") + ", then settle_feature \"built\" with how; or "

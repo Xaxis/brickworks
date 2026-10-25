@@ -166,6 +166,7 @@ gear_mesh
 touch
 step_count   # a model's steps counted alike by the server and the app (steps206)
 mcp_lean          # walk180's M8 and M9: an edit says what it changed and broke, check_design edit= asks what if, sizes and tallies said once
+mcp_detail   # walk256's M17: a door or window offered only in its wall, a chimney in scale, a door laid in its opening (mcpq259)
 part_choice   # held-out figures, obsolete parts, plan_scale and real-set kinds (figs217)
 held_steps   # worked-out steps put each part on what holds it (steps223)
 default_view   # View > Default view frames what is built, an empty baseplate too (viewer218)

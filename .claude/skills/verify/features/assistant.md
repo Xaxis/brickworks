@@ -1956,7 +1956,21 @@ fixing what it got wrong.
   studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
   way put a starfighter's exhausts on its fuselage; the free studs found on a
   worker, `WorkerTasks.awaited`, 300 ms a piece tried on a Technic loader) — kept when no part runs
-  into the model and one is held by it (`OpenPoints.test`); `lay` puts it down through
+  into the model and one is held by it (`OpenPoints.test`), and then only if
+  it is the feature where it goes (`unsuited`, walk256's M17: three of four
+  pieces laid for a lighthouse were wrong): a door or a window (`IN_A_WALL`)
+  upright in its wall's plane, its back half a stud or more inside the face
+  and its front no more than half a stud out, so only in an opening the
+  wall has (its seat may be under a lintel, `_outside` asked only the way
+  out); a chimney, mast or antenna (`ON_TOP`) at most half of what it
+  stands on each way (`_host_of`: the named assembly holding the spot, or
+  the model); what fails is dropped and the next tried, and with none left
+  `_feature_brief` says why ("the last that fitted, it stands outside the
+  wall"). `src/dev/mcp_detail_probe.gd` (headless) submits walk256's own
+  lighthouse (`tests/fixtures/mcp/walk256_lighthouse.json`) over the port:
+  its cottage door and windows offered nothing, with why, its chimney a
+  31025 lodge's 3 by 3 on the 8 by 6 cottage; and a wall with an opening
+  left gets 10185's front door laid in it; `lay` puts it down through
   `edit_model`, checked like any edit; a plural feature off the middle gets
   its pair, mirrored. `_feature_brief` hands it over: the piece, its credit,
   where it was seated and how, its bricks, whether the spot was a guess, the
