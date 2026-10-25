@@ -484,14 +484,10 @@ static func _flow_rows(root: Node, across: float) -> bool:
 		if row.get_child_count() < 2 or row.get_combined_minimum_size().x <= across \
 				or row.get_child(0) is HFlowContainer or not row.get_parent() is Container:
 			continue
-		# A row of buttons and words, not a dialog's columns side by side:
-		# a list or a grid in a flow is laid out by its own width, which the
-		# flow gives it from theirs, and the Minifigure builder's grew
-		# without end.
-		var columns: bool = false
-		for child: Node in row.get_children():
-			columns = columns or child is Container
-		if columns:
+		# Not a row with a grid in it: a grid that takes its columns from the
+		# width it is given widened its flow's line, which gave it more, and
+		# the Minifigure builder's grew without end.
+		if not row.find_children("*", "GridContainer", true, false).is_empty():
 			continue
 		var flow := HFlowContainer.new()
 		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL

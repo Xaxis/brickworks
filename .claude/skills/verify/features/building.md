@@ -365,8 +365,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   list, My collection, Part maker, Colour the hidden parts, Keys and
   controls, About, Clear and Floor size opened and put away by their own
   close buttons, each step audited. Not yet: the Minifigure builder, whose
-  two columns side by side are wider than a phone (only rows of buttons
-  flow, never a dialog's columns: a grid in a flow grew without end). On base it fails with
+  two columns side by side are wider than a phone (a row with a grid in it
+  never flows: a grid that takes its columns from its width grew without end
+  in a flow). On base it fails with
   the named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
