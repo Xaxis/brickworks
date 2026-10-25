@@ -23,6 +23,8 @@
 ##   each back, as one step each: the first to the empty model it began;
 ## - the assistant's own design, after a question rather than as a brief
 ##   (no conversation begun): the car comes off the same way;
+## - a session's edit to the example, then its design: the car is not
+##   untouched any more, and the design goes in beside it, the edit kept;
 ## - a person's own part, on a bare baseplate: a session's design goes in
 ##   beside it and it is placed by hand, as it is.
 extends SceneTree
@@ -103,6 +105,19 @@ func _run() -> void:
 		"the car comes off for it too: %d of the car left, %d parts"
 		% [_left_of(car, _parts()), _count(_parts())])
 	_ok(_store.title == "Probe Tower", "...and it is called by its name: \"%s\"" % _store.title)
+
+	print("\na session's edit to the example, then a design")
+	_first_visit()
+	var edit: String = await _call("edit_model", {"add": [{"part": "3024", "color": 14, "x": 8, "y": 0, "z": 8, "rot": 0}]})
+	await _frames(5)
+	_ok(_of(_parts(), "3024", 14) == 1, "the session's edit is on the car: %s" % edit.left(160).replace("\n", " "))
+	var edited: int = _count(_parts())
+	var garage: String = await _call("submit_design", _design("Probe Garage", 12))
+	await _frames(10)
+	_ok(_left_of(car, _parts()) == _left_of(car, car) and _of(_parts(), "3024", 14) == 1
+			and _count(_parts()) >= edited + 8,
+		"the car is no longer untouched: the design goes in beside it, the edit kept (%d of the car's %d, %d parts): %s"
+		% [_left_of(car, _parts()), _left_of(car, car), _count(_parts()), garage.left(50).replace("\n", " ")])
 
 	print("\na person's own part")
 	_main.call("clear_model")

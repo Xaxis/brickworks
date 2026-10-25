@@ -2112,8 +2112,11 @@ func clear_model() -> void:
 ## the tower built in its place was "Example Car for Demonstration of LDRAW
 ## Library" and Save saved it as that. A bare baseplate nobody has named is named the
 ## same way. Anything else is somebody's model, and keeps its name.
+## Untouched means nothing done to it since it opened, by anyone: a
+## session's edit to the car is a step of the history and puts down no part
+## the builder hears as placed, and a design after it goes in beside the car.
 func _make_room(name: String) -> void:
-	if _sample_untouched:
+	if _sample_untouched and _builder.history_depth() == 0:
 		clear_model()
 		if _chat != null:
 			_chat.note("Took the example car off the baseplate to make room.")
