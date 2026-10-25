@@ -229,7 +229,13 @@ try {
         const section = (await controls())[`phone_section_${menu}`];
         if (!section) continue;
         await tap(section);
-        if (!(await controls())[`phone_row_${row}`]) await tap(section);
+        // Told within a second or two: the page hears twice a second.
+        let found = false;
+        for (let n = 0; n < 12 && !found; n++) {
+          found = Boolean((await controls())[`phone_row_${row}`]);
+          if (!found) await page.waitForTimeout(250);
+        }
+        if (!found) await tap(section);
       }
       const top = head.y + head.h / 2 + 6;
       const bottom = panel.y + panel.h / 2 - 6;

@@ -156,8 +156,11 @@ try {
         const section = (await controls())[`phone_section_${menu}`];
         if (!section) continue;
         await tap(section);
-        await page.waitForTimeout(500);
-        at = (await controls())[`phone_row_${row}`];
+        // Told within a second or two: the page hears twice a second.
+        for (let n = 0; n < 12 && !at; n++) {
+          await page.waitForTimeout(250);
+          at = (await controls())[`phone_row_${row}`];
+        }
         if (!at) await tap(section);
       }
       return at || null;
