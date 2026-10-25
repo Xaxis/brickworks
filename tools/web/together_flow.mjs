@@ -379,8 +379,13 @@ try {
   const viewAt = (await controls(owner.page)).view;
   if (viewAt) await owner.page.mouse.move(viewAt.x, viewAt.y + 40);
   const framed = (await state(owner.page)).view || {};
-  await owner.page.keyboard.press("Shift+KeyQ");
-  if (viewAt) await owner.page.mouse.wheel(0, 600);
+  // Turned by the right button, which never moves a part, and zoomed out.
+  if (viewAt) {
+    await owner.page.mouse.down({ button: "right" });
+    for (let n = 1; n <= 12; n++) await owner.page.mouse.move(viewAt.x + 20 * n, viewAt.y + 40, { steps: 2 });
+    await owner.page.mouse.up({ button: "right" });
+    await owner.page.mouse.wheel(0, 600);
+  }
   await wait(2500);
   const ownerView = (await state(owner.page)).view || {};
   check("the owner turned and zoomed the view", Math.abs((ownerView.yaw ?? 0) - (framed.yaw ?? 0)) > 0.3
