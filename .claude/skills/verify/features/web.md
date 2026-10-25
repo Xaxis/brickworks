@@ -89,7 +89,18 @@ plan with Claude as the client.
   17.7; the main thread 13.4 s on a CPU against 10.5. What is left is the
   start itself: from the engine's banner to `Main._ready` 4-7 s (scripts),
   the catalogue 1-2 s, the interface 2-3 s, then the frames on SwiftShader.
-  `[load]` holds 20 MB and 28 s.
+  `[load]` holds 20 MB and 28 s, and `--pick=3039 --max-pick=6`: a part of
+  index.parts.bin taken from the bin as soon as it is usable, in hand with
+  its ghost within 6 s of the click (a part of it asked for before it is
+  written in waits for it, `PartLibrary._later_coming`, 15 s at most).
+  After m168, five rounds by `tools/release/timing_ab.sh` with
+  `load_check --warm --pick=3039` against live m168 and 6e3fb3f9's preview
+  (2026-10-25, load 14-40), medians (ranges): cold 33.8 s (24.3-36.9)
+  against 22.4 (17.4-24.8); warm 16.8 (9.6-20.2) against 11.0
+  (10.4-18.0); the first pick 1.2 s (0.6-1.4) against 1.3 (0.6-2.2) cold
+  and 0.3 (0.3-1.3) against 1.2 (0.7-1.6) warm, the later parts written
+  0.1 s after the bin was first drawn in all ten, so no pick waited for
+  them and none fetched 3039 alone.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways
