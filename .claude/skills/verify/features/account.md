@@ -225,6 +225,13 @@ they have. A Claude connector belongs to the account that switched it on.
   published; Clear and a model begun empty make it "hand" again. Proved by
   `made_with_probe` (headless, the app as it opens, a session's real call)
   and `share_view_probe` (the three pictures and what is sent; red on base).
+  **Who modelled it** (gallery261, 2026-10-25): a model the Library opened,
+  somebody else's from LDraw's Official Model Repository, is published with
+  its credit in it (`0 !BRICKWORKS CREDIT {by, licence, page, from}`,
+  `ModelStore.credit` through `with_share`, before its steps are tested),
+  so its card and page say who modelled it and its licence words credit
+  them ([web](web.md) `who modelled a shared model`). Only that line: the
+  link's own `SHARE` line is never in what is published.
 - `Open in Brickworks` (`main._maybe_copy`, `/app?copy=<id>`): the viewer's
   button. The app as everyone gets it, sign-in screen and all; once somebody
   is signed in and what was on the baseplate is back, the shared model is

@@ -53,39 +53,42 @@ MOST_BYTES = 250 * 1024
 PROGRAMS = {"LDCad"}
 
 # (library id, kind, tags, [yaw, pitch] for its picture or None)
+# In the order the gallery shows them, newest first: themes taken in turn,
+# so a page of New is not four castles and then six spaceships. Left out on
+# sight of their pictures (gallery261): 374-1 Fire Station, whose flag is
+# the LEGO logo (docs/TRADEMARKS.md rule 3), and 3063-1 Heartlake Flying
+# Club, its seaplane hanging over the dock from the opening view.
 SHELF = [
     ("omr-6080-1", "castle", ["castle", "knights", "minifigures"], None),
-    ("omr-6085-1", "castle", ["castle", "knights", "minifigures"], None),
-    ("omr-6066-1", "castle", ["forest", "hideout", "minifigures"], None),
-    ("omr-6043-1", "castle", ["dragon", "knights", "catapult"], None),
     ("omr-928-1", "space", ["spaceship", "base", "classic space"], None),
-    ("omr-6954-1", "space", ["spaceship", "blacktron"], None),
-    ("omr-6973-1", "space", ["ice planet", "spaceship", "rover"], None),
-    ("omr-6951-1", "space", ["robot", "base", "classic space"], None),
-    ("omr-358-1", "space", ["rocket", "launch pad"], None),
-    ("omr-5984-1", "space", ["spaceship", "space police"], None),
-    ("omr-374-1", "town", ["fire station", "fire engine", "classic town"], None),
-    ("omr-6396-1", "town", ["airport", "aeroplane", "classic town"], None),
-    ("omr-6416-1", "town", ["pool", "holiday", "palm tree"], None),
-    ("omr-6361-1", "vehicle", ["crane", "truck", "classic town"], None),
-    ("omr-346-2", "town", ["house", "car", "garden"], None),
-    ("omr-7641-1", "town", ["street", "bus", "shop"], None),
-    ("omr-6365-1", "town", ["house", "cottage", "classic town"], None),
-    ("omr-7815-1", "vehicle", ["train", "carriage", "railway"], None),
     ("omr-10183-1", "vehicle", ["train", "locomotive", "railway"], None),
-    ("omr-40138-1", "vehicle", ["train", "christmas", "seasonal"], None),
-    ("omr-8862-1", "vehicle", ["technic", "backhoe", "construction"], None),
-    ("omr-851-1", "vehicle", ["technic", "tractor", "farm"], None),
-    ("omr-42022-1", "vehicle", ["technic", "hot rod", "car"], None),
-    ("omr-31025-1", "town", ["mountain", "hut", "waterfall"], None),
     ("omr-5891-1", "town", ["house", "tree", "garden"], None),
-    ("omr-10124-1", "vehicle", ["aeroplane", "biplane", "history"], None),
+    ("omr-8862-1", "vehicle", ["technic", "backhoe", "construction"], None),
     ("omr-21011-1", "architecture", ["landmark", "gate", "berlin"], None),
-    ("omr-21016-1", "architecture", ["landmark", "gate", "seoul"], None),
+    ("omr-6973-1", "space", ["ice planet", "spaceship", "rover"], None),
+    ("omr-6066-1", "castle", ["forest", "hideout", "minifigures"], None),
+    ("omr-10124-1", "vehicle", ["aeroplane", "biplane", "history"], None),
+    ("omr-6396-1", "town", ["airport", "aeroplane", "classic town"], None),
+    ("omr-42022-1", "vehicle", ["technic", "hot rod", "car"], None),
+    ("omr-40138-1", "vehicle", ["train", "christmas", "seasonal"], None),
+    ("omr-6954-1", "space", ["spaceship", "blacktron"], None),
+    ("omr-31025-1", "town", ["mountain", "hut", "waterfall"], None),
+    ("omr-6085-1", "castle", ["castle", "knights", "minifigures"], None),
     ("omr-5521-1", "vehicle", ["boat", "speedboat", "model team"], None),
-    ("omr-5935-1", "vehicle", ["seaplane", "island", "adventurers"], None),
-    ("omr-3063-1", "town", ["seaplane", "airfield", "minifigures"], None),
+    ("omr-7641-1", "town", ["street", "bus", "shop"], None),
+    ("omr-21016-1", "architecture", ["landmark", "gate", "seoul"], None),
+    ("omr-851-1", "vehicle", ["technic", "tractor", "farm"], None),
+    ("omr-358-1", "space", ["rocket", "launch pad"], None),
+    ("omr-346-2", "town", ["house", "car", "garden"], None),
+    ("omr-6043-1", "castle", ["dragon", "knights", "catapult"], None),
+    ("omr-7815-1", "vehicle", ["train", "carriage", "railway"], None),
+    ("omr-6951-1", "space", ["robot", "base", "classic space"], None),
     ("omr-40448-1", "vehicle", ["car", "vintage", "minifigures"], None),
+    ("omr-6416-1", "town", ["pool", "holiday", "palm tree"], None),
+    ("omr-5984-1", "space", ["spaceship", "space police"], None),
+    ("omr-6361-1", "vehicle", ["crane", "truck", "classic town"], None),
+    ("omr-5935-1", "vehicle", ["seaplane", "island", "adventurers"], None),
+    ("omr-6365-1", "town", ["house", "cottage", "classic town"], None),
 ]
 
 
@@ -159,8 +162,9 @@ def title(entry: dict) -> str:
 def about(entry: dict, by: str, licence: str) -> str:
     theme = with_marks(entry["theme"].replace(" > ", ", "))
     return (f"LEGO® set {title(entry)}, from {entry['year']} ({theme}), as {by} modelled it for LDraw's Official "
-            f"Model Repository: {entry['parts']:,} parts. Shared here from the LDraw library under its "
-            f"licence, {SAID[licence]}, crediting {by}.")
+            f"Model Repository. Shared here from the app's LDraw library under its "
+            f"licence, {SAID[licence]}, crediting {by}. Brickworks wrote the file out again as it does any model "
+            f"it shares, with build steps for its viewer and booklet.")
 
 
 def main() -> None:

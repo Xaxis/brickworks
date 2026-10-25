@@ -559,6 +559,12 @@ func publish() -> void:
 		_publish.disabled = false
 		_fail("Stopped before it was published.")
 		return
+	# Whom it credits, when it is somebody else's (a model the Library
+	# opened: ModelStore.credit), carried in it as a saved file carries it:
+	# the site then says who modelled it and credits them in its licence
+	# (api/_directory.js modelledByIn), whoever shares it.
+	if not store.credit.is_empty():
+		model = ModelStore.with_share(model, "", "", 0, store.credit)
 	# Its build steps, worked out here once and carried with it, so a phone
 	# opening the link to build from does not work them out (SharedPages).
 	# And tested by them as it goes (Tested): the four tests the "Tested"

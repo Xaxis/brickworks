@@ -1140,10 +1140,12 @@ plan with Claude as the client.
   applies it.
 - `who modelled a shared model` (`supabase/modelled_by.sql`,
   `api/_directory.js` `modelledByIn`): a model its sharer did not make, the
-  shelf from the LDraw library (gallery261, 2026-10-25). The app writes
-  `0 !BRICKWORKS CREDIT {by, licence, page, from}` into a model its Library
-  opened (`ModelLibrary.credit_of`); the server reads that line from the
-  file it is sent and, when `from` is LDraw's Official Model Repository and
+  shelf from the LDraw library (gallery261, 2026-10-25). The app keeps
+  `0 !BRICKWORKS CREDIT {by, licence, page, from}` with a model its Library
+  opened (`ModelLibrary.credit_of`), and the Share panel puts that line in
+  the file it publishes (`SharePanel.publish`, before its steps are worked
+  out and tested, so a Tested finding is of the file sent); the server
+  reads it from the file and, when `from` is LDraw's Official Model Repository and
   the page is on library.ldraw.org, keeps `{name, page}` as
   `shared_models.modelled_by` (`keepModelledBy`, after the row: before the
   SQL it is not kept and nothing fails). Then the card's who-line is
