@@ -323,7 +323,13 @@ try {
         await press("save_as_ok", 5);
         await keyboard(0);
         const s = await until((now) => now.storage?.title === named, 20);
-        check(`saved as "${named}" (${s.storage?.title})`, s.storage?.title === named);
+        // Where a save that did not land stopped: the dialog still up (the
+        // tap never reached Save), or gone with the app saying why; and
+        // who it took for signed in.
+        const why = s.storage?.title === named ? "" : `; open ${JSON.stringify((await ask())?.dialogs || null)}, `
+          + `said "${s.said || ""}", working ${JSON.stringify(s.working || null)}, `
+          + `${JSON.stringify(await page.evaluate(() => window.brickworksAccount || null))}`;
+        check(`saved as "${named}" (${s.storage?.title}${why})`, s.storage?.title === named);
       }
     }
 
