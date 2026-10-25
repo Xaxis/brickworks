@@ -216,6 +216,11 @@ try {
         const by = at.y < top ? Math.min(top - at.y + 40, span) : -Math.min(at.y - bottom + 40, span);
         const from = by > 0 ? top + 12 : bottom - 12;
         await drag({ x: panel.x, y: from }, { x: panel.x, y: from + by });
+        const moved = (await controls())[`phone_row_${row}`];
+        if (moved && Math.abs(moved.y - at.y) < 4) {
+          return check(`More scrolls under a finger (a drag of ${Math.round(by)} moved ${row} `
+            + `${moved.y - at.y} points)`, false);
+        }
       }
       return check(`More scrolled to ${row}`, false);
     };
@@ -241,13 +246,13 @@ try {
       return check(`${what}: put away (${JSON.stringify(after?.dialogs)})`,
         !(after?.dialogs || []).some((d) => dialog.test(d)));
     };
-    // Typed into a field by its page name, with the keyboard up.
+    // Typed into a field by its page name: tapped, and the keyboard comes
+    // up, as a phone's does.
     const typeInto = async (name, text) => {
       const at = await where(name, 10);
       if (!at) return check(`"${name}" is on the screen`, false);
-      await keyboard(KEYBOARD);
       await tap(at);
-      await page.waitForTimeout(900);
+      await keyboard(KEYBOARD);
       await page.keyboard.press("Control+a");
       await page.keyboard.type(text, { delay: 30 });
       await page.waitForTimeout(500);
@@ -275,8 +280,8 @@ try {
         await audit("save_as_typing", /^Save as$/, ["save_as_name", "save_as_ok"]);
         await keyboard(0);
         await press("save_as_ok", 5);
-        const s = await until((now) => now.title === named, 20);
-        check(`saved as "${named}" (${s.title})`, s.title === named);
+        const s = await until((now) => now.storage?.title === named, 20);
+        check(`saved as "${named}" (${s.storage?.title})`, s.storage?.title === named);
       }
     }
 
@@ -294,8 +299,8 @@ try {
             await audit("rename_typing", /^Rename$/, ["saved_rename_name", "saved_rename_ok"]);
             await keyboard(0);
             await press("saved_rename_ok", 5);
-            const s = await until((now) => now.title === `${named} again`, 15);
-            check(`renamed "${named} again" (${s.title})`, s.title === `${named} again`);
+            const s = await until((now) => now.storage?.title === `${named} again`, 15);
+            check(`renamed "${named} again" (${s.storage?.title})`, s.storage?.title === `${named} again`);
           }
         }
         if (await press("saved_delete_1", 10)) {
@@ -319,7 +324,7 @@ try {
         await press("version_open_1", 5);
         await page.waitForTimeout(2000);
         const s = await state();
-        check(`a version opened (${s.title}, ${s.bricks} parts)`, s.bricks > 0);
+        check(`a version opened (${s.storage?.title}, ${s.bricks} parts)`, s.bricks > 0);
       }
       await close("versions", /^Versions/);
     }

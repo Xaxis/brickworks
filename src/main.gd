@@ -5875,6 +5875,38 @@ func _for_a_finger(node: Node) -> void:
 		if control is BaseButton or control is LineEdit:
 			control.custom_minimum_size = control.custom_minimum_size.max(
 				Vector2.ONE * Phone.TARGET * per_point)
+		# A notice's words and its buttons in a row, on a phone: the words
+		# over the buttons, which wrap. The browser's warning about keeping
+		# models ran "This one for Studio" and "Got it" off the screen.
+		if control is HBoxContainer and not Phone.wide() and control.get_child_count() > 1 \
+				and control.get_child(0) is Label \
+				and (control.get_child(0) as Label).autowrap_mode != TextServer.AUTOWRAP_OFF:
+			_words_over_buttons.call_deferred(control as HBoxContainer)
+
+
+## A notice's row laid as its words over its buttons (_for_a_finger): the
+## same controls, moved into a column, the buttons into a row that wraps.
+func _words_over_buttons(row: HBoxContainer) -> void:
+	if not is_instance_valid(row) or row.get_parent() == null:
+		return
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", row.get_theme_constant("separation"))
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var buttons := HFlowContainer.new()
+	buttons.alignment = FlowContainer.ALIGNMENT_END
+	buttons.add_theme_constant_override("h_separation", row.get_theme_constant("separation"))
+	buttons.add_theme_constant_override("v_separation", row.get_theme_constant("separation"))
+	var holder: Node = row.get_parent()
+	holder.add_child(column)
+	holder.move_child(column, row.get_index())
+	var words: Control = row.get_child(0)
+	(words as Label).custom_minimum_size.x = 0.0
+	words.reparent(column, false)
+	column.add_child(buttons)
+	for child: Node in row.get_children():
+		child.reparent(buttons, false)
+	holder.remove_child(row)
+	row.queue_free()
 
 
 ## Show or hide the parts list. Worked out on opening rather than kept

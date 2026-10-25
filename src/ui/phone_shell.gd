@@ -1060,6 +1060,8 @@ class Sheet extends PanelContainer:
 		row.add_theme_font_size_override("font_size", ceili(phone.p(16)))
 		row.set_meta("command", command)
 		row.name = "row_" + command
+		# A finger dragged over the rows scrolls the list (TouchSizing).
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		var on: int = phone.shell.ticked(command)
 		for state_name: String in ["normal", "hover", "pressed", "disabled", "focus"]:
 			var face := StyleBoxFlat.new()

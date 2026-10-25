@@ -271,6 +271,11 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 	var wants: Vector2 = first
 	if takes(control):
 		wants = Vector2(maxf(first.x, least), maxf(first.y, least))
+		# A finger dragged over a list's rows scrolls the list: a row that
+		# stopped the drag left a list longer than the screen with no way
+		# down it. The row's press is let go as the list moves (BaseButton).
+		if control.mouse_filter == Control.MOUSE_FILTER_STOP and _scrolls_round(control):
+			control.mouse_filter = Control.MOUSE_FILTER_PASS
 	# Nothing wider than the screen leaves it: a desktop field 480 across.
 	wants.x = minf(wants.x, maxf(widest, least))
 	was[&"min"] = [first, wants]
@@ -286,6 +291,12 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 		was[&"sep"] = [sep_was, sep]
 		if sep != spacing:
 			control.add_theme_constant_override("v_separation", sep)
+	# A button's words too long for the screen end in an ellipsis there: a
+	# parts list's rows ran 175 points off a phone.
+	var button := control as Button
+	if button != null and not button.clip_text and button.get_minimum_size().x > widest:
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	# A line too long for the screen wraps there.
 	var label := control as Label
 	if label != null and label.autowrap_mode == TextServer.AUTOWRAP_OFF and not label.clip_text \
@@ -294,6 +305,17 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.custom_minimum_size.x = minf(widest, maxf(label.custom_minimum_size.x, widest * 0.6))
 	control.set_meta(WAS, was)
+
+
+## Whether something round [param control] scrolls up and down.
+static func _scrolls_round(control: Control) -> bool:
+	var up: Node = control.get_parent()
+	while up != null and not up is Window:
+		var scroll := up as ScrollContainer
+		if scroll != null and scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			return true
+		up = up.get_parent()
+	return false
 
 
 ## What a font size was on the desktop: the one it has now, unless that is
@@ -334,11 +356,24 @@ func _size_window(window: Window) -> void:
 		window.add_theme_font_size_override(item, int(was[item][1]))
 	var menu := window as PopupMenu
 	if menu != null:
-		var font: Font = menu.get_theme_font("font")
-		var row: float = font.get_height(menu.get_theme_font_size("font_size")) if font != null else 0.0
-		menu.add_theme_constant_override("v_separation", maxi(4, ceili(least - row) + 1))
 		menu.add_theme_constant_override("item_start_padding", ceili(k * 12.0))
 		menu.add_theme_constant_override("item_end_padding", ceili(k * 12.0))
+		# As big as the rest, or as big as lets its longest item across the
+		# screen, and never under Phone.LEAST_TEXT: "From a file on this
+		# computer (LDraw, Studio .io, LDD .lxf)…" ran 150 points off a phone.
+		var font: Font = menu.get_theme_font("font")
+		var size: int = menu.get_theme_font_size("font_size")
+		if font != null:
+			var longest: float = 0.0
+			for n: int in menu.item_count:
+				longest = maxf(longest, font.get_string_size(menu.get_item_text(n),
+					HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+			var across: float = room().size.x - k * (24.0 + 2.0 * 12.0) - k * 24.0
+			if longest > across:
+				size = maxi(ceili(k * Phone.LEAST_TEXT), floori(size * across / longest))
+				menu.add_theme_font_size_override("font_size", size)
+		var row: float = font.get_height(size) if font != null else 0.0
+		menu.add_theme_constant_override("v_separation", maxi(4, ceili(least - row) + 1))
 	elif not window.borderless and not was.has(&"title"):
 		was[&"title"] = true
 		window.add_theme_constant_override("title_height", least)
@@ -361,6 +396,10 @@ func _size_window(window: Window) -> void:
 	if dialog != null:
 		# Its words wrap at the screen's width rather than run off it.
 		dialog.dialog_autowrap = true
+		# Its own buttons are sized by its theme, again at every layout of it
+		# (AcceptDialog._update_child_rects): a size given them is undone.
+		for item: StringName in [&"buttons_min_width", &"buttons_min_height"]:
+			dialog.add_theme_constant_override(item, maxi(least, dialog.get_theme_constant(item)))
 	window.set_meta(WAS, was)
 
 

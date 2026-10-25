@@ -277,9 +277,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   a held finger's actions; two fingers turning and spreading; at each step
   the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
   every target 44 points or more, no text under 12, nothing off the screen.
-  Not yet for a finger: the dialogs More opens (Save as, Share, the parts
-  list...), which keep the shrunk desktop size, and Model tree and Properties,
-  which open the left drawer as before. Words the bar says with keys after a
+  The dialogs More opens are sized for a finger too (`touch dialogs`, below).
+  Words the bar says with keys after a
   dash ("1 selected — Ctrl-C copies, X moves...") are said without them
   (`Phone.touch_words`), and a count of the selection alone is left to the
   hint. The bin's fold badges ("+42") are 11 units by a finger, not 10, which
@@ -320,6 +319,49 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   it needs a base build served beside) shoots 1280 x 800 by a mouse, ready,
   3001 searched and the File menu, against a base build, 0 pixels different
   and the base against itself 0.
+- `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
+  phone or a tablet (`Phone.on`) every dialog and panel over the model takes
+  the layout's sizing, one rule for all as `Access` is for the keys: its text
+  grown from the desktop's units to points (the desktop's 11 is 12 points,
+  the rest in proportion, none under 12), every target 44 points or more each
+  way, a list's and a tree's rows and a menu's items too (a menu's words
+  shrunk to fit the screen across, never under 12), a Window's title bar and
+  close button a fingertip, an AcceptDialog's words wrapped and its buttons
+  sized through its theme (`buttons_min_height`). Godot's dialogs are found as
+  they are made (`node_added`) and sized each time they show; Main's panels
+  over the model come through `Main._inset` (`TouchSizing.place_panel`). Placed
+  for a finger: on a phone a dialog is a sheet along the foot, as wide as the
+  screen, and a panel the whole screen; on a tablet both in the middle. Above
+  the on-screen keyboard while one is up (the visual viewport's lost height,
+  `window.brickworksKeyboardNow`, read while a field in a dialog has the
+  focus), the field scrolled into sight. Targets in a scrolling list pass a
+  finger's drag to the list (`MOUSE_FILTER_PASS`), so More's list and a
+  dialog's rows scroll under a finger; they did not. A notice's words and
+  buttons in a row are laid words over buttons on a phone (`Main._words_over_buttons`):
+  the browser's warning about keeping models ran off the screen. The model
+  tree and the properties' drawer is sized the same (`TouchSizing.size_panel`),
+  and on a tablet takes the parts panel's place while it is open
+  (`PhoneShell.dock_toggled`). The booklet's bar is a fingertip under
+  `(pointer: coarse)` (`src/assembly/booklet.gd`). The audit
+  (`Main._phone_audit`) now walks into Godot's dialogs (their internal
+  buttons, title, close button), a menu's items and a tree's rows, says what
+  is open (`dialogs`), the keyboard and the field typed in (`typing`), and
+  counts a dialog's part under the keyboard as off the screen. Proved by
+  `tools/web/dialogs_flow.mjs` (preview check `dialogs`), at 390 x 844,
+  430 x 932 (3x), 768 x 1024 and 1024 x 768 (2x) with touch events: from More,
+  scrolled to by a finger, Save as typed into above the keyboard and saved;
+  Open's menu, Rename or delete saved models, one renamed and deleted and its
+  Undo; a version opened from Versions; Share's name typed, published by link
+  where signed in; Settings, Reduce motion changed and back; Build together
+  started where signed in; a 3D model and an LDraw model exported (downloads);
+  Find typed into; the booklet's Save as PDF (its bar measured in the tab, a
+  PDF downloaded); Model tree and Properties (on a tablet the parts panel not
+  under them, and back as they fold); and Library, Account, Render, Parts
+  list, My collection, Minifigure builder, Part maker, Colour the hidden
+  parts, Keys and controls, About, Clear, New and Floor size opened and put
+  away by their own close buttons, each step audited. On base it fails with
+  the named controls under 44 counted and no dialogs said. The desktop is
+  unchanged (`desktop_same.mjs`, 0 pixels).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is
