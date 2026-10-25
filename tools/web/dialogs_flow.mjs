@@ -208,7 +208,14 @@ try {
     // and the row tapped.
     const more = async (row) => {
       // Open, if it is not: a tablet's More can be open under the newest panel.
-      for (let n = 0; n < 2 && !((await ask())?.phone?.sheets || []).includes("More"); n++) {
+      // A dialog a step could not put away by finger (one the audit cannot
+      // see, on a build before dialogs255) goes by its key, so the next step
+      // is measured still.
+      for (let n = 0; n < 3 && !((await ask())?.phone?.sheets || []).includes("More"); n++) {
+        if (n === 2) {
+          await page.keyboard.press("Escape");
+          await page.waitForTimeout(800);
+        }
         await press("phone_more");
         await page.waitForTimeout(600);
       }

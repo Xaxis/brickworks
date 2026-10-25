@@ -381,8 +381,10 @@ func _size_window(window: Window) -> void:
 		window.add_theme_font_size_override(item, int(was[item][1]))
 	var menu := window as PopupMenu
 	if menu != null:
-		menu.add_theme_constant_override("item_start_padding", ceili(k * 12.0))
-		menu.add_theme_constant_override("item_end_padding", ceili(k * 12.0))
+		# Its sides as the desktop's, in points: a phone has no room to spare
+		# across for a menu of long items.
+		menu.add_theme_constant_override("item_start_padding", ceili(k * 6.0))
+		menu.add_theme_constant_override("item_end_padding", ceili(k * 6.0))
 		# As big as the rest, or as big as lets its longest item across the
 		# screen, and never under Phone.LEAST_TEXT: "From a file on this
 		# computer (LDraw, Studio .io, LDD .lxf)…" ran 150 points off a phone.
@@ -393,7 +395,7 @@ func _size_window(window: Window) -> void:
 			for n: int in menu.item_count:
 				longest = maxf(longest, font.get_string_size(menu.get_item_text(n),
 					HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-			var across: float = room().size.x - k * 150.0
+			var across: float = room().size.x - k * 40.0
 			if longest > across:
 				size = maxi(ceili(k * Phone.LEAST_TEXT), floori(size * across / longest))
 				menu.add_theme_font_size_override("font_size", size)
