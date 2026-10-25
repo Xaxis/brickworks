@@ -168,12 +168,15 @@ try {
     };
     const touch = (type, points) => cdp.send("Input.dispatchTouchEvent", { type,
       touchPoints: points.map((p, i) => ({ x: p.x, y: p.y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })) });
-    const drag = async (a, b, steps = 16) => {
+    // [still] ms held where it ends before the finger lifts, as a person
+    // stops a list where they want it: lifted moving, a list glides on.
+    const drag = async (a, b, steps = 16, still = 0) => {
       await touch("touchStart", [a]);
       for (let n = 1; n <= steps; n++) {
         await touch("touchMove", [{ x: a.x + (b.x - a.x) * n / steps, y: a.y + (b.y - a.y) * n / steps }]);
         await page.waitForTimeout(30);
       }
+      if (still > 0) await page.waitForTimeout(still);
       await touch("touchEnd", []);
       await page.waitForTimeout(700);
     };
@@ -275,7 +278,11 @@ try {
         const span = (bottom - top) * 0.6;
         const by = at.y < top ? Math.min(top - at.y + 40, span) : -Math.min(at.y - bottom + 40, span);
         const from = by > 0 ? top + 12 : bottom - 12;
-        await drag({ x: panel.x, y: from }, { x: panel.x, y: from + by });
+        // Held still before it lifts. Lifted moving, the list glides on
+        // (ScrollContainer's fling): 434 points dragged went 8,500, end to end,
+        // once the app drew at a phone's frame rate (f8596e3f). Each scroll
+        // passed the row, and More never stopped on floor_custom.
+        await drag({ x: panel.x, y: from }, { x: panel.x, y: from + by }, 16, 400);
         const moved = await where(`phone_row_${row}`, 8);
         if (moved && Math.abs(moved.y - at.y) < 4) {
           return check(`More scrolls under a finger (a drag of ${Math.round(by)} moved ${row} `
