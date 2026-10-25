@@ -493,7 +493,23 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   (`parts_room`, `SurfacePass.held_back`) and the creative pass is told the
   room left: walk256's lighthouse, asked about 250, was submitted at 306 and
   finished at 400 of its own. All checked by `src/dev/mcp_agree_probe.gd`
-  (headless, the house and the floor). Measured by
+  (headless, the house and the floor). A real subscription session on
+  mcpq259 (2026-10-25, a windowed app on its own data, the example car
+  cleared first): "a windmill on a grassy hill, minifig scale, about 250
+  parts" in 597 s, 59 turns, $3.31 notional, 236 parts (walk256's
+  lighthouse: 483 s, 52 turns, $3.04, 464 with the example car's 64); the
+  session gave submit_design `parts: 250` unasked and was told "137 parts,
+  inside the about 250 asked: 138 left for the detail"; its door hung in
+  its frame, hat and hands saved with nothing said of pieces (the exact
+  check held one save for the miller's sack, 1.2 LDU into his hand). The
+  edit, resumed ("a small hand cart with two sacks beside the door"): 266
+  s, 30 turns, $2.41. Both resumed edits since walk239 began by writing the
+  whole conversation to the cache again (walk256 100,336 tokens, $0.80 of
+  its $1.51; this one 110,518, $0.88; walk239 read it back), though the
+  messages Claude Code sent hash the same as before in its own session file
+  (its api-request blobs): not the answers' doing, so not cut here; a short
+  session given one 274 KB picture and resumed read it back. The rest is
+  turns: a cart built from wheels up took 29 calls. Measured by
   `src/dev/replay_calls.gd --open=LDR` (a session's calls on its own model
   through `answer_rpc`, in a window under `gpu` for pictures; `--ids` maps
   its brick numbers): walk180's edit answer 1,771 tokens to 413, the turn
