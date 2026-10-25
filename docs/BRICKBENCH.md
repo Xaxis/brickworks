@@ -3818,13 +3818,11 @@ and the rule) does that, as general technique, and designed the same six,
 one design each, judged against sculpt170's and BrickAgent's builds both orders
 twice by bench204's recipe. Nothing was submitted.
 
-**The bar is missed.** 5 of 20 against sculpt170 on the five prompts judged (11-47%; the bar
-15 of 24) and 0 of 20 against BrickAgent (0-16%; the bar 4 of 24). The statue
-was not judged: the subscription's session limit stopped its design twice, and
-its third waited out the time box in the box's queue. Even 4-0 on it twice over
-would leave 9 of 24 against sculpt170. Valid and one piece: 5 of 5. Median cost
-a design $2.82: +21% against sculpt170's $2.33 (+15% against its $2.45 on
-these five), the bar +60%.
+**The bar is missed on one count of four: 9 of 24 against sculpt170**
+(21-57%) where it asked 15. **4 of 24 against BrickAgent** (7-36%) meets its
+bar of 4, all four the statue's; 6 of 6 valid and one piece meets its bar; the
+median cost a design, $2.26, is 3% under sculpt170's $2.33 where +60% was
+allowed.
 
 What the designer is told now (`src/ai/assistant.gd`):
 
@@ -3884,24 +3882,26 @@ was benched without a tuning run of its own.
 | potato (042) | 203 / 247 / 237 | 14.8 / 19.0 / 18.6 | 10x10 / 10x10 / 17x13 | the outline guide; told twice it was under 16 | 1.93 / 1.70 |
 | balloon dog (043) | 111 / 362 / 85 | 21.8 / 21.6 / 20.2 | 17x8 / 22x10 / 16x8 | the outline guide | 2.07 / 1.08 |
 | toilet (044) | 203 / 137 / 140 | 24.8 / 26.0 / 19.2 | 12x14 / 10x12 / 8x12 | the shapes guide | 2.47 / 4.87 |
-| statue (049) | not designed in the time box | | | | |
+| statue (049) | 128 / 396 / 352 | 15.4 / 18.8 / 24.0 | 10x11 / 9x15 / 14x20 | plan_scale: its arm, 24 tall, 13 wide; told twice it was short | 2.21 / 1.13 |
 | rabbit (078) | 320 / 320 / 382 | 17.2 / 21.2 / 23.6 | 13x11 / 13x11 / 18x16 | plan_scale: its arms, 20 tall, 16 wide; told twice it was short | 2.45 / 2.95 |
 | boy (080) | 186 / 161 / 195 | 22.8 / 21.8 / 24.8 | 13x14 / 13x13 / 10x16 | plan_scale: its arm, 24 tall, 8 wide | 3.94 / 2.82 |
 
 (Measured off the parts' boxes by `size254/size.py`, lever253's measure.)
-Valid **5 of 5** by verify.py (geometry reproduced, 0 collisions, 0 unstable),
-`parts only` in every log, `1d748a99` in every `design.json`; **one piece each** by verify.py's graph and by `src/dev/pieces_agree.gd`
-("agree on 5 of 5", `size254/pieces-size254.txt`).
+Valid **6 of 6** by verify.py (geometry reproduced, 0 collisions, 0 unstable),
+`parts only` in every log, `1d748a99` in every `design.json`; **one piece each**
+by verify.py's graph and by `src/dev/pieces_agree.gd` (all six "agree",
+`size254/pieces-size254.txt`).
 
 | head to head, overall | potato | dog | toilet | statue | rabbit | boy | total |
 |---|---|---|---|---|---|---|---|
-| size254 vs sculpt170 | 0-4 | 0-4 | 0-4 | - | 4-0 | 1-3 | **5 of 20** |
-| size254 vs BrickAgent | 0-4 | 0-4 | 0-4 | - | 0-4 | 0-4 | **0 of 20** |
+| size254 vs sculpt170 | 0-4 | 0-4 | 0-4 | 4-0 | 4-0 | 1-3 | **9 of 24** |
+| size254 vs BrickAgent | 0-4 | 0-4 | 0-4 | 4-0 | 0-4 | 0-4 | **4 of 24** |
 
-By dimension against sculpt170 it won likeness 5, surface 6, technique 6 of 20;
-against BrickAgent technique 5 and surface 4 of 20, likeness none
+By dimension against sculpt170 it won likeness 9, surface 10, technique 10 of
+24; against BrickAgent likeness 4, surface 8, technique 8 of 24
 (`size254/compare-size254.md`). The sessions priced themselves at $1.08 to
-$4.87 (13.4 minutes and 67 replies for the toilet), 25 to 67 replies.
+$4.87 (the toilet: 13.4 minutes, 67 replies), $14.55 for the six against
+sculpt170's $15.06, on the subscription.
 
 ### What the judge said
 
@@ -3925,27 +3925,38 @@ $4.87 (13.4 minutes and 67 replies for the toilet), 25 to 67 replies.
   told.
 - **Boy, 1-3 and 0-4.** The fin and the extended gauntlet are praised, "a grey
   block figure" with "a weaker face" is not.
+- **Statue, 4-0 and 4-0.** The one subject whose narrowest feature is a limb
+  that has to stand apart: planned 24 studs tall from its arm, told twice it was
+  short, it stood 18.8 in 396 parts, legs apart and a forearm across. Over
+  sculpt170, "captures the hunched, thinking pose on a rough stone block much
+  more convincingly"; over BrickAgent, "recognisably a hunched seated thinker
+  with a shaped back", whose own "posture reads as a standing creature".
+  limbs234's statue took 2 of 4 from BrickAgent's; this one takes 4.
 
 ### Verdict
 
 **Do not merge size254 as it stands.** Asked by words, in a guide or a check,
 the designer grows a figure up on the footprint it would have built anyway,
-which won where the subject is tall (the rabbit) and lost where it is round
-(the potato, the dog). Footprint did not follow on any of the six, planned or
-not. What holds the footprint is cost: a sculpt is a part a stud of its surface,
-so the tuning penguin's body at 16 studs tall was 463 parts, where BrickAgent's
-rabbit is 382 parts in an 18 x 16 x 24-stud box, 57% bricks and 8% plates against ours 29% and
-45%. The next lever is that density, not the size said: Brickify laying a big
+which won where the subject is tall and its limbs stand apart (the statue, the
+rabbit) and lost where it is round or made of one part's shape (the potato,
+the dog), and the toilet lost its one win. The round bodies kept sculpt170's
+footprint, planned wider or not: the potato 10 x 10, the rabbit 13 x 11 where its
+plan said 16 wide. What holds the footprint is cost: a sculpt is a part a stud of
+its surface, so the tuning penguin's body at 16 studs tall was 463 parts, where
+BrickAgent's rabbit is 382 parts in an 18 x 16 x 24-stud box, 57% bricks and 8%
+plates against our rabbit's 29% and 45%. The next lever is that density, not the size said: Brickify laying a big
 body's sides in bricks and its curve in larger slopes, so that the size the rule
 gives fits the brief's pieces. The rule's code (`on_its_own`, `sized_by_feature`,
 plan_scale's arguments) is general and probed, and is the place to say the size
 once a body that big can be afforded.
 
 **What this does not say.** One design a prompt, one judge. The statue was
-designed three times and never finished because the subscription's session limit stopped the
-first two (their designs are in the unit's scratch folder, not judged). The
-base is m168, which carries everything merged since sculpt170, so the verdicts
-are the lever and the base together.
+designed four times: the subscription's session limit stopped the first two,
+and the third ran out its timeout in the box's queue (their designs are in the
+unit's scratch folder, not judged). Its 8 wins are one build. The base is
+m168, which carries everything merged since sculpt170, so the verdicts are the
+lever and the base together. The designs ran on `1d748a99`; `0ce30924` after it
+changes only a design that has heard no subject, which none here is.
 
 ## Repeat it
 
