@@ -52,7 +52,9 @@
 // keyboard is the visual viewport made shorter, as a phone's is. The
 // dialog's own named controls (window.brickworksControls) are measured
 // too, so a build whose audit cannot see dialogs still fails with counts.
-// --only=save_as,share runs those steps alone. Pictures go to --out,
+// --only=save_as,share runs those steps alone; --hold=MS holds each tap
+// down that long before the finger lifts; --slow=N runs the page's CPU N
+// times slower. Pictures go to --out,
 // <size>_<n>_<what>.png.
 import { launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
@@ -69,6 +71,10 @@ const first = bypass
 const out = String(args.out || "shots/dialogs");
 const SIZES = String(args.sizes || "390x844,430x932,768x1024,1024x768").split(",");
 const ONLY = args.only ? String(args.only).split(",") : null;
+// --hold=MS: each tap held down that long before the finger lifts, as a
+// person's is (about 100 ms) or longer; 0, the default, taps at once.
+const HOLD = Number(args.hold || 0);
+const SLOW = Number(args.slow || 1);
 mkdirSync(out, { recursive: true });
 
 let failed = 0;
@@ -108,6 +114,8 @@ try {
       if (/SCRIPT ERROR|Parse Error|USER ERROR/.test(m.text())) errors.push(m.text().slice(0, 300));
     });
     const cdp = await context.newCDPSession(page);
+    // --slow=N: the page's CPU N times slower, as a slow phone's or a busy box's.
+    if (SLOW > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: SLOW });
     let shot = 0;
     const picture = async (what) => {
       shot += 1;
@@ -131,10 +139,20 @@ try {
       }
       return null;
     };
-    const tap = async (at) => { await page.touchscreen.tap(at.x, at.y); await page.waitForTimeout(600); };
+    const tap = async (at) => {
+      if (HOLD > 0) {
+        await touch("touchStart", [at]);
+        await page.waitForTimeout(HOLD);
+        await touch("touchEnd", []);
+      } else {
+        await page.touchscreen.tap(at.x, at.y);
+      }
+      await page.waitForTimeout(600);
+    };
     const tapBox = (box) => tap({ x: box[0] + box[2] / 2, y: box[1] + box[3] / 2 });
     // Pressed where it stands still: a dialog moves as the keyboard comes
     // and goes, and the page is told where its controls are twice a second.
+    let lastTap = null;
     const press = async (name, seconds = 30) => {
       let at = await where(name, seconds);
       for (let n = 0; at && n < 6; n++) {
@@ -144,6 +162,7 @@ try {
         at = again || await where(name, 5);
       }
       if (!at) { check(`"${name}" is on the screen`, false); return false; }
+      lastTap = { name, x: at.x, y: at.y, t: Date.now() - t0 };
       await tap(at);
       return true;
     };
@@ -326,7 +345,8 @@ try {
         // Where a save that did not land stopped: the dialog still up (the
         // tap never reached Save), or gone with the app saying why; and
         // who it took for signed in.
-        const why = s.storage?.title === named ? "" : `; open ${JSON.stringify((await ask())?.dialogs || null)}, `
+        const why = s.storage?.title === named ? "" : `; tapped ${JSON.stringify(lastTap)}, Save now at `
+          + `${JSON.stringify((await controls()).save_as_ok || null)}, open ${JSON.stringify((await ask())?.dialogs || null)}, `
           + `said "${s.said || ""}", working ${JSON.stringify(s.working || null)}, `
           + `${JSON.stringify(await page.evaluate(() => window.brickworksAccount || null))}`;
         check(`saved as "${named}" (${s.storage?.title}${why})`, s.storage?.title === named);
