@@ -13278,68 +13278,12 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 			", ".join(kinds)]
 
 	var feedback: String = _feedback(issues, summary, advice)
-	# Pieces nothing joins, said; a piece apart from the model fails unless
-	# it is named.
-	#
-	# All of it was a remark, because a model in two pieces is often what
-	# was asked for (a boat and a jetty, a tree beside a house, a nameplate
-	# in front of a car) — and a remark let the held-out car finish with a
-	# plaque lying loose in front of it and say every check passed. What is
-	# meant to stand apart is named, and the person sees it as an item of
-	# its own. What stands against the model unjoined (bricks side by side,
-	# a seam) is a remark still, each piece said where it is.
-	# A vehicle's part that nothing couples, each said, with how sets couple
-	# one: told only that a piece stood against the model, the shapes round's
-	# locomotive left its tender as it was.
-	var uncoupled: Array = apart["uncoupled"]
-	if not uncoupled.is_empty():
-		feedback += "\n\n"
-		for found: Dictionary in uncoupled.slice(0, WORTH_SAYING):
-			feedback += _uncoupled_said(model, found) + " "
-		feedback += COUPLE_HOW
-	var apart_loose: int = (apart["loose"] as Array).size()
-	if apart_loose > 0:
-		feedback += ("\n\nA piece apart from the model is either a part "
-			+ "that has come off — it falls off when the model is picked up "
-			+ "— or an item of its own: a stand, a sign, a nameplate, a "
-			+ "figure's base. Join %s to the model, " % ("it" if apart_loose == 1
-				else "each")
-			+ "or, if it is meant to stand apart, name it: an assembly of "
-			+ "its own (assemblies, on edit_model or submit_design) whose "
-			+ "box holds it and none of the model.")
-	elif int(apart["against"]) > 0:
-		# "Do not touch" was the wrong word, and it was the usual case:
-		# a layer of plates laid side by side is flush against itself
-		# everywhere and joined nowhere, because plastic only holds
-		# where a stud goes into a tube. A designer told those pieces do
-		# not touch goes looking for a gap there is not.
-		feedback += ("\n\nIt is in %d pieces that nothing joins. "
-			% pieces
-			+ "Intended, if it is meant to be a scene; worth a look "
-			+ "otherwise, because a part held by nothing falls off when "
-			+ "the model is picked up.")
-		var unjoined: Array = apart["unjoined"]
-		if not unjoined.is_empty():
-			feedback += (" Each falls off when the model is picked up; join it "
-				+ "with a plate or brick over or under the joint that reaches "
-				+ "across into both, or a layer whose joints land across the "
-				+ "joints below:")
-		for piece: Array in unjoined.slice(0, WORTH_SAYING):
-			feedback += "\n  - " + _unjoined_said(model, piece)
-		if unjoined.size() > WORTH_SAYING:
-			feedback += "\n  ...and %d more like that." % (unjoined.size() - WORTH_SAYING)
+	var pieces_said: String = _pieces_said(model, apart, pieces, box_of)
+	feedback += pieces_said
 	var items := PackedStringArray(apart["items"])
-	if apart_loose == 0 and not items.is_empty():
+	if (apart["loose"] as Array).is_empty() and not items.is_empty():
 		feedback += ("\n\n%s stand%s apart from the model, named."
 			% [", ".join(items), "s" if items.size() == 1 else ""])
-	# And the commonest way to arrive in pieces, which has its own fix.
-	if (apart_loose > 0 or int(apart["against"]) > 0) and _one_layer(box_of):
-		feedback += (" This is one layer thick, and one layer is "
-			+ "always like this: bricks side by side are not "
-			+ "joined, however tightly they are packed. A second "
-			+ "layer over it, with its joints landing across the "
-			+ "joints below, is what makes the whole thing one "
-			+ "piece.")
 
 	var checked: Dictionary = {
 		"ok": ok,
@@ -13347,12 +13291,15 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		"feedback": feedback,
 		"advice": advice,
 		"pieces": pieces,
+		## What [member feedback] says of the pieces nothing joins and those
+		## standing apart, with how to join each: what a person's save says.
+		"pieces_said": pieces_said.strip_edges(),
 		## Pieces apart from the model that nothing names, the names of the
 		## ones that stand apart as items of their own, and how many pieces
 		## those and the figures standing apart are.
-		"loose": apart_loose,
+		"loose": (apart["loose"] as Array).size(),
 		## A vehicle's parts on wheels in line with it that nothing couples.
-		"uncoupled": uncoupled.size(),
+		"uncoupled": (apart["uncoupled"] as Array).size(),
 		"items": apart["items"],
 		"named": int(apart["named"]),
 		## Of those, the figures: no name of their own to say.
@@ -13388,6 +13335,74 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	if weigh or (weigh_whole and ok and pieces <= 1):
 		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, holds, alone)
 	return checked
+
+
+## What a check says of [param model]'s pieces ([method _standing_apart]'s
+## [param apart], [param pieces] of them): those nothing joins, each with how
+## to join it, and a vehicle's part nothing couples; not what stands apart
+## named, which is meant to. Each paragraph starts on a blank line, as the
+## check's feedback goes on.
+func _pieces_said(model: Model, apart: Dictionary, pieces: int, box_of: Dictionary) -> String:
+	var said: String = ""
+	# Pieces nothing joins, said; a piece apart from the model fails unless
+	# it is named.
+	#
+	# All of it was a remark, because a model in two pieces is often what
+	# was asked for (a boat and a jetty, a tree beside a house, a nameplate
+	# in front of a car) — and a remark let the held-out car finish with a
+	# plaque lying loose in front of it and say every check passed. What is
+	# meant to stand apart is named, and the person sees it as an item of
+	# its own. What stands against the model unjoined (bricks side by side,
+	# a seam) is a remark still, each piece said where it is.
+	# A vehicle's part that nothing couples, each said, with how sets couple
+	# one: told only that a piece stood against the model, the shapes round's
+	# locomotive left its tender as it was.
+	var uncoupled: Array = apart["uncoupled"]
+	if not uncoupled.is_empty():
+		said += "\n\n"
+		for found: Dictionary in uncoupled.slice(0, WORTH_SAYING):
+			said += _uncoupled_said(model, found) + " "
+		said += COUPLE_HOW
+	var apart_loose: int = (apart["loose"] as Array).size()
+	if apart_loose > 0:
+		said += ("\n\nA piece apart from the model is either a part "
+			+ "that has come off — it falls off when the model is picked up "
+			+ "— or an item of its own: a stand, a sign, a nameplate, a "
+			+ "figure's base. Join %s to the model, " % ("it" if apart_loose == 1
+				else "each")
+			+ "or, if it is meant to stand apart, name it: an assembly of "
+			+ "its own (assemblies, on edit_model or submit_design) whose "
+			+ "box holds it and none of the model.")
+	elif int(apart["against"]) > 0:
+		# "Do not touch" was the wrong word, and it was the usual case:
+		# a layer of plates laid side by side is flush against itself
+		# everywhere and joined nowhere, because plastic only holds
+		# where a stud goes into a tube. A designer told those pieces do
+		# not touch goes looking for a gap there is not.
+		said += ("\n\nIt is in %d pieces that nothing joins. "
+			% pieces
+			+ "Intended, if it is meant to be a scene; worth a look "
+			+ "otherwise, because a part held by nothing falls off when "
+			+ "the model is picked up.")
+		var unjoined: Array = apart["unjoined"]
+		if not unjoined.is_empty():
+			said += (" Each falls off when the model is picked up; join it "
+				+ "with a plate or brick over or under the joint that reaches "
+				+ "across into both, or a layer whose joints land across the "
+				+ "joints below:")
+		for piece: Array in unjoined.slice(0, WORTH_SAYING):
+			said += "\n  - " + _unjoined_said(model, piece)
+		if unjoined.size() > WORTH_SAYING:
+			said += "\n  ...and %d more like that." % (unjoined.size() - WORTH_SAYING)
+	# And the commonest way to arrive in pieces, which has its own fix.
+	if (apart_loose > 0 or int(apart["against"]) > 0) and _one_layer(box_of):
+		said += (" This is one layer thick, and one layer is "
+			+ "always like this: bricks side by side are not "
+			+ "joined, however tightly they are packed. A second "
+			+ "layer over it, with its joints landing across the "
+			+ "joints below, is what makes the whole thing one "
+			+ "piece.")
+	return said
 
 
 ## Whether a design checked by check_design would stand, for the session:
@@ -20456,6 +20471,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_reviewing = {}
 		_detail_added = []
 		_exact_save_refusals = 0
+		_pieces_advised = false
 		# Submitted again with the same features keeps what was done for them.
 		if design.features != _outside_features:
 			_feature_used = {}
@@ -20787,6 +20803,20 @@ func save_gate() -> Variant:
 var _exact_save_refusals: int = 0
 const MOST_EXACT_REFUSALS := 2
 
+## A BrickBench run: tools/bench/brickbench.py starts each design with
+## --brickbench, and only then does saving wait on a part BrickNet's graph
+## counts as a piece of its own, since its judge is told the count. A
+## person's save never waits on the benchmark's rule: walk256's lighthouse
+## was refused twice over a minifig's hands and hat, a door hung in its frame
+## and a wheel rim, each held by our own joints. The flag says it; nothing
+## else is read as a sign of the bench.
+const BRICKBENCH_FLAG := "--brickbench"
+static var brickbench: bool = OS.get_cmdline_user_args().has(BRICKBENCH_FLAG)
+## What saving says of the pieces our own joints find, once a design, and
+## whether it has been said ([method save_advice]).
+var _save_advice: String = ""
+var _pieces_advised: bool = false
+
 
 ## Saving a design built from outside waits, twice at most, until no part of
 ## it collides by its real shape or rests with nothing holding it (ExactCheck):
@@ -20800,6 +20830,9 @@ func _exact_save_gate() -> String:
 	var report: Dictionary = await _checked(model)
 	_strict_mine = false
 	var faults: String = _exact_faults_said(report)
+	if faults.is_empty() and not brickbench:
+		_save_advice = _pieces_advice(report)
+		return ""
 	if faults.is_empty():
 		var apart: PackedStringArray = _held_in_the_hand(model)
 		if apart.is_empty():
@@ -20815,6 +20848,25 @@ func _exact_save_gate() -> String:
 	_exact_save_refusals += 1
 	progress.emit("not saved: parts collide or hang loose")
 	return "Not saved yet. %s\nThen save again." % faults
+
+
+## A person's save, of a model our own joints find in pieces that nothing
+## joins: the check's words for each and how to join it, said once a design,
+## as advice. The save goes through. "" when it is one piece, or was told.
+func _pieces_advice(report: Dictionary) -> String:
+	var said: String = str(report.get("pieces_said", ""))
+	if said.is_empty() or _pieces_advised:
+		return ""
+	_pieces_advised = true
+	return "Saved as it is, and worth a look before it is finished: %s" % said
+
+
+## What saving has to say once the file is written ([method _pieces_advice]),
+## and then nothing until there is more.
+func save_advice() -> String:
+	var said: String = _save_advice
+	_save_advice = ""
+	return said
 
 
 ## The pieces of [param model] past its largest, by BrickNet's connection graph,

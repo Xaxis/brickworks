@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import sys
 import tempfile
 import types
@@ -164,6 +165,35 @@ def test_the_parts_list_is_what_parts_only_reads():
         path = Path(folder) / "parts.txt"
         path.write_text(text)
         assert bb.read_allowed(path) == {"3001", "3023b"}
+
+
+def test_the_design_stage_starts_the_app_as_brickbench_with_its_parts():
+    """The bench's rules in the app, saving's piece count among them, are the
+    bench's only: --brickbench says so, and a person's app has no such flag."""
+    asked: list[tuple] = []
+
+    def design(subject, run_dir, timeout, canned, extra=(), app=None):
+        asked.append(tuple(extra))
+        return {"model": True, "design_seconds": 1}
+
+    was, data = bb.bench.design, os.environ.get("XDG_DATA_HOME")
+    bb.bench.design = design
+    try:
+        with tempfile.TemporaryDirectory() as folder:
+            batch = Path(folder)
+            (batch / bb.PARTS_FILE).write_text("# parts\n3001\n")
+            (batch / "prompts.json").write_text(json.dumps(
+                [{"id": "model-001", "prompt": "A cat.", "brief": "A cat. Use at most 400 pieces."}]))
+            os.environ["XDG_DATA_HOME"] = folder
+            args = argparse.Namespace(tasks="", app="", arm="", runs=1, timeout=60, jobs=1)
+            assert bb.do_design(args, batch) == 0
+    finally:
+        bb.bench.design = was
+        if data is None:
+            os.environ.pop("XDG_DATA_HOME", None)
+        else:
+            os.environ["XDG_DATA_HOME"] = data
+    assert asked == [(f"--parts-only={batch / bb.PARTS_FILE}", "--brickbench")]
 
 
 VALID = {"valid": True, "errors": [], "parts": 125, "distinct_parts": 40, "connected_components": 1,

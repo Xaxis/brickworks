@@ -1993,14 +1993,23 @@ fixing what it got wrong.
   the next-best, accept with a move laying it a stud back and handing the
   beak, a reason-less rejection refused, the last settle naming the next
   step, save going ahead, the whole review's record; then "beak, ear tufts"
-  skipped and "all" built in two calls with save going ahead, a dish held
-  on a round plate only by its tube holding the save as a piece BrickBench
+  skipped and "all" built in two calls with save going ahead; a person's
+  save never held to BrickBench's count (walk256's M16: a lighthouse refused
+  twice over a minifig's hands and hat, a door in its frame and a wheel
+  rim): the dish on its round plate, one piece by our own joints, saving
+  with nothing said, and two stacks side by side, two pieces by our joints
+  too, saving with the check's words and how to join them said once
+  (`Assistant._pieces_advice`, `save_advice`, the check's `pieces_said`),
+  not on the next save; then, as a BrickBench run (`Assistant.brickbench`,
+  the `--brickbench` flag `tools/bench/brickbench.py` starts each design
+  with, and nothing else), the dish holding the save as a piece BrickBench
   counts apart (`Assistant._held_in_the_hand`, at most twice with the exact
   check's refusals; a scene's items standing apart on the floor are not
   said), said with the fix (`_onto_a_jumper`: the 2 x 2 under it swapped
   for a jumper, 87580, or a jumper laid under a dome on a 2 x 4 and the dome
   a plate higher), each fix laid as said saving, and saving once the dish is
-  gone, and the walk180 tug's features each offered only pieces that name
+  gone (`tests/test_brickbench.py` holds the design stage to passing the
+  flag), and the walk180 tug's features each offered only pieces that name
   them (none for its towing bitts). Windowed (`xvfb-run -a
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.
