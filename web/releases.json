@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.7.0",
+ "latest": "0.8.0",
  "releases": [
+  {
+   "version": "0.8.0",
+   "tag": "v0.8.0",
+   "date": "2026-10-25",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.8.0",
+   "notes": "https://github.com/Xaxis/brickworks/releases/tag/v0.8.0",
+   "summary": "A release about building with others, and by any hand. Build together puts two people on one model at once, live, each with their own undo. The app works with a screen reader and the keyboard alone, and on a tablet by touch. Finding a part is quicker and surer: search ranks parts by how much real sets use them and answers to BrickLink's and Rebrickable's names and the element numbers printed in instructions, a photo of a part finds it, and the parts bin holds the worked constructions the assistant knows. A booklet saves itself as a PDF, and Sign in with orangecheck works on the desktop.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.8.0-linux-x86_64.AppImage",
+     "size": 572557816,
+     "sha256": "8c6eac80f8d19f329425efa5e0a49e475f053fd7533d0342804fbce86a4e4d31",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.8.0/Brickworks-0.8.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.8.0-linux-x86_64.tar.xz",
+     "size": 423040948,
+     "sha256": "ef6e38805694b103eb8f05643d9bab6a85348c47b692ea249613c89e997361e8",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.8.0/Brickworks-0.8.0-linux-x86_64.tar.xz",
+     "unpacked": 1483396592,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.8.0-macos-universal.zip",
+     "size": 751778364,
+     "sha256": "04eb1922fce5b69ea44af88733e9b532579841644beca52e2d269d8eaa0e89bd",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.8.0/Brickworks-0.8.0-macos-universal.zip",
+     "unpacked": 1580151058,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.8.0-windows-x86_64.zip",
+     "size": 730141543,
+     "sha256": "a46a619d53a48ff6ec288d961d8c98818397ec39ad1c0834b4e776cd4a2bcb8a",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.8.0/Brickworks-0.8.0-windows-x86_64.zip",
+     "unpacked": 1519099472,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.7.0",
    "tag": "v0.7.0",
