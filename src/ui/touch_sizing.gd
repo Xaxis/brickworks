@@ -234,12 +234,27 @@ func typing() -> Control:
 
 
 ## The room a dialog has, in the window's units: the screen above the
-## keyboard.
-func room() -> Rect2:
+## keyboard, for the one being typed in ([param dialog], or any); the
+## whole screen for one behind it, which waits for that one to go.
+func room(dialog: Node = null) -> Rect2:
 	var screen: Rect2 = get_viewport().get_visible_rect()
+	if dialog != null and not typing_in(dialog):
+		return screen
 	var k: float = Phone.per_point(get_viewport())
 	screen.size.y = maxf(screen.size.y - keyboard * k, screen.size.y * 0.3)
 	return screen
+
+
+## Whether the field being typed in is in [param dialog].
+func typing_in(dialog: Node) -> bool:
+	var field: Control = typing()
+	return field != null and _dialog_of(field) == dialog
+
+
+## The dialog the field being typed in is in, for the audit.
+func typing_dialog() -> Node:
+	var field: Control = typing()
+	return _dialog_of(field) if field != null else null
 
 
 ## Everything in [param root] sized for a finger: its text at least
@@ -516,7 +531,7 @@ static func _wrap_words(root: Node, across: float) -> bool:
 func _lay_window(window: Window) -> void:
 	if not window.visible:
 		return
-	var space: Rect2 = room()
+	var space: Rect2 = room(window)
 	var k: float = Phone.per_point(get_viewport())
 	var frame: Array[float] = frame_of(window)
 	var menu: bool = window is Popup and not window is AcceptDialog
@@ -558,7 +573,7 @@ func _lay_window(window: Window) -> void:
 ## above the keyboard; on a tablet in the middle at the size it asks for,
 ## or as much as there is room for.
 func _lay_panel(panel: Control) -> void:
-	var space: Rect2 = room()
+	var space: Rect2 = room(panel)
 	var k: float = Phone.per_point(get_viewport())
 	panel.anchor_left = 0.0
 	panel.anchor_top = 0.0

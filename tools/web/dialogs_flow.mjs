@@ -206,14 +206,19 @@ try {
     // A row of More: the list scrolled until the row is in it, by a finger,
     // and the row tapped.
     const more = async (row) => {
-      if (((await ask())?.phone?.sheet) !== "More") await press("phone_more");
+      // Open, if it is not: a tablet's More can be open under the newest panel.
+      for (let n = 0; n < 2 && !((await ask())?.phone?.sheets || []).includes("More"); n++) {
+        await press("phone_more");
+        await page.waitForTimeout(600);
+      }
       const head = await where("phone_sheet_more", 5);
       const panel = await where("phone_panel_more", 5);
       if (!head || !panel) return check(`More is open for ${row}`, false);
       const top = head.y + head.h / 2 + 6;
       const bottom = panel.y + panel.h / 2 - 6;
       for (let n = 0; n < 40; n++) {
-        const at = (await controls())[`phone_row_${row}`];
+        // Told where it is once it stands still: a flicked list glides on.
+        const at = await where(`phone_row_${row}`, 8);
         if (!at) return check(`More has ${row}`, false);
         if (at.y - at.h / 2 >= top && at.y + at.h / 2 <= bottom) {
           await tap(at);
@@ -224,7 +229,7 @@ try {
         const by = at.y < top ? Math.min(top - at.y + 40, span) : -Math.min(at.y - bottom + 40, span);
         const from = by > 0 ? top + 12 : bottom - 12;
         await drag({ x: panel.x, y: from }, { x: panel.x, y: from + by });
-        const moved = (await controls())[`phone_row_${row}`];
+        const moved = await where(`phone_row_${row}`, 8);
         if (moved && Math.abs(moved.y - at.y) < 4) {
           return check(`More scrolls under a finger (a drag of ${Math.round(by)} moved ${row} `
             + `${moved.y - at.y} points)`, false);

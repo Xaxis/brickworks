@@ -7842,6 +7842,9 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 	var texts: Array = []
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	var above: Rect2 = _touch.room() if _touch != null else screen
+	# Only the dialog being typed in waits above the keyboard; one behind it
+	# is judged against the screen.
+	var typed_in: Node = _touch.typing_dialog() if _touch != null else null
 	var dialogs: Array = []
 	var box_of := func(rect: Rect2) -> Array:
 		var on_page: Rect2 = to_window * rect
@@ -7852,28 +7855,32 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 	# [node, what it can be seen within (its scrolls and its window), where
 	# its window is, the dialog it is in]
 	var anywhere := Rect2(-1e6, -1e6, 2e6, 2e6)
-	var walk: Array = [[get_tree().root, anywhere, Vector2.ZERO, ""]]
+	var walk: Array = [[get_tree().root, anywhere, Vector2.ZERO, "", null]]
 	while not walk.is_empty():
 		var next: Array = walk.pop_back()
 		var node: Node = next[0]
 		var clip: Rect2 = next[1]
 		var shift: Vector2 = next[2]
 		var dialog: String = next[3]
+		var holder: Node = next[4]
 		var window := node as Window
 		if window != null and window != get_window():
 			if not window.visible or Tooltips.is_tooltip(window):
 				continue
 			dialog = window.title if not window.title.is_empty() else "%s %s" % [window.get_class(), window.name]
 			dialogs.append(dialog)
+			holder = window
 			shift = Vector2(window.position)
 			clip = clip.intersection(Rect2(shift, Vector2(window.size)))
-			_audit_window(window, box_of, points_of, dialog, above, targets, texts)
+			_audit_window(window, box_of, points_of, dialog,
+				above if typed_in == null or typed_in == window else screen, targets, texts)
 		elif node is CanvasItem and not (node as CanvasItem).visible:
 			continue
 		elif (node.is_in_group(TouchSizing.GROUP) or node.is_in_group(TouchSizing.SIZED)) \
 				and dialog.is_empty():
 			dialog = "%s %s" % [_name_of(node as Control), node.name]
 			dialogs.append(dialog)
+			holder = node
 		var control := node as Control
 		if control != null:
 			var rect: Rect2 = control.get_global_rect()
@@ -7886,7 +7893,8 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			var named: String = "%s %s" % [_name_of(control), str(control.name)]
 			# Off the screen: what of it its scrolls show is not all inside the
 			# screen. A dialog's under the keyboard is off it too.
-			var bounds: Rect2 = above if not dialog.is_empty() else screen
+			var bounds: Rect2 = above if not dialog.is_empty() and (typed_in == null
+				or typed_in == holder) else screen
 			var off: bool = seen and not bounds.grow(1.0).encloses(shown)
 			if seen and TouchSizing.takes(control):
 				var target: Dictionary = {"name": named, "box": box, "off": off, "in": dialog}
@@ -7911,7 +7919,7 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 					"box": box, "off": off, "in": dialog})
 		# A dialog's own buttons are its internal children.
 		for child: Node in node.get_children(true):
-			walk.append([child, clip, shift, dialog])
+			walk.append([child, clip, shift, dialog, holder])
 	# And the model's room between a tablet's panels, where a finger turns it.
 	var room: Rect2 = to_window * _phone.model_room(screen)
 	# And the field being typed in, where it is: above the keyboard.
