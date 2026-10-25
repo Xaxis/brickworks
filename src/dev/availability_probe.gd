@@ -405,7 +405,11 @@ func _check_placed_in_made(assistant: Assistant, world: BrickWorld, builder: Bui
 	var standing: int = (laid[0] as BrickWorld.Brick).id
 	answer = await assistant.use_tool("edit_model", {"recolor": [{"bricks": [standing], "color": 484}]})
 	said = str(answer[0].get("text", "")) if answer is Array else str(answer)
+	# It already stands in the nearest colour it was made in, so the recolour
+	# changes nothing, and says so with the reason (fixes243's "Nothing
+	# changed"); a part in another colour is told it is placed in the nearest.
 	_ok(world.get_brick(standing) != null and world.get_brick(standing).color_code == nearest
-			and said.contains("so it is placed in %d" % nearest),
+			and (said.contains("so it is placed in %d" % nearest)
+				or (said.begins_with("Nothing changed") and said.contains("(%d), which it is" % nearest))),
 		"recoloured to Dark Orange, it is put in %d, and told: %s" % [nearest, said.left(160).replace("\n", " ")])
 
