@@ -128,6 +128,7 @@ func _window_shown(window: Window) -> void:
 		return
 	if window not in _open:
 		_open.append(window)
+	window.set_meta(&"touch_relaid", 0)
 	_size_window(window)
 	size_tree(window)
 	_place_later(window)
@@ -565,8 +566,16 @@ func _lay_window(window: Window) -> void:
 	if not wide:
 		size.x = most.x
 	size = Vector2(clampf(maxf(size.x, least.x), 0.0, most.x), clampf(least.y, 0.0, most.y))
+	var was: Vector2i = window.size
 	window.size = Vector2i(size.round())
 	size = Vector2(window.size)
+	# Its words wrapped at the new width are as tall as that width makes
+	# them only once laid out at it: placed again then, or a Delete's
+	# question two lines tall left its buttons below the window.
+	var again: int = int(window.get_meta(&"touch_relaid", 0))
+	if window.size != was and again < 3:
+		window.set_meta(&"touch_relaid", again + 1)
+		_place_later(window)
 	var place: Vector2
 	if wide:
 		place = space.position + Vector2(frame[0], frame[1]) + (Vector2(most.x, most.y) - size) * 0.5 \
