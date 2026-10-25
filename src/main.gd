@@ -417,6 +417,10 @@ func _match_screen_density() -> void:
 		return
 	var factor: float = sized_factor(across, down, OS.has_feature("web"),
 		ShellPrefs.interface_size(), Phone.on())
+	# A tablet's layout for a finger is in points, and turned it keeps them;
+	# the person's interface size scales it as it scales the phone's.
+	if Phone.wide():
+		factor = Phone.tablet_factor(across, down) * ShellPrefs.interface_size()
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:
@@ -5198,6 +5202,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(_booklet_out.take)
+	_booklet_out.save_wanted.connect(_save_booklet)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
 	var made: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
@@ -5237,6 +5242,86 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 ## The last booklet drawn, still there to be read (BookletOut).
 var _booklet_out: BookletOut = null
+
+
+## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
+## "pdf" or "png"): the booklet read again from itself, a page at a time,
+## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng). On the
+## desktop where the person chooses, asked as every export asks (SaveTo);
+## on the web, a download. [param reply] is said back in the booklet.
+func _save_booklet(kind: String, reply: Callable) -> void:
+	reply.call(await save_booklet_as(kind))
+
+
+func save_booklet_as(kind: String, to: String = "") -> String:
+	if not is_instance_valid(_booklet_out) or _booklet_out.source() == null:
+		return "the booklet is not there to save: make the instructions again"
+	if _booklet_writing:
+		return "already saving the booklet…"
+	var pdf: bool = kind != "png"
+	var name: String = _booklet_out.base_name() + (".pdf" if pdf else "_pages.zip")
+	var web: bool = OS.has_feature("web")
+	if to.is_empty() and not web:
+		# The booklet is in the browser, in front of the window that asks.
+		DisplayServer.window_move_to_foreground()
+		to = await SaveTo.ask(name, "", "Save the instructions as a PDF" if pdf
+			else "Save the instructions' pages as pictures")
+		if to.is_empty():
+			return "not saved"
+	_booklet_writing = true
+	var started: int = Time.get_ticks_msec()
+	var job: Working.Job = Working.begin("Writing the PDF…" if pdf else "Drawing the pages…")
+	var written: String = to if not web else "user://" + name
+	var part: String = written + ".part"
+	var pages: int = -1
+	var ok: bool = false
+	# A frame for the window every few pages on the desktop; none on the
+	# web, where the app's tab is out of view (BookletRead.read_all).
+	var pace: int = 0 if web else 8
+	if pdf:
+		var read := BookletRead.new()
+		var out := BookletPdf.new()
+		if out.begin("" if web else part, read):
+			pages = await read.read_all(_booklet_out.source(), out.page, pace)
+			var bytes: PackedByteArray = out.finish(read.title)
+			ok = pages > 0 and out.ok()
+			if web and ok:
+				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
+	else:
+		var drawer := BookletPng.new()
+		add_child(drawer)
+		pages = await drawer.write(_booklet_out.source(), part, _booklet_out.base_name(), pace)
+		ok = pages > 0 and drawer.pages == pages
+		drawer.queue_free()
+		if web and ok:
+			JavaScriptBridge.download_buffer(FileAccess.get_file_as_bytes(part), name,
+				"application/zip")
+	job.end()
+	_booklet_writing = false
+	var seconds: float = (Time.get_ticks_msec() - started) / 1000.0
+	if web:
+		DirAccess.remove_absolute(part)
+		var said: String = ("downloaded %s, %d pages" % [name, pages]) if ok \
+			else "could not save the booklet"
+		_bar.say(said)
+		return said
+	if ok:
+		if FileAccess.file_exists(written):
+			DirAccess.remove_absolute(written)
+		ok = DirAccess.rename_absolute(part, written) == OK
+	else:
+		DirAccess.remove_absolute(part)
+	if not ok:
+		_bar.say("could not write %s" % written)
+		return "could not write %s" % written
+	SaveTo.wrote(written)
+	var line: String = "wrote %s, %d pages in %.1f s: %s" % [written.get_file(), pages, seconds,
+		written]
+	_bar.say(line)
+	return line
+
+
+var _booklet_writing: bool = false
 
 
 ## The line to say once the booklet written to [param path] is whole: that
@@ -5607,7 +5692,8 @@ func _fit_panels() -> void:
 	# the threshold and kept both panels open across a screen with room
 	# for neither.
 	var across: float = Room.across()
-	var phone: bool = across < ROOMY
+	# A tablet's layout for a finger has drawers too, however wide it is.
+	var phone: bool = across < ROOMY or _phone != null
 
 	# A drawer leaves the far rail showing, so the way out is visible
 	# from inside it. Measured in the interface's own units, which a
@@ -5657,6 +5743,9 @@ func _model_rect() -> Rect2:
 		if _simulate_column != null and _simulate_column.visible:
 			rect.position.x = maxf(rect.position.x, _simulate_column.get_global_rect().end.x)
 		rect.size.x = across - SideDock.RAIL_WIDTH - rect.position.x
+	# A tablet's panels stand beside the model, as the desktop's columns do.
+	if _phone != null:
+		rect = _phone.model_room(rect)
 	return rect
 
 
@@ -7707,7 +7796,11 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 					"box": box, "off": off})
 		for child: Node in node.get_children():
 			walk.append([child, clip])
+	# And the model's room between a tablet's panels, where a finger turns it.
+	var room: Rect2 = to_window * _phone.model_room(screen)
 	return {"targets": targets, "texts": texts, "phone": _phone.state(),
+		"room": [roundi(room.position.x / per_css), roundi(room.position.y / per_css),
+			roundi(room.size.x / per_css), roundi(room.size.y / per_css)],
 		"screen": [roundi((to_window * screen).size.x / per_css), roundi((to_window * screen).size.y / per_css)]}
 
 

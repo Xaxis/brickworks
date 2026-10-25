@@ -19,6 +19,11 @@
 class_name BookletOut
 extends Node
 
+## Save as PDF or Save pages as PNG ([param kind] "pdf" or "png") was
+## pressed in the booklet, in the browser; [param reply] takes the line to
+## say there once it is saved, or not.
+signal save_wanted(kind: String, reply: Callable)
+
 ## Whether the reader has it: the browser was opened on it (desktop), or it
 ## went into the tab (web).
 var shown: bool = false
@@ -36,6 +41,9 @@ var _done: bool = false
 var _asked: bool = false
 ## The file could not be opened to be written.
 var _unwritable: bool = false
+## The web's answer to the booklet tab's Save buttons, kept while it can be
+## pressed.
+var _save_pressed: JavaScriptObject = null
 
 
 ## A browser reading the booklet over HTTP: its request, then how far
@@ -72,6 +80,20 @@ func begin(to: String, show: bool, name: String) -> void:
 	set_process(_server != null)
 
 
+## What the booklet can be read again from, for its PDF and its pages
+## (BookletRead.read_all): its file on the desktop, its tab's document on
+## the web; null when there is neither.
+func source() -> Variant:
+	if OS.has_feature("web"):
+		return _tab.document if _tab != null and shown else null
+	return _path if not _path.is_empty() and FileAccess.file_exists(_path) else null
+
+
+## The booklet's name without its extension, for the files saved from it.
+func base_name() -> String:
+	return (_path.get_file() if not _path.is_empty() else _name).get_basename()
+
+
 ## Where a browser reads it as it comes, "" when it cannot.
 func url() -> String:
 	return _url
@@ -90,8 +112,9 @@ func take(piece: String) -> void:
 		# The tab was opened from the app, so it is under the app's security
 		# policy, which runs no inline handler: Print did nothing in a browser
 		# (share_flow, 2026-10-12). The app gives the button its click at the
-		# end instead; the file the desktop writes keeps its own.
-		document.write(piece.replace(BookletMaker.PRINT_INLINE, ""))
+		# end instead; the file the desktop writes keeps its own. So with
+		# the desktop's Save script, which the policy refuses aloud.
+		document.write(piece.replace(BookletMaker.PRINT_INLINE, "").replace(Booklet.SAVE_SCRIPT, ""))
 		return
 	if _file != null:
 		_file.store_string(piece)
@@ -117,8 +140,25 @@ func finish(whole: bool) -> bool:
 					const button = tab && tab.document.querySelector('.bar button');
 					if (button) button.addEventListener('click', () => tab.print());
 					window.brickworksBooklet = null;
+					// Save as PDF and Save pages as PNG, answered by the app
+					// (brickworksBookletSave), a moment after "Saving…" is shown:
+					// the app writes the file at once, and the tab is not drawn
+					// again until it is done.
+					for (const [id, kind] of [['save-pdf', 'pdf'], ['save-png', 'png']]) {
+						const save = tab && tab.document.getElementById(id);
+						if (!save) continue;
+						save.hidden = false;
+						save.addEventListener('click', () => {
+							const said = tab.document.getElementById('saved');
+							if (said) { said.hidden = false; said.textContent = 'Saving\u2026'; }
+							save.disabled = true;
+							setTimeout(() => window.brickworksBookletSave && window.brickworksBookletSave(kind), 50);
+						});
+					}
 				})();
 			""", true)
+			_save_pressed = JavaScriptBridge.create_callback(_pressed_in_tab)
+			JavaScriptBridge.get_interface("window").brickworksBookletSave = _save_pressed
 		elif not whole:
 			BookletMaker.close_tab()
 		return true
@@ -136,6 +176,22 @@ func finish(whole: bool) -> bool:
 	if not whole or not shown:
 		_stop()
 	return written
+
+
+## Save pressed in the booklet's tab, on the web: said back into the tab.
+func _pressed_in_tab(arguments: Array) -> void:
+	var kind: String = str(arguments[0]) if not arguments.is_empty() else "pdf"
+	var tab: JavaScriptObject = _tab
+	save_wanted.emit(kind, func(line: String) -> void:
+		if tab == null:
+			return
+		var document: JavaScriptObject = tab.document
+		var said: JavaScriptObject = document.getElementById("saved")
+		if said != null:
+			said.textContent = line
+		var button: JavaScriptObject = document.getElementById("save-" + kind)
+		if button != null:
+			button.disabled = false)
 
 
 ## The whole file, on the web with no tab to write it into.
@@ -212,6 +268,19 @@ func _answer(reader: Reader) -> void:
 			_readers.erase(reader)
 		return
 	var wanted: String = request.get_slice("\r\n", 0).get_slice(" ", 1)
+	# Save as PDF or Save pages as PNG, pressed in the booklet: answered
+	# once it is saved, or not, with the line to say there.
+	if request.begins_with("POST ") and wanted.begins_with("/save?") and _done:
+		_readers.erase(reader)
+		reader.answered = true
+		var peer: StreamPeerTCP = reader.peer
+		save_wanted.emit(wanted.get_slice("?", 1), func(line: String) -> void:
+			var said: PackedByteArray = line.to_utf8_buffer()
+			peer.put_data(("HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\n"
+				+ "Content-Length: %d\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
+				% said.size()).to_utf8_buffer() + said)
+			peer.disconnect_from_host())
+		return
 	if wanted.get_slice("?", 0) != "/" + _name.uri_encode():
 		reader.peer.put_data(("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n"
 			+ "Connection: close\r\n\r\n").to_utf8_buffer())

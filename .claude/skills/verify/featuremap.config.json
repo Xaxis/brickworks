@@ -3337,6 +3337,13 @@
       "entry": "src/ui/access.gd",
       "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet as a PDF and as PNG pages",
+      "entry": "src/render/booklet_pdf.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
+      "area": "view"
     }
   ]
 }

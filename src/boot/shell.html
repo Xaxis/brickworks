@@ -22,7 +22,10 @@
 <head>
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- minimum-scale: a tablet or phone turned round has the canvas a moment
+     at its old width, and a browser zoomed out to fit it, kept the page
+     that wide and the app laid out for it (tablet247). -->
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <title>$GODOT_PROJECT_NAME</title>
 <style>

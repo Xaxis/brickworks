@@ -372,6 +372,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		var drag: InputEventScreenDrag = event
 		if _not_mine.has(drag.index):
 			return
+		# How far this finger went since it was seen last, by where, for a
+		# phone's turns. On the web a finger's first relative could be its
+		# whole position (596, 492 for a move of 11, 0), and later ones
+		# were measured from the other finger now and then: two fingers
+		# drawn level across the model turned it to look from under the
+		# baseplate (tablet247). A finger not seen coming down has not moved.
+		var moved: Vector2 = drag.position - (_touches.get(drag.index, drag.position) as Vector2)
 		_touches[drag.index] = drag.position
 		_touch_travel += drag.relative.length()
 
@@ -388,7 +395,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			# first drag event of a gesture anchors it.
 			if _doing != Doing.ORBIT:
 				_begin(Doing.ORBIT, MOUSE_BUTTON_LEFT, drag.position)
-			_turn_by(drag.relative, 0.006)
+			_turn_by(moved if phone else drag.relative, 0.006)
 			return
 
 		if _touches.size() >= 2:
@@ -407,7 +414,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if phone:
 				if _doing != Doing.ORBIT:
 					_begin(Doing.ORBIT, MOUSE_BUTTON_LEFT, _between())
-				_turn_by(drag.relative * 0.5, 0.006)
+				_turn_by(moved * 0.5, 0.006)
 				return
 
 			# Halved: with two fingers down each contributes a drag
