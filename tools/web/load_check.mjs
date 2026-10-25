@@ -6,6 +6,8 @@
 //     --runs=3                    cold loads of each, and the median said
 //     --warm                      and a warm load after each cold one
 //     --max-bytes=MB --max-interactive=S   the gate, on broadband's cold medians
+//     --pick=ID [--max-pick=S]    then ID taken from the bin at once, timed to
+//                                 its ghost over the model (each load's held)
 //     --out=DIR                   each run's files and timeline as JSON
 //
 // A visit is a fresh browser profile, so nothing is cached, signed in as
@@ -77,6 +79,11 @@ const out = args.out ? String(args.out) : "";
 if (out) mkdirSync(out, { recursive: true });
 const maxBytes = args["max-bytes"] ? Number(args["max-bytes"]) * 1e6 : 0;
 const maxInteractive = args["max-interactive"] ? Number(args["max-interactive"]) * 1000 : 0;
+// --pick=ID: once the bin is usable, the part ID taken from it as a person
+// quick off the mark would, and timed from the click until its ghost is over
+// the model; --max-pick=S holds the longest of those.
+const pickId = args.pick && args.pick !== true ? String(args.pick) : "";
+const maxPick = args["max-pick"] ? Number(args["max-pick"]) * 1000 : 0;
 
 // In the page before anything of its own runs: long tasks, when the engine
 // started, and each frame drawn to the window (a draw, clear or blit with
@@ -164,6 +171,43 @@ async function cpuNow(cdp) {
   }
 }
 
+// The part [id] typed into the bin's search and its first tile clicked, as
+// placing_flow.mjs takes one, the pointer then over the middle of the window
+// (the model): ms on the page's clock from the click until the app holds it
+// with its ghost drawn, which needs its geometry, and whether that was
+// fetched from the store on its own.
+async function pickFirst(page, id) {
+  const now = () => page.evaluate(() => performance.now());
+  const read = () => page.evaluate(() => ({ c: window.brickworksControls || {}, s: window.brickworksState || {} }));
+  let { c } = await read();
+  if (!c["part search"]) return { ms: NaN, why: "no part search" };
+  await page.mouse.click(c["part search"].x, c["part search"].y);
+  await page.keyboard.press("Control+a");
+  await page.keyboard.type(id, { delay: 30 });
+  for (let n = 0; n < 200; n++) {
+    const { s } = await read();
+    if (Array.isArray(s.found) && s.found[0] === id) break;
+    await page.waitForTimeout(100);
+  }
+  // The tile is told once it has stayed put a publish.
+  await page.waitForTimeout(1200);
+  ({ c } = await read());
+  if (!c["first part"]) return { ms: NaN, why: "no first part" };
+  const view = page.viewportSize();
+  const t0 = await now();
+  await page.mouse.click(c["first part"].x, c["first part"].y);
+  await page.mouse.move(Math.round(view.width / 2), Math.round(view.height / 2), { steps: 4 });
+  for (let n = 0; n < 300; n++) {
+    const got = await page.evaluate((want) => {
+      const s = window.brickworksState || {};
+      return String(s.held || "") === want && Array.isArray(s.ghost_pose) ? performance.now() : 0;
+    }, id);
+    if (got) return { ms: got - t0, at: t0 };
+    await page.waitForTimeout(50);
+  }
+  return { ms: NaN, at: t0, why: "never held with a ghost" };
+}
+
 // One load of [url] in [context]: what came and when, and the marks.
 async function load(context, profile, label) {
   const page = await context.newPage();
@@ -238,6 +282,7 @@ async function load(context, profile, label) {
   }
   const navStart = await page.evaluate(() => performance.timeOrigin).catch(() => 0);
   const cpu = cpu1 ? cpu1.main - cpu0.main : NaN;
+  const picked = pickId && Number.isFinite(marks?.interactive) ? await pickFirst(page, pickId).catch((e) => ({ ms: NaN, why: String(e).slice(0, 120) })) : null;
   const cpuAll = cpu1 ? cpu1.all - cpu0.all : NaN;
   const busy = (marks?.longtasks || []).filter(([t]) => t <= (marks?.interactive ?? Infinity)).reduce((n, [, d]) => n + d, 0);
   // Request times to the page's clock: the document's request is its zero
@@ -266,7 +311,11 @@ async function load(context, profile, label) {
   const net = ends.length ? Math.max(...ends) : NaN;
   const bytes = files.reduce((n, f) => n + f.before, 0);
   if (marks) delete marks.longtasks;
-  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart };
+  if (picked && picked.at) {
+    // A part of the pick fetched alone from the store, after the click.
+    picked.fetched = files.filter((f) => f.path.endsWith(".lbm") && f.start >= picked.at).length;
+  }
+  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart, picked };
   await page.close().catch(() => {});
   return run;
 }
@@ -279,6 +328,10 @@ function sayRun(run) {
     + `started ${sec(m.started)} s, net ${sec(run.net)} s, main thread ${sec(run.cpu)} s on a CPU (${sec(run.busy)} s in long tasks; `
     + `${sec(run.cpuAll)} s all threads), ${mb(run.bytes)} MB before interactive`
     + (run.errors.length ? ` (page errors: ${run.errors.join(" | ")})` : ""));
+  if (run.picked) {
+    console.log(`    first pick of ${pickId}: in hand with its ghost ${Number.isFinite(run.picked.ms) ? `${Math.round(run.picked.ms)} ms` : `never (${run.picked.why})`}`
+      + ` after the click, ${run.picked.fetched ?? 0} part file${run.picked.fetched === 1 ? "" : "s"} fetched for it alone`);
+  }
   // Where the wait after the download went: the engine's start, then the
   // app's own (Main._boot_mark).
   if (args.laps) {
@@ -357,10 +410,12 @@ for (const profile of profiles) {
       busy: median(these.map((r) => r.busy)),
       cpuAll: median(these.map((r) => r.cpuAll)),
       bytes: median(these.map((r) => r.bytes)),
+      pick: pickId ? Math.max(...these.map((r) => r.picked?.ms ?? NaN)) : NaN,
       runs: these.length,
     };
     summary[`${profile} ${kind}`] = row;
     console.log(`  ${`${profile} ${kind}`.padEnd(15)} interactive ${sec(row.interactive).padStart(5)}  bin drawn ${sec(row.binDrawn).padStart(5)}  first frame ${sec(row.firstFrame).padStart(5)}  `
+      + `${pickId ? `pick ${Number.isFinite(row.pick) ? `${Math.round(row.pick)} ms` : "-"} (longest)  ` : ""}`
       + `started ${sec(row.started).padStart(5)}  net ${sec(row.net).padStart(5)}  main ${sec(row.cpu).padStart(5)} (long ${sec(row.busy)}, all ${sec(row.cpuAll)})  ${mb(row.bytes).padStart(6)} MB  (${row.runs} runs)`);
   }
 }
@@ -379,6 +434,14 @@ if (maxBytes || maxInteractive) {
       console.log(`${ok ? "ok  " : "FAIL"} interactive at ${sec(gate.interactive)} s, ceiling ${sec(maxInteractive)} s`);
       failed ||= !ok;
     }
+  }
+}
+if (maxPick) {
+  for (const r of results) {
+    const ms = r.picked?.ms;
+    const ok = Number.isFinite(ms) && ms <= maxPick;
+    console.log(`${ok ? "ok  " : "FAIL"} ${r.profile} ${r.label}: ${pickId} in hand ${Number.isFinite(ms) ? `${Math.round(ms)} ms` : "never"} after its click, ceiling ${Math.round(maxPick)} ms`);
+    failed ||= !ok;
   }
 }
 for (const r of results) if (!Number.isFinite(r.marks?.interactive)) { console.log(`FAIL ${r.profile} ${r.label} never became interactive`); failed = true; }
