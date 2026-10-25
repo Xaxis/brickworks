@@ -44,6 +44,9 @@ const SIZED := &"touch_sized_only"
 ## What a control was on the desktop, and what it was given here.
 const WAS := &"touch_was"
 
+## This, for a dialog that lays itself out round the keyboard (MinifigDialog).
+const SELF := &"touch_sizing"
+
 ## Every font size a control may have, by its theme's name for it.
 const FONTS: Array[StringName] = [&"font_size", &"normal_font_size", &"bold_font_size",
 	&"italics_font_size", &"bold_italics_font_size", &"mono_font_size",
@@ -61,6 +64,7 @@ var _look_at: int = 0
 
 
 func _ready() -> void:
+	add_to_group(SELF)
 	wide = Phone.wide()
 	get_tree().node_added.connect(_on_added)
 	get_viewport().size_changed.connect(_place_all, CONNECT_DEFERRED)
@@ -128,6 +132,11 @@ func _window_shown(window: Window) -> void:
 		return
 	if window not in _open:
 		_open.append(window)
+	# What it holds growing while it is open: made to fit again (_grew).
+	for child: Node in window.get_children(true):
+		if child is Control and not child.has_meta(&"touch_grows"):
+			child.set_meta(&"touch_grows", true)
+			(child as Control).minimum_size_changed.connect(_grew.bind(window))
 	window.set_meta(&"touch_relaid", 0)
 	_size_window(window)
 	size_tree(window)
@@ -141,6 +150,7 @@ func place_panel(panel: Control, wants: Vector2) -> void:
 	if not panel.is_in_group(GROUP):
 		panel.add_to_group(GROUP)
 		panel.visibility_changed.connect(_panel_shown.bind(panel))
+		panel.minimum_size_changed.connect(_grew.bind(panel))
 		if panel.visible:
 			_panel_shown(panel)
 	_lay_panel(panel)
@@ -169,6 +179,27 @@ func fit_panel(panel: Control) -> void:
 	if is_instance_valid(panel) and panel.is_visible_in_tree():
 		_wrap_words(panel, panel.size.x)
 		_flow_rows(panel, panel.size.x)
+
+
+## An open dialog whose lines changed while it was open, now wider than it
+## was laid out: made to fit again, its lines wrapped and its rows let
+## flow, as when it was placed (_narrower). Only placing did that, so a
+## line that grew afterwards ran the dialog off the screen: Render's, told
+## the picture's file once it was downloaded ("downloaded
+## touch_430x_932_10532_again_render.png — 9 s.", 472 points with nowhere
+## to break), took its choices and Close off a 430-point phone (fig257).
+func _grew(dialog: Node) -> void:
+	if is_instance_valid(dialog) and dialog in _open and _wider_than_laid(dialog):
+		_place_later(dialog)
+
+
+## Whether [param dialog] wants more room across than it was laid out in.
+static func _wider_than_laid(dialog: Node) -> bool:
+	var window := dialog as Window
+	if window != null:
+		return window.get_contents_minimum_size().x > window.size.x + 0.5
+	var panel := dialog as Control
+	return panel.get_combined_minimum_size().x > panel.offset_right - panel.offset_left + 0.5
 
 
 ## Placed once what was sized has been laid out: a container sorts its

@@ -303,7 +303,9 @@ declare -A CMD=(
   # the keyboard, a saved model renamed and deleted, a version opened, Share
   # published by link, a setting changed, Build together started, a 3D model
   # and an LDraw model exported, Find, the booklet's Save as PDF, the model
-  # tree and the properties, and the rest opened and closed, each audited as
+  # tree and the properties, a library set opened in its own tab, a picture
+  # rendered, a minifigure built and stood on the baseplate, the rest opened
+  # and closed, and last the test account signed out, each audited as
   # the phone's is (every target 44 points or more, no text under 12, nothing
   # off the screen or under the keyboard). A size a check: the four in one
   # ran past a check's 45 minutes on a loaded box.
