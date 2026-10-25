@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
 
 ## Sub-features
 
@@ -1143,7 +1143,57 @@ plan with Claude as the client.
   apart, `ai-designed` appended to the seven house models' tags (named by
   id, once), so their cards carry the Assistant mark; nothing else on any
   model. `/u/brickworks` is drawn as every person's page is. The lead
-  applies it.
+  applies it. `supabase/house_shelf.sql` (gallery261) says its words again
+  once it shares the shelf from the LDraw library ("Its own models were
+  designed with the assistant… The collection From the LDraw library holds
+  real sets as LDraw's builders modelled them"), only while they are still
+  house.sql's, since the API refuses a profile save of the reserved handle;
+  dry-run with `tools/house_shelf_try.sql` (296 characters, no other
+  profile changed). The lead applies it with the shelf's first slice.
+- `who modelled a shared model` (`supabase/modelled_by.sql`,
+  `supabase/modelled_by_changed.sql`, `api/_omr_credit.js`
+  `libraryCredit`): a model its sharer did not make, the shelf from the
+  LDraw library (gallery261, 2026-10-25). The app keeps
+  `0 !BRICKWORKS CREDIT {by, licence, page, from}` with a model its Library
+  opened (`ModelLibrary.credit_of`), and the Share panel puts that line in
+  the file it publishes (`SharePanel.publish`, before its steps are worked
+  out and tested, so a Tested finding is of the file sent). The server
+  never takes a name from it, which anyone can type: it reads only its page,
+  finds that page's models in the Library the parts store holds
+  (`library/index.json`, 10 minutes kept), fetches each one's own file
+  (`library/omr/<file>.mpd`), and holds the shared file to it: the same name
+  inside (an .mpd's first FILE, or a single model's `0 Name:`), and at
+  least half of each one's parts, by part and colour, in the other. Then
+  `{name, page}` from the index, and `changed: true` when the parts are not
+  exactly the library model's, go in `shared_models.modelled_by`
+  (`keepModelledBy`, after the row), and the licence is the index's
+  (`cc-by-2.0` for CCAL 2.0, `cc-by-4.0`) whatever was chosen: somebody
+  else's CC BY work is not licensed again. No match is nobody. All 30 of
+  the shelf's bodies matched the live store, unchanged (2026-10-25). Then
+  the card's who-line is "Modelled by <name>" (`web/card.js`,
+  `[data-modelled-by]`, words that wrap on a phone's card) in place of the
+  sharer's profile; the page has `.from.modelled-by` under `.shared-by`
+  ("Modelled by **name** for LDraw's Official Model Repository", linked to
+  its LDraw page, and ", changed by <sharer>" when changed); the licence
+  words credit them with that link (and ask to say who changed it), the
+  head's description and schema.org's author name them, and `/api/share?id=`
+  says `author` and `modelled_by` from the row, so the gallery tool over
+  MCP credits them too. The SQL also lets a licence be `cc-by-2.0` (LDraw's
+  CCAL 2.0 is CC BY 2.0, `vendor/ldraw/CAreadme.txt`), which the Share panel
+  does not offer. Held by `tests/test_modelled_by.py` (against
+  `tests/fixtures/omr_credit`: 346-2 credited from the index even when its
+  line names somebody else; a forged line over a model of one's own, the
+  library model's name over other parts, a page not in the index, no line,
+  or under half its parts: nobody; a tenth taken out: changed; the copy of
+  made_with.sql's `directory_card` keeps every key; the licence ids are one
+  list in the SQL, the site and the gallery tool; the card and the page as
+  driven) and on a deployment by `share_probe` (`theLibrary`: credited,
+  CC BY 2.0 kept when CC BY 4.0 or all rights reserved is chosen, changed,
+  forged). Dry-run with `tools/modelled_by_try.sql` and
+  `tools/modelled_by_changed_try.sql` (changed: true allowed; false, a
+  word, another key, no name refused; no row refused after; no client
+  reach) and `tools/sql_compare.mjs supabase/modelled_by.sql modelled_by`
+  (17 of 17 the same). The lead applies them.
 - `first steps browser flow` (`tools/web/first_steps_flow.mjs`, preview
   check `[first_steps]`): below.
 - `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
@@ -1610,7 +1660,20 @@ plan with Claude as the client.
   brick body over a wheel with nothing under it, and now sits a stud in and
   a plate up on the chassis brick, over the hood's grille tiles and the
   rear deck's black slopes it replaced; its floor bricks go in first, so no
-  step tips.
+  step tips. The shelf from the LDraw library (gallery261, 2026-10-25):
+  `tools/house_models/ldraw_shelf.py --table` writes
+  `tools/web/gallery_seeds/ldraw_library.json` from the library's index and
+  every FILE section of each `vendor/omr/files` model (one person, one
+  licence, CCAL 2.0 or CC BY 4.0, under 250 KB, or it stops), each entry
+  with its `credit` {by, licence, page}, shared by Brickworks as
+  "LEGO® set 6080 King's Castle" under `cc-by-2.0` or `cc-by-4.0`; the
+  Godot half keeps the credit in the file as the Library does
+  (`store.credit`) and says the licence the panel's menu lacks in the body
+  (the server keeps the Library's licence in any case).
+  The node half's `--only=A-B` sends a slice of DIR (six an hour, twenty a
+  day), and `--collection="From the LDraw library"` puts each in the house's
+  public collection of that name, made when it has none. Needs
+  `supabase/modelled_by.sql` applied first.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory

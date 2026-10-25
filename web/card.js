@@ -201,11 +201,17 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
       : `Designed with the assistant, ${how}`}">${brickified ? "Brickify" : "Assistant"}</span>`);
     data.push('data-made="assistant"');
   }
-  // Who made it: their avatar and name, a link to their profile, when they
+  // Who made it: whoever modelled it, when that is not who shares it (the
+  // app's Library's model it is: supabase/modelled_by.sql), as words that
+  // wrap on a phone's narrow card rather than end in "…"; else their avatar and name, a link to their profile, when they
   // have one shown in public (supabase directory_card's by); else the name
   // they credited it to, as words; else nobody.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
-  const who = by
+  const modeller = model.modelled_by && typeof model.modelled_by === "object" && typeof model.modelled_by.name === "string"
+    ? model.modelled_by.name : "";
+  const who = modeller
+    ? `<span class="who" data-modelled-by>${escapeHtml(`Modelled by ${modeller}`)}</span>`
+    : by
     ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
       picture: by.picture }, { size: "small" })}`
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`

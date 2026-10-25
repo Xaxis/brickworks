@@ -51,7 +51,34 @@ export const LICENCES = {
     url: "",
     says: "Look at it and build it for yourself; ask before sharing a copy or a version of it. Made by",
   },
+  // Somebody else's model from LDraw's Official Model Repository, under
+  // its own licence: LDraw's CCAL 2.0 is CC BY 2.0 (its CAreadme.txt).
+  // Not offered in the Share panel; the house's shelf from the LDraw
+  // library is shared under it (supabase/modelled_by.sql).
+  "cc-by-2.0": {
+    name: "CC BY 2.0",
+    url: "https://creativecommons.org/licenses/by/2.0/",
+    says: "Anyone may share it, change it and build on it, for any purpose, as long as they credit",
+  },
 };
+
+/// Where a model somebody else made comes from, as the app's library
+/// credits it (src/net/model_library.gd FROM), and where its page is.
+export const LDRAW_FROM = "LDraw's Official Model Repository";
+const LDRAW_PAGE = "https://library.ldraw.org/";
+
+/// Who modelled a model its sharer did not make, as kept with its row
+/// (supabase/modelled_by.sql), found in the app's own Library, never taken
+/// from the file (api/_omr_credit.js): {name, page}, and changed: true when
+/// its sharer changed it; null for a model they made.
+export function modelledByOf(said) {
+  if (!said || typeof said !== "object") return null;
+  const name = typeof said.name === "string" ? said.name.replace(/\s+/g, " ").trim() : "";
+  const page = typeof said.page === "string" && said.page.startsWith(LDRAW_PAGE) && said.page.length <= 200
+    ? said.page : "";
+  if (!name || name.length > 80 || !page) return null;
+  return { name, page, ...(said.changed === true ? { changed: true } : {}) };
+}
 
 /// The gallery's sizes, by part count.
 export const SIZES = {
@@ -423,6 +450,9 @@ export function cardOf(origin, row) {
     // Who laid its parts, as its app said (supabase/made_with.sql); null
     // where it did not, and its tags say.
     made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null,
+    // Who modelled it, when its sharer did not: the app's Library's model
+    // it is (api/_omr_credit.js, supabase/modelled_by.sql); null for most.
+    modelled_by: modelledByOf(row.modelled_by),
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     // How many have built it to the last step (supabase/builds.sql).
     builds: Number(row.builds) || 0,

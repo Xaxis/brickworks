@@ -73,6 +73,11 @@ const SAMPLES = [
   [{ id: "CardMade02", name: "Claude's, untagged", parts: 40, thumb: "/m/CardMade02.webp", tags: ["tower"],
     made_with: "assistant" }, {}],
   [{ id: "CardMade03", name: "Brickify's", parts: 40, thumb: "/m/CardMade03.webp", made_with: "brickify" }, {}],
+  // Somebody else's, from LDraw's library, shared by the house
+  // (supabase/modelled_by.sql): who modelled it, never the sharer's link.
+  [{ id: "CardOmr001", name: "6080 King's Castle", parts: 739, author: "Brickworks", thumb: "/m/CardOmr001.webp",
+    licence: "cc-by-2.0", by: { handle: "brickworks", name: "Brickworks" },
+    modelled_by: { name: "Stefan <Frenz>", page: "https://library.ldraw.org/omr/sets/1034" } }, { like: true }],
 ];
 
 const cardsOf = (html) => [...html.matchAll(/<article class="model"[\s\S]*?<\/article>/g)].map((m) => m[0]);

@@ -34,6 +34,13 @@
 // licence a remix has to keep; and a view counted once a day per visitor,
 // never for a robot, a headless browser or another site's page.
 //
+// And the library's models (gallery261, supabase/modelled_by.sql,
+// api/_omr_credit.js): 346-2 as the app publishes it from its Library is
+// credited to its LDraw modeller by the Library the parts store holds, and
+// kept CC BY 2.0 whatever licence was chosen; changed, it keeps the credit
+// and its page says so; a credit line typed over a model of one's own
+// names nobody.
+//
 // And people (supabase/people.sql, api/people.js): a profile by a name its
 // owner chooses, its handle checked and kept unique, listing only what was
 // listed and credited; likes counted once per account; favourites and
@@ -173,6 +180,9 @@ const emailG = `delivered+bw-share-g-${rand}@resend.dev`;
 // Moderation's: a bad actor taken out, and an account that copies them.
 const emailH = `delivered+bw-share-h-${rand}@resend.dev`;
 const emailI = `delivered+bw-share-i-${rand}@resend.dev`;
+// The library's (gallery261): one who shares a model of the app's Library,
+// as it is and changed, and one with a credit line of its own.
+const emailJ = `delivered+bw-share-j-${rand}@resend.dev`;
 const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
 
 /// [text] carrying [pages] as the app carries the steps it worked out
@@ -362,6 +372,7 @@ async function main() {
   await theDirectory(tokenA);
   await thePeople(tokenA, tokenB);
   await theModeration(tokenA);
+  await theLibrary();
 
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
@@ -1334,6 +1345,56 @@ async function theModeration(tokenA) {
   }
 }
 
+/// Who modelled a model of the app's Library (api/_omr_credit.js,
+/// supabase/modelled_by.sql): found in the Library the deployment's parts
+/// store holds and held to its file, never taken from the file's own credit
+/// line; and kept under the library model's licence whatever is chosen.
+/// 346-2 as the app publishes it (tests/fixtures/omr_credit), the store's
+/// own 346-2 beside it.
+async function theLibrary() {
+  console.log("the library's models");
+  const { access_token: token } = await mintSession(emailJ);
+  const house = readFileSync(new URL("../../tests/fixtures/omr_credit/346-2.published.ldr", import.meta.url), "utf8");
+  const credit = house.split("\n").find((line) => line.startsWith("0 !BRICKWORKS CREDIT "));
+  const share = async (name, model, licence) => {
+    const reply = await call("/api/share", { method: "POST", token, body: { name, model, licence } });
+    if (reply.json?.id) published.add(reply.json.id);
+    return reply;
+  };
+  const page = "https://library.ldraw.org/omr/sets/1024";
+  let r = await share("Probe Library House", house, "cc-by-4.0");
+  const id = r.json?.id || "";
+  check(r.status === 201 && r.json?.modelled_by?.name === "Marc Giraudet" && r.json?.modelled_by?.page === page
+    && !r.json?.modelled_by?.changed,
+    `a model of the Library: modelled by its LDraw modeller, as the Library has it (${r.status}, ${JSON.stringify(r.json?.modelled_by)})`);
+  check(r.json?.licence === "cc-by-2.0", `under its own licence, CC BY 2.0, though CC BY 4.0 was chosen (${r.json?.licence})`);
+  r = await call(`/api/share?id=${id}`);
+  check(r.status === 200 && r.json?.author === "Marc Giraudet" && r.json?.modelled_by?.name === "Marc Giraudet",
+    `what the viewer and a session read credits them (${r.json?.author}, ${JSON.stringify(r.json?.modelled_by)})`);
+  r = await call(`/m/${id}`);
+  check(r.status === 200 && r.text.includes("Modelled by <b>Marc Giraudet</b> for ")
+    && r.text.includes("credit Marc Giraudet, who modelled it for"),
+    `its page says who modelled it, and its licence credits them (${r.status})`);
+  // Changed: a tenth of its parts taken out. Still theirs, and said to be changed.
+  const lines = house.split("\n");
+  const parts = lines.map((line, at) => (/^1 .*\.dat\s*$/i.test(line) ? at : -1)).filter((at) => at >= 0);
+  const cut = new Set(parts.slice(0, Math.floor(parts.length / 10)));
+  r = await share("Probe Library House Changed", lines.filter((_, at) => !cut.has(at)).join("\n"), "all-rights-reserved");
+  check(r.status === 201 && r.json?.modelled_by?.name === "Marc Giraudet" && r.json?.modelled_by?.changed === true
+    && r.json?.licence === "cc-by-2.0",
+    `changed by its sharer: still credited, said to be changed, still CC BY 2.0 (${JSON.stringify(r.json?.modelled_by)}, ${r.json?.licence})`);
+  r = await call(`/m/${r.json?.id}`);
+  check(r.status === 200 && /Modelled by <b>Marc Giraudet<\/b> for .*, changed by /.test(r.text),
+    `and its page says it was changed (${r.status})`);
+  // A credit line of its own over a model of its own: nobody, and the licence chosen.
+  r = await share("Probe Forged Credit", `0 FILE 346-2 - Main.ldr\n${credit}\n${SMALL}`, "cc-by-4.0");
+  check(r.status === 201 && r.json?.modelled_by === null && r.json?.licence === "cc-by-4.0",
+    `a credit line typed over a model of its own: nobody, and its licence as chosen (${JSON.stringify(r.json?.modelled_by)}, ${r.json?.licence})`);
+  r = await call(`/m/${r.json?.id}`);
+  check(r.status === 200 && !r.text.includes("Modelled by") && !r.text.includes("Marc Giraudet"),
+    `and its page names nobody it did not make (${r.status})`);
+}
+
 async function cleanUp() {
   // What moderation keeps that does not go with an account: the files the
   // site's owner barred, and reports of a profile by its handle. How often
@@ -1350,7 +1411,7 @@ async function cleanUp() {
   // Every model published here is taken down (the files go with that),
   // then every account, which takes their rows with them.
   const sessions = [];
-  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG, emailH, emailI]) {
+  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG, emailH, emailI, emailJ]) {
     sessions.push(await mintSession(email).catch(() => null));
   }
   const accounts = sessions.filter(Boolean).map((one) => one.kept.user_id).filter(Boolean);

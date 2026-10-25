@@ -3365,6 +3365,13 @@
       "entry": "src/render/booklet_pdf.gd",
       "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "who modelled a shared model",
+      "entry": "supabase/modelled_by.sql",
+      "reach": "python3 tools/minitest.py tests/test_modelled_by.py; BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<preview>   (theLibrary); PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/modelled_by_changed.sql --dry --try=tools/modelled_by_changed_try.sql --table=shared_models   (.env sourced; rolled back; the lead applies it without --dry; then a card and /m/<id> of the LDraw shelf say Modelled by)",
+      "area": "web"
     }
   ]
 }

@@ -46,6 +46,7 @@ const LICENCES: Dictionary = {
 	"cc-by-4.0": ["CC BY 4.0", "anyone may share it, change it and build on it, crediting %s and linking %s"],
 	"cc-by-sa-4.0": ["CC BY-SA 4.0", "anyone may build on it, crediting %s and linking %s, and must share what they make under CC BY-SA 4.0 too"],
 	"all-rights-reserved": ["All rights reserved", "learn from how %s built it; do not copy it into a model you make or share without their leave (%s)"],
+	"cc-by-2.0": ["CC BY 2.0", "anyone may share it, change it and build on it, crediting %s and linking %s"],
 }
 
 ## A designer's handle, as api/people.js takes one.
@@ -350,6 +351,11 @@ func _open(id: String, with_picture: bool) -> Variant:
 	var lines := PackedStringArray()
 	lines.append("%s (%s)%s — %s parts." % [shared.get("name", "?"), url,
 		", by %s" % author if not author.is_empty() else "", _count(int(shared.get("parts", 0)))])
+	var modelled: Dictionary = shared["modelled_by"] if shared.get("modelled_by") is Dictionary else {}
+	if modelled.get("name") is String:
+		lines.append("Modelled by %s for %s (%s), and shared in the gallery from the app's library%s." % [
+			modelled["name"], ModelLibrary.FROM, str(modelled.get("page", "")),
+			", changed by whoever shared it" if modelled.get("changed") == true else ""])
 	if shared.get("description") is String:
 		lines.append("About it: %s" % str(shared["description"]).replace("\n", " ").left(500))
 	var tags: Array = shared.get("tags", []) if shared.get("tags") is Array else []
@@ -508,6 +514,11 @@ static func motions_words(motions: Motions) -> String:
 ## built 3 times · moves: steering · Tested".
 static func _line(model: Dictionary) -> String:
 	var facts := PackedStringArray(["%s parts" % _count(int(model.get("parts", 0)))])
+	# Somebody else's model its sharer put in the gallery (the shelf from
+	# LDraw's library): whoever modelled it is whom it credits.
+	var modelled: Dictionary = model["modelled_by"] if model.get("modelled_by") is Dictionary else {}
+	if modelled.get("name") is String:
+		facts[0] += ", modelled by %s for %s, shared" % [modelled["name"], ModelLibrary.FROM]
 	if model.get("author") is String:
 		facts[0] += ", by %s" % model["author"]
 	# The designer whose page designer= reads, when the model is credited to one.
