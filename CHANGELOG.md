@@ -13,8 +13,38 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-25
+
+A release about building with others, and by any hand. Build together puts
+two people on one model at once, live, each with their own undo. The app
+works with a screen reader and the keyboard alone, and on a tablet by touch.
+Finding a part is quicker and surer: search ranks parts by how much real
+sets use them and answers to BrickLink's and Rebrickable's names and the
+element numbers printed in instructions, a photo of a part finds it, and
+the parts bin holds the worked constructions the assistant knows. A booklet
+saves itself as a PDF, and Sign in with orangecheck works on the desktop.
+
 ### Added
 
+- The parts bin has a Techniques tab: 91 worked constructions, such as a
+  window in a wall, a round tower or a smooth diagonal, each with why it
+  works. Choose one and it is in hand whole; R turns it, a click puts it
+  down, and one Undo takes it back.
+- A camera in the parts search finds a part from a photo, through
+  Brickognize. The app says before the first photo that it goes to them.
+- Search ranks parts by how much real sets use them, so "door frame" finds
+  the frame in hundreds of sets first, and folds prints and stickers under
+  their part's tile behind a count. It answers to BrickLink's and
+  Rebrickable's names ("Technic, Liftarm Thick 1 x 5"), Technic words, and
+  the element numbers printed in instructions, which bring the part in
+  their colour.
+- The booklet saves itself as a PDF, or as PNG pages, from its own bar,
+  beside Print. The Wizard's Tower's 590 pages make a 40 MB PDF in seven
+  seconds.
+- On a tablet, Brickworks is built by touch: the phone's layout laid wide,
+  every target a finger's size, turned either way round.
+- Sign in with orangecheck on the desktop: its button opens orangecheck in
+  your browser, and the app is signed in when you come back.
 - Brickworks works with a screen reader on the desktop. Every button, part,
   colour and field says its name ("Select, V", "Brick 2 x 4, 3001"), and
   what the status line says is read out. F6 (or Tab, with a screen reader
@@ -51,6 +81,15 @@ whole cycle.
 
 ### Fixed
 
+- After a menu or the snap chooser was used with the mouse, the arrow keys
+  stopped moving the selection: the keys stayed with the menu's button.
+  They go back to the model when the menu closes.
+- A model Claude had worked on, saved as one file with sub-models, came
+  back from the autosave without its name.
+- A step edit on a big model with its own steps is quick: on the Wizard's
+  Tower it takes a fifth of a second where it took up to four.
+- A rare script error in the stability and section workers, seen under a
+  heavy load, is gone: what a worker reads is now locked.
 - Saving, exporting or moving parts between steps on a big model with its
   own steps says so on the status bar before the app is held, as it does on
   any other big model. The Wizard's Tower's Save held the window for up to a
