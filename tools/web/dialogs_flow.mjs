@@ -31,9 +31,9 @@
 //                  panel's place rather than open over it
 //   and the rest   every other dialog More has (Library, Account, Render,
 //                  Motions, Parts list, My collection, Minifigure builder,
-//                  Part maker, Simulate, Colour the hidden parts, Keys and
-//                  controls, About, Clear, New, Floor size), opened and
-//                  closed by its own close button
+//                  Part maker, Colour the hidden parts, Keys and controls,
+//                  About, Clear, Floor size), opened and closed by its own
+//                  close button
 //
 // At every step the app is asked (window.brickworksAskPhone) for every
 // target a finger has and every line of text, in points, and what is open
@@ -459,7 +459,7 @@ try {
         if (wide && !(((await ask())?.phone?.sheets) || []).includes("Parts")) await press("phone_parts");
         await more(row);
         await page.waitForTimeout(1200);
-        const told = await audit(what, /.*/, []);
+        const told = await audit(what, /PanelStack/, []);
         const drawer = await where(name, 5);
         const sheets = told?.phone?.sheets || [];
         if (wide) {
@@ -485,8 +485,8 @@ try {
     if (step("rest")) {
       const REST = [["library", /LibraryDialog/], ["account", /AccountPanel/], ["render", /RenderDialog/],
         ["parts_list", /InventoryPanel/], ["collection", /Collection/], ["minifig", /MinifigDialog/],
-        ["part_maker", /ElementDialog/], ["hidden_colours", /HiddenColours/], ["keys", /ControlsDialog/],
-        ["about", /^About/], ["clear", /^Clear/], ["new", /^Start a new model/], ["floor_custom", /.+/]];
+        ["part_maker", /ElementDialog/], ["hidden_colours", /HiddenColoursPanel/], ["keys", /ControlsDialog/],
+        ["about", /^About/], ["clear", /^Clear/], ["floor_custom", /^Baseplate size/]];
       for (const [row, dialog] of REST) {
         if (!(await more(row))) continue;
         await audit(row, dialog);

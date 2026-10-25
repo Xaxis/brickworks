@@ -163,6 +163,13 @@ func size_panel(panel: Control) -> void:
 	size_tree(panel)
 
 
+## One of those made to fit across the room it has, as a dialog is.
+func fit_panel(panel: Control) -> void:
+	if is_instance_valid(panel) and panel.is_visible_in_tree():
+		_wrap_words(panel, panel.size.x)
+		_flow_rows(panel, panel.size.x)
+
+
 ## Placed once what was sized has been laid out: a container sorts its
 ## children at the end of the frame.
 func _place_later(dialog: Node) -> void:
@@ -371,7 +378,7 @@ func _size_window(window: Window) -> void:
 			for n: int in menu.item_count:
 				longest = maxf(longest, font.get_string_size(menu.get_item_text(n),
 					HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-			var across: float = room().size.x - k * 96.0
+			var across: float = room().size.x - k * 150.0
 			if longest > across:
 				size = maxi(ceili(k * Phone.LEAST_TEXT), floori(size * across / longest))
 				menu.add_theme_font_size_override("font_size", size)
@@ -470,6 +477,12 @@ static func _flow_rows(root: Node, across: float) -> bool:
 		row.add_child(flow)
 		for child: Node in children:
 			child.reparent(flow, false)
+			# What stretched along the row has a share of a line instead: a
+			# field stretched in a flow grew without end.
+			var control := child as Control
+			if control != null and control.size_flags_horizontal & Control.SIZE_EXPAND:
+				control.size_flags_horizontal = Control.SIZE_FILL
+				control.custom_minimum_size.x = maxf(control.custom_minimum_size.x, across * 0.6)
 		flowed = true
 	return flowed
 
@@ -525,7 +538,8 @@ func _lay_window(window: Window) -> void:
 	# A row wider than the screen ("Deleted “…” Undo"): its words wrap, and
 	# it is laid out again.
 	if not wide:
-		_narrower(window, most.x)
+		# Its rows inside its own margins.
+		_narrower(window, most.x - k * 24.0)
 	if not wide:
 		size.x = most.x
 	size = Vector2(clampf(maxf(size.x, least.x), 0.0, most.x), clampf(least.y, 0.0, most.y))

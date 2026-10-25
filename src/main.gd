@@ -5709,6 +5709,11 @@ func _fit_panels() -> void:
 	var rails: float = 2.0 if _chat_dock.visible else 1.0
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
 	_bin_dock.set_open_width(minf(336.0, drawer) if phone else 336.0)
+	# A phone's drawer of the model tree and the properties, sized for a
+	# finger (TouchSizing), is the screen beside its rail: at the desktop's
+	# 336 units, half a phone, its rows ran off its edge.
+	if _phone != null and not Phone.wide():
+		_bin_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
 	_chat_dock.set_open_width(minf(340.0, drawer) if phone else 340.0)
 
 	# Whether both columns at their own widths leave the model its room:
@@ -5850,7 +5855,9 @@ func _show_notices() -> void:
 	var any: bool = false
 	for note: Node in _notices.get_child(0).get_children():
 		any = any or (note as Control).visible
-	_notices.visible = any
+	# On a phone the drawer down the left takes the screen beside its rail,
+	# and the strip, squeezed beside it, ran off the screen: it waits.
+	_notices.visible = any and not (_phone != null and not Phone.wide() and _bin_dock.is_open())
 	if _phone != null and any:
 		_for_a_finger(_notices)
 
@@ -7759,13 +7766,16 @@ func _dress_for_phone() -> void:
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
 	_bin_dock.toggled.connect(_phone.dock_toggled)
+	_bin_dock.toggled.connect(func(open: bool) -> void:
+		_show_notices()
+		if open:
+			_touch.fit_panel.call_deferred(_stack))
 	# And the panels that place themselves, placed as Main's are, and those
 	# over the model's own room (Motions, Colour the hidden parts, Stress),
 	# Simulate's column and the line saying what the app is busy with.
 	_touch.place_panel(_shell.library_dialog, Vector2(LibraryDialog.WIDE, LibraryDialog.TALL))
 	_touch.place_panel(_shell.collection, Vector2(CollectionDialog.WIDE, CollectionDialog.TALL))
-	for panel: Control in [_over_model, _simulate_column, _shell.status]:
-		_touch.size_panel(panel)
+	_size_for_a_finger.call_deferred()
 	# A finger that came down on a part with the Select tool moves it, as
 	# the desktop's left drag does: the view does not turn with it.
 	_camera.finger_taken = func() -> bool:
@@ -7775,6 +7785,15 @@ func _dress_for_phone() -> void:
 	_phone_hold.wait_time = HOLD_MS / 1000.0
 	_phone_hold.timeout.connect(_on_phone_hold)
 	add_child(_phone_hold)
+
+
+## The panels over the model's own room (Motions, Colour the hidden parts,
+## Stress), Simulate's and the line saying what the app is busy with, sized
+## for a finger: made after the phone's layout is.
+func _size_for_a_finger() -> void:
+	for panel: Control in [_pose, _hidden_colours, _simulate, _shell.stress.panel, _shell.status]:
+		if panel != null:
+			_touch.size_panel(panel)
 
 
 ## A finger held still on the model, on a phone: what a right click does
@@ -7845,7 +7864,8 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			_audit_window(window, box_of, points_of, dialog, above, targets, texts)
 		elif node is CanvasItem and not (node as CanvasItem).visible:
 			continue
-		elif node.is_in_group(TouchSizing.GROUP) and dialog.is_empty():
+		elif (node.is_in_group(TouchSizing.GROUP) or node.is_in_group(TouchSizing.SIZED)) \
+				and dialog.is_empty():
 			dialog = "%s %s" % [_name_of(node as Control), node.name]
 			dialogs.append(dialog)
 		var control := node as Control
