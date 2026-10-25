@@ -474,8 +474,8 @@ start holds it):
 tools/probe.sh renewal_probe
 ```
 
-Proves it when (19 checks, "renewal probe: all passed"; red on the base, 4
-failed): a kept session lets them in at once with the screen down, the access
+Proves it when (19 checks, "renewal probe: all passed"; 13 fail on 77dea6a6,
+where the kept session is still being checked, the screen up): a kept session lets them in at once with the screen down, the access
 token waits for the renewal and is the renewed one, which is kept; refused,
 they are signed out and the screen comes up with the form and "Your sign-in
 has ended", the kept session gone; Sign out while it renews waits and revokes

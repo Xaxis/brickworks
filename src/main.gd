@@ -4477,6 +4477,11 @@ func _build_ui() -> void:
 		_fresh_brief = brief
 		_make_room(ModelStore.name_for(brief)))
 	_assistant.titled.connect(_on_titled)
+	# A design over MCP, or the assistant's, going down on the example a
+	# first visit opens on: a model of its own (walk256's M15).
+	_assistant.designing.connect(func(name: String) -> void:
+		_make_room(ModelStore.name_for(name) if not name.strip_edges().is_empty() \
+			else ModelStore.UNTITLED))
 	# What the design said it stands on, laid when it stands.
 	_assistant.floor_chosen.connect(_on_floor_chosen)
 	_assistant.finished.connect(func(ok: bool, _summary: String) -> void:

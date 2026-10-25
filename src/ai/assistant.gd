@@ -382,6 +382,9 @@ var floor_kind: Callable = Callable()
 ## is cancelled, or loses the network used to leave them with nothing.
 var _before: Array[Dictionary] = []
 var _placed_ids: PackedInt64Array = PackedInt64Array()
+## Main is taking the example off for a design just submitted ([signal
+## designing]): what was heard of the subject stays.
+var _making_room: bool = false
 
 signal said(text: String)
 signal progress(note: String)
@@ -393,6 +396,13 @@ signal built(brick_count: int)
 signal laid_parts
 ## The design standing calls itself this: the name submit_design gave it.
 signal titled(name: String)
+## A design is going down, a sketch or the whole model (submit_design),
+## called [param name]: Main takes the example a first visit opens on off
+## the baseplate first, untouched, so the design is a model of its own
+## (Main._make_room). A session over MCP says nothing else as it begins,
+## and its first design was built into the example car and saved with it
+## (walk256's M15).
+signal designing(name: String)
 ## What the design said it stands on (submit_design's floor): {"kind":
 ## ModelFloor's, "colour": an LDraw code or -1, "part": whether a baseplate
 ## goes in the box as part of the build}. Main lays it; the person can
@@ -3559,6 +3569,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return ("Not applied — the person asked about the parts they "
 					+ "selected, and submit_design would replace the model. Change "
 					+ "them with edit_selection.")
+			make_room(str(args.get("name", "")))
 			if bool(args.get("sketch", false)) or _sketch_round:
 				return await _hold_sketch(args)
 			# A whole design instead of choosing: the sketches are done with.
@@ -3576,6 +3587,20 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"choose_sketch":
 			return await choose_sketch(int(args.get("sketch", 0)))
 	return "No tool called %s." % name
+
+
+## A design called [param name] is about to go down: Main makes room for
+## it ([signal designing]), the example a first visit opens on taken off
+## when it is untouched, and what was heard of the subject kept. Said by
+## submit_design itself, and by the MCP port before a session's call
+## begins its one step of the history, so Undo takes the design back to
+## the empty model it began, not to the parts without their floor.
+func make_room(name: String) -> void:
+	if _keeps_to_focus():
+		return
+	_making_room = true
+	designing.emit(name)
+	_making_room = false
 
 
 ## The baseplate as a model, so that changing it is a matter of
@@ -5597,6 +5622,17 @@ static func _inside(at: Vector3, where: Dictionary) -> bool:
 	return true
 
 
+## A baseplate lying at the bottom of the model and part of it: the floor a
+## design said it stands on, made part of the build (Main.floor_part_of_model
+## after submit_design's floor), or one the person ticked into it. Placed by
+## hand in neither case: walk256's lighthouse was told its own baseplate was
+## (M15), as FloorLayer.is_ground_plate tells it.
+func _floor_plate(brick: BrickWorld.Brick) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
+	return info != null and info.category == "Baseplate" \
+		and FloorLayer.is_upright(brick.transform) and absf(brick.transform.origin.y) < 0.5
+
+
 func _describe_world(args: Dictionary = {}) -> String:
 	if world == null or world.brick_count() <= scenery.size():
 		return "The baseplate is empty. Nothing is built yet."
@@ -5684,7 +5720,8 @@ func _describe_world(args: Dictionary = {}) -> String:
 				_on_line_said(brick),
 				# The name a later part attaches to it by ("torso.hinge[0]").
 				"   '%s'" % _given_names[brick.id] if _given_names.has(brick.id) else "",
-				"" if mine.has(brick.id) else "   (placed by hand)"])
+				"" if mine.has(brick.id) else ("   (the baseplate, part of the model)"
+					if _floor_plate(brick) else "   (placed by hand)")])
 
 	var lines := PackedStringArray()
 	lines.append("%d parts are on the baseplate." % counted)
@@ -17822,8 +17859,10 @@ func forget_built() -> void:
 	unfocus()
 	# And what it was of: a model cleared or opened from outside starts a new
 	# subject, or the statue built before it makes the lighthouse after it a
-	# figure. The brief a session was started on stays.
-	if not _busy:
+	# figure. The brief a session was started on stays, and so does what was
+	# heard of this design when it is the design clearing room for itself
+	# ([signal designing]).
+	if not _busy and not _making_room:
 		_begin_subject("")
 
 

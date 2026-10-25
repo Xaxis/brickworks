@@ -182,3 +182,4 @@ returning
 gate_line
 nothing_changed
 renewal           # a returning person let in at once, renewed behind the model (walk256 A17)
+first_session     # the first design on the example is a model of its own (walk256 M15)
