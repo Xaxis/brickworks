@@ -14,6 +14,7 @@ whole cycle.
 ## [Unreleased]
 
 ### Added
+
 - Brickworks works with a screen reader on the desktop. Every button, part,
   colour and field says its name ("Select, V", "Brick 2 x 4, 3001"), and
   what the status line says is read out. F6 (or Tab, with a screen reader
@@ -49,10 +50,41 @@ whole cycle.
   parts come in one piece while the app starts.
 
 ### Fixed
+
 - Saving, exporting or moving parts between steps on a big model with its
   own steps says so on the status bar before the app is held, as it does on
   any other big model. The Wizard's Tower's Save held the window for up to a
   second, and a step edit for up to three, with nothing said.
+- When Claude asks for a change that changes nothing, such as painting a
+  part the colour it already is, or one its part was never made in, the
+  answer says nothing changed and why, instead of "Done" with an empty
+  list of changes.
+- On brickworks.diy, /challenges goes to the challenge page instead of
+  "not found", and every page's footer links the challenge.
+- The sign-in screen says your models are kept with your account as well
+  as on the device, as they have been since 2026-10-23. It said they were
+  not kept with your account, and so did the FAQ and the privacy page.
+- Signed in on a new browser, a phone or a fresh install, Brickworks opens
+  on the model you saved last instead of the example car. A first visit, and
+  an account with no models yet, still start on the example car.
+- After Claude works on a model over the connector, nothing of its is left
+  in your hand and the view shows the whole model. A print Claude made was
+  left in hand, so the first click put down a stray part, and the view was
+  still framed on the empty baseplate the design began on. A view you turned
+  while Claude worked is left as you turned it.
+- The words in an SVG print. A sign, a menu board or a name plate drawn
+  with SVG text, by a person or by Claude, printed without its words: the
+  app's SVG renderer draws no text. Its words are now set in the app's font
+  and drawn as outlines, with their size, weight, colour and alignment. Text
+  that cannot be drawn is refused with why, and a picture with nothing in it
+  is refused rather than said to be printed.
+- Putting a part down never moves the rest of the model. A part that
+  reaches below the floor, a gear on an axle in a Technic brick on the
+  baseplate or a car's wheel under its chassis, goes where its ghost shows,
+  and the status line says how far below the floor it reaches. The model
+  used to rise to stand on it, lifting the build off the baseplate, and two
+  gears put down there could not then be turned by hand.
+
 ## [0.7.0] - 2026-10-24
 
 A release about models a person can build, and keep. The Tested mark now

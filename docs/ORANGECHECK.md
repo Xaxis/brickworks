@@ -126,14 +126,19 @@ real builds, and the live rollout waits on its site-attest's review.
   expired or mismatched code, another audience, no `rh`, an ended session)
   401, "Sign in with orangecheck again", since a code works once whatever
   the answer.
-- **Where it is on.** On a deployment, nowhere until
-  `NATIVE_FOR_EVERYONE` in `api/_oc_config.js` is true (after site-attest,
-  once brickworks.diy's project offers it). On this machine, `OC_NATIVE=1`.
+- **Where it is on.** Everywhere orangecheck takes a token, since m167
+  (`NATIVE_FOR_EVERYONE` in `api/_oc_config.js`, unit oc246): site-attest
+  reviewed it, and orangecheck proved it on brickworks.diy's live project,
+  19 of 19, at 2026-10-24 19:58:59Z (its consent page "Sign in to an app on
+  this device? … App Brickworks · Website brickworks.diy", the token's aud
+  `https://brickworks.diy`, azp native). A deployment without the project's
+  keys (a unit's preview) offers it to nobody: `native: null`, and
+  `?op=native` says it is not offered. False turns it off for everybody.
   `OC_ISSUER` and `OC_ME_ORIGIN` point the server at a test stack, and are
   read only off Vercel (`ocHosts`), so nothing set on a deployment can send
-  a token anywhere but ochk.io. Before rollout, one question for
-  orangecheck: the docs say to leave `audience` empty for the verified
-  domain; the app sends `https://brickworks.diy` itself.
+  a token anywhere but ochk.io. The app sends the audience `/api/account`
+  names, `https://brickworks.diy` itself, which orangecheck's live proof
+  took (doc gap 22).
 - **Proof.** `tools/web/oc_native_flow.mjs` on the test stack: a throwaway
   Bitcoin key signed in at the test auth host, `src/dev/oc_native_probe.gd`
   headless (the real form, button, listener and `Account`), a real

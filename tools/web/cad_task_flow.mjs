@@ -729,7 +729,6 @@ async function onItsJoint(target, turn, view, here, any = false, part = null) {
       count.click += 1;
       await page.mouse.click(at[0], at[1]);
       const after = await until((now) => now.bricks > before, 8);
-      if (after.bricks > before) followRise(after, again.ghost);
       return after.bricks > before ? { ok: true, at: again.ghost }
         : { ok: false, why: "the click put nothing down" };
     }
@@ -741,18 +740,6 @@ let shiftToApp = null;
 // The parts put down so far, as the file has them.
 let downParts = [];
 let viewRect = [362, 106, 1238, 710];
-// A part put down below the ground, held by the model, stands the model up
-// on it (Builder._stand_on_the_ground): the part went down that much higher
-// than its ghost, and everything built is that much higher than the file
-// says from here on, as a person sees the model rise.
-function followRise(now, ghost) {
-  const put = now.put && now.put.pose;
-  if (!put || !ghost || Math.abs(put[0] - ghost[0]) > 0.5 || Math.abs(put[2] - ghost[2]) > 0.5) return;
-  const rose = Math.round(put[1] - ghost[1]);
-  if (rose < 1) return;
-  shiftToApp[1] += rose;
-  log(`the model rose ${rose} LDU to stand on it`);
-}
 async function put(part, view) {
   const want = toApp(part.at);
   if (shiftToApp) {
@@ -919,7 +906,6 @@ async function atContacts(part, target, turn, view, contacts) {
         await page.mouse.click(pointer[0], pointer[1]);
         const after = await until((now) => now.bricks > before, 8);
         if (after.bricks <= before) return null;
-        followRise(after, again.ghost);
         log(`put against the ${c.under ? "underside" : "face"} of ${c.id}`);
         return { ok: true, at: again.ghost };
       }
@@ -959,7 +945,6 @@ async function putNearAndType(part, target, turn, view) {
     await page.mouse.click(at[0], at[1]);
     const after = await until((now) => now.bricks > before, 8);
     if (after.bricks <= before) return null;
-    followRise(after, s.ghost);
     const done = await typeTo(part, target, turn, view);
     if (done.ok) return { ok: true, at: target, typed: done.typed };
     // Not brought there: taken back, as a person undoes a wrong part.
@@ -1137,7 +1122,6 @@ async function putBy(part, view, by, aims, tryJoint) {
         count.click += 1;
         await page.mouse.click(pointer[0], pointer[1]);
         const after = await until((now) => now.bricks > before, 8);
-        if (after.bricks > before) followRise(after, s.ghost);
         return after.bricks > before ? { ok: true, at: s.ghost }
           : { ok: false, final: true, why: "the click put nothing down" };
       }

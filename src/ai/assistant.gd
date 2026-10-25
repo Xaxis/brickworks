@@ -3414,10 +3414,14 @@ func _tool_answer(block: Dictionary) -> Variant:
 					+ _colour_advice())
 			if _touched == 0:
 				# Nothing changed, and saying "done" to that ends the
-				# run as a success with the model untouched.
+				# run as a success with the model untouched; said why.
+				if _unknown.is_empty() and not _unchanged_why.is_empty():
+					return "Nothing changed: %s." % "; ".join(_unchanged_why.slice(0, 8)) \
+						+ (" And %d more like that." % (_unchanged_why.size() - 8)
+							if _unchanged_why.size() > 8 else "")
 				if _unknown.is_empty():
-					return ("Nothing in that changed anything. Check "
-						+ "the brick numbers against look_at_model.")
+					return ("Nothing changed: nothing in that differs from the model as it "
+						+ "stands. Check the brick numbers against look_at_model.")
 				return ("No brick has %s. Call look_at_model — the "
 					% _numbers(_unknown)
 					+ "numbers change when a model is opened or rebuilt.")
@@ -3928,7 +3932,9 @@ func _edit(args: Dictionary) -> Model:
 		model.placements = kept
 
 	_bad_colours = PackedStringArray()
+	_unchanged_why = PackedStringArray()
 	var recoloured: Dictionary = {}
+	var was_colour: Dictionary = {}
 	for raw: Variant in args.get("recolor", []):
 		var order: Dictionary = raw
 		if not order.has("color"):
@@ -3944,9 +3950,13 @@ func _edit(args: Dictionary) -> Model:
 			if placement == null:
 				_unknown.append(int(id_raw))
 			elif placement.color != colour:
+				was_colour[placement.id] = [placement.color, colour]
 				placement.color = colour
 				recoloured[placement.id] = true
 				_touched += 1
+			else:
+				_unchanged_why.append("#%d is %s (%d) already" % [placement.id,
+					_colour_name(colour), colour])
 
 	for raw: Variant in args.get("move", []):
 		var order: Dictionary = raw
@@ -4040,7 +4050,22 @@ func _edit(args: Dictionary) -> Model:
 	_touched += gone.size()
 	_current_parts(model)
 	_made_colours(model, recoloured)
+	# Painted a colour its part was never made in, and put back in the
+	# nearest it was, which is the colour it was: no change (suite236's tyre,
+	# "Changed: ." with nothing in the list).
+	for placement: Placement in model.placements:
+		if was_colour.has(placement.id) and placement.color == int(was_colour[placement.id][0]):
+			_touched -= 1
+			var asked: int = int(was_colour[placement.id][1])
+			_unchanged_why.append(("#%d, %s, was never made in %s (%d): the nearest it was made in "
+				% [placement.id, placement.part, _colour_name(asked), asked]
+				+ "is %s (%d), which it is already") % [_colour_name(placement.color), placement.color])
 	return model
+
+
+## Why an edit changed nothing, a part at a time: painted the colour it is,
+## or a colour its part was never made in whose nearest is the colour it is.
+var _unchanged_why: PackedStringArray = PackedStringArray()
 
 
 ## What shorthand a design used, for the run's own log.
@@ -5835,6 +5860,12 @@ func _search(query: String, limit: int) -> String:
 				library.request_mesh(info.id)
 
 	var lines: PackedStringArray = PackedStringArray()
+	# An element number names a colour as well as a part: said first, so
+	# the part is placed in it.
+	var element: Array = library.part_of_element(query)
+	if not element.is_empty():
+		lines.append("Element %s is %s in %s (colour %d)." % [query.strip_edges(), element[0],
+			_colour_name(int(element[1])), int(element[1])])
 	var told: String = ""
 	for info: PartLibrary.PartInfo in usable:
 		lines.append(_describe(info) + _prints_note(info)
@@ -17835,15 +17866,19 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 			+ "reference and the rules."}
 	var found: Array = library.kinds_for(subject)
 	var said: PackedStringArray = PackedStringArray()
+	# Read as what it is a kind of (each kind "is_a"), or the plainer word
+	# found for it: no set is named "tugboat" or "cottage", and a session had
+	# to think of "boat" itself (walk180).
+	var read_as: bool = not found.is_empty() and found.all(func(kind: Dictionary) -> bool:
+		return kind.has("is_a"))
 	if found.is_empty():
-		# The plainer word, found for it: no set is named "tugboat" or
-		# "cottage", and a session had to think of "boat" itself (walk180).
 		var plainer: String = _kind_words(subject)
 		found = library.kinds_for(plainer) if not plainer.is_empty() else []
-		if not found.is_empty():
-			said.append("Sets are not named \"%s\"; read as %s:" % [subject,
-				" and ".join(PackedStringArray(found.map(func(kind: Dictionary) -> String:
-					return "a " + str(kind.get("kind", "")))))])
+		read_as = not found.is_empty()
+	if read_as:
+		said.append("Sets are not named \"%s\"; read as %s:" % [subject,
+			" and ".join(PackedStringArray(found.map(func(kind: Dictionary) -> String:
+				return "a " + str(kind.get("kind", "")))))])
 	if found.is_empty():
 		return {"content": ("No kind of real set matches \"%s\". That is "
 			% subject) + "not a verdict on the idea — it means no "
@@ -17894,22 +17929,9 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 ## that table knows (a tugboat is a boat, a steamboat too; "worship" is
 ## nothing). "" when none is.
 func _kind_words(subject: String) -> String:
-	var out := PackedStringArray()
-	# What it is a kind of (SubjectWords.IS_A): a forklift moves cargo, a
-	# lighthouse is a tower on the coast. A phrase first, then each word.
-	var said: String = " ".join(SubjectWords.of(subject))
-	for phrase: String in SubjectWords.IS_A:
-		var named: bool = phrase.contains(" ") and (" %s " % said).contains(" %s " % phrase)
-		if not named and not phrase.contains(" "):
-			for word: String in SubjectWords.of(subject):
-				if SubjectWords.forms(word).has(phrase):
-					named = true
-		if not named:
-			continue
-		for kind: Variant in SubjectWords.IS_A[phrase]:
-			var form: String = SubjectWords.kind_of_word(str(kind), library.kinds)
-			if not form.is_empty() and not out.has(form):
-				out.append(form)
+	# What it is a kind of (SubjectWords.is_a): a forklift moves cargo, a
+	# lighthouse is a tower on the coast.
+	var out: PackedStringArray = SubjectWords.is_a(subject, library.kinds)
 	for word: String in SubjectWords.of(subject):
 		for kind: Variant in RealSnippets.subjects_of(word):
 			if not SubjectWords.kind_of_word(str(kind), library.kinds).is_empty() \

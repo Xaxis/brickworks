@@ -230,13 +230,17 @@ function dumpTexts(what, mine, theirs) {
 // part of its own, each side in turn, a colour that is always a change, from
 // the moment it is asked of one page to the frame the other page has it,
 // read every 20 ms: what a person waits, frames and all.
-async function measure(label, rounds) {
+// The network's share of a change's wait in the rich measure's bar: the
+// plain measure's under-a-second, less the frames.
+const NETWORK_MS = 500;
+async function measure(label, rounds, relative = false) {
   const { owner, guest } = people;
   const times = { "owner to guest": [], "guest to owner": [] };
   // Where each change's time went (Together.timing, both pages' clocks), and
   // the longest the page's thread was held between two frames in the second
   // after it: a frame that draws the whole model, in software, is that long.
   const stages = { pickup: [], number: [], reach: [], apply: [], shown: [], held_sender: [], held_receiver: [] };
+  const each = [];
   for (const who of [owner, guest]) {
     await who.page.evaluate(() => {
       if (window.__frameTimes) return;
@@ -272,6 +276,7 @@ async function measure(label, rounds) {
       else await wait(20);
     }
     if (got) times[way].push(got - t0);
+    if (got) each.push({ total: got - t0, from: from === owner ? "owner" : "guest", to: to === owner ? "owner" : "guest" });
     await until(() => from.page.evaluate(() => window.brickworksTogetherDone), "the edit's answer", 20).catch(() => null);
     await wait(300);
     const sent = (await together(from.page)).timing?.sent || {};
@@ -289,7 +294,8 @@ async function measure(label, rounds) {
     return sorted.length ? sorted[Math.floor(sorted.length / 2)] : NaN;
   };
   console.log(`        stages (median ms): ${Object.entries(stages).map(([k, v]) => `${k} ${mid(v)}`).join(", ")}`);
-  let turnHold = 0;
+  // Each page's own frame: the median hold after a turn of the view alone.
+  const frame = {};
   for (const [name, who] of [["owner", owner], ["guest", guest]]) {
     const timing = (await together(who.page)).timing || {};
     // And the same hold after nothing but the view turning (Shift+Q): the
@@ -306,17 +312,21 @@ async function measure(label, rounds) {
     }
     console.log(`        ${name}: worst ${JSON.stringify(timing.worst || {})}, last autosave ${timing.autosave_ms} ms;`
       + ` held after a turn of the view alone ${turns.join(", ")} ms`);
-    turnHold = Math.max(turnHold, ...turns);
+    frame[name] = mid(turns);
   }
   const all = [...times["owner to guest"], ...times["guest to owner"]].sort((x, y) => x - y);
   const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];
-  // A change in under a second, p95; or, where the box draws so slowly that
-  // it cannot be, a page held after a change no longer than after a turn of
-  // the view alone: all of the wait the drawing's, none of it the session's.
+  // The plain measure: p95 under a second. The rich one, relative to the
+  // pages' own drawing (a real graphics card draws the rich car in a
+  // fraction of a software frame): each change within the network's
+  // budget, plus one of the sender's frames (the edit picked up) and three
+  // of the receiver's (the frame it lands in, the one it is drawn in, and
+  // the one the page is told in), for 95 of every 100.
   const p95 = pct(all, 0.95);
-  const drawn = Math.max(mid(stages.held_sender), mid(stages.held_receiver)) <= turnHold * 1.25 + 50;
-  const verdict = p95 < 1000 ? "" : drawn ? `; over a second, and all of it the drawing: held ${mid(stages.held_receiver)} ms`
-    + ` after a change, up to ${turnHold} ms after a turn of the view alone` : "";
+  const within = each.filter((one) => one.total <= NETWORK_MS + frame[one.from] + 3 * frame[one.to]).length;
+  const relativeOk = each.length > 0 && within >= Math.ceil(0.95 * each.length);
+  const verdict = relative ? `; frames ${frame.owner} ms (owner), ${frame.guest} ms (other); ${within} of ${each.length}`
+    + ` within ${NETWORK_MS} ms + the sender's frame + 3 of the receiver's` : "";
   // How many frames a second each page drew meanwhile: a change is seen at
   // the frame after it arrives, and a browser drawing in software on a
   // loaded box draws few.
@@ -332,7 +342,7 @@ async function measure(label, rounds) {
   }))));
   console.log(`        frames a second meanwhile: the owner's page ${fps[0]}, the other's ${fps[1]}`);
   return check(`${label}: ${all.length} changes arrived, p50 ${pct(all, 0.5)} ms, p95 ${p95} ms${verdict}`,
-    all.length >= rounds * 0.9 && (p95 < 1000 || drawn),
+    all.length >= rounds * 0.9 && (relative ? p95 < 1000 || relativeOk : p95 < 1000),
     Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
 }
 function readDesktop(file) {
@@ -547,7 +557,8 @@ try {
   const [placed] = await ask(owner.page, [{ op: "place", part: "3001", colour: 4, x: -1200, y: 96, z: -1200 }]);
   await settled([owner.page, guest.page]);
   const target = (await uidsOf(guest.page)).find((uid) => uid !== placed.uid);
-  const [painted] = await ask(guest.page, [{ op: "paint", uid: target, colour: 14 }]);
+  // Orange: a colour none of the edits above use, so the paint is a change.
+  const [painted] = await ask(guest.page, [{ op: "paint", uid: target, colour: 25 }]);
   await settled([owner.page, guest.page]);
   // The owner's own key, in the owner's page.
   const view = (await controls(owner.page)).view;
@@ -557,11 +568,12 @@ try {
   const [a2, b2] = [await textOf(owner.page), await textOf(guest.page)];
   check("the owner's Ctrl+Z takes back the owner's part, on both sides", placed?.ok && !a2.uids.includes(placed.uid)
     && !b2.uids.includes(placed.uid));
-  const paintSeen = (text) => text.includes(" 14 ") ;
-  check("...and leaves the other's paint, on both", painted?.ok && paintSeen(a2.text) && a2.hash === b2.hash);
+  const paintSeen = (text) => /^1 25 /m.test(text);
+  check("...and leaves the other's paint, on both", painted?.ok && paintSeen(a2.text) && a2.hash === b2.hash,
+    `painted ${painted?.ok}, orange in the owner's file ${paintSeen(a2.text)}, the same file ${a2.hash === b2.hash}`);
 
   console.log("\n5. how long a change takes to reach the other browser, now");
-  await measure("again, with a motion, a print, steps and the hidden colours", 20);
+  await measure("again, with a motion, a print, steps and the hidden colours", 20, true);
 
   console.log("\n5b. a reload, and a lost connection, go back in by themselves");
   await guest.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });

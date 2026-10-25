@@ -171,6 +171,12 @@ if (modelId) {
   }
 }
 
+// Where the landing page lists the site's places, the challenge is one: the
+// month's, or the next told (walk239's W10: the landing page linked none).
+if (!/<nav class="foot-links"[^>]*>[\s\S]*?<a href="\/challenge">Challenge<\/a>[\s\S]*?<\/nav>/.test(pageHtml["/"] || "")) {
+  fail("/ does not link /challenge among the site's places");
+} else ok("/ links /challenge among the site's places");
+
 // -- old addresses ----------------------------------------------------------
 
 console.log("redirects");
@@ -190,6 +196,11 @@ for (const [from, to] of [
   ["/download/", "/download"],
   ["/app/", "/app"],
   ["/app/?view=AAAAAAAAAA", "/app?view=AAAAAAAAAA"],
+  // The challenges are one page, its past ones under it (walk239's W10:
+  // /challenges was a 404).
+  ["/challenges", "/challenge"],
+  ["/challenges/", "/challenge"],
+  ["/challenges?id=3", "/challenge?id=3"],
 ]) {
   const r = await get(from);
   const where = (r.headers.get("location") || "").replace(base, "").replace(SITE, "");

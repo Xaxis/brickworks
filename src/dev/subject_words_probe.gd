@@ -105,8 +105,11 @@ func _run() -> void:
 
 	print("\nevery vocabulary against %d near misses" % NEAR_MISSES.size())
 	var vocabularies: Dictionary = {
+		# Less what a word is a kind of (SubjectWords.IS_A, each "is_a"): a
+		# cathedral read as a building is what it is, not a cat inside it.
 		"kinds of real set": func(word: String) -> PackedStringArray:
-			return PackedStringArray(library.kinds_for(word).map(
+			return PackedStringArray(library.kinds_for(word).filter(
+				func(kind: Dictionary) -> bool: return not kind.has("is_a")).map(
 				func(kind: Dictionary) -> String: return str(kind.get("kind", "")))),
 		"traits": func(word: String) -> PackedStringArray:
 			return _vocabulary_named(word, Style.TRAITS),

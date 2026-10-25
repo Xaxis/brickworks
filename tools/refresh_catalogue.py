@@ -339,10 +339,10 @@ def _elements(document: dict, colors: list[dict], out: Path) -> str:
     path.write_text(json.dumps(found, separators=(",", ":")))
     counts = found["counts"]
     return ("elements: %d part-and-colour pairs over %d parts, %d by mould "
-            "variant, %.1f MB"
+            "variant, %d more elements of a pair, %.1f MB"
             % (len(found["pairs"]),
                len({key.split("/")[0] for key in found["pairs"]}),
-               counts["by mould variant"],
+               counts["by mould variant"], len(found["also"]),
                path.stat().st_size / 1e6))
 
 

@@ -24,6 +24,17 @@
 ## the start of the part's ("doo"), one a letter off is the word it misses
 ## ("tyle", "hindge", "axel"), and two run together are both ("doorframe"):
 ## each answers a little less than the word itself.
+##
+## And in the names builders use, which are BrickLink's and Rebrickable's
+## more than LDraw's (names248, 2026-10-24): "liftarm 5" missed 32316, LDraw's
+## Technic Beam 5 and BrickLink's Liftarm Thick 1 x 5. A word of theirs for
+## LDraw's (SAME_WORD), Rebrickable's words and size for a part (also_called,
+## also_size) and a length or a gear's teeth as builders write them (3L, 24t)
+## are the part's own name, matched as fully as LDraw's: two names for one
+## part, and how much sets use it decides between the parts either answers.
+## In the bin, where every word must be there, the words a name puts in
+## brackets and its "Modified" tell versions apart and are not required:
+## "Technic, Gear 24 Tooth (2nd Version - 1 Axle Hole)" is 3648b.
 class_name PartSearch
 extends RefCounted
 
@@ -81,6 +92,26 @@ const SAME_SHAPE: Dictionary = {
 	"mustache": ["moustache"],
 }
 
+## A word of BrickLink's or a builder's -> LDraw's or Rebrickable's for the
+## same thing, matched as fully as the word itself (SAME_SHAPE's count a
+## little less): one part with two names. BrickLink's liftarm is LDraw's and
+## Rebrickable's beam, its Modified Rebrickable's Special, its connector
+## LDraw's joiner; a 3L pin is LDraw's Pin Long and a half bush its Bush 1/2.
+const SAME_WORD: Dictionary = {
+	"liftarm": ["beam"], "liftarms": ["beam"], "lift arm": ["liftarm", "beam"],
+	"lift arms": ["liftarm", "beam"],
+	"modified": ["special"], "special": ["modified"],
+	"connector": ["joiner"], "connectors": ["joiner"], "joiner": ["connector"],
+	"bushing": ["bush"], "bushings": ["bush"],
+	"half bush": ["bush 1/2"], "half bushing": ["bush 1/2"], "half pin": ["pin 1/2"],
+	"3l pin": ["pin long"], "pin 3l": ["pin long"], "3l pins": ["pin long"],
+}
+## Words that tell a part's versions apart, which rank it and which the bin,
+## where every word must be there, does not require: BrickLink's "Plate,
+## Modified" is a plate with something on it, and its "Liftarm, Modified
+## Bent" a beam LDraw names Bent.
+const QUALIFIERS: Dictionary = {"modified": true, "special": true}
+
 ## Words that say nothing about which part.
 const STOP_WORDS: Dictionary = {"with": true, "and": true, "or": true, "on": true, "of": true,
 	"the": true, "a": true, "an": true, "for": true, "in": true, "to": true, "x": true,
@@ -106,11 +137,6 @@ const STUDLESS: Array[String] = ["no studs", "without studs", "studless"]
 const KEYWORD_SHARE := 0.5
 ## The catalogue's words for a builder's count for this much of the builder's own.
 const OTHER_WORDS_SHARE := 0.8
-## A word only the set inventories name a part by: matched, but not the builder's
-## own word in its name, so of the parts that have every word, those whose LDraw
-## name says them come first. "round brick 2 x 2" is 3941, Brick 2 x 2 Round,
-## before 98100, a truncated cone the inventories call a round brick.
-const ALSO_SHARE := 0.9
 ## A word a part's has only the start of, as one being typed: "doo" in Door.
 const PREFIX_SHARE := 0.85
 ## A word one letter off a word the catalogue has, which it is taken for:
@@ -128,6 +154,12 @@ static var FRACTION := RegEx.create_from_string("(\\d+)/(\\d+)")
 static var NOT_A_WORD := RegEx.create_from_string("[^\\p{L}\\p{N}. ]+")
 ## A part number, or the start of one: 3001, 3023b, 30367.
 static var PART_NUMBER := RegEx.create_from_string("^\\d{3,}[a-z0-9]*$")
+## A Technic length as builders write it, 3L, which LDraw writes 3; and a
+## gear's teeth, 24t or z24, which it writes 24 Tooth.
+static var LENGTH := RegEx.create_from_string("^(\\d+)l$")
+static var TEETH := RegEx.create_from_string("^(?:(\\d+)t|z(\\d+))$")
+## What a name puts in brackets: "(2nd Version - 1 Axle Hole)", "[Slotted]".
+static var BRACKETED := RegEx.create_from_string("[(\\[][^)\\]]*[)\\]]?")
 
 var _infos: Array[PartLibrary.PartInfo] = []
 var _at: Dictionary = {}        ## part number -> its index in _infos
@@ -192,6 +224,13 @@ func _init(parts: Dictionary, ids: PackedStringArray) -> void:
 			_index(_sized, PackedStringArray([size[0]]), at)
 			if size.size() > 1:
 				_index(_tall, PackedStringArray([size[1]]), at)
+		# And the size Rebrickable names it by where LDraw's name gives none
+		# or another, as fully: 32316, Technic Beam 5, is a 1 x 5 there.
+		var theirs: PackedStringArray = _size_key(words_of(info.also_size))
+		if not theirs.is_empty():
+			_index(_sized, PackedStringArray([theirs[0]]), at)
+			if theirs.size() > 1:
+				_index(_tall, PackedStringArray([theirs[1]]), at)
 		_usage.append(mini(4095, roundi(info.commonness() * USAGE_SCALE)))
 		_plainness.append(15 - mini(15, own.size()))
 		var kind: PackedStringArray = words_of(info.family_category())
@@ -333,8 +372,11 @@ static func _decimals(text: String) -> String:
 ## What a query asks for: its sizes, as one term any of which will do, and
 ## each other word or phrase, with the catalogue's words for it.
 ##
-## A term is {"said": the query's words, "options": [PackedStringArray, ...]}
-## (every word of one option on a part matches it), or a size's
+## A term is {"said": the query's words, "options": [PackedStringArray, ...]
+## (every word of one option on a part matches it), "full": how many of the
+## options are the part's own words (the rest count OTHER_WORDS_SHARE), and
+## "optional" for a word that tells versions apart (QUALIFIERS, or one in
+## brackets) and that the bin does not require}, or a size's
 ## {"said": "2 x 4", "sizes": ["2x4", ...], "tall": ["2x4x3"] when a height
 ## is asked, "options": its numbers, which a wheel's keywords say}.
 static func terms_of(asked: String) -> Array[Dictionary]:
@@ -358,7 +400,17 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 		terms.append({"said": " or ".join(said_sizes), "sizes": sizes, "tall": tall,
 			"options": numbers})
 
-	var phrases: Array = SAME_SHAPE.keys().filter(func(key: String) -> bool:
+	# What a name puts in brackets tells its versions apart, as do the
+	# words of QUALIFIERS: they rank a part, and the bin does not require
+	# them. Not a word said outside them too.
+	var bracketed: Dictionary = {}
+	if text.contains("(") or text.contains("["):
+		for found: RegExMatch in BRACKETED.search_all(text):
+			for word: String in words_of(found.get_string()):
+				bracketed[word] = true
+		for word: String in words_of(BRACKETED.sub(text, " ", true)):
+			bracketed.erase(word)
+	var phrases: Array = (SAME_SHAPE.keys() + SAME_WORD.keys()).filter(func(key: String) -> bool:
 		return key.contains(" "))
 	phrases.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
 	for phrase: String in phrases:
@@ -372,10 +424,13 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 		if STOP_WORDS.has(word) or seen.has(word):
 			continue
 		seen[word] = true
+		var term: Dictionary = _term(word)
+		if bracketed.has(word) or QUALIFIERS.has(word):
+			term["optional"] = true
 		if COLOUR_WORDS.has(word) and not decor_asked:
-			colours.append(_term(word))
+			colours.append(term)
 		else:
-			terms.append(_term(word))
+			terms.append(term)
 	# A colour is what a part is placed in, not which part: "slope 45 2x2
 	# trans clear" is 3039, and a part with Trans Clear in its name is a
 	# print or an assembly. Unless it is all that was asked.
@@ -384,11 +439,21 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 
 static func _term(said: String) -> Dictionary:
 	var options: Array = [said.split(" ", false)]
+	# In the index's words: 1/2 as LDraw's 1/2 is read, 0.500.
+	for other: String in SAME_WORD.get(said, []):
+		options.append(words_of(other))
+	var length: RegExMatch = LENGTH.search(said)
+	if length != null:
+		options.append(PackedStringArray([length.get_string(1)]))
+	var teeth: RegExMatch = TEETH.search(said)
+	if teeth != null:
+		options.append(PackedStringArray([teeth.get_string(1) + teeth.get_string(2), "tooth"]))
+	var full: int = options.size()
 	for other: String in SAME_SHAPE.get(said, []):
 		options.append(other.split(" ", false))
 	if NUMBER_WORDS.has(said):
 		options.append(PackedStringArray([NUMBER_WORDS[said]]))
-	return {"said": said, "options": options}
+	return {"said": said, "options": options, "full": full}
 
 
 ## A word and the forms of it a name may use: stud, studs; curve, curved;
@@ -495,8 +560,10 @@ func _apart(word: String) -> Array:
 ## 1126, Tile 1 x 2 with Rounded Ends, before 1748, Tile 1 x 2 Half Round).
 func _matching(index: Dictionary, term: Dictionary, loose: bool = false) -> Dictionary:
 	var out: Dictionary = {}
-	var share: float = 1.0
-	for option: PackedStringArray in term["options"]:
+	var options: Array = term["options"]
+	for k: int in options.size():
+		var option: PackedStringArray = options[k]
+		var share: float = 1.0 if k < int(term.get("full", 1)) else OTHER_WORDS_SHARE
 		var found: Dictionary = {}
 		for n: int in option.size():
 			var having: Dictionary = _having(index, option[n], loose)
@@ -514,7 +581,6 @@ func _matching(index: Dictionary, term: Dictionary, loose: bool = false) -> Dict
 				break
 		for at: int in found:
 			out[at] = maxf(float(out.get(at, 0.0)), share * float(found[at]))
-		share = OTHER_WORDS_SHARE
 	return out
 
 
@@ -523,15 +589,16 @@ func _matching(index: Dictionary, term: Dictionary, loose: bool = false) -> Dict
 ## since a first letter typed is the start of words thousands of parts have.
 func _matching_into(index: Dictionary, term: Dictionary, loose: bool,
 		out: PackedFloat32Array, touched: PackedInt32Array) -> void:
-	var share: float = 1.0
-	for option: PackedStringArray in term["options"]:
+	var options: Array = term["options"]
+	for k: int in options.size():
+		var option: PackedStringArray = options[k]
+		var share: float = 1.0 if k < int(term.get("full", 1)) else OTHER_WORDS_SHARE
 		if option.size() == 1:
 			_having_into(index, option[0], loose, share, out, touched)
 		else:
 			var found: Dictionary = _matching(index, {"options": [option]}, loose)
 			for at: int in found:
 				_raise(out, touched, at, share * float(found[at]))
-		share = OTHER_WORDS_SHARE
 
 
 ## [method _having] into [param out], each share times [param share].
@@ -613,6 +680,7 @@ func find(asked: String, limit: int, every_word: bool = false,
 
 
 ## [method find]'s parts as indexes into the index's own list, best first.
+## With [param every_word], every word but a version's (a term's "optional").
 func ranked(asked: String, limit: int, every_word: bool = false,
 		loose: bool = true) -> PackedInt32Array:
 	var terms: Array[Dictionary] = terms_of(asked)
@@ -635,7 +703,9 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	var matched := PackedInt32Array()   ## terms matched
 	var literal := PackedInt32Array()   ## terms matched in the builder's own words
 	var flags := PackedByteArray()      ## 1 asked for by its number, 2 its number typed
+	var required := PackedInt32Array()  ## terms matched that every_word requires
 	score.resize(count_of)
+	required.resize(count_of)
 	shares.resize(count_of)
 	shares.fill(1.0)
 	matched.resize(count_of)
@@ -683,8 +753,10 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 			by_also.resize(count_of)
 			var also_list := PackedInt32Array()
 			_matching_into(_also, term, loose, by_also, also_list)
+			# The words the set inventories name it by are its name as much as
+			# LDraw's: Rebrickable's, and BrickLink's with them.
 			for at: int in also_list:
-				_raise(by_name, named_list, at, ALSO_SHARE * by_also[at])
+				_raise(by_name, named_list, at, by_also[at])
 			if STUDLESS.has(said):
 				for at: int in count_of:
 					if _infos[at].stud_count == 0:
@@ -713,6 +785,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 		# a part number. "tile" or "brick" is said of thousands.
 		var worth: float = log(total / float(count + 1))
 		possible += worth
+		var needs: int = 0 if term.get("optional", false) else 1
 		for at: int in named_list:
 			# Its name or its keywords: either saying it says it, and both
 			# say it more. 85080 is a corner round by name and macaroni by
@@ -722,6 +795,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 				touched.append(at)
 			score[at] += worth * share
 			matched[at] += 1
+			required[at] += needs
 			shares[at] *= share
 			if by_name[at] >= 1.0:
 				literal[at] += 1
@@ -731,6 +805,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 					touched.append(at)
 				score[at] += worth * by_keyword[at] * KEYWORD_SHARE
 				matched[at] += 1
+				required[at] += needs
 				shares[at] *= by_keyword[at] * KEYWORD_SHARE
 
 	# A print has the words of what is printed on it as well as its shape's:
@@ -743,6 +818,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 			var plain_at: int = _print_of[at]
 			if plain_at >= 0 and matched[plain_at] > 0:
 				matched[at] = mini(matched[at], matched[plain_at])
+				required[at] = mini(required[at], required[plain_at])
 				literal[at] = mini(literal[at], literal[plain_at])
 				score[at] = minf(score[at], score[plain_at])
 	# One key a part, the larger the better, in fields that decide the order
@@ -778,10 +854,13 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 						for near: String in _near(word):
 							leads[near] = true
 	var keys := PackedInt64Array()
-	var needed: int = terms.size()
+	var needed: int = 0
+	for term: Dictionary in terms:
+		if not term.get("optional", false):
+			needed += 1
 	for at: int in touched:
 		var has: int = matched[at]
-		if has == 0 or (every_word and has < needed):
+		if has == 0 or (every_word and required[at] < needed):
 			continue
 		var tier: int = 3
 		if literal[at] < has:

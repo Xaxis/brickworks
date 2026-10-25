@@ -24,7 +24,10 @@
 //   5. The server: nothing, junk, or a GET refused in words; never cached;
 //      no other site may read its answer; without the signing secret,
 //      sign-in with orangecheck said to be unavailable. An orangecheck
-//      account's made-up address is refused a sign-in code.
+//      account's made-up address is refused a sign-in code. The desktop's
+//      ?op=native (m167): offered, with ochk.io, the project and the
+//      audience, where the keys are, a made-up code refused; offered to
+//      nobody where they are not.
 //   6. /settings for an email account (a throwaway at a Resend test
 //      address, deleted after) offers Link orangecheck with its words, at
 //      390 and 1280 in light and dark; with the code just redeemed, the
@@ -369,6 +372,24 @@ try {
     || (!offer.ready && broken.status === 503), `${broken.status}`);
   const get = await api("/api/orangecheck?op=signin");
   check("anything but POST ?op=signin: refused", get.status === 405, `${get.status}`);
+  // The desktop's sign-in (?op=native, on since m167): offered wherever
+  // orangecheck takes a token, with orangecheck's host, the project and the
+  // deployment's one audience; where it does not (a unit's preview, no
+  // keys), offered to nobody and refused in words. A made-up code is
+  // refused before orangecheck or the limit is asked, so this costs nothing.
+  const junkCode = await api("/api/orangecheck?op=native", { method: "POST",
+    body: { code: "x", code_verifier: "y", redirect_uri: "https://elsewhere.example/" } });
+  if (offer.ready) {
+    check("the desktop is offered orangecheck too: ochk.io, the project and this deployment's audience",
+      offer.native?.auth === "https://ochk.io" && /^pk_/.test(offer.native?.project || "")
+      && /^https:\/\/[a-z0-9.-]+$/.test(offer.native?.audience || ""), JSON.stringify(offer.native));
+    check("and its ?op=native refuses a made-up code in words, asking orangecheck nothing", junkCode.status === 422
+      && /orangecheck/.test(junkCode.json?.error || ""), `${junkCode.status} ${junkCode.json?.error || ""}`);
+  } else {
+    check("without the keys the desktop is offered nothing, and ?op=native says it is not offered here",
+      offer.native === null && junkCode.status === 503 && /not offered/.test(junkCode.json?.error || ""),
+      `${JSON.stringify(offer.native)} ${junkCode.status} ${junkCode.json?.error || ""}`);
+  }
   const madeUp = await api("/api/otp", { method: "POST", body: { email: "0123456789abcdef0123456789abcdef@oc.brickworks.diy" } });
   check("an orangecheck account's made-up address gets no code", madeUp.status === 422 && /orangecheck/.test(madeUp.json?.error || ""),
     `${madeUp.status} ${madeUp.json?.error || ""}`);

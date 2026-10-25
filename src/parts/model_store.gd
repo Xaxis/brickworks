@@ -1154,7 +1154,14 @@ static func title_in(text: String, file_name: String) -> String:
 				continue
 			break
 		said = said.substr(2).strip_edges()
-		if said.is_empty() or said.begins_with("!") or said.begins_with("Name:") \
+		# A meta line is never the title, and the app writes its own (share,
+		# remix, credit, made with) after a file's first line: for an .mpd
+		# that is its 0 FILE, so they stood before the title, and a model a
+		# Claude session touched (made with assistant) lost its name in the
+		# autosave (m166's suite, 2026-10-24). Read past them.
+		if said.begins_with("!"):
+			continue
+		if said.is_empty() or said.begins_with("Name:") \
 				or said.begins_with("Author:") or said in ["Working model", "Model", "model",
 				"Untitled Model"]:
 			break

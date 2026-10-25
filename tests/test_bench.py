@@ -271,6 +271,29 @@ def test_an_app_from_before_the_drawer_runs_in_a_window_on_the_lease():
     assert not any(a.startswith("--draw-by=") for a in command)
 
 
+def test_two_designs_at_once_are_lent_two_ports_and_get_them_back():
+    # brickbench.py design --jobs 2 runs two designs as threads of one process:
+    # both were handed BENCH_PORTS' first port, and the second app took 8787.
+    from bench import run
+    saved = os.environ.get("BENCH_PORTS")
+    os.environ["BENCH_PORTS"] = "9196-9199"
+    got = []
+    try:
+        got = [run._free_port(), run._free_port()]
+        assert got[0] != got[1], got
+        run._port_back(got[0])
+        again = run._free_port()
+        got.append(again)
+        assert again == got[0], (again, got)
+    finally:
+        for port in got:
+            run._port_back(port)
+        if saved is None:
+            os.environ.pop("BENCH_PORTS", None)
+        else:
+            os.environ["BENCH_PORTS"] = saved
+
+
 def test_pictures_given_up_are_counted_from_the_godot_log():
     from bench import run, realset
     # As a contended design's godot_design.log has them (gl-w4b 7410-1, 2026-10-20).

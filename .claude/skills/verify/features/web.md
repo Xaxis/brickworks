@@ -2063,13 +2063,21 @@ plan with Claude as the client.
   `authorize` is served at its bare name by a Build Output `overrides` entry
   (`/download`, `/changelog`, `/admin`), and `/<name>.html` answers 308 to it,
   query and all (`/index.html` to `/`, `/authorize.html` to `/oauth/authorize`);
-  `/download/` and `/app/` lose the slash. **`/app` is a rewrite**, not a redirect:
+  `/download/` and `/app/` lose the slash; `/challenges` (and with a slash)
+  answers 308 to `/challenge`, query and all (2026-10-24, walk239's W10: it
+  was a 404). **`/app` is a rewrite**, not a redirect:
   the page under `/b/<sha>/` is served at `/app`, `no-cache`, with every file it
   names made absolute by the deploy (`src="/b/<sha>/index.js"`,
   `GODOT_CONFIG.executable` and `fileSizes`), because the CSP's `base-uri 'none'`
   rules out a `<base>`. The CSP's script hash is of that served copy. **An unknown
   address answers 404 with `web/404.html`**, at any depth and inside `/b/<sha>/`;
   it used to 308 to `/`. `/parts/` and `/sets/` keep their plain-text 404s.
+- `the challenge among the site's places` (2026-10-24, walk239's W10): every
+  page's footer list of places ("More") starts with Challenge, `/challenge`,
+  which shows the month's challenge or the next told (Coming next). The
+  landing page linked neither `/challenge` nor `/challenges`. `site_check`
+  asks that `/` links it there, and the three `/challenges` redirects (red
+  on m166).
 - `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
   pictures in `web/img/`): rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...

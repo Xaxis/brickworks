@@ -1778,12 +1778,20 @@ fixing what it got wrong.
   every vocabulary against some seventy near misses (planet, carriage,
   worship, giant, storey, shopkeeper, inspired…) matches none it does not
   hold as a word; castles, a spaceship, fire engines, two buses, an X-wing
-  and a farmhouse still find theirs. A subject no set is named by falls back
-  through what it is (`Assistant._kind_words`): a phrase or word of
-  `SubjectWords.IS_A`, hypernyms by class (the road, the building site, the
+  and a farmhouse still find theirs. A word of a brief that is no kind is
+  what it is a kind of where `SubjectWords.IS_A` knows it
+  (`SubjectWords.is_a`, hypernyms by class: the road, the building site, the
   farm, the railway, the water, the air, space, snow, buildings by use: a
-  forklift is cargo and a loader, a lighthouse a tower on the coast), then the
-  real-set index's subjects table and compounds. Its part lists name the part a
+  forklift is cargo and a loader, a lighthouse a tower on the coast), in
+  `kinds_for` itself, each such kind marked `is_a` (names248: only the set
+  lookup read IS_A, and the designer's brief and texture.py read "sailboat"
+  as no kind, race244). The set lookup says "Sets are not named …; read as …"
+  for those, and a subject still unread falls back through
+  `Assistant._kind_words` (the same `is_a`, then the real-set index's subjects
+  table and compounds). `kinds_probe`: kinds_for reads sailboat, and five
+  held out before the rule (rowboat, forklift, snowmobile, skyscraper,
+  lifeboat), as IS_A does; base read none of them right. The near-miss check
+  does not count an IS_A reading (a cathedral read as a building). Its part lists name the part a
   design would place (`PartLibrary.current`). `part_choice_probe -- kinds`: 20
   held-out subjects, base 4 found, the branch 20 (`kinds_probe`'s unknown
   subject is an orrery now).
@@ -2312,8 +2320,8 @@ and how many of the brief's kind parts it uses. Which kinds a brief names is the
 app's own reading, `PartLibrary.kinds_for`, asked of Godot through
 `src/dev/brief_kinds.gd` (a few seconds): texture.py's Python copy of the rule
 missed both of 2026-10-24's fixes to it, and read 5 of 17 held-out briefs as the
-app does against 16 of 17 now ("sailboat" names no kind in the designer's
-reading either; only the set-knowledge lookup falls back to IS_A, race244).
+app does against 16 of 17 then, and "sailboat" as a boat since names248 (kinds_for
+reads IS_A, as the set-knowledge lookup did alone, race244).
 `tools/layout.py <the .ldr>` says
 how it stands: footprint, height, towers over walls, against real sets measured
 from LDraw's model repository (numbers in its docstring). `tools/style.py <the
@@ -3067,6 +3075,15 @@ Their VQA and ELO need Gemma 4 31B in about 62 GB of GPU memory: not run here.
   mark's parts test; recoloured so, all eighteen pass it, same parts in the
   same places. `availability_probe` checks 3030 in 484 Dark Orange goes in 70
   Reddish Brown, added and recoloured, and is said.
+- **An edit that changes nothing says so, and why** (`Assistant._edit`,
+  `_unchanged_why`, 2026-10-24). A recolour to the colour a part is, or to
+  one its part was never made in whose nearest is the colour it is, changes
+  nothing: edit_model and edit_selection answer "Nothing changed: #14 is
+  Trans Yellow (46) already" or "#1, 3641, was never made in Blue (1): the
+  nearest it was made in is Black (0), which it is already", and no step is
+  made. A selection's tyre painted blue had answered "Done … Changed: . One
+  undo takes the whole request back." Probe: `nothing_changed_probe` (red on
+  the base for the tyre and for why).
 - **The palette in the rules is the data's.** `_palette_lines()` lists the
   current colours in 100+ sets, plain, see-through and metallic, commonest
   first, with names — 62 of them, about 1,300 characters. The hand-kept list it

@@ -3632,6 +3632,184 @@ tops and the fin's mount (statue, rabbit, boy) and 2 of 12 where they capped
 round rings and side studs (potato, dog, toilet). A rule that tiled flat tops
 only was not judged.
 
+## 2026-10-24: testing the proportions lever
+
+gap228's third lever, untested until now: proportions and level of detail set by
+the subject. BrickAgent's potato, statue and rabbit are 1.5 to 4.4 times the box
+of every arm of ours, and the judge's reasons name proportion and "reads as".
+This runs gap228's own test of it with no change to the designer: sculpt170's
+designer (`55eee104`, a locked `release_wt.sh` worktree, imported) designs the
+statue, the rabbit and the potato once each, with one sentence added to the
+brief, as a new arm `lever-size`. Each was judged against sculpt170's build of
+the same prompt, both orders, twice (12 verdicts), and against BrickAgent's the
+same way (12 more), by bench204's recipe: Opus through `claude -p` on the
+subscription, the same four views, the same prompt. The judge was given the
+round's own briefs, without the sentence. Nothing was submitted.
+
+**The bar is met: 12 of 12 against sculpt170 (76-100%), every prompt 4-0,**
+where it asked 9. The statue's verdicts name its separate legs and feet in all
+four, and all three builds are valid and one piece. **Against BrickAgent it took
+0 of 12**, as sculpt170 did on these three.
+
+![The three, corner view: sculpt170, lever-size and BrickAgent](../bench/results/brickbench-2026-10-22-m147/lever253/size-three.png)
+
+Each prompt's corner and front views:
+[potato](../bench/results/brickbench-2026-10-22-m147/lever253/size-model-042.png),
+[statue](../bench/results/brickbench-2026-10-22-m147/lever253/size-model-049.png),
+[rabbit](../bench/results/brickbench-2026-10-22-m147/lever253/size-model-078.png).
+
+### The sizing rule, written down before any design
+
+The rule and the three N below were committed (`07d9d302`) before the first
+design started; only the last two columns were measured after.
+
+1. Name the narrowest feature the subject is known for that must stand apart
+   from its body to read: a limb, an ear, a tail, from the brief and from what
+   the subject is.
+2. Give it 2 studs across: the least that is a mass of its own in bricks, not
+   a stick one stud wide.
+3. Scale the whole subject from that feature by the real subject's
+   proportions: N = 2 x (the subject's height / that feature's width),
+   rounded to an even number of studs.
+4. At most 24 studs (five minifigures, what 400 pieces cover with limbs one or
+   two studs wide: BrickAgent's 24-stud statue is 352 parts), and at least 16
+   (the top of the designer's own "about 6 to 16 studs tall" for a figure,
+   below which the sentence asks nothing new).
+
+The sentence, the same for every subject but its N, goes between the prompt
+and "Use at most 400 pieces.":
+
+> Build it about N studs tall, so each feature the subject is known for has room to read.
+
+| prompt | narrowest feature it is known for | the real proportion | N by the rule | sculpt170's height | BrickAgent's height |
+|---|---|---|---|---|---|
+| potato (042) | its arms (every toy of its kind has them) | a toy about 18 cm to its hat's top, an arm about 1.8 cm across: 10 | 20 | 14.8 | 18.6 |
+| statue (049) | the forearm across the knee | a seated man about 126 cm from the ground to his crown (0.72 of 175 cm), a forearm about 7 cm: 18 | 36, held to 24 | 15.4 | 24.0 |
+| rabbit (078) | its ears and hanging arms | an ear or an arm about a tenth of its height across: 10 | 20 | 17.2 | 23.6 |
+
+(Heights in studs, 20 LDU each; a brick is 1.2 studs.)
+
+### What the sentence did to the builds
+
+**Every build came out the height asked, within 8%, and grew up, not out**
+(`lever253/size.py`, gap228's measure off the parts' boxes):
+
+| prompt | build | parts | box, studs x studs x bricks | studs tall | box, cubic studs | plates | bricks |
+|---|---|---|---|---|---|---|---|
+| potato | sculpt170 | 203 | 10x10x12 | 14.8 | 1510 | 55% | 21% |
+| potato | lever-size (20 asked) | 328 | 11x9x15 | 18.4 | 1903 | 43% | 31% |
+| potato | BrickAgent | 237 | 17x13x16 | 18.6 | 4098 | 23% | 34% |
+| statue | sculpt170 | 128 | 10x11x13 | 15.4 | 1626 | 22% | 59% |
+| statue | lever-size (24 asked) | 197 | 12x13x20 | 23.6 | 3799 | 6% | 62% |
+| statue | BrickAgent | 352 | 14x20x20 | 24.0 | 6720 | 2% | 58% |
+| rabbit | sculpt170 | 320 | 13x11x14 | 17.2 | 2460 | 59% | 19% |
+| rabbit | lever-size (20 asked) | 325 | 13x11x17 | 20.8 | 2848 | 46% | 23% |
+| rabbit | BrickAgent | 382 | 18x16x20 | 23.6 | 6876 | 8% | 57% |
+
+The box grew 1.26, 2.34 and 1.16 times, where BrickAgent's is 2.7, 4.1 and 2.8
+times sculpt170's: the sentence named a height, and the footprint stayed
+sculpt170's (the potato's and the rabbit's within a stud). Plates fell on all three
+(55 to 43%, 22 to 6%, 59 to 46%). Valid **3 of 3** by verify.py, geometry
+reproduced, 0 collisions, 0 unstable, `parts only` in every log and `55eee104`
+in every `design.json`; **one piece each** by verify.py's graph and by our
+`src/dev/pieces_agree.gd` at `18110f48` (all three "agree", `lever253/pieces-lever-size.txt`).
+
+### The verdicts
+
+| head to head | overall | likeness | surface | technique | colour | creativity | buildability |
+|---|---|---|---|---|---|---|---|
+| lever-size vs sculpt170 | **12 of 12** | 12 | 12 | 12 | 10 | 8 | 10 |
+| lever-size vs BrickAgent | **0 of 12** | 0 | 6 | 6 | 2 | 0 | 4 |
+| sculpt170 vs BrickAgent, the same three (the sculpt round's) | 0 of 12 | 0 | 2 | 0 | 0 | 4 | 5 |
+
+By prompt: potato, statue and rabbit 4-0 each over sculpt170, and 0-4 each to
+BrickAgent (`compare-lever-size.md`, `reasons-lever-size-*.txt` in
+`lever253/`).
+
+**The bar is softer than it looks.** sculpt170's statue and rabbit lose to
+nearly every arm, and the 9 of 12 asked is reached by four of the eight earlier
+arms judged against these same three builds: m147 11, pose174 10, critique210
+10, limbs234 12 (outline161 7, face201 8, critique221 8, lever-skin 7). The
+potato is the prompt that tells arms apart (0-4 to 4-0 across them); lever-size
+took it 4-0. Against BrickAgent, seven earlier arms took 1 or 2 of these 12
+(m147, outline161, taper165, limbs234 and search156 2 each; pose174 and
+critique221 1), and face201, critique210 and figfaces none, as sculpt170;
+lever-size took none.
+
+### What the judge said
+
+Against sculpt170, every verdict names proportion or a feature that now has
+room:
+
+- **Potato, 4-0.** "a taller egg shape ... reads more like a potato toy than
+  [sculpt170]'s squat, boxy body", "its tall oval body reads as a potato from
+  every view, with the top hat sitting in proportion", and eyes that "have
+  pupils and highlights" against sculpt170's "flower-plate eyes".
+- **Statue, 4-0.** "a clear head with a sloped brow and face, shoulders, a bent
+  arm and two legs coming down to feet in front of a stone block, so it reads as
+  a seated figure", against "a blocky brown mass topped by a round cylinder
+  that does not read as a head".
+- **Rabbit, 4-0.** "a big head with round eyes, a pink nose, two white buck
+  teeth", "hanging arms", against sculpt170's "small, odd head", "a head that
+  blends into the body" and "T-shaped arms".
+
+Against BrickAgent, the height did not buy what it lacks:
+
+- **Potato, 0-4.** "a stepped brown egg in a top hat with no arms"; its pink
+  ear "looks more like a bow". The size gave the face room; it did not make the
+  designer add the arms the rule's own feature names.
+- **Statue, 0-4.** "sits upright and stiff with ... no visible chin-on-fist", in
+  all four, "even though [lever-size]'s limbs are better proportioned" and its
+  "surfaces are cleaner". The pose is what loses now.
+- **Rabbit, 0-4.** "a large boxy head on a narrower body", "it looks much less
+  fat", "its white belly is broken into a patchy mess". The extra height went
+  to the head, on sculpt170's footprint, so the "enormously fat" rabbit got
+  slimmer.
+
+### Cost
+
+On the owner's subscription, no API key: the three designs' sessions priced
+themselves at $10.39 in API terms (2.67, 4.77, 2.95; Claude Code's own price for
+the tokens, not billed), against $6.58 for sculpt170's of the same three
+(1.93, 2.21, 2.45), **58% more**, the median 34% more. They took 8.6, 20.1 and
+8.5 minutes (sculpt170: 5.2, 7.4, 7.0) over 47, 55 and 51 replies (22, 32, 43).
+The statue is most of it: 24 studs of figure cost 55 replies and 20 minutes.
+The 24 judge calls took 8.4 minutes. A first run of two of the designs was
+stopped at about 8 minutes (below) and is not judged; its sessions did not
+print their price.
+
+**The bench gave two designs at once one port.** `brickbench.py design --jobs
+2` runs its designs as threads of one process, and `BENCH_PORTS` handed both
+the range's first port: the second app fell back to 8787, outside the unit's
+range, and the first design to end would have stopped the other's session by
+its port's connection file. The run was stopped, the designs were made by two
+processes instead, and `tools/bench/run.py` now lends a port to one design at a
+time (`18110f48`, with a test that fails on the old code).
+
+### Verdict
+
+**Build it into the designer, as the rule (height and footprint from the
+subject's narrowest feature), not as a height.**
+
+It met its bar 12 of 12 with no code, every verdict naming proportion or a
+feature with room; but four earlier arms met the same bar on these builds, and
+it took nothing from BrickAgent: asked only a height, the builds grew up on
+sculpt170's footprint (the rabbit lost its fatness), and the potato's arms and
+the statue's hunch were still missing. Where it goes in: "about 6 to 16 studs
+tall", in the figures guide and in `plan_scale`'s reply (`src/ai/assistant.gd`,
+m147 to m168), is the ceiling our arms have built under; the rule in its place,
+said for the footprint as well as the height, and tested on held-out briefs
+against BrickAgent at this bar.
+
+**What this does not say.** One design a prompt, three prompts, one judge, and
+one rule applied by one reader who had seen gap228's measures, so the N were
+close to BrickAgent's heights; the designer would have to make the estimate
+itself. sculpt170's builds of these three are weak (above), so 12 of 12 says
+the sentence is as good as the best lever here, not that size explains all of
+it: the rabbit's arms hang and the potato's eyes have pupils, choices a
+re-roll of sculpt170 might also make. Height was asked and kept; footprint was
+not asked, and did not follow.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -3822,6 +4000,27 @@ GPU, `pairs --arms lever-skin,sculpt170 --runs 1 --repeat 2 --jobs 3` (and
 the reasons `scripts/reasons.py`, and `compare --out
 lever229/compare-lever-skin.md` (and `-limbs`), the m147 round's `compare.md`
 copied aside first and put back. The pictures are `lever229/pictures.py`.
+
+The proportions round (2026-10-24) designed in a folder of its own,
+`brickbench-lever253-size/`, so the round's `prompts.json` was never touched:
+`bricknet_parts.txt` and `upstream.json` copied from the m147 round, and a
+`prompts.json` of its three rows with the sentence put into each `brief` (the
+`prompt` as it was). Then `BENCH_PORTS=9190-9199 XDG_DATA_HOME=... heavy env -u
+ANTHROPIC_API_KEY python3 tools/bench/brickbench.py design --date
+lever253-size --arm lever-size --runs 1 --jobs 1 --tasks model-049 --app` a
+locked, imported `release_wt.sh lever253-base 55eee104` worktree, and the same
+with `--tasks model-042,model-078` as a second process (one process with
+`--jobs 2` shared a port before `18110f48`). Each `arms/lever-size/TASK` was
+copied into the m147 round, and from the unit's imported worktree: `export` and
+`verify --which ours --arm lever-size`, `src/dev/pieces_agree.gd` on the three
+`design.ldr`, `views --arms lever-size` on the GPU, `pairs --arms
+lever-size,sculpt170 --runs 1 --repeat 2 --jobs 3 --tasks
+model-042,model-049,model-078` (36 asked: 24 new, sculpt170's against
+BrickAgent's read back), the counts `scripts/by_prompt.py`, the reasons
+`scripts/reasons.py`, and `compare --arms lever-size,sculpt170 --out
+lever253/compare-lever-size.md`, the m147 round's `compare.md` copied aside
+first and put back (its hash checked). The sizes are `lever253/size.py`, the
+pictures `lever253/pictures.py`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the

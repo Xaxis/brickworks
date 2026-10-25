@@ -77,6 +77,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -145,34 +146,50 @@ def commit(app: Path = ROOT) -> str:
 
 
 _PORT_LOCKS: dict[int, object] = {}     # ports this process claimed, held till it exits
+_PORTS_LENT: set[int] = set()           # of them, those a design of this process has now
+_PORTS_GUARD = threading.Lock()
 
 
 def _free_port() -> int:
     """A port nothing listens on. BENCH_PORTS=LO-HI keeps it to the range an agent
     was given; a worker claims its port with a lock held till it exits, so two
-    workers started together never take the same one."""
+    workers started together never take the same one. A port is lent to one
+    design at a time: brickbench.py's two designs at once are threads of one
+    worker, and both were handed its first port before either app bound it
+    (2026-10-24). The second app fell back to 8787, outside the range, and the
+    first design to end would have stopped the other's session by its port."""
     span = os.environ.get("BENCH_PORTS", "")
     if not span:
         with socket.socket() as s:
             s.bind(("127.0.0.1", 0))
             return s.getsockname()[1]
     lo, hi = (int(x) for x in span.split("-"))
-    for port in [*_PORT_LOCKS, *range(lo, hi + 1)]:
-        if port not in _PORT_LOCKS:
-            lock = open(Path(tempfile.gettempdir()) / f"bench-port-{port}.lock", "w")
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                lock.close()
+    with _PORTS_GUARD:
+        for port in [*_PORT_LOCKS, *range(lo, hi + 1)]:
+            if port in _PORTS_LENT:
                 continue
-            _PORT_LOCKS[port] = lock
-        with socket.socket() as s:
-            try:
-                s.bind(("127.0.0.1", port))
-            except OSError:
-                continue
-        return port
+            if port not in _PORT_LOCKS:
+                lock = open(Path(tempfile.gettempdir()) / f"bench-port-{port}.lock", "w")
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError:
+                    lock.close()
+                    continue
+                _PORT_LOCKS[port] = lock
+            with socket.socket() as s:
+                try:
+                    s.bind(("127.0.0.1", port))
+                except OSError:
+                    continue
+            _PORTS_LENT.add(port)
+            return port
     raise SystemExit(f"no free port in BENCH_PORTS={span}")
+
+
+def _port_back(port: int) -> None:
+    """A design's port, free to lend again once its app and session are gone."""
+    with _PORTS_GUARD:
+        _PORTS_LENT.discard(port)
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -322,6 +339,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         "moved": _tidy_user_dir(since, text, port, run_dir / "saves"),
         "stopped": _stop_leftovers(port),
     }
+    _port_back(port)
     if not result["model"] and not result["timed_out"] and not finished:
         # The session never ran to an end (no slot, no display, a parse
         # error, its port taken while it queued): the machine failed, not

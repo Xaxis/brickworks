@@ -417,6 +417,10 @@ func _match_screen_density() -> void:
 		return
 	var factor: float = sized_factor(across, down, OS.has_feature("web"),
 		ShellPrefs.interface_size(), Phone.on())
+	# A tablet's layout for a finger is in points, and turned it keeps them;
+	# the person's interface size scales it as it scales the phone's.
+	if Phone.wide():
+		factor = Phone.tablet_factor(across, down) * ShellPrefs.interface_size()
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:
@@ -1486,6 +1490,12 @@ func _ready() -> void:
 			_store.begin(ModelStore.UNTITLED)
 			_store.touch()
 			_store.write_now()
+		# No working model here, but models saved here: the one saved last,
+		# not the example car (walk239's A16). Not for a probe, as above.
+		if placed == 0 and not empty and not OS.get_cmdline_args().has("--script"):
+			var saved: Array[ModelStore.Entry] = _store.list_saved()
+			if not saved.is_empty():
+				placed = _open(saved[0].path)
 		if placed == 0 and not empty:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
@@ -4473,10 +4483,12 @@ func _build_ui() -> void:
 	_builder.placed.connect(func(id: int, _part: String) -> void:
 		_last_put = id
 		_sample_untouched = false
-		# A part the model holds below the ground: the model stood up on it.
-		if _builder.risen > 0.0:
-			_bar.say("the model rose %d LDU to stand on what you put down" % roundi(_builder.risen))
-			_ground_for_the_model())
+		# A part the model holds below the ground goes through the floor,
+		# and the model stays where it stands: said, as the reason it looks
+		# sunk into the baseplate.
+		if _builder.below >= 1.0:
+			_bar.say("it reaches %d LDU below the floor; the model stays where it stands"
+				% roundi(_builder.below)))
 	_builder.removed.connect(func(_id: int) -> void:
 		_sample_untouched = false)
 	# Designing on the person's own Claude subscription, when this
@@ -4883,6 +4895,7 @@ func _build_ui() -> void:
 	_full_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_full_offer)
 	_cloud.short_of_room.connect(_full_offer.tell)
+	_cloud.looked.connect(_open_theirs)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -5202,6 +5215,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(_booklet_out.take)
+	_booklet_out.save_wanted.connect(_save_booklet)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
 	var made: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
@@ -5241,6 +5255,86 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 ## The last booklet drawn, still there to be read (BookletOut).
 var _booklet_out: BookletOut = null
+
+
+## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
+## "pdf" or "png"): the booklet read again from itself, a page at a time,
+## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng). On the
+## desktop where the person chooses, asked as every export asks (SaveTo);
+## on the web, a download. [param reply] is said back in the booklet.
+func _save_booklet(kind: String, reply: Callable) -> void:
+	reply.call(await save_booklet_as(kind))
+
+
+func save_booklet_as(kind: String, to: String = "") -> String:
+	if not is_instance_valid(_booklet_out) or _booklet_out.source() == null:
+		return "the booklet is not there to save: make the instructions again"
+	if _booklet_writing:
+		return "already saving the booklet…"
+	var pdf: bool = kind != "png"
+	var name: String = _booklet_out.base_name() + (".pdf" if pdf else "_pages.zip")
+	var web: bool = OS.has_feature("web")
+	if to.is_empty() and not web:
+		# The booklet is in the browser, in front of the window that asks.
+		DisplayServer.window_move_to_foreground()
+		to = await SaveTo.ask(name, "", "Save the instructions as a PDF" if pdf
+			else "Save the instructions' pages as pictures")
+		if to.is_empty():
+			return "not saved"
+	_booklet_writing = true
+	var started: int = Time.get_ticks_msec()
+	var job: Working.Job = Working.begin("Writing the PDF…" if pdf else "Drawing the pages…")
+	var written: String = to if not web else "user://" + name
+	var part: String = written + ".part"
+	var pages: int = -1
+	var ok: bool = false
+	# A frame for the window every few pages on the desktop; none on the
+	# web, where the app's tab is out of view (BookletRead.read_all).
+	var pace: int = 0 if web else 8
+	if pdf:
+		var read := BookletRead.new()
+		var out := BookletPdf.new()
+		if out.begin("" if web else part, read):
+			pages = await read.read_all(_booklet_out.source(), out.page, pace)
+			var bytes: PackedByteArray = out.finish(read.title)
+			ok = pages > 0 and out.ok()
+			if web and ok:
+				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
+	else:
+		var drawer := BookletPng.new()
+		add_child(drawer)
+		pages = await drawer.write(_booklet_out.source(), part, _booklet_out.base_name(), pace)
+		ok = pages > 0 and drawer.pages == pages
+		drawer.queue_free()
+		if web and ok:
+			JavaScriptBridge.download_buffer(FileAccess.get_file_as_bytes(part), name,
+				"application/zip")
+	job.end()
+	_booklet_writing = false
+	var seconds: float = (Time.get_ticks_msec() - started) / 1000.0
+	if web:
+		DirAccess.remove_absolute(part)
+		var said: String = ("downloaded %s, %d pages" % [name, pages]) if ok \
+			else "could not save the booklet"
+		_bar.say(said)
+		return said
+	if ok:
+		if FileAccess.file_exists(written):
+			DirAccess.remove_absolute(written)
+		ok = DirAccess.rename_absolute(part, written) == OK
+	else:
+		DirAccess.remove_absolute(part)
+	if not ok:
+		_bar.say("could not write %s" % written)
+		return "could not write %s" % written
+	SaveTo.wrote(written)
+	var line: String = "wrote %s, %d pages in %.1f s: %s" % [written.get_file(), pages, seconds,
+		written]
+	_bar.say(line)
+	return line
+
+
+var _booklet_writing: bool = false
 
 
 ## The line to say once the booklet written to [param path] is whole: that
@@ -5611,7 +5705,8 @@ func _fit_panels() -> void:
 	# the threshold and kept both panels open across a screen with room
 	# for neither.
 	var across: float = Room.across()
-	var phone: bool = across < ROOMY
+	# A tablet's layout for a finger has drawers too, however wide it is.
+	var phone: bool = across < ROOMY or _phone != null
 
 	# A drawer leaves the far rail showing, so the way out is visible
 	# from inside it. Measured in the interface's own units, which a
@@ -5661,6 +5756,9 @@ func _model_rect() -> Rect2:
 		if _simulate_column != null and _simulate_column.visible:
 			rect.position.x = maxf(rect.position.x, _simulate_column.get_global_rect().end.x)
 		rect.size.x = across - SideDock.RAIL_WIDTH - rect.position.x
+	# A tablet's panels stand beside the model, as the desktop's columns do.
+	if _phone != null:
+		rect = _phone.model_room(rect)
 	return rect
 
 
@@ -7058,6 +7156,76 @@ func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
 	_refresh_preview()
 
 
+## What the person holds and where their view is going, as a session's
+## call begins (CommandSocket._run): for [method after_session_call].
+func hand_and_view() -> Dictionary:
+	return {"part": _builder.held_part, "colour": _builder.held_color,
+		"figure": not _builder.held_figure.is_empty(), "carrying": _builder.is_carrying(),
+		"mode": _verbs.mode if _verbs != null else "", "revision": _world.revision,
+		"aim": _camera_aim()}
+
+
+## A session's call ended: nothing it put in the person's hand stays
+## there, and a model it changed is framed, unless the person turned the
+## view meanwhile. walk239 (M13, M4): a session's print_part left its print
+## in hand ("click puts one down", as a person's own new print is), so the
+## first click dropped a stray panel, and after a session built a taco truck
+## the view was still framed on the empty baseplate it began on, a corner
+## of the truck filling it.
+func after_session_call(before: Dictionary) -> void:
+	if before.is_empty() or _verbs == null:
+		return
+	var handed: bool = _builder.held_part != str(before["part"]) \
+		or _builder.held_color != int(before["colour"]) or _verbs.mode != str(before["mode"]) \
+		or (_builder.is_carrying() and not bool(before["carrying"])) \
+		or (not _builder.held_figure.is_empty() and not bool(before["figure"]))
+	if handed:
+		if _builder.is_carrying() and not bool(before["carrying"]):
+			_verbs.put_away()
+		if not bool(before["figure"]):
+			_builder.drop_figure()
+		_builder.held_part = str(before["part"])
+		_builder.held_color = int(before["colour"])
+		_verbs.set_mode(str(before["mode"]))
+		if _bin != null and not _builder.held_part.is_empty():
+			_bin.show_held(_builder.held_part, _builder.held_color)
+		_refresh_preview()
+	if _world.revision != int(before["revision"]) and _camera_aim() == before["aim"]:
+		_camera.frame(_built_bounds())
+
+
+## Where the view is going: its turn, tilt, distance and focus.
+func _camera_aim() -> Array:
+	return [_camera.get("_target_yaw"), _camera.get("_target_pitch"),
+		_camera.get("_target_distance"), _camera.get("_target_focus")]
+
+
+## The example car of a first visit is on the baseplate, untouched, and the
+## account signed in keeps models: the one saved last is opened in its
+## place, once a start. walk239 (A16) and walk180 (D2): signed in on a new
+## browser, a phone or a fresh desktop, a person was shown the example car,
+## not their own work. An account with none keeps the car, which is what a
+## first visit sees dimmed behind the sign-in screen and what every browser
+## flow starts from; a person who had a model on the screen here gets it
+## back from this device's own copy before any of this (ModelStore.restore).
+func _open_theirs() -> void:
+	if _theirs_opened or not _sample_untouched or _cloud.newest.is_empty() \
+			or not _copying.is_empty() or not _from_library.is_empty() or _store.read_only:
+		return
+	var path: String = ModelStore.SAVE_DIR + _cloud.newest + ".ldr"
+	if not FileAccess.file_exists(path):
+		return
+	_theirs_opened = true
+	var placed: int = await _bar.open_with_progress(path)
+	if placed >= 0:
+		_bar.opened.emit(placed)
+		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+
+
+## Whether [method _open_theirs] has opened one this start.
+var _theirs_opened: bool = false
+
+
 ## The end of a drag that carried a part: down where the pointer is, if it
 ## fits there, and back where it came from (or the copy gone) if not.
 func _drop_dragged(at: Vector2) -> void:
@@ -7641,7 +7809,11 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 					"box": box, "off": off})
 		for child: Node in node.get_children():
 			walk.append([child, clip])
+	# And the model's room between a tablet's panels, where a finger turns it.
+	var room: Rect2 = to_window * _phone.model_room(screen)
 	return {"targets": targets, "texts": texts, "phone": _phone.state(),
+		"room": [roundi(room.position.x / per_css), roundi(room.position.y / per_css),
+			roundi(room.size.x / per_css), roundi(room.size.y / per_css)],
 		"screen": [roundi((to_window * screen).size.x / per_css), roundi((to_window * screen).size.y / per_css)]}
 
 

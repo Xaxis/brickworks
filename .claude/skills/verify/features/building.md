@@ -279,7 +279,47 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every target 44 points or more, no text under 12, nothing off the screen.
   Not yet for a finger: the dialogs More opens (Save as, Share, the parts
   list...), which keep the shrunk desktop size, and Model tree and Properties,
-  which open the left drawer as before.
+  which open the left drawer as before. Words the bar says with keys after a
+  dash ("1 selected — Ctrl-C copies, X moves...") are said without them
+  (`Phone.touch_words`), and a count of the selection alone is left to the
+  hint. The bin's fold badges ("+42") are 11 units by a finger, not 10, which
+  came out 11.4 points. Two fingers turn by how far each went from where it
+  was seen last (`CadCamera`, `moved`), not the event's relative: on the web a
+  second finger's first relative was its whole position, and a level drag
+  turned the view to look from under the baseplate (`tablet_flow` checks the
+  tilt is kept).
+- `tablet layout` (`Phone.wide`, `PhoneShell.wide`, 2026-10-24): a tablet (the
+  short side 600 to 1100 points, touch the only pointer) was the desktop driven
+  by fingers: buttons 24 to 37 points, 38 of the 39 named controls under 44 at
+  768 x 1024, tooltips that never came, nothing for a right click. The
+  desktop's toolbar alone (21 buttons) is wider than any tablet at 44 points a
+  button, so the phone layout is laid out wide instead, with all its gestures
+  and touch words: the sheets are panels between the bars, 400 points wide, the
+  parts down the left (kept open while building: a pick does not close it) and
+  Colour, More and a held part's actions down the right; where both would leave
+  the model under 300 points one puts the other away until it goes
+  (`PhoneShell._make_room`, `Sheet.set_aside`). The model is framed in the room
+  between them (`PhoneShell.model_room`, through `Main._model_rect`), and the
+  hint, Fit and the notices strip's words keep to that room. The row's buttons
+  are 96 points, in the middle; the name field 320. A point is 720 units over
+  the short side whichever way round (`Phone.tablet_factor`, in
+  `Main._match_screen_density`), so turning it lays nothing out again; the
+  shell looks again twice a second in case the browser said its new size late,
+  and keeps what was open when it does lay out again. The app's page has
+  `minimum-scale=1` (`src/boot/shell.html`): turned from landscape, Chromium
+  zoomed out to fit the canvas's old width and the app stayed laid out 1024
+  wide. Proved by `tools/web/tablet_flow.mjs` (preview check `tablet`), at
+  768 x 1024, 1024 x 768 and 1024 x 1366 at 2x with touch events: the phone's
+  steps (More, New; Parts; 3001 searched and picked, the panel kept; Fit and
+  six bricks tapped down beside it; a door and a roof slope; Select, a brick,
+  Colour, blue, Undo; a held finger's actions; two fingers turning, the tilt
+  kept, and spreading), then the tablet turned round with the parts open, each step
+  audited as the phone's (`window.brickworksAskPhone`, now with `wide` and
+  `sheets`). On base it fails at once with the desktop's named controls
+  counted. The desktop is unchanged: `tools/web/desktop_same.mjs` (local only:
+  it needs a base build served beside) shoots 1280 x 800 by a mouse, ready,
+  3001 searched and the File menu, against a base build, 0 pixels different
+  and the base against itself 0.
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is
@@ -1360,20 +1400,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   before. Probe: `placing_probe -- only=parts` (the two corner plates
   beside a 6157, as the set has them, aimed at their corner studs; the
   4488 on its wedge; each fails with its rule undone).
-- `held below the ground` (`Builder._held_below_ground`,
-  `_stand_on_the_ground`, 2026-10-17): a part the model holds below the
-  ground (resting on a part of it with what hangs past it lower, on a
-  joint, hung under it, on its side studs) has its ghost there, the floor's
-  baseplate not in its way (`room_for(..., held)`, `_not_scenery`); put
-  down, everything but the floor rises by whole cells to stand on it, in
-  the same undo step as the put, and the status line says so
-  (`Builder.risen`). A model is built up from its first part on the ground,
+- `held below the ground` (`Builder._held_below_ground`, `place`,
+  2026-10-17, never moving the model since 2026-10-24): a part the model
+  holds below the ground (resting on a part of it with what hangs past it
+  lower, on a joint, hung under it, on its side studs) has its ghost there,
+  the floor's baseplate not in its way (`room_for(..., held)`,
+  `_not_scenery`); put down, it goes there through the floor and nothing
+  else moves, and the status line says how far below the floor it reaches
+  (`Builder.below`). A model is built up from its first part on the ground,
   and 8643-1's front bracket hangs 4 LDU below that part, its wheels 3 and
-  its tyres 8: none could go on. Never under the floor's own baseplate.
-  Probe: `placing_probe -- only=parts` (a 2436a on the edge of the plate a
-  model stands on: its ghost below the ground, the model up 4 LDU after the
-  click, one undo back; fails with the rule undone). In the build flow the
-  model's rise is read from where the part went (`followRise`).
+  its tyres 8. Until walk239 the model rose to stand on such a part: a 24
+  on an axle in a Technic brick on the baseplate lifted the brick off the
+  baseplate's studs, and the gears could not be turned by hand. Never under
+  the floor's own baseplate. Probes: `placing_probe -- only=parts` (a 2436a
+  on the edge of the plate a model stands on: its ghost below the ground,
+  put there with the plate unmoved, one undo back); `floor_gears_probe`
+  (two 24s on axles in a Technic brick on the floor: nothing moves as they
+  go down, they mesh, a press grabs the first on its axle and turning it
+  turns the other; red with the rise put back).
 - `on studs off the grid, by its own studs, against a side`
   (`Builder._on_studs_off_the_grid`, `_on_its_own_grid`, `_out_from_face`,
   2026-10-18): a part aimed at the top of a part sits on that part's studs

@@ -1092,6 +1092,12 @@ func _run_search(query: String) -> void:
 		_fill_techniques(query.strip_edges())
 		return
 	_results = _find(query.strip_edges(), _category)
+	# An element number, as a booklet prints it, is a part in a colour: the
+	# colour is taken in hand, so its tile is drawn and placed in it.
+	var element: Array = library.part_of_element(query)
+	if not element.is_empty() and int(element[1]) != _selected_color \
+			and library.colors.has(int(element[1])):
+		_on_colour(int(element[1]))
 	_guesses.clear()
 	_open.clear()
 	_fill_grid()
@@ -1861,7 +1867,8 @@ func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 		"Fold away" if opened else "Show", _comma(count), "" if count == 1 else "s",
 		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id, info.id]
 	badge.focus_mode = Control.FOCUS_NONE
-	badge.add_theme_font_size_override("font_size", ceili(_z(10)))
+	# Eleven by a finger: ten came out under twelve points.
+	badge.add_theme_font_size_override("font_size", ceili(_z(11.0 if by_finger else 10.0)))
 	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	badge.offset_left = _z(2.0)
 	badge.offset_top = _z(2.0)

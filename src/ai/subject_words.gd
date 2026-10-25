@@ -127,6 +127,45 @@ const IS_A: Dictionary = {
 }
 
 
+## The kinds of [param vocabulary] what [param text] names is a kind of
+## (IS_A), each as the vocabulary has it and only where it has it, in IS_A's
+## order: a phrase IS_A keys ("mountain bike") where the text says it, and a
+## word where a word of the text is a form of it. A tugboat is a boat, a
+## forklift cargo's and a loader's. Empty when IS_A knows none of it.
+##
+## The one rule for both readers of a brief: the set lookup's plainer word
+## (Assistant._kind_words) and the kinds a brief names (PartLibrary.kinds_for).
+## Only the lookup had it, and the designer read "sailboat" as no kind
+## (race244, 2026-10-24).
+static func is_a(text: String, vocabulary: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	var said: PackedStringArray = of(text)
+	var spaced: String = " %s " % " ".join(said)
+	for phrase: String in IS_A:
+		var named: bool = phrase.contains(" ") and spaced.contains(" %s " % phrase)
+		if not named and not phrase.contains(" "):
+			for word: String in said:
+				if forms(word).has(phrase):
+					named = true
+					break
+		if not named:
+			continue
+		for kind: Variant in IS_A[phrase]:
+			var form: String = kind_of_word(str(kind), vocabulary)
+			if not form.is_empty() and not out.has(form):
+				out.append(form)
+	return out
+
+
+## What one word of a brief that is no word of [param vocabulary] itself is
+## a kind of ([method is_a]): a sailboat, a boat. Empty for a word of the
+## vocabulary, which is what it says it is.
+static func kinds_it_is(word: String, vocabulary: Dictionary) -> PackedStringArray:
+	if not _itself(word, vocabulary).is_empty():
+		return PackedStringArray()
+	return is_a(word, vocabulary)
+
+
 ## Names for one thing said two ways, the plainer second: what a lookup by
 ## real sets' names reads a subject as. Real sets say fire truck, gas station.
 const SAME_AS: Dictionary = {

@@ -1,5 +1,6 @@
 ## A picture file chosen by a person: a photograph, a logo, a drawing —
-## PNG, JPEG, WebP, BMP or SVG — read into an [Image].
+## PNG, JPEG, WebP, BMP or SVG — read into an [Image]. An SVG's words are
+## drawn as outlines in the app's font (SvgText).
 ##
 ## On the desktop a file dialog; in a browser the page's own file picker,
 ## opened while the click that asked for it is still being handled (a
@@ -255,11 +256,15 @@ static func _decode_as(bytes: PackedByteArray, kind: String) -> Image:
 		"webp": error = image.load_webp_from_buffer(bytes)
 		"bmp": error = image.load_bmp_from_buffer(bytes)
 		"svg":
+			# Its words as outlines first: ThorVG draws no <text> (SvgText).
+			var svg: PackedByteArray = bytes
+			if kind_of(bytes) == "svg":
+				svg = str(SvgText.outline(bytes.get_string_from_utf8())["svg"]).to_utf8_buffer()
 			# Drawn once to learn its size, then at the size wanted.
-			error = image.load_svg_from_buffer(bytes, 1.0)
+			error = image.load_svg_from_buffer(svg, 1.0)
 			if error == OK and not image.is_empty():
 				var longest: float = maxf(image.get_width(), image.get_height())
-				error = image.load_svg_from_buffer(bytes, SVG_PIXELS / maxf(1.0, longest))
+				error = image.load_svg_from_buffer(svg, SVG_PIXELS / maxf(1.0, longest))
 	if error != OK or image.is_empty():
 		return null
 	if image.get_format() != Image.FORMAT_RGBA8:

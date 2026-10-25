@@ -31,7 +31,6 @@ delete process.env.VERCEL_ENV;
 // orangecheck's own hosts, stood in for below, never a test stack's.
 delete process.env.OC_ISSUER;
 delete process.env.OC_ME_ORIGIN;
-delete process.env.OC_NATIVE;
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY || !process.env.SUPABASE_PUBLISHABLE_KEY) {
   console.error("orangecheck_check: no SUPABASE_* — source .env");
   process.exit(2);
@@ -450,18 +449,24 @@ try {
   // Production takes tokens for brickworks.diy alone, never for the
   // deployment's own address (oc188's review of step 1, L1).
   {
-    const { audiences } = await import("../../api/_oc_config.js");
-    const was = { env: process.env.VERCEL_ENV, url: process.env.VERCEL_URL };
+    const { audiences, orangecheckOffer } = await import("../../api/_oc_config.js");
+    const was = { env: process.env.VERCEL_ENV, url: process.env.VERCEL_URL, issuer: process.env.OC_ISSUER };
     process.env.VERCEL_URL = "brickworks-oc-check.vercel.app";
     process.env.VERCEL_ENV = "production";
     const production = audiences();
     const own = await call(await route(), { token: token({ aud: "https://brickworks-oc-check.vercel.app" }).jwt });
+    // A test stack named on a deployment is never taken.
+    process.env.OC_ISSUER = "https://oc-www-test.vercel.app";
+    const liveOffer = orangecheckOffer().native;
     process.env.VERCEL_ENV = "preview";
     const preview = audiences();
-    for (const [name, value] of [["VERCEL_ENV", was.env], ["VERCEL_URL", was.url]]) {
+    for (const [name, value] of [["VERCEL_ENV", was.env], ["VERCEL_URL", was.url], ["OC_ISSUER", was.issuer]]) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
     }
+    check("production offers the app ochk.io and https://brickworks.diy, whatever a test stack is named there",
+      liveOffer?.auth === "https://ochk.io" && liveOffer?.audience === "https://brickworks.diy"
+      && liveOffer?.project === process.env.OC_PROJECT_KEY, JSON.stringify(liveOffer));
     check("step 1's L1: production takes tokens for https://brickworks.diy alone, not its own *.vercel.app address",
       JSON.stringify(production) === JSON.stringify(["https://brickworks.diy"]) && own.status === 401,
       `${JSON.stringify(production)} ${own.status}`);
@@ -1424,14 +1429,21 @@ try {
     };
     const refusedInWords = (answer, status) => answer.status === status && typeof answer.body?.error === "string" && answer.body.error.length > 10;
 
+    // On wherever orangecheck sign-in works (NATIVE_FOR_EVERYONE, m167),
+    // and off where the deployment has not the project's keys, as a unit's
+    // preview has not.
+    const secret = process.env.OC_SIGNING_SECRET;
+    delete process.env.OC_SIGNING_SECRET;
+    const keyless = (await whoIs(undefined)).body?.orangecheck;
     const off = await native(nativeCode());
-    check("native: not offered here (no OC_NATIVE, no NATIVE_FOR_EVERYONE), refused in words, and orangecheck asked nothing",
-      refusedInWords(off, 503) && ochk.traded.length === 0 && (await whoIs(undefined)).body?.orangecheck?.native === null,
-      `${off.status} ${off.body?.error || ""} ${ochk.traded.length}`);
-    process.env.OC_NATIVE = "1";
-    const offer = (await whoIs(undefined)).body?.orangecheck?.native;
-    check("native: offered, /api/account tells the app where to sign in: the project, orangecheck's host, this audience",
-      offer?.project === process.env.OC_PROJECT_KEY && offer?.auth === "https://ochk.io" && offer?.audience === AUD, JSON.stringify(offer));
+    process.env.OC_SIGNING_SECRET = secret;
+    check("native: without the project's keys, not offered (native null), refused in words, and orangecheck asked nothing",
+      keyless?.ready === false && keyless?.native === null && refusedInWords(off, 503) && ochk.traded.length === 0,
+      `${JSON.stringify(keyless)} ${off.status} ${off.body?.error || ""} ${ochk.traded.length}`);
+    const offer = (await whoIs(undefined)).body?.orangecheck;
+    check("native: with them, offered to everybody: /api/account tells the app the project, orangecheck's host and this audience",
+      offer?.ready === true && offer.native?.project === process.env.OC_PROJECT_KEY && offer.native?.auth === "https://ochk.io"
+      && offer.native?.audience === AUD, JSON.stringify(offer));
 
     const did = `did:oc:${randomBytes(16).toString("hex")}`;
     const { answer: first, sent: firstCode } = await getsIn({ did_oc: did }, { project: "pk_test_someone_else" });
@@ -1495,7 +1507,6 @@ try {
       `${down.status} ${down.body?.error || ""}`);
     const wrongMethod = await call(await route(), nativeCode(), { op: "native", method: "GET" });
     check("native: only POST", wrongMethod.status === 405, `${wrongMethod.status}`);
-    delete process.env.OC_NATIVE;
   }
 
   // site-attest: a token orangecheck ended by its id (POST /api/auth/revoke,
@@ -1517,10 +1528,8 @@ try {
       const sibling = await call(await route(), { token: other.jwt });
       check("...where a token of the same sign-in (rh) with an id not ended gets in", sibling.status === 200,
         `${sibling.status} ${sibling.body?.error || ""}`);
-      process.env.OC_NATIVE = "1";
       const appCode = nativeCode({ jti: ended.claims.jti, rh: ended.claims.rh });
       const fromApp = await call(await route(), appCode, { op: "native" });
-      delete process.env.OC_NATIVE;
       check("...and from the app (?op=native), a code whose token's id was ended is refused, 401",
         fromApp.status === 401 && !fromApp.body?.access_token, `${fromApp.status} ${fromApp.body?.error || ""}`);
       ochk.list = listWith([]);
@@ -1533,22 +1542,22 @@ try {
         fresh.status === 200 && claimsOf(ochk.revoked.at(-1)).did_oc === fresh.body.orangecheck?.did
         && after.body?.signed_in === true && wrote.status === 200, `${fresh.status} ${after.body?.signed_in} ${wrote.status}`);
     } finally {
-      delete process.env.OC_NATIVE;
       ochk.list = listWas;
     }
   }
 
   // Without the project's key or secret, nobody signs in with orangecheck.
   const offered = (await whoIs(undefined)).body?.orangecheck;
-  check("/api/account says orangecheck takes a token here, offered to everybody", offered?.ready === true
-    && offered?.everyone === true, JSON.stringify(offered));
+  check("/api/account says orangecheck takes a token here, offered to everybody, from the app too", offered?.ready === true
+    && offered?.everyone === true && offered?.native?.audience === AUD, JSON.stringify(offered));
   const key = process.env.OC_SIGNING_SECRET;
   delete process.env.OC_SIGNING_SECRET;
   const unset = await call(await route(), { token: token().jwt });
   check("without the project's secret, nobody signs in with orangecheck, and it says it is unavailable", unset.status === 503
     && unset.body.error === "Signing in with orangecheck is unavailable here. Sign in with your email instead.", `${unset.status} ${unset.body.error}`);
   const unsetOffer = (await whoIs(undefined)).body?.orangecheck;
-  check("and /api/account says so, for the button to say it", unsetOffer?.ready === false, JSON.stringify(unsetOffer));
+  check("and /api/account says so, for the button to say it, and offers the app nothing", unsetOffer?.ready === false
+    && unsetOffer?.native === null, JSON.stringify(unsetOffer));
   process.env.OC_SIGNING_SECRET = key;
   delete process.env.OC_AUDIENCE;
   const noAudience = await call(await route(), { token: token().jwt });
