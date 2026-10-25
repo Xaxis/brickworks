@@ -348,7 +348,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   buttons in a row are laid words over buttons on a phone (`Main._words_over_buttons`):
   the browser's warning about keeping models ran off the screen. The model
   tree and the properties' drawer is sized the same (`TouchSizing.size_panel`,
-  with Motions, Colour the hidden parts, Simulate, Stress and the busy line);
+  with Motions, Colour the hidden parts, Simulate, Stress, the busy line and
+  the sign-in screen, whose card is as wide in points as the desktop's,
+  `SignInGate._fit`: its address field was 199 x 20 points on a phone);
   on a phone it is the screen beside its rail (the notices strip waits while
   it is open), and on a tablet it takes the parts panel's place while it is
   open (`PhoneShell.dock_toggled`). The booklet's bar is a fingertip under
@@ -377,8 +379,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   put away by their own close buttons; the Minifigure builder (below), a
   torso searched for above the keyboard, chosen by its tile and the figure
   placed by a tap on an empty baseplate; and last Account's Sign out, the
-  sign-in screen up where the test account was signed in; each step
-  audited. Locally the server is given the parts bucket (`--parts-url`),
+  sign-in screen up and audited where the test account was signed in; each
+  step audited. Each size's check has an hour (`preview_checks.sh`; the
+  rest have 45 minutes): with the main actions a size took 2,575 s. Locally the server is given the parts bucket (`--parts-url`),
   where the live library is. On base it fails with
   Find typed into; the booklet's tab, asked for inside the tap's activation
   (`navigator.userActivation` read at the app's `window.open`: the headless

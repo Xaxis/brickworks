@@ -309,6 +309,14 @@ func _line(text: String, size: int, alpha: float) -> Label:
 
 func _fit() -> void:
 	var room: Vector2 = get_viewport_rect().size
+	# In the layout for a finger, as wide in points as the desktop's card,
+	# and the screen's width less a gutter each side at the most: in units
+	# it was 227 points of a phone's 390, with its words grown to points
+	# (TouchSizing).
+	if Phone.on():
+		_card.custom_minimum_size = Vector2(minf(Phone.px(get_viewport(), WIDE),
+			room.x - Phone.px(get_viewport(), 2.0 * TouchSizing.GUTTER)), 0)
+		return
 	_card.custom_minimum_size = Vector2(minf(WIDE, room.x - 24.0), 0)
 
 
