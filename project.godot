@@ -24,7 +24,8 @@ config/icon="res://assets/icon.png"
 ; the PNG itself is packed, which is what Godot reads at boot. Named for
 ; the desktop alone: the web's page covers its canvas with a loading wall
 ; of its own until the app is up (src/boot/shell.html), and is left as it
-; was, its download no bigger (tests/test_boot_splash.py).
+; was: the picture is not in its pack (export_presets.cfg) and its canvas
+; boots as before (tests/test_boot_splash.py).
 boot_splash/image.pc="res://assets/splash.png"
 boot_splash/bg_color.pc=Color(0.1, 0.11, 0.13, 1)
 boot_splash/stretch_mode.pc=1
