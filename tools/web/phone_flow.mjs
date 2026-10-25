@@ -158,7 +158,8 @@ try {
       let at = (await controls())[`phone_row_${row}`];
       for (const menu of ["file", "edit", "view", "build", "tools", "help"]) {
         if (at) break;
-        const section = (await controls())[`phone_section_${menu}`];
+        // Told only once it stands still (Main._page_places): waited for.
+        const section = await where(`phone_section_${menu}`, 15);
         if (!section) continue;
         await tap(section);
         // Told within a second or two: the page hears twice a second; and
@@ -168,7 +169,7 @@ try {
           at = (await controls())[`phone_row_${row}`];
         }
         if (!at) {
-          await tap((await controls())[`phone_section_${menu}`] || section);
+          await tap((await where(`phone_section_${menu}`, 15)) || section);
           for (let n = 0; n < 60; n++) {
             if (!Object.keys(await controls()).some((k) => k.startsWith("phone_row_"))) break;
             await page.waitForTimeout(250);

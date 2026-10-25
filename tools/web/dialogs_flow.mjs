@@ -227,7 +227,9 @@ try {
       // waited for until the page is told it (twice a second, and slower on
       // a loaded box), so no menu's name is tapped where it stood before the
       // one above it folded; and a menu left open by a step before is
-      // folded first. What was tried is said if the row is never found.
+      // folded first. A name that has just moved is not told until it
+      // stands still (Main._page_places), so each is waited for, never
+      // passed over. What was tried is said if the row is never found.
       const MENUS = ["file", "edit", "view", "build", "tools", "help"];
       const rowsNow = async () => Object.entries(await controls()).filter(([k]) => k.startsWith("phone_row_"));
       const told = async (test) => {
@@ -251,22 +253,27 @@ try {
         const left = await openMenu();
         if (!left) break;
         tried.push(`${left} left open, folded`);
-        await tap((await controls())[`phone_section_${left}`]);
+        const name = await where(`phone_section_${left}`, 15);
+        if (!name) break;
+        await tap(name);
         await told(async () => (await openMenu()) !== left);
       }
       for (const menu of MENUS) {
         if ((await controls())[`phone_row_${row}`]) break;
-        const section = (await controls())[`phone_section_${menu}`];
-        if (!section) continue;
+        const section = await where(`phone_section_${menu}`, 15);
+        if (!section) {
+          tried.push(`${menu} not told`);
+          continue;
+        }
         await tap(section);
         // A tap lost under load: once more.
         if (!(await told(async () => (await rowsNow()).length > 0))) {
-          await tap((await controls())[`phone_section_${menu}`] || section);
+          await tap((await where(`phone_section_${menu}`, 15)) || section);
           await told(async () => (await rowsNow()).length > 0);
         }
         tried.push(`${menu} ${(await rowsNow()).length} rows`);
         if ((await controls())[`phone_row_${row}`]) break;
-        await tap((await controls())[`phone_section_${menu}`] || section);
+        await tap((await where(`phone_section_${menu}`, 15)) || section);
         await told(async () => (await rowsNow()).length === 0);
       }
       const top = head.y + head.h / 2 + 6;
