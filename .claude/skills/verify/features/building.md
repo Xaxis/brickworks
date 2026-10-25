@@ -347,7 +347,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   on a phone it is the screen beside its rail (the notices strip waits while
   it is open), and on a tablet it takes the parts panel's place while it is
   open (`PhoneShell.dock_toggled`). The booklet's bar is a fingertip under
-  `(pointer: coarse)` (`src/assembly/booklet.gd`). The audit
+  `(pointer: coarse)` (`src/assembly/booklet.gd`), and on the web
+  Instructions runs in the tap's own frame (`Shell.OPENS_A_TAB`): said first,
+  it waited for its busy line, and under load the tap's leave to open the
+  booklet's tab had gone. The audit
   (`Main._phone_audit`) now walks into Godot's dialogs (their internal
   buttons, title, close button), a menu's items and a tree's rows, says what
   is open (`dialogs`), the keyboard and the field typed in (`typing`), and
