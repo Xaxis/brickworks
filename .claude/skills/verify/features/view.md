@@ -1078,7 +1078,9 @@ picture the assistant is shown.
   `POST /save?pdf|png`; `BookletOut.save_wanted`, `Main.save_booklet_as`
   opens the Save dialog and answers with where it went), on the web in the
   app's tab (`BookletOut.finish` wires them; a download); from the file
-  alone, Print only. The booklet is read back from itself a page at a time
+  alone, Print only. On the desktop Instructions also writes the PDF beside
+  the page it was asked to save, unasked (`Main._pdf_file`; walk256 D9:
+  `save_dialog_probe`). The booklet is read back from itself a page at a time
   (`BookletRead`: the file on the desktop, the tab's sections on the web)
   into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
   own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,

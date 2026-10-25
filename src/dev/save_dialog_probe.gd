@@ -395,15 +395,20 @@ func _instructions() -> void:
 	_check("...and the browser was asked to open it (%s)" % str(_opened),
 		_opened.size() == 1 and str(_opened[0]).begins_with("http://127.0.0.1:")
 		and str(_opened[0]).ends_with("/" + path.get_file().uri_encode()))
-	_check("...and with none to open it, the line says so, and where the file is (%s)" % said,
+	# walk256 D9 (2026-10-25): the desktop saved only the .html, where the
+	# web's booklet has Save as PDF.
+	var pdf: String = path.get_basename() + ".pdf"
+	_check("...and a PDF of it beside it, page for page (%d of %d pages)" % [_pdf_pages(pdf),
+		_pages_in(path)], _pages_in(path) > 0 and _pdf_pages(pdf) == _pages_in(path))
+	_check("...and with none to open it, the line says so, and where both files are (%s)" % said,
 		said.begins_with("no browser could open the booklet: it is saved in %s, " % path)
-		and said.ends_with(" steps"))
+		and said.ends_with(" steps, and as a PDF in %s" % pdf))
 	await _frames(3)
 	_check("...with Show in folder beside it", _shell.status.show_folder.is_visible_in_tree())
 	await _shot("07_status_no_browser")
 	_shown.clear()
 	_shell.status.show_folder.pressed.emit()
-	_check("...which shows the booklet in its folder", _shown == [path])
+	_check("...which shows the PDF in its folder, beside the booklet", _shown == [pdf])
 
 	print("\n  Instructions, with a browser")
 	_browser = true
@@ -418,9 +423,13 @@ func _instructions() -> void:
 	await _answer(dialog, path)
 	said = await _said(["no browser", "the booklet", "wrote", "could not", "stopped",
 		"nothing"], 400.0)
-	_check("the booklet opens in the browser, said (%s)" % said,
+	pdf = path.get_basename() + ".pdf"
+	_check("the booklet opens in the browser, said, with the PDF beside it (%s)" % said,
 		_opened.size() == 1 and str(_opened[0]).begins_with("http://127.0.0.1:")
-		and said.begins_with("the booklet is open in your browser") and said.ends_with(path))
+		and said.begins_with("the booklet is open in your browser")
+		and said.ends_with(", and saved beside it as a PDF: %s" % pdf))
+	_check("...page for page (%d of %d pages)" % [_pdf_pages(pdf), _pages_in(path)],
+		_pages_in(path) > 0 and _pdf_pages(pdf) == _pages_in(path))
 	await _frames(3)
 	await _shot("08_status_opened")
 
@@ -480,6 +489,38 @@ func _parts_in(path: String) -> int:
 		if line.strip_edges().begins_with("1 "):
 			count += 1
 	return count
+
+
+## The booklet's pages: its file's page sections.
+func _pages_in(path: String) -> int:
+	return FileAccess.get_file_as_string(path).count("<section class=\"page ")
+
+
+## A PDF's pages, as its page tree counts them; -1 when it is not a whole
+## PDF. Read as hex: a string of the file's bytes ends at its first zero,
+## which a JPEG in it has.
+func _pdf_pages(path: String) -> int:
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	if bytes.size() < 16 or bytes.slice(0, 5).get_string_from_ascii() != "%PDF-" \
+			or bytes.slice(-6).get_string_from_ascii().strip_edges() != "%%EOF":
+		return -1
+	var hex: String = bytes.hex_encode()
+	var key: String = "/Type /Pages /Count ".to_ascii_buffer().hex_encode()
+	var at: int = hex.rfind(key)
+	# On a byte's edge, not halfway through one.
+	while at > 0 and at % 2 == 1:
+		at = hex.rfind(key, at - 1)
+	if at < 0:
+		return -1
+	var digits: String = ""
+	at += key.length()
+	while at + 2 <= hex.length():
+		var code: int = hex.substr(at, 2).hex_to_int()
+		if code < 48 or code > 57:
+			break
+		digits += char(code)
+		at += 2
+	return int(digits) if not digits.is_empty() else -1
 
 
 func _put(path: String, text: String) -> void:

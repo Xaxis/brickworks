@@ -708,8 +708,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Then the status bar says `wrote <path>` with Show in folder beside it, held
   20 s (`StatusBar.show_folder`, `SaveTo.wrote`). Cancel writes and says
   nothing. Instructions asks before it draws, then opens the page in the
-  browser (`SaveTo.open`) and says so, or says "no browser could open the
-  booklet: it is saved in <path>". Save as names the model after the file,
+  browser (`SaveTo.open`), writes a PDF of it beside it (NAME.pdf, read
+  back from the page: `Main._pdf_file`, `BookletPdf`; walk256 D9, the web's
+  booklet saved one and the desktop only the page) and says so, "the
+  booklet is open in your browser, N steps, and saved beside it as a PDF:
+  <path>", or "no browser could open the booklet: it is saved in <path>, N
+  steps, and as a PDF in <path>"; Show in folder then shows the PDF. A
+  session's or the command line's booklet is the page alone. Save as names the model after the file,
   saves it here as Save does and writes the file; Save then writes it again
   while the name is the file's (`ModelBar.on_disk`). A session's
   `export_model` and every probe that sets `Download.folder` or
@@ -719,7 +724,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`SaveTo.native` off: the portal's would open on the desktop beside Xvfb),
   checks the file where it was put, the overwrite question (No keeps the
   file), Cancel, the folder remembered, Save as then Save, and Instructions
-  with and without a browser (`SaveTo.open_with` handed in); `-- --shots=DIR`
+  with and without a browser (`SaveTo.open_with` handed in), its PDF beside
+  it page for page (its page tree's count against the page's sections) and
+  shown by Show in folder; `-- --shots=DIR`
   pictures the dialogs and the status line. The platform's own on Linux was
   driven once by hand (2026-10-23): an Xvfb and a D-Bus session of their own
   running xdg-desktop-portal with its GTK backend, keys sent by XTest. The

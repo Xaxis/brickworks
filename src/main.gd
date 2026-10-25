@@ -5247,8 +5247,23 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		else:
 			SaveTo.wrote(to)
 			note = "wrote %s, %d steps" % [to, steps]
+			# And a PDF of it beside it, which Show in folder then shows: the
+			# web's booklet saves one, and the desktop saved only the page
+			# (walk256 D9, 2026-10-25). A session's or a command line's
+			# booklet, written where it was told, is the page alone.
+			var pdf: String = ""
+			var beside: String = to.get_basename() + ".pdf"
+			if not given and not _booklet_writing and beside != to:
+				job.say("Writing the PDF…")
+				_booklet_writing = true
+				var pages: int = await _pdf_file(to, beside)
+				_booklet_writing = false
+				if pages > 0:
+					pdf = beside
+					SaveTo.wrote(pdf)
+					note += ", and as a PDF in %s" % pdf
 			if show:
-				note = _open_booklet(to, steps, _booklet_out)
+				note = _open_booklet(to, steps, _booklet_out, pdf)
 	elif _booklet_out.shown:
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
@@ -5296,14 +5311,17 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	# A frame for the window every few pages on the desktop; none on the
 	# web, where the app's tab is out of view (BookletRead.read_all).
 	var pace: int = 0 if web else 8
-	if pdf:
+	if pdf and not web:
+		pages = await _pdf_file(_booklet_out.source(), written)
+		ok = pages > 0
+	elif pdf:
 		var read := BookletRead.new()
 		var out := BookletPdf.new()
-		if out.begin("" if web else part, read):
+		if out.begin("", read):
 			pages = await read.read_all(_booklet_out.source(), out.page, pace)
 			var bytes: PackedByteArray = out.finish(read.title)
 			ok = pages > 0 and out.ok()
-			if web and ok:
+			if ok:
 				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
 	else:
 		var drawer := BookletPng.new()
@@ -5314,6 +5332,8 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		if web and ok:
 			JavaScriptBridge.download_buffer(FileAccess.get_file_as_bytes(part), name,
 				"application/zip")
+		elif not web:
+			ok = _into_place(part, written, ok)
 	job.end()
 	_booklet_writing = false
 	var seconds: float = (Time.get_ticks_msec() - started) / 1000.0
@@ -5323,12 +5343,6 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 			else "could not save the booklet"
 		_bar.say(said)
 		return said
-	if ok:
-		if FileAccess.file_exists(written):
-			DirAccess.remove_absolute(written)
-		ok = DirAccess.rename_absolute(part, written) == OK
-	else:
-		DirAccess.remove_absolute(part)
 	if not ok:
 		_bar.say("could not write %s" % written)
 		return "could not write %s" % written
@@ -5342,16 +5356,48 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 var _booklet_writing: bool = false
 
 
+## The booklet's file [param from] read again a page at a time into a PDF
+## at [param to] (BookletPdf), as NAME.part until it is whole, with a frame
+## for the window every eight pages. Its pages; -1 when it could not be
+## written, and then nothing of it is left.
+func _pdf_file(from: String, to: String) -> int:
+	var read := BookletRead.new()
+	var out := BookletPdf.new()
+	var part: String = to + ".part"
+	if not out.begin(part, read):
+		return -1
+	var pages: int = await read.read_all(from, out.page, 8)
+	out.finish(read.title)
+	return pages if _into_place(part, to, pages > 0 and out.ok()) else -1
+
+
+## [param part] made [param to], over any file there, when it is whole
+## ([param whole]); taken away when it is not. Whether [param to] is it.
+static func _into_place(part: String, to: String, whole: bool) -> bool:
+	if whole:
+		if FileAccess.file_exists(to):
+			DirAccess.remove_absolute(to)
+		if DirAccess.rename_absolute(part, to) == OK:
+			return true
+	DirAccess.remove_absolute(part)
+	return false
+
+
 ## The line to say once the booklet written to [param path] is whole: that
 ## it is open in the person's browser (it was opened on its first page,
 ## [param out], or is now, from the file), first, as a long path can run
-## off the bar's end; then the file, with Show in folder beside it
-## (StatusBar). walk180 pressed Instructions three times on a desktop with
-## no browser, and nothing happened (2026-10-23).
-func _open_booklet(path: String, steps: int, out: BookletOut) -> String:
+## off the bar's end; then the file, or the PDF beside it ([param pdf],
+## when it was written), with Show in folder beside it (StatusBar). walk180
+## pressed Instructions three times on a desktop with no browser, and
+## nothing happened (2026-10-23).
+func _open_booklet(path: String, steps: int, out: BookletOut, pdf: String = "") -> String:
 	if out.shown or out.url().is_empty() and SaveTo.open(path):
+		if not pdf.is_empty():
+			return "the booklet is open in your browser, %d steps, and saved beside it as a PDF: %s" \
+				% [steps, pdf]
 		return "the booklet is open in your browser, %d steps: %s" % [steps, path]
-	return "no browser could open the booklet: it is saved in %s, %d steps" % [path, steps]
+	return "no browser could open the booklet: it is saved in %s, %d steps%s" % [path, steps,
+		(", and as a PDF in %s" % pdf) if not pdf.is_empty() else ""]
 
 
 ## Every brick but those in the sub-assembly at [param path]: what a list or a
