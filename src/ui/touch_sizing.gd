@@ -482,6 +482,15 @@ static func _flow_rows(root: Node, across: float) -> bool:
 		if row.get_child_count() < 2 or row.get_combined_minimum_size().x <= across \
 				or row.get_child(0) is HFlowContainer or not row.get_parent() is Container:
 			continue
+		# A row of buttons and words, not a dialog's columns side by side:
+		# a list or a grid in a flow is laid out by its own width, which the
+		# flow gives it from theirs, and the Minifigure builder's grew
+		# without end.
+		var columns: bool = false
+		for child: Node in row.get_children():
+			columns = columns or child is Container
+		if columns:
+			continue
 		var flow := HFlowContainer.new()
 		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		flow.alignment = row.alignment as FlowContainer.AlignmentMode
@@ -540,7 +549,7 @@ func _lay_window(window: Window) -> void:
 	if menu:
 		# A menu drops from what opened it: only kept on the screen.
 		size = size.max(least)
-		size.y = minf(size.y, space.size.y)
+		size = Vector2(minf(size.x, space.size.x), minf(size.y, space.size.y))
 		var at: Vector2 = Vector2(window.position)
 		at.x = clampf(at.x, space.position.x, maxf(space.position.x, space.end.x - size.x))
 		at.y = clampf(at.y, space.position.y, maxf(space.position.y, space.end.y - size.y))

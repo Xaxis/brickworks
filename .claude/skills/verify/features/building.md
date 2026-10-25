@@ -362,9 +362,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Find typed into; the booklet's Save as PDF (its bar measured in the tab, a
   PDF downloaded); Model tree and Properties (on a tablet the parts panel not
   under them, and back as they fold); and Library, Account, Render, Parts
-  list, My collection, Minifigure builder, Part maker, Colour the hidden
-  parts, Keys and controls, About, Clear and Floor size opened and put away
-  by their own close buttons, each step audited. On base it fails with
+  list, My collection, Part maker, Colour the hidden parts, Keys and
+  controls, About, Clear and Floor size opened and put away by their own
+  close buttons, each step audited. Not yet: the Minifigure builder, whose
+  two columns side by side are wider than a phone (only rows of buttons
+  flow, never a dialog's columns: a grid in a flow grew without end). On base it fails with
   the named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,

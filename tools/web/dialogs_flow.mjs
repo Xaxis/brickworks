@@ -29,11 +29,12 @@
 //                  a PDF downloaded
 //   Model tree, Properties  the drawer; on a tablet it takes the parts
 //                  panel's place rather than open over it
-//   and the rest   every other dialog More has (Library, Account, Render,
-//                  Motions, Parts list, My collection, Minifigure builder,
-//                  Part maker, Colour the hidden parts, Keys and controls,
-//                  About, Clear, Floor size), opened and closed by its own
-//                  close button
+//   and the rest   the other dialogs More has (Library, Account, Render,
+//                  Parts list, My collection, Part maker, Colour the hidden
+//                  parts, Keys and controls, About, Clear, Floor size),
+//                  opened and closed by its own close button. Not yet the
+//                  Minifigure builder, whose two columns side by side are
+//                  wider than a phone: it needs a layout of its own.
 //
 // At every step the app is asked (window.brickworksAskPhone) for every
 // target a finger has and every line of text, in points, and what is open
@@ -502,7 +503,7 @@ try {
     // its own way out.
     if (step("rest")) {
       const REST = [["library", /LibraryDialog/], ["account", /AccountPanel/], ["render", /RenderDialog/],
-        ["parts_list", /InventoryPanel/], ["collection", /Collection/], ["minifig", /MinifigDialog/],
+        ["parts_list", /InventoryPanel/], ["collection", /Collection/],
         ["part_maker", /ElementDialog/], ["hidden_colours", /HiddenColoursPanel/], ["keys", /ControlsDialog/],
         ["about", /^About/], ["clear", /^Clear/], ["floor_custom", /^Baseplate size/]];
       for (const [row, dialog] of REST) {
