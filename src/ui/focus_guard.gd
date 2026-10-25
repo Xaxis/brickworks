@@ -84,6 +84,18 @@ func _on_focus(control: Control) -> void:
 	# when the button comes up.
 	if control.has_meta(BY_KEYBOARD) and not control.has_focus(true):
 		_clicked = control
+		# A menu's or a chooser's popup is a window of its own and takes the
+		# button's release, so this frame never saw the click end: after the
+		# Tools menu or the snap chooser the keys stayed with the button,
+		# and the arrows stopped moving the selection (handbuild_probe in
+		# m168's suite). It lets go when its popup does.
+		var popup: PopupMenu = null
+		if control is MenuButton:
+			popup = (control as MenuButton).get_popup()
+		elif control is OptionButton:
+			popup = (control as OptionButton).get_popup()
+		if popup != null and not popup.popup_hide.is_connected(_let_go.bind(control)):
+			popup.popup_hide.connect(_let_go.bind(control), CONNECT_ONE_SHOT | CONNECT_DEFERRED)
 		return
 	var field: LineEdit = control as LineEdit
 	if field == null:
