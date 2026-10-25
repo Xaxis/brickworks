@@ -1019,7 +1019,13 @@ plan with Claude as the client.
   (`renderCommentDigest`, `feedSaid`). Before the file is applied every one
   answers as "not open yet" and nothing else changes.
 - `your feed page` (`web/feed.html`): with `web/feed.js`, `/feed`, signed in,
-  newest first, one link a row, New on what came since the last opening,
+  newest first, one link a row, New on what came since the last opening and
+  after the follow that brought it (`isNew` in `api/_follows.js`, from
+  `supabase/feed_new_rows.sql`'s `feed_followed_at`, 2026-10-25, walk256's W7:
+  a new follow's backlog was marked New; `since_follows` in the answer says
+  the rule is in force, and before the file New is by the last look alone;
+  `first_steps_flow` checks Cy's feed right after the follow, and
+  `tools/feed_new_rows_try.sql` the function in a dry run),
   Older for the page before; signed out, Sign in. Since 2026-10-22
   (docs/SOCIAL.md U7) what the people you follow made (`follow_page`),
   Notifications a tab beside it (`.tabs`, each with what is new in it);
