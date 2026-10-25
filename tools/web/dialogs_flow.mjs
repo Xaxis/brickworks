@@ -112,8 +112,16 @@ try {
     };
     const tap = async (at) => { await page.touchscreen.tap(at.x, at.y); await page.waitForTimeout(600); };
     const tapBox = (box) => tap({ x: box[0] + box[2] / 2, y: box[1] + box[3] / 2 });
+    // Pressed where it stands still: a dialog moves as the keyboard comes
+    // and goes, and the page is told where its controls are twice a second.
     const press = async (name, seconds = 30) => {
-      const at = await where(name, seconds);
+      let at = await where(name, seconds);
+      for (let n = 0; at && n < 6; n++) {
+        await page.waitForTimeout(600);
+        const again = (await controls())[name];
+        if (again && again.x === at.x && again.y === at.y) break;
+        at = again || await where(name, 5);
+      }
       if (!at) { check(`"${name}" is on the screen`, false); return false; }
       await tap(at);
       return true;
@@ -338,7 +346,9 @@ try {
       await audit("share", /SharePanel/, form);
       if (await typeInto("share_name", named)) {
         await audit("share_typing", /SharePanel/, form);
+        // Put away as a phone's is: a tap on the panel off the field.
         await keyboard(0);
+        await page.waitForTimeout(600);
       }
       const publish = (await controls()).share_publish;
       const signed = (await page.evaluate(() => window.brickworksAccount || {})) || {};
@@ -411,9 +421,12 @@ try {
       await audit("find", /InventoryPanel/, ["parts_find", "parts_done"]);
       if (await typeInto("parts_find", "3001")) {
         await audit("find_typing", /InventoryPanel/, ["parts_find", "parts_done"]);
-        await keyboard(0);
       }
       await press("parts_done", 5);
+      await keyboard(0);
+      const after = await ask();
+      check(`Find put away by its Done (${JSON.stringify(after?.dialogs)})`,
+        !(after?.dialogs || []).some((d) => /InventoryPanel/.test(d)));
     }
 
     // Instructions: the booklet's own tab, its Save as PDF a fingertip.

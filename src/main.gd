@@ -5885,7 +5885,7 @@ func _for_a_finger(node: Node) -> void:
 		# A notice's words and its buttons in a row, on a phone: the words
 		# over the buttons, which wrap. The browser's warning about keeping
 		# models ran "This one for Studio" and "Got it" off the screen.
-		if control is HBoxContainer and not Phone.wide() and control.get_child_count() > 1 \
+		if control is HBoxContainer and control.get_child_count() > 1 \
 				and control.get_child(0) is Label \
 				and (control.get_child(0) as Label).autowrap_mode != TextServer.AUTOWRAP_OFF:
 			_words_over_buttons.call_deferred(control as HBoxContainer)
@@ -5907,9 +5907,10 @@ func _words_over_buttons(row: HBoxContainer) -> void:
 	holder.add_child(column)
 	holder.move_child(column, row.get_index())
 	var words: Control = row.get_child(0)
-	# As wide as the screen has room for, the buttons wrapping under it.
-	(words as Label).custom_minimum_size.x = get_viewport().get_visible_rect().size.x \
-		- Phone.px(get_viewport(), 56.0)
+	# As wide as a phone has room for, the buttons wrapping under it; a
+	# tablet's as wide as the room its panels leave the model at the least.
+	(words as Label).custom_minimum_size.x = Phone.px(get_viewport(), 260.0) if Phone.wide() \
+		else get_viewport().get_visible_rect().size.x - Phone.px(get_viewport(), 56.0)
 	words.reparent(column, false)
 	column.add_child(buttons)
 	for child: Node in row.get_children():
@@ -7794,6 +7795,11 @@ func _size_for_a_finger() -> void:
 	for panel: Control in [_pose, _hidden_colours, _simulate, _shell.stress.panel, _shell.status]:
 		if panel != null:
 			_touch.size_panel(panel)
+	# What the app is busy with is one line, its end cut short where the
+	# screen is: "Drawing the steps…" ran 500 points past a tablet's edge.
+	for found: Node in _shell.status.find_children("*", "Label", true, false):
+		(found as Label).clip_text = true
+		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 
 ## A finger held still on the model, on a phone: what a right click does

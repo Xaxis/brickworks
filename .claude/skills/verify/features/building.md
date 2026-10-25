@@ -334,14 +334,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   screen, and a panel the whole screen; on a tablet both in the middle. Above
   the on-screen keyboard while one is up (the visual viewport's lost height,
   `window.brickworksKeyboardNow`, read while a field in a dialog has the
-  focus), the field scrolled into sight. Targets in a scrolling list pass a
+  focus), the field scrolled into sight. A dialog wider than the screen is
+  made narrower (`TouchSizing._narrower`): a line too long wraps, and a row of
+  buttons too long flows onto a second line inside its own row. Targets in a
+  scrolling list pass a
   finger's drag to the list (`MOUSE_FILTER_PASS`), so More's list and a
   dialog's rows scroll under a finger; they did not. A notice's words and
   buttons in a row are laid words over buttons on a phone (`Main._words_over_buttons`):
   the browser's warning about keeping models ran off the screen. The model
-  tree and the properties' drawer is sized the same (`TouchSizing.size_panel`),
-  and on a tablet takes the parts panel's place while it is open
-  (`PhoneShell.dock_toggled`). The booklet's bar is a fingertip under
+  tree and the properties' drawer is sized the same (`TouchSizing.size_panel`,
+  with Motions, Colour the hidden parts, Simulate, Stress and the busy line);
+  on a phone it is the screen beside its rail (the notices strip waits while
+  it is open), and on a tablet it takes the parts panel's place while it is
+  open (`PhoneShell.dock_toggled`). The booklet's bar is a fingertip under
   `(pointer: coarse)` (`src/assembly/booklet.gd`). The audit
   (`Main._phone_audit`) now walks into Godot's dialogs (their internal
   buttons, title, close button), a menu's items and a tree's rows, says what
@@ -358,8 +363,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   PDF downloaded); Model tree and Properties (on a tablet the parts panel not
   under them, and back as they fold); and Library, Account, Render, Parts
   list, My collection, Minifigure builder, Part maker, Colour the hidden
-  parts, Keys and controls, About, Clear, New and Floor size opened and put
-  away by their own close buttons, each step audited. On base it fails with
+  parts, Keys and controls, About, Clear and Floor size opened and put away
+  by their own close buttons, each step audited. On base it fails with
   the named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,

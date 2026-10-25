@@ -435,13 +435,22 @@ var _parts_for_dock: bool = false
 func dock_toggled(open: bool) -> void:
 	if not wide or _parts == null:
 		return
-	if open and _parts.is_open():
+	if not open:
+		if _parts_for_dock:
+			_parts_for_dock = false
+			_make_room(_parts)
+			_parts.open("side")
+		return
+	if _parts.is_open():
 		_parts_for_dock = true
 		_parts.close(false)
-	elif not open and _parts_for_dock:
-		_parts_for_dock = false
-		_make_room(_parts)
-		_parts.open("side")
+	# And a panel on the right, where the drawer and it would leave the
+	# model too little between them, as two panels do (_make_room).
+	var dock: SideDock = app.get("_bin_dock")
+	for sheet: Sheet in _sheets:
+		if sheet.is_open() and sheet.edge == "right" and dock != null \
+				and get_viewport().get_visible_rect().size.x - sheet.size.x - dock.open_width() < p(MODEL_LEAST):
+			sheet.close(false)
 
 
 ## The other sheets put away for one about to open: every one on a phone;
