@@ -23,6 +23,10 @@
 ##   each back, as one step each: the first to the empty model it began;
 ## - the assistant's own design, after a question rather than as a brief
 ##   (no conversation begun): the car comes off the same way;
+## - a session's edit to the example, then its design: the car is not
+##   untouched any more (its edit is a step of the history, and puts down
+##   no part the builder hears as placed), and the design goes in beside it,
+##   all of the car kept;
 ## - a person's own part, on a bare baseplate: a session's design goes in
 ##   beside it and it is placed by hand, as it is.
 extends SceneTree
@@ -104,6 +108,30 @@ func _run() -> void:
 		% [_left_of(car, _parts()), _count(_parts())])
 	_ok(_store.title == "Probe Tower", "...and it is called by its name: \"%s\"" % _store.title)
 
+	print("\na session's edit to the example, then a design")
+	_first_visit()
+	# On the car's highest part, as a session attaches one: y is up in the
+	# world. A tile laid on the floor beside the car instead is refused as a
+	# piece standing apart from the model with no name (Assistant's
+	# _standing_apart), and the lowest part is a tyre, with no stud.
+	var top: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id) and (top == null or brick.transform.origin.y > top.transform.origin.y):
+			top = brick
+	var edit: String = await _call("edit_model", {"add": [{"part": "3024", "color": 14,
+		"attach": {"to": "#%d.stud[0]" % top.id}}]})
+	await _frames(5)
+	_ok(_of(_parts(), "3024", 14) == 1, "the session's edit is on the car, on its %s: %s"
+		% [top.part_id, edit.left(80).replace("\n", " ")])
+	var edited: int = _count(_parts())
+	var garage: String = await _call("submit_design", _design("Probe Garage", 12))
+	await _frames(10)
+	# The session's own tile goes with the rest of its work, which a whole
+	# design replaces; the car is nobody's to take off now.
+	_ok(_left_of(car, _parts()) == _left_of(car, car) and _count(_parts()) >= edited - 1 + 8,
+		"the car is no longer untouched: the design goes in beside it, all of the car kept (%d of its %d, %d parts): %s"
+		% [_left_of(car, _parts()), _left_of(car, car), _count(_parts()), garage.left(50).replace("\n", " ")])
+
 	print("\na person's own part")
 	_main.call("clear_model")
 	await _frames(5)
@@ -135,9 +163,13 @@ func _design(name: String, x: int) -> Dictionary:
 		"floor_colour": "Blue", "bricks": bricks}
 
 
-## The example as a first visit has it.
+## The example as a first visit has it, and nothing of the assistant's
+## claimed: BrickWorld numbers from one again, so ids it held from the last
+## design would name the car's parts (an Open in the window forgets them,
+## ModelBar.opened).
 func _first_visit() -> void:
 	_main.call("_open", _main.get("SAMPLE_MODEL"))
+	(_main.get("_assistant") as Assistant).forget_built()
 	_main.call("_lay_baseplate")
 	_main.set("_sample_untouched", true)
 
