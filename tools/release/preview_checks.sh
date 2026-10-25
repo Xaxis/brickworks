@@ -321,8 +321,12 @@ declare -A CMD=(
   # browsers of their own: each file as sent (its encoding and cache header),
   # the bytes and the time until the parts bin is usable, the network and the
   # main thread apart, held to ceilings (load250: the live m167 sent 30.9 MB
-  # and was usable at 28.7 s): alone, below.
-  [load]="tools/web/load_check.mjs --url=$P/app $B --runs=3 --max-bytes=20 --max-interactive=28 --out=$S/${TAG}_load"
+  # and was usable at 28.7 s); and 3039, which comes with the parts fetched
+  # after the start (index.parts.bin), taken from the bin as soon as it is
+  # usable, in hand with its ghost within 6 s of the click, as a part the
+  # build carries is (a part of them asked for early waits for them, 15 s
+  # at most): alone, below.
+  [load]="tools/web/load_check.mjs --url=$P/app $B --runs=3 --max-bytes=20 --max-interactive=28 --pick=3039 --max-pick=6 --out=$S/${TAG}_load"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
   # File, Render…: Quick and Good pictures, a 24-frame turntable, Best
