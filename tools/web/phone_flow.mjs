@@ -235,8 +235,13 @@ try {
     await audit("more");
     if (named.phone_section_file) {
       await tap(named.phone_section_file);
-      named = await controls();
-      const filed = Object.keys(named).filter((k) => k.startsWith("phone_row_")).length;
+      // Told the rows within a second or two: the page hears twice a second.
+      let filed = 0;
+      for (let n = 0; n < 20 && filed === 0; n++) {
+        await page.waitForTimeout(250);
+        named = await controls();
+        filed = Object.keys(named).filter((k) => k.startsWith("phone_row_")).length;
+      }
       check(`File tapped: its commands under it (${filed} rows), the others folded`,
         filed >= 10 && !named.phone_row_undo && Boolean(named.phone_row_new));
       await audit("more_file");
