@@ -227,8 +227,10 @@ try {
       // Each step waited for until the page is told it (twice a second), so
       // no menu's name is tapped where it was before the one above folded.
       const rowsNow = async () => Object.keys(await controls()).filter((k) => k.startsWith("phone_row_"));
+      // Up to 15 s: a software-drawn page on a loaded box took more than 4
+      // to say Build was open, and the menu was folded again unread.
       const told = async (test) => {
-        for (let n = 0; n < 16; n++) {
+        for (let n = 0; n < 60; n++) {
           if (await test()) return true;
           await page.waitForTimeout(250);
         }

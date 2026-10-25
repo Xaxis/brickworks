@@ -163,13 +163,13 @@ try {
         await tap(section);
         // Told within a second or two: the page hears twice a second; and
         // folded again only once it is, so no name is tapped where it was.
-        for (let n = 0; n < 16 && !at; n++) {
+        for (let n = 0; n < 60 && !at; n++) {
           await page.waitForTimeout(250);
           at = (await controls())[`phone_row_${row}`];
         }
         if (!at) {
           await tap((await controls())[`phone_section_${menu}`] || section);
-          for (let n = 0; n < 16; n++) {
+          for (let n = 0; n < 60; n++) {
             if (!Object.keys(await controls()).some((k) => k.startsWith("phone_row_"))) break;
             await page.waitForTimeout(250);
           }
