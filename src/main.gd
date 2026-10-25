@@ -7891,11 +7891,14 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			var seen: bool = shown.intersects(screen) and rect.size.x > 0.5 and rect.size.y > 0.5
 			var box: Array = box_of.call(rect)
 			var named: String = "%s %s" % [_name_of(control), str(control.name)]
-			# Off the screen: what of it its scrolls show is not all inside the
-			# screen. A dialog's under the keyboard is off it too.
-			var bounds: Rect2 = above if not dialog.is_empty() and (typed_in == null
-				or typed_in == holder) else screen
-			var off: bool = seen and not bounds.grow(1.0).encloses(shown)
+			# Off the screen: not inside it, and in nothing that scrolls, as the
+			# phone's layout is judged; in a dialog, what of it its scrolls show
+			# is not all inside the screen, and while the keyboard is up the
+			# dialog typed in is judged above it.
+			var off: bool = seen and clip == anywhere and not screen.grow(1.0).encloses(rect)
+			if not dialog.is_empty():
+				var bounds: Rect2 = above if typed_in == null or typed_in == holder else screen
+				off = seen and not bounds.grow(1.0).encloses(shown)
 			if seen and TouchSizing.takes(control):
 				var target: Dictionary = {"name": named, "box": box, "off": off, "in": dialog}
 				if control is BaseButton and (control as BaseButton).toggle_mode:
