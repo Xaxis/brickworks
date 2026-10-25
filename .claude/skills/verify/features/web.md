@@ -1320,7 +1320,13 @@ plan with Claude as the client.
   `fieldset.date[data-date]`, `select[name=starts_on_day|_month|_year]`
   and the same for `ends_on`, this year and next; three ticks: at most N
   parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
-  and sets the flows' test ones. Then `#year-form` (`drawYear`, Set a year
+  and sets the flows' test ones. The table is at most 24 rows, the ones not
+  yet ended first, open then upcoming by their first day, then the ended
+  newest first (`supabase/challenge_list_order.sql`, 2026-10-25: newest
+  first, a year planned ahead and the ended test challenges runs leave in
+  coming months filled all 24, and the open one and a run's own were in
+  none; `tests/test_challenge_list_order.py`,
+  `tools/challenge_list_order_try.sql`). Then `#year-form` (`drawYear`, Set a year
   of themes): the first month (`select[name=year_from_month|_year]`, by
   default the month after the last challenge not ended) and twelve
   `#year-months fieldset[data-month]`, each `theme_N_title` and

@@ -70,11 +70,12 @@ def body(name: str, text: str) -> str:
 
 def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
     # challenge_year.sql replaces three of these later, guarded as follows.sql's
-    # feed is (tests/test_challenge_year.py).
+    # feed is (tests/test_challenge_year.py), and challenge_list_order.sql the
+    # list again (tests/test_challenge_list_order.py).
     others = {
         name
         for path in (ROOT / "supabase").glob("*.sql")
-        if path.name not in ("challenges.sql", "challenge_year.sql")
+        if path.name not in ("challenges.sql", "challenge_year.sql", "challenge_list_order.sql")
         for name in defined(path.read_text())
     }
     mine = defined(SQL)

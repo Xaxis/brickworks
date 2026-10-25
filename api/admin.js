@@ -368,7 +368,9 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const line = (given, limit) => String(given ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim()
   .slice(0, limit).trim();
 
-/// Every challenge, newest first; null before challenges.sql.
+/// The challenges, the ones not yet ended first (open, then upcoming by
+/// their first day), then the ended ones newest first, at most 24
+/// (supabase/challenge_list_order.sql); null before challenges.sql.
 async function challengesListed(tests) {
   try {
     return (await db("rpc/challenge_list", { method: "POST", body: { tests } })) || [];

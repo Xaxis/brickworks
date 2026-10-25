@@ -124,6 +124,16 @@ async function card(m) {
     builds: Number(s.builds) || 0, remixes: remixes.length, by, tested };
 }
 
+/// challenge_list's order (supabase/challenge_list_order.sql): the ones not
+/// yet ended first, open, then upcoming by their first day; then the ended
+/// ones, newest first.
+function listOrder(a, b) {
+  const rank = { open: 0, upcoming: 1, ended: 2 };
+  return rank[stateOf(a)] - rank[stateOf(b)]
+    || (stateOf(a) === "upcoming" ? (a.starts_on < b.starts_on ? -1 : a.starts_on > b.starts_on ? 1 : 0) : 0)
+    || (b.starts_on < a.starts_on ? -1 : b.starts_on > a.starts_on ? 1 : 0) || b.id - a.id;
+}
+
 const openFor = (tests) => challenges.filter((c) => c.test === Boolean(tests) && stateOf(c) === "open")
   .sort((a, b) => (b.starts_on < a.starts_on ? -1 : 1) || b.id - a.id)[0] || null;
 
@@ -178,7 +188,7 @@ const FUNCTIONS = {
 
   async challenge_list({ tests = false }) {
     const out = [];
-    for (const c of challenges.filter((one) => !one.test || tests).sort((a, b) => (b.starts_on < a.starts_on ? -1 : 1) || b.id - a.id).slice(0, 24)) {
+    for (const c of challenges.filter((one) => !one.test || tests).sort(listOrder).slice(0, 24)) {
       const of = (list, way) => list.filter((one) => one.challenge === c.id && one.way === way).length;
       const won = [];
       for (const w of winners.filter((one) => one.challenge === c.id).sort((a, b) => (a.way < b.way ? 1 : -1))) {

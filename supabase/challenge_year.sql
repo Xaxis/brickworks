@@ -223,6 +223,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- The owner's: a year of themes.
 
+-- REPLACED LATER: challenge_list_order.sql replaces this function (the ones not
+-- yet ended first). Apply challenge_list_order.sql again right after this file:
+-- tools/apply_sql.mjs refuses this file alone, unless
+-- --again=supabase/challenge_list_order.sql.
 -- REPLACES challenges.sql's: the same rows, and each one's announced_at.
 -- Every challenge, newest first, for the admin page: {id, title, brief,
 -- starts_on, ends_on, announced_at, state, rules, test, entries: {hand,
