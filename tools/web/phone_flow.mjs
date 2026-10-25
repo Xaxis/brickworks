@@ -238,8 +238,16 @@ try {
     // 2. A model of its own.
     await press("phone_more");
     check("More: a sheet with every menu's commands", (await sheetNow()).sheet === "More");
+    // Each name told once it stands still (Main._page_places): looked for
+    // up to 15 s, not read once as the sheet comes up.
     let named = await controls();
-    const sections = ["file", "edit", "view", "build", "tools", "help"].filter((m) => named[`phone_section_${m}`]);
+    let sections = [];
+    for (let n = 0; n < 60; n++) {
+      named = await controls();
+      sections = ["file", "edit", "view", "build", "tools", "help"].filter((m) => named[`phone_section_${m}`]);
+      if (sections.length === 6) break;
+      await page.waitForTimeout(250);
+    }
     const rowsShown = Object.keys(named).filter((k) => k.startsWith("phone_row_")).length;
     check(`More: the menus' names, ${sections.length} of 6, their commands folded (${rowsShown} rows shown)`,
       sections.length === 6 && rowsShown === 0);
