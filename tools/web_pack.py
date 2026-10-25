@@ -298,12 +298,6 @@ def main() -> int:
             shutil.copy2(source, out / "parts" / f"{mesh}.lbm")
         else:
             later.append((f"{mesh}.lbm", source.read_bytes()))
-    with open(out / "later.bin", "wb") as bundle:
-        bundle.write(b"BWP1" + struct.pack("<I", len(later)))
-        for name, body in later:
-            bundle.write(struct.pack("<H", len(name)) + name.encode("ascii") + struct.pack("<I", len(body)))
-        for _, body in later:
-            bundle.write(body)
         # Its exact shape, for the build check (tools/build_exact.py): the
         # same name under exact/, as Exact.file_for reads it. Only asked for:
         # everyone waits for the pack, and only a check reads these, which
@@ -312,6 +306,12 @@ def main() -> int:
         if args.with_exact and exact.exists():
             (out / "exact").mkdir(exist_ok=True)
             shutil.copy2(exact, out / "exact" / f"{mesh}.bwx")
+    with open(out / "later.bin", "wb") as bundle:
+        bundle.write(b"BWP1" + struct.pack("<I", len(later)))
+        for name, body in later:
+            bundle.write(struct.pack("<H", len(name)) + name.encode("ascii") + struct.pack("<I", len(body)))
+        for _, body in later:
+            bundle.write(body)
 
     # The catalogue keeps every part, so search still reaches the whole
     # library; a flag says which ones can actually be placed.

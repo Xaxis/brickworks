@@ -82,6 +82,14 @@ plan with Claude as the client.
   `--max-interactive`. Not a flow's incognito context: its cache keeps no
   file over a few MB, so a warm load there fetched the pack again; and the
   visit counter is blocked, not routed, since a route turns the cache off.
+  Measured live m167 against load250's preview, three cold loads each
+  taken in turn (2026-10-24, load 12-35): 31.1 MB before interactive
+  against 17.0 (14.4 to start, the later parts 2.6 during it); net 14.5 s
+  against 6.6; interactive 30.3 s against 20.2, the bin drawn 28.0 against
+  17.7; the main thread 13.4 s on a CPU against 10.5. What is left is the
+  start itself: from the engine's banner to `Main._ready` 4-7 s (scripts),
+  the catalogue 1-2 s, the interface 2-3 s, then the frames on SwiftShader.
+  `[load]` holds 20 MB and 28 s.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways
