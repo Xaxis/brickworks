@@ -112,6 +112,13 @@ var rigid: Dictionary = {}
 ## within ON_FLOOR of it stands on the floor, and the weighing goes on with
 ## no support polygon of its own (the caller has the whole build's).
 var floor_cell: int = 0x7FFFFFFF
+## The top cell of the floor the build stands on, when it stands on one: a
+## baseplate's, [member floor_ids]'s parts' unless the caller says. What is
+## below it is in it, so a part sunk into it or a string hanging through it
+## stands on it as the rest does: walk256's lighthouse was read as standing
+## on the lowest bead of a slack mooring rope, which hung through its
+## baseplate, and the status bar said it tipped 19 studs over.
+var floor_top: int = 0x7FFFFFFF
 ## Once [method prepare] has read the joints, the parts held to the floor two
 ## ways or more by what always holds them, id -> true: what a caller may weigh
 ## as [member rigid] from then on. Found only when [member finds_core].
@@ -488,7 +495,11 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 		for id: int in _ids:
 			if all.has(id):
 				boxes[id] = all[id]
-	_ground(boxes)
+	var top: int = floor_top
+	if top == 0x7FFFFFFF and not floor_ids.is_empty():
+		top = top_of(bricks.filter(func(item: Variant) -> bool:
+			return floor_ids.has((item as BrickWorld.Brick).id)), contacts.get("boxes", {}))
+	_ground(boxes, top)
 	if _hull.size() < 3 and floor_cell == 0x7FFFFFFF:
 		return false
 	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)
@@ -572,9 +583,10 @@ func _read(bricks: Array) -> void:
 
 
 ## Where it touches the floor: every box within ON_FLOOR of the lowest cell
-## of the model, and the hull round them.
-func _ground(boxes: Dictionary) -> void:
-	var found: Dictionary = Balance.support_of(boxes, floor_cell)
+## of the model, or of the top of the floor [param top] under it, and the
+## hull round them.
+func _ground(boxes: Dictionary, top: int = 0x7FFFFFFF) -> void:
+	var found: Dictionary = Balance.support_of(boxes, floor_cell, top)
 	_hull = found["hull"]
 	_floor_y = found["floor_y"]
 	_grounded = {}
@@ -589,13 +601,18 @@ var _grounded: Dictionary = {}
 ## floor's own left out): every box within ON_FLOOR of the lowest cell, and
 ## the hull round them. {"hull": x and z in LDU in order round it,
 ## "floor_y": LDU, "grounded": id -> true for each part touching}. [param
-## lowest] is the floor's cell when these are not the whole build.
-static func support_of(boxes: Dictionary, lowest: int = 0x7FFFFFFF) -> Dictionary:
+## lowest] is the floor's cell when these are not the whole build; [param
+## floor_top] the top of the floor they stand on ([member floor_top]), when
+## they stand on one: no part below it is the floor.
+static func support_of(boxes: Dictionary, lowest: int = 0x7FFFFFFF,
+		floor_top: int = 0x7FFFFFFF) -> Dictionary:
 	if lowest == 0x7FFFFFFF:
 		for id: Variant in boxes:
 			var packed: PackedInt32Array = boxes[id]
 			for at: int in range(0, packed.size(), 6):
 				lowest = mini(lowest, packed[at + 1])
+		if floor_top != 0x7FFFFFFF and lowest != 0x7FFFFFFF and lowest < floor_top:
+			lowest = floor_top
 	var grounded: Dictionary = {}
 	if lowest == 0x7FFFFFFF:
 		return {"hull": PackedVector2Array(), "floor_y": 0.0, "grounded": grounded}
@@ -616,6 +633,22 @@ static func support_of(boxes: Dictionary, lowest: int = 0x7FFFFFFF) -> Dictionar
 	if hull.size() > 1 and hull[0].is_equal_approx(hull[hull.size() - 1]):
 		hull.resize(hull.size() - 1)
 	return {"hull": hull, "floor_y": lowest * BrickLattice.CELL, "grounded": grounded}
+
+
+## The top cell of [param bricks], the floor's parts, by their boxes ([param
+## boxes] where it has them, read off each part's shape otherwise): what
+## [member floor_top] is for a build standing on them, or unset for none.
+func top_of(bricks: Array, boxes: Dictionary = {}) -> int:
+	var shapes := Stability.new()
+	shapes.library = library
+	var top: int = 0x7FFFFFFF
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		var packed: PackedInt32Array = boxes[brick.id] if boxes.has(brick.id) \
+			else shapes._derive_boxes(brick)
+		for at: int in range(0, packed.size(), 6):
+			top = packed[at + 4] if top == 0x7FFFFFFF else maxi(top, packed[at + 4])
+	return top
 
 
 ## Pairs held by pins, axles, clips, hinges and turntables, and by glue and

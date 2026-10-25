@@ -33,7 +33,10 @@ prompt holding `model.mpd` and the `build.py` its `scripts/verify.py` rebuilds.
   (no API key, under `heavy`, at most two at a time), started with
   `--parts-only=bricknet_parts.txt` (src/parts/parts_only.gd): search lists
   only those parts and a design or an edit with any other is refused, so
-  the designer swaps it. Without the flag the app is unchanged.
+  the designer swaps it. And with `--brickbench`, the one thing that makes
+  saving wait on a part BrickNet's graph counts as a piece of its own, as
+  their judge is told the count (Assistant.brickbench). Without the flags
+  the app is unchanged, and a person's save never waits on that count.
 - **export** flattens each design and writes a `build.py` that adds every
   part where the design put it, its rotation made exactly orthonormal
   (brickagent's Pose refuses one off by more than 1e-8, and an LDraw line
@@ -92,6 +95,8 @@ COUNT = 10
 MOST_PARTS = 400
 LIMIT_WORDS = "Use at most 400 pieces."
 PARTS_FILE = "bricknet_parts.txt"
+# The app's switch for BrickBench's own rules (Assistant.BRICKBENCH_FLAG).
+BRICKBENCH_FLAG = "--brickbench"
 PARTS_NAME = "BrickNet's 14,441 parts, BrickBench's rule: no stickers, no unofficial parts"
 OURS, THEIRS = "brickworks", "opus55"
 SYSTEMS = {OURS: "Brickworks", THEIRS: "Claude Opus 5.5 in BrickAgent"}
@@ -486,7 +491,7 @@ def do_design(args: argparse.Namespace, batch: Path) -> int:
         named = f"{task['id']}" + (f" {args.arm} {run_dir.name}" if args.arm else "")
         try:
             made = bench.design(subject_for(task), run_dir, args.timeout, None,
-                                extra=(f"--parts-only={parts}",), app=app)
+                                extra=(f"--parts-only={parts}", BRICKBENCH_FLAG), app=app)
         except SystemExit as stopped:
             return f"{named}: {stopped}"
         log = (run_dir / "design.log").read_text(errors="replace") if (run_dir / "design.log").exists() else ""

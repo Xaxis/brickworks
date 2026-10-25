@@ -59,6 +59,20 @@ const WHERE: Array = [
 		"turret", "tower", "dome", "top", "mast"], "up", 1.0],
 ]
 
+## Features that go in a wall, not on it. walk256's cottage door was laid
+## on the ground in front of its wall, stuck on outside it and a course
+## taller, and its windows on the ground outside it: a piece for one of these
+## stands upright in the wall's plane, in an opening the design left, or is
+## not offered.
+const IN_A_WALL: Array = ["door", "doorway", "entrance", "window", "shopfront",
+	"storefront", "gate", "porthole", "hatch"]
+## Small things a roof or a top carries, each no more than [constant
+## ON_TOP_SHARE] of what it stands on each way: a Parisian restaurant's
+## chimney stack, 3 by 5 studs, was offered for a cottage 8 by 6 (walk256).
+const ON_TOP: Array = ["chimney", "antenna", "aerial", "mast", "vent", "flag",
+	"lantern", "pot"]
+const ON_TOP_SHARE := 0.5
+
 ## As built, a piece's front is +z (LDraw's -z, which its modellers face to
 ## the viewer); this many quarter turns about the upright bring it to face
 ## each way.
@@ -80,8 +94,10 @@ class Proposal extends RefCounted:
 	var piece: Dictionary = {}
 	var ids: Array[int] = []
 	var copies: Array = []
-	## Pieces that fit nowhere near, by id.
+	## Pieces that fit nowhere near, by id, and why the last that fitted was
+	## not the feature where it went ([method FeaturePass.unsuited]).
 	var missed: PackedStringArray = PackedStringArray()
+	var unsuited: String = ""
 	## "" until the design settles it: "accepted", "adjusted", "rejected",
 	## "built", "skipped"; "kept" when a loop's turns ran out with it standing.
 	var verdict: String = ""
@@ -329,9 +345,15 @@ func _lay_next(one: Proposal) -> void:
 	while one.next < one.candidates.size() and tries < LAYINGS:
 		var entry: Dictionary = one.candidates[one.next]
 		one.next += 1
-		var fit: Dictionary = await fit(entry, one.spot)
+		var in_wall: bool = _named_by(RealSnippets.words(one.feature), IN_A_WALL)
+		var fit: Dictionary = await fit(entry, one.spot, in_wall)
 		if fit.is_empty():
 			one.missed.append(str(entry["id"]))
+			continue
+		var why: String = unsuited(one.feature, one.spot, fit)
+		if not why.is_empty():
+			one.missed.append(str(entry["id"]))
+			one.unsuited = why
 			continue
 		tries += 1
 		var ids: Array[int] = await lay(fit["bricks"])
@@ -345,8 +367,8 @@ func _lay_next(one: Proposal) -> void:
 		# across the model.
 		var other: Dictionary = mirrored(one.spot)
 		if _plural(one.feature) and not other.is_empty():
-			var second: Dictionary = await fit(entry, other)
-			if not second.is_empty():
+			var second: Dictionary = await fit(entry, other, in_wall)
+			if not second.is_empty() and unsuited(one.feature, other, second).is_empty():
 				var more: Array[int] = await lay(second["bricks"])
 				if not more.is_empty():
 					one.ids.append_array(more)
@@ -396,8 +418,9 @@ func _standing(ids: Array[int]) -> bool:
 ## the piece can face the spot is tried, seated by one of its lowest
 ## hollows on a free stud of the model that points the same way, and kept
 ## when none of its parts runs into the model and at least one is held by
-## it (OpenPoints.test, the check's own rules a part at a time).
-func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
+## it (OpenPoints.test, the check's own rules a part at a time). [param
+## in_wall]: a door's or a window's, whose seat may be under a lintel.
+func fit(entry: Dictionary, spot: Dictionary, in_wall: bool = false) -> Dictionary:
 	var facing: String = str(spot.get("facing", "+z"))
 	var target := Vector3(float(spot["x"]) * STUD, float(spot["y"]) * PLATE,
 		float(spot["z"]) * STUD)
@@ -415,7 +438,7 @@ func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
 		var found: Array = []
 		for point: OpenPoints.Point in read.points_of(ids):
 			if point.kind == "stud" and point.by == 0 and point.section.is_empty() \
-					and point.at.distance_to(target) <= REACH and _outside(point, out, box) \
+					and point.at.distance_to(target) <= REACH and _outside(point, out, box, in_wall) \
 					and (facing == "up" or absf((point.at - target).dot(out)) <= DEPTH):
 				found.append(point)
 		return found, "find the free studs a feature's piece may sit on", assistant.library)
@@ -450,17 +473,95 @@ func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
 	return {}
 
 
+## Why a piece laid as [param laid] ([method fit]'s answer) is not the
+## feature [param name] where it goes, at [param spot], or "": checked before
+## it is offered, and dropped when it fails. A door or a window stands upright
+## in its wall's plane: its back half a stud or more inside the wall's face,
+## its front no more than half a stud out of it, which only an opening the
+## wall has leaves room for. A chimney or a mast is at most [constant
+## ON_TOP_SHARE] of what it stands on each way, and as tall.
+func unsuited(name: String, spot: Dictionary, laid: Dictionary) -> String:
+	var box: AABB = _box_of(laid["bricks"])
+	if box.size.length() <= 0.0:
+		return ""
+	var facing: String = str(spot.get("facing", "+z"))
+	var words: PackedStringArray = RealSnippets.words(name)
+	if TURN_TO.has(facing) and _named_by(words, IN_A_WALL):
+		if str(laid["up"]) != "up":
+			return "it does not stand upright in the wall"
+		var out: Vector3 = Assistant.FACES[facing]
+		var plane: float = Vector3(float(spot["x"]) * STUD, float(spot["y"]) * PLATE,
+			float(spot["z"]) * STUD).dot(out)
+		var one: float = box.position.dot(out)
+		var other: float = box.end.dot(out)
+		if minf(one, other) > plane - 0.5 * STUD:
+			return "it stands outside the wall, not in it: the wall has no opening there"
+		if maxf(one, other) > plane + 0.5 * STUD:
+			return "it stands out of the wall"
+	elif facing == "up" and _named_by(words, ON_TOP):
+		var host: AABB = _host_of(spot)
+		if box.size.x > ON_TOP_SHARE * host.size.x + 1.0 \
+				or box.size.z > ON_TOP_SHARE * host.size.z + 1.0 \
+				or box.size.y > ON_TOP_SHARE * host.size.y + 1.0:
+			return ("it is too big for what it stands on: %s by %s studs and %s plates "
+				% [Assistant.Placement._num(snappedf(box.size.x / STUD, 0.5)),
+					Assistant.Placement._num(snappedf(box.size.z / STUD, 0.5)),
+					Assistant.Placement._num(snappedf(box.size.y / PLATE, 0.5))]
+				+ "on %s by %s and %s" % [Assistant.Placement._num(snappedf(host.size.x / STUD, 0.5)),
+					Assistant.Placement._num(snappedf(host.size.z / STUD, 0.5)),
+					Assistant.Placement._num(snappedf(host.size.y / PLATE, 0.5))])
+	return ""
+
+
+static func _named_by(words: PackedStringArray, kinds: Array) -> bool:
+	for word: String in kinds:
+		if words.has(word) or words.has(RealSnippets.stem(word)):
+			return true
+	return false
+
+
+## What a piece laid as [param bricks] (placements as edit_model takes them)
+## takes up, in LDU.
+func _box_of(bricks: Array) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for raw: Variant in bricks:
+		var placement: Assistant.Placement = Assistant.Placement.from_dict(raw)
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var one: AABB = (assistant._transform(placement, mesh, null) * mesh.bounds).abs()
+		box = one if first else box.merge(one)
+		first = false
+	return box
+
+
+## What a feature at [param spot] stands on: the assembly the design named
+## whose box holds the spot, or the whole model.
+func _host_of(spot: Dictionary) -> AABB:
+	var at := Vector3(float(spot["x"]), float(spot["y"]), float(spot["z"]))
+	for named: Dictionary in assistant._outside_assemblies:
+		var where: Dictionary = named.get("where", {})
+		if not where.is_empty() and Assistant._inside(at, where):
+			var inside: AABB = assistant._bounds_of(assistant._bricks_inside(where))
+			if inside.size.length() > 0.0:
+				return inside
+	return assistant._bounds_of(assistant._bricks_inside({}))
+
+
 ## Whether a free stud is on the model's outside, seen the way the feature
 ## faces: nothing of the model on it, and nothing between it and the edge of
 ## the model's box that way. The nearest free studs to where a corner shop's
 ## awning, sign and cornice go were on its floors, inside, and all three were
 ## laid there and rejected.
-func _outside(point: OpenPoints.Point, out: Vector3, box: AABB) -> bool:
+func _outside(point: OpenPoints.Point, out: Vector3, box: AABB, in_wall: bool = false) -> bool:
 	var lattice: BrickLattice = assistant.builder.lattice
 	var start: Vector3 = point.at + point.way * 6.0
 	var at: Vector3 = start
 	var reach: AABB = box.grow(STUD)
-	for way: Vector3 in [point.way, out]:
+	# A door's or a window's seat is in its opening, under the lintel: only
+	# the way out of the wall is asked to be clear.
+	for way: Vector3 in ([out] if in_wall else [point.way, out]):
 		at = start
 		for step: int in 200:
 			at += way * 8.0

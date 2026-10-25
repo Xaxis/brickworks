@@ -247,7 +247,10 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 		weighted += _middle(brick) * own
 	if grams <= 0.0:
 		return
-	var hull: PackedVector2Array = Balance.support_of(model)["hull"]
+	# What is below the floor's top is in it: a string hanging through the
+	# baseplate is not what the model stands on (Balance.floor_top).
+	var hull: PackedVector2Array = Balance.support_of(model, 0x7FFFFFFF,
+		_floor_top(boxes_of))["hull"]
 	if hull.size() < 3:
 		return
 	var centre: Vector3 = weighted / grams
@@ -262,6 +265,17 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 	risk.message = "its weight is %s studs past the %s edge of what it stands on" % [
 		Balance.studs(past), standing["edge"]]
 	report.risks.append(risk)
+
+
+## The top cell of [member floor_ids]' parts, by [param boxes_of], or unset
+## for no floor (Balance.floor_top).
+func _floor_top(boxes_of: Dictionary) -> int:
+	var top: int = 0x7FFFFFFF
+	for id: Variant in floor_ids:
+		var under: PackedInt32Array = boxes_of.get(id, PackedInt32Array())
+		for at: int in range(0, under.size(), 6):
+			top = under[at + 4] if top == 0x7FFFFFFF else maxi(top, under[at + 4])
+	return top
 
 
 ## Who rests on whom, as the lattice has it: {"above": id -> {id of each
@@ -872,10 +886,12 @@ func _check_levels(
 	if bricks.size() < 2:
 		return
 
-	# Group by the height each brick starts at, in whole cells.
+	# Group by the height each brick starts at, in whole cells: on a floor,
+	# no lower than its top, since what is below that is in it.
 	var levels: Dictionary = {}        ## cell y -> Array[Brick]
 	## id -> the lowest cell it occupies, worked out once.
 	var stands_at: Dictionary = {}
+	var top: int = _floor_top(boxes_of)
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var boxes: PackedInt32Array = boxes_of.get(brick.id, PackedInt32Array())
@@ -883,6 +899,8 @@ func _check_levels(
 			continue
 		var corners: Array = BrickLattice.corners_in(boxes)
 		var floor_y: int = (corners[0] as Vector3i).y
+		if top != 0x7FFFFFFF and not floor_ids.has(brick.id):
+			floor_y = maxi(floor_y, top)
 		stands_at[brick.id] = floor_y
 		if not levels.has(floor_y):
 			levels[floor_y] = []

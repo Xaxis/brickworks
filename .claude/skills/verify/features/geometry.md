@@ -170,7 +170,15 @@ can occupy the same millimetre.
   on what, what is floating, and what is attached by one stud at the end of a
   cantilever. It also says when the whole model tips over on what it stands
   on ("tips", from Balance's support polygon), which its levels never could on
-  a baseplate: the plate is under every cut, as wide as the ground. Masses
+  a baseplate: the plate is under every cut, as wide as the ground. On a
+  baseplate, nothing below its top is the floor (`Balance.floor_top`, set
+  from `floor_ids` or the design check's `Assistant._floor_top`): walk256's
+  lighthouse read as standing on the lowest bead of a slack mooring rope
+  that `lay_flex` hung through the plate, and the status bar said "2 weak
+  joints (tips)" beside every answer's "it stands"; a course starting below
+  the top counts from the top (`_check_levels`), which was the "leaning".
+  `src/dev/mcp_agree_probe.gd` lays such a rope and holds the status bar,
+  `check_design` and an edit's answer to one verdict. Masses
   count the tubes under a part; every one of seven bricks is within 6% of
   BrickLink's weight (a 2x4 2.46 g against 2.32). With `with_margins` (the
   status bar's verdict, View, Stress, `weakest_joints`, the assistant's own

@@ -1956,7 +1956,21 @@ fixing what it got wrong.
   studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
   way put a starfighter's exhausts on its fuselage; the free studs found on a
   worker, `WorkerTasks.awaited`, 300 ms a piece tried on a Technic loader) — kept when no part runs
-  into the model and one is held by it (`OpenPoints.test`); `lay` puts it down through
+  into the model and one is held by it (`OpenPoints.test`), and then only if
+  it is the feature where it goes (`unsuited`, walk256's M17: three of four
+  pieces laid for a lighthouse were wrong): a door or a window (`IN_A_WALL`)
+  upright in its wall's plane, its back half a stud or more inside the face
+  and its front no more than half a stud out, so only in an opening the
+  wall has (its seat may be under a lintel, `_outside` asked only the way
+  out); a chimney, mast or antenna (`ON_TOP`) at most half of what it
+  stands on each way (`_host_of`: the named assembly holding the spot, or
+  the model); what fails is dropped and the next tried, and with none left
+  `_feature_brief` says why ("the last that fitted, it stands outside the
+  wall"). `src/dev/mcp_detail_probe.gd` (headless) submits walk256's own
+  lighthouse (`tests/fixtures/mcp/walk256_lighthouse.json`) over the port:
+  its cottage door and windows offered nothing, with why, its chimney a
+  31025 lodge's 3 by 3 on the 8 by 6 cottage; and a wall with an opening
+  left gets 10185's front door laid in it; `lay` puts it down through
   `edit_model`, checked like any edit; a plural feature off the middle gets
   its pair, mirrored. `_feature_brief` hands it over: the piece, its credit,
   where it was seated and how, its bricks, whether the spot was a guess, the
@@ -1993,14 +2007,23 @@ fixing what it got wrong.
   the next-best, accept with a move laying it a stud back and handing the
   beak, a reason-less rejection refused, the last settle naming the next
   step, save going ahead, the whole review's record; then "beak, ear tufts"
-  skipped and "all" built in two calls with save going ahead, a dish held
-  on a round plate only by its tube holding the save as a piece BrickBench
+  skipped and "all" built in two calls with save going ahead; a person's
+  save never held to BrickBench's count (walk256's M16: a lighthouse refused
+  twice over a minifig's hands and hat, a door in its frame and a wheel
+  rim): the dish on its round plate, one piece by our own joints, saving
+  with nothing said, and two stacks side by side, two pieces by our joints
+  too, saving with the check's words and how to join them said once
+  (`Assistant._pieces_advice`, `save_advice`, the check's `pieces_said`),
+  not on the next save; then, as a BrickBench run (`Assistant.brickbench`,
+  the `--brickbench` flag `tools/bench/brickbench.py` starts each design
+  with, and nothing else), the dish holding the save as a piece BrickBench
   counts apart (`Assistant._held_in_the_hand`, at most twice with the exact
   check's refusals; a scene's items standing apart on the floor are not
   said), said with the fix (`_onto_a_jumper`: the 2 x 2 under it swapped
   for a jumper, 87580, or a jumper laid under a dome on a 2 x 4 and the dome
   a plate higher), each fix laid as said saving, and saving once the dish is
-  gone, and the walk180 tug's features each offered only pieces that name
+  gone (`tests/test_brickbench.py` holds the design stage to passing the
+  flag), and the walk180 tug's features each offered only pieces that name
   them (none for its towing bitts). Windowed (`xvfb-run -a
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.

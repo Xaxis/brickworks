@@ -1182,6 +1182,8 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			_saved_here[path] = true
 			var written: String = "Written to %s, with the app's models (%s)." % [file,
 				ProjectSettings.globalize_path(path)]
+			if assistant != null:
+				written = Assistant._joined(written, assistant.save_advice())
 			# A run's last act is to save: so saving hands back the next
 			# assembly it has not looked at closely, if there is one.
 			var more: Variant = ""

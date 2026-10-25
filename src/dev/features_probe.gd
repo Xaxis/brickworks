@@ -254,17 +254,45 @@ func _run() -> void:
 		+ "it is saved."), "after the whole review, a change's answer says to save: %s"
 		% touched.right(90))
 
-	print("\nsaving waits once on a part BrickBench counts as a piece of its own")
-	# A 4 x 4 dish on a round plate's studs stays on in the hand (its tube
-	# grips them), and BrickNet's graph joins it to nothing: critique221's
-	# potato saved so, in two pieces, and its dog in five.
+	print("\na person's save is not held to BrickBench's count of pieces")
+	# walk256: a person's lighthouse was refused twice for BrickNet's count,
+	# over a minifig's hands and hat, a door in its frame and a wheel rim. A
+	# 4 x 4 dish on a round plate's studs stays on in the hand (its tube grips
+	# them), and our own joints join it: BrickNet's graph does not.
 	world.clear()
 	builder.lattice.clear()
 	var dish: Array = [{"part": "3003", "color": 72, "x": 1, "y": 0, "z": 1, "rot": 0},
 		{"part": "4032a", "color": 72, "x": 1, "y": 3, "z": 1, "rot": 0},
 		{"part": "3960", "color": 15, "x": 0, "y": 4, "z": 0, "rot": 0}]
+	_ok(not Assistant.brickbench, "this run is not BrickBench's: no %s" % Assistant.BRICKBENCH_FLAG)
 	var stood: String = _blocks_text(await assistant.use_tool("submit_design",
 		{"name": "Lamp", "description": "a lamp", "bricks": dish}))
+	var person: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
+	_ok(stood.begins_with("Built.") and person == "This app cannot do that from outside."
+		and assistant.save_advice().is_empty(),
+		"the dish on its round plate saves, nothing said: one piece by our joints: %s"
+			% person.left(100))
+	# Two bricks side by side, joined by nothing: in two pieces by our own
+	# joints too. Said once, with how to join it, and saved all the same.
+	await assistant.use_tool("submit_design", {"name": "Wall", "description": "a wall",
+		"bricks": [{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3001", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
+			{"part": "3001", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
+			{"part": "3001", "color": 4, "x": 4, "y": 3, "z": 0, "rot": 0}]})
+	var apart_saved: String = _blocks_text(await socket._run_own("save_model", {"name": "wall.ldr"}))
+	var advice: String = assistant.save_advice()
+	_ok(apart_saved == "This app cannot do that from outside." and advice.begins_with(
+		"Saved as it is, and worth a look before it is finished:")
+		and advice.contains("2 pieces that nothing joins") and advice.contains("join it"),
+		"two stacks side by side save, said once as advice with how to join: %s"
+			% advice.replace("\n", " ").left(200))
+	await socket._run_own("save_model", {"name": "wall.ldr"})
+	_ok(assistant.save_advice().is_empty(), "...and not said again on the next save")
+
+	print("\nin a BrickBench run, saving waits once on a part BrickNet counts as a piece")
+	Assistant.brickbench = true
+	await assistant.use_tool("submit_design", {"name": "Lamp", "description": "a lamp",
+		"bricks": dish})
 	var held_back: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
 	_ok(stood.begins_with("Built.") and held_back.begins_with("Not saved yet: BrickBench counts "
 		+ "it as 2 pieces") and held_back.contains("3960"),
@@ -273,8 +301,12 @@ func _run() -> void:
 	# Said with what to do, so the design can act on it: the seat half a stud
 	# across was said first, and laid there the dish was refused as off its
 	# studs. A stud at its tube's middle joins it, which is a jumper's.
-	var swap: String = "swap #2 (4032a plate 2 x 2 round with axlehole at 1,3,1) for a 2 x 2 " \
-		+ "jumper plate (87580) in its place"
+	var plate: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == "4032a":
+			plate = brick.id
+	var swap: String = "swap #%d (4032a plate 2 x 2 round with axlehole at 1,3,1) for a 2 x 2 " \
+		% plate + "jumper plate (87580) in its place"
 	_ok(held_back.contains("its tube stands between that part's studs") and held_back.contains(swap),
 		"...with how to join it: %s" % held_back.get_slice("\n", 1))
 	var swapped: Array = dish.duplicate(true)
@@ -312,6 +344,7 @@ func _run() -> void:
 		"bricks": dish})
 	_ok(_blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
 		== "This app cannot do that from outside.", "...and in one piece it saves")
+	Assistant.brickbench = false
 
 	print("\neach feature is offered a piece that is that feature, or none")
 	# The walk180 tug: its features were offered a tugboat's funnel, every one,
