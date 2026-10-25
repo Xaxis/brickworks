@@ -305,8 +305,12 @@ declare -A CMD=(
   # and an LDraw model exported, Find, the booklet's Save as PDF, the model
   # tree and the properties, and the rest opened and closed, each audited as
   # the phone's is (every target 44 points or more, no text under 12, nothing
-  # off the screen or under the keyboard).
-  [dialogs]="tools/web/dialogs_flow.mjs --url=$P/app $B --out=$S/${TAG}_dialogs_web"
+  # off the screen or under the keyboard). A size a check: the four in one
+  # ran past a check's 45 minutes on a loaded box.
+  [dialogs]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=390x844 --out=$S/${TAG}_dialogs_web"
+  [dialogs_430]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=430x932 --out=$S/${TAG}_dialogs_430_web"
+  [dialogs_768]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=768x1024 --out=$S/${TAG}_dialogs_768_web"
+  [dialogs_1024]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=1024x768 --out=$S/${TAG}_dialogs_1024_web"
   # local only: desktop_same.mjs. It compares a build's desktop at 1280 x 800,
   # by a mouse, with a base build's to the pixel, and a preview has no base
   # build beside it: run it on two local exports.

@@ -352,7 +352,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   buttons, title, close button), a menu's items and a tree's rows, says what
   is open (`dialogs`), the keyboard and the field typed in (`typing`), and
   counts a dialog's part under the keyboard as off the screen. Proved by
-  `tools/web/dialogs_flow.mjs` (preview check `dialogs`), at 390 x 844,
+  `tools/web/dialogs_flow.mjs` (preview checks `dialogs`, `dialogs_430`,
+  `dialogs_768` and `dialogs_1024`, a size each), at 390 x 844,
   430 x 932 (3x), 768 x 1024 and 1024 x 768 (2x) with touch events: from More,
   scrolled to by a finger, Save as typed into above the keyboard and saved;
   Open's menu, Rename or delete saved models, one renamed and deleted and its
