@@ -24,6 +24,15 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+def _guards() -> str:
+    """The guard list, supabase/later.tsv, written as apply_sql.mjs once held
+    it inline (one ["earlier", "function", "later", "mark"], a line)."""
+    import json
+    rows = [line.split("\t") for line in (ROOT / "supabase/later.tsv").read_text().splitlines()
+            if line.strip() and not line.startswith("#")]
+    return "\n".join("[" + ", ".join(json.dumps(v) for v in row) + "]," for row in rows)
+
 SQL = (ROOT / "supabase/challenges.sql").read_text()
 API = (ROOT / "api/_challenges.js").read_text()
 ADMIN = (ROOT / "api/admin.js").read_text()
@@ -85,7 +94,7 @@ def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
 def test_applying_follows_again_alone_is_refused() -> None:
     """tools/apply_sql.mjs guards the function this file replaces: follows.sql
     applied again alone would take the entries out of every feed."""
-    apply = (ROOT / "tools/apply_sql.mjs").read_text()
+    apply = _guards()
     guard = re.search(r'\["follows\.sql", "feed_rows", "challenges\.sql", "([^"]+)"\]', apply)
     assert guard, "apply_sql.mjs does not guard follows.sql's feed_rows"
     mark = guard.group(1)

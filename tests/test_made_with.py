@@ -18,6 +18,15 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+def _guards() -> str:
+    """The guard list, supabase/later.tsv, written as apply_sql.mjs once held
+    it inline (one ["earlier", "function", "later", "mark"], a line)."""
+    import json
+    rows = [line.split("\t") for line in (ROOT / "supabase/later.tsv").read_text().splitlines()
+            if line.strip() and not line.startswith("#")]
+    return "\n".join("[" + ", ".join(json.dumps(v) for v in row) + "]," for row in rows)
+
 SQL = (ROOT / "supabase/made_with.sql").read_text()
 REPLIES = (ROOT / "supabase/replies.sql").read_text()
 TABS = (ROOT / "supabase/gallery_tabs.sql").read_text()
@@ -26,7 +35,7 @@ SHARE = (ROOT / "api/share.js").read_text()
 DIRECTORY = (ROOT / "api/_directory.js").read_text()
 STORE = (ROOT / "src/parts/model_store.gd").read_text()
 PANEL = (ROOT / "src/ui/share_panel.gd").read_text()
-APPLY = (ROOT / "tools/apply_sql.mjs").read_text()
+APPLY = _guards()
 
 
 def function(text: str, name: str) -> str:
