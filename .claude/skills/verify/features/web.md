@@ -1137,7 +1137,13 @@ plan with Claude as the client.
   apart, `ai-designed` appended to the seven house models' tags (named by
   id, once), so their cards carry the Assistant mark; nothing else on any
   model. `/u/brickworks` is drawn as every person's page is. The lead
-  applies it.
+  applies it. `supabase/house_shelf.sql` (gallery261) says its words again
+  once it shares the shelf from the LDraw library ("Its own models were
+  designed with the assistant… The collection From the LDraw library holds
+  real sets as LDraw's builders modelled them"), only while they are still
+  house.sql's, since the API refuses a profile save of the reserved handle;
+  dry-run with `tools/house_shelf_try.sql` (296 characters, no other
+  profile changed). The lead applies it with the shelf's first slice.
 - `who modelled a shared model` (`supabase/modelled_by.sql`,
   `api/_directory.js` `modelledByIn`): a model its sharer did not make, the
   shelf from the LDraw library (gallery261, 2026-10-25). The app keeps
