@@ -3,8 +3,8 @@
 // 768 x 1024 and 1024 x 768 (two), with touch events, in SwiftShader.
 //
 //   tools/export.sh web
-//   python3 tools/web/serve.py build/web 8811 --parts assets/generated/parts --delay 0 &
 //   set -a; . ./.env; set +a
+//   python3 tools/web/serve.py build/web 8811 --parts-url "$PARTS_URL" &
 //   node tools/web/dialogs_flow.mjs --url=http://127.0.0.1:8811/ --out=shots/dialogs
 //   BW_BYPASS=… node tools/web/dialogs_flow.mjs --url=<preview>/app --out=DIR
 //
@@ -29,12 +29,20 @@
 //                  a PDF downloaded
 //   Model tree, Properties  the drawer; on a tablet it takes the parts
 //                  panel's place rather than open over it
-//   and the rest   the other dialogs More has (Library, Account, Render,
-//                  Parts list, My collection, Part maker, Colour the hidden
-//                  parts, Keys and controls, About, Clear, Floor size),
-//                  opened and closed by its own close button. Not yet the
-//                  Minifigure builder, whose two columns side by side are
-//                  wider than a phone: it needs a layout of its own.
+//   Library        "UNICEF" typed above the keyboard, and the van opened: in
+//                  a tab of its own, 65 parts (the live library, so locally
+//                  the server is given the parts bucket, --parts-url)
+//   Render         a quick picture made: a PNG downloaded
+//   and the rest   the other dialogs More has (Parts list, My collection,
+//                  Part maker, Colour the hidden parts, Keys and controls,
+//                  About, Clear, Floor size), opened and closed by its own
+//                  close button
+//   Minifigure     on an empty baseplate: the torso's slot, "jacket" typed
+//                  above the keyboard, a torso chosen by its tile, Back to
+//                  the slots where they take turns with a slot's choices,
+//                  Place in model, and a tap standing the figure there
+//   Account        last: Sign out, and the sign-in screen up, where the
+//                  test account is signed in
 //
 // At every step the app is asked (window.brickworksAskPhone) for every
 // target a finger has and every line of text, in points, and what is open
@@ -515,17 +523,176 @@ try {
       }
     }
 
+    // Library: a set searched for above the keyboard and opened, in a tab
+    // of its own: the set is in it. The UNICEF Van, 65 parts: "106-1" finds
+    // 42106-1 first, 2,257 of them.
+    if (step("library")) {
+      await more("library");
+      await audit("library", /LibraryDialog/, ["library_search", "library_tab_sets", "library_tab_community"]);
+      if (await typeInto("library_search", "UNICEF")) {
+        await audit("library_typing", /LibraryDialog/, ["library_search"]);
+        await page.keyboard.press("Enter");
+        await keyboard(0);
+        let found = {};
+        for (let n = 0; n < 240 && !((found.ask || {}).q === "UNICEF" && (found.shown || []).length); n++) {
+          await page.waitForTimeout(250);
+          found = (await page.evaluate(() => window.brickworksLibrary || {})) || {};
+        }
+        const id = (found.shown || [])[0] || "";
+        if (check(`"UNICEF" found the van: ${JSON.stringify(found.shown || [])}`, id === "omr-106-1")) {
+          await audit("library_found", /LibraryDialog/, ["library_open_first"]);
+          let tab = null;
+          // Tapped again where no tab came, as the booklet's: on a loaded
+          // box the tap's leave to open one can be gone by its frame.
+          for (let n = 0; n < 2 && !tab; n++) {
+            const coming = context.waitForEvent("page", { timeout: 60000 }).catch(() => null);
+            if (!(await press("library_open_first", 10))) break;
+            tab = await coming;
+            if (!tab) say(`no tab from the tap (the library said "${(found.status || "")}"): tapped again`);
+          }
+          if (check(`Open: the set's own tab (${tab ? tab.url().replace(/x-vercel[^&]*&?/g, "") : "none"})`, Boolean(tab))) {
+            let s = {};
+            for (let n = 0; n < 600 && !(s.bricks > 0 && !s.awaited); n++) {
+              await page.waitForTimeout(500);
+              s = (await tab.evaluate(() => window.brickworksState || {}).catch(() => ({}))) || {};
+            }
+            const title = await tab.title().catch(() => "");
+            const number = id.replace(/^omr-/, "");
+            check(`the set open in it: ${s.bricks || 0} parts, "${title}"`, s.bricks > 0 && title.startsWith(number));
+            await tab.screenshot({ path: `${out}/${size}_${String(++shot).padStart(2, "0")}_library_set.png` }).catch(() => {});
+            await tab.close();
+            await page.bringToFront();
+          }
+        }
+      }
+      await keyboard(0);
+      await close("library", /LibraryDialog/);
+    }
+
+    // Render: a quick picture made, and downloaded.
+    if (step("render")) {
+      await more("render");
+      await audit("render", /RenderDialog/, ["render_quick", "render_size_720p", "render_picture", "render_close"]);
+      // Quick and small where a finger reaches them, as a person who wants
+      // a picture soon chooses: the choices scroll on a phone.
+      for (const name of ["render_quick", "render_size_720p"]) {
+        const at = await where(name, 5);
+        if (at && at.y > 0 && at.y < height) await press(name, 5);
+        else say(`${name} is scrolled out of sight: the picture is made as it is set`);
+      }
+      const file = download(600);
+      if (await press("render_picture", 10)) {
+        const got = await file;
+        check(`Render: a picture made, ${got ? got.suggestedFilename() : "nothing"} downloaded`,
+          Boolean(got && /\.png$/i.test(got.suggestedFilename())));
+        await audit("rendered", /RenderDialog/, ["render_picture", "render_close"]);
+      }
+      await close("render", /RenderDialog/);
+    }
+
     // And the rest of what More opens: each open, its audit, and away by
     // its own way out.
     if (step("rest")) {
-      const REST = [["library", /LibraryDialog/], ["account", /AccountPanel/], ["render", /RenderDialog/],
-        ["parts_list", /InventoryPanel/], ["collection", /Collection/],
+      const REST = [["parts_list", /InventoryPanel/], ["collection", /Collection/],
         ["part_maker", /ElementDialog/], ["hidden_colours", /HiddenColoursPanel/], ["keys", /ControlsDialog/],
         ["about", /^About/], ["clear", /^Clear/], ["floor_custom", /^Baseplate size/]];
       for (const [row, dialog] of REST) {
         if (!(await more(row))) continue;
         await audit(row, dialog);
         await close(row, dialog);
+      }
+    }
+
+    // The Minifigure builder: a slot chosen, a part for it searched for
+    // above the keyboard and chosen, and the figure placed: Place in model,
+    // then a tap on the baseplate stands it there. On a phone or a tablet
+    // held upright the slots and a slot's choices take turns (Back).
+    if (step("minifig")) {
+      // An empty baseplate, so wherever the tap is the figure has room.
+      if (await more("new")) {
+        const discard = await where("new_discard", 3);
+        if (discard) await tap(discard);
+      }
+      let s = await until((now) => now.bricks === 0, 20);
+      check(`New: an empty baseplate for the figure (${s.bricks} parts)`, s.bricks === 0);
+      const form = ["minifig_name", "minifig_surprise", "minifig_close", "minifig_head", "minifig_torso",
+        "minifig_keep", "minifig_place"];
+      await more("minifig");
+      await audit("minifig", /MinifigDialog/, form);
+      const was = (await state()).bench || {};
+      if (await press("minifig_torso", 20)) {
+        const choices = ["minifig_search", "minifig_choice", "minifig_keep", "minifig_place"];
+        await audit("minifig_torso", /MinifigDialog/, choices);
+        if (await typeInto("minifig_search", "jacket")) {
+          await audit("minifig_typing", /MinifigDialog/, ["minifig_search", "minifig_choice"]);
+          await keyboard(0);
+          await page.waitForTimeout(600);
+        }
+        await press("minifig_choice", 20);
+        s = await until((now) => (now.bench || {}).torso && (now.bench || {}).torso !== was.torso, 10);
+        const torso = (s.bench || {}).torso || "";
+        check(`a torso chosen by its tile (${was.torso || "none"} to ${torso || "none"})`,
+          Boolean(torso) && torso !== was.torso);
+        await audit("minifig_chosen", /MinifigDialog/, choices);
+        if (await where("minifig_back", 2)) {
+          await press("minifig_back", 5);
+          await audit("minifig_back", /MinifigDialog/, form);
+        }
+        if (await press("minifig_place", 10)) {
+          s = await until((now) => now.figure_held, 20);
+          const after = await ask();
+          check(`Place in model: the builder put away, the figure in hand (${JSON.stringify(after?.dialogs)})`,
+            s.figure_held && !(after?.dialogs || []).some((d) => /MinifigDialog/.test(d)));
+          await press("phone_fit", 5);
+          await page.waitForTimeout(1500);
+          await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
+          let laid = null;
+          for (let n = 0; n < 24 && !laid; n++) {
+            await page.waitForTimeout(250);
+            laid = await page.evaluate(() => window.brickworksLayout);
+          }
+          const middle = laid && laid.centre ? laid.centre : { x: width / 2, y: height / 2 };
+          // Its parts come over the wire: tapped again until it stands.
+          let stood = 0;
+          for (const [dx, dy] of [[0, 0], [0, 0], [16, 0], [0, 16], [-16, 0], [0, -16]]) {
+            await tap({ x: middle.x + dx, y: middle.y + dy });
+            s = await until((now) => now.bricks > 0, 8);
+            stood = s.bricks || 0;
+            if (stood) break;
+          }
+          await picture("minifig_placed");
+          check(`a tap stands it on the baseplate: ${stood} parts, the torso among them `
+            + `(${(s.parts || []).slice(0, 12).join(", ")})`, stood >= 7 && (s.parts || []).includes(torso));
+        }
+      }
+    }
+
+    // Account, last: its main control is Sign out, and the way back in is
+    // the sign-in screen. Where nobody is signed in (a local server has no
+    // accounts) there is no one to sign out.
+    if (step("account")) {
+      await more("account");
+      await audit("account", /AccountPanel/, ["sign_out", "account_done"]);
+      const signed = (await page.evaluate(() => window.brickworksAccount || {})) || {};
+      if (await press("sign_out", 10)) {
+        let now = {};
+        for (let n = 0; n < 80; n++) {
+          await page.waitForTimeout(250);
+          now = (await page.evaluate(() => window.brickworksAccount || {})) || {};
+          if (now.state !== "signed_in") break;
+        }
+        const after = await ask();
+        check(`Sign out: the panel put away (${JSON.stringify(after?.dialogs)})`,
+          !(after?.dialogs || []).some((d) => /AccountPanel/.test(d)));
+        if (signed.state === "signed_in") {
+          const way = await where("signin_email", 20);
+          await picture("signed_out");
+          check(`signed out (${signed.state} to ${now.state}), the sign-in screen up `
+            + `(${way ? `its address ${way.w}x${way.h}` : "none"})`,
+          now.state === "signed_out" && now.gated && Boolean(way));
+        } else {
+          say(`not signed in here (${signed.state}): signing out is proved on a deployment`);
+        }
       }
     }
 

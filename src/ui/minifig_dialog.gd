@@ -63,11 +63,48 @@ var _waiting: Dictionary = {}            ## part id -> true, geometry on its way
 var _turn: float = 0.45
 var _dragging: bool = false
 
+## Its parts as the desktop lays them out, moved where there is less room
+## (_arrange): the header, the name's label, the body and its three
+## columns, the slot's search row and its grid, and the figure's column:
+## its picture, Keep and Place in model, and the figures kept.
+var _column: VBoxContainer
+var _header: HBoxContainer
+var _called: Label
+var _body: HBoxContainer
+var _slots_scroll: ScrollContainer
+var _picker: VBoxContainer
+var _search_row: HBoxContainer
+var _grid_scroll: ScrollContainer
+var _figure_column: VBoxContainer
+var _frame: SubViewportContainer
+var _actions: HBoxContainer
+var _kept: Label
+var _shelf_scroll: ScrollContainer
+## How it is laid out for a finger: [the slots and a slot's choices taking
+## turns, the figure over them], or empty before it has been.
+var _laid: Array = []
+## The slot's choices shown in the slots' place, while they take turns.
+var _choosing: bool = false
+## What a small screen's layout adds, made the first time it is wanted:
+## Back to the slots, the search row's second line, the slots with the
+## figures kept under them, the name on a line of its own, and the colours
+## in a list of their own that scrolls.
+var _back: Button
+var _second_row: HBoxContainer
+var _bench: VBoxContainer
+var _name_row: HBoxContainer
+var _palette_scroll: ScrollContainer
+## Where the keyboard is said to be (_make_way).
+var _touch: TouchSizing
+
 
 func _ready() -> void:
 	visible = false
 	_rng.randomize()
 	_build()
+	# A tablet turned: laid out again for the room it has now.
+	if Phone.on():
+		get_viewport().size_changed.connect(_arrange)
 	if library != null:
 		library.fetched.connect(_on_geometry)
 	# Hidden is nothing in sight, however it was hidden: Place in model
@@ -78,6 +115,10 @@ func _ready() -> void:
 
 
 func open() -> void:
+	# Laid out for the room there is before it shows: shown first, its
+	# rows too wide for a phone would be made to flow (TouchSizing).
+	_arrange()
+	_take_turn(false)
 	visible = true
 	_name.text = figure.name
 	_sight.forget()
@@ -119,6 +160,7 @@ func _process(delta: float) -> void:
 		_turn += delta * 0.35
 	_aim()
 	_watch_tiles()
+	_make_way()
 
 
 ## Tell the thumbnailer what is in sight: the slots' pictures, then the
@@ -166,10 +208,12 @@ func _build() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	add_child(column)
+	_column = column
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
 	column.add_child(header)
+	_header = header
 	var title := Label.new()
 	title.text = "Minifigure"
 	title.add_theme_font_size_override("font_size", 15)
@@ -182,6 +226,7 @@ func _build() -> void:
 	called.add_theme_font_size_override("font_size", 12)
 	called.modulate = Color(1, 1, 1, 0.7)
 	header.add_child(called)
+	_called = called
 	_name = LineEdit.new()
 	_name.custom_minimum_size = Vector2(170, 0)
 	_name.placeholder_text = "Saruman"
@@ -197,6 +242,7 @@ func _build() -> void:
 	body.add_theme_constant_override("separation", 14)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(body)
+	_body = body
 
 	body.add_child(_build_slots())
 	body.add_child(_build_picker())
@@ -207,6 +253,7 @@ func _build_slots() -> Control:
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(200, 0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_slots_scroll = scroll
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 3)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -219,6 +266,7 @@ func _build_slots() -> Control:
 		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(0, 35)
 		button.pressed.connect(_choose_slot.bind(slot))
+		button.pressed.connect(_take_turn.bind(true))
 		list.add_child(button)
 		_slot_buttons[slot] = button
 		# The picture and the words are the button's children rather than
@@ -252,10 +300,12 @@ func _build_picker() -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_picker = column
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	column.add_child(row)
+	_search_row = row
 	_search = LineEdit.new()
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.clear_button_enabled = true
@@ -297,8 +347,8 @@ func _build_picker() -> Control:
 	_grid.add_theme_constant_override("v_separation", 4)
 	scroll.add_child(_grid)
 	_sight = ThumbTile.Sight.new(scroll, _grid)
-	scroll.resized.connect(func() -> void:
-		_grid.columns = maxi(2, int((scroll.size.x - 14.0) / (CELL + 4))))
+	_grid_scroll = scroll
+	scroll.resized.connect(_fit_grid)
 
 	_colour_note = Label.new()
 	_colour_note.add_theme_font_size_override("font_size", 11)
@@ -316,6 +366,7 @@ func _build_figure() -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	column.custom_minimum_size = Vector2(250, 0)
+	_figure_column = column
 
 	var frame := SubViewportContainer.new()
 	frame.stretch = true
@@ -324,6 +375,7 @@ func _build_figure() -> Control:
 	frame.accessibility_name = "The minifigure"
 	frame.gui_input.connect(_on_preview_input)
 	column.add_child(frame)
+	_frame = frame
 	_viewport = SubViewport.new()
 	_viewport.msaa_3d = Viewport.MSAA_4X
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
@@ -367,6 +419,7 @@ func _build_figure() -> Control:
 	buttons.add_theme_constant_override("separation", 8)
 	buttons.alignment = BoxContainer.ALIGNMENT_END
 	column.add_child(buttons)
+	_actions = buttons
 	_button(buttons, "Keep", _keep, "Keep this figure to use again")
 	var place: Button = _button(buttons, "Place in model", _place,
 		"Stand it on a stud: point, R to turn it, click to put it down")
@@ -377,11 +430,13 @@ func _build_figure() -> Control:
 	kept.add_theme_font_size_override("font_size", 12)
 	kept.modulate = Color(1, 1, 1, 0.7)
 	column.add_child(kept)
+	_kept = kept
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.custom_minimum_size = Vector2(0, 60)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
+	_shelf_scroll = scroll
 	_shelf = VBoxContainer.new()
 	_shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_shelf.add_theme_constant_override("separation", 2)
@@ -400,6 +455,181 @@ func _button(row: Container, text: String, action: Callable, tip: String) -> But
 	button.pressed.connect(action)
 	row.add_child(button)
 	return button
+
+
+# -- laid out for a finger ---------------------------------------------------
+
+
+## The room across, in the interface's units, the three columns want once
+## sized for a finger: a phone has 720 across, and so does a tablet held
+## upright (Main.screen_factor, Phone.tablet_factor); a tablet held
+## sideways 960 or more.
+const COLUMNS := 900.0
+
+## The rows of colours shown at once where they scroll: a part of the next
+## one says there are more.
+const COLOUR_ROWS := 2.5
+
+
+## Laid out for the room there is, on a phone or a tablet. The desktop's
+## three columns want 860 units across at the least, and a phone has 720:
+## the figure, Keep and Place in model were off its screen. Where they
+## fit (a tablet held sideways) they stay. Where they do not, the slots
+## and a slot's choices take turns in one column: a slot pressed shows
+## what it can be, and Back goes back to the slots. On a phone, which has
+## no room beside them for the figure either, the figure is over them,
+## turning, with Keep and Place in model along the foot and the figures
+## kept under the slots. Every way the moulds and Draw a print… are on a
+## line under the search, and the colours are a list of their own that
+## scrolls: 84 of them a fingertip each are taller than a phone. The same
+## controls moved, never made again, so each works as it does on the
+## desktop; and nothing is moved there.
+func _arrange() -> void:
+	if not Phone.on():
+		return
+	if _back == null:
+		_make_for_a_finger()
+	var turns: bool = get_viewport().get_visible_rect().size.x < COLUMNS
+	var stacked: bool = turns and not Phone.wide()
+	if _laid == [turns, stacked]:
+		return
+	_laid = [turns, stacked]
+	_back.visible = turns
+	_slots_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL if turns else Control.SIZE_FILL
+	var row: float = Phone.px(get_viewport(), Phone.TARGET)
+	_shelf_scroll.custom_minimum_size.y = row * 1.5 if turns else 60.0
+	_palette_scroll.custom_minimum_size.y = (row
+		+ float(_palette.get_theme_constant("v_separation"))) * COLOUR_ROWS
+	# The figure over the slots, or beside them as on the desktop.
+	if stacked:
+		_put(_called, _name_row, 0)
+		_put(_name, _name_row, 1)
+		_put(_name_row, _column, 1)
+		_put(_frame, _column, 2)
+		_put(_summary, _column, 3)
+		_put(_body, _column, 4)
+		_put(_actions, _column, 5)
+		_put(_slots_scroll, _bench, 0)
+		_put(_kept, _bench, 1)
+		_put(_shelf_scroll, _bench, 2)
+		_put(_bench, _body, 0)
+	else:
+		_put(_called, _header, 2)
+		_put(_name, _header, 3)
+		_put(_slots_scroll, _body, 0)
+		_put(_frame, _figure_column, 0)
+		_put(_summary, _figure_column, 1)
+		_put(_actions, _figure_column, 2)
+		_put(_kept, _figure_column, 3)
+		_put(_shelf_scroll, _figure_column, 4)
+		_column.move_child(_name_row, -1)
+		_body.move_child(_bench, -1)
+	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL if stacked else Control.SIZE_FILL
+	_slots_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL if stacked else Control.SIZE_FILL
+	_shelf_scroll.size_flags_vertical = Control.SIZE_FILL if stacked else Control.SIZE_EXPAND_FILL
+	# The figure a fifth of the screen tall, and 150 points at the least.
+	_frame.custom_minimum_size = Vector2(0.0, maxf(Phone.px(get_viewport(), 150.0),
+		get_viewport().get_visible_rect().size.y * 0.2)) if stacked else Vector2(250, 300)
+	_name_row.visible = stacked
+	_bench.visible = stacked
+	_figure_column.visible = not stacked
+	for shown: Control in [_frame, _colour_note, _palette_scroll, _slots_scroll, _picker]:
+		shown.visible = true
+	_show_second()
+	_take_turn(_choosing)
+	_fit_grid_later()
+
+
+## What only a finger's layout has, made the first time it is wanted:
+## Back, first in the search row, and the moulds and Draw a print… on a
+## line of their own under it (at a fingertip the row was wider than a
+## tablet's middle column, which ran the figure's off the screen); the
+## slots with the figures kept under them, the name's own line, and the
+## colours' own list.
+func _make_for_a_finger() -> void:
+	_second_row = HBoxContainer.new()
+	_second_row.add_theme_constant_override("separation", 8)
+	_picker.add_child(_second_row)
+	_picker.move_child(_second_row, _search_row.get_index() + 1)
+	_back = _button(_search_row, "Back", _take_turn.bind(false), "Back to the figure's slots")
+	_search_row.move_child(_back, 0)
+	_put(_group, _second_row, 0)
+	_put(_make, _second_row, 1)
+	_group.custom_minimum_size.x = 0.0
+	_group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bench = VBoxContainer.new()
+	_bench.add_theme_constant_override("separation", 8)
+	_bench.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bench.visible = false
+	_body.add_child(_bench)
+	_name_row = HBoxContainer.new()
+	_name_row.add_theme_constant_override("separation", 8)
+	_name_row.visible = false
+	_column.add_child(_name_row)
+	_palette_scroll = ScrollContainer.new()
+	_palette_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_picker.add_child(_palette_scroll)
+	_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_put(_palette, _palette_scroll, 0)
+	# The grid as wide as its room, not its room as wide as the grid: laid
+	# out again narrower, its columns from before held it wider than the
+	# screen, and its width is what they are worked out from.
+	_grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+
+
+## The slots, or the chosen slot's choices, where they take turns: a slot
+## pressed shows what it can be, and Back the slots again.
+func _take_turn(choosing: bool) -> void:
+	if _laid.is_empty() or not bool(_laid[0]):
+		return
+	_choosing = choosing
+	(_bench if bool(_laid[1]) else _slots_scroll).visible = not choosing
+	_picker.visible = choosing
+
+
+## The search row's second line, while it has something on it.
+func _show_second() -> void:
+	if _second_row != null:
+		_second_row.visible = _group.visible or _make.visible
+
+
+## While the keyboard is up for its search or its name, the figure and the
+## colours make way for the field and the parts found: the room above the
+## keyboard is a little over half a phone's screen, and less of a tablet
+## held sideways, and with the figure there the parts found were under it.
+func _make_way() -> void:
+	if _laid.is_empty():
+		return
+	if not is_instance_valid(_touch):
+		_touch = get_tree().get_first_node_in_group(TouchSizing.SELF) as TouchSizing
+	var way: bool = _touch != null and _touch.keyboard > 0.0 and _touch.typing_in(self)
+	if _frame.visible == way:
+		_frame.visible = not way
+		_colour_note.visible = not way
+		_palette_scroll.visible = not way
+
+
+## As many columns as the grid's room takes, each a part's cell, which on a
+## phone or a tablet is as wide as a fingertip makes it.
+func _fit_grid() -> void:
+	var cell: float = CELL
+	if Phone.on():
+		cell = maxf(CELL, Phone.px(get_viewport(), Phone.TARGET))
+	_grid.columns = maxi(2, int((_grid_scroll.size.x - 14.0) / (cell + 4)))
+
+
+func _fit_grid_later() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(_grid_scroll):
+		_fit_grid()
+
+
+## [param node] moved into [param parent], at [param index].
+static func _put(node: Node, parent: Node, index: int) -> void:
+	if node.get_parent() != parent:
+		node.reparent(parent, false)
+	parent.move_child(node, mini(index, parent.get_child_count() - 1))
 
 
 # -- choosing ----------------------------------------------------------------
@@ -429,6 +659,7 @@ func _choose_slot(slot: String) -> void:
 	_fill_groups()
 	_fill_grid()
 	_fill_palette()
+	_show_second()
 
 
 ## The slot's moulds or kinds, biggest first, behind "every one".
@@ -862,6 +1093,10 @@ func controls_by_name() -> Dictionary:
 	named["minifig_search"] = _search
 	named["minifig_group"] = _group
 	named["minifig_make"] = _make
+	named["minifig_name"] = _name
+	# Back to the slots, where they and a slot's choices take turns.
+	if _back != null:
+		named["minifig_back"] = _back
 	# And the editor in front, while one is open.
 	if _print_editor != null and _print_editor.visible:
 		named.merge(_print_editor.controls_by_name())

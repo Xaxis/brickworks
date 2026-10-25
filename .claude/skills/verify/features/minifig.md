@@ -135,6 +135,9 @@ the model, and the design assistant doing the same with `add_minifig`.
   its cloth's, which the note under them says); the figure turning
   on the right (its own `SubViewport` and `BrickWorld`; drag to turn), a name,
   Surprise me, Keep, Place in model, and the kept figures. Escape closes it.
+  On a phone or a tablet held upright the slots and a slot's choices take
+  turns, the figure over them on a phone ([building](building.md),
+  `minifig builder by finger`; `tools/web/dialogs_flow.mjs`).
 - `placing` (`Builder.hold_figure` / `settle_figure` / `put_figure`): Place hands
   the figure to the builder, which holds it like a part — a ghost of every part,
   red where it would stand in something; R turns it; a click stands it on a pair

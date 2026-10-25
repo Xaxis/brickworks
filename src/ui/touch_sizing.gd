@@ -44,6 +44,9 @@ const SIZED := &"touch_sized_only"
 ## What a control was on the desktop, and what it was given here.
 const WAS := &"touch_was"
 
+## This, for a dialog that lays itself out round the keyboard (MinifigDialog).
+const SELF := &"touch_sizing"
+
 ## Every font size a control may have, by its theme's name for it.
 const FONTS: Array[StringName] = [&"font_size", &"normal_font_size", &"bold_font_size",
 	&"italics_font_size", &"bold_italics_font_size", &"mono_font_size",
@@ -61,6 +64,7 @@ var _look_at: int = 0
 
 
 func _ready() -> void:
+	add_to_group(SELF)
 	wide = Phone.wide()
 	get_tree().node_added.connect(_on_added)
 	get_viewport().size_changed.connect(_place_all, CONNECT_DEFERRED)

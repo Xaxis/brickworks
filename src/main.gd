@@ -676,6 +676,11 @@ func _tell_page() -> void:
 		"scenery": _store.scenery.size(),
 		"own_plate": _floor != null and _floor.has_own_plate(),
 		"held": _builder.held_part,
+		# ...or a minifigure, and the one on the Minifigure builder's bench
+		# while it is open, part by slot (tools/web/dialogs_flow.mjs builds
+		# one by finger and stands it in the model).
+		"figure_held": not _builder.held_figure.is_empty(),
+		"bench": _figures.figure.parts if _figures != null and _figures.visible else {},
 		# ...the kinds of end it joins by (JointSnap.ends_of: pin, pin_hole,
 		# tyre...), so tools/web/cad_task_flow.mjs aims a pin at a hole and a
 		# tyre at a rim, as a person aims a part by what it goes on...

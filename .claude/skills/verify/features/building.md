@@ -365,15 +365,36 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   started where signed in; a 3D model and an LDraw model exported (downloads);
   Find typed into; the booklet's Save as PDF (its bar measured in the tab, a
   PDF downloaded); Model tree and Properties (on a tablet the parts panel not
-  under them, and back as they fold); and Library, Account, Render, Parts
-  list, My collection, Part maker, Colour the hidden parts, Keys and
-  controls, About, Clear and Floor size opened and put away by their own
-  close buttons, each step audited. Not yet: the Minifigure builder, whose
-  two columns side by side are wider than a phone (a row with a grid in it
-  never flows: a grid that takes its columns from its width grew without end
-  in a flow). On base it fails with
+  under them, and back as they fold); Library, "UNICEF" typed above the
+  keyboard and the van opened, its 65 parts in a tab of its own (fig257); Render, a quick
+  picture made and downloaded; Parts list, My collection, Part maker, Colour
+  the hidden parts, Keys and controls, About, Clear and Floor size opened and
+  put away by their own close buttons; the Minifigure builder (below), a
+  torso searched for above the keyboard, chosen by its tile and the figure
+  placed by a tap on an empty baseplate; and last Account's Sign out, the
+  sign-in screen up where the test account was signed in; each step
+  audited. Locally the server is given the parts bucket (`--parts-url`),
+  where the live library is. On base it fails with
   the named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
+- `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
+  builder's three columns want 860 units across at the least, and a phone
+  has 720 (a tablet held upright too): its figure, Keep and Place in model
+  were off a phone's screen. On a phone or a tablet (`Phone.on`) it is laid
+  out for the room there is before it shows, and again as the screen turns:
+  where the columns fit (900 units across, a tablet held sideways) as on the
+  desktop; where they do not, the slots and a slot's choices take turns in
+  one column (a slot pressed shows its choices, Back the slots again), and
+  on a phone the figure is over them a fifth of the screen tall, with Keep
+  and Place in model along the foot, the name on a line of its own and the
+  figures kept under the slots. The search row's moulds and Draw a print…
+  go on a second line, the colours scroll in a list of their own two and a
+  half rows tall (84 at a fingertip each are taller than a phone), and the
+  grid's columns are worked out with a fingertip's cell. While the keyboard
+  is up on a phone the figure and the colours make way for what the search
+  finds (`_make_way`). The same controls moved, never made again; nothing is
+  moved on a desktop. The page is told the figure on the bench and whether
+  one is held (`bench`, `figure_held` in `window.brickworksState`).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is
