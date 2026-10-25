@@ -2042,8 +2042,8 @@ plan with Claude as the client.
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
   system"). It shows rather than says: the hero is one line ("A complete CAD
-  for LEGO® models", `h1.display`), one sub-line (in your browser or on your
-  phone, nothing to install, free), one primary action (Open Brickworks) and a quiet link to the
+  for LEGO® models", `h1.display`), one sub-line (in your browser, on a computer,
+  tablet or phone; nothing to install, free), one primary action (Open Brickworks) and a quiet link to the
   desktop download, over the builder at work on the castle
   (`img/hero-*.webp`) under a window's bar with the app's address; `#features`,
   six pictures from the app of what a Studio or LDD user cannot do there, one
@@ -2086,12 +2086,13 @@ plan with Claude as the client.
   as numbered steps with what it costs (`#claude`), the questions (FAQPage
   JSON-LD, the same answers), the dimensions (a `.table`). Since 2026-10-24:
   signing in (`#sign-in`: `ui:sign in with orangecheck`, and on the desktop
-  `ui:sign in with orangecheck on the desktop`, said to be its next
-  release), building together (`#together`, `ui:build together`), Tested
-  (`#tested`, `lib:the Tested mark's four tests`), a phone (`phone layout`
-  in [building](building.md)) and a screen reader or the keys alone
-  (`#access`, `ui:accessibility`: the desktop's next release, never the
-  browser's canvas). `privacy page` (`web/privacy.html`): what an account
+  `ui:sign in with orangecheck on the desktop`, from 0.8.0), building
+  together (`#together`, `ui:build together`; the desktop from 0.8.0),
+  Tested (`#tested`, `lib:the Tested mark's four tests`), a tablet or a
+  phone (`phone layout`, `tablet layout` in [building](building.md)), a
+  booklet saved as PDF or PNG pages ([view](view.md)), and a screen reader
+  or the keys alone (`#access`, `ui:accessibility`: desktop 0.8.0, never
+  the browser's canvas). `privacy page` (`web/privacy.html`): what an account
   holds and what Brickworks never sees — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
   the CSP in `deploy.sh`; change one, change the page. `changelog page`
@@ -2127,16 +2128,18 @@ plan with Claude as the client.
   Then the field, row by row (`.table.wide`, site.css): Brickworks, Studio,
   Mecabricks, LeoCAD and LDCad, from docs/COMPETITIVE.md's matrix, "—" where
   none was found. Then where the others still lead, plainly: renders, prices,
-  instructions as files, rubber bands and springs, years. Every
+  rubber bands and springs, years. Every
   claim about another tool is sourced at the foot (their own pages and forum
   threads, read 2026-10-12 and 13, versions rechecked 2026-10-24); a claim
   that cannot be sourced is cut, not softened. Studio has project tabs and an
   instruction maker, so neither is claimed as ours alone; its stability check
-  exists, so the claim is what ours adds. What is not yet in a desktop
-  release is said so ("in the next desktop release"). Each Brickworks claim
+  exists, so the claim is what ours adds. What the desktop gets only after
+  0.7.0 is said so ("desktop 0.8.0": Build together, the screen reader,
+  orangecheck on the desktop). Each Brickworks claim
   and the feature that proves it:
-  - in a browser, on a phone, every tab a project, models on every device:
-    `cli:web build and deploy`, [building](building.md) `phone layout`,
+  - in a browser, on a tablet or a phone, every tab a project, models on
+    every device: `cli:web build and deploy`, [building](building.md)
+    `phone layout` and `tablet layout`,
     `ui:new tab or window`, `lib:models kept with the account`,
     `ui:download page`;
   - will it stand: `lib:stability`, `lib:balance`, `ui:stress view`;
@@ -2144,11 +2147,13 @@ plan with Claude as the client.
   - Studio files: `ui:open a studio model` (its own parts carried),
     `ui:save as a studio model`, `ui:open an ldd model`;
   - STL, OBJ, GLB: `ui:3d model export`;
-  - instructions: `ui:the booklet` (a big one opens in seconds, 0.7.0),
-    `ui:the booklet by hand`, `ui:the booklet page by hand`;
+  - instructions: `ui:the booklet`, `ui:the booklet by hand`,
+    `ui:the booklet page by hand`, and [view](view.md)'s `the booklet as a
+    PDF and as PNG pages`;
   - the field's rows: connections `lib:occupancy lattice`,
     `lib:placing a part by its connectors`, `ui:snap onto a joint`; finding a
-    part `lib:part search`, `ui:find a part from a photo`,
+    part `lib:part search` (BrickLink's and Rebrickable's names and element
+    numbers, names248), `ui:find a part from a photo`,
     `ui:techniques in the bin`; rendering `ui:photo-real render`; flexible
     parts `lib:flexible parts along a path`, `ui:hoses and chains by hand`;
     making parts `lib:element maker`, `lib:change a part`,
@@ -2161,8 +2166,8 @@ plan with Claude as the client.
     `lib:the Tested mark kept and shown`; accessibility `ui:accessibility`;
     AI `lib:design loop`, `ui:assistant on or off`;
   - where the others lead: `ui:photo-real render`, `ui:3d model export`,
-    `ui:parts lists for shops`, `ui:the booklet`,
-    `lib:flexible parts along a path`, `ui:tour`.
+    `ui:parts lists for shops`, `lib:flexible parts along a path`,
+    `ui:tour`.
   The clips are muted, looping, `preload
   ="none"` with a poster, WebM then MP4 (Playwright's Chromium has no H.264, so
   a check there plays the WebM), and `compare.js` plays each only while it is on
