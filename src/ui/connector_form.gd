@@ -258,6 +258,9 @@ func setup(with: ClaudeConnector) -> void:
 	connector.trouble.connect(func(why: String) -> void:
 		_say(why, TROUBLE))
 	connector.relay_ok.connect(_settle)
+	# Let in while the session kept here is renewed, and then answered.
+	if connector.account != null:
+		connector.account.changed.connect(_settle)
 	connector.replaced.connect(func() -> void:
 		_say("Another Brickworks tab took this one's place. Switch it on here "
 			+ "to take it back.", OFF))
@@ -333,6 +336,8 @@ func _settle() -> void:
 	elif _parted and not on:
 		_say("Disconnected. Claude can no longer reach your Brickworks; connect "
 			+ "again any time.", OFF)
+	elif on and connector.account != null and connector.account.renewing:
+		_say(Account.waiting_words("Claude can reach this tab"), WAITING)
 	elif connector.waiting_for_claude():
 		_say("Waiting for you to connect in Claude…", WAITING)
 	elif on and not _heard.is_empty():

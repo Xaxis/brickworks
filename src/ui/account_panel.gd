@@ -402,7 +402,11 @@ func _follow() -> void:
 			_show_feed(0)
 	_who.text = "Signed in as %s" % account.email if not account.email.is_empty() \
 		else "Signed in"
-	_state.text = ("Brickworks could not be reached just now, so this is "
+	# Let in from what this device kept while it is renewed: what waits on
+	# it says so (Account.renewing).
+	_state.text = (Account.waiting_words("Saving to your account, sharing and Claude go on")
+		if account.renewing
+		else "Brickworks could not be reached just now, so this is "
 		+ "the account kept on this device. It is checked again when "
 		+ "Brickworks can be reached." if account.offline
 		else "Signed in on this device until you sign out.")

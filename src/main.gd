@@ -854,6 +854,8 @@ func _tell_page() -> void:
 				"not_needed"][_account.state],
 			"email": _account.email,
 			"offline": _account.offline,
+			# Let in from what this browser kept, the renewal still out.
+			"renewing": _account.renewing,
 			"gated": _gated(),
 			# The age question (supabase/trust.sql): whether it is asked,
 			# and the answer as the deployment keeps it.

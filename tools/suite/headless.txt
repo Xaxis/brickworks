@@ -181,3 +181,4 @@ session_hand
 returning
 gate_line
 nothing_changed
+renewal           # a returning person let in at once, renewed behind the model (walk256 A17)

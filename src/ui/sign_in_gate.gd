@@ -7,12 +7,16 @@
 ## are signing in to, and takes every click and key until [Account] lets
 ## them in — then it goes, and the builder is as they left it.
 ##
-## What it shows follows the account: "Signing you in…" while a session
-## kept on this device is renewed (so a returning visitor sees that for a
-## moment, not a form); the email-then-code form ([SignInForm]) for
-## somebody signed out, with the reason when a session ended rather than
-## being ended; and "cannot reach Brickworks" with Try again when there is
-## nowhere to sign in — a first start with no connection.
+## What it shows follows the account: nothing at all for a returning
+## visitor, whose session kept on this device lets them in at once and is
+## renewed behind their model (Account.renewing: walk256's A17 waited about
+## 18 s on "Signing you in…" at every load), the screen coming up only if
+## the renewal is refused; "Signing you in…" while the deployment is still
+## asked where to sign in, or just after a code, for the age question; the
+## email-then-code form ([SignInForm]) for somebody signed out, with the
+## reason when a session ended rather than being ended; and "cannot reach
+## Brickworks" with Try again when there is nowhere to sign in — a first
+## start with no connection.
 ##
 ## Then, once, the age question (2026-10-18, supabase/trust.sql): the month
 ## and year they were born, asked of everyone the same way, with nothing
