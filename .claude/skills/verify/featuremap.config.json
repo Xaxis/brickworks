@@ -3073,6 +3073,13 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "who modelled a shared model",
+      "entry": "supabase/modelled_by.sql",
+      "reach": "python3 tools/minitest.py tests/test_modelled_by.py; PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/modelled_by.sql --dry --try=tools/modelled_by_try.sql --table=shared_models   (.env sourced; rolled back; the lead applies it without --dry; then a card and /m/<id> of the LDraw shelf say Modelled by)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "first steps browser flow",
       "entry": "tools/web/first_steps_flow.mjs",

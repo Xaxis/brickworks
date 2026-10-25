@@ -19,7 +19,8 @@ index's (tools/library_build.py, INDEX: bench/results/library-2026-10-22/
 library/index.json unless said), so the shelf says what the app's Library
 says. Writes LIST (tools/web/gallery_seeds/ldraw_library.json unless said),
 entries as src/dev/gallery_seed.gd reads them: the file, the title
-("LEGO® set 6080 King's Castle", LEGO® only as an adjective), "Brickworks"
+("6080 King's Castle", and "LEGO® set 6080 King's Castle" in its words,
+LEGO® only as an adjective and never in a title), "Brickworks"
 as who shares it, the credit {by, licence, page} the file is published
 with, the licence's id on the site (cc-by-2.0 or cc-by-4.0), and what its
 page says. --table prints each file's sections, author and licence lines
@@ -82,7 +83,7 @@ SHELF = [
     ("omr-21011-1", "architecture", ["landmark", "gate", "berlin"], None),
     ("omr-21016-1", "architecture", ["landmark", "gate", "seoul"], None),
     ("omr-5521-1", "vehicle", ["boat", "speedboat", "model team"], None),
-    ("omr-392-1", "vehicle", ["racing car", "formula 1", "hobby set"], None),
+    ("omr-5935-1", "vehicle", ["seaplane", "island", "adventurers"], None),
     ("omr-3063-1", "town", ["seaplane", "airfield", "minifigures"], None),
     ("omr-40448-1", "vehicle", ["car", "vintage", "minifigures"], None),
 ]
@@ -141,16 +142,23 @@ def read(entry: dict) -> dict:
     return {"path": path, "bytes": len(raw), "sections": found, "by": by, "licence": licence}
 
 
+def number(entry: dict) -> str:
+    """A set's number without its -1, which every set has; a second version
+    keeps its -2."""
+    return re.sub(r"-1$", "", entry["set"])
+
+
 def title(entry: dict) -> str:
-    """"LEGO® set 6080 King's Castle": a set's number without its -1, which
-    every set has; a second version keeps its -2."""
-    number = re.sub(r"-1$", "", entry["set"])
-    return with_marks(f"LEGO® set {number} {entry['name']}")
+    """"6080 King's Castle": which set it is, by its number and the name it
+    was sold under. The mark is never in a title: the site refuses one that
+    uses it (api/_names.js OWNED, as Rebrickable does, docs/TRADEMARKS.md
+    rule 6), so its words say "LEGO® set 6080", the mark as an adjective."""
+    return with_marks(f"{number(entry)} {entry['name']}")
 
 
 def about(entry: dict, by: str, licence: str) -> str:
     theme = with_marks(entry["theme"].replace(" > ", ", "))
-    return (f"{title(entry)}, from {entry['year']} ({theme}), as {by} modelled it for LDraw's Official "
+    return (f"LEGO® set {title(entry)}, from {entry['year']} ({theme}), as {by} modelled it for LDraw's Official "
             f"Model Repository: {entry['parts']:,} parts. Shared here from the LDraw library under its "
             f"licence, {SAID[licence]}, crediting {by}.")
 
