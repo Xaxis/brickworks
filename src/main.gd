@@ -7810,7 +7810,10 @@ func _dress_for_phone() -> void:
 ## Stress), Simulate's and the line saying what the app is busy with, sized
 ## for a finger: made after the phone's layout is.
 func _size_for_a_finger() -> void:
-	for panel: Control in [_pose, _hidden_colours, _simulate, _shell.stress.panel, _shell.status]:
+	# And the sign-in screen, which comes back over everything on Sign out:
+	# its address field was 199 by 20 points on a phone (fig257).
+	for panel: Control in [_pose, _hidden_colours, _simulate, _shell.stress.panel, _shell.status,
+			_gate]:
 		if panel != null:
 			_touch.size_panel(panel)
 	# What the app is busy with is one line, its end cut short where the

@@ -386,7 +386,12 @@ run() {
   fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
-  "$H" timeout 2700 node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
+  # The dialogs' an hour: with each dialog's main action run (fig257) a
+  # size took 2,575 s of 2,700, and 1024 x 768 ran out. Not split, which
+  # would run more at once.
+  local limit=2700
+  case "$name" in dialogs|dialogs_*) limit=3600 ;; esac
+  "$H" timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
   local code=$?
   live "$name" && echo "$(date '+%F %T') left $TAG $name exit=$code" >> "$LIVE_DB.log"
   exec {lock}>&-

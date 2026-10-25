@@ -42,7 +42,7 @@
 //                  the slots where they take turns with a slot's choices,
 //                  Place in model, and a tap standing the figure there
 //   Account        last: Sign out, and the sign-in screen up, where the
-//                  test account is signed in
+//                  test account is signed in, audited as a dialog is
 //
 // At every step the app is asked (window.brickworksAskPhone) for every
 // target a finger has and every line of text, in points, and what is open
@@ -686,10 +686,11 @@ try {
           !(after?.dialogs || []).some((d) => /AccountPanel/.test(d)));
         if (signed.state === "signed_in") {
           const way = await where("signin_email", 20);
-          await picture("signed_out");
           check(`signed out (${signed.state} to ${now.state}), the sign-in screen up `
             + `(${way ? `its address ${way.w}x${way.h}` : "none"})`,
           now.state === "signed_out" && now.gated && Boolean(way));
+          // The way back in, by finger as the rest: its address was 199 x 20.
+          await audit("signed_out", /SignInGate/, ["signin_email", "signin_send", "signin_orangecheck"]);
         } else {
           say(`not signed in here (${signed.state}): signing out is proved on a deployment`);
         }
