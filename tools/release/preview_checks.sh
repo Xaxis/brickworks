@@ -298,6 +298,15 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # Every dialog More opens, by a finger, at 390 x 844 and 430 x 932 (three
+  # to the point) and 768 x 1024 and 1024 x 768 (two): Save as typed above
+  # the keyboard, a saved model renamed and deleted, a version opened, Share
+  # published by link, a setting changed, Build together started, a 3D model
+  # and an LDraw model exported, Find, the booklet's Save as PDF, the model
+  # tree and the properties, and the rest opened and closed, each audited as
+  # the phone's is (every target 44 points or more, no text under 12, nothing
+  # off the screen or under the keyboard).
+  [dialogs]="tools/web/dialogs_flow.mjs --url=$P/app $B --out=$S/${TAG}_dialogs_web"
   # local only: desktop_same.mjs. It compares a build's desktop at 1280 x 800,
   # by a mouse, with a base build's to the pixel, and a preview has no base
   # build beside it: run it on two local exports.

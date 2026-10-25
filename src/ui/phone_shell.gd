@@ -414,8 +414,34 @@ func _toggle(sheet: Sheet, how: String) -> void:
 	if sheet.is_open():
 		sheet.close()
 		return
+	# The drawer down the left, where a tablet's parts go: folded for them.
+	var dock: SideDock = app.get("_bin_dock")
+	if wide and sheet == _parts and dock != null and dock.is_open():
+		_parts_for_dock = false
+		dock.set_open(false)
 	_make_room(sheet)
 	sheet.open(how)
+
+
+## Whether the model tree's drawer put the parts panel away, for it to
+## come back as the drawer folds.
+var _parts_for_dock: bool = false
+
+
+## The desktop's drawer down the left, with the model tree and the
+## properties in it (Shell._toggle_section): on a tablet it opened over the
+## parts panel, both on one side of the model. So it takes the panel's
+## place while it is open, and gives it back as it folds.
+func dock_toggled(open: bool) -> void:
+	if not wide or _parts == null:
+		return
+	if open and _parts.is_open():
+		_parts_for_dock = true
+		_parts.close(false)
+	elif not open and _parts_for_dock:
+		_parts_for_dock = false
+		_make_room(_parts)
+		_parts.open("side")
 
 
 ## The other sheets put away for one about to open: every one on a phone;

@@ -2241,6 +2241,11 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
+	# Save as's question, for tools/web/dialogs_flow.mjs.
+	if _save_as != null and _save_as.visible:
+		out["save_as_name"] = _save_as_name
+		out["save_as_ok"] = _save_as.get_ok_button()
+		out["save_as_cancel"] = _save_as.get_cancel_button()
 	return out
 
 
