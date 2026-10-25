@@ -48,11 +48,12 @@ def test_the_file_replaces_challenge_list_and_nothing_else() -> None:
 
 def test_the_same_rows_in_another_order() -> None:
     new, old = body("challenge_list", SQL), body("challenge_list", EARLIER)
-    assert ORDER.search(new) and ORDER.search(old)
+    found = ORDER.search(new)
+    assert found and ORDER.search(old)
     # Everything but the order is challenge_year.sql's, to the letter: the
     # same columns, the same where, at most 24.
     assert ORDER.sub("", new) == ORDER.sub("", old)
-    order = " ".join(ORDER.search(new).group(0).split())
+    order = " ".join(found.group(0).split())
     assert order == ("order by case public.challenge_state(c) when 'open' then 0 when 'upcoming' then 1 else 2 end, "
                      "case when public.challenge_state(c) = 'upcoming' then c.starts_on end asc, "
                      "c.starts_on desc, c.id desc")
