@@ -238,7 +238,12 @@ func _run() -> void:
 	steps.stop()
 	await _frames(5)
 
-	# Cancelled with the bar's Cancel, and with Timeline pressed again.
+	# Cancelled with the bar's Cancel, and with Timeline pressed again. The
+	# plan of a shape already worked out is kept (race244), so a second start
+	# was over before Cancel could be pressed, the timeline stayed up, and
+	# Select all then took only the parts its step shows: forgotten first,
+	# each start is the slow one a person would cancel.
+	_forget_plans()
 	shell.run("timeline")
 	await _frames(8)
 	job = Working.current()
@@ -248,6 +253,7 @@ func _run() -> void:
 	await _frames(3)
 	_check("Cancel stops it: no timeline, no bar", job != null and not steps.visible
 		and not steps.is_starting() and not Working.is_busy())
+	_forget_plans()
 	shell.run("timeline")
 	await _frames(8)
 	shell.run("timeline")
@@ -439,3 +445,11 @@ func _check(what: String, held: bool) -> void:
 	print("  %s %s" % ["ok  " if held else "FAIL", what])
 	if not held:
 		_failures += 1
+
+
+## Forget the plans Instructions keeps for a shape it has worked out, so a
+## start is a cold one.
+func _forget_plans() -> void:
+	Instructions._shaped_lock.lock()
+	Instructions._shaped = {}
+	Instructions._shaped_lock.unlock()
