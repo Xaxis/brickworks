@@ -363,8 +363,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Undo; a version opened from Versions; Share's name typed, published by link
   where signed in; Settings, Reduce motion changed and back; Build together
   started where signed in; a 3D model and an LDraw model exported (downloads);
-  Find typed into; the booklet's Save as PDF (its bar measured in the tab, a
-  PDF downloaded); Model tree and Properties (on a tablet the parts panel not
+  Find typed into; the booklet's tab, asked for inside the tap's activation
+  (`navigator.userActivation` read at the app's `window.open`: the headless
+  shell has no popup blocker, so any ask opened one) and heard from before
+  More is scrolled (a wait begun then ran out while More's drags took two
+  minutes under load, booklet262); its Save as PDF (its bar
+  measured in the tab, a PDF downloaded); Model tree and Properties (on a tablet the parts panel not
   under them, and back as they fold); and Library, Account, Render, Parts
   list, My collection, Part maker, Colour the hidden parts, Keys and
   controls, About, Clear and Floor size opened and put away by their own

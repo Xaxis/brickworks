@@ -81,6 +81,18 @@ try {
     console.log(`\n${width} x ${height} at ${ratio}x, by a finger`);
     const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: ratio,
       isMobile: true, hasTouch: true, acceptDownloads: true });
+    // Whether a tap's activation still held each time the app asked for a
+    // tab: a phone's browser opens one only then, and the headless shell
+    // these flows run in has no popup blocker, so any ask opened one. It
+    // holds 5 s, from the tap or from the flow's last look before it
+    // (Playwright's evaluate is an activation too).
+    await context.addInitScript(() => {
+      const open = window.open;
+      window.open = function (...args) {
+        (window.brickworksAsked ||= []).push(Boolean(navigator.userActivation?.isActive));
+        return open.apply(this, args);
+      };
+    });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -444,21 +456,23 @@ try {
 
     // Instructions: the booklet's own tab, its Save as PDF a fingertip.
     if (step("booklet")) {
-      let opened = context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
+      // Heard from before More is scrolled, and waited for from the tap. A
+      // wait begun before the scroll ran out during it: under load each
+      // drag of the list took 14 s, Instructions was reached after two
+      // minutes, and the tab its tap opened at once came to no one, on
+      // m173's preview at 430 and 768 (booklet262). One tap: a second found
+      // the first booklet drawing, and opened nothing.
+      const tabs = [];
+      const heard = (tab) => tabs.push(tab);
+      context.on("page", heard);
+      await page.evaluate(() => { window.brickworksAsked = []; });
       await more("instructions");
-      const active = await page.evaluate(() => navigator.userActivation?.isActive);
-      let tab = await opened;
-      if (!tab) {
-        // Tapped again, as a person does when nothing came: on a loaded box
-        // the frame the tab is opened in can come after the tap's leave to
-        // open one has gone.
-        say(`no tab from the first tap (the app said "${(await state()).said || ""}"): tapped again`);
-        opened = context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
-        await more("instructions");
-        tab = await opened;
-      }
-      if (check(`Instructions: the booklet's tab opened (the tap ${active ? "is" : "is not"} a user's `
-        + `activation; the app said "${(await state()).said || ""}")`, Boolean(tab))) {
+      const tab = tabs[0] || await context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
+      context.off("page", heard);
+      const asked = (await page.evaluate(() => window.brickworksAsked)) || [];
+      const when = asked.map((held) => (held ? "inside the tap's activation" : "after it had gone"));
+      if (check(`Instructions: the booklet's tab opened (${asked.length ? `asked for ${when.join(", then ")}`
+        : "never asked for"}; the app said "${(await state()).said || ""}")`, Boolean(tab) && asked[0] === true)) {
         const save = tab.locator("#save-pdf");
         await save.waitFor({ state: "visible", timeout: 240000 }).catch(() => null);
         const bar = await tab.evaluate(() => [...document.querySelectorAll(".bar button:not([hidden])")].map((b) => {
