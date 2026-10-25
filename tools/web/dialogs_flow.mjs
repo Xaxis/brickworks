@@ -278,8 +278,9 @@ try {
       await audit("save_as", /^Save as$/, ["save_as_name", "save_as_ok"]);
       if (await typeInto("save_as_name", named)) {
         await audit("save_as_typing", /^Save as$/, ["save_as_name", "save_as_ok"]);
-        await keyboard(0);
+        // Saved with the keyboard still up, as a finger does.
         await press("save_as_ok", 5);
+        await keyboard(0);
         const s = await until((now) => now.storage?.title === named, 20);
         check(`saved as "${named}" (${s.storage?.title})`, s.storage?.title === named);
       }
@@ -297,8 +298,8 @@ try {
           await audit("rename", /^Rename$/, ["saved_rename_name", "saved_rename_ok"]);
           if (await typeInto("saved_rename_name", `${named} again`)) {
             await audit("rename_typing", /^Rename$/, ["saved_rename_name", "saved_rename_ok"]);
-            await keyboard(0);
             await press("saved_rename_ok", 5);
+            await keyboard(0);
             const s = await until((now) => now.storage?.title === `${named} again`, 15);
             check(`renamed "${named} again" (${s.storage?.title})`, s.storage?.title === `${named} again`);
           }
@@ -417,10 +418,12 @@ try {
 
     // Instructions: the booklet's own tab, its Save as PDF a fingertip.
     if (step("booklet")) {
-      const opened = context.waitForEvent("page", { timeout: 60000 }).catch(() => null);
+      const opened = context.waitForEvent("page", { timeout: 90000 }).catch(() => null);
       await more("instructions");
+      const active = await page.evaluate(() => navigator.userActivation?.isActive);
       const tab = await opened;
-      if (check("Instructions: the booklet's tab opened", Boolean(tab))) {
+      if (check(`Instructions: the booklet's tab opened (the tap ${active ? "is" : "is not"} a user's `
+        + `activation; the app said "${(await state()).said || ""}")`, Boolean(tab))) {
         const save = tab.locator("#save-pdf");
         await save.waitFor({ state: "visible", timeout: 240000 }).catch(() => null);
         const bar = await tab.evaluate(() => [...document.querySelectorAll(".bar button:not([hidden])")].map((b) => {

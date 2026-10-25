@@ -254,6 +254,9 @@ func size_tree(root: Node) -> void:
 
 
 func _size_one(control: Control, k: float, widest: float) -> void:
+	# The notices strip is drawn for a finger already (Main._for_a_finger).
+	if control.has_meta(&"for_a_finger"):
+		return
 	var was: Dictionary = control.get_meta(WAS, {})
 	for item: StringName in FONTS:
 		if not control.has_theme_font_size(item):
@@ -368,7 +371,7 @@ func _size_window(window: Window) -> void:
 			for n: int in menu.item_count:
 				longest = maxf(longest, font.get_string_size(menu.get_item_text(n),
 					HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-			var across: float = room().size.x - k * (24.0 + 2.0 * 12.0) - k * 24.0
+			var across: float = room().size.x - k * 96.0
 			if longest > across:
 				size = maxi(ceili(k * Phone.LEAST_TEXT), floori(size * across / longest))
 				menu.add_theme_font_size_override("font_size", size)
@@ -435,6 +438,65 @@ static func frame_of(window: Window) -> Array[float]:
 		border.expand_margin_right, border.expand_margin_bottom]
 
 
+## A dialog wider than the screen made narrower, and laid out again: its
+## long lines wrapped, and its rows of buttons let flow onto a second line
+## ("Deleted “…” Undo"; the parts list's What do I need?, Save as CSV,
+## BrickLink, Rebrickable and Done ran 300 points off a phone).
+func _narrower(dialog: Node, across: float) -> void:
+	var wrapped: bool = _wrap_words(dialog, across)
+	if _flow_rows(dialog, across) or wrapped:
+		_place_later(dialog)
+
+
+## Every row in [param root] wider than [param across] let flow: its
+## children moved into a flow inside it, which wraps them. The row stays,
+## for whoever made it and keeps it.
+static func _flow_rows(root: Node, across: float) -> bool:
+	var flowed: bool = false
+	var rows: Array[Node] = root.find_children("*", "HBoxContainer", true, false)
+	rows.reverse()
+	for found: Node in rows:
+		var row: HBoxContainer = found
+		if row.get_child_count() < 2 or row.get_combined_minimum_size().x <= across \
+				or row.get_child(0) is HFlowContainer or not row.get_parent() is Container:
+			continue
+		var flow := HFlowContainer.new()
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		flow.alignment = row.alignment as FlowContainer.AlignmentMode
+		flow.add_theme_constant_override("h_separation", row.get_theme_constant("separation"))
+		flow.add_theme_constant_override("v_separation", row.get_theme_constant("separation"))
+		flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var children: Array[Node] = row.get_children()
+		row.add_child(flow)
+		for child: Node in children:
+			child.reparent(flow, false)
+		flowed = true
+	return flowed
+
+
+## Every line in [param root] too wide for [param across] wrapped: one
+## wider than it, or one whose row of buttons is, which then takes the room
+## its row leaves it.
+static func _wrap_words(root: Node, across: float) -> bool:
+	var wrapped: bool = false
+	for found: Node in root.find_children("*", "Label", true, false):
+		var label: Label = found
+		if label.autowrap_mode != TextServer.AUTOWRAP_OFF or label.clip_text \
+				or not label.is_visible_in_tree():
+			continue
+		var row := label.get_parent() as HBoxContainer
+		var in_row: bool = row != null and row.get_combined_minimum_size().x > across \
+			and label.get_minimum_size().x > across * 0.3
+		if label.get_minimum_size().x <= across and not in_row:
+			continue
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if in_row:
+			label.size_flags_horizontal |= Control.SIZE_EXPAND
+		label.custom_minimum_size.x = across * 0.3 if in_row else minf(label.custom_minimum_size.x, across)
+		wrapped = true
+	return wrapped
+
+
 ## A Window placed for a finger: on a phone along the foot, as wide as the
 ## screen; on a tablet in the middle. Above the keyboard either way, and
 ## never taller than the room there.
@@ -460,6 +522,10 @@ func _lay_window(window: Window) -> void:
 	var gap: float = k * (GUTTER if wide else 0.0)
 	var most: Vector2 = Vector2(space.size.x - frame[0] - frame[2] - gap * 2.0,
 		space.size.y - frame[1] - frame[3] - gap * 2.0 - (0.0 if wide else k * 8.0))
+	# A row wider than the screen ("Deleted “…” Undo"): its words wrap, and
+	# it is laid out again.
+	if not wide:
+		_narrower(window, most.x)
 	if not wide:
 		size.x = most.x
 	size = Vector2(clampf(maxf(size.x, least.x), 0.0, most.x), clampf(least.y, 0.0, most.y))
@@ -485,8 +551,8 @@ func _lay_panel(panel: Control) -> void:
 	panel.anchor_right = 0.0
 	panel.anchor_bottom = 0.0
 	if not wide:
-		panel.position = space.position
-		panel.size = space.size
+		if panel.visible:
+			_narrower(panel, space.size.x - k * 2.0 * GUTTER)
 		panel.offset_left = space.position.x
 		panel.offset_top = space.position.y
 		panel.offset_right = space.end.x
@@ -494,6 +560,8 @@ func _lay_panel(panel: Control) -> void:
 		return
 	var wants: Vector2 = panel.get_meta(&"touch_wants", Vector2(520, 720))
 	var gap: float = k * GUTTER
+	if panel.visible:
+		_narrower(panel, space.size.x - gap * 4.0)
 	var least: Vector2 = panel.get_combined_minimum_size()
 	var size := Vector2(minf(maxf(wants.x, least.x), space.size.x - gap * 2.0),
 		minf(wants.y, space.size.y - gap * 2.0))

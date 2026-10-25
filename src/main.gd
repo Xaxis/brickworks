@@ -5900,7 +5900,9 @@ func _words_over_buttons(row: HBoxContainer) -> void:
 	holder.add_child(column)
 	holder.move_child(column, row.get_index())
 	var words: Control = row.get_child(0)
-	(words as Label).custom_minimum_size.x = 0.0
+	# As wide as the screen has room for, the buttons wrapping under it.
+	(words as Label).custom_minimum_size.x = get_viewport().get_visible_rect().size.x \
+		- Phone.px(get_viewport(), 56.0)
 	words.reparent(column, false)
 	column.add_child(buttons)
 	for child: Node in row.get_children():
@@ -7757,6 +7759,13 @@ func _dress_for_phone() -> void:
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
 	_bin_dock.toggled.connect(_phone.dock_toggled)
+	# And the panels that place themselves, placed as Main's are, and those
+	# over the model's own room (Motions, Colour the hidden parts, Stress),
+	# Simulate's column and the line saying what the app is busy with.
+	_touch.place_panel(_shell.library_dialog, Vector2(LibraryDialog.WIDE, LibraryDialog.TALL))
+	_touch.place_panel(_shell.collection, Vector2(CollectionDialog.WIDE, CollectionDialog.TALL))
+	for panel: Control in [_over_model, _simulate_column, _shell.status]:
+		_touch.size_panel(panel)
 	# A finger that came down on a part with the Select tool moves it, as
 	# the desktop's left drag does: the view does not turn with it.
 	_camera.finger_taken = func() -> bool:
@@ -7913,11 +7922,15 @@ func _audit_window(window: Window, box_of: Callable, points_of: Callable, dialog
 					float(menu.get_theme_constant("separator_outline_size")) + row * 0.5
 				continue
 			var rect := Rect2(at.x, y, float(window.size.x), row)
-			var off: bool = not above.grow(1.0).encloses(rect)
+			y += row
+			# Scrolled out of the menu: not on the screen to be missed.
+			var shown: Rect2 = rect.intersection(Rect2(at, Vector2(window.size)))
+			if shown.size.y < row * 0.5:
+				continue
+			var off: bool = not above.grow(1.0).encloses(shown)
 			targets.append({"name": "%s item %d" % [dialog, n], "box": box_of.call(rect), "off": off, "in": dialog})
 			texts.append({"name": "%s item %d" % [dialog, n], "text": menu.get_item_text(n).substr(0, 40),
 				"px": points_of.call(size), "box": box_of.call(rect), "off": off, "in": dialog})
-			y += row
 		return
 	if window.borderless or window is Popup:
 		return
