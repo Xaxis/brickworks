@@ -603,7 +603,10 @@ func _make_way() -> void:
 	if not is_instance_valid(_touch):
 		_touch = get_tree().get_first_node_in_group(TouchSizing.SELF) as TouchSizing
 	var way: bool = _touch != null and _touch.keyboard > 0.0 and _touch.typing_in(self)
-	if _frame.visible == way:
+	# Not under a finger: a part found, pressed with the keyboard up, takes
+	# the keys from the search, and the figure coming back moved the part
+	# down from under the finger before it lifted (TouchSizing._place).
+	if _frame.visible == way and not TouchSizing.finger_down():
 		_frame.visible = not way
 		_colour_note.visible = not way
 		_palette_scroll.visible = not way

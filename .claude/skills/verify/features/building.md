@@ -369,7 +369,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`TouchSizing._grew`, on the panel's or the window's
   `minimum_size_changed`, fig257): Render's status line, told the picture's
   file name once it was downloaded, ran it and its Close off a 430-point
-  phone. Targets in a
+  phone. A dialog already placed never moves under a finger
+  (`TouchSizing._place`, `finger_down`, press271): laid out again while a
+  finger or a mouse button is down, it waits for the lift. Pressing Save or
+  Rename takes the keys from the field, so the keyboard counted as gone and
+  the dialog moved from under the finger before it lifted: a finger rolled a
+  pixel was let go and nothing was saved or renamed (dialogs_1024 on m175,
+  Save as at 390). The Minifigure builder's figure comes back after the
+  search the same way (`MinifigDialog._make_way`). Proved by
+  `dialogs_flow.mjs --only=save_as,saved --hold=150` and `--hold=600`, whose
+  held tap rolls 2 px before it lifts: on the base, held 150 ms, Rename is
+  missed at 390 and at 1024 x 768 and every delete check after it fails
+  (Rename left open over the list); held 600, Save as is missed at both.
+  Targets in a
   scrolling list pass a
   finger's drag to the list (`MOUSE_FILTER_PASS`), so More's list and a
   dialog's rows scroll under a finger; they did not. A notice's words and

@@ -62,6 +62,10 @@ var keyboard: float = 0.0
 var _open: Array = []
 var _look_at: int = 0
 
+## The dialogs laid out again while a finger was down, placed once it lifts
+## (_place).
+var _after_lift: Array = []
+
 
 func _ready() -> void:
 	add_to_group(SELF)
@@ -129,6 +133,7 @@ func _window_shown(window: Window) -> void:
 		return
 	if not window.visible:
 		_open.erase(window)
+		window.remove_meta(&"touch_placed")
 		return
 	if window not in _open:
 		_open.append(window)
@@ -159,6 +164,7 @@ func place_panel(panel: Control, wants: Vector2) -> void:
 func _panel_shown(panel: Control) -> void:
 	if not panel.visible:
 		_open.erase(panel)
+		panel.remove_meta(&"touch_placed")
 		return
 	if panel not in _open:
 		_open.append(panel)
@@ -229,14 +235,40 @@ func _place_all() -> void:
 
 
 func _place(dialog: Node) -> void:
+	# Never moved under a finger: one already placed waits for it to lift.
+	# Pressing a dialog's button takes the keys from its field, so the
+	# keyboard counts as gone from the press on, and Save as or Rename was
+	# laid out again for the room without it while the finger was still
+	# down: the finger lifted off a button that had moved away, the press
+	# was let go, and nothing was saved or renamed (dialogs_1024 on m175;
+	# Save as at 390, m174).
+	if finger_down() and dialog.has_meta(&"touch_placed"):
+		if dialog not in _after_lift:
+			_after_lift.append(dialog)
+		return
 	if dialog is Window:
 		_lay_window(dialog as Window)
 	elif dialog is Control:
 		_lay_panel(dialog as Control)
+	dialog.set_meta(&"touch_placed", true)
 	_show_focus(dialog)
 
 
+## Whether a finger (or a mouse button) is down: what it pressed stays
+## where it is until it lifts.
+static func finger_down() -> bool:
+	return Input.get_mouse_button_mask() != 0
+
+
 func _process(_delta: float) -> void:
+	# What waited for the finger is placed once it has lifted: the lift has
+	# reached the button it pressed by now, as input comes before a frame.
+	if not _after_lift.is_empty() and not finger_down():
+		var waited: Array = _after_lift
+		_after_lift = []
+		for dialog: Node in waited:
+			if is_instance_valid(dialog) and dialog in _open:
+				_place(dialog)
 	if not OS.has_feature("web") or Time.get_ticks_msec() < _look_at:
 		return
 	_look_at = Time.get_ticks_msec() + 250
