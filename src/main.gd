@@ -2295,17 +2295,19 @@ func _enter_view() -> void:
 	# the window: the status bar, which says only the work here, is up while
 	# the steps are worked out and goes as the timeline comes, and the
 	# timeline's own rectangle is laid out only the frame after it is shown.
+	# In whole units, as the columns lay out what they hold: in fractions,
+	# a tablet's was a point higher than the timeline put it.
 	_share_view.floor_at = func() -> float:
 		var coming: bool = not _view_phases.has("steps") or _steps.is_starting()
 		if not coming and not _steps.is_visible_in_tree():
 			return _share_view.size.y
 		var middle: Control = _steps.get_parent_control()
-		var bottom: float = _share_view.size.y
+		var bottom: float = floorf(_share_view.size.y)
 		for n: int in range(_steps.get_index() + 1, middle.get_child_count()):
 			var below: Control = middle.get_child(n) as Control
 			if below != null and below.visible:
-				bottom -= below.get_combined_minimum_size().y
-		return bottom - _steps.get_combined_minimum_size().y
+				bottom -= floorf(below.get_combined_minimum_size().y)
+		return bottom - floorf(_steps.get_combined_minimum_size().y)
 	_share_view.loading()
 	_build_mode = BuildMode.new()
 	_build_mode.thumbnails = _thumbnails
