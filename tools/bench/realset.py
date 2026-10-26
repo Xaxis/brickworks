@@ -906,6 +906,26 @@ def _changed_anything(stream: Path) -> bool:
     return False
 
 
+def _two_ports() -> tuple[int, int]:
+    """The relay's port and the app's. A worker's ports from its last design are its own
+    again, but the servers there closed connections, and a port waits out TIME_WAIT for a
+    minute before bench's check will bind it: 7630's second design found no free port in
+    four (2026-10-26). So it waits for them, up to three minutes."""
+    end = time.time() + 180
+    while True:
+        taken: list[int] = []
+        try:
+            taken.append(bench._free_port())
+            taken.append(bench._free_port())
+            return taken[0], taken[1]
+        except SystemExit:
+            for port in taken:
+                bench._port_back(port)
+            if time.time() > end:
+                raise
+            time.sleep(10)
+
+
 def _session_end(stream: Path) -> dict:
     """The end of a Claude Code session, from its stream-json: the result event."""
     if not stream.exists():
@@ -928,7 +948,7 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
     done = run_dir / "design.json"
     if done.exists():
         return json.loads(done.read_text())
-    relay_port, app_port = bench._free_port(), bench._free_port()
+    relay_port, app_port = _two_ports()
     origin = f"http://127.0.0.1:{relay_port}"
     tab_home = Path(os.environ["XDG_DATA_HOME"]) / f"relay-{subject.id}-{app_port}"
     user_dir = tab_home / "godot" / "app_userdata" / "Brickworks"
@@ -1466,6 +1486,8 @@ def session_reach(lines: list[str]) -> dict:
     return {"calls": len(calls),
             "method": {"real_first": "how_real_sets_build_this" in order[:built],
                        "reviews": named["review_model"], "settled": named["settle_feature"],
+                       "passes": sorted({k for n, g in calls.values() if n == "review_model"
+                                         for k in ("assembly", "surface", "creative") if g.get(k)}),
                        "parts": any("parts" in g for n, g in calls.values() if n == "submit_design"),
                        "told": told},
             "guide": sorted({str(g.get("section", "")) for n, g in calls.values()
@@ -1488,6 +1510,7 @@ def transcript_of(record: dict) -> Path | None:
     kept = record.get("design", {}).get("transcript")
     if kept and Path(kept).exists():
         return Path(kept)
+    relayed = _relayed_sessions()
     where = arm_dir(record["date"], record["arm"])
     meta = where / "arm.json"
     checkout = (record.get("design", {}).get("app")
@@ -1497,6 +1520,8 @@ def transcript_of(record: dict) -> Path | None:
     until = design.stat().st_mtime + 60 if design.exists() else float("inf")
     best: tuple[float, Path] | None = None
     for path in (PROJECTS / re.sub(r"[/.]", "-", str(checkout))).glob("*.jsonl"):
+        if path.stem in relayed:
+            continue
         with path.open(errors="replace") as lines:
             for line in lines:
                 said = json.loads(line)
@@ -1509,6 +1534,21 @@ def transcript_of(record: dict) -> Path | None:
                         best = (began, path)
                 break
     return best[1] if best else None
+
+
+def _relayed_sessions() -> set[str]:
+    """The Claude Code sessions of runs --via relay, by id: each is kept with its design,
+    and runs in the arm's checkout too, where a bench session of the same brief at the
+    same time would otherwise be taken for it."""
+    found = set()
+    for stream in RESULTS.glob("realset-*/*/session.jsonl"):
+        with stream.open(errors="replace") as lines:
+            first = lines.readline()
+        try:
+            found.add(str(json.loads(first).get("session_id", "")))
+        except ValueError:
+            continue
+    return found
 
 
 def turned_share(text: str, parts: style.Parts) -> float:
@@ -1556,9 +1596,11 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
                                                               "place_technique"))
         feats = ", ".join(f"{k} {v}" for k, v in sorted(reach["features"].items()))
         how = reach["method"]
-        method.update({"real": how["real_first"], "review": how["reviews"] > 0,
-                       "settle": how["settled"] > 0, "parts": how["parts"], "told": how["told"]})
-        did = (f"real {'yes' if how['real_first'] else 'no'}, review {how['reviews']}, "
+        method.update({k: int(v) for k, v in {
+            "real": how["real_first"], "review": how["reviews"] > 0, "settle": how["settled"] > 0,
+            "parts": how["parts"], "told": how["told"], **{p: True for p in how["passes"]}}.items()})
+        did = (f"real {'yes' if how['real_first'] else 'no'}, review {how['reviews']}"
+               + (f" ({', '.join(how['passes'])})" if how["passes"] else "") + ", "
                f"settle {how['settled']}, parts {'yes' if how['parts'] else 'no'}"
                + (", told" if how["told"] else ""))
         out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} | "
@@ -1571,9 +1613,10 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
             f"{placed_any} placed a real set's technique; guide sections read by how many: "
             + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + ".",
             f"The method, of {sessions} sessions: how_real_sets_build_this before the first "
-            f"build in {method['real']}, review_model in {method['review']}, settle_feature in "
-            f"{method['settle']}, a part count given in {method['parts']}; told the method by "
-            f"an answer in {method['told']}."]
+            f"build in {method['real']}, review_model in {method['review']} (an assembly's in "
+            f"{method['assembly']}, the surface pass in {method['surface']}, the creative pass in "
+            f"{method['creative']}), settle_feature in {method['settle']}, a part count given in "
+            f"{method['parts']}; told the method by an answer in {method['told']}."]
     return "\n".join(out) + "\n"
 
 

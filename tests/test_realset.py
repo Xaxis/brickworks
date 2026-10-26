@@ -344,4 +344,5 @@ def test_a_session_is_read_for_whether_it_worked_by_the_method():
         _turn("assistant", [use("d", "review_model", {}), use("e", "settle_feature", {"verdict": "accept"}),
                             use("f", "review_model", {"surface": True})])]
     method = realset.session_reach(by_the_method)["method"]
-    assert method == {"real_first": True, "reviews": 2, "settled": 1, "parts": True, "told": True}
+    assert method == {"real_first": True, "reviews": 2, "settled": 1, "passes": ["surface"],
+                      "parts": True, "told": True}
