@@ -418,6 +418,35 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`--parts-url`), where the live library is. On base it fails with the
   named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
+- `a thrown list glides as a phone's` (`src/ui/fling_scroll.gd`, `FlingScroll`,
+  fling272): Godot's ScrollContainer slows a finger's throw by a fixed 1,000
+  units a second every second, so its glide grows as the square of the
+  speed: on a phone (1.85 units a point) 237, 931, 3,707 and 14,741 points
+  thrown at 0.5, 1, 2 and 4 points a ms, where iOS's UIScrollView ("normal",
+  0.998 a ms) glides 250, 500, 1,000 and 2,000, and Android's OverScroller
+  about 60, 190, 650 and 2,160 (first258: a 434-point drag on More threw it
+  8,500 points, end to end). On a phone or a tablet (`Phone.on`, Main makes
+  it, a shared model's viewer too) every ScrollContainer is heard through its
+  `gui_input` as a finger presses and lifts on it. A finger's move reaches a
+  list twice on the web, as a touch handed on as a mouse's move
+  (`DEVICE_ID_EMULATION`) and as the page's pointermove of type touch, which
+  Godot's web input reads as a mouse's own (a 100-point drag: ten of each,
+  the pointermoves' movementY 100): both moved the list, twice as far as the
+  finger, and threw it twice as fast. The second is accepted before the
+  list hears it, so the drag stays Godot's, a point for a point; on a lift
+  moving the list's speed over its last
+  80 ms goes on and slows by iOS's 0.998 a ms (the distance worked out
+  exactly for each frame's length), Godot's own glide cancelled before the
+  list hears the lift (setting its scroll cancels a drag); lifted after
+  100 ms still it stays; a press catches a gliding list. `tools/probe.sh
+  fling_probe` (headless; a mouse standing for a finger, touch emulated)
+  throws a 72,800-unit list, each move sent twice as the web sends it, at
+  0.5, 1, 2 and 4 pt/ms at a phone's and a tablet's units a point: each
+  glide within 25% of iOS's, the list under the finger 1:1 while it drags,
+  and a drag held still 200 ms not gliding. On ada7c2aa all 8 throws fail
+  (the list 2.00 a point under the finger, glides +81% to +1,687%); with it
+  every one is within 1%, 1.00 a point. The desktop's wheel is untouched
+  (`desktop_same.mjs`, 0 pixels).
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model

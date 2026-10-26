@@ -12,8 +12,10 @@
 ## speed it was thrown at.
 ##
 ## Here a list in a ScrollContainer, as every list and panel the app scrolls
-## is one, is dragged by a finger (a mouse that stands for one, as the web
-## build's touches do) at 0.5, 1, 2 and 4 points a millisecond and lifted
+## is one, is dragged by a finger as the web build hears one (each move
+## twice: a touch's handed on as a mouse's, and the page's pointermove read
+## as a mouse's own, which on ada7c2aa moved a list twice as far as the
+## finger) at 0.5, 1, 2 and 4 points a millisecond and lifted
 ## while moving, with a point as many units as a phone's (720 across 390
 ## points) and as a tablet's (720 across 768). Each glide must be within 25%
 ## of iOS's for that speed; a slow drag must keep under the finger, a point
@@ -103,8 +105,11 @@ func _run() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
+## A finger's press or lift, as Godot hands a touch on to the window as a
+## mouse's (DEVICE_ID_EMULATION).
 func _mouse(pressed: bool) -> void:
 	var press := InputEventMouseButton.new()
+	press.device = InputEvent.DEVICE_ID_EMULATION
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = pressed
 	press.position = _at
@@ -113,14 +118,19 @@ func _mouse(pressed: bool) -> void:
 	_send(press)
 
 
+## A finger's move, as the web build hears it: as a touch's, handed on as a
+## mouse's (DEVICE_ID_EMULATION), and again as the page's pointermove of
+## type touch, which Godot's web input reads as a mouse's own (device 0).
 func _move(by: Vector2) -> void:
 	_at += by
-	var motion := InputEventMouseMotion.new()
-	motion.position = _at
-	motion.global_position = _at
-	motion.relative = by
-	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
-	_send(motion)
+	for device: int in [InputEvent.DEVICE_ID_EMULATION, 0]:
+		var motion := InputEventMouseMotion.new()
+		motion.device = device
+		motion.position = _at
+		motion.global_position = _at
+		motion.relative = by
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		_send(motion)
 
 
 ## [param event] to the window, in its own units, as a person's finger

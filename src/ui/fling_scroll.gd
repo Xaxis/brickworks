@@ -67,7 +67,22 @@ func _on_added(node: Node) -> void:
 
 ## What a list hears from a finger, before the list does: a press catches
 ## it, a lift throws it.
+##
+## And a finger's move once. On the web it comes twice: as a touch, which
+## Godot hands on as a mouse's move too (DEVICE_ID_EMULATION), and as the
+## page's pointermove, which Godot's web input reads as a mouse's own, with
+## the finger's movement (a 100-point drag: ten pointermoves of type touch
+## beside the ten touchmoves, their movementY 100 in all). Both moved the
+## list: it went twice as far as the finger, and a throw twice as fast.
+## The second is taken here before the list hears it.
 func _heard(event: InputEvent, id: int) -> void:
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		if motion.device != InputEvent.DEVICE_ID_EMULATION:
+			var list := (_lists.get(id, weakref(null)) as WeakRef).get_ref() as ScrollContainer
+			if list != null:
+				list.accept_event()
+		return
 	var press := event as InputEventMouseButton
 	if press == null or press.button_index != MOUSE_BUTTON_LEFT:
 		return
@@ -124,6 +139,7 @@ func _lifted(id: int) -> void:
 			break
 		first = one
 	var took: float = float(int(last[0]) - int(first[0]))
+	print("FLINGDEBUG seen=%s first=%s took=%s" % [str(seen.slice(-6)), str(first), took])
 	if took > 0.0:
 		_gliding[id] = [at, (at - (first[1] as Vector2)) / took]
 
