@@ -35,7 +35,7 @@ const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
 // Where the picture's frame is square (directory.css): a phone's.
-const PHONE = matchMedia("(max-width: 599px)");
+const PHONE = matchMedia("(width < 600px)");
 // Its picture: the frame says it is coming until it is drawn, and one that
 // fails is asked for again, twice, before the frame says there is none.
 const frame = document.querySelector(".model-page .picture");

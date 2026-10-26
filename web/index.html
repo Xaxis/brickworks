@@ -71,7 +71,7 @@
 .hero .note a { color: var(--ink-soft); }
 .hero-shot { margin-top: clamp(36px, 5vw, 56px); }
 /* Wider than the words on a big screen: it is the thing to look at. */
-@media (min-width: 1400px) { .hero-shot { margin-inline: -110px; } }
+@media (width >= 1600px) { .hero-shot { margin-inline: -110px; } }
 .hero-shot img { aspect-ratio: 16 / 9; }
 /* A window's bar over the picture, with the app's address in it: the
    point that it runs in a browser, made without a word. */
@@ -93,15 +93,17 @@
 .proofs .shot img { aspect-ratio: 16 / 10; object-fit: cover; }
 .proofs figcaption { padding: 14px 18px 18px; }
 .proofs figcaption b { margin-bottom: 2px; }
-@media (max-width: 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .proofs { grid-template-columns: minmax(0, 1fr); } }
+@media (width < 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (width < 600px) { .proofs { grid-template-columns: minmax(0, 1fr); } }
 .also { margin: var(--s-5) 0 0; color: var(--ink-soft); font-size: var(--t-small); max-width: 92ch; }
 
 /* -- the assistant, last, as the option it is ------------------------ */
 .assistant { display: grid; gap: var(--s-5) clamp(24px, 5vw, 72px); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
 .assistant p { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 56ch; }
 .assistant p:last-child { margin-bottom: 0; }
-@media (max-width: 860px) { .assistant { grid-template-columns: minmax(0, 1fr); } }
+/* Its way to more, on a line of its own: a finger's target (site.css Targets). */
+.assistant p > a:only-child { padding-block: 6px; }
+@media (width < 900px) { .assistant { grid-template-columns: minmax(0, 1fr); } }
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/landing.js" type="module"></script>

@@ -30,6 +30,9 @@
 //     to the far right with the 'Open the app' button to the left of it";
 //   a header whose last item is closer than the page's 16 px gutter to the
 //     screen's right edge, on a phone at 320, 360 and 390 px;
+//   a heading off the type scale: an h2 not at --t-h2 or an h3 not at
+//     --t-h3, as drawn. There were three sizes of h2 and four of h3 (site273,
+//     2026-10-26): a model's About it at 18 px under More by at 30;
 //   and, in any stylesheet or page style the page has, a font size, a
 //     corner or a colour off the token scale (site.css :root): a size not
 //     var(--t-*), a corner not var(--r-*) (or 0, or 50%), a colour written
@@ -237,6 +240,34 @@ function offScale() {
   return found;
 }
 
+/// Every visible h2 and h3 (inside [scope], or the page's outside its
+/// dialogs) not drawn at its step of the scale: --t-h2 and --t-h3 as this
+/// window resolves them. Runs in the page; returns [[heading, why]].
+function headings(scope) {
+  const where = scope ? document.querySelector(scope) : document;
+  if (!where) return [];
+  const step = (token) => {
+    const probe = document.createElement("span");
+    probe.style.fontSize = `var(${token})`;
+    document.body.append(probe);
+    const size = parseFloat(getComputedStyle(probe).fontSize);
+    probe.remove();
+    return size;
+  };
+  const want = { H2: step("--t-h2"), H3: step("--t-h3") };
+  const found = [];
+  for (const el of where.querySelectorAll("h2, h3")) {
+    if (!el.getClientRects().length || getComputedStyle(el).visibility === "hidden") continue;
+    if (!scope && el.closest("dialog")) continue;
+    const size = parseFloat(getComputedStyle(el).fontSize);
+    if (Math.abs(size - want[el.tagName]) > 0.25) {
+      const words = el.textContent.trim().replace(/\s+/g, " ").slice(0, 32);
+      found.push([`${el.tagName.toLowerCase()} "${words}"`, `${Math.round(size * 10) / 10} px, off the scale's ${el.tagName === "H2" ? "--t-h2" : "--t-h3"} (${Math.round(want[el.tagName] * 10) / 10} px here)`]);
+    }
+  }
+  return found;
+}
+
 /// A count of none said where a person reads it ("0 likes", "following
 /// 0"). Runs in the page, on what is shown; returns the words found.
 function zeroCounts() {
@@ -333,7 +364,7 @@ async function judge(page, label, what, scope, file, more = []) {
   }
   const said = await page.evaluate(audit, scope);
   controls += said.controls;
-  said.findings.push(...more);
+  said.findings.push(...more, ...await page.evaluate(headings, scope));
   // On a phone, with whatever was opened open: nothing sideways.
   if (page.viewportSize().width < 600
     && await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
