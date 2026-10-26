@@ -14,10 +14,17 @@
 ##   turntable   the top of a turntable;
 ##   boom        a body of 6 parts or more on a hinge, a click hinge, a pin
 ##               or an axle that reaches 3 studs or more from its line and
-##               lifts (its line is not upright: a crane's boom, a digger's
-##               arm), with no tyre in it;
+##               lifts (its line is not upright), with no tyre in it, that
+##               works something at its end: a crane's arm or hook, a
+##               digger's bucket, a forklift's forks or a grab, on it or on
+##               what hangs from it (a castle's drawbridge, a garage door,
+##               a plane's folding wings and a ship's cockpit all reach and
+##               lift, and each was said to be a boom, moves268);
 ##   doors       a door, ramp, hatch, gate, tailgate, flap or lid on a
-##               hinge, a click hinge or a pin;
+##               hinge, a click hinge or a pin, that is the body or hangs on
+##               the joint itself (a door in a castle's wing that swings, or
+##               in a locomotive's half that turns on its bogie, does not
+##               open: the wing and the half were said to be doors);
 ##   gears       two gears in mesh, one of them turning on its joint;
 ##   pneumatics  a pneumatic cylinder's rod;
 ##   actuator    a linear actuator's;
@@ -76,13 +83,14 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 		var tyre: bool = false
 		var door: int = 0
 		var arm: int = 0
+		var biggest: int = _biggest(ids, world, library)
 		for id: int in ids:
 			var part_name: String = name_of.call(id)
 			if part_name.contains("Minifig"):
 				figure = true
 			if part_name.contains("Tyre") or part_name.contains("Tire"):
 				tyre = true
-			if door == 0 and door_named(part_name):
+			if door == 0 and door_named(part_name) and (id == biggest or _at_joint(link, id)):
 				door = id
 			if arm == 0 and steering_arm(part_name):
 				arm = id
@@ -112,7 +120,8 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 			driver = door
 		elif kind.is_empty() and link.turns and not tyre and not upright and ids.size() >= BOOM_PARTS \
 				and link.kind in ["hinge", "click", "pin", "axle"] \
-				and _reach(bodies, body, link, world, library) >= BOOM_REACH:
+				and _reach(bodies, body, link, world, library) >= BOOM_REACH \
+				and _works(bodies, body, name_of):
 			kind = "boom"
 		if kind.is_empty():
 			continue
@@ -207,6 +216,41 @@ static func door_named(part_name: String) -> bool:
 			if before_ok and after_ok:
 				return true
 			at = part_name.find(word, at + 1)
+	return false
+
+
+## What a boom works with at its end, by its name: a crane's arm, hook or
+## basket, a digger's bucket or what holds one, a forklift's forks, a grab.
+## Not a minifigure's tool, a crane stand (a support many models stand on),
+## a tipper's bucket (a dumper's bed tips; it lifts nothing), or a hook that
+## tows (a towball, a train's coupling) or a holder for one.
+static func working_end(part_name: String) -> bool:
+	if part_name.contains("Minifig") or part_name.begins_with("~") or part_name.contains("Crane Stand"):
+		return false
+	for word: String in _WORKING:
+		if part_name.contains(word):
+			return true
+	return part_name.contains("Hook") and not (part_name.contains("Towball")
+		or part_name.contains("Train") or part_name.contains("Tow-Hook") or part_name.contains("Holder"))
+
+
+const _WORKING: Array[String] = ["Crane", "Excavator", "Digger Bucket", "Forklift", "Grab"]
+
+
+## Whether [param body], or anything that hangs from it (a hook on its
+## string, a digger's stick and bucket), has a working end (working_end).
+static func _works(bodies: Bodies, body: int, name_of: Callable) -> bool:
+	for id: int in bodies.parts_of(bodies.beyond(body)):
+		if working_end(str(name_of.call(id))):
+			return true
+	return false
+
+
+## Whether [param id] is one of the parts [param link] joins.
+static func _at_joint(link: Bodies.Link, id: int) -> bool:
+	for pair: Variant in link.pairs:
+		if (pair as Array).has(id):
+			return true
 	return false
 
 

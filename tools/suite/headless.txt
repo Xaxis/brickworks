@@ -186,3 +186,4 @@ nothing_changed
 renewal           # a returning person let in at once, renewed behind the model (walk256 A17)
 first_session     # the first design on the example is a model of its own (walk256 M15)
 held_items   # a figure holds a tool, a cup, a pole, a camera by BrickNet's connectors in one add_minifig, Tested-held; a sack said not held when put in the hand (hand264)
+moves             # every word a card says it moves is a move the set has: the gallery's seeds, the shipped models and 16 held out (moves268)

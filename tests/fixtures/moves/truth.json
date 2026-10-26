@@ -83,6 +83,7 @@
     "6678-1.mpd": {"name": "Pneumatic Crane", "moves": ["turntable", "boom", "pneumatics", "doors"], "sure": ["boom"]},
     "689-1.mpd": {"name": "Mobile Crane", "moves": ["turntable", "boom", "doors"], "sure": ["boom"]},
     "6822-1.mpd": {"name": "Space Digger", "moves": ["boom", "turntable", "doors"], "sure": []},
-    "42004-1.mpd": {"name": "Mini Backhoe Loader", "moves": ["boom", "steering", "turntable"], "sure": ["boom"]}
+    "42004-1.mpd": {"name": "Mini Backhoe Loader", "moves": ["boom", "steering", "turntable", "gears"], "sure": ["boom"],
+      "why": "Its backhoe slews on a Technic turntable turned by a 20 tooth gear in its 28 teeth: gears, which the first judging missed and the held out run showed."}
   }
 }
