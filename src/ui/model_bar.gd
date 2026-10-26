@@ -43,7 +43,7 @@ var _picker: ModelFilePicker
 const IMPORT := 1 << 30
 ## And the row for the library (LibraryDialog), beside it.
 const LIBRARY := IMPORT + 1
-## And the one after the saved models, to rename or delete them
+## And the one to rename or delete the saved models, above them
 ## (SavedModelsDialog, which Main owns).
 const MANAGE := IMPORT + 2
 
@@ -575,6 +575,11 @@ func _on_open() -> void:
 	# could not read the format it writes.
 	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
 	_saves.add_item("From the library: real sets and the community's models…", LIBRARY)
+	# With the other commands, above the saves. Under them, forty saves put
+	# it past the window's foot, in a menu a finger cannot scroll without
+	# opening a save (fling272b, 2026-10-26).
+	if not _entries.is_empty():
+		_saves.add_item("Rename or delete saved models…", MANAGE)
 	_saves.add_separator()
 	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
@@ -582,8 +587,6 @@ func _on_open() -> void:
 	else:
 		for n: int in _entries.size():
 			_saves.add_item(_entries[n].describe(), n)
-		if not _entries.is_empty():
-			_saves.add_item("Rename or delete saved models…", MANAGE)
 		if not examples.is_empty():
 			if not _entries.is_empty():
 				_saves.add_separator("Examples")
