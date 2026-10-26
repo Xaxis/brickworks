@@ -440,14 +440,34 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   touch, which Godot's web input reads as a mouse's: the list and the parts
   bin went 2.00 points for each the finger went, and threw twice as fast.
   The list's own `gui_input` takes the second while a finger is down; the
-  bin takes moves from the device that pressed. `tools/probe.sh
+  bin scrolls by the pressing device's moves alone. `tools/probe.sh
   fling_probe` (headless; events through `Input.parse_input_event`, each
   move twice as the web sends it) throws a 72,800-unit list at 0.5 to 4
-  pt/ms at a phone's and a tablet's scale, and again at 8 frames a second
-  as a browser drawing in software draws: each glide within 25% of iOS's,
-  the list 1:1 under the finger, a drag held still 200 ms not gliding, a
-  tap tapping, and nothing processing after. On ada7c2aa 11 checks fail
-  (2.00 a point, glides +34% to +1,847%); with it every throw is within 2%.
+  pt/ms at a phone's and a tablet's scale, again at 8 frames a second as a
+  browser drawing in software draws, and a list that grows as it is
+  scrolled, its foot met mid-glide: each glide within 25% of iOS's, the
+  list 1:1 under the finger, a drag held still 200 ms not gliding, a tap
+  tapping, and nothing processing after. On ada7c2aa 12 checks fail (2.00
+  a point, glides +34% to +1,847%); with it every throw is within 2%.
+  The bin let go of the tile's press as it scrolls
+  (`NOTIFICATION_SCROLL_BEGIN`): the touch's own lift came after the
+  mouse's and tapped the tile still under the finger, taking the part and
+  shutting the sheet, which the base hid by running the grid away at
+  twice the finger's pace. A glide waits three frames at a list's foot,
+  for the bin's next page of tiles. In the web build (`--parts-url`, 390 x
+  844, CDP touch, a device ratio of 1 so that SwiftShader keeps up; a
+  throw whose moves the browser held up 120 ms is thrown again), More's
+  list glides 243 to 254 points at 0.5 pt/ms, 405 to 728 at 1 and 1,020
+  to 1,048 at 2 (iOS 250, 499, 999; 10 of 12 within 25%, the two outside
+  where CDP's moves landed 37 to 50 ms off the frames), in 3.3 to 5.0 s
+  to its last frame drawn (iOS 3.1 to 3.8 to under half a point left);
+  the parts bin 282 and 328, 391 and 579, 954 and 1,162 (5 of 6); Saved
+  models (12 saves, a 383-point list) 168 and 259 at 0.5 pt/ms, faster
+  throws stopping at its foot. Each list 1.00 a point under a drag held
+  still, and that drag not gliding. On ada7c2aa More ran to its end on
+  every throw (2,090, 1,970, 1,760 points), the bin and Saved models went
+  2.00 a point, and the bin glided nothing. Standing still after each
+  list, 0 frames drawn in 6 s on both. A tap on More's View folds it.
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model
