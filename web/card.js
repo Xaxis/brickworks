@@ -27,8 +27,8 @@
 // cards on a page carry one (every model in the gallery was Tested and
 // made with the assistant, site273), <body data-quiet> names it and
 // site.css leaves it off: the server's pages say so as they are made
-// (quietMarks), and in a browser modelCard says it again, before the next
-// frame, for every card then on the page.
+// (quietMarks), and in a browser it is said again, before the page is
+// drawn, whenever cards made by modelCard come onto it.
 //
 // Names and credits were typed by strangers, so every word is escaped;
 // the link is built from the model's id alone, and the caller passes only
@@ -332,18 +332,20 @@ export function skeletonHtml() {
 /// the landing page's strip waited on its cards' pictures before showing,
 /// and stayed hidden with all seven refused (walk180, 2026-10-23).
 ///
-/// Every card made here says the page's quiet marks again before the next
-/// frame, when it is on the page with the others (quietPage).
+/// Once a card is made here, the page's quiet marks are said again
+/// whenever cards come onto the page, before it is drawn (quietPage): the
+/// landing page's strip puts its cards in only once their pictures have
+/// decoded, frames after they were made.
 export function modelCard(model, options) {
   const made = document.createElement("template");
   made.innerHTML = cardHtml(model, options);
-  if (!quieting) {
-    quieting = true;
-    requestAnimationFrame(() => {
-      quieting = false;
-      quietPage();
-    });
+  if (!watching) {
+    watching = true;
+    new MutationObserver((changes) => {
+      if (changes.some((change) => [...change.addedNodes].some((node) => node.nodeType === 1
+        && (node.matches(".model") || node.querySelector(".model"))))) quietPage();
+    }).observe(document.body, { childList: true, subtree: true });
   }
   return document.importNode(made.content.firstElementChild, true);
 }
-let quieting = false;
+let watching = false;

@@ -194,18 +194,34 @@ try {
     return quietMarks(list.map(marksOf));
   }, models);
   check(serverQuiet === browserQuiet, `/c/${stand.LIST_ID}: the server's page leaves off "${serverQuiet}", the browser "${browserQuiet}" for its ${models.length} cards`);
-  // In a browser, cards drawn say it on <body> before the next frame.
+  // In a browser, cards that come onto the page say it on <body> before it
+  // is drawn: put in at once, and put in two frames after they were made
+  // (the landing page's strip waits for its pictures to decode).
   const drawnQuiet = await page.evaluate(async () => {
     const { modelCard } = await import("/card.js");
+    const make = (n, tag) => Array.from({ length: n }, (_, i) => modelCard({ id: `Quiet${tag}${i}`.padEnd(10, "0").slice(0, 10),
+      name: "Q", parts: 1, tested: true, made_with: i ? "assistant" : "hand" }));
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
     const grid = document.body.appendChild(document.createElement("div"));
-    grid.append(...Array.from({ length: 5 }, (_, i) => modelCard({ id: `Quiet0000${i}`, name: "Q", parts: 1, tested: true,
-      made_with: i ? "assistant" : "hand" })));
-    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
-    const said = document.body.dataset.quiet || "";
+    grid.append(...make(5, "A"));
+    await Promise.resolve();
+    const now = document.body.dataset.quiet || "";
     grid.remove();
-    return { said };
+    // Said afresh: a removal says nothing, so the late cards must.
+    delete document.body.dataset.quiet;
+    const later = make(5, "B");
+    await frame();
+    await frame();
+    const strip = document.body.appendChild(document.createElement("div"));
+    strip.append(...later);
+    await Promise.resolve();
+    const late = document.body.dataset.quiet || "";
+    strip.remove();
+    return { now, late };
   });
-  check(drawnQuiet.said === "tested", `five cards drawn, all Tested and four with the assistant: <body data-quiet="${drawnQuiet.said}">`);
+  check(drawnQuiet.now === "tested" && drawnQuiet.late === "tested",
+    `five cards put on the page, all Tested and four with the assistant: <body data-quiet="${drawnQuiet.now}">, `
+    + `and "${drawnQuiet.late}" for five put on two frames after they were made`);
   check(!errors.length, `no script errors${errors.length ? `: ${errors.join("; ")}` : ""}`);
 } finally {
   await browser.close();

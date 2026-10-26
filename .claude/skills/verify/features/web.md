@@ -926,8 +926,10 @@ plan with Claude as the client.
   (`.marks` one pill tall; a mark that does not fit is left off whole),
   and a mark 90% or more of a page's cards carry (four cards or more) is
   not shown: `quietMarks` names it on `<body data-quiet>`, the server's
-  /u/, /c/ and /m/ pages as they are made, `modelCard` again in a browser
-  before the next frame for every card then on the page, and site.css
+  /u/, /c/ and /m/ pages as they are made, and in a browser again
+  whenever cards come onto the page (a MutationObserver the first
+  `modelCard` starts; the landing strip puts its cards in frames after it
+  made them), before the page is drawn, and site.css
   hides it. The gallery's like (`like: true`) is over the picture's
   top-right corner; likes elsewhere, builds and comments are `.tally`s in
   `small.acts` on the designer's `.by` line; no card ends in a row of
@@ -2866,7 +2868,8 @@ picture, builds and comments in `.by`'s `small.acts`, a like that is a
 count there too, no card whose numbers are a button alone; `quietMarks`
 at 10, 9 and 8 of 10 cards and at three; the server's `/c/` page's
 `data-quiet` against the browser's for the same cards; and five cards
-drawn by `modelCard` naming theirs on `<body>`. It proves it when it ends
+put on a page at once, and five two frames after they were made, each
+naming theirs on `<body>`. It proves it when it ends
 `card check: 15 cards compared, 0 failed` (2026-10-26).
 
 `age_flow` proves it when it ends "the age question is asked neutrally, and

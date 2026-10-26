@@ -184,7 +184,8 @@ is on the page, `hidden`, for the script to show.
   whole. A mark carried by 90% or more of the cards on a page (four cards
   or more) tells none apart and is not shown: `<body data-quiet>` names it
   (`quietMarks`; the server's pages say it as they are made, and in a
-  browser `modelCard` says it again for every card then on the page).
+  browser it is said again whenever cards `modelCard` made come onto the
+  page, before it is drawn).
   They stacked two and three rows deep, 30% of a phone's picture, and
   every card said "Tested" and "Assistant" (site273). Where the page
   passes `like: true` (the gallery), its like is an `.icon-btn.small` over
