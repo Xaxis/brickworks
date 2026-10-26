@@ -1936,7 +1936,10 @@ plan with Claude as the client.
   `caption_points`, `faded`, `fresh`, `shown`, `from`); controls `build_next`,
   `build_back`, `build_close`, `build_parts`, `build_top`, `build_bottom`, and
   `view_build` (the bar's, or on a window under 1,040 points a big yellow
-  Build it over the model, above the timeline). `brickworksState.told_ms` and
+  Build it over the model, above the timeline: where the timeline's top is or
+  will be, from its first frame, so it never moves as the timeline comes once
+  the steps are worked out; it rose 46 px then, and a tap meant for it landed
+  on the timeline, `builds_flow --first-told`, 2026-10-26). `brickworksState.told_ms` and
   `told_most_ms` say what publishing all this to the page costs a frame,
   twice a second. **A page turn** (2026-10-17) changes the step's parts,
   not the model: a page is a count of the build order (`BuildSteps.order`,
@@ -4092,6 +4095,28 @@ refusing it. The test accounts' age is answered by `mintSession`
 (`answerAge`), and an account never asked is refused with a 422 saying so.
 `share_view_probe` (above) proves the app's half: a finish sent once per
 device and link, never for a jump, the cover or opening the viewer.
+
+Build it where it is first shown (jump290, 2026-10-26): `--first-told` does
+only the phone's first Build it, tapped the moment the viewer is ready where
+the page first says it is, as the flow did before m177, and stops. With
+`--slow=2` (the page's CPU slowed twice, as a busy box's) the timeline comes
+just after Build it is told at the foot. On 974ebff1 a phone's Build it was
+told at y 800 and rested at 754, and the tap missed 7 of 13; a tablet's
+(820 x 1180) at 1136 and 1039, missed 1 of 3. Since `main.floor_at` reckons
+the timeline's top from the foot of the window in whole units (the status
+bar is up while the steps are worked out), it is told once, at 754 (8 of 8)
+and 1039 (3 of 3), where it rested before, and every tap opened the step
+player, most of them taken up before the timeline came. Against the relay
+above:
+
+```sh
+node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=DIR \
+  --first-told --slow=2 [--size=820x1180]
+```
+
+Proves it when every run ends "Build it, tapped where it was first told, opens
+the step player where it stays": `first-told {...}` says where it was told
+each time it moved (`moves`, one entry) and `told` equals `rests`.
 
 **Share steps browser flow** (`tools/web/share_steps_flow.mjs`, 2026-10-17):
 each page turn of Build it timed from the finger to the frame, and the first

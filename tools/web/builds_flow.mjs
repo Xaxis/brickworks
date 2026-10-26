@@ -43,6 +43,14 @@
 //
 // Pictures in --out. The throwaway accounts are deleted at the end with
 // everything of theirs, their models taken down first.
+//
+// --first-told does only the phone's first Build it, tapped where the page
+// first says it is the moment the viewer is ready, as the flow did before
+// m177: whether the step player opened, where Build it was told each time it
+// moved, and where it rests once the timeline is up. It stays where it was
+// first shown, or a finger meant for it lands on whatever came there
+// (jump290). --size=WxH for another touch screen (a tablet: 820x1180),
+// --slow=N for its CPU slowed N times, as a busy phone's.
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { placed } from "./gallery_order.mjs";
@@ -60,6 +68,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../..");
 const site = String(args.url || "http://127.0.0.1:9104").replace(/\/+$/, "").replace(/\/app$/, "");
 const out = path.resolve(String(args.out || "shots/builds"));
+const firstTold = Boolean(args["first-told"]);
+const [touchWidth, touchHeight] = String(args.size || "390x844").split("x").map(Number);
+const slow = Number(args.slow || 1);
 mkdirSync(out, { recursive: true });
 // A preview is behind Vercel's protection: every request to it, the pages'
 // too, says the bypass. Without it the listing was Vercel's 401 and the
@@ -209,7 +220,7 @@ const browser = await launch({ signedOut: true });
 
 async function context({ as = null, phone = false } = {}) {
   const made = await browser.newContext({ userAgent: PERSON, extraHTTPHeaders: headers,
-    ...(phone ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
+    ...(phone ? { viewport: { width: touchWidth, height: touchHeight }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
       : { viewport: { width: 1280, height: 900 } }) });
   if (as) {
     const { kept } = await mintSession(as);
@@ -251,6 +262,47 @@ async function tap(page, name, seconds = 60) {
     await page.waitForTimeout(500);
   }
 }
+
+/// --first-told: where Build it is told, every time it moves ([ms, x, y,
+/// whether the timeline was told too]), from the page's start.
+const watchBuildIt = (page) => page.evaluate(() => {
+  window.flowBuildIt = [];
+  setInterval(() => {
+    const told = window.brickworksControls || {};
+    const at = told.view_build;
+    const last = window.flowBuildIt[window.flowBuildIt.length - 1];
+    if (at && (!last || last[1] !== at.x || last[2] !== at.y)) {
+      window.flowBuildIt.push([Math.round(performance.now()), at.x, at.y, Boolean(told.steps_slider)]);
+    }
+  }, 50);
+});
+
+/// --first-told: Build it tapped where the page first says it is, once the
+/// viewer is ready; then where it rests once the timeline is up.
+async function firstTap(page) {
+  const told = await tap(page, "view_build");
+  const opened = await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player", 30)
+    .then(() => true, () => false);
+  if (opened) {
+    await tap(page, "build_close");
+    await until(page, () => ((window.brickworksShare || {}).build || {}).open === false, "the step player closed", 60);
+  }
+  await until(page, () => Boolean((window.brickworksControls || {}).steps_slider), "the timeline", 120);
+  await page.waitForTimeout(1500);
+  const rests = (await controls(page)).view_build || {};
+  const moves = await page.evaluate(() => window.flowBuildIt || []);
+  // From the parts in, which is as the viewer is ready, to the steps worked
+  // out, which is as the timeline comes, in ms.
+  const phases = await page.evaluate(() => (window.brickworksShare || {}).opened || {});
+  console.log(`  --    first-told ${JSON.stringify({ size: `${touchWidth}x${touchHeight}`, slow, opened, told: [told.x, told.y],
+    rests: [rests.x, rests.y], moves, ready_ms: phases.parts, steps_ms: phases.steps })}`);
+  check(`Build it tapped where first told (${told.x}, ${told.y}) opens the step player (${opened}), and it rests there `
+    + `(${rests.x}, ${rests.y}); told at y ${[...new Set(moves.map((one) => one[2]))].join(", ")}`,
+  opened && told.x === rests.x && told.y === rests.y);
+}
+
+/// Thrown when --first-told has measured what it is for, past the rest.
+const measured = new Error("first-told: measured");
 
 const shot = (page, name) => page.screenshot({ path: path.join(out, name), timeout: 90000 })
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
@@ -318,15 +370,23 @@ try {
     const phone = await context({ phone: true });
     const page = await phone.newPage();
     listen(page, "phone");
+    if (slow > 1) await (await phone.newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate: slow });
     await page.goto(`${site}/app?view=${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
+    if (firstTold) await watchBuildIt(page);
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the viewer", 600);
+    if (firstTold) {
+      await firstTap(page);
+      await phone.close();
+      throw measured;
+    }
     // A phone's Build it sits above the timeline, which comes up once the
-    // steps are worked out, after the viewer is ready; until then Build it
-    // is at the foot of the page, and it rises the timeline's height when
-    // the timeline comes. Tapped where it was told first, on a busy box the
-    // tap landed on the timeline as it came, and the step player never
-    // opened (m177). Tapped once the timeline is told the page, it is where
-    // it stays.
+    // steps are worked out, after the viewer is ready. It was drawn at the
+    // foot of the page until then and rose the timeline's height as it
+    // came: tapped where it was told first, on a busy box the tap landed on
+    // the timeline, and the step player never opened (m177). It is put
+    // where it stays from its first frame now (--first-told); the flow
+    // still taps once the timeline is up, as a person waits for a page to
+    // stop moving.
     await until(page, () => Boolean((window.brickworksControls || {}).steps_slider), "the timeline", 120);
     await tap(page, "view_build");
     await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player", 60);
@@ -593,8 +653,10 @@ try {
   await admin.close();
   await builderContext.close();
 } catch (trouble) {
-  failed += 1;
-  console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
+  if (trouble !== measured) {
+    failed += 1;
+    console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
+  }
 } finally {
   if (id && ownerToken) await api(ownerToken, `/api/share?op=unpublish&id=${id}`, {}).catch(() => {});
   await browser.close();
@@ -602,5 +664,6 @@ try {
 }
 for (const error of errors) console.log(`  page: ${error}`);
 check("no page errors", errors.length === 0);
-console.log(failed ? `${failed} FAILED` : "a build finished counts once per device, and a photo of it is made safe, shown, hidden, reported and taken out");
+console.log(failed ? `${failed} FAILED` : firstTold ? "Build it, tapped where it was first told, opens the step player where it stays"
+  : "a build finished counts once per device, and a photo of it is made safe, shown, hidden, reported and taken out");
 process.exit(failed ? 1 : 0);
