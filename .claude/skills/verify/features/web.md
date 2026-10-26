@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
 
 ## Sub-features
 
@@ -753,6 +753,45 @@ plan with Claude as the client.
   `tests/test_model_page.py` makes the stand-in's pages with the real
   handler (no browser): the rows, their order, the bar's names and counts,
   and the page drawn when `directory_models` answers 500.
+- `a model's parts and its download` (`api/_parts.js`, `api/share.js`
+  `partsSection`, `download`, `web/model-page.js` `startParts`, 2026-10-26,
+  site278, docs/SOCIAL.md): on `/m/<id>`, a Parts tab (with the count) and
+  `#parts`: "N parts in M lots", Colour · Kind (`[data-group]`), BrickLink
+  XML and Rebrickable CSV (links that download), and `ul.lot-list`, asked
+  for (`/m/<id>/parts.json`) as the section comes within 800 px of the
+  screen or its tab is chosen, drawn into a `min-height` kept for its first
+  12 rows of 60 px, `li.group` (a colour's or kind's swatch, name and
+  count) over `li.lot` (picture, name, part and element number, colour,
+  `× n`), Show all (`[data-all]`) for the rest; `<html data-parts="drawn">`
+  once drawn. The list is the app's Inventory.of, ported (`inventoryOf`:
+  sub-models expanded, a sticker counted, a Brickworks-laid hose once as
+  the straight part nearest its length, an LDCad hose one flexible part,
+  a carried part a custom element, a ~ piece, a primitive and a reference
+  to nothing not), from the version's stored file, kept per instance by
+  file; the facts pill and the tab say its count, so they agree with the
+  app. `wantedList` and `rebrickableCsv` are `ShopLists`' two exports, a
+  made part or an unnumbered colour left off and counted (`left_out` in the
+  JSON). `?op=file` is the stored file as it is, `application/x-ldraw`,
+  `attachment; filename="<name>.mpd"` (`-v<n>` for an older version);
+  `?op=parts&as=json|xml|csv` likewise named; both signed out, kept by the
+  CDN as the page (`SHARED_CACHE`), 404/410 as the viewer's answer. The
+  table it needs (`partsTable`): `_parts_table.json` beside the function
+  (deploy.sh, `part_facts.mjs --parts`, 3.2 MB) or the checkout's
+  `assets/generated`. Pictures: Rebrickable's (`pictureOf`, the page's
+  policy allows `https://cdn.rebrickable.com` for images), none when
+  `navigator.webdriver` (no check calls Rebrickable), the colour's swatch
+  for one that fails. Download is `.side .actions a[download]`. Like and I
+  built it are `.icon-btn.labelled` (their word in `.word`). Checked by
+  `parts page probe` (against the app) and `model_page_flow` step 16 (the
+  page, the files, the space kept).
+- `parts page probe`: `tools/probe.sh parts_page_probe` (headless, about a
+  minute once its class list is current): opens 6040-1, 10243-1, 42080-1
+  and 8880-1 in the app (or the files given after `--`), takes each one's
+  `Inventory.of` and `ShopLists` exports, and runs
+  `node tools/web/parts_check.mjs --app=<their JSON>`, which lists the same
+  files with `api/_parts.js` and prints the app's and the page's pieces and
+  lots side by side, every lot that differs, and whether each export is
+  word for word the app's. Exits non-zero on any difference.
 - `model page browser flow` (`tools/web/model_page_flow.mjs`, preview check
   `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser

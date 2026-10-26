@@ -209,7 +209,7 @@ for handler in api/*.js; do
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
     # and every listed model, profile and public collection.
     cp web/sitemap.xml "$fn/_sitemap.xml"
-    if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" | sed 's/^/deploy: /'; then
+    if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" --parts="$fn/_parts_table.json" | sed 's/^/deploy: /'; then
       echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
     fi
   fi
@@ -382,12 +382,16 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/sets/(.*[.]json)", "headers": {
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" } },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/?", "dest": "/api/share?op=page&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]mpd", "dest": "/api/share?op=file&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },

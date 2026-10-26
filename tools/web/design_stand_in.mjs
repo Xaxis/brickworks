@@ -943,7 +943,7 @@ function rest(where, init) {
 // model of three bricks, for any model that has them.
 const PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const PIXEL_WEBP = "UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=";
-const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n"
+export const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n"
   + "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat\n0 STEP\n";
 
 function storage(where, init) {
@@ -990,6 +990,10 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
+  [/^\/m\/([A-Za-z0-9]{10})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})()\/parts[.](json|xml|csv)$/, "share", "parts"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
   [/^\/collections\/?$/, "people", "collections_page"],
@@ -1002,7 +1006,9 @@ function routeOf(pathname) {
   for (const [pattern, name, op] of PAGES) {
     const found = pattern.exec(pathname);
     if (!found) continue;
-    if (name === "share") return { name, query: { op, id: found[1], ...(found[2] ? { v: found[2] } : {}) } };
+    if (name === "share") {
+      return { name, query: { op, id: found[1], ...(found[2] ? { v: found[2] } : {}), ...(found[3] ? { as: found[3] } : {}) } };
+    }
     return { name, query: op === "page" ? { op, handle: found[1] } : { op, id: found[1] } };
   }
   const [, place, rest = ""] = /^\/([muc])\/([^/]*)/.exec(pathname) || [];
@@ -1948,10 +1954,13 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       // server makes (/m/X.cutout.png) as the bytes and type it answered:
       // sent as an empty page, every cut-out failed to draw, and a model's
       // page and a profile's banner said "No picture".
+      // A model's file and its parts lists (/m/X.mpd, /m/X/parts.json)
+      // as their own type, named as they download.
       const policy = made.headers?.["content-security-policy"];
+      const named = made.headers?.["content-disposition"];
       return route.fulfill({ status: made.status, body: made.bytes ?? made.html,
-        contentType: made.bytes ? made.headers["content-type"] : "text/html; charset=utf-8",
-        headers: policy ? { "content-security-policy": policy } : {} });
+        contentType: made.headers?.["content-type"] || "text/html; charset=utf-8",
+        headers: { ...(policy ? { "content-security-policy": policy } : {}), ...(named ? { "content-disposition": named } : {}) } });
     }
     const file = staticFile(web, url.pathname);
     return route.fulfill({ status: file.status, contentType: file.type, body: file.body });

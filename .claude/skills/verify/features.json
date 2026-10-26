@@ -1187,6 +1187,14 @@
       "tests": []
     },
     {
+      "id": "cli:parts page probe",
+      "kind": "cli",
+      "entry": "src/dev/parts_page_probe.gd",
+      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and word for word)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:people browser flow",
       "kind": "cli",
       "entry": "tools/web/people_flow.mjs",
@@ -2808,6 +2816,14 @@
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a model's parts and its download",
+      "kind": "ui",
+      "entry": "api/_parts.js",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "area": "web",
       "tests": []
     },
     {

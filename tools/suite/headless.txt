@@ -191,3 +191,4 @@ picker_folder   # every file chooser opens where its kind is kept (Pictures, Doc
 moves             # every word a card says it moves is a move the set has: the gallery's seeds, the shipped models and 16 held out (moves268)
 part_counts     # walk256 D11: a model's card, the model opened and its box say one part count
 technic_stress  # walk256 D12: Stress on the Cat D11 weighs its pins and axles, in under 10 s
+parts_page      # site278: a model's page lists its parts as the app's parts list does, and exports them the same

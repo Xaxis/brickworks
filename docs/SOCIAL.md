@@ -636,6 +636,43 @@ nothing new is tracked; a profile not shown in public (under 13, taken
 out) shows none, to anybody, its owner included. No name uses a LEGO®
 mark.
 
+*A model page a builder can use (2026-10-26, site278, site273's unit 7):*
+every shared model's page has its **Parts**, a tab and a section, as
+Rebrickable's MOC pages are built around theirs ([RB]): how many parts in
+how many lots, then a row a colour (or, with Kind, a part category) over
+its lots, each lot its picture, name, part and element number, colour and
+count, the first twelve rows until Show all. The list is the app's own
+(`api/_parts.js`, a port of `Inventory.of` as `count_of_text` reads a file:
+sub-models expanded, a sticker counted, a hose once, a ~ piece and an
+unknown primitive not), worked out from the stored .mpd when the page or
+the list is asked for, so every model shared before has one with no
+republish; `src/dev/parts_page_probe.gd` holds it to the app's list lot by
+lot and the exports word for word. What it needs of the catalogue (every
+part's name, kind, moves and shop numbers; every colour's; the element
+numbers; the flexible parts' lengths) is `_parts_table.json` beside the
+share function, 3.2 MB (0.8 MB gzipped), written at deploy by
+`tools/web/part_facts.mjs --parts`; a page's own bytes carry only the
+section's head, and the list is its own request (`/m/X/parts.json`) made as
+the section nears the screen, into rows of one height kept for it, so
+nothing moves. **Export**: a BrickLink wanted list (`/m/X/parts.xml`,
+BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in INVENTORY) and a
+Rebrickable parts list (`/m/X/parts.csv`: Part, Color, Quantity), in each
+shop's own part and colour numbers as the app exports them
+(`ShopLists`), a made part or a colour the shop has no number for left
+off and counted, never guessed. **Download** beside Build it: the
+version's .mpd as it is stored (`/m/X.mpd`, `/m/X/v/N.mpd`), signed out,
+named for the model. **Like** and **I built it** ("Built") say their
+names beside their icons and counts from 600 px up (`.icon-btn.labelled`);
+a phone's row of six has room for icons and counts alone. The pictures are
+Rebrickable's, as its own lists show them (its photo of the element where
+there is one, else its render of the part in the colour), sent no address
+of the page (`referrerpolicy="no-referrer"`); the model page's security
+policy allows `cdn.rebrickable.com` for pictures alone, a lot whose picture
+fails shows its colour, and a browser a check drives
+(`navigator.webdriver`) asks for none, so no check calls Rebrickable. No
+booklet PDF is kept for any model (the bucket holds the .mpd and its
+pictures), so the page offers none; the viewer makes the booklet.
+
 What we will not build: messages between people, lists of followers,
 "X followed you", view counts as a ranking, streaks, or anything that
 shows a person's activity they did not choose to show (D1, D13).

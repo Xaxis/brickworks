@@ -178,8 +178,10 @@ def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
         return
     tower, bakery = (one["html"] for one in said)
     # Comments are counted as they are listed, in the page (model-page.js).
-    assert tabs(tower) == ["About", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"]
-    assert tabs(bakery) == ["About", "Comments", "Builds", "Remixes"]
+    # Parts, counted from the file as the app counts it (api/_parts.js): the
+    # stand-in's file is three bricks.
+    assert tabs(tower) == ["About", "Parts 3", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"]
+    assert tabs(bakery) == ["About", "Parts 3", "Comments", "Builds", "Remixes"]
     for html in (tower, bakery):
         for key in ("about", "comments", "builds", "remixes"):
             assert f'id="{key}"' in html, key
