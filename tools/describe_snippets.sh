@@ -30,10 +30,13 @@ fi
 dir="${1:?the folder tools/snippets.py batches wrote}"
 parallel="${2:-3}"
 model="${DESCRIBE_MODEL:-sonnet}"
-schema='{"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"n":{"type":"integer"},"text":{"type":"string"}},"required":["n","text"]}}},"required":["items"]}'
 
 describe() {
   local list="$1" folder name count prompt
+  # Set here, in each batch's shell, and not exported to it: JSON in an
+  # exported variable reads to a linter as quotes meant for the shell
+  # (SC2089, SC2090), and that held CI's shell check red from 2026-10-13.
+  local schema='{"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"n":{"type":"integer"},"text":{"type":"string"}},"required":["n","text"]}}},"required":["items"]}'
   folder="$(dirname "$list")"
   name="$(basename "$list" .txt)"
   [ -s "$folder/$name.json" ] && return 0
@@ -69,7 +72,7 @@ little (step numbers, codes, another language). Answer with every number from 1 
     || echo "failed $name (see $folder/$name.err)"
 }
 export -f describe
-export schema model
+export model
 # Again while there are batches without an answer: one that failed is
 # asked once more, and batches written while this ran are taken too.
 for round in 1 2 3 4; do

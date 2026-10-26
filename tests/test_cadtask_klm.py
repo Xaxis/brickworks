@@ -11,10 +11,19 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 from bench import cadtask_klm as klm  # noqa: E402
+
+# Which colours are in the short palette is Rebrickable's word, in a file no
+# checkout has until it is built. Without it every colour counts as shown,
+# and the old grey was asserted typed on a machine that had never seen it:
+# CI, red from the day this test came (2026-10-17) until it was read.
+needs_colours = pytest.mark.skipif(not klm.COLOURS.exists(),
+                                   reason="no colors.json; run tools/refresh_catalogue.py --colours")
 
 
 def _part(id_: str, colour: int, face: str = "up", q: int = 0) -> dict:
@@ -117,6 +126,7 @@ def test_compare_run_says_what_was_extra():
     assert got["measured_wall_seconds_per_part"] == 30.0
 
 
+@needs_colours
 def test_an_old_grey_is_its_name_typed_in_brickworks():
     # 7, Light Grey, is in no set since the palette's year: not in the short
     # palette, so Shift-C, "Light Grey", Enter, both hands to the keys.

@@ -28,6 +28,10 @@ done
 R=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
 HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
 S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p "$S"
+# Begun, this is TAG's latest attempt: a result left by one before, or by a
+# waiter that gave up, would tell the release queued behind it that it had
+# ended (m178 held on m177's, 2026-10-26). ship_after.sh writes the new one.
+rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
 export BOX_HEAVY_PRIORITY=1
 # The preview and its checks, as unit_preview.sh makes and runs them.
 WHO=SHIP
@@ -47,6 +51,10 @@ set -a; . $R/.env; set +a
 URL=""
 [ -n "${SHIP_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
 if [ -z "$URL" ]; then
+  # What CI ran on every push and nobody read: the version, the Python
+  # suite, the shell scripts. First, as it needs no import: two minutes in
+  # its slot at load 40 (2026-10-26).
+  "$HERE/ci_gate.sh" "$W" || { echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh)"; exit 1; }
   import_here || { echo "SHIP: held, the import did not finish (tools/fresh_import.sh)"; exit 1; }
   # The merge gates, here under the release's priority: every GDScript file
   # changed since main parses, and the tool list is the app's. Run per merge

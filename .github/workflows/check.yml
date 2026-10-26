@@ -14,7 +14,8 @@
 # Run by hand only (gh workflow run check.yml). On every push to main it
 # ran 351 times in a month, red every time since 2026-10-13 and read by
 # nobody, and a private repository pays for each minute. A release's own
-# gates run on our machine before main moves.
+# gates run on our machine before main moves: the python and shell jobs
+# below are tools/release/ci_gate.sh there.
 name: check
 
 on:
