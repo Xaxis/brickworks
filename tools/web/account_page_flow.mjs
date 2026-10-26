@@ -356,8 +356,9 @@ try {
       const label = `/settings ${width} ${theme} in`;
       const { page, context } = await open("/settings", { width, theme, who: ada, label });
       await until(page, () => document.documentElement.dataset.settings === "ready", null, 30000);
+      // The rows drawn: not the skeleton's, which held their place (site275).
       const rows = await page.evaluate(() => [...document.querySelectorAll(".settings > .setting")]
-        .filter((one) => !one.hidden).map((one) => one.querySelector("h2, summary")?.textContent.trim()));
+        .filter((one) => !one.closest("[hidden]")).map((one) => one.querySelector("h2, summary")?.textContent.trim()));
       const choices = await page.evaluate(() => ({
         comments: document.getElementById("mail-comments").checked,
         kinds: [...document.querySelectorAll("#mail-kinds input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).join(" "),

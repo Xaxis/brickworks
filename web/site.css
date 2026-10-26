@@ -98,6 +98,15 @@
 	--page-top: clamp(40px, 6vw, 72px);
 	--section: clamp(56px, 8vw, 96px);
 	--shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
+	/* Motion (docs/DESIGN_SYSTEM.md "Motion"): how long a control takes to
+	   answer the pointer, and an opening's; one easing for both. None of it
+	   under reduced motion. */
+	--motion: 150ms;
+	--motion-open: 180ms;
+	--ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+	/* The header's height (.bar's 60 px and its line), which main fills the
+	   window under. */
+	--head-h: 61px;
 	color-scheme: dark;
 }
 /* The light set, twice: chosen (data-theme="light"), and the system's
@@ -483,6 +492,11 @@ h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: 
 
 /* -- blocks -------------------------------------------------------- */
 
+/* A page's main fills the window under the header, so the footer starts
+   at the window's foot however short the page is or however late its
+   script draws: on a short page it stopped two-thirds of the way down,
+   and on every page it jumped as the script's parts came in (site273). */
+.site-head ~ main { display: block; min-height: calc(100vh - var(--head-h)); }
 main > section, .band { padding: var(--section) 0; }
 main > section + section { border-top: 1px solid var(--line); }
 
@@ -505,6 +519,47 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 /* Something that has nothing to show yet, or is on its way. */
 .state { margin: 0; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); }
 .state .link { color: var(--ink); }
+
+/* A skeleton: what a script draws, in its place and at its size before
+   its data comes, so nothing moves when it does. A card's (.model.skeleton,
+   web/card.js skeletonHtml), a row's or a panel's (.skeleton); its words
+   are .bone bars in the panel's lighter tone, breathing slowly. Taken out
+   whole for what came, never filled in, so what came is drawn new rather
+   than moved. Read out as one status, not as its bones. */
+.skeleton { pointer-events: none; }
+.bone {
+	display: block; height: 0.8em; width: 70%; margin: 0.35em 0; border-radius: var(--r-1);
+	background: var(--panel-hi); animation: breathe 1.6s ease-in-out infinite;
+}
+.bone.short { width: 45%; }
+.bone.wide { width: 92%; }
+.bone.button { width: 132px; height: var(--control-h); margin: 0; border-radius: var(--control-radius); }
+.bone.round { width: 40px; height: 40px; margin: 0; border-radius: 50%; }
+.bone.round.huge { width: 112px; height: 112px; }
+@media (max-width: 640px) { .bone.round.huge { width: 80px; height: 80px; } }
+.tabs .bone { width: 240px; margin: 14px var(--s-3); }
+.skeleton-card {
+	display: flex; flex-direction: column; min-width: 0; border-radius: var(--radius); overflow: hidden;
+	border: 1px solid var(--line); background: var(--panel);
+}
+.skeleton-card .frame { aspect-ratio: 4 / 3; background: var(--picture-ground); animation: breathe 1.6s ease-in-out infinite; }
+/* As tall as a card's words with a name of two lines: each bar is drawn in
+   the middle of its line's box (a name's two lines, the designer's, the
+   numbers'), so a row of skeletons is a row of cards' height. */
+.skeleton-card .words { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 12px; font-size: var(--t-small); }
+.skeleton-card .bone { height: calc(1.35em); margin: 0; padding: 0.3em 0; background-clip: content-box; }
+.skeleton-card .bone:nth-child(3) { height: 24px; padding: 6px 0; }
+.skeleton-card .bone:nth-child(4) { height: 27px; padding: 12px 0 4px; }
+.bone.tiny { width: 30%; }
+/* A bar as tall as a line of the words it stands for (a comment list's
+   "Nobody has commented yet"), drawn in the line's middle. */
+.bone.line { height: 1lh; margin: 0; padding: 0.3lh 0; background-clip: content-box; }
+@media (min-width: 900px) {
+	.skeleton-card .words { padding: 12px 16px 14px; font-size: var(--t-body); }
+	.skeleton-card .bone:nth-child(4) { height: 30px; padding: 13px 0 5px; }
+}
+.models.row .skeleton-card { scroll-snap-align: start; }
+@keyframes breathe { 50% { opacity: 0.55; } }
 
 .card {
 	background: var(--panel); border: 1px solid var(--line);
@@ -814,6 +869,44 @@ details.qa > div p { margin: 0 0 10px; }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
 .legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
 .legal a { color: var(--ink-soft); }
+
+/* -- motion ---------------------------------------------------------
+   Every control and card answers the pointer in --motion (150 ms): its
+   colour, ground, edge and shadow ease rather than snap, a press sinks it
+   a little (:active, for a finger as much as a mouse), a card lifts 2 px
+   under a mouse, and a dialog or a menu fades in as it opens. Nothing
+   moves under reduced motion, as the toast did not (site273: two
+   transitions on the whole site, both the toast's). */
+.cta, :where(button), .icon-btn, .pill, .tabs a, .tabs button, .segmented button, .nav a, .menu summary,
+.menu-list a, .menu-list > button, .foot-links a, .model, .list-card, details.qa, .media-strip .thumb,
+:where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
+	transition: color var(--motion) var(--ease), background-color var(--motion) var(--ease),
+		border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease),
+		transform var(--motion) var(--ease), filter var(--motion) var(--ease);
+}
+.cta:active, :where(button:not(.link)):active, .icon-btn:active, a.pill:active, button.pill:active,
+summary.pill:active, .segmented button:active, .menu summary:active { transform: scale(0.97); }
+.cta:active { filter: brightness(0.95); }
+.tabs a:active, .tabs button:active { color: var(--ink); background: var(--panel); }
+.nav a:active, .menu-list a:active, .menu-list > button:active { background: var(--panel-hi); }
+.model:active, .list-card:active { transform: scale(0.99); }
+@media (hover: hover) {
+	.model:hover, .list-card:hover { transform: translateY(-2px); }
+	.model:active, .list-card:active { transform: translateY(-1px) scale(0.99); }
+}
+dialog[open] { animation: rise var(--motion-open) var(--ease); }
+dialog[open]::backdrop { animation: fade var(--motion-open) ease-out; }
+details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes drop { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after, ::backdrop {
+		transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important;
+	}
+	.cta:active, :where(button):active, .icon-btn:active, .pill:active, .segmented button:active, .menu summary:active,
+	.model:hover, .model:active, .list-card:hover, .list-card:active { transform: none; }
+}
 
 /* Read aloud, not shown. */
 .visually-hidden {

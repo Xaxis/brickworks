@@ -42,7 +42,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { counted, iconButtonHtml, likeName, modelCard } from "/card.js";
+import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 
@@ -237,8 +237,8 @@ import { toast } from "/kit.js";
     chips.hidden = !tag;
   }
 
-  /// A card of the list, its like a button.
-  const card = (model) => modelCard(model, { like: true });
+  /// A card of the list, its like a button; [eager] for the first screen's.
+  const card = (model, eager = false) => modelCard(model, { like: true, eager });
 
   /// The shelves, drawn from [front]: the pick as the first card and the
   /// shelves after the first rows, on the gallery's front alone.
@@ -250,7 +250,7 @@ import { toast } from "/kit.js";
     const holder = $("pick-card");
     holder.replaceChildren();
     if (pick) {
-      const picked = card({ ...pick.model, ...(listed.get(String(pick.model.id)) || {}) });
+      const picked = card({ ...pick.model, ...(listed.get(String(pick.model.id)) || {}) }, true);
       picked.classList.add("pick-card");
       picked.dataset.chosen = pick.chosen ? "yes" : "no";
       const frame = picked.querySelector(".frame");
@@ -332,7 +332,10 @@ import { toast } from "/kit.js";
   }
 
   /// The front's shelves, asked once; drawn whenever the question changes.
-  async function askShelves() {
+  /// [draw]: false when the first page is waiting on them, to draw the pick,
+  /// the challenge and the cards in one frame: each drawn as it came moved
+  /// the others (the pick put in before the cards pushed every card on).
+  async function askShelves({ draw = true } = {}) {
     try {
       const reply = await askApi(`/api/share?op=shelves${tests ? "&tests=1" : ""}`);
       if (reply.status !== 200) throw new Error(String(reply.status));
@@ -341,10 +344,11 @@ import { toast } from "/kit.js";
     } catch {
       front = null;
     }
+    document.documentElement.dataset.shelves = front ? "ready" : "broken";
+    if (!draw) return;
     drawShelves();
     sayScore();
     sayChallenge();
-    document.documentElement.dataset.shelves = front ? "ready" : "broken";
   }
 
   /// What an empty answer says: nothing listed at all, nothing matching,
@@ -375,8 +379,9 @@ import { toast } from "/kit.js";
   }
 
   /// The next page of the list ([fresh]: the first, in place of what is
-  /// shown). Resolves once it is drawn.
-  async function next(fresh) {
+  /// shown), drawn once [hold] (the shelves, on the first) has come too.
+  /// Resolves once it is drawn.
+  async function next(fresh, hold = null) {
     const mine = ++asking;
     loading = true;
     more.disabled = true;
@@ -401,6 +406,10 @@ import { toast } from "/kit.js";
       if (reply.status !== 200) throw new Error(String(reply.status));
       const data = reply.body;
       if (mine !== asking) return;
+      if (hold) {
+        await hold;
+        if (mine !== asking) return;
+      }
       offers = { following: data.following === true, made: Array.isArray(data.mades),
         windows: Array.isArray(data.windows) };
       if (!filled) {
@@ -423,7 +432,7 @@ import { toast } from "/kit.js";
         if (!ID.test(id)) continue;
         listed.set(id, model);
         if (id === pick || grid.querySelector(`.model[data-id="${id}"]`)) continue;
-        grid.append(card(model));
+        grid.append(card(model, fresh && grid.children.length < FIRST_SCREEN));
       }
       hasMore = Boolean(data.more);
       $("loading").hidden = true;
@@ -436,11 +445,13 @@ import { toast } from "/kit.js";
       sayFilters();
       sayScore();
       drawShelves();
+      if (hold) sayChallenge();
       history.replaceState(history.state, "", addressOf());
       document.documentElement.dataset.gallery = "ready";
       document.documentElement.dataset.pages = String(page);
     } catch {
       if (mine !== asking) return;
+      for (const bones of grid.querySelectorAll(".skeleton")) bones.remove();
       $("loading").hidden = true;
       $("broken").hidden = false;
       document.documentElement.dataset.gallery = "broken";
@@ -625,8 +636,8 @@ import { toast } from "/kit.js";
       own = null;
     }
     drawTabs();
-    const shelvesAsked = askShelves();
-    await next(true);
+    const shelvesAsked = askShelves({ draw: false });
+    await next(true, shelvesAsked);
     while (page < pages && hasMore) await next(false);
     auto = Math.min(AUTO, page - 1);
     if (back) {

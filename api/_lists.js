@@ -198,18 +198,21 @@ export async function coversOf(lists, tests) {
   return new Map(shown.map((list, at) => [list.id, items[at].map((row) => pictures.get(row.model)).filter(Boolean).slice(0, 4)]));
 }
 
-/// A cover: up to four pictures kept wide, or what it waits for.
-export function mosaicHtml(pictures) {
+/// A cover: up to four pictures kept wide, or what it waits for. [eager]:
+/// in the first screen, asked at once and first (a lazy one came last).
+export function mosaicHtml(pictures, { eager = false } = {}) {
   return `<div class="mosaic n${pictures.length}">${pictures.length ? pictures.map((src) =>
-    `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" loading="lazy" decoding="async">`).join("")
+    `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" ${eager ? 'loading="eager" fetchpriority="high"'
+      : 'loading="lazy"'} decoding="async">`).join("")
     : "<span>No pictures yet</span>"}</div>`;
 }
 
 /// A public collection as a card: its cover, its name, how many; and whose,
 /// with [by] (a model's page, where the collections are anybody's).
-export function listCardHtml(list, covers, { by = false } = {}) {
+/// [eager]: one of the first screen's.
+export function listCardHtml(list, covers, { by = false, eager = false } = {}) {
   const whose = by && list.by && list.by.name ? ` · ${escapeHtml(list.by.name)}` : "";
   return `<a class="list-card" href="/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
-    + mosaicHtml(covers.get(list.id) || [])
+    + mosaicHtml(covers.get(list.id) || [], { eager })
     + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(count(list.count, "model"))}${whose}</span></div></a>`;
 }

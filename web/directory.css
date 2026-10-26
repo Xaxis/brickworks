@@ -77,6 +77,11 @@
 }
 .media-strip .thumb.add:hover { color: var(--ink); border-color: var(--ink-faint); }
 .media-strip .thumb.add[hidden] { display: none; }
+/* With no strip yet, its owner's Add a picture (model-page.js) is over the
+   picture's corner, on the panel's ground: a strip shown for it alone
+   pushed the page down as it came (site275). */
+.model-page .media { position: relative; }
+.model-page .media > .on-picture { position: absolute; top: 14px; left: 14px; background: var(--panel); }
 .model-page .picture.photo img { object-fit: contain; background: var(--bg-soft); }
 @media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
 
@@ -261,6 +266,12 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
    it, its replies under it on a line of their own, a reply's avatar the
    small one. A stranger's text kept as typed. */
 .model-page .comments { max-width: 72ch; }
+/* The comments' place while they are asked (api/share.js commentsSection),
+   as tall as the section drawn with none yet and the box (site275). */
+.model-page .comments-hold { display: flex; flex-direction: column; gap: 8px; margin-top: 34px; padding-bottom: 40px; max-width: 72ch; }
+.model-page .comments-hold .bone { margin: 0; }
+.model-page .comments-hold .title { width: 8em; height: 1.3em; font-size: var(--t-h3); }
+.model-page .comments-hold .box { width: 100%; height: calc(3lh + 22px); border-radius: var(--control-radius); }
 .model-page .comment-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
 .model-page .comment {
 	display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start;
@@ -509,6 +520,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .profile .paging { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); margin: var(--s-5) 0 0; }
 .profile .paging a:not(.cta) { color: var(--ink-soft); }
 .profile .follows { margin-top: var(--s-7); }
+/* A designer's own numbers on their page, under the work (api/people.js). */
+.profile #designs-mine { margin: var(--s-7) 0 0; }
 .profile .follows .pill .avatar { margin-left: -6px; }
 @media (width < 600px) {
 	.profile .banner { aspect-ratio: 2 / 1; }

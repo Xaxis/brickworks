@@ -1148,8 +1148,10 @@ ${footer}
 /// for its owner to add the first: model-page.js shows it to them alone.
 /// [small] is the published picture as the strip shows it.
 function mediaStrip(model, picture, photos, small = picture) {
+  // Right under the picture, so in the first screen: its first five asked at once.
+  let shown = 0;
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
-    + `width="96" height="72" loading="lazy" decoding="async"></a>`;
+    + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
   const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
   return `<div class="media-strip" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
     + (picture ? thumb(small, `${model.name}, as it was published`,
@@ -1214,7 +1216,7 @@ function buildsSection(id, model, photos) {
     ${photos.length ? `<div class="build-strip">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
       : `<p class="note no-builds">${builds ? "No photos of a real build yet. Built it? Add yours."
         : "Nobody has built it yet. Built it? Add a photo of yours."}</p>`}
-    <div class="add-build" id="add-build" data-id="${id}" hidden>
+    <div class="add-build" id="add-build" data-id="${id}">
       <button type="button" class="cta ghost" data-add-build>I built it: add a photo</button>
       <form class="build-form" hidden>
         <label>A photo of your build <small>JPEG, PNG or WebP, up to 8 MB</small>
@@ -1243,7 +1245,12 @@ function commentsSection(id, shown, newest, steps) {
   const picker = many
     ? `<input id="comment-step" type="number" min="1"${steps ? ` max="${Number(steps)}"` : ""} inputmode="numeric" placeholder="the whole model">`
     : `<select id="comment-step"><option value="">the whole model</option>${options}</select>`;
-  return `<section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
+  // Shown once asked (web/model-page.js); until then a skeleton holds its
+  // place at the size most are drawn at (none yet, and the box), so its
+  // coming moves nothing under it: it pushed Builds down the screen (site275).
+  return `<div class="comments-hold skeleton" id="comments-hold" aria-hidden="true"><span class="bone short title"></span>
+    <span class="bone line"></span><span class="bone line short"></span><span class="bone box"></span><span class="bone button"></span></div>
+  <section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
     data-version="${shown}" data-newest="${newest}" hidden>
     <h2 id="comments-h">Comments</h2>
     <p class="note comments-lede">What builders said about it and its steps, the newest first, with
