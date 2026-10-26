@@ -3386,6 +3386,13 @@
       "entry": "src/dev/dialog_look_probe.gd",
       "reach": "tools/probe.sh dialog_look_probe -- --shots=DIR",
       "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "held items probe",
+      "entry": "src/dev/held_items_probe.gd",
+      "reach": "tools/probe.sh held_items_probe   (a figure holding a hammer and a cup, a pole and a wrench, a torch and a camera, each pair by one add_minifig: each thing joined to a hand by BrickNet's connectors and through nothing, Tested's whole test passed, the Minifigure builder's figure alike; a sack, which BrickNet gives no bar, said not held when put in the hand)",
+      "area": "minifig"
     }
   ]
 }

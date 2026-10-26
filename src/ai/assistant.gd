@@ -3503,7 +3503,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("changed it: %d bricks%s"
 				% [edited.placements.size(), _shorthand_used(args)])
 			var said: String = "Done. %d bricks now." % edited.placements.size()
-			if parts_room() < 0:
+			if past_count():
 				said = "Done. %s." % parts_said().replace(" parts,", " bricks now,")
 			if not _made_said.is_empty():
 				said += " " + _made_said
@@ -6176,6 +6176,14 @@ func parts_room() -> int:
 	if _parts_most <= 0:
 		return NO_COUNT
 	return _parts_most - _bricks_inside({}).size()
+
+
+## Whether the design is past the brief's count; never when it named none.
+## NO_COUNT is below nought, so asking parts_room() < 0 answered yes to every
+## design without a count: its build said ": the passes after this one..."
+## and its every edit "Done. ." with no count of bricks (hand264's jetty).
+func past_count() -> bool:
+	return _parts_most > 0 and parts_room() < 0
 
 
 ## The count against the brief's, in a phrase: "306 parts, past the about
@@ -20688,7 +20696,7 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
 	var counted: String = parts_said()
-	if parts_room() < 0:
+	if past_count():
 		said.append(counted + ": the passes after this one add their detail only inside "
 			+ "it, so bring the masses in now — fewer courses where it is solid, a hollow "
 			+ "inside, a base no bigger than it needs to be.")

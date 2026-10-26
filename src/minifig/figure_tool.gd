@@ -293,7 +293,7 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	var along_x: bool = posmod(rotation, 2) == 0
 	var centre := Vector3((x + (1.0 if along_x else 0.5)) * STUD, 0.0,
 		(z + (0.5 if along_x else 1.0)) * STUD)
-	var parts: Array[Dictionary] = seated_exactly(library, figure.assemble(library))
+	var parts: Array[Dictionary] = parts_of(figure, library)
 	# On top of whatever is highest there, unless a height is given: a
 	# figure in a room or on a balcony has a roof over it, and the top of
 	# the roof is the highest surface under its feet.
@@ -319,6 +319,13 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 			return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 				"text": "Not placed: %s is already standing at x %s, z %s."
 					% [world.get_brick(under).group, _n(x), _n(z)]}
+	# What it holds, clear of the model by its real shape as well as its cover:
+	# a rod 1.2 LDU into a bollard's cone fits the lattice and fails Tested.
+	var around: Array = _model_near(library, world, at)
+	var fits: Callable = func(trial: Array[Dictionary]) -> bool:
+		return builder.figure_fits(trial, at) and _held_clear_of(library, trial, at, around)
+	if not fits.call(parts):
+		parts = turned_to_fit(library, parts, fits)
 	if not builder.figure_fits(parts, at):
 		var why: String = _in_the_way(parts, at, Vector2(x, z), library, world, builder)
 		# Bare-headed it would stand: a lower hat of the kind asked for, which
@@ -357,7 +364,37 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 		_describe(figure, library)]
 	if not unmatched.is_empty():
 		said += " Nothing matched %s, so those are plain." % ", ".join(unmatched)
+	for part_id: String in unheld_in_hand(library, parts):
+		var info: PartLibrary.PartInfo = library.parts.get(part_id)
+		said += (" %s (%s) is in the hand by its own grip, but the connectors the save's check "
+			% [part_id, " ".join(info.name.split(" ", false)) if info != null else "held"]
+			+ "reads (BrickNet's) give it none a hand's clip takes, so the check calls it not "
+			+ "held: stand it on a stud beside the figure instead, or give the hand another.")
 	return {"ok": true, "ids": ids, "box": box, "text": said}
+
+
+## The things [param parts]' hands hold that nothing the exact check knows
+## joins to a hand, by part: a sack's grab handle (10169) and a mug's
+## (33054) are no bar in BrickNet's connectors, so no turn or seat in the
+## hand helps. Said when the figure is put down, not found at the save.
+static func unheld_in_hand(library: PartLibrary, parts: Array[Dictionary]) -> PackedStringArray:
+	var ids: Array = []
+	for item: Dictionary in parts:
+		ids.append(str(item["part"]))
+	var shapes: Dictionary = Exact.shapes_for(library, ids)
+	var items: Array = []
+	var hands := PackedInt32Array()
+	for n: int in parts.size():
+		var shape: Exact.Shape = shapes.get(str(parts[n]["part"]))
+		items.append(Exact.Item.new(shape, parts[n]["at"]) if shape != null else null)
+		if str(parts[n]["slot"]) == "hands":
+			hands.append(n)
+	var out := PackedStringArray()
+	for n: int in parts.size():
+		if HELD_BY_BAR.has(str(parts[n]["slot"])) and items[n] != null \
+				and (items[n] as Exact.Item).shape.has_pieces() and not Exact.connected(items, n, hands):
+			out.append(str(parts[n]["part"]))
+	return out
 
 
 ## What a refused figure runs into, by part, and what would stand: the same
@@ -448,7 +485,7 @@ static func _lower_headwear(figure: Minifig, asked: String, at: Transform3D,
 			continue
 		var trial: Minifig = figure.copy()
 		trial.choose(library, "headwear", id)
-		if builder.figure_fits(seated_exactly(library, trial.assemble(library)), at):
+		if builder.figure_fits(parts_of(trial, library), at):
 			return id
 	return ""
 
@@ -464,6 +501,13 @@ const SITS_ON: Dictionary = {"headwear": ["head"], "hat_extra": ["headwear"],
 ## How far a part may be moved onto its seat, in LDU: a fez is drawn 16 above
 ## where the classic head's headgear goes.
 const SEAT_REACH := 24.0
+
+
+## A figure's parts as they go into a model, each seated on what holds it
+## (seated_exactly): what a session's figure, the Minifigure builder's
+## preview and the figure it puts down are all made of, so the three agree.
+static func parts_of(figure: Minifig, library: PartLibrary) -> Array[Dictionary]:
+	return seated_exactly(library, figure.assemble(library))
 
 
 ## The figure's parts with each one that runs into another moved onto the
@@ -523,7 +567,184 @@ static func seated_exactly(library: PartLibrary, parts: Array[Dictionary]) -> Ar
 				items[i] = Exact.Item.new((items[i] as Exact.Item).shape,
 					(items[i] as Exact.Item).at.translated(slide))
 				parts[i]["at"] = (items[i] as Exact.Item).at
+		if HELD_BY_BAR.has(slot) and not _held_clear(items, i, on):
+			var turned: Variant = turned_in_hand(items, i, on)
+			if turned is Transform3D:
+				items[i] = Exact.Item.new((items[i] as Exact.Item).shape, turned)
+				parts[i]["at"] = turned
 	return parts
+
+
+## [param parts] with what a hand holds turned about its bar in the hand,
+## the least turn first, until [param fits] says yes of the whole figure, or
+## as they were. A figure stood beside a bollard on a jetty was refused for
+## its fishing rod, which could have pointed the other way, and the session
+## stood it a stud along instead (hand264).
+static func turned_to_fit(library: PartLibrary, parts: Array[Dictionary],
+		fits: Callable) -> Array[Dictionary]:
+	var ids: Array = []
+	for item: Dictionary in parts:
+		ids.append(str(item["part"]))
+	var shapes: Dictionary = Exact.shapes_for(library, ids)
+	var items: Array = []
+	var hands := PackedInt32Array()
+	for n: int in parts.size():
+		var shape: Exact.Shape = shapes.get(str(parts[n]["part"]))
+		items.append(Exact.Item.new(shape, parts[n]["at"]) if shape != null else null)
+		if str(parts[n]["slot"]) == "hands":
+			hands.append(n)
+	for n: int in parts.size():
+		if not HELD_BY_BAR.has(str(parts[n]["slot"])) or items[n] == null:
+			continue
+		var trial: Array[Dictionary] = []
+		for item: Dictionary in parts:
+			trial.append(item.duplicate())
+		var turned: Variant = turned_in_hand(items, n, hands, func(there: Transform3D) -> bool:
+			trial[n]["at"] = there
+			return bool(fits.call(trial)))
+		if turned is Transform3D:
+			trial[n]["at"] = turned
+			return trial
+	return parts
+
+
+## The model's parts standing within a few studs of a figure at [param at],
+## by their exact shapes.
+static func _model_near(library: PartLibrary, world: BrickWorld, at: Transform3D) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.transform.origin.distance_to(at.origin) > NEAR:
+			continue
+		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+		if shape != null and shape.has_pieces():
+			out.append(Exact.Item.new(shape, brick.transform))
+	return out
+
+
+## How near a figure the model's parts are asked about, in LDU: past the
+## reach of a figure's longest held thing, a lance.
+const NEAR := 12.0 * STUD
+
+
+## Whether what [param parts]' hands hold, stood at [param at], is clear of
+## [param around] by the parts' exact shapes.
+static func _held_clear_of(library: PartLibrary, parts: Array[Dictionary], at: Transform3D,
+		around: Array) -> bool:
+	for item: Dictionary in parts:
+		if not HELD_BY_BAR.has(str(item["slot"])):
+			continue
+		var shape: Exact.Shape = Exact.shape_for(library, str(item["part"]))
+		if shape == null or not shape.has_pieces():
+			continue
+		var held := Exact.Item.new(shape, at * (item["at"] as Transform3D))
+		for other: Exact.Item in around:
+			if not Exact.clash(held, other, true).is_empty():
+				return false
+	return true
+
+
+## What a hand holds by a bar: it may turn about the bar in the hand, as a
+## real one does, and is seated by the bar BrickNet's connectors know.
+const HELD_BY_BAR: Array[String] = ["accessory", "accessory_left"]
+## The turns about the bar tried, in degrees each way, smallest first.
+const TURN_STEP := 15.0
+## How far along the bar it may slide besides, in LDU, a step at a time.
+const SLIDE_STEPS: Array[float] = [0.0, 2.0, -2.0, 4.0, -4.0, 6.0, -6.0, 8.0, -8.0]
+
+
+## Whether item [param i] is joined to one of [param on] and clear of every
+## other item, as the check (ExactCheck) reads a figure.
+static func _held_clear(items: Array, i: int, on: PackedInt32Array) -> bool:
+	return Exact.connected(items, i, on) and _clear_at(items, i, (items[i] as Exact.Item).at)
+
+
+## And no lower than the figure's feet, the lowest of the rest: a figure's
+## parts are in the app's axes, y up (Minifig.assemble). Asked the other way
+## round, the jetty session's fishing rod was turned to hang straight down
+## through the water (hand264).
+static func _clear_at(items: Array, i: int, at: Transform3D) -> bool:
+	var there := Exact.Item.new((items[i] as Exact.Item).shape, at)
+	var ground: float = INF
+	for j: int in items.size():
+		if j != i and items[j] != null:
+			ground = minf(ground, (items[j] as Exact.Item).lo.y)
+	if there.lo.y < ground - 0.5:
+		return false
+	for j: int in items.size():
+		if j != i and items[j] != null and not Exact.clash(there, items[j], true).is_empty():
+			return false
+	return true
+
+
+## Where item [param i], a thing in a hand of [param on], is held by its
+## bar in the hand's clip and clear of the figure, or null. Laid by the
+## grips table (Minifig.in_hand), the turn about the bar is only the least
+## that lines the two up: a cup's body went 2.6 LDU into the torso, a
+## hammer's head through the legs, and 47 of the 456 things the table names
+## were held through the figure. And its grip is the table's, read off the
+## part's own lines, which for 44 more is not the bar BrickNet's connectors
+## put a hand on (a camera held by its sight), so the check saw nothing hold
+## them: the miller's sack in walk256's windmill session cost five turns.
+## So each of its bars that a clip takes is laid in the hand's clip, nearest
+## the grip first, and turned about the clip's line, the least turn first,
+## and slid a little along it, until it is clear and joined, and [param
+## also] (given the place) says yes when there is more to ask.
+static func turned_in_hand(items: Array, i: int, on: PackedInt32Array,
+		also: Callable = Callable()) -> Variant:
+	var item: Exact.Item = items[i]
+	var clips: Array = []
+	for j: int in on:
+		var hand: Exact.Item = items[j]
+		if hand == null:
+			continue
+		for one: Array in hand.world():
+			var k: int = one[0]
+			if hand.shape.kind[k] == Exact.AXLE and hand.shape.sub[k] == Exact.S_CLIP:
+				clips.append(one)
+	var bars: Array = []
+	for k: int in item.shape.kind.size():
+		if item.shape.kind[k] == Exact.AXLE and item.shape.sub[k] == Exact.S_BAR:
+			bars.append(k)
+	var seats: Array = []
+	for clip: Array in clips:
+		for k: int in bars:
+			var bar: Transform3D = item.at * item.shape.frames[k]
+			seats.append([bar.origin.distance_to(clip[1] as Vector3), clip, k])
+	seats.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	for seat: Array in seats:
+		var clip: Array = seat[1]
+		var k: int = seat[2]
+		var centre: Vector3 = clip[1]
+		var line: Vector3 = clip[2]
+		var laid: Transform3D = _bar_in_clip(item.at, item.shape.frames[k], centre, line)
+		for n: int in int(180.0 / TURN_STEP) + 1:
+			for sign: float in ([1.0] if n == 0 or n * TURN_STEP >= 180.0 else [1.0, -1.0]):
+				var turn := Basis(line, deg_to_rad(sign * n * TURN_STEP))
+				var turned := Transform3D(turn, centre - turn * centre) * laid
+				for slide: float in SLIDE_STEPS:
+					var there: Transform3D = turned.translated(line * slide)
+					if not _clear_at(items, i, there):
+						continue
+					items[i] = Exact.Item.new(item.shape, there)
+					var joined: bool = Exact.connected(items, i, on)
+					items[i] = item
+					if joined and (not also.is_valid() or bool(also.call(there))):
+						return there
+	return null
+
+
+## [param at], turned the least way that lays the bar of frame [param bar]
+## (in the part's own frame; it points along minus its y) along [param line]
+## either way, and moved so the bar's middle is at [param centre].
+static func _bar_in_clip(at: Transform3D, bar: Transform3D, centre: Vector3,
+		line: Vector3) -> Transform3D:
+	var along: Vector3 = (at.basis * -bar.basis.y).normalized()
+	var target: Vector3 = line if along.dot(line) >= 0.0 else -line
+	var basis: Basis = at.basis
+	var axis: Vector3 = along.cross(target)
+	if axis.length() > 1e-6:
+		basis = Basis(axis.normalized(), atan2(axis.length(), along.dot(target))) * basis
+	return Transform3D(basis, centre - basis * bar.origin)
 
 
 ## Quarter turns that face a figure one of the four ways. A figure is

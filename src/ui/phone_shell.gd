@@ -585,25 +585,34 @@ func _lay_pill() -> void:
 	# Over the model's own room: on a tablet, between its panels.
 	var free: Rect2 = model_room(Rect2(Vector2.ZERO, room))
 	var widest: float = minf(free.size.x - p(24), p(380))
-	_pill_words.custom_minimum_size.x = 0.0
 	var font: Font = _pill_words.get_theme_font("font")
 	var line: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
 	var inner: float = minf(line + p(2), widest - p(24))
-	_pill_words.custom_minimum_size.x = inner
-	_pill.reset_size()
+	# Each set only when it is another: laid out every frame, a value set
+	# again, or set to nothing and back, is the whole window drawn again
+	# (IdleDraw), and a tablet drawing in software drew it every frame.
+	if _pill_words.custom_minimum_size.x != inner:
+		_pill_words.custom_minimum_size.x = inner
 	var size_now: Vector2 = _pill.get_combined_minimum_size()
-	_pill.size = size_now
-	_pill.position = Vector2(free.position.x + (free.size.x - size_now.x) * 0.5,
+	if _pill.size != size_now:
+		_pill.size = size_now
+	var at := Vector2(free.position.x + (free.size.x - size_now.x) * 0.5,
 		room.y - p(ROW) - p(10) - size_now.y)
 	var steps: Control = app.get("_steps")
 	if steps != null and steps.is_visible_in_tree():
-		_pill.position.y = minf(_pill.position.y, steps.get_global_rect().position.y - size_now.y - p(6))
+		at.y = minf(at.y, steps.get_global_rect().position.y - size_now.y - p(6))
+	if _pill.position != at:
+		_pill.position = at
 	# A phone's sheets cover it; a tablet's panels stand beside it.
-	_pill.visible = not words.is_empty() and (wide or not _any_open())
+	var shown: bool = not words.is_empty() and (wide or not _any_open())
+	if _pill.visible != shown:
+		_pill.visible = shown
 	if wide:
 		_lay_beside(free)
 	else:
-		_fit.position.y = _fit_top()
+		var top: float = _fit_top()
+		if _fit.position.y != top:
+			_fit.position.y = top
 
 
 ## A tablet's Fit and the notices strip over the model kept in the model's
@@ -618,7 +627,9 @@ func _lay_beside(free: Rect2) -> void:
 				or face.content_margin_right != room - free.end.x):
 			face.content_margin_left = free.position.x
 			face.content_margin_right = room - free.end.x
-	_fit.position = Vector2(free.end.x - p(12 + 48), _fit_top())
+	var fit_at := Vector2(free.end.x - p(12 + 48), _fit_top())
+	if _fit.position != fit_at:
+		_fit.position = fit_at
 
 
 ## Fit's top: under the notices strip while it shows, on a phone as on a
@@ -847,16 +858,28 @@ func state() -> Dictionary:
 class RowPicture extends Control:
 	var kind: String = ""
 	var phone: PhoneShell
+	## The colour drawn last. Drawn again only when the colour in hand is
+	## another (a resize draws it anyway): it was drawn every frame, and a
+	## frame drawn for nothing is the whole window drawn (IdleDraw). On a
+	## tablet in a browser drawing in software that was 2 to 5 s a frame for
+	## as long as the app was open, frozen from the moment it showed
+	## (m174's tablet check, page.screenshot waiting 30 s for a frame).
+	var _drawn: Variant = null
 
 	func _process(_delta: float) -> void:
-		queue_redraw()
+		if kind == "colour" and _colour() != _drawn:
+			queue_redraw()
+
+	func _colour() -> Color:
+		var library: PartLibrary = phone.app.get("_library")
+		var builder: Builder = phone.app.get("_builder")
+		return Color(library.color(builder.held_color).shown, 1.0)
 
 	func _draw() -> void:
 		var middle := Vector2(size.x * 0.5, phone.p(4) + phone.p(12))
 		if kind == "colour":
-			var library: PartLibrary = phone.app.get("_library")
-			var builder: Builder = phone.app.get("_builder")
-			var colour: Color = Color(library.color(builder.held_color).shown, 1.0)
+			var colour: Color = _colour()
+			_drawn = colour
 			draw_circle(middle, phone.p(11), Color(1, 1, 1, 0.85))
 			draw_circle(middle, phone.p(9.5), colour)
 		else:

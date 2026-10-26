@@ -1038,7 +1038,7 @@ func _restage() -> void:
 	if _stage == null:
 		return
 	_stage.clear()
-	var parts: Array[Dictionary] = figure.assemble(library)
+	var parts: Array[Dictionary] = FigureTool.parts_of(figure, library)
 	var missing: int = 0
 	for item: Dictionary in parts:
 		var part: String = str(item["part"])
