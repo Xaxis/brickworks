@@ -1917,6 +1917,8 @@ var _drag_from: Vector2 = Vector2.INF
 var _drag_part: String = ""
 ## A finger dragged the grid since it came down (by_finger).
 var _scrolled: bool = false
+## Whose press began it: a finger's moves are taken from it alone.
+var _drag_device: int = 0
 
 
 func is_dragging_part() -> bool:
@@ -1931,6 +1933,7 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 			button.accept_event()
 		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed:
 			_drag_from = press.global_position
+			_drag_device = press.device
 			_scrolled = false
 		elif press.button_index == MOUSE_BUTTON_LEFT:
 			_drag_from = Vector2.INF
@@ -1949,6 +1952,11 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 			or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
 		return
 	if by_finger:
+		# A finger's move once. On the web it comes twice, as the touch's
+		# (DEVICE_ID_EMULATION) and as the page's pointermove, read as a
+		# mouse's: the grid went 2.09 points for each the finger went.
+		if motion.device != _drag_device:
+			return
 		if _scrolled or motion.global_position.distance_to(_drag_from) >= DRAG_START:
 			_scrolled = true
 			_scroll.scroll_vertical -= roundi(motion.relative.y)

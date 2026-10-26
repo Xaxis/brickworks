@@ -150,7 +150,8 @@ func _lifted() -> void:
 
 ## How fast a list was going as the finger lifted, units a ms: the slope of
 ## its scroll against the clock over its last frames (least squares). 0
-## when it stood still a frame or more and STILL_MS before the lift.
+## when it stood still before the lift STILL_MS, and twice as long as
+## between its last two moves.
 ##
 ## The frames' own looks, not the lift's: the moves a frame hears came in
 ## while the frame before it drew, so a frame's look is where the finger
@@ -159,17 +160,19 @@ func _lifted() -> void:
 ## half as fast where a browser draws in software, a frame 100 ms or more.
 func _thrown(seen: Array, at: Vector2, now: int) -> Vector2:
 	var last: Array = seen.back()
-	if at == last[1]:
-		# Where it stood from, and how many frames looked and saw it still.
-		var since: int = int(last[0])
-		var quiet: int = 0
-		for n: int in range(seen.size() - 2, -1, -1):
-			if seen[n][1] != at:
+	# When the frames saw it move last, and the time between its last two
+	# moves: a browser drawing in software sees a finger's moves a frame
+	# apart, 100 ms and more.
+	var moved: Array = []
+	for n: int in range(seen.size() - 1, 0, -1):
+		if seen[n][1] != seen[n - 1][1]:
+			moved.append(int(seen[n][0]))
+			if moved.size() == 2:
 				break
-			since = int(seen[n][0])
-			quiet += 1
-		if quiet >= 1 and float(now - since) / 1000.0 >= STILL_MS:
-			return Vector2.ZERO
+	var apart: float = float(moved[0] - moved[1]) / 1000.0 if moved.size() == 2 else 0.0
+	if at == last[1] and not moved.is_empty() \
+			and float(now - int(moved[0])) / 1000.0 > maxf(STILL_MS, apart * 2.0):
+		return Vector2.ZERO
 	var gap: float = float(int(last[0]) - int(seen[maxi(0, seen.size() - 2)][0])) / 1000.0
 	var window: float = maxf(WINDOW_MS, gap * 3.0)
 	var used: Array = seen.filter(func(one: Array) -> bool:
