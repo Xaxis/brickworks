@@ -360,7 +360,9 @@ try {
         && !(await sideways(page)));
     if (width === 1280) {
       await page.click("button[data-follow]");
-      await until(page, () => document.querySelector("button[data-follow]")?.textContent === "Following", "Following");
+      // Drawn at once, and pressed again once the server answers (site275).
+      await until(page, () => document.querySelector("button[data-follow]")?.textContent === "Following"
+        && !document.querySelector("button[data-follow]").disabled, "Following, answered");
       const tile = await page.evaluate(() => {
         const li = document.querySelector("[data-followers]");
         return { text: li?.textContent.replace(/\s+/g, " ").trim(), big: li?.querySelector("b")?.textContent };

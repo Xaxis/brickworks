@@ -19,9 +19,10 @@
 //   3. Signed in, /profile at 1280 and 390 in both themes: her head as
 //      /u/<handle> draws it (name, @handle, words, links ugc nofollow, the
 //      banner, her pins in her order, numbers with no count of none), the
-//      tabs Models · Builds · Saved · Sets · Insights, Models open with her
-//      two models; under 2,000 px tall at 1280; at 390 the avatar, name
-//      and Edit profile on the first screen.
+//      tabs Models · Builds · Saved · Sets · Insights, Models open with one
+//      row of her six models (two rows on a phone) and Show more for the
+//      rest; under 2,000 px tall at 1280; at 390 the avatar, name and Edit
+//      profile on the first screen.
 //   4. Edit profile: the dialog holds everything she set; her name changed
 //      there shows on the page with no reload, and her links, banner, pins
 //      and words are as they were (op=me, read back).
@@ -150,6 +151,8 @@ const profileSaid = (page) => page.evaluate(() => {
     panel: [...document.querySelectorAll("#work [data-panel]")].filter((p) => !p.hidden).map((p) => p.dataset.panel),
     cards: [...document.querySelectorAll("#my-models .model")].map((card) => card.dataset.id),
     more: !document.getElementById("models-paging").hidden,
+    // The models grid's columns as drawn.
+    columns: getComputedStyle(document.getElementById("my-models")).gridTemplateColumns.split(" ").filter(Boolean).length,
     avatar: (() => {
       const a = document.getElementById("avatar");
       return a ? { letter: a.textContent, tile: [...a.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(a).bottom } : null;
@@ -183,9 +186,10 @@ try {
     body: { handle: ADA, name: "Ada Account", bio: "Castles and small machines.\nFor the account page flow." } });
   check(`her profile: ${r.status} /u/${r.json?.handle}`, r.status === 200 && r.json?.handle === ADA);
   const picture = readFileSync(path.join(root, "web/share.png")).toString("base64");
-  // Five: more than a laptop's row, so Show more is on the page measured.
+  // Six: more than a laptop's row (five from 1200 px, site277), so Show
+  // more is on the page measured. An account may list six in an hour.
   for (const [file, name] of [["castle.ldr", "Account Castle"], ["lighthouse.ldr", "Account Lighthouse"],
-    ["house.ldr", "Account House"], ["car.ldr", "Account Car"], ["boat.ldr", "Account Boat"]]) {
+    ["house.ldr", "Account House"], ["car.ldr", "Account Car"], ["boat.ldr", "Account Boat"], ["bench.ldr", "Account Bench"]]) {
     r = await api("/api/share", { method: "POST", token: ada.access_token, body: { name: `${name} ${rand}`, author: "Ada Account",
       model: readFileSync(path.join(root, "models", file), "utf8"), image: picture, listed: true, kind: "castle",
       tags: "account flow", licence: "cc-by-4.0" } });
@@ -247,16 +251,19 @@ try {
         && said.links.map((one) => one.href).join(" ") === LINKS.join(" ")
         && said.links.every((one) => /\bugc\b/.test(one.rel) && /\bnofollow\b/.test(one.rel))
         && said.banner === `/m/${made[1]}.cutout.png` && said.pins.join(",") === `${made[1]},${made[0]}`);
-      check(`${label}: numbers ${said.numbers.join(" · ")}, none of none`, said.numbers.join() === "5 models");
+      check(`${label}: numbers ${said.numbers.join(" · ")}, none of none`, said.numbers.join() === "6 models");
+      // One full row on a laptop, two on a phone, of the grid as drawn.
+      const first = (width < 600 ? 2 : 1) * said.columns;
       check(`${label}: tabs ${said.tabs.map((t) => `${t.tab}${t.n ? ` ${t.n}` : ""}${t.current ? "*" : ""}`).join(" · ")}, `
-        + `Models open with ${said.cards.length} of her 5 models and Show more`,
+        + `Models open with ${said.cards.length} of her 6 models (${said.columns} columns) and Show more`,
         said.tabs.map((t) => t.tab).join(",") === "models,builds,saved,sets,insights" && said.tabs[0].current
-        && said.tabs[0].n === "5" && said.tabs.every((t) => t.n !== "0") && said.panel.join() === "models"
-        && said.cards.length === 4 && said.cards.every((id) => made.includes(id)) && said.more);
+        && said.tabs[0].n === "6" && said.tabs.every((t) => t.n !== "0") && said.panel.join() === "models"
+        && said.columns >= 2 && first < 6 && said.cards.length === first && said.cards.every((id) => made.includes(id))
+        && said.more);
       await page.click("#models-more");
-      const all = await until(page, () => document.querySelectorAll("#my-models .model").length === 5
+      const all = await until(page, () => document.querySelectorAll("#my-models .model").length === 6
         && document.getElementById("models-paging").hidden);
-      check(`${label}: Show more brings the fifth, and goes`, all);
+      check(`${label}: Show more brings the rest, and goes`, all);
       if (width === 1280) check(`${label}: ${said.height} px tall with its first tab open (under 2,000)`, said.height < 2000);
       else {
         const last = Math.max(said.avatar?.bottom ?? 1e9, said.nameBottom, said.editBottom);

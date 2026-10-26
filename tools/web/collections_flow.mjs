@@ -208,7 +208,10 @@ try {
     await until(page, (at) => document.querySelector(at) && !document.querySelector(at).hidden, "Follow for Bob", 30, button);
     await page.locator(button).scrollIntoViewIfNeeded();
     await page.click(button);
-    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true", "Following", 30, button);
+    // Drawn at once, and pressed again once the server answers (site275):
+    // the API is asked after that.
+    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+      && !document.querySelector(at).disabled, "Following, answered", 30, button);
     const card = (await drawn(page)).cards.find((one) => one.id === listId);
     const said = await page.evaluate((at) => document.querySelector(at)?.parentElement?.querySelector(".said")?.textContent.trim() || "", button);
     check(`Follow on the card: "${card?.follow?.text}", pressed, "${card?.numbers}"; said "${said}"`,

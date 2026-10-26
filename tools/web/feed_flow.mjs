@@ -245,7 +245,10 @@ try {
   console.log("Bob follows Ada from the suggestions");
   const button = `#people .person-row[data-handle="${ADA}"] button[data-follow]`;
   await bobPage.click(button);
-  await until(bobPage, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true", "Following", 20, button);
+  // Following is drawn at once and its words once the server answers (site275):
+  // the button is pressed again when it has.
+  await until(bobPage, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+    && !document.querySelector(at).disabled, "Following, answered", 20, button);
   const said = await bobPage.evaluate((at) => ({ text: document.querySelector(at)?.textContent,
     told: document.querySelector(at)?.parentElement.querySelector(".said")?.textContent.trim() }), button);
   check(`pressed: "${said.text}", "${said.told}"`, said.text === "Following" && /in your feed/.test(said.told || ""));

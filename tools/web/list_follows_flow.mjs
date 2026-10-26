@@ -171,7 +171,10 @@ try {
   check(`its head: "${drawn.text}", no count yet ("${drawn.followers}"), its cover waiting (${drawn.cover})`,
     drawn.text === "Follow" && drawn.followers === "" && /\bn0\b/.test(drawn.cover));
   await bobPage.click("button[data-follow-list]");
-  await until(bobPage, () => document.querySelector("button[data-follow-list]")?.textContent === "Following", "Following");
+  // Following is drawn at once and its words once the server answers (site275):
+  // the button is pressed again when it has.
+  await until(bobPage, () => document.querySelector("button[data-follow-list]")?.textContent === "Following"
+    && !document.querySelector("button[data-follow-list]").disabled, "Following, answered");
   drawn = await headDrawn(bobPage);
   check(`pressed: "${drawn.text}" (pressed ${drawn.pressed}), "${drawn.followers}", "${drawn.said}"`,
     drawn.text === "Following" && drawn.pressed === "true" && drawn.followers === "1 follower" && /in your feed/.test(drawn.said));
@@ -249,7 +252,8 @@ try {
   console.log("Bob lets it go");
   await until(bobPage, () => document.querySelector("button[data-follow-list]")?.textContent === "Following", "Following again");
   await bobPage.click("button[data-follow-list]");
-  await until(bobPage, () => document.querySelector("button[data-follow-list]")?.textContent === "Follow", "Follow again");
+  await until(bobPage, () => document.querySelector("button[data-follow-list]")?.textContent === "Follow"
+    && !document.querySelector("button[data-follow-list]").disabled, "Follow again, answered");
   drawn = await headDrawn(bobPage);
   check(`let go: "${drawn.text}" (pressed ${drawn.pressed}), the count gone ("${drawn.followers}")`,
     drawn.text === "Follow" && drawn.pressed === "false" && drawn.followers === "");
