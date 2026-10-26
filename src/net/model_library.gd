@@ -82,16 +82,25 @@ func models() -> Array:
 		trouble = _unreached(got, "its index")
 	else:
 		trouble = ""
-		var kept: Array = []
-		for raw: Variant in (json.data as Dictionary)["models"]:
-			var entry: Dictionary = _entry(raw)
-			if not entry.is_empty() and not _by_id.has(entry["id"]):
-				_by_id[entry["id"]] = entry
-				kept.append(entry)
-		_models = kept
+		_models = shelved((json.data as Dictionary)["models"], DesignMemory.held_out())
 	_reading = false
 	_read.emit()
 	return _models
+
+
+## The index's entries as the shelf keeps them: each checked at the edge
+## (_entry), once by id, and none of a set a design run holds out ([param
+## held], the bench's --held-out=, a set's number): a real-set test's session
+## could search the shelf for its own set and open it (design286, 2026-10-26).
+func shelved(raw_models: Array, held: PackedStringArray) -> Array:
+	var kept: Array = []
+	for raw: Variant in raw_models:
+		var entry: Dictionary = _entry(raw)
+		if entry.is_empty() or _by_id.has(entry["id"]) or held.has(str(entry["set"])):
+			continue
+		_by_id[entry["id"]] = entry
+		kept.append(entry)
+	return kept
 
 
 ## One model by its id, or {} with [member trouble] saying why.
